@@ -21,8 +21,8 @@
    THE SOFTWARE.
 */
 
-#ifndef _LOG_TOOL_H_
-#define _LOG_TOOL_H_
+#ifndef LOG_TOOL_H
+#define LOG_TOOL_H
 	
 #include <stdlib.h>
 #include <stdint.h>
