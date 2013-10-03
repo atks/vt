@@ -41,7 +41,6 @@
 #include "merge_duplicate_variants.h"
 #include "compute_concordance.h"
 
-
 void print_time(double t)
 {
     if (t<60)
