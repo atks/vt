@@ -2,6 +2,7 @@ OPTFLAG ?= -O3 -ggdb
 INCLUDES = -I./lib/include/ -I.
 CFLAGS = -pipe -std=c++0x -Wall $(OPTFLAG) $(INCLUDES) -D__STDC_LIMIT_MACROS
 CXX = g++
+CC = gcc
 
 HEADERSONLY =
 SOURCES = filter\
@@ -23,6 +24,9 @@ TARGET = vt
 TOOLSRC = $(SOURCES:=.cpp) $(SOURCESONLY)
 TOOLOBJ = $(TOOLSRC:.cpp=.o)
 LIBHTS = ./lib/include/htslib/libhts.a
+
+lib:
+    cd lib/include/htslib; $(MAKE) CC="$(CC)" CFLAGS="$(CFLAGS)" libhts.a || exit 1; cd ..
 
 all : $(TARGET)
 
