@@ -1,7 +1,6 @@
 /* The MIT License
 
-   Copyright (c) 2008 Broad Institute / Massachusetts Institute of Technology
-                 2011, 2012 Attractive Chaos <attractor@live.co.uk>
+   Copyright (c) 2013 Adrian Tan <atks@umich.edu>
 
    Permission is hereby granted, free of charge, to any person obtaining a copy
    of this software and associated documentation files (the "Software"), to deal
