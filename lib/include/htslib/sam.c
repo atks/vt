@@ -59,35 +59,35 @@ bam_hdr_t *bam_hdr_read(BGZF *fp)
 	int magic_len, has_EOF;
 	int32_t i = 1, name_len;
 	// check EOF
-	has_EOF = bgzf_check_EOF(fp);
+	has_EOF = xbgzf_check_EOF(fp);
 	if (has_EOF < 0) {
-		if (errno != ESPIPE && hts_verbose >= 2) perror("[W::sam_hdr_read] bgzf_check_EOF");
+		if (errno != ESPIPE && hts_verbose >= 2) perror("[W::sam_hdr_read] xbgzf_check_EOF");
 	} else if (has_EOF == 0 && hts_verbose >= 2)
 		fprintf(stderr, "[W::%s] EOF marker is absent. The input is probably truncated.\n", __func__);
 	// read "BAM1"
-	magic_len = bgzf_read(fp, buf, 4);
+	magic_len = xbgzf_read(fp, buf, 4);
 	if (magic_len != 4 || strncmp(buf, "BAM\1", 4)) {
 		if (hts_verbose >= 1) fprintf(stderr, "[E::%s] invalid BAM binary header\n", __func__);
 		return 0;
 	}
 	h = bam_hdr_init();
 	// read plain text and the number of reference sequences
-	bgzf_read(fp, &h->l_text, 4);
+	xbgzf_read(fp, &h->l_text, 4);
 	if (fp->is_be) ed_swap_4p(&h->l_text);
 	h->text = (char*)malloc(h->l_text + 1);
 	h->text[h->l_text] = 0; // make sure it is NULL terminated
-	bgzf_read(fp, h->text, h->l_text);
-	bgzf_read(fp, &h->n_targets, 4);
+	xbgzf_read(fp, h->text, h->l_text);
+	xbgzf_read(fp, &h->n_targets, 4);
 	if (fp->is_be) ed_swap_4p(&h->n_targets);
 	// read reference sequence names and lengths
 	h->target_name = (char**)calloc(h->n_targets, sizeof(char*));
 	h->target_len = (uint32_t*)calloc(h->n_targets, 4);
 	for (i = 0; i != h->n_targets; ++i) {
-		bgzf_read(fp, &name_len, 4);
+		xbgzf_read(fp, &name_len, 4);
 		if (fp->is_be) ed_swap_4p(&name_len);
 		h->target_name[i] = (char*)calloc(name_len, 1);
-		bgzf_read(fp, h->target_name[i], name_len);
-		bgzf_read(fp, &h->target_len[i], 4);
+		xbgzf_read(fp, h->target_name[i], name_len);
+		xbgzf_read(fp, &h->target_len[i], 4);
 		if (fp->is_be) ed_swap_4p(&h->target_len[i]);
 	}
 	return h;
@@ -99,18 +99,18 @@ int bam_hdr_write(BGZF *fp, const bam_hdr_t *h)
 	int32_t i, name_len, x;
 	// write "BAM1"
 	strncpy(buf, "BAM\1", 4);
-	bgzf_write(fp, buf, 4);
+	xbgzf_write(fp, buf, 4);
 	// write plain text and the number of reference sequences
 	if (fp->is_be) {
 		x = ed_swap_4(h->l_text);
-		bgzf_write(fp, &x, 4);
-		if (h->l_text) bgzf_write(fp, h->text, h->l_text);
+		xbgzf_write(fp, &x, 4);
+		if (h->l_text) xbgzf_write(fp, h->text, h->l_text);
 		x = ed_swap_4(h->n_targets);
-		bgzf_write(fp, &x, 4);
+		xbgzf_write(fp, &x, 4);
 	} else {
-		bgzf_write(fp, &h->l_text, 4);
-		if (h->l_text) bgzf_write(fp, h->text, h->l_text);
-		bgzf_write(fp, &h->n_targets, 4);
+		xbgzf_write(fp, &h->l_text, 4);
+		if (h->l_text) xbgzf_write(fp, h->text, h->l_text);
+		xbgzf_write(fp, &h->n_targets, 4);
 	}
 	// write sequence names and lengths
 	for (i = 0; i != h->n_targets; ++i) {
@@ -118,15 +118,15 @@ int bam_hdr_write(BGZF *fp, const bam_hdr_t *h)
 		name_len = strlen(p) + 1;
 		if (fp->is_be) {
 			x = ed_swap_4(name_len);
-			bgzf_write(fp, &x, 4);
-		} else bgzf_write(fp, &name_len, 4);
-		bgzf_write(fp, p, name_len);
+			xbgzf_write(fp, &x, 4);
+		} else xbgzf_write(fp, &name_len, 4);
+		xbgzf_write(fp, p, name_len);
 		if (fp->is_be) {
 			x = ed_swap_4(h->target_len[i]);
-			bgzf_write(fp, &x, 4);
-		} else bgzf_write(fp, &h->target_len[i], 4);
+			xbgzf_write(fp, &x, 4);
+		} else xbgzf_write(fp, &h->target_len[i], 4);
 	}
-	bgzf_flush(fp);
+	xbgzf_flush(fp);
 	return 0;
 }
 
@@ -241,11 +241,11 @@ int bam_read1(BGZF *fp, bam1_t *b)
 	int32_t block_len, ret, i;
 	uint32_t x[8];
 
-	if ((ret = bgzf_read(fp, &block_len, 4)) != 4) {
+	if ((ret = xbgzf_read(fp, &block_len, 4)) != 4) {
 		if (ret == 0) return -1; // normal end-of-file
 		else return -2; // truncated
 	}
-	if (bgzf_read(fp, x, 32) != 32) return -3;
+	if (xbgzf_read(fp, x, 32) != 32) return -3;
 	if (fp->is_be) {
 		ed_swap_4p(&block_len);
 		for (i = 0; i < 8; ++i) ed_swap_4p(x + i);
@@ -261,7 +261,7 @@ int bam_read1(BGZF *fp, bam1_t *b)
 		kroundup32(b->m_data);
 		b->data = (uint8_t*)realloc(b->data, b->m_data);
 	}
-	if (bgzf_read(fp, b->data, b->l_data) != b->l_data) return -4;
+	if (xbgzf_read(fp, b->data, b->l_data) != b->l_data) return -4;
 	//b->l_aux = b->l_data - c->n_cigar * 4 - c->l_qname - c->l_qseq - (c->l_qseq+1)/2;
 	if (fp->is_be) swap_data(c, b->l_data, b->data);
 	return 4 + block_len;
@@ -280,15 +280,15 @@ int bam_write1(BGZF *fp, const bam1_t *b)
 	x[5] = c->mtid;
 	x[6] = c->mpos;
 	x[7] = c->isize;
-	bgzf_flush_try(fp, 4 + block_len);
+	xbgzf_flush_try(fp, 4 + block_len);
 	if (fp->is_be) {
 		for (i = 0; i < 8; ++i) ed_swap_4p(x + i);
 		y = block_len;
-		bgzf_write(fp, ed_swap_4p(&y), 4);
+		xbgzf_write(fp, ed_swap_4p(&y), 4);
 		swap_data(c, b->l_data, b->data);
-	} else bgzf_write(fp, &block_len, 4);
-	bgzf_write(fp, x, 32);
-	bgzf_write(fp, b->data, b->l_data);
+	} else xbgzf_write(fp, &block_len, 4);
+	xbgzf_write(fp, x, 32);
+	xbgzf_write(fp, b->data, b->l_data);
 	if (fp->is_be) swap_data(c, b->l_data, b->data);
 	return 4 + block_len;
 }
@@ -312,17 +312,17 @@ hts_idx_t *bam_index(BGZF *fp, int min_shift)
 		for (n_lvls = 0, s = 1<<min_shift; max_len > s; ++n_lvls, s <<= 3);
 		fmt = HTS_FMT_CSI;
 	} else min_shift = 14, n_lvls = 5, fmt = HTS_FMT_BAI;
-	idx = hts_idx_init(h->n_targets, fmt, bgzf_tell(fp), min_shift, n_lvls);
+	idx = hts_idx_init(h->n_targets, fmt, xbgzf_tell(fp), min_shift, n_lvls);
 	bam_hdr_destroy(h);
 	b = bam_init1();
 	while (bam_read1(fp, b) >= 0) {
 		int l, ret;
 		l = bam_cigar2rlen(b->core.n_cigar, bam_get_cigar(b));
 		if (l == 0) l = 1; // no zero-length records
-		ret = hts_idx_push(idx, b->core.tid, b->core.pos, b->core.pos + l, bgzf_tell(fp), !(b->core.flag&BAM_FUNMAP));
+		ret = hts_idx_push(idx, b->core.tid, b->core.pos, b->core.pos + l, xbgzf_tell(fp), !(b->core.flag&BAM_FUNMAP));
 		if (ret < 0) break; // unsorted
 	}
-	hts_idx_finish(idx, bgzf_tell(fp));
+	hts_idx_finish(idx, xbgzf_tell(fp));
 	bam_destroy1(b);
 	return idx;
 }
@@ -331,9 +331,9 @@ int bam_index_build(const char *fn, int min_shift)
 {
 	hts_idx_t *idx;
 	BGZF *fp;
-	if ((fp = bgzf_open(fn, "r")) == 0) return -1;
+	if ((fp = xbgzf_open(fn, "r")) == 0) return -1;
 	idx = bam_index(fp, min_shift);
-	bgzf_close(fp);
+	xbgzf_close(fp);
 	hts_idx_save(idx, fn, min_shift > 0? HTS_FMT_CSI : HTS_FMT_BAI);
 	hts_idx_destroy(idx);
 	return 0;

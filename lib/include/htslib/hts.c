@@ -49,8 +49,8 @@ htsFile *hts_open(const char *fn, const char *mode, const char *fn_aux)
 	if (strchr(mode, 'w')) fp->is_write = 1;
 	if (strchr(mode, 'b')) fp->is_bin = 1;
 	if (fp->is_bin) {
-		if (fp->is_write) fp->fp = strcmp(fn, "-")? bgzf_open(fn, mode) : bgzf_dopen(fileno(stdout), mode);
-		else fp->fp = strcmp(fn, "-")? bgzf_open(fn, "r") : bgzf_dopen(fileno(stdin), "r");
+		if (fp->is_write) fp->fp = strcmp(fn, "-")? xbgzf_open(fn, mode) : xbgzf_dopen(fileno(stdout), mode);
+		else fp->fp = strcmp(fn, "-")? xbgzf_open(fn, "r") : xbgzf_dopen(fileno(stdin), "r");
 	} else {
 		if (!fp->is_write) {
 			gzFile gzfp;
@@ -79,7 +79,7 @@ void hts_close(htsFile *fp)
 			gzclose(gzfp);
 			free(fp->fn_aux);
 		} else fclose((FILE*)fp->fp);
-	} else bgzf_close((BGZF*)fp->fp);
+	} else xbgzf_close((BGZF*)fp->fp);
 	free(fp);
 }
 
@@ -409,13 +409,13 @@ void hts_idx_destroy(hts_idx_t *idx)
 
 static inline long idx_read(int is_bgzf, void *fp, void *buf, long l)
 {
-	if (is_bgzf) return bgzf_read((BGZF*)fp, buf, l);
+	if (is_bgzf) return xbgzf_read((BGZF*)fp, buf, l);
 	else return (long)fread(buf, 1, l, (FILE*)fp);
 }
 
 static inline long idx_write(int is_bgzf, void *fp, const void *buf, long l)
 {
-	if (is_bgzf) return bgzf_write((BGZF*)fp, buf, l);
+	if (is_bgzf) return xbgzf_write((BGZF*)fp, buf, l);
 	else return (long)fwrite(buf, 1, l, (FILE*)fp);
 }
 
@@ -502,22 +502,22 @@ void hts_idx_save(const hts_idx_t *idx, const char *fn, int fmt)
 		uint32_t x[3];
 		int is_be, i;
 		is_be = ed_is_big();
-		fp = bgzf_open(strcat(fnidx, ".csi"), "w");
-		bgzf_write(fp, "CSI\1", 4);
+		fp = xbgzf_open(strcat(fnidx, ".csi"), "w");
+		xbgzf_write(fp, "CSI\1", 4);
 		x[0] = idx->min_shift; x[1] = idx->n_lvls; x[2] = idx->l_meta;
 		if (is_be) {
 			for (i = 0; i < 3; ++i)
-				bgzf_write(fp, ed_swap_4p(&x[i]), 4);
-		} else bgzf_write(fp, &x, 12);
-		if (idx->l_meta) bgzf_write(fp, idx->meta, idx->l_meta);
+				xbgzf_write(fp, ed_swap_4p(&x[i]), 4);
+		} else xbgzf_write(fp, &x, 12);
+		if (idx->l_meta) xbgzf_write(fp, idx->meta, idx->l_meta);
 		hts_idx_save_core(idx, fp, HTS_FMT_CSI);
-		bgzf_close(fp);
+		xbgzf_close(fp);
 	} else if (fmt == HTS_FMT_TBI) {
 		BGZF *fp;
-		fp = bgzf_open(strcat(fnidx, ".tbi"), "w");
-		bgzf_write(fp, "TBI\1", 4);
+		fp = xbgzf_open(strcat(fnidx, ".tbi"), "w");
+		xbgzf_write(fp, "TBI\1", 4);
 		hts_idx_save_core(idx, fp, HTS_FMT_TBI);
-		bgzf_close(fp);
+		xbgzf_close(fp);
 	} else if (fmt == HTS_FMT_BAI) {
 		FILE *fp;
 		fp = fopen(strcat(fnidx, ".bai"), "w");
@@ -586,35 +586,35 @@ hts_idx_t *hts_idx_load_local(const char *fn, int fmt)
 		BGZF *fp;
 		uint32_t x[3], n;
 		uint8_t *meta = 0;
-		if ((fp = bgzf_open(fn, "r")) == 0) return 0;
-		bgzf_read(fp, magic, 4);
-		bgzf_read(fp, x, 12);
+		if ((fp = xbgzf_open(fn, "r")) == 0) return 0;
+		xbgzf_read(fp, magic, 4);
+		xbgzf_read(fp, x, 12);
 		if (is_be) for (i = 0; i < 3; ++i) ed_swap_4p(&x[i]);
 		if (x[2]) {
 			meta = (uint8_t*)malloc(x[2]);
-			bgzf_read(fp, meta, x[2]);
+			xbgzf_read(fp, meta, x[2]);
 		}
-		bgzf_read(fp, &n, 4);
+		xbgzf_read(fp, &n, 4);
 		if (is_be) ed_swap_4p(&n);
 		idx = hts_idx_init(n, fmt, 0, x[0], x[1]);
 		idx->l_meta = x[2];
 		idx->meta = meta;
 		hts_idx_load_core(idx, fp, HTS_FMT_CSI);
-		bgzf_close(fp);
+		xbgzf_close(fp);
 	} else if (fmt == HTS_FMT_TBI) {
 		BGZF *fp;
 		uint32_t x[8];
-		if ((fp = bgzf_open(fn, "r")) == 0) return 0;
-		bgzf_read(fp, magic, 4);
-		bgzf_read(fp, x, 32);
+		if ((fp = xbgzf_open(fn, "r")) == 0) return 0;
+		xbgzf_read(fp, magic, 4);
+		xbgzf_read(fp, x, 32);
 		if (is_be) for (i = 0; i < 8; ++i) ed_swap_4p(&x[i]);
 		idx = hts_idx_init(x[0], fmt, 0, 14, 5);
 		idx->l_meta = 28 + x[7];
 		idx->meta = (uint8_t*)malloc(idx->l_meta);
 		memcpy(idx->meta, &x[1], 28);
-		bgzf_read(fp, idx->meta + 28, x[7]);
+		xbgzf_read(fp, idx->meta + 28, x[7]);
 		hts_idx_load_core(idx, fp, HTS_FMT_TBI);
-		bgzf_close(fp);
+		xbgzf_close(fp);
 	} else if (fmt == HTS_FMT_BAI) {
 		uint32_t n;
 		FILE *fp;
@@ -814,7 +814,7 @@ int hts_itr_next(BGZF *fp, hts_itr_t *iter, void *r, hts_readrec_f readrec, void
 	if (iter && iter->finished) return -1;
 	if (iter->read_rest) {
 		if (iter->curr_off) { // seek to the start
-			bgzf_seek(fp, iter->curr_off, SEEK_SET);
+			xbgzf_seek(fp, iter->curr_off, SEEK_SET);
 			iter->curr_off = 0; // only seek once
 		}
 		ret = readrec(fp, hdr, r, &tid, &beg, &end);
@@ -826,13 +826,13 @@ int hts_itr_next(BGZF *fp, hts_itr_t *iter, void *r, hts_readrec_f readrec, void
 		if (iter->curr_off == 0 || iter->curr_off >= iter->off[iter->i].v) { // then jump to the next chunk
 			if (iter->i == iter->n_off - 1) { ret = -1; break; } // no more chunks
 			if (iter->i < 0 || iter->off[iter->i].v != iter->off[iter->i+1].u) { // not adjacent chunks; then seek
-				bgzf_seek(fp, iter->off[iter->i+1].u, SEEK_SET);
-				iter->curr_off = bgzf_tell(fp);
+				xbgzf_seek(fp, iter->off[iter->i+1].u, SEEK_SET);
+				iter->curr_off = xbgzf_tell(fp);
 			}
 			++iter->i;
 		}
 		if ((ret = readrec(fp, hdr, r, &tid, &beg, &end)) >= 0) {
-			iter->curr_off = bgzf_tell(fp);
+			iter->curr_off = xbgzf_tell(fp);
 			if (tid != iter->tid || beg >= iter->end) { // no need to proceed
 				ret = -1; break;
 			} else if (end > iter->beg && iter->end > beg) return ret;

@@ -17,70 +17,54 @@ int bcf_sr_add_reader(bcf_srs_t *files, const char *fname)
     if ( files->region ) files->require_index = 1;
 
     reader->type = file_type(fname);
-    if ( files->require_index )
+    if ( reader->type==IS_VCF_GZ ) 
     {
-        if ( reader->type==IS_VCF_GZ ) 
+        reader->tbx_idx = tbx_index_load(fname);
+        if ( !reader->tbx_idx )
         {
-            reader->tbx_idx = tbx_index_load(fname);
-            if ( !reader->tbx_idx )
-            {
-                fprintf(stderr,"[add_reader] Could not load the index of %s\n", fname);
-                return 0;
-            }
-
-            // This is just to read the header
-            htsFile *file = hts_open(fname, "r", NULL);
-            if ( !file ) return 0;
-            reader->header = vcf_hdr_read(file);
-            hts_close(file);
-
-            // The VCF opened in binary tabix mode
-            reader->file = hts_open(fname, "rb", NULL);
-            if ( !reader->file ) return 0;
-        }
-        else if ( reader->type==IS_BCF ) 
-        {
-            reader->file = hts_open(fname, "rb", NULL);
-            if ( !reader->file ) return 0;
-            reader->header = vcf_hdr_read(reader->file);
-
-            reader->bcf_idx = bcf_index_load(fname);
-            if ( !reader->bcf_idx ) 
-            {
-                fprintf(stderr,"[add_reader] Could not load the index of %s\n", fname);
-                return 0;   // not indexed..?
-            }
-        }
-        else
-        {
-            fprintf(stderr,"Expected .vcf.gz or .bcf file\n");
+            fprintf(stderr,"[add_reader] Could not load the index of %s\n", fname);
             return 0;
         }
+
+        // This is just to read the header
+        htsFile *file = hts_open(fname, "r", NULL);
+        if ( !file ) return 0;
+        reader->header = vcf_hdr_read(file);
+        hts_close(file);
+
+        // The VCF opened in binary tabix mode
+        reader->file = hts_open(fname, "rb", NULL);
+        if ( !reader->file ) return 0;
     }
-    else 
+    else if ( reader->type==IS_BCF ) 
     {
-        if ( reader->type==IS_BCF )
+        reader->file = hts_open(fname, "rb", NULL);
+        if ( !reader->file ) return 0;
+        reader->header = vcf_hdr_read(reader->file);
+
+        reader->bcf_idx = bcf_index_load(fname);
+        if ( !reader->bcf_idx && files->require_index ) 
         {
-            reader->file = hts_open(fname, "rb", NULL);
-            if ( !reader->file ) return 0;
-            reader->header = vcf_hdr_read(reader->file);
-        }
-        else if ( reader->type==IS_VCF_GZ || reader->type==IS_VCF || reader->type==IS_STDIN )
-        {
-            reader->file = hts_open(fname,"r",NULL);
-            if ( !reader->file ) 
-            {
-                fprintf(stderr,"[add_reader] Could not open %s\n", fname);
-                return 0;
-            }
-            reader->header = vcf_hdr_read(reader->file);
-        }
-        else
-        {
-            fprintf(stderr,"File type not recognised: %s\n", fname);
-            return 0;
+            fprintf(stderr,"[add_reader] Could not load the index of %s\n", fname);
+            return 0;   // not indexed..?
         }
         files->streaming = 1;
+    }
+    else if ( (reader->type==IS_VCF || reader->type==IS_STDIN) && !files->require_index )
+    {
+        reader->file = hts_open(fname,"r",NULL);
+        if ( !reader->file ) 
+        {
+            fprintf(stderr,"[add_reader] Could not open %s\n", fname);
+            return 0;
+        }
+        reader->header = vcf_hdr_read(reader->file);
+        files->streaming = 1;
+    }
+    else
+    {
+        fprintf(stderr,"Expected .vcf.gz or .bcf file\n");
+        return 0;
     }
     assert( !files->streaming || files->nreaders==1 );
 
@@ -365,7 +349,7 @@ int bcf_sr_next_line(bcf_srs_t *files)
                     }
                     if ( files->streaming )
                     {
-                        if ( reader->type==IS_VCF_GZ || reader->type==IS_VCF || reader->type==IS_STDIN )
+                        if ( reader->type==IS_VCF || reader->type==IS_STDIN )
                         {
                             ret = hts_getline(reader->file, KS_SEP_LINE, str);
                             if ( ret<0 ) break;
@@ -378,7 +362,7 @@ int bcf_sr_next_line(bcf_srs_t *files)
                         }
                         else
                         {
-                            fprintf(stderr,"[E::%s] fixme: not ready for this\n", __func__);
+                            fprintf(stderr,"[E::%s] fixme: not read for this\n", __func__);
                             exit(1);
                         }
                     }
@@ -664,9 +648,9 @@ int bcf_sr_set_samples(bcf_srs_t *files, const char *fname)
 
 int init_regions(const char *fname, bcf_sr_regions_t *reg)
 {
-    int bgzf_getline(BGZF *fp, int delim, kstring_t *str);
+    int xbgzf_getline(BGZF *fp, int delim, kstring_t *str);
 
-    BGZF *zfp = bgzf_open(fname, "r");
+    BGZF *zfp = xbgzf_open(fname, "r");
     if ( !zfp ) 
     {
         fprintf(stderr,"%s: %s\n",fname,strerror(errno));
@@ -681,7 +665,7 @@ int init_regions(const char *fname, bcf_sr_regions_t *reg)
 
     kstring_t str = {0,0,0};
     ssize_t nread;
-    while ((nread = bgzf_getline(zfp, '\n', &str)) > 0) 
+    while ((nread = xbgzf_getline(zfp, '\n', &str)) > 0) 
     {
         char *line = str.s;
         if ( line[0] == '#' ) continue;
@@ -754,7 +738,7 @@ int init_regions(const char *fname, bcf_sr_regions_t *reg)
     if (str.m) free(str.s);
     else return 0;
 
-    bgzf_close(zfp);
+    xbgzf_close(zfp);
     return 1;
 }
 

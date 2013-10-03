@@ -378,25 +378,16 @@ bcf_hrec_t *bcf_hdr_get_hrec(bcf_hdr_t *hdr, int type, char *id)
 int bcf_hdr_parse(bcf_hdr_t *hdr)
 {
     int len, needs_sync = 0;
+    bcf_hrec_t *hrec;
     char *p = hdr->text;
-
-    // Check sanity: "fileformat" string must come as first
-    bcf_hrec_t *hrec = bcf_hdr_parse_line(hdr,p,&len);
-    if ( !hrec->key || strcasecmp(hrec->key,"fileformat") )
-        fprintf(stderr, "[W::%s] The first line should be ##fileformat; is the VCF/BCF header broken?\n", __func__);
-    needs_sync += bcf_hdr_add_hrec(hdr, hrec);
-
-    // The filter PASS must appear first in the dictionary
-    hrec = bcf_hdr_parse_line(hdr,"##FILTER=<ID=PASS,Description=\"All filters passed\">",&len);
-    needs_sync += bcf_hdr_add_hrec(hdr, hrec);
-
-    // Parse the whole header
     while ( (hrec=bcf_hdr_parse_line(hdr,p,&len)) )
     {
         // bcf_hrec_debug(hrec);
         needs_sync += bcf_hdr_add_hrec(hdr, hrec);
         p += len;
     }
+    hrec = bcf_hdr_parse_line(hdr,"##FILTER=<ID=PASS,Description=\"All filters passed\">",&len);
+    needs_sync += bcf_hdr_add_hrec(hdr, hrec);
     bcf_hdr_parse_sample_line(hdr,p);
     if ( needs_sync ) bcf_hdr_sync(hdr);
 	return 0;
@@ -451,25 +442,25 @@ bcf_hdr_t *bcf_hdr_read(BGZF *fp)
 	uint8_t magic[5];
 	bcf_hdr_t *h;
 	h = bcf_hdr_init();
-	bgzf_read(fp, magic, 5);
+	xbgzf_read(fp, magic, 5);
 	if (strncmp((char*)magic, "BCF\2\1", 5) != 0) {
 		if (hts_verbose >= 2)
 			fprintf(stderr, "[E::%s] invalid BCF2 magic string\n", __func__);
 		bcf_hdr_destroy(h);
 		return 0;
 	}
-	bgzf_read(fp, &h->l_text, 4);
+	xbgzf_read(fp, &h->l_text, 4);
 	h->text = (char*)malloc(h->l_text);
-	bgzf_read(fp, h->text, h->l_text);
+	xbgzf_read(fp, h->text, h->l_text);
 	bcf_hdr_parse(h);
 	return h;
 }
 
 void bcf_hdr_write(BGZF *fp, const bcf_hdr_t *h)
 {
-	bgzf_write(fp, "BCF\2\1", 5);
-	bgzf_write(fp, &h->l_text, 4);
-	bgzf_write(fp, h->text, h->l_text);
+	xbgzf_write(fp, "BCF\2\1", 5);
+	xbgzf_write(fp, &h->l_text, 4);
+	xbgzf_write(fp, h->text, h->l_text);
 }
 
 /********************
@@ -503,7 +494,7 @@ static inline int bcf_read1_core(BGZF *fp, bcf1_t *v)
 {
 	uint32_t x[8];
 	int ret;
-	if ((ret = bgzf_read(fp, x, 32)) != 32) {
+	if ((ret =	xbgzf_read(fp, x, 32)) != 32) {
 		if (ret == 0) return -1;
 		return -2;
 	}
@@ -516,8 +507,8 @@ static inline int bcf_read1_core(BGZF *fp, bcf1_t *v)
 	v->shared.l = x[0], v->indiv.l = x[1];
 	v->unpacked = 0;
 	v->unpack_ptr = NULL;
-	bgzf_read(fp, v->shared.s, v->shared.l);
-	bgzf_read(fp, v->indiv.s, v->indiv.l);
+	xbgzf_read(fp, v->shared.s, v->shared.l);
+	xbgzf_read(fp, v->indiv.s, v->indiv.l);
 	return 0;
 }
 
@@ -539,9 +530,9 @@ int bcf_write1(BGZF *fp, const bcf1_t *v)
 	memcpy(x + 2, v, 16);
 	x[6] = (uint32_t)v->n_allele<<16 | v->n_info;
 	x[7] = (uint32_t)v->n_fmt<<24 | v->n_sample;
-	bgzf_write(fp, x, 32);
-	bgzf_write(fp, v->shared.s, v->shared.l);
-	bgzf_write(fp, v->indiv.s, v->indiv.l);
+	xbgzf_write(fp, x, 32);
+	xbgzf_write(fp, v->shared.s, v->shared.l);
+	xbgzf_write(fp, v->indiv.s, v->indiv.l);
 	return 0;
 }
 
@@ -754,46 +745,6 @@ void bcf_enc_vchar(kstring_t *s, int l, char *a)
 {
 	bcf_enc_size(s, l, BCF_BT_CHAR);
 	kputsn(a, l, s);
-}
-
-int *bcf_set_iarray(bcf_fmt_t *fmt, int nsmpl, int *arr, int *narr)
-{
-    if ( nsmpl*fmt->n > *narr )
-    {
-        *narr = nsmpl*fmt->n;
-        arr = (int*) realloc(arr, sizeof(int)*(*narr));
-    }
-
-    #define BRANCH(type_t, missing) { \
-        type_t *ptr = (type_t*) fmt->p; \
-        int i, j; \
-        if ( fmt->n==1 ) \
-        { \
-            for (i=0; i<nsmpl; i++) \
-            { \
-                arr[i] = ptr[0]==missing ? INT_MIN : ptr[0]; \
-                ptr = (type_t *)((void*)ptr + fmt->size); \
-            } \
-        } \
-        else \
-        { \
-            int *p_arr = arr; \
-            for (i=0; i<nsmpl; i++) \
-            { \
-                for (j=0; j<fmt->n; j++) p_arr[j] = ptr[j]==missing ? INT_MIN : ptr[j]; \
-                ptr = (type_t *)((void*)ptr + fmt->size); \
-                p_arr += fmt->n; \
-            } \
-        } \
-    }
-    switch (fmt->type) {
-        case BCF_BT_INT8:  BRANCH(int8_t,  INT8_MIN); break;
-        case BCF_BT_INT16: BRANCH(int16_t, INT16_MIN); break;
-        case BCF_BT_INT32: BRANCH(int32_t, INT32_MIN); break;
-        default: fprintf(stderr,"fixme: type %d in bcf_set_iarray?\n", fmt->type); abort(); break;
-    }
-    #undef BRANCH
-    return arr;
 }
 
 void bcf_fmt_array(kstring_t *s, int n, int type, void *data)
@@ -1273,6 +1224,7 @@ int vcf_format1(const bcf_hdr_t *h, const bcf1_t *v, kstring_t *s)
 {
 	uint8_t *ptr = (uint8_t*)v->shared.s;
 	int i;
+	s->l = 0;
 	bcf_unpack((bcf1_t*)v, BCF_UN_ALL);
 	kputs(h->id[BCF_DT_CTG][v->rid].key, s); // CHROM
 	kputc('\t', s); kputw(v->pos + 1, s); // POS
@@ -1350,7 +1302,6 @@ int vcf_format1(const bcf_hdr_t *h, const bcf1_t *v, kstring_t *s)
 int vcf_write1(htsFile *fp, const bcf_hdr_t *h, const bcf1_t *v)
 {
 	if (!fp->is_bin) {
-	    fp->line.l = 0;
 		vcf_format1(h, v, &fp->line);
 		fwrite(fp->line.s, 1, fp->line.l, (FILE*)fp->fp);
 		fputc('\n', (FILE*)fp->fp);
@@ -1393,15 +1344,15 @@ hts_idx_t *bcf_index(BGZF *fp, int min_shift)
     if ( !max_len ) max_len = ((int64_t)1<<31) - 1;  // In case contig line is broken.
 	max_len += 256;
 	for (n_lvls = 0, s = 1<<min_shift; max_len > s; ++n_lvls, s <<= 3);
-	idx = hts_idx_init(h->n[BCF_DT_CTG], HTS_FMT_CSI, bgzf_tell(fp), min_shift, n_lvls);
+	idx = hts_idx_init(h->n[BCF_DT_CTG], HTS_FMT_CSI,	xbgzf_tell(fp), min_shift, n_lvls);
 	bcf_hdr_destroy(h);
 	b = bcf_init1();
 	while (bcf_read1(fp, b) >= 0) {
 		int ret;
-		ret = hts_idx_push(idx, b->rid, b->pos, b->pos + b->rlen, bgzf_tell(fp), 1);
+		ret = hts_idx_push(idx, b->rid, b->pos, b->pos + b->rlen,	xbgzf_tell(fp), 1);
 		if (ret < 0) break;
 	}
-	hts_idx_finish(idx, bgzf_tell(fp));
+	hts_idx_finish(idx,	xbgzf_tell(fp));
 	bcf_destroy1(b);
 	return idx;
 }
@@ -1410,9 +1361,9 @@ int bcf_index_build(const char *fn, int min_shift)
 {
 	BGZF *fp;
 	hts_idx_t *idx;
-	if ((fp = bgzf_open(fn, "r")) == 0) return -1;
+	if ((fp =	xbgzf_open(fn, "r")) == 0) return -1;
 	idx = bcf_index(fp, min_shift);
-	bgzf_close(fp);
+	xbgzf_close(fp);
 	hts_idx_save(idx, fn, HTS_FMT_CSI);
 	hts_idx_destroy(idx);
 	return 0;
