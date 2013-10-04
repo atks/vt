@@ -6,34 +6,34 @@ CC = gcc
 
 HEADERSONLY =
 SOURCES = filter\
-          compute_concordance\
-          program\
-          ordered_reader\
-          ordered_writer\
-          normalize\
-          synced_reader\
-          merge_duplicate_variants\
-          hts_utils\
-          variant_manip\
-          log_tool\
-          interval_tree\
-          rb_tree
+		compute_concordance\
+		program\
+		ordered_reader\
+		ordered_writer\
+		normalize\
+		synced_reader\
+		merge_duplicate_variants\
+		hts_utils\
+		variant_manip\
+		log_tool\
+		interval_tree\
+		rb_tree
 SOURCESONLY = main.cpp
 
 TARGET = vt
 TOOLSRC = $(SOURCES:=.cpp) $(SOURCESONLY)
 TOOLOBJ = $(TOOLSRC:.cpp=.o)
-LIBHTS = ./lib/include/htslib/libhts.a
+LIBHTS = lib/include/htslib/libhts.a
 
-lib:
-    cd lib/include/htslib; $(MAKE) CC="$(CC)" CFLAGS="$(CFLAGS)" libhts.a || exit 1; cd ..
+all : ${LIBHTS} $(TARGET)
 
-all : $(TARGET)
+${LIBHTS} : 
+	cd lib/include/htslib; $(MAKE) CC="$(CC)" CFLAGS="$(CFLAGS)" libhts.a || exit 1; cd ..
 
-$(TARGET) : $(TOOLOBJ)
+$(TARGET) : ${LIBHTS} $(TOOLOBJ)
 	$(CXX) $(CFLAGS) -o $@ $(TOOLOBJ) $(LIBHTS) -lz -lpthread
 
-#$(TOOLOBJ): $(HEADERSONLY)
+$(TOOLOBJ): $(HEADERSONLY)
 
 .cpp.o :
 	$(CXX) $(CFLAGS) -o $@ -c $*.cpp
