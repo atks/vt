@@ -252,7 +252,6 @@ class Igor : Program
         }
 
         odw->flush();
-
     };
 
     void print_options()
@@ -284,10 +283,7 @@ class Igor : Program
         std::clog << "\n"; 
     };
 
- 	~Igor()
-    {
-
-    };
+ 	~Igor() {};
 
     private:
 };
