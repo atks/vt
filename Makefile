@@ -5,19 +5,22 @@ CXX = g++
 CC = gcc
 
 HEADERSONLY =
-SOURCES = filter\
-		compute_concordance\
-		program\
-		ordered_reader\
-		ordered_writer\
-		normalize\
-		synced_reader\
-		merge_duplicate_variants\
-		hts_utils\
+SOURCES = program\
+		filter\
 		variant_manip\
 		log_tool\
 		interval_tree\
-		rb_tree
+		rb_tree\
+		hts_utils\
+		ordered_reader\
+		ordered_writer\
+		synced_reader\
+		profile_indels\
+		merge_duplicate_variants\
+		compute_concordance\
+		normalize\
+		partition
+
 SOURCESONLY = main.cpp
 
 TARGET = vt

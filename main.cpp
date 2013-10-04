@@ -40,6 +40,7 @@
 #include "normalize.h"
 #include "merge_duplicate_variants.h"
 #include "compute_concordance.h"
+#include "partition.h"
 
 void print_time(double t)
 {
@@ -104,6 +105,10 @@ int main(int argc, char ** argv)
 	else if (argc>1 && cmd=="compute_concordance")
 	{
 	    compute_concordance(argc-1, ++argv);
+	}
+	else if (argc>1 && cmd=="partition")
+	{
+	    partition(argc-1, ++argv);
 	}
 	else
     {

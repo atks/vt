@@ -46,6 +46,20 @@
 
 /**
  * Class for filtering VCF records.
+ * Filters based on several fields:
+ * QUAL
+ * FILTER
+ * INFO
+ * VARIANT (inferred)
+ *
+ * examples
+ *
+ * QUAL>40
+ * FILTER==PASS
+ * VARIANT==SNP
+ * AF>0.5
+ * VARIANT==SNP && AF>0.5
+ * 
  */
 class Filter
 {
@@ -57,6 +71,7 @@ class Filter
 
     Filter() {};
             
+    
     Filter(std::string tag, int32_t comparison, float value);
     
     bool apply(bcf_hdr_t *h, bcf1_t *v);

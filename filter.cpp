@@ -22,7 +22,71 @@
 */
 
 #include "filter.h"
-         
+
+#define NOT  0
+#define AND  1
+#define OR   2
+#define ADD  3
+#define SUB  4
+#define MUL  5
+#define DIV  6
+
+
+class Node
+{
+	public:
+		
+	Node* parent;
+	std::vector<Node*> children;
+
+	uint32_t type;
+	
+	union
+	{
+		bool b;
+		uint32_t i;
+		float f;
+	};
+	
+	void process()
+	{
+		if (type==NOT)
+		{
+		}
+		
+	};
+};
+
+class Tree
+{
+	public:
+		
+	Node* root;
+
+	Tree()
+	{
+		root = NULL;
+	}; 
+};
+
+
+class Expression
+{
+	public:
+		
+	Tree exp;
+
+	Expression(std::string expression)
+	{
+	};
+	
+	bool evaluate(bcf_hdr_t *h, bcf1_t *v)
+	{
+		
+		return true;
+	};
+};
+
 Filter::Filter(std::string tag, int32_t comparison, float value)
 {
     this->tag = tag;
