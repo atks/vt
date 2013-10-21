@@ -130,18 +130,9 @@ class Igor : public Program
         
         std::map<std::string, int32_t> m;
         
-        std::vector<std::string> str;
         for (int32_t i=0; i<nsamples; ++i)
         {
-            boost::split(str, samples[i], boost::is_any_of("_"));
-            //ignore duplicates
-            if (m.find(str[0])!=m.end())
-            {
-                continue;
-            }
-            m[str[0]] = 1;
-                    
-            khint_t k = kh_get(vdict, d2, str[0].c_str());
+        	khint_t k = kh_get(vdict, d2, samples[i]);
             if ( k != kh_end(d2) ) 
             {
                 s.push_back(samples[i]);
@@ -402,7 +393,7 @@ e.g. vt profile_snps_variants -o - NA19130.vcf.gz HG00096.vcf.gz\n\n";
    		std::clog << "compute_concordance v" << version << "\n\n";
     
     	std::clog << "Options:     Input VCF File    " << input_vcf_files.size() << "\n";
-    	std::clog << "         [i] Intervals         " << boost::join(intervals, ",") << "\n";
+    	std::clog << "         [i] Intervals         " << intervals.size() << " intervals\n";
     }
 
     void print_stats()

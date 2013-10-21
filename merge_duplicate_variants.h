@@ -32,10 +32,6 @@
 #include <vector>
 #include <map>
 #include <queue>
-#include "boost/algorithm/string/split.hpp"
-#include "boost/algorithm/string/join.hpp"
-#include "boost/algorithm/string/classification.hpp"
-#include "boost/tokenizer.hpp"
 #include "htslib/vcf.h"
 #include "htslib/vcfutils.h"
 #include "tclap/CmdLine.h"
