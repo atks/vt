@@ -71,7 +71,7 @@ class OrderedReader
         
     //list of intervals
     std::vector<std::string> intervals; //contains intervals of interest, if build is 
-    int32_t interval_index;    
+    uint32_t interval_index;    
         
     //shared objects for string manipulation
     kstring_t s;

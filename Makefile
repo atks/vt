@@ -15,12 +15,8 @@ SOURCES = program\
 		ordered_reader\
 		ordered_writer\
 		synced_reader\
-		profile_indels\
 		merge_duplicate_variants\
-		compute_concordance\
-		view\
-		normalize\
-		partition
+		normalize
 
 SOURCESONLY = main.cpp
 
