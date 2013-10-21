@@ -1,15 +1,13 @@
-UNAME = `UNAME`
+UNAME = $(shell uname)
+STD = 
+ifeq ($(UNAME), Linux)
+	STD=-std=c++0x
+endif
 
-ifeq ("$(UNAME)", "Linux")
-	STD = -std=c++0x
-endif
-ifeq ("$(UNAME)", "Darwin")
-	STD = 
-endif
 	
 OPTFLAG ?= -O3 -ggdb
 INCLUDES = -I./lib/include/ -I.
-CFLAGS = -pipe ${STD} $(OPTFLAG) $(INCLUDES) -D__STDC_LIMIT_MACROS
+CFLAGS = -pipe $(STD) $(OPTFLAG) $(INCLUDES) -D__STDC_LIMIT_MACROS
 CXX = g++
 CC = gcc
 
@@ -35,6 +33,7 @@ TOOLOBJ = $(TOOLSRC:.cpp=.o)
 LIBHTS = lib/include/htslib/libhts.a
 
 all : ${LIBHTS} $(TARGET)
+	
 
 ${LIBHTS} : 
 	cd lib/include/htslib; $(MAKE) CC="$(CC)" CFLAGS="$(CFLAGS)" libhts.a || exit 1; cd ..
@@ -48,5 +47,7 @@ $(TOOLOBJ): $(HEADERSONLY)
 	$(CXX) $(CFLAGS) -o $@ -c $*.cpp
 
 clean:
+	echo $(UNAME)
+	echo $(STD)
 	-rm -rf $(TARGET) $(TOOLOBJ)
 
