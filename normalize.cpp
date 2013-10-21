@@ -261,7 +261,7 @@ class Igor : Program
 		std::clog << "options:     input VCF file        " << input_vcf_file << "\n";
 		std::clog << "         [o] output VCF file       " << output_vcf_file << "\n";
         std::clog << "         [r] reference FASTA file  " << ref_fasta_file << "\n";
-        std::clog << "         [i] intervals             " << (intervals.size()==0? "NONE" : boost::algorithm::join(intervals, ",")) << "\n";
+        std::clog << "         [i] intervals             " << intervals.size() <<  " intervals\n";
     	std::clog << "\n"; 
 	}
 
