@@ -35,9 +35,6 @@
 #include "tclap/Arg.h"
 #include "normalize.h"
 #include "merge_duplicate_variants.h"
-#include "compute_concordance.h"
-#include "partition.h"
-#include "view.h"
 
 void print_time(double t)
 {
@@ -71,7 +68,6 @@ void help()
 
 	std::clog << "normalize                 normalize indels\n";
 	std::clog << "merge_duplicate_variants  merge duplicate variants\n";
-	std::clog << "compute_concordance       compute concordance\n";
 	std::clog << "\n";
 }
 
@@ -99,18 +95,6 @@ int main(int argc, char ** argv)
 	else if (argc>1 && cmd=="merge_duplicate_variants")
 	{
 	    merge_duplicate_variants(argc-1, ++argv);
-	}
-	else if (argc>1 && cmd=="compute_concordance")
-	{
-	    compute_concordance(argc-1, ++argv);
-	}
-	else if (argc>1 && cmd=="partition")
-	{
-	    partition(argc-1, ++argv);
-	}
-	else if (argc>1 && cmd=="view")
-	{
-	    view(argc-1, ++argv);
 	}	
 	else
     {

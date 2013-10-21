@@ -169,7 +169,7 @@ class Igor : Program
     	    	uint32_t left_trimmed = 0;
                 uint32_t right_trimmed = 0;
 
-                var_manip->left_align(alleles, pos1, odr->get_seqname(v), left_aligned, right_trimmed);
+                var_manip->left_align(alleles, pos1, chrom, left_aligned, right_trimmed);
                 var_manip->left_trim(alleles, pos1, left_trimmed);
 
                 bool changed = left_trimmed || left_aligned || right_trimmed;

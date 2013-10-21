@@ -26,6 +26,7 @@
 
 #include <vector>
 #include <map>
+#include <typeinfo>
 #include "htslib/hts.h"
 #include "tclap/CmdLine.h"
 #include "tclap/Arg.h"
