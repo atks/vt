@@ -30,17 +30,14 @@
 #include <vector>
 #include <map>
 #include <queue>
+#include <time.h>
 #include "tclap/CmdLine.h"
 #include "tclap/Arg.h"
-#include "boost/algorithm/string/split.hpp"
-#include "boost/algorithm/string/join.hpp"
-#include "boost/algorithm/string/classification.hpp"
-#include "boost/tokenizer.hpp"
-#include "boost/progress.hpp"
 #include "normalize.h"
 #include "merge_duplicate_variants.h"
 #include "compute_concordance.h"
 #include "partition.h"
+#include "view.h"
 
 void print_time(double t)
 {
@@ -80,7 +77,8 @@ void help()
 
 int main(int argc, char ** argv)
 {
-    boost::timer t0;
+    time_t t0;
+	std::time(&t0);
 
     std::clog << "\n=======\n";
 	std::clog << "vt v0.5\n";
@@ -110,6 +108,10 @@ int main(int argc, char ** argv)
 	{
 	    partition(argc-1, ++argv);
 	}
+	else if (argc>1 && cmd=="view")
+	{
+	    view(argc-1, ++argv);
+	}	
 	else
     {
         std::clog << "Command not found: " << argv[1] << "\n\n";
@@ -117,8 +119,10 @@ int main(int argc, char ** argv)
         exit(0);
     }
 
-    double t = t0.elapsed();
-    print_time(t);
+	time_t t1;
+	std::time(&t1);
+    
+    print_time(difftime(t1,t0));
 
     return 0;
 }

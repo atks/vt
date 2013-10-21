@@ -32,6 +32,7 @@
 #include <vector>
 #include <map>
 #include <queue>
+#include <iostream>
 
 #define LOGZERO -DBL_MAX
 
@@ -52,9 +53,14 @@ class LogTool
 	double pl2prob(uint32_t PL);
 
 	/**
+	 * Convert probabilities to PHRED score.
+	 */
+	uint32_t prob2pl(double x);
+	
+	/**
 	 * Compute log(x)
 	 */	
-	double elog10(double x);
+	double elog10(double x); 
 	
 	/**
 	 * Compute log(xy)
@@ -65,6 +71,11 @@ class LogTool
 	 * Compute log(x+y)
 	 */
 	double elog10sum(double x, double y);
+
+	/**
+	 * Round a value
+	 */	
+	double round(double x);
 };
 
 #endif

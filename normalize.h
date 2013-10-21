@@ -26,10 +26,6 @@
 
 #include "tclap/CmdLine.h"
 #include "tclap/Arg.h"
-#include "boost/algorithm/string/split.hpp"
-#include "boost/algorithm/string/join.hpp"
-#include "boost/algorithm/string/classification.hpp"
-#include "boost/tokenizer.hpp"
 #include "htslib/vcf.h"
 #include "htslib/kseq.h"
 #include "hts_utils.h"

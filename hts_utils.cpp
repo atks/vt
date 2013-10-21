@@ -22,7 +22,7 @@
 */
 
 #include "hts_utils.h"
-
+ 
 KHASH_MAP_INIT_STR(vdict, bcf_idinfo_t) typedef khash_t(vdict) vdict_t;
 static bcf_idinfo_t bcf_idinfo_def = { { 15, 15, 15 }, { NULL, NULL, NULL}, -1 };
 
@@ -36,6 +36,19 @@ int hts_write(htsFile *fp)
 	return 0;
 }
 
+int hts_write1(htsFile *fp)
+{
+	if (!fp->is_bin) 
+	{
+		fwrite(fp->line.s, 1, fp->line.l, (FILE*)fp->fp);
+		fputc('\n', (FILE*)fp->fp);
+	} 
+	else
+	{
+		xbgzf_write((BGZF*)fp->fp, fp->line.s, fp->line.l);
+	}
+	return 0;
+}
 
 /**
  *Adds the contigs required for build version hs37b5
@@ -128,6 +141,21 @@ void bcf_add_hs37d5_contig_headers(bcf_hdr_t *hdr)
 	bcf_hdr_append(hdr, "##contig=<ID=GL000192.1,length=547496,assembly=b37>");
 }
 
+/**
+ * Gets a string representation of a variant.
+ */
+void bcf_get_variant(bcf_hdr_t *h, bcf1_t *v, kstring_t *var)
+{
+	var->l = 0;
+	kputs(bcf_get_chrom(h, v), var);
+	kputc(':', var);
+	kputw(bcf_get_pos1(v), var);
+	for (int32_t i=0; i<v->n_allele; ++i)
+	{
+		kputc(':', var);
+		kputs(bcf_get_alt(v, i), var); 
+	}
+}
 
 /**
  *Set chromosome name
@@ -152,6 +180,151 @@ void bcf_set_chrom(bcf_hdr_t *h, bcf1_t *v, char* chrom)
     v->rid = kh_val(d, k).id;		
 };
 
+
+const char *hts_parse_reg1(const char *s, int *beg, int *end)
+{
+	int i, k, l, name_end;
+	*beg = *end = -1;
+	name_end = l = strlen(s);
+	// determine the sequence name
+	for (i = l - 1; i >= 0; --i) if (s[i] == ':') break; // look for colon from the end
+	if (i >= 0) name_end = i;
+	if (name_end < l) { // check if this is really the end
+		int n_hyphen = 0;
+		for (i = name_end + 1; i < l; ++i) {
+			if (s[i] == '-') ++n_hyphen;
+			else if (!isdigit(s[i]) && s[i] != ',') break;
+		}
+		if (i < l || n_hyphen > 1) name_end = l; // malformated region string; then take str as the name
+	}
+	// parse the interval
+	if (name_end < l) {
+		char *tmp;
+		tmp = (char*)alloca(l - name_end + 1);
+		for (i = name_end + 1, k = 0; i < l; ++i)
+			if (s[i] != ',') tmp[k++] = s[i];
+		tmp[k] = 0;
+		if ((*beg = strtol(tmp, &tmp, 10) - 1) < 0) *beg = 0;
+		*end = *tmp? strtol(tmp + 1, &tmp, 10) : 1<<29;
+		if (*beg > *end) name_end = l;
+	}
+	if (name_end == l) *beg = 0, *end = 1<<29;
+	return s + name_end;
+}
+
+/**
+ * Reads header of a VCF file and returns the bcf header object.
+ * This wraps around vcf_hdr_read from the original htslib to
+ * allow for an alternative header file to be read in.
+ *
+ * this searches for the alternative header saved as <filename>.hdr
+ */
+bcf_hdr_t *vcf_alt_hdr_read(htsFile *fp)
+{
+	bcf_hdr_t * h = NULL;
+	
+	//check for existence of alternative header
+	kstring_t alt_hdr_fn;
+	alt_hdr_fn.s = 0;
+	alt_hdr_fn.l = alt_hdr_fn.m = 0;
+	kputs(fp->fn, &alt_hdr_fn);
+	kputs(".hdr", &alt_hdr_fn);	
+	FILE *file = fopen(alt_hdr_fn.s, "r");
+    if (!file)
+    {
+    	h = vcf_hdr_read(fp);
+	}
+	else
+    {
+		std::cerr << "[w] reading alternative header\n";
+		fclose(file);
+		htsFile *alt_hdr = hts_open(alt_hdr_fn.s, "r", 0);
+    	h = vcf_hdr_read(alt_hdr);
+		hts_close(alt_hdr);
+    }
+    
+    if (alt_hdr_fn.m) free(alt_hdr_fn.s);
+    return h;
+}
+
+/**
+ * Subsets a header by samples.  Stores the required indices into imap for use later in subsetting records.
+ */
+bcf_hdr_t *bcf_hdr_subset_samples(const bcf_hdr_t *h0, std::vector<std::string>& samples, std::vector<int32_t>& imap)
+{
+	kstring_t str;
+	bcf_hdr_t *h;
+	str.l = str.m = 0; str.s = 0;
+	h = bcf_hdr_init();
+	int n = samples.size();
+	if (h0->n[BCF_DT_SAMPLE] > 0) {
+		char *p;
+		int i = 0, end = n? 8 : 7;
+		while ((p = strstr(h0->text, "#CHROM\t")) != 0)
+			if (p > h0->text && *(p-1) == '\n') break; //makes sure it is the correct line
+		while ((p = strchr(p, '\t')) != 0 && i < end) ++i, ++p; //moves to the first sample
+		if (i != end) {
+			free(h); free(str.s);
+			return 0; // malformated header
+		} //unexpected
+		kputsn(h0->text, p - h0->text, &str); //copy over the first portion of the header (i.e. ## portion)
+		for (i = 0; i < n; ++i) {
+			imap[i] = bcf_id2int(h0, BCF_DT_SAMPLE, samples[i].c_str());
+			if (imap[i] < 0) continue;
+			kputc('\t', &str);
+			kputs(samples[i].c_str(), &str);
+		}
+	} else kputsn(h0->text, h0->l_text, &str);
+	h->text = str.s;
+	h->l_text = str.l;
+	bcf_hdr_parse(h);
+	return h;
+}
+
+//unpack from binary data to data structure
+uint8_t *bcf_unpack_fmt_core(uint8_t *ptr, int n_sample, int n_fmt, bcf_fmt_t *fmt)
+{
+	int i;
+	for (i = 0; i < n_fmt; ++i) {
+		bcf_fmt_t *f = &fmt[i];
+		f->id = bcf_dec_typed_int1(ptr, &ptr);
+		f->n = bcf_dec_size(ptr, &ptr, &f->type);
+		f->size = f->n << bcf_type_shift[f->type];
+		f->p = ptr;
+		ptr += n_sample * f->size;
+	}
+	return ptr;
+}
+
+
+/**
+ * Subsets a record by samples.
+ * @imap - indices the subsetted samples
+ */
+int bcf_subset_samples(const bcf_hdr_t *h, bcf1_t *v, std::vector<int32_t>& imap)
+{
+	kstring_t ind;
+	ind.s = 0; ind.l = ind.m = 0;
+	int n = imap.size();
+	if (n) {
+		bcf_fmt_t *fmt;
+		int i, j;
+		fmt = (bcf_fmt_t*)alloca(v->n_fmt * sizeof(bcf_fmt_t));
+		bcf_unpack_fmt_core((uint8_t*)v->indiv.s, v->n_sample, v->n_fmt, fmt);
+		for (i = 0; i < (int)v->n_fmt; ++i) {
+			bcf_fmt_t *f = &fmt[i];
+			bcf_enc_int1(&ind, f->id);
+			bcf_enc_size(&ind, f->n, f->type);
+			for (j = 0; j < n; ++j)
+				if (imap[j] >= 0) kputsn((char*)(f->p + imap[j] * f->size), f->size, &ind);
+		}
+		for (i = j = 0; j < n; ++j) if (imap[j] >= 0) ++i;
+		v->n_sample = i;
+	} else v->n_sample = 0;
+	free(v->indiv.s);
+	v->indiv = ind;
+	return 0;
+}
 /**
  *Gets the read sequence from a bam record
  */
@@ -455,8 +628,7 @@ void bcf_hdr_get_seqs_and_lens(const bcf_hdr_t *h, const char**& seqs, int32_t*&
         assert(seqs[tid]);
     *n = m;
 }
-
-
+       	
 /**
  * Returns a bcf_fmt_t pointer associated with tag
  */
@@ -471,7 +643,125 @@ bcf_fmt_t *bcf_get_fmt(const bcf_hdr_t *h, bcf1_t *v, const char *tag)
         if ( v->d.fmt[i].id==id ) return &v->d.fmt[i];
 
     return 0;
-}
+};
+
+/**
+ * Get the jth integer value for individual i.
+ * @i ith individual
+ * @j the jth value
+ *
+ * returns false when the value is missing.
+ */
+bool bcf_get_fmt_int(int32_t* val, int32_t i, int32_t j, bcf_fmt_t* fmt)
+{    	
+	//for an individual array
+	// bcf_fmt_array(s, f->n, f->type, f->p + j * f->size);
+	
+	if (fmt->n==0) 
+	{
+		return false;
+	}
+	else if (j>=fmt->n)
+	{
+		std::cerr << "[e] out of index for format value " << j << ">" << fmt->n << "\n";
+		return false;
+	}
+    else
+    { 
+        #define BRANCH(type_t, is_missing) \
+        { \
+            type_t *p = (type_t *) (fmt->p+i*fmt->size) + j; \
+            if ( is_missing ) \
+            { \
+            	return false; \
+            } \
+            else \
+            { \
+            	*val = (int32_t) *p; \
+            	return true; \
+            } \
+        }
+        switch (fmt->type) {
+            case BCF_BT_INT8:  BRANCH(int8_t,  *p==INT8_MIN); break;
+            case BCF_BT_INT16: BRANCH(int16_t, *p==INT16_MIN); break;
+            case BCF_BT_INT32: BRANCH(int32_t, *p==INT32_MIN); break;
+            default: fprintf(stderr,"todo: type %d\n", fmt->type); exit(1); break;
+        }
+        #undef BRANCH
+	}
+};
+
+/**
+ * Get string value for individual i.
+ *
+ * returns false when the value is missing.
+ */
+bool bcf_get_fmt_str(kstring_t* s, int32_t i, bcf_fmt_t* fmt)
+{    	
+	//for an individual array
+	// bcf_fmt_array(s, f->n, f->type, f->p + j * f->size);
+	
+	if (fmt->n==0) 
+	{
+		return false;
+	}
+//	else if (j>=fmt->n)
+//	{
+//		std::cerr << "[e] out of index for format value " << j << ">" << fmt->n << "\n";
+//		return false;
+//	}
+    else
+    {
+    	s->l = 0;
+    	char *p = (char*) fmt->p + i*fmt->size;
+	    
+	    for (int32_t j = 0; j < fmt->n && *p; ++j, ++p) 
+	    {
+	    	kputc(*p, s);
+	    }
+	    
+	    return true;
+	}
+};
+
+/**
+ * Get genotype for individual i.
+ * @i ith individual
+ *
+ * returns false when the value is missing.
+ */
+bool bcf_get_fmt_gt(kstring_t* s, int32_t i, bcf_fmt_t* f)
+{    	
+	//for an individual array
+	// bcf_fmt_array(s, f->n, f->type, f->p + j * f->size);
+	
+	if (f->n==0) 
+	{
+		return false;
+	}
+//	else if (j>=fmt->n)
+//	{
+//		std::cerr << "[e] out of index for format value " << j << ">" << fmt->n << "\n";
+//		return false;
+//	}
+    else
+    {
+		int8_t *x = (int8_t*)(f->p + i * f->size);
+		
+		s->l = 0;
+		int32_t l;
+        for (l = 0; l < f->n && x[l] != INT8_MIN; ++l) 
+        {
+            if (l) kputc("/|"[x[l]&1], s);
+            if (x[l]>>1) kputw((x[l]>>1) - 1, s);
+            else kputc('.', s);
+        }
+        if (l == 0) kputc('.', s);
+		
+		return true;
+	}
+};
+
 
 /**
  * Returns float value of integer info tag
@@ -740,9 +1030,13 @@ const char* zmodify_mode(const char* fname, char mode, bool output_bcf)
 	{
 	    return mode=='w' ? "wb" : "rb";
 	}
-	else if (filetype==IS_VCF || filetype==IS_VCF_GZ)
+	else if (filetype==IS_VCF)
 	{
         return mode=='w' ? "w" : "r";
+	}
+	else if (filetype==IS_VCF_GZ)
+	{
+		return mode=='w' ? "w" : "r";
 	}
 	else if (filetype==IS_STDIN)
 	{
@@ -1025,3 +1319,38 @@ int vcf_format1_genotypes(const bcf_hdr_t *h, const bcf1_t *v, kstring_t *s)
 	}
 	return 0;
 }
+
+
+/**
+Splits a line into a vector - PERL style
+*/
+void split(std::vector<std::string>& vec, char delim, std::string& str, uint32_t limit, bool clear)
+{
+    if (clear)
+    {
+        vec.clear();	
+	}
+	const char* tempStr = str.c_str();
+	int32_t i=0, lastIndex = str.size()-1;
+	std::stringstream token;
+	
+	if (lastIndex<0) return;
+	
+	uint32_t noTokens = 0;
+	while (i<=lastIndex)
+	{
+		if (tempStr[i]!=delim || noTokens>=limit-1)
+		{
+			token << tempStr[i];
+		}
+
+		if ((tempStr[i]==delim && noTokens<limit-1) || i==lastIndex) 
+		{
+			vec.push_back(token.str());
+			++noTokens;
+			token.str("");
+		}
+		
+		++i;
+	} 
+};

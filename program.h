@@ -26,12 +26,10 @@
 
 #include <vector>
 #include <map>
-#include "boost/algorithm/string/split.hpp"
-#include "boost/algorithm/string/join.hpp"
-#include "boost/algorithm/string/classification.hpp"
 #include "htslib/hts.h"
 #include "tclap/CmdLine.h"
 #include "tclap/Arg.h"
+#include "hts_utils.h"
 
 class VTOutput : public TCLAP::StdOutput
 {
@@ -69,6 +67,15 @@ class Program
      */ 
 	void parse_intervals(std::vector<std::string>& intervals, std::string interval_list, std::string interval_string);
 
+	/**
+	 * Parse samples. Processes the sample list. Duplicates are dropped.
+	 *
+	 * @samples      - samples stored in this vector
+	 * @sample_map   - samples stored in this map
+	 * @sample_list  - file containing sample names 
+	 */ 
+	void read_sample_list(std::vector<std::string>& samples, std::string sample_list);
+		
     /**
      * Initialize I/O and shared objects.
      */
