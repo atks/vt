@@ -423,7 +423,7 @@ static void *mt_worker(void *data)
 	return 0;
 }
 
-intxbgzf_mt(BGZF *fp, int n_threads, int n_sub_blks)
+int xbgzf_mt(BGZF *fp, int n_threads, int n_sub_blks)
 {
 	int i;
 	mtaux_t *mt;
