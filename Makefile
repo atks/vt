@@ -1,6 +1,12 @@
+UNAME = `UNAME`
+STD = -std=c++0x
+ifeq ("$(UNAME)", "Darwin")
+	STD = 
+endif
+	
 OPTFLAG ?= -O3 -ggdb
 INCLUDES = -I./lib/include/ -I.
-CFLAGS = -pipe -std=c++0x -Wall $(OPTFLAG) $(INCLUDES) -D__STDC_LIMIT_MACROS
+CFLAGS = -pipe ${STD} $(OPTFLAG) $(INCLUDES) -D__STDC_LIMIT_MACROS
 CXX = g++
 CC = gcc
 
