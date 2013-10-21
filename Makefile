@@ -18,6 +18,7 @@ SOURCES = program\
 		profile_indels\
 		merge_duplicate_variants\
 		compute_concordance\
+		view\
 		normalize\
 		partition
 

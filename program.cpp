@@ -103,7 +103,7 @@ void Program::parse_intervals(std::vector<std::string>& intervals, std::string i
        	        {
        	            m[ss] = 1;
        	            intervals.push_back(ss);
-                }
+                } 
             }
             hts_close(file);
         }
@@ -111,7 +111,7 @@ void Program::parse_intervals(std::vector<std::string>& intervals, std::string i
 
     std::vector<std::string> v;
     if (interval_string!="")
-        boost::split(v, interval_string, boost::is_any_of(","), boost::token_compress_on);
+        split(v, ',', interval_string);
 
    	for (uint32_t i=0; i<v.size(); ++i)
    	{
@@ -121,4 +121,36 @@ void Program::parse_intervals(std::vector<std::string>& intervals, std::string i
             intervals.push_back(v[i]);
         }
    	}
+}
+
+/**
+ * Parse samples. Processes the sample list. Duplicates are dropped.
+ *
+ * @samples      - samples stored in this vector
+ * @sample_map   - samples stored in this map
+ * @sample_list  - file containing sample names 
+ */ 
+void Program::read_sample_list(std::vector<std::string>& samples, std::string sample_list)
+{
+    samples.clear();
+	std::map<std::string, int32_t> map;
+	
+    if (sample_list!="")
+    {
+        htsFile *file = hts_open(sample_list.c_str(), "r", 0);
+        if (file)
+        {
+            kstring_t *s = &file->line;
+            while (hts_getline(file, '\n', s)>=0)
+            {
+                std::string ss = std::string(s->s);
+                if (map.find(ss)==map.end())
+       	        {
+       	            map[ss] = 1;
+       	     	    samples.push_back(ss);
+                }
+            }
+            hts_close(file);
+        }
+    }
 }

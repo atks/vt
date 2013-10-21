@@ -29,82 +29,198 @@ VariantManip::VariantManip(std::string ref_fasta_file)
 };
 
 /**
+ * Converts VTYPE to string
+ */
+std::string VariantManip::vtype2string(int32_t VTYPE)
+{
+	std::string s;
+
+	if (!VTYPE)
+	{
+		s += (s.size()==0) ? "" : ";";
+		s += "REF";
+	}
+	
+	if (VTYPE & VT_SNP)
+	{
+		s += (s.size()==0) ? "" : ";";
+		s += "SNP";
+	}
+	
+	if (VTYPE & VT_MNP)
+	{
+		s += (s.size()==0) ? "" : ";";
+		s += "MNP";
+	}	
+	
+	if (VTYPE & VT_INDEL)
+	{
+		s += (s.size()==0) ? "" : ";";
+		s += "INDEL";
+	}	
+	
+	if (VTYPE & VT_STR)
+	{
+		s += (s.size()==0) ? "" : ";";
+		s += "STR";
+	}
+	
+	if (VTYPE & VT_EXACT_STR)
+	{
+		s += (s.size()==0) ? "" : ";";
+		s += "EXACT_STR";
+	}	
+	
+	if (VTYPE & VT_INEXACT_STR)
+	{
+		s += (s.size()==0) ? "" : ";";
+		s += "INEXACT_STR";
+	}	
+	
+	if (VTYPE & VT_COMPLEX)
+	{
+		s += (s.size()==0) ? "" : ";";
+		s += "COMPLEX";
+	}
+	
+	if (VTYPE & VT_SV)
+	{
+		s += (s.size()==0) ? "" : ";";
+		s += "SV";
+	}
+	
+	if (VTYPE & VT_CR)
+	{
+		s += (s.size()==0) ? "" : ";";
+		s += "CR";
+	}
+	
+	return s;
+}
+
+/**
  * Classifies Indels into the following categories:
  * 1. Homopolymers
  * 2. Dinucleotides
  * 3. Trinucleotides
  */
-int32_t VariantManip::classify_variant(char* chrom, uint32_t pos1, char** allele, int32_t n_allele, std::string& motif, uint32_t& tlen)
+int32_t VariantManip::classify_variant(const char* chrom, uint32_t pos1, char** allele, int32_t n_allele, std::string& motif, uint32_t& tlen)
 {
+	
+	//std::cerr << "classifying " << chrom << ":" << pos1 << ":"  << allele[0] << ":"  << allele[1] << "\n"; 
     int32_t pos0 = pos1-1;
-
+	int32_t VTYPE = 0;
+	
     if (n_allele==2)
     {
+    	uint32_t len_ref = strlen(allele[0]);
+    	uint32_t len_alt = strlen(allele[1]);
+    	
         uint32_t len = 0;
-        if ((len=strlen(allele[0]))==strlen(allele[1]))
+        if (len_ref==len_alt)
         {
-            if (len==1)
+            if (len_ref==1)
             {
-                return VT_SNP;
+            	if (allele[0][0]!=allele[1][0])
+            	{
+                	VTYPE |= VT_SNP;
+            	}
             }
             else
             {
-                return VT_MNP;
+            	for (uint32_t i=0; i<len; ++i)
+            	{
+            		if (allele[0][i]==allele[1][i])
+            		{
+            			VTYPE |= VT_COMPLEX;
+            		}	
+            	}
+            	
+                VTYPE |= VT_MNP;
             }
         }
         else
         {
-            int32_t tract_len = 0;
-            int32_t motif_len = 1;
-            std::string base;
-
             int32_t ref_len;
-            char *ref = faidx_fetch_seq(fai, chrom, pos0, pos0+1, &ref_len);
-
-            std::string ru = base;
-            uint32_t i = 2;
-
-            while (1)
-            {
-                if (base==ru)
-                {
-                    ++tract_len;
-
-                    i += motif_len;
-                }
-                else
-                {
-                    if (motif_len*tract_len>10)
-                    {
-                        motif = ru;
-                        tlen = tract_len;
-                        return VT_STR;
-                    }
-                    else if (motif_len>10)
-                    {
-                        return VT_INDEL;
-                    }
-
-                    tract_len = 1;
-                    ++motif_len;
-                    
-                    int ref_len = 0;
-                    char *ref = faidx_fetch_seq(fai, const_cast<char*>(chrom), pos0, pos0+motif_len-1, &ref_len);
-                    ru = std::string(ref);
-
-                    free(ref);
-
-                    std::cout << "\t" << ru << " i " << i << "\n";
-                    i = motif_len+1;
-                }
-            }
+            //char *ref = 0;
+            //ref = faidx_fetch_seq(fai, const_cast<char*>(chrom), pos0, pos0+50, &ref_len);
+			//std::cerr << "REF: " << ref << "\n";
+			//if (ref) free(ref);
+			
+			if (len_ref==1 || len_alt==1)
+			{
+				VTYPE |= VT_INDEL;
+				
+				if (len_ref==1) VTYPE |= VT_INSERTION;
+				if (len_alt==1) VTYPE |= VT_DELETION;
+					
+				if (allele[0][0]!=allele[1][0])
+				{
+					VTYPE |= VT_SNP;
+				}
+				
+				char* ru = 0;
+				ru = faidx_fetch_seq(fai, const_cast<char*>(chrom), pos0+1, pos0+1, &ref_len);
+				//std::cerr << "first ru: "<< ru << "\n";
+				
+				int32_t tract_len = 1;
+	            int32_t motif_len = 1;
+	            		
+	            while (1)
+	            {
+	            	char* next_ru = 0;
+	            	next_ru = faidx_fetch_seq(fai, const_cast<char*>(chrom), pos0+tract_len*motif_len+1, pos0+(tract_len+1)*motif_len, &ref_len);
+					//std::cerr << "\tnext_ru: "<< next_ru << "\n";
+	            	
+	            	//motif repeated
+	                if (strcmp(ru, next_ru)==0)
+	                {
+	                	//extend tract length
+	                    ++tract_len;
+	                    //std::cerr << "\t\ttract_len: "<< tract_len << "\n";
+	                }
+	                else //try longer motif 
+	                {
+	                	if (tract_len>1)
+	                    {
+	                    	motif = std::string(ru);
+	                        tlen = tract_len;
+	                        VTYPE |= (VT_STR | VT_EXACT_STR);
+	                    	free(next_ru);	
+	                    	break;
+	                    }
+	                
+	                	//not STR
+	                	if (motif_len>10)
+	                	{
+	                		free(next_ru);	
+	                		break;
+	                	}	
+	                
+	                	free(ru);    
+	                    ++motif_len;
+	                    tract_len=1;
+	                    ru = faidx_fetch_seq(fai, const_cast<char*>(chrom), pos0+1, pos0+motif_len, &ref_len);
+	                    //std::cerr << "new ru: "<< ru << " " << motif_len << " " << tract_len << "\n";
+	                }
+	                
+	                free(next_ru);
+	                
+	            }
+	            
+	            free(ru);
+			}
+			else
+			{
+				VTYPE |= VT_COMPLEX;
+			}
         }
     }
     else
     {
     }
 
-    return 1;
+    return VTYPE;
 }
 
 /**

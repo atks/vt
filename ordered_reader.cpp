@@ -58,7 +58,7 @@ OrderedReader::OrderedReader(std::string _vcf_file, std::vector<std::string>& _i
         else if (vcf_ftype==IS_BCF)
         {
             vcf = vcf_open(vcf_file.c_str(), modify_mode(vcf_file.c_str(), 'r'), 0);
-            hdr = vcf_hdr_read(vcf);
+         	hdr = vcf_alt_hdr_read(vcf);
             if (!(idx = bcf_index_load(vcf_file.c_str())))
             {
                 fprintf(stderr, "[E::%s] fail to load index for %s\n", __func__, vcf_file.c_str());
@@ -68,7 +68,7 @@ OrderedReader::OrderedReader(std::string _vcf_file, std::vector<std::string>& _i
         else if (vcf_ftype==IS_VCF_GZ)
         {
             vcf = vcf_open(vcf_file.c_str(), modify_mode(vcf_file.c_str(), 'r'), 0);
-            hdr = vcf_hdr_read(vcf);
+            hdr = vcf_alt_hdr_read(vcf);
             vcf_close(vcf);
             vcf = NULL;
             vcfgz = xbgzf_open(vcf_file.c_str(), "r");
@@ -115,34 +115,27 @@ const char* OrderedReader::get_seqname(bcf1_t *v)
  */
 bool OrderedReader::initialize_next_interval()
 {
-    if (interval_index==intervals.size())
+    while (interval_index!=intervals.size())
     {
-        return false;
-    }    
-    
-    //update iterators to point at the next region
-    ss.str("");
-    ss << intervals[interval_index];
-    std::cerr << "accessing " << intervals[interval_index] << "\n";
-    interval_index++;
-    
-    //go to next region
-    if (vcf_ftype==IS_BCF)
-    {
-		if (!(itr = bcf_itr_querys(idx, hdr, ss.str().c_str())))
-		{
-			return initialize_next_interval();
+    	if (vcf_ftype==IS_BCF)
+   	 	{
+			if (!(itr = bcf_itr_querys(idx, hdr, ss.str().c_str())))
+			{
+				return initialize_next_interval();
+			}
 		}
-	}
-	else //vcf gz
-    {
-        if (!(itr = tbx_itr_querys(tbx, ss.str().c_str())))
-        {
-			return initialize_next_interval();
-		}
-    }
-    
-    return true;
+		else //vcf gz
+    	{		 
+        	itr = tbx_itr_querys(tbx, intervals[interval_index].c_str());
+        	interval_index++;
+        	if (itr)
+			{
+				return true;
+			}
+    	}
+	}    
+
+	return false;
 };
 
 /**
@@ -162,7 +155,7 @@ bool OrderedReader::read1(bcf1_t *v)
             else
             {
                 if (initialize_next_interval())
-                {    
+                { 
                     return read1(v);
                 }
                 else
@@ -172,24 +165,23 @@ bool OrderedReader::read1(bcf1_t *v)
             }
     	}
     	else //vcf gz
-        { 
-            if (tbx_itr_next(vcfgz, tbx, itr, &s) >= 0)
-            {   
-                vcf_parse1(&s, hdr, v);
-                return true;
-            }
-            else
-            {
-                if (initialize_next_interval())
-                {    
-                    return read1(v);
-                }
-                else
-                {
-                    return false;
-                }
-            }
-        }
+        {
+			while(true)
+			{
+				if (itr && tbx_itr_next(vcfgz, tbx, itr, &s) >= 0)
+            	{   
+                	vcf_parse1(&s, hdr, v);
+                	return true;
+            	}
+            	else
+            	{
+                	if (!initialize_next_interval())
+                	{
+                    	return false;
+                	}		
+            	}	
+			}
+		}	
     }
     else
     {   

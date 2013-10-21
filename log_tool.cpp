@@ -23,6 +23,15 @@
 
 #include <log_tool.h>
 
+
+/**
+ * Round a value
+ */	
+double LogTool::round(double x)
+{
+	return (x > 0.0) ? floor(x + 0.5) : ceil(x - 0.5);
+};
+
 /**
  * Convert PLs to probabilities.
  */
@@ -42,6 +51,20 @@ double LogTool::pl2prob(uint32_t PL)
 	return PLs[PL];
 }
 
+/**
+ * Convert probabilities to PHRED score.
+ */
+uint32_t LogTool::prob2pl(double x)
+{
+	if (x>1 || x<0)
+	{
+		std::cerr << "[e] x is not a probability\n";
+		exit(1);
+	}
+	
+	return (uint32_t) (round(-10*log10(x)));
+}
+	
 /**
  * Compute log(x)
  */	

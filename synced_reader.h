@@ -33,10 +33,6 @@
 #include <map>
 #include <queue>
 #include <list>
-#include "boost/algorithm/string/split.hpp"
-#include "boost/algorithm/string/join.hpp"
-#include "boost/algorithm/string/classification.hpp"
-#include "boost/tokenizer.hpp"
 #include "htslib/vcf.h"
 #include "htslib/vcfutils.h"
 #include "htslib/tbx.h"
@@ -172,7 +168,7 @@ class SyncedReader
     /**
      * Initialize buffer for next region. Returns true if successful.
      */
-    bool initialize_next_region();
+    bool initialize_next_interval();
 
     /**
      * Gets record from pool, creates a new record if necessary

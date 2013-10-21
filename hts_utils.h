@@ -25,6 +25,7 @@
 #define HTS_UTILS_H
 
 #include <iostream>
+#include <sstream>
 #include <string>
 #include <vector>
 #include <stdlib.h>
@@ -65,7 +66,7 @@ const char* zmodify_mode(const char* fname, char mode, bool output_bcf);
 
 int hts_write(htsFile *fp);
 
-
+int hts_write1(htsFile *fp);
 /**********
  *BAM UTILS
  **********/
@@ -156,6 +157,11 @@ void bam_get_base_and_qual_and_read_and_qual(bam1_t *srec, uint32_t pos, char& b
 void bcf_add_hs37d5_contig_headers(bcf_hdr_t *hdr);
 
 /**
+ * Gets a string representation of a variant.
+ */
+void bcf_get_variant(bcf_hdr_t *h, bcf1_t *v, kstring_t *var);
+
+/**
  * bcf_get_fmt_ptr() - returns pointer to a FORMAT field
  * @header: for access to BCF_DT_ID dictionary
  * @line:   VCF line obtained from vcf_parse1
@@ -173,6 +179,17 @@ bcf_fmt_t *bcf_get_fmt_ptr(const bcf_hdr_t *header, bcf1_t *line, char *tag);
  *Get number of chromosomes
  */
 #define bcf_get_n_chrom(h) ((h)->n[BCF_DT_CTG])
+
+/**
+ * Subsets a header by samples.  Stores the required indices into imap for use later in subsetting records.
+ */
+bcf_hdr_t *bcf_hdr_subset_samples(const bcf_hdr_t *h0, std::vector<std::string>& samples, std::vector<int32_t>& imap);
+
+/**
+ * Subsets a record by samples.
+ * @imap - indices the subsetted samples
+ */
+int bcf_subset_samples(const bcf_hdr_t *h, bcf1_t *v, std::vector<int32_t>& imap);
 
 /**
  *Get chromosome name
@@ -313,6 +330,8 @@ void bcf_hdr_add_sample(bcf_hdr_t *h, char *s);
  */
 void bcf_hdr_get_seqs_and_lens(const bcf_hdr_t *h, const char**& seqs, int32_t*& lens, int *n);
 
+const char *hts_parse_reg1(const char *s, int *beg, int *end);
+
 /**
  *synchronize dictionaries
  */
@@ -322,6 +341,15 @@ int bcf_hdr_sync(bcf_hdr_t *h);
  * Formats format and genotypes for individuals
  */
 int vcf_format1_format_genotypes(const bcf_hdr_t *h, const bcf1_t *v, kstring_t *s);
+
+/**
+ * Reads header of a VCF file and returns the bcf header object.
+ * This wraps around vcf_hdr_read from the original htslib to
+ * allow for an alternative header file to be read in.
+ *
+ * this searches for the alternative header saved as <filename>.hdr
+ */
+bcf_hdr_t *vcf_alt_hdr_read(htsFile *fp);
 
 /**
  * Formats genotypes for individuals
@@ -339,6 +367,30 @@ int vcf_format1_shared_to_missing(const bcf_hdr_t *h, const bcf1_t *v, kstring_t
 bcf_fmt_t *bcf_get_fmt(const bcf_hdr_t *h, bcf1_t *v, const char *tag);
 
 /**
+ * Get the jth integer value for individual i.
+ * @i ith individual
+ * @j the jth value
+ *
+ * returns false when the value is missing.
+ */
+bool bcf_get_fmt_int(int32_t* val, int32_t i, int32_t j, bcf_fmt_t* fmt);
+
+/**
+ * Get string value for individual i.
+ *
+ * returns false when the value is missing.
+ */
+bool bcf_get_fmt_str(kstring_t* s, int32_t i, bcf_fmt_t* fmt);
+
+/**
+ * Get genotype for individual i.
+ * @i ith individual
+ *
+ * returns false when the value is missing.
+ */
+bool bcf_get_fmt_gt(kstring_t* s, int32_t i, bcf_fmt_t* f);
+
+/**
  * Returns c string of a single values info tag
  */
 char* bcf_get_info1(const bcf_hdr_t *h, bcf1_t *v, const char *tag);
@@ -352,5 +404,10 @@ bool bcf_get_info_float(const bcf_hdr_t *h, bcf1_t *v, const char *tag, float& f
  * Returns float value of integer info tag
  */
 bool bcf_get_info_int(const bcf_hdr_t *h, bcf1_t *v, const char *tag, int32_t& f);
+
+/**
+Splits a line into a vector - PERL style
+*/
+void split(std::vector<std::string>& vec, char delim, std::string& str, uint32_t limit=UINT_MAX, bool clear=true);
 
 #endif
