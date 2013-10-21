@@ -1,5 +1,8 @@
 UNAME = `UNAME`
-STD = -std=c++0x
+
+ifeq ("$(UNAME)", "Linux")
+	STD = -std=c++0x
+endif
 ifeq ("$(UNAME)", "Darwin")
 	STD = 
 endif
