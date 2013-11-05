@@ -31,7 +31,7 @@ OrderedReader::OrderedReader(std::string _vcf_file, std::vector<GenomeInterval>&
         fprintf(stderr, "[%s:%d %s] Not a VCF/BCF file: %s\n", __FILE__, __LINE__, __FUNCTION__, vcf_file.c_str());
         exit(1);
     }
-    
+
     vcf_file = _vcf_file;
     intervals = _intervals;
     interval_index = 0;
@@ -42,12 +42,10 @@ OrderedReader::OrderedReader(std::string _vcf_file, std::vector<GenomeInterval>&
     tbx = NULL;
     itr = NULL;
 
-    ss.str("");
     s = {0, 0, 0};
-    
-    //initialize indices
-    vcf = bcf_open(vcf_file.c_str(), "r");   
+    vcf = bcf_open(vcf_file.c_str(), "r");
     hdr = bcf_alt_hdr_read(vcf);
+    
     intervals_present =  intervals.size()!=0;
 
     if (ftype==FT_BCF_GZ)
@@ -55,30 +53,28 @@ OrderedReader::OrderedReader(std::string _vcf_file, std::vector<GenomeInterval>&
         if ((idx = bcf_index_load(vcf_file.c_str())))
         {
             index_loaded = true;
-            fprintf(stderr, "[I:%s] Index loaded for %s\n", __FUNCTION__, vcf_file.c_str());
+            fprintf(stderr, "[I:%s] index loaded for %s\n", __FUNCTION__, vcf_file.c_str());
         }
         else
         {
-            fprintf(stderr, "[W:%s] Index not loaded for %s\n", __FUNCTION__, vcf_file.c_str());
+            fprintf(stderr, "[W:%s] index not loaded for %s\n", __FUNCTION__, vcf_file.c_str());
         }
     }
-    
+
     if (ftype==FT_VCF_GZ)
     {
         if ((tbx = tbx_index_load(vcf_file.c_str())))
         {
             index_loaded = true;
-            fprintf(stderr, "[I:%s] Index loaded for %s\n", __FUNCTION__, vcf_file.c_str());
+            fprintf(stderr, "[I:%s] index loaded for %s\n", __FUNCTION__, vcf_file.c_str());
         }
         else
         {
-            fprintf(stderr, "[W:%s] Tabix Index not loaded for %s\n", __FUNCTION__, vcf_file.c_str());
+            fprintf(stderr, "[W:%s] index not loaded for %s\n", __FUNCTION__, vcf_file.c_str());
         }
     }
 
     random_access_enabled = intervals_present && index_loaded;
-            
-    initialize_next_interval();
 };
 
 /**
@@ -87,7 +83,7 @@ OrderedReader::OrderedReader(std::string _vcf_file, std::vector<GenomeInterval>&
 const char* OrderedReader::get_seqname(bcf1_t *v)
 {
     return bcf_get_chrom(hdr, v);
-};                   
+};
 
 /**
  * Gets bcf header.
@@ -96,102 +92,103 @@ bcf_hdr_t* OrderedReader::get_hdr()
 {
     return hdr;
 };
-    
+
 /**
  * Initialize next interval.
  * Returns false only if all intervals are accessed.
  */
 bool OrderedReader::initialize_next_interval()
 {
+    
     while (interval_index!=intervals.size())
     {
-    	if (ftype==FT_BCF_GZ)
-   	 	{
-   	 	    GenomeInterval interval = intervals[interval_index];
-    	    int tid = bcf_hdr_name2id(hdr, interval.seq.c_str());
-        	itr = bcf_itr_queryi(idx, tid, interval.start1-1, interval.end1);
-        	++interval_index;
-        	if (itr) 
-        	{
-        	    return true;
-		    }
-		}
-		else if (ftype==FT_VCF_GZ)
-    	{		 
-    	    GenomeInterval interval = intervals[interval_index];
-    	    int tid = tbx_name2id(tbx, interval.seq.c_str());
-    	    itr = tbx_itr_queryi(tbx, tid, interval.start1-1, interval.end1);
-        	++interval_index;
-        	if (itr)
+        if (ftype==FT_BCF_GZ)
+        {
+            GenomeInterval interval = intervals[interval_index];
+            int tid = bcf_hdr_name2id(hdr, interval.seq.c_str());
+            itr = bcf_itr_queryi(idx, tid, interval.start1-1, interval.end1);
+            ++interval_index;
+            if (itr)
             {
                 return true;
-		    }
-		}
-	}    
+            }
+        }
+        else if (ftype==FT_VCF_GZ)
+        {
+            GenomeInterval interval = intervals[interval_index];
+            int tid = tbx_name2id(tbx, interval.seq.c_str());
+            itr = tbx_itr_queryi(tbx, tid, interval.start1-1, interval.end1);
+            ++interval_index;
+            if (itr)
+            {
+                return true;
+            }
+        }
+    }
 
-	return false;
+    return false;
 };
 
 /**
  * Reads next record, hides the random access of different regions from the user.
  */
 bool OrderedReader::read(bcf1_t *v)
-{    
+{
     if (random_access_enabled)
     {
         if (ftype == FT_BCF_GZ)
         {
-			while(true)
-			{
-				if (itr && bcf_itr_next(vcf, itr, v)>=0)
-            	{   
-                	return true;
-            	}
-            	else
-            	{
-                	if (!initialize_next_interval())
-                	{
-                    	return false;
-                	}		
-            	}	
-			}
-    	}
-    	else 
+            while(true)
+            {
+                if (itr && bcf_itr_next(vcf, itr, v)>=0)
+                {
+                    return true;
+                }
+                else
+                {
+                    if (!initialize_next_interval())
+                    {
+                        return false;
+                    }
+                }
+            }
+        }
+        else
         {
-			while(true)
-			{
-				if (itr && tbx_itr_next(vcf, tbx, itr, &s)>=0)
-            	{   
-                	vcf_parse1(&s, hdr, v);
-                	return true;
-            	}
-            	else
-            	{
-                	if (!initialize_next_interval())
-                	{
-                    	return false;
-                	}		
-            	}	
-			}
-		}	
+            while(true)
+            {
+                if (itr && tbx_itr_next(vcf, tbx, itr, &s)>=0)
+                {
+                    vcf_parse1(&s, hdr, v);
+                    return true;
+                }
+                else
+                {
+                    if (!initialize_next_interval())
+                    {
+                        return false;
+                    }
+                }
+            }
+        }
     }
     else
-    {   
+    {
         if (bcf_read(vcf, hdr, v)==0)
         {
             //todo: filter via interval tree
             //if found in tree, return true else false
             return true;
-        }    
+        }
         else
         {
             return false;
         }
     }
-    
+
     return false;
 };
-    
+
 /**
  * Returns next set of vcf records at a start position.
  */
@@ -203,7 +200,7 @@ bool OrderedReader::read_next_position(std::vector<bcf1_t *>& vs)
        store_bcf1_into_pool(vs[i]);
     }
     vs.clear();
-    
+
     if (random_access_enabled)
     {
         if (ftype==FT_BCF_GZ)
@@ -211,11 +208,11 @@ bool OrderedReader::read_next_position(std::vector<bcf1_t *>& vs)
             if (bcf_itr_next(vcf, itr, v)>=0)
             {
                 return true;
-            }    
+            }
             else
             {
                 if (initialize_next_interval())
-                { 
+                {
                     return read(v);
                 }
                 else
@@ -223,44 +220,44 @@ bool OrderedReader::read_next_position(std::vector<bcf1_t *>& vs)
                     return false;
                 }
             }
-    	}
-    	else //vcf gz
+        }
+        else //vcf gz
         {
-			while(true)
-			{
-				if (itr && tbx_itr_next(vcf, tbx, itr, &s) >= 0)
-            	{   
-                	vcf_parse1(&s, hdr, v);
-                	return true;
-            	}
-            	else
-            	{
-                	if (!initialize_next_interval())
-                	{
-                    	return false;
-                	}		
-            	}	
-			}
-		}	
+            while(true)
+            {
+                if (itr && tbx_itr_next(vcf, tbx, itr, &s) >= 0)
+                {
+                    vcf_parse1(&s, hdr, v);
+                    return true;
+                }
+                else
+                {
+                    if (!initialize_next_interval())
+                    {
+                        return false;
+                    }
+                }
+            }
+        }
     }
     else
-    {   
+    {
         if (bcf_read(vcf, hdr, v)==0)
         {
             return true;
-        }    
+        }
         else
         {
             return false;
         }
     }
-    
+
     return false;
 };
-  
+
 /**
- * Returns record to pool 
- */ 
+ * Returns record to pool
+ */
 void OrderedReader::store_bcf1_into_pool(bcf1_t* v)
 {
     pool.push_back(v);
@@ -270,7 +267,7 @@ void OrderedReader::store_bcf1_into_pool(bcf1_t* v)
  * Gets record from pool, creates a new record if necessary
  */
 bcf1_t* OrderedReader::get_bcf1_from_pool()
-{    
+{
     if(!pool.empty())
     {
         bcf1_t* v = pool.front();
@@ -279,6 +276,6 @@ bcf1_t* OrderedReader::get_bcf1_from_pool()
     }
     else
     {
-        return bcf_init1(); 
+        return bcf_init1();
     }
 };

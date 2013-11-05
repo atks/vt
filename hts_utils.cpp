@@ -206,9 +206,9 @@ bcf_hdr_t *bcf_alt_hdr_read(htsFile *fp)
 	kputs(fp->fn, &alt_hdr_fn);
 	kputs(".hdr", &alt_hdr_fn);	
 	FILE *file = fopen(alt_hdr_fn.s, "r");
-    if (!file)
+	if (!file)
     {
-    	h = vcf_hdr_read(fp);
+    	h = bcf_hdr_read(fp);
 	}
 	else
     {

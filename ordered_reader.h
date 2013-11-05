@@ -24,8 +24,6 @@
 #ifndef ORDERED_READER_H
 #define ORDERED_READER_H
 
-#include <queue>
-#include <sstream>
 #include <cstdlib>
 #include <cstdint>
 #include <cstring>
@@ -33,13 +31,12 @@
 #include <cfloat>
 #include <vector>
 #include <map>
+#include <queue>
 #include "htslib/vcf.h"
-#include "htslib/vcfutils.h"
 #include "htslib/tbx.h"
-#include "htslib/bgzf.h"
 #include "hts_utils.h"
-#include "interval_tree.h"
 #include "genome_interval.h"
+#include "interval_tree.h"
 
 /**
  * A class for reading ordered VCF/BCF files.
@@ -93,7 +90,6 @@ class OrderedReader
         
     //shared objects for string manipulation
     kstring_t s;
-    std::stringstream ss;
     
     /**
      * Initialize files and intervals. 
