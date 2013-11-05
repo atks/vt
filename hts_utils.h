@@ -20,6 +20,18 @@
    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
    THE SOFTWARE.
 */
+//
+//#ifndef FT_VCF 
+//#define FT_VCF 0 
+//#endif
+//
+//#ifndef FT_VCF_GZ 
+//#define FT_VCF 1 
+//#endif
+//
+//#ifndef FT_BCF 
+//#define FT_BCF 2 
+//#endif
 
 #ifndef HTS_UTILS_H
 #define HTS_UTILS_H
@@ -28,11 +40,11 @@
 #include <sstream>
 #include <string>
 #include <vector>
-#include <stdlib.h>
-#include <stdint.h>
-#include <string.h>
-#include <math.h>
-#include <float.h>
+#include <cstdlib>
+#include <cstdint>
+#include <cstring>
+#include <cmath>
+#include <cfloat>
 #include <vector>
 #include <map>
 #include <queue>
@@ -42,38 +54,15 @@
 #include "htslib/sam.h"
 #include "htslib/vcf.h"
 #include "htslib/vcfutils.h"
-
+#include "utils.h"
 
 /*******
  *COMMON
  *******/
 
-/**
- gets file type, include SAM and BAM detection from file_type in htslib
-*/
-int zfile_type(const char *fname);
-
-/**
- modifies mode to have an addition b if necessary
-*/
-const char* modify_mode(const char* fname, char mode);
-const char* zmodify_mode(const char* fname, char mode, bool output_bcf);
-
-/**********
- *HTS UTILS
- **********/
-
-
-int hts_write(htsFile *fp);
-
-int hts_write1(htsFile *fp);
 /**********
  *BAM UTILS
  **********/
-
-//additional definitions for checking file types
-#define IS_BAM 6
-#define IS_SAM 7
 
 //used when a base on a read is not aligned to the human genome reference
 //in particular for soft clips and insertions
@@ -179,11 +168,6 @@ bcf_fmt_t *bcf_get_fmt_ptr(const bcf_hdr_t *header, bcf1_t *line, char *tag);
  *Get number of chromosomes
  */
 #define bcf_get_n_chrom(h) ((h)->n[BCF_DT_CTG])
-
-/**
- * Subsets a header by samples.  Stores the required indices into imap for use later in subsetting records.
- */
-bcf_hdr_t *bcf_hdr_subset_samples(const bcf_hdr_t *h0, std::vector<std::string>& samples, std::vector<int32_t>& imap);
 
 /**
  * Subsets a record by samples.
@@ -297,20 +281,6 @@ void bcf_set_allele(bcf1_t *v, std::vector<std::string> alleles);
 #define bcf_get_var_type(b) ((b)->d.var_type)
 
 /**
- * Adds an INFO field. 
- * CAVEAT: The data structure usually points to the shared data for the value of a INFO field
-           This does not ensure that the data pointed is in the shared string, in the interest
-           of practical modification without parsing the entire string, one should ensure that
-           a separate string is managed outside of this function else a memory leak will ensure
-           or incorrect data is generated.
-           
-           Usually, the formating of record is reliant on the data structure's various pointers,
-           the resultant human readable string can then be parsed and subsequently unpacked into
-           another bcf1_t for outputting a modified record.  
- */
-int32_t bcf_add_info(bcf_hdr_t *h, bcf1_t *v, int32_t type, char *key, uint8_t *value, int32_t len);
-
-/**
  *Get samples from bcf header
  */
 #define bcf_hdr_get_samples(b) ((b)->samples)
@@ -349,7 +319,7 @@ int vcf_format1_format_genotypes(const bcf_hdr_t *h, const bcf1_t *v, kstring_t 
  *
  * this searches for the alternative header saved as <filename>.hdr
  */
-bcf_hdr_t *vcf_alt_hdr_read(htsFile *fp);
+bcf_hdr_t *bcf_alt_hdr_read(htsFile *fp);
 
 /**
  * Formats genotypes for individuals
@@ -394,20 +364,5 @@ bool bcf_get_fmt_gt(kstring_t* s, int32_t i, bcf_fmt_t* f);
  * Returns c string of a single values info tag
  */
 char* bcf_get_info1(const bcf_hdr_t *h, bcf1_t *v, const char *tag);
-
-/**
- * Returns float value of float info tag
- */
-bool bcf_get_info_float(const bcf_hdr_t *h, bcf1_t *v, const char *tag, float& f);
-
-/**
- * Returns float value of integer info tag
- */
-bool bcf_get_info_int(const bcf_hdr_t *h, bcf1_t *v, const char *tag, int32_t& f);
-
-/**
-Splits a line into a vector - PERL style
-*/
-void split(std::vector<std::string>& vec, char delim, std::string& str, uint32_t limit=UINT_MAX, bool clear=true);
 
 #endif

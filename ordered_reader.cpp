@@ -23,81 +23,61 @@
 
 #include "ordered_reader.h"
 
-OrderedReader::OrderedReader(std::string _vcf_file, std::vector<std::string>& _intervals)
+OrderedReader::OrderedReader(std::string _vcf_file, std::vector<GenomeInterval>& _intervals)
 {
+    ftype = hts_file_type(_vcf_file.c_str());
+    if (!(ftype & (FT_VCF|FT_BCF|FT_STDIN)) )
+    {
+        fprintf(stderr, "[%s:%d %s] Not a VCF/BCF file: %s\n", __FILE__, __LINE__, __FUNCTION__, vcf_file.c_str());
+        exit(1);
+    }
+    
     vcf_file = _vcf_file;
     intervals = _intervals;
     interval_index = 0;
 
     vcf = NULL;
-    vcfgz = NULL;
     hdr = NULL;
     idx = NULL;
     tbx = NULL;
     itr = NULL;
 
     ss.str("");
-    s.s = 0; s.l = s.m = 0;
+    s = {0, 0, 0};
     
     //initialize indices
-    vcf_ftype = zfile_type(vcf_file.c_str());
-    need_random_access = intervals.size()!=0;    
+    vcf = bcf_open(vcf_file.c_str(), "r");   
+    hdr = bcf_alt_hdr_read(vcf);
+    intervals_present =  intervals.size()!=0;
 
-    if (need_random_access)
+    if (ftype==FT_BCF_GZ)
     {
-        if (vcf_ftype==IS_STDIN)
+        if ((idx = bcf_index_load(vcf_file.c_str())))
         {
-            fprintf(stderr, "[E::%s] Random access is not supported for STDIN\n", __func__);
-            exit(1);
-        }
-        else if (vcf_ftype==IS_VCF)
-        {
-            fprintf(stderr, "[E::%s] Random access is not supported for non indexed VCF file %s\n", __func__, vcf_file.c_str());
-            exit(1);
-        }
-        else if (vcf_ftype==IS_BCF)
-        {
-            vcf = vcf_open(vcf_file.c_str(), modify_mode(vcf_file.c_str(), 'r'), 0);
-         	hdr = vcf_alt_hdr_read(vcf);
-            if (!(idx = bcf_index_load(vcf_file.c_str())))
-            {
-                fprintf(stderr, "[E::%s] fail to load index for %s\n", __func__, vcf_file.c_str());
-                exit(1);
-            }
-        }
-        else if (vcf_ftype==IS_VCF_GZ)
-        {
-            vcf = vcf_open(vcf_file.c_str(), modify_mode(vcf_file.c_str(), 'r'), 0);
-            hdr = vcf_alt_hdr_read(vcf);
-            vcf_close(vcf);
-            vcf = NULL;
-            vcfgz = xbgzf_open(vcf_file.c_str(), "r");
-            if (!(tbx=tbx_index_load(vcf_file.c_str())))
-            {
-                fprintf(stderr, "[E::%s] fail to load index for %s\n", __func__, vcf_file.c_str());
-                exit(1);
-            }
+            index_loaded = true;
+            fprintf(stderr, "[I:%s] Index loaded for %s\n", __FUNCTION__, vcf_file.c_str());
         }
         else
         {
-            fprintf(stderr, "[E::%s] %s is not a VCF or BCF file\n", __func__, vcf_file.c_str());
-            exit(1);
-        }        
+            fprintf(stderr, "[W:%s] Index not loaded for %s\n", __FUNCTION__, vcf_file.c_str());
+        }
     }
-    else
+    
+    if (ftype==FT_VCF_GZ)
     {
-        if (vcf_ftype==IS_STDIN || vcf_ftype==IS_VCF || vcf_ftype==IS_BCF || vcf_ftype==IS_VCF_GZ)
+        if ((tbx = tbx_index_load(vcf_file.c_str())))
         {
-            vcf = vcf_open(vcf_file.c_str(), modify_mode(vcf_file.c_str(), 'r'), 0);
-            hdr = vcf_hdr_read(vcf);
+            index_loaded = true;
+            fprintf(stderr, "[I:%s] Index loaded for %s\n", __FUNCTION__, vcf_file.c_str());
         }
         else
         {
-            fprintf(stderr, "[E::%s] %s is not a VCF or BCF file\n", __func__, vcf_file.c_str());
-            exit(1);
-        } 
-    } 
-    
+            fprintf(stderr, "[W:%s] Tabix Index not loaded for %s\n", __FUNCTION__, vcf_file.c_str());
+        }
+    }
+
+    random_access_enabled = intervals_present && index_loaded;
+            
     initialize_next_interval();
 };
 
@@ -110,6 +90,14 @@ const char* OrderedReader::get_seqname(bcf1_t *v)
 };                   
 
 /**
+ * Gets bcf header.
+ */
+bcf_hdr_t* OrderedReader::get_hdr()
+{
+    return hdr;
+};
+    
+/**
  * Initialize next interval.
  * Returns false only if all intervals are accessed.
  */
@@ -117,22 +105,28 @@ bool OrderedReader::initialize_next_interval()
 {
     while (interval_index!=intervals.size())
     {
-    	if (vcf_ftype==IS_BCF)
+    	if (ftype==FT_BCF_GZ)
    	 	{
-			if (!(itr = bcf_itr_querys(idx, hdr, ss.str().c_str())))
-			{
-				return initialize_next_interval();
-			}
+   	 	    GenomeInterval interval = intervals[interval_index];
+    	    int tid = bcf_hdr_name2id(hdr, interval.seq.c_str());
+        	itr = bcf_itr_queryi(idx, tid, interval.start1-1, interval.end1);
+        	++interval_index;
+        	if (itr) 
+        	{
+        	    return true;
+		    }
 		}
-		else //vcf gz
+		else if (ftype==FT_VCF_GZ)
     	{		 
-        	itr = tbx_itr_querys(tbx, intervals[interval_index].c_str());
-        	interval_index++;
+    	    GenomeInterval interval = intervals[interval_index];
+    	    int tid = tbx_name2id(tbx, interval.seq.c_str());
+    	    itr = tbx_itr_queryi(tbx, tid, interval.start1-1, interval.end1);
+        	++interval_index;
         	if (itr)
-			{
-				return true;
-			}
-    	}
+            {
+                return true;
+		    }
+		}
 	}    
 
 	return false;
@@ -141,34 +135,32 @@ bool OrderedReader::initialize_next_interval()
 /**
  * Reads next record, hides the random access of different regions from the user.
  */
-bool OrderedReader::read1(bcf1_t *v)
+bool OrderedReader::read(bcf1_t *v)
 {    
-    if (need_random_access)
+    if (random_access_enabled)
     {
-        //go to next region
-        if (vcf_ftype==IS_BCF)
-        {
-            if (bcf_itr_next((BGZF*)vcf->fp, itr, v)>=0)
-            {
-                return true;
-            }    
-            else
-            {
-                if (initialize_next_interval())
-                { 
-                    return read1(v);
-                }
-                else
-                {
-                    return false;
-                }
-            }
-    	}
-    	else //vcf gz
+        if (ftype == FT_BCF_GZ)
         {
 			while(true)
 			{
-				if (itr && tbx_itr_next(vcfgz, tbx, itr, &s) >= 0)
+				if (itr && bcf_itr_next(vcf, itr, v)>=0)
+            	{   
+                	return true;
+            	}
+            	else
+            	{
+                	if (!initialize_next_interval())
+                	{
+                    	return false;
+                	}		
+            	}	
+			}
+    	}
+    	else 
+        {
+			while(true)
+			{
+				if (itr && tbx_itr_next(vcf, tbx, itr, &s)>=0)
             	{   
                 	vcf_parse1(&s, hdr, v);
                 	return true;
@@ -185,7 +177,75 @@ bool OrderedReader::read1(bcf1_t *v)
     }
     else
     {   
-        if (vcf_read1(vcf, hdr, v)==0)
+        if (bcf_read(vcf, hdr, v)==0)
+        {
+            //todo: filter via interval tree
+            //if found in tree, return true else false
+            return true;
+        }    
+        else
+        {
+            return false;
+        }
+    }
+    
+    return false;
+};
+    
+/**
+ * Returns next set of vcf records at a start position.
+ */
+bool OrderedReader::read_next_position(std::vector<bcf1_t *>& vs)
+{
+    //put records in pool
+    for (uint32_t i=0; i<vs.size(); ++i)
+    {
+       store_bcf1_into_pool(vs[i]);
+    }
+    vs.clear();
+    
+    if (random_access_enabled)
+    {
+        if (ftype==FT_BCF_GZ)
+        {
+            if (bcf_itr_next(vcf, itr, v)>=0)
+            {
+                return true;
+            }    
+            else
+            {
+                if (initialize_next_interval())
+                { 
+                    return read(v);
+                }
+                else
+                {
+                    return false;
+                }
+            }
+    	}
+    	else //vcf gz
+        {
+			while(true)
+			{
+				if (itr && tbx_itr_next(vcf, tbx, itr, &s) >= 0)
+            	{   
+                	vcf_parse1(&s, hdr, v);
+                	return true;
+            	}
+            	else
+            	{
+                	if (!initialize_next_interval())
+                	{
+                    	return false;
+                	}		
+            	}	
+			}
+		}	
+    }
+    else
+    {   
+        if (bcf_read(vcf, hdr, v)==0)
         {
             return true;
         }    
@@ -196,4 +256,29 @@ bool OrderedReader::read1(bcf1_t *v)
     }
     
     return false;
+};
+  
+/**
+ * Returns record to pool 
+ */ 
+void OrderedReader::store_bcf1_into_pool(bcf1_t* v)
+{
+    pool.push_back(v);
+}
+
+/**
+ * Gets record from pool, creates a new record if necessary
+ */
+bcf1_t* OrderedReader::get_bcf1_from_pool()
+{    
+    if(!pool.empty())
+    {
+        bcf1_t* v = pool.front();
+        pool.pop_front();
+        return v;
+    }
+    else
+    {
+        return bcf_init1(); 
+    }
 };

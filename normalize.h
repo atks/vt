@@ -24,16 +24,13 @@
 #ifndef NORMALIZE_H
 #define NORMALIZE_H
 
-#include "tclap/CmdLine.h"
-#include "tclap/Arg.h"
 #include "htslib/vcf.h"
 #include "htslib/kseq.h"
+#include "program.h"
 #include "hts_utils.h"
-#include "synced_reader.h"
 #include "ordered_reader.h"
 #include "ordered_writer.h"
 #include "variant_manip.h"
-#include "program.h"
 
 void normalize(int argc, char ** argv);
     

@@ -3,16 +3,31 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#include "bgzf.h"
-#include "hts.h"
+#include <fcntl.h>
+#include "htslib/bgzf.h"
+#include "htslib/hts.h"
+#include "cram/cram.h"
+#include "hfile.h"
+#include "version.h"
 
-#include "kseq.h"
-KSTREAM_INIT2(, gzFile, gzread, 16384)
+#include "htslib/kseq.h"
+#define KS_BGZF 1
+#if KS_BGZF
+    // pd3 todo: gzread() in BGZF
+    KSTREAM_INIT2(, BGZF*, bgzf_read, 65536)
+#else
+    KSTREAM_INIT2(, gzFile, gzread, 16384)
+#endif
 
-#include "khash.h"
+#include "htslib/khash.h"
 KHASH_INIT2(s2i,, kh_cstr_t, int64_t, 1, kh_str_hash_func, kh_str_hash_equal)
 
 int hts_verbose = 3;
+
+const char *hts_version()
+{
+	return HTS_VERSION;
+}
 
 const unsigned char seq_nt16_table[256] = {
 	15,15,15,15, 15,15,15,15, 15,15,15,15, 15,15,15,15,
@@ -40,53 +55,207 @@ const char seq_nt16_str[] = "=ACMGRSVTWYHKDBN";
  *** Basic file I/O ***
  **********************/
 
-htsFile *hts_open(const char *fn, const char *mode, const char *fn_aux)
+// Decompress up to ten or so bytes by peeking at the file, which must be
+// positioned at the start of a GZIP block.
+static size_t decompress_peek(hFILE *fp, unsigned char *dest, size_t destsize)
 {
-	htsFile *fp;
+	// Typically at most a couple of hundred bytes of input are required
+	// to get a few bytes of output from inflate(), so hopefully this buffer
+	// size suffices in general.
+	unsigned char buffer[512];
+	z_stream zs;
+	ssize_t npeek = hpeek(fp, buffer, sizeof buffer);
+
+	if (npeek < 0) return 0;
+
+	zs.zalloc = NULL;
+	zs.zfree = NULL;
+	zs.next_in = buffer;
+	zs.avail_in = npeek;
+	zs.next_out = dest;
+	zs.avail_out = destsize;
+	if (inflateInit2(&zs, 31) != Z_OK) return 0;
+
+	while (zs.total_out < destsize)
+		if (inflate(&zs, Z_SYNC_FLUSH) != Z_OK) break;
+
+	destsize = zs.total_out;
+	inflateEnd(&zs);
+
+	return destsize;
+}
+
+// Returns whether the block contains any control characters, i.e.,
+// characters less than SPACE other than whitespace etc (ASCII BEL..CR).
+static int is_binary(unsigned char *s, size_t n)
+{
+	size_t i;
+	for (i = 0; i < n; i++)
+		if (s[i] < 0x07 || (s[i] >= 0x0e && s[i] < 0x20)) return 1;
+	return 0;
+}
+
+htsFile *hts_open(const char *fn, const char *mode)
+{
+	htsFile *fp = NULL;
+	hFILE *hfile = hopen(fn, mode);
+	if (hfile == NULL) goto error;
+
 	fp = (htsFile*)calloc(1, sizeof(htsFile));
+	if (fp == NULL) goto error;
+
 	fp->fn = strdup(fn);
 	fp->is_be = ed_is_big();
-	if (strchr(mode, 'w')) fp->is_write = 1;
-	if (strchr(mode, 'b')) fp->is_bin = 1;
-	if (fp->is_bin) {
-		if (fp->is_write) fp->fp = strcmp(fn, "-")? xbgzf_open(fn, mode) : xbgzf_dopen(fileno(stdout), mode);
-		else fp->fp = strcmp(fn, "-")? xbgzf_open(fn, "r") : xbgzf_dopen(fileno(stdin), "r");
-	} else {
-		if (!fp->is_write) {
-			gzFile gzfp;
-			gzfp = strcmp(fn, "-")? gzopen(fn, "rb") : gzdopen(fileno(stdin), "rb");
-			if (gzfp) fp->fp = ks_init(gzfp);
-			if (fn_aux) fp->fn_aux = strdup(fn_aux);
-		} else fp->fp = strcmp(fn, "-")? fopen(fn, "wb") : stdout;
+
+	if (strchr(mode, 'r')) {
+		unsigned char s[18];
+		if (hpeek(hfile, s, 6) == 6 && memcmp(s, "CRAM", 4) == 0 &&
+			s[4] >= 1 && s[4] <= 2 && s[5] <= 1) {
+			fp->is_cram = 1;
+		}
+		else if (hpeek(hfile, s, 18) == 18 && s[0] == 0x1f && s[1] == 0x8b &&
+				 (s[3] & 4) && memcmp(&s[12], "BC\2\0", 4) == 0) {
+			// The stream is BGZF-compressed.  Decompress a few bytes to see
+			// whether it's in a binary format (e.g., BAM or BCF, starting
+			// with four bytes of magic including a control character) or is
+			// a bgzipped SAM or VCF text file.
+			fp->is_compressed = 1;
+			if (is_binary(s, decompress_peek(hfile, s, 4))) fp->is_bin = 1;
+			else fp->is_kstream = 1;
+		}
+		else if (hpeek(hfile, s, 2) == 2 && s[0] == 0x1f && s[1] == 0x8b) {
+			// Plain GZIP header... so a gzipped text file.
+			fp->is_compressed = 1;
+			fp->is_kstream = 1;
+		}
+		else if (hpeek(hfile, s, 4) == 4 && is_binary(s, 4)) {
+			// Binary format, but in a raw non-compressed form.
+			fp->is_bin = 1;
+		}
+		else {
+			fp->is_kstream = 1;
+		}
 	}
-	if (fp->fp == 0) {
-		if (hts_verbose >= 2)
-			fprintf(stderr, "[E::%s] fail to open file '%s'\n", __func__, fn);
-		free(fp->fn_aux); free(fp);
-		return 0;
+	else if (strchr(mode, 'w')) {
+		fp->is_write = 1;
+		if (strchr(mode, 'b')) fp->is_bin = 1;
+		if (strchr(mode, 'c')) fp->is_cram = 1;
+		if (strchr(mode, 'z')) fp->is_compressed = 1;
+		else if (strchr(mode, 'u')) fp->is_compressed = 0;
+		else fp->is_compressed = 2;    // not set, default behaviour
 	}
+	else goto error;
+
+	if (fp->is_bin || (fp->is_write && fp->is_compressed==1)) {
+		fp->fp.bgzf = bgzf_hopen(hfile, mode);
+		if (fp->fp.bgzf == NULL) goto error;
+	}
+	else if (fp->is_cram) {
+		fp->fp.cram = cram_dopen(hfile, fn, mode);
+		if (fp->fp.cram == NULL) goto error;
+	}
+	else if (fp->is_kstream) {
+	#if KS_BGZF
+		BGZF *gzfp = bgzf_hopen(hfile, mode);
+	#else
+		// TODO Implement gzip hFILE adaptor
+		hclose(hfile); // This won't work, especially for stdin
+		gzFile gzfp = strcmp(fn, "-")? gzopen(fn, "rb") : gzdopen(fileno(stdin), "rb");
+	#endif
+		if (gzfp) fp->fp.voidp = ks_init(gzfp);
+		else goto error;
+	}
+	else {
+		fp->fp.hfile = hfile;
+	}
+
 	return fp;
+
+error:
+	if (hts_verbose >= 2)
+		fprintf(stderr, "[E::%s] fail to open file '%s'\n", __func__, fn);
+
+	if (hfile) {
+		if (hclose(hfile) != 0) { /* Ignore errors */ }
+	}
+
+	if (fp) {
+		free(fp->fn);
+		free(fp->fn_aux);
+		free(fp);
+	}
+	return NULL;
 }
 
 void hts_close(htsFile *fp)
 {
+	if (fp->is_bin || (fp->is_write && fp->is_compressed==1)) {
+		bgzf_close(fp->fp.bgzf);
+	} else if (fp->is_cram) {
+		cram_close(fp->fp.cram);
+	} else if (fp->is_kstream) {
+	#if KS_BGZF
+		BGZF *gzfp = ((kstream_t*)fp->fp.voidp)->f;
+		bgzf_close(gzfp);
+	#else
+		gzFile gzfp = ((kstream_t*)fp->fp.voidp)->f;
+		gzclose(gzfp);
+	#endif
+		ks_destroy((kstream_t*)fp->fp.voidp);
+	} else {
+		hclose(fp->fp.hfile);
+	}
+
 	free(fp->fn);
-	if (!fp->is_bin) {
-		free(fp->line.s);
-		if (!fp->is_write) {
-			gzFile gzfp = ((kstream_t*)fp->fp)->f;
-			ks_destroy((kstream_t*)fp->fp);
-			gzclose(gzfp);
-			free(fp->fn_aux);
-		} else fclose((FILE*)fp->fp);
-	} else xbgzf_close((BGZF*)fp->fp);
+	free(fp->fn_aux);
+    free(fp->line.s);
 	free(fp);
+}
+
+int hts_set_fai_filename(htsFile *fp, const char *fn_aux)
+{
+	free(fp->fn_aux);
+	if (fn_aux) {
+		fp->fn_aux = strdup(fn_aux);
+		if (fp->fn_aux == NULL) return -1;
+	}
+	else fp->fn_aux = NULL;
+
+	return 0;
+}
+
+// For VCF/BCF backward sweeper. Not exposing these functions because their
+// future is uncertain. Things will probably have to change with hFILE...
+BGZF *hts_get_bgzfp(htsFile *fp)
+{
+    if ( fp->is_bin )
+        return fp->fp.bgzf;
+    else
+        return ((kstream_t*)fp->fp.voidp)->f;
+}
+int hts_useek(htsFile *fp, long uoffset, int where)
+{
+    if ( fp->is_bin )
+        return bgzf_useek(fp->fp.bgzf, uoffset, where);
+    else
+    {
+        ks_rewind((kstream_t*)fp->fp.voidp);
+        ((kstream_t*)fp->fp.voidp)->seek_pos = uoffset;
+        return bgzf_useek(((kstream_t*)fp->fp.voidp)->f, uoffset, where);
+    }
+}
+long hts_utell(htsFile *fp)
+{
+    if ( fp->is_bin )
+        return bgzf_utell(fp->fp.bgzf);
+    else
+        return ((kstream_t*)fp->fp.voidp)->seek_pos;
 }
 
 int hts_getline(htsFile *fp, int delimiter, kstring_t *str)
 {
 	int ret, dret;
-	ret = ks_getuntil((kstream_t*)fp->fp, delimiter, str, &dret);
+	ret = ks_getuntil((kstream_t*)fp->fp.voidp, delimiter, str, &dret);
 	++fp->lineno;
 	return ret;
 }
@@ -95,8 +264,12 @@ char **hts_readlines(const char *fn, int *_n)
 {
 	int m = 0, n = 0, dret;
 	char **s = 0;
-	gzFile fp;
-	if ((fp = gzopen(fn, "r")) != 0) { // read from file
+#if KS_BGZF
+	BGZF *fp = bgzf_open(fn, "r");
+#else
+	gzFile fp = gzopen(fn, "r");
+#endif
+	if ( fp ) { // read from file
 		kstream_t *ks;
 		kstring_t str;
 		str.s = 0; str.l = str.m = 0;
@@ -110,7 +283,11 @@ char **hts_readlines(const char *fn, int *_n)
 			s[n++] = strdup(str.s);
 		}
 		ks_destroy(ks);
-		gzclose(fp);
+        #if KS_BGZF
+            bgzf_close(fp);
+        #else
+		    gzclose(fp);
+        #endif
 		s = (char**)realloc(s, n * sizeof(void*));
 		free(str.s);
 	} else if (*fn == ':') { // read from string
@@ -132,14 +309,33 @@ char **hts_readlines(const char *fn, int *_n)
 	return s;
 }
 
-int file_type(const char *fname)
+int hts_file_type(const char *fname)
 {
     int len = strlen(fname);
-    if ( !strcasecmp(".vcf.gz",fname+len-7) ) return IS_VCF_GZ;
-    if ( !strcasecmp(".vcf",fname+len-4) ) return IS_VCF;
-    if ( !strcasecmp(".bcf",fname+len-4) ) return IS_BCF;
-    if ( !strcmp("-",fname) ) return IS_STDIN;
+    if ( !strcasecmp(".vcf.gz",fname+len-7) ) return FT_VCF_GZ;
+    if ( !strcasecmp(".vcf",fname+len-4) ) return FT_VCF;
+    if ( !strcasecmp(".bcf",fname+len-4) ) return FT_BCF_GZ;
+    if ( !strcmp("-",fname) ) return FT_STDIN;
     // ... etc
+
+    int fd = open(fname, O_RDONLY);
+    if ( !fd ) return 0;
+
+    uint8_t magic[5];
+    if ( read(fd,magic,2)!=2 ) { close(fd); return 0; }
+    if ( !strncmp((char*)magic,"##",2) ) { close(fd); return FT_VCF; }
+    if ( !strncmp((char*)magic,"BCF",3) ) { close(fd); return FT_BCF; }
+    close(fd);
+
+    if ( magic[0]==0x1f && magic[1]==0x8b ) // compressed
+    {
+        BGZF *fp = bgzf_open(fname, "r");
+        if ( !fp ) return 0;
+        if ( bgzf_read(fp, magic, 3)!=3 ) { bgzf_close(fp); return 0; }
+        bgzf_close(fp);
+        if ( !strncmp((char*)magic,"##",2) ) return FT_VCF;
+        if ( !strncmp((char*)magic,"BCF",3) ) return FT_BCF_GZ;
+    }
     return 0;
 }
 
@@ -151,7 +347,7 @@ int file_type(const char *fname)
 
 #define pair64_lt(a,b) ((a).u < (b).u)
 
-#include "ksort.h"
+#include "htslib/ksort.h"
 KSORT_INIT(_off, hts_pair64_t, pair64_lt)
 
 typedef struct {
@@ -160,7 +356,7 @@ typedef struct {
 	hts_pair64_t *list;
 } bins_t;
 
-#include "khash.h"
+#include "htslib/khash.h"
 KHASH_MAP_INIT_INT(bin, bins_t)
 typedef khash_t(bin) bidx_t;
 
@@ -323,7 +519,7 @@ static void compress_binning(hts_idx_t *idx, int i)
 void hts_idx_finish(hts_idx_t *idx, uint64_t final_offset)
 {
 	int i;
-	if (idx->z.finished) return; // do not run this function multiple times
+	if (idx == NULL || idx->z.finished) return; // do not run this function on an empty index or multiple times
 	if (idx->z.save_tid >= 0) {
 		insert_to_b(idx->bidx[idx->z.save_tid], idx->z.save_bin, idx->z.save_off, final_offset);
 		insert_to_b(idx->bidx[idx->z.save_tid], idx->n_bins + 1, idx->z.off_beg, final_offset);
@@ -409,13 +605,13 @@ void hts_idx_destroy(hts_idx_t *idx)
 
 static inline long idx_read(int is_bgzf, void *fp, void *buf, long l)
 {
-	if (is_bgzf) return xbgzf_read((BGZF*)fp, buf, l);
+	if (is_bgzf) return bgzf_read((BGZF*)fp, buf, l);
 	else return (long)fread(buf, 1, l, (FILE*)fp);
 }
 
 static inline long idx_write(int is_bgzf, void *fp, const void *buf, long l)
 {
-	if (is_bgzf) return xbgzf_write((BGZF*)fp, buf, l);
+	if (is_bgzf) return bgzf_write((BGZF*)fp, buf, l);
 	else return (long)fwrite(buf, 1, l, (FILE*)fp);
 }
 
@@ -502,22 +698,22 @@ void hts_idx_save(const hts_idx_t *idx, const char *fn, int fmt)
 		uint32_t x[3];
 		int is_be, i;
 		is_be = ed_is_big();
-		fp = xbgzf_open(strcat(fnidx, ".csi"), "w");
-		xbgzf_write(fp, "CSI\1", 4);
+		fp = bgzf_open(strcat(fnidx, ".csi"), "w");
+		bgzf_write(fp, "CSI\1", 4);
 		x[0] = idx->min_shift; x[1] = idx->n_lvls; x[2] = idx->l_meta;
 		if (is_be) {
 			for (i = 0; i < 3; ++i)
-				xbgzf_write(fp, ed_swap_4p(&x[i]), 4);
-		} else xbgzf_write(fp, &x, 12);
-		if (idx->l_meta) xbgzf_write(fp, idx->meta, idx->l_meta);
+				bgzf_write(fp, ed_swap_4p(&x[i]), 4);
+		} else bgzf_write(fp, &x, 12);
+		if (idx->l_meta) bgzf_write(fp, idx->meta, idx->l_meta);
 		hts_idx_save_core(idx, fp, HTS_FMT_CSI);
-		xbgzf_close(fp);
+		bgzf_close(fp);
 	} else if (fmt == HTS_FMT_TBI) {
 		BGZF *fp;
-		fp = xbgzf_open(strcat(fnidx, ".tbi"), "w");
-		xbgzf_write(fp, "TBI\1", 4);
+		fp = bgzf_open(strcat(fnidx, ".tbi"), "w");
+		bgzf_write(fp, "TBI\1", 4);
 		hts_idx_save_core(idx, fp, HTS_FMT_TBI);
-		xbgzf_close(fp);
+		bgzf_close(fp);
 	} else if (fmt == HTS_FMT_BAI) {
 		FILE *fp;
 		fp = fopen(strcat(fnidx, ".bai"), "w");
@@ -586,35 +782,35 @@ hts_idx_t *hts_idx_load_local(const char *fn, int fmt)
 		BGZF *fp;
 		uint32_t x[3], n;
 		uint8_t *meta = 0;
-		if ((fp = xbgzf_open(fn, "r")) == 0) return 0;
-		xbgzf_read(fp, magic, 4);
-		xbgzf_read(fp, x, 12);
+		if ((fp = bgzf_open(fn, "r")) == 0) return 0;
+		bgzf_read(fp, magic, 4);
+		bgzf_read(fp, x, 12);
 		if (is_be) for (i = 0; i < 3; ++i) ed_swap_4p(&x[i]);
 		if (x[2]) {
 			meta = (uint8_t*)malloc(x[2]);
-			xbgzf_read(fp, meta, x[2]);
+			bgzf_read(fp, meta, x[2]);
 		}
-		xbgzf_read(fp, &n, 4);
+		bgzf_read(fp, &n, 4);
 		if (is_be) ed_swap_4p(&n);
 		idx = hts_idx_init(n, fmt, 0, x[0], x[1]);
 		idx->l_meta = x[2];
 		idx->meta = meta;
 		hts_idx_load_core(idx, fp, HTS_FMT_CSI);
-		xbgzf_close(fp);
+		bgzf_close(fp);
 	} else if (fmt == HTS_FMT_TBI) {
 		BGZF *fp;
 		uint32_t x[8];
-		if ((fp = xbgzf_open(fn, "r")) == 0) return 0;
-		xbgzf_read(fp, magic, 4);
-		xbgzf_read(fp, x, 32);
+		if ((fp = bgzf_open(fn, "r")) == 0) return 0;
+		bgzf_read(fp, magic, 4);
+		bgzf_read(fp, x, 32);
 		if (is_be) for (i = 0; i < 8; ++i) ed_swap_4p(&x[i]);
 		idx = hts_idx_init(x[0], fmt, 0, 14, 5);
 		idx->l_meta = 28 + x[7];
 		idx->meta = (uint8_t*)malloc(idx->l_meta);
 		memcpy(idx->meta, &x[1], 28);
-		xbgzf_read(fp, idx->meta + 28, x[7]);
+		bgzf_read(fp, idx->meta + 28, x[7]);
 		hts_idx_load_core(idx, fp, HTS_FMT_TBI);
-		xbgzf_close(fp);
+		bgzf_close(fp);
 	} else if (fmt == HTS_FMT_BAI) {
 		uint32_t n;
 		FILE *fp;
@@ -814,7 +1010,7 @@ int hts_itr_next(BGZF *fp, hts_itr_t *iter, void *r, hts_readrec_f readrec, void
 	if (iter && iter->finished) return -1;
 	if (iter->read_rest) {
 		if (iter->curr_off) { // seek to the start
-			xbgzf_seek(fp, iter->curr_off, SEEK_SET);
+			bgzf_seek(fp, iter->curr_off, SEEK_SET);
 			iter->curr_off = 0; // only seek once
 		}
 		ret = readrec(fp, hdr, r, &tid, &beg, &end);
@@ -826,13 +1022,13 @@ int hts_itr_next(BGZF *fp, hts_itr_t *iter, void *r, hts_readrec_f readrec, void
 		if (iter->curr_off == 0 || iter->curr_off >= iter->off[iter->i].v) { // then jump to the next chunk
 			if (iter->i == iter->n_off - 1) { ret = -1; break; } // no more chunks
 			if (iter->i < 0 || iter->off[iter->i].v != iter->off[iter->i+1].u) { // not adjacent chunks; then seek
-				xbgzf_seek(fp, iter->off[iter->i+1].u, SEEK_SET);
-				iter->curr_off = xbgzf_tell(fp);
+				bgzf_seek(fp, iter->off[iter->i+1].u, SEEK_SET);
+				iter->curr_off = bgzf_tell(fp);
 			}
 			++iter->i;
 		}
 		if ((ret = readrec(fp, hdr, r, &tid, &beg, &end)) >= 0) {
-			iter->curr_off = xbgzf_tell(fp);
+			iter->curr_off = bgzf_tell(fp);
 			if (tid != iter->tid || beg >= iter->end) { // no need to proceed
 				ret = -1; break;
 			} else if (end > iter->beg && iter->end > beg) return ret;

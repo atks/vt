@@ -84,15 +84,17 @@ void VTOutput::usage(TCLAP::CmdLineInterface& c)
  * @intervals       - intervals stored in this vector
  * @interval_list   - file containing intervals
  * @interval_string - comma delimited intervals in a string 
+ *
+ * todo: merge overlapping sites?
  */ 
-void Program::parse_intervals(std::vector<std::string>& intervals, std::string interval_list, std::string interval_string)
+void Program::parse_intervals(std::vector<GenomeInterval>& intervals, std::string interval_list, std::string interval_string)
 {
     intervals.clear();
     std::map<std::string, uint32_t> m;
 
     if (interval_list!="")
     {
-        htsFile *file = hts_open(interval_list.c_str(), "r", 0);
+        htsFile *file = hts_open(interval_list.c_str(), "r");
         if (file)
         {
             kstring_t *s = &file->line;
@@ -102,7 +104,8 @@ void Program::parse_intervals(std::vector<std::string>& intervals, std::string i
                 if (m.find(ss)==m.end())
        	        {
        	            m[ss] = 1;
-       	            intervals.push_back(ss);
+       	            GenomeInterval interval(ss);
+       	            intervals.push_back(interval);
                 } 
             }
             hts_close(file);
@@ -111,14 +114,15 @@ void Program::parse_intervals(std::vector<std::string>& intervals, std::string i
 
     std::vector<std::string> v;
     if (interval_string!="")
-        split(v, ',', interval_string);
+        split(v, ",", interval_string);
 
    	for (uint32_t i=0; i<v.size(); ++i)
    	{
    	    if (m.find(v[i])==m.end())
         {
             m[v[i]] = 1;
-            intervals.push_back(v[i]);
+             GenomeInterval interval(v[i]);
+            intervals.push_back(interval);
         }
    	}
 }
@@ -137,7 +141,7 @@ void Program::read_sample_list(std::vector<std::string>& samples, std::string sa
 	
     if (sample_list!="")
     {
-        htsFile *file = hts_open(sample_list.c_str(), "r", 0);
+        htsFile *file = hts_open(sample_list.c_str(), "r");
         if (file)
         {
             kstring_t *s = &file->line;

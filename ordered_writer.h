@@ -24,11 +24,11 @@
 #ifndef ORDERED_WRITER_H
 #define ORDERED_WRITER_H
 
-#include <stdlib.h>
-#include <stdint.h>
-#include <string.h>
-#include <math.h>
-#include <float.h>
+#include <cstdlib>
+#include <cstdint>
+#include <cstring>
+#include <cmath>
+#include <cfloat>
 #include <vector>
 #include <map>
 #include <queue>
@@ -93,18 +93,27 @@ class OrderedWriter
      * Gets sequence name of a record
      */
     const char* get_seqname(bcf1_t *v);
-
+    
     /**
-     * Gets record from pool, creates a new record if necessary
+     * Gets record from pool, creates a new record if necessary.
+     * This is exposed so that the programmer may reuse bcf1_ts 
+     * from this class and return to it when writing which is 
+     * essentially stowing it away in a buffer.
      */
     bcf1_t* get_bcf1_from_pool();
-        
+            
     /**
      * Flush writable records from buffer.
      */
     void flush();
     
+    /**
+     * Closes the file.
+     */
+    void close();
+       
     private:
+        
     /**
      * Returns record to pool 
      */ 

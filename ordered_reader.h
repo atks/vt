@@ -26,11 +26,11 @@
 
 #include <queue>
 #include <sstream>
-#include <stdlib.h>
-#include <stdint.h>
-#include <string.h>
-#include <math.h>
-#include <float.h>
+#include <cstdlib>
+#include <cstdint>
+#include <cstring>
+#include <cmath>
+#include <cfloat>
 #include <vector>
 #include <map>
 #include "htslib/vcf.h"
@@ -38,17 +38,32 @@
 #include "htslib/tbx.h"
 #include "htslib/bgzf.h"
 #include "hts_utils.h"
+#include "interval_tree.h"
+#include "genome_interval.h"
 
 /**
  * A class for reading ordered VCF/BCF files.
- * Hides the handling of indices from the user. 
- *
- * Supported for the following cases:
- *   
- * 1) Input is streamed, order is examined.
  * 
- * 2) Input is an indexed file, with selected regions.
+ * Basically a record iterator that hides the
+ * htslib interface from the programs in vt.
+ *
+ * The main impetus for this is that htslib
+ * is currently incorporated as a very early
+ * stage and is thus lacking many feature that
+ * is useful to us at this point in time. This
+ * allows us to isolate the changes required in 
+ * future to simply methods in hts_utils.
+ *
+ * The following cases are supported.
+ *
+ * 1) Input is an unindexed file which is not necessarily ordered.
+ * 2) Input is an indexed file
+ *
+ * This class hides the handling of indices from 
+ * the user and also allows for the selection of 
+ * records in intervals in both cases 1 and 2.
  */
+ 
 class OrderedReader
 {
     public:
@@ -58,7 +73,6 @@ class OrderedReader
     /////// 
     std::string vcf_file;    
     vcfFile *vcf;
-    BGZF *vcfgz; 
     bcf_hdr_t *hdr;  
     hts_idx_t *idx; 
     tbx_t *tbx; 
@@ -66,12 +80,16 @@ class OrderedReader
     bcf1_t *v;
     
     //for control
-    int32_t vcf_ftype;
-    bool need_random_access;
+    int32_t ftype;
+    bool intervals_present;
+    bool index_loaded;
+    bool random_access_enabled;
         
     //list of intervals
-    std::vector<std::string> intervals; //contains intervals of interest, if build is 
+    std::vector<GenomeInterval> intervals; 
     uint32_t interval_index;    
+    std::map<std::string, IntervalTree*> interval_tree;
+    std::list<bcf1_t*> pool; //for storing unused bcf records
         
     //shared objects for string manipulation
     kstring_t s;
@@ -79,20 +97,43 @@ class OrderedReader
     
     /**
      * Initialize files and intervals. 
+     *
+     * @_input_vcf_file     name of the input VCF file
+     * @_intervals          list of intervals, if empty, all records are selected.
      */
-    OrderedReader(std::string _input_vcf_file, std::vector<std::string>& _intervals);
+    OrderedReader(std::string _input_vcf_file, std::vector<GenomeInterval>& _intervals);
       
     /**
      * Returns next vcf record.
      */
-    bool read1(bcf1_t *v);
+    bool read(bcf1_t *v);
     
     /**
-     * Gets sequence name of a record
+     * Returns next set of vcf records at a start position.
+     */
+    bool read_next_position(std::vector<bcf1_t *>& vs);
+    
+    /**
+     * Gets sequence name of a record.
      */
     const char* get_seqname(bcf1_t *v);
     
+    /**
+     * Gets bcf header.
+     */
+    bcf_hdr_t* get_hdr();
+    
     private:
+    /**
+     * Gets record from pool, creates a new record if necessary
+     */
+    bcf1_t* get_bcf1_from_pool();
+    
+    /**
+     * Returns record to pool 
+     */ 
+    void store_bcf1_into_pool(bcf1_t* v);
+        
     /**
      * Initialize next interval.
      * Returns false only if all intervals are accessed.
