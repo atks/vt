@@ -23,124 +23,170 @@
 
 #include "merge_duplicate_variants.h"
 
-int merge_duplicate_variants(int argc, char ** argv)
+namespace
 {
-	//options
-	std::string ivcf_file;
-    std::string ovcf_file;
+
+class Igor : Program
+{
+    public:
+
+    ///////////
+    //options//
+    ///////////
+    std::string input_vcf_file;
+    std::string output_vcf_file;
+    std::vector<GenomeInterval> intervals;
     bool merge_by_pos;
 
-	try
-	{
-		std::string desc =
-"Merges duplicate variants by position with the option of considering alleles.  (This just discards the duplicate variant that appears later in the VCF file)\n\
-$path = /net/fantasia/home/atks/programs/vt\n\
-e.g. $path/vt merge_duplicate_variants -i $path/test/8904indels.dups.genotypes.vcf -o out.vcf\n\
-e.g. $path/vt merge_duplicate_variants -p -i $path/test/8904indels.dups.genotypes.vcf -o out.vcf\n";
+    ///////
+    //i/o//
+    ///////
+    OrderedReader *odr;
+    //OrderedReader *odr;
+    vcfFile *ovcf;
 
-   		std::string version = "0.5";
-		TCLAP::CmdLine cmd(desc, ' ', version);
-		TCLAP::ValueArg<std::string> arg_ovcf_file("o", "output-vcf", "Output VCF file [-]", false, "-", "string", cmd);
-		TCLAP::SwitchArg arg_merge_by_position("p", "merge-by-position", "Merge by position [false]", cmd, false);
-        TCLAP::UnlabeledMultiArg<std::string> arg_input_vcf_files("input-vcf-files", "Input VCF Files", true, "string", cmd);
+    std::vector<bcf1_t*> pool;
+        
+    /////////
+    //stats//
+    /////////
+    uint32_t no_total_variants;
+    uint32_t no_unique_variants;
     
-		cmd.parse(argc, argv);
+    /////////
+    //tools//
+    /////////
+    VariantManip *var_manip;
 
-        if (arg_input_vcf_files.getValue().size()==1)
-		{
-		    ivcf_file = arg_input_vcf_files.getValue()[0];
-		}
-		else
-	    {
-	        //error
-	    }
-		ovcf_file = arg_ovcf_file.getValue();
-		merge_by_pos = arg_merge_by_position.getValue();
-
-		std::clog << "merge_duplicate_variants v0.57\n\n";
-
-		std::clog << "Options: [_] Input VCF File    " << ivcf_file << "\n";
-		std::clog << "         [o] Output VCF File   " << ovcf_file << "\n";
-        std::clog << "         [p] Merge by          " << (merge_by_pos?"position":"position and alleles") << "\n\n";
-
-	}
-	catch (TCLAP::ArgException &e)
-	{
-		std::cerr << "error: " << e.error() << " for arg " << e.argId() << std::endl;
-		abort();
-	}
-
-    bcf_srs_t *sr;
-    sr =  bcf_sr_init();
-    if (!bcf_sr_add_reader(sr, ivcf_file.c_str()))
-            std::cerr << "Failed to open or the file not indexed: " << ivcf_file << "\n";
-
-    bcf_hdr_t *hdr = sr->readers[0].header;
-    bcf_hdr_fmt_text(hdr);
-
-    htsFile *out = hts_open(ovcf_file.c_str(), "w", 0);
-    bcf_add_hs37d5_contig_headers(hdr);
-    vcf_hdr_write(out, hdr);
-    std::map<std::string, uint32_t> variants;
-    std::stringstream ss;
-    uint32_t no_unique_variants = 0;
-    uint32_t no_total_variants = 0;
-    int32_t last_rid = -1;
-    int32_t last_pos0 = -1;
-
-    while (bcf_sr_next_line(sr))
+    Igor(int argc, char **argv)
     {
-        bcf1_t *line = sr->readers[0].buffer[0];
-        bcf_unpack(line, BCF_UN_STR);
+        version = "0.57";
 
-        if (line->rid==last_rid && line->pos==last_pos0)
+        //////////////////////////
+        //options initialization//
+        //////////////////////////
+        try
         {
-            if (!merge_by_pos)
-            {            
-                ss.str("");
-                for (uint32_t i=0; i<line->n_allele; ++i)
-                {
-                    ss << (i?":":"")  << (line->d).allele[i];
-                }
-            
-                if (variants.find(ss.str()) == variants.end())
-                {
-                    variants[ss.str()] = 1;
-                    vcf_write1(out, hdr, line);
-                    ++no_unique_variants;
-                }
-            }
+            std::string desc = "Merges duplicate variants by position with the option of considering alleles.  (This just discards the duplicate variant that appears later in the VCF file)";
+
+            TCLAP::CmdLine cmd(desc, ' ', version);
+            VTOutput my;
+            cmd.setOutput(&my);
+            TCLAP::ValueArg<std::string> arg_intervals("i", "i", "intervals []", false, "", "str", cmd);
+            TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "file", cmd);
+            TCLAP::ValueArg<std::string> arg_output_vcf_file("o", "o", "output VCF file [-]", false, "-", "str", cmd);
+            TCLAP::SwitchArg arg_merge_by_position("p", "merge-by-position", "Merge by position [false]", cmd, false);
+            TCLAP::UnlabeledValueArg<std::string> arg_input_vcf_file("<in.vcf>", "input VCF file", true, "","file", cmd);
+
+            cmd.parse(argc, argv);
+
+            input_vcf_file = arg_input_vcf_file.getValue();
+            output_vcf_file = arg_output_vcf_file.getValue();
+            merge_by_pos = arg_merge_by_position.getValue();
+            parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
         }
-        else
+        catch (TCLAP::ArgException &e)
         {
-            variants.clear();
+            std::cerr << "error: " << e.error() << " for arg " << e.argId() << "\n";
+            abort();
+        }
+    };
+ 
+    void initialize()
+    {
+        //////////////////////
+        //i/o initialization//
+        //////////////////////
+        odr = new OrderedReader(input_vcf_file, intervals);
+        ovcf = NULL;
+        std::cerr << output_vcf_file << "\n";
+        ovcf = vcf_open(output_vcf_file.c_str(), "w");
+        if (ovcf == NULL)
+        {
+            std::cerr <<" ovcf null\n";
+        }
+        //vcf_hdr_write(ovcf, sr->hdrs[0]);
+        
+        ////////////////////////
+        //stats initialization//
+        ////////////////////////
+        no_total_variants = 0;
+        no_unique_variants = 0;
+
+        ////////////////////////
+        //tools initialization//
+        ////////////////////////
+    }
+    
+    void merge_duplicate_variants()
+    {
+        std::map<std::string, uint32_t> variants;
+        std::stringstream ss;
+        uint32_t no_unique_variants = 0;
+        uint32_t no_total_variants = 0;
+        
+        kstring_t var;
+        var.s = 0;
+        var.l = var.m = 0;
+        
+        std::map<std::string, std::vector<bcfptr>> m;
+        std::vector<bcfptr> recs;
+        
+        bcf1_t * v;
+        
+        while (odr->read(v))
+        {
+            bcf_hdr_t *h = odr->get_hdr();
+			bcf_get_variant(h, v, &var);
+			
+			const char* chrom = bcf_get_chrom(h, v);
+            uint32_t pos1 = bcf_get_pos1(v);
             
-            last_rid = line->rid;
-            last_pos0 = line->pos;
-                       
-            if (!merge_by_pos)
-            {    
-                ss.str("");
-                for (uint32_t i=0; i<line->n_allele; ++i)
-                {
-                    ss << (i?":":"")  << (line->d).allele[i];
-                }
+			m.clear();
+			
+//	        if (m.find(var.s)!=m.end())
+//            {
+//        		vcf_write1(ovcf, h, v);
+//        		m[var.s].push_back(recs[i]);
+//        		++no_unique_variants;  
+//            }
+            
+            ++no_total_variants;
                 
-                variants[ss.str()] = 1;
-            }
-            
-            vcf_write1(out, hdr, line);
-            ++no_unique_variants;
         }
 
-        ++no_total_variants;
+        vcf_close(ovcf);    
+    };
+
+    void print_options()
+    {
+        std::clog << "merge_duplicate_variants v" << version << "\n\n";
+
+        std::clog << "options:     input VCF file        " << input_vcf_file << "\n";
+        std::clog << "         [o] output VCF file       " << output_vcf_file << "\n";
+        std::clog << "         [p] Merge by              " << merge_by_pos << "\n";
+        std::clog << "         [i] intervals             " << intervals.size() <<  " intervals\n";
+        std::clog << "\n";
     }
 
-    hts_close(out);
-    bcf_sr_destroy(sr);
+    void print_stats()
+    {
+        std::clog << "stats: Total Number of Observed Variants   " << no_total_variants << "\n";
+        std::clog << "       Total Number of Unique Variants     " << no_unique_variants << "\n\n";
+    };
 
-    std::cerr << "Stats: Total Number of Observed Variants   " << no_total_variants << "\n";
-    std::cerr << "       Total Number of Unique Variants     " << no_unique_variants << "\n\n";
+    ~Igor() {};
 
-    return 0;
+    private:
+};
+
+}
+
+void merge_duplicate_variants(int argc, char ** argv)
+{
+    Igor igor(argc, argv);
+    igor.print_options();
+    igor.initialize();
+    igor.merge_duplicate_variants();
+    igor.print_stats();
 };

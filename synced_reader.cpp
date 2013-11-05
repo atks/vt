@@ -29,14 +29,10 @@
 SyncedReader::SyncedReader(std::vector<std::string> _vcf_files, std::vector<std::string> _intervals)
 {
     vcf_files = _vcf_files;
-    intervals = _intervals;
-    interval_index = 0;
-
     nfiles = vcf_files.size();
     vcfs.resize(nfiles);
-    vcfgzs.resize(nfiles);
-
-    hdrs.resize(nfiles);
+    
+    hdrs.resize(nfiles, NULL);
     idxs.resize(nfiles, NULL);
     tbxs.resize(nfiles, NULL);
     itrs.resize(nfiles);
@@ -45,68 +41,51 @@ SyncedReader::SyncedReader(std::vector<std::string> _vcf_files, std::vector<std:
     current_pos1 = 0;
     
     buffer.resize(nfiles);
-
     s.s = 0; s.l = s.m = 0;
     
     //initialize indices
     for (int32_t i = 0; i<nfiles; ++i)
-    {
-        int32_t vcf_ftype = zfile_type(vcf_files[i].c_str());
-
-        if (vcf_ftype==IS_STDIN||vcf_ftype==IS_VCF)
+    {        
+        vcfs[i] = bcf_open(vcf_files[i].c_str(), "r");
+        hdrs[i] = bcf_alt_hdr_read(vcfs[i]);
+                  
+        if (i==0)
         {
-            //fine if first file
-            if (i==0)
-            {
-                vcfs[i] = vcf_open(vcf_files[i].c_str(), modify_mode(vcf_files[i].c_str(), 'r'), 0);
-                hdrs[i] = vcf_hdr_read(vcfs[i]);
-                bcf_hdr_append(hdrs[i], "##INFO=<ID=AF,Number=A,Type=Float,Description=\"Allele Frequency, for each ALT allele, in the same order as listed\">");
-                bcf_hdr_sync(hdrs[i]);
-            }
-            else
-            {
-                
-                std::cerr << vcf_files[i] << " should be an indexed VCF file unless it is the first file\n";
-                exit(1);
-            }
-        }
-        else if (vcf_ftype==IS_BCF)
-        {
-            vcfs[i] = vcf_open(vcf_files[i].c_str(), modify_mode(vcf_files[i].c_str(), 'r'), 0);
-            hdrs[i] = vcf_hdr_read(vcfs[i]);
-            if (!(idxs[i]=bcf_index_load(vcf_files[i].c_str())))
-            {
-                fprintf(stderr, "[E::%s] fail to load index for %s\n", __func__, vcf_files[i].c_str());
-                exit(1);
-            }
-        }
-        else if (vcf_ftype==IS_VCF_GZ)
-        {
-            vcfs[i] = vcf_open(vcf_files[i].c_str(), modify_mode(vcf_files[i].c_str(), 'r'), 0);
-            hdrs[i] = vcf_alt_hdr_read(vcfs[i]);
-            bcf_add_hs37d5_contig_headers(hdrs[i]);
-//            bcf_hdr_append(hdrs[i], "##INFO=<ID=AC,Number=A,Type=Integer,Description=\"Allele count in genotypes\">");
-//            bcf_hdr_append(hdrs[i], "##INFO=<ID=AN,Number=1,Type=Integer,Description=\"Total number of alleles in called genotypes\">");
-//            bcf_hdr_append(hdrs[i], "##INFO=<ID=AF,Number=A,Type=Float,Description=\"Allele Frequency, for each ALT allele, in the same order as listed\">");
-//            bcf_hdr_append(hdrs[i], "##INFO=<ID=FR,Number=A,Type=Float,Description=\"Allele Frequency, for each ALT allele, in the same order as listed\">");
-//            bcf_hdr_sync(hdrs[i]);
-            vcf_close(vcfs[i]);
-            
-            vcfs[i] = NULL;
-            vcfgzs[i] = xbgzf_open(vcf_files[i].c_str(), "r");
-            
-            if (!(tbxs[i]=tbx_index_load(vcf_files[i].c_str())))
-            {
-                fprintf(stderr, "[E::%s] fail to load index for %s\n", __func__, vcf_files[i].c_str());
-            	exit(1);
-			}
+            vcfs[i] = bcf_open(vcf_files[i].c_str(), "r");
+            hdrs[i] = bcf_alt_hdr_read(vcfs[i]);
         }
         else
-        {
-            std::cerr << vcf_files[i] << " is not a VCF or BCF file\n";
+        {   
+            std::cerr << vcf_files[i] << " should be an indexed VCF file unless it is the first file\n";
             exit(1);
         }
+    
+        if (!(idxs[i]=bcf_index_load(vcf_files[i].c_str())))
+        {
+            fprintf(stderr, "[E::%s] fail to load index for %s\n", __func__, vcf_files[i].c_str());
+            exit(1);
+        }
+            
+        if (!(tbxs[i]=tbx_index_load(vcf_files[i].c_str())))
+        {
+            fprintf(stderr, "[E::%s] fail to load index for %s\n", __func__, vcf_files[i].c_str());
+        	exit(1);
+	    }
     }
+    
+    for (uint32_t i=0; i<_intervals.size(); ++i)
+        intervals.push_back(GenomeInterval(_intervals[i]));
+    interval_index = 0;
+}
+
+/**
+ * Constructor.
+ */
+SyncedReader::SyncedReader(std::string vcf_file, std::vector<std::string> _intervals)
+{
+    std::vector<std::string> v;
+    v.push_back(vcf_file);
+    SyncedReader(v, _intervals);
 }
 
 /**
@@ -123,7 +102,7 @@ const char* SyncedReader::get_seqname(int32_t i, bcf1_t *v)
 std::string SyncedReader::get_current_sequence()
 {
     std::vector<std::string> s;
-    split(s, ':', current_interval);
+    split(s, ":", current_interval);
     if (s.size()==0)
     {
         return "";
@@ -160,27 +139,33 @@ bool SyncedReader::initialize_next_interval()
     	neofs = 0;
 
     	//update iterators to point at the next region
-    	current_interval = intervals[interval_index];
+    	GenomeInterval interval = intervals[interval_index];
 		interval_index++;
+    
     
 	    for (int32_t i = 0; i<nfiles; ++i)
     	{
-        	int32_t vcf_ftype = tbxs[i]==NULL ? IS_BCF : IS_VCF_GZ;
-			hts_itr_destroy(itrs[i]); itrs[i] = 0;
+        	int32_t ftype = hts_file_type(vcf_files[i].c_str());
+			hts_itr_destroy(itrs[i]); 
+			itrs[i] = 0;
         	
-        	if (vcf_ftype==IS_BCF)
+        	if (ftype==FT_BCF_GZ)
         	{
-				if (!(itrs[i] = bcf_itr_querys(idxs[i], hdrs[i], current_interval.c_str())))
-				{
-			    	++neofs;
-				}
+        	    int tid = bcf_hdr_name2id(hdrs[i], interval.seq.c_str());
+            	itrs[i] = bcf_itr_queryi(idxs[i], tid, interval.start1, interval.end1+1);
+            	if (itrs[i]) 
+            	{
+            	    ++neofs;
+    		    }
 			}
-			else if (vcf_ftype==IS_VCF_GZ)
+			else if (ftype==FT_VCF_GZ)
 	    	{
-	        	if (!(itrs[i] = tbx_itr_querys(tbxs[i], current_interval.c_str())))
-	        	{
-	            	++neofs;
-				}
+	    	    int tid = tbx_name2id(tbxs[i], interval.seq.c_str());
+            	itrs[i] = tbx_itr_queryi(tbxs[i], tid, interval.start1, interval.end1+1);
+            	if (itrs[i])
+                {
+                    ++neofs;
+    		    }
 	    	}
 	    }
 
@@ -324,33 +309,25 @@ void SyncedReader::fill_buffer(int32_t i)
     }    
     
     int32_t pos1 = buffer[i].size()==0 ? 0 : bcf_get_pos1(buffer[i].front());
-    int32_t vcf_ftype = tbxs[i]==NULL ? IS_BCF : IS_VCF_GZ;
+    
+    s.l = 0;
+    while (itrs[i] && tbx_itr_next(vcfs[i], tbxs[i], itrs[i], &s) >= 0)
+    {
+        bcf1_t *v = get_bcf1_from_pool();
+        vcf_parse1(&s, hdrs[i], v);
+        bcf_unpack(v, BCF_UN_FLT);
+        bcf_get_pos1(v);
+        buffer[i].push_back(v);
+        insert_into_pq(i, v);
 
-    if (vcf_ftype==IS_BCF)
-    {
-		//to be implemented later
-	}
-	else if (vcf_ftype==IS_VCF_GZ)
-    {
-        s.l = 0;
-        while (itrs[i] && tbx_itr_next(vcfgzs[i], tbxs[i], itrs[i], &s) >= 0)
+        if (pos1==0)
         {
-            bcf1_t *v = get_bcf1_from_pool();
-            vcf_parse1(&s, hdrs[i], v);
-            bcf_unpack(v, BCF_UN_FLT);
-            bcf_get_pos1(v);
-            buffer[i].push_back(v);
-            insert_into_pq(i, v);
-
-            if (pos1==0)
-            {
-                pos1 = bcf_get_pos1(v);
-            }
-            
-            if (bcf_get_pos1(v)!=pos1)
-            {
-                break;
-            }
+            pos1 = bcf_get_pos1(v);
+        }
+        
+        if (bcf_get_pos1(v)!=pos1)
+        {
+            break;
         }
     }
 }

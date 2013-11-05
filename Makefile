@@ -5,20 +5,20 @@ ifeq ($(UNAME), Linux)
 endif
 
 	
-OPTFLAG ?= -O3 -ggdb
-INCLUDES = -I./lib/include/ -I.
+OPTFLAG ?= -O0 -ggdb
+INCLUDES = -I./lib/include/ -I. -I./lib/include/htslib
 CFLAGS = -pipe $(STD) $(OPTFLAG) $(INCLUDES) -D__STDC_LIMIT_MACROS
-CXX = g++
-CC = gcc
+CXX = clang++
 
 HEADERSONLY =
 SOURCES = program\
-		filter\
 		variant_manip\
 		log_tool\
 		interval_tree\
+		genome_interval\
 		rb_tree\
 		hts_utils\
+		utils\
 		ordered_reader\
 		ordered_writer\
 		synced_reader\
@@ -32,8 +32,7 @@ TOOLSRC = $(SOURCES:=.cpp) $(SOURCESONLY)
 TOOLOBJ = $(TOOLSRC:.cpp=.o)
 LIBHTS = lib/include/htslib/libhts.a
 
-all : ${LIBHTS} $(TARGET)
-	
+all : ${LIBHTS} $(TARGET)	
 
 ${LIBHTS} : 
 	cd lib/include/htslib; $(MAKE) CC="$(CC)" CFLAGS="$(CFLAGS)" libhts.a || exit 1; cd ..
@@ -47,7 +46,5 @@ $(TOOLOBJ): $(HEADERSONLY)
 	$(CXX) $(CFLAGS) -o $@ -c $*.cpp
 
 clean:
-	echo $(UNAME)
-	echo $(STD)
 	-rm -rf $(TARGET) $(TOOLOBJ)
 

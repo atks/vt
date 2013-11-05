@@ -24,21 +24,23 @@
 #ifndef SYNCED_READER_H
 #define SYNCED_READER_H
 
-#include <stdlib.h>
-#include <stdint.h>
-#include <string.h>
-#include <math.h>
-#include <float.h>
+#include <cstdlib>
+#include <cstdint>
+#include <cstring>
+#include <cmath>
+#include <cfloat>
 #include <vector>
 #include <map>
 #include <queue>
 #include <list>
+#include "htslib/hts.h"
 #include "htslib/vcf.h"
 #include "htslib/vcfutils.h"
 #include "htslib/tbx.h"
 #include "tclap/CmdLine.h"
 #include "tclap/Arg.h"
 #include "hts_utils.h"
+#include "genome_interval.h"
 
 /**
  * Wrapper class for the bcf object.
@@ -69,13 +71,13 @@ class CompareBCFPtr
  * A class for reading files in a synced fashion.
  * All variants at the same position are read and placed in a processing vector.
  *
- * This is support for the following cases:
+ * This is supported for the following cases:
  *   
  * 1) Contigs headers present and VCFs are indexed
- *    All contigs are merged and VCFs are accessd by contigs, thus only order is 
+ *    All contigs are merged and VCFs are accessed by contigs, thus only order is 
  *    expected within a contig. 
  * 
- * 2) First VCF is not indexed but ordered and the other VCFs are indexed
+ * 2) First VCF is not necessarily indexed but ordered and the other VCFs are indexed.
  *
  * We assume that all the compared VCFs are based on the same reference sequence.
  * If the contigs are not present, contigs can be assumed by build of assembly or 
@@ -90,7 +92,6 @@ class SyncedReader
     /////// 
     std::vector<std::string> vcf_files; //file names
     std::vector<vcfFile *> vcfs; //file objects
-    std::vector<BGZF *> vcfgzs; //for vcf gzs
     std::vector<bcf_hdr_t *> hdrs; // headers 
     std::vector<hts_idx_t *> idxs; // indices
     std::vector<tbx_t *> tbxs; // for tabix
@@ -100,7 +101,7 @@ class SyncedReader
     
     //list of contigs
     //inferred from headers or from user defined list
-    std::vector<std::string> intervals;
+    std::vector<GenomeInterval> intervals;
     uint32_t interval_index;    
     std::string current_interval;
     int32_t current_pos1;
@@ -122,7 +123,12 @@ class SyncedReader
      * Initialize files and intervals.
      */
     SyncedReader(std::vector<std::string> _vcf_files, std::vector<std::string> _intervals);
-      
+
+    /**
+     * Initialize files and intervals.
+     */
+    SyncedReader(std::string vcf_file, std::vector<std::string> _intervals);
+       
     /**
      * Returns list of files that have variants at a certain position.
      * 

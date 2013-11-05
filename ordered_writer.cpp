@@ -31,9 +31,24 @@ OrderedWriter::OrderedWriter(std::string _vcf_file, int32_t _window)
     hdr = NULL;
     
     ss.str("");
-    s.s = 0; s.l = s.m = 0;
+    s = {0, 0, 0};
     
-    vcf = vcf_open(vcf_file.c_str(), modify_mode(vcf_file.c_str(), 'w'), 0);
+    int32_t ftype = hts_file_type(vcf_file.c_str());
+    if (!(ftype & (FT_VCF|FT_BCF|FT_STDIN)))
+    {
+        fprintf(stderr, "[%s:%d %s] Not a VCF/BCF file: %s\n", __FILE__,__LINE__,__FUNCTION__, vcf_file.c_str());
+        exit(1);
+    }
+    
+    kstring_t mode = {0,0,0};	 
+	kputc('w', &mode);
+    if (!strcmp("+", vcf_file.c_str())) kputs("bu", &mode);
+    if (ftype & FT_BCF) kputc('b', &mode);
+    if (ftype & FT_GZ) kputc('z', &mode);    
+    	   
+    vcf = bcf_open(vcf_file.c_str(), mode.s);
+
+    if (mode.m) free(mode.s);
 }
 
 /**
@@ -50,31 +65,6 @@ const char* OrderedWriter::get_seqname(bcf1_t *v)
 void OrderedWriter::set_hdr(bcf_hdr_t *_hdr)
 {
     hdr = _hdr;
-}
-
-/**
- * Gets record from pool, creates a new record if necessary
- */
-bcf1_t* OrderedWriter::get_bcf1_from_pool()
-{    
-    if(!pool.empty())
-    {
-        bcf1_t* v = pool.front();
-        pool.pop_front();
-        return v;
-    }
-    else
-    {
-        return bcf_init1(); 
-    }
-};
-
-/**
- * Returns record to pool 
- */ 
-void OrderedWriter::store_bcf1_into_pool(bcf1_t* v)
-{
-    pool.push_back(v);
 }
 
 /**
@@ -130,7 +120,8 @@ void OrderedWriter::write1(bcf1_t *v)
  */
 void OrderedWriter::write_hdr()
 {   
-    vcf_hdr_write(vcf, hdr);
+    bcf_hdr_fmt_text(hdr);
+    bcf_hdr_write(vcf, hdr);
 }
 
 /**
@@ -142,6 +133,31 @@ void OrderedWriter::flush()
 }
 
 /**
+ * Returns record to pool 
+ */ 
+void OrderedWriter::store_bcf1_into_pool(bcf1_t* v)
+{
+    pool.push_back(v);
+}
+
+/**
+ * Gets record from pool, creates a new record if necessary
+ */
+bcf1_t* OrderedWriter::get_bcf1_from_pool()
+{    
+    if(!pool.empty())
+    {
+        bcf1_t* v = pool.front();
+        pool.pop_front();
+        return v;
+    }
+    else
+    {
+        return bcf_init1(); 
+    }
+};
+
+/**
  * Flush writable records from buffer.
  */
 void OrderedWriter::flush(bool force)
@@ -150,7 +166,7 @@ void OrderedWriter::flush(bool force)
     {
         while (!buffer.empty())
         {
-            vcf_write1(vcf, hdr, buffer.back());
+            bcf_write(vcf, hdr, buffer.back());
             store_bcf1_into_pool(buffer.back());
             buffer.pop_back();
         }
@@ -165,7 +181,7 @@ void OrderedWriter::flush(bool force)
             {
                 if (bcf_get_pos1(buffer.back())<cutoff_pos1)
                 {
-                    vcf_write1(vcf, hdr, buffer.back());
+                    bcf_write(vcf, hdr, buffer.back());
                     store_bcf1_into_pool(buffer.back());
                     buffer.pop_back();
                 }
@@ -176,4 +192,12 @@ void OrderedWriter::flush(bool force)
             }
         }
     }
+}
+
+/**
+ * Closes the file.
+ */
+void OrderedWriter::close()
+{    
+    bcf_close(vcf);
 }

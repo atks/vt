@@ -3,9 +3,10 @@
 #include <ctype.h>
 #include <stdio.h>
 #include <assert.h>
-#include "tbx.h"
+#include "htslib/tbx.h"
+#include "htslib/bgzf.h"
 
-#include "khash.h"
+#include "htslib/khash.h"
 KHASH_DECLARE(s2i, kh_cstr_t, int64_t)
 
 tbx_conf_t tbx_conf_gff = { 0, 1, 4, 5, '#', 0 };
@@ -115,7 +116,7 @@ static inline int get_intv(tbx_t *tbx, kstring_t *str, tbx_intv_t *intv, int is_
 int tbx_readrec(BGZF *fp, tbx_t *tbx, kstring_t *s, int *tid, int *beg, int *end)
 {
 	int ret;
-	if ((ret = xbgzf_getline(fp, '\n', s)) >= 0) {
+	if ((ret = bgzf_getline(fp, '\n', s)) >= 0) {
 		tbx_intv_t intv;
 		get_intv(tbx, s, &intv, 0);
 		*tid = intv.tid; *beg = intv.beg; *end = intv.end;
@@ -168,10 +169,10 @@ tbx_t *tbx_index(BGZF *fp, int min_shift, const tbx_conf_t *conf)
 	tbx->conf = *conf;
 	if (min_shift > 0) n_lvls = (TBX_MAX_SHIFT - min_shift + 2) / 3, fmt = HTS_FMT_CSI;
 	else min_shift = 14, n_lvls = 5, fmt = HTS_FMT_TBI;
-	while ((ret = xbgzf_getline(fp, '\n', &str)) >= 0) {
+	while ((ret = bgzf_getline(fp, '\n', &str)) >= 0) {
 		++lineno;
 		if (lineno <= tbx->conf.line_skip || str.s[0] == tbx->conf.meta_char) {
-			last_off = xbgzf_tell(fp);
+			last_off = bgzf_tell(fp);
 			continue;
 		}
 		if (first == 0) {
@@ -179,10 +180,12 @@ tbx_t *tbx_index(BGZF *fp, int min_shift, const tbx_conf_t *conf)
 			first = 1;
 		}
 		get_intv(tbx, &str, &intv, 1);
-		ret = hts_idx_push(tbx->idx, intv.tid, intv.beg, intv.end, xbgzf_tell(fp), 1);
+		ret = hts_idx_push(tbx->idx, intv.tid, intv.beg, intv.end, bgzf_tell(fp), 1);
 		if (ret < 0) break;
 	}
-	hts_idx_finish(tbx->idx, xbgzf_tell(fp));
+	if ( !tbx->idx ) tbx->idx = hts_idx_init(0, fmt, last_off, min_shift, n_lvls);   // empty file
+	if ( !tbx->dict ) tbx->dict = kh_init(s2i);
+	hts_idx_finish(tbx->idx, bgzf_tell(fp));
 	tbx_set_meta(tbx);
 	free(str.s);
 	return tbx;
@@ -206,9 +209,9 @@ int tbx_index_build(const char *fn, int min_shift, const tbx_conf_t *conf)
 {
 	tbx_t *tbx;
 	BGZF *fp;
-	if ((fp = xbgzf_open(fn, "r")) == 0) return -1;
+	if ((fp = bgzf_open(fn, "r")) == 0) return -1;
 	tbx = tbx_index(fp, min_shift, conf);
-	xbgzf_close(fp);
+	bgzf_close(fp);
 	hts_idx_save(tbx->idx, fn, min_shift > 0? HTS_FMT_CSI : HTS_FMT_TBI);
 	tbx_destroy(tbx);
 	return 0;

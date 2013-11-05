@@ -24,23 +24,23 @@
 #ifndef MERGE_DUPLICATE_VARIANTS_H
 #define MERGE_DUPLICATE_VARIANTS_H
 
-#include <stdlib.h>
-#include <stdint.h>
-#include <string.h>
-#include <math.h>
-#include <float.h>
+#include <cstdlib>
+#include <cstdint>
+#include <cstring>
+#include <cmath>
+#include <cfloat>
 #include <vector>
 #include <map>
-#include <queue>
 #include "htslib/vcf.h"
-#include "htslib/vcfutils.h"
-#include "tclap/CmdLine.h"
-#include "tclap/Arg.h"
+#include "htslib/kseq.h"
 #include "hts_utils.h"
-extern "C"{
-    #include "htslib/synced_bcf_reader.h"
-}
+#include "synced_reader.h"
+#include "ordered_reader.h"
+#include "ordered_writer.h"
+#include "variant_manip.h"
+#include "program.h"
+#include "genome_interval.h"
 
-int merge_duplicate_variants(int argc, char ** argv);
+void merge_duplicate_variants(int argc, char ** argv);
     
 #endif

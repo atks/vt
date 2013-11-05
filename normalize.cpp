@@ -35,8 +35,7 @@ class Igor : Program
     ///////////
     std::string input_vcf_file;
     std::string output_vcf_file;
-    std::vector<std::string> intervals;
-    std::string build;
+    std::vector<GenomeInterval> intervals;
     std::string ref_fasta_file;
 
     ///////
@@ -47,27 +46,28 @@ class Igor : Program
     bcf1_t *v;
 
     kstring_t s;
-    kstring_t old_allele;
+    kstring_t new_alleles;
+    kstring_t old_alleles;
 
     /////////
     //stats//
     /////////
     uint32_t no_lt;    //# left trimmed
-	uint32_t no_lt_la; //# left trimmed and left aligned
-	uint32_t no_lt_rt; //# left trimmed and right trimmed
-	uint32_t no_la;    //# left aligned
-	uint32_t no_rt;    //# right trimmed
+    uint32_t no_lt_la; //# left trimmed and left aligned
+    uint32_t no_lt_rt; //# left trimmed and right trimmed
+    uint32_t no_la;    //# left aligned
+    uint32_t no_rt;    //# right trimmed
 
-	uint32_t no_multi_lt;      //# left trimmed
-	uint32_t no_multi_lt_la;   //# left trimmed and left aligned
-	uint32_t no_multi_lt_rt;   //# left trimmed and right trimmed
-	uint32_t no_multi_la;      //# left aligned
-	uint32_t no_multi_rt;      //# right trimmed
+    uint32_t no_multi_lt;      //# left trimmed
+    uint32_t no_multi_lt_la;   //# left trimmed and left aligned
+    uint32_t no_multi_lt_rt;   //# left trimmed and right trimmed
+    uint32_t no_multi_la;      //# left aligned
+    uint32_t no_multi_rt;      //# right trimmed
 
     /////////
     //tools//
     /////////
-	VariantManip *var_manip;
+    VariantManip *var_manip;
 
     Igor(int argc, char **argv)
     {
@@ -76,31 +76,31 @@ class Igor : Program
         //////////////////////////
         //options initialization//
         //////////////////////////
-    	try
-    	{
-    		std::string desc = "normalizes variants in a VCF file";
+        try
+        {
+            std::string desc = "normalizes variants in a VCF file";
 
             TCLAP::CmdLine cmd(desc, ' ', version);
             VTOutput my;
             cmd.setOutput(&my);
-    		TCLAP::ValueArg<std::string> arg_ref_fasta_file("r", "r", "reference sequence fasta file []", true, "", "str", cmd);
-    		TCLAP::ValueArg<std::string> arg_intervals("i", "i", "intervals []", false, "", "str", cmd);
-    		TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "file", cmd);
-    		TCLAP::ValueArg<std::string> arg_output_vcf_file("o", "o", "output VCF file [-]", false, "-", "str", cmd);
-    		TCLAP::UnlabeledValueArg<std::string> arg_input_vcf_file("<in.vcf>", "input VCF file", true, "","file", cmd);
+            TCLAP::ValueArg<std::string> arg_ref_fasta_file("r", "r", "reference sequence fasta file []", true, "", "str", cmd);
+            TCLAP::ValueArg<std::string> arg_intervals("i", "i", "intervals []", false, "", "str", cmd);
+            TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "file", cmd);
+            TCLAP::ValueArg<std::string> arg_output_vcf_file("o", "o", "output VCF file [-]", false, "-", "str", cmd);
+            TCLAP::UnlabeledValueArg<std::string> arg_input_vcf_file("<in.vcf>", "input VCF file", true, "","file", cmd);
 
-    		cmd.parse(argc, argv);
+            cmd.parse(argc, argv);
 
             input_vcf_file = arg_input_vcf_file.getValue();
-    		output_vcf_file = arg_output_vcf_file.getValue();
-    		parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
-    		ref_fasta_file = arg_ref_fasta_file.getValue();
-    	}
-    	catch (TCLAP::ArgException &e)
-    	{
-    		std::cerr << "error: " << e.error() << " for arg " << e.argId() << "\n";
-    		abort();
-    	}
+            output_vcf_file = arg_output_vcf_file.getValue();
+            parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
+            ref_fasta_file = arg_ref_fasta_file.getValue();
+        }
+        catch (TCLAP::ArgException &e)
+        {
+            std::cerr << "error: " << e.error() << " for arg " << e.argId() << "\n";
+            abort();
+        }
     };
 
     void initialize()
@@ -111,140 +111,145 @@ class Igor : Program
         odr = new OrderedReader(input_vcf_file, intervals);
         odw = new OrderedWriter(output_vcf_file);
         bcf_hdr_append(odr->hdr, "##INFO=<ID=OLD_VARIANT,Number=1,Type=String,Description=\"Original chr:pos:ref:alt encoding\">\n");
-        bcf_add_hs37d5_contig_headers(odr->hdr);
-        bcf_hdr_fmt_text(odr->hdr);
         odw->set_hdr(odr->hdr);
         odw->write_hdr();
 
         s.s = 0;
         s.l = s.m = 0;
 
-        old_allele.s = 0;
-        old_allele.l = old_allele.m = 0;
+        old_alleles = {0, 0 ,0};
+        new_alleles = {0, 0 ,0};
 
         ////////////////////////
         //stats initialization//
         ////////////////////////
         no_lt = 0;
-    	no_lt_la = 0;
-    	no_lt_rt = 0;
-    	no_la = 0;
-    	no_rt = 0;
+        no_lt_la = 0;
+        no_lt_rt = 0;
+        no_la = 0;
+        no_rt = 0;
 
-    	no_multi_lt = 0;
-    	no_multi_lt_la = 0;
-    	no_multi_lt_rt = 0;
-    	no_multi_la = 0;
-    	no_multi_rt = 0;
+        no_multi_lt = 0;
+        no_multi_lt_la = 0;
+        no_multi_lt_rt = 0;
+        no_multi_la = 0;
+        no_multi_rt = 0;
 
-    	////////////////////////
+        ////////////////////////
         //tools initialization//
         ////////////////////////
-    	var_manip = new VariantManip(ref_fasta_file);
-	}
+        var_manip = new VariantManip(ref_fasta_file);
+    }
+
+    int32_t classify_variant(bcf_hdr_t *h, bcf1_t *v, std::string& motif, uint32_t& tlen)
+    {
+        return var_manip->classify_variant(bcf_get_chrom(h, v), bcf_get_pos1(v), bcf_get_allele(v), bcf_get_n_allele(v), motif, tlen);
+    }
 
     void normalize()
     {
         v = odw->get_bcf1_from_pool();
 
-        while (odr->read1(v))
+        uint32_t left_aligned = 0;
+        uint32_t left_trimmed = 0;
+        uint32_t right_trimmed = 0;
+
+        int32_t ambiguous_variant_types = (VT_MNP | VT_INDEL | VT_COMPLEX);
+
+        while (odr->read(v))
         {
             bcf_unpack(v, BCF_UN_INFO);
-            bcf_get_pos1(v);
-            bcf_set_variant_types(v);
+            std::string motif;
+            uint32_t tlen;
+            int32_t vtype = classify_variant(odr->hdr, v, motif, tlen);
 
-            if (bcf_get_var_type(v) == VCF_INDEL || bcf_get_var_type(v) == VCF_OTHER ||bcf_get_var_type(v) == VCF_MNP )
+            if (vtype & ambiguous_variant_types)
             {
                 const char* chrom = odr->get_seqname(v);
                 uint32_t pos1 = bcf_get_pos1(v);
-                
-                //transfer alleles into a vector (not really a good choice of a data structure ...)
                 std::vector<std::string> alleles;
                 for (uint32_t i=0; i<bcf_get_n_allele(v); ++i)
                 {
                     alleles.push_back(std::string(bcf_get_alt(v, i)));
                 }
-
-                uint32_t left_aligned = 0;
-    	    	uint32_t left_trimmed = 0;
-                uint32_t right_trimmed = 0;
-
+                left_aligned = left_trimmed = right_trimmed = 0;
                 var_manip->left_align(alleles, pos1, chrom, left_aligned, right_trimmed);
                 var_manip->left_trim(alleles, pos1, left_trimmed);
 
-                bool changed = left_trimmed || left_aligned || right_trimmed;
+                if (left_trimmed || left_aligned || right_trimmed)
+                {
+                    old_alleles.l = 0;
+                    bcf_format_variant(odr->hdr, v, &old_alleles);
+                    bcf_update_info_string(odr->hdr, v, "OLD_VARIANT", old_alleles.s);
 
-        	    if (changed)
-        	    {
-        	        old_allele.l=0; //this is a hack. why the hell was bcf implemented to be not modifiable friendly??
-        	        bcf_format_variant(odr->hdr, v, &old_allele);
+                    bcf_set_pos1(v, pos1);
+                    new_alleles.l=0;
+                    for (uint32_t i=0; i<alleles.size(); ++i)
+                    {
+                        if (i) kputc(',', &new_alleles);
+                        kputs(alleles[i].c_str(), &new_alleles);
+                    }
+                    bcf_update_alleles_str(odr->hdr, v, new_alleles.s);
 
-        	        bcf_set_pos1(v, pos1);
-        	        bcf_set_allele(v, alleles);
-        	        bcf_add_info(odr->hdr, v, BCF_BT_CHAR, const_cast<char *>("OLD_VARIANT"), (uint8_t*)old_allele.s, old_allele.l);
-
-        	        vcf_format1(odw->hdr, v, &s);
-        	        vcf_parse1(&s, odw->hdr, v);
-
-        	        if (bcf_get_n_allele(v)==2)
-        	        {
-        	            if (left_trimmed)
-        	            {
-            	            if (left_aligned)
-            	            {
-            	                ++no_lt_la;
-            	            }
-            	            else if (right_trimmed)
-            	            {
-            	                ++no_lt_rt;
-            	            }
-            	            else
-        	                {
-        	                    ++no_lt;
-        	                }
-        	            }
-        	            else
-        	            {
-        	                if (left_aligned)
-            	            {
-            	                ++no_la;
-            	            }
-            	            else if (right_trimmed)
-            	            {
-            	                ++no_rt;
-            	            }
-        	            }
-        	        }
-        	        else
-    	            {
-    	                if (left_trimmed)
-        	            {
-            	            if (left_aligned)
-            	            {
-            	                ++no_multi_lt_la;
-            	            }
-            	            else if (right_trimmed)
-            	            {
-            	                ++no_multi_lt_rt;
-            	            }
-            	            else
-        	                {
-        	                    ++no_multi_lt;
-        	                }
-        	            }
-        	            else
-        	            {
-        	                if (left_aligned)
-            	            {
-            	                ++no_multi_la;
-            	            }
-            	            else if (right_trimmed)
-            	            {
-            	                ++no_multi_rt;
-            	            }
-        	            }
-    	            }
-    	        }
+                    if (bcf_get_n_allele(v)==2)
+                    {
+                        if (left_trimmed)
+                        {
+                            if (left_aligned)
+                            {
+                                ++no_lt_la;
+                            }
+                            else if (right_trimmed)
+                            {
+                                ++no_lt_rt;
+                            }
+                            else
+                            {
+                                ++no_lt;
+                            }
+                        }
+                        else
+                        {
+                            if (left_aligned)
+                            {
+                                ++no_la;
+                            }
+                            else if (right_trimmed)
+                            {
+                                ++no_rt;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        if (left_trimmed)
+                        {
+                            if (left_aligned)
+                            {
+                                ++no_multi_lt_la;
+                            }
+                            else if (right_trimmed)
+                            {
+                                ++no_multi_lt_rt;
+                            }
+                            else
+                            {
+                                ++no_multi_lt;
+                            }
+                        }
+                        else
+                        {
+                            if (left_aligned)
+                            {
+                                ++no_multi_la;
+                            }
+                            else if (right_trimmed)
+                            {
+                                ++no_multi_rt;
+                            }
+                        }
+                    }
+                }
             }
 
             odw->write1(v);
@@ -252,18 +257,22 @@ class Igor : Program
         }
 
         odw->flush();
+        odw->close();
     };
 
     void print_options()
     {
         std::clog << "normalize v" << version << "\n\n";
 
-		std::clog << "options:     input VCF file        " << input_vcf_file << "\n";
-		std::clog << "         [o] output VCF file       " << output_vcf_file << "\n";
+        std::clog << "options:     input VCF file        " << input_vcf_file << "\n";
+        std::clog << "         [o] output VCF file       " << output_vcf_file << "\n";
         std::clog << "         [r] reference FASTA file  " << ref_fasta_file << "\n";
-        std::clog << "         [i] intervals             " << intervals.size() <<  " intervals\n";
-    	std::clog << "\n"; 
-	}
+        if (intervals.size()!=0)
+        {
+            std::clog << "         [i] intervals             " << intervals.size() <<  " intervals\n";
+        }
+        std::clog << "\n";
+    }
 
     void print_stats()
     {
@@ -280,10 +289,10 @@ class Igor : Program
         std::clog << "          no. left trimmed and right trimmed    : " << no_multi_lt_rt << "\n";
         std::clog << "          no. left aligned                      : " << no_multi_la << "\n";
         std::clog << "          no. right trimmed                     : " << no_multi_rt << "\n";
-        std::clog << "\n"; 
+        std::clog << "\n";
     };
 
- 	~Igor() {};
+    ~Igor() {};
 
     private:
 };

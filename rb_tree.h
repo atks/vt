@@ -24,11 +24,11 @@
 #ifndef RB_TREE_H
 #define RB_TREE_H
 
-#include <stdlib.h>
-#include <stdint.h>
-#include <string.h>
-#include <math.h>
-#include <float.h>
+#include <cstdlib>
+#include <cstdint>
+#include <cstring>
+#include <cmath>
+#include <cfloat>
 #include <vector>
 #include <map>
 #include <queue>

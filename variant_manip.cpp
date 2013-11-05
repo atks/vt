@@ -106,8 +106,6 @@ std::string VariantManip::vtype2string(int32_t VTYPE)
  */
 int32_t VariantManip::classify_variant(const char* chrom, uint32_t pos1, char** allele, int32_t n_allele, std::string& motif, uint32_t& tlen)
 {
-	
-	//std::cerr << "classifying " << chrom << ":" << pos1 << ":"  << allele[0] << ":"  << allele[1] << "\n"; 
     int32_t pos0 = pos1-1;
 	int32_t VTYPE = 0;
 	

@@ -31,6 +31,8 @@
 #include "tclap/CmdLine.h"
 #include "tclap/Arg.h"
 #include "hts_utils.h"
+#include "utils.h"
+#include "genome_interval.h"
 
 class VTOutput : public TCLAP::StdOutput
 {
@@ -42,11 +44,9 @@ class VTOutput : public TCLAP::StdOutput
 };
 
 /**
- * Provides an interface 
+ * Provides an interface for programs in vt.
  *
- * @intervals       - intervals stored in this vector
- * @interval_list   - file containing intervals
- * @interval_string - comma delimited intervals in a string 
+ * 
  */ 
 class Program
 {
@@ -66,7 +66,7 @@ class Program
      * @interval_list   - file containing intervals
      * @interval_string - comma delimited intervals in a string 
      */ 
-	void parse_intervals(std::vector<std::string>& intervals, std::string interval_list, std::string interval_string);
+	void parse_intervals(std::vector<GenomeInterval>& intervals, std::string interval_list, std::string interval_string);
 
 	/**
 	 * Parse samples. Processes the sample list. Duplicates are dropped.
