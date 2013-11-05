@@ -35,7 +35,7 @@ LIBHTS = lib/include/htslib/libhts.a
 all : ${LIBHTS} $(TARGET)	
 
 ${LIBHTS} : 
-	cd lib/include/htslib; $(MAKE) CC="$(CC)" CFLAGS="$(CFLAGS)" libhts.a || exit 1; cd ..
+	cd lib/include/htslib; $(MAKE) libhts.a || exit 1; cd ..
 
 $(TARGET) : ${LIBHTS} $(TOOLOBJ)
 	$(CXX) $(CFLAGS) -o $@ $(TOOLOBJ) $(LIBHTS) -lz -lpthread
@@ -47,4 +47,3 @@ $(TOOLOBJ): $(HEADERSONLY)
 
 clean:
 	-rm -rf $(TARGET) $(TOOLOBJ)
-
