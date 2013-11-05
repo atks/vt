@@ -25,8 +25,6 @@
 
 GenomeInterval::GenomeInterval(std::string interval)
 {
-    std::cerr << "interval: " << interval << "\n";
-    
     std::vector<std::string> v;
     split(v, ":-", interval);
     
@@ -50,9 +48,6 @@ GenomeInterval::GenomeInterval(std::string interval)
         fprintf(stderr, "[%s:%d %s] Invalid genomic interval: %s\n", __FILE__,__LINE__,__FUNCTION__, interval.c_str());
         exit(1);
     }
-    
-    std::cerr << "interval       : " << interval << "\n";
-    std::cerr << "parsed interval: " << seq << ":" << start1 << "-" << end1 << "\n";    
 };
 
 /**

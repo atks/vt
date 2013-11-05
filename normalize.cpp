@@ -110,6 +110,7 @@ class Igor : Program
         //////////////////////
         odr = new OrderedReader(input_vcf_file, intervals);
         odw = new OrderedWriter(output_vcf_file);
+        
         bcf_hdr_append(odr->hdr, "##INFO=<ID=OLD_VARIANT,Number=1,Type=String,Description=\"Original chr:pos:ref:alt encoding\">\n");
         odw->set_hdr(odr->hdr);
         odw->write_hdr();
@@ -276,7 +277,7 @@ class Igor : Program
 
     void print_stats()
     {
-        std::clog << "stats: biallelic\n";
+        std::clog << "\nstats: biallelic\n";
         std::clog << "          no. left trimmed                      : " << no_lt << "\n";
         std::clog << "          no. left trimmed and left aligned     : " << no_lt_la << "\n";
         std::clog << "          no. left trimmed and right trimmed    : " << no_lt_rt << "\n";
