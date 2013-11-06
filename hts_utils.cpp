@@ -208,7 +208,8 @@ bcf_hdr_t *bcf_alt_hdr_read(htsFile *fp)
 	FILE *file = fopen(alt_hdr_fn.s, "r");
 	if (!file)
     {
-    	h = bcf_hdr_read(fp);
+    	std::cerr << "[w] reading header\n";
+		h = bcf_hdr_read(fp);
 	}
 	else
     {

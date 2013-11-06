@@ -41,8 +41,7 @@ class Igor : Program
     ///////
     //i/o//
     ///////
-    OrderedReader *odr;
-    //OrderedReader *odr;
+    SyncedReader *sr;
     vcfFile *ovcf;
 
     std::vector<bcf1_t*> pool;
@@ -97,15 +96,10 @@ class Igor : Program
         //////////////////////
         //i/o initialization//
         //////////////////////
-        odr = new OrderedReader(input_vcf_file, intervals);
-        ovcf = NULL;
-        std::cerr << output_vcf_file << "\n";
-        ovcf = vcf_open(output_vcf_file.c_str(), "w");
-        if (ovcf == NULL)
-        {
-            std::cerr <<" ovcf null\n";
-        }
-        //vcf_hdr_write(ovcf, sr->hdrs[0]);
+        std::vector<std::string> vcf_files(1, input_vcf_file);
+        sr = new SyncedReader(vcf_files, intervals);
+        
+        ovcf = bcf_open(output_vcf_file.c_str(), "w");
         
         ////////////////////////
         //stats initialization//
@@ -126,36 +120,51 @@ class Igor : Program
         uint32_t no_total_variants = 0;
         
         kstring_t var;
-        var.s = 0;
-        var.l = var.m = 0;
+        var = {0, 0, 0};
         
         std::map<std::string, std::vector<bcfptr>> m;
         std::vector<bcfptr> recs;
         
         bcf1_t * v;
-        
-        while (odr->read(v))
+        std::vector<bcfptr> current_recs;
+        bcf_hdr_t *h = sr->hdrs[0];
+            
+        while (sr->read_next_position(current_recs))
         {
-            bcf_hdr_t *h = odr->get_hdr();
+            if (current_recs.size()!=1)
+            {
+    			m.clear();
+    			
+    			for (uint32_t i=0; i<current_recs.size(); ++i)
+    			{
+    			}
+    			
+    //	        if (m.find(var.s)!=m.end())
+    //            {
+    //        		vcf_write1(ovcf, h, v);
+    //        		m[var.s].push_back(recs[i]);
+    //        		++no_unique_variants;  
+    //            }                    
+            }
+            else
+            {
+            
+            }                
+            
+
+            
 			bcf_get_variant(h, v, &var);
 			
 			const char* chrom = bcf_get_chrom(h, v);
             uint32_t pos1 = bcf_get_pos1(v);
             
-			m.clear();
-			
-//	        if (m.find(var.s)!=m.end())
-//            {
-//        		vcf_write1(ovcf, h, v);
-//        		m[var.s].push_back(recs[i]);
-//        		++no_unique_variants;  
-//            }
+
             
-            ++no_total_variants;
+            no_total_variants += current_recs.size();
                 
         }
 
-        vcf_close(ovcf);    
+        bcf_close(ovcf);    
     };
 
     void print_options()
@@ -171,8 +180,8 @@ class Igor : Program
 
     void print_stats()
     {
-        std::clog << "stats: Total Number of Observed Variants   " << no_total_variants << "\n";
-        std::clog << "       Total Number of Unique Variants     " << no_unique_variants << "\n\n";
+        std::clog << "\nstats: Total number of observed variants   " << no_total_variants << "\n";
+        std::clog <<   "       Total number of unique variants     " << no_unique_variants << "\n\n";
     };
 
     ~Igor() {};
