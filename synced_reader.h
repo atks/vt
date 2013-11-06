@@ -33,14 +33,12 @@
 #include <map>
 #include <queue>
 #include <list>
+#include "genome_interval.h"
 #include "htslib/hts.h"
 #include "htslib/vcf.h"
-#include "htslib/vcfutils.h"
 #include "htslib/tbx.h"
-#include "tclap/CmdLine.h"
-#include "tclap/Arg.h"
 #include "hts_utils.h"
-#include "genome_interval.h"
+
 
 /**
  * Wrapper class for the bcf object.
@@ -96,11 +94,14 @@ class SyncedReader
     std::vector<hts_idx_t *> idxs; // indices
     std::vector<tbx_t *> tbxs; // for tabix
     std::vector<hts_itr_t *> itrs; //iterators
+    std::vector<int32_t> ftypes; //iterators
     int32_t nfiles; //number of files
     int32_t neofs; //number of files read till eof
     
+    
+    bool indexed_first_file;
+    
     //list of contigs
-    //inferred from headers or from user defined list
     std::vector<GenomeInterval> intervals;
     uint32_t interval_index;    
     std::string current_interval;
@@ -117,18 +118,12 @@ class SyncedReader
     std::priority_queue<int32_t> pqueue;
     
     //useful stuff
-    std::stringstream ss;
     
     /**
      * Initialize files and intervals.
      */
-    SyncedReader(std::vector<std::string> _vcf_files, std::vector<std::string> _intervals);
-
-    /**
-     * Initialize files and intervals.
-     */
-    SyncedReader(std::string vcf_file, std::vector<std::string> _intervals);
-       
+    SyncedReader(std::vector<std::string>& _vcf_files, std::vector<GenomeInterval>& _intervals);
+    
     /**
      * Returns list of files that have variants at a certain position.
      * 

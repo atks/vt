@@ -34,13 +34,13 @@
 #include "htslib/vcf.h"
 #include "htslib/kseq.h"
 #include "hts_utils.h"
+#include "program.h"
+#include "genome_interval.h"
 #include "synced_reader.h"
 #include "ordered_reader.h"
 #include "ordered_writer.h"
 #include "variant_manip.h"
-#include "program.h"
-#include "genome_interval.h"
 
-void merge_duplicate_variants(int argc, char ** argv);
+void merge_duplicate_variants(int argc, char **argv);
     
 #endif

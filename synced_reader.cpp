@@ -26,68 +26,92 @@
 /**
  * Constructor.
  */
-SyncedReader::SyncedReader(std::vector<std::string> _vcf_files, std::vector<std::string> _intervals)
+SyncedReader::SyncedReader(std::vector<std::string>& _vcf_files, std::vector<GenomeInterval>& _intervals)
 {
     vcf_files = _vcf_files;
     nfiles = vcf_files.size();
-    vcfs.resize(nfiles);
-    
+    vcfs.resize(nfiles, NULL);    
     hdrs.resize(nfiles, NULL);
     idxs.resize(nfiles, NULL);
     tbxs.resize(nfiles, NULL);
     itrs.resize(nfiles);
-
+    ftypes.resize(nfiles, -1);
+    
     current_interval = "";
     current_pos1 = 0;
     
     buffer.resize(nfiles);
-    s.s = 0; s.l = s.m = 0;
-    
+    s = {0, 0, 0};
+     
     //initialize indices
     for (int32_t i = 0; i<nfiles; ++i)
-    {        
+    {   
+        ftypes[i] = hts_file_type(vcf_files[i].c_str());
         vcfs[i] = bcf_open(vcf_files[i].c_str(), "r");
         hdrs[i] = bcf_alt_hdr_read(vcfs[i]);
                   
         if (i==0)
         {
-            vcfs[i] = bcf_open(vcf_files[i].c_str(), "r");
-            hdrs[i] = bcf_alt_hdr_read(vcfs[i]);
+            if (!(ftypes[i] & (FT_VCF|FT_BCF|FT_STDIN)))
+            {
+                fprintf(stderr, "[E:%s: %d %s] Not a VCF/BCF file: %s\n", __FILE__, __LINE__, __FUNCTION__, vcf_files[i].c_str());
+                exit(1);
+            }
+            
+            if (ftypes[i]==FT_BCF_GZ)
+            {
+                if ((idxs[i] = bcf_index_load(vcf_files[i].c_str())))
+                {
+                    fprintf(stderr, "[I:%s:%d %s] index loaded for %s\n", __FILE__, __LINE__, __FUNCTION__, vcf_files[i].c_str());
+                }
+                else
+                {
+                    fprintf(stderr, "[I:%s:%d %s] index not loaded for %s\n", __FILE__, __LINE__, __FUNCTION__, vcf_files[i].c_str());
+                }
+            }
+            else if (ftypes[i]==FT_VCF_GZ)
+            {
+                if ((tbxs[i] = tbx_index_load(vcf_files[i].c_str())))
+                {
+                    fprintf(stderr, "[I:%s:%d %s] index loaded for %s\n", __FILE__, __LINE__, __FUNCTION__, vcf_files[i].c_str());
+                }
+                else
+                {
+                    fprintf(stderr, "[I:%s:%d %s] index not loaded for %s\n", __FILE__, __LINE__, __FUNCTION__, vcf_files[i].c_str());
+                }
+            }
         }
         else
-        {   
-            std::cerr << vcf_files[i] << " should be an indexed VCF file unless it is the first file\n";
-            exit(1);
-        }
-    
-        if (!(idxs[i]=bcf_index_load(vcf_files[i].c_str())))
         {
-            fprintf(stderr, "[E::%s] fail to load index for %s\n", __func__, vcf_files[i].c_str());
-            exit(1);
-        }
+            if (!(ftypes[i] & (FT_VCF_GZ|FT_BCF_GZ)))
+            {
+                fprintf(stderr, "[E:%s:%d %s] %s not a VCF_GZ or BCF file\n", __FILE__, __LINE__, __FUNCTION__, vcf_files[i].c_str());
+                exit(1);
+            }
             
-        if (!(tbxs[i]=tbx_index_load(vcf_files[i].c_str())))
-        {
-            fprintf(stderr, "[E::%s] fail to load index for %s\n", __func__, vcf_files[i].c_str());
-        	exit(1);
-	    }
+            if (ftypes[i]==FT_BCF_GZ)
+            {
+                if (!(idxs[i] = bcf_index_load(vcf_files[i].c_str())))
+                {
+                    fprintf(stderr, "[E:%s:%d %s] index cannot be loaded for %s\n", __FILE__, __LINE__, __FUNCTION__, vcf_files[i].c_str());
+                    exit(1);
+                }
+            }
+            else if (ftypes[i]==FT_VCF_GZ)
+            {
+                if (!(tbxs[i] = tbx_index_load(vcf_files[i].c_str())))
+                {
+                    fprintf(stderr, "[E:%s:%d %s] index cannot be loaded for %s\n", __FILE__, __LINE__, __FUNCTION__, vcf_files[i].c_str());
+                    exit(1);
+                }
+            }
+        }
     }
     
-    for (uint32_t i=0; i<_intervals.size(); ++i)
-        intervals.push_back(GenomeInterval(_intervals[i]));
+    intervals = _intervals;
     interval_index = 0;
 }
-
-/**
- * Constructor.
- */
-SyncedReader::SyncedReader(std::string vcf_file, std::vector<std::string> _intervals)
-{
-    std::vector<std::string> v;
-    v.push_back(vcf_file);
-    SyncedReader(v, _intervals);
-}
-
+ 
 /**
  * Gets sequence name of a record.
  */

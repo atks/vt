@@ -60,8 +60,7 @@ OrderedReader::OrderedReader(std::string _vcf_file, std::vector<GenomeInterval>&
             fprintf(stderr, "[W:%s] index not loaded for %s\n", __FUNCTION__, vcf_file.c_str());
         }
     }
-
-    if (ftype==FT_VCF_GZ)
+    else if (ftype==FT_VCF_GZ)
     {
         if ((tbx = tbx_index_load(vcf_file.c_str())))
         {
