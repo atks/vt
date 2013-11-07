@@ -37,13 +37,19 @@ SyncedReader::SyncedReader(std::vector<std::string>& _vcf_files, std::vector<Gen
     itrs.resize(nfiles);
     ftypes.resize(nfiles, -1);
     
+    intervals = _intervals;
+    interval_index = 0;
+    
+    indexed_first_file = false;
     current_interval = "";
     current_pos1 = 0;
     
     buffer.resize(nfiles);
     s = {0, 0, 0};
-     
-    //initialize indices
+    
+    std::map<char*, uint32_t> sequences;
+    bool no_selected_intervals = (intervals.size()==0);
+            
     for (int32_t i = 0; i<nfiles; ++i)
     {   
         ftypes[i] = hts_file_type(vcf_files[i].c_str());
@@ -54,31 +60,22 @@ SyncedReader::SyncedReader(std::vector<std::string>& _vcf_files, std::vector<Gen
         {
             if (!(ftypes[i] & (FT_VCF|FT_BCF|FT_STDIN)))
             {
-                fprintf(stderr, "[E:%s: %d %s] Not a VCF/BCF file: %s\n", __FILE__, __LINE__, __FUNCTION__, vcf_files[i].c_str());
+                fprintf(stderr, "[E:%s:%d %s] %s not a VCF or BCF file\n", __FILE__, __LINE__, __FUNCTION__, vcf_files[i].c_str());
                 exit(1);
             }
             
-            if (ftypes[i]==FT_BCF_GZ)
+            if (load_index(i))
             {
-                if ((idxs[i] = bcf_index_load(vcf_files[i].c_str())))
-                {
-                    fprintf(stderr, "[I:%s:%d %s] index loaded for %s\n", __FILE__, __LINE__, __FUNCTION__, vcf_files[i].c_str());
-                }
-                else
-                {
-                    fprintf(stderr, "[I:%s:%d %s] index not loaded for %s\n", __FILE__, __LINE__, __FUNCTION__, vcf_files[i].c_str());
-                }
+                indexed_first_file = true;  
             }
-            else if (ftypes[i]==FT_VCF_GZ)
+            else
             {
-                if ((tbxs[i] = tbx_index_load(vcf_files[i].c_str())))
-                {
-                    fprintf(stderr, "[I:%s:%d %s] index loaded for %s\n", __FILE__, __LINE__, __FUNCTION__, vcf_files[i].c_str());
-                }
-                else
-                {
-                    fprintf(stderr, "[I:%s:%d %s] index not loaded for %s\n", __FILE__, __LINE__, __FUNCTION__, vcf_files[i].c_str());
-                }
+                fprintf(stderr, "[I:%s:%d %s] index cannot be loaded for %s\n", __FILE__, __LINE__, __FUNCTION__, vcf_files[i].c_str());
+            }
+        
+            if (no_selected_intervals)
+            {
+                add_sequence(i);
             }
         }
         else
@@ -89,28 +86,81 @@ SyncedReader::SyncedReader(std::vector<std::string>& _vcf_files, std::vector<Gen
                 exit(1);
             }
             
-            if (ftypes[i]==FT_BCF_GZ)
+            if (!load_index(i))
             {
-                if (!(idxs[i] = bcf_index_load(vcf_files[i].c_str())))
-                {
-                    fprintf(stderr, "[E:%s:%d %s] index cannot be loaded for %s\n", __FILE__, __LINE__, __FUNCTION__, vcf_files[i].c_str());
-                    exit(1);
-                }
+                fprintf(stderr, "[E:%s:%d %s] index cannot be loaded for %s\n", __FILE__, __LINE__, __FUNCTION__, vcf_files[i].c_str());
+                exit(1);
             }
-            else if (ftypes[i]==FT_VCF_GZ)
+            
+            if (no_selected_intervals)
             {
-                if (!(tbxs[i] = tbx_index_load(vcf_files[i].c_str())))
-                {
-                    fprintf(stderr, "[E:%s:%d %s] index cannot be loaded for %s\n", __FILE__, __LINE__, __FUNCTION__, vcf_files[i].c_str());
-                    exit(1);
-                }
+                add_sequence(i);
             }
         }
     }
-    
-    intervals = _intervals;
-    interval_index = 0;
 }
+
+/**
+ * Populate sequence names from files.
+ */
+void SyncedReader::add_sequence(int32_t i)
+{
+    int32_t nseqs = 0;
+    const char **seq_names = NULL;
+    
+    if (hdrs[i])
+    {
+        seq_names = bcf_hdr_seqnames(hdrs[i], &nseqs);
+        for (uint32_t j=0; j<nseqs; ++j)
+        {
+            std::string seq(seq_names[j]);
+            if (intervals_map.find(seq)==intervals_map.end())
+            {
+                intervals_map[seq] = intervals_map.size();
+                intervals.push_back(GenomeInterval(seq));
+            }
+        }      
+        if(seq_names) free(seq_names);
+    }
+    
+    if (tbxs[i])
+    {
+        seq_names = tbx_seqnames(tbxs[i], &nseqs);
+        for (uint32_t j=0; j<nseqs; ++j)
+        {
+            std::string seq(seq_names[j]);
+            if (intervals_map.find(seq)==intervals_map.end())
+            {
+                intervals_map[seq] = intervals_map.size();
+                intervals.push_back(GenomeInterval(seq));
+            }
+        }
+        if(seq_names) free(seq_names);
+    }
+}  
+
+/**
+ * Load index for the ith file, returns true if successful
+ */
+bool SyncedReader::load_index(int32_t i)
+{
+    if (ftypes[i]==FT_BCF_GZ)
+    {
+        if (!(idxs[i] = bcf_index_load(vcf_files[i].c_str())))
+        {
+            return false;
+        }
+    }
+    else if (ftypes[i]==FT_VCF_GZ)
+    {
+        if (!(tbxs[i] = tbx_index_load(vcf_files[i].c_str())))
+        {
+            return false;
+        }
+    }
+    
+    return true;
+}  
  
 /**
  * Gets sequence name of a record.
@@ -334,24 +384,52 @@ void SyncedReader::fill_buffer(int32_t i)
     
     int32_t pos1 = buffer[i].size()==0 ? 0 : bcf_get_pos1(buffer[i].front());
     
-    s.l = 0;
-    while (itrs[i] && tbx_itr_next(vcfs[i], tbxs[i], itrs[i], &s) >= 0)
+    if (indexed_first_file || i>0)
     {
-        bcf1_t *v = get_bcf1_from_pool();
-        vcf_parse1(&s, hdrs[i], v);
-        bcf_unpack(v, BCF_UN_FLT);
-        bcf_get_pos1(v);
-        buffer[i].push_back(v);
-        insert_into_pq(i, v);
-
-        if (pos1==0)
-        {
-            pos1 = bcf_get_pos1(v);
-        }
+        if (ftypes[i]==FT_BCF_GZ)
+        {   
+            bcf1_t *v = get_bcf1_from_pool();
+            while (itrs[i] && bcf_itr_next(vcfs[i], itrs[i], v) >= 0)
+            {
+                bcf_get_pos1(v);
+                buffer[i].push_back(v);
+                insert_into_pq(i, v);
         
-        if (bcf_get_pos1(v)!=pos1)
-        {
-            break;
+                if (pos1==0)
+                {
+                    pos1 = bcf_get_pos1(v);
+                }
+                
+                if (bcf_get_pos1(v)!=pos1)
+                {
+                    break;
+                }
+                
+                v = get_bcf1_from_pool();
+            }            
+            store_bcf1_into_pool(v); 
+        }
+        else if (ftypes[i]==FT_VCF_GZ)
+        {    
+            while (itrs[i] && tbx_itr_next(vcfs[i], tbxs[i], itrs[i], &s) >= 0)
+            {
+                bcf1_t *v = get_bcf1_from_pool();
+                vcf_parse1(&s, hdrs[i], v);
+                bcf_unpack(v, BCF_UN_FLT);
+                bcf_get_pos1(v);
+                buffer[i].push_back(v);
+                insert_into_pq(i, v);
+        
+                if (pos1==0)
+                {
+                    pos1 = bcf_get_pos1(v);
+                }
+                
+                if (bcf_get_pos1(v)!=pos1)
+                {
+                    break;
+                }
+            }
         }
     }
 }

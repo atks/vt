@@ -35,6 +35,7 @@
 #include "tclap/Arg.h"
 #include "normalize.h"
 #include "merge_duplicate_variants.h"
+#include "peek.h"
 
 void print_time(double t)
 {
@@ -68,7 +69,7 @@ void help()
 
     std::clog << "normalize                 normalize indels\n";
     std::clog << "mergedup                  merge duplicate variants\n";
-    std::clog << "summarize                 summarize variants\n";
+    std::clog << "peek                      summarize variants\n";
     std::clog << "partition                 partition variants\n";
     std::clog << "profile_snps              profile snps\n";
     std::clog << "profile_indels            profile indels\n";
@@ -107,6 +108,10 @@ int main(int argc, char ** argv)
     else if (argc>1 && cmd=="merge_duplicate_variants")
     {
         merge_duplicate_variants(argc-1, ++argv);
+    }
+    else if (argc>1 && cmd=="peek")
+    {
+        peek(argc-1, ++argv);
     }
     else
     {

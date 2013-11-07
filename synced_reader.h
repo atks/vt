@@ -39,7 +39,7 @@
 #include "htslib/tbx.h"
 #include "hts_utils.h"
 
-
+#include "htslib/kstring.h"
 /**
  * Wrapper class for the bcf object.
  */
@@ -71,15 +71,17 @@ class CompareBCFPtr
  *
  * This is supported for the following cases:
  *   
- * 1) Contigs headers present and VCFs are indexed
- *    All contigs are merged and VCFs are accessed by contigs, thus only order is 
- *    expected within a contig. 
- * 
- * 2) First VCF is not necessarily indexed but ordered and the other VCFs are indexed.
+ * 1) All files are indexed. 
  *
- * We assume that all the compared VCFs are based on the same reference sequence.
- * If the contigs are not present, contigs can be assumed by build of assembly or 
- * the user may input the contig names.
+ *    Implemented by simply iterating through all the regions found in all the files.
+ * 
+ * 2) Only the first file is not indexed but ordered.
+ * 
+ *    First file is streamed and the rest of the files are randomly accessed.
+ *
+ * If no intervals are selected by the caller, a union of all sequences are detected
+ * from the files.
+ *
  */
 class SyncedReader
 {
@@ -97,12 +99,12 @@ class SyncedReader
     std::vector<int32_t> ftypes; //iterators
     int32_t nfiles; //number of files
     int32_t neofs; //number of files read till eof
-    
-    
+        
     bool indexed_first_file;
     
     //list of contigs
     std::vector<GenomeInterval> intervals;
+    std::map<std::string, int32_t> intervals_map;
     uint32_t interval_index;    
     std::string current_interval;
     int32_t current_pos1;
@@ -129,6 +131,16 @@ class SyncedReader
      * 
      */
     bool read_next_position(std::vector<bcfptr>& current_recs);
+    
+    /**
+     * Populate sequence names from files.
+     */
+    void add_sequence(int32_t i);
+
+    /**
+     * Load index for the ith file, returns true if successful
+     */
+    bool load_index(int32_t i);
     
     /**
      * Gets sequence name of a record
