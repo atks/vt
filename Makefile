@@ -23,7 +23,8 @@ SOURCES = program\
 		ordered_writer\
 		synced_reader\
 		merge_duplicate_variants\
-		normalize
+		normalize\
+		peek
 
 SOURCESONLY = main.cpp
 

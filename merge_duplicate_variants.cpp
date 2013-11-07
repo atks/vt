@@ -131,6 +131,8 @@ class Igor : Program
             
         while (sr->read_next_position(current_recs))
         {
+            std::cerr << "reading records \n";
+            
             if (current_recs.size()!=1)
             {
     			m.clear();
