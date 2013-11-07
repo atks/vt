@@ -107,7 +107,15 @@ class SyncedReader
     std::map<std::string, int32_t> intervals_map;
     uint32_t interval_index;    
     std::string current_interval;
+    int32_t current_rid;
     int32_t current_pos1;
+    
+    //variables for managing non indexed first file
+    bcf1_t *diff_seq_v;
+    std::string diff_seq_name;
+        
+    
+    
         
     kstring_t s;
     
