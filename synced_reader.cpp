@@ -73,7 +73,7 @@ SyncedReader::SyncedReader(std::vector<std::string>& _vcf_files, std::vector<Gen
                 fprintf(stderr, "[I:%s:%d %s] index cannot be loaded for %s\n", __FILE__, __LINE__, __FUNCTION__, vcf_files[i].c_str());
             }
         
-            if (no_selected_intervals)
+            if (!indexed_first_file && no_selected_intervals)
             {
                 add_sequence(i);
             }
@@ -92,7 +92,7 @@ SyncedReader::SyncedReader(std::vector<std::string>& _vcf_files, std::vector<Gen
                 exit(1);
             }
             
-            if (no_selected_intervals)
+            if (!indexed_first_file && no_selected_intervals)
             {
                 add_sequence(i);
             }
@@ -208,56 +208,62 @@ bool SyncedReader::more_intervals()
  */
 bool SyncedReader::initialize_next_interval()
 {
-    while (interval_index<intervals.size())
+    if (indexed_first_file)
     {
-    	neofs = 0;
-
-    	//update iterators to point at the next region
-    	GenomeInterval interval = intervals[interval_index];
-		interval_index++;
+        
+    }
+    else
+    {   
+        while (interval_index<intervals.size())
+        {
+        	neofs = 0;
     
-    
-	    for (int32_t i = 0; i<nfiles; ++i)
-    	{
-        	int32_t ftype = hts_file_type(vcf_files[i].c_str());
-			hts_itr_destroy(itrs[i]); 
-			itrs[i] = 0;
-        	
-        	if (ftype==FT_BCF_GZ)
+        	//update iterators to point at the next region
+        	GenomeInterval interval = intervals[interval_index];
+    		interval_index++;
+        
+        
+    	    for (int32_t i = 0; i<nfiles; ++i)
         	{
-        	    int tid = bcf_hdr_name2id(hdrs[i], interval.seq.c_str());
-            	itrs[i] = bcf_itr_queryi(idxs[i], tid, interval.start1, interval.end1+1);
-            	if (itrs[i]) 
+            	int32_t ftype = hts_file_type(vcf_files[i].c_str());
+    			hts_itr_destroy(itrs[i]); 
+    			itrs[i] = 0;
+            	
+            	if (ftype==FT_BCF_GZ)
             	{
-            	    ++neofs;
-    		    }
-			}
-			else if (ftype==FT_VCF_GZ)
-	    	{
-	    	    int tid = tbx_name2id(tbxs[i], interval.seq.c_str());
-            	itrs[i] = tbx_itr_queryi(tbxs[i], tid, interval.start1, interval.end1+1);
-            	if (itrs[i])
-                {
-                    ++neofs;
-    		    }
-	    	}
-	    }
-
-    	if (neofs!=nfiles)
-    	{
-	    	//fill buffer
-    		for (int32_t i = 0; i<nfiles; ++i)
-    		{
-        		fill_buffer(i);
-			}
-			
-			if (pq.size()!=0)
-			{
-				return true;
-			}
-		}
-	}
-
+            	    int tid = bcf_hdr_name2id(hdrs[i], interval.seq.c_str());
+                	itrs[i] = bcf_itr_queryi(idxs[i], tid, interval.start1, interval.end1+1);
+                	if (itrs[i]) 
+                	{
+                	    ++neofs;
+        		    }
+    			}
+    			else if (ftype==FT_VCF_GZ)
+    	    	{
+    	    	    int tid = tbx_name2id(tbxs[i], interval.seq.c_str());
+                	itrs[i] = tbx_itr_queryi(tbxs[i], tid, interval.start1, interval.end1+1);
+                	if (itrs[i])
+                    {
+                        ++neofs;
+        		    }
+    	    	}
+    	    }
+    
+        	if (neofs!=nfiles)
+        	{
+    	    	//fill buffer
+        		for (int32_t i = 0; i<nfiles; ++i)
+        		{
+            		fill_buffer(i);
+    			}
+    			
+    			if (pq.size()!=0)
+    			{
+    				return true;
+    			}
+    		}
+    	}
+    }
 	return false;
 }
 
@@ -384,7 +390,7 @@ void SyncedReader::fill_buffer(int32_t i)
     
     int32_t pos1 = buffer[i].size()==0 ? 0 : bcf_get_pos1(buffer[i].front());
     
-    if (indexed_first_file || i>0)
+    if (!indexed_first_file || i>0)
     {
         if (ftypes[i]==FT_BCF_GZ)
         {   
@@ -431,5 +437,38 @@ void SyncedReader::fill_buffer(int32_t i)
                 }
             }
         }
+    }
+    else
+    {
+        bcf1_t *v = get_bcf1_from_pool();
+        while (bcf_read(vcfs[0], hdrs[0], v) == 0)
+        {
+            int32_t rid = bcf_get_rid(v);
+        
+            if (rid==current_rid)
+            {
+                int32_t pos1 = bcf_get_pos1(v);
+                buffer[i].push_back(v);
+                insert_into_pq(i, v);
+        
+                if (pos1==0)
+                {
+                    pos1 = bcf_get_pos1(v);
+                }
+                
+                if (bcf_get_pos1(v)!=pos1)
+                {
+                    break;
+                }
+            }
+            else
+            {      
+                diff_seq_name = std::string(bcf_get_chrom(hdrs[0], v));
+                diff_seq_v = v;
+            }
+            
+            v = get_bcf1_from_pool();
+        }            
+        store_bcf1_into_pool(v); 
     }
 }
