@@ -44,6 +44,9 @@ SyncedReader::SyncedReader(std::vector<std::string>& _vcf_files, std::vector<Gen
     current_interval = "";
     current_pos1 = 0;
     
+    diff_seq_v = NULL;
+    diff_seq_name = "";
+    
     buffer.resize(nfiles);
     s = {0, 0, 0};
     
@@ -204,13 +207,66 @@ bool SyncedReader::more_intervals()
 }
 
 /**
- * Initialize buffer for next interval.  Returns true if successful.
+ * Initialize buffer for next interval.  
+ * This should only be invoked if the buffer is empty.
+ * Returns true if successful.
  */
 bool SyncedReader::initialize_next_interval()
 {
     if (indexed_first_file)
     {
+        neofs = 0;
+    
+    	//update iterators to point at the next region
+    	if (diff_seq_v==NULL)
+    	{
+    	    
+    	}    
+    	
+    	GenomeInterval interval(diff_seq_name);
+            
+	    for (int32_t i = 0; i<nfiles; ++i)
+    	{
+        	int32_t ftype = hts_file_type(vcf_files[i].c_str());
+			hts_itr_destroy(itrs[i]); 
+			itrs[i] = 0;
+        	
+        	if (ftype==FT_BCF_GZ)
+        	{
+        	    int tid = bcf_hdr_name2id(hdrs[i], interval.seq.c_str());
+            	itrs[i] = bcf_itr_queryi(idxs[i], tid, interval.start1, interval.end1+1);
+            	if (itrs[i]) 
+            	{
+            	    ++neofs;
+    		    }
+			}
+			else if (ftype==FT_VCF_GZ)
+	    	{
+	    	    int tid = tbx_name2id(tbxs[i], interval.seq.c_str());
+            	itrs[i] = tbx_itr_queryi(tbxs[i], tid, interval.start1, interval.end1+1);
+            	if (itrs[i])
+                {
+                    ++neofs;
+    		    }
+	    	}
+	    }
+
+    	if (neofs!=nfiles)
+    	{
+	    	//fill buffer
+    		for (int32_t i = 0; i<nfiles; ++i)
+    		{
+        		fill_buffer(i);
+			}
+			
+			if (pq.size()!=0)
+			{
+				return true;
+			}
+		}
         
+        
+        return true;
     }
     else
     {   
@@ -221,8 +277,7 @@ bool SyncedReader::initialize_next_interval()
         	//update iterators to point at the next region
         	GenomeInterval interval = intervals[interval_index];
     		interval_index++;
-        
-        
+                
     	    for (int32_t i = 0; i<nfiles; ++i)
         	{
             	int32_t ftype = hts_file_type(vcf_files[i].c_str());
@@ -410,7 +465,6 @@ void SyncedReader::fill_buffer(int32_t i)
                 {
                     break;
                 }
-                
                 v = get_bcf1_from_pool();
             }            
             store_bcf1_into_pool(v); 
