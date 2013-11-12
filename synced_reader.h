@@ -50,6 +50,7 @@ class bcfptr
     int32_t pos1;
     bcf1_t *v;
     bcfptr():file_index(-1), pos1(-1), v(0) {}
+    bcfptr(int32_t file_index, int32_t pos1, bcf1_t *v):file_index(file_index), pos1(pos1), v(v){}
 };
 
 /**
@@ -73,11 +74,17 @@ class CompareBCFPtr
  *   
  * 1) All files are indexed. 
  *
- *    Implemented by simply iterating through all the regions found in all the files.
- * 
+ *    Iterating through all the regions found in all the files.
+ *    Sequences are easily obtained via headers and/or tabix objects. 
+ *    If intervals are specified, just populate the intervals to iterate with specified intervals.
+ *
  * 2) Only the first file is not indexed but ordered.
  * 
- *    First file is streamed and the rest of the files are randomly accessed.
+ *    a) no intervals specified
+ *           first file is streamed and the rest of the files are randomly accessed.
+ *    b) intervals specified
+ *           first file is streamed and selected via interval tree.
+ *           once a record within a region is read, the other files are selected on that interval. 
  *
  * If no intervals are selected by the caller, a union of all sequences are detected
  * from the files.
@@ -96,7 +103,7 @@ class SyncedReader
     std::vector<hts_idx_t *> idxs; // indices
     std::vector<tbx_t *> tbxs; // for tabix
     std::vector<hts_itr_t *> itrs; //iterators
-    std::vector<int32_t> ftypes; //iterators
+    std::vector<int32_t> ftypes; //file types
     int32_t nfiles; //number of files
     int32_t neofs; //number of files read till eof
         
@@ -106,26 +113,27 @@ class SyncedReader
     std::vector<GenomeInterval> intervals;
     std::map<std::string, int32_t> intervals_map;
     uint32_t interval_index;    
+    bool exists_selected_intervals;
+    
+    //variables for keeping track of status
     std::string current_interval;
     int32_t current_rid;
     int32_t current_pos1;
     
     //variables for managing non indexed first file
-    bcf1_t *diff_seq_v;
-    std::string diff_seq_name;
+    bcf1_t *next_interval_v;
+    std::string next_interval;
         
-    
-    
         
     kstring_t s;
     
-    //buffer for records
+    //buffer for records in use, this is indexed by the file index 
     std::vector<std::list<bcf1_t *> > buffer;
+    //empty records that can be reused
     std::list<bcf1_t *> pool;
+    //contains the most recent position to process
     std::priority_queue<bcfptr, std::vector<bcfptr>, CompareBCFPtr > pq;
         
-    //contains the most recent position to process
-    std::priority_queue<int32_t> pqueue;
     
     //useful stuff
     
@@ -207,11 +215,6 @@ class SyncedReader
      * returns false if no more records are found to fill buffer
      */
     void fill_buffer(int32_t i);
-                
-    /**
-     * Updates pq, buffer simultaneously.
-     */
-    void pop_and_push_rec(bcfptr b);
 };
     
 #endif

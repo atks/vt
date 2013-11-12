@@ -44,15 +44,25 @@ SyncedReader::SyncedReader(std::vector<std::string>& _vcf_files, std::vector<Gen
     current_interval = "";
     current_pos1 = 0;
     
-    diff_seq_v = NULL;
-    diff_seq_name = "";
+    //special buffer variables for unindexed first file
+    //1. if current_interval is ""
+    //      no files have been initialized
+    //2. if current_interval!=diff_seq_name && both are not empty
+    //      stop reading records from first file
+    //3. if current_interval!="" && diff_seq_name==""
+    //      end of file for first file
+    next_interval_v = NULL;
+    next_interval = "";
     
     buffer.resize(nfiles);
     s = {0, 0, 0};
     
     std::map<char*, uint32_t> sequences;
-    bool no_selected_intervals = (intervals.size()==0);
-            
+    exists_selected_intervals = (intervals.size()!=0);
+    
+    //1. check file type validity
+    //2. loads indices
+    //3. adds sequences found in all indexed files, this allows us to iterate through all sequences.        
     for (int32_t i = 0; i<nfiles; ++i)
     {   
         ftypes[i] = hts_file_type(vcf_files[i].c_str());
@@ -76,7 +86,7 @@ SyncedReader::SyncedReader(std::vector<std::string>& _vcf_files, std::vector<Gen
                 fprintf(stderr, "[I:%s:%d %s] index cannot be loaded for %s\n", __FILE__, __LINE__, __FUNCTION__, vcf_files[i].c_str());
             }
         
-            if (!indexed_first_file && no_selected_intervals)
+            if (!indexed_first_file && !exists_selected_intervals)
             {
                 add_sequence(i);
             }
@@ -95,7 +105,7 @@ SyncedReader::SyncedReader(std::vector<std::string>& _vcf_files, std::vector<Gen
                 exit(1);
             }
             
-            if (!indexed_first_file && no_selected_intervals)
+            if (!indexed_first_file && !exists_selected_intervals)
             {
                 add_sequence(i);
             }
@@ -141,6 +151,19 @@ void SyncedReader::add_sequence(int32_t i)
         if(seq_names) free(seq_names);
     }
 }  
+
+/**
+ * Populate sequence names from files.
+ */
+void SyncedReader::remove_sequence(std::string& seq_name)
+{
+    if (intervals_map.find(seq_name)!=intervals_map.end())
+    {    
+        intervals_map.[seq] = intervals_map.size();
+        intervals.push_back(GenomeInterval(seq));
+    }
+}  
+
 
 /**
  * Load index for the ith file, returns true if successful
@@ -204,122 +227,6 @@ int32_t SyncedReader::get_current_pos1()
 bool SyncedReader::more_intervals()
 {
     return interval_index==intervals.size();
-}
-
-/**
- * Initialize buffer for next interval.  
- * This should only be invoked if the buffer is empty.
- * Returns true if successful.
- */
-bool SyncedReader::initialize_next_interval()
-{
-    if (indexed_first_file)
-    {
-        neofs = 0;
-    
-    	//update iterators to point at the next region
-    	if (diff_seq_v==NULL)
-    	{
-    	    
-    	}    
-    	
-    	GenomeInterval interval(diff_seq_name);
-            
-	    for (int32_t i = 0; i<nfiles; ++i)
-    	{
-        	int32_t ftype = hts_file_type(vcf_files[i].c_str());
-			hts_itr_destroy(itrs[i]); 
-			itrs[i] = 0;
-        	
-        	if (ftype==FT_BCF_GZ)
-        	{
-        	    int tid = bcf_hdr_name2id(hdrs[i], interval.seq.c_str());
-            	itrs[i] = bcf_itr_queryi(idxs[i], tid, interval.start1, interval.end1+1);
-            	if (itrs[i]) 
-            	{
-            	    ++neofs;
-    		    }
-			}
-			else if (ftype==FT_VCF_GZ)
-	    	{
-	    	    int tid = tbx_name2id(tbxs[i], interval.seq.c_str());
-            	itrs[i] = tbx_itr_queryi(tbxs[i], tid, interval.start1, interval.end1+1);
-            	if (itrs[i])
-                {
-                    ++neofs;
-    		    }
-	    	}
-	    }
-
-    	if (neofs!=nfiles)
-    	{
-	    	//fill buffer
-    		for (int32_t i = 0; i<nfiles; ++i)
-    		{
-        		fill_buffer(i);
-			}
-			
-			if (pq.size()!=0)
-			{
-				return true;
-			}
-		}
-        
-        
-        return true;
-    }
-    else
-    {   
-        while (interval_index<intervals.size())
-        {
-        	neofs = 0;
-    
-        	//update iterators to point at the next region
-        	GenomeInterval interval = intervals[interval_index];
-    		interval_index++;
-                
-    	    for (int32_t i = 0; i<nfiles; ++i)
-        	{
-            	int32_t ftype = hts_file_type(vcf_files[i].c_str());
-    			hts_itr_destroy(itrs[i]); 
-    			itrs[i] = 0;
-            	
-            	if (ftype==FT_BCF_GZ)
-            	{
-            	    int tid = bcf_hdr_name2id(hdrs[i], interval.seq.c_str());
-                	itrs[i] = bcf_itr_queryi(idxs[i], tid, interval.start1, interval.end1+1);
-                	if (itrs[i]) 
-                	{
-                	    ++neofs;
-        		    }
-    			}
-    			else if (ftype==FT_VCF_GZ)
-    	    	{
-    	    	    int tid = tbx_name2id(tbxs[i], interval.seq.c_str());
-                	itrs[i] = tbx_itr_queryi(tbxs[i], tid, interval.start1, interval.end1+1);
-                	if (itrs[i])
-                    {
-                        ++neofs;
-        		    }
-    	    	}
-    	    }
-    
-        	if (neofs!=nfiles)
-        	{
-    	    	//fill buffer
-        		for (int32_t i = 0; i<nfiles; ++i)
-        		{
-            		fill_buffer(i);
-    			}
-    			
-    			if (pq.size()!=0)
-    			{
-    				return true;
-    			}
-    		}
-    	}
-    }
-	return false;
 }
 
 /**
@@ -391,7 +298,8 @@ bool SyncedReader::read_next_position(std::vector<bcfptr>& current_recs)
     }
     current_recs.clear();
 
-	//process records in priority queue or invoke next region
+	//process records in priority queue or initialize next interval if pq is empty
+	//initialize_next_interval tops up the pq
     if (pq.size()!=0 || initialize_next_interval())
     {
         //dequeue pqueue most recent position and return it
@@ -406,7 +314,9 @@ bool SyncedReader::read_next_position(std::vector<bcfptr>& current_recs)
            b.file_index = pq.top().file_index;
            
            current_recs.push_back(b);
-           pop_and_push_rec(b);
+           buffer[b.file_index].remove(b.v);
+           fill_buffer(b.file_index);
+           pq.pop();
            cpos1 = pq.size()!=0 ? pq.top().pos1 : -1;
         } 
         
@@ -421,13 +331,128 @@ bool SyncedReader::read_next_position(std::vector<bcfptr>& current_recs)
 }
 
 /**
- * Updates pq, buffer simultaneously.
+ * Initialize buffer for next interval.  
+ * This should only be invoked if the buffer is empty.
+ * Returns true if successful.
  */
-void SyncedReader::pop_and_push_rec(bcfptr b)
+bool SyncedReader::initialize_next_interval()
 {
-    buffer[b.file_index].remove(b.v);
-    fill_buffer(b.file_index);
-    pq.pop();
+    if (indexed_first_file)
+    {   
+        while (interval_index<intervals.size())
+        {
+        	neofs = 0;
+    
+        	//update iterators to point at the next region
+        	GenomeInterval interval = intervals[interval_index];
+    		interval_index++;
+                
+    	    for (int32_t i = 0; i<nfiles; ++i)
+        	{
+            	int32_t ftype = hts_file_type(vcf_files[i].c_str());
+    			hts_itr_destroy(itrs[i]); 
+    			itrs[i] = 0;
+            	
+            	if (ftype==FT_BCF_GZ)
+            	{
+            	    int tid = bcf_hdr_name2id(hdrs[i], interval.seq.c_str());
+                	itrs[i] = bcf_itr_queryi(idxs[i], tid, interval.start1, interval.end1+1);
+                	if (itrs[i]) 
+                	{
+                	    ++neofs;
+        		    }
+    			}
+    			else if (ftype==FT_VCF_GZ)
+    	    	{
+    	    	    int tid = tbx_name2id(tbxs[i], interval.seq.c_str());
+                	itrs[i] = tbx_itr_queryi(tbxs[i], tid, interval.start1, interval.end1+1);
+                	if (itrs[i])
+                    {
+                        ++neofs;
+        		    }
+    	    	}
+    	    }
+    
+        	if (neofs!=nfiles)
+        	{
+    	    	//fill buffer
+        		for (int32_t i = 0; i<nfiles; ++i)
+        		{
+            		fill_buffer(i);
+    			}
+    			
+    			if (pq.size()!=0)
+    			{
+    				return true;
+    			}
+    		}
+    	}
+    }
+    //unindexed first file
+    else 
+    {
+        
+        //1. reads first file and selects intervals based on sequences found in the first file.
+        //2. after first file is read, the records in the remaining sequences found in the other files are processed
+        neofs = 0;
+    	GenomeInterval interval(diff_seq_name);
+          
+	    for (int32_t i=0; i<nfiles; ++i)
+    	{
+        	if (i==0)
+            {
+                if (!exists_selected_intervals)
+                {
+                    //read all
+                }
+                else
+                {
+                    //
+                }    
+            }        	
+        	else if (ftypes[i]==FT_BCF_GZ)
+        	{
+        	    hts_itr_destroy(itrs[i]); 
+    			itrs[i] = 0;
+        	    int tid = bcf_hdr_name2id(hdrs[i], interval.seq.c_str());
+            	itrs[i] = bcf_itr_queryi(idxs[i], tid, interval.start1, interval.end1+1);
+            	if (itrs[i]) 
+            	{
+            	    ++neofs;
+    		    }
+			}
+			else if (ftypes[i]==FT_VCF_GZ)
+	    	{
+            	hts_itr_destroy(itrs[i]); 
+			    itrs[i] = 0;
+    	        int tid = tbx_name2id(tbxs[i], interval.seq.c_str());
+            	itrs[i] = tbx_itr_queryi(tbxs[i], tid, interval.start1, interval.end1+1);
+            	if (itrs[i])
+                {
+                    ++neofs;
+    		    }
+	    	}
+	    }
+
+    	if (neofs!=nfiles)
+    	{
+	    	//fill buffer
+    		for (int32_t i = 0; i<nfiles; ++i)
+    		{
+        		fill_buffer(i);
+			}
+			
+			if (pq.size()!=0)
+			{
+				return true;
+			}
+		}
+        
+        return true;
+    }
+
+    
+	return false;
 }
 
 /** 
@@ -443,10 +468,56 @@ void SyncedReader::fill_buffer(int32_t i)
         return;
     }    
     
-    int32_t pos1 = buffer[i].size()==0 ? 0 : bcf_get_pos1(buffer[i].front());
-    
-    if (!indexed_first_file || i>0)
+    //unindexed first file
+    //1. No selected intervals
+    //      a. read records into buffer
+    //      b. if records from a different sequence, store into diff_seq_v and diff_
+    //2. Selected intervals
+    //      a. read records into buffer if in interval tree
+    //      b. if records from a different interval, store into diff_seq_v and diff_
+    if (i==0 && !indexed_first_file)
     {
+        int32_t pos1 = buffer[i].size()==0 ? 0 : bcf_get_pos1(buffer[i].front());
+        
+        bcf1_t *v = get_bcf1_from_pool();
+        while (bcf_read(vcfs[0], hdrs[0], v) == 0)
+        {
+            //check if in selected interval
+            if (exists_selected_intervals)
+            
+            int32_t rid = bcf_get_rid(v);
+        
+            if (rid==current_rid)
+            {
+                int32_t pos1 = bcf_get_pos1(v);
+                buffer[i].push_back(v);
+                insert_into_pq(i, v);
+        
+                if (pos1==0)
+                {
+                    pos1 = bcf_get_pos1(v);
+                }
+                
+                if (bcf_get_pos1(v)!=pos1)
+                {
+                    break;
+                }
+            }
+            else
+            {      
+                diff_seq_name = std::string(bcf_get_chrom(hdrs[0], v));
+                diff_seq_v = v;
+            }
+            
+            v = get_bcf1_from_pool();
+        }            
+        store_bcf1_into_pool(v); 
+    }
+    //all files are indexed
+    else 
+    {
+        int32_t pos1 = buffer[i].size()==0 ? 0 : bcf_get_pos1(buffer[i].front());
+        
         if (ftypes[i]==FT_BCF_GZ)
         {   
             bcf1_t *v = get_bcf1_from_pool();
@@ -492,37 +563,5 @@ void SyncedReader::fill_buffer(int32_t i)
             }
         }
     }
-    else
-    {
-        bcf1_t *v = get_bcf1_from_pool();
-        while (bcf_read(vcfs[0], hdrs[0], v) == 0)
-        {
-            int32_t rid = bcf_get_rid(v);
-        
-            if (rid==current_rid)
-            {
-                int32_t pos1 = bcf_get_pos1(v);
-                buffer[i].push_back(v);
-                insert_into_pq(i, v);
-        
-                if (pos1==0)
-                {
-                    pos1 = bcf_get_pos1(v);
-                }
-                
-                if (bcf_get_pos1(v)!=pos1)
-                {
-                    break;
-                }
-            }
-            else
-            {      
-                diff_seq_name = std::string(bcf_get_chrom(hdrs[0], v));
-                diff_seq_v = v;
-            }
-            
-            v = get_bcf1_from_pool();
-        }            
-        store_bcf1_into_pool(v); 
-    }
+
 }

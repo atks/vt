@@ -525,7 +525,7 @@ bcf_hdr_t *bcf_hdr_read(htsFile *hfp)
         fprintf(stderr,"[%s:%d %s] Failed to read the header (reading BCF in text mode?)\n", __FILE__,__LINE__,__FUNCTION__);
         return NULL;
     }
-	if (strncmp((char*)magic, "BCF\2\1", 5) != 0) 
+	if (strncmp((char*)magic, "BCF\2\2", 5) != 0) 
     {
         if (!strncmp((char*)magic, "BCF", 3)) 
             fprintf(stderr,"[%s:%d %s] invalid BCF2 magic string: only BCFv2.2 is supported.\n", __FILE__,__LINE__,__FUNCTION__);
@@ -545,7 +545,7 @@ int bcf_hdr_write(htsFile *hfp, const bcf_hdr_t *h)
 {
     if (!hfp->is_bin) return vcf_hdr_write(hfp, h);
     BGZF *fp = hfp->fp.bgzf;
-	if ( bgzf_write(fp, "BCF\2\1", 5) !=5 ) return -1;
+	if ( bgzf_write(fp, "BCF\2\2", 5) !=5 ) return -1;
 	if ( bgzf_write(fp, &h->l_text, 4) !=4 ) return -1;
 	if ( bgzf_write(fp, h->text, h->l_text) != h->l_text ) return -1;
     return 0;

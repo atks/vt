@@ -176,7 +176,10 @@ class Igor : Program
         std::clog << "options:     input VCF file        " << input_vcf_file << "\n";
         std::clog << "         [o] output VCF file       " << output_vcf_file << "\n";
         std::clog << "         [p] Merge by              " << merge_by_pos << "\n";
-        std::clog << "         [i] intervals             " << intervals.size() <<  " intervals\n";
+        if (intervals.size()!=0)
+        {
+            std::clog << "         [i] intervals             " << intervals.size() <<  " intervals\n";
+        }
         std::clog << "\n";
     }
 
