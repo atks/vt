@@ -8,7 +8,7 @@ endif
 OPTFLAG ?= -O0 -ggdb
 INCLUDES = -I./lib/include/ -I. -I./lib/include/htslib
 CFLAGS = -pipe $(STD) $(OPTFLAG) $(INCLUDES) -D__STDC_LIMIT_MACROS
-CXX = g++
+CXX = clang++
 
 HEADERSONLY =
 SOURCES = program\
