@@ -159,8 +159,8 @@ void SyncedReader::remove_sequence(std::string& seq_name)
 {
     if (intervals_map.find(seq_name)!=intervals_map.end())
     {    
-        intervals_map.[seq] = intervals_map.size();
-        intervals.push_back(GenomeInterval(seq));
+        intervals_map[seq_name] = intervals_map.size();
+        intervals.push_back(GenomeInterval(seq_name));
     }
 }  
 
@@ -390,12 +390,11 @@ bool SyncedReader::initialize_next_interval()
     }
     //unindexed first file
     else 
-    {
-        
+    {        
         //1. reads first file and selects intervals based on sequences found in the first file.
         //2. after first file is read, the records in the remaining sequences found in the other files are processed
         neofs = 0;
-    	GenomeInterval interval(diff_seq_name);
+    	GenomeInterval interval(next_interval);
           
 	    for (int32_t i=0; i<nfiles; ++i)
     	{
@@ -469,49 +468,59 @@ void SyncedReader::fill_buffer(int32_t i)
     }    
     
     //unindexed first file
-    //1. No selected intervals
-    //      a. read records into buffer
-    //      b. if records from a different sequence, store into diff_seq_v and diff_
-    //2. Selected intervals
-    //      a. read records into buffer if in interval tree
-    //      b. if records from a different interval, store into diff_seq_v and diff_
-    if (i==0 && !indexed_first_file)
-    {
-        int32_t pos1 = buffer[i].size()==0 ? 0 : bcf_get_pos1(buffer[i].front());
-        
-        bcf1_t *v = get_bcf1_from_pool();
-        while (bcf_read(vcfs[0], hdrs[0], v) == 0)
+    //records from a different interval, store into diff_seq_v and diff_
+    if (!indexed_first_file)
+    {   
+        //1. Selected intervals
+        //      a. read records into buffer if in interval tree
+        //      b. if
+        if (exists_selected_intervals)
         {
-            //check if in selected interval
-            if (exists_selected_intervals)
+            //check interval tree
+            //if exists, move 
             
-            int32_t rid = bcf_get_rid(v);
+        }
+        //2. No selected intervals
+        //      a. read records into buffer
+        //      b. if records from a different sequence, store into diff_seq_v and diff_       
+        else
+        {
+            int32_t pos1 = buffer[i].size()==0 ? 0 : bcf_get_pos1(buffer[i].front());
         
-            if (rid==current_rid)
+            bcf1_t *v = get_bcf1_from_pool();
+            while (bcf_read(vcfs[0], hdrs[0], v) == 0)
             {
-                int32_t pos1 = bcf_get_pos1(v);
-                buffer[i].push_back(v);
-                insert_into_pq(i, v);
-        
-                if (pos1==0)
+                //check if in selected interval
+                //if (exists_selected_intervals)
+                
+                int32_t rid = bcf_get_rid(v);
+            
+                if (rid==current_rid)
                 {
-                    pos1 = bcf_get_pos1(v);
+                    int32_t pos1 = bcf_get_pos1(v);
+                    buffer[i].push_back(v);
+                    insert_into_pq(i, v);
+            
+                    if (pos1==0)
+                    {
+                        pos1 = bcf_get_pos1(v);
+                    }
+                    
+                    if (bcf_get_pos1(v)!=pos1)
+                    {
+                        break;
+                    }
+                }
+                else
+                {      
+                    next_interval = std::string(bcf_get_chrom(hdrs[0], v));
+                    next_interval_v = v;
                 }
                 
-                if (bcf_get_pos1(v)!=pos1)
-                {
-                    break;
-                }
-            }
-            else
-            {      
-                diff_seq_name = std::string(bcf_get_chrom(hdrs[0], v));
-                diff_seq_v = v;
-            }
-            
-            v = get_bcf1_from_pool();
-        }            
-        store_bcf1_into_pool(v); 
+                v = get_bcf1_from_pool();
+            }            
+            store_bcf1_into_pool(v); 
+        }
     }
     //all files are indexed
     else 
