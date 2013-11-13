@@ -82,13 +82,13 @@ class CompareBCFPtr
  * 
  *    a) no intervals specified
  *           first file is streamed and the rest of the files are randomly accessed.
+ *
  *    b) intervals specified
  *           first file is streamed and selected via interval tree.
  *           once a record within a region is read, the other files are selected on that interval. 
  *
  * If no intervals are selected by the caller, a union of all sequences are detected
  * from the files.
- *
  */
 class SyncedReader
 {
@@ -152,7 +152,12 @@ class SyncedReader
      * Populate sequence names from files.
      */
     void add_sequence(int32_t i);
-
+    
+    /**
+     * Populate sequence names from files.
+     */
+    void remove_sequence(std::string& seq_name);
+        
     /**
      * Load index for the ith file, returns true if successful
      */
