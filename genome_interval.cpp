@@ -55,7 +55,16 @@ GenomeInterval::GenomeInterval(std::string interval)
  */    
 std::string GenomeInterval::to_string()
 {
-    std::stringstream ss;
-    ss << seq << ":" << start1 << "-" << end1;
-    return ss.str();      
+    kstring_t s = {0,0,0};
+    kputs(seq.c_str(), &s);
+    if (start1!=1 || end1!=((1<<29)-1))
+    {    
+        kputc(':', &s);
+        kputw(start1, &s);
+        kputc('-', &s);
+        kputw(end1, &s);
+    }
+    std::string interval(s.s);
+    if (s.m) free(s.s);
+    return interval;      
 };
