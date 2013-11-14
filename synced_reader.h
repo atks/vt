@@ -121,9 +121,10 @@ class SyncedReader
     int32_t current_pos1;
     
     //variables for managing non indexed first file
+    //
     bcf1_t *next_interval_v;
     std::string next_interval;
-        
+    int32_t no_more_first_file_records; //non zero if true    
         
     kstring_t s;
     
@@ -151,12 +152,12 @@ class SyncedReader
     /**
      * Populate sequence names from files.
      */
-    void add_sequence(int32_t i);
+    void add_interval(int32_t i);
     
     /**
      * Populate sequence names from files.
      */
-    void remove_sequence(std::string& seq_name);
+    void remove_interval(std::string& interval);
         
     /**
      * Load index for the ith file, returns true if successful
