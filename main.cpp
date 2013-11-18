@@ -70,16 +70,16 @@ void help()
     std::clog << "normalize                 normalize indels\n";
     std::clog << "mergedup                  merge duplicate variants\n";
     std::clog << "peek                      summarize variants\n";
-    std::clog << "partition                 partition variants\n";
-    std::clog << "profile_snps              profile snps\n";
-    std::clog << "profile_indels            profile indels\n";
-    std::clog << "plot_afs                  plot allele frequency spectrum\n";
-    std::clog << "compute_af                compute allele frequency\n";
-    std::clog << "annotate_indels           annotate indels\n";
-    std::clog << "compute_concordance       compute concordance\n";
-    std::clog << "plot_gl_concordance       plot gl concordance\n";
-    std::clog << "compute_ab                compute allele balance\n";
-    std::clog << "plot_ab                   plot allele balance\n";
+//    std::clog << "partition                 partition variants\n";
+//    std::clog << "profile_snps              profile snps\n";
+//    std::clog << "profile_indels            profile indels\n";
+//    std::clog << "plot_afs                  plot allele frequency spectrum\n";
+//    std::clog << "compute_af                compute allele frequency\n";
+//    std::clog << "annotate_indels           annotate indels\n";
+//    std::clog << "compute_concordance       compute concordance\n";
+//    std::clog << "plot_gl_concordance       plot gl concordance\n";
+//    std::clog << "compute_ab                compute allele balance\n";
+//    std::clog << "plot_ab                   plot allele balance\n";
                 
     std::clog << "\n";
 }
@@ -105,7 +105,7 @@ int main(int argc, char ** argv)
     {
         normalize(argc-1, ++argv);
     }
-    else if (argc>1 && cmd=="merge_duplicate_variants")
+    else if (argc>1 && cmd=="mergedup")
     {
         merge_duplicate_variants(argc-1, ++argv);
     }

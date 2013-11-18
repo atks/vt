@@ -23,7 +23,7 @@
 
 #ifndef LOG_TOOL_H
 #define LOG_TOOL_H
-	
+
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
@@ -41,41 +41,41 @@
  */
 class LogTool
 {
-	private:
-  	std::vector<double> PLs; 
-        
-	public:
-	LogTool () {};
+    private:
+    std::vector<double> PLs;
 
-	/**
-	 * Convert PLs to probabilities.
-	 */
-	double pl2prob(uint32_t PL);
+    public:
+    LogTool () {};
 
-	/**
-	 * Convert probabilities to PHRED score.
-	 */
-	uint32_t prob2pl(double x);
-	
-	/**
-	 * Compute log(x)
-	 */	
-	double elog10(double x); 
-	
-	/**
-	 * Compute log(xy)
-	 */
-	double elog10prod(double x, double y);
-	
-	/**
-	 * Compute log(x+y)
-	 */
-	double elog10sum(double x, double y);
+    /**
+     * Convert PLs to probabilities.
+     */
+    double pl2prob(uint32_t PL);
 
-	/**
-	 * Round a value
-	 */	
-	double round(double x);
+    /**
+     * Convert probabilities to PHRED score.
+     */
+    uint32_t prob2pl(double x);
+
+    /**
+     * Compute log(x)
+     */
+    double elog10(double x);
+
+    /**
+     * Compute log(xy)
+     */
+    double elog10prod(double x, double y);
+
+    /**
+     * Compute log(x+y)
+     */
+    double elog10sum(double x, double y);
+
+    /**
+     * Round a value
+     */
+    double round(double x);
 };
 
 #endif

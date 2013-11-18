@@ -143,12 +143,9 @@ bool BCFOrderedReader::read(bcf1_t *v)
                 {
                     return true;
                 }
-                else
+                else if (!initialize_next_interval())
                 {
-                    if (!initialize_next_interval())
-                    {
-                        return false;
-                    }
+                    return false;
                 }
             }
         }
@@ -161,12 +158,9 @@ bool BCFOrderedReader::read(bcf1_t *v)
                     vcf_parse1(&s, hdr, v);
                     return true;
                 }
-                else
+                else if (!initialize_next_interval())
                 {
-                    if (!initialize_next_interval())
-                    {
-                        return false;
-                    }
+                    return false;
                 }
             }
         }
@@ -208,16 +202,13 @@ bool BCFOrderedReader::read_next_position(std::vector<bcf1_t *>& vs)
             {
                 return true;
             }
+            else if (initialize_next_interval())
+            {
+                return read(v);
+            }
             else
             {
-                if (initialize_next_interval())
-                {
-                    return read(v);
-                }
-                else
-                {
-                    return false;
-                }
+                return false;
             }
         }
         else //vcf gz
@@ -243,6 +234,8 @@ bool BCFOrderedReader::read_next_position(std::vector<bcf1_t *>& vs)
     {
         if (bcf_read(vcf, hdr, v)==0)
         {
+            //todo: filter via interval tree
+            //if found in tree, return true else false
             return true;
         }
         else

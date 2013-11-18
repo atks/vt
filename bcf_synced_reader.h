@@ -134,7 +134,6 @@ class BCFSyncedReader
     //contains the most recent position to process
     std::priority_queue<bcfptr, std::vector<bcfptr>, CompareBCFPtr > pq;
         
-    
     //useful stuff
     
     /**

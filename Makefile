@@ -3,7 +3,9 @@ STD =
 ifeq ($(UNAME), Linux)
 	STD=-std=c++0x
 endif
-
+ifeq ($(UNAME), Darwin)
+	STD=-std=c++0x
+endif
 	
 OPTFLAG ?= -O0 -ggdb
 INCLUDES = -I./lib/include/ -I. -I./lib/include/htslib
