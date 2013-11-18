@@ -21,8 +21,8 @@
    THE SOFTWARE.
 */
 
-#ifndef SYNCED_READER_H
-#define SYNCED_READER_H
+#ifndef BCF_SYNCED_READER_H
+#define BCF_SYNCED_READER_H
 
 #include <cstdlib>
 #include <cstdint>
@@ -33,12 +33,11 @@
 #include <map>
 #include <queue>
 #include <list>
-#include "genome_interval.h"
 #include "htslib/hts.h"
 #include "htslib/vcf.h"
 #include "htslib/tbx.h"
+#include "genome_interval.h"
 #include "hts_utils.h"
-
 #include "htslib/kstring.h"
 /**
  * Wrapper class for the bcf object.
@@ -90,7 +89,7 @@ class CompareBCFPtr
  * If no intervals are selected by the caller, a union of all sequences are detected
  * from the files.
  */
-class SyncedReader
+class BCFSyncedReader
 {
     public:
         
@@ -112,7 +111,7 @@ class SyncedReader
     //list of contigs
     std::vector<GenomeInterval> intervals;
     std::map<std::string, int32_t> intervals_map;
-    uint32_t interval_index;    
+    uint32_t intervals_index;
     bool exists_selected_intervals;
     
     //variables for keeping track of status
@@ -141,7 +140,7 @@ class SyncedReader
     /**
      * Initialize files and intervals.
      */
-    SyncedReader(std::vector<std::string>& _vcf_files, std::vector<GenomeInterval>& _intervals);
+    BCFSyncedReader(std::vector<std::string>& _vcf_files, std::vector<GenomeInterval>& _intervals);
     
     /**
      * Returns list of files that have variants at a certain position.

@@ -21,9 +21,9 @@
    THE SOFTWARE.
 */
 
-#include "ordered_reader.h"
+#include "bcf_ordered_reader.h"
 
-OrderedReader::OrderedReader(std::string _vcf_file, std::vector<GenomeInterval>& _intervals)
+BCFOrderedReader::BCFOrderedReader(std::string _vcf_file, std::vector<GenomeInterval>& _intervals)
 {
     ftype = hts_file_type(_vcf_file.c_str());
     if (!(ftype & (FT_VCF|FT_BCF|FT_STDIN)) )
@@ -79,7 +79,7 @@ OrderedReader::OrderedReader(std::string _vcf_file, std::vector<GenomeInterval>&
 /**
  * Gets sequence name of a record
  */
-const char* OrderedReader::get_seqname(bcf1_t *v)
+const char* BCFOrderedReader::get_seqname(bcf1_t *v)
 {
     return bcf_get_chrom(hdr, v);
 };
@@ -87,7 +87,7 @@ const char* OrderedReader::get_seqname(bcf1_t *v)
 /**
  * Gets bcf header.
  */
-bcf_hdr_t* OrderedReader::get_hdr()
+bcf_hdr_t* BCFOrderedReader::get_hdr()
 {
     return hdr;
 };
@@ -96,7 +96,7 @@ bcf_hdr_t* OrderedReader::get_hdr()
  * Initialize next interval.
  * Returns false only if all intervals are accessed.
  */
-bool OrderedReader::initialize_next_interval()
+bool BCFOrderedReader::initialize_next_interval()
 {
     
     while (interval_index!=intervals.size())
@@ -131,7 +131,7 @@ bool OrderedReader::initialize_next_interval()
 /**
  * Reads next record, hides the random access of different regions from the user.
  */
-bool OrderedReader::read(bcf1_t *v)
+bool BCFOrderedReader::read(bcf1_t *v)
 {
     if (random_access_enabled)
     {
@@ -191,7 +191,7 @@ bool OrderedReader::read(bcf1_t *v)
 /**
  * Returns next set of vcf records at a start position.
  */
-bool OrderedReader::read_next_position(std::vector<bcf1_t *>& vs)
+bool BCFOrderedReader::read_next_position(std::vector<bcf1_t *>& vs)
 {
     //put records in pool
     for (uint32_t i=0; i<vs.size(); ++i)
@@ -257,7 +257,7 @@ bool OrderedReader::read_next_position(std::vector<bcf1_t *>& vs)
 /**
  * Returns record to pool
  */
-void OrderedReader::store_bcf1_into_pool(bcf1_t* v)
+void BCFOrderedReader::store_bcf1_into_pool(bcf1_t* v)
 {
     pool.push_back(v);
 }
@@ -265,7 +265,7 @@ void OrderedReader::store_bcf1_into_pool(bcf1_t* v)
 /**
  * Gets record from pool, creates a new record if necessary
  */
-bcf1_t* OrderedReader::get_bcf1_from_pool()
+bcf1_t* BCFOrderedReader::get_bcf1_from_pool()
 {
     if(!pool.empty())
     {

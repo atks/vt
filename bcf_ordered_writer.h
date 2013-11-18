@@ -21,8 +21,8 @@
    THE SOFTWARE.
 */
 
-#ifndef ORDERED_WRITER_H
-#define ORDERED_WRITER_H
+#ifndef BCF_ORDERED_WRITER_H
+#define BCF_ORDERED_WRITER_H
 
 #include <cstdlib>
 #include <cstdint>
@@ -48,7 +48,7 @@
  * and sorts locally in a 10K base pair region before writing the records
  * out.
  */
-class OrderedWriter
+class BCFOrderedWriter
 {
     public:
         
@@ -72,7 +72,7 @@ class OrderedWriter
     /**
      * Initialize output file.
      */
-    OrderedWriter(std::string _input_vcf_file, int32_t _window=100000);
+    BCFOrderedWriter(std::string _input_vcf_file, int32_t _window=100000);
           
     /**
      * Gets record from pool, creates a new record if necessary

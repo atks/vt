@@ -28,8 +28,8 @@
 #include "htslib/kseq.h"
 #include "program.h"
 #include "hts_utils.h"
-#include "ordered_reader.h"
-#include "ordered_writer.h"
+#include "bcf_ordered_reader.h"
+#include "bcf_ordered_writer.h"
 #include "variant_manip.h"
 
 void normalize(int argc, char ** argv);
