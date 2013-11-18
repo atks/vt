@@ -23,13 +23,12 @@
 
 #include <log_tool.h>
 
-
 /**
  * Round a value
- */	
+ */
 double LogTool::round(double x)
 {
-	return (x > 0.0) ? floor(x + 0.5) : ceil(x - 0.5);
+    return (x > 0.0) ? floor(x + 0.5) : ceil(x - 0.5);
 };
 
 /**
@@ -37,18 +36,20 @@ double LogTool::round(double x)
  */
 double LogTool::pl2prob(uint32_t PL)
 {
-	if (PL>=PLs.size())
-	{
-		if (PL > 3236)
-			PL = 3236;
-					
-		for (uint32_t i=PLs.size(); i<=PL; ++i)
-		{
-			PLs.push_back(pow(10, -((double) i)/10.0));
-		}
-	}
-	
-	return PLs[PL];
+    if (PL>=PLs.size())
+    {
+        if (PL > 3236)
+        {
+            PL = 3236;
+        }
+        
+        for (uint32_t i=PLs.size(); i<=PL; ++i)
+        {
+            PLs.push_back(pow(10, -((double) i)/10.0));
+        }
+    }
+
+    return PLs[PL];
 }
 
 /**
@@ -56,21 +57,21 @@ double LogTool::pl2prob(uint32_t PL)
  */
 uint32_t LogTool::prob2pl(double x)
 {
-	if (x>1 || x<0)
-	{
-		std::cerr << "[e] x is not a probability\n";
-		exit(1);
-	}
-	
-	return (uint32_t) (round(-10*log10(x)));
+    if (x>1 || x<0)
+    {
+        std::cerr << "[e] x is not a probability\n";
+        exit(1);
+    }
+
+    return (uint32_t) (round(-10*log10(x)));
 }
-	
+
 /**
  * Compute log(x)
- */	
+ */
 double LogTool::elog10(double x)
 {
-	return x==0? LOGZERO : log10(x); 
+    return x==0? LOGZERO : log10(x);
 }
 
 /**
@@ -78,9 +79,9 @@ double LogTool::elog10(double x)
  */
 double LogTool::elog10prod(double x, double y)
 {
-	if (x==LOGZERO || y==LOGZERO) return LOGZERO;
-	
-	return x + y;
+    if (x==LOGZERO || y==LOGZERO) return LOGZERO;
+
+    return x + y;
 }
 
 /**
@@ -88,19 +89,19 @@ double LogTool::elog10prod(double x, double y)
  */
 double LogTool::elog10sum(double x, double y)
 {
-	if (x==LOGZERO) return y;
-	if (y==LOGZERO) return x;
-	
-	if (x<y)
-	{ 
-		x = y-x;
-		y -= x;
-		x += y;  
-	}
-	else if (x==y)
-	{
-		return log10(2) + x;
-	}
-	
-	return x + log10(1+pow(10,y-x));
+    if (x==LOGZERO) return y;
+    if (y==LOGZERO) return x;
+
+    if (x<y)
+    {
+        x = y-x;
+        y -= x;
+        x += y;
+    }
+    else if (x==y)
+    {
+        return log10(2) + x;
+    }
+
+    return x + log10(1+pow(10,y-x));
 }

@@ -86,7 +86,9 @@ class BCFOrderedReader
     std::vector<GenomeInterval> intervals; 
     uint32_t interval_index;    
     std::map<std::string, IntervalTree*> interval_tree;
-    std::list<bcf1_t*> pool; //for storing unused bcf records
+    
+    //for storing unused bcf records
+    std::list<bcf1_t*> pool; 
         
     //shared objects for string manipulation
     kstring_t s;
@@ -106,6 +108,7 @@ class BCFOrderedReader
     
     /**
      * Returns next set of vcf records at a start position.
+     * Note that this function should never be used in conjunction with read(bcf1_t *v)
      */
     bool read_next_position(std::vector<bcf1_t *>& vs);
     

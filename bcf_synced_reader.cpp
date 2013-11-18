@@ -387,7 +387,6 @@ bool BCFSyncedReader::initialize_next_interval()
     	}
     	
     	return false;
-    	
     }
     //unindexed first file
     else 
@@ -469,11 +468,7 @@ bool BCFSyncedReader::initialize_next_interval()
                 
                 return true;
             }
-            
         }
-        
- 
-      
     }
 
 	return false;

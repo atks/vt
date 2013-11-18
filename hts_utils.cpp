@@ -200,8 +200,7 @@ bcf_hdr_t *bcf_alt_hdr_read(htsFile *fp)
 	bcf_hdr_t *h = NULL;
 	
 	//check for existence of alternative header
-	kstring_t alt_hdr_fn;
-	alt_hdr_fn = {0, 0, 0};
+	kstring_t alt_hdr_fn = {0, 0, 0};
 	std::cerr << "examining: " << fp->fn << "\n";
 	kputs(fp->fn, &alt_hdr_fn);
 	kputs(".hdr", &alt_hdr_fn);	
