@@ -21,9 +21,9 @@
    THE SOFTWARE.
 */
 
-#include "ordered_writer.h"
+#include "bcf_ordered_writer.h"
 
-OrderedWriter::OrderedWriter(std::string _vcf_file, int32_t _window)
+BCFOrderedWriter::BCFOrderedWriter(std::string _vcf_file, int32_t _window)
 {
     vcf_file = _vcf_file;
     window = _window;
@@ -54,7 +54,7 @@ OrderedWriter::OrderedWriter(std::string _vcf_file, int32_t _window)
 /**
  * Gets sequence name of a record
  */
-const char* OrderedWriter::get_seqname(bcf1_t *v)
+const char* BCFOrderedWriter::get_seqname(bcf1_t *v)
 {
     return bcf_get_chrom(hdr, v);
 }                   
@@ -62,7 +62,7 @@ const char* OrderedWriter::get_seqname(bcf1_t *v)
 /**
  * Gets record from pool, creates a new record if necessary
  */
-void OrderedWriter::set_hdr(bcf_hdr_t *_hdr)
+void BCFOrderedWriter::set_hdr(bcf_hdr_t *_hdr)
 {
     hdr = _hdr;
 }
@@ -70,7 +70,7 @@ void OrderedWriter::set_hdr(bcf_hdr_t *_hdr)
 /**
  * Reads next record, hides the random access of different regions from the user.
  */
-void OrderedWriter::write1(bcf1_t *v)
+void BCFOrderedWriter::write1(bcf1_t *v)
 {   
     //place into appropriate position in the buffer
     if (!buffer.empty())
@@ -118,7 +118,7 @@ void OrderedWriter::write1(bcf1_t *v)
 /**
  * Reads next record, hides the random access of different regions from the user.
  */
-void OrderedWriter::write_hdr()
+void BCFOrderedWriter::write_hdr()
 {   
     bcf_hdr_fmt_text(hdr);
     bcf_hdr_write(vcf, hdr);
@@ -127,7 +127,7 @@ void OrderedWriter::write_hdr()
 /**
  * Flush writable records from buffer.
  */
-void OrderedWriter::flush()
+void BCFOrderedWriter::flush()
 {    
     flush(true);
 }
@@ -135,7 +135,7 @@ void OrderedWriter::flush()
 /**
  * Returns record to pool 
  */ 
-void OrderedWriter::store_bcf1_into_pool(bcf1_t* v)
+void BCFOrderedWriter::store_bcf1_into_pool(bcf1_t* v)
 {
     pool.push_back(v);
 }
@@ -143,7 +143,7 @@ void OrderedWriter::store_bcf1_into_pool(bcf1_t* v)
 /**
  * Gets record from pool, creates a new record if necessary
  */
-bcf1_t* OrderedWriter::get_bcf1_from_pool()
+bcf1_t* BCFOrderedWriter::get_bcf1_from_pool()
 {    
     if(!pool.empty())
     {
@@ -160,7 +160,7 @@ bcf1_t* OrderedWriter::get_bcf1_from_pool()
 /**
  * Flush writable records from buffer.
  */
-void OrderedWriter::flush(bool force)
+void BCFOrderedWriter::flush(bool force)
 {    
     if (force)
     {
@@ -197,7 +197,7 @@ void OrderedWriter::flush(bool force)
 /**
  * Closes the file.
  */
-void OrderedWriter::close()
+void BCFOrderedWriter::close()
 {    
     bcf_close(vcf);
 }

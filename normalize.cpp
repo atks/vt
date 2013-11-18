@@ -41,8 +41,8 @@ class Igor : Program
     ///////
     //i/o//
     ///////
-    OrderedReader *odr;
-    OrderedWriter *odw;
+    BCFOrderedReader *odr;
+    BCFOrderedWriter *odw;
     bcf1_t *v;
 
     kstring_t s;
@@ -108,8 +108,8 @@ class Igor : Program
         //////////////////////
         //i/o initialization//
         //////////////////////
-        odr = new OrderedReader(input_vcf_file, intervals);
-        odw = new OrderedWriter(output_vcf_file);
+        odr = new BCFOrderedReader(input_vcf_file, intervals);
+        odw = new BCFOrderedWriter(output_vcf_file);
         
         bcf_hdr_append(odr->hdr, "##INFO=<ID=OLD_VARIANT,Number=1,Type=String,Description=\"Original chr:pos:ref:alt encoding\">\n");
         odw->set_hdr(odr->hdr);

@@ -19,9 +19,9 @@ SOURCES = program\
 		rb_tree\
 		hts_utils\
 		utils\
-		ordered_reader\
-		ordered_writer\
-		synced_reader\
+		bcf_ordered_reader\
+		bcf_ordered_writer\
+		bcf_synced_reader\
 		merge_duplicate_variants\
 		normalize\
 		peek

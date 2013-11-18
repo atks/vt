@@ -41,7 +41,7 @@ class Igor : Program
     ///////
     //i/o//
     ///////
-    SyncedReader *sr;
+    BCFSyncedReader *sr;
     vcfFile *ovcf;
 
     std::vector<bcf1_t*> pool;
@@ -97,7 +97,7 @@ class Igor : Program
         //i/o initialization//
         //////////////////////
         std::vector<std::string> vcf_files(1, input_vcf_file);
-        sr = new SyncedReader(vcf_files, intervals);
+        sr = new BCFSyncedReader(vcf_files, intervals);
         
         ovcf = bcf_open(output_vcf_file.c_str(), "w");
         

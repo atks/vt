@@ -21,8 +21,8 @@
    THE SOFTWARE.
 */
 
-#ifndef ORDERED_READER_H
-#define ORDERED_READER_H
+#ifndef BCF_ORDERED_READER_H
+#define BCF_ORDERED_READER_H
 
 #include <cstdlib>
 #include <cstdint>
@@ -61,7 +61,7 @@
  * records in intervals in both cases 1 and 2.
  */
  
-class OrderedReader
+class BCFOrderedReader
 {
     public:
         
@@ -97,7 +97,7 @@ class OrderedReader
      * @_input_vcf_file     name of the input VCF file
      * @_intervals          list of intervals, if empty, all records are selected.
      */
-    OrderedReader(std::string _input_vcf_file, std::vector<GenomeInterval>& _intervals);
+    BCFOrderedReader(std::string _input_vcf_file, std::vector<GenomeInterval>& _intervals);
       
     /**
      * Returns next vcf record.

@@ -36,9 +36,9 @@
 #include "hts_utils.h"
 #include "program.h"
 #include "genome_interval.h"
-#include "synced_reader.h"
-#include "ordered_reader.h"
-#include "ordered_writer.h"
+#include "bcf_synced_reader.h"
+#include "bcf_ordered_reader.h"
+#include "bcf_ordered_writer.h"
 #include "variant_manip.h"
 
 void merge_duplicate_variants(int argc, char **argv);
