@@ -194,56 +194,13 @@ bool BCFOrderedReader::read_next_position(std::vector<bcf1_t *>& vs)
     }
     vs.clear();
 
-    if (random_access_enabled)
+    while (read(v))
     {
-        if (ftype==FT_BCF_GZ)
+        if (true)
         {
-            if (bcf_itr_next(vcf, itr, v)>=0)
-            {
-                return true;
-            }
-            else if (initialize_next_interval())
-            {
-                return read(v);
-            }
-            else
-            {
-                return false;
-            }
-        }
-        else //vcf gz
-        {
-            while(true)
-            {
-                if (itr && tbx_itr_next(vcf, tbx, itr, &s) >= 0)
-                {
-                    vcf_parse1(&s, hdr, v);
-                    return true;
-                }
-                else
-                {
-                    if (!initialize_next_interval())
-                    {
-                        return false;
-                    }
-                }
-            }
         }
     }
-    else
-    {
-        if (bcf_read(vcf, hdr, v)==0)
-        {
-            //todo: filter via interval tree
-            //if found in tree, return true else false
-            return true;
-        }
-        else
-        {
-            return false;
-        }
-    }
-
+    
     return false;
 };
 

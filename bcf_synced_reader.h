@@ -47,6 +47,7 @@ class bcfptr
     public:
     int32_t file_index;
     int32_t pos1;
+    bcf_hdr_t *h;
     bcf1_t *v;
     bcfptr():file_index(-1), pos1(-1), v(0) {}
     bcfptr(int32_t file_index, int32_t pos1, bcf1_t *v):file_index(file_index), pos1(pos1), v(v){}

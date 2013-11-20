@@ -201,18 +201,16 @@ bcf_hdr_t *bcf_alt_hdr_read(htsFile *fp)
 	
 	//check for existence of alternative header
 	kstring_t alt_hdr_fn = {0, 0, 0};
-	std::cerr << "examining: " << fp->fn << "\n";
 	kputs(fp->fn, &alt_hdr_fn);
 	kputs(".hdr", &alt_hdr_fn);	
 	FILE *file = fopen(alt_hdr_fn.s, "r");
 	if (!file)
     {
-    	std::cerr << "[w] reading header\n";
-		h = bcf_hdr_read(fp);
+    	h = bcf_hdr_read(fp);
 	}
 	else
     {
-		std::cerr << "[w] reading alternative header\n";
+        fprintf(stderr, "[I:%s:%d %s] read alternative header for %s\n", __FILE__, __LINE__, __FUNCTION__, fp->fn);
 		fclose(file);
 		htsFile *alt_hdr = hts_open(alt_hdr_fn.s, "r");
     	h = bcf_hdr_read(alt_hdr);

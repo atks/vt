@@ -23,6 +23,8 @@
 
 #include "merge_duplicate_variants.h"
 
+KHASH_SET_INIT_STR(sdict);
+ 
 namespace
 {
 
@@ -42,7 +44,7 @@ class Igor : Program
     //i/o//
     ///////
     BCFSyncedReader *sr;
-    vcfFile *ovcf;
+    BCFOrderedWriter *odw;
 
     std::vector<bcf1_t*> pool;
         
@@ -98,8 +100,9 @@ class Igor : Program
         //////////////////////
         std::vector<std::string> vcf_files(1, input_vcf_file);
         sr = new BCFSyncedReader(vcf_files, intervals);
-        
-        ovcf = bcf_open(output_vcf_file.c_str(), "w");
+        odw = new BCFOrderedWriter(output_vcf_file);
+        odw->set_hdr(sr->hdrs[0]);
+        odw->write_hdr();
         
         ////////////////////////
         //stats initialization//
@@ -114,68 +117,42 @@ class Igor : Program
     
     void merge_duplicate_variants()
     {
-        std::map<std::string, uint32_t> variants;
-        std::stringstream ss;
-        uint32_t no_unique_variants = 0;
-        uint32_t no_total_variants = 0;
+        kstring_t var = {0, 0, 0};
         
-        kstring_t var;
-        var = {0, 0, 0};
-        
-        std::map<std::string, std::vector<bcfptr>> m;
-        std::vector<bcfptr> recs;
-        
-        bcf1_t * v;
         std::vector<bcfptr> current_recs;
-        bcf_hdr_t *h = sr->hdrs[0];
-            
+        
+        khash_t(sdict) *m = kh_init(sdict);
+        khiter_t k;
+        int32_t ret;
+  
         while (sr->read_next_position(current_recs))
         {
-            std::cerr << "reading records \n";
-            
-            if (current_recs.size()!=1)
-            {
-    			m.clear();
-    			
-    			for (uint32_t i=0; i<current_recs.size(); ++i)
-    			{
-    			}
-    			
-    //	        if (m.find(var.s)!=m.end())
-    //            {
-    //        		vcf_write1(ovcf, h, v);
-    //        		m[var.s].push_back(recs[i]);
-    //        		++no_unique_variants;  
-    //            }                    
-            }
-            else
-            {
-            
-            }                
-            
-
-            
-			bcf_get_variant(h, v, &var);
+            kh_clear(sdict, m);
 			
-			const char* chrom = bcf_get_chrom(h, v);
-            uint32_t pos1 = bcf_get_pos1(v);
-            
-
-            
-            no_total_variants += current_recs.size();
-                
+			for (uint32_t i=0; i<current_recs.size(); ++i)
+			{
+			    bcf_get_variant(current_recs[i].h, current_recs[i].v, &var);
+		        if (kh_get(sdict, m, var.s)==kh_end(m))
+		        {
+		            odw->write(current_recs[i].v);
+		            kh_put(sdict, m, strdup(var.s), &ret);
+		            ++no_unique_variants;
+		        }
+		        
+		        ++no_total_variants;
+			}
         }
 
-        bcf_close(ovcf);    
+        odw->close();    
     };
 
     void print_options()
     {
-        std::clog << "merge_duplicate_variants v" << version << "\n\n";
+        std::clog << "mergedups v" << version << "\n\n";
 
         std::clog << "options:     input VCF file        " << input_vcf_file << "\n";
         std::clog << "         [o] output VCF file       " << output_vcf_file << "\n";
-        std::clog << "         [p] Merge by              " << merge_by_pos << "\n";
+        std::clog << "         [p] merge by              " << (merge_by_pos ? "position" : "alleles") << "\n";
         if (intervals.size()!=0)
         {
             std::clog << "         [i] intervals             " << intervals.size() <<  " intervals\n";

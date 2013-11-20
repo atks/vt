@@ -44,8 +44,7 @@ BCFOrderedWriter::BCFOrderedWriter(std::string _vcf_file, int32_t _window)
 	kputc('w', &mode);
     if (!strcmp("+", vcf_file.c_str())) kputs("bu", &mode);
     if (ftype & FT_BCF) kputc('b', &mode);
-    if (ftype & FT_GZ) kputc('z', &mode);    
-    	   
+    if (ftype & FT_GZ) kputc('z', &mode);
     vcf = bcf_open(vcf_file.c_str(), mode.s);
 
     if (mode.m) free(mode.s);
@@ -62,56 +61,63 @@ const char* BCFOrderedWriter::get_seqname(bcf1_t *v)
 /**
  * Gets record from pool, creates a new record if necessary
  */
-void BCFOrderedWriter::set_hdr(bcf_hdr_t *_hdr)
+void BCFOrderedWriter::set_hdr(bcf_hdr_t *hdr)
 {
-    hdr = _hdr;
+    this->hdr = hdr;
 }
 
 /**
  * Reads next record, hides the random access of different regions from the user.
  */
-void BCFOrderedWriter::write1(bcf1_t *v)
+void BCFOrderedWriter::write(bcf1_t *v)
 {   
     //place into appropriate position in the buffer
-    if (!buffer.empty())
-    {
-        //same chromosome?
-        if (bcf_get_rid(v)==bcf_get_rid(buffer.back()))
+    if (window)
+    {    
+        if (!buffer.empty())
         {
-            std::list<bcf1_t*>::iterator i;
-            for (i=buffer.begin(); i!=buffer.end(); ++i)
+            //same chromosome?
+            if (bcf_get_rid(v)==bcf_get_rid(buffer.back()))
             {
-                //equal sign ensures records are kept in original order
-                if (bcf_get_pos1(v)>=bcf_get_pos1(*i))
+                std::list<bcf1_t*>::iterator i;
+                for (i=buffer.begin(); i!=buffer.end(); ++i)
                 {
-                    buffer.insert(i,v);
-                    flush(false);
-                    return;
+                    //equal sign ensures records are kept in original order
+                    if (bcf_get_pos1(v)>=bcf_get_pos1(*i))
+                    {
+                        buffer.insert(i,v);
+                        flush(false);
+                        return;
+                    }
                 }
+                
+                //check order
+                if (i==buffer.end())
+                {
+                    int32_t cutoff_pos1 =  std::max(bcf_get_pos1(buffer.front())-window,1); 
+                    if (bcf_get_pos1(buffer.back())<cutoff_pos1)
+                    {
+                         std::cerr << "Might not be sorted\n";
+                    }
+                }
+                
+                buffer.insert(i,v);
+                flush(false);  
             }
-            
-            //check order
-            if (i==buffer.end())
+            else
             {
-                int32_t cutoff_pos1 =  std::max(bcf_get_pos1(buffer.front())-window,1); 
-                if (bcf_get_pos1(buffer.back())<cutoff_pos1)
-                {
-                     std::cerr << "Might not be sorted\n";
-                }
+                flush(true);            
+                buffer.push_front(v);
             }
-            
-            buffer.insert(i,v);
-            flush(false);  
-        }
+        }    
         else
         {
-            flush(true);            
-            buffer.push_front(v);
+            buffer.push_front(v);   
         }
-    }    
+    }
     else
     {
-        buffer.push_front(v);   
+         bcf_write(vcf, hdr, v);
     }
 }
 
