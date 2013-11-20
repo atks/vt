@@ -72,7 +72,7 @@ class BCFOrderedWriter
     /**
      * Initialize output file.
      */
-    BCFOrderedWriter(std::string _input_vcf_file, int32_t _window=100000);
+    BCFOrderedWriter(std::string input_vcf_file, int32_t window=1);
           
     /**
      * Gets record from pool, creates a new record if necessary
@@ -87,7 +87,7 @@ class BCFOrderedWriter
     /**
      * Reads next record, hides the random access of different regions from the user.
      */
-    void write1(bcf1_t *v);
+    void write(bcf1_t *v);
     
     /**
      * Gets sequence name of a record

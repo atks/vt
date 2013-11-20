@@ -1,16 +1,9 @@
 UNAME = $(shell uname)
-STD = 
-ifeq ($(UNAME), Linux)
-	STD=-std=c++0x
-endif
-ifeq ($(UNAME), Darwin)
-	STD=-std=c++0x
-endif
-	
+
 OPTFLAG ?= -O0 -ggdb
 INCLUDES = -I./lib/include/ -I. -I./lib/include/htslib
-CFLAGS = -pipe $(STD) $(OPTFLAG) $(INCLUDES) -D__STDC_LIMIT_MACROS
-CXX = g++
+CFLAGS = -pipe -std=c++0x $(OPTFLAG) $(INCLUDES) -D__STDC_LIMIT_MACROS
+CXX = clang++
 
 HEADERSONLY =
 SOURCES = program\

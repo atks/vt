@@ -45,21 +45,21 @@ void print_time(double t)
     }
     else if (t<60*60) //less than an hour
     {
-        std::clog << "Time elapsed: " << ((int32_t)(t/60)) << "m " << fmod(t,60) << "s\n\n";
+        std::clog << "Time elapsed: " << ((int32_t)(t/60)) << "m " << fmod(t, 60) << "s\n\n";
     }
     else if (t<60*60*24) //less than a day
     {
         std::clog << "Time elapsed: " << ((int32_t)(t/(60*60))) << "h ";
-        t = fmod(t,60*60); //remaining minutes
-        std::clog <<                     ((int32_t)(t/(60))) << "m " << fmod(t,60) << "s\n\n";
+        t = fmod(t, 60*60); //remaining minutes
+        std::clog <<                     ((int32_t)(t/(60))) << "m " << fmod(t, 60) << "s\n\n";
     }
     else if (t<60*60*24*365) //less than a year
     {
         std::clog << "Time elapsed: " << ((int32_t)(t/(60*60*24))) << "d ";
-        t = fmod(t,60*60*24); //remaining hours
+        t = fmod(t, 60*60*24); //remaining hours
         std::clog <<                     ((int32_t)(t/(60*60))) << "h ";
-        t = fmod(t,60*60); //remaining minutes
-        std::clog <<                      ((int32_t)(t/60)) << "m " << fmod(t,60) << "s\n\n";
+        t = fmod(t, 60*60); //remaining minutes
+        std::clog <<                      ((int32_t)(t/60)) << "m " << fmod(t, 60) << "s\n\n";
     }
 };
 
@@ -68,7 +68,7 @@ void help()
     std::clog << "Help page on http://statgen.sph.umich.edu/wiki/Vt\n\n";
 
     std::clog << "normalize                 normalize indels\n";
-    std::clog << "mergedup                  merge duplicate variants\n";
+    std::clog << "mergedups                 merge duplicate variants\n";
     std::clog << "peek                      summarize variants\n";
 //    std::clog << "partition                 partition variants\n";
 //    std::clog << "profile_snps              profile snps\n";
@@ -105,7 +105,7 @@ int main(int argc, char ** argv)
     {
         normalize(argc-1, ++argv);
     }
-    else if (argc>1 && cmd=="mergedup")
+    else if (argc>1 && cmd=="mergedups")
     {
         merge_duplicate_variants(argc-1, ++argv);
     }

@@ -109,7 +109,7 @@ class Igor : Program
         //i/o initialization//
         //////////////////////
         odr = new BCFOrderedReader(input_vcf_file, intervals);
-        odw = new BCFOrderedWriter(output_vcf_file);
+        odw = new BCFOrderedWriter(output_vcf_file, 100000);
         
         bcf_hdr_append(odr->hdr, "##INFO=<ID=OLD_VARIANT,Number=1,Type=String,Description=\"Original chr:pos:ref:alt encoding\">\n");
         odw->set_hdr(odr->hdr);
@@ -253,7 +253,7 @@ class Igor : Program
                 }
             }
 
-            odw->write1(v);
+            odw->write(v);
             v = odw->get_bcf1_from_pool();
         }
 
