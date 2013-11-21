@@ -251,6 +251,7 @@ void BCFSyncedReader::insert_into_pq(int32_t i, bcf1_t *v)
     b.file_index = i;
     b.pos1 = bcf_get_pos1(v);
     b.v = v;
+    b.h = hdrs[i];
     pq.push(b);
 }
 
@@ -263,6 +264,7 @@ bcf1_t* BCFSyncedReader::get_bcf1_from_pool()
     {
         bcf1_t* v = pool.front();
         pool.pop_front();
+        bcf_clear(v);
         return v;
     }
     else
@@ -312,6 +314,11 @@ bool BCFSyncedReader::read_next_position(std::vector<bcfptr>& current_recs)
            b.h = hdrs[b.file_index];
            
            current_recs.push_back(b);
+//           kstring_t s = {0, 0, 0};
+//           bcf_get_variant(b.h, b.v, &s);
+//           std::cerr << s.s << "\n";
+//           if (s.m) free(s.s);
+            
            buffer[b.file_index].remove(b.v);
            fill_buffer(b.file_index);
            pq.pop();
@@ -487,6 +494,11 @@ void BCFSyncedReader::fill_buffer(int32_t i)
             bcf1_t *v = get_bcf1_from_pool();
             while (itrs[i] && bcf_itr_next(vcfs[i], itrs[i], v) >= 0)
             {
+                bcf_unpack(v, BCF_UN_STR);
+                kstring_t s = {0, 0, 0};
+                bcf_get_variant(hdrs[i], v, &s);
+                std::cerr << s.s << "\n";
+                if (s.m) free(s.s);
                 bcf_get_pos1(v);
                 buffer[i].push_back(v);
                 insert_into_pq(i, v);
@@ -509,8 +521,8 @@ void BCFSyncedReader::fill_buffer(int32_t i)
             while (itrs[i] && tbx_itr_next(vcfs[i], tbxs[i], itrs[i], &s) >= 0)
             {
                 bcf1_t *v = get_bcf1_from_pool();
-                vcf_parse1(&s, hdrs[i], v);
-                bcf_unpack(v, BCF_UN_FLT);
+                vcf_parse(&s, hdrs[i], v);
+                bcf_unpack(v, BCF_UN_STR);
                 bcf_get_pos1(v);
                 buffer[i].push_back(v);
                 insert_into_pq(i, v);
@@ -553,7 +565,7 @@ void BCFSyncedReader::fill_buffer(int32_t i)
             {
                 //check if in selected interval
                 //if (exists_selected_intervals)
-                
+                bcf_unpack(v, BCF_UN_STR);
                 int32_t rid = bcf_get_rid(v);
             
                 if (rid==current_rid)

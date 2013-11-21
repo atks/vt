@@ -327,32 +327,6 @@ bcf_hdr_t *bcf_alt_hdr_read(htsFile *fp);
 int vcf_format1_genotypes(const bcf_hdr_t *h, const bcf1_t *v, kstring_t *s);
 
 /**
- * Formats genotypes for individuals
- */
-int vcf_format1_shared_to_missing(const bcf_hdr_t *h, const bcf1_t *v, kstring_t *s);
-
-/**
- * Returns a bcf_fmt_t pointer associated with tag
- */
-bcf_fmt_t *bcf_get_fmt(const bcf_hdr_t *h, bcf1_t *v, const char *tag);
-
-/**
- * Get the jth integer value for individual i.
- * @i ith individual
- * @j the jth value
- *
- * returns false when the value is missing.
- */
-bool bcf_get_fmt_int(int32_t* val, int32_t i, int32_t j, bcf_fmt_t* fmt);
-
-/**
- * Get string value for individual i.
- *
- * returns false when the value is missing.
- */
-bool bcf_get_fmt_str(kstring_t* s, int32_t i, bcf_fmt_t* fmt);
-
-/**
  * Get genotype for individual i.
  * @i ith individual
  *

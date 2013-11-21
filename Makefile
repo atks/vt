@@ -19,6 +19,8 @@ SOURCES = program\
 		bcf_synced_reader\
 		merge_duplicate_variants\
 		normalize\
+		construct_probes\
+		discover\
 		peek
 
 SOURCESONLY = main.cpp
