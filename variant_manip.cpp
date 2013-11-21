@@ -310,3 +310,173 @@ void VariantManip::left_align(std::vector<std::string>& alleles, uint32_t& pos1,
         return left_align(alleles, pos1, chrom, left_aligned, right_trimmed);
     }
 };
+
+/**
+ * Generates a probing haplotype with flanks around the variant of interest.
+ * Flanks are equal length
+ */
+void VariantManip::generate_probes(const char* chrom,
+                        int32_t pos1, uint32_t probeDiff, // 
+                        std::vector<std::string>& alleles, //store alleles
+                        std::vector<std::string>& probes, //store probes
+                        uint32_t min_flank_length,
+                        int32_t& preambleLength) //store preamble length
+{
+    //map to usable number
+    probes.resize(alleles.size(), "");
+
+    //check allele lengths
+    std::map<uint32_t, uint32_t> alleleLengths;
+    for (uint32_t i=0; i<alleles.size(); ++i)
+    {   
+       alleleLengths[alleles[i].size()]=1;
+    }
+    
+    //for SNPs and MNPs and block substitutions
+    if (alleleLengths.size()==1)
+    {
+        //just get flanking sequences
+        //append preamble
+        std::map<char, uint32_t> bases;
+        std::string preamble;
+        std::string postamble;
+        char *base;
+        uint32_t i = 1;
+        int32_t ref_len;
+        while (bases.size()<4 || preamble.size()<min_flank_length)
+        {
+            base = faidx_fetch_seq(fai, const_cast<char*>(chrom), pos1-1, pos1-1, &ref_len);
+            preamble.append(1,base[0]);
+            bases[base[0]] = 1;
+            if (ref_len<1) free(base);
+            ++i;
+        }
+        
+        bases.clear();
+        i=0;
+        uint32_t alleleLength = alleles[0].size();
+        while (bases.size()<4 || postamble.size()<min_flank_length)
+        {   
+            base = faidx_fetch_seq(fai, const_cast<char*>(chrom), pos1+alleleLength+i, pos1+alleleLength+i, &ref_len);
+            postamble.append(1,base[0]);
+            bases[base[0]] = 1;
+            if (ref_len<1) free(base);
+            ++i;
+        }
+            
+        for (uint32_t i=0; i<alleles.size(); ++i)
+        {  
+            probes[i] = std::string(preamble.rbegin(), preamble.rend()).append(alleles[i]);  
+            probes[i] = probes[i].append(postamble);   
+        } 
+        
+        preambleLength = preamble.size();
+    }
+    //for Indels and Complex Substitutions
+    else
+    {    
+        //find gald
+        uint32_t minLen = alleles[0].size();
+        uint32_t maxLen = alleles[0].size();
+        for (uint32_t i=1; i<alleles.size(); ++i)
+        {   
+            if (alleles[i].size()<minLen)
+                minLen = alleles[i].size();
+            if (alleles[i].size()>maxLen)
+                maxLen = alleles[i].size();
+        }
+        uint32_t gald = maxLen-minLen;
+        
+        
+        uint32_t currentDiff = 0;
+        //current length of probe
+        uint32_t length = 0;
+        //number of point differences for each probe wrt the reference
+        std::vector<uint32_t> diff(alleles.size(), 0);
+        probes.resize(alleles.size(), "");
+
+        generate_probes(chrom, pos1, min_flank_length, currentDiff, length, gald, diff, alleles, probes);
+        
+        //append preamble
+        std::map<char, uint32_t> bases;
+        std::string preamble;
+        char* base;
+        uint32_t i = 1;
+        int32_t ref_len;
+        while (bases.size()<4 || preamble.size()<min_flank_length)
+        {
+            base = faidx_fetch_seq(fai, const_cast<char*>(chrom), pos1+i-1, pos1+i-1, &ref_len);
+            //myRefSeq->getString(base, chromNo, pos-i, 1);
+            preamble.append(1,base[0]);
+            bases[base[0]] = 1;
+            ++i;
+            if (base[0]=='N')
+            {
+                break;
+            }
+            if (ref_len<1) free(base);
+        }
+        
+        preambleLength = preamble.size();
+            
+        for (uint32_t i=0; i<alleles.size(); ++i)
+        {   
+            probes[i] = std::string(preamble.rbegin(), preamble.rend()).append(probes[i]);  
+        }
+    }
+}
+
+/**
+*Iteratively called function for generating a haplotype.
+*/        
+void VariantManip::generate_probes(const char* chrom, 
+                        int32_t pos1, 
+                        uint32_t flankLength, 
+                        uint32_t& currentDiff, 
+                        uint32_t& length, 
+                        uint32_t gald, 
+                        std::vector<uint32_t>& diff, 
+                        std::vector<std::string>& alleles, 
+                        std::vector<std::string>& probes)
+{
+    //std::cerr << "B:" << currentDiff << " " << alleles.size()-1 << "\n";
+            
+    if (currentDiff<alleles.size() || length<=2*gald+flankLength)
+    {
+        std::map<std::string, uint32_t> probeHash;
+        //extend probes
+        for (uint32_t i=0; i<alleles.size(); ++i)
+        {   
+//                if (i==0)
+//                {
+//                    std::string base;
+//                    myRefSeq->getString(base, chromNo, (genomeIndex_t) (pos+length), 1);
+//                    probes[0].append(1, base.at(0));   
+//                }
+//                else
+            {
+                //copy from allele
+                if (length<alleles[i].size())
+                {
+                    probes[i].append(1,alleles[i].at(length));
+                }
+                else//copy from reference
+                {   
+                    int32_t start1 = (pos1+length-alleles[i].size()+alleles[0].size()-1);
+                    int32_t ref_len;
+                    char* base = faidx_fetch_seq(fai, const_cast<char*>(chrom), start1 , start1, &ref_len);
+                    //myRefSeq->getString(base, chromNo, (genomeIndex_t) (pos+length-alleles[i].size()+alleles[0].size()), 1);
+                    probes[i].append(1, base[0]);
+                    if (ref_len<1) free(base);
+                }
+            }
+            //std::cerr << probes[i] << "\n" ;
+            probeHash[probes[i]] = 1;
+        }            
+       
+        currentDiff = probeHash.size();
+        ++length;
+        //std::cerr << probes[0] << "\n" << probes[1] << "\n";
+        generate_probes(chrom, pos1, flankLength, currentDiff, length, gald, diff, alleles, probes);
+    }
+}   

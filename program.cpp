@@ -121,7 +121,7 @@ void Program::parse_intervals(std::vector<GenomeInterval>& intervals, std::strin
    	    if (m.find(v[i])==m.end())
         {
             m[v[i]] = 1;
-             GenomeInterval interval(v[i]);
+            GenomeInterval interval(v[i]);
             intervals.push_back(interval);
         }
    	}

@@ -525,7 +525,7 @@ bcf_hdr_t *bcf_hdr_read(htsFile *hfp)
         fprintf(stderr,"[%s:%d %s] Failed to read the header (reading BCF in text mode?)\n", __FILE__,__LINE__,__FUNCTION__);
         return NULL;
     }
-	if (strncmp((char*)magic, "BCF\2\2", 5) != 0) 
+	if (strncmp((char*)magic, "BCF\2\1", 5) != 0) 
     {
         if (!strncmp((char*)magic, "BCF", 3)) 
             fprintf(stderr,"[%s:%d %s] invalid BCF2 magic string: only BCFv2.2 is supported.\n", __FILE__,__LINE__,__FUNCTION__);

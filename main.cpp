@@ -41,25 +41,22 @@ void print_time(double t)
 {
     if (t<60)
     {
-        std::clog << "Time elapsed: " << t << "s\n\n";
+        fprintf(stderr, "Time elapsed: %.2fs\n\n", t);
     }
     else if (t<60*60) //less than an hour
     {
-        std::clog << "Time elapsed: " << ((int32_t)(t/60)) << "m " << fmod(t, 60) << "s\n\n";
+        fprintf(stderr, "Time elapsed: %dm %ds\n\n", ((int32_t)(t/60)), ((int32_t)fmod(t, 60)));
     }
     else if (t<60*60*24) //less than a day
     {
-        std::clog << "Time elapsed: " << ((int32_t)(t/(60*60))) << "h ";
-        t = fmod(t, 60*60); //remaining minutes
-        std::clog <<                     ((int32_t)(t/(60))) << "m " << fmod(t, 60) << "s\n\n";
+        double m = fmod(t, 60*60); //remaining minutes
+        fprintf(stderr, "Time elapsed: %dh %dm %ds\n\n", ((int32_t)(t/(60*60))), ((int32_t)(m/60)), ((int32_t)fmod(m, 60)));
     }
     else if (t<60*60*24*365) //less than a year
     {
-        std::clog << "Time elapsed: " << ((int32_t)(t/(60*60*24))) << "d ";
-        t = fmod(t, 60*60*24); //remaining hours
-        std::clog <<                     ((int32_t)(t/(60*60))) << "h ";
-        t = fmod(t, 60*60); //remaining minutes
-        std::clog <<                      ((int32_t)(t/60)) << "m " << fmod(t, 60) << "s\n\n";
+        double h = fmod(t, 60*60*24); //remaining hours
+        double m = fmod(h, 60*60); //remaining minutes
+        fprintf(stderr, "Time elapsed: %dd %dh %dm %ds\n\n", ((int32_t)(t/(60*60*24))), ((int32_t)(h/(60*60))), ((int32_t)(m/60)), ((int32_t)fmod(m, 60)));
     }
 };
 

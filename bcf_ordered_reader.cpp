@@ -98,7 +98,6 @@ bcf_hdr_t* BCFOrderedReader::get_hdr()
  */
 bool BCFOrderedReader::initialize_next_interval()
 {
-    
     while (interval_index!=intervals.size())
     {
         if (ftype==FT_BCF_GZ)
@@ -209,6 +208,7 @@ bool BCFOrderedReader::read_next_position(std::vector<bcf1_t *>& vs)
  */
 void BCFOrderedReader::store_bcf1_into_pool(bcf1_t* v)
 {
+    bcf_clear(v);
     pool.push_back(v);
 }
 
