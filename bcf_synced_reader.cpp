@@ -496,7 +496,7 @@ void BCFSyncedReader::fill_buffer(int32_t i)
             {
                 bcf_unpack(v, BCF_UN_STR);
                 kstring_t s = {0, 0, 0};
-                bcf_get_variant(hdrs[i], v, &s);
+                bcf_variant2string(hdrs[i], v, &s);
                 std::cerr << s.s << "\n";
                 if (s.m) free(s.s);
                 bcf_get_pos1(v);
