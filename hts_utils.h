@@ -71,6 +71,11 @@
 /**
  *Gets the start position of the first mapped base in the sequence.
  */
+#define bam_get_chrom(h, b) ((h)->target_name[(b)->core.tid])
+
+/**
+ *Gets the start position of the first mapped base in the sequence.
+ */
 #define bam_get_pos1(b) ((b)->core.pos)
 
 /**
@@ -291,26 +296,11 @@ void bcf_set_allele(bcf1_t *v, std::vector<std::string> alleles);
 int32_t bcf_hdr_get_n_sample(bcf_hdr_t *h);
 
 /**
- *Add single sample to BCF header
- */
-void bcf_hdr_add_sample(bcf_hdr_t *h, char *s);
-
-/**
  *Gets sequence names and lengths
  */
 void bcf_hdr_get_seqs_and_lens(const bcf_hdr_t *h, const char**& seqs, int32_t*& lens, int *n);
 
 const char *hts_parse_reg1(const char *s, int *beg, int *end);
-
-/**
- *synchronize dictionaries
- */
-int bcf_hdr_sync(bcf_hdr_t *h);
-
-/**
- * Formats format and genotypes for individuals
- */
-int vcf_format1_format_genotypes(const bcf_hdr_t *h, const bcf1_t *v, kstring_t *s);
 
 /**
  * Reads header of a VCF file and returns the bcf header object.
@@ -325,14 +315,6 @@ bcf_hdr_t *bcf_alt_hdr_read(htsFile *fp);
  * Formats genotypes for individuals
  */
 int vcf_format1_genotypes(const bcf_hdr_t *h, const bcf1_t *v, kstring_t *s);
-
-/**
- * Get genotype for individual i.
- * @i ith individual
- *
- * returns false when the value is missing.
- */
-bool bcf_get_fmt_gt(kstring_t* s, int32_t i, bcf_fmt_t* f);
 
 /**
  * Returns c string of a single values info tag
