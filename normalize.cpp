@@ -180,7 +180,7 @@ class Igor : Program
                 if (left_trimmed || left_aligned || right_trimmed)
                 {
                     old_alleles.l = 0;
-                    bcf_format_variant(odr->hdr, v, &old_alleles);
+                    bcf_variant2string(odr->hdr, v, &old_alleles);
                     bcf_update_info_string(odr->hdr, v, "OLD_VARIANT", old_alleles.s);
 
                     bcf_set_pos1(v, pos1);

@@ -131,7 +131,7 @@ class Igor : Program
 			
 			for (uint32_t i=0; i<current_recs.size(); ++i)
 			{
-			    bcf_get_variant(current_recs[i].h, current_recs[i].v, &var);
+			    bcf_variant2string(current_recs[i].h, current_recs[i].v, &var);
 		        if (kh_get(sdict, m, var.s)==kh_end(m))
 		        {
 		            odw->write(current_recs[i].v);
