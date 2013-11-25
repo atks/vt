@@ -145,15 +145,11 @@ void bcf_set_chrom(bcf_hdr_t *h, bcf1_t *v, const char* chrom)
 	khint_t k = kh_get(vdict, d, chrom);
 	if (k == kh_end(d)) 
     {
-        // Simple error recovery for chromosomes not defined in the header. It will not help when VCF header has
-        // been already printed, but will enable tools like vcfcheck to proceed.
-        fprintf(stderr, "[W::%s] contig '%s' is not defined in the header\n", __func__, chrom);
-        kstring_t tmp = {0,0,0};
-        int l;
-        ksprintf(&tmp, "##contig=<ID=%s,length=2147483647>", chrom);
-        bcf_hrec_t *hrec = bcf_hdr_parse_line(h,tmp.s,&l);
-        free(tmp.s);
-        if ( bcf_hdr_add_hrec((bcf_hdr_t*)h, hrec) ) bcf_hdr_sync((bcf_hdr_t*)h);
+        fprintf(stderr, "[E:%s:%d %s] contig '%s' is not defined in the header\n", __FILE__, __LINE__, __FUNCTION__, chrom);
+        kstring_t contig = {0,0,0};
+        ksprintf(&contig, "##contig=<ID=%s,length=2147483647>", chrom);
+        bcf_hdr_append(h, contig.s);
+        if (contig.m) free(contig.s);
         k = kh_get(vdict, d, chrom);
 	}
     v->rid = kh_val(d, k).id;		
@@ -364,30 +360,6 @@ bool bcf_is_passed(bcf_hdr_t *h, bcf1_t *v)
 }
 
 /**
- *Add single sample to BCF header
- */
-void bcf_hdr_add_sample(bcf_hdr_t *h, char *s)
-{
-    vdict_t *d = (vdict_t*)h->dict[BCF_DT_SAMPLE];
-    int ret;
-    int k = kh_put(vdict, d, s, &ret);
-    if (ret) // absent 
-    {   
-        kh_val(d, k) = bcf_idinfo_def;
-        kh_val(d, k).id = kh_size(d) - 1;
-        int n = kh_size(d);
-        h->samples = (char**) realloc(h->samples,sizeof(char*)*n);
-        h->samples[n-1] = s;
-        bcf_hdr_sync(h);
-    } 
-    else 
-    {
-        fprintf(stderr, "[W::%s] Duplicated sample name '%s'. Skipped.\n", __func__, s);
-    }
-}
-
-
-/**
  *Get number of samples in bcf header
  */
 int32_t bcf_hdr_get_n_sample(bcf_hdr_t *h)
@@ -428,160 +400,6 @@ void bcf_hdr_get_seqs_and_lens(const bcf_hdr_t *h, const char**& seqs, int32_t*&
     for (tid=0; tid<m; tid++)
         assert(seqs[tid]);
     *n = m;
-}
-
-
-/**
- * Get genotype for individual i.
- * @i ith individual
- *
- * returns false when the value is missing.
- */
-bool bcf_get_fmt_gt(kstring_t* s, int32_t i, bcf_fmt_t* f)
-{    	
-	//for an individual array
-	// bcf_fmt_array(s, f->n, f->type, f->p + j * f->size);
-	
-	if (f->n==0) 
-	{
-		return false;
-	}
-//	else if (j>=fmt->n)
-//	{
-//		std::cerr << "[e] out of index for format value " << j << ">" << fmt->n << "\n";
-//		return false;
-//	}
-    else
-    {
-		int8_t *x = (int8_t*)(f->p + i * f->size);
-		
-		s->l = 0;
-		int32_t l;
-        for (l = 0; l < f->n && x[l] != INT8_MIN; ++l) 
-        {
-            if (l) kputc("/|"[x[l]&1], s);
-            if (x[l]>>1) kputw((x[l]>>1) - 1, s);
-            else kputc('.', s);
-        }
-        if (l == 0) kputc('.', s);
-		
-		return true;
-	}
-};
-
-/**
- * Returns c string of a single values info tag
- */
-bcf_fmt_t* bcf_get_format(const bcf_hdr_t *h, bcf1_t *v, const char *tag)
-{
-    bcf_unpack(v, BCF_UN_FMT);
-    kstring_t s;
-    s.l = s.m = 0;
-    s.s = 0;
-
-	for (uint32_t i = 0; i < v->n_fmt; ++i)
-	{
-		bcf_fmt_t *z = &v->d.fmt[i];
-
-        s.l=0;
-		kputs(h->id[BCF_DT_ID][z->id].key, &s);
-				
-		if (!strcmp(tag,s.s))
-		{
-		    s.l=0;
-            free(s.s);			
-			return z;
-	    }
-	}
-	
-    if (s.s) free(s.s);
-    return 0;
-};
-
-/**
- * Returns c string of a single values info tag
- */
-char* bcf_get_info1(const bcf_hdr_t *h, bcf1_t *v, const char *tag)
-{
-    bcf_unpack(v, BCF_UN_INFO);
-    kstring_t s;
-    s.l = s.m = 0;
-    s.s = 0;
-    if (v->n_info)
-    {
-		for (uint32_t i = 0; i < v->n_info; ++i)
-		{
-			bcf_info_t *z = &v->d.info[i];
-
-            s.l=0;
-			kputs(h->id[BCF_DT_ID][z->key].key, &s);
-			
-			//std::cerr << "INSIDE KEY " << s.s << " " << tag << "\n";
-			if (!strcmp(tag,s.s))
-			{
-			    s.l=0;
-    			bcf_fmt_array(&s, z->len, z->type, z->vptr);
-    			
-    			return (char*) strdup(s.s);
-		    }
-		}
-    }
-
-    return (char*) s.s;
-};
-
-/**
- * Adds an INFO field.
- */
-int32_t bcf_add_info(bcf_hdr_t *h, bcf1_t *v, int32_t type, char *key, uint8_t *value, int32_t len)
-{
-    if (type == BCF_BT_CHAR)
-    {
-        bcf_dec_t *d = &v->d;
-    
-        vdict_t *dict = (vdict_t*)h->dict[BCF_DT_ID];
-        khint_t k = kh_get(vdict, dict, key);
-		//info tag not in header, add a header record
-        if (k == kh_end(dict) || kh_val(dict, k).info[BCF_HL_INFO] == 15)
-        {
-            fprintf(stderr, "[W::%s] INFO '%s' is not defined in the header, assuming Type=String\n", __func__, key);
-            kstring_t tmp = {0,0,0};
-            int l;
-            ksprintf(&tmp, "##INFO=<ID=%s,Number=1,Type=String,Description=\"Dummy\">", key);
-            bcf_hrec_t *hrec = bcf_hdr_parse_line(h,tmp.s,&l);
-            free(tmp.s);
-            if ( bcf_hdr_add_hrec((bcf_hdr_t*)h, hrec) ) bcf_hdr_sync((bcf_hdr_t*)h);
-        }
-        else
-        {
-            //check for duplicate info fields, 
-            int32_t key = kh_val(dict, k).id;
-            bcf_info_t *z = NULL;
-            uint32_t i = 0;
-            for (i=0; i<v->n_info; ++i)
-            {
-                z = &d->info[i];
-                if (z->key == key)
-                {
-                  break;  
-                }    
-            }
-            
-            if (i==v->n_info)
-            {    
-                ++v->n_info;
-      		    hts_expand(bcf_info_t, v->n_info, d->m_info, d->info);
-        	}
-        	z = &d->info[i];
-            z->type = type;
-            z->key =  kh_val(dict, k).id;
-            z->len = len;
-        	z->vptr = value;
-        	
-        }    
-    }
-    
-    return 1;
 }
 
 /**
