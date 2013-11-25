@@ -28,7 +28,6 @@ BCFOrderedWriter::BCFOrderedWriter(std::string _vcf_file, int32_t _window)
     vcf_file = _vcf_file;
     window = _window;
     vcf = NULL;
-    hdr = NULL;
     
     ss.str("");
     s = {0, 0, 0};
@@ -46,6 +45,9 @@ BCFOrderedWriter::BCFOrderedWriter(std::string _vcf_file, int32_t _window)
     if (ftype & FT_BCF) kputc('b', &mode);
     if (ftype & FT_GZ) kputc('z', &mode);
     vcf = bcf_open(vcf_file.c_str(), mode.s);
+     
+    hdr = bcf_hdr_init("w");
+    bcf_hdr_append(hdr, "##fileformat=VCFv4.1");
 
     if (mode.m) free(mode.s);
 }
@@ -63,7 +65,7 @@ const char* BCFOrderedWriter::get_seqname(bcf1_t *v)
  */
 void BCFOrderedWriter::set_hdr(bcf_hdr_t *hdr)
 {
-    this->hdr = hdr;
+    this->hdr = bcf_hdr_dup(hdr);
 }
 
 /**

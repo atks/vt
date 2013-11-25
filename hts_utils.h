@@ -86,7 +86,7 @@ void bam_get_seq_string(bam1_t *srec, kstring_t *seq);
 /**
  *Gets the base qualities from a bam record, when N is observed, a placeholder value of 0 is entered
  */
-void bam_get_qual_string(bam1_t *srec, kstring_t *qual, char* seq);
+void bam_get_qual_string(bam1_t *srec, kstring_t *qual, const char* seq);
 
 /**
  *Gets the cigar sequence from a bam record
@@ -183,7 +183,7 @@ int bcf_subset_samples(const bcf_hdr_t *h, bcf1_t *v, std::vector<int32_t>& imap
 /**
  *Set chromosome name
  */
-void bcf_set_chrom(bcf_hdr_t *h, bcf1_t *v, char* chrom);
+void bcf_set_chrom(bcf_hdr_t *h, bcf1_t *v, const char* chrom);
 
 /**
  *Get RID

@@ -35,10 +35,11 @@
 #include <list>
 #include "htslib/hts.h"
 #include "htslib/vcf.h"
+#include "htslib/kstring.h"
 #include "htslib/tbx.h"
 #include "genome_interval.h"
 #include "hts_utils.h"
-#include "htslib/kstring.h"
+
 /**
  * Wrapper class for the bcf object.
  */

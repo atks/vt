@@ -131,17 +131,14 @@ class Igor : Program
 
     void construct_probes()
     {
-        regex_t regex;
-    	regcomp(&regex, "N", 0);
-    	
-    	while (odr->read(v))
+        while (odr->read(v))
     	{
     	    bcf_unpack(v, BCF_UN_INFO);
     	    
     	    
     	    
     		//ignore alleles with N	
-	        if (!regexec(&regex, bcf_get_alt(v, 0), 0, NULL, 0) || !regexec(&regex, bcf_get_alt(v, 1), 0, NULL, 0))
+	        if (strchr(bcf_get_alt(v, 0), 'N') || strchr(bcf_get_alt(v, 1), 'N'))
 	        {
 		        continue;
 	        }

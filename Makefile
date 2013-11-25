@@ -14,6 +14,7 @@ SOURCES = program\
 		rb_tree\
 		hts_utils\
 		utils\
+		bam_ordered_reader\
 		bcf_ordered_reader\
 		bcf_ordered_writer\
 		bcf_synced_reader\

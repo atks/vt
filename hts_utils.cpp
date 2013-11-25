@@ -139,7 +139,7 @@ void bcf_get_variant(bcf_hdr_t *h, bcf1_t *v, kstring_t *var)
 /**
  *Set chromosome name
  */
-void bcf_set_chrom(bcf_hdr_t *h, bcf1_t *v, char* chrom)
+void bcf_set_chrom(bcf_hdr_t *h, bcf1_t *v, const char* chrom)
 {
 	vdict_t *d = (vdict_t*)h->dict[BCF_DT_CTG];
 	khint_t k = kh_get(vdict, d, chrom);
@@ -240,7 +240,7 @@ void bam_get_seq_string(bam1_t *srec, kstring_t *seq)
 /**
  *Gets the base qualities from a bam record, when N is observed, a placeholder value of 0(!, 33 adjusted) is entered
  */
-void bam_get_qual_string(bam1_t *srec, kstring_t *qual, char* seq)
+void bam_get_qual_string(bam1_t *srec, kstring_t *qual, const char* seq)
 {
     qual->l=0;
     uint32_t offset = 0;
