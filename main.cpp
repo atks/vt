@@ -36,6 +36,8 @@
 #include "normalize.h"
 #include "merge_duplicate_variants.h"
 #include "peek.h"
+#include "construct_probes.h"
+#include "discover.h"
 
 void print_time(double t)
 {
@@ -67,6 +69,8 @@ void help()
     std::clog << "normalize                 normalize indels\n";
     std::clog << "mergedups                 merge duplicate variants\n";
     std::clog << "peek                      summarize variants\n";
+    std::clog << "construct_probes          construct probes for each variant\n";
+    std::clog << "discover                  discover variants\n";
 //    std::clog << "partition                 partition variants\n";
 //    std::clog << "profile_snps              profile snps\n";
 //    std::clog << "profile_indels            profile indels\n";
@@ -105,6 +109,14 @@ int main(int argc, char ** argv)
     else if (argc>1 && cmd=="mergedups")
     {
         merge_duplicate_variants(argc-1, ++argv);
+    }
+    else if (argc>1 && cmd=="construct_probes")
+    {
+        construct_probes(argc-1, ++argv);
+    }
+    else if (argc>1 && cmd=="discover")
+    {
+        discover(argc-1, ++argv);
     }
     else if (argc>1 && cmd=="peek")
     {

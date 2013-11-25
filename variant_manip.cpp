@@ -376,17 +376,16 @@ void VariantManip::generate_probes(const char* chrom,
     else
     {    
         //find gald
-        uint32_t minLen = alleles[0].size();
-        uint32_t maxLen = alleles[0].size();
+        uint32_t min_len = alleles[0].size();
+        uint32_t max_len = alleles[0].size();
         for (uint32_t i=1; i<alleles.size(); ++i)
         {   
-            if (alleles[i].size()<minLen)
-                minLen = alleles[i].size();
-            if (alleles[i].size()>maxLen)
-                maxLen = alleles[i].size();
+            if (alleles[i].size()<min_len)
+                min_len = alleles[i].size();
+            if (alleles[i].size()>max_len)
+                max_len = alleles[i].size();
         }
-        uint32_t gald = maxLen-minLen;
-        
+        uint32_t gald = max_len-min_len;      
         
         uint32_t currentDiff = 0;
         //current length of probe

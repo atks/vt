@@ -31,7 +31,6 @@
 #include "bcf_ordered_reader.h"
 #include "bcf_ordered_writer.h"
 #include "variant_manip.h"
-#include <regex.h>
 
 void construct_probes(int argc, char ** argv);
 
