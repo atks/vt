@@ -24,7 +24,7 @@
 #include "bam_ordered_reader.h"
 
 BAMOrderedReader::BAMOrderedReader(std::string bam_file, std::vector<GenomeInterval>& intervals)
-:bam_file(bam_file), intervals(intervals)
+:bam_file(bam_file), intervals(intervals), sam(0), hdr(0), idx(0), itr(0)
 {   
     const char* fname = bam_file.c_str();
     int len = strlen(fname);
@@ -36,23 +36,23 @@ BAMOrderedReader::BAMOrderedReader(std::string bam_file, std::vector<GenomeInter
 
     interval_index = 0;
 
-    sam = NULL;
-    hdr = NULL;
-    idx = NULL;
-    itr = NULL;
     sam = sam_open(bam_file.c_str(), "r");
     hdr = sam_hdr_read(sam);
-   
     s = bam_init1();
     
     intervals_present =  intervals.size()!=0;
-
+    interval_index = 0;
+    
     idx = bam_index_load(bam_file.c_str());
 	if (idx==0)
 	{
 	    fprintf(stderr, "[%s:%d %s] fail to load index for %s\n", __FILE__, __LINE__, __FUNCTION__, bam_file.c_str());
 		abort();
 	}
+	else
+    {
+        index_loaded = true;
+    }
 
     random_access_enabled = intervals_present && index_loaded;
 };
@@ -74,8 +74,10 @@ bool BAMOrderedReader::initialize_next_interval()
     while (interval_index!=intervals.size())
     {
         GenomeInterval interval = intervals[interval_index];
+        ++interval_index;
         int tid = bam_name2id(hdr, interval.seq.c_str());
-        bam_itr_queryi(idx, tid, interval.start1-1, interval.end1);
+        if (itr) hts_itr_destroy(itr);
+        itr = bam_itr_queryi(idx, tid, interval.start1, interval.end1);
         if (itr)
         {
             return true;    
@@ -88,7 +90,7 @@ bool BAMOrderedReader::initialize_next_interval()
 /**
  * Reads next record, hides the random access of different regions from the user.
  */
-bool BAMOrderedReader::read(bam1_t *v)
+bool BAMOrderedReader::read(bam1_t *s)
 {
     if (random_access_enabled)
     {
@@ -106,7 +108,7 @@ bool BAMOrderedReader::read(bam1_t *v)
     }
     else
     {
-        if (bam_read1(sam->fp.bgzf, s)==0)
+        if (bam_read1(sam->fp.bgzf, s)>=0)
         {
             //todo: filter via interval tree
             //if found in tree, return true else false

@@ -34,12 +34,12 @@ void VTOutput::usage(TCLAP::CmdLineInterface& c)
 {
     std::string s = "";
     std::list<TCLAP::Arg*> args = c.getArgList();
+    //prints unlabeled arument list first
     for (TCLAP::ArgListIterator it = args.begin(); it != args.end(); it++)
 	{
         if (typeid(**it)==typeid(TCLAP::UnlabeledValueArg<std::string>))
         {
             TCLAP::UnlabeledValueArg<std::string> *i = (TCLAP::UnlabeledValueArg<std::string> *) (*it);
-
             s = i->getName();
         }
     }
@@ -48,6 +48,8 @@ void VTOutput::usage(TCLAP::CmdLineInterface& c)
     std::clog << "description : " << c.getMessage() << "\n\n";   
 	std::clog << "usage : vt "  << c.getProgramName() << " [options] " << s << "\n\n";
     
+    //prints rest of arguments
+	//for (TCLAP::ArgListReverseIterator it = args.rbegin(); it != args.rend(); it++)
 	for (TCLAP::ArgListIterator it = args.begin(); it != args.end(); it++)
 	{
 	    if (it==args.begin())
@@ -55,11 +57,14 @@ void VTOutput::usage(TCLAP::CmdLineInterface& c)
 	        std::clog << "options : ";
 	    }
 	    else
+        //else if (typeid(**it)==typeid(TCLAP::UnlabeledValueArg<std::string>))
 	    {
 	    	std::clog << "          ";
 	    }
 
-	    if (typeid(**it)==typeid(TCLAP::ValueArg<std::string>))
+	    if (typeid(**it)==typeid(TCLAP::ValueArg<std::string>) ||
+	        typeid(**it)==typeid(TCLAP::ValueArg<uint32_t>) ||
+	        typeid(**it)==typeid(TCLAP::ValueArg<double>))
 	    {
 	        TCLAP::ValueArg<std::string> *i = (TCLAP::ValueArg<std::string> *) (*it);
 
@@ -72,6 +77,14 @@ void VTOutput::usage(TCLAP::CmdLineInterface& c)
 
         	std::clog  << "-" << i->getFlag()
     	               << "  " << i->getDescription() << "\n";
+        }
+        else if (typeid(**it)==typeid(TCLAP::UnlabeledValueArg<std::string>))
+        {
+            //ignored
+        }
+        else 
+        {
+            std::clog << "oops, argument type not handled\n";
         }
     }
 
