@@ -74,14 +74,29 @@
 #define bam_get_chrom(h, b) ((h)->target_name[(b)->core.tid])
 
 /**
- * Gets the start position of the first mapped base in the sequence.
+ * Gets the template ID of the read.
+ */
+#define bam_get_mtid(b) ((b)->core.mtid)
+
+/**
+ * Gets the start position of the first mapped base in the read.
  */
 #define bam_get_pos1(b) ((b)->core.pos)
 
 /**
- * Gets the end position of the last mapped base in the sequence.
+ * Gets the end position of the last mapped base in the read.
  */
 int32_t bam_get_end_pos1(bam1_t *srec);
+
+/**
+ * Gets the template ID of the paired read.
+ */
+#define bam_get_mtid(b) ((b)->core.mtid)
+
+/**
+ * Gets the start position of the first mapped base in the read.
+ */
+#define bam_get_mpos1(b) ((b)->core.mpos)
 
 /**
  * Gets the read sequence from a bam record

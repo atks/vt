@@ -53,15 +53,7 @@ void bam_get_qual_string(bam1_t *srec, kstring_t *qual, const char* seq)
     uint8_t* s = bam_get_qual(srec);
     for (int32_t i = 0; i < bam_get_l_qseq(srec); ++i) 
     {
-        if (seq[i]=='N')
-        {
-            kputc('!', qual);
-            ++offset;
-        }
-        else
-        {
-            kputc(s[i-offset] + 33, qual);
-        }
+        kputc(s[i-offset] + 33, qual);
     }
 };
 

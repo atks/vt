@@ -90,10 +90,12 @@ int main(int argc, char ** argv)
     time_t t0;
     std::time(&t0);
 
-    std::clog << "\n=======\n";
+    std::clog << "\n";
+    std::clog << "=======\n";
     std::clog << "vt v0.5\n";
-    std::clog << "=======\n\n";
-
+    std::clog << "=======\n";
+    std::clog << "\n";
+    
     if (argc==1)
     {
         help();
