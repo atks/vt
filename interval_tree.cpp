@@ -540,7 +540,5 @@ void IntervalTree::validate_iter(IntervalTreeNode* x, uint32_t depth)
     {
         height = height<depth? depth : height;
     }
-
-    
 };
     

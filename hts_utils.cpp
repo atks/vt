@@ -26,6 +26,25 @@
 KHASH_MAP_INIT_STR(vdict, bcf_idinfo_t) 
 typedef khash_t(vdict) vdict_t;
 
+/**************
+ *BAM HDR UTILS
+ **************/
+
+/** 
+ * Copies contigs found in bam header to bcf header.
+ */
+void bam_hdr_transfer_contigs_to_bcf_hdr(const bam_hdr_t *sh, bcf_hdr_t *vh)
+{
+    kstring_t s = {0,0,0};
+    for (uint32_t i=0; i<sh->n_targets; ++i)
+    {
+        s.l = 0;
+        ksprintf(&s, "##contig=<ID=%s,length=%d>", sh->target_name[i], sh->target_len[i]);
+        bcf_hdr_append(vh, s.s);
+    }
+    if (s.m) free(s.s);
+}
+
 /**********
  *BAM UTILS
  **********/
@@ -33,27 +52,27 @@ typedef khash_t(vdict) vdict_t;
 /**
  * Gets the read sequence from a bam record
  */
-void bam_get_seq_string(bam1_t *srec, kstring_t *seq)
+void bam_get_seq_string(bam1_t *s, kstring_t *seq)
 {
     seq->l=0;
-    uint8_t* s = bam_get_seq(srec);
-    for (uint16_t i = 0; i < bam_get_l_qseq(srec); ++i)
+    uint8_t* sq = bam_get_seq(s);
+    for (uint16_t i = 0; i < bam_get_l_qseq(s); ++i)
     {
-        kputc("=ACMGRSVTWYHKDBN"[bam_seqi(s, i)], seq);
+        kputc("=ACMGRSVTWYHKDBN"[bam_seqi(sq, i)], seq);
     }
 };
 
 /**
  * Gets the base qualities from a bam record, when N is observed, a placeholder value of 0(!, 33 adjusted) is entered
  */
-void bam_get_qual_string(bam1_t *srec, kstring_t *qual, const char* seq)
+void bam_get_qual_string(bam1_t *s, kstring_t *qual)
 {
     qual->l=0;
     uint32_t offset = 0;
-    uint8_t* s = bam_get_qual(srec);
-    for (int32_t i = 0; i < bam_get_l_qseq(srec); ++i) 
+    uint8_t* q = bam_get_qual(s);
+    for (int32_t i = 0; i < bam_get_l_qseq(s); ++i) 
     {
-        kputc(s[i-offset] + 33, qual);
+        kputc(q[i-offset] + 33, qual);
     }
 };
 
@@ -138,7 +157,7 @@ void bam_get_base_and_qual_and_read_and_qual(bam1_t *srec, uint32_t pos, char& b
             base = readseq->s[rpos];
             
             //qual
-            bam_get_qual_string(srec, readqual, readseq->s);
+            bam_get_qual_string(srec, readqual);
             qual = readqual->s[rpos];
         }
         else

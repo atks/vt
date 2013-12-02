@@ -24,9 +24,6 @@
 #ifndef DISCOVER_H
 #define DISCOVER_H
 
-#include <cstdio>
-#include <cstdlib>
-#include <cctype>
 #include <cmath>
 #include <string>
 #include <iostream>
