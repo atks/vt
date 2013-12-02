@@ -59,6 +59,15 @@
 /*******
  *COMMON
  *******/
+ 
+/**************
+ *BAM HDR UTILS
+ **************/
+
+/** 
+ * Copies contigs found in bam header to bcf header.
+ */
+void bam_hdr_transfer_contigs_to_bcf_hdr(const bam_hdr_t *sh, bcf_hdr_t *vh);
 
 /**********
  *BAM UTILS
@@ -71,17 +80,12 @@
 /**
  * Gets the start position of the first mapped base in the sequence.
  */
-#define bam_get_chrom(h, b) ((h)->target_name[(b)->core.tid])
-
-/**
- * Gets the template ID of the read.
- */
-#define bam_get_mtid(b) ((b)->core.mtid)
+#define bam_get_chrom(h, s) ((h)->target_name[(s)->core.tid])
 
 /**
  * Gets the start position of the first mapped base in the read.
  */
-#define bam_get_pos1(b) ((b)->core.pos)
+#define bam_get_pos1(s) ((s)->core.pos)
 
 /**
  * Gets the end position of the last mapped base in the read.
@@ -91,22 +95,22 @@ int32_t bam_get_end_pos1(bam1_t *srec);
 /**
  * Gets the template ID of the paired read.
  */
-#define bam_get_mtid(b) ((b)->core.mtid)
+#define bam_get_mtid(s) ((s)->core.mtid)
 
 /**
  * Gets the start position of the first mapped base in the read.
  */
-#define bam_get_mpos1(b) ((b)->core.mpos)
+#define bam_get_mpos1(s) ((s)->core.mpos)
 
 /**
  * Gets the read sequence from a bam record
  */
-void bam_get_seq_string(bam1_t *srec, kstring_t *seq);
+void bam_get_seq_string(bam1_t *s, kstring_t *seq);
 
 /**
- * Gets the base qualities from a bam record, when N is observed, a placeholder value of 0 is entered
+ * Gets the base qualities from a bam record
  */
-void bam_get_qual_string(bam1_t *srec, kstring_t *qual, const char* seq);
+void bam_get_qual_string(bam1_t *s, kstring_t *qual);
 
 /**
  * Gets the cigar sequence from a bam record
@@ -121,12 +125,12 @@ void bam_get_cigar_string(bam1_t *srec, kstring_t *str);
 /**
  * Is this sequence the first read?
  */
-#define bam_is_fread1(b) (((b)->core.flag&BAM_FREAD1) != 0)
+#define bam_is_fread1(s) (((s)->core.flag&BAM_FREAD1) != 0)
 
 /**
  * Is this sequence the second read?
  */
-#define bam_is_fread2(b) (((b)->core.flag&BAM_FREAD2) != 0)
+#define bam_is_fread2(s) (((s)->core.flag&BAM_FREAD2) != 0)
 
 /**
  * Gets the base in the read that is mapped to a genomic position.
@@ -138,27 +142,27 @@ void bam_get_base_and_qual(bam1_t *srec, uint32_t pos, char& base, char& qual, i
  * Gets the base in the read that is mapped to a genomic position.
  * Returns true if successful, false if the location is a deletion or not on the read.
  */
-void bam_get_base_and_qual_and_read_and_qual(bam1_t *srec, uint32_t pos, char& base, char& qual, int32_t& rpos, kstring_t* readseq, kstring_t* readqual);
+void bam_get_base_and_qual_and_read_and_qual(bam1_t *s, uint32_t pos, char& base, char& qual, int32_t& rpos, kstring_t* readseq, kstring_t* readqual);
 
 /**
  * Gets flag
  */
-#define bam_get_flag(b) ((b)->core.flag)
+#define bam_get_flag(s) ((s)->core.flag)
 
 /**
  * Get map quality
  */
-#define bam_get_mapq(b) ((b)->core.qual)
+#define bam_get_mapq(s) ((s)->core.qual)
 
 /**
  *Get tid - e.g. chromosome id
  */
-#define bam_get_tid(b) ((b)->core.tid)
+#define bam_get_tid(s) ((s)->core.tid)
 
 /**
  * Get read length
  */
-#define bam_get_l_qseq(b) ((b)->core.l_qseq)
+#define bam_get_l_qseq(s) ((s)->core.l_qseq)
 
 /**************
  *BCF HDR UTILS
@@ -167,17 +171,12 @@ void bam_get_base_and_qual_and_read_and_qual(bam1_t *srec, uint32_t pos, char& b
 /**
  * Get samples from bcf header
  */
-#define bcf_hdr_get_samples(b) ((b)->samples)
+#define bcf_hdr_get_samples(h) ((h)->samples)
 
 /**
  * Get number of samples in bcf header
  */
 int32_t bcf_hdr_get_n_sample(bcf_hdr_t *h);
-
-/**
- * Gets sequence names and lengths
- */
-void bcf_hdr_get_seqs_and_lens(const bcf_hdr_t *h, const char**& seqs, int32_t*& lens, int *n);
 
 /**
  * Reads header of a VCF file and returns the bcf header object.
@@ -211,7 +210,7 @@ void bcf_variant2string(bcf_hdr_t *h, bcf1_t *v, kstring_t *var);
 /**
  * Get chromosome name
  */
-#define bcf_get_chrom(h, b) ((h)->id[BCF_DT_CTG][(b)->rid].key)
+#define bcf_get_chrom(h, v) ((h)->id[BCF_DT_CTG][(v)->rid].key)
 
 /**
  * Set chromosome name
@@ -221,7 +220,7 @@ void bcf_set_chrom(bcf_hdr_t *h, bcf1_t *v, const char* chrom);
 /**
  * Get RID
  */
-#define bcf_get_rid(b) ((b)->rid)
+#define bcf_get_rid(v) ((v)->rid)
 
 /**
  * Check if variant is passed
@@ -231,7 +230,7 @@ bool bcf_is_passed(bcf_hdr_t *h, bcf1_t *v);
 /**
  * Get 0-based position
  */
-#define bcf_get_pos0(b) ((b)->pos)
+#define bcf_get_pos0(v) ((v)->pos)
 
 /**
  * Set 0-based position
@@ -241,7 +240,7 @@ bool bcf_is_passed(bcf_hdr_t *h, bcf1_t *v);
 /**
  * Get 1-based position
  */
-#define bcf_get_pos1(b) ((b)->pos+1)
+#define bcf_get_pos1(v) ((v)->pos+1)
 
 /**
  * Set 1-based position
@@ -249,43 +248,44 @@ bool bcf_is_passed(bcf_hdr_t *h, bcf1_t *v);
 #define bcf_set_pos1(v, p) ((v)->pos = (p)-1);
 
 /**
- * Set allele
- */
-void bcf_set_allele(bcf1_t *v, std::vector<std::string> alleles);
-
-/**
  * Get allele
  */
-#define bcf_get_allele(b) ((b)->d.allele)
+#define bcf_get_allele(v) ((v)->d.allele)
 
 /**
  * Get n_alleles of a bcf record
  */
-#define bcf_get_n_allele(b) ((b)->n_allele)
+#define bcf_get_n_allele(v) ((v)->n_allele)
 
 /**
  * Get reference base for a SNP, assumes the record is a biallelic SNP
  */
-#define bcf_get_snp_ref(b) ((b)->d.allele[0][0])
+#define bcf_get_snp_ref(v) ((v)->d.allele[0][0])
 
 /**
  * Get alternative base for a SNP, assumes the record is a biallelic SNP
  */
-#define bcf_get_snp_alt(b) ((b)->d.allele[1][0])
+#define bcf_get_snp_alt(v) ((v)->d.allele[1][0])
 
 /**
  * Get reference allele
  */
-#define bcf_get_ref(b) ((b)->d.allele[0])
+#define bcf_get_ref(v) ((v)->d.allele[0])
 
 /**
  * Get alternative allele
  */
-#define bcf_get_alt(b, i) ((b)->d.allele[i])
+#define bcf_get_alt(v, i) ((v)->d.allele[i])
 
 /**
  * Get variant type
  */
-#define bcf_get_var_type(b) ((b)->d.var_type)
+#define bcf_get_var_type(v) ((v)->d.var_type)
+
+/**
+ * Set number of samples in bcf record
+ */
+#define bcf_set_n_sample(h, v) ((v)->n_sample = (h)->n[BCF_DT_SAMPLE]);
+
 
 #endif

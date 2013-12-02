@@ -157,11 +157,14 @@ bcf1_t* BCFOrderedWriter::get_bcf1_from_pool()
     {
         bcf1_t* v = pool.front();
         pool.pop_front();
+        bcf_set_n_sample(hdr, v);
         return v;
     }
     else
     {
-        return bcf_init1(); 
+        bcf1_t *v = bcf_init1();
+        bcf_set_n_sample(hdr, v);
+        return v; 
     }
 };
 

@@ -24,7 +24,7 @@
 #include "discover.h"
 
 typedef struct 
-{
+{ 
   int32_t start1, end1;
 } interval_t;
 
@@ -62,80 +62,79 @@ class VariantHunter
       N(bufferSize,0),
       REF(bufferSize),
       start(0), end(0),
-      emptyBufferSpace(0),
-      minEmptyBufferSize(400),
-      startGenomePos(0),
-      maxUsedBufferSizeThreshold(bufferSize-minEmptyBufferSize),
-      maxINDELLength(50),
+      empty_buffer_space(0),
+      min_empty_buffer_size(400),
+      start_genome_pos1(0),
+      max_used_buffer_size_threshold(bufferSize-min_empty_buffer_size),
+      max_indel_length(50),
       debug(false)
     {   
+        alleles = {0,0,0};
+        read_seq_string = {0,0,0};
+        qual_string = {0,0,0};
+        cigar_string = {0,0,0};
+        v = bcf_init();
     };
     
     /**
-     * Reads a read and moves it to the buffer
+     * Transfer read into a buffer for processing later
      */
-    void processRead(bam1_t *b)
+    void process_read(bam_hdr_t *h, bam1_t *s)
     {   
-        //extract relevant information from Sam Record
-        uint32_t pos = bam_get_pos1(b);
-        bam_get_seq_string(b, read_seq);
-        const char* readSeq = read_seq->s;
-        bam_get_cigar_string(b, cigar_string);
-        const char* cigar = cigar_string->s;
-        bam_get_qual_string(b, qual_string, readSeq);
-        const char* qual = qual_string->s;
+        //extract relevant information from sam record
+        const char* chrom = bam_get_chrom(h, s);
+        uint32_t pos1 = bam_get_pos1(s);
+        bam_get_seq_string(s, &read_seq_string);
+        const char* read_seq = read_seq_string.s;
+        bam_get_cigar_string(s, &cigar_string);
+        const char* cigar = cigar_string.s;
+        bam_get_qual_string(s, &qual_string);
+        const char* qual = qual_string.s;
         char a;
-        bool BAQexists = false;
-        const char* bq = NULL;
         int32_t ref_len;
-        
-//      if (record.getStringTag("BQ")!=NULL)
-//      {    
-//          bq = record.getStringTag("BQ")->c_str();
-//          BAQexists = true;
-//      }
         
         uint32_t q;
                                 
         //basically equivalent to emptying the buffer
-        extractCandidateVariants(chrom, pos);
+        extractCandidateVariants(chrom, pos1);
         
-        std::string genomeSeqString;
-        const char* genomeSeq = faidx_fetch_seq(fai, const_cast<char*>(chrom), pos-1, pos+cigar_string->l-1, &ref_len);
+        const char* genome_seq = faidx_fetch_seq(fai, const_cast<char*>(chrom), pos1-1, pos1+cigar_string.l-1, &ref_len);
                     
-        //myRefSeq->getString(genomeSeqString, chromNo, (genomeIndex_t) pos-1, cigarString.size()+2);
-        //const char* genomeSeq = genomeSeqString.c_str();
+        //myRefSeq->getString(genome_seqString, chromNo, (genomeIndex_t) pos-1, cigarString.size()+2);
+        //const char* genome_seq = genome_seqString.c_str();
         
-        uint32_t genomeSeqPos = 1;
-        uint32_t readSeqPos = 0;
-        uint32_t curPos = getCurPos(pos); //current buffer index
-        bool lastPositionHadSnp = false;
-        bool mnpAlleleConstructionInProgress = false;
-        bool insInit = true;
-        bool delInit = true;
-        uint32_t lastSnpPos = 0;
-        uint32_t mnpInitPos = 0;
-        char mnpInitBase = 'N';
-        uint32_t insInitPos = 0;
-        uint32_t delInitPos = 0;
+        uint32_t genome_seq_pos1 = 1;
+        uint32_t read_seq_pos = 0;
+        uint32_t cur_pos = getcur_pos(pos1); //current buffer index
+        bool last_position_had_snp = false;
+        bool mnp_allele_construction_in_progress = false;
+        bool ins_init = true;
+        bool del_init = true;
+        uint32_t last_snp_pos = 0;
+        uint32_t mnp_init_pos = 0;
+        char mnp_init_base = 'N';
+        uint32_t ins_init_pos = 0;
+        uint32_t del_init_pos = 0;
         
-    //  if (((pos>239300 && pos<239500) && debug))
-    //  {
-    //      std::cout << "===============\n";   
-    //      std::cout << "ADD READ\n";  
-    //      std::cout << "startGenomePos      : " << startGenomePos << "\n";
-    //      std::cout << "endGenomePos        : " << startGenomePos + diff(end,start)  << "\n"; 
-    //      std::cout << "start               : " << start << "\n";
-    //      std::cout << "end                 : " << end << "\n";
-    //      std::cout << "curPos              : " << curPos << "\n";
-    //  }
+        if (0)
+        {
+            std::cerr << "===============\n";   
+            std::cerr << "ADD READ\n";  
+            std::cerr << "start_genome_pos    : " << start_genome_pos1 << "\n";
+            std::cerr << "endGenomePos        : " << start_genome_pos1 + diff(end,start)  << "\n"; 
+            std::cerr << "start               : " << start << "\n";
+            std::cerr << "end                 : " << end << "\n";
+            std::cerr << "cur_pos             : " << cur_pos << "\n";
+            std::cerr << "chrom               : " << chrom << "\n";
+            std::cerr << "genome sequence     : " << genome_seq << "\n";
+        }
         
-    //          if(pos<239411 && pos+strlen(readSeq)>239411)
+    //          if(pos<239411 && pos+strlen(read_seq)>239411)
     //          {
     //              std::cerr << "=====================\n";
     //              std::cerr << "CIGAR " <<  cigar << "\n";
     //              std::cerr << "POS " <<  pos << "\n";    
-    //              std::cerr << "SEQ " <<  readSeq << "\n";    
+    //              std::cerr << "SEQ " <<  read_seq << "\n";    
     //          
     //                  
     //          }
@@ -146,122 +145,122 @@ class VariantHunter
     //        std::cerr << "POS   " <<  pos << "\n";
     //        std::cerr << "CIGAR " <<  cigar << "\n";
     //        std::cerr << "CIGAR STRING " <<  record.getCigar() << "\n";
-    //        std::cerr << "SEQ   " <<  readSeq << "\n";    
+    //        std::cerr << "SEQ   " <<  read_seq << "\n";    
     //    }
         
         if (isEmpty())
-            startGenomePos = pos;
+            start_genome_pos1 = pos1;
         
         //cycle through the cigar string, this cigar string has essentially been expanded
-        for (uint32_t cigarPos=0; cigarPos<cigar_string->l; ++cigarPos)
+        for (uint32_t cigar_pos=0; cigar_pos<cigar_string.l; ++cigar_pos)
         {
-            a = cigar[cigarPos];
+            a = cigar[cigar_pos];
                             
             if (a=='M')
             {
-                REF[curPos] = genomeSeq[genomeSeqPos];
+                REF[cur_pos] = genome_seq[genome_seq_pos1];
                 //get quality
-                q = (qual[readSeqPos]-33) - (BAQexists?(bq[readSeqPos]-64):0);
+                q = qual[read_seq_pos]-33;
                 
-    //          if ((bq[readSeqPos]-64)>(qual[readSeqPos]-33))
+    //          if ((bq[read_seq_pos]-64)>(qual[read_seq_pos]-33))
     //          {   
     //              std::cerr << "===========\n"; 
     //              std::cerr << "baq " << q << "\n";
-    //              std::cerr << "q "<< qual[readSeqPos]-33 << "\n";
-    //              std::cerr << "bq "<< bq[readSeqPos]-64 << "\n";
+    //              std::cerr << "q "<< qual[read_seq_pos]-33 << "\n";
+    //              std::cerr << "bq "<< bq[read_seq_pos]-64 << "\n";
     //          }
                     
-                if (genomeSeq[genomeSeqPos]!=readSeq[readSeqPos] && q>=baseq_cutoff)
+                if (genome_seq[genome_seq_pos1]!=read_seq[read_seq_pos] && q>=baseq_cutoff)
                 {
-                    X[curPos].push_back(readSeq[readSeqPos]);
+                    X[cur_pos].push_back(read_seq[read_seq_pos]);
                     
                     //initialize mnp
-                    if (lastPositionHadSnp && !mnpAlleleConstructionInProgress)
+                    if (last_position_had_snp && !mnp_allele_construction_in_progress)
                     {
-                        mnpAlleleConstructionInProgress  = true;
-                        mnpInitPos = lastSnpPos;
-                        lastPositionHadSnp = false;
+                        mnp_allele_construction_in_progress  = true;
+                        mnp_init_pos = last_snp_pos;
+                        last_position_had_snp = false;
                         
-                        Y[mnpInitPos].push_back("");
-                        Y[mnpInitPos].back().append(1, mnpInitBase);
+                        Y[mnp_init_pos].push_back("");
+                        Y[mnp_init_pos].back().append(1, mnp_init_base);
                     } 
                                                                    
-                    if (mnpAlleleConstructionInProgress)
+                    if (mnp_allele_construction_in_progress)
                     {
-                       Y[mnpInitPos].back().append(1, readSeq[readSeqPos]);
+                       Y[mnp_init_pos].back().append(1, read_seq[read_seq_pos]);
                     }
                     
-                    lastPositionHadSnp = true;
-                    lastSnpPos = curPos;
-                    mnpInitBase = readSeq[readSeqPos];
+                    last_position_had_snp = true;
+                    last_snp_pos = cur_pos;
+                    mnp_init_base = read_seq[read_seq_pos];
                 }
                 else
                 {
-                    lastPositionHadSnp = false;
-                    mnpAlleleConstructionInProgress = false;
+                    last_position_had_snp = false;
+                    mnp_allele_construction_in_progress = false;
                 }
                 
-                insInit = true;
-                delInit = true;
+                ins_init = true;
+                del_init = true;
     
-                ++N[curPos];                    
-                add(curPos);
-                ++genomeSeqPos;
-                ++readSeqPos;
+                ++N[cur_pos];                    
+                add(cur_pos);
+                ++genome_seq_pos1;
+                ++read_seq_pos;
             }
             else if (a=='I')
             {
-                if (insInit)
+                if (ins_init)
                 {   
-                    insInitPos = minus(curPos,1);
-                    I[insInitPos].push_back("");
+                    ins_init_pos = minus(cur_pos,1);
+                    I[ins_init_pos].push_back("");
                     //place anchor
-                    I[insInitPos].back().append(1, (readSeqPos!=0?readSeq[readSeqPos-1]:genomeSeq[genomeSeqPos-1]));
+                    I[ins_init_pos].back().append(1, (read_seq_pos!=0?read_seq[read_seq_pos-1]:genome_seq[genome_seq_pos1-1]));
                                     
-                    //if (readSeqPos==0)
-                    //    ++N[curPos];
+                    //if (read_seq_pos==0)
+                    //    ++N[cur_pos];
                 }
                 
-                lastPositionHadSnp =false;
-                mnpAlleleConstructionInProgress = false;
-                I[insInitPos].back().append(1, readSeq[readSeqPos]);
-                insInit = false;
-                delInit = true;
-                ++readSeqPos;                   
+                last_position_had_snp =false;
+                mnp_allele_construction_in_progress = false;
+                I[ins_init_pos].back().append(1, read_seq[read_seq_pos]);
+                ins_init = false;
+                del_init = true;
+                ++read_seq_pos;                   
             }
             else if (a=='D')
             {               
-                REF[curPos] = genomeSeq[genomeSeqPos];  
-                if (delInit)
+                REF[cur_pos] = genome_seq[genome_seq_pos1];  
+                if (del_init)
                 {
-                    D[curPos].push_back("");
-                    D[curPos].back().append(1, (readSeqPos!=0?readSeq[readSeqPos-1]:genomeSeq[genomeSeqPos-1]));
-                    ++N[curPos];
-                    delInitPos = curPos;
+                    D[cur_pos].push_back("");
+                    D[cur_pos].back().append(1, (read_seq_pos!=0?read_seq[read_seq_pos-1]:genome_seq[genome_seq_pos1-1]));
+                    ++N[cur_pos];
+                    del_init_pos = cur_pos;
                     
-                    //if (readSeqPos==0)
-                    //    ++N[curPos];
+                    //if (read_seq_pos==0)
+                    //    ++N[cur_pos];
                 }
-                D[delInitPos].back().append(1, genomeSeq[genomeSeqPos]);
+                D[del_init_pos].back().append(1, genome_seq[genome_seq_pos1]);
                 
-                lastPositionHadSnp =false;
-                mnpAlleleConstructionInProgress = false;
-                delInit = false;
-                insInit = true;
-                add(curPos);
-                ++genomeSeqPos;
+                last_position_had_snp =false;
+                mnp_allele_construction_in_progress = false;
+                del_init = false;
+                ins_init = true;
+                add(cur_pos);
+                ++genome_seq_pos1;
             }
             else //S, H and others
             {
-                ++readSeqPos;
+                ++read_seq_pos;
             }
         }
         
     //  if (debug && (pos>239300 && pos<239500))
     //  {
-    //      std::cout << "final curPos        : " << curPos << "\n";
-    //      std::cout << "final startGenomePos: " << startGenomePos << "\n";
-    //      std::cout << "final endGenomePos  : " << startGenomePos + diff(end,start)  << "\n"; 
+    //      std::cout << "final cur_pos        : " << cur_pos << "\n";
+    //      std::cout << "final start_genome_pos: " << start_genome_pos1 << "\n";
+    //      std::cout << "final endGenomePos  : " << start_genome_pos1 + diff(end,start)  << "\n"; 
     //      std::cout << "final start         : " << start << "\n";
     //      std::cout << "final end           : " << end << "\n";
     //      std::cout << "====================\n";  
@@ -271,7 +270,7 @@ class VariantHunter
     };
 
     /**
-     *Processes buffer to pick up variants
+     * Processes buffer to pick up variants
      */ 
     void extractCandidateVariants()
     {
@@ -284,7 +283,11 @@ class VariantHunter
     void reset(const char* chrom)
     {
         extractCandidateVariants(chrom, UINT_MAX);
-        this->chrom = chrom;
+        if (!this->chrom) 
+        {
+          //  free(this->chrom);
+        }
+        this->chrom = strdup(chrom);        
     };
         
     private:
@@ -294,27 +297,27 @@ class VariantHunter
     std::vector<std::vector<std::string> > Y; // contains multiple consecutive read bases that differ from the genome
     std::vector<std::vector<std::string> > I; //contains inserted bases
     std::vector<std::vector<std::string> > D; //contains reference bases that are deleted
-    std::vector<uint32_t> N; // number of evidences observed here - combination of X, I and D
+    std::vector<int32_t> N; // number of evidences observed here - combination of X, I and D
     std::vector<char> REF;
     std::vector<std::string> ALT;
     const char* chrom;
     uint32_t chromNo;
     uint32_t start, end;
-    uint32_t emptyBufferSpace;
-    uint32_t minEmptyBufferSize;
-    uint32_t startGenomePos;
-    uint32_t maxUsedBufferSizeThreshold;
-    uint32_t maxINDELLength;
+    uint32_t empty_buffer_space;
+    uint32_t min_empty_buffer_size;
+    uint32_t start_genome_pos1;
+    uint32_t max_used_buffer_size_threshold;
+    uint32_t max_indel_length;
     uint32_t baseq_cutoff;
     uint32_t evidence_allele_count_cutoff;
     double fractional_evidence_allele_count_cutoff;
     faidx_t *fai;
     uint32_t vtype;
-    kstring_t *s;
-    kstring_t *alleles;
-    kstring_t *read_seq;
-    kstring_t *qual_string;
-    kstring_t *cigar_string;
+    kstring_t s;
+    kstring_t alleles;
+    kstring_t read_seq_string;
+    kstring_t qual_string;
+    kstring_t cigar_string;
     
     bcf1_t *v;
     BCFOrderedWriter *odw;
@@ -323,8 +326,11 @@ class VariantHunter
     /**
      * Processes buffer to pick up variants
      * Empty buffer to recover space.
+     * @chrom  - remove variants on chrom
+     * @pos1   - remove variants up to pos1
+     * @flush  - remove all variants
      */
-    void extractCandidateVariants(const char* chrom, uint32_t pos, bool flush=false)
+    void extractCandidateVariants(const char* chrom, uint32_t pos1, bool flush=false)
     {
         //variable to tell when to stop flushing
         uint32_t stop = 0;
@@ -337,9 +343,9 @@ class VariantHunter
             return;             
         }
         //extract when separated
-        else if (startGenomePos+(diff(end,start))<pos)
+        else if (start_genome_pos1+(diff(end,start))<pos1)
         {
-            if (pos==160141 && debug)
+            if (debug)
             {
                 std::cout << "***********************\n";
                 std::cout << "flush buffer segregated\n";
@@ -351,11 +357,11 @@ class VariantHunter
         //extract when overlapping
         else 
         {
-            if (pos-startGenomePos>maxUsedBufferSizeThreshold)
+            if (pos1-start_genome_pos1>max_used_buffer_size_threshold)
             {
-                stop = add(start, pos-startGenomePos);
+                stop = add(start, pos1-start_genome_pos1);
     
-                if (pos==160141 && debug)
+                if (debug)
                 {
                     std::cout << "************************\n";
                     std::cout << "flush buffer overlapping\n";
@@ -367,32 +373,32 @@ class VariantHunter
                 return;
             }
             
-    //              stop = add(start, pos)
+    //              stop = add(start, pos1)
     //                              
-    //              if (diff(end,start)>maxUsedBufferSizeThreshold)
+    //              if (diff(end,start)>max_used_buffer_size_threshold)
     //              {
-    //                  stop = add(start, (pos>maxINDELLength+startGenomePos ? (pos-maxINDELLength)-startGenomePos : 0));
+    //                  stop = add(start, (pos1>max_indel_length+start_genome_pos1 ? (pos1-max_indel_length)-start_genome_pos1 : 0));
     //              }
         }
                     
-    //  if (pos==160141 && debug)
+    //  if (pos1==160141 && debug)
     //  {
-    //      std::cout << "pos               : " << pos << "\n";
+    //      std::cout << "pos1               : " << pos1 << "\n";
     //      std::cout << "stop              : " << stop << "\n";
     //      std::cout << "usedBufferSize    : " << diff(end,start) << "\n";
     //      std::cout << "bufferSize        : " << bufferSize << "\n";
-    //      std::cout << "minEmptyBufferSize: " << minEmptyBufferSize << "\n";
-    //      std::cout << "startGenomePos    : " << startGenomePos << "\n";
-    //      std::cout << "endGenomePos      : " << startGenomePos + diff(end,start)  << "\n";
+    //      std::cout << "min_empty_buffer_size: " << min_empty_buffer_size << "\n";
+    //      std::cout << "start_genome_pos1    : " << start_genome_pos1 << "\n";
+    //      std::cout << "endGenomePos      : " << start_genome_pos1 + diff(end,start)  << "\n";
     //      std::cout << "start             : " << start << "\n";
     //      std::cout << "end               : " << end << "\n";
     //          
-    //      std::cout << pos << "," << diff(end,start) << "," <<  bufferSize-minEmptyBufferSize << "\n";
+    //      std::cout << pos1 << "," << diff(end,start) << "," <<  bufferSize-min_empty_buffer_size << "\n";
     //  }
         
-        std::map<char, uint32_t> snp_alts;
-        std::map<std::string, uint32_t> mnp_alts;
-        std::map<std::string, uint32_t> indel_alts;
+        std::map<char, int32_t> snp_alts;
+        std::map<std::string, int32_t> mnp_alts;
+        std::map<std::string, int32_t> indel_alts;
         char anchor, ref;
         int32_t ref_len;
         //print out candidate variants
@@ -405,7 +411,7 @@ class VariantHunter
                 {
                     //handling insertions
                     indel_alts.clear();                 
-                    char* seq = faidx_fetch_seq(fai, chrom, startGenomePos-1, startGenomePos-1, &ref_len);
+                    char* seq = faidx_fetch_seq(fai, chrom, start_genome_pos1-1, start_genome_pos1-1, &ref_len);
                     anchor = seq[0];
                     if (ref_len<1) free(seq);
                     
@@ -423,23 +429,24 @@ class VariantHunter
                             }
                         }
                         
-                        for (std::map<std::string, uint32_t>::iterator i =indel_alts.begin(); i!=indel_alts.end(); ++i)
+                        for (std::map<std::string, int32_t>::iterator i =indel_alts.begin(); i!=indel_alts.end(); ++i)
                         {
                             //make sure that we do not output alleles with N bases.
                             if (i->second>= evidence_allele_count_cutoff && 
                                 ((double)i->second/(double) N[start]) >= fractional_evidence_allele_count_cutoff && 
                                 anchor!='N' && (i->first).find_first_of('N')==std::string::npos)
                             {
+                                v = odw->get_bcf1_from_pool();
                                 bcf_set_chrom(odw->hdr, v, chrom);
-                                bcf_set_pos1(v, startGenomePos);
-                                alleles->l = 0;
-                                kputc(anchor, alleles);
-                                kputc(',', alleles);
-                                kputs(i->first.c_str(), alleles);
-                                bcf_update_alleles_str(odw->hdr, v, alleles->s);
-                                bcf_update_info_int32(odw->hdr, v, "E", &i->second, 1);
-                                bcf_update_info_int32(odw->hdr, v, "N", &N[start], 1);
-                                //(*OUT_VCF) << anchor << "\t" << i->first << "\t.\t.\t.\tE:N\t" << i->second << ":" << N[start] << "\n";;
+                                bcf_set_pos1(v, start_genome_pos1);
+                                alleles.l = 0;
+                                kputc(anchor, &alleles);
+                                kputc(',', &alleles);
+                                kputs(i->first.c_str(), &alleles);
+                                bcf_update_alleles_str(odw->hdr, v, alleles.s);
+                                bcf_update_format_int32(odw->hdr, v, "E", &i->second, 1);
+                                bcf_update_format_int32(odw->hdr, v, "N", &N[start], 1);
+                                odw->write(v);
                             }
                         }
                     }
@@ -460,37 +467,32 @@ class VariantHunter
                             }
                         }
                         
-                        char* seq = faidx_fetch_seq(fai, const_cast<char*>(chrom), startGenomePos-1, startGenomePos-1, &ref_len);
+                        char* seq = faidx_fetch_seq(fai, const_cast<char*>(chrom), start_genome_pos1-1, start_genome_pos1-1, &ref_len);
                         anchor = seq[0];
                         if (ref_len<1) free(seq);
-                        //myRefSeq->getString(seq, chromNo, (genomeIndex_t) (startGenomePos-1), 1);
+                        //myRefSeq->getString(seq, chromNo, (genomeIndex_t) (start_genome_pos1-1), 1);
                         //anchor = seq.at(0);
                         
-                        for (std::map<std::string, uint32_t>::iterator i = indel_alts.begin(); i!= indel_alts.end(); ++i)
+                        for (std::map<std::string, int32_t>::iterator i = indel_alts.begin(); i!= indel_alts.end(); ++i)
                         {   
                             //make sure that we do not output alleles with N bases.
                             if (i->second>= evidence_allele_count_cutoff && 
                                 ((double)i->second/(double) N[start]) >= fractional_evidence_allele_count_cutoff && 
                                 anchor!='N' && (i->first).find_first_of('N')==std::string::npos)
                             {
+                                v = odw->get_bcf1_from_pool();
                                 bcf_set_chrom(odw->hdr, v, chrom);
-                                bcf_set_pos1(v, startGenomePos);
-                                alleles->l = 0;
-                                kputc(anchor, alleles);
-                                kputc(',', alleles);
+                                bcf_set_pos1(v, start_genome_pos1);
+                                alleles.l = 0;
+                                kputc(anchor, &alleles);
+                                kputc(',', &alleles);
                                 const char* deletedAllele = i->first.c_str();
                                 ++deletedAllele;
-                                kputs(deletedAllele, alleles);
-                                bcf_update_alleles_str(odw->hdr, v, alleles->s);
-                                bcf_update_info_int32(odw->hdr, v, "E", &i->second, 1);
-                                bcf_update_info_int32(odw->hdr, v, "N", &N[start], 1);
-                                
-//                              (*OUT_VCF) << chrom << "\t" << (startGenomePos-1) << "\t.\t";
-//                              const char* deletedAllele = i->first.c_str();
-//                              ++deletedAllele;
-//                              (*OUT_VCF) << anchor << deletedAllele;
-//                              --deletedAllele;
-//                              (*OUT_VCF) << "\t" << i->first.at(0) << "\t.\t.\t.\tE:N\t" << i->second << ":" << N[start] << "\n";
+                                kputs(deletedAllele, &alleles);
+                                bcf_update_alleles_str(odw->hdr, v, alleles.s);                                
+                                bcf_update_format_int32(odw->hdr, v, "E", &i->second, 1);
+                                bcf_update_format_int32(odw->hdr, v, "N", &N[start], 1);
+                                odw->write(v);
                             }
                         }                   
                     }
@@ -501,9 +503,9 @@ class VariantHunter
                     //handling SNPs
                     snp_alts.clear();
                     
-                    //myRefSeq->getString(seq, chromNo, (genomeIndex_t) (startGenomePos), 1);
+                    //myRefSeq->getString(seq, chromNo, (genomeIndex_t) (start_genome_pos1), 1);
                     //ref = seq.at(0);
-                    char* seq = faidx_fetch_seq(fai, const_cast<char*>(chrom), startGenomePos-1, startGenomePos-1, &ref_len);
+                    char* seq = faidx_fetch_seq(fai, const_cast<char*>(chrom), start_genome_pos1-1, start_genome_pos1-1, &ref_len);
                     ref = seq[0];
                     if (ref_len<1) free(seq);
                         
@@ -522,25 +524,24 @@ class VariantHunter
                             }
                         }
                         
-                        for (std::map<char, uint32_t>::iterator i =snp_alts.begin(); i!=snp_alts.end(); ++i)
+                        for (std::map<char, int32_t>::iterator i =snp_alts.begin(); i!=snp_alts.end(); ++i)
                         {
                             //make sure that we do not output alleles with N bases.
                             if (i->second>= evidence_allele_count_cutoff && 
                                 ((double)i->second/(double) N[start]) >= fractional_evidence_allele_count_cutoff && 
                                 ref!='N' && (i->first)!='N')
                             {
+                                v = odw->get_bcf1_from_pool();
                                 bcf_set_chrom(odw->hdr, v, chrom);
-                                bcf_set_pos1(v, startGenomePos);
-                                alleles->l = 0;
-                                kputc(anchor, alleles);
-                                kputc(',', alleles);
-                                kputc(i->first, alleles);
-                                bcf_update_alleles_str(odw->hdr, v, alleles->s);
-                                bcf_update_info_int32(odw->hdr, v, "E", &i->second, 1);
-                                bcf_update_info_int32(odw->hdr, v, "N", &N[start], 1);
-                                
-//                              (*OUT_VCF) << chrom << "\t" << startGenomePos << "\t.\t";
-//                              (*OUT_VCF) <<ref << "\t" << i->first << "\t.\t.\t.\tE:N\t" << i->second << ":" << N[start] << "\n";
+                                bcf_set_pos1(v, start_genome_pos1);
+                                alleles.l = 0;
+                                kputc(anchor, &alleles);
+                                kputc(',', &alleles);
+                                kputc(i->first, &alleles);
+                                bcf_update_alleles_str(odw->hdr, v, alleles.s);
+                                bcf_update_format_int32(odw->hdr, v, "E", &i->second, 1);
+                                bcf_update_format_int32(odw->hdr, v, "N", &N[start], 1);
+                                odw->write(v);
                             }
                         }
                     }
@@ -564,10 +565,10 @@ class VariantHunter
                             }
                         }
                         
-                        for (std::map<std::string, uint32_t>::iterator i =mnp_alts.begin(); i!=mnp_alts.end(); ++i)
+                        for (std::map<std::string, int32_t>::iterator i =mnp_alts.begin(); i!=mnp_alts.end(); ++i)
                         {
-                            char* seq = faidx_fetch_seq(fai, const_cast<char*>(chrom), startGenomePos-1, startGenomePos+i->first.size()-1, &ref_len);
-//                          myRefSeq->getString(seq, chromNo, (genomeIndex_t) (startGenomePos), i->first.size());
+                            char* seq = faidx_fetch_seq(fai, const_cast<char*>(chrom), start_genome_pos1-1, start_genome_pos1+i->first.size()-1, &ref_len);
+//                          myRefSeq->getString(seq, chromNo, (genomeIndex_t) (start_genome_pos1), i->first.size());
                             
                             //make sure that we do not output alleles with N bases.
                             if (i->second>= evidence_allele_count_cutoff && 
@@ -575,17 +576,15 @@ class VariantHunter
                                 strchr(seq, 'N') && (i->first).find_first_of('N')==std::string::npos)
                             {
                                                                 bcf_set_chrom(odw->hdr, v, chrom);
-                                bcf_set_pos1(v, startGenomePos);
-                                alleles->l = 0;
-                                kputc(anchor, alleles);
-                                kputc(',', alleles);
-                                kputs(i->first.c_str(), alleles);
-                                bcf_update_alleles_str(odw->hdr, v, alleles->s);
-                                bcf_update_info_int32(odw->hdr, v, "E", &i->second, 1);
-                                bcf_update_info_int32(odw->hdr, v, "N", &N[start], 1);
-                                
-//                              (*OUT_VCF) << chrom << "\t" << startGenomePos << "\t.\t";
-//                              (*OUT_VCF) << seq << "\t" << i->first << "\t.\t.\t.\tE:N\t" << i->second << ":" << N[start] << "\n";;
+                                bcf_set_pos1(v, start_genome_pos1);
+                                alleles.l = 0;
+                                kputc(anchor, &alleles);
+                                kputc(',', &alleles);
+                                kputs(i->first.c_str(), &alleles);
+                                bcf_update_alleles_str(odw->hdr, v, alleles.s);
+                                bcf_update_format_int32(odw->hdr, v, "E", &i->second, 1);
+                                bcf_update_format_int32(odw->hdr, v, "N", &N[start], 1);
+                                odw->write(v);
                             }
                             
                             if (ref_len<1) free(seq);
@@ -602,7 +601,7 @@ class VariantHunter
             N[start] = 0;
                             
             add(start);
-            ++startGenomePos;   
+            ++start_genome_pos1;   
         }
         
     //          //clean up final position too
@@ -626,7 +625,7 @@ class VariantHunter
     
 
     /**
-     *Checks if buffer is empty
+     * Checks if buffer is empty
      */     
     bool isEmpty()
     {
@@ -702,23 +701,23 @@ class VariantHunter
      * Gets the position in the buffer that corresponds to 
      * the genome position indicated by pos.
      */
-    uint32_t getCurPos(uint32_t genomePos)
+    uint32_t getcur_pos(uint32_t genomePos)
     {
         //when buffer is empty
         if (isEmpty())
         {
-            startGenomePos = genomePos;
+            start_genome_pos1 = genomePos;
             return start;
         }
         else
         {
-            if (genomePos-startGenomePos>bufferSize)
+            if (genomePos-start_genome_pos1>bufferSize)
             {
                 std::cerr << "overflow buffer\n" ;
                 //should allow for unbuffering here
                 
             }
-            return (start + (genomePos-startGenomePos))%bufferSize;
+            return (start + (genomePos-start_genome_pos1))%bufferSize;
         }
     };
     
@@ -729,27 +728,27 @@ class VariantHunter
     {
         std::cout << "PRINT BUFFER" << "\n";
         std::cout << "usedBufferSize: " << diff(end,start) << "\n";
-        uint32_t curPos = start;
-        uint32_t genomePos = startGenomePos;
+        uint32_t cur_pos = start;
+        uint32_t genome_pos = start_genome_pos1;
             
-        while (curPos!=end)
+        while (cur_pos!=end)
         {
-            std::cout << genomePos << "\t" << curPos << "\t" << REF[curPos] << "\t";
+            std::cout << genome_pos << "\t" << cur_pos << "\t" << REF[cur_pos] << "\t";
                 
-            for (uint32_t j=0; j<I[curPos].size(); ++j)
+            for (uint32_t j=0; j<I[cur_pos].size(); ++j)
             {
-                std::cout << I[curPos][j] << ","; 
+                std::cout << I[cur_pos][j] << ","; 
             }
             
-            for (uint32_t j=0; j<D[curPos].size(); ++j)
+            for (uint32_t j=0; j<D[cur_pos].size(); ++j)
             {
-                std::cout << D[curPos][j] << ","; 
+                std::cout << D[cur_pos][j] << ","; 
             }
             
-            std::cout << "\t" <<  N[curPos] << "\n";
+            std::cout << "\t" <<  N[cur_pos] << "\n";
             
-            add(curPos);
-            ++genomePos;
+            add(cur_pos);
+            ++genome_pos;
         }
     };
 };
@@ -850,21 +849,22 @@ class Igor : Program
 
     void initialize()
     {
-        
         //////////////////////
         //i/o initialization//
         //////////////////////
-        
         excludeFlag = 0x0704;                   
 
         odr = new BAMOrderedReader(input_bam_file, intervals);
         s = bam_init1();
    
         odw = new BCFOrderedWriter(output_vcf_file, 1);
+        //move contigs over from BAM
+        bam_hdr_transfer_contigs_to_bcf_hdr(odr->hdr, odw->hdr);
         bcf_hdr_append(odw->hdr, "##FORMAT=<ID=E,Number=1,Type=Integer,Description=\"Number of reads containing evidence of the alternate allele\">");
         bcf_hdr_append(odw->hdr, "##FORMAT=<ID=N,Number=1,Type=Integer,Description=\"Total number of reads at a candidate locus with reads that contain evidence of the alternate allele\">");
         bcf_hdr_add_sample(odw->hdr, sample_id.c_str());
-
+        v = bcf_init();
+        
         std::vector<std::string> variant_types;
         split(variant_types, ",", variant_type);
         uint32_t vtype = 0;
@@ -908,9 +908,7 @@ class Igor : Program
                                     baseq_cutoff, 
                                     fai, 
                                     odw);
-        
     }
-
 
     /**
      * expands cigar string
@@ -970,13 +968,9 @@ class Igor : Program
     
     void discover()
     {
-        const char* chrom;
-        uint32_t pos;
-        uint32_t len;
+        odw->write_hdr();
         
-        const char* current_chrom = "";
-        variantHunter->reset(current_chrom);
-        
+        //for tracking overlapping reads
         khash_t(rdict) *reads = kh_init(rdict);
         khiter_t k;
         int32_t ret;
@@ -985,37 +979,36 @@ class Igor : Program
         {
             ++no_reads;
             
-            chrom = bam_get_chrom(odr->hdr, s);
-            
-            //this read has a mate pair on the same reference sequenc
-            if (bam_get_mpos1(s) && (bam_get_tid(s)==bam_get_mtid(s)))
+            //this read is the first of the pair
+            if (bam_get_mpos1(s))
             {
-                //remove the downstream overlapping read pair
-                //todo: perform stitching in future
-                char *qname = bam_get_qname(s);
-                if((k = kh_get(rdict, reads, qname))==kh_end(reads))
+                //overlapping
+                if ((bam_get_tid(s)==bam_get_mtid(s)) && bam_get_mpos1(s)<=(bam_get_pos1(s) + bam_get_l_qseq(s) - 1))
                 {
-                    k = kh_put(rdict, reads, qname, &ret);
+                    //add read that has overlapping 
+                    //duplicate the record and perform the stitching later
+                    k = kh_put(rdict, reads, bam_get_qname(s), &ret);
                     kh_val(reads, k) = {0,0};
                     kh_val(reads, k).start1 = bam_get_pos1(s);
-                    kh_val(reads, k).end1 = bam_get_pos1(s) + bam_get_l_qseq(s);
+                    kh_val(reads, k).end1 = bam_get_pos1(s) + bam_get_l_qseq(s) - 1;
                 }
-                else
+            }
+            else 
+            {
+                //check overlap
+                //todo: perform stitching in future
+                if((k = kh_get(rdict, reads, bam_get_qname(s)))!=kh_end(reads))
                 {
                     int32_t start1 = bam_get_pos1(s);
                     int32_t end1 = bam_get_pos1(s)+bam_get_l_qseq(s);
-                    if (kh_val(reads, k).end1>=start1 && kh_val(reads, k).start1<=end1)
-                    {
-                        ++no_overlapping_reads;
-                        //std::cerr << "deleting overlapping read\n";
-                        //std::cerr << "[" << kh_val(reads, k).start1 << "," << kh_val(reads, k).end1 << "] [" <<  start1 << "," << end1 << "]\n";
-                        kh_del(rdict, reads, k); 
-                        continue;
-                    }
-                    //std::cerr << "deleting non overlapping read\n";
-                    kh_del(rdict, reads, k);    
-                    //std::cerr << "hash size " << kh_size(reads) << " " << chrom << " " << current_chrom << "\n";
-                }
+                    ++no_overlapping_reads;
+                    //std::cerr << "deleting overlapping read\n";
+                    //std::cerr << "[" << kh_val(reads, k).start1 << "," << kh_val(reads, k).end1 << "] [" <<  start1 << "," << end1 << "]\n";
+                    kh_del(rdict, reads, k); 
+                    
+                    //skip for the time being
+                    continue;
+                } 
             }
             
             uint16_t flag = bam_get_flag(s);
@@ -1033,19 +1026,19 @@ class Igor : Program
             if (mapq<mapq_cutoff)
             {
                 ++no_low_mapq_reads;
-                //includes short alignments too
-                //close by indels!
+                //filter short aligments and those with too many indels (?)
                 continue;
             }
 
             if (0)
             {
-                pos = bam_get_pos1(s);
+                const char* chrom = bam_get_chrom(odr->hdr, s);
+                uint32_t pos1 = bam_get_pos1(s);
                 kstring_t seq = {0,0,0};
                 bam_get_seq_string(s, &seq);
-                len = bam_get_l_qseq(s);
+                uint32_t len = bam_get_l_qseq(s);
                 kstring_t qual = {0,0,0};
-                bam_get_qual_string(s, &qual, seq.s);
+                bam_get_qual_string(s, &qual);
                 kstring_t cigar = {0,0,0};
                 bam_get_cigar_string(s, &cigar);
                 kstring_t cigar_string = {0,0,0};
@@ -1057,17 +1050,18 @@ class Igor : Program
                 {
                     std::cerr << "##################" << "\n";
                     std::cerr << "read no  : " << no_reads << "\n";        
-                    std::cerr << "chrom-pos: " << chrom << "-" << pos << "\n";
+                    std::cerr << "chrom-pos: " << chrom << "-" << pos1 << "\n";
                     std::cerr << "read     : " << seq.s << "\n";
                     std::cerr << "qual     : " << qual.s << "\n";
                     std::cerr << "cigar_str: " << cigar_string.s << "\n";
                     std::cerr << "cigar    : " << cigar.s << "\n";
                     std::cerr << "len      : " << len << "\n";
                     std::cerr << "mapq     : " << mapq << "\n";
+                    std::cerr << "rnext    : " << bam_get_mtid(s) << "\n";
                 }
 //              std::cout << "len  :" << cigar.size() << "\n";
 //              std::cout << "cigar:" << cigar << "\n";
-//              std::cout << "ref  :" << genomeSeq << "\n";
+//              std::cout << "ref  :" << genome_seq << "\n";
             
                 if (seq.m) free(seq.s);
                 if (qual.m) free(qual.s);
@@ -1075,14 +1069,14 @@ class Igor : Program
                 if (cigar_string.m) free(cigar_string.s);
             }
             
-            if (!strcmp(chrom, current_chrom))
-            {
-                current_chrom = chrom;
-                variantHunter->reset(current_chrom);
-                kh_clear(rdict, reads);
-            }
+//            if (!strcmp(chrom, current_chrom))
+//            {
+//                current_chrom = chrom;
+//                variantHunter->reset(current_chrom);
+//                kh_clear(rdict, reads);
+//            }
             
-            variantHunter->processRead(s);
+            variantHunter->process_read(odr->hdr, s);
             
             if (no_reads%100000==0) std::cerr << no_reads << "\n";
            
@@ -1103,20 +1097,16 @@ class Igor : Program
         std::clog << "         [v] variant type(s)              " << variant_type << "\n";
         std::clog << "         [e] evidence cutoff              " << evidence_allele_count_cutoff << "\n";
         std::clog << "         [f] fractional evidence cutoff   " << fractional_evidence_allele_count_cutoff<< "\n";    
+        std::clog << "         [i] intervals                    ";
+        for (uint32_t i=0; i<std::min((uint32_t)intervals.size(),(uint32_t)5); ++i)
+        {
+            if (i) std::clog << ", ";
+            std::clog << intervals[i].to_string();
+        }
         if (intervals.size()>=5)
         {
-            std::clog << "         [i] intervals                    " << intervals.size() <<  " intervals\n";
-        }
-        else
-        {
-            std::clog << "         [i] intervals                    ";
-            for (uint32_t i=0; i<intervals.size(); ++i)
-            {
-                if (i) std::clog << ", ";
-                std::clog << intervals[i].to_string();
-            }
-            std::clog << "\n";
-        }     
+            std::clog << "  and " << (intervals.size()-5) <<  " other intervals\n";
+        }    
         std::clog << "\n";
     }
 
@@ -1129,7 +1119,6 @@ class Igor : Program
         std::clog << "       no. passed reads       : " << no_passed_reads << "\n";
         std::clog << "       no. exclude flag reads : " << no_exclude_flag_reads << "\n";
         std::clog << "\n";
-            
     };
 
     ~Igor() {};
