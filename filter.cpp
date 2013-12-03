@@ -96,34 +96,35 @@ Filter::Filter(std::string tag, int32_t comparison, float value)
 
 bool Filter::apply(bcf_hdr_t *h, bcf1_t *v)
 {
-    float f = 0;
-    int32_t ac = 0;
-    int32_t an = 0;
-    if (bcf_get_info_float(h, v, tag.c_str(), f))
+    float *f = 0;
+    int32_t n = 0;
+    int32_t *ac = 0;
+    int32_t *an = 0;
+    if (bcf_get_info_float(h, v, tag.c_str(), &f, &n))
     {
         //std::cerr << "AF value: " << f << "\n";
         
         switch (comparison)
         {
-            case LT : return f<value;
-            case LE : return f<=value;
-            case EQ : return f==value;
-            case GT : return f>value;
-            case GE : return f>=value;
+            case LT : return *f<value;
+            case LE : return *f<=value;
+            case EQ : return *f==value;
+            case GT : return *f>value;
+            case GE : return *f>=value;
             default : return true;    
         }
     } 
-    else if (bcf_get_info_int(h, v, "AC", ac) && bcf_get_info_int(h, v, "AN", an))
+    else if (bcf_get_info_int(h, v, "AC", &ac, &n) && bcf_get_info_int(h, v, "AN", &an, &n))
     {    
-        f = (float)(ac)/(float)(an);
+        *f = (float)(*ac)/(float)(*an);
         
         switch (comparison)
         {
-            case LT : return f<value;
-            case LE : return f<=value;
-            case EQ : return f==value;
-            case GT : return f>value;
-            case GE : return f>=value;
+            case LT : return *f<value;
+            case LE : return *f<=value;
+            case EQ : return *f==value;
+            case GT : return *f>value;
+            case GE : return *f>=value;
             default : return true;    
         }    
     }
