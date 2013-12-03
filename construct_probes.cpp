@@ -84,7 +84,7 @@ class Igor : Program
             TCLAP::ValueArg<std::string> arg_output_vcf_file("o", "o", "output VCF file [-]", false, "-", "str", cmd);
             TCLAP::ValueArg<uint32_t> arg_min_flank_length("f", "f", "Minimum Flank Length", false, 20, "int", cmd);
             TCLAP::UnlabeledValueArg<std::string> arg_input_vcf_file("<in.vcf>", "input VCF file", true, "","file", cmd);
-    		
+            
             cmd.parse(argc, argv);
 
             input_vcf_file = arg_input_vcf_file.getValue();
@@ -106,8 +106,8 @@ class Igor : Program
         //i/o initialization//
         //////////////////////
         odr = new BCFOrderedReader(input_vcf_file, intervals);
-        odw = new BCFOrderedWriter(output_vcf_file, 1);
         
+        odw = new BCFOrderedWriter(output_vcf_file, 1);
         bcf_hdr_append(odr->hdr, "##INFO=<ID=REFPROBE,Number=1,Type=String,Description=\"Probe for Determining Reference Allele\">");
         bcf_hdr_append(odr->hdr, "##INFO=<ID=ALTPROBE,Number=A,Type=String,Description=\"Probe for Determining Alternate Allele(s)\">");
         bcf_hdr_append(odr->hdr, "##INFO=<ID=PLEN,Number=1,Type=Integer,Description=End location of 5' flank in the probe\"\">");
@@ -132,55 +132,46 @@ class Igor : Program
     void construct_probes()
     {
         while (odr->read(v))
-    	{
-    	    bcf_unpack(v, BCF_UN_INFO);
-    	    
-    	    
-    	    
-    		//ignore alleles with N	
-	        if (strchr(bcf_get_alt(v, 0), 'N') || strchr(bcf_get_alt(v, 1), 'N'))
-	        {
-		        continue;
-	        }
-				
-		    std::vector<std::string> probes;
-			std::vector<std::string> alleles;
-		     
-			int32_t preambleLength = 0;
-			var_manip->generate_probes(bcf_get_chrom(odr->hdr, v), bcf_get_pos1(v), 1, alleles, probes, min_flank_length, preambleLength);
-			
-			//remove ill defined probes
-			bool skip = false;
-			for (uint32_t i=1; i<probes.size()-1; ++i)
-			{
-			    if(strchr(probes[i].c_str(), 'N'))
-			    {
-			        skip = true;
-			    }
-			}
-			
-			++no_variants;
-			
-			if (skip)
-			    continue;
-										
-			
-			bcf_update_info_string(odr->hdr, v, "REFPROBE", probes[0].c_str());
-			bcf_update_info_string(odr->hdr, v, "ALTPROBE", probes[1].c_str());
-			bcf_update_info_int32(odr->hdr, v, "PLEN", &preambleLength, 1);
-			
-				   
-			
-			
-    		++no_probes_generated;
-        	
-    	}	
-
-        odw->write(v);
-        v = odw->get_bcf1_from_pool();
-        
-
-        odw->flush();
+        {
+            bcf_unpack(v, BCF_UN_INFO);
+            
+            //ignore alleles with N 
+            if (strchr(bcf_get_alt(v, 0), 'N') || strchr(bcf_get_alt(v, 1), 'N'))
+            {
+                continue;
+            }
+                
+            std::vector<std::string> probes;
+            std::vector<std::string> alleles;
+             
+            int32_t preambleLength = 0;
+            var_manip->generate_probes(bcf_get_chrom(odr->hdr, v), bcf_get_pos1(v), 1, alleles, probes, min_flank_length, preambleLength);
+            
+            //remove ill defined probes
+            bool skip = false;
+            for (uint32_t i=1; i<probes.size()-1; ++i)
+            {
+                if(strchr(probes[i].c_str(), 'N'))
+                {
+                    skip = true;
+                }
+            }
+            
+            ++no_variants;
+            
+            if (skip)
+                continue;
+             
+            bcf_update_info_string(odr->hdr, v, "REFPROBE", probes[0].c_str());
+            bcf_update_info_string(odr->hdr, v, "ALTPROBE", probes[1].c_str());
+            bcf_update_info_int32(odr->hdr, v, "PLEN", &preambleLength, 1);
+ 
+            odw->write(v);
+            v = odw->get_bcf1_from_pool();
+                       
+            ++no_probes_generated;
+        }   
+       
         odw->close();
     };
 
@@ -194,8 +185,17 @@ class Igor : Program
         std::clog << "         [f] minimum flank length  " << min_flank_length << "\n";    
         if (intervals.size()!=0)
         {
-            std::clog << "         [i] intervals             " << intervals.size() <<  " intervals\n";
-        }
+            std::clog << "         [i] intervals                    ";
+            for (uint32_t i=0; i<std::min((uint32_t)intervals.size(),(uint32_t)5); ++i)
+            {
+                if (i) std::clog << ", ";
+                std::clog << intervals[i].to_string();
+            }
+            if (intervals.size()>5)
+            {
+                std::clog << "  and " << (intervals.size()-5) <<  " other intervals\n";
+            }   
+        } 
         std::clog << "\n";
     }
 

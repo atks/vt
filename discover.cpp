@@ -820,7 +820,6 @@ class Igor : Program
         s = bam_init1();
    
         odw = new BCFOrderedWriter(output_vcf_file, 0);
-        //move contigs over from BAM
         bam_hdr_transfer_contigs_to_bcf_hdr(odr->hdr, odw->hdr);
         bcf_hdr_append(odw->hdr, "##FORMAT=<ID=E,Number=1,Type=Integer,Description=\"Number of reads containing evidence of the alternate allele\">");
         bcf_hdr_append(odw->hdr, "##FORMAT=<ID=N,Number=1,Type=Integer,Description=\"Total number of reads at a candidate locus with reads that contain evidence of the alternate allele\">");
@@ -917,22 +916,20 @@ class Igor : Program
                 }
             }
             
-            uint16_t flag = bam_get_flag(s);
-            if(flag & exclude_flag)
+            if(bam_get_flag(s) & exclude_flag)
             {
-                ++no_exclude_flag_reads;
                 //1. unmapped
                 //2. secondary alignment
                 //3. not passing QC
                 //4. PCR or optical duplicate
+                ++no_exclude_flag_reads;
                 continue;
             }
             
-            uint32_t mapq = bam_get_mapq(s);
-            if (mapq<mapq_cutoff)
+            if (bam_get_mapq(s) < mapq_cutoff)
             {
-                ++no_low_mapq_reads;
                 //filter short aligments and those with too many indels (?)
+                ++no_low_mapq_reads;
                 continue;
             }
 
@@ -1009,7 +1006,7 @@ class Igor : Program
                 if (i) std::clog << ", ";
                 std::clog << intervals[i].to_string();
             }
-            if (intervals.size()>=5)
+            if (intervals.size()>5)
             {
                 std::clog << "  and " << (intervals.size()-5) <<  " other intervals\n";
             }   

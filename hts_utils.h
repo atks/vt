@@ -20,24 +20,10 @@
    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
    THE SOFTWARE.
 */
-//
-//#ifndef FT_VCF 
-//#define FT_VCF 0 
-//#endif
-//
-//#ifndef FT_VCF_GZ 
-//#define FT_VCF 1 
-//#endif
-//
-//#ifndef FT_BCF 
-//#define FT_BCF 2 
-//#endif
 
 #ifndef HTS_UTILS_H
 #define HTS_UTILS_H
 
-//#include <iostream>
-//#include <sstream>
 #include <string>
 #include <vector>
 #include <cstdlib>
@@ -56,15 +42,11 @@
 #include "htslib/vcfutils.h"
 #include "utils.h"
 
-/*******
- *COMMON
- *******/
- 
 /**************
  *BAM HDR UTILS
  **************/
 
-/** 
+/**
  * Copies contigs found in bam header to bcf header.
  */
 void bam_hdr_transfer_contigs_to_bcf_hdr(const bam_hdr_t *sh, bcf_hdr_t *vh);
@@ -202,7 +184,7 @@ bcf_hdr_t *bcf_alt_hdr_read(htsFile *fp);
  * @imap - indices the subsetted samples
  */
 int bcf_hdr_subset_samples(const bcf_hdr_t *h, bcf1_t *v, std::vector<int32_t>& imap);
-    
+
 /**********
  *BCF UTILS
  **********/
@@ -211,7 +193,7 @@ int bcf_hdr_subset_samples(const bcf_hdr_t *h, bcf1_t *v, std::vector<int32_t>& 
  * Gets a string representation of a variant.
  */
 void bcf_variant2string(bcf_hdr_t *h, bcf1_t *v, kstring_t *var);
- 
+
 /**
  * Get number of chromosomes
  */

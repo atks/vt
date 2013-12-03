@@ -52,7 +52,7 @@ class Igor : Program
 
     BCFOrderedWriter *odw;
     bcf1_t *ov;
-    
+
     BAMOrderedReader *bodr;
     bam1_t *s;
 
@@ -60,7 +60,7 @@ class Igor : Program
     //stats//
     /////////
     uint32_t no_snps_genotyped;
-	uint32_t no_indels_genotyped;
+    uint32_t no_indels_genotyped;
     uint32_t noDelRefToAlt;
     uint32_t noDelAltToRef;
     uint32_t noInsRefToAlt;
@@ -72,49 +72,49 @@ class Igor : Program
     /////////
     LogTool lt;
     LHMM lhmm_ref, lhmm_alt;
-    
+
     Igor(int argc, char ** argv)
     {
         //////////////////////////
         //options initialization//
         //////////////////////////
-    	try
-    	{
-    		std::string desc =
+        try
+        {
+            std::string desc =
 "Genotypes variants for each sample.\n\
 $path = /net/fantasia/home/atks/programs/vt\n\
 e.g. $path/vt genotype -i $path/test/probes.sites.vcf -o out.vcf -b $path/test/NA19130.bam -s NA19130 -g ref.fa\n\n";
 
-       		version = "0.5";
-    		TCLAP::CmdLine cmd(desc, ' ', version);
-    		TCLAP::ValueArg<std::string> arg_ivcf_file("i", "i", "Input Candidate VCF file", true, "", "string", cmd);
-    		TCLAP::ValueArg<std::string> arg_isam_file("b", "b", "Input BAM file", true, "", "string", cmd);
-    		TCLAP::ValueArg<std::string> arg_ovcf_file("o", "o", "Output VCF file", false, "-", "string", cmd);
-    		TCLAP::ValueArg<std::string> arg_sample_id("s", "s", "Sample ID", true, "", "string", cmd);
-    		TCLAP::ValueArg<std::string> arg_ref_fasta_file("r", "r", "Genome FASTA file", false, "/net/fantasia/home/atks/ref/genome/human.g1k.v37.fa", "string", cmd);
-    		TCLAP::SwitchArg arg_debug("d", "d", "Debug alignments", cmd, false);
+            version = "0.5";
+            TCLAP::CmdLine cmd(desc, ' ', version);
+            TCLAP::ValueArg<std::string> arg_ivcf_file("i", "i", "Input Candidate VCF file", true, "", "string", cmd);
+            TCLAP::ValueArg<std::string> arg_isam_file("b", "b", "Input BAM file", true, "", "string", cmd);
+            TCLAP::ValueArg<std::string> arg_ovcf_file("o", "o", "Output VCF file", false, "-", "string", cmd);
+            TCLAP::ValueArg<std::string> arg_sample_id("s", "s", "Sample ID", true, "", "string", cmd);
+            TCLAP::ValueArg<std::string> arg_ref_fasta_file("r", "r", "Genome FASTA file", false, "/net/fantasia/home/atks/ref/genome/human.g1k.v37.fa", "string", cmd);
+            TCLAP::SwitchArg arg_debug("d", "d", "Debug alignments", cmd, false);
 
-    		cmd.parse(argc, argv);
+            cmd.parse(argc, argv);
 
-    		ivcf_file = arg_ivcf_file.getValue();
-    		isam_file = arg_isam_file.getValue();
-    		ovcf_file = arg_ovcf_file.getValue();
-    		sample_id = arg_sample_id.getValue();
-    		ref_fasta_file = arg_ref_fasta_file.getValue();
-    		debug = arg_debug.getValue();
-    	}
-    	catch (TCLAP::ArgException &e)
-    	{
-    		std::cerr << "error: " << e.error() << " for arg " << e.argId() << "\n";
-    		abort();
-    	}
+            ivcf_file = arg_ivcf_file.getValue();
+            isam_file = arg_isam_file.getValue();
+            ovcf_file = arg_ovcf_file.getValue();
+            sample_id = arg_sample_id.getValue();
+            ref_fasta_file = arg_ref_fasta_file.getValue();
+            debug = arg_debug.getValue();
+        }
+        catch (TCLAP::ArgException &e)
+        {
+            std::cerr << "error: " << e.error() << " for arg " << e.argId() << "\n";
+            abort();
+        }
 
         //////////////////////
         //i/o initialization//
         //////////////////////
         //input vcf
         odr = new BCFOrderedReader(ivcf_file.c_str(), intervals);
-        
+
         //input sam
         bodr = new BAMOrderedReader(isam_file.c_str(), intervals);
         s = bam_init1();
@@ -135,7 +135,7 @@ e.g. $path/vt genotype -i $path/test/probes.sites.vcf -o out.vcf -b $path/test/N
         bcf_hdr_append(odw->hdr, "##FORMAT=<ID=RL,Number=1,Type=String,Description=\"Length of each read\">");
         bcf_hdr_append(odw->hdr, "##FORMAT=<ID=MQ,Number=1,Type=String,Description=\"Normalized, Phred-scaled alignment likelihoods for each read\">");
         odw->write_hdr();
-        
+
 
         //##INFO=<ID=NS,Number=1,Type=Integer,Description="Number of Samples With Data">
         //##INFO=<ID=DP,Number=1,Type=Integer,Description="Total Depth">
@@ -150,7 +150,7 @@ e.g. $path/vt genotype -i $path/test/probes.sites.vcf -o out.vcf -b $path/test/N
         //stats initialization//
         ////////////////////////
         no_snps_genotyped = 0;
-	    no_indels_genotyped = 0;
+        no_indels_genotyped = 0;
         noDelRefToAlt = 0;
         noDelAltToRef = 0;
         noInsRefToAlt = 0;
@@ -160,17 +160,17 @@ e.g. $path/vt genotype -i $path/test/probes.sites.vcf -o out.vcf -b $path/test/N
         ////////////////////////
         //tools initialization//
         ////////////////////////
-       
+
     };
 
- 	void print_options()
+    void print_options()
     {
         std::clog << "genotype v" << version << "\n\n";
 
-	    std::clog << "Options: [i] Input VCF File   " << ivcf_file << "\n";
-	    std::clog << "         [b] Input BAM File   " << isam_file << "\n";
-	    std::clog << "         [o] Output VCF File  " << ovcf_file << "\n";
-	    std::clog << "         [s] Sample ID        " << sample_id << "\n\n";
+        std::clog << "Options: [i] Input VCF File   " << ivcf_file << "\n";
+        std::clog << "         [b] Input BAM File   " << isam_file << "\n";
+        std::clog << "         [o] Output VCF File  " << ovcf_file << "\n";
+        std::clog << "         [s] Sample ID        " << sample_id << "\n\n";
         if (intervals.size()!=0)
         {
             std::clog << "         [i] intervals                    ";
@@ -182,19 +182,19 @@ e.g. $path/vt genotype -i $path/test/probes.sites.vcf -o out.vcf -b $path/test/N
             if (intervals.size()>=5)
             {
                 std::clog << "  and " << (intervals.size()-5) <<  " other intervals\n";
-            }   
-        } 
+            }
+        }
         std::clog << "\n";
 
     }
 
     void print_stats()
     {
-	    std::clog << "Stats: SNPs genotyped     " << no_snps_genotyped << "\n";
-	    std::clog << "       Indels genotyped   " << no_indels_genotyped << "\n\n";
+        std::clog << "Stats: SNPs genotyped     " << no_snps_genotyped << "\n";
+        std::clog << "       Indels genotyped   " << no_indels_genotyped << "\n\n";
     }
 
- 	~Igor()
+    ~Igor()
     {
        odr->close();
        bodr->close();
@@ -209,12 +209,12 @@ e.g. $path/vt genotype -i $path/test/probes.sites.vcf -o out.vcf -b $path/test/N
     {
         double e = lt.pl2prob(qual);
 
-    	if (readBase=='N' || probeBase=='N')
-    	{
-    		return 0;
-    	}
+        if (readBase=='N' || probeBase=='N')
+        {
+            return 0;
+        }
 
-   		return readBase!=probeBase ? log10(e/3) : log10(1-e);
+        return readBase!=probeBase ? log10(e/3) : log10(1-e);
     };
 
     /**
@@ -346,39 +346,39 @@ e.g. $path/vt genotype -i $path/test/probes.sites.vcf -o out.vcf -b $path/test/N
         return s ;
     }
 
-    void print_read_alignment(kstring_t& read, kstring_t& qual, kstring_t& cigar, 
+    void print_read_alignment(kstring_t& read, kstring_t& qual, kstring_t& cigar,
                               kstring_t& aligned_read, kstring_t& aligned_qual, kstring_t& expanded_cigar, kstring_t& annotations,
                               uint32_t rpos)
     {
-    	aligned_read.l = 0;
-    	aligned_qual.l = 0;
-     	annotations.l = 0;
-    	
-    	uint32_t j=0;
-    	for (uint32_t i=0; i<expanded_cigar.l; ++i)
-    	{
-    	    char state = expanded_cigar.s[i];
-    	    if (state=='M' || state=='S' || state=='I')
-    	    {
-    	        kputc(read.s[j], &aligned_read);
-    	        kputc(qual.s[j], &aligned_qual);
-    	        
-    	        if (j==rpos)
-    	        {    
-    	            kputc('^', &annotations);
-    	        }
-    	        else
-    	        {    
-    	            kputc(' ', &annotations);
-    	        }
-    	        ++j;
-    	    }
-    	    else if (state=='D')
-    	    {
+        aligned_read.l = 0;
+        aligned_qual.l = 0;
+        annotations.l = 0;
+
+        uint32_t j=0;
+        for (uint32_t i=0; i<expanded_cigar.l; ++i)
+        {
+            char state = expanded_cigar.s[i];
+            if (state=='M' || state=='S' || state=='I')
+            {
+                kputc(read.s[j], &aligned_read);
+                kputc(qual.s[j], &aligned_qual);
+
+                if (j==rpos)
+                {
+                    kputc('^', &annotations);
+                }
+                else
+                {
+                    kputc(' ', &annotations);
+                }
+                ++j;
+            }
+            else if (state=='D')
+            {
                 kputc(' ', &aligned_read);
-    	        kputc(' ', &aligned_qual);
-    	    }
-    	}
+                kputc(' ', &aligned_qual);
+            }
+        }
     }
 
     /**
@@ -397,18 +397,18 @@ e.g. $path/vt genotype -i $path/test/probes.sites.vcf -o out.vcf -b $path/test/N
             double log_p_aa = 0;
 
             std::stringstream rqs;
-         	std::stringstream aqs;
-         	std::stringstream als;
-        	std::stringstream rls;
+            std::stringstream aqs;
+            std::stringstream als;
+            std::stringstream rls;
             std::stringstream cys;
-        	std::stringstream mqs;
+            std::stringstream mqs;
 
-       	    rqs.str("");
-    		aqs.str("");
-    		als.str("");
-    		rls.str("");
-    		cys.str("");
-    		mqs.str("");
+            rqs.str("");
+            aqs.str("");
+            als.str("");
+            rls.str("");
+            cys.str("");
+            mqs.str("");
 
             const char* chrom = bcf_get_chrom(odr->hdr, v);
             uint32_t pos = bcf_get_pos0(v);
@@ -427,24 +427,24 @@ e.g. $path/vt genotype -i $path/test/probes.sites.vcf -o out.vcf -b $path/test/N
 
                 //make this setable
                 if(bam_get_mapq(s)<20)
-    	        {
-    	            //std::cerr << "low mapq\n";
-    	            //ignore poor quality mappings
-    	            continue;
-    	        }
+                {
+                    //std::cerr << "low mapq\n";
+                    //ignore poor quality mappings
+                    continue;
+                }
 
-    	        //std::map<std::string, int> readIDs;
-    			if(read_ids.find(bam_get_qname(s))==read_ids.end())
-    			{
-    			    //assign id to reads to ease checking of overlapping reads
-    				read_ids[bam_get_qname(s)] = read_ids.size();
-    			}
-    			//ignore overlapping paired end
-    			else
-    		    {
-    		        //std::cerr << "Mate pair\n";
-    		        continue;
-    		    }
+                //std::map<std::string, int> readIDs;
+                if(read_ids.find(bam_get_qname(s))==read_ids.end())
+                {
+                    //assign id to reads to ease checking of overlapping reads
+                    read_ids[bam_get_qname(s)] = read_ids.size();
+                }
+                //ignore overlapping paired end
+                else
+                {
+                    //std::cerr << "Mate pair\n";
+                    continue;
+                }
 
                 //get base and qual
                 char base, qual; int32_t rpos;
@@ -453,7 +453,7 @@ e.g. $path/vt genotype -i $path/test/probes.sites.vcf -o out.vcf -b $path/test/N
                 kstring_t readqual;
                 readqual.l = readqual.m = 0; readqual.s = 0;
 
-    			bam_get_base_and_qual_and_read_and_qual(s, v->pos, base, qual, rpos, &readseq, &readqual);
+                bam_get_base_and_qual_and_read_and_qual(s, v->pos, base, qual, rpos, &readseq, &readqual);
 
                 //fail to find a mapped base on the read
                 if (rpos==BAM_READ_INDEX_NA)
@@ -476,19 +476,19 @@ e.g. $path/vt genotype -i $path/test/probes.sites.vcf -o out.vcf -b $path/test/N
                 uint32_t readLength =  bam_get_l_qseq(s);
 
                 //cycle position
-    			int32_t cycle =  strand=='R' ? bam_get_l_qseq(s) - rpos : rpos;
+                int32_t cycle =  strand=='R' ? bam_get_l_qseq(s) - rpos : rpos;
 
                 uint32_t mapQual = bam_get_mapq(s);
 
-    			//////////////////////////////////////////////////
-    			//perform GL computation here, uses map alignments
-    			//////////////////////////////////////////////////
+                //////////////////////////////////////////////////
+                //perform GL computation here, uses map alignments
+                //////////////////////////////////////////////////
                 std::string refCigar = "";
                 std::string altCigar = "";
 
-     	        //compute genotype likelihood using alignment coordinates
-     	        double refllk = log10Emission(ref, base, qual);
-    	        double altllk = log10Emission(alt, base, qual);
+                //compute genotype likelihood using alignment coordinates
+                double refllk = log10Emission(ref, base, qual);
+                double altllk = log10Emission(alt, base, qual);
 
                 ////////////////////////////////
                 //aggregate genotype likelihoods
@@ -501,15 +501,15 @@ e.g. $path/vt genotype -i $path/test/probes.sites.vcf -o out.vcf -b $path/test/N
                 char allele = strand=='F' ? 'N' : 'n';
                 if (refllk>altllk)
                 {
-                	allele = strand=='F' ? 'R' : 'r';
+                    allele = strand=='F' ? 'R' : 'r';
 
                     baseqa = round(-10*(altllk-refllk));
                 }
                 else if (refllk<altllk)
                 {
-                	allele = strand=='F' ? 'A' : 'a';
+                    allele = strand=='F' ? 'A' : 'a';
 
-              	    baseqr = round(-10*(refllk-altllk));
+                    baseqr = round(-10*(refllk-altllk));
                 }
 
                 if (debug)
@@ -519,24 +519,24 @@ e.g. $path/vt genotype -i $path/test/probes.sites.vcf -o out.vcf -b $path/test/N
                     bam_get_cigar_string(s, &cigar);
 
                     kstring_t aligned_read;
-                	aligned_read.l = aligned_read.m = 0;
-                	aligned_read.s = 0;
+                    aligned_read.l = aligned_read.m = 0;
+                    aligned_read.s = 0;
 
-                	kstring_t aligned_qual;
-                	aligned_qual.l = aligned_qual.m = 0;
-                	aligned_qual.s = 0;
+                    kstring_t aligned_qual;
+                    aligned_qual.l = aligned_qual.m = 0;
+                    aligned_qual.s = 0;
 
-                	kstring_t expanded_cigar;
-                	expanded_cigar.l = expanded_cigar.m = 0;
-                	expanded_cigar.s = 0;
+                    kstring_t expanded_cigar;
+                    expanded_cigar.l = expanded_cigar.m = 0;
+                    expanded_cigar.s = 0;
 
-                	kstring_t annotations;
-                	annotations.l = annotations.m = 0;
-                	annotations.s = 0;
+                    kstring_t annotations;
+                    annotations.l = annotations.m = 0;
+                    annotations.s = 0;
 
                     std::string pad = "\t";
-    		        std::cerr << pad << "==================\n";
-    		        std::cerr << pad <<  (read_no+1) << ") " << chrom << ":" << (pos+1) << ":" << ref << ":" << alt << "\n";
+                    std::cerr << pad << "==================\n";
+                    std::cerr << pad <<  (read_no+1) << ") " << chrom << ":" << (pos+1) << ":" << ref << ":" << alt << "\n";
                     //std::cerr << pad <<  read_name << "\n";
                     std::cerr << pad << "==================\n";
                     print_read_alignment(readseq, readqual, cigar, aligned_read, aligned_qual, expanded_cigar, annotations, rpos);
@@ -549,79 +549,79 @@ e.g. $path/vt genotype -i $path/test/probes.sites.vcf -o out.vcf -b $path/test/N
                     std::cerr << pad << "base   " << base  << "\n";
                     std::cerr << pad << "qual   " << (int32_t)(qual-33)  << "\n";
                     std::cerr << pad << "rpos   " << rpos  << "\n";
-        			std::cerr << pad << "refllk " << refllk << "\n";
-        			std::cerr << pad << "altllk " << altllk << "\n";
-        			std::cerr << pad << "allele " << allele << "\n\n";
-        		}
+                    std::cerr << pad << "refllk " << refllk << "\n";
+                    std::cerr << pad << "altllk " << altllk << "\n";
+                    std::cerr << pad << "allele " << allele << "\n\n";
+                }
 
                 rqs << (uint8_t)(baseqr>67? 126 : baseqr+59);
-    			aqs << (uint8_t)(baseqa>67? 126 : baseqa+59);
-    			als << allele;
-    			uint8_t cy1 = cycle > 67 ? 126 : cycle+59;
-    			uint8_t cy2 = cycle > 67 ? cycle-93+59 : 59;
-    			cys << cy1 << cy2;
-    			uint8_t rl1 = readLength > 67 ? 126 : readLength+59;
-    			uint8_t rl2 = readLength > 67 ? readLength-93+59 : 59;
-    			rls << rl1 << rl2;
-    			mqs << (uint8_t) (mapQual+59);
+                aqs << (uint8_t)(baseqa>67? 126 : baseqa+59);
+                als << allele;
+                uint8_t cy1 = cycle > 67 ? 126 : cycle+59;
+                uint8_t cy2 = cycle > 67 ? cycle-93+59 : 59;
+                cys << cy1 << cy2;
+                uint8_t rl1 = readLength > 67 ? 126 : readLength+59;
+                uint8_t rl2 = readLength > 67 ? readLength-93+59 : 59;
+                rls << rl1 << rl2;
+                mqs << (uint8_t) (mapQual+59);
 
-    			++read_no;
+                ++read_no;
             }
 
             //////////////////////////////////////////
             //compute PHRED scores and assign genotype
             //////////////////////////////////////////
-    		uint32_t pl_rr = (uint32_t) round(-10*log_p_rr);
-    		uint32_t pl_ra = (uint32_t) round(-10*log_p_ra);
-    		uint32_t pl_aa = (uint32_t) round(-10*log_p_aa);
+            uint32_t pl_rr = (uint32_t) round(-10*log_p_rr);
+            uint32_t pl_ra = (uint32_t) round(-10*log_p_ra);
+            uint32_t pl_aa = (uint32_t) round(-10*log_p_aa);
 
-    		uint32_t min = pl_rr;
-    		std::string bestGenotype = "0/0";
-    		if (pl_ra < min)
-    		{
-    		    min = pl_ra;
-    		    bestGenotype = "0/1";
-    		}
-    		if (pl_aa < min)
-    		{
-    		    min = pl_aa;
-    		    bestGenotype = "1/1";
-    		}
+            uint32_t min = pl_rr;
+            std::string bestGenotype = "0/0";
+            if (pl_ra < min)
+            {
+                min = pl_ra;
+                bestGenotype = "0/1";
+            }
+            if (pl_aa < min)
+            {
+                min = pl_aa;
+                bestGenotype = "1/1";
+            }
 
-    		pl_rr -= min;
-    		pl_ra -= min;
-    		pl_aa -= min;
+            pl_rr -= min;
+            pl_ra -= min;
+            pl_aa -= min;
 
-    		if (pl_rr+pl_ra+pl_aa==0)
-    		{
-    		    bestGenotype = "./.";
-    	    }
+            if (pl_rr+pl_ra+pl_aa==0)
+            {
+                bestGenotype = "./.";
+            }
 
-    		std::stringstream ss;
-    		ss << chrom << "\t" << (pos+1) << "\t.\t" << ref
-    				<< "\t" << alt << "\t.\t.\t." << "\tGT:PL:DP:RQ:AQ:AL:CY:RL:MQ\t";
+            std::stringstream ss;
+            ss << chrom << "\t" << (pos+1) << "\t.\t" << ref
+                    << "\t" << alt << "\t.\t.\t." << "\tGT:PL:DP:RQ:AQ:AL:CY:RL:MQ\t";
 
-    		if (read_no!=0)
-    		{
-    			ss << bestGenotype << ":"
-    			   << pl_rr << "," << pl_ra << "," << pl_aa << ":"
-    		       << read_no << ":"
-    		       << rqs.str() << ":"
-    		       << aqs.str() << ":"
-    		       << als.str() << ":"
-    		       << cys.str() << ":"
-    		       << rls.str() << ":"
-    			   << mqs.str() ;
-    		}
-    		else
-    		{
-    			ss << "./.";
-    		}
+            if (read_no!=0)
+            {
+                ss << bestGenotype << ":"
+                   << pl_rr << "," << pl_ra << "," << pl_aa << ":"
+                   << read_no << ":"
+                   << rqs.str() << ":"
+                   << aqs.str() << ":"
+                   << als.str() << ":"
+                   << cys.str() << ":"
+                   << rls.str() << ":"
+                   << mqs.str() ;
+            }
+            else
+            {
+                ss << "./.";
+            }
 
-    		kstring_t str;
-    		str.l = str.m = 0; str.s = 0;
-    		kputs(ss.str().c_str(), &str);
-    		odw->write(ov);
+            kstring_t str;
+            str.l = str.m = 0; str.s = 0;
+            kputs(ss.str().c_str(), &str);
+            odw->write(ov);
         }
         else
         {
@@ -644,18 +644,18 @@ e.g. $path/vt genotype -i $path/test/probes.sites.vcf -o out.vcf -b $path/test/N
             double log_p_aa = 0;
 
             std::stringstream rqs;
-         	std::stringstream aqs;
-         	std::stringstream als;
-        	std::stringstream rls;
+            std::stringstream aqs;
+            std::stringstream als;
+            std::stringstream rls;
             std::stringstream cys;
-        	std::stringstream mqs;
+            std::stringstream mqs;
 
-        	rqs.str("");
-    		aqs.str("");
-    		als.str("");
-    		rls.str("");
-    		cys.str("");
-    		mqs.str("");
+            rqs.str("");
+            aqs.str("");
+            als.str("");
+            rls.str("");
+            cys.str("");
+            mqs.str("");
 
             const char* chrom = bcf_get_chrom(odr->hdr, v);
             uint32_t pos = bcf_get_pos0(v);
@@ -669,10 +669,10 @@ e.g. $path/vt genotype -i $path/test/probes.sites.vcf -o out.vcf -b $path/test/N
             candidate_alleles.push_back(alt);
             uint32_t plen;
             std::vector<std::string> probes;
-            
+
             const char* refProbe = probes[0].c_str();
-    		const char* altProbe = probes[1].c_str();
-    		int32_t probeLength = probes[0].size();
+            const char* altProbe = probes[1].c_str();
+            int32_t probeLength = probes[0].size();
 
 //            if (pos!=62812113)
 //            {
@@ -687,7 +687,7 @@ e.g. $path/vt genotype -i $path/test/probes.sites.vcf -o out.vcf -b $path/test/N
             //int32_t variantStartPos = pos;
             int32_t variantLengthDifference = (int32_t)strlen(alt)-(int32_t)strlen(ref);
 
-            
+
             uint32_t read_no = 0;
             while(bodr->read(s))
             {
@@ -700,29 +700,29 @@ e.g. $path/vt genotype -i $path/test/probes.sites.vcf -o out.vcf -b $path/test/N
 
                 //make this setable
                 if(bam_get_mapq(s)<13)
-    	        {
-    	            //std::cerr << "low mapq\n";
+                {
+                    //std::cerr << "low mapq\n";
     //              ++readFilteredNo;
-    	            //ignore poor quality mappings
-    	            continue;
-    	        }
+                    //ignore poor quality mappings
+                    continue;
+                }
 
-    	        //std::map<std::string, int> readIDs;
-    			if(read_ids.find(bam_get_qname(s))==read_ids.end())
-    			{
-    			    //assign id to reads to ease checking of overlapping reads
-    				read_ids[bam_get_qname(s)] = read_ids.size();
-    			}
-    			//ignore overlapping paired end
-    			else
-    		    {
-    		        //std::cerr << "Mate pair\n";
-    		        continue;
-    		    }
+                //std::map<std::string, int> readIDs;
+                if(read_ids.find(bam_get_qname(s))==read_ids.end())
+                {
+                    //assign id to reads to ease checking of overlapping reads
+                    read_ids[bam_get_qname(s)] = read_ids.size();
+                }
+                //ignore overlapping paired end
+                else
+                {
+                    //std::cerr << "Mate pair\n";
+                    continue;
+                }
 
                 //get base and qual
                 kstring_t str;
-    		    str.l = str.m = 0; str.s = 0;
+                str.l = str.m = 0; str.s = 0;
 
                 //read name
                 char* read_name = bam_get_qname(s);
@@ -745,13 +745,13 @@ e.g. $path/vt genotype -i $path/test/probes.sites.vcf -o out.vcf -b $path/test/N
                 uint32_t mapQual = bam_get_mapq(s);
 
                 int32_t cycle = 0;
-    			//////////////////////////
-    			//perform realignment here
-    			//////////////////////////
+                //////////////////////////
+                //perform realignment here
+                //////////////////////////
 
-    			//////////////////////////////////////////////////
-    			//perform GL computation here, uses map alignments
-    			//////////////////////////////////////////////////
+                //////////////////////////////////////////////////
+                //perform GL computation here, uses map alignments
+                //////////////////////////////////////////////////
                 std::string refCigar = "";
                 std::string altCigar = "";
 
@@ -759,20 +759,20 @@ e.g. $path/vt genotype -i $path/test/probes.sites.vcf -o out.vcf -b $path/test/N
 
                 double refllk = 0, altllk = 0;
 
-    		   	lhmm_ref.align(refllk, refProbe, read_seq, qual);
-    	        lhmm_ref.computeLogLikelihood(refllk, lhmm_ref.getPath(), qual);
+                lhmm_ref.align(refllk, refProbe, read_seq, qual);
+                lhmm_ref.computeLogLikelihood(refllk, lhmm_ref.getPath(), qual);
 
-    	        lhmm_alt.align(altllk, altProbe, read_seq, qual);
+                lhmm_alt.align(altllk, altProbe, read_seq, qual);
                 lhmm_alt.computeLogLikelihood(altllk, lhmm_alt.getPath(), qual);
 
                 std::string pad = "\t";
-    	        if (readIsExtended)
-    	            pad = "\t\t";
+                if (readIsExtended)
+                    pad = "\t\t";
 
-    	        if (debug)
-    	        {
-    		        std::cerr << pad << "==================\n";
-    		        std::cerr << pad <<  (read_no+1) << ") " << chrom << ":" << (pos+1) << ":" << ref << ":" << alt << ":" << variantLengthDifference << "\n";
+                if (debug)
+                {
+                    std::cerr << pad << "==================\n";
+                    std::cerr << pad <<  (read_no+1) << ") " << chrom << ":" << (pos+1) << ":" << ref << ":" << alt << ":" << variantLengthDifference << "\n";
                     std::cerr << pad <<  read_name << "\n";
                     std::cerr << pad << "==================\n";
                     std::cerr << pad << "ref probe     " << refProbe << " (" << plen << "/" << probeLength << ")\n";
@@ -781,9 +781,9 @@ e.g. $path/vt genotype -i $path/test/probes.sites.vcf -o out.vcf -b $path/test/N
                     std::cerr << pad << "==================\n";
                     lhmm_ref.printAlignment(pad);
                     std::cerr << pad << "ref llk: " << refllk << "\n";
-    		        std::cerr << pad << "expected indel location: " << plen+1 << "\n";
-    		        std::cerr << pad << "==================\n";
-    		        std::cerr << pad << "==================\n";
+                    std::cerr << pad << "expected indel location: " << plen+1 << "\n";
+                    std::cerr << pad << "==================\n";
+                    std::cerr << pad << "==================\n";
                     std::cerr << pad << "alt probe     " << altProbe << " (" << plen << ")\n";
                     std::cerr << pad << "read sequence " << read_seq  << "\n";
                     std::cerr << pad << "qual          " << qual  << "\n";
@@ -791,8 +791,8 @@ e.g. $path/vt genotype -i $path/test/probes.sites.vcf -o out.vcf -b $path/test/N
                     lhmm_alt.printAlignment(pad);
                     std::cerr << pad << "alt llk: " << altllk << "\n";
                     std::cerr << pad << "expected indel location: " << plen+1 << "\n";
-    		        std::cerr << pad << "==================\n\n";
-    	        }
+                    std::cerr << pad << "==================\n\n";
+                }
 
                 //Compare alignment segments based on position with greatest match and highest log odds score.
                 //std::string& alignmentPath = lhmmRef.path;
@@ -916,11 +916,11 @@ e.g. $path/vt genotype -i $path/test/probes.sites.vcf -o out.vcf -b $path/test/N
                     }
                 }
 
-    	        if (debug)
-    	        {
-    		        std::cerr << pad << "++++++++++++++++++\n";
-    	            std::cerr << pad << "reflk " << refllk << "\n";
-    			    std::cerr << pad << "altlk " << altllk << "\n";
+                if (debug)
+                {
+                    std::cerr << pad << "++++++++++++++++++\n";
+                    std::cerr << pad << "reflk " << refllk << "\n";
+                    std::cerr << pad << "altlk " << altllk << "\n";
                 }
 
                 ////////////////////////////////
@@ -934,85 +934,85 @@ e.g. $path/vt genotype -i $path/test/probes.sites.vcf -o out.vcf -b $path/test/N
                 char allele = strand=='F' ? 'N' : 'n';
                 if (refllk>altllk)
                 {
-                	allele = strand=='F' ? 'R' : 'r';
+                    allele = strand=='F' ? 'R' : 'r';
                     baseqa = round(-10*(altllk-refllk));
                 }
                 else if (refllk<altllk)
                 {
-                	allele = strand=='F' ? 'A' : 'a';
-              	    baseqr = round(-10*(refllk-altllk));
+                    allele = strand=='F' ? 'A' : 'a';
+                    baseqr = round(-10*(refllk-altllk));
                 }
 
                 rqs << (uint8_t)(baseqr>67? 126 : baseqr+59);
-    			aqs << (uint8_t)(baseqa>67? 126 : baseqa+59);
-    			als << allele;
-    			uint8_t cy1 = cycle > 67 ? 126 : cycle+59;
-    			uint8_t cy2 = cycle > 67 ? cycle-67+59 : 59;
-    			cys << cy1 << cy2;
-    			uint8_t rl1 = readLength > 67 ? 126 : readLength+59;
-    			uint8_t rl2 = readLength > 67 ? readLength-67+59 : 59;
-    			rls << rl1 << rl2;
-    			mqs << (uint8_t) (mapQual+59);
+                aqs << (uint8_t)(baseqa>67? 126 : baseqa+59);
+                als << allele;
+                uint8_t cy1 = cycle > 67 ? 126 : cycle+59;
+                uint8_t cy2 = cycle > 67 ? cycle-67+59 : 59;
+                cys << cy1 << cy2;
+                uint8_t rl1 = readLength > 67 ? 126 : readLength+59;
+                uint8_t rl2 = readLength > 67 ? readLength-67+59 : 59;
+                rls << rl1 << rl2;
+                mqs << (uint8_t) (mapQual+59);
 
-    			++read_no;
+                ++read_no;
             }
 
             //////////////////////////////////////////
             //compute PHRED scores and assign genotype
             //////////////////////////////////////////
-    		uint32_t pl_rr = (uint32_t) round(-10*log_p_rr);
-    		uint32_t pl_ra = (uint32_t) round(-10*log_p_ra);
-    		uint32_t pl_aa = (uint32_t) round(-10*log_p_aa);
+            uint32_t pl_rr = (uint32_t) round(-10*log_p_rr);
+            uint32_t pl_ra = (uint32_t) round(-10*log_p_ra);
+            uint32_t pl_aa = (uint32_t) round(-10*log_p_aa);
 
-    		uint32_t min = pl_rr;
-    		std::string bestGenotype = "0/0";
-    		if (pl_ra < min)
-    		{
-    		    min = pl_ra;
-    		    bestGenotype = "0/1";
-    		}
-    		if (pl_aa < min)
-    		{
-    		    min = pl_aa;
-    		    bestGenotype = "1/1";
-    		}
+            uint32_t min = pl_rr;
+            std::string bestGenotype = "0/0";
+            if (pl_ra < min)
+            {
+                min = pl_ra;
+                bestGenotype = "0/1";
+            }
+            if (pl_aa < min)
+            {
+                min = pl_aa;
+                bestGenotype = "1/1";
+            }
 
-    		pl_rr -= min;
-    		pl_ra -= min;
-    		pl_aa -= min;
+            pl_rr -= min;
+            pl_ra -= min;
+            pl_aa -= min;
 
-    		if (pl_rr+pl_ra+pl_aa==0)
-    		{
-    		    bestGenotype = "./.";
-    	    }
+            if (pl_rr+pl_ra+pl_aa==0)
+            {
+                bestGenotype = "./.";
+            }
 
-    		std::stringstream ss;
-    		ss << chrom << "\t" << (pos+1) << "\t.\t" << ref
-    				<< "\t" << alt << "\t.\t.\t." << "\tGT:PL:DP:RQ:AQ:AL:CY:RL:MQ\t";
+            std::stringstream ss;
+            ss << chrom << "\t" << (pos+1) << "\t.\t" << ref
+                    << "\t" << alt << "\t.\t.\t." << "\tGT:PL:DP:RQ:AQ:AL:CY:RL:MQ\t";
 
             //std::cerr << "reads " << read_no << "\n";
 
-    		if (read_no!=0)
-    		{
-    			ss << bestGenotype << ":"
-    			   << pl_rr << "," << pl_ra << "," << pl_aa << ":"
-    		       << read_no << ":"
-    		       << rqs.str() << ":"
-    		       << aqs.str() << ":"
-    		       << als.str() << ":"
-    		       << cys.str() << ":"
-    		       << rls.str() << ":"
-    			   << mqs.str() ;
-    		}
-    		else
-    		{
-    			ss << "./.";
-    		}
+            if (read_no!=0)
+            {
+                ss << bestGenotype << ":"
+                   << pl_rr << "," << pl_ra << "," << pl_aa << ":"
+                   << read_no << ":"
+                   << rqs.str() << ":"
+                   << aqs.str() << ":"
+                   << als.str() << ":"
+                   << cys.str() << ":"
+                   << rls.str() << ":"
+                   << mqs.str() ;
+            }
+            else
+            {
+                ss << "./.";
+            }
 
-    		kstring_t str;
-    		str.l = str.m = 0; str.s = 0;
-    		kputs(ss.str().c_str(), &str);
-    		odw->write(ov);
+            kstring_t str;
+            str.l = str.m = 0; str.s = 0;
+            kputs(ss.str().c_str(), &str);
+            odw->write(ov);
         }
         else
         {

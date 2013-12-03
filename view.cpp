@@ -142,7 +142,7 @@ class Igor : Program
                 if (i) std::clog << ", ";
                 std::clog << intervals[i].to_string();
             }
-            if (intervals.size()>=5)
+            if (intervals.size()>5)
             {
                 std::clog << "  and " << (intervals.size()-5) <<  " other intervals\n";
             }

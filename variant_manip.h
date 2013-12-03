@@ -62,9 +62,9 @@
 class VariantManip
 {
     public:
-        
+
     faidx_t *fai;
-    
+
     VariantManip(std::string ref_fasta_file);
 
     /**
@@ -94,31 +94,31 @@ class VariantManip
      * Left aligns a variant.
      */
     void left_align(std::vector<std::string>& alleles, uint32_t& pos1, const char* chrom, uint32_t& leftAligned, uint32_t& right_trimmed);
-    
+
     /**
      * Generates a probing haplotype with flanks around the variant of interest.
      */
     void generate_probes(const char* chrom,
-                        int32_t pos1, uint32_t probeDiff, // 
+                        int32_t pos1, uint32_t probeDiff, //
                         std::vector<std::string>& alleles, //store alleles
                         std::vector<std::string>& probes, //store probes
                         uint32_t min_flank_length,
                         int32_t& preambleLength); //store preamble length
-                            
+
     private:
 
     /**
      * Recursive helper method for generateProbes.
      */
-    void generate_probes(const char* chrom, 
-                        int32_t pos1, 
-                        uint32_t flankLength, 
-                        uint32_t& currentDiff, 
-                        uint32_t& length, 
-                        uint32_t gald, 
-                        std::vector<uint32_t>& diff, 
-                        std::vector<std::string>& alleles, 
-                        std::vector<std::string>& probes);   
+    void generate_probes(const char* chrom,
+                        int32_t pos1,
+                        uint32_t flankLength,
+                        uint32_t& currentDiff,
+                        uint32_t& length,
+                        uint32_t gald,
+                        std::vector<uint32_t>& diff,
+                        std::vector<std::string>& alleles,
+                        std::vector<std::string>& probes);
 
 };
 

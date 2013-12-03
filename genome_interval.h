@@ -39,12 +39,12 @@
 class GenomeInterval
 {
     public:
-    std::string seq;    
+    std::string seq;
     int32_t start1; // 1 based coordinate
     int32_t end1;   // 1 based coordinate
-    
+
     /**
-     * Constructs a Genome Interval from a string representation. 
+     * Constructs a Genome Interval from a string representation.
      *
      * @interval    string representation of an interval.
      *
@@ -52,11 +52,11 @@ class GenomeInterval
      *     Y             the entirety of chromosome Y
      */
     GenomeInterval(std::string interval);
-    
+
     /**
-     * Returns a string representation of this Genome Interval. 
-     */    
+     * Returns a string representation of this Genome Interval.
+     */
     std::string to_string();
 };
-    
+
 #endif

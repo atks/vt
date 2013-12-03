@@ -26,9 +26,9 @@
 
 #include "htslib/vcf.h"
 #include "htslib/vcfutils.h"
-#include "hts_utils.h"
 #include "htslib/kstring.h"
 #include "htslib/kseq.h"
+#include "hts_utils.h"
 #include "interval_tree.h"
 
 #endif

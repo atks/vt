@@ -29,41 +29,41 @@
 void split(std::vector<std::string>& vec, const char *delims, std::string& str, uint32_t limit, bool clear)
 {
     std::map<char, int32_t> delim_set;
-    
+
     for (uint32_t i=0; i<strlen(delims); ++i)
     {
         delim_set[delims[i]] = 1;
     }
-    
+
     if (clear)
     {
-        vec.clear();	
-	}
-	const char* tempStr = str.c_str();
-	int32_t i=0, lastIndex = str.size()-1;
-	std::stringstream token;
-	
-	if (lastIndex<0) return;
-	
-	uint32_t noTokens = 0;
-	bool isDelim = false;
-	while (i<=lastIndex)
-	{
-	    isDelim = (delim_set.find(tempStr[i])!=delim_set.end());
-		if (!isDelim || noTokens>=limit-1)
-		{
-			token << tempStr[i];
-		}
+        vec.clear();
+    }
+    const char* tempStr = str.c_str();
+    int32_t i=0, lastIndex = str.size()-1;
+    std::stringstream token;
 
-		if ((isDelim && noTokens<limit-1) || i==lastIndex) 
-		{
-			vec.push_back(token.str());
-			++noTokens;
-			token.str("");
-		}
-		
-		++i;
-	} 
+    if (lastIndex<0) return;
+
+    uint32_t noTokens = 0;
+    bool isDelim = false;
+    while (i<=lastIndex)
+    {
+        isDelim = (delim_set.find(tempStr[i])!=delim_set.end());
+        if (!isDelim || noTokens>=limit-1)
+        {
+            token << tempStr[i];
+        }
+
+        if ((isDelim && noTokens<limit-1) || i==lastIndex)
+        {
+            vec.push_back(token.str());
+            ++noTokens;
+            token.str("");
+        }
+
+        ++i;
+    }
 };
 
 /**
@@ -72,7 +72,7 @@ void split(std::vector<std::string>& vec, const char *delims, std::string& str, 
 bool str2int32(std::string& s, int32_t& i)
 {
     const char* start = s.c_str();
-    char *end = 0; 
+    char *end = 0;
     i = std::strtol(s.c_str(), &end, 10);
     return (end!=start);
 };

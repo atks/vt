@@ -26,18 +26,11 @@
 
 #include <cstdlib>
 #include <cstdint>
-#include <cstring>
-#include <cmath>
-#include <cfloat>
+#include <iostream>
 #include <vector>
 #include <map>
 #include <queue>
 #include <list>
-#include <sstream>
-#include "htslib/vcf.h"
-#include "htslib/vcfutils.h"
-#include "htslib/tbx.h"
-#include "hts_utils.h"
 
 #define RED 1
 #define BLACK 2
@@ -47,7 +40,7 @@ class Interval
     public:
     int32_t start;
     int32_t end;
-        
+
 };
 
 class RBTreeNode
@@ -61,27 +54,27 @@ class RBTreeNode
     int32_t max;
     int32_t min;
     uint32_t color;
-        
+
     RBTreeNode(Interval* item);
-    
+
     void print();
-    
+
     void insert(Interval* item);
-    
+
     private:
 };
-      
+
 class RBTree
 {
     public:
-    RBTreeNode* root;   
+    RBTreeNode* root;
     uint32_t noElements;
     uint32_t height;
-    
+
     RBTree();
     ~RBTree();
-    RBTreeNode* insert(Interval* x); 
-    void RBinsert(Interval* x); 
+    RBTreeNode* insert(Interval* x);
+    void RBinsert(Interval* x);
     void RBSearch(int32_t low, int32_t high, std::vector<Interval*>& intervals);
     void RBSearch_iter(int32_t low, int32_t high, std::vector<Interval*>& intervals, RBTreeNode* x);
     void RBSearchBrute(int32_t low, int32_t high, std::vector<Interval*>& intervals);
@@ -94,10 +87,10 @@ class RBTree
     {
         return noElements;
     };
-                    
+
     private:
-    void leftRotate(RBTreeNode* x);    
-    void rightRotate(RBTreeNode* y);        
-};   
-    
+    void leftRotate(RBTreeNode* x);
+    void rightRotate(RBTreeNode* y);
+};
+
 #endif

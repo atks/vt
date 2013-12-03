@@ -47,7 +47,7 @@
  * Splits a line into a vector - PERL style
  */
 void split(std::vector<std::string>& vec, const char* delims, std::string& str, uint32_t limit=UINT_MAX, bool clear=true);
-    
+
 /**
  * Casts a string into int32.  Returns true if successful.
  */
