@@ -11,6 +11,7 @@ SOURCES = program\
 		log_tool\
 		interval_tree\
 		genome_interval\
+		filter\
 		rb_tree\
 		lhmm\
 		hts_utils\
@@ -19,13 +20,12 @@ SOURCES = program\
 		bcf_ordered_reader\
 		bcf_ordered_writer\
 		bcf_synced_reader\
-		merge_duplicate_variants\
+		view\
 		normalize\
+		merge_duplicate_variants\
 		construct_probes\
 		discover\
 		genotype\
-		view\
-		filter\
 		profile_indels\
 		partition\
 		peek

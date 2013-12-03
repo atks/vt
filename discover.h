@@ -24,11 +24,6 @@
 #ifndef DISCOVER_H
 #define DISCOVER_H
 
-#include <cmath>
-#include <string>
-#include <iostream>
-#include <fstream>
-#include <algorithm>
 #include <vector>
 #include <map>
 #include "htslib/vcf.h"
