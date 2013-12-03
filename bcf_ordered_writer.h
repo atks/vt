@@ -71,8 +71,9 @@ class BCFOrderedWriter
     
     /**
      * Initialize output file.
+     * @window - the window to keep variants in buffer to check for local disorder, 0 for no buffering
      */
-    BCFOrderedWriter(std::string input_vcf_file, int32_t window=1);
+    BCFOrderedWriter(std::string input_vcf_file, int32_t window=0);
           
     /**
      * Gets record from pool, creates a new record if necessary
