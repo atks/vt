@@ -21,53 +21,20 @@
    THE SOFTWARE.
 */
 
-#ifndef FILTER_H
-#define FILTER_H
+#ifndef PARTITION_H
+#define PARTITION_H
 
 #include "htslib/vcf.h"
+#include "htslib/vcfutils.h"
+#include "htslib/kstring.h"
 #include "htslib/kseq.h"
+#include "gtf.h"
+#include "bcf_synced_reader.h"
+#include "interval_tree.h"
 #include "hts_utils.h"
-#include "variant_manip.h"
+#include "filter.h"
+#include "program.h"
 
-#define LT 0
-#define LE 1
-#define EQ 2
-#define GT 3
-#define GE 4
-
-/**
- * Class for filtering VCF records.
- * Filters based on several fields:
- * QUAL
- * FILTER
- * INFO
- * VARIANT (inferred)
- *
- * examples
- *
- * QUAL>40
- * FILTER==PASS
- * VARIANT==SNP
- * AF>0.5
- * VARIANT==SNP && AF>0.5
- * 
- */
-class Filter
-{
-    public:
-        
-    std::string tag;
-    int32_t comparison;
-    float value;
-
-    Filter() {};
-            
-    
-    Filter(std::string tag, int32_t comparison, float value);
-    
-    bool apply(bcf_hdr_t *h, bcf1_t *v);
-    
-    void parse(std::string filter);
-};
+void partition(int argc, char ** argv);   
 
 #endif

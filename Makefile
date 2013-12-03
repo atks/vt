@@ -24,6 +24,10 @@ SOURCES = program\
 		construct_probes\
 		discover\
 		genotype\
+		view\
+		filter\
+		profile_indels\
+		partition\
 		peek
 
 SOURCESONLY = main.cpp

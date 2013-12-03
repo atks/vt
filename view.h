@@ -21,53 +21,20 @@
    THE SOFTWARE.
 */
 
-#ifndef FILTER_H
-#define FILTER_H
+#ifndef VIEW_H
+#define VIEW_H
 
+#include "tclap/CmdLine.h"
+#include "tclap/Arg.h"
 #include "htslib/vcf.h"
 #include "htslib/kseq.h"
 #include "hts_utils.h"
+#include "bcf_synced_reader.h"
+#include "bcf_ordered_reader.h"
+#include "bcf_ordered_writer.h"
 #include "variant_manip.h"
+#include "program.h"
 
-#define LT 0
-#define LE 1
-#define EQ 2
-#define GT 3
-#define GE 4
-
-/**
- * Class for filtering VCF records.
- * Filters based on several fields:
- * QUAL
- * FILTER
- * INFO
- * VARIANT (inferred)
- *
- * examples
- *
- * QUAL>40
- * FILTER==PASS
- * VARIANT==SNP
- * AF>0.5
- * VARIANT==SNP && AF>0.5
- * 
- */
-class Filter
-{
-    public:
-        
-    std::string tag;
-    int32_t comparison;
-    float value;
-
-    Filter() {};
-            
+void view(int argc, char ** argv);
     
-    Filter(std::string tag, int32_t comparison, float value);
-    
-    bool apply(bcf_hdr_t *h, bcf1_t *v);
-    
-    void parse(std::string filter);
-};
-
 #endif
