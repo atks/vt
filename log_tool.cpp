@@ -69,7 +69,7 @@ uint32_t LogTool::prob2pl(double x)
 /**
  * Compute log(x)
  */
-double LogTool::elog10(double x)
+double LogTool::log10(double x)
 {
     return x==0? LOGZERO : log10(x);
 }
@@ -77,7 +77,7 @@ double LogTool::elog10(double x)
 /**
  * Compute log(xy)
  */
-double LogTool::elog10prod(double x, double y)
+double LogTool::log10prod(double x, double y)
 {
     if (x==LOGZERO || y==LOGZERO) return LOGZERO;
 
@@ -87,7 +87,7 @@ double LogTool::elog10prod(double x, double y)
 /**
  * Compute log(x+y)
  */
-double LogTool::elog10sum(double x, double y)
+double LogTool::log10sum(double x, double y)
 {
     if (x==LOGZERO) return y;
     if (y==LOGZERO) return x;

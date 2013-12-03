@@ -123,6 +123,11 @@ class BCFOrderedReader
      */
     bcf_hdr_t* get_hdr();
     
+    /**
+     * Closes the file.
+     */
+    void close();
+    
     private:
     /**
      * Gets record from pool, creates a new record if necessary
@@ -138,7 +143,7 @@ class BCFOrderedReader
      * Initialize next interval.
      * Returns false only if all intervals are accessed.
      */
-    bool initialize_next_interval();
+    bool initialize_next_interval();    
 };
     
 #endif

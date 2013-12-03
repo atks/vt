@@ -228,3 +228,13 @@ bcf1_t* BCFOrderedReader::get_bcf1_from_pool()
         return bcf_init1();
     }
 };
+
+/**
+ * Closes the file.
+ */
+void BCFOrderedReader::close()
+{   
+    bcf_close(vcf);
+}
+
+

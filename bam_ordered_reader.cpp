@@ -122,3 +122,11 @@ bool BAMOrderedReader::read(bam1_t *s)
 
     return false;
 };
+
+/**
+ * Closes the file.
+ */
+void BAMOrderedReader::close()
+{   
+    sam_close(sam);
+}
