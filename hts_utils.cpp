@@ -22,15 +22,15 @@
 */
 
 #include "hts_utils.h"
- 
-KHASH_MAP_INIT_STR(vdict, bcf_idinfo_t) 
+
+KHASH_MAP_INIT_STR(vdict, bcf_idinfo_t)
 typedef khash_t(vdict) vdict_t;
 
 /**************
  *BAM HDR UTILS
  **************/
 
-/** 
+/**
  * Copies contigs found in bam header to bcf header.
  */
 void bam_hdr_transfer_contigs_to_bcf_hdr(const bam_hdr_t *sh, bcf_hdr_t *vh)
@@ -48,7 +48,7 @@ void bam_hdr_transfer_contigs_to_bcf_hdr(const bam_hdr_t *sh, bcf_hdr_t *vh)
 /**********
  *BAM UTILS
  **********/
- 
+
 /**
  * Gets the read sequence from a bam record
  */
@@ -70,28 +70,87 @@ void bam_get_qual_string(bam1_t *s, kstring_t *qual)
     qual->l=0;
     uint32_t offset = 0;
     uint8_t* q = bam_get_qual(s);
-    for (int32_t i = 0; i < bam_get_l_qseq(s); ++i) 
+    for (int32_t i = 0; i < bam_get_l_qseq(s); ++i)
     {
         kputc(q[i-offset] + 33, qual);
     }
 };
 
 /**
- * Gets the cigar string from a bam record
+ * Gets the cigar from a BAM record
  */
-void bam_get_cigar_string(bam1_t *srec, kstring_t *str)
+void bam_get_cigar_string(bam1_t *s, kstring_t *cigar_string)
 {
-    str->l=0;
-    int32_t n_cigar_op = bam_get_n_cigar_op(srec);
+    cigar_string->l=0;
+    int32_t n_cigar_op = bam_get_n_cigar_op(s);
     if (n_cigar_op)
     {
-        uint32_t *cigar = bam_get_cigar(srec);
+        uint32_t *cigar = bam_get_cigar(s);
         for (int32_t i = 0; i < n_cigar_op; ++i)
         {
-            kputw(bam_cigar_oplen(cigar[i]), str);
-            kputc(bam_cigar_opchr(cigar[i]), str);
+            kputw(bam_cigar_oplen(cigar[i]), cigar_string);
+            kputc(bam_cigar_opchr(cigar[i]), cigar_string);
         }
     }
+}
+
+/**
+ * Gets the cigar string from a bam record
+ */
+void bam_get_cigar_expanded_string(bam1_t *s, kstring_t *cigar_expanded_string)
+{
+    kstring_t cigar_string = {0,0,0};
+    bam_get_cigar_string(s, &cigar_string);
+
+    cigar_expanded_string->l = 0;
+    int32_t lastIndex = cigar_string.l;
+    int32_t i = 0;
+    kstring_t token = {0,0,0};
+
+    if (lastIndex<0)
+    {
+        return;
+    }
+    char c;
+    bool seenM = false;
+
+    while (i<=lastIndex)
+    {
+        c = cigar_string.s[i];
+
+        //captures the numeric count
+        if (c<'A')
+        {
+            kputc(c, &token);
+        }
+
+        if (c>'A' || i==lastIndex)
+        {
+            //it is possible for I's to be observed before the first M's in the cigar string
+            //in this case, we treat them as 'S'
+            if (!seenM)
+            {
+                if (c=='I')
+                {
+                    c = 'S';
+                }
+                else if (c=='M')
+                {
+                    seenM = true;
+                }
+            }
+
+            int32_t count = atoi(token.s);
+            for (uint32_t j=0; j<count; ++j)
+                kputc(c, cigar_expanded_string);
+            token.l = 0;;
+        }
+
+        ++i;
+    }
+
+    if (cigar_string.m) free(cigar_string.s);
+    if (token.m) free(token.s);
 }
 
 /**
@@ -155,7 +214,7 @@ void bam_get_base_and_qual_and_read_and_qual(bam1_t *srec, uint32_t pos, char& b
             //sequence
             bam_get_seq_string(srec, readseq);
             base = readseq->s[rpos];
-            
+
             //qual
             bam_get_qual_string(srec, readqual);
             qual = readqual->s[rpos];
@@ -169,8 +228,8 @@ void bam_get_base_and_qual_and_read_and_qual(bam1_t *srec, uint32_t pos, char& b
 //    std::cout << "q: " << s[bpos-1] << " " << q << "\n";
 //    for (uint32_t i = 0; i < c->l_qseq; ++i) std::cerr << ((char)(s[i] + 33));
 };
- 
- 
+
+
 /**************
  *BCF HDR UTILS
  **************/
@@ -185,11 +244,11 @@ void bam_get_base_and_qual_and_read_and_qual(bam1_t *srec, uint32_t pos, char& b
 bcf_hdr_t *bcf_alt_hdr_read(htsFile *fp)
 {
     bcf_hdr_t *h = NULL;
-    
+
     //check for existence of alternative header
     kstring_t alt_hdr_fn = {0, 0, 0};
     kputs(fp->fn, &alt_hdr_fn);
-    kputs(".hdr", &alt_hdr_fn); 
+    kputs(".hdr", &alt_hdr_fn);
     FILE *file = fopen(alt_hdr_fn.s, "r");
     if (!file)
     {
@@ -203,7 +262,7 @@ bcf_hdr_t *bcf_alt_hdr_read(htsFile *fp)
         h = bcf_hdr_read(alt_hdr);
         hts_close(alt_hdr);
     }
-    
+
     if (alt_hdr_fn.m) free(alt_hdr_fn.s);
     return h;
 }
@@ -219,7 +278,7 @@ int32_t bcf_hdr_get_n_sample(bcf_hdr_t *h)
 
 /**
  * Gets sequence names and lengths
- */ 
+ */
 void bcf_hdr_get_seqs_and_lens(const bcf_hdr_t *h, const char**& seqs, int32_t*& lens, int *n)
 {
     vdict_t *d = (vdict_t*)h->dict[BCF_DT_CTG];
@@ -233,7 +292,7 @@ void bcf_hdr_get_seqs_and_lens(const bcf_hdr_t *h, const char**& seqs, int32_t*&
         tid = kh_val(d,k).id;
         assert( tid<m );
         seqs[tid] = kh_key(d,k);
-        
+
         lens[tid] = 0;
         bcf_hrec_t *hrec = kh_val(d, k).hrec[0];
         for (int i=0; i<hrec->nkeys; ++i)
@@ -268,7 +327,7 @@ void bcf_variant2string(bcf_hdr_t *h, bcf1_t *v, kstring_t *var)
     for (int32_t i=0; i<v->n_allele; ++i)
     {
         kputc(',', var);
-        kputs(bcf_get_alt(v, i), var); 
+        kputs(bcf_get_alt(v, i), var);
     }
 }
 
@@ -279,7 +338,7 @@ void bcf_set_chrom(bcf_hdr_t *h, bcf1_t *v, const char* chrom)
 {
     vdict_t *d = (vdict_t*)h->dict[BCF_DT_CTG];
     khint_t k = kh_get(vdict, d, chrom);
-    if (k == kh_end(d)) 
+    if (k == kh_end(d))
     {
         fprintf(stderr, "[E:%s:%d %s] contig '%s' is not defined in the header\n", __FILE__, __LINE__, __FUNCTION__, chrom);
         kstring_t contig = {0,0,0};
@@ -288,15 +347,50 @@ void bcf_set_chrom(bcf_hdr_t *h, bcf1_t *v, const char* chrom)
         if (contig.m) free(contig.s);
         k = kh_get(vdict, d, chrom);
     }
-    v->rid = kh_val(d, k).id;       
+    v->rid = kh_val(d, k).id;
 };
 
 /**
- *Check if variant is passed
+ * Check if variant is passed
  */
 bool bcf_is_passed(bcf_hdr_t *h, bcf1_t *v)
-{    
+{
 //    std::cerr << v->d.n_flt << ":" << v->d.flt[0] << "\n";
-    return (v->d.n_flt==1 && !strcmp(h->id[BCF_DT_ID][v->d.flt[0]].key,"PASS"));    
+    return (v->d.n_flt==1 && !strcmp(h->id[BCF_DT_ID][v->d.flt[0]].key,"PASS"));
 }
 
+/**
+ * Clear a bcf1_t record
+ */
+void bcf_erase(bcf1_t *v)
+{
+    int i;
+    for (i=0; i<v->d.m_info; i++)
+    {
+        if ( v->d.info[i].vptr_free )
+        {
+            free(v->d.info[i].vptr - v->d.info[i].vptr_off);
+            v->d.info[i].vptr_free = 0;
+        }
+    }
+    for (i=0; i<v->d.m_fmt; i++)
+    {
+        if ( v->d.fmt[i].p_free )
+        {
+            free(v->d.fmt[i].p - v->d.fmt[i].p_off);
+            v->d.fmt[i].p_free = 0;
+        }
+    }
+    v->rid = v->pos = v->rlen = v->unpacked = 0;
+    v->unpack_ptr = NULL;
+    bcf_float_set_missing(v->qual);
+    v->n_info = v->n_allele = v->n_fmt = v->n_sample = 0;
+    v->shared.l = v->indiv.l = 0;
+    v->d.var_type = -1;
+    v->d.shared_dirty = 0;
+    v->d.indiv_dirty  = 0;
+    v->d.n_flt = 0;
+    v->errcode = 0;
+    if (v->d.m_als) v->d.als[0] = 0;
+    if (v->d.m_id) v->d.id[0] = 0;
+}

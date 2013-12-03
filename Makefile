@@ -22,6 +22,7 @@ SOURCES = program\
 		normalize\
 		construct_probes\
 		discover\
+		genotype\
 		peek
 
 SOURCESONLY = main.cpp

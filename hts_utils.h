@@ -83,9 +83,14 @@ void bam_hdr_transfer_contigs_to_bcf_hdr(const bam_hdr_t *sh, bcf_hdr_t *vh);
 #define bam_get_chrom(h, s) ((h)->target_name[(s)->core.tid])
 
 /**
- * Gets the start position of the first mapped base in the read.
+ * Gets the 1 based start position of the first mapped base in the read.
  */
-#define bam_get_pos1(s) ((s)->core.pos)
+#define bam_get_pos1(s) ((s)->core.pos + 1)
+
+/**
+ * Gets the 0 based start position of the first mapped base in the read.
+ */
+#define bam_get_pos0(s) ((s)->core.pos)
 
 /**
  * Gets the end position of the last mapped base in the read.
@@ -118,9 +123,14 @@ void bam_get_qual_string(bam1_t *s, kstring_t *qual);
 #define bam_get_n_cigar_op(b) ((b)->core.n_cigar)
 
 /**
- * Gets the cigar sequence from a bam record
+ * Gets the cigar from a BAM record
  */
-void bam_get_cigar_string(bam1_t *srec, kstring_t *str);
+void bam_get_cigar_string(bam1_t *s, kstring_t *cigar);
+
+/**
+ * Gets the cigar string from a bam record
+ */
+void bam_get_cigar_expanded_string(bam1_t *s, kstring_t *cigar_string);
 
 /**
  * Is this sequence the first read?
@@ -287,5 +297,9 @@ bool bcf_is_passed(bcf_hdr_t *h, bcf1_t *v);
  */
 #define bcf_set_n_sample(h, v) ((v)->n_sample = (h)->n[BCF_DT_SAMPLE]);
 
+/**
+ * Clear a bcf1_t record
+ */
+void bcf_erase(bcf1_t *v);
 
 #endif

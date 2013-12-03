@@ -163,6 +163,7 @@ bcf1_t* BCFOrderedWriter::get_bcf1_from_pool()
     else
     {
         bcf1_t *v = bcf_init1();
+        bcf_erase(v);
         bcf_set_n_sample(hdr, v);
         return v; 
     }
@@ -190,7 +191,7 @@ void BCFOrderedWriter::flush(bool force)
             
             while (buffer.size()>1)
             {
-                if (bcf_get_pos1(buffer.back())<cutoff_pos1)
+                if (bcf_get_pos1(buffer.back())<=cutoff_pos1)
                 {
                     bcf_write(vcf, hdr, buffer.back());
                     store_bcf1_into_pool(buffer.back());
@@ -209,6 +210,7 @@ void BCFOrderedWriter::flush(bool force)
  * Closes the file.
  */
 void BCFOrderedWriter::close()
-{    
+{   
+    flush(true); 
     bcf_close(vcf);
 }
