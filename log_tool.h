@@ -60,17 +60,17 @@ class LogTool
     /**
      * Compute log(x)
      */
-    double elog10(double x);
+    double log10(double x);
 
     /**
      * Compute log(xy)
      */
-    double elog10prod(double x, double y);
+    double log10prod(double x, double y);
 
     /**
      * Compute log(x+y)
      */
-    double elog10sum(double x, double y);
+    double log10sum(double x, double y);
 
     /**
      * Round a value

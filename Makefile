@@ -12,6 +12,7 @@ SOURCES = program\
 		interval_tree\
 		genome_interval\
 		rb_tree\
+		lhmm\
 		hts_utils\
 		utils\
 		bam_ordered_reader\
@@ -32,9 +33,9 @@ TOOLSRC = $(SOURCES:=.cpp) $(SOURCESONLY)
 TOOLOBJ = $(TOOLSRC:.cpp=.o)
 LIBHTS = lib/include/htslib/libhts.a
 
-all : ${LIBHTS} $(TARGET)	
+all : ${LIBHTS} $(TARGET)
 
-${LIBHTS} : 
+${LIBHTS} :
 	cd lib/include/htslib; $(MAKE) libhts.a || exit 1; cd ..
 
 $(TARGET) : ${LIBHTS} $(TOOLOBJ)

@@ -28,11 +28,10 @@ class Igor : Program
     bcf1_t *v;
 
     BCFOrderedWriter *odw;
+    bcf1_t *ov;
     
-    samFile *isam;
-    bam_hdr_t *isam_hdr;
-    hts_idx_t *isam_idx;
-    bam1_t *srec;
+    BAMOrderedReader *bodr;
+    bam1_t *s;
 
     /////////
     //stats//
@@ -50,8 +49,7 @@ class Igor : Program
     /////////
     LogTool lt;
     LHMM lhmm_ref, lhmm_alt;
-    faidx_t *fai;
-
+    
     Igor(int argc, char ** argv)
     {
         //////////////////////////
@@ -95,34 +93,25 @@ e.g. $path/vt genotype -i $path/test/probes.sites.vcf -o out.vcf -b $path/test/N
         odr = new BCFOrderedReader(ivcf_file.c_str(), intervals);
         
         //input sam
-        isam = sam_open(isam_file.c_str(), modify_mode(isam_file.c_str(), 'r'));
-        isam_hdr = sam_hdr_read(isam);
-        isam_idx = bam_index_load(isam_file.c_str());
-		if (isam_idx==0)
-		{
-			fprintf(stderr, "[E::%s] fail to load the BAM index\n", __func__);
-			abort();
-		}
-        srec = bam_init1();
+        bodr = new BAMOrderedReader(isam_file.c_str(), intervals);
+        s = bam_init1();
 
         //output vcf
-        odw = new BCFOrderedWriter(ovcf_file.c_str(), intervals));
+        odw = new BCFOrderedWriter(ovcf_file.c_str());
         //added sample early, appending of HLs ensures syncing of the dictionaries.
-        bcf_hdr_add_sample(ovcf_hdr, strdup(sample_id.c_str()));
-        bcf_hdr_append(ovcf_hdr, "##fileformat=VCFv4.1");
-        bcf_hdr_append(ovcf_hdr, "##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">");
-        //bcf_hdr_append(ovcf_hdr, "##FORMAT=<ID=GL,Number=G,Type=Float,Description=\"Log likelihoods for genotypes\">");
-        bcf_hdr_append(ovcf_hdr, "##FORMAT=<ID=PL,Number=G,Type=Integer,Description=\"Normalized, Phred-scaled likelihoods for genotypes\">");
-        bcf_hdr_append(ovcf_hdr, "##FORMAT=<ID=DP,Number=1,Type=String,Description=\"Depth\">");
-        bcf_hdr_append(ovcf_hdr, "##FORMAT=<ID=RQ,Number=1,Type=String,Description=\"Normalized, Phred-scaled likelihoods for alleles for each reference read\">");
-        bcf_hdr_append(ovcf_hdr, "##FORMAT=<ID=AQ,Number=1,Type=String,Description=\"Normalized, Phred-scaled likelihoods for alleles for each alternate read\">");
-        bcf_hdr_append(ovcf_hdr, "##FORMAT=<ID=AL,Number=1,Type=String,Description=\"Allele called for each read\">");
-        bcf_hdr_append(ovcf_hdr, "##FORMAT=<ID=CY,Number=1,Type=String,Description=\"Cycle for the location of each variant on each read\">");
-        bcf_hdr_append(ovcf_hdr, "##FORMAT=<ID=RL,Number=1,Type=String,Description=\"Length of each read\">");
-        bcf_hdr_append(ovcf_hdr, "##FORMAT=<ID=MQ,Number=1,Type=String,Description=\"Normalized, Phred-scaled alignment likelihoods for each read\">");
-        bcf_add_hs37d5_contig_headers(ovcf_hdr);
-        bcf_hdr_fmt_text(ovcf_hdr);
-        vcf_hdr_write(ovcf, ovcf_hdr);
+        bcf_hdr_add_sample(odw->hdr, strdup(sample_id.c_str()));
+        bcf_hdr_append(odw->hdr, "##fileformat=VCFv4.1");
+        bcf_hdr_append(odw->hdr, "##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">");
+        //bcf_hdr_append(odw->hdr, "##FORMAT=<ID=GL,Number=G,Type=Float,Description=\"Log likelihoods for genotypes\">");
+        bcf_hdr_append(odw->hdr, "##FORMAT=<ID=PL,Number=G,Type=Integer,Description=\"Normalized, Phred-scaled likelihoods for genotypes\">");
+        bcf_hdr_append(odw->hdr, "##FORMAT=<ID=DP,Number=1,Type=String,Description=\"Depth\">");
+        bcf_hdr_append(odw->hdr, "##FORMAT=<ID=RQ,Number=1,Type=String,Description=\"Normalized, Phred-scaled likelihoods for alleles for each reference read\">");
+        bcf_hdr_append(odw->hdr, "##FORMAT=<ID=AQ,Number=1,Type=String,Description=\"Normalized, Phred-scaled likelihoods for alleles for each alternate read\">");
+        bcf_hdr_append(odw->hdr, "##FORMAT=<ID=AL,Number=1,Type=String,Description=\"Allele called for each read\">");
+        bcf_hdr_append(odw->hdr, "##FORMAT=<ID=CY,Number=1,Type=String,Description=\"Cycle for the location of each variant on each read\">");
+        bcf_hdr_append(odw->hdr, "##FORMAT=<ID=RL,Number=1,Type=String,Description=\"Length of each read\">");
+        bcf_hdr_append(odw->hdr, "##FORMAT=<ID=MQ,Number=1,Type=String,Description=\"Normalized, Phred-scaled alignment likelihoods for each read\">");
+        odw->write_hdr();
         
 
         //##INFO=<ID=NS,Number=1,Type=Integer,Description="Number of Samples With Data">
@@ -148,18 +137,32 @@ e.g. $path/vt genotype -i $path/test/probes.sites.vcf -o out.vcf -b $path/test/N
         ////////////////////////
         //tools initialization//
         ////////////////////////
-        fai = (ref_fasta_file);
-
+       
     };
 
  	void print_options()
     {
         std::clog << "genotype v" << version << "\n\n";
 
-	    std::clog << "Options: Input VCF File   " << ivcf_file << "\n";
-	    std::clog << "         Input BAM File   " << isam_file << "\n";
-	    std::clog << "         Output VCF File  " << ovcf_file << "\n";
-	    std::clog << "         Sample ID        " << sample_id << "\n\n";
+	    std::clog << "Options: [i] Input VCF File   " << ivcf_file << "\n";
+	    std::clog << "         [b] Input BAM File   " << isam_file << "\n";
+	    std::clog << "         [o] Output VCF File  " << ovcf_file << "\n";
+	    std::clog << "         [s] Sample ID        " << sample_id << "\n\n";
+        if (intervals.size()!=0)
+        {
+            std::clog << "         [i] intervals                    ";
+            for (uint32_t i=0; i<std::min((uint32_t)intervals.size(),(uint32_t)5); ++i)
+            {
+                if (i) std::clog << ", ";
+                std::clog << intervals[i].to_string();
+            }
+            if (intervals.size()>=5)
+            {
+                std::clog << "  and " << (intervals.size()-5) <<  " other intervals\n";
+            }   
+        } 
+        std::clog << "\n";
+
     }
 
     void print_stats()
@@ -170,9 +173,9 @@ e.g. $path/vt genotype -i $path/test/probes.sites.vcf -o out.vcf -b $path/test/N
 
  	~Igor()
     {
-       vcf_close(ivcf);
-       sam_close(isam);
-       vcf_close(ovcf);
+       odr->close();
+       bodr->close();
+       odw->close();
     };
 
     /**
@@ -320,68 +323,12 @@ e.g. $path/vt genotype -i $path/test/probes.sites.vcf -o out.vcf -b $path/test/N
         return s ;
     }
 
-    //expands cigar string
-    void generateCigarString(kstring_t* expanded_cigar, kstring_t* cigar)
-    {
-        expanded_cigar->l = 0;
-        int32_t i=0, lastIndex = cigar->l-1;
-        std::stringstream token;
-
-        if (lastIndex<0)
-        {
-            return;
-        }
-        char c;
-        bool seenM = false;
-
-        while (i<=lastIndex)
-        {
-        	c = cigar->s[i];
-
-        	//captures the count
-            if (c<'A')
-            {
-            	token << c;
-            }
-
-            if (c>'A' ||
-                i==lastIndex)
-            {
-                uint32_t count = boost::lexical_cast<uint32_t>(token.str());
-
-                //it is possible for I's to be observed before the first M's in the cigar string
-                //in this case, we treat them as 'S'
-                if (!seenM)
-                {
-                    if (c=='I')
-                    {
-                        c = 'S';
-                    }
-                    else if (c=='M')
-                    {
-                        seenM = true;
-                    }
-                }
-
-                for (uint32_t j=0; j<count; ++j)
-                    kputc_(c, expanded_cigar);
-                token.str("");
-            }
-
-            ++i;
-        }
-        
-        kputc_(0, expanded_cigar);
-    };
-
     void print_read_alignment(kstring_t& read, kstring_t& qual, kstring_t& cigar, 
                               kstring_t& aligned_read, kstring_t& aligned_qual, kstring_t& expanded_cigar, kstring_t& annotations,
                               uint32_t rpos)
     {
     	aligned_read.l = 0;
     	aligned_qual.l = 0;
-     	expanded_cigar.l = 0;
-    	generateCigarString(&expanded_cigar, &cigar);
      	annotations.l = 0;
     	
     	uint32_t j=0;
@@ -416,7 +363,7 @@ e.g. $path/vt genotype -i $path/test/probes.sites.vcf -o out.vcf -b $path/test/N
     */
     void genotype_snp()
     {
-        if (ivcf_rec->n_allele==2)
+        if (v->n_allele==2)
         {
             std::stringstream region;
             hts_itr_t *iter;
@@ -440,29 +387,23 @@ e.g. $path/vt genotype -i $path/test/probes.sites.vcf -o out.vcf -b $path/test/N
     		cys.str("");
     		mqs.str("");
 
-            const char* chrom = bcf_get_chrom(ivcf_hdr, ivcf_rec);
-            uint32_t pos = bcf_get_pos0(ivcf_rec);
-            char ref = bcf_get_snp_ref(ivcf_rec);
-            char alt = bcf_get_snp_alt(ivcf_rec);
+            const char* chrom = bcf_get_chrom(odr->hdr, v);
+            uint32_t pos = bcf_get_pos0(v);
+            char ref = bcf_get_snp_ref(v);
+            char alt = bcf_get_snp_alt(v);
             uint32_t read_no = 0;
 
-            if (!(iter = bam_itr_queryi(isam_idx, bam_name2id(isam_hdr, bcf_get_chrom(ivcf_hdr, ivcf_rec)), ivcf_rec->pos, ivcf_rec->pos+1)))
-            {
-                std::cerr << "fail to parse regions\n";
-                abort();    
-            }
-
-            while(bam_itr_next((BGZF*)isam->fp, iter, srec)>=0)
+            while(bodr->read(s))
             {
                 //has secondary alignment or fail QC or is duplicate or is unmapped
-                if (bam_get_flag(srec) & 0x0704)
+                if (bam_get_flag(s) & 0x0704)
                 {
                     //std::cerr << "fail flag\n";
                     continue;
                 }
 
                 //make this setable
-                if(bam_get_mapq(srec)<20)
+                if(bam_get_mapq(s)<20)
     	        {
     	            //std::cerr << "low mapq\n";
     	            //ignore poor quality mappings
@@ -470,10 +411,10 @@ e.g. $path/vt genotype -i $path/test/probes.sites.vcf -o out.vcf -b $path/test/N
     	        }
 
     	        //std::map<std::string, int> readIDs;
-    			if(read_ids.find(bam_get_qname(srec))==read_ids.end())
+    			if(read_ids.find(bam_get_qname(s))==read_ids.end())
     			{
     			    //assign id to reads to ease checking of overlapping reads
-    				read_ids[bam_get_qname(srec)] = read_ids.size();
+    				read_ids[bam_get_qname(s)] = read_ids.size();
     			}
     			//ignore overlapping paired end
     			else
@@ -489,7 +430,7 @@ e.g. $path/vt genotype -i $path/test/probes.sites.vcf -o out.vcf -b $path/test/N
                 kstring_t readqual;
                 readqual.l = readqual.m = 0; readqual.s = 0;
 
-    			bam_get_base_and_qual_and_read_and_qual(srec, ivcf_rec->pos, base, qual, rpos, &readseq, &readqual);
+    			bam_get_base_and_qual_and_read_and_qual(s, v->pos, base, qual, rpos, &readseq, &readqual);
 
                 //fail to find a mapped base on the read
                 if (rpos==BAM_READ_INDEX_NA)
@@ -506,15 +447,15 @@ e.g. $path/vt genotype -i $path/test/probes.sites.vcf -o out.vcf -b $path/test/N
                 }
 
                 //strand
-                char strand = bam_is_rev(srec) ? 'R' : 'F';
+                char strand = bam_is_rev(s) ? 'R' : 'F';
 
                 //read length
-                uint32_t readLength =  bam_get_l_qseq(srec);
+                uint32_t readLength =  bam_get_l_qseq(s);
 
                 //cycle position
-    			int32_t cycle =  strand=='R' ? bam_get_l_qseq(srec) - rpos : rpos;
+    			int32_t cycle =  strand=='R' ? bam_get_l_qseq(s) - rpos : rpos;
 
-                uint32_t mapQual = bam_get_mapq(srec);
+                uint32_t mapQual = bam_get_mapq(s);
 
     			//////////////////////////////////////////////////
     			//perform GL computation here, uses map alignments
@@ -529,9 +470,9 @@ e.g. $path/vt genotype -i $path/test/probes.sites.vcf -o out.vcf -b $path/test/N
                 ////////////////////////////////
                 //aggregate genotype likelihoods
                 ////////////////////////////////
-                log_p_rr = lt.elog10prod(log_p_rr, refllk);
-                log_p_ra = lt.elog10prod(log_p_ra, lt.elog10prod(-log10(2), lt.elog10sum(refllk, altllk)));
-                log_p_aa = lt.elog10prod(log_p_aa, altllk);
+                log_p_rr = lt.log10prod(log_p_rr, refllk);
+                log_p_ra = lt.log10prod(log_p_ra, lt.log10prod(-log10(2), lt.log10sum(refllk, altllk)));
+                log_p_aa = lt.log10prod(log_p_aa, altllk);
 
                 uint32_t baseqr = 0, baseqa = 0;
                 char allele = strand=='F' ? 'N' : 'n';
@@ -552,7 +493,7 @@ e.g. $path/vt genotype -i $path/test/probes.sites.vcf -o out.vcf -b $path/test/N
                 {
                     kstring_t cigar;
                     cigar.l = cigar.m = 0; cigar.s = 0;
-                    bam_get_cigar_string(srec, &cigar);
+                    bam_get_cigar_string(s, &cigar);
 
                     kstring_t aligned_read;
                 	aligned_read.l = aligned_read.m = 0;
@@ -657,8 +598,7 @@ e.g. $path/vt genotype -i $path/test/probes.sites.vcf -o out.vcf -b $path/test/N
     		kstring_t str;
     		str.l = str.m = 0; str.s = 0;
     		kputs(ss.str().c_str(), &str);
-    		vcf_parse1(&str, ovcf_hdr, ovcf_rec);
-    		vcf_write1(ovcf, ovcf_hdr, ovcf_rec);
+    		odw->write(ov);
         }
         else
         {
@@ -670,7 +610,7 @@ e.g. $path/vt genotype -i $path/test/probes.sites.vcf -o out.vcf -b $path/test/N
     {
         bool readIsExtended = false;
 
-        if (ivcf_rec->n_allele==2)
+        if (v->n_allele==2)
         {
             std::stringstream region;
             hts_itr_t *iter;
@@ -694,10 +634,10 @@ e.g. $path/vt genotype -i $path/test/probes.sites.vcf -o out.vcf -b $path/test/N
     		cys.str("");
     		mqs.str("");
 
-            const char* chrom = bcf_get_chrom(ivcf_hdr, ivcf_rec);
-            uint32_t pos = bcf_get_pos0(ivcf_rec);
-            char* ref = bcf_get_indel_ref(ivcf_rec);
-            char* alt = bcf_get_indel_alt(ivcf_rec);
+            const char* chrom = bcf_get_chrom(odr->hdr, v);
+            uint32_t pos = bcf_get_pos0(v);
+            char* ref = bcf_get_ref(v);
+            char* alt = bcf_get_alt(v, 1);
 
             //generate probe
             //uint32_t chromNo = hapgen->getChromNo(chrom);
@@ -706,8 +646,7 @@ e.g. $path/vt genotype -i $path/test/probes.sites.vcf -o out.vcf -b $path/test/N
             candidate_alleles.push_back(alt);
             uint32_t plen;
             std::vector<std::string> probes;
-            hapgen->generateProbes(chrom, pos+1, (uint32_t)1, candidate_alleles, probes, (uint32_t)20, plen);
-
+            
             const char* refProbe = probes[0].c_str();
     		const char* altProbe = probes[1].c_str();
     		int32_t probeLength = probes[0].size();
@@ -725,25 +664,19 @@ e.g. $path/vt genotype -i $path/test/probes.sites.vcf -o out.vcf -b $path/test/N
             //int32_t variantStartPos = pos;
             int32_t variantLengthDifference = (int32_t)strlen(alt)-(int32_t)strlen(ref);
 
-            if (!(iter = bam_itr_queryi(isam_idx, bam_name2id(isam_hdr, bcf_get_chrom(ivcf_hdr, ivcf_rec)), ivcf_rec->pos, ivcf_rec->pos+1)))
-            {
-                std::cerr << "fail to parse regions\n";
-            }
-
-            //bool readIsExtended = false;
-
+            
             uint32_t read_no = 0;
-            while(bam_itr_next((BGZF*)isam->fp, iter, srec)>=0)
+            while(bodr->read(s))
             {
                 //has secondary alignment or fail QC or is duplicate or is unmapped
-                if (bam_get_flag(srec) & 0x0704)
+                if (bam_get_flag(s) & 0x0704)
                 {
                     //std::cerr << "fail flag\n";
                     continue;
                 }
 
                 //make this setable
-                if(bam_get_mapq(srec)<13)
+                if(bam_get_mapq(s)<13)
     	        {
     	            //std::cerr << "low mapq\n";
     //              ++readFilteredNo;
@@ -752,10 +685,10 @@ e.g. $path/vt genotype -i $path/test/probes.sites.vcf -o out.vcf -b $path/test/N
     	        }
 
     	        //std::map<std::string, int> readIDs;
-    			if(read_ids.find(bam_get_qname(srec))==read_ids.end())
+    			if(read_ids.find(bam_get_qname(s))==read_ids.end())
     			{
     			    //assign id to reads to ease checking of overlapping reads
-    				read_ids[bam_get_qname(srec)] = read_ids.size();
+    				read_ids[bam_get_qname(s)] = read_ids.size();
     			}
     			//ignore overlapping paired end
     			else
@@ -769,24 +702,24 @@ e.g. $path/vt genotype -i $path/test/probes.sites.vcf -o out.vcf -b $path/test/N
     		    str.l = str.m = 0; str.s = 0;
 
                 //read name
-                char* read_name = bam_get_qname(srec);
+                char* read_name = bam_get_qname(s);
 
                 //sequence
-                bam_get_seq_string(srec, &str);
+                bam_get_seq_string(s, &str);
                 char* read_seq = strdup(str.s);
 
                 //qual
-                bam_get_qual_string(srec, &str, read_seq);
+                bam_get_qual_string(s, &str);
                 char* qual = strdup(str.s);
 
                 //strand
-                char strand = bam_is_rev(srec) ? 'R' : 'F';
+                char strand = bam_is_rev(s) ? 'R' : 'F';
 
                 //read length
-                uint32_t readLength =  bam_get_l_qseq(srec);
+                uint32_t readLength =  bam_get_l_qseq(s);
 
                 //map quality
-                uint32_t mapQual = bam_get_mapq(srec);
+                uint32_t mapQual = bam_get_mapq(s);
 
                 int32_t cycle = 0;
     			//////////////////////////
@@ -970,9 +903,9 @@ e.g. $path/vt genotype -i $path/test/probes.sites.vcf -o out.vcf -b $path/test/N
                 ////////////////////////////////
                 //aggregate genotype likelihoods
                 ////////////////////////////////
-                log_p_rr = lt.elog10prod(log_p_rr, refllk);
-                log_p_ra = lt.elog10prod(log_p_ra, lt.elog10prod(-log10(2), lt.elog10sum(refllk, altllk)));
-                log_p_aa = lt.elog10prod(log_p_aa, altllk);
+                log_p_rr = lt.log10prod(log_p_rr, refllk);
+                log_p_ra = lt.log10prod(log_p_ra, lt.log10prod(-log10(2), lt.log10sum(refllk, altllk)));
+                log_p_aa = lt.log10prod(log_p_aa, altllk);
 
                 uint32_t baseqr = 0, baseqa = 0;
                 char allele = strand=='F' ? 'N' : 'n';
@@ -1056,8 +989,7 @@ e.g. $path/vt genotype -i $path/test/probes.sites.vcf -o out.vcf -b $path/test/N
     		kstring_t str;
     		str.l = str.m = 0; str.s = 0;
     		kputs(ss.str().c_str(), &str);
-    		vcf_parse1(&str, ovcf_hdr, ovcf_rec);
-    		vcf_write1(ovcf, ovcf_hdr, ovcf_rec);
+    		odw->write(ov);
         }
         else
         {
@@ -1067,21 +999,21 @@ e.g. $path/vt genotype -i $path/test/probes.sites.vcf -o out.vcf -b $path/test/N
 
     void genotype()
     {
-        while (vcf_read1(ivcf, ivcf_hdr, ivcf_rec)==0)
+        while (odr->read(v))
         {
-            bcf_unpack(ivcf_rec, BCF_UN_STR);
-            bcf_set_variant_types(ivcf_rec);
+            bcf_unpack(v, BCF_UN_STR);
+           // bcf_set_variant(v);
 
-            if (ivcf_rec->d.var_type == VCF_SNP)
+            if (v->d.var_type == VCF_SNP)
             {
                 ++no_snps_genotyped;
                 genotype_snp();
             }
-            else if (ivcf_rec->d.var_type == VCF_MNP)
+            else if (v->d.var_type == VCF_MNP)
             {
                 //genotype_mnp(igor);
             }
-            else if (ivcf_rec->d.var_type == VCF_INDEL)
+            else if (v->d.var_type == VCF_INDEL)
             {
                 ++no_indels_genotyped;
                 genotype_indel();

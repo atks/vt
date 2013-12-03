@@ -104,6 +104,11 @@ class BAMOrderedReader
      */
     bam_hdr_t* get_hdr();
     
+    /**
+     * Closes the file.
+     */
+    void close();
+    
     private:
     /**
      * Initialize next interval.
