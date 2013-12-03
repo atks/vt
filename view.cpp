@@ -46,14 +46,11 @@ class Igor : Program
     BCFOrderedReader *odr;
     BCFOrderedWriter *odw;
 
-	int* imap;
-    kstring_t s;	
-	
     /////////
     //stats//
     /////////
     uint32_t no_variants;
-	uint32_t no_samples; 
+    uint32_t no_samples;
 
     Igor(int argc, char **argv)
     {
@@ -62,59 +59,51 @@ class Igor : Program
         //////////////////////////
         //options initialization//
         //////////////////////////
-    	try
-    	{
-    		std::string desc = "views a VCF file";
+        try
+        {
+            std::string desc = "views a VCF file";
 
             TCLAP::CmdLine cmd(desc, ' ', version);
             VTOutput my;
             cmd.setOutput(&my);
-    		TCLAP::ValueArg<std::string> arg_intervals("i", "i", "intervals []", false, "", "str", cmd);
-    		TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "file", cmd);
-    		TCLAP::ValueArg<std::string> arg_sample_list("s", "s", "file containing list of sample []", false, "", "file", cmd);
-    		TCLAP::ValueArg<std::string> arg_filter("f", "f", "filter expression []", false, "", "exp", cmd);
-    		TCLAP::ValueArg<std::string> arg_variant("v", "v", "variant type []", false, "", "exp", cmd);
-    		TCLAP::ValueArg<std::string> arg_output_vcf_file("o", "o", "output VCF file [-]", false, "-", "str", cmd);
-    		TCLAP::UnlabeledValueArg<std::string> arg_input_vcf_file("<in.vcf>", "input VCF file", true, "","file", cmd);
+            TCLAP::ValueArg<std::string> arg_intervals("i", "i", "intervals []", false, "", "str", cmd);
+            TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "file", cmd);
+            TCLAP::ValueArg<std::string> arg_sample_list("s", "s", "file containing list of sample []", false, "", "file", cmd);
+            TCLAP::ValueArg<std::string> arg_filter("f", "f", "filter expression []", false, "", "exp", cmd);
+            TCLAP::ValueArg<std::string> arg_variant("v", "v", "variant type []", false, "", "exp", cmd);
+            TCLAP::ValueArg<std::string> arg_output_vcf_file("o", "o", "output VCF file [-]", false, "-", "str", cmd);
+            TCLAP::UnlabeledValueArg<std::string> arg_input_vcf_file("<in.vcf>", "input VCF file", true, "","file", cmd);
 
-    		cmd.parse(argc, argv);
+            cmd.parse(argc, argv);
 
             input_vcf_file = arg_input_vcf_file.getValue();
-    		output_vcf_file = arg_output_vcf_file.getValue();
-    		parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
-    		read_sample_list(samples, arg_sample_list.getValue());
-    	}
-    	catch (TCLAP::ArgException &e)
-    	{
-    		std::cerr << "error: " << e.error() << " for arg " << e.argId() << "\n";
-    		abort();
-    	}
+            output_vcf_file = arg_output_vcf_file.getValue();
+            parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
+            read_sample_list(samples, arg_sample_list.getValue());
+        }
+        catch (TCLAP::ArgException &e)
+        {
+            std::cerr << "error: " << e.error() << " for arg " << e.argId() << "\n";
+            abort();
+        }
     };
 
     void initialize()
     {
-    	//////////////////////
+        //////////////////////
         //i/o initialization//
         //////////////////////
         odr = new BCFOrderedReader(input_vcf_file, intervals);
-        odw = new BCFOrderedWriter(output_vcf_file);
-        odw->set_hdr(odr->hdr);
-        bcf_hdr_fmt_text(odr->hdr);
-        
-        //std::vector<int32_t> imap(samples.size(), -1);
-        //bcf_hdr_t * h = bcf_hdr_subset_samples(odr->hdr, samples, imap);
+        odw = new BCFOrderedWriter(output_vcf_file, 0);
         odw->set_hdr(odr->hdr);
         odw->write_hdr();
-
-        s.s = 0;
-        s.l = s.m = 0;
 
         ////////////////////////
         //stats initialization//
         ////////////////////////
         no_variants = 0;
-    	no_samples = 0;
-	}
+        no_samples = 0;
+    }
 
     void view()
     {
@@ -125,38 +114,50 @@ class Igor : Program
             bcf_unpack(v, BCF_UN_INFO);
             bcf_get_pos1(v);
             //bcf_set_variant_types(v);
-            
+
             //filter
-            
+
             //subset if necessary
-			//int bcf_subset(const bcf_hdr_t *h, bcf1_t *v, int n, int *imap)
-            
-            
+            //int bcf_subset(const bcf_hdr_t *h, bcf1_t *v, int n, int *imap)
+
+
             odw->write(v);
             v = odw->get_bcf1_from_pool();
         }
 
-        odw->flush();
+        odw->close();
     };
 
     void print_options()
     {
         std::clog << "view v" << version << "\n\n";
 
-		std::clog << "options:     input VCF file        " << input_vcf_file << "\n";
-		std::clog << "         [o] output VCF file       " << output_vcf_file << "\n";
-        std::clog << "         [i] intervals             " << intervals.size() << " intervals" << "\n";
-    	std::clog << "\n"; 
-	}
+        std::clog << "options:     input VCF file        " << input_vcf_file << "\n";
+        std::clog << "         [o] output VCF file       " << output_vcf_file << "\n";
+        if (intervals.size()!=0)
+        {
+            std::clog << "         [i] intervals                    ";
+            for (uint32_t i=0; i<std::min((uint32_t)intervals.size(),(uint32_t)5); ++i)
+            {
+                if (i) std::clog << ", ";
+                std::clog << intervals[i].to_string();
+            }
+            if (intervals.size()>=5)
+            {
+                std::clog << "  and " << (intervals.size()-5) <<  " other intervals\n";
+            }
+        }
+        std::clog << "\n";
+    }
 
     void print_stats()
     {
-        std::clog << "stats: no. variants    : " << no_variants << "\n";
-        std::clog << "       no. samples     : " << no_samples << "\n";
-        std::clog << "\n"; 
+        std::clog << "stats: no. variants  : " << no_variants << "\n";
+        std::clog << "       no. samples   : " << no_samples << "\n";
+        std::clog << "\n";
     };
- 
- 	~Igor() {};
+
+    ~Igor() {};
 
     private:
 };

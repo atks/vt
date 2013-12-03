@@ -24,16 +24,12 @@
 #ifndef VIEW_H
 #define VIEW_H
 
-#include "tclap/CmdLine.h"
-#include "tclap/Arg.h"
 #include "htslib/vcf.h"
-#include "htslib/kseq.h"
-#include "hts_utils.h"
-#include "bcf_synced_reader.h"
+#include "program.h"
 #include "bcf_ordered_reader.h"
 #include "bcf_ordered_writer.h"
+#include "hts_utils.h"
 #include "variant_manip.h"
-#include "program.h"
 
 void view(int argc, char ** argv);
     

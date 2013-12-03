@@ -23,6 +23,9 @@
 
 #include "discover.h"
 
+namespace
+{
+
 typedef struct 
 { 
   int32_t start1, end1;
@@ -33,6 +36,7 @@ KHASH_MAP_INIT_STR(rdict, interval_t)
 #define SNP 1
 #define MNP 2
 #define INDEL 4
+
 
 /**
  * Class for mining candidate variants.
@@ -715,9 +719,6 @@ class VariantHunter
     };
 };
 
-namespace
-{
-
 class Igor : Program
 {
     public:
@@ -737,7 +738,7 @@ class Igor : Program
     uint32_t evidence_allele_count_cutoff;
     double fractional_evidence_allele_count_cutoff;
     
-    uint16_t excludeFlag;   
+    uint16_t exclude_flag;   
     
     ///////
     //i/o//
@@ -792,7 +793,6 @@ class Igor : Program
             input_bam_file = arg_input_bam_file.getValue();
             parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
             output_vcf_file = arg_output_vcf_file.getValue();
-            
             sample_id = arg_sample_id.getValue();   
             ref_fasta_file = arg_ref_fasta_file.getValue();
             mapq_cutoff = arg_mapq_cutoff.getValue();
@@ -814,7 +814,7 @@ class Igor : Program
         //////////////////////
         //i/o initialization//
         //////////////////////
-        excludeFlag = 0x0704;                   
+        exclude_flag = 0x0704;                   
 
         odr = new BAMOrderedReader(input_bam_file, intervals);
         s = bam_init1();
@@ -918,7 +918,7 @@ class Igor : Program
             }
             
             uint16_t flag = bam_get_flag(s);
-            if(flag & excludeFlag)
+            if(flag & exclude_flag)
             {
                 ++no_exclude_flag_reads;
                 //1. unmapped
@@ -950,7 +950,7 @@ class Igor : Program
             ++no_passed_reads;
         }
         
-        odw->close();
+        odw->close(); 
         
     };
     
