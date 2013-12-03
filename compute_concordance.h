@@ -26,11 +26,9 @@
 
 
 #include "htslib/vcf.h"
-#include "htslib/vcfutils.h"
 #include "htslib/kstring.h"
 #include "htslib/kseq.h"
 #include "htslib/khash.h"
-#include "htslib/hts.h"
 #include "hts_utils.h"
 #include "program.h"
 #include "bcf_synced_reader.h"
@@ -38,7 +36,6 @@
 
 KHASH_MAP_INIT_STR(vdict, bcf_idinfo_t)
 typedef khash_t(vdict) vdict_t;
-
 
 void compute_concordance(int argc, char ** argv);   
 
