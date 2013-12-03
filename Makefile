@@ -27,6 +27,7 @@ SOURCES = program\
 		discover\
 		genotype\
 		profile_indels\
+		compute_concordance\
 		partition\
 		peek
 

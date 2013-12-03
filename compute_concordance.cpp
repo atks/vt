@@ -84,7 +84,7 @@ class ConcordanceStats
     }    
 };
 
-class Igor : public Program
+class Igor : Program
 {
     public:
 
@@ -95,7 +95,7 @@ class Igor : public Program
     ///////////
     std::vector<std::string> input_vcf_files;     
     std::string filters;      
-    std::vector<std::string> intervals;   
+    std::vector<GenomeInterval> intervals;   
     std::string interval_list;
     std::string variant_concordance_txt_file;
     std::string sample_concordance_txt_file;
@@ -110,7 +110,7 @@ class Igor : public Program
     htsFile *variant_concordance_txt;
     htsFile *sample_concordance_txt;
         
-    SyncedReader *sr;
+    BCFSyncedReader *sr;
     bcf1_t *v;
     Filter *filter;
     Filter *rare_filter;
@@ -179,7 +179,6 @@ e.g. vt profile_snps_variants -o - NA19130.vcf.gz HG00096.vcf.gz\n\n";
     		variant_concordance_txt_file = arg_variant_concordance_txt_file.getValue();
     		sample_concordance_txt_file = arg_sample_concordance_txt_file.getValue();
     		
-    		
     	    filter=NULL;		            
     		if (filters!="")
 		    {
@@ -212,10 +211,10 @@ e.g. vt profile_snps_variants -o - NA19130.vcf.gz HG00096.vcf.gz\n\n";
         
         
         //input vcfs
-        sr = new SyncedReader(input_vcf_files, intervals); 
+        sr = new BCFSyncedReader(input_vcf_files, intervals); 
         
-        variant_concordance_txt = hts_open(variant_concordance_txt_file.c_str(), "w", 0);
-        sample_concordance_txt = hts_open(sample_concordance_txt_file.c_str(), "w", 0);
+        variant_concordance_txt = hts_open(variant_concordance_txt_file.c_str(), "w");
+        sample_concordance_txt = hts_open(sample_concordance_txt_file.c_str(), "w");
             
         ////////////////////////
         //stats initialization//
@@ -245,7 +244,7 @@ e.g. vt profile_snps_variants -o - NA19130.vcf.gz HG00096.vcf.gz\n\n";
         
         ConcordanceStats variant_stat;
         kputs("variant\tRR_RR\tRR_RA\tRR_AA\tRR_NA\tRA_RR\tRA_RA\tRA_AA\tRA_NA\tAA_RR\tAA_RA\tAA_AA\tAA_NA\tNA_RR\tNA_RA\tNA_AA\tNA_NA\n", line);
-        hts_write(variant_concordance_txt);
+        //hts_write(variant_concordance_txt);
             
         //for combining the alleles
         std::vector<bcfptr> current_recs;
@@ -265,7 +264,7 @@ e.g. vt profile_snps_variants -o - NA19130.vcf.gz HG00096.vcf.gz\n\n";
                
                     int32_t d = current_recs[i].file_index;
                     bcf1_t *v = current_recs[i].v;
-                    bcf_set_variant_types(v);
+                    //bcf_set_variant_types(v);
 
                 
                     if (bcf_get_var_type(v)!=variant_type || bcf_get_n_allele(v)!=2)
@@ -332,7 +331,6 @@ e.g. vt profile_snps_variants -o - NA19130.vcf.gz HG00096.vcf.gz\n\n";
                                 
                                 ++stats[i].concordance[g1][g2];
                                 ++variant_stat.concordance[g1][g2];
-                                //std::cerr << "\t\t" << g1 << " " << g2 << "\n";
                             } 
                             
                             line->l = 0;
@@ -354,7 +352,7 @@ e.g. vt profile_snps_variants -o - NA19130.vcf.gz HG00096.vcf.gz\n\n";
                             }
                             
                             kputs("\n", line);
-                            hts_write(variant_concordance_txt);
+                            //hts_write(variant_concordance_txt);
                         }
                     }
                 }
@@ -366,7 +364,7 @@ e.g. vt profile_snps_variants -o - NA19130.vcf.gz HG00096.vcf.gz\n\n";
         /////////////////////////////////////////////
         line = &sample_concordance_txt->line;
         kputs("sample\tRR_RR\tRR_RA\tRR_AA\tRR_NA\tRA_RR\tRA_RA\tRA_AA\tRA_NA\tAA_RR\tAA_RA\tAA_AA\tAA_NA\tNA_RR\tNA_RA\tNA_AA\tNA_NA\n", line);
-        hts_write(sample_concordance_txt);
+        //hts_write(sample_concordance_txt);
         for (uint32_t i=0; i<s.size(); ++i)
         {
             line->l = 0;
@@ -383,7 +381,7 @@ e.g. vt profile_snps_variants -o - NA19130.vcf.gz HG00096.vcf.gz\n\n";
             }
             
             kputs("\n", line);
-            hts_write(sample_concordance_txt);
+            //hts_write(sample_concordance_txt);
              
         }
     };

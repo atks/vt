@@ -34,57 +34,57 @@
 
 class Node
 {
-	public:
-		
-	Node* parent;
-	std::vector<Node*> children;
+    public:
 
-	uint32_t type;
-	
-	union
-	{
-		bool b;
-		uint32_t i;
-		float f;
-	};
-	
-	void process()
-	{
-		if (type==NOT)
-		{
-		}
-		
-	};
+    Node* parent;
+    std::vector<Node*> children;
+
+    uint32_t type;
+
+    union
+    {
+        bool b;
+        uint32_t i;
+        float f;
+    };
+
+    void process()
+    {
+        if (type==NOT)
+        {
+        }
+
+    };
 };
 
 class Tree
 {
-	public:
-		
-	Node* root;
+    public:
 
-	Tree()
-	{
-		root = NULL;
-	}; 
+    Node* root;
+
+    Tree()
+    {
+        root = NULL;
+    };
 };
 
 
 class Expression
 {
-	public:
-		
-	Tree exp;
+    public:
 
-	Expression(std::string expression)
-	{
-	};
-	
-	bool evaluate(bcf_hdr_t *h, bcf1_t *v)
-	{
-		
-		return true;
-	};
+    Tree exp;
+
+    Expression(std::string expression)
+    {
+    };
+
+    bool evaluate(bcf_hdr_t *h, bcf1_t *v)
+    {
+
+        return true;
+    };
 };
 
 Filter::Filter(std::string tag, int32_t comparison, float value)
@@ -102,8 +102,6 @@ bool Filter::apply(bcf_hdr_t *h, bcf1_t *v)
     int32_t *an = 0;
     if (bcf_get_info_float(h, v, tag.c_str(), &f, &n))
     {
-        //std::cerr << "AF value: " << f << "\n";
-        
         switch (comparison)
         {
             case LT : return *f<value;
@@ -111,13 +109,13 @@ bool Filter::apply(bcf_hdr_t *h, bcf1_t *v)
             case EQ : return *f==value;
             case GT : return *f>value;
             case GE : return *f>=value;
-            default : return true;    
+            default : return true;
         }
-    } 
+    }
     else if (bcf_get_info_int(h, v, "AC", &ac, &n) && bcf_get_info_int(h, v, "AN", &an, &n))
-    {    
+    {
         *f = (float)(*ac)/(float)(*an);
-        
+
         switch (comparison)
         {
             case LT : return *f<value;
@@ -125,13 +123,13 @@ bool Filter::apply(bcf_hdr_t *h, bcf1_t *v)
             case EQ : return *f==value;
             case GT : return *f>value;
             case GE : return *f>=value;
-            default : return true;    
-        }    
+            default : return true;
+        }
     }
-    
+
     return true;
 }
-    
+
 void Filter::parse(std::string filter)
 {
 //        #define LE 0 <=
@@ -139,13 +137,13 @@ void Filter::parse(std::string filter)
 //        #define EQ 2 ==
 //        #define GE 3 >=
 //        #define GT 4 >
-    
+
     kstring_t tag;
     tag.s=0; tag.l=tag.m=0;
-    
+
     kstring_t value;
     value.s=0; value.l=value.m=0;
-    
+
     comparison = 0;
     char c = filter.at(0);
     int32_t mode = 0;
@@ -160,31 +158,31 @@ void Filter::parse(std::string filter)
             }
             else if (c=='<')
             {
-                comparison = 0;
+                comparison = LT;
             }
             else if (c=='>')
             {
-                comparison = 3;
+                comparison = GE;
             }
-        
+
             mode = 1;
-        }    
+        }
         else if (mode==0)
         {
             kputc(c, &tag);
         }
         else
         {
-            kputc(c, &value);     
+            kputc(c, &value);
         }
     }
-    
+
     this->tag = std::string(tag.s);
     this->value = atof(value.s);
-    
+
     if (tag.s) free(tag.s);
-    if (value.s) free(value.s); 
-        
+    if (value.s) free(value.s);
+
 //        std::cerr << filter << "\n";
 //        std::cerr << this->tag << ":";
 //        std::cerr << this->comparison << ":";

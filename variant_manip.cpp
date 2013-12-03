@@ -33,69 +33,69 @@ VariantManip::VariantManip(std::string ref_fasta_file)
  */
 std::string VariantManip::vtype2string(int32_t VTYPE)
 {
-	std::string s;
+    std::string s;
 
-	if (!VTYPE)
-	{
-		s += (s.size()==0) ? "" : ";";
-		s += "REF";
-	}
-	
-	if (VTYPE & VT_SNP)
-	{
-		s += (s.size()==0) ? "" : ";";
-		s += "SNP";
-	}
-	
-	if (VTYPE & VT_MNP)
-	{
-		s += (s.size()==0) ? "" : ";";
-		s += "MNP";
-	}	
-	
-	if (VTYPE & VT_INDEL)
-	{
-		s += (s.size()==0) ? "" : ";";
-		s += "INDEL";
-	}	
-	
-	if (VTYPE & VT_STR)
-	{
-		s += (s.size()==0) ? "" : ";";
-		s += "STR";
-	}
-	
-	if (VTYPE & VT_EXACT_STR)
-	{
-		s += (s.size()==0) ? "" : ";";
-		s += "EXACT_STR";
-	}	
-	
-	if (VTYPE & VT_INEXACT_STR)
-	{
-		s += (s.size()==0) ? "" : ";";
-		s += "INEXACT_STR";
-	}	
-	
-	if (VTYPE & VT_COMPLEX)
-	{
-		s += (s.size()==0) ? "" : ";";
-		s += "COMPLEX";
-	}
-	
-	if (VTYPE & VT_SV)
-	{
-		s += (s.size()==0) ? "" : ";";
-		s += "SV";
-	}
-	
-	if (VTYPE & VT_CR)
-	{
-		s += (s.size()==0) ? "" : ";";
-		s += "CR";
-	}
-	
-	return s;
+    if (!VTYPE)
+    {
+        s += (s.size()==0) ? "" : ";";
+        s += "REF";
+    }
+
+    if (VTYPE & VT_SNP)
+    {
+        s += (s.size()==0) ? "" : ";";
+        s += "SNP";
+    }
+
+    if (VTYPE & VT_MNP)
+    {
+        s += (s.size()==0) ? "" : ";";
+        s += "MNP";
+    }
+
+    if (VTYPE & VT_INDEL)
+    {
+        s += (s.size()==0) ? "" : ";";
+        s += "INDEL";
+    }
+
+    if (VTYPE & VT_STR)
+    {
+        s += (s.size()==0) ? "" : ";";
+        s += "STR";
+    }
+
+    if (VTYPE & VT_EXACT_STR)
+    {
+        s += (s.size()==0) ? "" : ";";
+        s += "EXACT_STR";
+    }
+
+    if (VTYPE & VT_INEXACT_STR)
+    {
+        s += (s.size()==0) ? "" : ";";
+        s += "INEXACT_STR";
+    }
+
+    if (VTYPE & VT_COMPLEX)
+    {
+        s += (s.size()==0) ? "" : ";";
+        s += "COMPLEX";
+    }
+
+    if (VTYPE & VT_SV)
+    {
+        s += (s.size()==0) ? "" : ";";
+        s += "SV";
+    }
+
+    if (VTYPE & VT_CR)
+    {
+        s += (s.size()==0) ? "" : ";";
+        s += "CR";
+    }
+
+    return s;
 }
 
 /**
@@ -107,111 +107,104 @@ std::string VariantManip::vtype2string(int32_t VTYPE)
 int32_t VariantManip::classify_variant(const char* chrom, uint32_t pos1, char** allele, int32_t n_allele, std::string& motif, uint32_t& tlen)
 {
     int32_t pos0 = pos1-1;
-	int32_t VTYPE = 0;
-	
+    int32_t VTYPE = 0;
+
     if (n_allele==2)
     {
-    	uint32_t len_ref = strlen(allele[0]);
-    	uint32_t len_alt = strlen(allele[1]);
-    	
+        uint32_t len_ref = strlen(allele[0]);
+        uint32_t len_alt = strlen(allele[1]);
+
         uint32_t len = 0;
         if (len_ref==len_alt)
         {
             if (len_ref==1)
             {
-            	if (allele[0][0]!=allele[1][0])
-            	{
-                	VTYPE |= VT_SNP;
-            	}
+                if (allele[0][0]!=allele[1][0])
+                {
+                    VTYPE |= VT_SNP;
+                }
             }
             else
             {
-            	for (uint32_t i=0; i<len; ++i)
-            	{
-            		if (allele[0][i]==allele[1][i])
-            		{
-            			VTYPE |= VT_COMPLEX;
-            		}	
-            	}
-            	
+                for (uint32_t i=0; i<len; ++i)
+                {
+                    if (allele[0][i]==allele[1][i])
+                    {
+                        VTYPE |= VT_COMPLEX;
+                    }
+                }
+
                 VTYPE |= VT_MNP;
             }
         }
         else
         {
             int32_t ref_len;
-            //char *ref = 0;
-            //ref = faidx_fetch_seq(fai, const_cast<char*>(chrom), pos0, pos0+50, &ref_len);
-			//std::cerr << "REF: " << ref << "\n";
-			//if (ref) free(ref);
-			
-			if (len_ref==1 || len_alt==1)
-			{
-				VTYPE |= VT_INDEL;
-				
-				if (len_ref==1) VTYPE |= VT_INSERTION;
-				if (len_alt==1) VTYPE |= VT_DELETION;
-					
-				if (allele[0][0]!=allele[1][0])
-				{
-					VTYPE |= VT_SNP;
-				}
-				
-				char* ru = 0;
-				ru = faidx_fetch_seq(fai, const_cast<char*>(chrom), pos0+1, pos0+1, &ref_len);
-				//std::cerr << "first ru: "<< ru << "\n";
-				
-				int32_t tract_len = 1;
-	            int32_t motif_len = 1;
-	            		
-	            while (1)
-	            {
-	            	char* next_ru = 0;
-	            	next_ru = faidx_fetch_seq(fai, const_cast<char*>(chrom), pos0+tract_len*motif_len+1, pos0+(tract_len+1)*motif_len, &ref_len);
-					//std::cerr << "\tnext_ru: "<< next_ru << "\n";
-	            	
-	            	//motif repeated
-	                if (strcmp(ru, next_ru)==0)
-	                {
-	                	//extend tract length
-	                    ++tract_len;
-	                    //std::cerr << "\t\ttract_len: "<< tract_len << "\n";
-	                }
-	                else //try longer motif 
-	                {
-	                	if (tract_len>1)
-	                    {
-	                    	motif = std::string(ru);
-	                        tlen = tract_len;
-	                        VTYPE |= (VT_STR | VT_EXACT_STR);
-	                    	free(next_ru);	
-	                    	break;
-	                    }
-	                
-	                	//not STR
-	                	if (motif_len>10)
-	                	{
-	                		free(next_ru);	
-	                		break;
-	                	}	
-	                
-	                	free(ru);    
-	                    ++motif_len;
-	                    tract_len=1;
-	                    ru = faidx_fetch_seq(fai, const_cast<char*>(chrom), pos0+1, pos0+motif_len, &ref_len);
-	                    //std::cerr << "new ru: "<< ru << " " << motif_len << " " << tract_len << "\n";
-	                }
-	                
-	                free(next_ru);
-	                
-	            }
-	            
-	            free(ru);
-			}
-			else
-			{
-				VTYPE |= VT_COMPLEX;
-			}
+            
+            if (len_ref==1 || len_alt==1)
+            {
+                VTYPE |= VT_INDEL;
+
+                if (len_ref==1) VTYPE |= VT_INSERTION;
+                if (len_alt==1) VTYPE |= VT_DELETION;
+
+                if (allele[0][0]!=allele[1][0])
+                {
+                    VTYPE |= VT_SNP;
+                }
+
+                char* ru = 0;
+                ru = faidx_fetch_seq(fai, const_cast<char*>(chrom), pos0+1, pos0+1, &ref_len);
+                //std::cerr << "first ru: "<< ru << "\n";
+
+                int32_t tract_len = 1;
+                int32_t motif_len = 1;
+
+                while (1)
+                {
+                    char* next_ru = 0;
+                    next_ru = faidx_fetch_seq(fai, const_cast<char*>(chrom), pos0+tract_len*motif_len+1, pos0+(tract_len+1)*motif_len, &ref_len);
+                    
+                    //motif repeated
+                    if (strcmp(ru, next_ru)==0)
+                    {
+                        //extend tract length
+                        ++tract_len;
+                    }
+                    else //try longer motif
+                    {
+                        if (tract_len>1)
+                        {
+                            motif = std::string(ru);
+                            tlen = tract_len;
+                            VTYPE |= (VT_STR | VT_EXACT_STR);
+                            free(next_ru);
+                            break;
+                        }
+
+                        //not STR
+                        if (motif_len>10)
+                        {
+                            free(next_ru);
+                            break;
+                        }
+
+                        free(ru);
+                        ++motif_len;
+                        tract_len=1;
+                        ru = faidx_fetch_seq(fai, const_cast<char*>(chrom), pos0+1, pos0+motif_len, &ref_len);
+                    }
+
+                    free(next_ru);
+
+                }
+
+                free(ru);
+            }
+            else
+            {
+                VTYPE |= VT_COMPLEX;
+            }
         }
     }
     else
@@ -316,7 +309,7 @@ void VariantManip::left_align(std::vector<std::string>& alleles, uint32_t& pos1,
  * Flanks are equal length
  */
 void VariantManip::generate_probes(const char* chrom,
-                        int32_t pos1, uint32_t probeDiff, // 
+                        int32_t pos1, uint32_t probeDiff, //
                         std::vector<std::string>& alleles, //store alleles
                         std::vector<std::string>& probes, //store probes
                         uint32_t min_flank_length,
@@ -328,10 +321,10 @@ void VariantManip::generate_probes(const char* chrom,
     //check allele lengths
     std::map<uint32_t, uint32_t> alleleLengths;
     for (uint32_t i=0; i<alleles.size(); ++i)
-    {   
+    {
        alleleLengths[alleles[i].size()]=1;
     }
-    
+
     //for SNPs and MNPs and block substitutions
     if (alleleLengths.size()==1)
     {
@@ -351,42 +344,42 @@ void VariantManip::generate_probes(const char* chrom,
             if (ref_len<1) free(base);
             ++i;
         }
-        
+
         bases.clear();
         i=0;
         uint32_t alleleLength = alleles[0].size();
         while (bases.size()<4 || postamble.size()<min_flank_length)
-        {   
+        {
             base = faidx_fetch_seq(fai, const_cast<char*>(chrom), pos1+alleleLength+i, pos1+alleleLength+i, &ref_len);
             postamble.append(1,base[0]);
             bases[base[0]] = 1;
             if (ref_len<1) free(base);
             ++i;
         }
-            
+
         for (uint32_t i=0; i<alleles.size(); ++i)
-        {  
-            probes[i] = std::string(preamble.rbegin(), preamble.rend()).append(alleles[i]);  
-            probes[i] = probes[i].append(postamble);   
-        } 
-        
+        {
+            probes[i] = std::string(preamble.rbegin(), preamble.rend()).append(alleles[i]);
+            probes[i] = probes[i].append(postamble);
+        }
+
         preambleLength = preamble.size();
     }
     //for Indels and Complex Substitutions
     else
-    {    
+    {
         //find gald
         uint32_t min_len = alleles[0].size();
         uint32_t max_len = alleles[0].size();
         for (uint32_t i=1; i<alleles.size(); ++i)
-        {   
+        {
             if (alleles[i].size()<min_len)
                 min_len = alleles[i].size();
             if (alleles[i].size()>max_len)
                 max_len = alleles[i].size();
         }
-        uint32_t gald = max_len-min_len;      
-        
+        uint32_t gald = max_len-min_len;
+
         uint32_t currentDiff = 0;
         //current length of probe
         uint32_t length = 0;
@@ -395,7 +388,7 @@ void VariantManip::generate_probes(const char* chrom,
         probes.resize(alleles.size(), "");
 
         generate_probes(chrom, pos1, min_flank_length, currentDiff, length, gald, diff, alleles, probes);
-        
+
         //append preamble
         std::map<char, uint32_t> bases;
         std::string preamble;
@@ -415,42 +408,42 @@ void VariantManip::generate_probes(const char* chrom,
             }
             if (ref_len<1) free(base);
         }
-        
+
         preambleLength = preamble.size();
-            
+
         for (uint32_t i=0; i<alleles.size(); ++i)
-        {   
-            probes[i] = std::string(preamble.rbegin(), preamble.rend()).append(probes[i]);  
+        {
+            probes[i] = std::string(preamble.rbegin(), preamble.rend()).append(probes[i]);
         }
     }
 }
 
 /**
 *Iteratively called function for generating a haplotype.
-*/        
-void VariantManip::generate_probes(const char* chrom, 
-                        int32_t pos1, 
-                        uint32_t flankLength, 
-                        uint32_t& currentDiff, 
-                        uint32_t& length, 
-                        uint32_t gald, 
-                        std::vector<uint32_t>& diff, 
-                        std::vector<std::string>& alleles, 
+*/
+void VariantManip::generate_probes(const char* chrom,
+                        int32_t pos1,
+                        uint32_t flankLength,
+                        uint32_t& currentDiff,
+                        uint32_t& length,
+                        uint32_t gald,
+                        std::vector<uint32_t>& diff,
+                        std::vector<std::string>& alleles,
                         std::vector<std::string>& probes)
 {
     //std::cerr << "B:" << currentDiff << " " << alleles.size()-1 << "\n";
-            
+
     if (currentDiff<alleles.size() || length<=2*gald+flankLength)
     {
         std::map<std::string, uint32_t> probeHash;
         //extend probes
         for (uint32_t i=0; i<alleles.size(); ++i)
-        {   
+        {
 //                if (i==0)
 //                {
 //                    std::string base;
 //                    myRefSeq->getString(base, chromNo, (genomeIndex_t) (pos+length), 1);
-//                    probes[0].append(1, base.at(0));   
+//                    probes[0].append(1, base.at(0));
 //                }
 //                else
             {
@@ -460,7 +453,7 @@ void VariantManip::generate_probes(const char* chrom,
                     probes[i].append(1,alleles[i].at(length));
                 }
                 else//copy from reference
-                {   
+                {
                     int32_t start1 = (pos1+length-alleles[i].size()+alleles[0].size()-1);
                     int32_t ref_len;
                     char* base = faidx_fetch_seq(fai, const_cast<char*>(chrom), start1 , start1, &ref_len);
@@ -471,11 +464,11 @@ void VariantManip::generate_probes(const char* chrom,
             }
             //std::cerr << probes[i] << "\n" ;
             probeHash[probes[i]] = 1;
-        }            
-       
+        }
+
         currentDiff = probeHash.size();
         ++length;
         //std::cerr << probes[0] << "\n" << probes[1] << "\n";
         generate_probes(chrom, pos1, flankLength, currentDiff, length, gald, diff, alleles, probes);
     }
-}   
+}

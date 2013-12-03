@@ -32,14 +32,14 @@ RBTreeNode::RBTreeNode(Interval* interval)
     right = NULL;
 };
 
-      
+
 void RBTreeNode::insert(Interval* interval)
 {
     intervals.push_back(interval);
     max = std::max(interval->end, max);
     min = std::min(interval->start, min);
 };
-      
+
 void RBTreeNode::print()
 {
     std::cerr << "start   : " << start << "\n";
@@ -49,30 +49,30 @@ void RBTreeNode::print()
     std::cerr << "color   : " << color << "\n";
     std::cerr << "child   : (" << left << "," << right << ")\n";
 };
- 
+
 RBTree::RBTree()
 {
     root = NULL;
     noElements = 0;
 };
-    
+
 void RBTree::leftRotate(RBTreeNode* x)
 {
     //do nothing
     if (x->right==NULL)
         return;
 
-    //move left child of y        
+    //move left child of y
     RBTreeNode* y = x->right;
     x->right = y->left;
     if (y->left != NULL)
     {
         (y->left)->parent = x;
     }
-    
+
     //move y
     y->parent = x->parent;
-    
+
     if (x->parent == NULL)
     {
         root = y;
@@ -80,7 +80,7 @@ void RBTree::leftRotate(RBTreeNode* x)
     else
     {
         if (x==(x->parent)->left)
-        {
+        { 
             (x->parent)->left = y;
         }
         else
@@ -88,28 +88,28 @@ void RBTree::leftRotate(RBTreeNode* x)
             (x->parent)->right = y;
         }
     }
-    
+
     //move x
     y->left = x;
     x->parent = y;
-    
+
     //update max for x
-    if (x->right!=NULL) 
+    if (x->right!=NULL)
     {
-        x->max = std::max(x->right->max, x->max); 
-        x->min = std::min(x->right->min, x->min); 
+        x->max = std::max(x->right->max, x->max);
+        x->min = std::min(x->right->min, x->min);
     }
-    
+
     //update max for y
     y->max = std::max(y->left->max, y->max);
     y->min = std::min(y->left->min, y->min);
 };
-      
+
 void RBTree::rightRotate(RBTreeNode* y)
 {
     if (y->left==NULL)
         return;
-    
+
     //move right child of x
     RBTreeNode* x = y->left;
     y->left = x->right;
@@ -117,7 +117,7 @@ void RBTree::rightRotate(RBTreeNode* y)
     {
         (x->right)->parent = y;
     }
-    
+
     //move x
     x->parent = y->parent;
     if (y->parent == NULL)
@@ -135,31 +135,31 @@ void RBTree::rightRotate(RBTreeNode* y)
             (y->parent)->right = x;
         }
     }
-    
+
     //move y
-    x->right = y;    
+    x->right = y;
     y->parent = x;
 
     //update max for y
-    if (y->left!=NULL) 
+    if (y->left!=NULL)
     {
-        y->max = std::max(y->left->max, y->max); 
-        y->min = std::min(y->left->min, y->min); 
+        y->max = std::max(y->left->max, y->max);
+        y->min = std::min(y->left->min, y->min);
     }
-    
+
     //update max for x
     x->max = std::max(x->right->max, x->max);
     x->min = std::min(x->right->min, x->min);
-}; 
-  
+};
+
 RBTreeNode* RBTree::insert(Interval* interval)
-{    
+{
     ++noElements;
-       
+
     RBTreeNode* y = NULL;
     RBTreeNode* x = root;
-    
-    
+
+
 //    std::cerr << "zzzzzzzzzzzzz\n";
 //    z->print();
 //    std::cerr << "zzzzzzzzzzzzz\n";
@@ -172,10 +172,10 @@ RBTreeNode* RBTree::insert(Interval* interval)
 //        x->print();
 //        std::cerr << "*************\n";
         y = x;
-        
+
         x->max = std::max(x->max, interval->end);
         x->min = std::min(x->min, interval->start);
-        
+
         if (start < x->start)
         {
             x = x->left;
@@ -188,8 +188,8 @@ RBTreeNode* RBTree::insert(Interval* interval)
         {
             break;
         }
-    } 
-        
+    }
+
     //identical key found
     if (y!=NULL && start == y->start)
     {
@@ -197,16 +197,16 @@ RBTreeNode* RBTree::insert(Interval* interval)
         y->insert(interval);
 
         return NULL;
-    } 
+    }
     else
-    {    
+    {
         RBTreeNode* z = new RBTreeNode(interval);
         z->start = interval->start;
         z->max = interval->end;
         z->min = interval->start;
-        
+
         z->parent = y;
-        
+
         //if first element in tree
         if (y == NULL)
         {
@@ -224,16 +224,16 @@ RBTreeNode* RBTree::insert(Interval* interval)
             {
                 y->right = z;
             }
-        }    
-        
+        }
+
         return z;
     }
-};      
-  
+};
+
 void RBTree::RBinsert(Interval* interval)
-{   
+{
     RBTreeNode* x = insert(interval);
-    
+
     //if no new node inserted
     if (x==NULL)
     {
@@ -242,13 +242,13 @@ void RBTree::RBinsert(Interval* interval)
     }
 
     x->color = RED;
-    
+
     //percolate up
     while (x!=root && x->parent->color==RED) //violation of property 3
     {
         //x->parent->max = std::max(x->max,x->parent->max);
         //x->parent->parent->max = std::max(x->parent->parent->max,x->parent->max);
-        
+
         //if parent is a left child
         if (x->parent==x->parent->parent->left)
         {
@@ -263,11 +263,11 @@ void RBTree::RBinsert(Interval* interval)
                 x = x->parent->parent;
             }
             //parent and avuncular have differing height, rotate
-            else 
+            else
             {
                 //shift weight
                 if (x==x->parent->right)
-                {    
+                {
                     x = x->parent;
                     leftRotate(x);
                 }
@@ -289,10 +289,10 @@ void RBTree::RBinsert(Interval* interval)
                 x->parent->parent->color = RED;
                 x = x->parent->parent;
             }
-            else 
+            else
             {
                 if (x==x->parent->left)
-                {    
+                {
                     x = x->parent;
                     rightRotate(x);
                 }
@@ -302,25 +302,25 @@ void RBTree::RBinsert(Interval* interval)
                     x->parent->parent->color = RED;
                     leftRotate(x->parent->parent);
                 }
-            }   
+            }
         }
     }
-    
+
     root->color = BLACK;
 };
 
 void RBTree::RBSearchBrute(int32_t start, int32_t end, std::vector<Interval*>& intervals)
-{ 
+{
     intervals.clear();
-    
+
     if (root==NULL)
-        return;    
-    
+        return;
+
     RBSearch_iter_brute(start, end, intervals, root);
 };
-  
+
 void RBTree::RBSearch_iter_brute(int32_t start, int32_t end, std::vector<Interval*>& intervals, RBTreeNode* x)
-{     
+{
     //check through list
     if (x->start <= end)
     {
@@ -333,34 +333,34 @@ void RBTree::RBSearch_iter_brute(int32_t start, int32_t end, std::vector<Interva
             }
         }
     }
-    
+
     if (x->left!=NULL)
     {
         RBSearch_iter_brute(start, end, intervals, x->left);
     }
-    
+
     if (x->right!=NULL)
     {
         RBSearch_iter_brute(start, end, intervals, x->right);
     }
 };
 
-  
+
 void RBTree::RBSearch(int32_t start, int32_t end, std::vector<Interval*>& intervals)
-{ 
+{
     intervals.clear();
-    
+
     if (root==NULL)
-        return;    
-    
+        return;
+
     RBSearch_iter(start, end, intervals, root);
 };
-  
+
 void RBTree::RBSearch_iter(int32_t start, int32_t end, std::vector<Interval*>& intervals, RBTreeNode* x)
-{     
+{
     //check through list
     if (x->start <= end)
-    {    
+    {
         for (uint32_t i=0; i<x->intervals.size(); ++i)
         {
             //overlap
@@ -370,12 +370,12 @@ void RBTree::RBSearch_iter(int32_t start, int32_t end, std::vector<Interval*>& i
             }
         }
     }
-    
+
     if (x->left!=NULL && x->left->max >= start)
     {
         RBSearch_iter(start, end, intervals, x->left);
     }
-    
+
     //if (x->right!=NULL)
     if (x->right!=NULL && x->right->min <= end)
     {
@@ -386,12 +386,12 @@ void RBTree::RBSearch_iter(int32_t start, int32_t end, std::vector<Interval*>& i
 void RBTree::print()
 {
     print_iter(root);
-    std::cerr << "\n";     
+    std::cerr << "\n";
 };
-   
+
 void RBTree::print_iter(RBTreeNode* x)
-{ 
-    //intervals before target interval && after target interval 
+{
+    //intervals before target interval && after target interval
     if (x==NULL)
     {
         std::cerr << "NULL";
@@ -404,7 +404,7 @@ void RBTree::print_iter(RBTreeNode* x)
         for (uint32_t i=0; i<x->intervals.size(); ++i)
         {
             std::cerr << x->intervals[i]->end << (i==x->intervals.size()-1 ? "" : ":");
-        }    
+        }
         std::cerr << "," << x->max << "," << x->color << "),";
         print_iter(x->right);
         std::cerr << "]";
@@ -416,12 +416,12 @@ void RBTree::validate()
     height = 0;
     validate_iter(root, 0);
 };
-   
+
 void RBTree::validate_iter(RBTreeNode* x, uint32_t depth)
-{ 
+{
     //std::cerr << depth << "\n";
-    
-    //intervals before target interval && after target interval 
+
+    //intervals before target interval && after target interval
     if (x!=NULL)
     {
         //inspects color
@@ -431,13 +431,13 @@ void RBTree::validate_iter(RBTreeNode* x, uint32_t depth)
             {
                 std::cerr << "LEFT Color violation\n";
             }
-            
+
             if (x->right!=NULL && x->right->color==RED)
             {
                 std::cerr << "RIGHT Color violation\n";
             }
         }
-        
+
         //inspects order
         if (x->left!=NULL && x->left->start > x->start)
         {
@@ -445,13 +445,13 @@ void RBTree::validate_iter(RBTreeNode* x, uint32_t depth)
             std::cerr << "left->start: " <<  x->left->start << "\n";
             std::cerr << "this->start: " <<  x->start << "\n";
         }
-        
+
         if (x->right!=NULL && x->right->start < x->start)
         {
             std::cerr << "RIGHT Order violation\n";
             std::cerr << "right->start: " <<  x->right->start << "\n";
             std::cerr << "this->start: " <<  x->start << "\n";
-        }        
+        }
 
         //inspects max
         for (uint32_t i=0; i<x->intervals.size(); ++i)
@@ -463,7 +463,7 @@ void RBTree::validate_iter(RBTreeNode* x, uint32_t depth)
                 std::cerr << "intervals[" << i << "]->end : " <<  x->intervals[i]->end<< "\n";
                 std::cerr << "this->max: " <<  x->max << "\n";
             }
-            
+
             //overlap
             if (x->intervals[i]->start < x->min)
             {
@@ -471,7 +471,7 @@ void RBTree::validate_iter(RBTreeNode* x, uint32_t depth)
                 std::cerr << "intervals[" << i << "]->start : " <<  x->intervals[i]->start<< "\n";
                 std::cerr << "this->min: " <<  x->min << "\n";
             }
-            
+
             //incorrect value
             if (x->intervals[i]->start != x->start)
             {
@@ -479,23 +479,23 @@ void RBTree::validate_iter(RBTreeNode* x, uint32_t depth)
                 std::cerr << "intervals[" << i << "]->start : " <<  x->intervals[i]->start<< "\n";
                 std::cerr << "this->start: " <<  x->start << "\n";
             }
-            
+
         }
-                
+
         if (x->left!=NULL && x->left->max > x->max)
         {
             std::cerr << "LEFT Max violation\n";
             std::cerr << "left->max: " <<  x->left->max << "\n";
             std::cerr << "this->max: " <<  x->max << "\n";
         }
-        
+
         if (x->right!=NULL && x->right->max > x->max)
         {
             std::cerr << "RIGHT Max violation\n";
             std::cerr << "right->max: " <<  x->right->max << "\n";
             std::cerr << "this->max: " <<  x->max << "\n";
-        } 
-        
+        }
+
         //overlap
         if (x->left!=NULL &&  x->left->min < x->min)
         {
@@ -503,7 +503,7 @@ void RBTree::validate_iter(RBTreeNode* x, uint32_t depth)
             std::cerr << "left->min: " <<  x->left->min << "\n";
             std::cerr << "this->min: " <<  x->min << "\n";
         }
-        
+
         //overlap
         if (x->right!=NULL &&  x->right->min < x->min)
         {
@@ -511,12 +511,12 @@ void RBTree::validate_iter(RBTreeNode* x, uint32_t depth)
             std::cerr << "right->min: " <<  x->right->min << "\n";
             std::cerr << "this->min: " <<  x->min << "\n";
         }
-        
+
         validate_iter(x->left, depth+1);
         validate_iter(x->right, depth+1);
     }
     else
     {
         height = height<depth? depth : height;
-    }    
-};    
+    }
+};

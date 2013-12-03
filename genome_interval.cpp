@@ -27,11 +27,11 @@ GenomeInterval::GenomeInterval(std::string interval)
 {
     std::vector<std::string> v;
     split(v, ":-", interval);
-    
+
     if (v.size()==1)
     {
         seq = v[0];
-        start1 = 1; 
+        start1 = 1;
         end1 = (1<<29) - 1;
     }
     else if (v.size()==3)
@@ -51,14 +51,14 @@ GenomeInterval::GenomeInterval(std::string interval)
 };
 
 /**
- * Returns a string representation of this Genome Interval. 
- */    
+ * Returns a string representation of this Genome Interval.
+ */
 std::string GenomeInterval::to_string()
 {
     kstring_t s = {0,0,0};
     kputs(seq.c_str(), &s);
     if (start1!=1 || end1!=((1<<29)-1))
-    {    
+    {
         kputc(':', &s);
         kputw(start1, &s);
         kputc('-', &s);
@@ -66,5 +66,5 @@ std::string GenomeInterval::to_string()
     }
     std::string interval(s.s);
     if (s.m) free(s.s);
-    return interval;      
+    return interval;
 };
