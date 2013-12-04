@@ -23,8 +23,8 @@
 
 #include "merge_duplicate_variants.h"
 
-KHASH_SET_INIT_STR(sdict);
- 
+KHASH_MAP_INIT_STR(xdict, bcf1_t*);
+
 namespace
 {
 
@@ -43,17 +43,17 @@ class Igor : Program
     ///////
     //i/o//
     ///////
-    BCFSyncedReader *sr;
+    BCFOrderedReader *odr;
     BCFOrderedWriter *odw;
 
     std::vector<bcf1_t*> pool;
-        
+
     /////////
     //stats//
     /////////
     uint32_t no_total_variants;
     uint32_t no_unique_variants;
-    
+
     /////////
     //tools//
     /////////
@@ -92,18 +92,17 @@ class Igor : Program
             abort();
         }
     };
- 
+
     void initialize()
     {
         //////////////////////
         //i/o initialization//
         //////////////////////
-        std::vector<std::string> vcf_files(1, input_vcf_file);
-        sr = new BCFSyncedReader(vcf_files, intervals);
-        odw = new BCFOrderedWriter(output_vcf_file);
-        odw->set_hdr(sr->hdrs[0]);
+        odr = new BCFOrderedReader(input_vcf_file, intervals);
+        odw = new BCFOrderedWriter(output_vcf_file, 0);
+        odw->set_hdr(odr->hdr);
         odw->write_hdr();
-        
+
         ////////////////////////
         //stats initialization//
         ////////////////////////
@@ -114,36 +113,76 @@ class Igor : Program
         //tools initialization//
         ////////////////////////
     }
-    
+
     void merge_duplicate_variants()
     {
-        kstring_t var = {0, 0, 0};
-        
-        std::vector<bcfptr> current_recs;
-        
-        khash_t(sdict) *m = kh_init(sdict);
+        kstring_t variant = {0, 0, 0};
+
+        khash_t(xdict) *m = kh_init(xdict);
         khiter_t k;
         int32_t ret;
-  
-        while (sr->read_next_position(current_recs))
+        int32_t current_rid = -1;
+        int32_t current_pos1 = -1;
+
+        bcf1_t *v = odw->get_bcf1_from_pool();
+        while (odr->read(v))
         {
-            kh_clear(sdict, m);
-			
-			for (uint32_t i=0; i<current_recs.size(); ++i)
-			{
-			    bcf_variant2string(current_recs[i].h, current_recs[i].v, &var);
-		        if (kh_get(sdict, m, var.s)==kh_end(m))
-		        {
-		            odw->write(current_recs[i].v);
-		            kh_put(sdict, m, strdup(var.s), &ret);
-		            ++no_unique_variants;
-		        }
-		        
-		        ++no_total_variants;
-			}
+            int32_t pos1 = bcf_get_pos1(v);
+            int32_t rid = bcf_get_rid(v);
+             bcf_variant2string(odw->hdr, v, &variant);
+
+            //clear previous set of variants
+            if (pos1!=current_pos1 || rid!=current_rid)
+            {
+                for (k = kh_begin(m); k != kh_end(m); ++k)
+                {
+                    if (kh_exist(m, k))
+                    {
+                        bcf1_t* vs = kh_value(m, k);
+                        odw->write(vs);
+                        free((char*)kh_key(m, k));
+                    }
+                }
+                kh_clear(xdict, m);
+
+                current_pos1 = pos1;
+                current_rid = rid;
+            }
+
+            bcf_variant2string(odw->hdr, v, &variant);
+
+            if (kh_get(xdict, m, variant.s)==kh_end(m))
+            {
+                k = kh_put(xdict, m, variant.s, &ret);
+                if (ret) //does not exist
+                {
+                    variant = {0,0,0};
+                }
+                kh_value(m, k) = v;
+
+                ++no_unique_variants;
+                v = odw->get_bcf1_from_pool();
+            }
+            else
+            {
+                //drop
+            }
+
+            ++no_total_variants;
         }
 
-        odw->close();    
+        for (k = kh_begin(m); k != kh_end(m); ++k)
+        {
+            if (kh_exist(m, k))
+            {
+                bcf1_t* vs = kh_value(m, k);
+                odw->write(vs);
+                free((char*)kh_key(m, k));
+            }
+        }
+        kh_clear(xdict, m);
+
+        odw->close();
     };
 
     void print_options()
