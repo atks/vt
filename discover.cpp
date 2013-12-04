@@ -900,7 +900,13 @@ class Igor : Program
                     {
                         //add read that has overlapping
                         //duplicate the record and perform the stitching later
-                        k = kh_put(rdict, reads, bam_get_qname(s), &ret);
+                        char* qname = strdup(bam_get_qname(s));
+                        k = kh_put(rdict, reads, qname, &ret);
+                        if (!ret)
+                        {
+                            //already present
+                            free(qname);
+                        }    
                         kh_val(reads, k) = {bam_get_pos1(s), bam_get_pos1(s)+bam_get_l_qseq(s)-1};
                     }
                 }
@@ -910,10 +916,12 @@ class Igor : Program
                     //todo: perform stitching in future
                     if((k = kh_get(rdict, reads, bam_get_qname(s)))!=kh_end(reads))
                     {
-                        int32_t start1 = bam_get_pos1(s);
-                        int32_t end1 = bam_get_pos1(s)+bam_get_l_qseq(s);
-                        kh_del(rdict, reads, k);
-                        ++no_overlapping_reads;
+                        if (kh_exist(reads, k))
+                        {
+                            free((char*)kh_key(reads, k));
+                            kh_del(rdict, reads, k);
+                            ++no_overlapping_reads;
+                        }
                         //continue;
                     }
                 }

@@ -140,6 +140,7 @@ void BCFOrderedWriter::write(bcf1_t *v)
     else
     {
          bcf_write(vcf, hdr, v);
+          store_bcf1_into_pool(v);
     }
 }
 

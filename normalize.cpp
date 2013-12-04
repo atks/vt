@@ -111,8 +111,8 @@ class Igor : Program
         odr = new BCFOrderedReader(input_vcf_file, intervals);
 
         odw = new BCFOrderedWriter(output_vcf_file, 100000);
-        bcf_hdr_append(odr->hdr, "##INFO=<ID=OLD_VARIANT,Number=1,Type=String,Description=\"Original chr:pos:ref:alt encoding\">\n");
         odw->set_hdr(odr->hdr);
+        bcf_hdr_append(odw->hdr, "##INFO=<ID=OLD_VARIANT,Number=1,Type=String,Description=\"Original chr:pos:ref:alt encoding\">\n");
         odw->write_hdr();
 
         s = {0,0,0};
@@ -178,8 +178,8 @@ class Igor : Program
                 if (left_trimmed || left_aligned || right_trimmed)
                 {
                     old_alleles.l = 0;
-                    bcf_variant2string(odr->hdr, v, &old_alleles);
-                    bcf_update_info_string(odr->hdr, v, "OLD_VARIANT", old_alleles.s);
+                    bcf_variant2string(odw->hdr, v, &old_alleles);
+                    bcf_update_info_string(odw->hdr, v, "OLD_VARIANT", old_alleles.s);
 
                     bcf_set_pos1(v, pos1);
                     new_alleles.l=0;
