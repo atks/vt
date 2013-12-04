@@ -41,6 +41,7 @@
 #include "genotype.h"
 #include "merge_candidate_variants.h"
 #include "partition.h"
+#include "view.h"
 
 void print_time(double t)
 {
@@ -85,21 +86,26 @@ int main(int argc, char ** argv)
 {
     time_t t0;
     std::time(&t0);
-
-    std::clog << "\n";
-    std::clog << "=======\n";
-    std::clog << "vt v0.5\n";
-    std::clog << "=======\n";
-    std::clog << "\n";
+    std::string cmd(argv[1]);
     
     if (argc==1)
     {
+        std::clog << "\n";
+        std::clog << "=======\n";
+        std::clog << "vt v0.5\n";
+        std::clog << "=======\n";
+        std::clog << "\n";
+        
         help();
         exit(0);
     }
-
-    std::string cmd(argv[1]);
-
+    
+    if (argc>1 && cmd=="view")
+    {
+        view(argc-1, ++argv);
+        return 0;
+    } 
+    
     if (argc>1 && cmd=="normalize")
     {
         normalize(argc-1, ++argv);
@@ -127,7 +133,7 @@ int main(int argc, char ** argv)
     else if (argc>1 && cmd=="peek")
     {
         peek(argc-1, ++argv);
-    }
+    }  
     else if (argc>1 && cmd=="partition")
     {
         partition(argc-1, ++argv);

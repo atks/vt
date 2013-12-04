@@ -39,6 +39,7 @@ class Igor : Program
     std::vector<std::string> samples;
     std::string filter;
     std::string variant;
+    bool print;
 
     ///////
     //i/o//
@@ -61,13 +62,14 @@ class Igor : Program
         //////////////////////////
         try
         {
-            std::string desc = "views a VCF file";
+            std::string desc = "views a VCF or BCF or VCF.GZ file";
 
             TCLAP::CmdLine cmd(desc, ' ', version);
             VTOutput my;
             cmd.setOutput(&my);
             TCLAP::ValueArg<std::string> arg_intervals("i", "i", "intervals []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "file", cmd);
+            TCLAP::SwitchArg arg_print("p", "p", "print options and summary []", cmd, false);
             TCLAP::ValueArg<std::string> arg_sample_list("s", "s", "file containing list of sample []", false, "", "file", cmd);
             TCLAP::ValueArg<std::string> arg_filter("f", "f", "filter expression []", false, "", "exp", cmd);
             TCLAP::ValueArg<std::string> arg_variant("v", "v", "variant type []", false, "", "exp", cmd);
@@ -80,6 +82,7 @@ class Igor : Program
             output_vcf_file = arg_output_vcf_file.getValue();
             parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
             read_sample_list(samples, arg_sample_list.getValue());
+            print = arg_print.getValue();
         }
         catch (TCLAP::ArgException &e)
         {
@@ -113,8 +116,7 @@ class Igor : Program
         {
             bcf_unpack(v, BCF_UN_INFO);
             bcf_get_pos1(v);
-            //bcf_set_variant_types(v);
-
+            
             //filter
 
             //subset if necessary
@@ -123,6 +125,7 @@ class Igor : Program
 
             odw->write(v);
             v = odw->get_bcf1_from_pool();
+            ++no_variants;
         }
 
         odw->close();
@@ -130,6 +133,8 @@ class Igor : Program
 
     void print_options()
     {
+        if (!print) return;
+        
         std::clog << "view v" << version << "\n\n";
 
         std::clog << "options:     input VCF file        " << input_vcf_file << "\n";
@@ -152,6 +157,8 @@ class Igor : Program
 
     void print_stats()
     {
+        if (!print) return;
+        
         std::clog << "stats: no. variants  : " << no_variants << "\n";
         std::clog << "       no. samples   : " << no_samples << "\n";
         std::clog << "\n";
