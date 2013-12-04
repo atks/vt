@@ -92,6 +92,11 @@ class Program
      */
     void print_stats(){};
  	
+  	/**
+     * Print intervals option. 
+     */ 
+    void print_int_op(const char* option_line, std::vector<GenomeInterval>& intervals);
+ 
     private:
 };
     

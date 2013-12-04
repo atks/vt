@@ -124,6 +124,14 @@ void BCFOrderedWriter::write(bcf1_t *v)
 }
 
 /**
+ * Appends a line of meta information to the header.
+ */
+void append_hdr(char *line)
+{
+    bcf_hdr_append(hdr, line);
+}
+
+/**
  * Reads next record, hides the random access of different regions from the user.
  */
 void BCFOrderedWriter::write_hdr()

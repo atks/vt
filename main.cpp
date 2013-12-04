@@ -71,6 +71,8 @@ void help()
     std::clog << "peek                      summarize variants\n";
     std::clog << "construct_probes          construct probes for each variant\n";
     std::clog << "discover                  discover variants\n";
+    std::clog << "genotype                  genotype variants\n";
+    std::clog << "merge_candidate_variants  merge candidate variants\n";
 //    std::clog << "partition                 partition variants\n";
 //    std::clog << "profile_snps              profile snps\n";
 //    std::clog << "profile_indels            profile indels\n";
