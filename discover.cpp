@@ -213,6 +213,7 @@ class VariantHunter
                     ins_init_pos = cur_pos0;
                     I[ins_init_pos].push_back("");
                     I[ins_init_pos].back().append(1, (read_seq_pos0!=0?read_seq.s[read_seq_pos0-1]:genome_seq[genome_seq_pos0-1]));
+                    ANCHOR[ins_init_pos] = genome_seq[genome_seq_pos0-1];
                 }
 
                 last_position_had_snp =false;
@@ -227,10 +228,11 @@ class VariantHunter
                 REF[cur_pos0] = genome_seq[genome_seq_pos0];
                 if (del_init)
                 {
+                    del_init_pos = cur_pos0;
                     D[cur_pos0].push_back("");
                     D[cur_pos0].back().append(1, (read_seq_pos0!=0?read_seq.s[read_seq_pos0-1]:genome_seq[genome_seq_pos0-1]));
                     ++N[cur_pos0];
-                    del_init_pos = cur_pos0;
+                    ANCHOR[del_init_pos] = genome_seq[genome_seq_pos0-1];
                 }
                 D[del_init_pos].back().append(1, genome_seq[genome_seq_pos0]);
 
@@ -390,6 +392,7 @@ class VariantHunter
                 {
                     //handling insertions
                     indel_alts.clear();
+                    anchor = ANCHOR[start];
 
                     if (I[start].size()!=0)
                     {
@@ -410,11 +413,11 @@ class VariantHunter
                             //make sure that we do not output alleles with N bases.
                             if (i->second>= evidence_allele_count_cutoff &&
                                 ((double)i->second/(double) N[start]) >= fractional_evidence_allele_count_cutoff &&
-                                (i->first).find_first_of('N')==std::string::npos)
+                                anchor!='N' && (i->first).find_first_of('N')==std::string::npos)
                             {
                                 v = odw->get_bcf1_from_pool();
                                 bcf_set_chrom(odw->hdr, v, chrom);
-                                bcf_set_pos1(v, start_genome_pos0+1);
+                                bcf_set_pos1(v, start_genome_pos0);
                                 alleles.l = 0;
                                 kputc(anchor, &alleles);
                                 kputc(',', &alleles);
@@ -443,8 +446,6 @@ class VariantHunter
                             }
                         }
 
-                        anchor = REF[start];
-
                         for (std::map<std::string, int32_t>::iterator i = indel_alts.begin(); i!= indel_alts.end(); ++i)
                         {
                             //make sure that we do not output alleles with N bases.
@@ -455,12 +456,16 @@ class VariantHunter
                                 v = odw->get_bcf1_from_pool();
                                 bcf_set_chrom(odw->hdr, v, chrom);
                                 bcf_set_pos1(v, start_genome_pos0);
+                                
                                 alleles.l = 0;
-                                kputc(anchor, &alleles);
-                                kputc(',', &alleles);
                                 const char* deletedAllele = i->first.c_str();
+                                char replacement_anchor = deletedAllele[0];
+                                kputc(anchor, &alleles);
                                 ++deletedAllele;
                                 kputs(deletedAllele, &alleles);
+                                kputc(',', &alleles);
+                                kputc(replacement_anchor, &alleles);
+                                
                                 bcf_update_alleles_str(odw->hdr, v, alleles.s);
                                 bcf_update_format_int32(odw->hdr, v, "E", &i->second, 1);
                                 bcf_update_format_int32(odw->hdr, v, "N", &N[start], 1);
@@ -502,9 +507,11 @@ class VariantHunter
                                 bcf_set_chrom(odw->hdr, v, chrom);
                                 bcf_set_pos1(v, start_genome_pos0+1);
                                 alleles.l = 0;
-                                kputc(anchor, &alleles);
+                                kputc(ref, &alleles);
                                 kputc(',', &alleles);
                                 kputc(i->first, &alleles);
+                                
+                                
                                 bcf_update_alleles_str(odw->hdr, v, alleles.s);
                                 bcf_update_format_int32(odw->hdr, v, "E", &i->second, 1);
                                 bcf_update_format_int32(odw->hdr, v, "N", &N[start], 1);
@@ -539,7 +546,7 @@ class VariantHunter
                             //make sure that we do not output alleles with N bases.
                             if (i->second>= evidence_allele_count_cutoff &&
                                 ((double)i->second/(double) N[start]) >= fractional_evidence_allele_count_cutoff &&
-                                strchr(seq, 'N') && (i->first).find_first_of('N')==std::string::npos)
+                                !strchr(seq, 'N') && (i->first).find_first_of('N')==std::string::npos)
                             {
                                 v = odw->get_bcf1_from_pool();
                                 bcf_set_chrom(odw->hdr, v, chrom);
@@ -819,10 +826,10 @@ class Igor : Program
 
         odw = new BCFOrderedWriter(output_vcf_file, 0);
         bam_hdr_transfer_contigs_to_bcf_hdr(odr->hdr, odw->hdr);
-        bcf_hdr_append(odw->hdr, "##FORMAT=<ID=E,Number=1,Type=Integer,Description=\"Number of reads containing evidence of the alternate allele\">");
-        bcf_hdr_append(odw->hdr, "##FORMAT=<ID=N,Number=1,Type=Integer,Description=\"Total number of reads at a candidate locus with reads that contain evidence of the alternate allele\">");
+        odw->hdr_append_metainfo("##FORMAT=<ID=E,Number=1,Type=Integer,Description=\"Number of reads containing evidence of the alternate allele\">");
+        odw->hdr_append_metainfo("##FORMAT=<ID=N,Number=1,Type=Integer,Description=\"Total number of reads at a candidate locus with reads that contain evidence of the alternate allele\">");
         bcf_hdr_add_sample(odw->hdr, sample_id.c_str());
-        v = 0;
+        v = NULL;
 
         std::vector<std::string> variant_types;
         split(variant_types, ",", variant_type);
@@ -894,9 +901,7 @@ class Igor : Program
                         //add read that has overlapping
                         //duplicate the record and perform the stitching later
                         k = kh_put(rdict, reads, bam_get_qname(s), &ret);
-                        kh_val(reads, k) = {0,0};
-                        kh_val(reads, k).start1 = bam_get_pos1(s);
-                        kh_val(reads, k).end1 = bam_get_pos1(s) + bam_get_l_qseq(s) - 1;
+                        kh_val(reads, k) = {bam_get_pos1(s), bam_get_pos1(s)+bam_get_l_qseq(s)-1};
                     }
                 }
                 else
@@ -909,7 +914,7 @@ class Igor : Program
                         int32_t end1 = bam_get_pos1(s)+bam_get_l_qseq(s);
                         kh_del(rdict, reads, k);
                         ++no_overlapping_reads;
-                        continue;
+                        //continue;
                     }
                 }
             }
@@ -936,11 +941,9 @@ class Igor : Program
                bam_print(s);
             }
 
-//            std::cerr << "hash size " << kh_size(reads) << "\n";
-
             variantHunter->process_read(odr->hdr, s);
 
-            if (no_reads%100000==0) std::cerr << no_reads << "\n";
+//          if (no_reads%100000==0) std::cerr << no_reads << "\n";
 
             ++no_passed_reads;
         }

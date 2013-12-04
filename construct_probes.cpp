@@ -68,17 +68,17 @@ class Igor : Program
         //////////////////////////
         try
         {
-            std::string desc = "Construct probes for genotyping a variant. Populates the info field with REFPROBE, ALTPROBE and PLEN tags for genotyping.";
-    
+            std::string desc = "Construct probes for genotyping a variant.";
+
             TCLAP::CmdLine cmd(desc, ' ', version);
             VTOutput my; cmd.setOutput(&my);
             TCLAP::ValueArg<std::string> arg_intervals("i", "i", "intervals []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "file", cmd);
             TCLAP::ValueArg<std::string> arg_ref_fasta_file("r", "r", "reference sequence fasta file []", true, "", "str", cmd);
-            TCLAP::ValueArg<uint32_t> arg_min_flank_length("f", "f", "minimum flank length", false, 20, "int", cmd);
+            TCLAP::ValueArg<uint32_t> arg_min_flank_length("f", "f", "minimum flank length [20]", false, 20, "int", cmd);
             TCLAP::ValueArg<std::string> arg_output_vcf_file("o", "o", "output VCF file [-]", false, "-", "str", cmd);
             TCLAP::UnlabeledValueArg<std::string> arg_input_vcf_file("<in.vcf>", "input VCF file", true, "","file", cmd);
-            
+
             cmd.parse(argc, argv);
 
             input_vcf_file = arg_input_vcf_file.getValue();
@@ -100,7 +100,7 @@ class Igor : Program
         //i/o initialization//
         //////////////////////
         odr = new BCFOrderedReader(input_vcf_file, intervals);
-        
+
         odw = new BCFOrderedWriter(output_vcf_file, 0);
         odw->set_hdr(odr->hdr);
         odw->hdr_append_metainfo("##INFO=<ID=REFPROBE,Number=1,Type=String,Description=\"Probe for Determining Reference Allele\">");
@@ -115,7 +115,7 @@ class Igor : Program
         ////////////////////////
         no_probes_generated = 0;
         no_variants = 0;
-        
+
         ////////////////////////
         //tools initialization//
         ////////////////////////
@@ -128,19 +128,19 @@ class Igor : Program
         while (odr->read(v))
         {
             bcf_unpack(v, BCF_UN_INFO);
-            
-            //ignore alleles with N 
+
+            //ignore alleles with N
             if (strchr(bcf_get_alt(v, 0), 'N') || strchr(bcf_get_alt(v, 1), 'N'))
             {
                 continue;
             }
-                
+
             std::vector<std::string> probes;
             std::vector<std::string> alleles;
-             
+
             int32_t preambleLength = 0;
             var_manip->generate_probes(bcf_get_chrom(odr->hdr, v), bcf_get_pos1(v), 1, alleles, probes, min_flank_length, preambleLength);
-            
+
             //remove ill defined probes
             bool skip = false;
             for (uint32_t i=1; i<probes.size()-1; ++i)
@@ -150,22 +150,22 @@ class Igor : Program
                     skip = true;
                 }
             }
-            
+
             ++no_variants;
-            
+
             if (skip)
                 continue;
-             
+
             bcf_update_info_string(odr->hdr, v, "REFPROBE", probes[0].c_str());
             bcf_update_info_string(odr->hdr, v, "ALTPROBE", probes[1].c_str());
             bcf_update_info_int32(odr->hdr, v, "PLEN", &preambleLength, 1);
- 
+
             odw->write(v);
             v = odw->get_bcf1_from_pool();
-                       
+
             ++no_probes_generated;
-        }   
-       
+        }
+
         odw->close();
     };
 
@@ -176,7 +176,7 @@ class Igor : Program
         std::clog << "options:     input VCF file        " << input_vcf_file << "\n";
         std::clog << "         [o] output VCF file       " << output_vcf_file << "\n";
         std::clog << "         [r] reference FASTA file  " << ref_fasta_file << "\n";
-        std::clog << "         [f] minimum flank length  " << min_flank_length << "\n";    
+        std::clog << "         [f] minimum flank length  " << min_flank_length << "\n";
         print_int_op("         [i] intervals             ", intervals);
         std::clog << "\n";
     }
@@ -187,7 +187,7 @@ class Igor : Program
         std::clog << "         no. variants                 : " << no_variants << "\n";
         std::clog << "\n";
     };
-    
+
     ~Igor() {};
 
     private:

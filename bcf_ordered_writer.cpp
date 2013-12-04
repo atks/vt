@@ -28,8 +28,7 @@ BCFOrderedWriter::BCFOrderedWriter(std::string _vcf_file, int32_t _window)
     vcf_file = _vcf_file;
     window = _window;
     vcf = NULL;
-    
-    ss.str("");
+
     s = {0, 0, 0};
     
     int32_t ftype = hts_file_type(vcf_file.c_str());
@@ -65,7 +64,28 @@ const char* BCFOrderedWriter::get_seqname(bcf1_t *v)
  */
 void BCFOrderedWriter::set_hdr(bcf_hdr_t *hdr)
 {
+    if (this->hdr)
+    {    
+        bcf_hdr_destroy(this->hdr);  
+    }
     this->hdr = bcf_hdr_dup(hdr);
+}
+
+/**
+ * Appends a line of meta information to the header.
+ */
+void BCFOrderedWriter::hdr_append_metainfo(const char *line)
+{
+    bcf_hdr_append(hdr, line);
+}
+
+/**
+ * Reads next record, hides the random access of different regions from the user.
+ */
+void BCFOrderedWriter::write_hdr()
+{   
+    bcf_hdr_fmt_text(hdr);
+    bcf_hdr_write(vcf, hdr);
 }
 
 /**
@@ -121,23 +141,6 @@ void BCFOrderedWriter::write(bcf1_t *v)
     {
          bcf_write(vcf, hdr, v);
     }
-}
-
-/**
- * Appends a line of meta information to the header.
- */
-void BCFOrderedWriter::hdr_append_metainfo(const char *line)
-{
-    bcf_hdr_append(hdr, line);
-}
-
-/**
- * Reads next record, hides the random access of different regions from the user.
- */
-void BCFOrderedWriter::write_hdr()
-{   
-    bcf_hdr_fmt_text(hdr);
-    bcf_hdr_write(vcf, hdr);
 }
 
 /**
