@@ -38,6 +38,9 @@
 #include "peek.h"
 #include "construct_probes.h"
 #include "discover.h"
+#include "genotype.h"
+#include "merge_candidate_variants.h"
+#include "partition.h"
 
 void print_time(double t)
 {
@@ -73,16 +76,7 @@ void help()
     std::clog << "discover                  discover variants\n";
     std::clog << "genotype                  genotype variants\n";
     std::clog << "merge_candidate_variants  merge candidate variants\n";
-//    std::clog << "partition                 partition variants\n";
-//    std::clog << "profile_snps              profile snps\n";
-//    std::clog << "profile_indels            profile indels\n";
-//    std::clog << "plot_afs                  plot allele frequency spectrum\n";
-//    std::clog << "compute_af                compute allele frequency\n";
-//    std::clog << "annotate_indels           annotate indels\n";
-//    std::clog << "compute_concordance       compute concordance\n";
-//    std::clog << "plot_gl_concordance       plot gl concordance\n";
-//    std::clog << "compute_ab                compute allele balance\n";
-//    std::clog << "plot_ab                   plot allele balance\n";
+    std::clog << "partition                 partition variants\n";
                 
     std::clog << "\n";
 }
@@ -122,10 +116,22 @@ int main(int argc, char ** argv)
     {
         discover(argc-1, ++argv);
     }
+    else if (argc>1 && cmd=="genotype")
+    {
+        genotype(argc-1, ++argv);
+    } 
+    else if (argc>1 && cmd=="merge_candidate_variants")
+    {
+        merge_candidate_variants(argc-1, ++argv);
+    }    
     else if (argc>1 && cmd=="peek")
     {
         peek(argc-1, ++argv);
     }
+    else if (argc>1 && cmd=="partition")
+    {
+        partition(argc-1, ++argv);
+    }    
     else
     {
         std::clog << "Command not found: " << argv[1] << "\n\n";

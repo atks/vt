@@ -68,30 +68,24 @@ class Igor : Program
         //////////////////////////
         try
         {
-            std::string desc = 
-     "Populates the info field with REFPROBE, ALTPROBE and PLEN tags for genotyping.\n\
-    $path = /net/fantasia/home/atks/programs/vt\n\
-    e.g. $path/vt make_probes -i $path/test/8904indels.dups.genotypes.vcf -o probes.sites.vcf -g ref.fa\n";
-    
-    
+            std::string desc = "Construct probes for genotyping a variant. Populates the info field with REFPROBE, ALTPROBE and PLEN tags for genotyping.";
     
             TCLAP::CmdLine cmd(desc, ' ', version);
-            VTOutput my;
-            cmd.setOutput(&my);
-            TCLAP::ValueArg<std::string> arg_ref_fasta_file("r", "r", "reference sequence fasta file []", true, "", "str", cmd);
+            VTOutput my; cmd.setOutput(&my);
             TCLAP::ValueArg<std::string> arg_intervals("i", "i", "intervals []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "file", cmd);
+            TCLAP::ValueArg<std::string> arg_ref_fasta_file("r", "r", "reference sequence fasta file []", true, "", "str", cmd);
+            TCLAP::ValueArg<uint32_t> arg_min_flank_length("f", "f", "minimum flank length", false, 20, "int", cmd);
             TCLAP::ValueArg<std::string> arg_output_vcf_file("o", "o", "output VCF file [-]", false, "-", "str", cmd);
-            TCLAP::ValueArg<uint32_t> arg_min_flank_length("f", "f", "Minimum Flank Length", false, 20, "int", cmd);
             TCLAP::UnlabeledValueArg<std::string> arg_input_vcf_file("<in.vcf>", "input VCF file", true, "","file", cmd);
             
             cmd.parse(argc, argv);
 
             input_vcf_file = arg_input_vcf_file.getValue();
             output_vcf_file = arg_output_vcf_file.getValue();
-            parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
-            ref_fasta_file = arg_ref_fasta_file.getValue();
             min_flank_length = arg_min_flank_length.getValue();
+            ref_fasta_file = arg_ref_fasta_file.getValue();
+            parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
         }
         catch (TCLAP::ArgException &e)
         {
@@ -107,15 +101,14 @@ class Igor : Program
         //////////////////////
         odr = new BCFOrderedReader(input_vcf_file, intervals);
         
-        odw = new BCFOrderedWriter(output_vcf_file, 1);
-        bcf_hdr_append(odr->hdr, "##INFO=<ID=REFPROBE,Number=1,Type=String,Description=\"Probe for Determining Reference Allele\">");
-        bcf_hdr_append(odr->hdr, "##INFO=<ID=ALTPROBE,Number=A,Type=String,Description=\"Probe for Determining Alternate Allele(s)\">");
-        bcf_hdr_append(odr->hdr, "##INFO=<ID=PLEN,Number=1,Type=Integer,Description=End location of 5' flank in the probe\"\">");
+        odw = new BCFOrderedWriter(output_vcf_file, 0);
         odw->set_hdr(odr->hdr);
+        odw->hdr_append_metainfo("##INFO=<ID=REFPROBE,Number=1,Type=String,Description=\"Probe for Determining Reference Allele\">");
+        odw->hdr_append_metainfo("##INFO=<ID=ALTPROBE,Number=A,Type=String,Description=\"Probe for Determining Alternate Allele(s)\">");
+        odw->hdr_append_metainfo("##INFO=<ID=PLEN,Number=1,Type=Integer,Description=End location of 5' flank in the probe\"\">");
         odw->write_hdr();
 
-        s.s = 0;
-        s.l = s.m = 0;
+        s = {0,0,0};
 
         ////////////////////////
         //stats initialization//
@@ -131,6 +124,7 @@ class Igor : Program
 
     void construct_probes()
     {
+        v = odw->get_bcf1_from_pool();
         while (odr->read(v))
         {
             bcf_unpack(v, BCF_UN_INFO);
@@ -183,19 +177,7 @@ class Igor : Program
         std::clog << "         [o] output VCF file       " << output_vcf_file << "\n";
         std::clog << "         [r] reference FASTA file  " << ref_fasta_file << "\n";
         std::clog << "         [f] minimum flank length  " << min_flank_length << "\n";    
-        if (intervals.size()!=0)
-        {
-            std::clog << "         [i] intervals                    ";
-            for (uint32_t i=0; i<std::min((uint32_t)intervals.size(),(uint32_t)5); ++i)
-            {
-                if (i) std::clog << ", ";
-                std::clog << intervals[i].to_string();
-            }
-            if (intervals.size()>5)
-            {
-                std::clog << "  and " << (intervals.size()-5) <<  " other intervals\n";
-            }   
-        } 
+        print_int_op("         [i] intervals             ", intervals);
         std::clog << "\n";
     }
 
