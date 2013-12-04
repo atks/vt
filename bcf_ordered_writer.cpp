@@ -126,7 +126,7 @@ void BCFOrderedWriter::write(bcf1_t *v)
 /**
  * Appends a line of meta information to the header.
  */
-void append_hdr(char *line)
+void BCFOrderedWriter::hdr_append_metainfo(const char *line)
 {
     bcf_hdr_append(hdr, line);
 }

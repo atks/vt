@@ -83,7 +83,7 @@ class BCFOrderedWriter
     /**
      * Appends a line of meta information to the header.
      */
-    void append_hdr(char *line);
+    void hdr_append_metainfo(const char *line);
     
     /**
      * Reads next record, hides the random access of different regions from the user.
