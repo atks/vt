@@ -773,8 +773,7 @@ class Igor : Program
             std::string desc = "Discovers variants from reads in a BAM file.";
 
             TCLAP::CmdLine cmd(desc, ' ', version);
-            VTOutput my;
-            cmd.setOutput(&my);
+            VTOutput my; cmd.setOutput(&my);
             TCLAP::ValueArg<std::string> arg_intervals("i", "i", "intervals []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "file", cmd);
             TCLAP::ValueArg<std::string> arg_output_vcf_file("o", "o", "output VCF file [-]", false, "-", "str", cmd);
