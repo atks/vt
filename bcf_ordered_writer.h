@@ -81,6 +81,11 @@ class BCFOrderedWriter
     void set_hdr(bcf_hdr_t *_hdr);
     
     /**
+     * Appends a line of meta information to the header.
+     */
+    void append_hdr(char *line);
+    
+    /**
      * Reads next record, hides the random access of different regions from the user.
      */
     void write_hdr();

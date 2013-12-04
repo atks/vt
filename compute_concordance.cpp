@@ -266,7 +266,6 @@ e.g. vt profile_snps_variants -o - NA19130.vcf.gz HG00096.vcf.gz\n\n";
                     bcf1_t *v = current_recs[i].v;
                     //bcf_set_variant_types(v);
 
-
                     if (bcf_get_var_type(v)!=variant_type || bcf_get_n_allele(v)!=2)
                     {
                        continue;

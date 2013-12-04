@@ -109,17 +109,15 @@ class Igor : Program
         //i/o initialization//
         //////////////////////
         odr = new BCFOrderedReader(input_vcf_file, intervals);
+
         odw = new BCFOrderedWriter(output_vcf_file, 100000);
-        
         bcf_hdr_append(odr->hdr, "##INFO=<ID=OLD_VARIANT,Number=1,Type=String,Description=\"Original chr:pos:ref:alt encoding\">\n");
         odw->set_hdr(odr->hdr);
         odw->write_hdr();
 
-        s.s = 0;
-        s.l = s.m = 0;
-
-        old_alleles = {0, 0 ,0};
-        new_alleles = {0, 0 ,0};
+        s = {0,0,0};
+        old_alleles = {0,0,0};
+        new_alleles = {0,0,0};
 
         ////////////////////////
         //stats initialization//
@@ -149,13 +147,13 @@ class Igor : Program
 
     void normalize()
     {
-        v = odw->get_bcf1_from_pool();
-
         uint32_t left_aligned = 0;
         uint32_t left_trimmed = 0;
         uint32_t right_trimmed = 0;
 
         int32_t ambiguous_variant_types = (VT_MNP | VT_INDEL | VT_COMPLEX);
+
+        v = odw->get_bcf1_from_pool();
 
         while (odr->read(v))
         {
@@ -257,7 +255,6 @@ class Igor : Program
             v = odw->get_bcf1_from_pool();
         }
 
-        odw->flush();
         odw->close();
     };
 
@@ -268,10 +265,7 @@ class Igor : Program
         std::clog << "options:     input VCF file        " << input_vcf_file << "\n";
         std::clog << "         [o] output VCF file       " << output_vcf_file << "\n";
         std::clog << "         [r] reference FASTA file  " << ref_fasta_file << "\n";
-        if (intervals.size()!=0)
-        {
-            std::clog << "         [i] intervals             " << intervals.size() <<  " intervals\n";
-        }
+        print_int_op("         [i] intervals             ", intervals);
         std::clog << "\n";
     }
 

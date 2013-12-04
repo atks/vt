@@ -23,6 +23,7 @@ SOURCES = program\
 		view\
 		normalize\
 		merge_duplicate_variants\
+		merge_candidate_variants\
 		construct_probes\
 		discover\
 		genotype\

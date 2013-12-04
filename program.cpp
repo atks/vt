@@ -141,6 +141,26 @@ void Program::parse_intervals(std::vector<GenomeInterval>& intervals, std::strin
 }
 
 /**
+ * Print intervals option. 
+ */ 
+void Program::print_int_op(const char* option_line, std::vector<GenomeInterval>& intervals)
+{
+    if (intervals.size()!=0)
+    {
+        std::clog << option_line;
+        for (uint32_t i=0; i<std::min((uint32_t)intervals.size(),(uint32_t)5); ++i)
+        {
+            if (i) std::clog << ", ";
+            std::clog << intervals[i].to_string();
+        }
+        if (intervals.size()>5)
+        {
+            std::clog << "  and " << (intervals.size()-5) <<  " other intervals\n";
+        }   
+    } 
+}
+
+/**
  * Parse samples. Processes the sample list. Duplicates are dropped.
  *
  * @samples      - samples stored in this vector
