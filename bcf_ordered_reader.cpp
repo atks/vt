@@ -53,11 +53,11 @@ BCFOrderedReader::BCFOrderedReader(std::string _vcf_file, std::vector<GenomeInte
         if ((idx = bcf_index_load(vcf_file.c_str())))
         {
             index_loaded = true;
-            fprintf(stderr, "[I:%s] index loaded for %s\n", __FUNCTION__, vcf_file.c_str());
+            //fprintf(stderr, "[I:%s] index loaded for %s\n", __FUNCTION__, vcf_file.c_str());
         }
         else
         {
-            fprintf(stderr, "[W:%s] index not loaded for %s\n", __FUNCTION__, vcf_file.c_str());
+            //fprintf(stderr, "[W:%s] index not loaded for %s\n", __FUNCTION__, vcf_file.c_str());
         }
     }
     else if (ftype==FT_VCF_GZ)
@@ -65,11 +65,11 @@ BCFOrderedReader::BCFOrderedReader(std::string _vcf_file, std::vector<GenomeInte
         if ((tbx = tbx_index_load(vcf_file.c_str())))
         {
             index_loaded = true;
-            fprintf(stderr, "[I:%s] index loaded for %s\n", __FUNCTION__, vcf_file.c_str());
+            //fprintf(stderr, "[I:%s] index loaded for %s\n", __FUNCTION__, vcf_file.c_str());
         }
         else
         {
-            fprintf(stderr, "[W:%s] index not loaded for %s\n", __FUNCTION__, vcf_file.c_str());
+            //fprintf(stderr, "[W:%s] index not loaded for %s\n", __FUNCTION__, vcf_file.c_str());
         }
     }
 

@@ -90,12 +90,6 @@ int main(int argc, char ** argv)
     
     if (argc==1)
     {
-        std::clog << "\n";
-        std::clog << "=======\n";
-        std::clog << "vt v0.5\n";
-        std::clog << "=======\n";
-        std::clog << "\n";
-        
         help();
         exit(0);
     }
