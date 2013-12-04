@@ -62,7 +62,7 @@ class Igor : Program
         //////////////////////////
         try
         {
-            std::string desc = "views a VCF or BCF or VCF.GZ file";
+            std::string desc = "Views a VCF or BCF or VCF.GZ file.  Eventually to support filters, subsetting of samples.";
 
             TCLAP::CmdLine cmd(desc, ' ', version);
             VTOutput my;
@@ -73,7 +73,7 @@ class Igor : Program
             TCLAP::ValueArg<std::string> arg_sample_list("s", "s", "file containing list of sample []", false, "", "file", cmd);
             TCLAP::ValueArg<std::string> arg_filter("f", "f", "filter expression []", false, "", "exp", cmd);
             TCLAP::ValueArg<std::string> arg_variant("v", "v", "variant type []", false, "", "exp", cmd);
-            TCLAP::ValueArg<std::string> arg_output_vcf_file("o", "o", "output VCF file [-]", false, "-", "str", cmd);
+            TCLAP::ValueArg<std::string> arg_output_vcf_file("o", "o", "output VCF/VCF.GZ/BCF file [-]", false, "-", "str", cmd);
             TCLAP::UnlabeledValueArg<std::string> arg_input_vcf_file("<in.vcf>", "input VCF file", true, "","file", cmd);
 
             cmd.parse(argc, argv);
