@@ -44,14 +44,12 @@ class Igor : Program
     BCFOrderedReader *odr;
     bcf1_t *v;
 
-    kstring_t new_alleles;
-
     /////////
     //stats//
     /////////
-    uint32_t no_normalized;
-    uint32_t no_lt;    //# left trimmed
-    uint32_t no_lt_la; //# left trimmed and left aligned
+    uint32_t no_snps2;
+    uint32_t no_snps3;
+    uint32_t no_snps4;
 
     /////////
     //tools//
@@ -67,11 +65,10 @@ class Igor : Program
         //////////////////////////
         try
         {
-            std::string desc = "normalizes variants in a VCF file";
+            std::string desc = "Summarizes the variants in a VCF file";
 
             TCLAP::CmdLine cmd(desc, ' ', version);
-            VTOutput my;
-            cmd.setOutput(&my);
+            VTOutput my; cmd.setOutput(&my);
             TCLAP::ValueArg<std::string> arg_ref_fasta_file("r", "r", "reference sequence fasta file []", true, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_intervals("i", "i", "intervals []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "file", cmd);
@@ -100,13 +97,12 @@ class Igor : Program
         odr = new BCFOrderedReader(input_vcf_file, intervals);
 		v = bcf_init1();
 
-        new_alleles = {0, 0, 0};
-
         ////////////////////////
         //stats initialization//
         ////////////////////////
-        no_lt = 0;
-        no_lt_la = 0;
+        no_snp2 = 0;
+        no_snp3 = 0;
+        no_snp4 = 0;
 
         ////////////////////////
         //tools initialization//
@@ -114,71 +110,22 @@ class Igor : Program
         var_manip = new VariantManip(ref_fasta_file);
     }
 
-    int32_t classify_variant(bcf_hdr_t *h, bcf1_t *v, std::string& motif, uint32_t& tlen)
+    int32_t classify_variant(bcf_hdr_t *h, bcf1_t *v)
     {
-        return var_manip->classify_variant(bcf_get_chrom(h, v), bcf_get_pos1(v), bcf_get_allele(v), bcf_get_n_allele(v), motif, tlen);
+        return var_manip->classify_variant(bcf_get_chrom(h, v), bcf_get_pos0(v), bcf_get_allele(v), bcf_get_n_allele(v));
     }
 
     void peek()
     {
-        uint32_t left_aligned = 0;
-        uint32_t left_trimmed = 0;
-        uint32_t right_trimmed = 0;
-        std::vector<std::string> alleles;
-    
         while (odr->read(v))
         {
             bcf_unpack(v, BCF_UN_STR);
-            const char* chrom = odr->get_seqname(v);
             uint32_t pos1 = bcf_get_pos1(v);
             
-            alleles.clear();
-            for (uint32_t i=0; i<bcf_get_n_allele(v); ++i)
-            {
-                alleles.push_back(std::string(bcf_get_alt(v, i)));
-            }                
-            left_aligned = left_trimmed = right_trimmed = 0;
-            var_manip->left_align(alleles, pos1, chrom, left_aligned, right_trimmed);
-            var_manip->left_trim(alleles, pos1, left_trimmed);
-            if (left_trimmed || left_aligned || right_trimmed)
-            {
-                bcf_set_pos1(v, pos1);
-                new_alleles.l = 0;
-                for (uint32_t i=0; i<alleles.size(); ++i)
-                {
-                    if (i) kputc(',', &new_alleles);
-                    kputs(alleles[i].c_str(), &new_alleles);
-                }
-                bcf_update_alleles_str(odr->hdr, v, new_alleles.s);
-                
-                ++no_normalized;
-			}
             
-            std::string motif;
-            uint32_t tlen;
-            int32_t vtype = classify_variant(odr->hdr, v, motif, tlen);
-			
-            if (bcf_get_n_allele(v)==2)
-            {
-                bcf_set_pos1(v, pos1);
-                new_alleles.l=0;
-                for (uint32_t i=0; i<alleles.size(); ++i)
-                {
-                    if (i) kputc(',', &new_alleles);
-                    kputs(alleles[i].c_str(), &new_alleles);
-                }
-                bcf_update_alleles_str(odr->hdr, v, new_alleles.s);
-            }
-            else if (bcf_get_n_allele(v)>2)
-            {
-            }
-            else
-            {
-                //ignore non variants
-            }
-                
-
         }
+        
+        odr->close();
     };
 
     void print_options()
@@ -188,20 +135,17 @@ class Igor : Program
         std::clog << "options:     input VCF file        " << input_vcf_file << "\n";
         std::clog << "         [o] output VCF file       " << output_vcf_file << "\n";
         std::clog << "         [r] reference FASTA file  " << ref_fasta_file << "\n";
-        if (intervals.size()!=0)
-        {
-            std::clog << "         [i] intervals             " << intervals.size() <<  " intervals\n";
-        }
+        print_int_op("         [i] intervals             ", intervals);
         std::clog << "\n";
     }
 
     void print_stats()
     {
-//        std::clog << "\nstats: No. of SNPs          : " << no_snps  << "\n";
-//        std::clog << "           biallelic          :   " << no_snps_bi << "\n";
-//        std::clog << "           multiallelic       :   " << no_snps_multi << "\n";
-//        std::clog << "             3 alleles        :   " << no_snps3 << "\n";
-//        std::clog << "             4 alleles        :   " << no_snps4 << "\n";
+          std::clog << "\nstats: No. of SNPs          : " << no_snps2+no_snps3+no_snps4 << "\n";
+          std::clog << "           biallelic          : " << no_snps2 << "\n";
+          std::clog << "           multiallelic       : " << no_snps3+no_snps4 << "\n";
+          std::clog << "             3 alleles        : " << no_snps3 << "\n";
+          std::clog << "             4 alleles        : " << no_snps4 << "\n";
 //        std::clog << "\n";
 //        std::clog << "         No. of MNPs          : " << no_mnps << "\n";
 //        std::clog << "            biallelic         : " << no_mnps_bi << "\n";

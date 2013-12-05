@@ -69,17 +69,17 @@ Each VCF file is required to have the FORMAT flags E and N and should have exact
             version = "0.5";
             TCLAP::CmdLine cmd(desc, ' ', version);
             VTOutput my; cmd.setOutput(&my);
-            TCLAP::ValueArg<std::string> arg_intervals("i", "i", "intervals", false, "all", "str", cmd);
+            TCLAP::ValueArg<std::string> arg_intervals("i", "i", "intervals", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_output_vcf_file("o", "o", "output VCF file [-]", false, "-", "", cmd);
             TCLAP::ValueArg<std::string> arg_input_vcf_file_list("L", "L", "file containing list of input VCF files", true, "", "str", cmd);
-            
+
             cmd.parse(argc, argv);
 
             input_vcf_file_list = arg_input_vcf_file_list.getValue();
             output_vcf_file = arg_output_vcf_file.getValue();
             parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
-            
+
             ///////////////////////
             //parse input VCF files
             ///////////////////////
@@ -92,7 +92,10 @@ Each VCF file is required to have the FORMAT flags E and N and should have exact
             kstring_t *s = &file->line;
             while (hts_getline(file, KS_SEP_LINE, s) >= 0)
             {
-                input_vcf_files.push_back(std::string(s->s));
+                if (s->s[0]!='#')
+                {    
+                    input_vcf_files.push_back(std::string(s->s));
+                }
             }
             hts_close(file);
         }
@@ -123,13 +126,6 @@ Each VCF file is required to have the FORMAT flags E and N and should have exact
 
     void merge_candidate_variants()
     {
-        //list of variants with the same start position
-        std::vector<bcf1_t*> bs;
-
-        //map to contain the variant type
-        std::map<std::string, std::pair<int32_t, int32_t> > bhs;
-        std::vector<bcf_hdr_t *> ivcf_hdrs;
-
         //for combining the alleles
         std::vector<bcfptr> current_recs;
         while(sr->read_next_position(current_recs))
@@ -149,8 +145,7 @@ Each VCF file is required to have the FORMAT flags E and N and should have exact
     void print_options()
     {
         std::clog << "merge_candidate_variants v" << version << "\n\n";
-
-        std::clog << "options:     input VCF file        " << input_vcf_files.size() << "VCF files\n";
+        std::clog << "options:     input VCF file        " << input_vcf_files.size() << " files\n";
         std::clog << "         [o] output VCF file       " << output_vcf_file << "\n";
         print_int_op("         [i] intervals             ", intervals);
         std::clog << "\n";
@@ -158,8 +153,9 @@ Each VCF file is required to have the FORMAT flags E and N and should have exact
 
     void print_stats()
     {
-        std::cerr << "\nStats: Total Number of Candidate SNPs     " << no_candidate_snps << "\n";
-        std::cerr << "         Total Number of Candidate Indels   " << no_candidate_indels << "\n\n";
+        std::clog << "\n";
+        std::cerr << "stats: Total Number of Candidate SNPs     " << no_candidate_snps << "\n";
+        std::cerr << "       Total Number of Candidate Indels   " << no_candidate_indels << "\n\n";
     };
 
     ~Igor()

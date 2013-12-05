@@ -102,6 +102,7 @@ bool BCFOrderedReader::initialize_next_interval()
     {
         if (ftype==FT_BCF_GZ)
         {
+            //todo: move to querys
             GenomeInterval interval = intervals[interval_index];
             int tid = bcf_hdr_name2id(hdr, interval.seq.c_str());
             itr = bcf_itr_queryi(idx, tid, interval.start1-1, interval.end1);
@@ -113,10 +114,8 @@ bool BCFOrderedReader::initialize_next_interval()
         }
         else if (ftype==FT_VCF_GZ)
         {
-            GenomeInterval interval = intervals[interval_index];
-            int tid = tbx_name2id(tbx, interval.seq.c_str());
-            itr = tbx_itr_queryi(tbx, tid, interval.start1-1, interval.end1);
-            ++interval_index;
+            intervals[interval_index++].to_string(&s);
+            itr = tbx_itr_querys(tbx, s.s);
             if (itr)
             {
                 return true;

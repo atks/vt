@@ -53,11 +53,38 @@
 #define VT_CR 1024
 
 /**
+ * Variant
+ */
+class Variant
+{
+	public:
+	    
+	int32_t type;
+	int32_t len;  //variant length
+	kstring_t motif;  //motif
+    int32_t mlen; //motif length
+    int32_t tlen; //reference tracct length
+
+    void clear()
+    {
+        type = 0;
+        len = 0; 
+    	motif.l = 0;
+        mlen = 0;
+        tlen = 0;
+    }
+    
+    ~Variant()
+    {
+        if (motif.m)
+        {
+            free(motif.s);
+        }    
+    }
+};
+
+/**
  * Methods for manipulating variants
- * 1. variant identification
- * 2. left trimming
- * 3. left alignment and right trimming
- * 4. haplotype construction
  */
 class VariantManip
 {
@@ -68,25 +95,22 @@ class VariantManip
     VariantManip(std::string ref_fasta_file);
 
     /**
-     * Detects near by STRs
+     * Detects near by STRs.
      */
     bool detect_str(const char* chrom, uint32_t pos1, std::string& motif, uint32_t& tlen);
 
     /**
-     * Converts VTYPE to string
+     * Converts VTYPE to string.
      */
     std::string vtype2string(int32_t VTYPE);
-
+    
     /**
-     * Classifies Indels into the following categories:
-     * 1. Homopolymers
-     * 2. Dinucleotides
-     * 3. Trinucleotides
+     * Classifies variants.
      */
-    int32_t classify_variant(const char* chrom, uint32_t pos1, char** allele, int32_t n_allele, std::string& motif, uint32_t& tlen);
-
+    void classify_variant(const char* chrom, uint32_t pos1, char** allele, int32_t n_allele, Variant& v);
+    
     /**
-     * Left trims a variant of unnecesary nucleotides.
+     * Left trims a variant with unnecesary nucleotides.
      */
     void left_trim(std::vector<std::string>& alleles, uint32_t& pos1, uint32_t& left_trimmed) ;
 
@@ -99,7 +123,7 @@ class VariantManip
      * Generates a probing haplotype with flanks around the variant of interest.
      */
     void generate_probes(const char* chrom,
-                        int32_t pos1, uint32_t probeDiff, //
+                        int32_t pos1, uint32_t probeDiff, 
                         std::vector<std::string>& alleles, //store alleles
                         std::vector<std::string>& probes, //store probes
                         uint32_t min_flank_length,
