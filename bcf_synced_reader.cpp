@@ -25,6 +25,8 @@
 
 /**
  * Constructor.
+ *
+ * @intervals - if empty, will add the contigs found in the header files
  */
 BCFSyncedReader::BCFSyncedReader(std::vector<std::string>& vcf_files, std::vector<GenomeInterval>& intervals)
 :vcf_files(vcf_files), intervals(intervals)
@@ -377,15 +379,15 @@ bool BCFSyncedReader::initialize_next_interval()
             	if (ftype==FT_BCF_GZ)
             	{
             	    int tid = bcf_hdr_name2id(hdrs[i], interval.seq.c_str());
-                	itrs[i] = bcf_itr_queryi(idxs[i], tid, interval.start1, interval.end1+1);
+                	itrs[i] = bcf_itr_queryi(idxs[i], tid, interval.start1-1, interval.end1);
                 }
     			else if (ftype==FT_VCF_GZ)
     	    	{
-    	    	    int tid = tbx_name2id(tbxs[i], interval.seq.c_str());
-                	itrs[i] = tbx_itr_queryi(tbxs[i], tid, interval.start1, interval.end1+1);
+    	    	    interval.to_string(&s);
+                    itrs[i] = tbx_itr_querys(tbxs[i], s.s);
                 }
     	    
-    	    	fill_buffer(i);
+                fill_buffer(i);
     	    }
             
 			//make sure pq is not empty
@@ -444,12 +446,12 @@ bool BCFSyncedReader::initialize_next_interval()
                         	if (ftype==FT_BCF_GZ)
                         	{
                         	    int tid = bcf_hdr_name2id(hdrs[i], interval.seq.c_str());
-                            	itrs[i] = bcf_itr_queryi(idxs[i], tid, interval.start1, interval.end1+1);
+                            	itrs[i] = bcf_itr_queryi(idxs[i], tid, interval.start1-1, interval.end1);
                             }
                 			else if (ftype==FT_VCF_GZ)
                 	    	{
                 	    	    int tid = tbx_name2id(tbxs[i], interval.seq.c_str());
-                            	itrs[i] = tbx_itr_queryi(tbxs[i], tid, interval.start1, interval.end1+1);
+                            	itrs[i] = tbx_itr_queryi(tbxs[i], tid, interval.start1-1, interval.end1);
                             }
                         }
             	    
@@ -484,6 +486,8 @@ void BCFSyncedReader::fill_buffer(int32_t i)
         return;
     }    
     
+    //std::cerr << "indexed first file " << indexed_first_file << " " << i << "\n";
+    
     //indexed file
     if (indexed_first_file || i)
     {
@@ -495,9 +499,7 @@ void BCFSyncedReader::fill_buffer(int32_t i)
             while (itrs[i] && bcf_itr_next(vcfs[i], itrs[i], v) >= 0)
             {
                 bcf_unpack(v, BCF_UN_STR);
-                kstring_t s = {0, 0, 0};
                 bcf_variant2string(hdrs[i], v, &s);
-                std::cerr << s.s << "\n";
                 if (s.m) free(s.s);
                 bcf_get_pos1(v);
                 buffer[i].push_back(v);
@@ -517,7 +519,7 @@ void BCFSyncedReader::fill_buffer(int32_t i)
             store_bcf1_into_pool(v); 
         }
         else if (ftypes[i]==FT_VCF_GZ)
-        {    
+        {   
             while (itrs[i] && tbx_itr_next(vcfs[i], tbxs[i], itrs[i], &s) >= 0)
             {
                 bcf1_t *v = get_bcf1_from_pool();

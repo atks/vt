@@ -68,3 +68,19 @@ std::string GenomeInterval::to_string()
     if (s.m) free(s.s);
     return interval;
 };
+
+/**
+ * Returns a string representation of this Genome Interval.
+ */
+void GenomeInterval::to_string(kstring_t *interval)
+{
+    interval->l = 0;
+    kputs(seq.c_str(), interval);
+    if (start1!=1 || end1!=((1<<29)-1))
+    {
+        kputc(':', interval);
+        kputw(start1, interval);
+        kputc('-', interval);
+        kputw(end1, interval);
+    }
+};

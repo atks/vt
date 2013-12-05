@@ -33,6 +33,7 @@
 #include <map>
 #include <queue>
 #include "htslib/sam.h"
+#include "htslib/vcf.h"
 #include "htslib/hts.h"
 #include "hts_utils.h"
 #include "genome_interval.h"

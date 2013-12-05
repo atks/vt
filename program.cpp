@@ -49,7 +49,6 @@ void VTOutput::usage(TCLAP::CmdLineInterface& c)
 	std::clog << "usage : vt "  << c.getProgramName() << " [options] " << s << "\n\n";
     
     //prints rest of arguments
-	//for (TCLAP::ArgListReverseIterator it = args.rbegin(); it != args.rend(); it++)
 	for (TCLAP::ArgListIterator it = args.begin(); it != args.end(); it++)
 	{
 	    if (it==args.begin())
@@ -57,8 +56,7 @@ void VTOutput::usage(TCLAP::CmdLineInterface& c)
 	        std::clog << "options : ";
 	    }
 	    else
-        //else if (typeid(**it)==typeid(TCLAP::UnlabeledValueArg<std::string>))
-	    {
+        {
 	    	std::clog << "          ";
 	    }
 
@@ -150,7 +148,7 @@ void Program::print_int_op(const char* option_line, std::vector<GenomeInterval>&
         std::clog << option_line;
         for (uint32_t i=0; i<std::min((uint32_t)intervals.size(),(uint32_t)5); ++i)
         {
-            if (i) std::clog << ", ";
+            if (i) std::clog << ",";
             std::clog << intervals[i].to_string();
         }
         if (intervals.size()>5)

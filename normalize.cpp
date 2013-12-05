@@ -81,8 +81,7 @@ class Igor : Program
             std::string desc = "normalizes variants in a VCF file";
 
             TCLAP::CmdLine cmd(desc, ' ', version);
-            VTOutput my;
-            cmd.setOutput(&my);
+            VTOutput my; cmd.setOutput(&my);
             TCLAP::ValueArg<std::string> arg_ref_fasta_file("r", "r", "reference sequence fasta file []", true, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_intervals("i", "i", "intervals []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "file", cmd);

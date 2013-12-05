@@ -57,6 +57,11 @@ class GenomeInterval
      * Returns a string representation of this Genome Interval.
      */
     std::string to_string();
+
+    /**
+     * Returns a string representation of this Genome Interval.
+     */
+    void to_string(kstring_t *interval);
 };
 
 #endif

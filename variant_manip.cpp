@@ -25,11 +25,14 @@
 
 VariantManip::VariantManip(std::string ref_fasta_file)
 {
-    fai = fai_load(ref_fasta_file.c_str());
+    if (ref_fasta_file=="")
+    {
+        fai = fai_load(ref_fasta_file.c_str());
+    }
 };
 
 /**
- * Converts VTYPE to string
+ * Converts VTYPE to string.
  */
 std::string VariantManip::vtype2string(int32_t VTYPE)
 {
@@ -99,42 +102,44 @@ std::string VariantManip::vtype2string(int32_t VTYPE)
 }
 
 /**
- * Classifies Indels into the following categories:
- * 1. Homopolymers
- * 2. Dinucleotides
- * 3. Trinucleotides
+ * Classifies variants.
  */
-int32_t VariantManip::classify_variant(const char* chrom, uint32_t pos1, char** allele, int32_t n_allele, std::string& motif, uint32_t& tlen)
+void VariantManip:: void classify_variant(const char* chrom, uint32_t pos1, char** allele, int32_t n_allele, Variant& v)
 {
     int32_t pos0 = pos1-1;
-    int32_t VTYPE = 0;
+    v.clear();
+    
+    int32_t len_ref = strlen(allele[0]);
 
-    if (n_allele==2)
+    for (uint32_t i=1; i<n_allele; ++i)
     {
-        uint32_t len_ref = strlen(allele[0]);
-        uint32_t len_alt = strlen(allele[1]);
+        int32_t len_alt = strlen(allele[i]);
 
         uint32_t len = 0;
+        //SNP or MNP or block substitution
         if (len_ref==len_alt)
         {
             if (len_ref==1)
             {
-                if (allele[0][0]!=allele[1][0])
+                if (allele[0][0]!=allele[i][0])
                 {
-                    VTYPE |= VT_SNP;
+                    v.type |= VT_SNP;
                 }
             }
             else
             {
-                for (uint32_t i=0; i<len; ++i)
+                bool is_mnp = true;
+                for (uint32_t j=0; j<len; ++j)
                 {
-                    if (allele[0][i]==allele[1][i])
+                    //clumped variant treated as complex variant
+                    if (allele[0][j]==allele[i][j])
                     {
-                        VTYPE |= VT_COMPLEX;
+                        is_mnp = false;
+                        v.type |= VT_COMPLEX;
                     }
                 }
 
-                VTYPE |= VT_MNP;
+                v.type |= (is_mnp ? VT_MNP : 0);
             }
         }
         else
@@ -143,18 +148,19 @@ int32_t VariantManip::classify_variant(const char* chrom, uint32_t pos1, char** 
             
             if (len_ref==1 || len_alt==1)
             {
-                VTYPE |= VT_INDEL;
+                v.type |= VT_INDEL;
 
-                if (len_ref==1) VTYPE |= VT_INSERTION;
-                if (len_alt==1) VTYPE |= VT_DELETION;
+                if (len_ref==1) v.type |= VT_INSERTION;
+                if (len_alt==1) v.type |= VT_DELETION;
 
-                if (allele[0][0]!=allele[1][0])
+                //SNP adjacent to Indel
+                if (allele[0][0]!=allele[i][0])
                 {
-                    VTYPE |= VT_SNP;
+                    v.type |= VT_SNP;
                 }
 
                 char* ru = 0;
-                ru = faidx_fetch_seq(fai, const_cast<char*>(chrom), pos0+1, pos0+1, &ref_len);
+                ru = faidx_fetch_seq(fai, chrom, pos0+1, pos0+1, &ref_len);
                 //std::cerr << "first ru: "<< ru << "\n";
 
                 int32_t tract_len = 1;
@@ -163,7 +169,7 @@ int32_t VariantManip::classify_variant(const char* chrom, uint32_t pos1, char** 
                 while (1)
                 {
                     char* next_ru = 0;
-                    next_ru = faidx_fetch_seq(fai, const_cast<char*>(chrom), pos0+tract_len*motif_len+1, pos0+(tract_len+1)*motif_len, &ref_len);
+                    next_ru = faidx_fetch_seq(fai, chrom, pos0+tract_len*motif_len+1, pos0+(tract_len+1)*motif_len, &ref_len);
                     
                     //motif repeated
                     if (strcmp(ru, next_ru)==0)
@@ -177,7 +183,7 @@ int32_t VariantManip::classify_variant(const char* chrom, uint32_t pos1, char** 
                         {
                             motif = std::string(ru);
                             tlen = tract_len;
-                            VTYPE |= (VT_STR | VT_EXACT_STR);
+                            v.type |= (VT_STR | VT_EXACT_STR);
                             free(next_ru);
                             break;
                         }
@@ -192,30 +198,24 @@ int32_t VariantManip::classify_variant(const char* chrom, uint32_t pos1, char** 
                         free(ru);
                         ++motif_len;
                         tract_len=1;
-                        ru = faidx_fetch_seq(fai, const_cast<char*>(chrom), pos0+1, pos0+motif_len, &ref_len);
+                        ru = faidx_fetch_seq(fai, chrom, pos0+1, pos0+motif_len, &ref_len);
                     }
 
                     free(next_ru);
-
                 }
 
                 free(ru);
             }
             else
             {
-                VTYPE |= VT_COMPLEX;
+                v.type |= VT_COMPLEX;
             }
         }
     }
-    else
-    {
-    }
-
-    return VTYPE;
 }
 
 /**
- * Left trims a variant of unnecesary nucleotides.
+ * Left trims a variant with unnecesary nucleotides.
  */
 void VariantManip::left_trim(std::vector<std::string>& alleles, uint32_t& pos1, uint32_t& left_trimmed)
 {
