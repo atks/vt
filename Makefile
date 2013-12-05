@@ -30,6 +30,7 @@ SOURCES = program\
 		profile_indels\
 		compute_concordance\
 		partition\
+		index\
 		peek
 
 SOURCESONLY = main.cpp

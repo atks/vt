@@ -42,6 +42,7 @@
 #include "merge_candidate_variants.h"
 #include "partition.h"
 #include "view.h"
+#include "index.h"
 
 void print_time(double t)
 {
@@ -97,6 +98,11 @@ int main(int argc, char ** argv)
     if (argc>1 && cmd=="view")
     {
         view(argc-1, ++argv);
+        return 0;
+    } 
+    else if (argc>1 && cmd=="index")
+    {
+        index(argc-1, ++argv);
         return 0;
     } 
     
