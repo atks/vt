@@ -42,20 +42,48 @@
 #define VT_REF   0
 #define VT_SNP   1
 #define VT_MNP   2
-#define VT_INDEL   4
-#define VT_INSERTION  8
-#define VT_DELETION   16
-#define VT_STR 32
-#define VT_EXACT_STR 64
-#define VT_INEXACT_STR 128
-#define VT_COMPLEX 256
-#define VT_SV 512
-#define VT_CR 1024
+#define VT_INSERTION  4
+#define VT_DELETION   8
+#define VT_INDEL (VT_INSERTION|VT_DELETION)
+#define VT_CLUMP 64
+#define VT_COMPLEX 64
 
 /**
- * Variant
+ * Variant.
  */
 class Variant
+{
+	public:
+	    
+	int32_t type;
+	int32_t len;     //variant length
+	kstring_t motif; //motif
+    int32_t mlen;    //motif length
+    int32_t tlen;    //reference tract length
+    //std::vector 
+        
+    void clear()
+    {
+        type = 0;
+        len = 0; 
+    	motif.l = 0;
+        mlen = 0;
+        tlen = 0;
+    }
+    
+    ~Variant()
+    {
+        if (motif.m)
+        {
+            free(motif.s);
+        }    
+    }
+};
+
+/**
+ * Allele
+ */
+class Allele
 {
 	public:
 	    
@@ -74,7 +102,7 @@ class Variant
         tlen = 0;
     }
     
-    ~Variant()
+    ~Allele()
     {
         if (motif.m)
         {
@@ -107,7 +135,7 @@ class VariantManip
     /**
      * Classifies variants.
      */
-    void classify_variant(const char* chrom, uint32_t pos1, char** allele, int32_t n_allele, Variant& v);
+    int32_t classify_variant(const char* chrom, uint32_t pos1, char** allele, int32_t n_allele, Variant& v);
     
     /**
      * Left trims a variant with unnecesary nucleotides.

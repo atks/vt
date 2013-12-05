@@ -139,9 +139,9 @@ class Igor : Program
         var_manip = new VariantManip(ref_fasta_file);
     }
 
-    int32_t classify_variant(bcf_hdr_t *h, bcf1_t *v, std::string& motif, uint32_t& tlen)
+    int32_t classify_variant(bcf_hdr_t *h, bcf1_t *v, Variant& variant)
     {
-        return var_manip->classify_variant(bcf_get_chrom(h, v), bcf_get_pos1(v), bcf_get_allele(v), bcf_get_n_allele(v), motif, tlen);
+        return var_manip->classify_variant(bcf_get_chrom(h, v), bcf_get_pos1(v), bcf_get_allele(v), bcf_get_n_allele(v), variant);
     }
 
     void normalize()
@@ -150,16 +150,15 @@ class Igor : Program
         uint32_t left_trimmed = 0;
         uint32_t right_trimmed = 0;
 
-        int32_t ambiguous_variant_types = (VT_MNP | VT_INDEL | VT_COMPLEX);
+        int32_t ambiguous_variant_types = (VT_MNP | VT_INDEL);
 
         v = odw->get_bcf1_from_pool();
+        Variant variant;
 
         while (odr->read(v))
         {
             bcf_unpack(v, BCF_UN_INFO);
-            std::string motif;
-            uint32_t tlen;
-            int32_t vtype = classify_variant(odr->hdr, v, motif, tlen);
+            int32_t vtype = classify_variant(odr->hdr, v, variant);
 
             if (vtype & ambiguous_variant_types)
             {

@@ -62,41 +62,41 @@ std::string VariantManip::vtype2string(int32_t VTYPE)
         s += "INDEL";
     }
 
-    if (VTYPE & VT_STR)
-    {
-        s += (s.size()==0) ? "" : ";";
-        s += "STR";
-    }
+//    if (VTYPE & VT_STR)
+//    {
+//        s += (s.size()==0) ? "" : ";";
+//        s += "STR";
+//    }
+//
+//    if (VTYPE & VT_EXACT_STR)
+//    {
+//        s += (s.size()==0) ? "" : ";";
+//        s += "EXACT_STR";
+//    }
+//
+//    if (VTYPE & VT_INEXACT_STR)
+//    {
+//        s += (s.size()==0) ? "" : ";";
+//        s += "INEXACT_STR";
+//    }
 
-    if (VTYPE & VT_EXACT_STR)
-    {
-        s += (s.size()==0) ? "" : ";";
-        s += "EXACT_STR";
-    }
-
-    if (VTYPE & VT_INEXACT_STR)
-    {
-        s += (s.size()==0) ? "" : ";";
-        s += "INEXACT_STR";
-    }
-
-    if (VTYPE & VT_COMPLEX)
-    {
-        s += (s.size()==0) ? "" : ";";
-        s += "COMPLEX";
-    }
-
-    if (VTYPE & VT_SV)
-    {
-        s += (s.size()==0) ? "" : ";";
-        s += "SV";
-    }
-
-    if (VTYPE & VT_CR)
-    {
-        s += (s.size()==0) ? "" : ";";
-        s += "CR";
-    }
+//    if (VTYPE & VT_COMPLEX)
+//    {
+//        s += (s.size()==0) ? "" : ";";
+//        s += "COMPLEX";
+//    }
+//
+//    if (VTYPE & VT_SV)
+//    {
+//        s += (s.size()==0) ? "" : ";";
+//        s += "SV";
+//    }
+//
+//    if (VTYPE & VT_CR)
+//    {
+//        s += (s.size()==0) ? "" : ";";
+//        s += "CR";
+//    }
 
     return s;
 }
@@ -104,7 +104,7 @@ std::string VariantManip::vtype2string(int32_t VTYPE)
 /**
  * Classifies variants.
  */
-void VariantManip:: void classify_variant(const char* chrom, uint32_t pos1, char** allele, int32_t n_allele, Variant& v)
+int32_t VariantManip::classify_variant(const char* chrom, uint32_t pos1, char** allele, int32_t n_allele, Variant& v)
 {
     int32_t pos0 = pos1-1;
     v.clear();
@@ -148,8 +148,6 @@ void VariantManip:: void classify_variant(const char* chrom, uint32_t pos1, char
             
             if (len_ref==1 || len_alt==1)
             {
-                v.type |= VT_INDEL;
-
                 if (len_ref==1) v.type |= VT_INSERTION;
                 if (len_alt==1) v.type |= VT_DELETION;
 
@@ -165,6 +163,9 @@ void VariantManip:: void classify_variant(const char* chrom, uint32_t pos1, char
 
                 int32_t tract_len = 1;
                 int32_t motif_len = 1;
+                
+                std::string motif = "";
+                int32_t tlen = 0;    
 
                 while (1)
                 {
@@ -183,7 +184,7 @@ void VariantManip:: void classify_variant(const char* chrom, uint32_t pos1, char
                         {
                             motif = std::string(ru);
                             tlen = tract_len;
-                            v.type |= (VT_STR | VT_EXACT_STR);
+                            //v.type |= (VT_STR | VT_EXACT_STR);
                             free(next_ru);
                             break;
                         }
@@ -212,6 +213,8 @@ void VariantManip:: void classify_variant(const char* chrom, uint32_t pos1, char
             }
         }
     }
+    
+    return v.type;
 }
 
 /**

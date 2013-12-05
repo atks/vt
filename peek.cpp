@@ -47,9 +47,9 @@ class Igor : Program
     /////////
     //stats//
     /////////
-    uint32_t no_snps2;
-    uint32_t no_snps3;
-    uint32_t no_snps4;
+    uint32_t no_snp2;
+    uint32_t no_snp3;
+    uint32_t no_snp4;
 
     /////////
     //tools//
@@ -112,7 +112,9 @@ class Igor : Program
 
     int32_t classify_variant(bcf_hdr_t *h, bcf1_t *v)
     {
-        return var_manip->classify_variant(bcf_get_chrom(h, v), bcf_get_pos0(v), bcf_get_allele(v), bcf_get_n_allele(v));
+       // return var_manip->classify_variant(bcf_get_chrom(h, v), bcf_get_pos0(v), bcf_get_allele(v), bcf_get_n_allele(v));
+    
+        return 1;
     }
 
     void peek()
@@ -141,11 +143,11 @@ class Igor : Program
 
     void print_stats()
     {
-          std::clog << "\nstats: No. of SNPs          : " << no_snps2+no_snps3+no_snps4 << "\n";
-          std::clog << "           biallelic          : " << no_snps2 << "\n";
-          std::clog << "           multiallelic       : " << no_snps3+no_snps4 << "\n";
-          std::clog << "             3 alleles        : " << no_snps3 << "\n";
-          std::clog << "             4 alleles        : " << no_snps4 << "\n";
+          std::clog << "\nstats: No. of SNPs          : " << no_snp2+no_snp3+no_snp4 << "\n";
+          std::clog << "           biallelic          : " << no_snp2 << "\n";
+          std::clog << "           multiallelic       : " << no_snp3+no_snp4 << "\n";
+          std::clog << "             3 alleles        : " << no_snp3 << "\n";
+          std::clog << "             4 alleles        : " << no_snp4 << "\n";
 //        std::clog << "\n";
 //        std::clog << "         No. of MNPs          : " << no_mnps << "\n";
 //        std::clog << "            biallelic         : " << no_mnps_bi << "\n";
