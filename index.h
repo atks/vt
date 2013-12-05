@@ -29,5 +29,5 @@
 #include "program.h"
 
 void index(int argc, char ** argv);
-    
+
 #endif

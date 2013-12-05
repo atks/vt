@@ -87,14 +87,16 @@ int main(int argc, char ** argv)
 {
     time_t t0;
     std::time(&t0);
-    std::string cmd(argv[1]);
-    
+        
     if (argc==1)
     {
         help();
         exit(0);
     }
     
+    std::string cmd(argv[1]);
+    
+    //primitive programs that do not require help pages and summary statistics by default
     if (argc>1 && cmd=="view")
     {
         view(argc-1, ++argv);
@@ -105,7 +107,8 @@ int main(int argc, char ** argv)
         index(argc-1, ++argv);
         return 0;
     } 
-    
+
+    //more sophisticated programs
     if (argc>1 && cmd=="normalize")
     {
         normalize(argc-1, ++argv);
