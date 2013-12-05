@@ -57,12 +57,6 @@ class Igor : Program
 
     Igor(int argc, char ** argv)
     {
-
-//        boost::logging::core::get()->set_filter
-//        (
-//            boost::logging::trivial::severity >= logging::trivial::info
-//        );
-
         //////////////////////////
         //options initialization//
         //////////////////////////
@@ -70,46 +64,37 @@ class Igor : Program
         {
             std::string desc =
 "Merge candidate variants across samples.\n\
-Each VCF file is required to have the FORMAT flags E and N and should have exactly one sample.\n\
-e.g. vt merge_candidate_variants -o - NA19130.vcf.gz HG00096.vcf.gz\n\n";
+Each VCF file is required to have the FORMAT flags E and N and should have exactly one sample.";
 
             version = "0.5";
             TCLAP::CmdLine cmd(desc, ' ', version);
-            TCLAP::ValueArg<std::string> arg_input_vcf_file_list("L", "L", "File containing list of input VCF files", false, "", "str", cmd);
-            TCLAP::ValueArg<std::string> arg_output_vcf_file("o", "o", "Output VCF file [-]", false, "-", "", cmd);
-            TCLAP::ValueArg<std::string> arg_intervals("i", "i", "Interval (e.g. 20:1000-2000) [all]", false, "all", "str", cmd);
-            TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "File containing list of VCF files", false, "", "str", cmd);
-            TCLAP::UnlabeledMultiArg<std::string> arg_input_vcf_files("input-vcf-files", "Input VCF Files", true, "str", cmd);
-
+            VTOutput my; cmd.setOutput(&my);
+            TCLAP::ValueArg<std::string> arg_intervals("i", "i", "intervals", false, "all", "str", cmd);
+            TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "str", cmd);
+            TCLAP::ValueArg<std::string> arg_output_vcf_file("o", "o", "output VCF file [-]", false, "-", "", cmd);
+            TCLAP::ValueArg<std::string> arg_input_vcf_file_list("L", "L", "file containing list of input VCF files", true, "", "str", cmd);
+            
             cmd.parse(argc, argv);
 
             input_vcf_file_list = arg_input_vcf_file_list.getValue();
             output_vcf_file = arg_output_vcf_file.getValue();
             parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
-
+            
             ///////////////////////
             //parse input VCF files
             ///////////////////////
-            if (input_vcf_files.size()==0)
+            htsFile *file = hts_open(input_vcf_file_list.c_str(), "r");
+            if (file==NULL)
             {
-                //reads in file list
-                htsFile *file = hts_open(input_vcf_file_list.c_str(), "r");
-                if (file==NULL)
-                {
-                    std::cerr << "cannot open file\n";
-                    exit(1);
-                }
-                kstring_t *s = &file->line;
-                while (hts_getline(file, KS_SEP_LINE, s) >= 0)
-                {
-                    input_vcf_files.push_back(std::string(s->s));
-                }
-                hts_close(file);
+                std::cerr << "cannot open " << input_vcf_file_list.c_str() << "\n";
+                exit(1);
             }
-            else
+            kstring_t *s = &file->line;
+            while (hts_getline(file, KS_SEP_LINE, s) >= 0)
             {
-                input_vcf_files = arg_input_vcf_files.getValue();
+                input_vcf_files.push_back(std::string(s->s));
             }
+            hts_close(file);
         }
         catch (TCLAP::ArgException &e)
         {
@@ -123,12 +108,11 @@ e.g. vt merge_candidate_variants -o - NA19130.vcf.gz HG00096.vcf.gz\n\n";
         //////////////////////
         //i/o initialization//
         //////////////////////
-
         sr = new BCFSyncedReader(input_vcf_files, intervals);
         odw = new BCFOrderedWriter(output_vcf_file, 0);
-        odw->hdr_append_metainfo("##fileformat=VCFv4.1");
-        odw->hdr_append_metainfo("##FORMAT=<ID=RL,Number=1,Type=String,Description=\"Length of each read\">");
-        odw->hdr_append_metainfo("##INFO=<ID=LR,Number=1,Type=String,Description=\"Likelihood Ratio Statistic\">");
+        bcf_hdr_append(odw->hdr, "##fileformat=VCFv4.1");
+        bcf_hdr_append(odw->hdr, "##FORMAT=<ID=RL,Number=1,Type=String,Description=\"Length of each read\">");
+        bcf_hdr_append(odw->hdr, "##INFO=<ID=LR,Number=1,Type=String,Description=\"Likelihood Ratio Statistic\">");
 
         ////////////////////////
         //stats initialization//

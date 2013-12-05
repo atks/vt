@@ -80,19 +80,17 @@ class Igor : Program
         //////////////////////////
         try
         {
-            std::string desc =
-"Genotypes variants for each sample.\n\
-$path = /net/fantasia/home/atks/programs/vt\n\
-e.g. $path/vt genotype -i $path/test/probes.sites.vcf -o out.vcf -b $path/test/NA19130.bam -s NA19130 -g ref.fa\n\n";
+            std::string desc = "Genotypes variants for each sample.";
 
             version = "0.5";
             TCLAP::CmdLine cmd(desc, ' ', version);
-            TCLAP::ValueArg<std::string> arg_ivcf_file("i", "i", "Input Candidate VCF file", true, "", "string", cmd);
-            TCLAP::ValueArg<std::string> arg_isam_file("b", "b", "Input BAM file", true, "", "string", cmd);
-            TCLAP::ValueArg<std::string> arg_ovcf_file("o", "o", "Output VCF file", false, "-", "string", cmd);
-            TCLAP::ValueArg<std::string> arg_sample_id("s", "s", "Sample ID", true, "", "string", cmd);
-            TCLAP::ValueArg<std::string> arg_ref_fasta_file("r", "r", "Genome FASTA file", false, "/net/fantasia/home/atks/ref/genome/human.g1k.v37.fa", "string", cmd);
-            TCLAP::SwitchArg arg_debug("d", "d", "Debug alignments", cmd, false);
+            VTOutput my; cmd.setOutput(&my);
+            TCLAP::ValueArg<std::string> arg_ivcf_file("i", "i", "input candidate VCF file []", true, "", "string", cmd);
+            TCLAP::ValueArg<std::string> arg_isam_file("b", "b", "input BAM file []", true, "", "string", cmd);
+            TCLAP::ValueArg<std::string> arg_ovcf_file("o", "o", "output VCF file [-]", false, "-", "string", cmd);
+            TCLAP::ValueArg<std::string> arg_sample_id("s", "s", "sample ID []", true, "", "string", cmd);
+            TCLAP::ValueArg<std::string> arg_ref_fasta_file("r", "r", "reference sequence fasta file []", false, "/net/fantasia/home/atks/ref/genome/human.g1k.v37.fa", "string", cmd);
+            TCLAP::SwitchArg arg_debug("d", "d", "debug alignments", cmd, false);
 
             cmd.parse(argc, argv);
 
