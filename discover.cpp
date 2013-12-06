@@ -456,7 +456,7 @@ class VariantHunter
                                 v = odw->get_bcf1_from_pool();
                                 bcf_set_chrom(odw->hdr, v, chrom);
                                 bcf_set_pos1(v, start_genome_pos0);
-                                
+
                                 alleles.l = 0;
                                 const char* deletedAllele = i->first.c_str();
                                 char replacement_anchor = deletedAllele[0];
@@ -465,7 +465,7 @@ class VariantHunter
                                 kputs(deletedAllele, &alleles);
                                 kputc(',', &alleles);
                                 kputc(replacement_anchor, &alleles);
-                                
+
                                 bcf_update_alleles_str(odw->hdr, v, alleles.s);
                                 bcf_update_format_int32(odw->hdr, v, "E", &i->second, 1);
                                 bcf_update_format_int32(odw->hdr, v, "N", &N[start], 1);
@@ -510,8 +510,8 @@ class VariantHunter
                                 kputc(ref, &alleles);
                                 kputc(',', &alleles);
                                 kputc(i->first, &alleles);
-                                
-                                
+
+
                                 bcf_update_alleles_str(odw->hdr, v, alleles.s);
                                 bcf_update_format_int32(odw->hdr, v, "E", &i->second, 1);
                                 bcf_update_format_int32(odw->hdr, v, "N", &N[start], 1);
@@ -805,7 +805,6 @@ class Igor : Program
             variant_type = arg_variant_type.getValue();
             evidence_allele_count_cutoff = arg_evidence_allele_count_cutoff.getValue();
             fractional_evidence_allele_count_cutoff = arg_fractional_evidence_allele_count_cutoff.getValue();
-
         }
         catch (TCLAP::ArgException &e)
         {
@@ -826,8 +825,8 @@ class Igor : Program
 
         odw = new BCFOrderedWriter(output_vcf_file, 0);
         bam_hdr_transfer_contigs_to_bcf_hdr(odr->hdr, odw->hdr);
-        odw->hdr_append_metainfo("##FORMAT=<ID=E,Number=1,Type=Integer,Description=\"Number of reads containing evidence of the alternate allele\">");
-        odw->hdr_append_metainfo("##FORMAT=<ID=N,Number=1,Type=Integer,Description=\"Total number of reads at a candidate locus with reads that contain evidence of the alternate allele\">");
+        bcf_hdr_append(odw->hdr, "##FORMAT=<ID=E,Number=1,Type=Integer,Description=\"Number of reads containing evidence of the alternate allele\">");
+        bcf_hdr_append(odw->hdr, "##FORMAT=<ID=N,Number=1,Type=Integer,Description=\"Total number of reads at a candidate locus with reads that contain evidence of the alternate allele\">");
         bcf_hdr_add_sample(odw->hdr, sample_id.c_str());
         v = NULL;
 
@@ -906,7 +905,7 @@ class Igor : Program
                         {
                             //already present
                             free(qname);
-                        }    
+                        }
                         kh_val(reads, k) = {bam_get_pos1(s), bam_get_pos1(s)+bam_get_l_qseq(s)-1};
                     }
                 }

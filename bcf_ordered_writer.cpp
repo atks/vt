@@ -23,41 +23,31 @@
 
 #include "bcf_ordered_writer.h"
 
-BCFOrderedWriter::BCFOrderedWriter(std::string _vcf_file, int32_t _window)
+BCFOrderedWriter::BCFOrderedWriter(std::string input_vcf_file, int32_t window)
 {
-    vcf_file = _vcf_file;
-    window = _window;
+    this->vcf_file = input_vcf_file;
+    this->window = window;
     vcf = NULL;
 
     s = {0, 0, 0};
-    
+
     int32_t ftype = hts_file_type(vcf_file.c_str());
     if (!(ftype & (FT_VCF|FT_BCF|FT_STDIN)))
     {
         fprintf(stderr, "[%s:%d %s] Not a VCF/BCF file: %s\n", __FILE__,__LINE__,__FUNCTION__, vcf_file.c_str());
         exit(1);
     }
-    
-    kstring_t mode = {0,0,0};	 
-	kputc('w', &mode);
-    if (!strcmp("+", vcf_file.c_str())) kputs("bu", &mode);
-    if (ftype & FT_BCF) kputc('b', &mode);
-    if (ftype & FT_GZ) kputc('z', &mode);
-    vcf = bcf_open(vcf_file.c_str(), mode.s);
-     
+
+    kstring_t *mode = &s;
+    kputc('w', mode);
+    if (!strcmp("+", vcf_file.c_str())) kputs("bu", mode);
+    if (ftype & FT_BCF) kputc('b', mode);
+    if (ftype & FT_GZ) kputc('z', mode);
+    vcf = bcf_open(vcf_file.c_str(), mode->s);
+
     hdr = bcf_hdr_init("w");
     bcf_hdr_append(hdr, "##fileformat=VCFv4.1");
-
-    if (mode.m) free(mode.s);
 }
-
-/**
- * Gets sequence name of a record
- */
-const char* BCFOrderedWriter::get_seqname(bcf1_t *v)
-{
-    return bcf_get_chrom(hdr, v);
-}                   
 
 /**
  * Gets record from pool, creates a new record if necessary
@@ -65,25 +55,17 @@ const char* BCFOrderedWriter::get_seqname(bcf1_t *v)
 void BCFOrderedWriter::set_hdr(bcf_hdr_t *hdr)
 {
     if (this->hdr)
-    {    
-        bcf_hdr_destroy(this->hdr);  
+    {
+        bcf_hdr_destroy(this->hdr);
     }
     this->hdr = bcf_hdr_dup(hdr);
-}
-
-/**
- * Appends a line of meta information to the header.
- */
-void BCFOrderedWriter::hdr_append_metainfo(const char *line)
-{
-    bcf_hdr_append(hdr, line);
 }
 
 /**
  * Reads next record, hides the random access of different regions from the user.
  */
 void BCFOrderedWriter::write_hdr()
-{   
+{
     bcf_hdr_fmt_text(hdr);
     bcf_hdr_write(vcf, hdr);
 }
@@ -92,10 +74,10 @@ void BCFOrderedWriter::write_hdr()
  * Reads next record, hides the random access of different regions from the user.
  */
 void BCFOrderedWriter::write(bcf1_t *v)
-{   
+{
     //place into appropriate position in the buffer
     if (window)
-    {    
+    {
         if (!buffer.empty())
         {
             //same chromosome?
@@ -112,29 +94,29 @@ void BCFOrderedWriter::write(bcf1_t *v)
                         return;
                     }
                 }
-                
+
                 //check order
                 if (i==buffer.end())
                 {
-                    int32_t cutoff_pos1 =  std::max(bcf_get_pos1(buffer.front())-window,1); 
+                    int32_t cutoff_pos1 =  std::max(bcf_get_pos1(buffer.front())-window,1);
                     if (bcf_get_pos1(buffer.back())<cutoff_pos1)
                     {
                          std::cerr << "Might not be sorted\n";
                     }
                 }
-                
+
                 buffer.insert(i,v);
-                flush(false);  
+                flush(false);
             }
             else
             {
-                flush(true);            
+                flush(true);
                 buffer.push_front(v);
             }
-        }    
+        }
         else
         {
-            buffer.push_front(v);   
+            buffer.push_front(v);
         }
     }
     else
@@ -148,13 +130,13 @@ void BCFOrderedWriter::write(bcf1_t *v)
  * Flush writable records from buffer.
  */
 void BCFOrderedWriter::flush()
-{    
+{
     flush(true);
 }
 
 /**
- * Returns record to pool 
- */ 
+ * Returns record to pool
+ */
 void BCFOrderedWriter::store_bcf1_into_pool(bcf1_t* v)
 {
     pool.push_back(v);
@@ -164,7 +146,7 @@ void BCFOrderedWriter::store_bcf1_into_pool(bcf1_t* v)
  * Gets record from pool, creates a new record if necessary
  */
 bcf1_t* BCFOrderedWriter::get_bcf1_from_pool()
-{    
+{
     if(!pool.empty())
     {
         bcf1_t* v = pool.front();
@@ -177,7 +159,7 @@ bcf1_t* BCFOrderedWriter::get_bcf1_from_pool()
         bcf1_t *v = bcf_init1();
         bcf_erase(v);
         bcf_set_n_sample(hdr, v);
-        return v; 
+        return v;
     }
 };
 
@@ -185,7 +167,7 @@ bcf1_t* BCFOrderedWriter::get_bcf1_from_pool()
  * Flush writable records from buffer.
  */
 void BCFOrderedWriter::flush(bool force)
-{    
+{
     if (force)
     {
         while (!buffer.empty())
@@ -194,13 +176,13 @@ void BCFOrderedWriter::flush(bool force)
             store_bcf1_into_pool(buffer.back());
             buffer.pop_back();
         }
-    }    
+    }
     else
     {
         if (buffer.size()>=2)
-        {   
-            int32_t cutoff_pos1 =  std::max(bcf_get_pos1(buffer.front())-window,1); 
-            
+        {
+            int32_t cutoff_pos1 =  std::max(bcf_get_pos1(buffer.front())-window,1);
+
             while (buffer.size()>1)
             {
                 if (bcf_get_pos1(buffer.back())<=cutoff_pos1)
@@ -222,7 +204,7 @@ void BCFOrderedWriter::flush(bool force)
  * Closes the file.
  */
 void BCFOrderedWriter::close()
-{   
-    flush(true); 
+{
+    flush(true);
     bcf_close(vcf);
 }
