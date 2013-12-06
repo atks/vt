@@ -34,14 +34,9 @@ BAMOrderedReader::BAMOrderedReader(std::string bam_file, std::vector<GenomeInter
         exit(1);
     }
 
-    interval_index = 0;
-
     sam = sam_open(bam_file.c_str(), "r");
     hdr = sam_hdr_read(sam);
     s = bam_init1();
-    
-    intervals_present =  intervals.size()!=0;
-    interval_index = 0;
     
     idx = bam_index_load(bam_file.c_str());
 	if (idx==0)
@@ -54,6 +49,11 @@ BAMOrderedReader::BAMOrderedReader(std::string bam_file, std::vector<GenomeInter
         index_loaded = true;
     }
 
+    str = {0,0,0};
+
+    intervals_present =  intervals.size()!=0;
+    interval_index = 0;
+    
     random_access_enabled = intervals_present && index_loaded;
 };
 
@@ -73,11 +73,9 @@ bool BAMOrderedReader::initialize_next_interval()
 {
     while (interval_index!=intervals.size())
     {
-        GenomeInterval interval = intervals[interval_index];
-        ++interval_index;
-        int tid = bam_name2id(hdr, interval.seq.c_str());
-        if (itr) hts_itr_destroy(itr);
-        itr = bam_itr_queryi(idx, tid, interval.start1, interval.end1);
+        intervals[interval_index++].to_string(&str);
+        itr = bam_itr_querys(idx, hdr, str.s);
+        
         if (itr)
         {
             return true;    

@@ -375,15 +375,14 @@ bool BCFSyncedReader::initialize_next_interval()
             	int32_t ftype = hts_file_type(vcf_files[i].c_str());
     			hts_itr_destroy(itrs[i]); 
     			itrs[i] = 0;
+    			interval.to_string(&s);
             	
             	if (ftype==FT_BCF_GZ)
             	{
-            	    int tid = bcf_hdr_name2id(hdrs[i], interval.seq.c_str());
-                	itrs[i] = bcf_itr_queryi(idxs[i], tid, interval.start1-1, interval.end1);
+            	    itrs[i] = bcf_itr_querys(idxs[i], hdrs[i], s.s);
                 }
     			else if (ftype==FT_VCF_GZ)
     	    	{
-    	    	    interval.to_string(&s);
                     itrs[i] = tbx_itr_querys(tbxs[i], s.s);
                 }
     	    

@@ -73,14 +73,17 @@ class BAMOrderedReader
     samFile *sam;
     bam_hdr_t *hdr;
     hts_idx_t *idx;
-    bam1_t *s;
     hts_itr_t *itr; 
+    bam1_t *s;
     
     //for control
     int32_t ftype;
     bool intervals_present;
     bool index_loaded;
     bool random_access_enabled;
+
+    //common use
+    kstring_t str;
         
     //list of intervals
     std::vector<GenomeInterval> intervals; 
