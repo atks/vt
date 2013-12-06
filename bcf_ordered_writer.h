@@ -41,8 +41,8 @@
 
 /**
  * A class for writing ordered VCF/BCF files.
- * 
- * In some cases, the processing of a file changes the coordinates 
+ *
+ * In some cases, the processing of a file changes the coordinates
  * slightly leading to slight local disorder within a contig,
  * instead of sorting the VCF wholesale, this class buffers the output
  * and sorts locally in a 10K base pair region before writing the records
@@ -51,84 +51,79 @@
 class BCFOrderedWriter
 {
     public:
-        
+
     ///////
     //i/o//
-    /////// 
-    std::string vcf_file;    
+    ///////
+    std::string vcf_file;
     vcfFile *vcf;
-    bcf_hdr_t *hdr;  
-        
+    bcf_hdr_t *hdr;
+
     //buffer for containing records to be written out
     std::list<bcf1_t*> buffer; //most recent records in the front
-    std::list<bcf1_t*> pool;  
-    
+    std::list<bcf1_t*> pool;
+
     //shared objects for string manipulation
     kstring_t s;
-    std::stringstream ss; 
-    
+    std::stringstream ss;
+
     int32_t window;
-    
+
     /**
      * Initialize output file.
      * @window - the window to keep variants in buffer to check for local disorder, 0 for no buffering
      */
     BCFOrderedWriter(std::string input_vcf_file, int32_t window=0);
-          
+
     /**
      * Gets record from pool, creates a new record if necessary
      */
     void set_hdr(bcf_hdr_t *_hdr);
-    
+
     /**
      * Appends a line of meta information to the header.
      */
     void hdr_append_metainfo(const char *line);
-    
+
     /**
      * Reads next record, hides the random access of different regions from the user.
      */
     void write_hdr();
-    
+
     /**
      * Reads next record, hides the random access of different regions from the user.
      */
     void write(bcf1_t *v);
-    
-    /**
-     * Gets sequence name of a record
-     */
-    const char* get_seqname(bcf1_t *v);
-    
+
     /**
      * Gets record from pool, creates a new record if necessary.
-     * This is exposed so that the programmer may reuse bcf1_ts 
-     * from this class and return to it when writing which is 
+     * This is exposed so that the programmer may reuse bcf1_ts
+     * from this class and return to it when writing which is
      * essentially stowing it away in a buffer.
      */
     bcf1_t* get_bcf1_from_pool();
-            
+
     /**
      * Flush writable records from buffer.
      */
     void flush();
-    
+
     /**
      * Closes the file.
      */
     void close();
-       
+
     private:
-        
+
     /**
-     * Returns record to pool 
-     */ 
+     * Returns record to pool
+     */
     void store_bcf1_into_pool(bcf1_t* v);
-    
+
     /**
      * Flush writable records from buffer.
      */
     void flush(bool force);
 };
-    
+
 #endif
