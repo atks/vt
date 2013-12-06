@@ -106,8 +106,14 @@ class BCFOrderedReader
      * Returns next vcf record.
      */
     bool read(bcf1_t *v);
+
+	/**
+ 	* Initialize next interval.
+ 	* Returns false only if all intervals are accessed.
+ 	*/
+	bool initialize_next_interval();
     
-    /**
+	/**
      * Returns next set of vcf records at a start position.
      * Note that this function should never be used in conjunction with read(bcf1_t *v)
      */
@@ -138,12 +144,6 @@ class BCFOrderedReader
      * Returns record to pool 
      */ 
     void store_bcf1_into_pool(bcf1_t* v);
-        
-    /**
-     * Initialize next interval.
-     * Returns false only if all intervals are accessed.
-     */
-    bool initialize_next_interval();    
 };
     
 #endif
