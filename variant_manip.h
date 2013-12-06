@@ -46,7 +46,8 @@
 #define VT_DELETION   8
 #define VT_INDEL (VT_INSERTION|VT_DELETION)
 #define VT_CLUMP 64
-#define VT_COMPLEX 64
+#define VT_CLUMP 64
+#define VT_COMPLEX (VT_SNP|VT_INSERTION|VT_DELETION)
 
 /**
  * Variant.
