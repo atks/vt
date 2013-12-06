@@ -11,8 +11,7 @@ RANLIB = ranlib
 # TODO: edit cram code to remove need for -DSAMTOOLS
 CPPFLAGS = -I. -DSAMTOOLS=1
 # TODO: probably update cram code to make it compile cleanly with -Wc++-compat
-#CFLAGS   = -g -Wall -Wno-unused-result -Wno-unused-but-set-variable -O2
-CFLAGS   = -g -Wall -w -O2
+CFLAGS   = -g -Wall -O2
 EXTRA_CFLAGS_PIC = -fpic
 LDFLAGS  =
 LDLIBS   =
@@ -106,7 +105,6 @@ LIBHTS_OBJS = \
 	hfile.o \
 	hfile_net.o \
 	hts.o \
-	razf.o \
 	sam.o \
 	synced_bcf_reader.o \
 	vcf_sweep.o \
@@ -144,7 +142,7 @@ libhts.a: $(LIBHTS_OBJS)
 # file used at runtime (when $LD_LIBRARY_PATH includes the build directory).
 
 libhts.so: $(LIBHTS_OBJS:.o=.pico)
-	$(CC) -shared -Wl,-soname,libhts.so.$(LIBHTS_SOVERSION) -o $@ $(LIBHTS_OBJS:.o=.pico) -lz
+	$(CC) -shared -Wl,-soname,libhts.so.$(LIBHTS_SOVERSION) $(LDFLAGS) -o $@ $(LIBHTS_OBJS:.o=.pico) $(LDLIBS) -lz
 	ln -sf $@ libhts.so.$(LIBHTS_SOVERSION)
 
 # Similarly this also creates libhts.NN.dylib as a byproduct, so that programs
@@ -152,7 +150,7 @@ libhts.so: $(LIBHTS_OBJS:.o=.pico)
 # includes this project's build directory).
 
 libhts.dylib: $(LIBHTS_OBJS)
-	$(CC) -dynamiclib -install_name $(libdir)/libhts.$(LIBHTS_SOVERSION).dylib -current_version $(NUMERIC_VERSION) -compatibility_version $(LIBHTS_SOVERSION) -o $@ $(LIBHTS_OBJS) -lz
+	$(CC) -dynamiclib -install_name $(libdir)/libhts.$(LIBHTS_SOVERSION).dylib -current_version $(NUMERIC_VERSION) -compatibility_version $(LIBHTS_SOVERSION) $(LDFLAGS) -o $@ $(LIBHTS_OBJS) $(LDLIBS) -lz
 	ln -sf $@ libhts.$(LIBHTS_SOVERSION).dylib
 
 
@@ -175,7 +173,7 @@ sam.o sam.pico: sam.c $(htslib_sam_h) $(htslib_bgzf_h) $(cram_h) hfile.h htslib/
 tbx.o tbx.pico: tbx.c $(htslib_tbx_h) $(htslib_bgzf_h) htslib/khash.h
 faidx.o faidx.pico: faidx.c config.h $(htslib_bgzf_h) $(htslib_faidx_h) htslib/khash.h htslib/knetfile.h
 razf.o razf.pico: razf.c $(htslib_razf_h)
-synced_bcf_reader.o synced_bcf_reader.pico: synced_bcf_reader.c $(htslib_synced_bcf_reader_h) htslib/kseq.h
+synced_bcf_reader.o synced_bcf_reader.pico: synced_bcf_reader.c $(htslib_synced_bcf_reader_h) htslib/kseq.h htslib/khash_str2int.h
 vcf_sweep.o vcf_sweep.pico: vcf_sweep.c $(htslib_vcf_sweep_h) $(htslib_bgzf_h)
 vcfutils.o vcfutils.pico: vcfutils.c $(htslib_vcfutils_h)
 kfunc.o kfunc.pico: kfunc.c htslib/kfunc.h

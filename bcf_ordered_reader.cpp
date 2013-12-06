@@ -77,7 +77,7 @@ BCFOrderedReader::BCFOrderedReader(std::string _vcf_file, std::vector<GenomeInte
 };
 
 /**
- * Gets sequence name of a record
+ * Gets sequence name of a record.
  */
 const char* BCFOrderedReader::get_seqname(bcf1_t *v)
 {
@@ -102,11 +102,8 @@ bool BCFOrderedReader::initialize_next_interval()
     {
         if (ftype==FT_BCF_GZ)
         {
-            //todo: move to querys
-            GenomeInterval interval = intervals[interval_index];
-            int tid = bcf_hdr_name2id(hdr, interval.seq.c_str());
-            itr = bcf_itr_queryi(idx, tid, interval.start1-1, interval.end1);
-            ++interval_index;
+            intervals[interval_index++].to_string(&s);
+            itr = bcf_itr_querys(idx, hdr, s.s);
             if (itr)
             {
                 return true;

@@ -283,7 +283,7 @@ char **hts_readlines(const char *fn, int *_n)
 			if (str.l == 0) continue;
 			if (m == n) {
 				m = m? m<<1 : 16;
-				s = (char**)realloc(s, m * sizeof(void*));
+				s = (char**)realloc(s, m * sizeof(char*));
 			}
 			s[n++] = strdup(str.s);
 		}
@@ -293,7 +293,7 @@ char **hts_readlines(const char *fn, int *_n)
         #else
 		    gzclose(fp);
         #endif
-		s = (char**)realloc(s, n * sizeof(void*));
+		s = (char**)realloc(s, n * sizeof(char*));
 		free(str.s);
 	} else if (*fn == ':') { // read from string
 		const char *q, *p;
@@ -301,7 +301,7 @@ char **hts_readlines(const char *fn, int *_n)
 			if (*p == ',' || *p == 0) {
 				if (m == n) {
 					m = m? m<<1 : 16;
-					s = (char**)realloc(s, m * sizeof(void*));
+					s = (char**)realloc(s, m * sizeof(char*));
 				}
 				s[n] = (char*)calloc(p - q + 1, 1);
 				strncpy(s[n++], q, p - q);
@@ -309,7 +309,7 @@ char **hts_readlines(const char *fn, int *_n)
 				if (*p == 0) break;
 			}
 	} else return 0;
-	s = (char**)realloc(s, n * sizeof(void*));
+	s = (char**)realloc(s, n * sizeof(char*));
 	*_n = n;
 	return s;
 }
@@ -440,7 +440,7 @@ hts_idx_t *hts_idx_init(int n, int fmt, uint64_t offset0, int min_shift, int n_l
 	idx->z.last_coor = 0xffffffffu;
 	if (n) {
 		idx->n = idx->m = n;
-		idx->bidx = (bidx_t**)calloc(n, sizeof(void*));
+		idx->bidx = (bidx_t**)calloc(n, sizeof(bidx_t*));
 		idx->lidx = (lidx_t*) calloc(n, sizeof(lidx_t));
 	}
 	return idx;
@@ -543,9 +543,9 @@ int hts_idx_push(hts_idx_t *idx, int tid, int beg, int end, uint64_t offset, int
 	if (tid >= idx->m) { // enlarge the index
 		int32_t oldm = idx->m;
 		idx->m = idx->m? idx->m<<1 : 2;
-		idx->bidx = (bidx_t**)realloc(idx->bidx, idx->m * sizeof(void*));
+		idx->bidx = (bidx_t**)realloc(idx->bidx, idx->m * sizeof(bidx_t*));
 		idx->lidx = (lidx_t*) realloc(idx->lidx, idx->m * sizeof(lidx_t));
-		memset(&idx->bidx[oldm], 0, (idx->m - oldm) * sizeof(void*));
+		memset(&idx->bidx[oldm], 0, (idx->m - oldm) * sizeof(bidx_t*));
 		memset(&idx->lidx[oldm], 0, (idx->m - oldm) * sizeof(lidx_t));
 	}
 	if (idx->n < tid + 1) idx->n = tid + 1;
@@ -787,15 +787,15 @@ hts_idx_t *hts_idx_load_local(const char *fn, int fmt)
 		BGZF *fp;
 		uint32_t x[3], n;
 		uint8_t *meta = 0;
-		if ((fp = bgzf_open(fn, "r")) == 0) return 0;
-		bgzf_read(fp, magic, 4);
-		bgzf_read(fp, x, 12);
+		if ((fp = bgzf_open(fn, "r")) == 0) return NULL;
+		if ( bgzf_read(fp, magic, 4) != 4 ) return NULL;
+		if ( bgzf_read(fp, x, 12) != 12 ) return NULL;
 		if (is_be) for (i = 0; i < 3; ++i) ed_swap_4p(&x[i]);
 		if (x[2]) {
 			meta = (uint8_t*)malloc(x[2]);
-			bgzf_read(fp, meta, x[2]);
+			if ( bgzf_read(fp, meta, x[2]) != x[2] ) return NULL;
 		}
-		bgzf_read(fp, &n, 4);
+		if ( bgzf_read(fp, &n, 4) != 4 ) return NULL;
 		if (is_be) ed_swap_4p(&n);
 		idx = hts_idx_init(n, fmt, 0, x[0], x[1]);
 		idx->l_meta = x[2];
@@ -805,9 +805,9 @@ hts_idx_t *hts_idx_load_local(const char *fn, int fmt)
 	} else if (fmt == HTS_FMT_TBI) {
 		BGZF *fp;
 		uint32_t x[8];
-		if ((fp = bgzf_open(fn, "r")) == 0) return 0;
-		bgzf_read(fp, magic, 4);
-		bgzf_read(fp, x, 32);
+		if ((fp = bgzf_open(fn, "r")) == 0) return NULL;
+		if ( bgzf_read(fp, magic, 4) != 4 ) return NULL;
+		if ( bgzf_read(fp, x, 32) != 32 ) return NULL;
 		if (is_be) for (i = 0; i < 8; ++i) ed_swap_4p(&x[i]);
 		idx = hts_idx_init(x[0], fmt, 0, 14, 5);
 		idx->l_meta = 28 + x[7];
@@ -819,9 +819,9 @@ hts_idx_t *hts_idx_load_local(const char *fn, int fmt)
 	} else if (fmt == HTS_FMT_BAI) {
 		uint32_t n;
 		FILE *fp;
-		if ((fp = fopen(fn, "rb")) == 0) return 0;
-		fread(magic, 1, 4, fp);
-		fread(&n, 4, 1, fp);
+		if ((fp = fopen(fn, "rb")) == 0) return NULL;
+		if ( fread(magic, 1, 4, fp) != 4 ) return NULL;
+		if ( fread(&n, 4, 1, fp) != 1 ) return NULL;
 		if (is_be) ed_swap_4p(&n);
 		idx = hts_idx_init(n, fmt, 0, 14, 5);
 		hts_idx_load_core(idx, fp, HTS_FMT_BAI);

@@ -7,11 +7,18 @@
 #include <sys/stat.h>
 #include "htslib/synced_bcf_reader.h"
 #include "htslib/kseq.h"
+#include "htslib/khash_str2int.h"
+
+typedef struct
+{
+    uint32_t start, end;
+}
+region1_t;
 
 typedef struct _region_t 
 {
-    char *chr;
-    int start, end;
+    region1_t *regs;
+    int nregs, mregs, creg;
 }
 region_t;
 
@@ -167,7 +174,6 @@ int bcf_sr_add_reader(bcf_srs_t *files, const char *fname)
 bcf_srs_t *bcf_sr_init(void)
 {
     bcf_srs_t *files = (bcf_srs_t*) calloc(1,sizeof(bcf_srs_t));
-    files->crid = -1;
     return files;
 }
 
@@ -313,13 +319,13 @@ static int _readers_next_region(bcf_srs_t *files)
         bcf_sr_t *reader = &files->readers[i];
         if ( reader->tbx_idx )
         {
-            int tid = tbx_name2id(reader->tbx_idx, files->regions->seq);
+            int tid = tbx_name2id(reader->tbx_idx, files->regions->seq_names[files->regions->iseq]);
             if ( tid==-1 ) continue;    // the sequence not present in this file
             reader->itr = tbx_itr_queryi(reader->tbx_idx,tid,files->regions->start,files->regions->end+1);
         }
         else
         {
-            int tid = bcf_hdr_name2id(reader->header,files->regions->seq);
+            int tid = bcf_hdr_name2id(reader->header, files->regions->seq_names[files->regions->iseq]);
             if ( tid==-1 ) continue;    // the sequence not present in this file
             reader->itr = bcf_itr_queryi(reader->bcf_idx,tid,files->regions->start,files->regions->end+1);
         }
@@ -505,13 +511,18 @@ int _reader_next_line(bcf_srs_t *files)
         if ( files->regions && _readers_next_region(files)<0 ) break;
 
         // Fill buffers
+        const char *chr = NULL;
         for (i=0; i<files->nreaders; i++)
         {
             _reader_fill_buffer(files, &files->readers[i]);
 
             // Update the minimum coordinate
             if ( !files->readers[i].nbuffer ) continue;
-            if ( min_pos > files->readers[i].buffer[1]->pos ) min_pos = files->readers[i].buffer[1]->pos; 
+            if ( min_pos > files->readers[i].buffer[1]->pos ) 
+            {
+                min_pos = files->readers[i].buffer[1]->pos; 
+                chr = bcf_seqname(files->readers[i].header, files->readers[i].buffer[1]);
+            }
         }
         if ( min_pos==INT_MAX ) 
         {
@@ -522,27 +533,7 @@ int _reader_next_line(bcf_srs_t *files)
         // Skip this position if not present in targets
         if ( files->targets )
         {
-            if  ( files->regions )
-            {
-                if ( !files->cseq || files->cseq!=files->regions->seq )
-                {
-                    bcf_sr_regions_seek(files->targets, files->regions->seq);
-                    files->cseq = files->regions->seq;  // set the current sequence
-                }
-            }
-            else
-            {
-                // If here, we must be streaming a single VCF, otherwise either explicit
-                // or implicit regions would be set. We can safely use rid as a unique sequence
-                // identifier
-                int rid = files->readers[0].buffer[1]->rid;
-                if ( files->crid<0 || files->crid!=rid )
-                {
-                    bcf_sr_regions_seek(files->targets, files->readers[0].header->id[BCF_DT_CTG][rid].key);
-                    files->crid = rid;
-                }
-            }
-            if ( bcf_sr_regions_query(files->targets, min_pos, min_pos)<0 ) 
+            if ( bcf_sr_regions_overlap(files->targets, chr, min_pos, min_pos)<0 ) 
             {
                 // Remove all lines with this position from the buffer
                 for (i=0; i<files->nreaders; i++)
@@ -785,7 +776,8 @@ int bcf_sr_set_samples(bcf_srs_t *files, const char *fname)
 }
 
 
-// Add a new region into a list sorted by start,end (1-based coordinates)
+// Add a new region into a list sorted by start,end. On input the coordinates
+// are 1-based, stored 0-based, inclusive.
 static void _regions_add(bcf_sr_regions_t *reg, const char *chr, int start, int end)
 {
     if ( start==-1 && end==-1 )
@@ -797,52 +789,53 @@ static void _regions_add(bcf_sr_regions_t *reg, const char *chr, int start, int 
         start--; end--; // store 0-based coordinates
     }
 
-    int i;
-    for (i=0; i<reg->nregs; i++)
-        if ( !strcmp(reg->regs[i].chr,chr) ) break;
-    if ( i<reg->nregs && !strcmp(reg->regs[i].chr,chr) ) // the chromosome block already exists
+    if ( !reg->seq_hash )
+         reg->seq_hash = khash_str2int_init();
+
+    int iseq;
+    if ( khash_str2int_get(reg->seq_hash, chr, &iseq)<0 )
     {
-        for (; i<reg->nregs; i++)
-            if ( strcmp(reg->regs[i].chr,chr) || reg->regs[i].start >= start ) break;
-
-        // return if the region already exists
-        if ( i<reg->nregs && !strcmp(reg->regs[i].chr,chr) && reg->regs[i].start==start && reg->regs[i].end==end ) return;
-
-        reg->regs = (region_t*) realloc(reg->regs,sizeof(region_t)*(reg->nregs+1));
-        if ( i<reg->nregs )
-            memmove(&reg->regs[i+1],&reg->regs[i],(reg->nregs - i)*sizeof(region_t));
-    }
-    else
-        reg->regs = (region_t*) realloc(reg->regs,sizeof(region_t)*(reg->nregs+1));
-
-    // Check if a new sequence name has to be added
-    int j;
-    for (j=0; j<reg->nseqs; j++)
-        if ( !strcmp(chr,reg->snames[j]) ) break;
-    if ( j==reg->nseqs )
-    {
-        reg->nseqs++;
-        reg->snames = (char**) realloc(reg->snames,sizeof(char*)*reg->nseqs);
-        reg->snames[j] = strdup(chr);
+        // the chromosome block does not exist
+        iseq = reg->nseqs++;
+        reg->seq_names = (char**) realloc(reg->seq_names,sizeof(char*)*reg->nseqs);
+        reg->regs = (region_t*) realloc(reg->regs,sizeof(region_t)*reg->nseqs);
+        memset(&reg->regs[reg->nseqs-1],0,sizeof(region_t));
+        reg->seq_names[iseq] = strdup(chr);
+        reg->regs[iseq].creg = -1;
+        khash_str2int_set(reg->seq_hash,reg->seq_names[iseq],iseq);
     }
 
-    reg->nregs++;
-    reg->regs[i].chr   = reg->snames[j];
-    reg->regs[i].start = start;
-    reg->regs[i].end   = end;
+    region_t *creg = &reg->regs[iseq];
+
+    // the regions may not be sorted on input: binary search
+    int i, min = 0, max = creg->nregs - 1;
+    while ( min<=max )
+    {
+        i = (max+min)/2;
+        if ( start < creg->regs[i].start ) max = i - 1;
+        else if ( start > creg->regs[i].start ) min = i + 1;
+        else break;
+    }
+    if ( min>max || creg->regs[i].start!=start || creg->regs[i].end!=end )
+    {
+        // no such region, insert a new one just after max
+        hts_expand(region1_t,creg->nregs+1,creg->mregs,creg->regs);
+        if ( ++max < creg->nregs )
+            memmove(&creg->regs[max+1],&creg->regs[max],(creg->nregs - max)*sizeof(region1_t));
+        creg->regs[max].start = start;
+        creg->regs[max].end   = end;
+        creg->nregs++;
+    }
 }
 
-// File name or a list of genomic locations
+// File name or a list of genomic locations. If file name, NULL is returned.
 static bcf_sr_regions_t *_regions_init_string(const char *str)
 {
-    bcf_sr_regions_t *reg = (bcf_sr_regions_t *) calloc(1, sizeof(bcf_sr_regions_t));
-
     struct stat sbuf;
-    if ( stat(str, &sbuf)==0 )  // it's a file
-    {
-        free(reg);
-        return NULL;
-    }
+    if ( stat(str, &sbuf)==0 ) return NULL; // it's a file
+
+    bcf_sr_regions_t *reg = (bcf_sr_regions_t *) calloc(1, sizeof(bcf_sr_regions_t));
+    reg->start = reg->end = -1;
 
     kstring_t tmp = {0,0,0};
     const char *sp = str, *ep = str;
@@ -854,29 +847,105 @@ static bcf_sr_regions_t *_regions_init_string(const char *str)
         kputsn(sp,ep-sp,&tmp);
         if ( *ep==':' )
         {
-            int ret = sscanf(++ep,"%d-%d",&from,&to);
-            if ( ret==1 ) to = from;
-            else if ( ret!=2 ) 
+            sp = ep+1;
+            from = strtol(sp,(char**)&ep,10);
+            if ( sp==ep )
             {
                 fprintf(stderr,"[%s:%d %s] Could not parse the region(s): %s\n", __FILE__,__LINE__,__FUNCTION__,str);
-                free(reg);
-                return NULL;
+                free(reg); free(tmp.s); return NULL;
             }
+            if ( !*ep || *ep==',' )
+            {
+                _regions_add(reg, tmp.s, from, from);
+                sp = ep;
+                continue;
+            }
+            if ( *ep!='-' )
+            {
+                fprintf(stderr,"[%s:%d %s] Could not parse the region(s): %s\n", __FILE__,__LINE__,__FUNCTION__,str);
+                free(reg); free(tmp.s); return NULL;
+            }
+            ep++;
+            sp = ep;
+            to = strtol(sp,(char**)&ep,10);
+            if ( *ep && *ep!=',' )
+            {
+                fprintf(stderr,"[%s:%d %s] Could not parse the region(s): %s\n", __FILE__,__LINE__,__FUNCTION__,str);
+                free(reg); free(tmp.s); return NULL;
+            }
+            if ( sp==ep ) to = 1<<29;
             _regions_add(reg, tmp.s, from, to);
-            while ( *ep && *ep!=',' ) ep++;
             if ( !*ep ) break;
-            sp = ++ep;
+            sp = ep;
         }
         else
         {
-            _regions_add(reg, tmp.s, -1, -1);
+            if ( tmp.l ) _regions_add(reg, tmp.s, -1, -1);
             if ( !*ep ) break;
             sp = ++ep;
         }
     }
     free(tmp.s);
-    reg->ireg = -1;
     return reg;
+}
+
+// ichr,ifrom,ito are 0-based; line will be modified so that the *chr pointer is 0-terminated.
+// returns -1 on error, 0 if the line is a comment line, 1 on success
+static int _regions_parse_line(char *line, int ichr,int ifrom,int ito, char **chr,int *from,int *to)
+{
+    if ( line[0]=='#' ) return 0;
+
+    int k,l;    // index of the start and end column of the tab-delimited file
+    if ( ifrom <= ito ) 
+        k = ifrom, l = ito;
+    else 
+        l = ifrom, k = ito;
+
+    int i;
+    char *se = line, *ss = NULL; // start and end 
+    char *tmp;
+    for (i=0; i<=k && *se; i++)
+    {
+        ss = i==0 ? se++ : ++se;
+        while (*se && *se!='\t') se++;
+    }
+    if ( i<=k ) return -1;
+    if ( k==l )
+    {
+        *from = *to = strtol(ss, &tmp, 10);
+        if ( tmp==ss ) return -1;
+    }
+    else
+    {
+        if ( k==ifrom ) 
+            *from = strtol(ss, &tmp, 10);
+        else
+            *to = strtol(ss, &tmp, 10);
+        if ( ss==tmp ) return -1;
+
+        for (i=k; i<l && *se; i++)
+        {
+            ss = ++se;
+            while (*se && *se!='\t') se++;
+        }
+        if ( i<l ) return -1;
+        if ( k==ifrom ) 
+            *to = strtol(ss, &tmp, 10);
+        else
+            *from = strtol(ss, &tmp, 10);
+        if ( ss==tmp ) return -1;
+    }
+
+    ss = se = line;
+    for (i=0; i<=ichr && *se; i++)
+    {
+        if ( i>0 ) ss = ++se;
+        while (*se && *se!='\t') se++;
+    }
+    if ( i<=ichr ) return -1;
+    *se = 0;
+    *chr = ss;
+    return 1;
 }
 
 bcf_sr_regions_t *bcf_sr_regions_init(const char *regions)
@@ -885,7 +954,7 @@ bcf_sr_regions_t *bcf_sr_regions_init(const char *regions)
     if ( reg ) return reg;
 
     reg = (bcf_sr_regions_t *) calloc(1, sizeof(bcf_sr_regions_t));
-    reg->ireg = -1;
+    reg->start = reg->end = -1;
 
     reg->file = hts_open(regions, "rb");
     if ( !reg->file )
@@ -898,11 +967,40 @@ bcf_sr_regions_t *bcf_sr_regions_init(const char *regions)
     reg->tbx = tbx_index_load(regions);
     if ( !reg->tbx ) 
     {
-        fprintf(stderr,"[%s:%d %s] Could not load tabix index: %s\n", __FILE__,__LINE__,__FUNCTION__,regions);
-        free(reg);
-        return NULL;
+        int ichr = 0, ifrom = 1, ito = 2;
+        int len = strlen(regions);
+        int is_bed  = strcasecmp(".bed",regions+len-4) ? 0 : 1;
+        if ( !is_bed && !strcasecmp(".bed.gz",regions+len-7) ) is_bed = 1;
+        int ft_type = hts_file_type(regions);
+        if ( ft_type & FT_VCF ) ito = 1;
+
+        // read the whole file, tabix index is not present
+        while ( hts_getline(reg->file, KS_SEP_LINE, &reg->line) > 0 )
+        {
+            char *chr;
+            int from, to, ret;
+            ret = _regions_parse_line(reg->line.s, ichr,ifrom,ito, &chr,&from,&to);
+            if ( ret < 0 ) 
+            {
+                fprintf(stderr,"[%s:%d] Could not parse the file %s, using the columns %d,%d,%d\n", __FILE__,__LINE__,regions,ichr+1,ifrom+1,ito+1);
+                hts_close(reg->file); reg->file = NULL; free(reg); 
+                return NULL;
+            }
+            if ( !ret ) continue;
+            if ( is_bed ) from++;
+            _regions_add(reg, chr, from, to);
+        }
+        hts_close(reg->file); reg->file = NULL;
+        if ( !reg->nseqs ) { free(reg); return NULL; }
+        return reg;
     }
-    reg->snames = (char**) tbx_seqnames(reg->tbx, &reg->nseqs);
+
+    reg->seq_names = (char**) tbx_seqnames(reg->tbx, &reg->nseqs);
+    if ( !reg->seq_hash )
+        reg->seq_hash = khash_str2int_init();
+    int i;
+    for (i=0; i<reg->nseqs; i++)
+        khash_str2int_set(reg->seq_hash,reg->seq_names[i],i);
     reg->fname  = strdup(regions);
     reg->is_bin = 1;
     return reg;
@@ -911,143 +1009,130 @@ bcf_sr_regions_t *bcf_sr_regions_init(const char *regions)
 void bcf_sr_regions_destroy(bcf_sr_regions_t *reg)
 {
     int i;
-    free(reg->regs);
     free(reg->fname);
     if ( reg->itr ) tbx_itr_destroy(reg->itr);
     if ( reg->tbx ) tbx_destroy(reg->tbx);
     if ( reg->file ) hts_close(reg->file);
     if ( reg->als ) free(reg->als);
     free(reg->line.s);
-    if (reg->regs) 
-        for (i=0; i<reg->nseqs; i++) free(reg->snames[i]);  // free only in-memory names, tbx names are const
-    free(reg->snames);
+    if ( reg->regs ) 
+    {
+         // free only in-memory names, tbx names are const
+        for (i=0; i<reg->nseqs; i++) 
+        {   
+            free(reg->seq_names[i]);
+            free(reg->regs[i].regs);
+        }
+    }
+    free(reg->regs);
+    free(reg->seq_names);
+    khash_str2int_destroy(reg->seq_hash);
     free(reg);
 }
 
 int bcf_sr_regions_seek(bcf_sr_regions_t *reg, const char *seq)
 {
-    reg->done = 1;
-    reg->start = reg->end = -1;
+    reg->iseq = reg->start = reg->end = -1;
+    if ( khash_str2int_get(reg->seq_hash, seq, &reg->iseq) < 0 ) return -1;  // sequence seq not in regions
 
-    int i;
-    if ( reg->regs )    // using in-memory regions
-    {
-        for (i=0; i<reg->nregs; i++)
-            if ( !strcmp(seq,reg->regs[i].chr) ) break;
-        reg->ireg = i-1;
-        if ( i==reg->nregs ) return -1;
-        reg->seq  = reg->snames[i]; 
-        reg->done = 0;
-        return 0;
-    }
+    // using in-memory regions
+    if ( reg->regs ) return 0;
 
     // reading regions from tabix
     if ( reg->itr ) tbx_itr_destroy(reg->itr);
     reg->itr = tbx_itr_querys(reg->tbx, seq);
-    if ( reg->itr )
-    {
-        for (i=0; i<reg->nseqs; i++) 
-            if (!strcmp(seq,reg->snames[i]) ) break;
-        if ( i==reg->nseqs ) return -1;
-        reg->seq  = reg->snames[i];
-        reg->done = 0;
-        return 0;
-    }
+    if ( reg->itr ) return 0;
+
     return -1;
 }
 
 int bcf_sr_regions_next(bcf_sr_regions_t *reg)
 {
-    if ( reg->done ) return -1;
-    reg->seq  = NULL; reg->start = reg->end = -1;
+    if ( reg->iseq<0 ) return -1;
+    reg->start = reg->end = -1;
     reg->nals = 0;
 
-    if ( reg->regs )    // using in-memory regions
+    // using in-memory regions
+    if ( reg->regs )
     {
-        reg->ireg++;
-        if ( reg->ireg>=reg->nregs ) { reg->done = 1; return -1; } // no more regions left
-        reg->seq   = reg->regs[reg->ireg].chr;
-        reg->start = reg->regs[reg->ireg].start;
-        reg->end   = reg->regs[reg->ireg].end;
+        while ( reg->iseq < reg->nseqs )
+        {
+            reg->regs[reg->iseq].creg++;
+            if ( reg->regs[reg->iseq].creg < reg->regs[reg->iseq].nregs ) break;
+            reg->iseq++;
+        }
+        if ( reg->iseq >= reg->nseqs ) { reg->iseq = -1; return -1; } // no more regions left
+        region1_t *creg = &reg->regs[reg->iseq].regs[reg->regs[reg->iseq].creg];
+        reg->start = creg->start;
+        reg->end   = creg->end;
         return 0;
     }
 
-    // reading regions from tabix
-    if ( reg->itr )
+    // reading from tabix
+    char *chr;
+    int ichr = 0, ifrom = 1, ito = 2, is_bed = 0, from, to;
+    if ( reg->tbx )
     {
-        // tabix index present, reading a chromosome block
-        int ret = tbx_itr_next(reg->file, reg->tbx, reg->itr, &reg->line);
-        if ( ret<0 ) { reg->done = 1; return -1; }
+        ichr   = reg->tbx->conf.sc-1;
+        ifrom  = reg->tbx->conf.bc-1;
+        ito    = reg->tbx->conf.ec-1;
+        if ( ito<0 ) ito = ifrom;
+        is_bed = reg->tbx->conf.preset==TBX_UCSC ? 1 : 0;
     }
-    else
+
+    int ret = 0;
+    while ( !ret )
     {
-        if ( reg->is_bin )
+        if ( reg->itr )
         {
-            // Waited for seek which never came. Reopen in text mode and stream
-            // through the regions, otherwise hts_getline would fail
-            hts_close(reg->file);
-            reg->file = hts_open(reg->fname, "r");
-            if ( !reg->file )
+            // tabix index present, reading a chromosome block
+            ret = tbx_itr_next(reg->file, reg->tbx, reg->itr, &reg->line);
+            if ( ret<0 ) { reg->iseq = -1; return -1; }
+        }
+        else
+        {
+            if ( reg->is_bin )
             {
-                fprintf(stderr,"[%s:%d %s] Could not open file: %s\n", __FILE__,__LINE__,__FUNCTION__,reg->fname);
-                reg->file = NULL;
-                bcf_sr_regions_destroy(reg);
-                return -1;
+                // Waited for seek which never came. Reopen in text mode and stream
+                // through the regions, otherwise hts_getline would fail
+                hts_close(reg->file);
+                reg->file = hts_open(reg->fname, "r");
+                if ( !reg->file )
+                {
+                    fprintf(stderr,"[%s:%d %s] Could not open file: %s\n", __FILE__,__LINE__,__FUNCTION__,reg->fname);
+                    reg->file = NULL;
+                    bcf_sr_regions_destroy(reg);
+                    return -1;
+                }
+                reg->is_bin = 0;
             }
-            reg->is_bin = 0;
+
+            // tabix index absent, reading the whole file
+            ret = hts_getline(reg->file, KS_SEP_LINE, &reg->line);
+            if ( ret<0 ) { reg->iseq = -1; return -1; }
         }
-
-        // tabix index absent, reading the whole file
-        int ret = hts_getline(reg->file, KS_SEP_LINE, &reg->line);
-        if ( ret<0 ) { reg->done = 1; return -1; }
-    }
-
-    // Parse the line
-    int k,l;    // index of the start and end column of the tab-delimited file
-    if ( reg->tbx->conf.bc <= reg->tbx->conf.ec ) 
-        k = reg->tbx->conf.bc, l = reg->tbx->conf.ec;
-    else 
-        l = reg->tbx->conf.bc, k = reg->tbx->conf.ec;
-
-    int i;
-    char *se = reg->line.s, *ss = NULL; // start and end 
-    for (i=0; i<k; i++)
-    {
-        ss = i==0 ? se++ : ++se;
-        while (*se && *se!='\t') se++;
-    }
-    if ( k==l )
-        reg->start = reg->end = strtol(ss, NULL, 10);
-    else
-    {
-        if ( k==reg->tbx->conf.bc ) 
-            reg->start = strtol(ss, NULL, 10);
-        else
-            reg->end = strtol(ss, NULL, 10);
-
-        for (i=k; i<l; i++)
+        ret = _regions_parse_line(reg->line.s, ichr,ifrom,ito, &chr,&from,&to);
+        if ( ret<0 ) 
         {
-            ss = ++se;
-            while (*se && *se!='\t') se++;
+            fprintf(stderr,"[%s:%d] Could not parse the file %s, using the columns %d,%d,%d\n", __FILE__,__LINE__,reg->fname,ichr+1,ifrom+1,ito+1);
+            return -1;
         }
-        if ( k==reg->tbx->conf.bc ) 
-            reg->end = strtol(ss, NULL, 10);
-        else
-            reg->start = strtol(ss, NULL, 10);
+    }
+    if ( is_bed ) from++;
+
+    if ( khash_str2int_get(reg->seq_hash, chr, &reg->iseq)<0 )
+    {
+        fprintf(stderr,"Broken tabix index? The sequence \"%s\" not in dictionary [%s]\n", chr,reg->line.s);
+        exit(1);
     }
 
-    // Find out sequence name: assuming the number of sequences is small!
-    assert( reg->tbx->conf.sc==1 ); // assuming first column
-    ss = se = reg->line.s; 
-    while ( *se && *se!='\t' ) se++;
-    for (i=0; i<reg->nseqs; i++) 
-        if (!strncmp(ss,reg->snames[i],se-ss) && !reg->snames[i][se-ss] ) break;
-    if ( !(i<reg->nseqs) ) fprintf(stderr,"i=%d nseq=%d  [%s][%s] [%s]\n", i,reg->nseqs,ss,reg->line.s,reg->snames[0]);
-    assert( i<reg->nseqs );
-    reg->seq    = reg->snames[i];
-    reg->start -= 1;
-    reg->end   -= 1;
-        
+    // This is a bit hacky: unset the chr-terminating 0 set by _regions_parse_line, or
+    //  otherwise _regions_match_alleles will be confused.
+    int len = strlen(chr);
+    if ( len < reg->line.l ) chr[len] = '\t';
+
+    reg->start = from - 1;
+    reg->end   = to - 1;
     return 0;
 }
 
@@ -1084,21 +1169,22 @@ static int _regions_match_alleles(bcf_sr_regions_t *reg, int als_idx, bcf1_t *re
     return !(type & VCF_INDEL) ? 1 : 0;
 }
 
-int bcf_sr_regions_query(bcf_sr_regions_t *reg, int start, int end)
+int bcf_sr_regions_overlap(bcf_sr_regions_t *reg, const char *seq, int start, int end)
 {
-    if ( reg->done ) return -2;     // no more regions left
+    if ( reg->iseq < 0 ) return -2;     // no more regions left
 
-    // init regions if it was not done already
-    if ( reg->start==-1 )
-        if ( bcf_sr_regions_next(reg) < 0 ) return -2;  // no more regions left
+    int iseq;
+    if ( khash_str2int_get(reg->seq_hash, seq, &iseq)<0 ) return -1;    // no such sequence
 
-    char *seq = reg->seq;
-    while ( reg->seq==seq && reg->end < start )
+    // new sequence
+    if ( iseq!=reg->iseq ) { reg->start = reg->end = -1; reg->iseq = iseq; }
+
+    while ( iseq==reg->iseq && reg->end < start )
     {
         if ( bcf_sr_regions_next(reg) < 0 ) return -2;  // no more regions left
+        if ( reg->iseq != iseq ) return -1; // does not overlap any regions
     }
-    if ( reg->seq != seq ) return -2;   // different chromosome, new seek is necessary
-    if ( reg->start <= end ) return 0;  // is in a region
-    return -1;  // does not overlap any region 
+    if ( reg->start <= end ) return 0;    // region overlap
+    return -1;  // no overlap
 }
 
