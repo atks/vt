@@ -45,7 +45,7 @@ BCFOrderedReader::BCFOrderedReader(std::string _vcf_file, std::vector<GenomeInte
     s = {0, 0, 0};
     vcf = bcf_open(vcf_file.c_str(), "r");
     hdr = bcf_alt_hdr_read(vcf);
-    
+
     intervals_present =  intervals.size()!=0;
 
     if (ftype==FT_BCF_GZ)
@@ -102,6 +102,7 @@ bool BCFOrderedReader::initialize_next_interval()
     {
         if (ftype==FT_BCF_GZ)
         {
+            //todo: move to querys
             intervals[interval_index++].to_string(&s);
             itr = bcf_itr_querys(idx, hdr, s.s);
             if (itr)
@@ -178,28 +179,6 @@ bool BCFOrderedReader::read(bcf1_t *v)
 };
 
 /**
- * Returns next set of vcf records at a start position.
- */
-bool BCFOrderedReader::read_next_position(std::vector<bcf1_t *>& vs)
-{
-    //put records in pool
-    for (uint32_t i=0; i<vs.size(); ++i)
-    {
-       store_bcf1_into_pool(vs[i]);
-    }
-    vs.clear();
-
-    while (read(v))
-    {
-        if (true)
-        {
-        }
-    }
-    
-    return false;
-};
-
-/**
  * Returns record to pool
  */
 void BCFOrderedReader::store_bcf1_into_pool(bcf1_t* v)
@@ -229,7 +208,7 @@ bcf1_t* BCFOrderedReader::get_bcf1_from_pool()
  * Closes the file.
  */
 void BCFOrderedReader::close()
-{   
+{
     bcf_close(vcf);
 }
 
