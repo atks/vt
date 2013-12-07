@@ -24,21 +24,19 @@
 #ifndef INTERVAL_TREE_H
 #define INTERVAL_TREE_H
 
-#include <stdlib.h>
-#include <stdint.h>
-#include <string.h>
-#include <math.h>
-#include <float.h>
+#include <cstdint>
 #include <vector>
-#include <map>
-#include <queue>
-#include <list>
-#include <sstream>
-#include "htslib/vcf.h"
-#include "htslib/vcfutils.h"
-#include "htslib/tbx.h"
-#include "rb_tree.h"
-#include "hts_utils.h"
+#include <iostream>
+
+#define RED 1
+#define BLACK 2
+
+class Interval
+{
+    public:
+    int32_t start;
+    int32_t end;
+};
 
 class IntervalTreeNode
 {
@@ -81,11 +79,8 @@ class IntervalTree
     void print_iter(IntervalTreeNode* x);
     void validate();
     void validate_iter(IntervalTreeNode* x, uint32_t height);
-    uint32_t size()
-    {
-        return noElements;
-    };
-                    
+    uint32_t size();
+    
     private:
     void leftRotate(IntervalTreeNode* x);    
     void rightRotate(IntervalTreeNode* y);        

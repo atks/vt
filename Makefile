@@ -12,7 +12,6 @@ SOURCES = program\
 		interval_tree\
 		genome_interval\
 		filter\
-		rb_tree\
 		lhmm\
 		hts_utils\
 		utils\

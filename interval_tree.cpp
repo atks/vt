@@ -35,24 +35,24 @@ IntervalTreeNode::IntervalTreeNode(Interval* interval)
 IntervalTreeNode::~IntervalTreeNode()
 {
     parent = NULL;
-    
+
     if (left!=NULL)
         delete left;
-    
+
     if (right!=NULL)
         delete right;
-        
+
     left = NULL;
     right = NULL;
 };
-      
+
 void IntervalTreeNode::insert(Interval* interval)
 {
     intervals.push_back(interval);
     max = std::max(interval->end, max);
     min = std::min(interval->start, min);
 };
-      
+
 void IntervalTreeNode::print()
 {
     std::cerr << "start   : " << start << "\n";
@@ -62,37 +62,42 @@ void IntervalTreeNode::print()
     std::cerr << "color   : " << color << "\n";
     std::cerr << "child   : (" << left << "," << right << ")\n";
 };
- 
+
 IntervalTree::IntervalTree()
 {
     root = NULL;
     height = 0;
     noElements = 0;
 };
-  
+
 IntervalTree::~IntervalTree()
 {
     delete root;
     root = NULL;
 };
-    
+
+uint32_t IntervalTree::size()
+{
+    return noElements;
+};
+
 void IntervalTree::leftRotate(IntervalTreeNode* x)
 {
     //do nothing
     if (x->right==NULL)
         return;
 
-    //move left child of y        
+    //move left child of y
     IntervalTreeNode* y = x->right;
     x->right = y->left;
     if (y->left != NULL)
     {
         (y->left)->parent = x;
     }
-    
+
     //move y
     y->parent = x->parent;
-    
+
     if (x->parent == NULL)
     {
         root = y;
@@ -108,28 +113,28 @@ void IntervalTree::leftRotate(IntervalTreeNode* x)
             (x->parent)->right = y;
         }
     }
-    
+
     //move x
     y->left = x;
     x->parent = y;
-    
+
     //update max for x
-    if (x->right!=NULL) 
+    if (x->right!=NULL)
     {
-        x->max = std::max(x->right->max, x->max); 
-        x->min = std::min(x->right->min, x->min); 
+        x->max = std::max(x->right->max, x->max);
+        x->min = std::min(x->right->min, x->min);
     }
-    
+
     //update max for y
     y->max = std::max(y->left->max, y->max);
     y->min = std::min(y->left->min, y->min);
 };
-      
+
 void IntervalTree::rightRotate(IntervalTreeNode* y)
 {
     if (y->left==NULL)
         return;
-    
+
     //move right child of x
     IntervalTreeNode* x = y->left;
     y->left = x->right;
@@ -137,7 +142,7 @@ void IntervalTree::rightRotate(IntervalTreeNode* y)
     {
         (x->right)->parent = y;
     }
-    
+
     //move x
     x->parent = y->parent;
     if (y->parent == NULL)
@@ -155,31 +160,31 @@ void IntervalTree::rightRotate(IntervalTreeNode* y)
             (y->parent)->right = x;
         }
     }
-    
+
     //move y
-    x->right = y;    
+    x->right = y;
     y->parent = x;
 
     //update max for y
-    if (y->left!=NULL) 
+    if (y->left!=NULL)
     {
-        y->max = std::max(y->left->max, y->max); 
-        y->min = std::min(y->left->min, y->min); 
+        y->max = std::max(y->left->max, y->max);
+        y->min = std::min(y->left->min, y->min);
     }
-    
+
     //update max for x
     x->max = std::max(x->right->max, x->max);
     x->min = std::min(x->right->min, x->min);
-}; 
-  
+};
+
 IntervalTreeNode* IntervalTree::simple_insert(Interval* interval)
-{    
+{
     ++noElements;
-       
+
     IntervalTreeNode* y = NULL;
     IntervalTreeNode* x = root;
-    
-    
+
+
 //    std::cerr << "zzzzzzzzzzzzz\n";
 //    z->print();
 //    std::cerr << "zzzzzzzzzzzzz\n";
@@ -192,10 +197,10 @@ IntervalTreeNode* IntervalTree::simple_insert(Interval* interval)
 //        x->print();
 //        std::cerr << "*************\n";
         y = x;
-        
+
         x->max = std::max(x->max, interval->end);
         x->min = std::min(x->min, interval->start);
-        
+
         if (start < x->start)
         {
             x = x->left;
@@ -208,8 +213,8 @@ IntervalTreeNode* IntervalTree::simple_insert(Interval* interval)
         {
             break;
         }
-    } 
-        
+    }
+
     //identical key found
     if (y!=NULL && start == y->start)
     {
@@ -217,16 +222,16 @@ IntervalTreeNode* IntervalTree::simple_insert(Interval* interval)
         y->insert(interval);
 
         return NULL;
-    } 
+    }
     else
-    {    
+    {
         IntervalTreeNode* z = new IntervalTreeNode(interval);
         z->start = interval->start;
         z->max = interval->end;
         z->min = interval->start;
-        
+
         z->parent = y;
-        
+
         //if first element in tree
         if (y == NULL)
         {
@@ -244,16 +249,16 @@ IntervalTreeNode* IntervalTree::simple_insert(Interval* interval)
             {
                 y->right = z;
             }
-        }    
-        
+        }
+
         return z;
     }
-};      
-  
+};
+
 void IntervalTree::insert(Interval* interval)
-{   
+{
     IntervalTreeNode* x = simple_insert(interval);
-    
+
     //if no new node inserted
     if (x==NULL)
     {
@@ -262,13 +267,13 @@ void IntervalTree::insert(Interval* interval)
     }
 
     x->color = RED;
-    
+
     //percolate up
     while (x!=root && x->parent->color==RED) //violation of property 3
     {
         //x->parent->max = std::max(x->max,x->parent->max);
        // x->parent->parent->max = std::max(x->parent->parent->max,x->parent->max);
-        
+
         //if parent is a left child
         if (x->parent==x->parent->parent->left)
         {
@@ -283,11 +288,11 @@ void IntervalTree::insert(Interval* interval)
                 x = x->parent->parent;
             }
             //parent and avuncular have differing height, rotate
-            else 
+            else
             {
                 //shift weight
                 if (x==x->parent->right)
-                {    
+                {
                     x = x->parent;
                     leftRotate(x);
                 }
@@ -309,10 +314,10 @@ void IntervalTree::insert(Interval* interval)
                 x->parent->parent->color = RED;
                 x = x->parent->parent;
             }
-            else 
+            else
             {
                 if (x==x->parent->left)
-                {    
+                {
                     x = x->parent;
                     rightRotate(x);
                 }
@@ -322,25 +327,25 @@ void IntervalTree::insert(Interval* interval)
                     x->parent->parent->color = RED;
                     leftRotate(x->parent->parent);
                 }
-            }   
+            }
         }
     }
-    
+
     root->color = BLACK;
 };
 
 void IntervalTree::searchBrute(int32_t start, int32_t end, std::vector<Interval*>& intervals)
-{ 
+{
     intervals.clear();
-    
+
     if (root==NULL)
-        return;    
-    
+        return;
+
     search_iter_brute(start, end, intervals, root);
 };
-  
+
 void IntervalTree::search_iter_brute(int32_t start, int32_t end, std::vector<Interval*>& intervals, IntervalTreeNode* x)
-{     
+{
     //check through list
     if (x->start <= end)
     {
@@ -353,34 +358,34 @@ void IntervalTree::search_iter_brute(int32_t start, int32_t end, std::vector<Int
             }
         }
     }
-    
+
     if (x->left!=NULL)
     {
         search_iter_brute(start, end, intervals, x->left);
     }
-    
+
     if (x->right!=NULL)
     {
         search_iter_brute(start, end, intervals, x->right);
     }
 };
 
-  
+
 void IntervalTree::search(int32_t start, int32_t end, std::vector<Interval*>& intervals)
-{ 
+{
     intervals.clear();
-    
+
     if (root==NULL)
-        return;    
-    
+        return;
+
     search_iter(start, end, intervals, root);
 };
-  
+
 void IntervalTree::search_iter(int32_t start, int32_t end, std::vector<Interval*>& intervals, IntervalTreeNode* x)
-{     
+{
     //check through list
     if (x->start <= end)
-    {    
+    {
         for (uint32_t i=0; i<x->intervals.size(); ++i)
         {
             //overlap
@@ -390,12 +395,12 @@ void IntervalTree::search_iter(int32_t start, int32_t end, std::vector<Interval*
             }
         }
     }
-    
+
     if (x->left!=NULL && x->left->max >= start)
     {
         search_iter(start, end, intervals, x->left);
     }
-    
+
     //if (x->right!=NULL)
     if (x->right!=NULL && x->right->min <= end)
     {
@@ -406,12 +411,12 @@ void IntervalTree::search_iter(int32_t start, int32_t end, std::vector<Interval*
 void IntervalTree::print()
 {
     print_iter(root);
-    std::cerr << "\n";     
+    std::cerr << "\n";
 };
-   
+
 void IntervalTree::print_iter(IntervalTreeNode* x)
-{ 
-    //intervals before target interval && after target interval 
+{
+    //intervals before target interval && after target interval
     if (x==NULL)
     {
         std::cerr << "NULL";
@@ -424,7 +429,7 @@ void IntervalTree::print_iter(IntervalTreeNode* x)
         for (uint32_t i=0; i<x->intervals.size(); ++i)
         {
             std::cerr << x->intervals[i]->end << (i==x->intervals.size()-1 ? "" : ":");
-        }    
+        }
         std::cerr << "," << x->max << "," << x->color << "),";
         print_iter(x->right);
         std::cerr << "]";
@@ -437,12 +442,12 @@ void IntervalTree::validate()
     //std::cerr << "VALIDATE "  << height << "\n";
     validate_iter(root, 0);
 };
-   
+
 void IntervalTree::validate_iter(IntervalTreeNode* x, uint32_t depth)
-{ 
+{
     //std::cerr << depth << "\n";
-    
-    //intervals before target interval && after target interval 
+
+    //intervals before target interval && after target interval
     if (x!=NULL)
     {
         //inspects color
@@ -452,13 +457,13 @@ void IntervalTree::validate_iter(IntervalTreeNode* x, uint32_t depth)
             {
                 std::cerr << "LEFT Color violation\n";
             }
-            
+
             if (x->right!=NULL && x->right->color==RED)
             {
                 std::cerr << "RIGHT Color violation\n";
             }
         }
-        
+
         //inspects order
         if (x->left!=NULL && x->left->start > x->start)
         {
@@ -466,13 +471,13 @@ void IntervalTree::validate_iter(IntervalTreeNode* x, uint32_t depth)
             std::cerr << "left->start: " <<  x->left->start << "\n";
             std::cerr << "this->start: " <<  x->start << "\n";
         }
-        
+
         if (x->right!=NULL && x->right->start < x->start)
         {
             std::cerr << "RIGHT Order violation\n";
             std::cerr << "right->start: " <<  x->right->start << "\n";
             std::cerr << "this->start: " <<  x->start << "\n";
-        }        
+        }
 
         //inspects max
         for (uint32_t i=0; i<x->intervals.size(); ++i)
@@ -484,7 +489,7 @@ void IntervalTree::validate_iter(IntervalTreeNode* x, uint32_t depth)
                 std::cerr << "intervals[" << i << "]->end : " <<  x->intervals[i]->end<< "\n";
                 std::cerr << "this->max: " <<  x->max << "\n";
             }
-            
+
             //overlap
             if (x->intervals[i]->start < x->min)
             {
@@ -492,7 +497,7 @@ void IntervalTree::validate_iter(IntervalTreeNode* x, uint32_t depth)
                 std::cerr << "intervals[" << i << "]->start : " <<  x->intervals[i]->start<< "\n";
                 std::cerr << "this->min: " <<  x->min << "\n";
             }
-            
+
             //incorrect value
             if (x->intervals[i]->start != x->start)
             {
@@ -500,23 +505,23 @@ void IntervalTree::validate_iter(IntervalTreeNode* x, uint32_t depth)
                 std::cerr << "intervals[" << i << "]->start : " <<  x->intervals[i]->start<< "\n";
                 std::cerr << "this->start: " <<  x->start << "\n";
             }
-            
+
         }
-                
+
         if (x->left!=NULL && x->left->max > x->max)
         {
             std::cerr << "LEFT Max violation\n";
             std::cerr << "left->max: " <<  x->left->max << "\n";
             std::cerr << "this->max: " <<  x->max << "\n";
         }
-        
+
         if (x->right!=NULL && x->right->max > x->max)
         {
             std::cerr << "RIGHT Max violation\n";
             std::cerr << "right->max: " <<  x->right->max << "\n";
             std::cerr << "this->max: " <<  x->max << "\n";
-        } 
-        
+        }
+
         //overlap
         if (x->left!=NULL &&  x->left->min < x->min)
         {
@@ -524,7 +529,7 @@ void IntervalTree::validate_iter(IntervalTreeNode* x, uint32_t depth)
             std::cerr << "left->min: " <<  x->left->min << "\n";
             std::cerr << "this->min: " <<  x->min << "\n";
         }
-        
+
         //overlap
         if (x->right!=NULL &&  x->right->min < x->min)
         {
@@ -532,7 +537,7 @@ void IntervalTree::validate_iter(IntervalTreeNode* x, uint32_t depth)
             std::cerr << "right->min: " <<  x->right->min << "\n";
             std::cerr << "this->min: " <<  x->min << "\n";
         }
-        
+
         validate_iter(x->left, depth+1);
         validate_iter(x->right, depth+1);
     }
@@ -541,4 +546,3 @@ void IntervalTree::validate_iter(IntervalTreeNode* x, uint32_t depth)
         height = height<depth? depth : height;
     }
 };
-    
