@@ -49,111 +49,113 @@ class IntervalTreeNode
     int32_t min;
     std::vector<Interval*> intervals;
     uint32_t color;
-        
+
     /**
      * Constructs an IntervalTreeNode and initialize it with an interval.
      */
     IntervalTreeNode(Interval* interval);
-    
+
     /**
      * Constructs an IntervalTreeNode.
      */
     ~IntervalTreeNode();
-    
+
     /**
      * Insert an interval.
      */
     void insert(Interval* interval);
-    
+
     /**
      * Prints the node.
      */
     void print();
-    
-    private:    
+
+    private:
 };
-      
+
 class IntervalTree
 {
     public:
-    IntervalTreeNode* root;   
+    IntervalTreeNode* root;
     uint32_t no_elements;
     uint32_t height;
-    
+
     /**
      * Constructor.
      */
     IntervalTree();
-    
+
     /**
      * Destructor.
      */
     ~IntervalTree();
-    
+
     /**
      * Returns the number of intervals in the tree.
      */
     uint32_t size();
-    
+
     /**
      * Insert an interval, returns a node if the insertion causes violation of the red black tree.
      */
     void insert(Interval* interval);
-    
+
     /**
      * Gets overlapping intervals with [start,end].
      */
     void search(int32_t start, int32_t end, std::vector<Interval*>& intervals);
-    
+
     /**
      * Brute force recursive search for overlap for sanity checks.
      */
     void search_brute(int32_t start, int32_t end, std::vector<Interval*>& intervals);
-    
+
     /**
      * Prints the tree.
      */
     void print();
-    
+
     /**
      * Validates red black tree property.
      */
     void validate();
-    
+
+    private:
+
     /**
      * Insert an interval, returns a node if the insertion causes violation of the red black tree.
      */
     IntervalTreeNode* simple_insert(Interval* interval);
-    
+
     /**
      * Iterative method for search_brute.
      */
     void search_iter_brute(int32_t start, int32_t end, std::vector<Interval*>& intervals, IntervalTreeNode* x);
-    
+
     /**
      * Iterative method for search.
      */
     void search_iter(int32_t start, int32_t end, std::vector<Interval*>& intervals, IntervalTreeNode* x);
-    
+
     /**
      * Iterative method for print.
      */
     void print_iter(IntervalTreeNode* x);
-    
+
     /**
      * Iterative method for validate.
      */
     void validate_iter(IntervalTreeNode* x, uint32_t depth);
-    
+
     /**
      * Left rotates a node.
      */
     void left_rotate(IntervalTreeNode* x);
-    
+
     /**
      * Righ rotates a node.
      */
-    void right_rotate(IntervalTreeNode* y);      
-};   
-    
+    void right_rotate(IntervalTreeNode* y);
+};
+
 #endif

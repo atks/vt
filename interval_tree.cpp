@@ -51,7 +51,7 @@ IntervalTreeNode::~IntervalTreeNode()
     left = NULL;
     right = NULL;
 };
- 
+
 /**
  * Insert an interval.
  */
