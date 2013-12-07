@@ -23,6 +23,9 @@
 
 #include "interval_tree.h"
 
+/**
+ * Constructs an IntervalTreeNode and initialize it with an interval.
+ */
 IntervalTreeNode::IntervalTreeNode(Interval* interval)
 {
     insert(interval);
@@ -32,6 +35,9 @@ IntervalTreeNode::IntervalTreeNode(Interval* interval)
     right = NULL;
 };
 
+/**
+ * Constructs an IntervalTreeNode.
+ */
 IntervalTreeNode::~IntervalTreeNode()
 {
     parent = NULL;
@@ -45,7 +51,10 @@ IntervalTreeNode::~IntervalTreeNode()
     left = NULL;
     right = NULL;
 };
-
+ 
+/**
+ * Insert an interval.
+ */
 void IntervalTreeNode::insert(Interval* interval)
 {
     intervals.push_back(interval);
@@ -53,6 +62,9 @@ void IntervalTreeNode::insert(Interval* interval)
     min = std::min(interval->start, min);
 };
 
+/**
+ * Prints the node.
+ */
 void IntervalTreeNode::print()
 {
     std::cerr << "start   : " << start << "\n";
@@ -63,198 +75,36 @@ void IntervalTreeNode::print()
     std::cerr << "child   : (" << left << "," << right << ")\n";
 };
 
+/**
+ * Constructor.
+ */
 IntervalTree::IntervalTree()
 {
     root = NULL;
     height = 0;
-    noElements = 0;
+    no_elements = 0;
 };
 
+/**
+ * Destructor.
+ */
 IntervalTree::~IntervalTree()
 {
     delete root;
     root = NULL;
 };
 
+/**
+ * Returns the number of intervals in the tree.
+ */
 uint32_t IntervalTree::size()
 {
-    return noElements;
+    return no_elements;
 };
 
-void IntervalTree::leftRotate(IntervalTreeNode* x)
-{
-    //do nothing
-    if (x->right==NULL)
-        return;
-
-    //move left child of y
-    IntervalTreeNode* y = x->right;
-    x->right = y->left;
-    if (y->left != NULL)
-    {
-        (y->left)->parent = x;
-    }
-
-    //move y
-    y->parent = x->parent;
-
-    if (x->parent == NULL)
-    {
-        root = y;
-    }
-    else
-    {
-        if (x==(x->parent)->left)
-        {
-            (x->parent)->left = y;
-        }
-        else
-        {
-            (x->parent)->right = y;
-        }
-    }
-
-    //move x
-    y->left = x;
-    x->parent = y;
-
-    //update max for x
-    if (x->right!=NULL)
-    {
-        x->max = std::max(x->right->max, x->max);
-        x->min = std::min(x->right->min, x->min);
-    }
-
-    //update max for y
-    y->max = std::max(y->left->max, y->max);
-    y->min = std::min(y->left->min, y->min);
-};
-
-void IntervalTree::rightRotate(IntervalTreeNode* y)
-{
-    if (y->left==NULL)
-        return;
-
-    //move right child of x
-    IntervalTreeNode* x = y->left;
-    y->left = x->right;
-    if (x->right != NULL)
-    {
-        (x->right)->parent = y;
-    }
-
-    //move x
-    x->parent = y->parent;
-    if (y->parent == NULL)
-    {
-        root = x;
-    }
-    else
-    {
-        if (y==(y->parent)->left)
-        {
-            (y->parent)->left = x;
-        }
-        else
-        {
-            (y->parent)->right = x;
-        }
-    }
-
-    //move y
-    x->right = y;
-    y->parent = x;
-
-    //update max for y
-    if (y->left!=NULL)
-    {
-        y->max = std::max(y->left->max, y->max);
-        y->min = std::min(y->left->min, y->min);
-    }
-
-    //update max for x
-    x->max = std::max(x->right->max, x->max);
-    x->min = std::min(x->right->min, x->min);
-};
-
-IntervalTreeNode* IntervalTree::simple_insert(Interval* interval)
-{
-    ++noElements;
-
-    IntervalTreeNode* y = NULL;
-    IntervalTreeNode* x = root;
-
-
-//    std::cerr << "zzzzzzzzzzzzz\n";
-//    z->print();
-//    std::cerr << "zzzzzzzzzzzzz\n";
-    int32_t start = interval->start;
-
-    //search for leaf node to append z
-    while (x!=NULL)
-    {
-//        std::cerr << "*************\n";
-//        x->print();
-//        std::cerr << "*************\n";
-        y = x;
-
-        x->max = std::max(x->max, interval->end);
-        x->min = std::min(x->min, interval->start);
-
-        if (start < x->start)
-        {
-            x = x->left;
-        }
-        else if (start > x->start)
-        {
-            x = x->right;
-        }
-        else //equal
-        {
-            break;
-        }
-    }
-
-    //identical key found
-    if (y!=NULL && start == y->start)
-    {
-        //std::cerr << "insert equivalent value\n" ;
-        y->insert(interval);
-
-        return NULL;
-    }
-    else
-    {
-        IntervalTreeNode* z = new IntervalTreeNode(interval);
-        z->start = interval->start;
-        z->max = interval->end;
-        z->min = interval->start;
-
-        z->parent = y;
-
-        //if first element in tree
-        if (y == NULL)
-        {
-            root = z;
-            z->color = BLACK;
-        }
-        //attach to a parent
-        else
-        {
-            if (z->start < y->start)
-            {
-                y->left = z;
-            }
-            else
-            {
-                y->right = z;
-            }
-        }
-
-        return z;
-    }
-};
-
+/**
+ * Insert an interval, returns a node if the insertion causes violation of the red black tree.
+ */
 void IntervalTree::insert(Interval* interval)
 {
     IntervalTreeNode* x = simple_insert(interval);
@@ -294,13 +144,13 @@ void IntervalTree::insert(Interval* interval)
                 if (x==x->parent->right)
                 {
                     x = x->parent;
-                    leftRotate(x);
+                    left_rotate(x);
                 }
                 else
                 {
                     x->parent->color = BLACK;
                     x->parent->parent->color = RED;
-                    rightRotate(x->parent->parent);
+                    right_rotate(x->parent->parent);
                 }
             }
         }
@@ -319,13 +169,13 @@ void IntervalTree::insert(Interval* interval)
                 if (x==x->parent->left)
                 {
                     x = x->parent;
-                    rightRotate(x);
+                    right_rotate(x);
                 }
                 else
                 {
                     x->parent->color = BLACK;
                     x->parent->parent->color = RED;
-                    leftRotate(x->parent->parent);
+                    left_rotate(x->parent->parent);
                 }
             }
         }
@@ -334,7 +184,23 @@ void IntervalTree::insert(Interval* interval)
     root->color = BLACK;
 };
 
-void IntervalTree::searchBrute(int32_t start, int32_t end, std::vector<Interval*>& intervals)
+/**
+ * Gets overlapping intervals with [start,end].
+ */
+void IntervalTree::search(int32_t start, int32_t end, std::vector<Interval*>& intervals)
+{
+    intervals.clear();
+
+    if (root==NULL)
+        return;
+
+    search_iter(start, end, intervals, root);
+};
+
+/**
+ * Brute force recursive search for overlap for sanity checks.
+ */
+void IntervalTree::search_brute(int32_t start, int32_t end, std::vector<Interval*>& intervals)
 {
     intervals.clear();
 
@@ -344,6 +210,100 @@ void IntervalTree::searchBrute(int32_t start, int32_t end, std::vector<Interval*
     search_iter_brute(start, end, intervals, root);
 };
 
+/**
+ * Prints the tree.
+ */
+void IntervalTree::print()
+{
+    print_iter(root);
+    std::cerr << "\n";
+};
+
+/**
+ * Validates red black tree property.
+ */
+void IntervalTree::validate()
+{
+    height = 0;
+    validate_iter(root, 0);
+};
+
+/**
+ * Insert an interval, returns a node if the insertion causes violation of the red black tree.
+ */
+IntervalTreeNode* IntervalTree::simple_insert(Interval* interval)
+{
+    ++no_elements;
+
+    IntervalTreeNode* y = NULL;
+    IntervalTreeNode* x = root;
+
+    int32_t start = interval->start;
+
+    //search for leaf node to append z
+    while (x!=NULL)
+    {
+        y = x;
+
+        x->max = std::max(x->max, interval->end);
+        x->min = std::min(x->min, interval->start);
+
+        if (start < x->start)
+        {
+            x = x->left;
+        }
+        else if (start > x->start)
+        {
+            x = x->right;
+        }
+        else //equal
+        {
+            break;
+        }
+    }
+
+    //identical key found
+    if (y!=NULL && start == y->start)
+    {
+        y->insert(interval);
+
+        return NULL;
+    }
+    else
+    {
+        IntervalTreeNode* z = new IntervalTreeNode(interval);
+        z->start = interval->start;
+        z->max = interval->end;
+        z->min = interval->start;
+
+        z->parent = y;
+
+        //if first element in tree
+        if (y == NULL)
+        {
+            root = z;
+            z->color = BLACK;
+        }
+        //attach to a parent
+        else
+        {
+            if (z->start < y->start)
+            {
+                y->left = z;
+            }
+            else
+            {
+                y->right = z;
+            }
+        }
+
+        return z;
+    }
+};
+
+/**
+ * Iterative method for search_brute.
+ */
 void IntervalTree::search_iter_brute(int32_t start, int32_t end, std::vector<Interval*>& intervals, IntervalTreeNode* x)
 {
     //check through list
@@ -370,17 +330,9 @@ void IntervalTree::search_iter_brute(int32_t start, int32_t end, std::vector<Int
     }
 };
 
-
-void IntervalTree::search(int32_t start, int32_t end, std::vector<Interval*>& intervals)
-{
-    intervals.clear();
-
-    if (root==NULL)
-        return;
-
-    search_iter(start, end, intervals, root);
-};
-
+/**
+ * Iterative method for search.
+ */
 void IntervalTree::search_iter(int32_t start, int32_t end, std::vector<Interval*>& intervals, IntervalTreeNode* x)
 {
     //check through list
@@ -401,19 +353,15 @@ void IntervalTree::search_iter(int32_t start, int32_t end, std::vector<Interval*
         search_iter(start, end, intervals, x->left);
     }
 
-    //if (x->right!=NULL)
     if (x->right!=NULL && x->right->min <= end)
     {
         search_iter(start, end, intervals, x->right);
     }
 };
 
-void IntervalTree::print()
-{
-    print_iter(root);
-    std::cerr << "\n";
-};
-
+/**
+ * Iterative method for print.
+ */
 void IntervalTree::print_iter(IntervalTreeNode* x)
 {
     //intervals before target interval && after target interval
@@ -436,17 +384,11 @@ void IntervalTree::print_iter(IntervalTreeNode* x)
     }
 };
 
-void IntervalTree::validate()
-{
-    height = 0;
-    //std::cerr << "VALIDATE "  << height << "\n";
-    validate_iter(root, 0);
-};
-
+/**
+ * Iterative method for validate.
+ */
 void IntervalTree::validate_iter(IntervalTreeNode* x, uint32_t depth)
 {
-    //std::cerr << depth << "\n";
-
     //intervals before target interval && after target interval
     if (x!=NULL)
     {
@@ -545,4 +487,106 @@ void IntervalTree::validate_iter(IntervalTreeNode* x, uint32_t depth)
     {
         height = height<depth? depth : height;
     }
+};
+
+/**
+ * Left rotates a node.
+ */
+void IntervalTree::left_rotate(IntervalTreeNode* x)
+{
+    //do nothing
+    if (x->right==NULL)
+        return;
+
+    //move left child of y
+    IntervalTreeNode* y = x->right;
+    x->right = y->left;
+    if (y->left != NULL)
+    {
+        (y->left)->parent = x;
+    }
+
+    //move y
+    y->parent = x->parent;
+
+    if (x->parent == NULL)
+    {
+        root = y;
+    }
+    else
+    {
+        if (x==(x->parent)->left)
+        {
+            (x->parent)->left = y;
+        }
+        else
+        {
+            (x->parent)->right = y;
+        }
+    }
+
+    //move x
+    y->left = x;
+    x->parent = y;
+
+    //update max for x
+    if (x->right!=NULL)
+    {
+        x->max = std::max(x->right->max, x->max);
+        x->min = std::min(x->right->min, x->min);
+    }
+
+    //update max for y
+    y->max = std::max(y->left->max, y->max);
+    y->min = std::min(y->left->min, y->min);
+};
+
+/**
+ * Righ rotates a node.
+ */
+void IntervalTree::right_rotate(IntervalTreeNode* y)
+{
+    if (y->left==NULL)
+        return;
+
+    //move right child of x
+    IntervalTreeNode* x = y->left;
+    y->left = x->right;
+    if (x->right != NULL)
+    {
+        (x->right)->parent = y;
+    }
+
+    //move x
+    x->parent = y->parent;
+    if (y->parent == NULL)
+    {
+        root = x;
+    }
+    else
+    {
+        if (y==(y->parent)->left)
+        {
+            (y->parent)->left = x;
+        }
+        else
+        {
+            (y->parent)->right = x;
+        }
+    }
+
+    //move y
+    x->right = y;
+    y->parent = x;
+
+    //update max for y
+    if (y->left!=NULL)
+    {
+        y->max = std::max(y->left->max, y->max);
+        y->min = std::min(y->left->min, y->min);
+    }
+
+    //update max for x
+    x->max = std::max(x->right->max, x->max);
+    x->min = std::min(x->right->min, x->min);
 };

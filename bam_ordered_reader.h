@@ -30,6 +30,7 @@
 #include <cmath>
 #include <cfloat>
 #include <vector>
+#include <list>
 #include <map>
 #include <queue>
 #include "htslib/sam.h"
