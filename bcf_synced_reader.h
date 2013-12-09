@@ -55,7 +55,7 @@ class bcfptr
 };
 
 /**
- * Comparator for BCFPtr class.  Used in priority_queue; ensures that 
+ * Comparator for BCFPtr class.  Used in priority_queue; ensures that
  * records are ordered according to file order.
  */
 class CompareBCFPtr
@@ -72,21 +72,21 @@ class CompareBCFPtr
  * All variants at the same position are read and placed in a processing vector.
  *
  * This is supported for the following cases:
- *   
- * 1) All files are indexed. 
+ *
+ * 1) All files are indexed.
  *
  *    Iterating through all the regions found in all the files.
- *    Sequences are easily obtained via headers and/or tabix objects. 
+ *    Sequences are easily obtained via headers and/or tabix objects.
  *    If intervals are specified, just populate the intervals to iterate with specified intervals.
  *
  * 2) Only the first file is not indexed but ordered.
- * 
+ *
  *    a) no intervals specified
  *           first file is streamed and the rest of the files are randomly accessed.
  *
  *    b) intervals specified
  *           first file is streamed and selected via interval tree.
- *           once a record within a region is read, the other files are selected on that interval. 
+ *           once a record within a region is read, the other files are selected on that interval.
  *
  * If no intervals are selected by the caller, a union of all sequences are detected
  * from the files.
@@ -94,76 +94,76 @@ class CompareBCFPtr
 class BCFSyncedReader
 {
     public:
-        
+
     ///////
     //i/o//
-    /////// 
+    ///////
     std::vector<std::string> vcf_files; //file names
     std::vector<vcfFile *> vcfs; //file objects
-    std::vector<bcf_hdr_t *> hdrs; // headers 
+    std::vector<bcf_hdr_t *> hdrs; // headers
     std::vector<hts_idx_t *> idxs; // indices
     std::vector<tbx_t *> tbxs; // for tabix
     std::vector<hts_itr_t *> itrs; //iterators
     std::vector<int32_t> ftypes; //file types
     int32_t nfiles; //number of files
     int32_t neofs; //number of files read till eof
-        
+
     bool indexed_first_file;
-    
+
     //list of contigs
     std::vector<GenomeInterval> intervals;
     std::map<std::string, int32_t> intervals_map;
     uint32_t intervals_index;
     bool exists_selected_intervals;
-    
+
     //variables for keeping track of status
     std::string current_interval;
     int32_t current_rid;
     int32_t current_pos1;
-    
+
     //variables for managing non indexed first file
     //
     bcf1_t *next_interval_v;
     std::string next_interval;
-    int32_t no_more_first_file_records; //non zero if true    
-        
+    int32_t no_more_first_file_records; //non zero if true
+
     kstring_t s;
-    
-    //buffer for records in use, this is indexed by the file index 
+
+    //buffer for records in use, this is indexed by the file index
     std::vector<std::list<bcf1_t *> > buffer;
     //empty records that can be reused
     std::list<bcf1_t *> pool;
     //contains the most recent position to process
     std::priority_queue<bcfptr, std::vector<bcfptr>, CompareBCFPtr > pq;
-        
+
     //useful stuff
-    
+
     /**
      * Initialize files and intervals.
      */
     BCFSyncedReader(std::vector<std::string>& _vcf_files, std::vector<GenomeInterval>& _intervals);
-    
+
     /**
      * Returns list of files that have variants at a certain position.
-     * 
+     *
      */
     bool read_next_position(std::vector<bcfptr>& current_recs);
-    
+
     /**
      * Populate sequence names from files.
      */
     void add_interval(int32_t i);
-    
+
     /**
      * Populate sequence names from files.
      */
     void remove_interval(std::string& interval);
-        
+
     /**
      * Load index for the ith file, returns true if successful
      */
     bool load_index(int32_t i);
-    
+
     /**
      * Gets sequence name of a record
      */
@@ -173,25 +173,30 @@ class BCFSyncedReader
      * Gets current 1-based position being accessed.
      */
     std::string get_current_sequence();
-        
+
     /**
      * Gets current sequence being accessed.
      */
     int32_t get_current_pos1();
-    
+
+    /**
+     * Closes files.
+     */
+    void close();
+
     private:
     /**
      * Prints buffer.
      */
     void print_buffer();
-        
+
     /**
-     * Inserts a record into pq. 
+     * Inserts a record into pq.
      */
     void insert_into_pq(int32_t i, bcf1_t *v);
-        
+
     /**
-     * Gets records for the most recent position and fills up the buffer for file i. 
+     * Gets records for the most recent position and fills up the buffer for file i.
      */
     bool get_recs(int32_t i);
 
@@ -209,12 +214,12 @@ class BCFSyncedReader
      * Gets record from pool, creates a new record if necessary
      */
     bcf1_t* get_bcf1_from_pool();
-   
+
     /**
      * Returns record to pool
      */
     void store_bcf1_into_pool(bcf1_t* v);
-    
+
     /**
      * Gets records for the most recent position and fills up the buffer from file i.
      * returns true if buffer is filled or it is not necessary to fill buffer.
@@ -222,5 +227,5 @@ class BCFSyncedReader
      */
     void fill_buffer(int32_t i);
 };
-    
+
 #endif

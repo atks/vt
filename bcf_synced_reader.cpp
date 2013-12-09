@@ -245,6 +245,19 @@ void BCFSyncedReader::print_buffer()
 }
 
 /**
+ * Closes files.
+ */
+void BCFSyncedReader::close()
+{
+    for (int32_t i = 0; i<nfiles; ++i)
+    {
+        bcf_close(vcfs[i]);
+        bcf_hdr_destroy(hdrs[i]);
+        bcf_itr_destroy(itrs[i]);
+    }
+}
+
+/**
  * Inserts a record into pq.
  */  
 void BCFSyncedReader::insert_into_pq(int32_t i, bcf1_t *v)
