@@ -42,13 +42,14 @@
 class LogTool
 {
     private:
-    std::vector<double> PLs;
+    std::vector<double> PL;
+    std::vector<double> LOG10FACT;
 
     public:
     LogTool () {};
 
     /**
-     * Convert PLs to probabilities.
+     * Convert PL to probabilities.
      */
     double pl2prob(uint32_t PL);
 
@@ -71,6 +72,16 @@ class LogTool
      * Compute log(x+y)
      */
     double log10sum(double x, double y);
+
+    /**
+     * Compute log10 factorial x.
+     */
+    double log10Fact(uint32_t x);
+
+    /**
+     * Compute log10 nCr
+     */
+    double log10Choose(uint32_t n, uint32_t r);
 
     /**
      * Round a value
