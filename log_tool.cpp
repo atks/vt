@@ -32,24 +32,24 @@ double LogTool::round(double x)
 };
 
 /**
- * Convert PLs to probabilities.
+ * Convert PL to probabilities.
  */
-double LogTool::pl2prob(uint32_t PL)
+double LogTool::pl2prob(uint32_t pl)
 {
-    if (PL>=PLs.size())
+    if (pl>=PL.size())
     {
-        if (PL > 3236)
+        if (pl > 3236)
         {
-            PL = 3236;
+            pl = 3236;
         }
-        
-        for (uint32_t i=PLs.size(); i<=PL; ++i)
+
+        for (uint32_t i=PL.size(); i<=pl; ++i)
         {
-            PLs.push_back(pow(10, -((double) i)/10.0));
+            PL.push_back(pow(10, -((double) i)/10.0));
         }
     }
 
-    return PLs[PL];
+    return PL[pl];
 }
 
 /**
@@ -85,7 +85,7 @@ double LogTool::log10prod(double x, double y)
 }
 
 /**
- * Compute log(x+y)
+ * Compute log(x+y).
  */
 double LogTool::log10sum(double x, double y)
 {
@@ -104,4 +104,33 @@ double LogTool::log10sum(double x, double y)
     }
 
     return x + log10(1+pow(10,y-x));
+}
+
+/**
+ * Compute log10 factorial x.
+ */
+double LogTool::log10Fact(uint32_t x)
+{
+    if(LOG10FACT.size()==0)
+    {
+        LOG10FACT.push_back(0);
+    }
+
+    if (x>=LOG10FACT.size())
+    {
+        for (uint32_t i = LOG10FACT.size(); i<=x; ++i)
+        {
+            LOG10FACT.push_back(LOG10FACT[i-1] + log10(i));
+        }
+    }
+
+    return LOG10FACT[x];
+}
+
+/**
+ * Compute log10 nCr.
+ */
+double LogTool::log10Choose(uint32_t n, uint32_t r)
+{
+    return log10Fact(n) - log10Fact(r) - log10Fact(n-r);
 }
