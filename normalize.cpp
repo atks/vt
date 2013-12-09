@@ -150,7 +150,7 @@ class Igor : Program
         uint32_t left_trimmed = 0;
         uint32_t right_trimmed = 0;
 
-        int32_t ambiguous_variant_types = (VT_MNP | VT_INDEL);
+        int32_t ambiguous_variant_types = (VT_MNP | VT_INDEL | VT_COMPLEX);
 
         v = odw->get_bcf1_from_pool();
         Variant variant;
@@ -159,7 +159,7 @@ class Igor : Program
         {
             bcf_unpack(v, BCF_UN_INFO);
             int32_t vtype = classify_variant(odr->hdr, v, variant);
-
+            
             if (vtype & ambiguous_variant_types)
             {
                 const char* chrom = odr->get_seqname(v);
@@ -170,6 +170,7 @@ class Igor : Program
                     alleles.push_back(std::string(bcf_get_alt(v, i)));
                 }
                 left_aligned = left_trimmed = right_trimmed = 0;
+                
                 var_manip->left_align(alleles, pos1, chrom, left_aligned, right_trimmed);
                 var_manip->left_trim(alleles, pos1, left_trimmed);
 
