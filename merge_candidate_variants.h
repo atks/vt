@@ -24,7 +24,6 @@
 #ifndef MERGE_CANDIDATE_VARIANTS_H
 #define MERGE_CANDIDATE_VARIANTS_H
 
-
 #include "htslib/vcf.h"
 #include "htslib/kseq.h"
 #include "program.h"

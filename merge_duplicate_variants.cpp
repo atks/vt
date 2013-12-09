@@ -156,7 +156,7 @@ class Igor : Program
                 k = kh_put(xdict, m, variant.s, &ret);
                 if (ret) //does not exist
                 {
-                    variant = {0,0,0};
+                    variant = {0,0,0}; //disown allocated string
                 }
                 kh_value(m, k) = v;
 
