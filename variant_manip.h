@@ -166,7 +166,12 @@ class VariantManip
      * Classifies variants.
      */
     int32_t classify_variant(const char* chrom, uint32_t pos1, char** allele, int32_t n_allele, Variant& v);
-    
+        
+    /**
+     * Classifies variants.
+     */
+    int32_t classify_variant(const char* chrom, uint32_t pos1, char** allele, int32_t n_allele);
+            
     /**
      * Left trims a variant with unnecesary nucleotides.
      */

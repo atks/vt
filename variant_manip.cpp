@@ -161,6 +161,15 @@ bool VariantManip::detect_str(const char* chrom, uint32_t pos1, Variant& variant
 /**
  * Classifies variants.
  */
+int32_t VariantManip::classify_variant(const char* chrom, uint32_t pos1, char** allele, int32_t n_allele)
+{
+    Variant v;
+    return classify_variant(chrom, pos1, allele, n_allele, v);
+}
+
+/**
+ * Classifies variants.
+ */
 int32_t VariantManip::classify_variant(const char* chrom, uint32_t pos1, char** allele, int32_t n_allele, Variant& v)
 {
     int32_t pos0 = pos1-1;
