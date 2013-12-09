@@ -49,6 +49,11 @@ class Igor : Program
     BCFOrderedWriter *odw;
     bcf1_t *v;
 
+    ///////////////
+    //general use//
+    ///////////////
+    kstring_t variant;
+
     /////////
     //stats//
     /////////
@@ -112,10 +117,16 @@ Each VCF file is required to have the FORMAT flags E and N and should have exact
         //i/o initialization//
         //////////////////////
         sr = new BCFSyncedReader(input_vcf_files, intervals);
+        
         odw = new BCFOrderedWriter(output_vcf_file, 0);
         bcf_hdr_append(odw->hdr, "##fileformat=VCFv4.1");
         bcf_hdr_append(odw->hdr, "##FORMAT=<ID=RL,Number=1,Type=String,Description=\"Length of each read\">");
         bcf_hdr_append(odw->hdr, "##INFO=<ID=LR,Number=1,Type=String,Description=\"Likelihood Ratio Statistic\">");
+
+        ///////////////
+        //general use//
+        ///////////////
+        variant = {0,0,0};
 
         ////////////////////////
         //stats initialization//
@@ -124,21 +135,140 @@ Each VCF file is required to have the FORMAT flags E and N and should have exact
         no_candidate_indels = 0;
     }
 
+    typedef struct 
+    {
+        int32_t E, N;
+    } evidence_t;
+    
+    KHASH_MAP_INIT_STR(xdict, std::vector<evidence_t>);
+
     void merge_candidate_variants()
     {
+        khash_t(xdict) *m = kh_init(xdict);
+
+        int32_t *E = (int32_t*) malloc(1*sizeof(int32_t));
+        int32_t *N = (int32_t*) malloc(1*sizeof(int32_t));
+        int32_t n = 1;
+        int32_t nE, nN;
+        int32_t ret;
+        
+        khiter_t k;
+        
+        double log10e = -2;
+        Variant v;
+        
         //for combining the alleles
         std::vector<bcfptr> current_recs;
         while(sr->read_next_position(current_recs))
         {
+            
+//            //for each file that contains the next record
+//            for (uint32_t i=0; i<current_recs.size(); ++i)
+//            {
+//                bcf1_t *v = current_recs[i].v;
+//                std::cerr << "\t[" << current_recs[i].file_index << "]" << v->rid << ":" << (v->pos+1) << ":" << v->d.allele[0] << ":" << v->d.allele[1];
+//            }
+//            std::cerr << "\n";
+            
             //for each file that contains the next record
             for (uint32_t i=0; i<current_recs.size(); ++i)
             {
+                int32_t file_index = current_recs[i].file_index;
                 bcf1_t *v = current_recs[i].v;
-                std::cerr << "\t[" << current_recs[i].file_index << "]" << v->rid << ":" << (v->pos+1) << ":" << v->d.allele[0] << ":" << v->d.allele[1];
+                bcf_hdr_t *h = current_recs[i].h;
+                
+                nE = bcf_get_format_int(h, v, "E", &E, &n);     
+                nN = bcf_get_format_int(h, v, "N", &N, &n);     
+                
+                if (nE==1 && nN==1)
+                {   
+                    bcf_variant2string(h, v, &variant);
+                    if (kh_get(xdict, m, variant.s)==kh_end(m))
+                    {
+//                        k = kh_put(xdict, m, variant.s, &ret);
+//                        if (ret) //does not exist
+//                        {
+//                            variant = {0,0,0};
+//                        }
+//                        else
+//                        {
+//                            kh_value(m, k) = {E[0], N[0]};
+//                        }    
+                        
+                        ++no_candidate_snps;
+                        ++no_candidate_indels;
+                        
+                    }     
+                }
             }
-            std::cerr << "\n";
         }
-
+        
+        
+//        khash_t(xdict) *m = kh_init(xdict);
+//        khiter_t k;
+//        int32_t ret;
+//        int32_t current_rid = -1;
+//        int32_t current_pos1 = -1;
+//
+//        bcf1_t *v = odw->get_bcf1_from_pool();
+//        while (odr->read(v))
+//        {
+//            int32_t pos1 = bcf_get_pos1(v);
+//            int32_t rid = bcf_get_rid(v);
+//            bcf_variant2string(odw->hdr, v, &variant);
+//
+//            //clear previous set of variants
+//            if (pos1!=current_pos1 || rid!=current_rid)
+//            {
+//                for (k = kh_begin(m); k != kh_end(m); ++k)
+//                {
+//                    if (kh_exist(m, k))
+//                    {
+//                        bcf1_t* vs = kh_value(m, k);
+//                        odw->write(vs);
+//                        free((char*)kh_key(m, k));
+//                    }
+//                }
+//                kh_clear(xdict, m);
+//
+//                current_pos1 = pos1;
+//                current_rid = rid;
+//            }
+//
+//            bcf_variant2string(odw->hdr, v, &variant);
+//
+//            if (kh_get(xdict, m, variant.s)==kh_end(m))
+//            {
+//                k = kh_put(xdict, m, variant.s, &ret);
+//                if (ret) //does not exist
+//                {
+//                    variant = {0,0,0};
+//                }
+//                kh_value(m, k) = v;
+//
+//                ++no_unique_variants;
+//                v = odw->get_bcf1_from_pool();
+//            }
+//            else
+//            {
+//                //drop
+//            }
+//
+//            ++no_total_variants;
+//        }
+//
+//        for (k = kh_begin(m); k != kh_end(m); ++k)
+//        {
+//            if (kh_exist(m, k))
+//            {
+//                bcf1_t* vs = kh_value(m, k);
+//                odw->write(vs);
+//                free((char*)kh_key(m, k));
+//            }
+//        }
+//        kh_clear(xdict, m);
+        
+        sr->close();
         odw->close();
     };
 

@@ -319,7 +319,6 @@ void bcf_hdr_get_seqs_and_lens(const bcf_hdr_t *h, const char**& seqs, int32_t*&
  */
 void bcf_variant2string(bcf_hdr_t *h, bcf1_t *v, kstring_t *var)
 {
-   
     bcf_unpack(v, BCF_UN_STR);
     var->l = 0;
     kputs(bcf_get_chrom(h, v), var);

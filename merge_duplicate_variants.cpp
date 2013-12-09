@@ -129,7 +129,7 @@ class Igor : Program
         {
             int32_t pos1 = bcf_get_pos1(v);
             int32_t rid = bcf_get_rid(v);
-             bcf_variant2string(odw->hdr, v, &variant);
+            bcf_variant2string(odw->hdr, v, &variant);
 
             //clear previous set of variants
             if (pos1!=current_pos1 || rid!=current_rid)
