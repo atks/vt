@@ -166,6 +166,11 @@ void bam_get_base_and_qual_and_read_and_qual(bam1_t *s, uint32_t pos, char& base
 #define bcf_hdr_get_samples(h) ((h)->samples)
 
 /**
+ * Get ith sample name from bcf header
+ */
+#define bcf_hdr_get_sample_name(h, i) ((h)->samples[i])
+
+/**
  * Get number of samples in bcf header
  */
 int32_t bcf_hdr_get_n_sample(bcf_hdr_t *h);
