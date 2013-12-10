@@ -235,6 +235,39 @@ void bam_get_base_and_qual_and_read_and_qual(bam1_t *srec, uint32_t pos, char& b
  **************/
 
 /**
+ * Copies contigs found in bcf header to another bcf header.
+ */
+void bcf_hdr_transfer_contigs(const bcf_hdr_t *hsrc, bcf_hdr_t *hdest)
+{
+    vdict_t *d = (vdict_t*)hsrc->dict[BCF_DT_CTG];
+    int tid, m = kh_size(d);
+    const char **names = (const char**) calloc(m,sizeof(const char*));
+    int len[m];
+    khint_t k;
+    
+    
+    for (k=kh_begin(d); k<kh_end(d); k++)
+    {
+        if ( !kh_exist(d,k) ) continue;
+        tid = kh_val(d,k).id;
+        len[tid] = bcf_hrec_find_key(kh_val(d, k).hrec[0],"length"); 
+        int j;
+        if ( sscanf(kh_val(d, k).hrec[0]->vals[len[tid]],"%d",&j) ) 
+            len[tid] = j;     
+        names[tid] = kh_key(d,k);
+    }
+    
+    kstring_t s = {0,0,0};
+    for (tid=0; tid<m; tid++)
+    {
+        s.l = 0;
+        ksprintf(&s, "##contig=<ID=%s,length=%d>", names[tid], len[tid]);
+        bcf_hdr_append(hdest, s.s);
+    }
+    if (s.m) free(s.s);
+}
+
+/**
  * Reads header of a VCF file and returns the bcf header object.
  * This wraps around vcf_hdr_read from the original htslib to
  * allow for an alternative header file to be read in.
@@ -313,6 +346,8 @@ void bcf_hdr_get_seqs_and_lens(const bcf_hdr_t *h, const char**& seqs, int32_t*&
 /**********
  *BCF UTILS
  **********/
+
+void bcf_hdr_transfer_contigs(const bcf_hdr_t *sh, bcf_hdr_t *vh);
 
 /**
  * Gets a string representation of a variant.

@@ -170,6 +170,11 @@ class BCFSyncedReader
     const char* get_seqname(int32_t i, bcf1_t *v);
 
     /**
+     * Gets number of files read.
+     */
+    int32_t get_nfiles();
+
+    /**
      * Gets current 1-based position being accessed.
      */
     std::string get_current_sequence();

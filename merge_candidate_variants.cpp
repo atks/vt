@@ -29,18 +29,47 @@ namespace
 class Evidence
 {
     public:
-    std::vector<uint32_t> E, N;
-    std::vector<std::string> samples;
-    int32_t ESum, NSum;
+    uint32_t i, m;
+    uint32_t* e;
+    uint32_t* n;
+    kstring_t samples;
+    int32_t esum, nsum;
     double af;
-    double lr;    
-    
-    Evidence()
+    double lr;
+    bcf1_t *v;
+
+    Evidence(uint32_t m)
     {
-        ESum = 0;
-        NSum = 0;
+        this->m = m;
+        i = 0;
+        e = (uint32_t*) malloc(m*sizeof(uint32_t));
+        n = (uint32_t*) malloc(m*sizeof(uint32_t));
+        samples = {0,0,0};
+        esum = 0;
+        nsum = 0;
         af = 0;
         lr = 0;  
+        v = NULL;
+    };
+      
+    ~Evidence()
+    {
+        i = 0;
+        free(e);
+        free(n);
+        if (samples.m) free(samples.s);
+        v = NULL;
+    };
+    
+    void clear()
+    {
+        i = 0;
+        samples.l = 0;
+        esum = 0;
+        nsum = 0;
+        af = 0;
+        lr = 0;  
+        v = NULL;
     };
 };
 
@@ -138,13 +167,15 @@ Each VCF file is required to have the FORMAT flags E and N and should have exact
         
         odw = new BCFOrderedWriter(output_vcf_file, 0);
         bcf_hdr_append(odw->hdr, "##fileformat=VCFv4.1");
+        bcf_hdr_transfer_contigs(sr->hdrs[0], odw->hdr);
         bcf_hdr_append(odw->hdr, "##INFO=<ID=SAMPLES,Number=.,Type=String,Description=\"Samples with evidence.\">");
         bcf_hdr_append(odw->hdr, "##INFO=<ID=E,Number=.,Type=Integer,Description=\"Evidence read counts for each sample\">");
         bcf_hdr_append(odw->hdr, "##INFO=<ID=N,Number=.,Type=Integer,Description=\"Read counts for each sample\">");
-        bcf_hdr_append(odw->hdr, "##INFO=<ID=ESUM,Number=.,Type=Integer,Description=\"Total evidence read count\">");
-        bcf_hdr_append(odw->hdr, "##INFO=<ID=NSUM,Number=.,Type=Integer,Description=\"Total read count\">");
+        bcf_hdr_append(odw->hdr, "##INFO=<ID=ESUM,Number=1,Type=Integer,Description=\"Total evidence read count\">");
+        bcf_hdr_append(odw->hdr, "##INFO=<ID=NSUM,Number=1,Type=Integer,Description=\"Total read count\">");
         bcf_hdr_append(odw->hdr, "##INFO=<ID=LR,Number=1,Type=String,Description=\"Likelihood Ratio Statistic\">");
-
+        odw->write_hdr();
+        
         ///////////////
         //general use//
         ///////////////
@@ -157,7 +188,7 @@ Each VCF file is required to have the FORMAT flags E and N and should have exact
         no_candidate_indels = 0;
     }
     
-    KHASH_MAP_INIT_STR(xdict, Evidence);
+    KHASH_MAP_INIT_STR(xdict, Evidence*);
 
     void merge_candidate_variants()
     {
@@ -171,8 +202,9 @@ Each VCF file is required to have the FORMAT flags E and N and should have exact
         
         khiter_t k;
         
+        int32_t nfiles = sr->get_nfiles();
+        
         double log10e = -2;
-        Variant v;
         
         //for combining the alleles
         std::vector<bcfptr> current_recs;
@@ -200,104 +232,87 @@ Each VCF file is required to have the FORMAT flags E and N and should have exact
                 {   
                     //populate hash
                     bcf_variant2string(h, v, &variant);
-                    if (kh_get(xdict, m, variant.s)==kh_end(m))
+                    std::cerr << variant.s << "\n";
+                    if ((k=kh_get(xdict, m, variant.s))==kh_end(m))
                     {
                         k = kh_put(xdict, m, variant.s, &ret);
                         if (ret) //does not exist
                         {
                             variant = {0,0,0}; //disown allocated char*
-                        //    kh_value(m, k) = Evidence();
+                            kh_value(m, k) = new Evidence(nfiles);
+                        }
+                        else
+                        {
+                            kh_value(m, k)->clear();
                         }
                         
-//                        kh_value(m, k).samples.push_back(std::string(bcf_hdr_get_sample_name(h, 0)));
-//                        kh_value(m, k).E.push_back(E[0]);
-//                        kh_value(m, k).N.push_back(N[0]);
-//                        kh_value(m, k).ESum += E[0];
-//                        kh_value(m, k).NSum += N[0];
-//                        kh_value(m, k).af += ((double)E[0])/((double)N[0]);
-
-                        ++no_candidate_snps;
-                        ++no_candidate_indels;
-                    } 
+                        bcf1_t* nv = odw->get_bcf1_from_pool();
+                        bcf_set_chrom(odw->hdr, nv, bcf_get_chrom(h, v));
+                        bcf_update_alleles(odw->hdr, nv, const_cast<const char**>(bcf_get_allele(v)), bcf_get_n_allele(v));
+                        bcf_set_pos1(nv, bcf_get_pos1(v));
+                        kh_value(m, k)->v = nv;                            
+                    
+                        uint32_t i = kh_value(m, k)->i;
+                        if (i) kputc(',', &kh_value(m, k)->samples);
+                        kputs(bcf_hdr_get_sample_name(h, 0), &kh_value(m, k)->samples);
+                    
+                        kh_value(m, k)->e[i] = E[0];
+                        kh_value(m, k)->n[i] = N[0];
+                        kh_value(m, k)->esum += E[0];
+                        kh_value(m, k)->nsum += N[0];
+                        kh_value(m, k)->af += ((double)E[0])/((double)N[0]);
+                        kh_value(m, k)->n += N[0];
+                        ++kh_value(m, k)->i;
+//                
+                    
+//                    ++no_candidate_snps;
+//                    ++no_candidate_indels;
+                    }   
+                    else
+                    {    
+                    
+                    uint32_t i = kh_value(m, k)->i;
+//                    if (i) kputc(',', &kh_value(m, k)->samples);
+//                    kputs(bcf_hdr_get_sample_name(h, 0), &kh_value(m, k)->samples);
+                    
+//                    kh_value(m, k)->e[i] = E[0];
+//                    kh_value(m, k)->n[i] = N[0];
+//                    kh_value(m, k)->esum += E[0];
+//                    kh_value(m, k)->nsum += N[0];
+//                    kh_value(m, k)->af += ((double)E[0])/((double)N[0]);
+//                    kh_value(m, k)->n += N[0];
+//                    ++kh_value(m, k)->i;
+//                
+                    
+//                    ++no_candidate_snps;
+//                    ++no_candidate_indels;
+                    }
                 }
             }
             
+            std::cerr << "here?\n";
+            
             //clear hash, print out aggregated records
-//            for (k = kh_begin(m); k != kh_end(m); ++k)
-//            {
-//                if (kh_exist(m, k))
-//                {
-//                    //bcf1_t* vs = kh_value(m, k);
-//                    //odw->write(vs);
-//                    free((char*)kh_key(m, k));
-//                }
-//            }
-//            kh_clear(xdict, m);
+            for (k = kh_begin(m); k != kh_end(m); ++k)
+            {
+                if (kh_exist(m, k))
+                {
+                    std::cerr << "VALUE OF I: " << kh_value(m, k)->i << "\n"; 
+                    bcf1_t *nv = kh_value(m, k)->v;
+//                    bcf_update_info_string(odw->hdr, nv, "SAMPLES", kh_value(m, k)->samples.s);
+//                    bcf_update_info_int32(odw->hdr, nv, "E", kh_value(m, k)->e, kh_value(m, k)->i);
+//                    bcf_update_info_int32(odw->hdr, nv, "N", kh_value(m, k)->n, kh_value(m, k)->i);
+//                    bcf_update_info_int32(odw->hdr, nv, "ESUM", kh_value(m, k)->e, 1);
+//                    bcf_update_info_int32(odw->hdr, nv, "NSUM", kh_value(m, k)->e, 1); 
+//            
+                    
+                    odw->write(nv);
+                    delete kh_value(m, k);
+                    free((char*)kh_key(m, k));
+                }
+            }
+            kh_clear(xdict, m);
         }
-        
-//        khash_t(xdict) *m = kh_init(xdict);
-//        khiter_t k;
-//        int32_t ret;
-//        int32_t current_rid = -1;
-//        int32_t current_pos1 = -1;
-//
-//        bcf1_t *v = odw->get_bcf1_from_pool();
-//        while (odr->read(v))
-//        {
-//            int32_t pos1 = bcf_get_pos1(v);
-//            int32_t rid = bcf_get_rid(v);
-//            bcf_variant2string(odw->hdr, v, &variant);
-//
-//            //clear previous set of variants
-//            if (pos1!=current_pos1 || rid!=current_rid)
-//            {
-//                for (k = kh_begin(m); k != kh_end(m); ++k)
-//                {
-//                    if (kh_exist(m, k))
-//                    {
-//                        bcf1_t* vs = kh_value(m, k);
-//                        odw->write(vs);
-//                        free((char*)kh_key(m, k));
-//                    }
-//                }
-//                kh_clear(xdict, m);
-//
-//                current_pos1 = pos1;
-//                current_rid = rid;
-//            }
-//
-//            bcf_variant2string(odw->hdr, v, &variant);
-//
-//            if (kh_get(xdict, m, variant.s)==kh_end(m))
-//            {
-//                k = kh_put(xdict, m, variant.s, &ret);
-//                if (ret) //does not exist
-//                {
-//                    variant = {0,0,0};
-//                }
-//                kh_value(m, k) = v;
-//
-//                ++no_unique_variants;
-//                v = odw->get_bcf1_from_pool();
-//            }
-//            else
-//            {
-//                //drop
-//            }
-//
-//            ++no_total_variants;
-//        }
-//
-//        for (k = kh_begin(m); k != kh_end(m); ++k)
-//        {
-//            if (kh_exist(m, k))
-//            {
-//                bcf1_t* vs = kh_value(m, k);
-//                odw->write(vs);
-//                free((char*)kh_key(m, k));
-//            }
-//        }
-//        kh_clear(xdict, m);
         
         sr->close();
         odw->close();

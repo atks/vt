@@ -161,6 +161,11 @@ void bam_get_base_and_qual_and_read_and_qual(bam1_t *s, uint32_t pos, char& base
  **************/
 
 /**
+ * Copies contigs found in bcf header to another bcf header.
+ */
+void bcf_hdr_transfer_contigs(const bcf_hdr_t *sh, bcf_hdr_t *vh);
+
+/**
  * Get samples from bcf header
  */
 #define bcf_hdr_get_samples(h) ((h)->samples)
