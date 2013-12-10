@@ -58,11 +58,29 @@ BAMOrderedReader::BAMOrderedReader(std::string bam_file, std::vector<GenomeInter
 };
 
 /**
- * Gets bcf header.
+ * Jump to interval. Returns false if not successful.
+ *
+ * @interval - string representation of interval.
  */
-bam_hdr_t* BAMOrderedReader::get_hdr()
+bool BAMOrderedReader::jump_to_interval(std::string& interval)
 {
-    return hdr;
+    if (index_loaded)
+    {
+        intervals_present = true;
+        random_access_enabled = true;
+        intervals.clear();
+        intervals.push_back(GenomeInterval(interval));
+        interval_index = 0;
+        
+        intervals[interval_index++].to_string(&str);
+        itr = bam_itr_querys(idx, hdr, str.s);
+        if (itr)
+        {
+            return true;
+        }
+    }
+
+    return false;
 };
 
 /**
