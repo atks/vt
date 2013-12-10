@@ -98,10 +98,17 @@ class BCFOrderedReader
     /**
      * Initialize files and intervals. 
      *
-     * @_input_vcf_file     name of the input VCF file
-     * @_intervals          list of intervals, if empty, all records are selected.
+     * @input_vcf_file     name of the input VCF file
+     * @intervals          list of intervals, if empty, all records are selected.
      */
-    BCFOrderedReader(std::string _input_vcf_file, std::vector<GenomeInterval>& _intervals);
+    BCFOrderedReader(std::string input_vcf_file, std::vector<GenomeInterval>& intervals);
+    
+    /**
+     * Jump to interval.
+     *
+     * @interval - string rep of interval.
+     */
+    bool jump_to_interval(std::string& interval);
       
     /**
      * Returns next vcf record.
