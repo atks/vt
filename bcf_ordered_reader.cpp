@@ -23,17 +23,17 @@
 
 #include "bcf_ordered_reader.h"
 
-BCFOrderedReader::BCFOrderedReader(std::string _vcf_file, std::vector<GenomeInterval>& _intervals)
+BCFOrderedReader::BCFOrderedReader(std::string vcf_file, std::vector<GenomeInterval>& intervals)
 {
-    ftype = hts_file_type(_vcf_file.c_str());
+    ftype = hts_file_type(vcf_file.c_str());
     if (!(ftype & (FT_VCF|FT_BCF|FT_STDIN)) )
     {
         fprintf(stderr, "[%s:%d %s] Not a VCF/BCF file: %s\n", __FILE__, __LINE__, __FUNCTION__, vcf_file.c_str());
         exit(1);
     }
 
-    vcf_file = _vcf_file;
-    intervals = _intervals;
+    this->vcf_file = vcf_file;
+    this->intervals = intervals;
     interval_index = 0;
 
     vcf = NULL;
@@ -77,6 +77,43 @@ BCFOrderedReader::BCFOrderedReader(std::string _vcf_file, std::vector<GenomeInte
 };
 
 /**
+ * Jump to interval.
+ *
+ * @interval - string rep of interval.
+ */
+bool BCFOrderedReader::jump_to_interval(std::string& interval)
+{
+    if (index_loaded)
+    {
+        intervals_present = true;
+        random_access_enabled = true;
+        intervals.clear();
+        intervals.push_back(GenomeInterval(interval));   
+        interval_index = 0;
+        if (ftype==FT_BCF_GZ)
+        {
+            intervals[interval_index++].to_string(&s);
+            itr = bcf_itr_querys(idx, hdr, s.s);
+            if (itr)
+            {
+                return true;
+            }
+        }
+        else if (ftype==FT_VCF_GZ)
+        {
+            intervals[interval_index++].to_string(&s);
+            itr = tbx_itr_querys(tbx, s.s);
+            if (itr)
+            {
+                return true;
+            }
+        }
+    }
+
+    return false;
+};
+
+/**
  * Gets sequence name of a record.
  */
 const char* BCFOrderedReader::get_seqname(bcf1_t *v)
@@ -102,7 +139,6 @@ bool BCFOrderedReader::initialize_next_interval()
     {
         if (ftype==FT_BCF_GZ)
         {
-            //todo: move to querys
             intervals[interval_index++].to_string(&s);
             itr = bcf_itr_querys(idx, hdr, s.s);
             if (itr)
