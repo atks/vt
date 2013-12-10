@@ -203,6 +203,14 @@ const char* BCFSyncedReader::get_seqname(int32_t i, bcf1_t *v)
 }                   
 
 /**
+ * Gets number of files read.
+ */
+int32_t BCFSyncedReader::get_nfiles()
+{
+    return nfiles;
+}
+
+/**
  * Gets current sequence being accessed.
  */
 std::string BCFSyncedReader::get_current_sequence()

@@ -24,31 +24,27 @@
 #ifndef GENOTYPE_H
 #define GENOTYPE_H
 
-#include <regex.h>
-#include <cmath>
-#include <string>
-#include <iostream>
-#include <fstream>
-#include <algorithm>
-#include <vector>
-#include <map>
-#include "htslib/vcf.h"
-#include "htslib/kseq.h"
-#include "htslib/faidx.h"
 #include "htslib/sam.h"
+#include "htslib/vcf.h"
+#include "htslib/tbx.h"
 #include "htslib/kstring.h"
 #include "htslib/kseq.h"
+#include "htslib/khash.h"
+#include "htslib/bgzf.h"
+#include "htslib/hts.h"
+#include <iostream>  // I/O 
+#include <fstream>   // file I/O
+#include <iomanip>   // format manipulation
+#include <string>
+#include <regex.h>
+#include "utils.h"
+#include "lhmm.h"
 #include "program.h"
 #include "hts_utils.h"
-#include "bam_ordered_reader.h"
 #include "bcf_ordered_reader.h"
 #include "bcf_ordered_writer.h"
 #include "variant_manip.h"
-#include "utils.h"
-#include "lhmm.h"
-#include "log_tool.h"
 
 void genotype(int argc, char ** argv);
-
 
 #endif
