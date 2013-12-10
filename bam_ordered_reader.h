@@ -98,16 +98,18 @@ class BAMOrderedReader
      * @_intervals          list of intervals, if empty, all records are selected.
      */
     BAMOrderedReader(std::string input_bam_file, std::vector<GenomeInterval>& _intervals);
+    
+    /**
+     * Jump to interval. Returns false if not successful.
+     *
+     * @interval - string representation of interval.
+     */
+    bool jump_to_interval(std::string& interval);
       
     /**
      * Returns next vcf record.
      */
     bool read(bam1_t *s);
-    
-    /**
-     * Gets bcf header.
-     */
-    bam_hdr_t* get_hdr();
     
     /**
      * Closes the file.
