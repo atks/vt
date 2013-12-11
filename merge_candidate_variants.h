@@ -32,7 +32,7 @@
 #include "bcf_ordered_writer.h"
 #include "variant_manip.h"
 #include "utils.h"
-#include "hts_utils.h"
+#include "log_tool.h"
 
 void merge_candidate_variants(int argc, char ** argv);
 
