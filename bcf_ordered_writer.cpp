@@ -66,7 +66,6 @@ void BCFOrderedWriter::set_hdr(bcf_hdr_t *hdr)
  */
 void BCFOrderedWriter::write_hdr()
 {
-    bcf_hdr_fmt_text(hdr);
     bcf_hdr_write(vcf, hdr);
 }
 
@@ -122,7 +121,7 @@ void BCFOrderedWriter::write(bcf1_t *v)
     else
     {
          bcf_write(vcf, hdr, v);
-          store_bcf1_into_pool(v);
+         store_bcf1_into_pool(v);
     }
 }
 
@@ -151,14 +150,12 @@ bcf1_t* BCFOrderedWriter::get_bcf1_from_pool()
     {
         bcf1_t* v = pool.front();
         pool.pop_front();
-        bcf_set_n_sample(hdr, v);
         return v;
     }
     else
     {
-        bcf1_t *v = bcf_init1();
+        bcf1_t *v = bcf_init();
         bcf_erase(v);
-        bcf_set_n_sample(hdr, v);
         return v;
     }
 };

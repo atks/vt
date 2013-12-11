@@ -77,9 +77,9 @@ BCFOrderedReader::BCFOrderedReader(std::string vcf_file, std::vector<GenomeInter
 };
 
 /**
- * Jump to interval.
+ * Jump to interval. Returns false if not successful.
  *
- * @interval - string rep of interval.
+ * @interval - string representation of interval.
  */
 bool BCFOrderedReader::jump_to_interval(std::string& interval)
 {
@@ -88,7 +88,7 @@ bool BCFOrderedReader::jump_to_interval(std::string& interval)
         intervals_present = true;
         random_access_enabled = true;
         intervals.clear();
-        intervals.push_back(GenomeInterval(interval));   
+        intervals.push_back(GenomeInterval(interval));
         interval_index = 0;
         if (ftype==FT_BCF_GZ)
         {

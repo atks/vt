@@ -38,7 +38,7 @@
 #include "peek.h"
 #include "construct_probes.h"
 #include "discover.h"
-#include "genotype.h"
+//#include "genotype.h"
 #include "merge_candidate_variants.h"
 #include "partition.h"
 #include "view.h"
@@ -127,7 +127,7 @@ int main(int argc, char ** argv)
     }
     else if (argc>1 && cmd=="genotype")
     {
-        genotype(argc-1, ++argv);
+        //genotype(argc-1, ++argv);
     } 
     else if (argc>1 && cmd=="merge_candidate_variants")
     {
