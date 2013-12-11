@@ -37,6 +37,8 @@
 #include <iostream>
 #include "htslib/faidx.h"
 #include "htslib/kstring.h"
+#include "htslib/vcf.h"
+#include "hts_utils.h"
 
 //int BitCount(unsigned int u)
 //{
@@ -149,8 +151,19 @@ class VariantManip
     public:
 
     faidx_t *fai;
+    bool reference_present;
 
+    /**
+     * Constructor.
+     *
+     * @ref_fasta_file reference sequence FASTA file.
+     */
     VariantManip(std::string ref_fasta_file);
+
+    /**
+     * Constructor.
+     */
+    VariantManip();
 
     /**
      * Detects near by STRs.
@@ -161,6 +174,11 @@ class VariantManip
      * Converts VTYPE to string.
      */
     std::string vtype2string(int32_t VTYPE);
+
+    /**
+     * Classifies variants.
+     */
+    int32_t classify_variant(bcf_hdr_t *h, bcf1_t *v);
     
     /**
      * Classifies variants.

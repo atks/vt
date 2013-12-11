@@ -23,10 +23,24 @@
 
 #include "variant_manip.h"
 
+/**
+ * Constructor.
+ *
+ * @ref_fasta_file reference sequence FASTA file.
+ */
 VariantManip::VariantManip(std::string ref_fasta_file)
 {
     fai = fai_load(ref_fasta_file.c_str());
+    reference_present = fai!=NULL;
 };
+
+/**
+ * Constructor.
+ */
+VariantManip::VariantManip()
+{
+    reference_present = false;
+}
 
 /**
  * Converts VTYPE to string.
@@ -103,6 +117,7 @@ std::string VariantManip::vtype2string(int32_t VTYPE)
  */
 bool VariantManip::detect_str(const char* chrom, uint32_t pos1, Variant& variant)
 {
+    
     int32_t ref_len;   
     //STR related
     char* ru = 0;
@@ -161,10 +176,19 @@ bool VariantManip::detect_str(const char* chrom, uint32_t pos1, Variant& variant
 /**
  * Classifies variants.
  */
+int32_t VariantManip::classify_variant(bcf_hdr_t *h, bcf1_t *v)
+{
+    Variant variant;
+    return classify_variant(bcf_get_chrom(h, v), bcf_get_pos1(v), bcf_get_allele(v), bcf_get_n_allele(v), variant);
+}
+
+/**
+ * Classifies variants.
+ */
 int32_t VariantManip::classify_variant(const char* chrom, uint32_t pos1, char** allele, int32_t n_allele)
 {
-    Variant v;
-    return classify_variant(chrom, pos1, allele, n_allele, v);
+    Variant variant;
+    return classify_variant(chrom, pos1, allele, n_allele, variant);
 }
 
 /**
