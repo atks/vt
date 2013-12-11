@@ -358,6 +358,55 @@ bool BCFSyncedReader::read_next_position(std::vector<bcfptr>& current_recs)
     }
 }
 
+/**
+ * Reads variants that are the equivalent from all the files in parallel.
+ */
+bool BCFSyncedReader::read_next_variant(std::vector<bcfptr>& current_recs)
+{
+    //put records in pool
+    for (uint32_t i=0; i<current_recs.size(); ++i)
+    {
+       store_bcf1_into_pool(current_recs[i].v);
+    }
+    current_recs.clear();
+
+	//process records in priority queue or initialize next interval if pq is empty
+	//initialize_next_interval tops up the pq
+    if (pq.size()!=0 || initialize_next_interval())
+    {
+        //dequeue pqueue most recent position and return it
+        int32_t pos1 = pq.top().pos1;
+        int32_t cpos1 = pos1;
+        
+        while (cpos1==pos1)
+        {
+           bcfptr b;
+           b.pos1 = pq.top().pos1;
+           b.v = pq.top().v;
+           b.file_index = pq.top().file_index;
+           b.h = hdrs[b.file_index];
+           
+           current_recs.push_back(b);
+//           kstring_t s = {0, 0, 0};
+//           bcf_get_variant(b.h, b.v, &s);
+//           std::cerr << s.s << "\n";
+//           if (s.m) free(s.s);
+            
+           buffer[b.file_index].remove(b.v);
+           fill_buffer(b.file_index);
+           pq.pop();
+           cpos1 = pq.size()!=0 ? pq.top().pos1 : -1;
+        } 
+        
+        current_pos1 = current_recs.front().pos1;
+    
+	    return true;
+    }
+    else //end of contig or eof for all files
+    {
+        return false;
+    }
+}
 /*
 Control flow
 
