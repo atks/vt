@@ -50,8 +50,9 @@ class bcfptr
     int32_t pos1;
     bcf_hdr_t *h;
     bcf1_t *v;
-    bcfptr():file_index(-1), pos1(-1), v(0) {}
-    bcfptr(int32_t file_index, int32_t pos1, bcf1_t *v):file_index(file_index), pos1(pos1), v(v){}
+
+    bcfptr():file_index(-1), pos1(-1), v(0) {};
+    bcfptr(int32_t file_index, int32_t pos1, bcf1_t *v):file_index(file_index), pos1(pos1), v(v){};
 };
 
 /**
@@ -109,7 +110,7 @@ class BCFSyncedReader
     int32_t neofs; //number of files read till eof
 
     bool indexed_first_file;
-
+    
     //list of contigs
     std::vector<GenomeInterval> intervals;
     std::map<std::string, int32_t> intervals_map;
@@ -148,6 +149,11 @@ class BCFSyncedReader
      *
      */
     bool read_next_position(std::vector<bcfptr>& current_recs);
+    
+    /**
+     * Reads variants that are the equivalent from all the files in parallel.
+     */
+    bool read_next_variant(std::vector<bcfptr>& current_recs);
 
     /**
      * Populate sequence names from files.
