@@ -24,15 +24,17 @@
 #ifndef LOG_TOOL_H
 #define LOG_TOOL_H
 
-#include <stdlib.h>
-#include <stdint.h>
-#include <string.h>
-#include <math.h>
+#include <cstdlib>
+#include <cstdint>
+#include <cstring>
+#include <climits>
+#include <cmath>
 #include <float.h>
 #include <vector>
 #include <map>
 #include <queue>
 #include <iostream>
+#include <assert.h>
 
 #define LOGZERO -DBL_MAX
 
@@ -76,12 +78,12 @@ class LogTool
     /**
      * Compute log10 factorial x.
      */
-    double log10Fact(uint32_t x);
+    double log10fact(uint32_t x);
 
     /**
      * Compute log10 nCr
      */
-    double log10Choose(uint32_t n, uint32_t r);
+    double log10choose(uint32_t n, uint32_t r);
 
     /**
      * Round a value

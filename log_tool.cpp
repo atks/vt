@@ -28,7 +28,7 @@
  */
 double LogTool::round(double x)
 {
-    return (x > 0.0) ? floor(x + 0.5) : ceil(x - 0.5);
+    return (x > 0.0) ? std::floor(x + 0.5) : std::ceil(x - 0.5);
 };
 
 /**
@@ -45,7 +45,7 @@ double LogTool::pl2prob(uint32_t pl)
 
         for (uint32_t i=PL.size(); i<=pl; ++i)
         {
-            PL.push_back(pow(10, -((double) i)/10.0));
+            PL.push_back(std::pow(10, -((double) i)/10.0));
         }
     }
 
@@ -63,7 +63,7 @@ uint32_t LogTool::prob2pl(double x)
         exit(1);
     }
 
-    return (uint32_t) (round(-10*log10(x)));
+    return (uint32_t) (round(-10*std::log10(x)));
 }
 
 /**
@@ -71,7 +71,7 @@ uint32_t LogTool::prob2pl(double x)
  */
 double LogTool::log10(double x)
 {
-    return x==0? LOGZERO : log10(x);
+    return x==0? LOGZERO : std::log10(x);
 }
 
 /**
@@ -103,13 +103,13 @@ double LogTool::log10sum(double x, double y)
         return log10(2) + x;
     }
 
-    return x + log10(1+pow(10,y-x));
+    return x + std::log10(1+pow(10,y-x));
 }
 
 /**
  * Compute log10 factorial x.
  */
-double LogTool::log10Fact(uint32_t x)
+double LogTool::log10fact(uint32_t x)
 {
     if(LOG10FACT.size()==0)
     {
@@ -120,7 +120,7 @@ double LogTool::log10Fact(uint32_t x)
     {
         for (uint32_t i = LOG10FACT.size(); i<=x; ++i)
         {
-            LOG10FACT.push_back(LOG10FACT[i-1] + log10(i));
+            LOG10FACT.push_back(LOG10FACT[i-1] + std::log10(i));
         }
     }
 
@@ -130,7 +130,8 @@ double LogTool::log10Fact(uint32_t x)
 /**
  * Compute log10 nCr.
  */
-double LogTool::log10Choose(uint32_t n, uint32_t r)
+double LogTool::log10choose(uint32_t n, uint32_t r)
 {
-    return log10Fact(n) - log10Fact(r) - log10Fact(n-r);
+    assert(r<=n);
+    return log10fact(n) - log10fact(r) - log10fact(n-r);
 }
