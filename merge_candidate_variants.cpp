@@ -107,7 +107,14 @@ class Igor : Program
     uint32_t no_samples;
     uint32_t no_candidate_snps;
     uint32_t no_candidate_indels;
-
+    uint32_t no_candidate_snpindels;
+    
+    /////////
+    //tools//
+    /////////
+    LogTool *lt;
+    VariantManip * vm;
+    
     Igor(int argc, char ** argv)
     {
         //////////////////////////
@@ -190,6 +197,13 @@ Each VCF file is required to have the FORMAT flags E and N and should have exact
         ////////////////////////
         no_candidate_snps = 0;
         no_candidate_indels = 0;
+        no_candidate_indels = 0;
+        
+        /////////
+        //tools//
+        /////////
+        lt = new LogTool();
+        vm = new VariantManip();
     }
 
     KHASH_MAP_INIT_STR(xdict, Evidence*);
@@ -207,7 +221,9 @@ Each VCF file is required to have the FORMAT flags E and N and should have exact
         khiter_t k;
         int32_t nfiles = sr->get_nfiles();
 
-        double log10e = -2;
+        double log10e = log10(0.01);
+        double log10me = log10(0.99);
+        double log10half = log10(0.5);
 
         std::vector<bcfptr> current_recs;
         while(sr->read_next_position(current_recs))
@@ -253,16 +269,20 @@ Each VCF file is required to have the FORMAT flags E and N and should have exact
                     if (i) kputc(',', &kh_value(m, k)->samples);
                     kputs(bcf_hdr_get_sample_name(h, 0), &kh_value(m, k)->samples);
 
+                    if (E[0]>N[0])
+                    {
+                        kstring_t s = {0,0,0};
+                        vcf_format(sr->hdrs[file_index], v, &s);
+                        std::cerr << s.s << "\n";
+                            std::cerr << "file index " << file_index << "\n";
+                    }    
+
                     kh_value(m, k)->e[i] = E[0];
                     kh_value(m, k)->n[i] = N[0];
                     kh_value(m, k)->esum += E[0];
                     kh_value(m, k)->nsum += N[0];
                     kh_value(m, k)->af += ((double)E[0])/((double)N[0]);
                     ++kh_value(m, k)->i;
-
-//                    ++no_candidate_snps;
-//                    ++no_candidate_indels;
-                    
                 }
             }
 
@@ -272,19 +292,60 @@ Each VCF file is required to have the FORMAT flags E and N and should have exact
                 if (kh_exist(m, k))
                 {
                     bcf1_t *nv = kh_value(m, k)->v;
+                    int32_t nobs = kh_value(m, k)->i;
+                    float af = kh_value(m, k)->af/no_samples;
+                    
+                    //compute lrt
+                    double num = 0;
+                    double log10numhomref, log10numhet, log10numhomalt;
+                    double denum = 0;
+                    uint32_t* e = kh_value(m, k)->e;
+                    uint32_t* n = kh_value(m, k)->n;
+                    double log10phomref = log10((1-af)*(1-af));
+                    double log10phet = log10(2*af*(1-af));
+                    double log10phomalt = log10(af*af);
+                    
+                    std::cerr <<"AF " << af <<  " " << log10phomref << " " << log10phet <<  " " << log10phomalt << "\n";
+                    
+                    for (int32_t i=0; i<nobs; ++i)
+                    {
+                        std::cerr <<"LR " << i << " " << e[i] << " " << n[i] <<"\n";
+                        std::cerr << lt->log10choose(n[i], e[i]) << "\n";
+//                        log10numhomref = log10phomref + lt->log10choose(n[i], e[i]) + (n[i]-e[i])*log10me + e[i]*log10e;
+//                        log10numhet = log10phet + lt->log10choose(n[i], e[i]) + log10half*n[i];
+//                        log10numhomalt = log10phomalt + lt->log10choose(n[i], e[i]) + (n[i]-e[i])*log10e + e[i]*log10me;
+//                        num += lt->log10sum(log10numhomref, lt->log10sum(log10numhet, log10numhomalt));
+//                        
+//                        denum += lt->log10choose(n[i], e[i]) + (n[i]-e[i])*log10me + e[i]*log10e;
+                    }
+
                     bcf_update_info_string(odw->hdr, nv, "SAMPLES", kh_value(m, k)->samples.s);
                     bcf_update_info_int32(odw->hdr, nv, "NSAMPLES", &kh_value(m, k)->i, 1);
                     bcf_update_info_int32(odw->hdr, nv, "E", kh_value(m, k)->e, kh_value(m, k)->i);
                     bcf_update_info_int32(odw->hdr, nv, "N", kh_value(m, k)->n, kh_value(m, k)->i);
                     bcf_update_info_int32(odw->hdr, nv, "ESUM", &kh_value(m, k)->esum, 1);
                     bcf_update_info_int32(odw->hdr, nv, "NSUM", &kh_value(m, k)->nsum, 1);
-                    float af = kh_value(m, k)->af/no_samples;
-                    bcf_update_info_float(odw->hdr, nv, "AF", &af, 1);
                     
+                    bcf_update_info_float(odw->hdr, nv, "AF", &af, 1);                    
                     odw->write(nv);
 
                     delete kh_value(m, k);
                     free((char*)kh_key(m, k));
+                    
+                    int32_t vtype = vm->classify_variant(odw->hdr,nv);
+                    
+                    if (vtype == (VT_SNP|VT_INDEL))
+                    {    
+                        ++no_candidate_snpindels;
+                    }
+                    else if (vtype & VT_SNP)
+                    {    
+                        ++no_candidate_snps;
+                    }
+                    else if (vtype & VT_INDEL)
+                    {    
+                        ++no_candidate_indels;
+                    }   
                 }
             }
             kh_clear(xdict, m);
@@ -306,8 +367,10 @@ Each VCF file is required to have the FORMAT flags E and N and should have exact
     void print_stats()
     {
         std::clog << "\n";
-        std::cerr << "stats: Total Number of Candidate SNPs     " << no_candidate_snps << "\n";
-        std::cerr << "       Total Number of Candidate Indels   " << no_candidate_indels << "\n\n";
+        std::cerr << "stats: Total Number of Candidate SNPs       " << no_candidate_snps << "\n";
+        std::cerr << "       Total Number of Candidate Indels     " << no_candidate_indels << "\n";
+        std::cerr << "       Total Number of Candidate SNPIndels  " << no_candidate_snpindels << "\n\n";
+    
     };
 
     ~Igor()
