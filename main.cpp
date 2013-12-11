@@ -85,8 +85,8 @@ void help()
 
 int main(int argc, char ** argv)
 {
-    time_t t0;
-    std::time(&t0);
+    clock_t t0;
+    t0 = clock();
         
     if (argc==1)
     {
@@ -148,10 +148,10 @@ int main(int argc, char ** argv)
         exit(0);
     }
 
-    time_t t1;
-    std::time(&t1);
+    clock_t t1;
+    t1 = clock();
 
-    print_time(difftime(t1,t0));
+    print_time((float)(t1-t0)/CLOCKS_PER_SEC);
 
     return 0;
 }
