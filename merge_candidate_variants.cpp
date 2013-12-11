@@ -205,24 +205,13 @@ Each VCF file is required to have the FORMAT flags E and N and should have exact
         int32_t ret;
 
         khiter_t k;
-
         int32_t nfiles = sr->get_nfiles();
 
         double log10e = -2;
 
-        //for combining the alleles
         std::vector<bcfptr> current_recs;
         while(sr->read_next_position(current_recs))
         {
-//            //for each file that contains the next record
-//            for (uint32_t i=0; i<current_recs.size(); ++i)
-//            {
-//                bcf1_t *v = current_recs[i].v;
-//                std::cerr << "\t[" << current_recs[i].file_index << "]" << v->rid << ":" << (v->pos+1) << ":" << v->d.allele[0] << ":" << v->d.allele[1];
-//            }
-//            std::cerr << "\n";
-
-            //for each file that contains the next record
             for (uint32_t i=0; i<current_recs.size(); ++i)
             {
                 int32_t file_index = current_recs[i].file_index;
@@ -291,6 +280,7 @@ Each VCF file is required to have the FORMAT flags E and N and should have exact
                     bcf_update_info_int32(odw->hdr, nv, "NSUM", &kh_value(m, k)->nsum, 1);
                     float af = kh_value(m, k)->af/no_samples;
                     bcf_update_info_float(odw->hdr, nv, "AF", &af, 1);
+                    
                     odw->write(nv);
 
                     delete kh_value(m, k);

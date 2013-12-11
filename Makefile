@@ -25,7 +25,6 @@ SOURCES = program\
 		merge_candidate_variants\
 		construct_probes\
 		discover\
-		genotype\
 		profile_indels\
 		compute_concordance\
 		partition\
