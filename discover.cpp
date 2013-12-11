@@ -221,6 +221,12 @@ class VariantHunter
                 I[ins_init_pos].back().append(1, read_seq.s[read_seq_pos0]);
                 ins_init = false;
                 del_init = true;
+                
+                //helps maintain count as I's can be 3' hanging
+                if (cigar_pos0==cigar.l-1 || cigar.s[cigar_pos0]=='S')
+                {
+                    ++N[ins_init_pos];
+                }
                 ++read_seq_pos0;
             }
             else if (a=='D')
@@ -229,9 +235,9 @@ class VariantHunter
                 if (del_init)
                 {
                     del_init_pos = cur_pos0;
-                    D[cur_pos0].push_back("");
-                    D[cur_pos0].back().append(1, (read_seq_pos0!=0?read_seq.s[read_seq_pos0-1]:genome_seq[genome_seq_pos0-1]));
-                    ++N[cur_pos0];
+                    D[del_init_pos].push_back("");
+                    D[del_init_pos].back().append(1, (read_seq_pos0!=0?read_seq.s[read_seq_pos0-1]:genome_seq[genome_seq_pos0-1]));
+                    ++N[del_init_pos];
                     ANCHOR[del_init_pos] = genome_seq[genome_seq_pos0-1];
                 }
                 D[del_init_pos].back().append(1, genome_seq[genome_seq_pos0]);
@@ -465,7 +471,6 @@ class VariantHunter
                                 kputs(deletedAllele, &alleles);
                                 kputc(',', &alleles);
                                 kputc(replacement_anchor, &alleles);
-
                                 bcf_update_alleles_str(odw->hdr, v, alleles.s);
                                 bcf_update_format_int32(odw->hdr, v, "E", &i->second, 1);
                                 bcf_update_format_int32(odw->hdr, v, "N", &N[start], 1);
@@ -510,8 +515,6 @@ class VariantHunter
                                 kputc(ref, &alleles);
                                 kputc(',', &alleles);
                                 kputc(i->first, &alleles);
-
-
                                 bcf_update_alleles_str(odw->hdr, v, alleles.s);
                                 bcf_update_format_int32(odw->hdr, v, "E", &i->second, 1);
                                 bcf_update_format_int32(odw->hdr, v, "N", &N[start], 1);
