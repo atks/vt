@@ -114,8 +114,9 @@ class Igor : Program
 
         while (odr->read(v))
         {
-            bcf_unpack(v, BCF_UN_INFO);
-            bcf_get_pos1(v);
+//            bcf_unpack(v, BCF_UN_INFO);
+//            bcf_get_pos1(v);
+//          
             
             //filter
 

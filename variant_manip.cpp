@@ -30,8 +30,11 @@
  */
 VariantManip::VariantManip(std::string ref_fasta_file)
 {
-    fai = fai_load(ref_fasta_file.c_str());
-    reference_present = fai!=NULL;
+    if (ref_fasta_file!="")
+    {
+        fai = fai_load(ref_fasta_file.c_str());
+        reference_present = fai!=NULL;
+    }
 };
 
 /**
