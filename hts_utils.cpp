@@ -294,6 +294,10 @@ bcf_hdr_t *bcf_alt_hdr_read(htsFile *fp)
         htsFile *alt_hdr = hts_open(alt_hdr_fn.s, "r");
         h = bcf_hdr_read(alt_hdr);
         hts_close(alt_hdr);
+    
+        //helps move the pointer to the right place
+        bcf_hdr_t *temp_h = bcf_hdr_read(fp);
+        bcf_hdr_destroy(temp_h);
     }
 
     if (alt_hdr_fn.m) free(alt_hdr_fn.s);
