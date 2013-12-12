@@ -172,11 +172,12 @@ class Igor : Program
 
 }
 
-void view(int argc, char ** argv)
+bool view(int argc, char ** argv)
 {
     Igor igor(argc, argv);
     igor.print_options();
     igor.initialize();
     igor.view();
     igor.print_stats();
+    return igor.print;
 };

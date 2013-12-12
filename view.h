@@ -31,6 +31,6 @@
 #include "hts_utils.h"
 #include "variant_manip.h"
 
-void view(int argc, char ** argv);
+bool view(int argc, char ** argv);
     
 #endif

@@ -32,6 +32,8 @@ VariantManip::VariantManip(std::string ref_fasta_file)
 {
     if (ref_fasta_file!="")
     {
+        std::cerr << "atempting to load fai\n";
+        
         fai = fai_load(ref_fasta_file.c_str());
         reference_present = fai!=NULL;
     }

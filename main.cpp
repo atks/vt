@@ -87,6 +87,7 @@ int main(int argc, char ** argv)
 {
     clock_t t0;
     t0 = clock();
+    bool print = true;
         
     if (argc==1)
     {
@@ -99,17 +100,15 @@ int main(int argc, char ** argv)
     //primitive programs that do not require help pages and summary statistics by default
     if (argc>1 && cmd=="view")
     {
-        view(argc-1, ++argv);
-        return 0;
+        print = view(argc-1, ++argv);
+        if (!print) return 0;
     } 
     else if (argc>1 && cmd=="index")
     {
-        index(argc-1, ++argv);
-        return 0;
+        print = index(argc-1, ++argv);
+        if (!print) return 0;
     } 
-
-    //more sophisticated programs
-    if (argc>1 && cmd=="normalize")
+    else if (argc>1 && cmd=="normalize")
     {
         normalize(argc-1, ++argv);
     }

@@ -125,6 +125,8 @@ class Igor : Program
     {
         while (odr->read(v))
         {
+            bcf_print(odr->hdr, v);
+            
             int32_t vtype = vm->classify_variant(odr->hdr, v);
             
             if (vtype==VT_SNP)
