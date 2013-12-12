@@ -139,11 +139,12 @@ class Igor : Program
 
 }
 
-void index(int argc, char ** argv)
+bool index(int argc, char ** argv)
 {
     Igor igor(argc, argv);
     igor.print_options();
     igor.initialize();
     igor.index();
     igor.print_stats();
+    return igor.print;
 };

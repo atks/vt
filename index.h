@@ -28,6 +28,6 @@
 #include "htslib/tbx.h"
 #include "program.h"
 
-void index(int argc, char ** argv);
+bool index(int argc, char ** argv);
 
 #endif
