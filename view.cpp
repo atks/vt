@@ -98,7 +98,7 @@ class Igor : Program
         //////////////////////
         odr = new BCFOrderedReader(input_vcf_file, intervals);
         odw = new BCFOrderedWriter(output_vcf_file, 0);
-        odw->set_hdr(odr->hdr);
+        odw->link_hdr(odr->hdr);
         odw->write_hdr();
 
         ////////////////////////
@@ -114,16 +114,6 @@ class Igor : Program
 
         while (odr->read(v))
         {
-//            bcf_unpack(v, BCF_UN_INFO);
-//            bcf_get_pos1(v);
-//          
-            
-            //filter
-
-            //subset if necessary
-            //int bcf_subset(const bcf_hdr_t *h, bcf1_t *v, int n, int *imap)
-
-
             odw->write(v);
             v = odw->get_bcf1_from_pool();
             ++no_variants;
@@ -140,19 +130,7 @@ class Igor : Program
 
         std::clog << "options:     input VCF file        " << input_vcf_file << "\n";
         std::clog << "         [o] output VCF file       " << output_vcf_file << "\n";
-        if (intervals.size()!=0)
-        {
-            std::clog << "         [i] intervals                    ";
-            for (uint32_t i=0; i<std::min((uint32_t)intervals.size(),(uint32_t)5); ++i)
-            {
-                if (i) std::clog << ", ";
-                std::clog << intervals[i].to_string();
-            }
-            if (intervals.size()>5)
-            {
-                std::clog << "  and " << (intervals.size()-5) <<  " other intervals\n";
-            }
-        }
+        print_int_op("         [i] intervals             ", intervals);
         std::clog << "\n";
     }
 
