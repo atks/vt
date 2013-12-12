@@ -49,14 +49,13 @@
 //
 //#endif
 
-     
+
 #define VT_REF      0   //dlen==0 && diff==0
 #define VT_SNP      1   //min(rlen,alen)==1 && diff==1
 #define VT_MNP      2   //min(rlen,alen)==diff
-#define VT_INDEL    4   //diff!=0 && (rlen==1 || alen==1) 
-#define VT_COMPLEX  8   //all others
+#define VT_INDEL    4   //diff!=0 && (rlen==1 || alen==1)
+#define VT_CLUMPED  8   //all others
 
-  
 /**
  * Allele.
  *
@@ -67,38 +66,47 @@
  */
 class Allele
 {
-	public:
-	    
-	int32_t type;
-	int32_t diff;  //number of difference bases when bases are compared
-	int32_t alen;  //length(alt)
-	int32_t dlen;  //length(alt)-length(ref)
-	int32_t tlen;  //tract length
+    public:
 
-    Allele(int32_t type, int32_t diff,	int32_t alen, int32_t dlen, int32_t tlen)
+    int32_t type;
+    int32_t diff;  //number of difference bases when bases are compared
+    int32_t alen;  //length(alt)
+    int32_t dlen;  //length(alt)-length(ref)
+    int32_t tlen;  //tract length
+
+    Allele(int32_t type, int32_t diff, int32_t alen, int32_t dlen, int32_t tlen)
     {
         this->type = type;
         this->diff = diff;
         this->alen = alen;
-        this->dlen = dlen; 
-    	this->tlen = tlen;
+        this->dlen = dlen;
+        this->tlen = tlen;
     }
 
-    Allele() 
+    Allele()
     {
         clear();
     };
-    
+
     ~Allele() {};
-    
+
     void clear()
     {
         type = -1;
         diff = -1;
         alen = 0;
-        dlen = 0; 
-    	tlen = 0;
+        dlen = 0;
+        tlen = 0;
     }
+    
+    void print()
+    {
+        std::cerr << "type: " << type << "\n";
+        std::cerr << "diff: " << diff << "\n";
+        std::cerr << "alen: " << alen << "\n";   
+        std::cerr << "dlen: " << dlen << "\n";        
+        std::cerr << "tlen: " << tlen << "\n";   
+    };    
 };
 
 /**
@@ -107,14 +115,14 @@ class Allele
  */
 class Variant
 {
-	public:
-	     
-	int32_t type;    //aggegrated type from the alleles
-	int32_t rlen;    //reference length
+    public:
+
+    int32_t type;    //aggegrated type from the alleles
+    int32_t rlen;    //reference length
     kstring_t motif; //motif
     int32_t mlen;    //motif length
     int32_t tlen;    //reference tract length
-    std::vector<Allele> alleles; 
+    std::vector<Allele> alleles;
 
     Variant()
     {
@@ -124,15 +132,15 @@ class Variant
         tlen = 0;
         alleles.clear();
     }
-    
+
     ~Variant()
     {
         if (motif.m)
         {
             free(motif.s);
-        }    
-    }  
-            
+        }
+    }
+
     void clear()
     {
         type = 0;
@@ -178,18 +186,23 @@ class VariantManip
     /**
      * Classifies variants.
      */
-    int32_t classify_variant(bcf_hdr_t *h, bcf1_t *v);
-    
+    int32_t classify_variant(bcf_hdr_t *h, bcf1_t *v, Variant& variant);
+
     /**
      * Classifies variants.
      */
-    int32_t classify_variant(const char* chrom, uint32_t pos1, char** allele, int32_t n_allele, Variant& v);
-        
+    int32_t classify_variant(bcf_hdr_t *h, bcf1_t *v);
+
+    /**
+     * Classifies variants.
+     */
+    int32_t classify_variant(const char* chrom, uint32_t pos1, char** allele, int32_t n_allele, Variant& variant);
+
     /**
      * Classifies variants.
      */
     int32_t classify_variant(const char* chrom, uint32_t pos1, char** allele, int32_t n_allele);
-            
+
     /**
      * Left trims a variant with unnecesary nucleotides.
      */
@@ -204,7 +217,7 @@ class VariantManip
      * Generates a probing haplotype with flanks around the variant of interest.
      */
     void generate_probes(const char* chrom,
-                        int32_t pos1, uint32_t probeDiff, 
+                        int32_t pos1, uint32_t probeDiff,
                         std::vector<std::string>& alleles, //store alleles
                         std::vector<std::string>& probes, //store probes
                         uint32_t min_flank_length,

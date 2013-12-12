@@ -1,6 +1,6 @@
 UNAME = $(shell uname)
 
-OPTFLAG ?= -O0 -ggdb
+OPTFLAG ?= -O2 -ggdb
 INCLUDES = -I./lib/include/ -I. -I./lib/include/htslib
 CFLAGS = -pipe -std=c++0x $(OPTFLAG) $(INCLUDES) -D__STDC_LIMIT_MACROS
 CXX = clang++
@@ -51,7 +51,9 @@ $(TOOLOBJ): $(HEADERSONLY)
 .cpp.o :
 	$(CXX) $(CFLAGS) -o $@ -c $*.cpp
 
-clean:
+clean :
 	cd lib/include/htslib; $(MAKE) clean; cd ..
 	-rm -rf $(TARGET) $(TOOLOBJ)
-    
+
+refresh :
+	-rm -rf $(TARGET) $(TOOLOBJ)    
