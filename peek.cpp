@@ -54,7 +54,7 @@ class Igor : Program
     /////////
     //tools//
     /////////
-    VariantManip *var_manip;
+    VariantManip *vm;
 
     Igor(int argc, char **argv)
     {
@@ -69,7 +69,7 @@ class Igor : Program
 
             TCLAP::CmdLine cmd(desc, ' ', version);
             VTOutput my; cmd.setOutput(&my);
-            TCLAP::ValueArg<std::string> arg_ref_fasta_file("r", "r", "reference sequence fasta file []", true, "", "str", cmd);
+            TCLAP::ValueArg<std::string> arg_ref_fasta_file("r", "r", "reference sequence fasta file []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_intervals("i", "i", "intervals []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "file", cmd);
             TCLAP::ValueArg<std::string> arg_output_vcf_file("o", "o", "output VCF file [-]", false, "-", "str", cmd);
@@ -103,28 +103,46 @@ class Igor : Program
         no_snp2 = 0;
         no_snp3 = 0;
         no_snp4 = 0;
+//        no_mnp2 = 0;
+//        no_mnp3+no_mnp4+no_mnp5
+        
+//        no_mnps << "\n";
+//        no_mnps_bi << "\n";
+//        std::clog << "            multiallelic      : " << no_mnps_multi << "\n";
+//        std::clog << "             length 2         : " << no_mnps2 << "\n";
+//        std::clog << "             length 3         : " << no_mnps3 << "\n";
+//        std::clog << "             length 4         : " << no_mnps4 << "\n";
+//        std::clog << "             length >=5       : " << no_mnps5 << "\n";
+        
 
         ////////////////////////
         //tools initialization//
         ////////////////////////
-        var_manip = new VariantManip(ref_fasta_file);
-    }
-
-    int32_t classify_variant(bcf_hdr_t *h, bcf1_t *v)
-    {
-       // return var_manip->classify_variant(bcf_get_chrom(h, v), bcf_get_pos0(v), bcf_get_allele(v), bcf_get_n_allele(v));
-    
-        return 1;
+        vm = new VariantManip(ref_fasta_file);
     }
 
     void peek()
     {
         while (odr->read(v))
         {
-            bcf_unpack(v, BCF_UN_STR);
-            uint32_t pos1 = bcf_get_pos1(v);
+            int32_t vtype = vm->classify_variant(odr->hdr, v);
             
-            
+            if (vtype==VT_SNP)
+            {
+                if (bcf_get_n_allele(v)==2)
+                {
+                    ++no_snp2;
+                }
+                else if (bcf_get_n_allele(v)==3)
+                {
+                    ++no_snp3;
+                }
+                else if (bcf_get_n_allele(v)==4)
+                {
+                    ++no_snp4;
+                }    
+            }  
+              
         }
         
         odr->close();
@@ -143,19 +161,19 @@ class Igor : Program
 
     void print_stats()
     {
-          std::clog << "\nstats: No. of SNPs          : " << no_snp2+no_snp3+no_snp4 << "\n";
-          std::clog << "           biallelic          : " << no_snp2 << "\n";
-          std::clog << "           multiallelic       : " << no_snp3+no_snp4 << "\n";
-          std::clog << "             3 alleles        : " << no_snp3 << "\n";
-          std::clog << "             4 alleles        : " << no_snp4 << "\n";
-//        std::clog << "\n";
-//        std::clog << "         No. of MNPs          : " << no_mnps << "\n";
-//        std::clog << "            biallelic         : " << no_mnps_bi << "\n";
-//        std::clog << "            multiallelic      : " << no_mnps_multi << "\n";
-//        std::clog << "             length 2         : " << no_mnps2 << "\n";
-//        std::clog << "             length 3         : " << no_mnps3 << "\n";
-//        std::clog << "             length 4         : " << no_mnps4 << "\n";
-//        std::clog << "             length >=5       : " << no_mnps5 << "\n";
+        std::clog << "\nstats: No. of SNPs          : " << no_snp2+no_snp3+no_snp4 << "\n";
+        std::clog << "           biallelic          : " << no_snp2 << "\n";
+        std::clog << "           multiallelic       : " << no_snp3+no_snp4 << "\n";
+        std::clog << "             3 alleles        : " << no_snp3 << "\n";
+        std::clog << "             4 alleles        : " << no_snp4 << "\n";
+        std::clog << "\n";
+//        std::clog << "         No. of MNPs          : " << no_mnp2+no_mnp3+no_mnp4+no_mnp5 << "\n";
+//        std::clog << "            biallelic         : " << no_mnp2 << "\n";
+//        std::clog << "            multiallelic      : " << no_mnp3+no_mnp4+no_mnp5 << "\n";
+//        std::clog << "             length 2         : " << no_mnp2 << "\n";
+//        std::clog << "             length 3         : " << no_mnp3 << "\n";
+//        std::clog << "             length 4         : " << no_mnp4 << "\n";
+//        std::clog << "             length >=5       : " << no_mnp5 << "\n";
 //        std::clog << "\n";
 //        std::clog << "         No. of Indels        : " << no_indels << "\n";
 //        std::clog << "            biallelic         :   " << no_indels_bi << "\n";
