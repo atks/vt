@@ -52,4 +52,6 @@ $(TOOLOBJ): $(HEADERSONLY)
 	$(CXX) $(CFLAGS) -o $@ -c $*.cpp
 
 clean:
+	cd lib/include/htslib; $(MAKE) clean; cd ..
 	-rm -rf $(TARGET) $(TOOLOBJ)
+    
