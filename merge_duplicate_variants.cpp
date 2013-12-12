@@ -100,7 +100,7 @@ class Igor : Program
         //////////////////////
         odr = new BCFOrderedReader(input_vcf_file, intervals);
         odw = new BCFOrderedWriter(output_vcf_file, 0);
-        odw->set_hdr(odr->hdr);
+        odw->link_hdr(odr->hdr);
         odw->write_hdr();
 
         ////////////////////////

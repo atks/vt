@@ -110,7 +110,7 @@ class Igor : Program
         odr = new BCFOrderedReader(input_vcf_file, intervals);
 
         odw = new BCFOrderedWriter(output_vcf_file, 100000);
-        odw->set_hdr(odr->hdr);
+        odw->link_hdr(odr->hdr);
         bcf_hdr_append(odw->hdr, "##INFO=<ID=OLD_VARIANT,Number=1,Type=String,Description=\"Original chr:pos:ref:alt encoding\">\n");
         odw->write_hdr();
 
@@ -150,7 +150,7 @@ class Igor : Program
         uint32_t left_trimmed = 0;
         uint32_t right_trimmed = 0;
 
-        int32_t ambiguous_variant_types = (VT_MNP | VT_INDEL | VT_COMPLEX);
+        int32_t ambiguous_variant_types = (VT_MNP | VT_INDEL | VT_CLUMPED);
 
         v = odw->get_bcf1_from_pool();
         Variant variant;
