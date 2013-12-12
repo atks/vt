@@ -158,7 +158,6 @@ class Igor : Program
         {
             bcf_unpack(v, BCF_UN_STR);
             int32_t vtype = vm->classify_variant(odr->hdr, v, variant);
-            //std::cerr << "VM: " <<  vm->vtype2string(vtype) << "\n";
             
             if (vtype & VT_CLUMPED)
             {
