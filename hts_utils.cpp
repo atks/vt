@@ -279,6 +279,17 @@ void bcf_print(bcf_hdr_t *h, bcf1_t *v)
 };
 
 /**
+ * Prints a VCF record in compact string representation to STDERR.
+ */
+void bcf_print_lite(bcf_hdr_t *h, bcf1_t *v)
+{
+    kstring_t s = {0,0,0,};
+    bcf_variant2string(h, v, &s);
+    std::cerr << s.s << "\n";
+    if (s.m) free(s.s);
+};
+
+/**
  * Reads header of a VCF file and returns the bcf header object.
  * This wraps around vcf_hdr_read from the original htslib to
  * allow for an alternative header file to be read in.
