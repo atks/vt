@@ -205,6 +205,11 @@ int bcf_hdr_subset_samples(const bcf_hdr_t *h, bcf1_t *v, std::vector<int32_t>& 
 void bcf_variant2string(bcf_hdr_t *h, bcf1_t *v, kstring_t *var);
 
 /**
+ * Prints a VCF record to STDERR.
+ */
+void bcf_print(bcf_hdr_t *h, bcf1_t *v);
+
+/**
  * Get number of chromosomes
  */
 #define bcf_get_n_chrom(h) ((h)->n[BCF_DT_CTG])

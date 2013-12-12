@@ -268,6 +268,17 @@ void bcf_hdr_transfer_contigs(const bcf_hdr_t *hsrc, bcf_hdr_t *hdest)
 }
 
 /**
+ * Prints a VCF record to STDERR.
+ */
+void bcf_print(bcf_hdr_t *h, bcf1_t *v)
+{
+    kstring_t s = {0,0,0,};
+    vcf_format(h, v, &s);
+    std::cerr << s.s << "\n";
+    if (s.m) free(s.s);
+};
+
+/**
  * Reads header of a VCF file and returns the bcf header object.
  * This wraps around vcf_hdr_read from the original htslib to
  * allow for an alternative header file to be read in.
