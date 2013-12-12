@@ -210,6 +210,11 @@ void bcf_variant2string(bcf_hdr_t *h, bcf1_t *v, kstring_t *var);
 void bcf_print(bcf_hdr_t *h, bcf1_t *v);
 
 /**
+ * Prints a VCF record in compact string representation to STDERR.
+ */
+void bcf_print_lite(bcf_hdr_t *h, bcf1_t *v);
+
+/**
  * Get number of chromosomes
  */
 #define bcf_get_n_chrom(h) ((h)->n[BCF_DT_CTG])
