@@ -50,7 +50,7 @@ BCFOrderedWriter::BCFOrderedWriter(std::string input_vcf_file, int32_t window)
 }
 
 /**
- * Gets record from pool, creates a new record if necessary
+ * Duplicates a hdr and sets it.
  */
 void BCFOrderedWriter::set_hdr(bcf_hdr_t *hdr)
 {
@@ -59,6 +59,14 @@ void BCFOrderedWriter::set_hdr(bcf_hdr_t *hdr)
         bcf_hdr_destroy(this->hdr);
     }
     this->hdr = bcf_hdr_dup(hdr);
+}
+
+/**
+ * Links a header.  This is useful when the read in VCF header is incomplete.
+ */
+void BCFOrderedWriter::link_hdr(bcf_hdr_t *hdr)
+{
+    this->hdr = hdr;
 }
 
 /**
