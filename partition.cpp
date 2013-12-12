@@ -81,8 +81,7 @@ class Igor : Program
     	try
     	{
     		std::string desc =   		    
-"Paritition variants.  Check the overlap of variants between 2 data sets.\n\
-e.g. vt partition NA19130.vcf.gz HG00096.vcf.gz\n\n";
+"Paritition variants.  Check the overlap of variants between 2 data sets.\n";
 
        		version = "0.5";
     		TCLAP::CmdLine cmd(desc, ' ', version);

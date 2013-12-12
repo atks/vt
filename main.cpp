@@ -118,22 +118,6 @@ int main(int argc, char ** argv)
     {
         merge_duplicate_variants(argc-1, ++argv);
     }
-    else if (argc>1 && cmd=="construct_probes")
-    {
-        construct_probes(argc-1, ++argv);
-    }
-    else if (argc>1 && cmd=="discover")
-    {
-        discover(argc-1, ++argv);
-    }
-    else if (argc>1 && cmd=="genotype")
-    {
-        //genotype(argc-1, ++argv);
-    } 
-    else if (argc>1 && cmd=="merge_candidate_variants")
-    {
-        merge_candidate_variants(argc-1, ++argv);
-    }    
     else if (argc>1 && cmd=="peek")
     {
         peek(argc-1, ++argv);
@@ -141,7 +125,23 @@ int main(int argc, char ** argv)
     else if (argc>1 && cmd=="partition")
     {
         partition(argc-1, ++argv);
-    }    
+    } 
+    else if (argc>1 && cmd=="discover")
+    {
+        discover(argc-1, ++argv);
+    }
+    else if (argc>1 && cmd=="merge_candidate_variants")
+    {
+        merge_candidate_variants(argc-1, ++argv);
+    }
+    else if (argc>1 && cmd=="genotype")
+    {
+        //genotype(argc-1, ++argv);
+    } 
+    else if (argc>1 && cmd=="construct_probes")
+    {
+        construct_probes(argc-1, ++argv);
+    }
     else
     {
         std::clog << "Command not found: " << argv[1] << "\n\n";
