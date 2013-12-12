@@ -24,6 +24,7 @@
 #ifndef PEEK_H
 #define PEEK_H
 
+#include <cstdio>
 #include "htslib/vcf.h"
 #include "htslib/kseq.h"
 #include "program.h"

@@ -47,10 +47,29 @@ class Igor : Program
     /////////
     //stats//
     /////////
+    uint32_t no_observed_variants;
+    uint32_t no_classified_variants;
+    uint32_t no_ref;
     uint32_t no_snp2;
     uint32_t no_snp3;
     uint32_t no_snp4;
-
+    uint32_t no_mnp2;
+    uint32_t no_mnp_multi;
+    uint32_t no_indel2;
+    uint32_t no_ins2;
+    uint32_t no_del2;
+    uint32_t no_indel_multi;
+    uint32_t no_snpindel2;
+    uint32_t no_snpins2;
+    uint32_t no_snpdel2;
+    uint32_t no_snpindel_multi;
+    uint32_t no_mnpindel2;
+    uint32_t no_mnpins2;
+    uint32_t no_mnpdel2;
+    uint32_t no_mnpindel_multi;
+    uint32_t no_clumped2;
+    uint32_t no_clumped_multi;
+    
     /////////
     //tools//
     /////////
@@ -100,20 +119,30 @@ class Igor : Program
         ////////////////////////
         //stats initialization//
         ////////////////////////
+        no_observed_variants = 0;
+        no_classified_variants = 0;
+        no_ref = 0;
         no_snp2 = 0;
         no_snp3 = 0;
         no_snp4 = 0;
-//        no_mnp2 = 0;
-//        no_mnp3+no_mnp4+no_mnp5
-        
-//        no_mnps << "\n";
-//        no_mnps_bi << "\n";
-//        std::clog << "            multiallelic      : " << no_mnps_multi << "\n";
-//        std::clog << "             length 2         : " << no_mnps2 << "\n";
-//        std::clog << "             length 3         : " << no_mnps3 << "\n";
-//        std::clog << "             length 4         : " << no_mnps4 << "\n";
-//        std::clog << "             length >=5       : " << no_mnps5 << "\n";
-        
+        no_mnp2 = 0;
+        no_mnp_multi = 0;
+        no_indel2 = 0;
+        no_ins2 = 0;
+        no_del2 = 0;
+        no_indel_multi = 0;
+        no_snpindel2 = 0;
+        no_snpins2 = 0;
+        no_snpdel2 = 0;
+        no_snpindel_multi = 0;
+        no_mnpindel2 = 0;
+        no_mnpins2 = 0;
+        no_mnpdel2 = 0;
+        no_mnpindel_multi = 0;
+        no_clumped2 = 0;
+        no_clumped_multi = 0;
+        no_clumped2 = 0;
+        no_clumped_multi = 0;
 
         ////////////////////////
         //tools initialization//
@@ -123,13 +152,28 @@ class Igor : Program
 
     void peek()
     {
+        Variant variant;
+
         while (odr->read(v))
         {
-            bcf_print(odr->hdr, v);
+            bcf_unpack(v, BCF_UN_STR);
+            int32_t vtype = vm->classify_variant(odr->hdr, v, variant);
+            //std::cerr << "VM: " <<  vm->vtype2string(vtype) << "\n";
             
-            int32_t vtype = vm->classify_variant(odr->hdr, v);
-            
-            if (vtype==VT_SNP)
+            if (vtype & VT_CLUMPED)
+            {
+                if (bcf_get_n_allele(v)==2)
+                {
+                    ++no_clumped2;
+                }
+                else if (bcf_get_n_allele(v)>=3)
+                {
+                    ++no_clumped_multi;
+                }
+                
+                ++no_classified_variants;
+            }
+            else if (vtype==VT_SNP)
             {
                 if (bcf_get_n_allele(v)==2)
                 {
@@ -142,11 +186,101 @@ class Igor : Program
                 else if (bcf_get_n_allele(v)==4)
                 {
                     ++no_snp4;
-                }    
-            }  
-              
+                }
+                
+                ++no_classified_variants;
+            }
+            else if (vtype==VT_MNP)
+            {
+                if (bcf_get_n_allele(v)==2)
+                {
+                    ++no_mnp2;
+                }
+                else if (bcf_get_n_allele(v)>=3)
+                {
+                    ++no_mnp_multi;
+                }
+                
+                ++no_classified_variants;
+            }
+            else if (vtype==VT_INDEL) //strictly simple indels
+            {
+                if (bcf_get_n_allele(v)==2)
+                {
+                    ++no_indel2;
+                    if (variant.alleles[0].dlen>0)
+                    {
+                        ++no_ins2;
+                    }
+                    else
+                    {
+                        ++no_del2;
+                    }
+                }
+                else if (bcf_get_n_allele(v)>=3)
+                {      
+                    ++no_indel_multi;
+                }
+                
+                ++no_classified_variants;
+            }
+            else if (vtype==(VT_SNP|VT_INDEL))
+            {
+                if (bcf_get_n_allele(v)==2)
+                {
+                    ++no_snpindel2;
+                    if (variant.alleles[0].dlen>0)
+                    {
+                        ++no_snpins2;
+                    }
+                    else
+                    {
+                        ++no_snpdel2;
+                    }
+                }
+                else if (bcf_get_n_allele(v)>=3)
+                {
+                    ++no_snpindel_multi;
+                }
+                                
+                ++no_classified_variants;
+            }
+            else if (vtype&(VT_MNP|VT_INDEL))
+            {
+                if (bcf_get_n_allele(v)==2)
+                {
+                    ++no_mnpindel2;
+                    if (variant.alleles[0].dlen>0)
+                    {
+                        ++no_mnpins2;
+                    }
+                    else
+                    {
+                        ++no_mnpdel2;
+                    }
+                }
+                else if (bcf_get_n_allele(v)>=3)
+                {
+                    ++no_mnpindel_multi;
+                }
+             
+                ++no_classified_variants;
+            }
+            else if (vtype==VT_REF) //MNPs that are not real MNPs
+            {
+                ++no_ref;
+                ++no_classified_variants;
+            }
+            else
+            {
+                std::cerr << "UNCLASSIFIED\n";
+                bcf_print_lite(odr->hdr, v);
+                std::cerr << vm->vtype2string(vtype) << "\n"; 
+            }
+            
+            ++no_observed_variants;
         }
-        
+
         odr->close();
     };
 
@@ -163,66 +297,43 @@ class Igor : Program
 
     void print_stats()
     {
-        std::clog << "\nstats: No. of SNPs          : " << no_snp2+no_snp3+no_snp4 << "\n";
-        std::clog << "           biallelic          : " << no_snp2 << "\n";
-        std::clog << "           multiallelic       : " << no_snp3+no_snp4 << "\n";
-        std::clog << "             3 alleles        : " << no_snp3 << "\n";
-        std::clog << "             4 alleles        : " << no_snp4 << "\n";
-        std::clog << "\n";
-//        std::clog << "         No. of MNPs          : " << no_mnp2+no_mnp3+no_mnp4+no_mnp5 << "\n";
-//        std::clog << "            biallelic         : " << no_mnp2 << "\n";
-//        std::clog << "            multiallelic      : " << no_mnp3+no_mnp4+no_mnp5 << "\n";
-//        std::clog << "             length 2         : " << no_mnp2 << "\n";
-//        std::clog << "             length 3         : " << no_mnp3 << "\n";
-//        std::clog << "             length 4         : " << no_mnp4 << "\n";
-//        std::clog << "             length >=5       : " << no_mnp5 << "\n";
-//        std::clog << "\n";
-//        std::clog << "         No. of Indels        : " << no_indels << "\n";
-//        std::clog << "            biallelic         :   " << no_indels_bi << "\n";
-//        std::clog << "             insertions       :   " << no_insertions << "\n";
-//        std::clog << "             deletions        :   " << no_deletions << "\n";
-//        std::clog << "            multiallelic      : " << no_la << "\n";
-//        std::clog << "                              : " << no_la << "\n";
-//        std::clog << "          No. SNP Indels      : " << no_la << "\n";
-//        std::clog << "                               : " << no_la << "\n";
-//        std::clog << "          No. Complex Substitutions                     : " << no_la << "\n";
-//        std::clog << "             biallelic                      : " << no_la << "\n";
-//        std::clog << "             multiallelic                      : " << no_la << "\n";
-//        std::clog << "                               : " << no_la << "\n";
-//        std::clog << "          No. of SVs                      : " << no_la << "\n";
-//        std::clog << "             precise                      : " << no_la << "\n";
-//        std::clog << "               biallelic                      : " << no_la << "\n";
-//        std::clog << "              multiallelic                    : " << no_la << "\n";
-//        std::clog << "             unprecise                  : " << no_la << "\n";
-//        std::clog << "              biallelic                      : " << no_la << "\n";
-//        std::clog << "              multiallelic                     : " << no_la << "\n";
-//		std::clog << "\n";
-//        std::clog << "              multiallelic                     : " << no_la << "\n";
-//        std::clog << "              multiallelic                     : " << no_la << "\n";
-//        std::clog << "              multiallelic                     : " << no_la << "\n";
-//        std::clog << "              multiallelic                     : " << no_la << "\n";
-//        std::clog << "              multiallelic                     : " << no_la << "\n";
-//        std::clog << "              multiallelic                     : " << no_la << "\n";
-//        std::clog << "              multiallelic                     : " << no_la << "\n";
-//        std::clog << "              multiallelic                     : " << no_la << "\n";
-//        std::clog << "              multiallelic                     : " << no_la << "\n";
-//        std::clog << "              multiallelic                     : " << no_la << "\n";
-//        std::clog << "              multiallelic                     : " << no_la << "\n";
-//		std::clog << "\n";
-//		std::clog << "\n";
-//		std::clog << "\n";
-//		std::clog << "\n";
-//		std::clog << "\n";
-//		std::clog << "\n";
-//		std::clog << "\n";
-//		std::clog << "\n";
-//		std::clog << "\n";
-//		std::clog << "\n";
-//		std::clog << "\n";
-    
-
-
-	};
+        fprintf(stderr, "\n");
+        fprintf(stderr, "stats: No. of SNPs                   : %10d\n", no_snp2+no_snp3+no_snp4);
+        fprintf(stderr, "           biallelic                 : %15d\n", no_snp2);
+        fprintf(stderr, "           3 alleles                 : %15d\n", no_snp3);
+        fprintf(stderr, "           4 alleles                 : %15d\n", no_snp4);
+        fprintf(stderr, "\n");
+        fprintf(stderr, "       No. of MNPs                   : %10d\n", no_mnp2+no_mnp_multi);
+        fprintf(stderr, "           biallelic                 : %15d\n", no_mnp2);
+        fprintf(stderr, "           multiallelic              : %15d\n", no_mnp_multi);
+        fprintf(stderr, "\n");
+        fprintf(stderr, "       No. Indels                    : %10d\n", no_indel2+no_indel_multi);
+        fprintf(stderr, "           biallelic                 : %15d\n", no_indel2);
+        fprintf(stderr, "               insertions            : %15d\n", no_ins2);
+        fprintf(stderr, "               deletions             : %15d\n", no_del2);
+        fprintf(stderr, "           multiallelic              : %15d\n", no_indel_multi);
+        fprintf(stderr, "\n");
+        fprintf(stderr, "       No. SNP/Indels                : %10d\n", no_snpindel2+no_snpindel_multi);
+        fprintf(stderr, "           biallelic                 : %15d\n", no_snpindel2);
+        fprintf(stderr, "               insertions            : %15d\n", no_snpins2);
+        fprintf(stderr, "               deletions             : %15d\n", no_snpdel2);
+        fprintf(stderr, "           multiallelic              : %15d\n", no_snpindel_multi);   
+        fprintf(stderr, "\n");
+        fprintf(stderr, "       No. MNP/Indels                : %10d\n", no_mnpindel2+no_mnpindel_multi);
+        fprintf(stderr, "           biallelic                 : %15d\n", no_mnpindel2);
+        fprintf(stderr, "               insertions            : %15d\n", no_mnpins2);
+        fprintf(stderr, "               deletions             : %15d\n", no_mnpdel2);
+        fprintf(stderr, "           multiallelic              : %15d\n", no_mnpindel_multi);   
+        fprintf(stderr, "\n");
+        fprintf(stderr, "       No. of Clumped variants       : %10d\n", no_clumped2+no_clumped_multi);
+        fprintf(stderr, "           biallelic                 : %15d\n", no_clumped2);
+        fprintf(stderr, "           multiallelic              : %15d\n", no_clumped_multi);
+        fprintf(stderr, "\n");
+        fprintf(stderr, "       No. of Reference              : %10d\n", no_ref);
+        fprintf(stderr, "\n");
+        fprintf(stderr, "       No. of observed variants      : %10d\n", no_observed_variants);
+        fprintf(stderr, "       No. of unclassified variants  : %10d\n", no_observed_variants-no_classified_variants);
+    };
 
     ~Igor() {};
 

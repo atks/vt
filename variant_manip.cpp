@@ -33,7 +33,7 @@ VariantManip::VariantManip(std::string ref_fasta_file)
     if (ref_fasta_file!="")
     {
         std::cerr << "atempting to load fai\n";
-        
+
         fai = fai_load(ref_fasta_file.c_str());
         reference_present = fai!=NULL;
     }
@@ -78,42 +78,12 @@ std::string VariantManip::vtype2string(int32_t VTYPE)
         s += "INDEL";
     }
 
-    if (VTYPE & VT_COMPLEX)
+    if (VTYPE & VT_CLUMPED)
     {
         s += (s.size()==0) ? "" : ";";
-        s += "COMPLEX";
+        s += "CLUMPED";
     }
-    
-//    if (VTYPE & VT_STR)
-//    {
-//        s += (s.size()==0) ? "" : ";";
-//        s += "STR";
-//    }
-//
-//    if (VTYPE & VT_EXACT_STR)
-//    {
-//        s += (s.size()==0) ? "" : ";";
-//        s += "EXACT_STR";
-//    }
-//
-//    if (VTYPE & VT_INEXACT_STR)
-//    {
-//        s += (s.size()==0) ? "" : ";";
-//        s += "INEXACT_STR";
-//    }
-//
-//    if (VTYPE & VT_SV)
-//    {
-//        s += (s.size()==0) ? "" : ";";
-//        s += "SV";
-//    }
-//
-//    if (VTYPE & VT_CR)
-//    {
-//        s += (s.size()==0) ? "" : ";";
-//        s += "CR";
-//    }
-
+   
     return s;
 }
 
@@ -122,8 +92,8 @@ std::string VariantManip::vtype2string(int32_t VTYPE)
  */
 bool VariantManip::detect_str(const char* chrom, uint32_t pos1, Variant& variant)
 {
-    
-    int32_t ref_len;   
+
+    int32_t ref_len;
     //STR related
     char* ru = 0;
     ru = faidx_fetch_seq(fai, chrom, pos1, pos1, &ref_len);
@@ -131,16 +101,16 @@ bool VariantManip::detect_str(const char* chrom, uint32_t pos1, Variant& variant
 
     int32_t tract_len = 1;
     int32_t motif_len = 1;
- 
-    
+
+
     std::string motif = "";
-    int32_t tlen = 0;    
+    int32_t tlen = 0;
 
     while (1)
     {
         char* next_ru = 0;
         next_ru = faidx_fetch_seq(fai, chrom, pos1+tract_len*motif_len, pos1+(tract_len)*motif_len, &ref_len);
-        
+
         //motif repeated
         if (strcmp(ru, next_ru)==0)
         {
@@ -174,8 +144,16 @@ bool VariantManip::detect_str(const char* chrom, uint32_t pos1, Variant& variant
     }
 
     free(ru);
-    
+
     return true;
+}
+
+/**
+ * Classifies variants.
+ */
+int32_t VariantManip::classify_variant(bcf_hdr_t *h, bcf1_t *v,  Variant& variant)
+{
+    return classify_variant(bcf_get_chrom(h, v), bcf_get_pos1(v), bcf_get_allele(v), bcf_get_n_allele(v), variant);
 }
 
 /**
@@ -203,7 +181,7 @@ int32_t VariantManip::classify_variant(const char* chrom, uint32_t pos1, char** 
 {
     int32_t pos0 = pos1-1;
     v.clear();
-    
+
     int32_t rlen = strlen(allele[0]);
 
     for (uint32_t i=1; i<n_allele; ++i)
@@ -213,7 +191,7 @@ int32_t VariantManip::classify_variant(const char* chrom, uint32_t pos1, char** 
         int32_t min_len = std::min(rlen, alen);
         int32_t dlen = alen-rlen;
         int32_t diff = 0;
-        
+
         for (int32_t j=0; j<min_len; ++j)
         {
             if (allele[0][j]!=allele[i][j])
@@ -221,33 +199,29 @@ int32_t VariantManip::classify_variant(const char* chrom, uint32_t pos1, char** 
                 ++diff;
             }
         }
-        
+
+        //substitution variants
         if (min_len==diff)
         {
-            type |= min_len==1 ? VT_SNP : VT_MNP; 
+            type |= min_len==1 ? VT_SNP : VT_MNP;
         }
-          
-        if (dlen!=0)
+
+        //indel variants
+        if (dlen)
         {
-            type |= VT_INDEL; 
+            type |= VT_INDEL;
         }
-        else 
+
+        //clumped SNPs and MNPs
+        if (diff && diff < min_len)
         {
-            if (diff==0)
-            {
-                type |= VT_REF; 
-            }
+            type |= VT_CLUMPED;
         }
-        
-        if (min_len!=1 && dlen!=0)
-        {
-            type |= VT_COMPLEX;
-        }    
         
         v.type |= type;
-        v.alleles.push_back(Allele(type, diff,	alen, dlen, 0));
+        v.alleles.push_back(Allele(type, diff, alen, dlen, 0));
     }
-    
+
     return v.type;
 }
 
