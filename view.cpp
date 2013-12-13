@@ -39,7 +39,7 @@ class Igor : Program
     std::vector<std::string> samples;
     std::string filter;
     std::string variant;
-    int32_t sort_window_size;    
+    uint32_t sort_window_size;    
     bool print;
 
     ///////
@@ -63,7 +63,7 @@ class Igor : Program
         //////////////////////////
         try
         {
-            std::string desc = "Views a VCF or BCF or VCF.GZ file.  Eventually to support filters, subsetting of samples.";
+            std::string desc = "Views a VCF or BCF or VCF.GZ file.";
 
             TCLAP::CmdLine cmd(desc, ' ', version);
             VTOutput my;
@@ -71,10 +71,10 @@ class Igor : Program
             TCLAP::ValueArg<std::string> arg_intervals("i", "i", "intervals []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "file", cmd);
             TCLAP::SwitchArg arg_print("p", "p", "print options and summary []", cmd, false);
-            TCLAP::ValueArg<int32_t> arg_sort_window_size("w", "w", "local sorting window size [0]", false, 0, "int", cmd);
-            TCLAP::ValueArg<std::string> arg_sample_list("s", "s", "file containing list of sample []", false, "", "file", cmd);
-            TCLAP::ValueArg<std::string> arg_filter("f", "f", "filter expression []", false, "", "exp", cmd);
-            TCLAP::ValueArg<std::string> arg_variant("v", "v", "variant type []", false, "", "exp", cmd);
+            TCLAP::ValueArg<uint32_t> arg_sort_window_size("w", "w", "local sorting window size [0]", false, 0, "int", cmd);
+            //TCLAP::ValueArg<std::string> arg_sample_list("s", "s", "file containing list of sample []", false, "", "file", cmd);
+            //TCLAP::ValueArg<std::string> arg_filter("f", "f", "filter expression []", false, "", "exp", cmd);
+            //TCLAP::ValueArg<std::string> arg_variant("v", "v", "variant type []", false, "", "exp", cmd);
             TCLAP::ValueArg<std::string> arg_output_vcf_file("o", "o", "output VCF/VCF.GZ/BCF file [-]", false, "-", "str", cmd);
             TCLAP::UnlabeledValueArg<std::string> arg_input_vcf_file("<in.vcf>", "input VCF file", true, "","file", cmd);
 
@@ -83,7 +83,7 @@ class Igor : Program
             input_vcf_file = arg_input_vcf_file.getValue();
             output_vcf_file = arg_output_vcf_file.getValue();
             parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
-            read_sample_list(samples, arg_sample_list.getValue());
+            //read_sample_list(samples, arg_sample_list.getValue());
             print = arg_print.getValue();
             sort_window_size = arg_sort_window_size.getValue();
         }
@@ -122,6 +122,7 @@ class Igor : Program
             ++no_variants;
         }
 
+        odr->close();
         odw->close();
     };
 

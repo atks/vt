@@ -273,8 +273,8 @@ Each VCF file is required to have the FORMAT flags E and N and should have exact
                     {
                         kstring_t s = {0,0,0};
                         vcf_format(sr->hdrs[file_index], v, &s);
-                        std::cerr << s.s << "\n";
-                            std::cerr << "file index " << file_index << "\n";
+//                        std::cerr << s.s << "\n";
+//                            std::cerr << "file index " << file_index << "\n";
                     }    
 
                     kh_value(m, k)->e[i] = E[0];
@@ -305,12 +305,12 @@ Each VCF file is required to have the FORMAT flags E and N and should have exact
                     double log10phet = log10(2*af*(1-af));
                     double log10phomalt = log10(af*af);
                     
-                    std::cerr <<"AF " << af <<  " " << log10phomref << " " << log10phet <<  " " << log10phomalt << "\n";
+                   // std::cerr <<"AF " << af <<  " " << log10phomref << " " << log10phet <<  " " << log10phomalt << "\n";
                     
                     for (int32_t i=0; i<nobs; ++i)
                     {
-                        std::cerr <<"LR " << i << " " << e[i] << " " << n[i] <<"\n";
-                        std::cerr << lt->log10choose(n[i], e[i]) << "\n";
+//                        std::cerr <<"LR " << i << " " << e[i] << " " << n[i] <<"\n";
+//                        std::cerr << lt->log10choose(n[i], e[i]) << "\n";
 //                        log10numhomref = log10phomref + lt->log10choose(n[i], e[i]) + (n[i]-e[i])*log10me + e[i]*log10e;
 //                        log10numhet = log10phet + lt->log10choose(n[i], e[i]) + log10half*n[i];
 //                        log10numhomalt = log10phomalt + lt->log10choose(n[i], e[i]) + (n[i]-e[i])*log10e + e[i]*log10me;

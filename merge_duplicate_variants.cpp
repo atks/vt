@@ -182,6 +182,7 @@ class Igor : Program
         }
         kh_clear(xdict, m);
 
+        odr->close();
         odw->close();
     };
 

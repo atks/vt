@@ -52,8 +52,8 @@ class Igor : Program
     /////////
     //stats//
     /////////
-    uint32_t no_variants;  
-    
+    uint32_t no_variants;
+
     uint32_t no_lt;    //# left trimmed
     uint32_t no_lt_la; //# left trimmed and left aligned
     uint32_t no_lt_rt; //# left trimmed and right trimmed
@@ -69,7 +69,7 @@ class Igor : Program
     /////////
     //tools//
     /////////
-    VariantManip *var_manip;
+    VariantManip *vm;
 
     Igor(int argc, char **argv)
     {
@@ -124,7 +124,7 @@ class Igor : Program
         //stats initialization//
         ////////////////////////
         no_variants = 0;
-        
+
         no_lt = 0;
         no_lt_la = 0;
         no_lt_rt = 0;
@@ -140,12 +140,7 @@ class Igor : Program
         ////////////////////////
         //tools initialization//
         ////////////////////////
-        var_manip = new VariantManip(ref_fasta_file);
-    }
-
-    int32_t classify_variant(bcf_hdr_t *h, bcf1_t *v, Variant& variant)
-    {
-        return var_manip->classify_variant(bcf_get_chrom(h, v), bcf_get_pos1(v), bcf_get_allele(v), bcf_get_n_allele(v), variant);
+        vm = new VariantManip(ref_fasta_file);
     }
 
     void normalize()
@@ -162,8 +157,8 @@ class Igor : Program
         while (odr->read(v))
         {
             bcf_unpack(v, BCF_UN_INFO);
-            int32_t vtype = classify_variant(odr->hdr, v, variant);
-            
+            int32_t vtype = vm->classify_variant(odr->hdr, v, variant);
+
             if (vtype & ambiguous_variant_types)
             {
                 const char* chrom = odr->get_seqname(v);
@@ -174,9 +169,9 @@ class Igor : Program
                     alleles.push_back(std::string(bcf_get_alt(v, i)));
                 }
                 left_aligned = left_trimmed = right_trimmed = 0;
-                
-                var_manip->left_align(alleles, pos1, chrom, left_aligned, right_trimmed);
-                var_manip->left_trim(alleles, pos1, left_trimmed);
+
+                vm->left_align(alleles, pos1, chrom, left_aligned, right_trimmed);
+                vm->left_trim(alleles, pos1, left_trimmed);
 
                 if (left_trimmed || left_aligned || right_trimmed)
                 {
@@ -260,6 +255,7 @@ class Igor : Program
             v = odw->get_bcf1_from_pool();
         }
 
+        odr->close();
         odw->close();
     };
 

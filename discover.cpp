@@ -753,10 +753,11 @@ class Igor : Program
     //i/o//
     ///////
     BAMOrderedReader *odr;
-    BCFOrderedWriter *odw;
     bam1_t *s;
+    
+    BCFOrderedWriter *odw;
     bcf1_t *v;
-
+        
     /////////
     //stats//
     /////////
