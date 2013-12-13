@@ -25,9 +25,9 @@
 
 void VTOutput::failure(TCLAP::CmdLineInterface& c, TCLAP::ArgException& e)
 {
-	std::clog << "  " << e.what() << "\n\n";
-	usage(c);
-	exit(1);
+    std::clog << "  " << e.what() << "\n\n";
+    usage(c);
+    exit(1);
 }
 
 void VTOutput::usage(TCLAP::CmdLineInterface& c)
@@ -36,57 +36,58 @@ void VTOutput::usage(TCLAP::CmdLineInterface& c)
     std::list<TCLAP::Arg*> args = c.getArgList();
     //prints unlabeled arument list first
     for (TCLAP::ArgListIterator it = args.begin(); it != args.end(); it++)
-	{
+    {
         if (typeid(**it)==typeid(TCLAP::UnlabeledValueArg<std::string>))
         {
             TCLAP::UnlabeledValueArg<std::string> *i = (TCLAP::UnlabeledValueArg<std::string> *) (*it);
             s = i->getName();
         }
     }
-    
+
     std::clog << c.getProgramName() << " v" << c.getVersion() << "\n\n";
-    std::clog << "description : " << c.getMessage() << "\n\n";   
-	std::clog << "usage : vt "  << c.getProgramName() << " [options] " << s << "\n\n";
-    
+    std::clog << "description : " << c.getMessage() << "\n\n";
+    std::clog << "usage : vt "  << c.getProgramName() << " [options] " << s << "\n\n";
+
     //prints rest of arguments
-	for (TCLAP::ArgListIterator it = args.begin(); it != args.end(); it++)
-	{
-	    if (it==args.begin())
-	    {
-	        std::clog << "options : ";
-	    }
-	    else
+    for (TCLAP::ArgListIterator it = args.begin(); it != args.end(); it++)
+    {
+        if (it==args.begin())
         {
-	    	std::clog << "          ";
-	    }
+            std::clog << "options : ";
+        }
+        else
+        {
+            std::clog << "          ";
+        }
 
-	    if (typeid(**it)==typeid(TCLAP::ValueArg<std::string>) ||
-	        typeid(**it)==typeid(TCLAP::ValueArg<uint32_t>) ||
-	        typeid(**it)==typeid(TCLAP::ValueArg<double>))
-	    {
-	        TCLAP::ValueArg<std::string> *i = (TCLAP::ValueArg<std::string> *) (*it);
+        if (typeid(**it)==typeid(TCLAP::ValueArg<std::string>) ||
+            typeid(**it)==typeid(TCLAP::ValueArg<uint32_t>) ||
+            typeid(**it)==typeid(TCLAP::ValueArg<int32_t>) ||
+            typeid(**it)==typeid(TCLAP::ValueArg<double>))
+        {
+            TCLAP::ValueArg<std::string> *i = (TCLAP::ValueArg<std::string> *) (*it);
 
-	        std::clog  << "-" << i->getFlag()
-	    	           << "  " << i->getDescription() << "\n";
+            std::clog  << "-" << i->getFlag()
+                       << "  " << i->getDescription() << "\n";
         }
         else if (typeid(**it)==typeid(TCLAP::SwitchArg))
         {
-        	TCLAP::SwitchArg *i = (TCLAP::SwitchArg *) (*it);
+            TCLAP::SwitchArg *i = (TCLAP::SwitchArg *) (*it);
 
-        	std::clog  << "-" << i->getFlag()
-    	               << "  " << i->getDescription() << "\n";
+            std::clog  << "-" << i->getFlag()
+                       << "  " << i->getDescription() << "\n";
         }
         else if (typeid(**it)==typeid(TCLAP::UnlabeledValueArg<std::string>))
         {
             //ignored
         }
-        else 
+        else
         {
             std::clog << "oops, argument type not handled\n";
         }
     }
 
-	std::cout  <<  "\n";
+    std::clog  <<  "\n";
 }
 
 /**
@@ -94,10 +95,10 @@ void VTOutput::usage(TCLAP::CmdLineInterface& c)
  *
  * @intervals       - intervals stored in this vector
  * @interval_list   - file containing intervals
- * @interval_string - comma delimited intervals in a string 
+ * @interval_string - comma delimited intervals in a string
  *
  * todo: merge overlapping sites?
- */ 
+ */
 void Program::parse_intervals(std::vector<GenomeInterval>& intervals, std::string interval_list, std::string interval_string)
 {
     intervals.clear();
@@ -113,11 +114,11 @@ void Program::parse_intervals(std::vector<GenomeInterval>& intervals, std::strin
             {
                 std::string ss = std::string(s->s);
                 if (m.find(ss)==m.end())
-       	        {
-       	            m[ss] = 1;
-       	            GenomeInterval interval(ss);
-       	            intervals.push_back(interval);
-                } 
+                {
+                    m[ss] = 1;
+                    GenomeInterval interval(ss);
+                    intervals.push_back(interval);
+                }
             }
             hts_close(file);
         }
@@ -127,20 +128,20 @@ void Program::parse_intervals(std::vector<GenomeInterval>& intervals, std::strin
     if (interval_string!="")
         split(v, ",", interval_string);
 
-   	for (uint32_t i=0; i<v.size(); ++i)
-   	{
-   	    if (m.find(v[i])==m.end())
+    for (uint32_t i=0; i<v.size(); ++i)
+    {
+        if (m.find(v[i])==m.end())
         {
             m[v[i]] = 1;
             GenomeInterval interval(v[i]);
             intervals.push_back(interval);
         }
-   	}
+    }
 }
 
 /**
- * Print intervals option. 
- */ 
+ * Print intervals option.
+ */
 void Program::print_int_op(const char* option_line, std::vector<GenomeInterval>& intervals)
 {
     if (intervals.size()!=0)
@@ -154,8 +155,8 @@ void Program::print_int_op(const char* option_line, std::vector<GenomeInterval>&
         if (intervals.size()>5)
         {
             std::clog << "  and " << (intervals.size()-5) <<  " other intervals\n";
-        }   
-    } 
+        }
+    }
 }
 
 /**
@@ -163,13 +164,13 @@ void Program::print_int_op(const char* option_line, std::vector<GenomeInterval>&
  *
  * @samples      - samples stored in this vector
  * @sample_map   - samples stored in this map
- * @sample_list  - file containing sample names 
- */ 
+ * @sample_list  - file containing sample names
+ */
 void Program::read_sample_list(std::vector<std::string>& samples, std::string sample_list)
 {
     samples.clear();
-	std::map<std::string, int32_t> map;
-	
+    std::map<std::string, int32_t> map;
+
     if (sample_list!="")
     {
         htsFile *file = hts_open(sample_list.c_str(), "r");
@@ -180,9 +181,9 @@ void Program::read_sample_list(std::vector<std::string>& samples, std::string sa
             {
                 std::string ss = std::string(s->s);
                 if (map.find(ss)==map.end())
-       	        {
-       	            map[ss] = 1;
-       	     	    samples.push_back(ss);
+                {
+                    map[ss] = 1;
+                    samples.push_back(ss);
                 }
             }
             hts_close(file);
