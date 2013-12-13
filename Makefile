@@ -1,6 +1,6 @@
 UNAME = $(shell uname)
 
-OPTFLAG ?= -O2 -ggdb
+OPTFLAG ?= -O0 -ggdb
 INCLUDES = -I./lib/include/ -I. -I./lib/include/htslib
 CFLAGS = -pipe -std=c++0x $(OPTFLAG) $(INCLUDES) -D__STDC_LIMIT_MACROS
 CXX = clang++
@@ -29,6 +29,7 @@ SOURCES = program\
 		compute_concordance\
 		partition\
 		index\
+        genotype\
 		peek
 
 SOURCESONLY = main.cpp
