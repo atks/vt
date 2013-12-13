@@ -62,14 +62,14 @@ BAMOrderedReader::BAMOrderedReader(std::string bam_file, std::vector<GenomeInter
  *
  * @interval - string representation of interval.
  */
-bool BAMOrderedReader::jump_to_interval(std::string& interval)
+bool BAMOrderedReader::jump_to_interval(GenomeInterval& interval)
 {
     if (index_loaded)
     {
         intervals_present = true;
         random_access_enabled = true;
         intervals.clear();
-        intervals.push_back(GenomeInterval(interval));
+        intervals.push_back(interval);
         interval_index = 0;
         
         intervals[interval_index++].to_string(&str);
