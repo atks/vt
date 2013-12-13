@@ -36,10 +36,10 @@ typedef khash_t(vdict) vdict_t;
 void bam_hdr_transfer_contigs_to_bcf_hdr(const bam_hdr_t *sh, bcf_hdr_t *vh)
 {
     kstring_t s = {0,0,0};
-    for (uint32_t i=0; i<sh->n_targets; ++i)
+    for (uint32_t i=0; i<bam_hdr_get_n_targets(sh); ++i)
     {
         s.l = 0;
-        ksprintf(&s, "##contig=<ID=%s,length=%d>", sh->target_name[i], sh->target_len[i]);
+        ksprintf(&s, "##contig=<ID=%s,length=%d>", bam_hdr_get_target_name(sh)[i], bam_hdr_get_target_len(sh)[i]);
         bcf_hdr_append(vh, s.s);
     }
     if (s.m) free(s.s);
@@ -372,8 +372,6 @@ void bcf_hdr_get_seqs_and_lens(const bcf_hdr_t *h, const char**& seqs, int32_t*&
 /**********
  *BCF UTILS
  **********/
-
-void bcf_hdr_transfer_contigs(const bcf_hdr_t *sh, bcf_hdr_t *vh);
 
 /**
  * Gets a string representation of a variant.
