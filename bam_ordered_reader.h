@@ -104,7 +104,7 @@ class BAMOrderedReader
      *
      * @interval - string representation of interval.
      */
-    bool jump_to_interval(std::string& interval);
+    bool jump_to_interval(GenomeInterval& interval);
       
     /**
      * Returns next vcf record.
