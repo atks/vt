@@ -53,4 +53,9 @@ void split(std::vector<std::string>& vec, const char* delims, std::string& str, 
  */
 bool str2int32(std::string& s, int32_t& i);
 
+/**
+ * Casts a string into uint32.  Returns true if successful.
+ */
+bool str2uint32(std::string& s, uint32_t& i);
+    
 #endif

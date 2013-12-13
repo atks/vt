@@ -76,3 +76,14 @@ bool str2int32(std::string& s, int32_t& i)
     i = std::strtol(s.c_str(), &end, 10);
     return (end!=start);
 };
+
+/**
+ * Casts a string into uint32.  Returns true if successful.
+ */
+bool str2uint32(std::string& s, uint32_t& i)
+{
+    const char* start = s.c_str();
+    char *end = 0;
+    i = std::strtoul(s.c_str(), &end, 10);
+    return (end!=start);
+};
