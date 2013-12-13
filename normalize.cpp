@@ -52,6 +52,8 @@ class Igor : Program
     /////////
     //stats//
     /////////
+    uint32_t no_variants;  
+    
     uint32_t no_lt;    //# left trimmed
     uint32_t no_lt_la; //# left trimmed and left aligned
     uint32_t no_lt_rt; //# left trimmed and right trimmed
@@ -121,6 +123,8 @@ class Igor : Program
         ////////////////////////
         //stats initialization//
         ////////////////////////
+        no_variants = 0;
+        
         no_lt = 0;
         no_lt_la = 0;
         no_lt_rt = 0;
@@ -250,6 +254,8 @@ class Igor : Program
                 }
             }
 
+            ++no_variants;
+
             odw->write(v);
             v = odw->get_bcf1_from_pool();
         }
@@ -283,6 +289,8 @@ class Igor : Program
         std::clog << "          no. left trimmed and right trimmed    : " << no_multi_lt_rt << "\n";
         std::clog << "          no. left aligned                      : " << no_multi_la << "\n";
         std::clog << "          no. right trimmed                     : " << no_multi_rt << "\n";
+        std::clog << "\n";
+        std::clog << "       no. variants observed                    : " << no_variants << "\n";
         std::clog << "\n";
     };
 
