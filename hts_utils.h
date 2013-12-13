@@ -51,6 +51,21 @@
  */
 void bam_hdr_transfer_contigs_to_bcf_hdr(const bam_hdr_t *sh, bcf_hdr_t *vh);
 
+/**
+ * Get number of sequences.
+ */
+#define bam_hdr_get_n_targets(h) ((h)->n_targets)
+
+/**
+ * Get list of sequence names.
+ */
+#define bam_hdr_get_target_name(h) ((h)->target_name)
+
+/**
+ * Get list of sequence lenghts.
+ */
+#define bam_hdr_get_target_len(h) ((h)->target_len)
+
 /**********
  *BAM UTILS
  **********/
