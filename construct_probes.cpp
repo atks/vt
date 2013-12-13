@@ -102,7 +102,7 @@ class Igor : Program
         odr = new BCFOrderedReader(input_vcf_file, intervals);
 
         odw = new BCFOrderedWriter(output_vcf_file, 0);
-        odw->set_hdr(odr->hdr);
+        odw->link_hdr(odr->hdr);
         bcf_hdr_append(odw->hdr, "##INFO=<ID=REFPROBE,Number=1,Type=String,Description=\"Probe for Determining Reference Allele\">");
         bcf_hdr_append(odw->hdr, "##INFO=<ID=ALTPROBE,Number=A,Type=String,Description=\"Probe for Determining Alternate Allele(s)\">");
         bcf_hdr_append(odw->hdr, "##INFO=<ID=PLEN,Number=1,Type=Integer,Description=End location of 5' flank in the probe\"\">");
@@ -166,6 +166,7 @@ class Igor : Program
             ++no_probes_generated;
         }
 
+        odr->close();
         odw->close();
     };
 
