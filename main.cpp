@@ -21,18 +21,6 @@
    THE SOFTWARE.
 */
 
-#include <iostream>
-#include <stdlib.h>
-#include <stdint.h>
-#include <string>
-#include <math.h>
-#include <float.h>
-#include <vector>
-#include <map>
-#include <queue>
-#include <ctime>
-#include "tclap/CmdLine.h"
-#include "tclap/Arg.h"
 #include "normalize.h"
 #include "merge_duplicate_variants.h"
 #include "peek.h"
