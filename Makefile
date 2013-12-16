@@ -29,8 +29,7 @@ SOURCES = program\
 		compute_concordance\
 		partition\
 		index\
-        genotype\
-		peek
+        peek
 
 SOURCESONLY = main.cpp
 

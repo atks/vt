@@ -135,8 +135,7 @@ class VariantHunter
         char mnp_init_base = 'N';
         uint32_t ins_init_pos = 0;
         uint32_t del_init_pos = 0;
-
-        if (0)
+        if (strcmp("GL000225.1", this->chrom)==0)
         {
             std::cerr << "===============\n";
             std::cerr << "ADD READ\n";
@@ -149,6 +148,7 @@ class VariantHunter
             std::cerr << "chrom               : " << chrom << "\n";
             std::cerr << "genome sequence     : " << genome_seq << "\n";
             std::cerr << "read sequence       : " << read_seq.s << "\n";
+            std::cerr << "qual                : " << qual.s << "\n";
             std::cerr << "cigar               : " << cigar.s << "\n";
             std::cerr << "cigar length        : " << cigar.l << "\n";
         }
