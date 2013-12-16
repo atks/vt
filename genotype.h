@@ -24,13 +24,13 @@
 #ifndef GENOTYPE_H
 #define GENOTYPE_H
 
-#include "htslib/kseq.h"
-#include "htslib/khash.h"
 #include <iostream>  
 #include <fstream>   
 #include <iomanip>   
 #include <string>
 #include <regex.h>
+#include "htslib/kseq.h"
+#include "htslib/khash.h"
 #include "utils.h"
 #include "lhmm.h"
 #include "program.h"

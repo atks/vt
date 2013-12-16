@@ -256,31 +256,59 @@ class Igor : Program
             //hash table for sequences
             khash_t(sdict) *h = kh_init(sdict);
             khiter_t k;
-            int32_t ret;
+            int32_t success;
             if (intervals.empty())
             {   
                 kstring_t s = {0,0,0};
                 char** seqs = bam_hdr_get_target_name(sodr->hdr);
                 for (uint32_t i=0; i<bam_hdr_get_n_targets(sodr->hdr); ++i)
                 {
-                    char* seq = strdup(seqs[i]);
                     if (kh_get(sdict, h, seqs[i])==kh_end(h))
                     {
-                        k = kh_put(sdict, h, seq, &ret);
-                        if (ret) //does not exist
+                        char* seq = strdup(seqs[i]);
+                        k = kh_put(sdict, h, seq, &success);
+                        if (!success) 
+                        {
+                            intervals.push_back(GenomeInterval(std::string(seq)));
+                        }
+                        else
                         {
                             free(seq);
                         }
                     }
-                    else
+                }
+                free(seqs);
+                
+                int32_t nseqs;
+                const char** seqs1 = bcf_hdr_seqnames(vodr->hdr, &nseqs);
+                for (uint32_t i=0; i<nseqs; ++i)
+                {
+                    if (kh_get(sdict, h, seqs1[i])==kh_end(h))
                     {
-                        //ignore
+                        char* seq = strdup(seqs1[i]);
+                        k = kh_put(sdict, h, seq, &success);
+                        if (!success) 
+                        {
+                            intervals.push_back(GenomeInterval(std::string(seq)));
+                        }
+                        else
+                        {
+                            free(seq);
+                        }
                     }
                 }
-                if (s.m) free(s.s);
-
+                free(seqs1);
                 
-    
+                //clean up
+                if (s.m) free(s.s);
+                for (k = kh_begin(h); k != kh_end(h); ++k)
+                {
+                    if (kh_exist(h, k))
+                    {
+                        free((char*)kh_key(h, k));
+                    }
+                }
+                kh_clear(sdict, h);    
             }
             
             
