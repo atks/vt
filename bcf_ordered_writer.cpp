@@ -158,12 +158,13 @@ bcf1_t* BCFOrderedWriter::get_bcf1_from_pool()
     {
         bcf1_t* v = pool.front();
         pool.pop_front();
+        bcf_clear(v);
         return v;
     }
     else
     {
         bcf1_t *v = bcf_init();
-        bcf_erase(v);
+        bcf_clear(v);
         return v;
     }
 };
