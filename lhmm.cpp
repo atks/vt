@@ -1367,3 +1367,41 @@ double LHMM::score(char a, char b)
     else
         return -1;
 };
+
+/**
+ * Checks if deletion exists in alignment.
+ */
+bool LHMM::deletion_start_exists(uint32_t pos, uint32_t& rpos)
+{
+    rpos = 0;
+    for (uint32_t i=0; i<indelStatusInPath.size(); ++i) 
+    {
+        if (indelStatusInPath[i]=='D' &&
+            indelStartsInX[i]==pos)
+        {
+            rpos = indelStartsInY[i];
+            return true;
+        }    
+    }
+    
+    return false;
+}
+
+/**
+ * Checks if insertion exists in alignment.
+ */
+bool LHMM::insertion_start_exists(uint32_t pos, uint32_t& rpos)
+{
+    rpos = 0;
+    for (uint32_t i=0; i<indelStatusInPath.size(); ++i) 
+    {
+        if (indelStatusInPath[i]=='I' &&
+            indelStartsInX[i]==pos)
+        {
+            rpos = indelStartsInY[i];
+            return true;
+        }    
+    }
+    
+    return false;
+}

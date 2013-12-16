@@ -187,6 +187,17 @@ class LHMM
     void printAlignment(std::string& pad, std::stringstream& log);
 
     double score(char a, char b);
+    
+    /**
+     * Checks if deletion exists in alignment.
+     */
+    bool deletion_start_exists(uint32_t pos, uint32_t& rpos);
+
+    /**
+     * Checks if insertion exists in alignment.
+     */
+    bool insertion_start_exists(uint32_t pos, uint32_t& rpos);
+        
 };
 
 #endif
