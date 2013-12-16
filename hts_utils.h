@@ -314,9 +314,4 @@ bool bcf_is_passed(bcf_hdr_t *h, bcf1_t *v);
  */
 #define bcf_set_n_sample(h, v) ((v)->n_sample = (h)->n[BCF_DT_SAMPLE]);
 
-/**
- * Clear a bcf1_t record
- */
-void bcf_erase(bcf1_t *v);
-
 #endif
