@@ -92,6 +92,11 @@ class Program
      */
     void print_stats(){};
  	
+ 	/**
+     * Print reference FASTA file option.
+     */
+    void print_ref_op(const char* option_line, std::string ref_fasta_file);
+ 	
   	/**
      * Print intervals option. 
      */ 
