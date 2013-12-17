@@ -186,7 +186,7 @@ class Igor : Program
                         if (i) kputc(',', &new_alleles);
                         kputs(alleles[i].c_str(), &new_alleles);
                     }
-                    bcf_update_alleles_str(odr->hdr, v, new_alleles.s);
+                    bcf_update_alleles_str(odw->hdr, v, new_alleles.s);
 
                     if (bcf_get_n_allele(v)==2)
                     {
