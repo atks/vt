@@ -40,6 +40,7 @@ class Igor : Program
     std::string filter;
     std::string variant;
     uint32_t sort_window_size;    
+    bool print_header;
     bool print;
 
     ///////
@@ -71,6 +72,7 @@ class Igor : Program
             TCLAP::ValueArg<std::string> arg_intervals("i", "i", "intervals []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "file", cmd);
             TCLAP::SwitchArg arg_print("p", "p", "print options and summary []", cmd, false);
+            TCLAP::SwitchArg arg_print_header("h", "h", "print header [false]", cmd, false);
             TCLAP::ValueArg<uint32_t> arg_sort_window_size("w", "w", "local sorting window size [0]", false, 0, "int", cmd);
             //TCLAP::ValueArg<std::string> arg_sample_list("s", "s", "file containing list of sample []", false, "", "file", cmd);
             //TCLAP::ValueArg<std::string> arg_filter("f", "f", "filter expression []", false, "", "exp", cmd);
@@ -84,6 +86,7 @@ class Igor : Program
             output_vcf_file = arg_output_vcf_file.getValue();
             parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
             //read_sample_list(samples, arg_sample_list.getValue());
+            print_header = arg_print_header.getValue();
             print = arg_print.getValue();
             sort_window_size = arg_sort_window_size.getValue();
         }
@@ -102,7 +105,7 @@ class Igor : Program
         odr = new BCFOrderedReader(input_vcf_file, intervals);
         odw = new BCFOrderedWriter(output_vcf_file, sort_window_size);
         odw->link_hdr(odr->hdr);
-        odw->write_hdr();
+        if (print_header) odw->write_hdr();
 
         ////////////////////////
         //stats initialization//
@@ -135,7 +138,8 @@ class Igor : Program
         std::clog << "options:     input VCF file           " << input_vcf_file << "\n";
         std::clog << "         [o] output VCF file          " << output_vcf_file << "\n";
         std::clog << "         [w] sort window size         " << sort_window_size << "\n";
-        std::clog << "         [p] print options and stats  " << print << "\n";
+        std::clog << "         [h] print header             " << (print_header ? "yes" : "no") << "\n";
+        std::clog << "         [p] print options and stats  " << (print ? "yes" : "no") << "\n";
         print_int_op("         [i] intervals                ", intervals);
         std::clog << "\n";
     }
