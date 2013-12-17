@@ -364,7 +364,7 @@ inline void CmdLine::_constructor()
 	if ( _helpAndVersion )
 	{
 		v = new HelpVisitor( this, &_output );
-		SwitchArg* help = new SwitchArg("h","help",
+		SwitchArg* help = new SwitchArg("?","help",
 		                      "displays help",
 		                      false, v);
 		add( help );
@@ -380,14 +380,14 @@ inline void CmdLine::_constructor()
 //		deleteOnExit(v);
 	}
 
-	v = new IgnoreRestVisitor();
-	SwitchArg* ignore  = new SwitchArg(Arg::flagStartString(),
-	          Arg::ignoreNameString(),
-	          "ignores the rest of the labeled arguments following this flag",
-	          false, v);
-	add( ignore );
-	deleteOnExit(ignore);
-	deleteOnExit(v);
+//	v = new IgnoreRestVisitor();
+//	SwitchArg* ignore  = new SwitchArg(Arg::flagStartString(),
+//	          Arg::ignoreNameString(),
+//	          "ignores the rest of the labeled arguments following this flag",
+//	          false, v);
+//	add( ignore );
+//	deleteOnExit(ignore);
+//	deleteOnExit(v);
 }
 
 inline void CmdLine::xorAdd( std::vector<Arg*>& ors )
