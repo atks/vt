@@ -30,11 +30,11 @@ class BEDRecord: public Interval
     public:
     std::string chrom;
 
-    BEDRecord(std::string& _chrom, uint32_t _start, uint32_t _end)
+    BEDRecord(std::string& chrom, uint32_t start, uint32_t end)
     {
-        chrom = _chrom;
-        start = _start;
-        end = _end;
+        this->chrom = chrom;
+        this->start = start;
+        this->end = end;
     };
 
     void print()
@@ -62,26 +62,26 @@ class GTFRecord: public Interval
     uint32_t level;
     std::string attrib;
 
-    GTFRecord(std::string& _chrom, uint32_t _start, uint32_t _end, char _strand,
-              std::string& _gene, std::string& _feature, int32_t _frame, int32_t _exonNo,
-              bool _fivePrimeConservedEssentialSpliceSite, bool _threePrimeConservedEssentialSpliceSite,
-              bool _containsStartCodon, bool _containsStopCodon,
-              uint32_t _level, std::string& _attrib)
+    GTFRecord(std::string& chrom, uint32_t start, uint32_t end, char strand,
+              std::string& gene, std::string& feature, int32_t frame, int32_t exonNo,
+              bool fivePrimeConservedEssentialSpliceSite, bool threePrimeConservedEssentialSpliceSite,
+              bool containsStartCodon, bool containsStopCodon,
+              uint32_t level, std::string& attrib)
     {
-        chrom = _chrom;
-        start = _start;
-        end = _end;
-        strand = _strand;
-        gene = _gene;
-        feature = _feature;
-        frame = _frame;
-        exonNo = _exonNo;
-        fivePrimeConservedEssentialSpliceSite = _fivePrimeConservedEssentialSpliceSite;
-        threePrimeConservedEssentialSpliceSite = _threePrimeConservedEssentialSpliceSite;
-        containsStartCodon = _containsStartCodon;
-        containsStopCodon = _containsStopCodon;
-        level = _level;
-        attrib = _attrib;
+        this->chrom = chrom;
+        this->start = start;
+        this->end = end;
+        this->strand = strand;
+        this->gene = gene;
+        this->feature = feature;
+        this->frame = frame;
+        this->exonNo = exonNo;
+        this->fivePrimeConservedEssentialSpliceSite = fivePrimeConservedEssentialSpliceSite;
+        this->threePrimeConservedEssentialSpliceSite = threePrimeConservedEssentialSpliceSite;
+        this->containsStartCodon = containsStartCodon;
+        this->containsStopCodon = containsStopCodon;
+        this->level = level;
+        this->attrib = attrib;
     };
 
     void print()
@@ -118,12 +118,12 @@ class OverlapStats
         ab = 0;
         b = 0;
 
-        a_ins=0;
-        a_del=0;
-        ab_ins=0;
-        ab_del=0;
-        b_ins=0;
-        b_del=0;
+        a_ins = 0;
+        a_del = 0;
+        ab_ins = 0;
+        ab_del = 0;
+        b_ins = 0;
+        b_del = 0;
     };
 };
 
@@ -182,8 +182,7 @@ class Igor : Program
         {
             std::string desc =
 "Profile Indels.\n\
-Each VCF file is required to have the FORMAT flags E and N and should have exactly one sample.\n\
-e.g. vt profile_snps_variants -o - NA19130.vcf.gz HG00096.vcf.gz\n\n";
+Each VCF file is required to have the FORMAT flags E and N and should have exactly one sample.\n\n";
 
             version = "0.5";
             TCLAP::CmdLine cmd(desc, ' ', version);
@@ -225,13 +224,10 @@ e.g. vt profile_snps_variants -o - NA19130.vcf.gz HG00096.vcf.gz\n\n";
 
     void initialize()
     {
-
-
         //////////////////////
         //i/o initialization//
         //////////////////////
-        line.s=0;
-        line.l=line.m=0;
+        line = {0,0,0};
 
         gencode_gtf_file = "/net/fantasia/home/atks/ref/encode/gencode.v15.annotation.gtf.gz";
 
@@ -336,8 +332,7 @@ e.g. vt profile_snps_variants -o - NA19130.vcf.gz HG00096.vcf.gz\n\n";
                     int32_t ref_len = strlen(ref);
 
                     bcf_hdr_t *h = sr->hdrs[0];
-                    //std::cerr << bcf_get_chrom(h, v) << ":" << (pos1+1) << ":" << (pos1+ref_len-1) << "\n";
-
+                    
                     GENCODE[std::string(bcf_get_chrom(h, v))]->search(pos1+1, pos1+ref_len-1, exons);
 
 //                  if ($start<=$F[$END]-1 && $end>=$F[$START])
