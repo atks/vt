@@ -219,7 +219,7 @@ class VariantHunter
                 del_init = true;
 
                 //helps maintain count as I's can be 3' hanging
-                if (cigar_pos0==cigar.l-1 || cigar.s[cigar_pos0]=='S')
+                if (cigar_pos0==cigar.l-1 || cigar.s[cigar_pos0+1]=='S')
                 {
                     ++N[ins_init_pos];
                 }
