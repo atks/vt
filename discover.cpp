@@ -104,9 +104,9 @@ class VariantHunter
             //change in chromosome
             if (strcmp(this->chrom, chrom))
             {
+                extract_candidate_variants(chrom, UINT_MAX);
                 free(this->chrom);
                 this->chrom = strdup(chrom);
-                extract_candidate_variants(chrom, UINT_MAX);
             }
             else
             {
