@@ -7,12 +7,7 @@ CXX = clang++
 
 HEADERSONLY =
 SOURCES = program\
-		variant_manip\
-		log_tool\
-		interval_tree\
-		genome_interval\
 		filter\
-		lhmm\
 		hts_utils\
 		utils\
 		bam_ordered_reader\
@@ -20,16 +15,21 @@ SOURCES = program\
 		bcf_ordered_writer\
 		bcf_synced_reader\
 		view\
-		normalize\
+		index\
+        normalize\
 		merge_duplicate_variants\
-		merge_candidate_variants\
-		construct_probes\
-		discover\
-		profile_indels\
+		variant_manip\
+		log_tool\
+		interval_tree\
+		genome_interval\
 		compute_concordance\
 		partition\
-		index\
-        peek
+		profile_indels\
+		discover\
+		merge_candidate_variants\
+		construct_probes\
+		lhmm\
+		peek
 
 SOURCESONLY = main.cpp
 
@@ -55,5 +55,5 @@ clean :
 	cd lib/include/htslib; $(MAKE) clean; cd ..
 	-rm -rf $(TARGET) $(TOOLOBJ)
 
-refresh :
+cleanvt :
 	-rm -rf $(TARGET) $(TOOLOBJ)    
