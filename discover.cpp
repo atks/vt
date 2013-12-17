@@ -135,7 +135,7 @@ class VariantHunter
         char mnp_init_base = 'N';
         uint32_t ins_init_pos = 0;
         uint32_t del_init_pos = 0;
-        if (strcmp("GL000225.1", this->chrom)==0)
+        if (0)
         {
             std::cerr << "===============\n";
             std::cerr << "ADD READ\n";
@@ -165,8 +165,6 @@ class VariantHunter
             {
                 REF[cur_pos0] = genome_seq[genome_seq_pos0];
                 q = qual.s[read_seq_pos0]-33;
-
-                //std::cerr << (start_genome_pos0+genome_seq_pos0) << " " << genome_seq[genome_seq_pos0] << " " << read_seq.s[read_seq_pos0] << "\n";
 
                 if (genome_seq[genome_seq_pos0]!=read_seq.s[read_seq_pos0] && q>=baseq_cutoff)
                 {
@@ -221,7 +219,7 @@ class VariantHunter
                 I[ins_init_pos].back().append(1, read_seq.s[read_seq_pos0]);
                 ins_init = false;
                 del_init = true;
-                
+
                 //helps maintain count as I's can be 3' hanging
                 if (cigar_pos0==cigar.l-1 || cigar.s[cigar_pos0]=='S')
                 {
@@ -754,10 +752,10 @@ class Igor : Program
     ///////
     BAMOrderedReader *odr;
     bam1_t *s;
-    
+
     BCFOrderedWriter *odw;
     bcf1_t *v;
-        
+
     /////////
     //stats//
     /////////
