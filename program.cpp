@@ -25,6 +25,7 @@
 
 void VTOutput::failure(TCLAP::CmdLineInterface& c, TCLAP::ArgException& e)
 {
+    std::clog << "\n";
     std::clog << "  " << e.what() << "\n\n";
     usage(c);
     exit(1);
@@ -136,6 +137,17 @@ void Program::parse_intervals(std::vector<GenomeInterval>& intervals, std::strin
             GenomeInterval interval(v[i]);
             intervals.push_back(interval);
         }
+    }
+}
+
+/**
+ * Print reference FASTA file option.
+ */
+void Program::print_ref_op(const char* option_line, std::string ref_fasta_file)
+{
+    if (ref_fasta_file!="")
+    {
+        std::clog << option_line << ref_fasta_file << "\n";
     }
 }
 
