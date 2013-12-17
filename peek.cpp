@@ -289,7 +289,7 @@ class Igor : Program
 
         std::clog << "options:     input VCF file        " << input_vcf_file << "\n";
         std::clog << "         [o] output VCF file       " << output_vcf_file << "\n";
-        std::clog << "         [r] reference FASTA file  " << ref_fasta_file << "\n";
+        print_ref_op("         [r] reference FASTA file  ", ref_fasta_file);
         print_int_op("         [i] intervals             ", intervals);
         std::clog << "\n";
     }
@@ -332,6 +332,7 @@ class Igor : Program
         fprintf(stderr, "\n");
         fprintf(stderr, "       No. of observed variants      : %10d\n", no_observed_variants);
         fprintf(stderr, "       No. of unclassified variants  : %10d\n", no_observed_variants-no_classified_variants);
+        fprintf(stderr, "\n");
     };
 
     ~Igor() {};
