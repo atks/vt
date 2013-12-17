@@ -104,13 +104,13 @@ class VariantHunter
             //change in chromosome
             if (strcmp(this->chrom, chrom))
             {
-                extract_candidate_variants(chrom, UINT_MAX);
+                extract_candidate_variants(this->chrom, UINT_MAX);
                 free(this->chrom);
                 this->chrom = strdup(chrom);
             }
             else
             {
-                extract_candidate_variants(chrom, pos0);
+                extract_candidate_variants(this->chrom, pos0);
             }
         }
         else //first read
@@ -121,8 +121,6 @@ class VariantHunter
         //basically equivalent to emptying the buffer
         extract_candidate_variants(chrom, pos0);
         char* genome_seq = faidx_fetch_seq(fai, chrom, pos0-1, pos0+cigar.l, &ref_len);
-        //std::cerr << pos1 << " " << genome_seq << "\n";
-        //std::cerr << (pos1-1) << " " << (pos1+cigar.l-1) << "\n";
         uint32_t genome_seq_pos0 = 1;
         uint32_t read_seq_pos0 = 0;
         uint32_t cur_pos0 = get_cur_pos0(pos0); //current buffer index
@@ -265,11 +263,6 @@ class VariantHunter
             std::cout << "====================\n";
             printBuffer();
         }
-
-
-        //exit(1);
-
-
     };
 
     /**
