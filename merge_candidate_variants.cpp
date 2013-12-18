@@ -82,7 +82,6 @@ class Igor : Program
     ///////////
     //options//
     ///////////
-    std::string build;
     std::vector<std::string> input_vcf_files;
     std::string input_vcf_file_list;
     std::string output_vcf_file;
@@ -108,6 +107,7 @@ class Igor : Program
     uint32_t no_candidate_snps;
     uint32_t no_candidate_indels;
     uint32_t no_candidate_snpindels;
+    uint32_t no_other_variant_types;
     
     /////////
     //tools//
@@ -198,6 +198,7 @@ Each VCF file is required to have the FORMAT flags E and N and should have exact
         no_candidate_snps = 0;
         no_candidate_indels = 0;
         no_candidate_indels = 0;
+        no_other_variant_types = 0;
         
         /////////
         //tools//
@@ -257,10 +258,9 @@ Each VCF file is required to have the FORMAT flags E and N and should have exact
 
                         //update variant information
                         bcf1_t* nv = odw->get_bcf1_from_pool();
-                        bcf_clear(nv);
                         bcf_set_chrom(odw->hdr, nv, bcf_get_chrom(h, v));
-                        bcf_update_alleles(odw->hdr, nv, const_cast<const char**>(bcf_get_allele(v)), bcf_get_n_allele(v));
                         bcf_set_pos1(nv, bcf_get_pos1(v));
+                        bcf_update_alleles(odw->hdr, nv, const_cast<const char**>(bcf_get_allele(v)), bcf_get_n_allele(v));
                         kh_value(m, k)->v = nv;
                     }
 
@@ -272,9 +272,9 @@ Each VCF file is required to have the FORMAT flags E and N and should have exact
                     if (E[0]>N[0])
                     {
                         kstring_t s = {0,0,0};
-                        vcf_format(sr->hdrs[file_index], v, &s);
-//                        std::cerr << s.s << "\n";
-//                            std::cerr << "file index " << file_index << "\n";
+                        
+                        //std::cerr << bcf_hdr_get_sample_name(h, 0) << "\n";
+                        //bcf_print(h, v);
                     }    
 
                     kh_value(m, k)->e[i] = E[0];
@@ -309,14 +309,18 @@ Each VCF file is required to have the FORMAT flags E and N and should have exact
                     
                     for (int32_t i=0; i<nobs; ++i)
                     {
-//                        std::cerr <<"LR " << i << " " << e[i] << " " << n[i] <<"\n";
-//                        std::cerr << lt->log10choose(n[i], e[i]) << "\n";
-//                        log10numhomref = log10phomref + lt->log10choose(n[i], e[i]) + (n[i]-e[i])*log10me + e[i]*log10e;
-//                        log10numhet = log10phet + lt->log10choose(n[i], e[i]) + log10half*n[i];
-//                        log10numhomalt = log10phomalt + lt->log10choose(n[i], e[i]) + (n[i]-e[i])*log10e + e[i]*log10me;
-//                        num += lt->log10sum(log10numhomref, lt->log10sum(log10numhet, log10numhomalt));
-//                        
-//                        denum += lt->log10choose(n[i], e[i]) + (n[i]-e[i])*log10me + e[i]*log10e;
+                        //std::cerr <<"LR " << i << " " << e[i] << " " << n[i] <<"\n";
+                        //std::cerr << lt->log10choose(n[i], e[i]) << "\n";
+                        if (e[i]>n[i]) 
+                        {
+                            e[i] = n[i];
+                        }    
+                        
+                        log10numhomref = log10phomref + lt->log10choose(n[i], e[i]) + (n[i]-e[i])*log10me + e[i]*log10e;
+                        log10numhet = log10phet + lt->log10choose(n[i], e[i]) + log10half*n[i];
+                        log10numhomalt = log10phomalt + lt->log10choose(n[i], e[i]) + (n[i]-e[i])*log10e + e[i]*log10me;
+                        num += lt->log10sum(log10numhomref, lt->log10sum(log10numhet, log10numhomalt));
+                        denum += lt->log10choose(n[i], e[i]) + (n[i]-e[i])*log10me + e[i]*log10e;
                     }
 
                     bcf_update_info_string(odw->hdr, nv, "SAMPLES", kh_value(m, k)->samples.s);
@@ -327,6 +331,11 @@ Each VCF file is required to have the FORMAT flags E and N and should have exact
                     bcf_update_info_int32(odw->hdr, nv, "NSUM", &kh_value(m, k)->nsum, 1);
                     
                     bcf_update_info_float(odw->hdr, nv, "AF", &af, 1);                    
+                    
+                    float lr = num-denum;
+                    
+                    bcf_update_info_float(odw->hdr, nv, "LR", &lr, 1);                    
+                    
                     odw->write(nv);
 
                     delete kh_value(m, k);
@@ -334,18 +343,23 @@ Each VCF file is required to have the FORMAT flags E and N and should have exact
                     
                     int32_t vtype = vm->classify_variant(odw->hdr,nv);
                     
-                    if (vtype == (VT_SNP|VT_INDEL))
-                    {    
-                        ++no_candidate_snpindels;
-                    }
-                    else if (vtype & VT_SNP)
+                    if (vtype == VT_SNP)
                     {    
                         ++no_candidate_snps;
                     }
-                    else if (vtype & VT_INDEL)
+                    else if (vtype == VT_INDEL)
                     {    
                         ++no_candidate_indels;
-                    }   
+                    }
+                    else if (vtype == (VT_SNP|VT_INDEL))
+                    {    
+                        ++no_candidate_snpindels;
+                    }
+                    else
+                    {
+                        ++no_other_variant_types;
+                    }
+                       
                 }
             }
             kh_clear(xdict, m);
@@ -358,7 +372,7 @@ Each VCF file is required to have the FORMAT flags E and N and should have exact
     void print_options()
     {
         std::clog << "merge_candidate_variants v" << version << "\n\n";
-        std::clog << "options:     input VCF file        " << input_vcf_files.size() << " files\n";
+        std::clog << "options:     input VCF file(s)     " << input_vcf_files.size() << " files\n";
         std::clog << "         [o] output VCF file       " << output_vcf_file << "\n";
         print_int_op("         [i] intervals             ", intervals);
         std::clog << "\n";
@@ -370,7 +384,6 @@ Each VCF file is required to have the FORMAT flags E and N and should have exact
         std::cerr << "stats: Total Number of Candidate SNPs       " << no_candidate_snps << "\n";
         std::cerr << "       Total Number of Candidate Indels     " << no_candidate_indels << "\n";
         std::cerr << "       Total Number of Candidate SNPIndels  " << no_candidate_snpindels << "\n\n";
-    
     };
 
     ~Igor()
