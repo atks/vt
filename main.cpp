@@ -26,6 +26,7 @@
 #include "peek.h"
 #include "construct_probes.h"
 #include "discover.h"
+#include "annotate_indels.h"
 //#include "genotype.h"
 #include "merge_candidate_variants.h"
 #include "partition.h"
@@ -114,6 +115,10 @@ int main(int argc, char ** argv)
     {
         partition(argc-1, ++argv);
     } 
+    else if (argc>1 && cmd=="annotate_indels")
+    {
+        annotate_indels(argc-1, ++argv);
+    }     
     else if (argc>1 && cmd=="discover")
     {
         discover(argc-1, ++argv);
