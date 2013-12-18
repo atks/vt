@@ -88,9 +88,16 @@ std::string VariantManip::vtype2string(int32_t VTYPE)
 /**
  * Detects near by STRs.
  */
+bool VariantManip::detect_str(bcf_hdr_t *h, bcf1_t *v, Variant& variant)
+{
+    return detect_str(bcf_get_chrom(h, v), bcf_get_pos1(v), variant);
+}
+
+/**
+ * Detects near by STRs.
+ */
 bool VariantManip::detect_str(const char* chrom, uint32_t pos1, Variant& variant)
 {
-
     int32_t ref_len;
     //STR related
     char* ru = 0;
@@ -99,7 +106,6 @@ bool VariantManip::detect_str(const char* chrom, uint32_t pos1, Variant& variant
 
     int32_t tract_len = 1;
     int32_t motif_len = 1;
-
 
     std::string motif = "";
     int32_t tlen = 0;
@@ -184,7 +190,7 @@ int32_t VariantManip::classify_variant(const char* chrom, uint32_t pos1, char** 
 
     for (uint32_t i=1; i<n_allele; ++i)
     {
-        int32_t type = 0;
+        int32_t type = VT_REF;
         int32_t alen = strlen(allele[i]);
         int32_t min_len = std::min(rlen, alen);
         int32_t dlen = alen-rlen;

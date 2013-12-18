@@ -92,7 +92,7 @@ class Allele
 
     void clear()
     {
-        type = -1;
+        type = VT_REF;
         diff = -1;
         alen = 0;
         dlen = 0;
@@ -126,7 +126,7 @@ class Variant
 
     Variant()
     {
-        type = 0;
+        type = VT_REF;
         motif = {0,0,0};
         mlen = 0;
         tlen = 0;
@@ -172,6 +172,11 @@ class VariantManip
      * Constructor.
      */
     VariantManip();
+
+    /**
+     * Detects near by STRs.
+     */
+    bool detect_str(bcf_hdr_t *h, bcf1_t *v, Variant& variant);
 
     /**
      * Detects near by STRs.
