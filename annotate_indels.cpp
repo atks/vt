@@ -219,18 +219,19 @@ class Igor : Program
 //        populate_str_ref_tree();
 //        populate_indel_hotspots_tree();
 
-        std::vector<Interval*> intervals;
-        kstring_t s = {0, 0, 0};
         bcf1_t *v = odw->get_bcf1_from_pool();
-
+        Variant variant;
         while (odr->read(v))
         {
+            bcf_unpack(v, BCF_UN_STR);
+            int32_t vtype = vm->classify_variant(odr->hdr, v, variant);
+            vm->detect_str(odr->hdr, v, variant);
 
 
-
+            ++no_indels_annotated;
+        
 
             v = odw->get_bcf1_from_pool();
-            ++no_indels_annotated;
         }
     };
 
