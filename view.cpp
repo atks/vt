@@ -39,7 +39,7 @@ class Igor : Program
     std::vector<std::string> samples;
     std::string filter;
     std::string variant;
-    uint32_t sort_window_size;    
+    uint32_t sort_window_size;
     bool print_header;
     bool print;
 
@@ -132,7 +132,7 @@ class Igor : Program
     void print_options()
     {
         if (!print) return;
-        
+
         std::clog << "view v" << version << "\n\n";
 
         std::clog << "options:     input VCF file           " << input_vcf_file << "\n";
@@ -147,7 +147,7 @@ class Igor : Program
     void print_stats()
     {
         if (!print) return;
-        
+
         std::clog << "stats: no. variants  : " << no_variants << "\n";
         std::clog << "       no. samples   : " << no_samples << "\n";
         std::clog << "\n";
