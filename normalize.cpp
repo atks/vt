@@ -272,7 +272,8 @@ class Igor : Program
 
     void print_stats()
     {
-        std::clog << "\nstats: biallelic\n";
+        std::clog << "\n";
+        std::clog << "stats: biallelic\n";
         std::clog << "          no. left trimmed                      : " << no_lt << "\n";
         std::clog << "          no. left trimmed and left aligned     : " << no_lt_la << "\n";
         std::clog << "          no. left trimmed and right trimmed    : " << no_lt_rt << "\n";
