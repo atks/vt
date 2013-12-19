@@ -28,7 +28,7 @@ SOURCES = program\
 		discover\
 		merge_candidate_variants\
 		construct_probes\
-		annotate_indels\
+		annotate_variants\
 		lhmm\
 		peek
 
