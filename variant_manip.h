@@ -93,7 +93,7 @@ class Allele
     void clear()
     {
         type = VT_REF;
-        diff = -1;
+        diff = 0;
         alen = 0;
         dlen = 0;
         tlen = 0;
@@ -188,6 +188,11 @@ class VariantManip
      */
     std::string vtype2string(int32_t VTYPE);
 
+    /**
+     * Converts VTYPE to string.
+     */
+    void vtype2string(int32_t vtype, kstring_t *s);
+    
     /**
      * Classifies variants.
      */

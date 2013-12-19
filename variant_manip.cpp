@@ -86,6 +86,38 @@ std::string VariantManip::vtype2string(int32_t VTYPE)
 }
 
 /**
+ * Converts VTYPE to string.
+ */
+void VariantManip::vtype2string(int32_t vtype, kstring_t *s)
+{
+    s->l = 0;
+
+    if (vtype & VT_SNP)
+    {
+        if (s->l) kputc(',', s);
+        kputs("SNP", s);
+    }
+
+    if (vtype & VT_MNP)
+    {
+        if (s->l) kputc(',', s);
+        kputs("MNP", s);
+    }
+
+    if (vtype & VT_INDEL)
+    {
+        if (s->l) kputc(',', s);
+        kputs("INDEL", s);
+    }
+
+    if (vtype & VT_CLUMPED)
+    {
+        if (s->l) kputc(',', s);
+        kputs("CLUMPED", s);
+    }
+}
+
+/**
  * Detects near by STRs.
  */
 bool VariantManip::detect_str(bcf_hdr_t *h, bcf1_t *v, Variant& variant)
