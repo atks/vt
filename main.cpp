@@ -115,9 +115,9 @@ int main(int argc, char ** argv)
     {
         partition(argc-1, ++argv);
     } 
-    else if (argc>1 && cmd=="annotate_indels")
+    else if (argc>1 && cmd=="annotate_variants")
     {
-        annotate_indels(argc-1, ++argv);
+        annotate_variants(argc-1, ++argv);
     }     
     else if (argc>1 && cmd=="discover")
     {

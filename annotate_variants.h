@@ -25,6 +25,6 @@
 #include "variant_manip.h"
 #include "log_tool.h"
 
-void annotate_indels(int argc, char ** argv);
+void annotate_variants(int argc, char ** argv);
 
 #endif
