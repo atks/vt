@@ -147,7 +147,8 @@ class Igor : Program
     void print_stats()
     {
         if (!print) return;
-
+            
+        std::clog << "\n";
         std::clog << "stats: no. variants  : " << no_variants << "\n";
         std::clog << "       no. samples   : " << no_samples << "\n";
         std::clog << "\n";
