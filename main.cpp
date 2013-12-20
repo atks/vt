@@ -58,8 +58,8 @@ void print_time(double t)
 
 void help()
 {
-    std::clog << "Help page on http://statgen.sph.umich.edu/wiki/Vt\n\n";
-
+    std::clog << "Help page on http://statgen.sph.umich.edu/wiki/Vt\n";
+    std::clog << "\n";
     std::clog << "view                      view vcf/vcf.gz/bcf files\n";
     std::clog << "index                     index vcf.gz/bcf files\n";
     std::clog << "normalize                 normalize variants\n";
@@ -70,7 +70,6 @@ void help()
     std::clog << "merge_candidate_variants  merge candidate variants\n";
     std::clog << "construct_probes          construct probes for each variant\n";
     std::clog << "genotype                  genotype variants\n";
-                
     std::clog << "\n";
 }
 
