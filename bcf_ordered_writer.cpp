@@ -32,6 +32,8 @@ BCFOrderedWriter::BCFOrderedWriter(std::string input_vcf_file, int32_t window)
     s = {0, 0, 0};
 
     int32_t ftype = hts_file_type(vcf_file.c_str());
+    if (!strcmp("+", vcf_file.c_str())) ftype = FT_BCF;
+    
     if (!(ftype & (FT_VCF|FT_BCF|FT_STDIN)))
     {
         fprintf(stderr, "[%s:%d %s] Not a VCF/BCF file: %s\n", __FILE__,__LINE__,__FUNCTION__, vcf_file.c_str());
@@ -40,7 +42,11 @@ BCFOrderedWriter::BCFOrderedWriter(std::string input_vcf_file, int32_t window)
 
     kstring_t *mode = &s;
     kputc('w', mode);
-    if (!strcmp("+", vcf_file.c_str())) kputs("bu", mode);
+    if (!strcmp("+", vcf_file.c_str())) 
+    {
+        kputs("bu", mode);
+        vcf_file = "-";
+    }
     if (ftype & FT_BCF) kputc('b', mode);
     if (ftype & FT_GZ) kputc('z', mode);
     vcf = bcf_open(vcf_file.c_str(), mode->s);
