@@ -41,7 +41,9 @@ class Igor : Program
     std::string variant;
     uint32_t sort_window_size;
     bool print_header;
+    bool print_sites_only;
     bool print;
+    int32_t no_subset_samples;
 
     ///////
     //i/o//
@@ -73,6 +75,7 @@ class Igor : Program
             TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "file", cmd);
             TCLAP::SwitchArg arg_print("p", "p", "print options and summary []", cmd, false);
             TCLAP::SwitchArg arg_print_header("h", "h", "print header [false]", cmd, false);
+            TCLAP::SwitchArg arg_print_sites_only("s", "s", "print site information only without genotypes [false]", cmd, false);
             TCLAP::ValueArg<uint32_t> arg_sort_window_size("w", "w", "local sorting window size [0]", false, 0, "int", cmd);
             //TCLAP::ValueArg<std::string> arg_sample_list("s", "s", "file containing list of sample []", false, "", "file", cmd);
             //TCLAP::ValueArg<std::string> arg_filter("f", "f", "filter expression []", false, "", "exp", cmd);
@@ -87,6 +90,7 @@ class Igor : Program
             parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
             //read_sample_list(samples, arg_sample_list.getValue());
             print_header = arg_print_header.getValue();
+            no_subset_samples = arg_print_sites_only.getValue() ? 0 : -1;
             print = arg_print.getValue();
             sort_window_size = arg_sort_window_size.getValue();
         }
@@ -104,7 +108,17 @@ class Igor : Program
         //////////////////////
         odr = new BCFOrderedReader(input_vcf_file, intervals);
         odw = new BCFOrderedWriter(output_vcf_file, sort_window_size);
-        odw->link_hdr(odr->hdr);
+        if (no_subset_samples==-1)
+        {
+            odw->link_hdr(odr->hdr);
+        }
+        //perform subsetting
+        else if (no_subset_samples==0)
+        {
+            odw->set_hdr(odr->hdr);
+            bcf_hdr_subset(odw->hdr, 0, 0, 0);
+        }
+        
         if (print_header) odw->write_hdr();
 
         ////////////////////////
@@ -120,6 +134,10 @@ class Igor : Program
 
         while (odr->read(v))
         {
+            if (no_subset_samples==0)
+            {
+                bcf_subset(odw->hdr, v, 0, 0);
+            }
             odw->write(v);
             v = odw->get_bcf1_from_pool();
             ++no_variants;
@@ -135,12 +153,13 @@ class Igor : Program
 
         std::clog << "view v" << version << "\n\n";
 
-        std::clog << "options:     input VCF file           " << input_vcf_file << "\n";
-        std::clog << "         [o] output VCF file          " << output_vcf_file << "\n";
-        std::clog << "         [w] sort window size         " << sort_window_size << "\n";
-        std::clog << "         [h] print header             " << (print_header ? "yes" : "no") << "\n";
-        std::clog << "         [p] print options and stats  " << (print ? "yes" : "no") << "\n";
-        print_int_op("         [i] intervals                ", intervals);
+        std::clog << "options:     input VCF file              " << input_vcf_file << "\n";
+        std::clog << "         [o] output VCF file             " << output_vcf_file << "\n";
+        std::clog << "         [w] sort window size            " << sort_window_size << "\n";
+        std::clog << "         [h] print header                " << (print_header ? "yes" : "no") << "\n";
+        std::clog << "         [s] print site information only " << (print_sites_only ? "yes" : "no") << "\n";
+        std::clog << "         [p] print options and stats     " << (print ? "yes" : "no") << "\n";
+        print_int_op("         [i] intervals                   ", intervals);
         std::clog << "\n";
     }
 
