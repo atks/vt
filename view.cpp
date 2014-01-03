@@ -74,7 +74,7 @@ class Igor : Program
             TCLAP::ValueArg<std::string> arg_intervals("i", "i", "intervals []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "file", cmd);
             TCLAP::SwitchArg arg_print("p", "p", "print options and summary []", cmd, false);
-            TCLAP::SwitchArg arg_print_header("h", "h", "print header [false]", cmd, false);
+            TCLAP::SwitchArg arg_print_header("h", "h", "print header, this option is honored only for STDOUT [false]", cmd, false);
             TCLAP::SwitchArg arg_print_sites_only("s", "s", "print site information only without genotypes [false]", cmd, false);
             TCLAP::ValueArg<uint32_t> arg_sort_window_size("w", "w", "local sorting window size [0]", false, 0, "int", cmd);
             //TCLAP::ValueArg<std::string> arg_sample_list("s", "s", "file containing list of sample []", false, "", "file", cmd);
@@ -119,7 +119,7 @@ class Igor : Program
             bcf_hdr_subset(odw->hdr, 0, 0, 0);
         }
         
-        if (print_header) odw->write_hdr();
+        if (print_header || output_vcf_file != "-") odw->write_hdr();
 
         ////////////////////////
         //stats initialization//
