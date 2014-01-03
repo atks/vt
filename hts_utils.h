@@ -312,6 +312,6 @@ bool bcf_is_passed(bcf_hdr_t *h, bcf1_t *v);
 /**
  * Set number of samples in bcf record
  */
-#define bcf_set_n_sample(h, v) ((v)->n_sample = (h)->n[BCF_DT_SAMPLE]);
+#define bcf_set_n_sample(v, n) ((v)->n_sample = (n));
 
 #endif
