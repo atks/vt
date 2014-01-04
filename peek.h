@@ -27,6 +27,7 @@
 #include <cstdio>
 #include "htslib/vcf.h"
 #include "htslib/kseq.h"
+#include "htslib/khash.h"
 #include "program.h"
 #include "hts_utils.h"
 #include "bcf_ordered_reader.h"

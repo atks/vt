@@ -26,6 +26,8 @@
 namespace
 {
 
+KHASH_MAP_INIT_INT(32, char)
+
 class Igor : Program
 {
     public:
@@ -47,6 +49,8 @@ class Igor : Program
     /////////
     //stats//
     /////////
+    uint32_t no_samples;
+    uint32_t no_chromosomes;
     uint32_t no_observed_variants;
     uint32_t no_classified_variants;
     uint32_t no_ref;
@@ -119,6 +123,8 @@ class Igor : Program
         ////////////////////////
         //stats initialization//
         ////////////////////////
+        no_samples = 0;
+        no_chromosomes = 0;
         no_observed_variants = 0;
         no_classified_variants = 0;
         no_ref = 0;
@@ -152,11 +158,25 @@ class Igor : Program
 
     void peek()
     {
+        no_samples = bcf_hdr_get_n_sample(odr->hdr);
+
+        int ret, is_missing;
+    	khiter_t k;
+    	khash_t(32) *h = kh_init(32);
+
         Variant variant;
 
         while (odr->read(v))
         {
             bcf_unpack(v, BCF_UN_STR);
+            
+            if ((k = kh_get(32, h, bcf_get_rid(v))) == kh_end(h))
+            {
+                kh_put(32, h, bcf_get_rid(v), &ret);
+                kh_value(h, k) = 1; //not really necessary.
+                ++no_chromosomes;   
+            }
+
             int32_t vtype = vm->classify_variant(odr->hdr, v, variant);
             
             if (vtype & VT_CLUMPED)
@@ -280,6 +300,7 @@ class Igor : Program
             ++no_observed_variants;
         }
 
+        kh_destroy(32, h);
         odr->close();
     };
 
@@ -297,7 +318,10 @@ class Igor : Program
     void print_stats()
     {
         fprintf(stderr, "\n");
-        fprintf(stderr, "stats: No. of SNPs                   : %10d\n", no_snp2+no_snp3+no_snp4);
+        fprintf(stderr, "stats: No. of samples                : %10d\n", no_samples);
+        fprintf(stderr, "       No. of chromosomes            : %10d\n", no_chromosomes);
+        fprintf(stderr, "\n");
+        fprintf(stderr, "       No. of SNPs                   : %10d\n", no_snp2+no_snp3+no_snp4);
         fprintf(stderr, "           biallelic                 : %15d\n", no_snp2);
         fprintf(stderr, "           3 alleles                 : %15d\n", no_snp3);
         fprintf(stderr, "           4 alleles                 : %15d\n", no_snp4);
@@ -324,11 +348,11 @@ class Igor : Program
         fprintf(stderr, "               deletions             : %15d\n", no_mnpdel2);
         fprintf(stderr, "           multiallelic              : %15d\n", no_mnpindel_multi);   
         fprintf(stderr, "\n");
-        fprintf(stderr, "       No. of Clumped variants       : %10d\n", no_clumped2+no_clumped_multi);
+        fprintf(stderr, "       No. of clumped variants       : %10d\n", no_clumped2+no_clumped_multi);
         fprintf(stderr, "           biallelic                 : %15d\n", no_clumped2);
         fprintf(stderr, "           multiallelic              : %15d\n", no_clumped_multi);
         fprintf(stderr, "\n");
-        fprintf(stderr, "       No. of Reference              : %10d\n", no_ref);
+        fprintf(stderr, "       No. of reference              : %10d\n", no_ref);
         fprintf(stderr, "\n");
         fprintf(stderr, "       No. of observed variants      : %10d\n", no_observed_variants);
         fprintf(stderr, "       No. of unclassified variants  : %10d\n", no_observed_variants-no_classified_variants);
