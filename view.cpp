@@ -115,8 +115,7 @@ class Igor : Program
         //perform subsetting
         else if (no_subset_samples==0)
         {
-            odw->set_hdr(odr->hdr);
-            bcf_hdr_subset(odw->hdr, 0, 0, 0);
+            odw->link_hdr(bcf_hdr_subset(odr->hdr, 0, 0, 0));
         }
         
         if (print_header || output_vcf_file != "-") odw->write_hdr();
