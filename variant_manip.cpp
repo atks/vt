@@ -218,19 +218,39 @@ int32_t VariantManip::classify_variant(const char* chrom, uint32_t pos1, char** 
     int32_t pos0 = pos1-1;
     v.clear();
 
-    int32_t rlen = strlen(allele[0]);
-
     for (uint32_t i=1; i<n_allele; ++i)
     {
         int32_t type = VT_REF;
-        int32_t alen = strlen(allele[i]);
+        
+        char* ref = allele[0];
+        char* alt = allele[i];
+        
+        //in situ left trimming
+        //this is required in particular for the 
+        //characterization of multiallelics and
+        //in general, any unnormalized variant
+        while (strlen(ref)!=1 && strlen(alt)!=1)
+        {
+            if (ref[0]==alt[0])
+            {
+                ++ref;
+                ++alt;
+            }    
+            else
+            {
+                break;
+            }
+        }
+        
+        int32_t rlen = strlen(ref);
+        int32_t alen = strlen(alt);
         int32_t min_len = std::min(rlen, alen);
         int32_t dlen = alen-rlen;
         int32_t diff = 0;
 
         for (int32_t j=0; j<min_len; ++j)
         {
-            if (allele[0][j]!=allele[i][j])
+            if (ref[j]!=alt[j])
             {
                 ++diff;
             }
@@ -263,6 +283,7 @@ int32_t VariantManip::classify_variant(const char* chrom, uint32_t pos1, char** 
 
 /**
  * Left trims a variant with unnecesary nucleotides.
+ * todo: move from vector to char** - not a big issue where efficiency is concerned, the manipulation is less clunky if performed on char* directly
  */
 void VariantManip::left_trim(std::vector<std::string>& alleles, uint32_t& pos1, uint32_t& left_trimmed)
 {

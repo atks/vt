@@ -103,8 +103,8 @@ class Igor : Program
         odw = new BCFOrderedWriter(output_vcf_file);
         odw->link_hdr(odr->hdr);
         bcf_hdr_append(odw->hdr, "##INFO=<ID=VT,Number=1,Type=String,Description=\"Variant Type - SNP, MNP, INDEL, CLUMPED\">");
-//        bcf_hdr_append(odw->hdr, "##INFO=<ID=RU,Number=1,Type=String,Description=\"Repeat unit in a STR or Homopolymer\">");
-//        bcf_hdr_append(odw->hdr, "##INFO=<ID=RL,Number=1,Type=Integer,Description=\"Repeat Length\">");
+        bcf_hdr_append(odw->hdr, "##INFO=<ID=RU,Number=1,Type=String,Description=\"Repeat unit in a STR or Homopolymer\">");
+        bcf_hdr_append(odw->hdr, "##INFO=<ID=RL,Number=1,Type=Integer,Description=\"Repeat Length\">");
 //        bcf_hdr_append(odw->hdr, "##INFO=<ID=NS,Number=0,Type=Flag,Description=\"Near to STR\">");
 //        bcf_hdr_append(odw->hdr, "##INFO=<ID=FS,Number=0,Type=Flag,Description=\"Frameshift INDEL\">");
 //        bcf_hdr_append(odw->hdr, "##INFO=<ID=NFS,Number=0,Type=Flag,Description=\"Non Frameshift INDEL\">");
@@ -126,7 +126,7 @@ class Igor : Program
         std::clog << "\n";
         std::clog << "options:     input VCF file(s)     " << input_vcf_file << "\n";
         std::clog << "         [o] output VCF file       " << output_vcf_file << "\n";
-        std::clog << "         [r] ref FASTA file        " << ref_fasta_file << "\n";
+        print_ref_op("         [r] ref FASTA file        ", ref_fasta_file);
         print_int_op("         [i] intervals             ", intervals);
         std::clog << "\n";
     }
@@ -166,11 +166,18 @@ class Igor : Program
                 //do indel stuff
             }
             
+            std::string ru = "ACGT";
+            int32_t rl = 4;
+            
+            bcf_update_info_string(odr->hdr, v, "RU", ru.c_str());
+            bcf_update_info_int32(odr->hdr, v, "RL", &rl, 1);
+            
             ++no_variants_annotated;
             odw->write(v);
             v = odw->get_bcf1_from_pool();
-            
         }
+        
+        odw->close();
     };
     
     private:
