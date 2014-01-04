@@ -63,7 +63,11 @@ BCFOrderedReader::BCFOrderedReader(std::string vcf_file, std::vector<GenomeInter
         }
         else
         {
-            //fprintf(stderr, "[W:%s] index not loaded for %s\n", __FUNCTION__, vcf_file.c_str());
+            if (intervals_present)
+            {
+                fprintf(stderr, "[E:%s] index cannot be loaded for %s\n", __FUNCTION__, vcf_file.c_str());
+                exit(1);
+            }
         }
     }
     else if (ftype==FT_VCF_GZ)
@@ -75,7 +79,11 @@ BCFOrderedReader::BCFOrderedReader(std::string vcf_file, std::vector<GenomeInter
         }
         else
         {
-            //fprintf(stderr, "[W:%s] index not loaded for %s\n", __FUNCTION__, vcf_file.c_str());
+            if (intervals_present)
+            {
+                fprintf(stderr, "[E:%s] index cannot be loaded for %s\n", __FUNCTION__, vcf_file.c_str());
+                exit(1);
+            }
         }
     }
 
