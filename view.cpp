@@ -41,6 +41,7 @@ class Igor : Program
     std::string variant;
     uint32_t sort_window_size;
     bool print_header;
+    bool print_header_only;
     bool print_sites_only;
     bool print;
     int32_t no_subset_samples;
@@ -74,7 +75,8 @@ class Igor : Program
             TCLAP::ValueArg<std::string> arg_intervals("i", "i", "intervals []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "file", cmd);
             TCLAP::SwitchArg arg_print("p", "p", "print options and summary []", cmd, false);
-            TCLAP::SwitchArg arg_print_header("h", "h", "print header, this option is honored only for STDOUT [false]", cmd, false);
+            TCLAP::SwitchArg arg_print_header("h", "h", "omit header, this option is honored only for STDOUT [false]", cmd, false);
+            TCLAP::SwitchArg arg_print_header_only("H", "H", "print header only, this option is honored only for STDOUT [false]", cmd, false);
             TCLAP::SwitchArg arg_print_sites_only("s", "s", "print site information only without genotypes [false]", cmd, false);
             TCLAP::ValueArg<uint32_t> arg_sort_window_size("w", "w", "local sorting window size [0]", false, 0, "int", cmd);
             //TCLAP::ValueArg<std::string> arg_sample_list("s", "s", "file containing list of sample []", false, "", "file", cmd);
@@ -90,6 +92,7 @@ class Igor : Program
             parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
             //read_sample_list(samples, arg_sample_list.getValue());
             print_header = arg_print_header.getValue();
+            print_header_only = arg_print_header_only.getValue();
             no_subset_samples = arg_print_sites_only.getValue() ? 0 : -1;
             print = arg_print.getValue();
             sort_window_size = arg_sort_window_size.getValue();
@@ -117,8 +120,6 @@ class Igor : Program
         {
             odw->link_hdr(bcf_hdr_subset(odr->hdr, 0, 0, 0));
         }
-        
-        if (print_header || output_vcf_file != "-") odw->write_hdr();
 
         ////////////////////////
         //stats initialization//
@@ -129,6 +130,17 @@ class Igor : Program
 
     void view()
     {
+        if (print_header_only && output_vcf_file == "-")
+        {
+            odw->write_hdr();
+            odr->close();
+            odw->close();
+            return;
+        }
+
+        if (print_header || output_vcf_file != "-") odw->write_hdr();
+
+
         bcf1_t *v = odw->get_bcf1_from_pool();
 
         while (odr->read(v))
@@ -136,8 +148,8 @@ class Igor : Program
             if (no_subset_samples==0)
             {
                 bcf_subset(odw->hdr, v, 0, 0);
-                //maybe add some additional ahoc fixing for BCF files that do not have a complete header.
-                
+                //maybe add some additional adhoc fixing for BCF files that do not have a complete header.
+
             }
             odw->write(v);
             v = odw->get_bcf1_from_pool();
@@ -158,6 +170,7 @@ class Igor : Program
         std::clog << "         [o] output VCF file             " << output_vcf_file << "\n";
         std::clog << "         [w] sort window size            " << sort_window_size << "\n";
         std::clog << "         [h] print header                " << (print_header ? "yes" : "no") << "\n";
+        std::clog << "         [H] print header only           " << (print_header_only ? "yes" : "no") << "\n";
         std::clog << "         [s] print site information only " << (print_sites_only ? "yes" : "no") << "\n";
         std::clog << "         [p] print options and stats     " << (print ? "yes" : "no") << "\n";
         print_int_op("         [i] intervals                   ", intervals);
@@ -167,7 +180,7 @@ class Igor : Program
     void print_stats()
     {
         if (!print) return;
-            
+
         std::clog << "\n";
         std::clog << "stats: no. variants  : " << no_variants << "\n";
         std::clog << "       no. samples   : " << no_samples << "\n";
