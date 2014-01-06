@@ -55,9 +55,13 @@ class Igor : Program
     uint32_t no_classified_variants;
     uint32_t no_ref;
     uint32_t no_snp2;
+    uint32_t no_snp2_ts;
+    uint32_t no_snp2_tv;
     uint32_t no_snp3;
     uint32_t no_snp4;
     uint32_t no_mnp2;
+    uint32_t no_mnp2_ts;
+    uint32_t no_mnp2_tv;
     uint32_t no_mnp_multi;
     uint32_t no_indel2;
     uint32_t no_ins2;
@@ -71,6 +75,7 @@ class Igor : Program
     uint32_t no_mnpins2;
     uint32_t no_mnpdel2;
     uint32_t no_mnpindel_multi;
+    uint32_t no_snp_mnp_indel;
     uint32_t no_clumped2;
     uint32_t no_clumped_multi;
     
@@ -129,9 +134,13 @@ class Igor : Program
         no_classified_variants = 0;
         no_ref = 0;
         no_snp2 = 0;
+        no_snp2_ts = 0;
+        no_snp2_tv = 0;
         no_snp3 = 0;
         no_snp4 = 0;
         no_mnp2 = 0;
+        no_mnp2_ts = 0;
+        no_mnp2_tv = 0;
         no_mnp_multi = 0;
         no_indel2 = 0;
         no_ins2 = 0;
@@ -145,6 +154,7 @@ class Igor : Program
         no_mnpins2 = 0;
         no_mnpdel2 = 0;
         no_mnpindel_multi = 0;
+        no_snp_mnp_indel = 0;
         no_clumped2 = 0;
         no_clumped_multi = 0;
         no_clumped2 = 0;
@@ -185,7 +195,7 @@ class Igor : Program
                 {
                     ++no_clumped2;
                 }
-                else if (bcf_get_n_allele(v)>=3)
+                else if (bcf_get_n_allele(v)>2)
                 {
                     ++no_clumped_multi;
                 }
@@ -197,6 +207,9 @@ class Igor : Program
                 if (bcf_get_n_allele(v)==2)
                 {
                     ++no_snp2;
+                    
+                    no_snp2_ts += variant.alleles[0].ts;
+                    no_snp2_tv += variant.alleles[0].tv;
                 }
                 else if (bcf_get_n_allele(v)==3)
                 {
@@ -214,8 +227,11 @@ class Igor : Program
                 if (bcf_get_n_allele(v)==2)
                 {
                     ++no_mnp2;
+                    
+                    no_mnp2_ts += variant.alleles[0].ts;
+                    no_mnp2_tv += variant.alleles[0].tv;
                 }
-                else if (bcf_get_n_allele(v)>=3)
+                else if (bcf_get_n_allele(v)>2)
                 {
                     ++no_mnp_multi;
                 }
@@ -227,7 +243,7 @@ class Igor : Program
                 if (bcf_get_n_allele(v)==2)
                 {
                     ++no_indel2;
-                    if (variant.alleles[0].dlen>0)
+                    if (variant.alleles[0].ins)
                     {
                         ++no_ins2;
                     }
@@ -236,7 +252,7 @@ class Igor : Program
                         ++no_del2;
                     }
                 }
-                else if (bcf_get_n_allele(v)>=3)
+                else if (bcf_get_n_allele(v)>2)
                 {      
                     ++no_indel_multi;
                 }
@@ -248,7 +264,7 @@ class Igor : Program
                 if (bcf_get_n_allele(v)==2)
                 {
                     ++no_snpindel2;
-                    if (variant.alleles[0].dlen>0)
+                    if (variant.alleles[0].ins)
                     {
                         ++no_snpins2;
                     }
@@ -257,19 +273,19 @@ class Igor : Program
                         ++no_snpdel2;
                     }
                 }
-                else if (bcf_get_n_allele(v)>=3)
+                else if (bcf_get_n_allele(v)>2)
                 {
                     ++no_snpindel_multi;
                 }
                                 
                 ++no_classified_variants;
             }
-            else if (vtype&(VT_MNP|VT_INDEL))
+            else if (vtype==(VT_MNP|VT_INDEL))
             {
                 if (bcf_get_n_allele(v)==2)
                 {
                     ++no_mnpindel2;
-                    if (variant.alleles[0].dlen>0)
+                    if (variant.alleles[0].ins)
                     {
                         ++no_mnpins2;
                     }
@@ -278,11 +294,16 @@ class Igor : Program
                         ++no_mnpdel2;
                     }
                 }
-                else if (bcf_get_n_allele(v)>=3)
+                else if (bcf_get_n_allele(v)>2)
                 {
                     ++no_mnpindel_multi;
                 }
              
+                ++no_classified_variants;
+            }
+            else if (vtype==(VT_SNP|VT_MNP|VT_INDEL))
+            {
+                ++no_snp_mnp_indel;
                 ++no_classified_variants;
             }
             else if (vtype==VT_REF) //MNPs that are not real MNPs
@@ -322,31 +343,34 @@ class Igor : Program
         fprintf(stderr, "       No. of chromosomes            : %10d\n", no_chromosomes);
         fprintf(stderr, "\n");
         fprintf(stderr, "       No. of SNPs                   : %10d\n", no_snp2+no_snp3+no_snp4);
-        fprintf(stderr, "           biallelic                 : %15d\n", no_snp2);
+        fprintf(stderr, "           biallelic (ts/tv)         : %15d (%.2f) [%d/%d]\n", no_snp2, no_snp2_tv ? (float)no_snp2_ts/no_snp2_tv : NAN, no_snp2_ts, no_snp2_tv);
         fprintf(stderr, "           3 alleles                 : %15d\n", no_snp3);
         fprintf(stderr, "           4 alleles                 : %15d\n", no_snp4);
         fprintf(stderr, "\n");
         fprintf(stderr, "       No. of MNPs                   : %10d\n", no_mnp2+no_mnp_multi);
-        fprintf(stderr, "           biallelic                 : %15d\n", no_mnp2);
+        fprintf(stderr, "           biallelic (ts/tv)         : %15d (%.2f) [%d/%d]\n", no_mnp2, no_mnp2_tv ? (float)no_mnp2_ts/no_mnp2_tv : NAN, no_mnp2_ts, no_mnp2_tv);
         fprintf(stderr, "           multiallelic              : %15d\n", no_mnp_multi);
         fprintf(stderr, "\n");
         fprintf(stderr, "       No. Indels                    : %10d\n", no_indel2+no_indel_multi);
-        fprintf(stderr, "           biallelic                 : %15d\n", no_indel2);
+        fprintf(stderr, "           biallelic (ins/del)       : %15d (%.2f)\n", no_indel2, no_del2 ? (float)no_ins2/no_del2 : NAN);
         fprintf(stderr, "               insertions            : %15d\n", no_ins2);
         fprintf(stderr, "               deletions             : %15d\n", no_del2);
         fprintf(stderr, "           multiallelic              : %15d\n", no_indel_multi);
         fprintf(stderr, "\n");
         fprintf(stderr, "       No. SNP/Indels                : %10d\n", no_snpindel2+no_snpindel_multi);
-        fprintf(stderr, "           biallelic                 : %15d\n", no_snpindel2);
+        fprintf(stderr, "           biallelic (ins/del)       : %15d (%.2f)\n", no_snpindel2, no_snpdel2 ? (float)no_snpins2/no_snpdel2 : NAN);
         fprintf(stderr, "               insertions            : %15d\n", no_snpins2);
         fprintf(stderr, "               deletions             : %15d\n", no_snpdel2);
         fprintf(stderr, "           multiallelic              : %15d\n", no_snpindel_multi);   
         fprintf(stderr, "\n");
         fprintf(stderr, "       No. MNP/Indels                : %10d\n", no_mnpindel2+no_mnpindel_multi);
-        fprintf(stderr, "           biallelic                 : %15d\n", no_mnpindel2);
+        fprintf(stderr, "           biallelic (ins/del)       : %15d (%.2f)\n", no_mnpindel2, no_mnpdel2 ? (float)no_mnpins2/no_mnpdel2 : NAN);
         fprintf(stderr, "               insertions            : %15d\n", no_mnpins2);
         fprintf(stderr, "               deletions             : %15d\n", no_mnpdel2);
         fprintf(stderr, "           multiallelic              : %15d\n", no_mnpindel_multi);   
+        fprintf(stderr, "\n");
+        fprintf(stderr, "       No. SNP/MNP/Indels            : %10d\n", no_snp_mnp_indel);
+        fprintf(stderr, "           (multiallelic)\n");
         fprintf(stderr, "\n");
         fprintf(stderr, "       No. of clumped variants       : %10d\n", no_clumped2+no_clumped_multi);
         fprintf(stderr, "           biallelic                 : %15d\n", no_clumped2);
