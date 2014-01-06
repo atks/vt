@@ -274,7 +274,7 @@ void bcf_print(bcf_hdr_t *h, bcf1_t *v)
 {
     kstring_t s = {0,0,0,};
     vcf_format(h, v, &s);
-    std::cerr << s.s << "\n";
+    std::cerr << s.s;
     if (s.m) free(s.s);
 };
 
