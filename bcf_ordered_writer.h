@@ -109,6 +109,11 @@ class BCFOrderedWriter
     bcf1_t* get_bcf1_from_pool();
 
     /**
+     * Returns record to pool
+     */
+    void store_bcf1_into_pool(bcf1_t* v);
+    
+    /**
      * Flush writable records from buffer.
      */
     void flush();
@@ -119,11 +124,6 @@ class BCFOrderedWriter
     void close();
 
     private:
-
-    /**
-     * Returns record to pool
-     */
-    void store_bcf1_into_pool(bcf1_t* v);
 
     /**
      * Flush writable records from buffer.
