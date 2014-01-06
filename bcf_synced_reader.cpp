@@ -569,7 +569,6 @@ void BCFSyncedReader::fill_buffer(int32_t i)
             {
                 bcf_unpack(v, BCF_UN_STR);
                 bcf_variant2string(hdrs[i], v, &s);
-                if (s.m) free(s.s);
                 bcf_get_pos1(v);
                 buffer[i].push_back(v);
                 insert_into_pq(i, v);
