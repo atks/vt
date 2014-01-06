@@ -234,6 +234,9 @@ Each VCF file is required to have the FORMAT flags E and N and should have exact
                 int32_t file_index = current_recs[i].file_index;
                 bcf1_t *v = current_recs[i].v;
                 bcf_hdr_t *h = current_recs[i].h;
+                
+//                std::cerr << current_recs[i].pos1 << "  : ";
+//                bcf_print(h,v);
 
                 nE = bcf_get_format_int(h, v, "E", &E, &n);
                 nN = bcf_get_format_int(h, v, "N", &N, &n);
@@ -372,7 +375,7 @@ Each VCF file is required to have the FORMAT flags E and N and should have exact
     void print_options()
     {
         std::clog << "merge_candidate_variants v" << version << "\n\n";
-        std::clog << "options:     input VCF file(s)     " << input_vcf_files.size() << " files\n";
+        std::clog << "options: [L] input VCF file list   " << input_vcf_file_list << " (" << input_vcf_files.size() << " files)\n";
         std::clog << "         [o] output VCF file       " << output_vcf_file << "\n";
         print_int_op("         [i] intervals             ", intervals);
         std::clog << "\n";
