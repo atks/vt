@@ -72,7 +72,7 @@ class CompareBCFPtr
  * A class for reading files in a synced fashion.
  * All variants at the same position are read and placed in a processing vector.
  *
- * This is supported for the following cases:
+ * This is supported for the following case:
  *
  * 1) All files are indexed.
  *
@@ -80,17 +80,10 @@ class CompareBCFPtr
  *    Sequences are easily obtained via headers and/or tabix objects.
  *    If intervals are specified, just populate the intervals to iterate with specified intervals.
  *
- * 2) Only the first file is not indexed but ordered.
- *
- *    a) no intervals specified
- *           first file is streamed and the rest of the files are randomly accessed.
- *
- *    b) intervals specified
- *           first file is streamed and selected via interval tree.
- *           once a record within a region is read, the other files are selected on that interval.
- *
  * If no intervals are selected by the caller, a union of all sequences are detected
  * from the files.
+ *
+ *  Non indexed files are NOT supported!
  */
 class BCFSyncedReader
 {
@@ -109,8 +102,6 @@ class BCFSyncedReader
     int32_t nfiles; //number of files
     int32_t neofs; //number of files read till eof
 
-    bool indexed_first_file;
-    
     //list of contigs
     std::vector<GenomeInterval> intervals;
     std::map<std::string, int32_t> intervals_map;
@@ -122,12 +113,7 @@ class BCFSyncedReader
     int32_t current_rid;
     int32_t current_pos1;
 
-    //variables for managing non indexed first file
-    //
-    bcf1_t *next_interval_v;
-    std::string next_interval;
-    int32_t no_more_first_file_records; //non zero if true
-
+    //generic useful string
     kstring_t s;
 
     //buffer for records in use, this is indexed by the file index
@@ -149,7 +135,7 @@ class BCFSyncedReader
      *
      */
     bool read_next_position(std::vector<bcfptr>& current_recs);
-    
+
     /**
      * Reads variants that are the equivalent from all the files in parallel.
      */
