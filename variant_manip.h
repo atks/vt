@@ -71,15 +71,23 @@ class Allele
     int32_t diff;  //number of difference bases when bases are compared
     int32_t alen;  //length(alt)
     int32_t dlen;  //length(alt)-length(ref)
-    int32_t tlen;  //tract length
+    int32_t tlen;  //tract length with respect to reference
+    int32_t mlen;  //min shared length
+    int32_t ts;    //no of transitions
+    int32_t tv;    //no of tranversions (mlen-ts)
+    int32_t ins;   //no of insertions
 
-    Allele(int32_t type, int32_t diff, int32_t alen, int32_t dlen, int32_t tlen)
+    Allele(int32_t type, int32_t diff, int32_t alen, int32_t dlen, int32_t tlen, int32_t mlen, int32_t ts, int32_t ins)
     {
         this->type = type;
         this->diff = diff;
         this->alen = alen;
         this->dlen = dlen;
         this->tlen = tlen;
+        this->mlen = mlen;
+        this->ts = ts;
+        this->tv = mlen-ts;
+        this->ins = ins;
     }
 
     Allele()
@@ -96,16 +104,19 @@ class Allele
         alen = 0;
         dlen = 0;
         tlen = 0;
+        mlen = 0;
+        ts = 0;
+        ins = 0;
     }
-    
+
     void print()
     {
         std::cerr << "type: " << type << "\n";
         std::cerr << "diff: " << diff << "\n";
-        std::cerr << "alen: " << alen << "\n";   
-        std::cerr << "dlen: " << dlen << "\n";        
-        std::cerr << "tlen: " << tlen << "\n";   
-    };    
+        std::cerr << "alen: " << alen << "\n";
+        std::cerr << "dlen: " << dlen << "\n";
+        std::cerr << "tlen: " << tlen << "\n";
+    };
 };
 
 /**
@@ -191,7 +202,7 @@ class VariantManip
      * Converts VTYPE to string.
      */
     void vtype2string(int32_t vtype, kstring_t *s);
-    
+
     /**
      * Classifies variants.
      */

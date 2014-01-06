@@ -81,7 +81,7 @@ std::string VariantManip::vtype2string(int32_t VTYPE)
         s += (s.size()==0) ? "" : ";";
         s += "CLUMPED";
     }
-   
+
     return s;
 }
 
@@ -126,7 +126,7 @@ bool VariantManip::detect_str(bcf_hdr_t *h, bcf1_t *v, Variant& variant)
 }
 
 /**
- * Detects near by STRs.
+// * Detects near by STRs.
  */
 bool VariantManip::detect_str(const char* chrom, uint32_t pos1, Variant& variant)
 {
@@ -221,12 +221,12 @@ int32_t VariantManip::classify_variant(const char* chrom, uint32_t pos1, char** 
     for (uint32_t i=1; i<n_allele; ++i)
     {
         int32_t type = VT_REF;
-        
+
         char* ref = allele[0];
         char* alt = allele[i];
-        
+
         //in situ left trimming
-        //this is required in particular for the 
+        //this is required in particular for the
         //characterization of multiallelics and
         //in general, any unnormalized variant
         while (strlen(ref)!=1 && strlen(alt)!=1)
@@ -235,47 +235,60 @@ int32_t VariantManip::classify_variant(const char* chrom, uint32_t pos1, char** 
             {
                 ++ref;
                 ++alt;
-            }    
+            }
             else
             {
                 break;
             }
         }
-        
+
         int32_t rlen = strlen(ref);
         int32_t alen = strlen(alt);
-        int32_t min_len = std::min(rlen, alen);
+        int32_t mlen = std::min(rlen, alen);
         int32_t dlen = alen-rlen;
         int32_t diff = 0;
+        int32_t ts = 0;
+        int32_t tv = 0;
+        int32_t ins = 0;
 
-        for (int32_t j=0; j<min_len; ++j)
+        for (int32_t j=0; j<mlen; ++j)
         {
             if (ref[j]!=alt[j])
             {
                 ++diff;
+
+                if ((ref[j]=='T' && alt[j]=='A') ||
+                    (ref[j]=='A' && alt[j]=='T') ||
+                    (ref[j]=='C' && alt[j]=='G') ||
+                    (ref[j]=='G' && alt[j]=='C'))
+                {
+                    ++ts;
+                }
             }
         }
 
         //substitution variants
-        if (min_len==diff)
+        if (mlen==diff)
         {
-            type |= min_len==1 ? VT_SNP : VT_MNP;
+            type |= mlen==1 ? VT_SNP : VT_MNP;
         }
 
         //indel variants
         if (dlen)
         {
             type |= VT_INDEL;
+
+            ins = dlen>0 ? 1 : 0;
         }
 
         //clumped SNPs and MNPs
-        if (diff && diff < min_len)
+        if (diff && diff < mlen)
         {
             type |= VT_CLUMPED;
         }
-        
+
         v.type |= type;
-        v.alleles.push_back(Allele(type, diff, alen, dlen, 0));
+        v.alleles.push_back(Allele(type, diff, alen, dlen, 0, mlen, ts, ins));
     }
 
     return v.type;
