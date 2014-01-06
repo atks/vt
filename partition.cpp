@@ -123,14 +123,10 @@ class Igor : Program
         //////////////////////
         //i/o initialization//
         //////////////////////
-        line.s=0;
-        line.l=line.m=0;
+        line = {0,0,0};
                 
         //input vcfs
         sr = new BCFSyncedReader(input_vcf_files, intervals); 
-        
-        bcf_hdr_append(sr->hdrs[0], "##INFO=<ID=AF,Number=A,Type=Float,Description=\"Allele Frequency, for each ALT allele, in the same order as listed\">");
-        bcf_hdr_append(sr->hdrs[0], "##INFO=<ID=FR,Number=A,Type=Float,Description=\"Allele Frequency, for each ALT allele, in the same order as listed\">");
             
         ////////////////////////
         //stats initialization//
@@ -173,17 +169,11 @@ class Igor : Program
                     bcf_hdr_t *h = sr->hdrs[0];
                     if (!bcf_is_passed(h, v))
                     {    
-//                        std::cerr << "FAIL PASS\n";
-//                        vcf_format1(h, v, &line);    
-//                        std::cerr << line.s << "\n";    
                         continue;
                     }
                     
                     if (filter!=NULL && !filter->apply(h, v))
                     {   
-//                        std::cerr << "FAIL AF filter\n"; 
-//                        vcf_format1(h, v, &line);    
-//                        std::cerr << line.s << "\n";   
                         continue;
                     }
                 }
