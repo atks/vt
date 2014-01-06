@@ -174,6 +174,7 @@ bcf1_t* BCFOrderedWriter::get_bcf1_from_pool()
     else
     {
         bcf1_t *v = bcf_init();
+        bcf_clear(v);
         return v;
     }
 };
