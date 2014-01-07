@@ -135,6 +135,8 @@ class Igor : Program
                 continue;
             }
 
+            bcf_print_lite(odr->hdr, v);
+
             std::vector<std::string> probes;
             std::vector<std::string> alleles;
 
@@ -163,9 +165,9 @@ class Igor : Program
             if (skip)
                 continue;
 
-            bcf_update_info_string(odr->hdr, v, "REFPROBE", probes[0].c_str());
-            bcf_update_info_string(odr->hdr, v, "ALTPROBE", probes[1].c_str());
-            bcf_update_info_int32(odr->hdr, v, "PLEN", &preambleLength, 1);
+            bcf_update_info_string(odw->hdr, v, "REFPROBE", probes[0].c_str());
+            bcf_update_info_string(odw->hdr, v, "ALTPROBE", probes[1].c_str());
+            bcf_update_info_int32(odw->hdr, v, "PLEN", &preambleLength, 1);
 
             odw->write(v);
             v = odw->get_bcf1_from_pool();
@@ -191,8 +193,9 @@ class Igor : Program
 
     void print_stats()
     {
-        std::clog << "\nstats: no. of probes generated      : " << no_probes_generated << "\n";
-        std::clog << "         no. variants                 : " << no_variants << "\n";
+        std::clog << "\n";
+        std::clog << "stats: no. of probes generated      : " << no_probes_generated << "\n";
+        std::clog << "       no. variants                 : " << no_variants << "\n";
         std::clog << "\n";
     };
 
