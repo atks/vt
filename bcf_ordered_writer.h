@@ -79,7 +79,7 @@ class BCFOrderedWriter
      * Duplicates a hdr and sets it.
      */
     void set_hdr(bcf_hdr_t *hdr);
-    
+
     /**
      * Links a header.  This is useful when the read in VCF header is incomplete.
      */
@@ -112,7 +112,7 @@ class BCFOrderedWriter
      * Returns record to pool
      */
     void store_bcf1_into_pool(bcf1_t* v);
-    
+
     /**
      * Flush writable records from buffer.
      */
