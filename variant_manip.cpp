@@ -421,7 +421,7 @@ void VariantManip::generate_probes(const char* chrom,
             base = faidx_fetch_seq(fai, const_cast<char*>(chrom), pos1-1, pos1-1, &ref_len);
             preamble.append(1,base[0]);
             bases[base[0]] = 1;
-            if (ref_len<1) free(base);
+            if (ref_len>0) free(base);
             ++i;
         }
 
@@ -433,7 +433,7 @@ void VariantManip::generate_probes(const char* chrom,
             base = faidx_fetch_seq(fai, const_cast<char*>(chrom), pos1+alleleLength+i, pos1+alleleLength+i, &ref_len);
             postamble.append(1,base[0]);
             bases[base[0]] = 1;
-            if (ref_len<1) free(base);
+            if (ref_len>0) free(base);
             ++i;
         }
 
@@ -474,11 +474,10 @@ void VariantManip::generate_probes(const char* chrom,
         std::string preamble;
         char* base;
         uint32_t i = 1;
-        int32_t ref_len;
-        while (bases.size()<4 || preamble.size()<min_flank_length)
+        int32_t ref_len = 0;
+        while (bases.size()<4 && preamble.size()<min_flank_length)
         {
             base = faidx_fetch_seq(fai, const_cast<char*>(chrom), pos1+i-1, pos1+i-1, &ref_len);
-            //myRefSeq->getString(base, chromNo, pos-i, 1);
             preamble.append(1,base[0]);
             bases[base[0]] = 1;
             ++i;
@@ -486,7 +485,7 @@ void VariantManip::generate_probes(const char* chrom,
             {
                 break;
             }
-            if (ref_len<1) free(base);
+            if (ref_len>0) free(base);
         }
 
         preambleLength = preamble.size();
@@ -499,8 +498,8 @@ void VariantManip::generate_probes(const char* chrom,
 }
 
 /**
-*Iteratively called function for generating a haplotype.
-*/
+ * Iteratively called function for generating a haplotype.
+ */
 void VariantManip::generate_probes(const char* chrom,
                         int32_t pos1,
                         uint32_t flankLength,
@@ -511,21 +510,12 @@ void VariantManip::generate_probes(const char* chrom,
                         std::vector<std::string>& alleles,
                         std::vector<std::string>& probes)
 {
-    //std::cerr << "B:" << currentDiff << " " << alleles.size()-1 << "\n";
-
     if (currentDiff<alleles.size() || length<=2*gald+flankLength)
     {
         std::map<std::string, uint32_t> probeHash;
         //extend probes
         for (uint32_t i=0; i<alleles.size(); ++i)
         {
-//                if (i==0)
-//                {
-//                    std::string base;
-//                    myRefSeq->getString(base, chromNo, (genomeIndex_t) (pos+length), 1);
-//                    probes[0].append(1, base.at(0));
-//                }
-//                else
             {
                 //copy from allele
                 if (length<alleles[i].size())
@@ -537,12 +527,10 @@ void VariantManip::generate_probes(const char* chrom,
                     int32_t start1 = (pos1+length-alleles[i].size()+alleles[0].size()-1);
                     int32_t ref_len;
                     char* base = faidx_fetch_seq(fai, const_cast<char*>(chrom), start1 , start1, &ref_len);
-                    //myRefSeq->getString(base, chromNo, (genomeIndex_t) (pos+length-alleles[i].size()+alleles[0].size()), 1);
                     probes[i].append(1, base[0]);
-                    if (ref_len<1) free(base);
+                    if (ref_len>0) free(base);
                 }
             }
-            //std::cerr << probes[i] << "\n" ;
             probeHash[probes[i]] = 1;
         }
 
