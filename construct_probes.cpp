@@ -139,6 +139,13 @@ class Igor : Program
             std::vector<std::string> alleles;
 
             int32_t preambleLength = 0;
+            
+            //populate alleles
+            for (int32_t i=0; i<bcf_get_n_allele(v); ++i)
+            {
+                alleles.push_back(std::string(bcf_get_alt(v,i)));
+            }
+            
             var_manip->generate_probes(bcf_get_chrom(odr->hdr, v), bcf_get_pos1(v), 1, alleles, probes, min_flank_length, preambleLength);
 
             //remove ill defined probes
