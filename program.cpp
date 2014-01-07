@@ -166,7 +166,7 @@ void Program::print_int_op(const char* option_line, std::vector<GenomeInterval>&
         }
         if (intervals.size()>5)
         {
-            std::clog << "  and " << (intervals.size()-5) <<  " other intervals\n";
+            std::clog << " and " << (intervals.size()-5) <<  " other intervals\n";
         }
     }
 }
