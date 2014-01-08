@@ -14,6 +14,7 @@ SOURCES = program\
 		bcf_ordered_reader\
 		bcf_ordered_writer\
 		bcf_synced_reader\
+   	    tbx_ordered_reader\
 		view\
 		index\
         normalize\
@@ -28,6 +29,8 @@ SOURCES = program\
 		discover\
 		merge_candidate_variants\
 		construct_probes\
+		genotype\
+		gencode\
 		annotate_variants\
 		lhmm\
 		peek
