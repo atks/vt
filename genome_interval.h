@@ -44,6 +44,11 @@ class GenomeInterval
     int32_t end1;   // 1 based coordinate
 
     /**
+     * Constructs a Genome Interval.
+     */
+    GenomeInterval(std::string& seq, int32_t start1, int32_t end1);
+
+    /**
      * Constructs a Genome Interval from a string representation.
      *
      * @interval    string representation of an interval.
