@@ -27,11 +27,12 @@
 #include "construct_probes.h"
 #include "discover.h"
 #include "annotate_variants.h"
-//#include "genotype.h"
+#include "genotype.h"
 #include "merge_candidate_variants.h"
 #include "partition.h"
 #include "view.h"
 #include "index.h"
+#include "profile_indels.h"
 
 void print_time(double t)
 {
@@ -128,11 +129,15 @@ int main(int argc, char ** argv)
     }
     else if (argc>1 && cmd=="genotype")
     {
-        //genotype(argc-1, ++argv);
+        genotype(argc-1, ++argv);
     } 
     else if (argc>1 && cmd=="construct_probes")
     {
         construct_probes(argc-1, ++argv);
+    }
+    else if (argc>1 && cmd=="profile_indels")
+    {
+        profile_indels(argc-1, ++argv);
     }
     else
     {
