@@ -23,6 +23,24 @@
 
 #include "genome_interval.h"
 
+/**
+ * Constructs a Genome Interval.
+ */
+GenomeInterval::GenomeInterval(std::string& seq, int32_t start1, int32_t end1)
+{
+    this->seq = seq;
+    this->start1 = start1;
+    this->end1 = end1;
+};
+
+/**
+ * Constructs a Genome Interval from a string representation.
+ *
+ * @interval    string representation of an interval.
+ *
+ * e.g X:2000-4000   position 2000 to 4000 on chromosome X
+ *     Y             the entirety of chromosome Y
+ */     
 GenomeInterval::GenomeInterval(std::string interval)
 {
     std::vector<std::string> v;
