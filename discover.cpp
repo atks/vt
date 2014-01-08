@@ -555,7 +555,7 @@ class VariantHunter
                                 odw->write(v);
                             }
 
-                            if (ref_len<1) free(seq);
+                            if (ref_len>0) free(seq);
                         }
                     }
                 }
