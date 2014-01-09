@@ -373,6 +373,7 @@ int bcf_hdr_register_hrec(bcf_hdr_t *hdr, bcf_hrec_t *hrec)
         else if ( !strcmp(hrec->keys[i], "Number") )
         {
             if ( !strcmp(hrec->vals[i],"A") ) var = BCF_VL_A;
+            else if ( !strcmp(hrec->vals[i],"R") ) var = BCF_VL_R;
             else if ( !strcmp(hrec->vals[i],"G") ) var = BCF_VL_G;
             else if ( !strcmp(hrec->vals[i],".") ) var = BCF_VL_VAR;
             else 
@@ -427,6 +428,7 @@ int bcf_hdr_add_hrec(bcf_hdr_t *hdr, bcf_hrec_t *hrec)
         for (i=0; i<hdr->nhrec; i++)
         {
             if ( hdr->hrec[i]->type!=BCF_HL_GEN ) continue;
+            if ( !strcmp(hdr->hrec[i]->key,hrec->key) && !strcmp(hrec->key,"fileformat") ) break;
             if ( !strcmp(hdr->hrec[i]->key,hrec->key) && !strcmp(hdr->hrec[i]->value,hrec->value) ) break;
         }
         if ( i<hdr->nhrec ) 
@@ -583,7 +585,7 @@ bcf_hdr_t *bcf_hdr_init(const char *mode)
 		h->dict[i] = kh_init(vdict);
     if ( strchr(mode,'w') )
     {
-        bcf_hdr_append(h, "##fileformat=VCFv4.1");
+        bcf_hdr_append(h, "##fileformat=VCFv4.2");
         // The filter PASS must appear first in the dictionary
         bcf_hdr_append(h, "##FILTER=<ID=PASS,Description=\"All filters passed\">");
     }
@@ -2293,6 +2295,18 @@ int bcf_get_info_values(bcf_hdr_t *hdr, bcf1_t *line, const char *tag, void **ds
         if ( line->d.info[i].key==tag_id ) break;
     if ( i==line->n_info ) return -3;                               // the tag is not present in this record
     bcf_info_t *info = &line->d.info[i];
+
+    if ( type==BCF_HT_STR )
+    {
+        if ( *ndst < info->len+1 ) 
+        {
+            *ndst = info->len + 1;
+            *dst  = realloc(*dst, *ndst);
+        }
+        memcpy(*dst,info->vptr,info->len);
+        ((uint8_t*)*dst)[info->len] = 0;
+        return info->len;
+    }
 
     // Make sure the buffer is big enough
     int size1 = type==BCF_HT_INT ? sizeof(int) : sizeof(float);
