@@ -229,14 +229,14 @@ Each VCF file is required to have the FORMAT flags E and N and should have exact
         double log10me = log10(0.99);
         double log10half = log10(0.5);
 
-        std::vector<bcfptr> current_recs;
+        std::vector<bcfptr*> current_recs;
         while(sr->read_next_position(current_recs))
         {
             for (uint32_t i=0; i<current_recs.size(); ++i)
             {
-                int32_t file_index = current_recs[i].file_index;
-                bcf1_t *v = current_recs[i].v;
-                bcf_hdr_t *h = current_recs[i].h;
+                int32_t file_index = current_recs[i]->file_index;
+                bcf1_t *v = current_recs[i]->v;
+                bcf_hdr_t *h = current_recs[i]->h;
 
 //                std::cerr << current_recs[i].pos1 << "  : ";
 //                bcf_print(h,v);

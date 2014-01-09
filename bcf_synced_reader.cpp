@@ -1,6 +1,6 @@
 /* The MIT License
 
-   Copyright (c) 2013 Adrian Tan <atks@umich.edu>
+   Copyright (c) 2013 Adrian Tan <atks@umich.edu> 
 
    Permission is hereby granted, free of charge, to any person obtaining a copy
    of this software and associated documentation files (the "Software"), to deal
@@ -28,8 +28,8 @@
  *
  * @intervals - if empty, will add the contigs found in the header files
  */
-BCFSyncedReader::BCFSyncedReader(std::vector<std::string>& vcf_files, std::vector<GenomeInterval>& intervals)
-:vcf_files(vcf_files), intervals(intervals)
+BCFSyncedReader::BCFSyncedReader(std::vector<std::string>& vcf_files, std::vector<GenomeInterval>& intervals, bool sync_by_pos)
+:vcf_files(vcf_files), intervals(intervals), sync_by_pos(sync_by_pos)
 {
     nfiles = vcf_files.size();
     vcfs.resize(nfiles, 0);
@@ -254,12 +254,7 @@ void BCFSyncedReader::close()
  */
 void BCFSyncedReader::insert_into_pq(int32_t i, bcf1_t *v)
 {
-    bcfptr b;
-    b.file_index = i;
-    b.pos1 = bcf_get_pos1(v);
-    b.v = v;
-    b.h = hdrs[i];
-    pq.push(b);
+    pq.push(new bcfptr(i, bcf_get_pos1(v), hdrs[i], v, sync_by_pos));
 }
 
 /**
@@ -291,18 +286,37 @@ void BCFSyncedReader::store_bcf1_into_pool(bcf1_t* v)
     v = 0;
 }
 
+int32_t bcfptr_cmp(bcfptr *a, bcfptr *b)
+{
+    if (a->pos1 == b->pos1)
+    {
+        if (a->alleles.l!=0 && b->alleles.l!=0)
+        {
+            int32_t d = strcmp(a->alleles.s, b->alleles.s);
+            return d;
+        }
+        else
+        {
+            return 0;
+        }
+    }
+
+    return a->pos1 >= b->pos1 ? 1 : -1;
+}
+
 /**
  * Ensures that buffer for each file contains at least records of 2 different positions
  * Updates the latest position.  [store latest and second latest]
  * returns false when all files are read through.
  * Note that these bcf1_t memory allocation are handled by BCFSyncedReader.
  */
-bool BCFSyncedReader::read_next_position(std::vector<bcfptr>& current_recs)
+bool BCFSyncedReader::read_next_position(std::vector<bcfptr*>& current_recs)
 {
     //put records in pool
     for (uint32_t i=0; i<current_recs.size(); ++i)
     {
-       store_bcf1_into_pool(current_recs[i].v);
+        store_bcf1_into_pool(current_recs[i]->v);
+        delete(current_recs[i]);
     }
     current_recs.clear();
 
@@ -311,79 +325,29 @@ bool BCFSyncedReader::read_next_position(std::vector<bcfptr>& current_recs)
     if (pq.size()!=0 || initialize_next_interval())
     {
         //dequeue pqueue most recent position and return it
-        int32_t pos1 = pq.top().pos1;
-        int32_t cpos1 = pos1;
+        bcfptr* variant = pq.top();
+        bcfptr* cvariant = variant;
 
-        while (cpos1==pos1)
+        while (bcfptr_cmp(cvariant, variant)==0)
         {
-           bcfptr b;
-           b.pos1 = pq.top().pos1;
-           b.v = pq.top().v;
-           b.file_index = pq.top().file_index;
-           b.h = hdrs[b.file_index];
+            bcfptr *b = pq.top();
+            current_recs.push_back(b);
 
-           current_recs.push_back(b);
+            buffer[b->file_index].remove(b->v);
+            fill_buffer(b->file_index);
+            pq.pop();
 
-//           std::cerr << "extraction" << b.pos1 << "  : ";
-//           bcf_print(b.h,b.v);
-
-           buffer[b.file_index].remove(b.v);
-           fill_buffer(b.file_index);
-           pq.pop();
-           cpos1 = pq.size()!=0 ? pq.top().pos1 : -1;
+            if (pq.size()==0)
+            {
+                break;
+            }
+            else
+            {
+                cvariant = pq.top();
+            }
         }
 
-        current_pos1 = current_recs.front().pos1;
-
-        return true;
-    }
-    else //end of contig or eof for all files
-    {
-        return false;
-    }
-}
-
-/**
- * Reads variants that are the equivalent from all the files in parallel.
- */
-bool BCFSyncedReader::read_next_variant(std::vector<bcfptr>& current_recs)
-{
-    //put records in pool
-    for (uint32_t i=0; i<current_recs.size(); ++i)
-    {
-       store_bcf1_into_pool(current_recs[i].v);
-    }
-    current_recs.clear();
-
-    //process records in priority queue or initialize next interval if pq is empty
-    //initialize_next_interval tops up the pq
-    if (pq.size()!=0 || initialize_next_interval())
-    {
-        //dequeue pqueue most recent position and return it
-        int32_t pos1 = pq.top().pos1;
-        int32_t cpos1 = pos1;
-
-        while (cpos1==pos1)
-        {
-           bcfptr b;
-           b.pos1 = pq.top().pos1;
-           b.v = pq.top().v;
-           b.file_index = pq.top().file_index;
-           b.h = hdrs[b.file_index];
-
-           current_recs.push_back(b);
-//           kstring_t s = {0, 0, 0};
-//           bcf_get_variant(b.h, b.v, &s);
-//           std::cerr << s.s << "\n";
-//           if (s.m) free(s.s);
-
-           buffer[b.file_index].remove(b.v);
-           fill_buffer(b.file_index);
-           pq.pop();
-           cpos1 = pq.size()!=0 ? pq.top().pos1 : -1;
-        }
-
-        current_pos1 = current_recs.front().pos1;
+        //current_pos1 = current_recs.front().pos1;
 
         return true;
     }

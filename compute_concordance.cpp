@@ -247,8 +247,8 @@ e.g. vt profile_snps_variants -o - NA19130.vcf.gz HG00096.vcf.gz\n\n";
         //hts_write(variant_concordance_txt);
 
         //for combining the alleles
-        std::vector<bcfptr> current_recs;
-        std::map<std::string, bcfptr> variants;
+        std::vector<bcfptr*> current_recs;
+        std::map<std::string, bcfptr*> variants;
         std::stringstream ss;
 
         while(sr->read_next_position(current_recs))
@@ -262,8 +262,8 @@ e.g. vt profile_snps_variants -o - NA19130.vcf.gz HG00096.vcf.gz\n\n";
                 {
                     ss.str("");
 
-                    int32_t d = current_recs[i].file_index;
-                    bcf1_t *v = current_recs[i].v;
+                    int32_t d = current_recs[i]->file_index;
+                    bcf1_t *v = current_recs[i]->v;
                     //bcf_set_variant_types(v);
 
                     if (bcf_get_var_type(v)!=variant_type || bcf_get_n_allele(v)!=2)
@@ -285,7 +285,7 @@ e.g. vt profile_snps_variants -o - NA19130.vcf.gz HG00096.vcf.gz\n\n";
                         {
                             variant_stat.reset();
 
-                            bcf1_t *v1 = variants[ss.str()].v;
+                            bcf1_t *v1 = variants[ss.str()]->v;
                             bcf_hdr_t *h1 = sr->hdrs[0];
                             bcf_fmt_t* f1 = bcf_get_fmt(h1, v1, "GT");
 
