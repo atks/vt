@@ -85,17 +85,19 @@ class GTFRecord : public Interval
 class GENCODE
 {
     public:
+    char* gencode_gtf_file;
     
     /**
      * Constructs and initialized a GENCODE objet.
      */
-    GENCODE()
+    GENCODE(char* gencode_gtf_file)
     {
+        
+        
+        
         std::string line;
         std::vector<std::string> fields;
         std::vector<std::string> alleles;
-
-        std::clog << "Populating GENCODE tree ... \n";
 
         std::vector<GTFRecord*> exons;
         std::vector<Interval*> intervals;
@@ -104,6 +106,8 @@ class GENCODE
         //for gencode records
         uint32_t noConservedSpliced = 0;
         uint32_t noUnconservedSpliced = 0;
+        
+        
         
      
 //          std::stringstream region;
