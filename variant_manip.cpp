@@ -257,10 +257,10 @@ int32_t VariantManip::classify_variant(const char* chrom, uint32_t pos1, char** 
             {
                 ++diff;
 
-                if ((ref[j]=='T' && alt[j]=='A') ||
-                    (ref[j]=='A' && alt[j]=='T') ||
-                    (ref[j]=='C' && alt[j]=='G') ||
-                    (ref[j]=='G' && alt[j]=='C'))
+                if ((ref[j]=='G' && alt[j]=='A') ||
+                    (ref[j]=='A' && alt[j]=='G') ||
+                    (ref[j]=='C' && alt[j]=='T') ||
+                    (ref[j]=='T' && alt[j]=='C'))
                 {
                     ++ts;
                 }
