@@ -61,11 +61,16 @@ class VCFAuxRecord
         
         this->v = v;
         
+        ref_probe = (char*) malloc(1);
+        
         int32_t len;
-        int32_t ret = bcf_get_info_int(h, v, "REFPROBE", &ref_probe, &len);
+        int32_t ret = bcf_get_info_string(h, v, "REFPROBE", &ref_probe, &len);
         
         std::cerr << ref_probe << " " << len << " " << ret << "\n";
         bcf_print(h,v);
+        
+        
+        exit(1);
         
 //        int32_t probeLength = strlen(refProbe);
 //        int32_t variantLengthDifference = (int32_t)strlen(alt)-(int32_t)strlen(ref);
