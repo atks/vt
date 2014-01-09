@@ -261,8 +261,8 @@ class Igor : Program
 
     void print_options()
     {
-        std::clog << "normalize v" << version << "\n\n";
-
+        std::clog << "normalize v" << version << "\n";
+        std::clog << "\n";
         std::clog << "options:     input VCF file        " << input_vcf_file << "\n";
         std::clog << "         [o] output VCF file       " << output_vcf_file << "\n";
         std::clog << "         [r] reference FASTA file  " << ref_fasta_file << "\n";
