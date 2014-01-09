@@ -141,7 +141,7 @@ class Igor : Program
         std::vector<bcf_hdr_t *> ivcf_hdrs; 
         
         //for combining the alleles
-        std::vector<bcfptr> current_recs;
+        std::vector<bcfptr*> current_recs;
         std::map<std::string, std::map<std::string, int32_t> > variants;    
         std::stringstream ss;
         std::stringstream centers;
@@ -160,8 +160,8 @@ class Igor : Program
             bool in_ref = false;    
             for (uint32_t i=0; i<current_recs.size(); ++i)
             {
-                int32_t d = current_recs[i].file_index;
-                bcf1_t *v = current_recs[i].v;
+                int32_t d = current_recs[i]->file_index;
+                bcf1_t *v = current_recs[i]->v;
                 //bcf_set_variant_types(v);
 
                 if (d==0)

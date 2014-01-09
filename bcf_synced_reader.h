@@ -50,9 +50,36 @@ class bcfptr
     int32_t pos1;
     bcf_hdr_t *h;
     bcf1_t *v;
+    kstring_t alleles;
 
-    bcfptr():file_index(-1), pos1(-1), v(0) {};
-    bcfptr(int32_t file_index, int32_t pos1, bcf1_t *v):file_index(file_index), pos1(pos1), v(v){};
+    bcfptr()
+    {
+        file_index = -1;
+        pos1 = -1;
+        v = NULL;
+        alleles = {0,0,0};
+    };
+    
+    bcfptr(int32_t file_index, int32_t pos1, bcf_hdr_t *h, bcf1_t *v, bool sync_by_pos)
+    {
+        this->file_index = file_index;
+        this->pos1 = pos1;
+        this->h = h;
+        this->v = v;
+        alleles = {0,0,0};
+        if (!sync_by_pos)
+        {
+            bcf_alleles2string_sorted(h, v, &alleles);  
+        }        
+    };
+    
+    ~bcfptr()
+    {
+        if (alleles.m)
+        {
+           free(alleles.s);
+        }    
+    }    
 };
 
 /**
@@ -62,9 +89,22 @@ class bcfptr
 class CompareBCFPtr
 {
     public:
-    bool operator()(bcfptr& a, bcfptr& b)
+    bool operator()(bcfptr *a, bcfptr *b)
     {
-        return a.pos1 == b.pos1 ? a.file_index >= b.file_index  : a.pos1 >= b.pos1;
+        if (a->pos1 == b->pos1)
+        {
+            if (a->alleles.l!=0 && b->alleles.l!=0)
+            {
+                int32_t d = strcmp(a->alleles.s, b->alleles.s);
+                return d>=0; 
+            }
+            else
+            {
+                return true;
+            }
+        }        
+        
+        return a->pos1 >= b->pos1;
     }
 };
 
@@ -84,11 +124,18 @@ class CompareBCFPtr
  * from the files.
  *
  *  Non indexed files are NOT supported!
+ *
+ * Modes of sunchronizing
+ *
+ * A) By start position
+ * B) By variant
+ * C) By overlapping variants (todo: under consideration)
+ *
  */
 class BCFSyncedReader
 {
     public:
-
+    
     ///////
     //i/o//
     ///////
@@ -113,6 +160,9 @@ class BCFSyncedReader
     int32_t current_rid;
     int32_t current_pos1;
 
+    //mode
+    bool sync_by_pos; //if false, synchronize by variant
+
     //generic useful string
     kstring_t s;
 
@@ -121,25 +171,25 @@ class BCFSyncedReader
     //empty records that can be reused
     std::list<bcf1_t *> pool;
     //contains the most recent position to process
-    std::priority_queue<bcfptr, std::vector<bcfptr>, CompareBCFPtr > pq;
-
+    std::priority_queue<bcfptr, std::vector<bcfptr *>, CompareBCFPtr> pq;
+    
     //useful stuff
 
     /**
      * Initialize files and intervals.
      */
-    BCFSyncedReader(std::vector<std::string>& _vcf_files, std::vector<GenomeInterval>& _intervals);
+    BCFSyncedReader(std::vector<std::string>& _vcf_files, std::vector<GenomeInterval>& _intervals, bool sync_by_pos=true);
 
     /**
      * Returns list of files that have variants at a certain position.
      *
      */
-    bool read_next_position(std::vector<bcfptr>& current_recs);
+    bool read_next_position(std::vector<bcfptr*>& current_recs);
 
     /**
-     * Reads variants that are the equivalent from all the files in parallel.
+     * Reads variants that are the equivalent from all the files.
      */
-    bool read_next_variant(std::vector<bcfptr>& current_recs);
+    bool read_next_variant(std::vector<bcfptr*>& current_recs);
 
     /**
      * Populate sequence names from files.

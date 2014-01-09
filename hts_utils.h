@@ -220,6 +220,16 @@ int bcf_hdr_subset_samples(const bcf_hdr_t *h, bcf1_t *v, std::vector<int32_t>& 
 void bcf_variant2string(bcf_hdr_t *h, bcf1_t *v, kstring_t *var);
 
 /**
+ * Gets a sorted string representation of a variant.
+ */
+void bcf_variant2string_sorted(bcf_hdr_t *h, bcf1_t *v, kstring_t *var);
+
+/**
+ * Gets a sorted string representation of the alleles of a variant.
+ */
+void bcf_alleles2string_sorted(bcf_hdr_t *h, bcf1_t *v, kstring_t *var);
+
+/**
  * Prints a VCF record to STDERR.
  */
 void bcf_print(bcf_hdr_t *h, bcf1_t *v);
@@ -228,6 +238,16 @@ void bcf_print(bcf_hdr_t *h, bcf1_t *v);
  * Prints a VCF record in compact string representation to STDERR.
  */
 void bcf_print_lite(bcf_hdr_t *h, bcf1_t *v);
+
+/**
+ * Prints a VCF record in compact string representation to STDERR with alleles sorted.
+ */
+void bcf_print_lite_sorted(bcf_hdr_t *h, bcf1_t *v);
+
+/**
+ * Prints a VCF record in compact string representation to STDERR with a new line.
+ */
+void bcf_print_liten(bcf_hdr_t *h, bcf1_t *v);
 
 /**
  * Get number of chromosomes

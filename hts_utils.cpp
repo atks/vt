@@ -281,11 +281,33 @@ void bcf_print(bcf_hdr_t *h, bcf1_t *v)
 /**
  * Prints a VCF record in compact string representation to STDERR.
  */
-void bcf_print_lite(bcf_hdr_t *h, bcf1_t *v)
+void bcf_print_liten(bcf_hdr_t *h, bcf1_t *v)
 {
     kstring_t s = {0,0,0,};
     bcf_variant2string(h, v, &s);
     std::cerr << s.s << "\n";
+    if (s.m) free(s.s);
+};
+
+/**
+ * Prints a VCF record in compact string representation to STDERR.
+ */
+void bcf_print_lite(bcf_hdr_t *h, bcf1_t *v)
+{
+    kstring_t s = {0,0,0,};
+    bcf_variant2string(h, v, &s);
+    std::cerr << s.s;
+    if (s.m) free(s.s);
+};
+
+/**
+ * Prints a VCF record in compact string representation to STDERR with alleles sorted.
+ */
+void bcf_print_lite_sorted(bcf_hdr_t *h, bcf1_t *v)
+{
+    kstring_t s = {0,0,0,};
+    bcf_variant2string_sorted(h, v, &s);
+    std::cerr << s.s;
     if (s.m) free(s.s);
 };
 
@@ -388,6 +410,92 @@ void bcf_variant2string(bcf_hdr_t *h, bcf1_t *v, kstring_t *var)
     {
         if (i) kputc(',', var);
         kputs(bcf_get_alt(v, i), var);
+    }
+}
+
+/**
+ * strcmp wrapper for qsort.
+ */
+int32_t cmpstr(void const *a, void const *b) 
+{ 
+    char const *aa = (char const *)a;
+    char const *bb = (char const *)b;
+
+    return strcmp(aa, bb);
+}
+
+/**
+ * Gets a sorted string representation of a variant.
+ */
+void bcf_variant2string_sorted(bcf_hdr_t *h, bcf1_t *v, kstring_t *var)
+{
+    bcf_print_liten(h,v);
+    
+    bcf_unpack(v, BCF_UN_STR);
+    var->l = 0;
+    kputs(bcf_get_chrom(h, v), var);
+    kputc(':', var);
+    kputw(bcf_get_pos1(v), var);
+    kputc(':', var);
+    
+    if (v->n_allele==2)
+    {
+        kputs(bcf_get_alt(v, 0), var);
+        kputc(',', var);
+        kputs(bcf_get_alt(v, 1), var);
+    }
+    else
+    {
+        char** allele = bcf_get_allele(v);
+        char** temp = (char**) malloc((bcf_get_n_allele(v)-1)*sizeof(char*));
+        for (int32_t i=1; i<v->n_allele; ++i)
+        {
+            temp[i] = allele[i];
+        }
+        std::qsort(temp, bcf_get_n_allele(v), sizeof(char*), cmpstr);
+        kputs(bcf_get_alt(v, 0), var);
+        for (int32_t i=0; i<v->n_allele-1; ++i)
+        {
+            kputc(',', var);
+            kputs(temp[i], var);
+        }
+        free(temp);
+    }
+}
+
+/**
+ * Gets a sorted string representation of the alleles of a variant.
+ */
+void bcf_alleles2string_sorted(bcf_hdr_t *h, bcf1_t *v, kstring_t *var)
+{
+    bcf_unpack(v, BCF_UN_STR);
+    var->l = 0;
+    
+    if (v->n_allele==2)
+    {
+        kputs(bcf_get_alt(v, 0), var);
+        kputc(',', var);
+        kputs(bcf_get_alt(v, 1), var);
+    }
+    else
+    {
+        char** allele = bcf_get_allele(v);
+        char** temp = (char**) malloc((bcf_get_n_allele(v)-1)*sizeof(char*));
+        for (int32_t i=1; i<v->n_allele; ++i)
+        {
+            temp[i-1] = allele[i];
+        }
+        
+        std::qsort(temp, bcf_get_n_allele(v)-1, sizeof(char*), cmpstr);
+        
+        kputs(bcf_get_alt(v, 0), var);
+        for (int32_t i=0; i<v->n_allele-1; ++i)
+        {
+            kputc(',', var);
+            kputs(temp[i], var);
+        }
+        
+        free(temp);
     }
 }
 

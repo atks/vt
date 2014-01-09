@@ -149,8 +149,7 @@ class Igor : Program
         {
             bcf_unpack(v, BCF_UN_STR);
             int32_t vtype = vm->classify_variant(odr->hdr, v, variant);
-            //int32_t vtype = vm->classify_variant(odr->hdr, v, variant);
-
+            
             vm->vtype2string(vtype, &s);
             if (s.l)
             {    
