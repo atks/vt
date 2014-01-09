@@ -137,21 +137,16 @@ class Igor : Program
     //options//
     ///////////
     std::string input_vcf_file;
-    std::vector<std::string> dataset_labels;
-    std::string filters;
-    std::vector<std::string> input_ref_files;
-    std::vector<std::string> input_vcf_files;
-
-    std::string build;
+    std::string ref_fasta_file;
+    std::string ref_data_sets_list;
     std::vector<GenomeInterval> intervals;
-
     std::string interval_list;
 
     std::vector<OverlapStats> stats;
-
     std::string gencode_gtf_file;
     std::map<std::string, IntervalTree*> GENCODE;
     std::vector<Interval*> exons;
+    
     ///////
     //i/o//
     ///////
@@ -180,37 +175,24 @@ class Igor : Program
         //////////////////////////
         try
         {
-            std::string desc =
-"Profile Indels.\n\
-Each VCF file is required to have the FORMAT flags E and N and should have exactly one sample.\n\n";
+            std::string desc = "profile Indels";
 
             version = "0.5";
             TCLAP::CmdLine cmd(desc, ' ', version);
-            VTOutput my;
-            cmd.setOutput(&my);
+            VTOutput my; cmd.setOutput(&my);
+            TCLAP::ValueArg<std::string> arg_ref_fasta_file("r", "r", "reference sequence fasta file []", true, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_intervals("i", "i", "intervals []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "file", cmd);
-            TCLAP::ValueArg<std::string> arg_filters("f", "filters", "Filter (e.g. AF>0.3) ", false, "", "str", cmd);
-            TCLAP::ValueArg<std::string> arg_ref_dataset_list("f", "filters", "Filter (e.g. AF>0.3) ", false, "", "str", cmd);
-            TCLAP::ValueArg<std::string> arg_dataset_labels("l", "data-set-labels", "List of names of Data sets, should be the same number as the number of input files", false, "", "str", cmd);
+            TCLAP::ValueArg<std::string> arg_ref_data_sets_list("g", "g", "file containing list of reference datasets []", false, "", "file", cmd);
             TCLAP::UnlabeledValueArg<std::string> arg_input_vcf_file("<in.vcf>", "input VCF file", true, "","file", cmd);
 
             cmd.parse(argc, argv);
 
-            filters = arg_filters.getValue();
+            ref_fasta_file = arg_ref_fasta_file.getValue();
             parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
+            ref_data_sets_list = arg_ref_data_sets_list.getValue();
             input_vcf_file = arg_input_vcf_file.getValue();
-            input_vcf_files.push_back(input_vcf_file);
-
-            filter=NULL;
-            if (filters!="")
-            {
-                filter = new Filter();
-                filter->parse(filters);
-            }
-
-            rare_filter = new Filter("AF", 0, 0.005);
-
+            
             ///////////////////////
             //parse input VCF files
             ///////////////////////
@@ -225,34 +207,71 @@ Each VCF file is required to have the FORMAT flags E and N and should have exact
     void initialize()
     {
         //////////////////////
-        //i/o initialization//
-        //////////////////////
-        line = {0,0,0};
-
-        gencode_gtf_file = "/net/fantasia/home/atks/ref/encode/gencode.v15.annotation.gtf.gz";
-
-        //input_vcf_files.push_back(input_vcf_file);
-        input_vcf_files.push_back("/net/fantasia/home/atks/ref/all_chrom/1000g_phase1.indels.cplxsubs.sites.vcf.gz");
-        input_vcf_files.push_back("/net/fantasia/home/atks/ref/all_chrom/mills.doublehit.gatk.qc.indels.cplxsubs.sites.vcf.gz");
-        input_vcf_files.push_back("/net/fantasia/home/atks/ref/all_chrom/mills.chip.1000g_phase3.poly.indels.cplxsubs.sites.vcf.gz");
-        input_vcf_files.push_back("/net/fantasia/home/atks/ref/all_chrom/affymetrix.exome.chip.1000g_phase3.poly.indels.cplxsubs.sites.vcf.gz");
-        input_vcf_files.push_back("/net/fantasia/home/atks/ref/all_chrom/cg.mendel.errors.indels.cplxsubs.sites.vcf.gz");
-        input_vcf_files.push_back("/net/fantasia/home/atks/ref/all_chrom/affymetrix.exome.chip.mono.indels.cplxsubs.sites.vcf.gz");
-        input_vcf_files.push_back("/net/fantasia/home/atks/ref/all_chrom/cg.1000g_phase3.poly.indels.cplxsubs.sites.vcf.gz");
-
-        //input vcfs
-        sr = new BCFSyncedReader(input_vcf_files, intervals);
-
-        bcf_hdr_append(sr->hdrs[0], "##INFO=<ID=AF,Number=A,Type=Float,Description=\"Allele Frequency, for each ALT allele, in the same order as listed\">");
-        bcf_hdr_append(sr->hdrs[0], "##INFO=<ID=FR,Number=A,Type=Float,Description=\"Allele Frequency, for each ALT allele, in the same order as listed\">");
-
-        std::stringstream ss;
-        for (uint32_t i=0; i<intervals.size(); ++i)
+        //reference data set//
+        //////////////////////        
+        
+        std::vector<std::string> input_vcf_files;
+        input_vcf_files.push_back(input_vcf_file);
+        
+        std::vector<std::string> dataset_labels;
+        dataset_labels.push_back("data");
+        
+        htsFile *hts = hts_open(ref_data_sets_list.c_str(), "r");
+        kstring_t s = {0,0,0};
+        std::vector<std::string> vec;
+        while (hts_getline(hts, '\n', &s)>=0)
         {
-             ss.str("");
-            ss << "chr" << intervals[i].to_string();
-            populate_gencode_tree(ss.str().c_str());
+            if (s.s[0] == '#')
+                continue;    
+            
+            std::string line(s.s);
+            split(vec, " ", line);
+            
+            //analysis purpose
+            bool overlap = vec[1]=="overlap";
+            
+            //data set label
+            dataset_labels.push_back(vec[0]);
+            
+            //filter
+            
+            //path
+            if (overlap)
+            {
+                input_vcf_files.push_back(std::string(vec[3]));
+            }
         }
+        
+        
+//        //////////////////////
+//        //i/o initialization//
+//        //////////////////////
+//        line = {0,0,0};
+//
+//        gencode_gtf_file = "/net/fantasia/home/atks/ref/encode/gencode.v15.annotation.gtf.gz";
+//
+//        //input_vcf_files.push_back(input_vcf_file);
+//        input_vcf_files.push_back("/net/fantasia/home/atks/ref/all_chrom/1000g_phase1.indels.cplxsubs.sites.vcf.gz");
+//        input_vcf_files.push_back("/net/fantasia/home/atks/ref/all_chrom/mills.doublehit.gatk.qc.indels.cplxsubs.sites.vcf.gz");
+//        input_vcf_files.push_back("/net/fantasia/home/atks/ref/all_chrom/mills.chip.1000g_phase3.poly.indels.cplxsubs.sites.vcf.gz");
+//        input_vcf_files.push_back("/net/fantasia/home/atks/ref/all_chrom/affymetrix.exome.chip.1000g_phase3.poly.indels.cplxsubs.sites.vcf.gz");
+//        input_vcf_files.push_back("/net/fantasia/home/atks/ref/all_chrom/cg.mendel.errors.indels.cplxsubs.sites.vcf.gz");
+//        input_vcf_files.push_back("/net/fantasia/home/atks/ref/all_chrom/affymetrix.exome.chip.mono.indels.cplxsubs.sites.vcf.gz");
+//        input_vcf_files.push_back("/net/fantasia/home/atks/ref/all_chrom/cg.1000g_phase3.poly.indels.cplxsubs.sites.vcf.gz");
+//
+//        //input vcfs
+//        sr = new BCFSyncedReader(input_vcf_files, intervals);
+//
+//        bcf_hdr_append(sr->hdrs[0], "##INFO=<ID=AF,Number=A,Type=Float,Description=\"Allele Frequency, for each ALT allele, in the same order as listed\">");
+//        bcf_hdr_append(sr->hdrs[0], "##INFO=<ID=FR,Number=A,Type=Float,Description=\"Allele Frequency, for each ALT allele, in the same order as listed\">");
+//
+//        std::stringstream ss;
+//        for (uint32_t i=0; i<intervals.size(); ++i)
+//        {
+//            ss.str("");
+//            ss << "chr" << intervals[i].to_string();
+//            populate_gencode_tree(ss.str().c_str());
+//        }
         fs = 0;
         nfs = 0;
         rare_fs = 0;
@@ -269,166 +288,166 @@ Each VCF file is required to have the FORMAT flags E and N and should have exact
 
     void profile_indels()
     {
-        //map to contain the variant type
-        std::vector<bcf_hdr_t *> ivcf_hdrs;
-
-        //for combining the alleles
-        std::vector<bcfptr> current_recs;
-        std::map<std::string, std::map<std::string, int32_t> > variants;
-        std::stringstream ss;
-        std::stringstream centers;
-
-        dataset_labels = {"data", "1000g_phase1", "mills_doublehit", "mills_chip", "affymetrix", "cg_mendel", "affy_mono", "cg", "cg_rare" , "cg_common"};
-        stats.resize(dataset_labels.size());
-        std::vector<Interval*> intervals;
-
-        while(sr->read_next_position(current_recs))
-        {
-            variants.clear();
-            ss.str("");
-            centers.str("");
-
-            //for each file that contains the next record
-            char *ref = const_cast<char*>("N");
-            char *alt = const_cast<char*>("N");
-            bool in_ref = false;
-            for (uint32_t i=0; i<current_recs.size(); ++i)
-            {
-                int32_t d = current_recs[i].file_index;
-                bcf1_t *v = current_recs[i].v;
-                //bcf_set_variant_types(v);
-
-                if (d==0)
-                {
-                    bcf_hdr_t *h = sr->hdrs[0];
-                    if (!bcf_is_passed(h, v))
-                    {
-//                        std::cerr << "FAIL PASS\n";
-//                        vcf_format1(h, v, &line);
-//                        std::cerr << line.s << "\n";
-                        continue;
-                    }
-
-                    if (filter!=NULL && !filter->apply(h, v))
-                    {
-//                        std::cerr << "FAIL AF filter\n";
-//                        vcf_format1(h, v, &line);
-//                        std::cerr << line.s << "\n";
-                        continue;
-                    }
-                }
-
-                if (bcf_get_var_type(v)==VCF_SNP || bcf_get_var_type(v)==VCF_MNP || bcf_get_n_allele(v)!=2)
-                {
-                   continue;
-                }
-
-                if (d==0)
-                {
-                    ref = bcf_get_alt(v, 0);
-                    alt = bcf_get_alt(v, 1);
-
-                    int32_t pos1 = bcf_get_pos1(v);
-                    int32_t ref_len = strlen(ref);
-
-                    bcf_hdr_t *h = sr->hdrs[0];
-                    
-                    GENCODE[std::string(bcf_get_chrom(h, v))]->search(pos1+1, pos1+ref_len-1, exons);
-
-//                  if ($start<=$F[$END]-1 && $end>=$F[$START])
-//                  {
-//                      my @alts = split(",", $alt);
-//                      my $refLength = length($ref);
-//                      my %diff = ();
-//                      $diff{($refLength-length($_))%3} = 1 foreach @alts;
+//        //map to contain the variant type
+//        std::vector<bcf_hdr_t *> ivcf_hdrs;
 //
-//                      if (exists($diff{1})||exists($diff{2}))
-//                      {
-//                          $GENCODE{"CDS_FS"} = 1;
-//                      }
-//                      else
-//                      {
-//                          $GENCODE{"CDS_NFS"} = 1;
-//                      }
-//                  }
-
-                    if (exons.size()!=0)
-                    {
-                        int32_t alt_len = strlen(alt);
-                        bool not_frame_shift = ((abs(ref_len-alt_len)%3)==0);
-                        if (not_frame_shift)
-                        {
-                            nfs += exons.size();
-                        }
-                        else
-                        {
-                            fs += exons.size();
-                        }
-
-                        if (rare_filter->apply(h, v))
-                        {
-                            if (not_frame_shift)
-                            {
-                                rare_nfs += exons.size();
-                            }
-                            else
-                            {
-                                rare_fs += exons.size();
-                            }
-                        }
-                        else
-                        {
-                            if (not_frame_shift)
-                            {
-                                common_nfs += exons.size();
-                            }
-                            else
-                            {
-                                common_fs += exons.size();
-                            }
-                        }
-                    }
-
-                    in_ref = true;
-                    int32_t ins = 0;
-                    int32_t del = 0;
-
-                    if (strlen(ref) > strlen(alt))
-                    {
-                        ++del;
-                    }
-                    else
-                    {
-                        ++ins;
-                    }
-
-                    for (uint32_t j=1; j<dataset_labels.size(); ++j)
-                    {
-                        ++stats[j].a;
-                        stats[j].a_ins += ins;
-                        stats[j].a_del += del;
-                    }
-                }
-                else
-                {
-                    update_stats(d, v, in_ref, ref, alt);
-
-                    if (d==7)
-                    {
-                        //rare
-                        bcf_hdr_t *h = sr->hdrs[7];
-                        if (rare_filter->apply(h, v))
-                        {
-                           update_stats(8, v, in_ref, ref, alt);
-                        }
-                        else
-                        {
-                           update_stats(9, v, in_ref, ref, alt);
-                        }
-                    }
-                }
-            }
-        }
+//        //for combining the alleles
+//        std::vector<bcfptr> current_recs;
+//        std::map<std::string, std::map<std::string, int32_t> > variants;
+//        std::stringstream ss;
+//        std::stringstream centers;
+//
+//        dataset_labels = {"data", "1000g_phase1", "mills_doublehit", "mills_chip", "affymetrix", "cg_mendel", "affy_mono", "cg", "cg_rare" , "cg_common"};
+//        stats.resize(dataset_labels.size());
+//        std::vector<Interval*> intervals;
+//
+//        while(sr->read_next_position(current_recs))
+//        {
+//            variants.clear();
+//            ss.str("");
+//            centers.str("");
+//
+//            //for each file that contains the next record
+//            char *ref = const_cast<char*>("N");
+//            char *alt = const_cast<char*>("N");
+//            bool in_ref = false;
+//            for (uint32_t i=0; i<current_recs.size(); ++i)
+//            {
+//                int32_t d = current_recs[i].file_index;
+//                bcf1_t *v = current_recs[i].v;
+//                //bcf_set_variant_types(v);
+//
+//                if (d==0)
+//                {
+//                    bcf_hdr_t *h = sr->hdrs[0];
+//                    if (!bcf_is_passed(h, v))
+//                    {
+////                        std::cerr << "FAIL PASS\n";
+////                        vcf_format1(h, v, &line);
+////                        std::cerr << line.s << "\n";
+//                        continue;
+//                    }
+//
+//                    if (filter!=NULL && !filter->apply(h, v))
+//                    {
+////                        std::cerr << "FAIL AF filter\n";
+////                        vcf_format1(h, v, &line);
+////                        std::cerr << line.s << "\n";
+//                        continue;
+//                    }
+//                }
+//
+//                if (bcf_get_var_type(v)==VCF_SNP || bcf_get_var_type(v)==VCF_MNP || bcf_get_n_allele(v)!=2)
+//                {
+//                   continue;
+//                }
+//
+//                if (d==0)
+//                {
+//                    ref = bcf_get_alt(v, 0);
+//                    alt = bcf_get_alt(v, 1);
+//
+//                    int32_t pos1 = bcf_get_pos1(v);
+//                    int32_t ref_len = strlen(ref);
+//
+//                    bcf_hdr_t *h = sr->hdrs[0];
+//                    
+//                    GENCODE[std::string(bcf_get_chrom(h, v))]->search(pos1+1, pos1+ref_len-1, exons);
+//
+////                  if ($start<=$F[$END]-1 && $end>=$F[$START])
+////                  {
+////                      my @alts = split(",", $alt);
+////                      my $refLength = length($ref);
+////                      my %diff = ();
+////                      $diff{($refLength-length($_))%3} = 1 foreach @alts;
+////
+////                      if (exists($diff{1})||exists($diff{2}))
+////                      {
+////                          $GENCODE{"CDS_FS"} = 1;
+////                      }
+////                      else
+////                      {
+////                          $GENCODE{"CDS_NFS"} = 1;
+////                      }
+////                  }
+//
+//                    if (exons.size()!=0)
+//                    {
+//                        int32_t alt_len = strlen(alt);
+//                        bool not_frame_shift = ((abs(ref_len-alt_len)%3)==0);
+//                        if (not_frame_shift)
+//                        {
+//                            nfs += exons.size();
+//                        }
+//                        else
+//                        {
+//                            fs += exons.size();
+//                        }
+//
+//                        if (rare_filter->apply(h, v))
+//                        {
+//                            if (not_frame_shift)
+//                            {
+//                                rare_nfs += exons.size();
+//                            }
+//                            else
+//                            {
+//                                rare_fs += exons.size();
+//                            }
+//                        }
+//                        else
+//                        {
+//                            if (not_frame_shift)
+//                            {
+//                                common_nfs += exons.size();
+//                            }
+//                            else
+//                            {
+//                                common_fs += exons.size();
+//                            }
+//                        }
+//                    }
+//
+//                    in_ref = true;
+//                    int32_t ins = 0;
+//                    int32_t del = 0;
+//
+//                    if (strlen(ref) > strlen(alt))
+//                    {
+//                        ++del;
+//                    }
+//                    else
+//                    {
+//                        ++ins;
+//                    }
+//
+//                    for (uint32_t j=1; j<dataset_labels.size(); ++j)
+//                    {
+//                        ++stats[j].a;
+//                        stats[j].a_ins += ins;
+//                        stats[j].a_del += del;
+//                    }
+//                }
+//                else
+//                {
+//                    update_stats(d, v, in_ref, ref, alt);
+//
+//                    if (d==7)
+//                    {
+//                        //rare
+//                        bcf_hdr_t *h = sr->hdrs[7];
+//                        if (rare_filter->apply(h, v))
+//                        {
+//                           update_stats(8, v, in_ref, ref, alt);
+//                        }
+//                        else
+//                        {
+//                           update_stats(9, v, in_ref, ref, alt);
+//                        }
+//                    }
+//                }
+//            }
+//        }
     };
 
     void update_stats(int32_t d, bcf1_t *v, bool in_ref, char* ref, char* alt)
@@ -477,46 +496,47 @@ Each VCF file is required to have the FORMAT flags E and N and should have exact
     void print_options()
     {
         std::clog << "profile_indels v" << version << "\n\n";
-
-        std::clog << "Options: [_] Input VCF File    " << input_vcf_files.size() << "\n";
-        std::clog << "         [i] Filters           " << filters << "\n";
-        std::clog << "         [i] intervals         " << intervals.size() << " intervals\n";
+        std::clog << "\n";
+        std::clog << "Options:     input VCF File        " << input_vcf_file << "\n";
+        std::clog << "         [r] reference FASTA file  " << ref_fasta_file << "\n";
+        print_int_op("         [i] intervals             ", intervals);
+        std::clog << "\n";
    }
 
     void print_stats()
     {
-        for (uint32_t j=1; j<dataset_labels.size(); ++j)
-        {
-            double insdel_a_ab =  (stats[j].a_del+stats[j].ab_del)==0 ? -1 : ((double)(stats[j].a_ins+stats[j].ab_ins)/(double)(stats[j].a_del+stats[j].ab_del));
-            double insdel_a =  stats[j].a_del==0 ? -1 : ((double)stats[j].a_ins/(double)stats[j].a_del);
-            double insdel_ab =  stats[j].ab_del==0 ? -1 : ((double)stats[j].ab_ins/(double)stats[j].ab_del);
-            double insdel_b =  stats[j].b_del==0 ? -1 : ((double)stats[j].b_ins/(double)stats[j].b_del);
-            double insdel_b_ab =  (stats[j].b_del+stats[j].ab_del)==0 ? -1 : ((double)(stats[j].b_ins+stats[j].ab_ins)/(double)(stats[j].b_del+stats[j].ab_del));
-
-            uint32_t totala = stats[j].a+stats[j].ab;
-            double ab_of_a = totala==0 ? -1 : ((double)stats[j].ab/(double)(totala));
-
-            uint32_t totalb = stats[j].b+stats[j].ab;
-            double ab_of_b = totalb==0 ? -1 : ((double)stats[j].ab/(double)(totalb));
-
-            if (j==1)
-            {
-                std::cout << std::setprecision(3);
-                std::cout << "\n";
-                std::cout << dataset_labels[0] << "\n";
-                std::cout << "variants: " << totala << "\n";
-                std::cout << "ins/del ratio: " << insdel_a_ab << "\n";
-                std::cout << "FS Proportion: " << (float)fs/(float)(fs+nfs) << " (" << fs << "," << nfs << ")\n\n";
-                std::cout << "FS Proportion (Rare): " << (float)rare_fs/(float)(rare_fs+rare_nfs) << " (" << rare_fs << "," << rare_nfs << ")\n\n";
-                std::cout << "FS Proportion (Common): " << (float)common_fs/(float)(common_fs+common_nfs) << " (" << common_fs << "," << common_nfs << ")\n\n";
-
-            }
-
-            std::cout << std::setprecision(3);
-            std::cout << dataset_labels[j] << " (" << totalb << ") " << "[" << insdel_b_ab << "]\n";
-            std::cout << "TP\t" << ab_of_b << "(" << stats[j].ab << "/" << totalb << ") " << "[" << insdel_ab << "," << insdel_b << "] \n";
-            std::cout << "FP\t" << ab_of_a << "(" << stats[j].ab << "/" << totala << ") " << "[" << insdel_ab << "," << insdel_a << "] \n\n";
-        }
+//        for (uint32_t j=1; j<dataset_labels.size(); ++j)
+//        {
+//            double insdel_a_ab =  (stats[j].a_del+stats[j].ab_del)==0 ? -1 : ((double)(stats[j].a_ins+stats[j].ab_ins)/(double)(stats[j].a_del+stats[j].ab_del));
+//            double insdel_a =  stats[j].a_del==0 ? -1 : ((double)stats[j].a_ins/(double)stats[j].a_del);
+//            double insdel_ab =  stats[j].ab_del==0 ? -1 : ((double)stats[j].ab_ins/(double)stats[j].ab_del);
+//            double insdel_b =  stats[j].b_del==0 ? -1 : ((double)stats[j].b_ins/(double)stats[j].b_del);
+//            double insdel_b_ab =  (stats[j].b_del+stats[j].ab_del)==0 ? -1 : ((double)(stats[j].b_ins+stats[j].ab_ins)/(double)(stats[j].b_del+stats[j].ab_del));
+//
+//            uint32_t totala = stats[j].a+stats[j].ab;
+//            double ab_of_a = totala==0 ? -1 : ((double)stats[j].ab/(double)(totala));
+//
+//            uint32_t totalb = stats[j].b+stats[j].ab;
+//            double ab_of_b = totalb==0 ? -1 : ((double)stats[j].ab/(double)(totalb));
+//
+//            if (j==1)
+//            {
+//                std::cout << std::setprecision(3);
+//                std::cout << "\n";
+//                std::cout << dataset_labels[0] << "\n";
+//                std::cout << "variants: " << totala << "\n";
+//                std::cout << "ins/del ratio: " << insdel_a_ab << "\n";
+//                std::cout << "FS Proportion: " << (float)fs/(float)(fs+nfs) << " (" << fs << "," << nfs << ")\n\n";
+//                std::cout << "FS Proportion (Rare): " << (float)rare_fs/(float)(rare_fs+rare_nfs) << " (" << rare_fs << "," << rare_nfs << ")\n\n";
+//                std::cout << "FS Proportion (Common): " << (float)common_fs/(float)(common_fs+common_nfs) << " (" << common_fs << "," << common_nfs << ")\n\n";
+//
+//            }
+//
+//            std::cout << std::setprecision(3);
+//            std::cout << dataset_labels[j] << " (" << totalb << ") " << "[" << insdel_b_ab << "]\n";
+//            std::cout << "TP\t" << ab_of_b << "(" << stats[j].ab << "/" << totalb << ") " << "[" << insdel_ab << "," << insdel_b << "] \n";
+//            std::cout << "FP\t" << ab_of_a << "(" << stats[j].ab << "/" << totala << ") " << "[" << insdel_ab << "," << insdel_a << "] \n\n";
+//        }
     };
 
     ~Igor()
@@ -524,197 +544,10 @@ Each VCF file is required to have the FORMAT flags E and N and should have exact
     };
 
     private:
-
-    /**
-     * Populate GENCODE tree
-     */
-    void populate_gencode_tree(const char* interval)
-    {
-        std::string line;
-        std::vector<std::string> fields;
-        std::vector<std::string> alleles;
-
-        std::clog << "Populating GENCODE tree ... \n";
-
-        std::vector<GTFRecord*> exons;
-        std::vector<Interval*> intervals;
-        uint32_t noRecords = 0;
-
-        tbx_t *tbx;
-        hts_itr_t *iter;
-        htsFile* gffgz = hts_open(gencode_gtf_file.c_str(), "r");
-        if (!(tbx=tbx_index_load(gencode_gtf_file.c_str())))
-        {
-            std::cerr << "Fail to load the VCF GZ index\n";
-            abort();
-        }
-
-        std::stringstream region;
-        kstring_t s;
-        s.s = 0; s.l = s.m = 0;
-
-        if (!(iter = tbx_itr_querys(tbx, interval)))
-        {
-            std::cerr << "Cannot access interval " << interval << " in GENCODE file\n";
-                exit(1);
-        }
-
-        while (tbx_itr_next(gffgz, tbx, iter, &s) >= 0)
-        {
-
-            //populate interval trees with reference sets
-            //gene transfer format
-            //1 chr1
-            //2 HAVANA - source
-            //3 exon   - feature
-            //4 13221  - start
-            //5 14409  - end
-            //6 .      - score
-            //7 +      - strand
-            //8 .      - frame
-            //9 gene_id "ENSG - attribute
-
-            //std::cerr << s.s << "\n";
-
-            std::string line = std::string(s.s);
-
-            if(line.at(0)!='#')
-            {
-                split(fields, "\t", line);
-                std::string chrom = fields[0].substr(3);
-
-
-                std::string feature = fields[2];
-
-                //if (feature!="CDS" && feature!="exon")
-                if (feature!="CDS")
-                {
-                    continue;
-                }
-
-                //create tree for chromosome
-                if(!exists(GENCODE, chrom))
-                {
-                    std::clog << "Creating tree for chromosome " << chrom << "\n";
-                    GENCODE[chrom] = new IntervalTree();
-                }
-
-                //process fields
-                std::map<std::string, std::string> attrib_map;
-                splitGTFAttributeFields(attrib_map, fields[8]);
-
-//                      std::cerr << line << "\n";
-//                  for (std::map<std::string, std::string>::iterator i=attrib_map.begin(); i!=attrib_map.end() ; ++i)
-//                  {
-//                      std::cerr << i->first << " => " << i->second << "\n";
-//                  }
-                //exit(1);
-                uint32_t start = atoi(fields[3].c_str());
-                uint32_t end = atoi(fields[4].c_str());
-                char strand = fields[6].at(0);
-                std::string gene = attrib_map["gene_id"];
-                int32_t frame = fields[7]=="." ? -1 : atoi(fields[7].c_str());
-                int32_t exonNo = attrib_map.end()==attrib_map.find("exon_number") ? -1 : atoi(attrib_map["exon_number"].c_str());
-                uint32_t level = atoi(attrib_map["level"].c_str());
-                std::string attrib = fields[8];
-
-                if (feature=="CDS")
-                {
-                    if (attrib_map["gene_type"]!="protein_coding")
-                    {
-                        continue;
-                    }
-
-                    GTFRecord* gtfRecord = new GTFRecord(chrom, start, end, strand,
-                                                         gene, feature, frame, exonNo,
-                                                         true, true,
-                                                         true, true,
-                                                         level, attrib);
-
-                    GENCODE[chrom]->insert(gtfRecord);
-                }
-                ++noRecords;
-            }
-        }
-
-
-
-        std::clog << " ... completed\n";
-        if (GENCODE.size()==0)
-        {
-            std::cerr << "No reference GENCODE features!\n";
-            exit(1);
-        }
-
-        //std::cerr << "start validation\n";
-        //GENCODE["X"]->validate();
-        //G = GENCODE["chr20"];
-        //G->validate();
-        //std::cerr << "end validation\n";
-        //std::cerr << "height : " << GENCODE["X"]->height << "\n";
-        //std::cerr << "size : " << GENCODE["X"]->size() << "\n";
-//        std::cerr << "height : " << G->height << "\n";
-//        std::cerr << "size : " << G->size() << "\n";
-        std::cerr << "size : " << noRecords << "\n";
-
-
-        if(s.s) free(s.s);
-    }
     bool exists(std::map<std::string, IntervalTree*>& map, const std::string& key)
     {
         return map.end()!=map.find(key);
     }
-
-    /**
-     *Splits a line into a map - PERL style
-     */
-    void splitGTFAttributeFields(std::map<std::string, std::string>& map, std::string& str)
-    {
-        map.clear();
-        const char* tempStr = str.c_str();
-        int32_t i=0, lastIndex = str.size()-1;
-        std::string key;
-        std::string val;
-        std::stringstream token;
-
-        if (lastIndex<0) return;
-
-        while (i<=lastIndex)
-        {
-            //read next character
-            if(tempStr[i]!=';' && tempStr[i]!=' ')
-            {
-                token << tempStr[i];
-            }
-
-            //store key-value pair
-            if (i==lastIndex || (tempStr[i]==';' && tempStr[i+1]==' '))
-            {
-                val = token.str();
-                if (val.at(0)=='"')
-                {
-                    val = token.str();
-                    val = val.substr(1,val.size()-2);
-                }
-                map[key] = val;
-
-                token.str("");
-                key.clear();
-
-                if (i!=lastIndex)
-                    ++i;
-            }
-
-            //store key
-            if (tempStr[i]==' ')
-            {
-                key = token.str();
-                token.str("");
-            }
-
-            ++i;
-        }
-    };
 };
 
 }
