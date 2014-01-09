@@ -26,7 +26,7 @@
 /**
  * Splits a line into a vector - PERL style
  */
-void split(std::vector<std::string>& vec, const char *delims, std::string& str, uint32_t limit, bool clear)
+void split(std::vector<std::string>& vec, const char *delims, std::string& str, uint32_t limit, bool clear, bool collapse)
 {
     std::map<char, int32_t> delim_set;
 
@@ -50,6 +50,7 @@ void split(std::vector<std::string>& vec, const char *delims, std::string& str, 
     while (i<=lastIndex)
     {
         isDelim = (delim_set.find(tempStr[i])!=delim_set.end());
+                
         if (!isDelim || noTokens>=limit-1)
         {
             token << tempStr[i];
@@ -57,9 +58,12 @@ void split(std::vector<std::string>& vec, const char *delims, std::string& str, 
 
         if ((isDelim && noTokens<limit-1) || i==lastIndex)
         {
-            vec.push_back(token.str());
-            ++noTokens;
-            token.str("");
+            if (collapse && token.str()!="")
+            {    
+                vec.push_back(token.str());
+                ++noTokens;
+                token.str("");
+            }
         }
 
         ++i;
