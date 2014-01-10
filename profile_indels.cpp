@@ -66,10 +66,10 @@ class Igor : Program
     std::vector<std::string> dataset_types;
                 
     std::vector<OverlapStats> stats;
+    
     std::string gencode_gtf_file;
-    std::map<std::string, IntervalTree*> GENCODE;
-    std::vector<Interval*> exons;
-
+    
+    
     ///////
     //i/o//
     ///////
@@ -94,6 +94,7 @@ class Igor : Program
     //common tools//
     ////////////////
     VariantManip *vm;
+    GENCODE *gc;
     
     Igor(int argc, char ** argv)
     {
@@ -148,10 +149,10 @@ class Igor : Program
 //#dataset              type         filter           path
 //mills                 TP           INDEL            /net/fantasia/home/atks/dev/vt/ftp/grch37/mills.208620indels.sites.bcf
 //mills.chip            TP           INDEL            /net/fantasia/home/atks/dev/vt/ftp/grch37/mills.chip.158samples.8904indels.sites.bcf
-//#mills.chip.common     TP           INDEL&&AF>0.005  /net/fantasia/home/atks/dev/vt/ftp/grch37/mills.chip.158samples.8904indels.sites.bcf
+//mills.chip.common     TP           INDEL&&AF>0.005  /net/fantasia/home/atks/dev/vt/ftp/grch37/mills.chip.158samples.8904indels.sites.bcf
 //affy.exome.chip       TP           INDEL            /net/fantasia/home/atks/dev/vt/ftp/grch37/affy.exome.chip.1249samples.316520variants.sites.bcf
-//#affy.exome.chip.poly  TP           INDEL&&AC!=0     /net/fantasia/home/atks/dev/vt/ftp/grch37/affy.exome.chip.1249samples.316520variants.sites.bcf
-//#affy.exome.chip.mono  FP           INDEL&&AC=0      /net/fantasia/home/atks/dev/vt/ftp/grch37/affy.exome.chip.1249samples.316520variants.sites.bcf
+//affy.exome.chip.poly  TP           INDEL&&AC!=0     /net/fantasia/home/atks/dev/vt/ftp/grch37/affy.exome.chip.1249samples.316520variants.sites.bcf
+//affy.exome.chip.mono  FP           INDEL&&AC=0      /net/fantasia/home/atks/dev/vt/ftp/grch37/affy.exome.chip.1249samples.316520variants.sites.bcf
 //gencode.v19           annotation   .                /net/fantasia/home/atks/dev/vt/ftp/grch37/gencode.v19.annotation.gtf.gz
 
         input_vcf_files.push_back(input_vcf_file);
@@ -177,6 +178,7 @@ class Igor : Program
             }
             else if (vec[1] == "annotation")
             {
+                gencode_gtf_file = vec[3];
             }
             else
             {
@@ -196,7 +198,11 @@ class Igor : Program
         //tool initialization//
         ///////////////////////
         vm = new VariantManip(ref_fasta_file);
-
+        
+        std::cerr << "GENCODE FILE: " << gencode_gtf_file << "\n";
+        
+        gc = new GENCODE(gencode_gtf_file, intervals);
+        std::cerr << " OPENED\n";
         ////////////////////////
         //stats initialization//
         ////////////////////////
