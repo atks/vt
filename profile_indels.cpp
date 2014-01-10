@@ -25,87 +25,6 @@
 
 namespace
 {
-class BEDRecord: public Interval
-{
-    public:
-    std::string chrom;
-
-    BEDRecord(std::string& chrom, uint32_t start, uint32_t end)
-    {
-        this->chrom = chrom;
-        this->start = start;
-        this->end = end;
-    };
-
-    void print()
-    {
-        std::cerr << "chrom   : " << chrom << "\n";
-        std::cerr << "[" << start << "," << end << "]\n";
-    };
-
-    private:
-};
-
-class GTFRecord: public Interval
-{
-    public:
-    std::string gene;
-    std::string feature;
-    std::string chrom;
-    char strand;
-    int32_t frame;
-    int32_t exonNo;
-    bool fivePrimeConservedEssentialSpliceSite;
-    bool threePrimeConservedEssentialSpliceSite;
-    bool containsStartCodon;
-    bool containsStopCodon;
-    uint32_t level;
-    std::string attrib;
-
-    GTFRecord(std::string& chrom, uint32_t start, uint32_t end, char strand,
-              std::string& gene, std::string& feature, int32_t frame, int32_t exonNo,
-              bool fivePrimeConservedEssentialSpliceSite, bool threePrimeConservedEssentialSpliceSite,
-              bool containsStartCodon, bool containsStopCodon,
-              uint32_t level, std::string& attrib)
-    {
-        this->chrom = chrom;
-        this->start = start;
-        this->end = end;
-        this->strand = strand;
-        this->gene = gene;
-        this->feature = feature;
-        this->frame = frame;
-        this->exonNo = exonNo;
-        this->fivePrimeConservedEssentialSpliceSite = fivePrimeConservedEssentialSpliceSite;
-        this->threePrimeConservedEssentialSpliceSite = threePrimeConservedEssentialSpliceSite;
-        this->containsStartCodon = containsStartCodon;
-        this->containsStopCodon = containsStopCodon;
-        this->level = level;
-        this->attrib = attrib;
-    };
-
-    void print()
-    {
-        std::cerr << "chrom   : " << chrom << "\n";
-        std::cerr << "[" << start << "," << end << "]\n";
-        std::cerr << "strand                    : " << strand << "\n";
-        std::cerr << "address                   : " << this << "\n";
-        std::cerr << "gene                      : " << gene << "\n";
-        std::cerr << "feature                   : " << feature << "\n";
-        std::cerr << "frame                     : " << frame << "\n";
-        std::cerr << "exon number               : " << exonNo << "\n";
-        std::cerr << "5' conserved splice site  : " << fivePrimeConservedEssentialSpliceSite << "\n";
-        std::cerr << "3' conserved splice site  : " << threePrimeConservedEssentialSpliceSite << "\n";
-        std::cerr << "contains start codon      : " << containsStartCodon << "\n";
-        std::cerr << "contains stop codon       : " << containsStopCodon << "\n";
-        std::cerr << "level                     : " << level << "\n";
-        std::cerr << "attrib                    : " << attrib << "\n";
-    };
-
-    private:
-};
-
-
 class OverlapStats
 {
     public:
@@ -144,6 +63,8 @@ class Igor : Program
     std::string interval_list;
 
     std::vector<std::string> dataset_labels;
+    std::vector<std::string> dataset_types;
+                
     std::vector<OverlapStats> stats;
     std::string gencode_gtf_file;
     std::map<std::string, IntervalTree*> GENCODE;
@@ -215,15 +136,28 @@ class Igor : Program
         //////////////////////
         //reference data set//
         //////////////////////
-//#dataset         type         filter  path
-//mills            overlap      INDEL   /net/fantasia/home/atks/dev/vt/ftp/mills.chip.158samples.8904indels.sites.bcf
-//mill.chip        overlap      INDEL   /net/fantasia/home/atks/dev/vt/ftp/mills.208620indels.sites.bcf
-//affy.exome.chip  overlap      INDEL   /net/fantasia/home/atks/dev/vt/ftp/affy.exome.chip.1249samples.316520variants.sites.bcf
-//gencode.v19      annotation   .       /net/fantasia/home/atks/dev/vt/ftp/gencode.v19.annotation.gtf.gz
+//# This file contains information on how to process reference data sets.
+//#
+//# dataset - name of data set, this label will be printed.
+//# type    - True Positives (TP) and False Positives (FP) 
+//#           overlap percentages labeled as (Precision, Sensitivity) and (False Discovery Rate, Type I Error) respectively
+//#         - annotation
+//#           file is used for GENCODE annotation of frame shift and non frame shift Indels
+//# filter  - filter applied to variants for this particular data set
+//# path    - path of indexed BCF file
+//#dataset              type         filter           path
+//mills                 TP           INDEL            /net/fantasia/home/atks/dev/vt/ftp/grch37/mills.208620indels.sites.bcf
+//mills.chip            TP           INDEL            /net/fantasia/home/atks/dev/vt/ftp/grch37/mills.chip.158samples.8904indels.sites.bcf
+//#mills.chip.common     TP           INDEL&&AF>0.005  /net/fantasia/home/atks/dev/vt/ftp/grch37/mills.chip.158samples.8904indels.sites.bcf
+//affy.exome.chip       TP           INDEL            /net/fantasia/home/atks/dev/vt/ftp/grch37/affy.exome.chip.1249samples.316520variants.sites.bcf
+//#affy.exome.chip.poly  TP           INDEL&&AC!=0     /net/fantasia/home/atks/dev/vt/ftp/grch37/affy.exome.chip.1249samples.316520variants.sites.bcf
+//#affy.exome.chip.mono  FP           INDEL&&AC=0      /net/fantasia/home/atks/dev/vt/ftp/grch37/affy.exome.chip.1249samples.316520variants.sites.bcf
+//gencode.v19           annotation   .                /net/fantasia/home/atks/dev/vt/ftp/grch37/gencode.v19.annotation.gtf.gz
 
         input_vcf_files.push_back(input_vcf_file);
         dataset_labels.push_back("data");
-
+        dataset_types.push_back("ref");
+                
         htsFile *hts = hts_open(ref_data_sets_list.c_str(), "r");
         kstring_t s = {0,0,0};
         std::vector<std::string> vec;
@@ -235,13 +169,19 @@ class Igor : Program
             std::string line(s.s);
             split(vec, " ", line);
             
-            if (vec[1] == "overlap")
+            if (vec[1] == "TP" || vec[1] == "FP")
             {
                 dataset_labels.push_back(vec[0]);
+                dataset_types.push_back(vec[1]);
                 input_vcf_files.push_back(vec[3]);
             }
             else if (vec[1] == "annotation")
             {
+            }
+            else
+            {
+                std::cerr << "Reference data set type: \"" << vec[1] << "\" not recognised\n";
+                exit(1);
             }
         }
         hts_close(hts);
@@ -297,12 +237,9 @@ class Igor : Program
             {
                 if (!((vtype==VT_INDEL || vtype==(VT_SNP|VT_INDEL)) && bcf_get_n_allele(v)==2))
                 {
-                    bcf_print_liten(h, v);
-                    std::cerr << "\tFAIL "  << vm->vtype2string(vtype) << "\n";
-                            
-                    
                     continue;
                 }     
+
                 //nfs fs
             }
             
@@ -339,11 +276,7 @@ class Igor : Program
                 presence[i]=0;
             }
             
-           //  std::cerr << "\n";   
-            
             presence[0] = 0;
-            
-                    
         }
     };
 
@@ -354,9 +287,10 @@ class Igor : Program
     {
         std::clog << "profile_indels v" << version << "\n\n";
         std::clog << "\n";
-        std::clog << "Options:     input VCF File        " << input_vcf_file << "\n";
-        std::clog << "         [r] reference FASTA file  " << ref_fasta_file << "\n";
-        print_int_op("         [i] intervals             ", intervals);
+        std::clog << "Options:     input VCF File                 " << input_vcf_file << "\n";
+        std::clog << "         [g] reference data sets list file  " << ref_data_sets_list << "\n";
+        std::clog << "         [r] reference FASTA file           " << ref_fasta_file << "\n";
+        print_int_op("         [i] intervals                      ", intervals);
         std::clog << "\n";
    }
 
@@ -394,9 +328,22 @@ class Igor : Program
 //            std::cout << "TP\t" << ab_of_b << "(" << stats[j].ab << "/" << totalb << ") " << "[" << insdel_ab << "," << insdel_b << "] \n";
 //            std::cout << "FP\t" << ab_of_a << "(" << stats[j].ab << "/" << totala << ") " << "[" << insdel_ab << "," << insdel_a << "] \n\n";
 
-            std::clog << dataset_labels[i] << "\n";
-            std::clog << stats[i].a << " " << stats[i].ab << " " << stats[i].b << "\n";
-
+            printf("  %s\n", dataset_labels[i].c_str());
+            printf("    A-B %10d [%.2f]\n", stats[i].a,  (float)stats[i].a_ins/(stats[i].a_del));
+            printf("    A&B %10d [%.2f]\n", stats[i].ab, (float)stats[i].ab_ins/stats[i].ab_del);
+            printf("    B-A %10d [%.2f]\n", stats[i].b,  (float)stats[i].b_ins/(stats[i].b_del));
+            
+            if (dataset_types[i]=="TP")
+            {
+                printf("    Precision    %4.1f%%\n", 100*(float)stats[i].ab/(stats[i].a+stats[i].ab));
+                printf("    Sensitivity  %4.1f%%\n", 100*(float)stats[i].ab/(stats[i].b+stats[i].ab));
+            }
+            else
+            {
+                printf("    FDR          %4.1f%%\n", 100*(float)stats[i].ab/(stats[i].a+stats[i].ab));
+                printf("    Type I Error %4.1f%%\n", 100*(float)stats[i].ab/(stats[i].b+stats[i].ab));
+            }    
+            printf("\n");
         }
     };
 
