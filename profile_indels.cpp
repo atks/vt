@@ -222,7 +222,6 @@ class Igor : Program
 //gencode.v19      annotation   .       /net/fantasia/home/atks/dev/vt/ftp/gencode.v19.annotation.gtf.gz
 
         input_vcf_files.push_back(input_vcf_file);
-
         dataset_labels.push_back("data");
 
         htsFile *hts = hts_open(ref_data_sets_list.c_str(), "r");
@@ -235,22 +234,18 @@ class Igor : Program
 
             std::string line(s.s);
             split(vec, " ", line);
-
-            //analysis purpose
-            bool overlap = vec[1]=="overlap";
-
-            //data set label
-            dataset_labels.push_back(vec[0]);
-
-            //filter
-
-            //path
-            if (overlap)
+            
+            if (vec[1] == "overlap")
             {
-                input_vcf_files.push_back(std::string(vec[3]));
+                dataset_labels.push_back(vec[0]);
+                input_vcf_files.push_back(vec[3]);
+            }
+            else if (vec[1] == "annotation")
+            {
             }
         }
         hts_close(hts);
+        if (s.m) free(s.s);
 
         //////////////////////
         //i/o initialization//
@@ -282,56 +277,74 @@ class Igor : Program
         Variant variant; 
         int32_t no_overlap_files = input_vcf_files.size();
         std::vector<int32_t> presence(no_overlap_files, 0);
+        stats.resize(no_overlap_files);
         
-//        while(sr->read_next_position(current_recs))
-//        {
-//            //check first variant
-//            bcf1_t *v = current_recs[i]->v;
-//            bcf_hdr_t *h = current_recs[i]->h;
-//            int32_t vtype = vm->classify_variant(h, v, variant);
-//            
-//            if (vtype!=VT_INDEL || vtype!=(VT_SNP|VT_INDEL) || bcf_get_n_allele(v)!=2)
-//            {
-//                continue;
-//            }       
-//            
-//            //check existence
-//            for (uint32_t i=0; i<current_recs.size(); ++i)
-//            {
-//                ++presence[current_recs[i]->file_index];
-//            }
-//            
-//            //update overlap stats
-//            for (uint32_t i=1; i<no_overlap_files; ++i)
-//            {
-//                
-//                int32_t ins = 0;
-//                int32_t del = 0;
-//                
-//                if (presence[0]!=0)
-//                {   
-//                    --stats[d].a;
-//                    stats[d].a_ins -= ins;
-//                    stats[d].a_del -= del;
-//                    ++stats[d].ab;
-//                    stats[d].ab_ins += ins;
-//                    stats[d].ab_del += del;
-//                }
-//                else
-//                {
-//                    ++stats[d].b;
-//                    stats[d].b_ins += ins;
-//                    stats[d].b_del += del;
-//                }
-//            }
-//            
-//            //annotate
-//            if (presence[0]!=0)
-//            {
-//                
-//                //nfs fs
-//            }            
-//        }
+        while(sr->read_next_position(current_recs))
+        {
+            //check first variant
+            bcf1_t *v = current_recs[0]->v;
+            bcf_hdr_t *h = current_recs[0]->h;
+            int32_t vtype = vm->classify_variant(h, v, variant);
+            
+            //check existence
+            for (uint32_t i=0; i<current_recs.size(); ++i)
+            {
+                ++presence[current_recs[i]->file_index];
+            }
+           
+            //annotate
+            if (presence[0])
+            {
+                if (!((vtype==VT_INDEL || vtype==(VT_SNP|VT_INDEL)) && bcf_get_n_allele(v)==2))
+                {
+                    bcf_print_liten(h, v);
+                    std::cerr << "\tFAIL "  << vm->vtype2string(vtype) << "\n";
+                            
+                    
+                    continue;
+                }     
+                //nfs fs
+            }
+            
+            //update overlap stats
+            for (uint32_t i=1; i<no_overlap_files; ++i)
+            {
+                int32_t ins = variant.alleles[0].ins;
+                int32_t del = 1-ins;
+                
+                if (presence[0] && !presence[i])
+                {
+                       
+                    ++stats[i].a;
+                    stats[i].a_ins += ins;
+                    stats[i].a_del += del;
+                }
+                else if (presence[0] && presence[i])
+                {   
+                    ++stats[i].ab;
+                    stats[i].ab_ins += ins;
+                    stats[i].ab_del += del;
+                }
+                else if (!presence[0] && presence[i])
+                {
+                    ++stats[i].b;
+                    stats[i].b_ins += ins;
+                    stats[i].b_del += del;
+                }
+                else 
+                {
+                    //not in either, do nothing
+                }
+                
+                presence[i]=0;
+            }
+            
+           //  std::cerr << "\n";   
+            
+            presence[0] = 0;
+            
+                    
+        }
     };
 
       
@@ -349,14 +362,14 @@ class Igor : Program
 
     void print_stats()
     {
-//        for (uint32_t j=1; j<dataset_labels.size(); ++j)
-//        {
+        for (int32_t i=1; i<dataset_labels.size(); ++i)
+        {
 //            double insdel_a_ab =  (stats[j].a_del+stats[j].ab_del)==0 ? -1 : ((double)(stats[j].a_ins+stats[j].ab_ins)/(double)(stats[j].a_del+stats[j].ab_del));
 //            double insdel_a =  stats[j].a_del==0 ? -1 : ((double)stats[j].a_ins/(double)stats[j].a_del);
 //            double insdel_ab =  stats[j].ab_del==0 ? -1 : ((double)stats[j].ab_ins/(double)stats[j].ab_del);
 //            double insdel_b =  stats[j].b_del==0 ? -1 : ((double)stats[j].b_ins/(double)stats[j].b_del);
 //            double insdel_b_ab =  (stats[j].b_del+stats[j].ab_del)==0 ? -1 : ((double)(stats[j].b_ins+stats[j].ab_ins)/(double)(stats[j].b_del+stats[j].ab_del));
-//
+
 //            uint32_t totala = stats[j].a+stats[j].ab;
 //            double ab_of_a = totala==0 ? -1 : ((double)stats[j].ab/(double)(totala));
 //
@@ -380,7 +393,11 @@ class Igor : Program
 //            std::cout << dataset_labels[j] << " (" << totalb << ") " << "[" << insdel_b_ab << "]\n";
 //            std::cout << "TP\t" << ab_of_b << "(" << stats[j].ab << "/" << totalb << ") " << "[" << insdel_ab << "," << insdel_b << "] \n";
 //            std::cout << "FP\t" << ab_of_a << "(" << stats[j].ab << "/" << totala << ") " << "[" << insdel_ab << "," << insdel_a << "] \n\n";
-//        }
+
+            std::clog << dataset_labels[i] << "\n";
+            std::clog << stats[i].a << " " << stats[i].ab << " " << stats[i].b << "\n";
+
+        }
     };
 
     ~Igor()
