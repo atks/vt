@@ -90,10 +90,10 @@ class TBXOrderedReader
     /**
      * Initialize files and intervals.
      *
-     * @input_vcf_file     name of the input VCF file
-     * @intervals          list of intervals, if empty, all records are selected.
+     * @hts              name of the input file
+     * @intervals        list of intervals, if empty, all records are selected.
      */
-    TBXOrderedReader(std::string input_vcf_file, std::vector<GenomeInterval>& intervals);
+    TBXOrderedReader(std::string hts_file, std::vector<GenomeInterval>& intervals);
 
     /**
      * Jump to interval. Returns false if not successful.

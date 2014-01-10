@@ -28,14 +28,13 @@
 #include "htslib/vcfutils.h"
 #include "htslib/kstring.h"
 #include "htslib/kseq.h"
-#include "htslib/bgzf.h"
 #include "htslib/hts.h"
-#include "gtf.h"
 #include "bcf_synced_reader.h"
 #include "interval_tree.h"
 #include "hts_utils.h"
 #include "filter.h"
 #include "program.h"
+#include "gencode.h"
 
 void profile_indels(int argc, char ** argv);   
 

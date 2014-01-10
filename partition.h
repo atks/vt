@@ -28,7 +28,6 @@
 #include "htslib/vcfutils.h"
 #include "htslib/kstring.h"
 #include "htslib/kseq.h"
-#include "gtf.h"
 #include "bcf_synced_reader.h"
 #include "interval_tree.h"
 #include "hts_utils.h"
