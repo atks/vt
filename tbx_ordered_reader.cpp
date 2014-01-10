@@ -23,7 +23,7 @@
 
 #include "tbx_ordered_reader.h"
 
-TBXOrderedReader::TBXOrderedReader(std::string gz_file, std::vector<GenomeInterval>& intervals)
+TBXOrderedReader::TBXOrderedReader(std::string hts_file, std::vector<GenomeInterval>& intervals)
 {		
     this->hts_file = hts_file;
     this->intervals = intervals;
@@ -39,7 +39,7 @@ TBXOrderedReader::TBXOrderedReader(std::string gz_file, std::vector<GenomeInterv
 		
     intervals_present =  intervals.size()!=0;
 
-    if ((tbx = tbx_index_load(gz_file.c_str())))
+    if ((tbx = tbx_index_load(hts_file.c_str())))
     {
         index_loaded = true;
     }
@@ -47,7 +47,7 @@ TBXOrderedReader::TBXOrderedReader(std::string gz_file, std::vector<GenomeInterv
     {
         if (intervals_present)
         {
-            fprintf(stderr, "[E:%s] index cannot be loaded for %s\n", __FUNCTION__, gz_file.c_str());
+            fprintf(stderr, "[E:%s] index cannot be loaded for %s\n", __FUNCTION__, hts_file.c_str());
             exit(1);
         }
     }
