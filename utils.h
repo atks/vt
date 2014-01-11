@@ -49,6 +49,12 @@
 void split(std::vector<std::string>& vec, const char* delims, std::string& str, uint32_t limit=UINT_MAX, bool clear=true, bool collapse=true);
 
 /**
+ * Splits a line into a vector - PERL style
+ */
+void split(std::vector<std::string>& vec, const char* delims, char* str, uint32_t limit=UINT_MAX, bool clear=true, bool collapse=true);
+
+
+/**
  * Casts a string into int32.  Returns true if successful.
  */
 bool str2int32(std::string& s, int32_t& i);

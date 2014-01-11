@@ -34,6 +34,6 @@
 #include "filter.h"
 #include "program.h"
 
-void partition(int argc, char ** argv);   
+void partition(int argc, char ** argv);
 
 #endif

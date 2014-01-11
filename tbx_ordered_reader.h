@@ -35,13 +35,11 @@
 #include <queue>
 #include "htslib/vcf.h"
 #include "htslib/tbx.h"
-#include "htslib/bgzf.h"
 #include "hts_utils.h"
 #include "genome_interval.h"
-#include "interval_tree.h"
 
 /**
- * A class for reading ordered VCF/BCF files.
+ * A class for reading ordered tabixed files.
  *
  * Basically a record iterator that hides the
  * htslib interface from the programs in vt.
@@ -83,7 +81,7 @@ class TBXOrderedReader
     //list of intervals
     std::vector<GenomeInterval> intervals;
     uint32_t interval_index;
-    
+
     //shared objects for string manipulation
     kstring_t s;
 

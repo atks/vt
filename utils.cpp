@@ -71,6 +71,53 @@ void split(std::vector<std::string>& vec, const char *delims, std::string& str, 
 };
 
 /**
+ * Splits a line into a vector - PERL style
+ */
+void split(std::vector<std::string>& vec, const char *delims, char* str, uint32_t limit, bool clear, bool collapse)
+{
+    std::map<char, int32_t> delim_set;
+
+    for (uint32_t i=0; i<strlen(delims); ++i)
+    {
+        delim_set[delims[i]] = 1;
+    }
+
+    if (clear)
+    {
+        vec.clear();
+    }
+    const char* tempStr = str;
+    int32_t i=0, lastIndex = strlen(str)-1;
+    std::stringstream token;
+
+    if (lastIndex<0) return;
+
+    uint32_t noTokens = 0;
+    bool isDelim = false;
+    while (i<=lastIndex)
+    {
+        isDelim = (delim_set.find(tempStr[i])!=delim_set.end());
+                
+        if (!isDelim || noTokens>=limit-1)
+        {
+            token << tempStr[i];
+        }
+
+        if ((isDelim && noTokens<limit-1) || i==lastIndex)
+        {
+            if (collapse && token.str()!="")
+            {    
+                vec.push_back(token.str());
+                ++noTokens;
+                token.str("");
+            }
+        }
+
+        ++i;
+    }
+};
+
+/**
  * Casts a string into int32.  Returns true if successful.
  */
 bool str2int32(std::string& s, int32_t& i)

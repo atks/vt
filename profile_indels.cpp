@@ -198,11 +198,8 @@ class Igor : Program
         //tool initialization//
         ///////////////////////
         vm = new VariantManip(ref_fasta_file);
+        gc = new GENCODE(gencode_gtf_file, ref_fasta_file, intervals);
         
-        std::cerr << "GENCODE FILE: " << gencode_gtf_file << "\n";
-        
-        gc = new GENCODE(gencode_gtf_file, intervals);
-        std::cerr << " OPENED\n";
         ////////////////////////
         //stats initialization//
         ////////////////////////
@@ -231,7 +228,8 @@ class Igor : Program
             bcf1_t *v = current_recs[0]->v;
             bcf_hdr_t *h = current_recs[0]->h;
             int32_t vtype = vm->classify_variant(h, v, variant);
-            
+            std::string chrom = bcf_get_chrom(h,v);
+                
             //check existence
             for (uint32_t i=0; i<current_recs.size(); ++i)
             {
@@ -245,7 +243,11 @@ class Igor : Program
                 {
                     continue;
                 }     
-
+//
+//                if (CHROM.find(chrom)==CHROM.end())
+//                {
+//                    CHROM
+//                }
                 //nfs fs
             }
             
@@ -358,10 +360,6 @@ class Igor : Program
     };
 
     private:
-    bool exists(std::map<std::string, IntervalTree*>& map, const std::string& key)
-    {
-        return map.end()!=map.find(key);
-    }
 };
 
 }
