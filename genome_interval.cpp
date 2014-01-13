@@ -69,6 +69,15 @@ GenomeInterval::GenomeInterval(std::string interval)
 };
 
 /**
+ * Converts genome interval into the entire chromosome.
+ */
+void GenomeInterval::chromosomify()
+{
+    start1 = 1;
+    end1 = (1<<29) - 1;
+}
+
+/**
  * Returns a string representation of this Genome Interval.
  */
 std::string GenomeInterval::to_string()

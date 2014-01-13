@@ -59,6 +59,11 @@ class GenomeInterval
     GenomeInterval(std::string interval);
 
     /**
+     * Converts genome interval into the entire chromosome.
+     */
+    void chromosomify();
+
+    /**
      * Returns a string representation of this Genome Interval.
      */
     std::string to_string();
