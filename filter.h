@@ -25,8 +25,6 @@
 #define FILTER_H
 
 #include "htslib/vcf.h"
-#include "htslib/kseq.h"
-#include "hts_utils.h"
 #include "variant_manip.h"
 
 #define LT 0
@@ -50,6 +48,24 @@
  * VARIANT==SNP
  * AF>0.5
  * VARIANT==SNP && AF>0.5
+ 
+ 
+ [-F] filter expression 
+
+based on QUAL, FILTER, INFO and Variant type
+
+-f QUAL>2 && FILTER.PASS && AF>0.05
+-f FILTER.PASS && AF*>0.05
+-f FILTER.PASS && (AF*>0.05 || AC/AN>0.05)
+
+-f, -g, -h
+
+In the case that a field is not found, it evaluates to false
+
+
+
+AF* - intelligent parsing - if AF is not present, estimate from AC/AN
+
  * 
  */
 class Filter
@@ -62,7 +78,6 @@ class Filter
 
     Filter() {};
             
-    
     Filter(std::string tag, int32_t comparison, float value);
     
     bool apply(bcf_hdr_t *h, bcf1_t *v);
