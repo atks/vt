@@ -99,7 +99,7 @@ GENCODE::GENCODE(std::string& gencode_gtf_file, std::string& ref_fasta_file, std
     this->gencode_gtf_file = gencode_gtf_file;
     initialize(intervals);
 }
-    
+
 /**
  * Constructs a GENCODE object.
  */
@@ -107,8 +107,8 @@ GENCODE::GENCODE(std::string& gencode_gtf_file, std::string& ref_fasta_file)
 {
     fai = fai_load(ref_fasta_file.c_str());
     this->gencode_gtf_file = gencode_gtf_file;
-}    
-    
+}
+
 /**
  * Initialize a vector of intervals.
  */
@@ -125,9 +125,9 @@ void GENCODE::initialize(std::vector<GenomeInterval>& intervals)
             CHROM[chrom] = new IntervalTree();
             chromosomes.push_back(intervals[i]);
         }
-        
-    }    
-    
+
+    }
+
     TBXOrderedReader *todr = new TBXOrderedReader(gencode_gtf_file, chromosomes);
     std::vector<std::string> fields;
     std::map<std::string, std::string> attrib_map;
@@ -135,7 +135,7 @@ void GENCODE::initialize(std::vector<GenomeInterval>& intervals)
 
     //for storing returned overlapping intervals
     std::vector<Interval*> overlaps;
-    
+
     while (todr->read(&s))
     {
         //populate interval trees with reference sets
@@ -165,13 +165,13 @@ void GENCODE::initialize(std::vector<GenomeInterval>& intervals)
 
         std::string chrom = fields[0]=="M" ? std::string("MT") : fields[0];
         std::string& feature = fields[2];
-        int32_t gencode_feature = GC_FT_CDS;    
+        int32_t gencode_feature = GC_FT_CDS;
 
         if (feature!="exon" && feature!="CDS" && feature!="start_codon" && feature!="stop_codon")
         {
             continue;
         }
-        
+
         //process fields
         std::string& attrib = fields[8];
         split_gtf_attribute_field(attrib_map, attrib);
@@ -197,7 +197,7 @@ void GENCODE::initialize(std::vector<GenomeInterval>& intervals)
 
 
         int32_t exon_no = -1;
-        
+
         if (feature=="exon")
         {
             gencode_feature = GC_FT_EXON;
@@ -209,10 +209,10 @@ void GENCODE::initialize(std::vector<GenomeInterval>& intervals)
 
             int32_t ref_len1 = 0;
             int32_t ref_len2 = 0;
-            
+
             char *dnc1 = faidx_fetch_seq(fai, chrom.c_str(), start1-3, start1-2, &ref_len1);
             char *dnc2 = faidx_fetch_seq(fai, chrom.c_str(), end1, end1+1, &ref_len2);
-            
+
             if(strand=='+')
             {
                 if (!strcmp(dnc1,"AG"))
@@ -247,7 +247,7 @@ void GENCODE::initialize(std::vector<GenomeInterval>& intervals)
         if (feature=="stop_codon")
         {
             gencode_feature = GC_FT_START_CODON;
-            
+
             CHROM[chrom]->search(start1, end1, overlaps);
 
             for (uint32_t i=0; i<overlaps.size(); ++i)
@@ -263,7 +263,7 @@ void GENCODE::initialize(std::vector<GenomeInterval>& intervals)
         if (feature=="start_codon")
         {
             gencode_feature = GC_FT_STOP_CODON;
-            
+
             CHROM[chrom]->search(start1, end1, overlaps);
 
             for (uint32_t i=0; i<overlaps.size(); ++i)
@@ -284,7 +284,7 @@ void GENCODE::initialize(std::vector<GenomeInterval>& intervals)
 
         CHROM[chrom]->insert(record);
     }
-    
+
     todr->close();
 }
 
@@ -307,7 +307,7 @@ void GENCODE::search(std::string& chrom, int32_t start1, int32_t end1, std::vect
     {
         initialize(chrom);
     }
-    
+
     CHROM[chrom]->search(start1, end1, intervals);
 }
 
@@ -321,7 +321,7 @@ void GENCODE::split_gtf_attribute_field(std::map<std::string, std::string>& map,
     int32_t i=0, lastIndex = str.size()-1;
     std::string key;
     std::string val;
-    
+
     if (lastIndex<0) return;
 
     token.str("");

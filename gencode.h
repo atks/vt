@@ -80,7 +80,7 @@ class GENCODERecord : public Interval
      * Converts feature to string.
      */
     void feature2string(int32_t feature, kstring_t *s);
-    
+
     private:
 };
 
@@ -92,7 +92,7 @@ class GENCODE
     faidx_t *fai;
     std::map<std::string, IntervalTree*> CHROM;
     std::stringstream token;
-    
+
     /**
      * Constructs and initialize a GENCODE object.
      */

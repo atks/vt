@@ -64,12 +64,12 @@ class Igor : Program
 
     std::vector<std::string> dataset_labels;
     std::vector<std::string> dataset_types;
-                
+
     std::vector<OverlapStats> stats;
-    
+
     std::string gencode_gtf_file;
-    
-    
+
+
     ///////
     //i/o//
     ///////
@@ -95,7 +95,7 @@ class Igor : Program
     ////////////////
     VariantManip *vm;
     GENCODE *gc;
-    
+
     Igor(int argc, char ** argv)
     {
         //////////////////////////
@@ -140,7 +140,7 @@ class Igor : Program
 //# This file contains information on how to process reference data sets.
 //#
 //# dataset - name of data set, this label will be printed.
-//# type    - True Positives (TP) and False Positives (FP) 
+//# type    - True Positives (TP) and False Positives (FP)
 //#           overlap percentages labeled as (Precision, Sensitivity) and (False Discovery Rate, Type I Error) respectively
 //#         - annotation
 //#           file is used for GENCODE annotation of frame shift and non frame shift Indels
@@ -158,7 +158,7 @@ class Igor : Program
         input_vcf_files.push_back(input_vcf_file);
         dataset_labels.push_back("data");
         dataset_types.push_back("ref");
-                
+
         htsFile *hts = hts_open(ref_data_sets_list.c_str(), "r");
         kstring_t s = {0,0,0};
         std::vector<std::string> vec;
@@ -169,7 +169,7 @@ class Igor : Program
 
             std::string line(s.s);
             split(vec, " ", line);
-            
+
             if (vec[1] == "TP" || vec[1] == "FP")
             {
                 dataset_labels.push_back(vec[0]);
@@ -199,7 +199,7 @@ class Igor : Program
         ///////////////////////
         vm = new VariantManip(ref_fasta_file);
         gc = new GENCODE(gencode_gtf_file, ref_fasta_file);
-        
+
         ////////////////////////
         //stats initialization//
         ////////////////////////
@@ -217,65 +217,56 @@ class Igor : Program
         //for combining the alleles
         std::vector<bcfptr*> current_recs;
         std::vector<Interval*> overlaps;
-        Variant variant; 
+        Variant variant;
         int32_t no_overlap_files = input_vcf_files.size();
         std::vector<int32_t> presence(no_overlap_files, 0);
         stats.resize(no_overlap_files);
-        
+
         while(sr->read_next_position(current_recs))
         {
             //check first variant
             bcf1_t *v = current_recs[0]->v;
             bcf_hdr_t *h = current_recs[0]->h;
             int32_t vtype = vm->classify_variant(h, v, variant);
+
+            if (!((vtype==VT_INDEL || vtype==(VT_SNP|VT_INDEL)) && bcf_get_n_allele(v)==2))
+            {
+                continue;
+            }
+
             std::string chrom = bcf_get_chrom(h,v);
             int32_t start1 = bcf_get_pos1(v);
             int32_t end1 = bcf_get_end_pos1(v);
-                
+
             //check existence
             for (uint32_t i=0; i<current_recs.size(); ++i)
             {
                 ++presence[current_recs[i]->file_index];
             }
-           
+
             //annotate
             if (presence[0])
             {
-                if (!((vtype==VT_INDEL || vtype==(VT_SNP|VT_INDEL)) && bcf_get_n_allele(v)==2))
-                {
-                    continue;
-                }     
+                gc->search(chrom, start1, end1, overlaps);
 
-                if (vtype==VT_INDEL)
+                for (int32_t i=0; i<overlaps.size(); ++i)
                 {
-                    gc->search(chrom, start1, end1, overlaps);
-                    
-//                    if (overlaps.size()!=0)
-//                    {
-//                        bcf_print_liten(h,v);
-//                        std::cerr << "\n";    
-//                    }    
-                    
-                    for (int32_t i=0; i<overlaps.size(); ++i)
+                    GENCODERecord *rec = (GENCODERecord *) overlaps[i];
+                    if (rec->feature==GC_FT_CDS)
                     {
-                        GENCODERecord *rec = (GENCODERecord *) overlaps[i];
-                        if (rec->feature==GC_FT_CDS)
+                        if (abs(variant.alleles[0].dlen)%3==0)
                         {
-                            if (abs(variant.alleles[0].dlen)%3==0)
-                            {    
-                                ++nfs;
-                            }
-                            else
-                            {
-                                ++fs;
-                            }
-                        }   
+                            ++nfs;
+                        }
+                        else
+                        {
+                            ++fs;
+                        }
                     }
                 }
-                
+
                 ++no_indels;
             }
-
 
             int32_t ins = variant.alleles[0].ins;
             int32_t del = 1-ins;
@@ -284,21 +275,20 @@ class Igor : Program
             {
                 ++stats[0].a;
                 stats[0].a_ins += ins;
-                stats[0].a_del += del;    
+                stats[0].a_del += del;
             }
-        
+
             //update overlap stats
             for (uint32_t i=1; i<no_overlap_files; ++i)
             {
                 if (presence[0] && !presence[i])
                 {
-                       
                     ++stats[i].a;
                     stats[i].a_ins += ins;
                     stats[i].a_del += del;
                 }
                 else if (presence[0] && presence[i])
-                {   
+                {
                     ++stats[i].ab;
                     stats[i].ab_ins += ins;
                     stats[i].ab_del += del;
@@ -309,20 +299,17 @@ class Igor : Program
                     stats[i].b_ins += ins;
                     stats[i].b_del += del;
                 }
-                else 
+                else
                 {
                     //not in either, do nothing
                 }
-                
+
                 presence[i]=0;
             }
-            
+
             presence[0] = 0;
         }
     };
-
-      
-    
 
     void print_options()
     {
@@ -337,58 +324,30 @@ class Igor : Program
 
     void print_stats()
     {
-        printf("  %s\n", "data set");
-        printf("    No Indels : %10d [%.2f]\n", stats[0].a,  (float)stats[0].a_ins/(stats[0].a_del));
-        printf("       FS/NFS : %.2f (%d/%d)\n", (float)fs/(fs+nfs), fs, nfs);
+        fprintf(stderr, "\n");
+        fprintf(stderr, "  %s\n", "data set");
+        fprintf(stderr, "    No Indels : %10d [%.2f]\n", stats[0].a,  (float)stats[0].a_ins/(stats[0].a_del));
+        fprintf(stderr, "       FS/NFS : %10.2f (%d/%d)\n", (float)fs/(fs+nfs), fs, nfs);
+        fprintf(stderr, "\n");
 
         for (int32_t i=1; i<dataset_labels.size(); ++i)
         {
-//            double insdel_a_ab =  (stats[j].a_del+stats[j].ab_del)==0 ? -1 : ((double)(stats[j].a_ins+stats[j].ab_ins)/(double)(stats[j].a_del+stats[j].ab_del));
-//            double insdel_a =  stats[j].a_del==0 ? -1 : ((double)stats[j].a_ins/(double)stats[j].a_del);
-//            double insdel_ab =  stats[j].ab_del==0 ? -1 : ((double)stats[j].ab_ins/(double)stats[j].ab_del);
-//            double insdel_b =  stats[j].b_del==0 ? -1 : ((double)stats[j].b_ins/(double)stats[j].b_del);
-//            double insdel_b_ab =  (stats[j].b_del+stats[j].ab_del)==0 ? -1 : ((double)(stats[j].b_ins+stats[j].ab_ins)/(double)(stats[j].b_del+stats[j].ab_del));
-
-//            uint32_t totala = stats[j].a+stats[j].ab;
-//            double ab_of_a = totala==0 ? -1 : ((double)stats[j].ab/(double)(totala));
-//
-//            uint32_t totalb = stats[j].b+stats[j].ab;
-//            double ab_of_b = totalb==0 ? -1 : ((double)stats[j].ab/(double)(totalb));
-//
-//            if (j==1)
-//            {
-//                std::cout << std::setprecision(3);
-//                std::cout << "\n";
-//                std::cout << dataset_labels[0] << "\n";
-//                std::cout << "variants: " << totala << "\n";
-//                std::cout << "ins/del ratio: " << insdel_a_ab << "\n";
-//                std::cout << "FS Proportion: " << (float)fs/(float)(fs+nfs) << " (" << fs << "," << nfs << ")\n\n";
-//                std::cout << "FS Proportion (Rare): " << (float)rare_fs/(float)(rare_fs+rare_nfs) << " (" << rare_fs << "," << rare_nfs << ")\n\n";
-//                std::cout << "FS Proportion (Common): " << (float)common_fs/(float)(common_fs+common_nfs) << " (" << common_fs << "," << common_nfs << ")\n\n";
-//
-//            }
-//
-//            std::cout << std::setprecision(3);
-//            std::cout << dataset_labels[j] << " (" << totalb << ") " << "[" << insdel_b_ab << "]\n";
-//            std::cout << "TP\t" << ab_of_b << "(" << stats[j].ab << "/" << totalb << ") " << "[" << insdel_ab << "," << insdel_b << "] \n";
-//            std::cout << "FP\t" << ab_of_a << "(" << stats[j].ab << "/" << totala << ") " << "[" << insdel_ab << "," << insdel_a << "] \n\n";
-
-            printf("  %s\n", dataset_labels[i].c_str());
-            printf("    A-B %10d [%.2f]\n", stats[i].a,  (float)stats[i].a_ins/(stats[i].a_del));
-            printf("    A&B %10d [%.2f]\n", stats[i].ab, (float)stats[i].ab_ins/stats[i].ab_del);
-            printf("    B-A %10d [%.2f]\n", stats[i].b,  (float)stats[i].b_ins/(stats[i].b_del));
+            fprintf(stderr, "  %s\n", dataset_labels[i].c_str());
+            fprintf(stderr, "    A-B %10d [%.2f]\n", stats[i].a,  (float)stats[i].a_ins/(stats[i].a_del));
+            fprintf(stderr, "    A&B %10d [%.2f]\n", stats[i].ab, (float)stats[i].ab_ins/stats[i].ab_del);
+            fprintf(stderr, "    B-A %10d [%.2f]\n", stats[i].b,  (float)stats[i].b_ins/(stats[i].b_del));
 
             if (dataset_types[i]=="TP")
             {
-                printf("    Precision    %4.1f%%\n", 100*(float)stats[i].ab/(stats[i].a+stats[i].ab));
-                printf("    Sensitivity  %4.1f%%\n", 100*(float)stats[i].ab/(stats[i].b+stats[i].ab));
+                fprintf(stderr, "    Precision    %4.1f%%\n", 100*(float)stats[i].ab/(stats[i].a+stats[i].ab));
+                fprintf(stderr, "    Sensitivity  %4.1f%%\n", 100*(float)stats[i].ab/(stats[i].b+stats[i].ab));
             }
             else
             {
-                printf("    FDR          %4.1f%%\n", 100*(float)stats[i].ab/(stats[i].a+stats[i].ab));
-                printf("    Type I Error %4.1f%%\n", 100*(float)stats[i].ab/(stats[i].b+stats[i].ab));
-            }    
-            printf("\n");
+                fprintf(stderr, "    FDR          %4.1f%%\n", 100*(float)stats[i].ab/(stats[i].a+stats[i].ab));
+                fprintf(stderr, "    Type I Error %4.1f%%\n", 100*(float)stats[i].ab/(stats[i].b+stats[i].ab));
+            }
+            fprintf(stderr, "\n");
         }
     };
 
