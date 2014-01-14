@@ -45,11 +45,16 @@
 #include "genome_interval.h"
 #include "tbx_ordered_reader.h"
 
+#define GC_FT_EXON 0
+#define GC_FT_CDS  1
+#define GC_FT_START_CODON 2
+#define GC_FT_STOP_CODON 3
+
 class GENCODERecord : public Interval
 {
     public:
     std::string gene;
-    std::string feature;
+    int32_t feature;
     std::string chrom;
     char strand;
     int32_t frame;
@@ -59,16 +64,23 @@ class GENCODERecord : public Interval
     bool containsStartCodon;
     bool containsStopCodon;
     uint32_t level;
-    std::string attrib;
 
     GENCODERecord(std::string& _chrom, uint32_t _start, uint32_t _end, char _strand,
-                  std::string& _gene, std::string& _feature, int32_t _frame, int32_t _exonNo,
+                  std::string& _gene, int32_t _feature, int32_t _frame, int32_t _exonNo,
                   bool _fivePrimeConservedEssentialSpliceSite, bool _threePrimeConservedEssentialSpliceSite,
                   bool _containsStartCodon, bool _containsStopCodon,
-                  uint32_t _level, std::string& _attrib);
+                  uint32_t _level);
 
+    /**
+     * Prints this GENCODE record to STDERR.
+     */
     void print();
 
+    /**
+     * Converts feature to string.
+     */
+    void feature2string(int32_t feature, kstring_t *s);
+    
     private:
 };
 
@@ -78,18 +90,19 @@ class GENCODE
     std::string gencode_gtf_file;
     std::string ref_fasta_file;
     faidx_t *fai;
-    std::map<std::string, IntervalTree*> CHROM;    
-        
+    std::map<std::string, IntervalTree*> CHROM;
+    std::stringstream token;
+    
     /**
      * Constructs and initialize a GENCODE object.
      */
     GENCODE(std::string& gencode_gtf_file, std::string& ref_fasta_file, std::vector<GenomeInterval>& intervals);
-    
+
     /**
      * Constructs a GENCODE object.
      */
     GENCODE(std::string& gencode_gtf_file, std::string& ref_fasta_file);
-        
+
     /**
      * Initialize a vector of intervals.
      */
@@ -104,7 +117,7 @@ class GENCODE
      * Gets overlapping intervals with chrom:start1-end1.
      */
     void search(std::string& chrom, int32_t start1, int32_t end1, std::vector<Interval*>& intervals);
-    
+
     /**
      * Splits a line into a map - PERL style.
      */

@@ -101,7 +101,7 @@ class IntervalTree
     void insert(Interval* interval);
 
     /**
-     * Gets overlapping intervals with [start,end].
+     * Gets overlapping intervals with [start,end]. Returns true on success and false otherwise.
      */
     void search(int32_t start, int32_t end, std::vector<Interval*>& intervals);
 
