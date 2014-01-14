@@ -76,12 +76,34 @@ class GENCODE
 {
     public:
     std::string gencode_gtf_file;
+    std::string ref_fasta_file;
+    faidx_t *fai;
     std::map<std::string, IntervalTree*> CHROM;    
+        
+    /**
+     * Constructs and initialize a GENCODE object.
+     */
+    GENCODE(std::string& gencode_gtf_file, std::string& ref_fasta_file, std::vector<GenomeInterval>& intervals);
     
     /**
-     * Constructs and initialized a GENCODE object.
+     * Constructs a GENCODE object.
      */
-    GENCODE(std::string gencode_gtf_file, std::string ref_fasta_file, std::vector<GenomeInterval> intervals);
+    GENCODE(std::string& gencode_gtf_file, std::string& ref_fasta_file);
+        
+    /**
+     * Initialize a vector of intervals.
+     */
+    void initialize(std::vector<GenomeInterval>& intervals);
+
+    /**
+     * Initialize a chromosome in the GENCODE tree.
+     */
+    void initialize(std::string& chrom);
+
+    /**
+     * Gets overlapping intervals with chrom:start1-end1.
+     */
+    void search(std::string& chrom, int32_t start1, int32_t end1, std::vector<Interval*>& intervals);
     
     /**
      * Splits a line into a map - PERL style.
