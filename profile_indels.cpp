@@ -216,7 +216,7 @@ class Igor : Program
     {
         //for combining the alleles
         std::vector<bcfptr*> current_recs;
-        std::vector<Interval*> intervals;
+        std::vector<Interval*> overlaps;
         Variant variant; 
         int32_t no_overlap_files = input_vcf_files.size();
         std::vector<int32_t> presence(no_overlap_files, 0);
@@ -248,17 +248,48 @@ class Igor : Program
 
                 if (vtype==VT_INDEL)
                 {
-                    gc->search(chrom, start1, end1, intervals);
+                    gc->search(chrom, start1, end1, overlaps);
                     
+//                    if (overlaps.size()!=0)
+//                    {
+//                        bcf_print_liten(h,v);
+//                        std::cerr << "\n";    
+//                    }    
+                    
+                    for (int32_t i=0; i<overlaps.size(); ++i)
+                    {
+                        GENCODERecord *rec = (GENCODERecord *) overlaps[i];
+                        if (rec->feature==GC_FT_CDS)
+                        {
+                            if (abs(variant.alleles[0].dlen)%3==0)
+                            {    
+                                ++nfs;
+                            }
+                            else
+                            {
+                                ++fs;
+                            }
+                        }   
+                    }
                 }
+                
+                ++no_indels;
             }
-            
+
+
+            int32_t ins = variant.alleles[0].ins;
+            int32_t del = 1-ins;
+
+            if (presence[0])
+            {
+                ++stats[0].a;
+                stats[0].a_ins += ins;
+                stats[0].a_del += del;    
+            }
+        
             //update overlap stats
             for (uint32_t i=1; i<no_overlap_files; ++i)
             {
-                int32_t ins = variant.alleles[0].ins;
-                int32_t del = 1-ins;
-                
                 if (presence[0] && !presence[i])
                 {
                        
@@ -306,6 +337,10 @@ class Igor : Program
 
     void print_stats()
     {
+        printf("  %s\n", "data set");
+        printf("    No Indels : %10d [%.2f]\n", stats[0].a,  (float)stats[0].a_ins/(stats[0].a_del));
+        printf("       FS/NFS : %.2f (%d/%d)\n", (float)fs/(fs+nfs), fs, nfs);
+
         for (int32_t i=1; i<dataset_labels.size(); ++i)
         {
 //            double insdel_a_ab =  (stats[j].a_del+stats[j].ab_del)==0 ? -1 : ((double)(stats[j].a_ins+stats[j].ab_ins)/(double)(stats[j].a_del+stats[j].ab_del));
@@ -342,7 +377,7 @@ class Igor : Program
             printf("    A-B %10d [%.2f]\n", stats[i].a,  (float)stats[i].a_ins/(stats[i].a_del));
             printf("    A&B %10d [%.2f]\n", stats[i].ab, (float)stats[i].ab_ins/stats[i].ab_del);
             printf("    B-A %10d [%.2f]\n", stats[i].b,  (float)stats[i].b_ins/(stats[i].b_del));
-            
+
             if (dataset_types[i]=="TP")
             {
                 printf("    Precision    %4.1f%%\n", 100*(float)stats[i].ab/(stats[i].a+stats[i].ab));
