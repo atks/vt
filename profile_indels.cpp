@@ -198,7 +198,7 @@ class Igor : Program
         //tool initialization//
         ///////////////////////
         vm = new VariantManip(ref_fasta_file);
-        gc = new GENCODE(gencode_gtf_file, ref_fasta_file, intervals);
+        gc = new GENCODE(gencode_gtf_file, ref_fasta_file);
         
         ////////////////////////
         //stats initialization//
@@ -229,6 +229,8 @@ class Igor : Program
             bcf_hdr_t *h = current_recs[0]->h;
             int32_t vtype = vm->classify_variant(h, v, variant);
             std::string chrom = bcf_get_chrom(h,v);
+            int32_t start1 = bcf_get_pos1(v);
+            int32_t end1 = bcf_get_end_pos1(v);
                 
             //check existence
             for (uint32_t i=0; i<current_recs.size(); ++i)
@@ -243,12 +245,12 @@ class Igor : Program
                 {
                     continue;
                 }     
-//
-//                if (CHROM.find(chrom)==CHROM.end())
-//                {
-//                    CHROM
-//                }
-                //nfs fs
+
+                if (vtype==VT_INDEL)
+                {
+                    gc->search(chrom, start1, end1, intervals);
+                    
+                }
             }
             
             //update overlap stats

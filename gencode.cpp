@@ -66,11 +66,38 @@ void GENCODERecord::print()
 /**
  * Constructs and initialized a GENCODE object.
  */
-GENCODE::GENCODE(std::string gencode_gtf_file, std::string ref_fasta_file, std::vector<GenomeInterval> intervals)
+GENCODE::GENCODE(std::string& gencode_gtf_file, std::string& ref_fasta_file, std::vector<GenomeInterval>& intervals)
 {
-    faidx_t *fai = fai_load(ref_fasta_file.c_str());
-
-    TBXOrderedReader *todr = new TBXOrderedReader(gencode_gtf_file, intervals);
+    fai = fai_load(ref_fasta_file.c_str());
+    this->gencode_gtf_file = gencode_gtf_file;
+    initialize(intervals);
+}
+    
+/**
+ * Constructs a GENCODE object.
+ */
+GENCODE::GENCODE(std::string& gencode_gtf_file, std::string& ref_fasta_file)
+{
+    fai = fai_load(ref_fasta_file.c_str());
+    this->gencode_gtf_file = gencode_gtf_file;
+}    
+    
+/**
+ * Initialize a vector of intervals.
+ */
+void GENCODE::initialize(std::vector<GenomeInterval>& intervals)
+{
+    std::vector<GenomeInterval> chromosomes;
+    for (int32_t i=0; i<intervals.size(); ++i)
+    {
+        intervals[i].chromosomify();
+        if (CHROM.find(intervals[i].to_string())==CHROM.end())
+        {
+            chromosomes.push_back(intervals[i]);
+        }
+    }    
+    
+    TBXOrderedReader *todr = new TBXOrderedReader(gencode_gtf_file, chromosomes);
     std::vector<std::string> fields;
     std::map<std::string, std::string> attrib_map;
     kstring_t s = {0,0,0};
@@ -105,7 +132,7 @@ GENCODE::GENCODE(std::string gencode_gtf_file, std::string ref_fasta_file, std::
 
         split(fields, "\t", s.s);
 
-      //  std::cerr << s.s << "\n";
+        //std::cerr << s.s << "\n";
 
         std::string chrom = fields[0]=="M" ? std::string("MT") : fields[0];
 
@@ -119,8 +146,7 @@ GENCODE::GENCODE(std::string gencode_gtf_file, std::string ref_fasta_file, std::
         //create tree for chromosome
         if(CHROM.find(chrom)==CHROM.end())
         {
-            std::cerr << "creating interval tree for " << chrom << "\n";
-
+            std::clog << "Initializing GENCODE tree for chromosome " << chrom << "\n";
             CHROM[chrom] = new IntervalTree();
         }
 
@@ -148,7 +174,6 @@ GENCODE::GENCODE(std::string gencode_gtf_file, std::string ref_fasta_file, std::
             level = -1;
         }
 
-
         bool fivePrimeConservedEssentialSpliceSite = false;
         bool threePrimeConservedEssentialSpliceSite = false;
         bool containsStartCodon = false;
@@ -169,7 +194,7 @@ GENCODE::GENCODE(std::string gencode_gtf_file, std::string ref_fasta_file, std::
             dnc1 = faidx_fetch_seq(fai, chrom.c_str(), start1-3, start1-2, &ref_len1);
             dnc2 = faidx_fetch_seq(fai, chrom.c_str(), end1, end1+1, &ref_len2);
 
-            std::cerr << strand << " " << chrom << ":"<< start1 << "-" << end1 << " " << dnc1 << " " << dnc2 << "\n";
+           // std::cerr << strand << " " << chrom << ":"<< start1 << "-" << end1 << " " << dnc1 << " " << dnc2 << "\n";
             
             if(strand=='+')
             {
@@ -220,7 +245,7 @@ GENCODE::GENCODE(std::string gencode_gtf_file, std::string ref_fasta_file, std::
         {
             CHROM[chrom]->search(start1, end1, overlaps);
 
-            for (uint32_t i=0; i<intervals.size(); ++i)
+            for (uint32_t i=0; i<overlaps.size(); ++i)
             {
                 GENCODERecord* record = (GENCODERecord*)overlaps[i];
                 if (record->feature == "exon" && record->gene == gene)
@@ -238,6 +263,8 @@ GENCODE::GENCODE(std::string gencode_gtf_file, std::string ref_fasta_file, std::
 
         CHROM[chrom]->insert(record);
     }
+    
+    todr->close();
 
     std::clog << " ... completed\n";
     if (CHROM.size()==0)
@@ -249,14 +276,37 @@ GENCODE::GENCODE(std::string gencode_gtf_file, std::string ref_fasta_file, std::
     {
         for (std::map<std::string, IntervalTree*>::iterator i = CHROM.begin(); i!=CHROM.end() ;++i)
         {
-            std::cerr << "CHROMOSOME " << i->first << "\n";
-            std::cerr << "start validation\n";
+//            std::cerr << "CHROMOSOME " << i->first << "\n";
+//            std::cerr << "start validation\n";
             CHROM[i->first]->validate();
-            std::cerr << "end validation\n";
-            std::cerr << "height : " << CHROM[i->first]->height << "\n";
-            std::cerr << "size : " << CHROM[i->first]->size() << "\n";
+//            std::cerr << "end validation\n";
+//            std::cerr << "height : " << CHROM[i->first]->height << "\n";
+//            std::cerr << "size : " << CHROM[i->first]->size() << "\n";
         }
     }
+}
+
+/**
+ * Initialize a chromosome in the GENCODE tree.
+ */
+void GENCODE::initialize(std::string& chrom)
+{
+    std::vector<GenomeInterval> intervals;
+    intervals.push_back(GenomeInterval(chrom));
+    initialize(intervals);
+}
+
+/**
+ * Gets overlapping intervals with chrom:start1-end1.
+ */
+void GENCODE::search(std::string& chrom, int32_t start1, int32_t end1, std::vector<Interval*>& intervals)
+{
+    if (CHROM.find(chrom)==CHROM.end())
+    {
+        initialize(chrom);
+    }
+    
+    CHROM[chrom]->search(start1, end1, intervals);
 }
 
 /**
