@@ -36,6 +36,6 @@
 #include "program.h"
 #include "gencode.h"
 
-void profile_indels(int argc, char ** argv);   
+void profile_indels(int argc, char ** argv);
 
 #endif
