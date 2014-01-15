@@ -5,7 +5,7 @@ INCLUDES = -I./lib/include/ -I. -I./lib/include/htslib
 CFLAGS = -pipe -std=c++0x $(OPTFLAG) $(INCLUDES) -D__STDC_LIMIT_MACROS
 CXX = clang++
 
-HEADERSONLY =
+HEADERSONLY = 
 SOURCES = program\
 		filter\
 		hts_utils\
@@ -33,6 +33,7 @@ SOURCES = program\
 		gencode\
 		annotate_variants\
 		lhmm\
+		genotyping_buffer\
 		peek
 
 SOURCESONLY = main.cpp
