@@ -43,6 +43,11 @@ void VTOutput::usage(TCLAP::CmdLineInterface& c)
             TCLAP::UnlabeledValueArg<std::string> *i = (TCLAP::UnlabeledValueArg<std::string> *) (*it);
             s = i->getName();
         }
+        else if (typeid(**it)==typeid(TCLAP::UnlabeledMultiArg<std::string>))
+        {
+            TCLAP::UnlabeledMultiArg<std::string> *i = (TCLAP::UnlabeledMultiArg<std::string> *) (*it);
+            s = i->getName();
+        }
     }
 
     std::clog << c.getProgramName() << " v" << c.getVersion() << "\n\n";
@@ -79,6 +84,10 @@ void VTOutput::usage(TCLAP::CmdLineInterface& c)
                        << "  " << i->getDescription() << "\n";
         }
         else if (typeid(**it)==typeid(TCLAP::UnlabeledValueArg<std::string>))
+        {
+            //ignored
+        }
+        else if (typeid(**it)==typeid(TCLAP::UnlabeledMultiArg<std::string>))
         {
             //ignored
         }

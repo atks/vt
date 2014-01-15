@@ -25,18 +25,32 @@
 
 namespace
 {
-    
+
 class OverlapStats
 {
     public:
-        
-    uint32_t a,ab,b;
-    
+
+    uint32_t a,ab,b,a_ins,ab_ins,b_ins,a_del,ab_del,b_del,a_ts,ab_ts,b_ts,a_tv,ab_tv,b_tv;
+
     OverlapStats()
     {
         a = 0;
         ab = 0;
         b = 0;
+
+        a_ts = 0;
+        a_tv = 0;
+        ab_ts = 0;
+        ab_tv = 0;
+        b_ts = 0;
+        b_tv = 0;
+
+        a_ins = 0;
+        a_del = 0;
+        ab_ins = 0;
+        ab_del = 0;
+        b_ins = 0;
+        b_del = 0;
     };
 };
 
@@ -44,78 +58,64 @@ class Igor : Program
 {
     public:
 
-    std::string version; 
+    std::string version;
 
     ///////////
     //options//
     ///////////
-    std::string filters;  
-    std::vector<std::string> input_vcf_files;   
-   	
-    std::string build;
+    std::string filters;
+    std::vector<std::string> input_vcf_files;
     std::vector<GenomeInterval> intervals;
-    
     std::string interval_list;
-   
-    std::vector<OverlapStats> stats;
-        
+
     ///////
     //i/o//
     ///////
     BCFSyncedReader *sr;
-    bcf1_t *v;
-    Filter *filter;
-    kstring_t line;
-    
+
     /////////
     //stats//
     /////////
-    uint32_t no_candidate_snps;
-	uint32_t no_candidate_indels;
-	
+    std::vector<OverlapStats> stats;
+
+    ////////////////
+    //common tools//
+    ////////////////
+    VariantManip *vm;
+
     Igor(int argc, char ** argv)
-    {   
+    {
         //////////////////////////
         //options initialization//
         //////////////////////////
-    	try
-    	{
-    		std::string desc =   		    
-"Paritition variants.  Check the overlap of variants between 2 data sets.\n";
+        try
+        {
+            std::string desc = "paritition variants. check the overlap of variants between 2 data sets.\n";
 
-       		version = "0.5";
-    		TCLAP::CmdLine cmd(desc, ' ', version);
-			VTOutput my;
-			cmd.setOutput(&my);    		
-			TCLAP::ValueArg<std::string> arg_intervals("i", "i", "intervals []", false, "", "str", cmd);
-			TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "file", cmd);
-    		TCLAP::ValueArg<std::string> arg_filters("f", "filters", "Filter (e.g. AF>0.3) ", false, "", "str", cmd);
-    		TCLAP::UnlabeledMultiArg<std::string> arg_input_vcf_files("<in.vcf>", "input VCF file", true, "file", cmd);
-		
-    		cmd.parse(argc, argv);
-    	
-   			filters = arg_filters.getValue();
-			parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
-			input_vcf_files = arg_input_vcf_files.getValue();
-    	    
-    	    filter=NULL;		            
-    		if (filters!="")
-		    {
-		        filter = new Filter();
-		        filter->parse(filters);
-		    }
-		    
-		    filter = new Filter("AF", 0, 0.005);
-    		
-	        ///////////////////////
-    		//parse input VCF files
-    		///////////////////////
-    	}
-    	catch (TCLAP::ArgException &e)
-    	{
-    		std::cerr << "error: " << e.error() << " for arg " << e.argId() << "\n";
-    		abort(); 
-    	} 
+            version = "0.5";
+            TCLAP::CmdLine cmd(desc, ' ', version);
+            VTOutput my; cmd.setOutput(&my);
+            TCLAP::ValueArg<std::string> arg_intervals("i", "i", "intervals []", false, "", "str", cmd);
+            TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "file", cmd);
+            TCLAP::ValueArg<std::string> arg_filters("f", "filters", "Filter (e.g. AF>0.3) ", false, "", "str", cmd);
+            TCLAP::UnlabeledMultiArg<std::string> arg_input_vcf_files("<in1.vcf><in2.vcf>", "2 input VCF files for comparison", true, "files", cmd);
+
+            cmd.parse(argc, argv);
+
+            parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
+            input_vcf_files = arg_input_vcf_files.getValue();
+
+            if (input_vcf_files.size()!=2)
+            {
+                std::cerr << "error: require 2 VCF files\n";
+                exit(1);
+            }
+        }
+        catch (TCLAP::ArgException &e)
+        {
+            std::cerr << "error: " << e.error() << " for arg " << e.argId() << "\n";
+            abort();
+        }
     };
 
     void initialize()
@@ -123,191 +123,148 @@ class Igor : Program
         //////////////////////
         //i/o initialization//
         //////////////////////
-        line = {0,0,0};
-                
-        //input vcfs
-        sr = new BCFSyncedReader(input_vcf_files, intervals); 
-            
+        sr = new BCFSyncedReader(input_vcf_files, intervals);
+
+        ///////////////////////
+        //tool initialization//
+        ///////////////////////
+        vm = new VariantManip("");
+
         ////////////////////////
         //stats initialization//
         ////////////////////////
-        no_candidate_snps = 0;
-	    no_candidate_indels = 0;
-	}
+        OverlapStats s;
+        stats.resize(32, s);
+
+    }
 
     void partition()
-    {        
-        //map to contain the variant type
-        std::vector<bcf_hdr_t *> ivcf_hdrs; 
-        
+    {
         //for combining the alleles
         std::vector<bcfptr*> current_recs;
-        std::map<std::string, std::map<std::string, int32_t> > variants;    
-        std::stringstream ss;
-        std::stringstream centers;
-        
-        std::vector<Interval*> intervals;
-            
+
+        Variant variant;
+        std::vector<int32_t> presence(2);
+
         while(sr->read_next_position(current_recs))
         {
-            variants.clear();
-            ss.str("");
-            centers.str("");
-                
-            //for each file that contains the next record
-            char *ref = const_cast<char*>("N");
-            char *alt = const_cast<char*>("N");
-            bool in_ref = false;    
+            bcf1_t *v = current_recs[0]->v;
+            bcf_hdr_t *h = current_recs[0]->h;
+            std::string chrom = bcf_get_chrom(h,v);
+            int32_t start1 = bcf_get_pos1(v);
+            int32_t end1 = bcf_get_end_pos1(v);
+            int32_t vtype = vm->classify_variant(h, v, variant);
+
+            //check existence
             for (uint32_t i=0; i<current_recs.size(); ++i)
             {
-                int32_t d = current_recs[i]->file_index;
-                bcf1_t *v = current_recs[i]->v;
-                //bcf_set_variant_types(v);
+                ++presence[current_recs[i]->file_index];
+            }
 
-                if (d==0)
+            if (bcf_get_n_allele(v)==2)
+            {
+                int32_t ins = 0;
+                int32_t del = 0;
+                int32_t ts = 0;
+                int32_t tv = 0;
+                
+                if (vtype == VT_SNP || vtype == VT_MNP  )
                 {
-                    bcf_hdr_t *h = sr->hdrs[0];
-                    if (!bcf_is_passed(h, v))
-                    {    
-                        continue;
-                    }
-                    
-                    if (filter!=NULL && !filter->apply(h, v))
-                    {   
-                        continue;
-                    }
+                    ts = variant.alleles[0].ts;
+                    tv = variant.alleles[0].tv;
                 }
-                
-                if (bcf_get_var_type(v)==VCF_SNP || bcf_get_var_type(v)==VCF_MNP || bcf_get_n_allele(v)!=2)
+                else if (vtype == VT_INDEL)
                 {
-                   continue;
-                }    
-                
-                if (d==0)
+                    ins = variant.alleles[0].ins;
+                    del = 1-ins;
+                }
+
+                //update overlap stats
+                if (presence[0] && !presence[1])
                 {
-                    ref = bcf_get_alt(v, 0);
-                    alt = bcf_get_alt(v, 1);
-                    
-                    int32_t pos1 = bcf_get_pos1(v);
-                    int32_t ref_len = strlen(ref);
-                    
-                    bcf_hdr_t *h = sr->hdrs[0];
-                    
-                    in_ref = true;
+                    ++stats[vtype].a;
     
-                    for (uint32_t j=1; j<2; ++j)
-                    {
-                        ++stats[j].a;
-                    }
+                    stats[vtype].a_ts += ts;
+                    stats[vtype].a_tv += tv;
+                    stats[vtype].a_ins += ins;
+                    stats[vtype].a_del += del;
                 }
-                else
+                else if (presence[0] && presence[1])
                 {
-                    update_stats(d, v, in_ref, ref, alt);
-                     
-                    if (d==7)
-                    {   
-                        //rare
-                        bcf_hdr_t *h = sr->hdrs[7];
-                        if (filter->apply(h, v))
-                        {   
-                           update_stats(8, v, in_ref, ref, alt);
-                        }
-                        else
-                        {
-                           update_stats(9, v, in_ref, ref, alt); 
-                        }
-                    }    
+                    ++stats[vtype].ab;
+    
+                    stats[vtype].ab_ts += ts;
+                    stats[vtype].ab_tv += tv;
+                    stats[vtype].ab_ins += ins;
+                    stats[vtype].ab_del += del;
+                }
+                else if (!presence[0] && presence[1])
+                {
+                    ++stats[vtype].b;
+    
+                    stats[vtype].b_ts += ts;
+                    stats[vtype].b_tv += tv;
+                    stats[vtype].b_ins += ins;
+                    stats[vtype].b_del += del;
                 }
             }
+
+            presence[0] = 0;
+            presence[1] = 0;
         }
     };
-
-    void update_stats(int32_t d, bcf1_t *v, bool in_ref, char* ref, char* alt)
-    {
-        char* r = bcf_get_alt(v, 0);
-        char* a = bcf_get_alt(v, 1);
-        
-        int32_t ins = 0;
-        int32_t del = 0;
-        
-        if (strlen(r) > strlen(a))
-        {
-            ++del;
-        }
-        else
-        {
-            ++ins;
-        }
-            
-        if (in_ref)
-        {
-            if (!strcmp(ref,r) && !strcmp(alt,a))
-            {
-                --stats[d].a;
-                ++stats[d].ab;
-            }
-            else
-            {
-                ++stats[d].b;
-            }
-        }
-        else
-        {
-            ++stats[d].b; 
-        }
-    }
 
     void print_options()
     {
-   		std::clog << "partition v" << version << "\n\n";
-    
-    	std::clog << "Options:     Input VCF File 1  " << input_vcf_files[0] << "\n";
-    	std::clog << "             Input VCF File 2  " << input_vcf_files[1] << "\n";
-    	std::clog << "         [f] Filters           " << filters << "\n";
+        std::clog << "partition v" << version << "\n";
+        std::clog << "\n";
+        std::clog << "Options:     input VCF file a   " << input_vcf_files[0] << "\n";
+        std::clog << "             input VCF file b   " << input_vcf_files[1] << "\n";
+        print_int_op("         [i] intervals          ", intervals);
+        std::clog << "\n";
    }
 
     void print_stats()
-    {      
-//        for (uint32_t j=1; j<dataset_labels.size(); ++j)
-//        {
-//            double insdel_a_ab =  (stats[j].a_del+stats[j].ab_del)==0 ? -1 : ((double)(stats[j].a_ins+stats[j].ab_ins)/(double)(stats[j].a_del+stats[j].ab_del)); 
-//            double insdel_a =  stats[j].a_del==0 ? -1 : ((double)stats[j].a_ins/(double)stats[j].a_del); 
-//            double insdel_ab =  stats[j].ab_del==0 ? -1 : ((double)stats[j].ab_ins/(double)stats[j].ab_del); 
-//            double insdel_b =  stats[j].b_del==0 ? -1 : ((double)stats[j].b_ins/(double)stats[j].b_del); 
-//            double insdel_b_ab =  (stats[j].b_del+stats[j].ab_del)==0 ? -1 : ((double)(stats[j].b_ins+stats[j].ab_ins)/(double)(stats[j].b_del+stats[j].ab_del)); 
-//         
-//            uint32_t totala = stats[j].a+stats[j].ab;
-//            double ab_of_a = totala==0 ? -1 : ((double)stats[j].ab/(double)(totala));
-//             
-//            uint32_t totalb = stats[j].b+stats[j].ab;
-//            double ab_of_b = totalb==0 ? -1 : ((double)stats[j].ab/(double)(totalb));            
-//        
-//            if (j==1)
-//            {
-//                std::cout << std::setprecision(3);
-//                std::cout << "\n";
-//                std::cout << dataset_labels[0] << "\n";
-//                std::cout << "variants: " << totala << "\n";
-//                std::cout << "ins/del ratio: " << insdel_a_ab << "\n"; 
-//                std::cout << "FS Proportion: " << (float)fs/(float)(fs+nfs) << " (" << fs << "," << nfs << ")\n\n";
-//                std::cout << "FS Proportion (Rare): " << (float)rare_fs/(float)(rare_fs+rare_nfs) << " (" << rare_fs << "," << rare_nfs << ")\n\n";
-//                std::cout << "FS Proportion (Common): " << (float)common_fs/(float)(common_fs+common_nfs) << " (" << common_fs << "," << common_nfs << ")\n\n";
-//            
-//            }    
-//            
-//            std::cout << std::setprecision(3);
-//            std::cout << dataset_labels[j] << " (" << totalb << ") " << "[" << insdel_b_ab << "]\n";
-//            std::cout << "TP\t" << ab_of_b << "(" << stats[j].ab << "/" << totalb << ") " << "[" << insdel_ab << "," << insdel_b << "] \n";
-//            std::cout << "FP\t" << ab_of_a << "(" << stats[j].ab << "/" << totala << ") " << "[" << insdel_ab << "," << insdel_a << "] \n\n";
-//        }
+    {
+        fprintf(stderr, "    A:  %s\n", input_vcf_files[0].c_str());
+        fprintf(stderr, "    B:  %s\n", input_vcf_files[1].c_str());
+        fprintf(stderr, "\n");
+
+        int32_t types[4] = {VT_SNP, VT_MNP, VT_INDEL, VT_CLUMPED};
+        kstring_t s;
+
+        for (int32_t j=0; j<4; ++j)
+        {
+            int32_t i = types[j];
+            vm->vtype2string(i, &s);
+            fprintf(stderr, "    %s\n", s.s);
+            if (types[j] == VT_SNP || types[j] == VT_MNP)
+            {
+                fprintf(stderr, "    A-B %10d [%.2f]\n", stats[i].a,  (float)stats[i].a_ts/(stats[i].a_tv));
+                fprintf(stderr, "    A&B %10d [%.2f]\n", stats[i].ab, (float)stats[i].ab_ts/stats[i].ab_tv);
+                fprintf(stderr, "    B-A %10d [%.2f]\n", stats[i].b,  (float)stats[i].b_ts/(stats[i].b_tv));
+                fprintf(stderr, "    of A     %4.1f%%\n", 100*(float)stats[i].ab/(stats[i].a+stats[i].ab));
+                fprintf(stderr, "    of B     %4.1f%%\n", 100*(float)stats[i].ab/(stats[i].b+stats[i].ab));
+                fprintf(stderr, "\n");
+            }
+            else
+            {
+                fprintf(stderr, "    A-B %10d [%.2f]\n", stats[i].a,  (float)stats[i].a_ins/(stats[i].a_del));
+                fprintf(stderr, "    A&B %10d [%.2f]\n", stats[i].ab, (float)stats[i].ab_ins/stats[i].ab_del);
+                fprintf(stderr, "    B-A %10d [%.2f]\n", stats[i].b,  (float)stats[i].b_ins/(stats[i].b_del));
+                fprintf(stderr, "    of A     %4.1f%%\n", 100*(float)stats[i].ab/(stats[i].a+stats[i].ab));
+                fprintf(stderr, "    of B     %4.1f%%\n", 100*(float)stats[i].ab/(stats[i].b+stats[i].ab));
+                fprintf(stderr, "\n");
+            }
+        }
     };
-	
- 	~Igor()
+
+    ~Igor()
     {
     };
-    
+
     private:
- 
+
 };
 
 }
@@ -320,4 +277,3 @@ void partition(int argc, char ** argv)
     igor.partition();
     igor.print_stats();
 }
- 

@@ -106,6 +106,7 @@ class Allele
         tlen = 0;
         mlen = 0;
         ts = 0;
+        tv = 0;
         ins = 0;
     }
 
@@ -167,7 +168,6 @@ class Variant
 class VariantManip
 {
     public:
-
     faidx_t *fai;
     bool reference_present;
 
