@@ -135,8 +135,6 @@ class Igor : Program
                 continue;
             }
 
-            bcf_print_lite(odr->hdr, v);
-
             std::vector<std::string> probes;
             std::vector<std::string> alleles;
 
