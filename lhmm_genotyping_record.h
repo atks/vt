@@ -21,8 +21,8 @@
    THE SOFTWARE.
 */
 
-#ifndef BCF_GENOTYPING_RECORD_H
-#define BCF_GENOTYPING_RECORD_H
+#ifndef LHMM_GENOTYPING_RECORD_H
+#define LHMM_GENOTYPING_RECORD_H
 
 #include <iostream>  
 #include <fstream>   
@@ -39,5 +39,6 @@
 #include "bcf_ordered_reader.h"
 #include "bcf_ordered_writer.h"
 #include "variant_manip.h"
+#include "genotyping_record.h"
 
 #endif
