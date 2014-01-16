@@ -29,6 +29,7 @@
 #include "annotate_variants.h"
 #include "genotype.h"
 #include "merge_candidate_variants.h"
+#include "merge.h"
 #include "partition.h"
 #include "view.h"
 #include "index.h"
@@ -101,6 +102,10 @@ int main(int argc, char ** argv)
         print = index(argc-1, ++argv);
         if (!print) return 0;
     } 
+    else if (argc>1 && cmd=="merge")
+    {
+        merge(argc-1, ++argv);
+    }
     else if (argc>1 && cmd=="normalize")
     {
         normalize(argc-1, ++argv);

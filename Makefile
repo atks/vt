@@ -34,7 +34,9 @@ SOURCES = program\
 		annotate_variants\
 		lhmm\
 		genotyping_buffer\
-		peek
+		lhmm_genotyping_record\
+		peek\
+		merge
 
 SOURCESONLY = main.cpp
 
