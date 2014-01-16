@@ -61,7 +61,7 @@ class GenotypingRecord
     virtual void print(BCFOrderedWriter *odw);
 
     /**
-     * Clears this record
+     * Clears this record.
      */
     virtual void clear();
 };
