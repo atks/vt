@@ -95,16 +95,14 @@ int main(int argc, char ** argv)
     if (argc>1 && cmd=="view")
     {
         print = view(argc-1, ++argv);
-        if (!print) return 0;
     } 
     else if (argc>1 && cmd=="index")
     {
         print = index(argc-1, ++argv);
-        if (!print) return 0;
     } 
     else if (argc>1 && cmd=="merge")
     {
-        merge(argc-1, ++argv);
+        print = merge(argc-1, ++argv);
     }
     else if (argc>1 && cmd=="normalize")
     {
@@ -153,10 +151,12 @@ int main(int argc, char ** argv)
         exit(0);
     }
 
-    clock_t t1;
-    t1 = clock();
-
-    print_time((float)(t1-t0)/CLOCKS_PER_SEC);
+    if (print)
+    {
+        clock_t t1;
+        t1 = clock();
+        print_time((float)(t1-t0)/CLOCKS_PER_SEC);
+    }
 
     return 0;
 }

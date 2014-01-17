@@ -34,6 +34,6 @@
 #include "utils.h"
 #include "log_tool.h"
 
-void merge(int argc, char ** argv);
+bool merge(int argc, char ** argv);
 
 #endif
