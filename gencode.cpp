@@ -165,7 +165,7 @@ void GENCODE::initialize(std::vector<GenomeInterval>& intervals)
 
         std::string chrom = fields[0]=="M" ? std::string("MT") : fields[0];
         std::string& feature = fields[2];
-        int32_t gencode_feature = GC_FT_CDS;
+        int32_t gencode_feature = -1;
 
         if (feature!="exon" && feature!="CDS" && feature!="start_codon" && feature!="stop_codon")
         {
@@ -195,8 +195,12 @@ void GENCODE::initialize(std::vector<GenomeInterval>& intervals)
         bool containsStartCodon = false;
         bool containsStopCodon = false;
 
-
         int32_t exon_no = -1;
+
+        if (feature=="CDS")
+        {
+            gencode_feature = GC_FT_CDS;
+        }
 
         if (feature=="exon")
         {
@@ -275,7 +279,7 @@ void GENCODE::initialize(std::vector<GenomeInterval>& intervals)
                 }
             }
         }
-
+        
         GENCODERecord* record = new GENCODERecord(chrom, start1, end1, strand,
                                              gene, gencode_feature, frame, exon_no,
                                              fivePrimeConservedEssentialSpliceSite, threePrimeConservedEssentialSpliceSite,
