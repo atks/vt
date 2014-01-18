@@ -261,6 +261,7 @@ class Igor : Program
                         if (abs(variant.alleles[0].dlen)%3!=0)
                         {
                             is_fs = true;
+                            break;
                         }
                     }
                 }
