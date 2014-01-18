@@ -176,19 +176,32 @@ class Igor : Program
                 
                 gc->search(chrom, start1+1, end1, overlaps);
 
+                bool cds_found = false;
+                bool is_fs = false;
+
                 for (int32_t i=0; i<overlaps.size(); ++i)
                 {
                     GENCODERecord *rec = (GENCODERecord *) overlaps[i];
                     if (rec->feature==GC_FT_CDS)
                     {
-                        if (abs(variant.alleles[0].dlen)%3==0)
+                        cds_found = true;
+                        if (abs(variant.alleles[0].dlen)%3!=0)
                         {
-                            bcf_update_info_flag(odr->hdr, v, "NFS", "", 1);
+                            is_fs = true;
+                            break;
                         }
-                        else
-                        {
-                            bcf_update_info_flag(odr->hdr, v, "FS", "", 1);
-                        }
+                    }
+                }
+                
+                if (cds_found)
+                {
+                    if (is_fs)
+                    {
+                        bcf_update_info_flag(odr->hdr, v, "FS", "", 1);
+                    }
+                    else
+                    {
+                        bcf_update_info_flag(odr->hdr, v, "NFS", "", 1);
                     }
                 }
             }
