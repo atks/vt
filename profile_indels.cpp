@@ -247,21 +247,33 @@ class Igor : Program
             //annotate
             if (presence[0])
             {
-                gc->search(chrom, start1, end1, overlaps);
+                gc->search(chrom, start1+1, end1, overlaps);
 
+                bool cds_found = false;
+                bool is_fs = false;
+                    
                 for (int32_t i=0; i<overlaps.size(); ++i)
                 {
                     GENCODERecord *rec = (GENCODERecord *) overlaps[i];
                     if (rec->feature==GC_FT_CDS)
                     {
-                        if (abs(variant.alleles[0].dlen)%3==0)
+                        cds_found = true;
+                        if (abs(variant.alleles[0].dlen)%3!=0)
                         {
-                            ++nfs;
+                            is_fs = true;
                         }
-                        else
-                        {
-                            ++fs;
-                        }
+                    }
+                }
+
+                if (cds_found)
+                {
+                    if (is_fs)
+                    {
+                        ++fs;
+                    }
+                    else
+                    {
+                        ++nfs;
                     }
                 }
 

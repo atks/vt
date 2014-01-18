@@ -40,6 +40,7 @@ class Igor : Program
     std::string output_vcf_file;
     std::vector<GenomeInterval> intervals;
     std::string interval_list;
+    std::string gencode_gtf_file;    
 
     ///////
     //i/o//
@@ -56,6 +57,7 @@ class Igor : Program
     //common tools//
     ////////////////
     VariantManip *vm;
+    GENCODE *gc;
 
     Igor(int argc, char **argv)
     {
@@ -74,6 +76,7 @@ class Igor : Program
             TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_output_vcf_file("o", "o", "output VCF file [-]", false, "-", "str", cmd);
             TCLAP::ValueArg<std::string> arg_ref_fasta_file("r", "r", "reference sequence fasta file []", false, "", "str", cmd);
+            TCLAP::ValueArg<std::string> arg_gencode_gtf_file("g", "g", "GENCODE annotations GTF file []", false, "", "str", cmd);
             TCLAP::UnlabeledValueArg<std::string> arg_input_vcf_file("<in.vcf>", "input VCF file", true, "","file", cmd);
 
             cmd.parse(argc, argv);
@@ -83,6 +86,7 @@ class Igor : Program
             parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
             parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
             ref_fasta_file   = arg_ref_fasta_file.getValue();
+            gencode_gtf_file = arg_gencode_gtf_file.getValue();
 
         }
         catch (TCLAP::ArgException &e)
@@ -106,13 +110,14 @@ class Igor : Program
         bcf_hdr_append(odw->hdr, "##INFO=<ID=RU,Number=1,Type=String,Description=\"Repeat unit in a STR or Homopolymer\">");
         bcf_hdr_append(odw->hdr, "##INFO=<ID=RL,Number=1,Type=Integer,Description=\"Repeat Length\">");
 //        bcf_hdr_append(odw->hdr, "##INFO=<ID=NS,Number=0,Type=Flag,Description=\"Near to STR\">");
-//        bcf_hdr_append(odw->hdr, "##INFO=<ID=FS,Number=0,Type=Flag,Description=\"Frameshift INDEL\">");
-//        bcf_hdr_append(odw->hdr, "##INFO=<ID=NFS,Number=0,Type=Flag,Description=\"Non Frameshift INDEL\">");
+        bcf_hdr_append(odw->hdr, "##INFO=<ID=FS,Number=0,Type=Flag,Description=\"Frameshift INDEL\">");
+        bcf_hdr_append(odw->hdr, "##INFO=<ID=NFS,Number=0,Type=Flag,Description=\"Non Frameshift INDEL\">");
 
         ///////////////////////
         //tool initialization//
         ///////////////////////
         vm = new VariantManip(ref_fasta_file);
+        gc = new GENCODE(gencode_gtf_file, ref_fasta_file);
 
         ////////////////////////
         //stats initialization//
@@ -143,12 +148,16 @@ class Igor : Program
         odw->write_hdr();
 
         bcf1_t *v = odw->get_bcf1_from_pool();
+        std::vector<Interval*> overlaps;
         Variant variant;
         kstring_t s = {0,0,0};
         while (odr->read(v))
         {
             bcf_unpack(v, BCF_UN_STR);
             int32_t vtype = vm->classify_variant(odr->hdr, v, variant);
+            std::string chrom = bcf_get_chrom(odr->hdr,v);
+            int32_t start1 = bcf_get_pos1(v);
+            int32_t end1 = bcf_get_end_pos1(v);
             
             vm->vtype2string(vtype, &s);
             if (s.l)
@@ -163,13 +172,32 @@ class Igor : Program
             else if (vtype==VT_INDEL)
             {
                 //do indel stuff
+                
+                
+                gc->search(chrom, start1+1, end1, overlaps);
+
+                for (int32_t i=0; i<overlaps.size(); ++i)
+                {
+                    GENCODERecord *rec = (GENCODERecord *) overlaps[i];
+                    if (rec->feature==GC_FT_CDS)
+                    {
+                        if (abs(variant.alleles[0].dlen)%3==0)
+                        {
+                            bcf_update_info_flag(odr->hdr, v, "NFS", "", 1);
+                        }
+                        else
+                        {
+                            bcf_update_info_flag(odr->hdr, v, "FS", "", 1);
+                        }
+                    }
+                }
             }
             
             std::string ru = "ACGT";
             int32_t rl = 4;
             
-            bcf_update_info_string(odr->hdr, v, "RU", ru.c_str());
-            bcf_update_info_int32(odr->hdr, v, "RL", &rl, 1);
+//            bcf_update_info_string(odr->hdr, v, "RU", ru.c_str());
+//            bcf_update_info_int32(odr->hdr, v, "RL", &rl, 1);
             
             ++no_variants_annotated;
             odw->write(v);

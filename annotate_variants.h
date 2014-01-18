@@ -47,6 +47,7 @@
 #include "program.h"
 #include "variant_manip.h"
 #include "log_tool.h"
+#include "gencode.h"
 
 void annotate_variants(int argc, char ** argv);
 
