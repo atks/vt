@@ -76,6 +76,7 @@ class Igor : Program
     uint32_t no_mnpdel2;
     uint32_t no_mnpindel_multi;
     uint32_t no_snp_mnp_indel;
+    uint32_t no_snp_mnp;
     uint32_t no_clumped2;
     uint32_t no_clumped_multi;
     
@@ -155,6 +156,7 @@ class Igor : Program
         no_mnpdel2 = 0;
         no_mnpindel_multi = 0;
         no_snp_mnp_indel = 0;
+        no_snp_mnp = 0;
         no_clumped2 = 0;
         no_clumped_multi = 0;
         no_clumped2 = 0;
@@ -306,6 +308,11 @@ class Igor : Program
                 ++no_snp_mnp_indel;
                 ++no_classified_variants;
             }
+            else if (vtype==(VT_SNP|VT_MNP))
+            {
+                ++no_snp_mnp;
+                ++no_classified_variants;
+            }
             else if (vtype==VT_REF) //MNPs that are not real MNPs
             {
                 ++no_ref;
@@ -313,8 +320,9 @@ class Igor : Program
             }
             else
             {
-                std::cerr << "UNCLASSIFIED\n";
+                std::cerr << "UNCLASSIFIED ";
                 bcf_print_lite(odr->hdr, v);
+                std::cerr << " - ";
                 std::cerr << vm->vtype2string(vtype) << "\n"; 
             }
             
@@ -370,6 +378,9 @@ class Igor : Program
         fprintf(stderr, "           multiallelic              : %15d\n", no_mnpindel_multi);   
         fprintf(stderr, "\n");
         fprintf(stderr, "       No. SNP/MNP/Indels            : %10d\n", no_snp_mnp_indel);
+        fprintf(stderr, "           (multiallelic)\n");
+        fprintf(stderr, "\n");
+        fprintf(stderr, "       No. SNP/MNP                   : %10d\n", no_snp_mnp);
         fprintf(stderr, "           (multiallelic)\n");
         fprintf(stderr, "\n");
         fprintf(stderr, "       No. of clumped variants       : %10d\n", no_clumped2+no_clumped_multi);
