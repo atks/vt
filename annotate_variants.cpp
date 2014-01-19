@@ -167,13 +167,12 @@ class Igor : Program
             
             if (vtype==VT_SNP)
             {
-                //do snp stuff
+                //synonymous and non synonymous annotation
+                
             }    
             else if (vtype==VT_INDEL)
             {
-                //do indel stuff
-                
-                
+                //frame shift annotation
                 gc->search(chrom, start1+1, end1, overlaps);
 
                 bool cds_found = false;
@@ -204,13 +203,14 @@ class Igor : Program
                         bcf_update_info_flag(odr->hdr, v, "NFS", "", 1);
                     }
                 }
+                
+                //classify STR 
+                std::string ru = "ACGT";
+                int32_t rl = 4;
+                
+    //            bcf_update_info_string(odr->hdr, v, "RU", ru.c_str());
+    //            bcf_update_info_int32(odr->hdr, v, "RL", &rl, 1); 
             }
-            
-            std::string ru = "ACGT";
-            int32_t rl = 4;
-            
-//            bcf_update_info_string(odr->hdr, v, "RU", ru.c_str());
-//            bcf_update_info_int32(odr->hdr, v, "RL", &rl, 1);
             
             ++no_variants_annotated;
             odw->write(v);
