@@ -36,7 +36,9 @@ SOURCES = program\
 		genotyping_buffer\
 		lhmm_genotyping_record\
 		peek\
-		merge
+		merge\
+		profile_mendel_errors\
+		pedigree
 
 SOURCESONLY = main.cpp
 

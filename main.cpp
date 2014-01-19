@@ -34,6 +34,7 @@
 #include "view.h"
 #include "index.h"
 #include "profile_indels.h"
+#include "profile_mendel_errors.h"
 
 void print_time(double t)
 {
@@ -70,6 +71,7 @@ void help()
     std::clog << "peek                      summary of variants in the vcf file\n";
     std::clog << "partition                 partition variants\n";
     std::clog << "profile_indels            profile indels\n";
+    std::clog << "profile_mendel_errors     profile indels\n";
     std::clog << "discover                  discover variants\n";
     std::clog << "merge_candidate_variants  merge candidate variants\n";
     std::clog << "construct_probes          construct probes for each variant\n";
@@ -144,6 +146,10 @@ int main(int argc, char ** argv)
     {
         profile_indels(argc-1, ++argv);
     }
+    else if (argc>1 && cmd=="profile_mendel_errors")
+    {
+        profile_mendel_errors(argc-1, ++argv);
+    }    
     else
     {
         std::clog << "Command not found: " << argv[1] << "\n\n";
