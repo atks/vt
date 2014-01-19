@@ -179,40 +179,86 @@ class Igor : Program
                     del = 1-ins;
                 }
 
-                //update overlap stats
-                if (presence[0] && !presence[1])
+
+                if (vtype & VT_CLUMPED)
                 {
-                    ++stats[vtype].a;
-    
-                    stats[vtype].a_ts += ts;
-                    stats[vtype].a_tv += tv;
-                    stats[vtype].a_ins += ins;
-                    stats[vtype].a_del += del;
+                    
                 }
-                else if (presence[0] && presence[1])
+                else if (vtype==VT_SNP)
                 {
-                    ++stats[vtype].ab;
-    
-                    stats[vtype].ab_ts += ts;
-                    stats[vtype].ab_tv += tv;
-                    stats[vtype].ab_ins += ins;
-                    stats[vtype].ab_del += del;
+                    
                 }
-                else if (!presence[0] && presence[1])
+                else if (vtype==VT_MNP)
                 {
-                    ++stats[vtype].b;
-    
-                    stats[vtype].b_ts += ts;
-                    stats[vtype].b_tv += tv;
-                    stats[vtype].b_ins += ins;
-                    stats[vtype].b_del += del;
+                   
                 }
+                else if (vtype==VT_INDEL) //strictly simple indels
+                {
+                    
+                }
+                else if (vtype==(VT_SNP|VT_INDEL))
+                {
+                    
+                }
+                else if (vtype==(VT_MNP|VT_INDEL))
+                {
+                   
+                }
+                else if (vtype==(VT_SNP|VT_MNP|VT_INDEL))
+                {
+                  
+                }
+                else if (vtype==(VT_SNP|VT_MNP))
+                {
+                  
+                }
+                else if (vtype==VT_REF) //MNPs that are not real MNPs
+                {
+                  
+                }
+                else
+                {
+                    
+                }
+
             }
 
             presence[0] = 0;
             presence[1] = 0;
         }
     };
+
+    void update_overlap_stats(std::vector<OverlapStats>& stats, std::vector<int32_t>& presence, int32_t vtype, int32_t ts,  int32_t tv, int32_t ins, int32_t del)
+    {
+        //update overlap stats
+        if (presence[0] && !presence[1])
+        {
+            ++stats[vtype].a;
+
+            stats[vtype].a_ts += ts;
+            stats[vtype].a_tv += tv;
+            stats[vtype].a_ins += ins;
+            stats[vtype].a_del += del;
+        }
+        else if (presence[0] && presence[1])
+        {
+            ++stats[vtype].ab;
+
+            stats[vtype].ab_ts += ts;
+            stats[vtype].ab_tv += tv;
+            stats[vtype].ab_ins += ins;
+            stats[vtype].ab_del += del;
+        }
+        else if (!presence[0] && presence[1])
+        {
+            ++stats[vtype].b;
+
+            stats[vtype].b_ts += ts;
+            stats[vtype].b_tv += tv;
+            stats[vtype].b_ins += ins;
+            stats[vtype].b_del += del;
+        }        
+    }
 
     void print_options()
     {
