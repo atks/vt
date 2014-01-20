@@ -30,6 +30,7 @@
 #include "genotype.h"
 #include "merge_candidate_variants.h"
 #include "merge.h"
+#include "concat.h"
 #include "partition.h"
 #include "view.h"
 #include "index.h"
@@ -108,6 +109,10 @@ int main(int argc, char ** argv)
     {
         print = merge(argc-1, ++argv);
     }
+    else if (argc>1 && cmd=="concat")
+    {
+        print = concat(argc-1, ++argv);
+    }
     else if (argc>1 && cmd=="normalize")
     {
         normalize(argc-1, ++argv);
@@ -156,7 +161,7 @@ int main(int argc, char ** argv)
     {
         std::clog << "Command not found: " << argv[1] << "\n\n";
         help();
-        exit(0);
+        exit(1);
     }
 
     if (print)

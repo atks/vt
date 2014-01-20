@@ -41,6 +41,8 @@ class Igor : Program
     std::vector<GenomeInterval> intervals;
     std::string interval_list;
     bool print;
+    bool print_sites_only;
+    int32_t no_subset_samples;
     
     ///////
     //i/o//
@@ -70,12 +72,15 @@ class Igor : Program
             TCLAP::ValueArg<std::string> arg_output_vcf_file("o", "o", "output VCF file [-]", false, "-", "", cmd);
             TCLAP::ValueArg<std::string> arg_input_vcf_file_list("L", "L", "file containing list of input VCF files", true, "", "str", cmd);
             TCLAP::SwitchArg arg_print("p", "p", "print options and summary []", cmd, false);
+            TCLAP::SwitchArg arg_print_sites_only("s", "s", "print site information only without genotypes [false]", cmd, false);
+            
             
             cmd.parse(argc, argv);
 
             input_vcf_file_list = arg_input_vcf_file_list.getValue();
             output_vcf_file = arg_output_vcf_file.getValue();
             parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
+            no_subset_samples = arg_print_sites_only.getValue() ? 0 : -1;
             print = arg_print.getValue();
 
             ///////////////////////
@@ -111,7 +116,15 @@ class Igor : Program
         //////////////////////
         odr = new BCFOrderedReader(input_vcf_files[0], intervals);
         odw = new BCFOrderedWriter(output_vcf_file, 0);
-        odw->link_hdr(odr->hdr);
+        if (no_subset_samples==-1)
+        {
+            odw->link_hdr(odr->hdr);
+        }
+        //perform subsetting
+        else if (no_subset_samples==0)
+        {
+            odw->link_hdr(bcf_hdr_subset(odr->hdr, 0, 0, 0));
+        }
 
         ///////////////
         //general use//
@@ -130,6 +143,7 @@ class Igor : Program
     void concat()
     {
         odw->write_hdr();   
+        bcf1_t *v = odw->get_bcf1_from_pool();
         
         for (int32_t i=1; i<input_vcf_files.size(); ++i)
         {
@@ -138,11 +152,17 @@ class Igor : Program
                 odr = new BCFOrderedReader(input_vcf_files[i], intervals);
             }
             
-            bcf1_t *v = odw->get_bcf1_from_pool();
             while(odr->read(v))
             {
-               odw->write(v);
-               v =  odw->get_bcf1_from_pool();
+                if (no_subset_samples==0)
+                {
+                    bcf_subset(odw->hdr, v, 0, 0);
+                    //maybe add some additional adhoc fixing for BCF files that do not have a complete header.
+                
+                }
+         
+                odw->write(v);
+                v =  odw->get_bcf1_from_pool();
             }
             
             odr->close();
@@ -158,6 +178,7 @@ class Igor : Program
         std::clog << "concat v" << version << "\n\n";
         std::clog << "options: [L] input VCF file list   " << input_vcf_file_list << " (" << input_vcf_files.size() << " files)\n";
         std::clog << "         [o] output VCF file       " << output_vcf_file << "\n";
+        std::clog << "         [s] print site information only " << (print_sites_only ? "yes" : "no") << "\n";
         print_int_op("         [i] intervals             ", intervals);
         std::clog << "\n";
     }
