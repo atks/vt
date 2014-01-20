@@ -67,6 +67,8 @@ void help()
     std::clog << "index                     index vcf.gz/bcf files\n";
     std::clog << "normalize                 normalize variants\n";
     std::clog << "mergedups                 merge duplicate variants\n";
+    std::clog << "merge                     merge VCF files\n";
+    std::clog << "concat                    concatenate VCF files\n";
     std::clog << "annotate_variants         annotate variants\n";
     std::clog << "peek                      summary of variants in the vcf file\n";
     std::clog << "partition                 partition variants\n";

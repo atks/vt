@@ -38,7 +38,8 @@ SOURCES = program\
 		peek\
 		merge\
 		profile_mendel_errors\
-		pedigree
+		pedigree\
+		concat
 
 SOURCESONLY = main.cpp
 
