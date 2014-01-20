@@ -178,7 +178,6 @@ class Igor : Program
         std::clog << "concat v" << version << "\n\n";
         std::clog << "options: [L] input VCF file list   " << input_vcf_file_list << " (" << input_vcf_files.size() << " files)\n";
         std::clog << "         [o] output VCF file       " << output_vcf_file << "\n";
-        std::clog << "         [s] print site information only " << (print_sites_only ? "yes" : "no") << "\n";
         print_int_op("         [i] intervals             ", intervals);
         std::clog << "\n";
     }
