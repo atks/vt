@@ -173,8 +173,7 @@ class Igor : Program
         
         std::vector<bcfptr*> current_recs;
             
-        int8_t *combined_gt = (int8_t*) malloc(no_samples*2*sizeof(int8_t*));
-        std::cerr << "combined_gt size " << no_samples*2 << "\n";
+        int8_t *cgt = (int8_t*) malloc(no_samples*2*sizeof(int8_t));
         int ncount =0;
         while(sr->read_next_position(current_recs))
         {
@@ -187,73 +186,46 @@ class Igor : Program
     
                 int8_t *gt = NULL;
                 int32_t n = 0;
-                
                 //int k = bcf_get_format_values(h, v, "GT", (void**)&gt, &n, BCF_HT_INT);
                 int k = bcf_get_genotypes(h, v, &gt, &n); //as a string
-                
-                bcf_print(h,v);
-                
-                kstring_t s = {0,0,0};
+                //bcf_print(h,v);
                     
                 for (int32_t j=0; j<bcf_hdr_nsamples(h); ++j)
                 {
-                    int8_t *igt = gt+j*2;
-                    
-                    int a = bcf_gt_allele(igt[0]);
-                    int b = bcf_gt_allele(igt[1]);
+                    int a = bcf_gt_allele(gt[j*2]);
+                    int b = bcf_gt_allele(gt[j*2+1]);
 
-                    std::cerr << a << "/" << b << "\n";
-
-                    if (a==-1)
-                    {
-                        combined_gt[ngt*2] = bcf_gt_missing;
-                    }    
-                    else 
-                    {
-                        combined_gt[ngt*2] = bcf_gt_unphased(a);
-                    }
-                    
-                    if (b==-1)
-                    {
-                        combined_gt[ngt*2+1] = bcf_gt_missing;
-                    }    
-                    else 
-                    {
-                        combined_gt[ngt*2+1] = bcf_gt_unphased(b);
-                    }
-
-                    combined_gt[ngt*2] = igt[0];
-                    combined_gt[ngt*2+1] = igt[1];
+                    cgt[ngt*2] = gt[j*2];
+                    cgt[ngt*2+1] = gt[j*2+1];
                         
                     ++ngt;
                 }
-                
-                std::cerr << "\n"; 
+
                 free(gt);
             }
             
-            std::cerr << ngt << " samples added\n";
-            
             bcf1_t *v = current_recs[0]->v;
             bcf_hdr_t *h = current_recs[0]->h;
-                
             bcf1_t *nv = odw->get_bcf1_from_pool();
             bcf_set_chrom(odw->hdr, nv, bcf_get_chrom(h, v));
             bcf_set_pos1(nv, bcf_get_pos1(v));
-            
             bcf_update_alleles(odw->hdr, nv, const_cast<const char**>(bcf_get_allele(v)), bcf_get_n_allele(v));
             bcf_set_n_sample(nv, no_samples);
-            //(odw->hdr,nv,"GT",combined_gt,ngt*2,BCF_HT_INT);
-            bcf_update_genotypes(odw->hdr,nv,combined_gt,ngt*2);
-            std::cerr << "NEW: " ;
-            bcf_print(odw->hdr, nv);
+            
+//            for (uint32_t i=0; i<6; ++i)
+//            {
+//                std::cerr << bcf_gt_allele(cgt[i*2]) << "/" << bcf_gt_allele(cgt[i*2+1]) << "\n";
+//            }
+            
+            bcf_update_genotypes(odw->hdr,nv,cgt,ngt*2);
+            //bcf_print(odw->hdr, nv);
             odw->write(nv);
             
-           exit(1);
-       }
+            //exit(1);
+        }
 
-        free(combined_gt);
-
+        free(cgt);
+        
         sr->close();
         odw->close();
     };
@@ -262,7 +234,7 @@ class Igor : Program
     {
         if (!print) return;
         
-        std::clog << "merge_candidate_variants v" << version << "\n\n";
+        std::clog << "merge v" << version << "\n\n";
         std::clog << "options: [L] input VCF file list   " << input_vcf_file_list << " (" << input_vcf_files.size() << " files)\n";
         std::clog << "         [o] output VCF file       " << output_vcf_file << "\n";
         print_int_op("         [i] intervals             ", intervals);
@@ -275,14 +247,10 @@ class Igor : Program
         
         std::clog << "\n";
         std::cerr << "stats: Total Number of Candidate SNPs                 " << no_candidate_snps << "\n";
-        std::cerr << "       Total Number of Candidate Indels               " << no_candidate_indels << "\n";
-        std::cerr << "       Total Number of Candidate SNPIndels            " << no_candidate_snpindels << "\n";
-        std::cerr << "       Total Number of Candidate other variant types  " << no_other_variant_types << "\n\n";
+        std::clog << "\n";
     };
 
-    ~Igor()
-    {
-    };
+    ~Igor() {};
 
     private:
 };
