@@ -41,12 +41,12 @@ class Igor : Program
     std::string interval_list;
     int32_t min_depth;
     float_t min_gq;
-    
+
     ///////
     //i/o//
     ///////
     BCFOrderedReader *odr;
-    
+
     ///////////////
     //general use//
     ///////////////
@@ -57,12 +57,12 @@ class Igor : Program
     /////////
     uint32_t no_trios;
     uint32_t no_variants;
-    
+
     uint32_t no_00;
     uint32_t no_00_00;
     uint32_t no_00_01;
     uint32_t no_00_11;
-    
+
     uint32_t no_11;
     uint32_t no_11_00;
     uint32_t no_11_01;
@@ -90,7 +90,7 @@ class Igor : Program
             TCLAP::ValueArg<std::string> arg_input_ped_file("p", "p", "pedigree file", true, "", "str", cmd);
             TCLAP::ValueArg<int32_t> arg_min_depth("d", "d", "minimum depth", false, 5, "str", cmd);
             TCLAP::ValueArg<float> arg_min_gq("q", "q", "minimum genotype quality", false, 2, "str", cmd);
-            
+
             TCLAP::UnlabeledValueArg<std::string> arg_input_vcf_file("<in.vcf>", "input VCF file", true, "","file", cmd);
 
             cmd.parse(argc, argv);
@@ -124,23 +124,23 @@ class Igor : Program
         //general use//
         ///////////////
         variant = {0,0,0};
-        
+
         ////////////////////////
         //stats initialization//
         ////////////////////////
         no_trios = 0;
         no_variants = 0;
-        
+
         no_00 = 0;
         no_00_00 = 0;
         no_00_01 = 0;
         no_00_11 = 0;
-        
+
         no_11 = 0;
         no_11_00 = 0;
         no_11_01 = 0;
         no_11_11 = 0;
-        
+
         /////////
         //tools//
         /////////
@@ -150,29 +150,32 @@ class Igor : Program
     {
         bcf_hdr_t *h = odr->hdr;
         bcf1_t *v = bcf_init1();
-        
+
         std::vector<Trio>& trios = pedigree->trios;
-        no_trios = trios.size();        
+        no_trios = trios.size();
 
         int32_t missing = 0;
         int32_t mendel_homalt_err = 0;
-            
+
         while(odr->read(v))
         {
             int8_t *gts = NULL;
             int32_t n = 0;
-            int k = bcf_get_genotypes(h, v, &gts, &n); 
-                
+            int k = bcf_get_genotypes(h, v, &gts, &n);
+
+            bcf_unpack(v, BCF_UN_IND);
+
             int32_t *dps = NULL;
             n = 0;
-            k = bcf_get_format_int(h, v, "DP", &dps, &n); 
-         
+            k = bcf_get_format_int(h, v, "DP", &dps, &n);
+
             int32_t *pls = NULL;
             n = 0;
-            k = bcf_get_format_int(h, v, "PL", &pls, &n); 
-              
+            k = bcf_get_format_int(h, v, "PL", &pls, &n);
+
             bool variant_used = false;
-            
+
+
             for (int32_t i =0; i< trios.size(); ++i)
             {
                 int32_t j = bcf_hdr_id2int(h, BCF_DT_SAMPLE, trios[i].father.c_str());
@@ -180,7 +183,7 @@ class Igor : Program
                 int32_t f1 = bcf_gt_allele(igt[0]);
                 int32_t f2 = bcf_gt_allele(igt[1]);
                 int32_t fdp = dps[j];
-                
+
                 j = bcf_hdr_id2int(h, BCF_DT_SAMPLE, trios[i].mother.c_str());
                 igt = gts+j*2;
                 int32_t m1 = bcf_gt_allele(igt[0]);
@@ -193,51 +196,34 @@ class Igor : Program
                 int32_t c2 = bcf_gt_allele(igt[1]);
                 int32_t cdp = dps[j];
 
-                std::cout << f1 << "/" << f2 << ":";
-                std::cout << m1 << "/" << m2 << ":";
-                std::cout << c1 << "/" << c2 << "\n";
-
-                if (f1==1 && f2==0)
-                {
-                    std::cerr << f1 << "/" << f2 << "\t";
-                    std::cerr << m1 << "/" << m2 << "\t";
-                    std::cerr << c1 << "/" << c2 << "\n";
-                }
-
                 if (f1<0 && f2<0 & m1<0 && m2<0 && c1<0 && c2<0)
                 {
                     ++missing;
                 }
-                
+
                 if (f1==0 && f2==1 & m1==0 && m2==1 && c1==1 && c2==1)
                 {
                     ++mendel_homalt_err;
                 }
-                
-//                if (f1==0 && f2==1 & m1==1 && m2==1 && c1==0 && c2==0)
-//                {
-//                    ++mendel_homalt_err;
-//                }
-                
-                if (!(f1<0 || f2<0 || m1<0 || m2<0 || c1<0 || c2<0) && 
-                    (fdp>=min_depth && mdp>=min_depth && cdp>=min_depth) )
+
+                if (!(f1<0 || f2<0 || m1<0 || m2<0 || c1<0 || c2<0))
                 {
                     if ((f1==0 && f2==1 && m1==0 && m2==0) ||
                         (f1==0 && f2==0 && m1==0 && m2==1))
                     {
                         ++no_00;
-                        
+
                         if (c1==0 && c2==0)
                         {
-                            ++no_00_00;        
+                            ++no_00_00;
                         }
                         else if (c1==0 && c2==1)
                         {
-                            ++no_00_01;        
+                            ++no_00_01;
                         }
                         else if (c1==1 && c2==1)
                         {
-                            ++no_00_11;        
+                            ++no_00_11;
                         }
                         else
                         {
@@ -250,34 +236,26 @@ class Igor : Program
                              (f1==1 && f2==1 && m1==0 && m2==1))
                     {
                         ++no_11;
-                        
-                        if (c1==0 && c2==0)
+
+                        if ((c1+c2)==0)
                         {
-                            ++no_11_00;        
+                            ++no_11_00;
                         }
-                        else if (c1==0 && c2==1)
+                        else if ((c1+c2)==1)
                         {
-                            ++no_11_01;        
+                            ++no_11_01;
                         }
-                        else if (c1==1 && c2==1)
+                        else if ((c1+c2)==2)
                         {
-                            ++no_11_11;        
+                            ++no_11_11;
                         }
-                        else
-                        {
-                            std::cerr << f1 << "/" << f2 << "\t";
-                            std::cerr << m1 << "/" << m2 << "\t";
-                            std::cerr << c1 << "/" << c2 << "\n";
-                        }
-                    } 
-                    
+                    }
+
                     variant_used = true;
                 }
             }
+            ++no_variants;
 
-            
-
-            ++no_variants;    
             free(gts);
             free(dps);
             free(pls);
@@ -304,6 +282,9 @@ class Igor : Program
         fprintf(stderr, "              0/0     0/1    1/1       Total\n");
         fprintf(stderr, "  0/0+0/1   %5.2f   %5.2f  %5.2f  %10d\n", (float)no_00_00/no_00*100, (float)no_00_01/no_00*100, (float)no_00_11/no_00*100, no_00);
         fprintf(stderr, "  1/1+0/1   %5.2f   %5.2f  %5.2f  %10d\n", (float)no_11_00/no_11*100, (float)no_11_01/no_11*100, (float)no_11_11/no_11*100, no_11);
+        fprintf(stderr, "\n");
+        fprintf(stderr, "  0/0+0/1   %5d   %5d  %5d  %10d\n", no_00_00, no_00_01, no_00_11, no_00);
+        fprintf(stderr, "  1/1+0/1   %5d   %5d  %5d  %10d\n", no_11_00, no_11_01, no_11_11, no_11);
         fprintf(stderr, "\n");
         fprintf(stderr, "  no. of trios     : %d\n", no_trios);
         fprintf(stderr, "  no. of variants  : %d\n", no_variants);

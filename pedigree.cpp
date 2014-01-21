@@ -46,9 +46,9 @@ Pedigree::Pedigree(std::string& ped_file)
         split(vec, "\t", line);
 
         std::string& pedigree = vec[0];
-        std::string& father = vec[1];
-        std::string& mother = vec[2];
-        std::string& child = vec[3];
+        std::string& father = vec[2];
+        std::string& mother = vec[3];
+        std::string& child = vec[1];
         int32_t child_sex = vec[4] == "Male" ? PED_MALE : (vec[4] == "Female" ? PED_FEMALE : PED_UNKNOWN_SEX);
         
         Trio trio(pedigree, father, mother, child, child_sex);
