@@ -173,7 +173,7 @@ class Igor : Program
         
         std::vector<bcfptr*> current_recs;
             
-        int8_t *cgt = (int8_t*) malloc(no_samples*2*sizeof(int8_t));
+        int32_t *cgt = (int32_t*) malloc(no_samples*2*sizeof(int32_t));
         int ncount =0;
         while(sr->read_next_position(current_recs))
         {
@@ -186,9 +186,7 @@ class Igor : Program
     
                 int8_t *gt = NULL;
                 int32_t n = 0;
-                //int k = bcf_get_format_values(h, v, "GT", (void**)&gt, &n, BCF_HT_INT);
                 int k = bcf_get_genotypes(h, v, &gt, &n); //as a string
-                //bcf_print(h,v);
                     
                 for (int32_t j=0; j<bcf_hdr_nsamples(h); ++j)
                 {
@@ -212,18 +210,10 @@ class Igor : Program
             bcf_update_alleles(odw->hdr, nv, const_cast<const char**>(bcf_get_allele(v)), bcf_get_n_allele(v));
             bcf_set_n_sample(nv, no_samples);
             
-//            for (uint32_t i=0; i<6; ++i)
-//            {
-//                std::cerr << bcf_gt_allele(cgt[i*2]) << "/" << bcf_gt_allele(cgt[i*2+1]) << "\n";
-//            }
-            
             bcf_update_genotypes(odw->hdr,nv,cgt,ngt*2);
-            //bcf_print(odw->hdr, nv);
             odw->write(nv);
-            
-            //exit(1);
         }
-
+        
         free(cgt);
         
         sr->close();
