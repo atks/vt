@@ -1027,30 +1027,37 @@ int bcf_hdr_set(bcf_hdr_t *hdr, const char *fname)
     return 0;
 }
 
+static void _bcf_hrec_format(const bcf_hrec_t *hrec, int is_bcf, kstring_t *str)
+{
+    if ( !hrec->value )
+    {
+        int j, nout = 0;
+        ksprintf(str, "##%s=<", hrec->key);
+        for (j=0; j<hrec->nkeys; j++)
+        {
+            // do not output IDX if output is VCF
+            if ( !is_bcf && !strcmp("IDX",hrec->keys[j]) ) continue;
+            if ( nout ) kputc(',',str);
+            ksprintf(str,"%s=%s", hrec->keys[j], hrec->vals[j]);
+            nout++;
+        }
+        ksprintf(str,">\n");
+    }
+    else
+        ksprintf(str,"##%s=%s\n", hrec->key,hrec->value);
+}
+
+void bcf_hrec_format(const bcf_hrec_t *hrec, kstring_t *str)
+{
+    _bcf_hrec_format(hrec,0,str);
+}
 char *bcf_hdr_fmt_text(const bcf_hdr_t *hdr, int is_bcf, int *len)
 {
-    int i,j;
+    int i;
     kstring_t txt = {0,0,0};
     for (i=0; i<hdr->nhrec; i++)
-    {
-        if ( !hdr->hrec[i]->value )
-        {
-            int nout = 0;
-            ksprintf(&txt, "##%s=<", hdr->hrec[i]->key);
-            for (j=0; j<hdr->hrec[i]->nkeys; j++)
-            {
-                // do not output IDX if output is VCF
-                if ( !is_bcf && !strcmp("IDX",hdr->hrec[i]->keys[j]) ) continue;
-                if ( nout ) kputc(',',&txt);
-                ksprintf(&txt,"%s=%s", hdr->hrec[i]->keys[j], hdr->hrec[i]->vals[j]);
-                nout++;
-            }
-            ksprintf(&txt,">\n");
-        }
-        else
-            ksprintf(&txt,"##%s=%s\n", hdr->hrec[i]->key,hdr->hrec[i]->value);
+        _bcf_hrec_format(hdr->hrec[i], is_bcf, &txt);
 
-    }
     ksprintf(&txt,"#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO");
     if ( bcf_hdr_nsamples(hdr) )
     {
@@ -1243,7 +1250,7 @@ int vcf_parse(kstring_t *s, const bcf_hdr_t *h, bcf1_t *v)
             {
                 // Simple error recovery for chromosomes not defined in the header. It will not help when VCF header has
                 // been already printed, but will enable tools like vcfcheck to proceed.
-                fprintf(stderr, "[W::%s] contig '%s' is not defined in the header\n", __func__, p);
+                fprintf(stderr, "[W::%s] contig '%s' is not defined in the header. (Quick workaround: index the file with tabix.)\n", __func__, p);
                 kstring_t tmp = {0,0,0};
                 int l;
                 ksprintf(&tmp, "##contig=<ID=%s,length=2147483647>", p);
@@ -1724,6 +1731,17 @@ int vcf_format(const bcf_hdr_t *h, const bcf1_t *v, kstring_t *s)
 	}
     kputc('\n', s);
 	return 0;
+}
+
+int vcf_write_line(htsFile *fp, kstring_t *line)
+{
+    int ret;
+    if ( line->s[line->l-1]!='\n' ) kputc('\n',line);
+    if ( fp->is_compressed==1 )
+        ret = bgzf_write(fp->fp.bgzf, line->s, line->l);
+    else
+        ret = hwrite(fp->fp.hfile, line->s, line->l);
+    return ret==line->l ? 0 : -1;
 }
 
 int vcf_write(htsFile *fp, const bcf_hdr_t *h, bcf1_t *v)
@@ -2285,7 +2303,10 @@ int bcf_update_id(const bcf_hdr_t *hdr, bcf1_t *line, const char *id)
 {
     kstring_t tmp;
     tmp.l = 0; tmp.s = line->d.id; tmp.m = line->d.m_id;
-    kputs(id, &tmp);
+    if ( id )
+        kputs(id, &tmp);
+    else
+        kputs(".", &tmp);
     line->d.id = tmp.s; line->d.m_id = tmp.m;
     line->d.shared_dirty |= BCF1_DIRTY_ID;
     return 0;
@@ -2420,7 +2441,12 @@ int bcf_get_format_values(const bcf_hdr_t *hdr, bcf1_t *line, const char *tag, v
 {
     int i,j, tag_id = bcf_hdr_id2int(hdr, BCF_DT_ID, tag);
     if ( !bcf_hdr_idinfo_exists(hdr,BCF_HL_FMT,tag_id) ) return -1;    // no such FORMAT field in the header
-    if ( bcf_hdr_id2type(hdr,BCF_HL_FMT,tag_id)!=type ) return -2;     // expected different type
+    if ( tag[0]=='G' && tag[1]=='T' && tag[2]==0 )
+    {
+        // Ugly: GT field is considered to be a string by the VCF header but BCF represents it as INT.
+        if ( bcf_hdr_id2type(hdr,BCF_HL_FMT,tag_id)!=BCF_HT_STR ) return -2;
+    }
+    else if ( bcf_hdr_id2type(hdr,BCF_HL_FMT,tag_id)!=type ) return -2;     // expected different type
 
     if ( !(line->unpacked & BCF_UN_FMT) ) bcf_unpack(line, BCF_UN_FMT);
 
