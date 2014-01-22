@@ -353,6 +353,7 @@ extern "C" {
 
     /** The following functions are for internal use and should rarely be called directly */
     bcf_hrec_t *bcf_hdr_parse_line(const bcf_hdr_t *h, const char *line, int *len);
+    void bcf_hrec_format(const bcf_hrec_t *hrec, kstring_t *str);
     int bcf_hdr_add_hrec(bcf_hdr_t *hdr, bcf_hrec_t *hrec);
     bcf_hrec_t *bcf_hdr_get_hrec(bcf_hdr_t *hdr, int type, const char *id);   // type is one of BCF_HL_FLT,..,BCF_HL_CTG
     bcf_hrec_t *bcf_hrec_dup(bcf_hrec_t *hrec);
@@ -524,7 +525,7 @@ extern "C" {
     #define bcf_get_format_int(hdr,line,tag,dst,ndst)  bcf_get_format_values(hdr,line,tag,(void**)(dst),ndst,BCF_HT_INT)
     #define bcf_get_format_float(hdr,line,tag,dst,ndst)  bcf_get_format_values(hdr,line,tag,(void**)(dst),ndst,BCF_HT_REAL)
     #define bcf_get_format_char(hdr,line,tag,dst,ndst)  bcf_get_format_values(hdr,line,tag,(void**)(dst),ndst,BCF_HT_STR)
-    #define bcf_get_genotypes(hdr,line,dst,ndst)  bcf_get_format_values(hdr,line,"GT",(void**)(dst),ndst,BCF_HT_STR)
+    #define bcf_get_genotypes(hdr,line,dst,ndst)  bcf_get_format_values(hdr,line,"GT",(void**)(dst),ndst,BCF_HT_INT)
     int bcf_get_format_string(const bcf_hdr_t *hdr, bcf1_t *line, const char *tag, char ***dst, int *ndst);
     int bcf_get_format_values(const bcf_hdr_t *hdr, bcf1_t *line, const char *tag, void **dst, int *ndst, int type);
 
@@ -536,6 +537,7 @@ extern "C" {
  
     /**
      *  bcf_hdr_id2int() - Translates string into numeric ID
+     *  bcf_hdr_int2id() - Translates numeric ID into string
      *  @type:     one of BCF_DT_ID, BCF_DT_CTG, BCF_DT_SAMPLE
      *  @id:       tag name, such as: PL, DP, GT, etc.
      *
@@ -543,6 +545,7 @@ extern "C" {
      *  fields in BCF records.
      */
 	int bcf_hdr_id2int(const bcf_hdr_t *hdr, int type, const char *id);
+    #define bcf_hdr_int2id(hdr,type,int_id) ((hdr)->id[type][int_id].key)
 
     /**
      *  bcf_hdr_name2id() - Translates sequence names (chromosomes) into numeric ID
@@ -571,6 +574,7 @@ extern "C" {
     #define bcf_hdr_id2type(hdr,type,int_id)    ((hdr)->id[BCF_DT_ID][int_id].val->info[type]>>4 & 0xf)
     #define bcf_hdr_id2coltype(hdr,type,int_id) ((hdr)->id[BCF_DT_ID][int_id].val->info[type] & 0xf)
     #define bcf_hdr_idinfo_exists(hdr,type,int_id)  ((int_id<0 || bcf_hdr_id2coltype(hdr,type,int_id)==0xf) ? 0 : 1)
+    #define bcf_hdr_id2hrec(hdr,type,int_id)    ((hdr)->id[(type)==BCF_DT_CTG?BCF_DT_CTG:BCF_DT_ID][int_id].val->hrec[(type)==BCF_DT_CTG?0:type])
     
 	void bcf_fmt_array(kstring_t *s, int n, int type, void *data);
 	uint8_t *bcf_fmt_sized_array(kstring_t *s, uint8_t *ptr);
