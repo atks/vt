@@ -175,6 +175,11 @@ class Igor : Program
             
         int32_t *cgt = (int32_t*) malloc(no_samples*2*sizeof(int32_t));
         int ncount =0;
+        
+        //start with ploidy of 2
+        int32_t *cgt = (int32_t*) malloc(no_samples*2*sizeof(int32_t));
+        
+        
         while(sr->read_next_position(current_recs))
         {
             int32_t ngt = 0;
@@ -186,10 +191,13 @@ class Igor : Program
     
                 int8_t *gt = NULL;
                 int32_t n = 0;
-                int k = bcf_get_genotypes(h, v, &gt, &n); //as a string
+                int32_t ploidy = bcf_get_genotypes(h, v, &gt, &n); //as a string
+                ploidy /= bcf_hdr_nsamples(h)
+                
                     
                 for (int32_t j=0; j<bcf_hdr_nsamples(h); ++j)
                 {
+                    
                     int a = bcf_gt_allele(gt[j*2]);
                     int b = bcf_gt_allele(gt[j*2+1]);
 
@@ -202,6 +210,7 @@ class Igor : Program
                 free(gt);
             }
             
+            //update alleles
             bcf1_t *v = current_recs[0]->v;
             bcf_hdr_t *h = current_recs[0]->h;
             bcf1_t *nv = odw->get_bcf1_from_pool();
@@ -210,6 +219,7 @@ class Igor : Program
             bcf_update_alleles(odw->hdr, nv, const_cast<const char**>(bcf_get_allele(v)), bcf_get_n_allele(v));
             bcf_set_n_sample(nv, no_samples);
             
+            //update genotypes
             bcf_update_genotypes(odw->hdr,nv,cgt,ngt*2);
             odw->write(nv);
         }
