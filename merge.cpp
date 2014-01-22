@@ -177,7 +177,6 @@ class Igor : Program
         int ncount =0;
         
         //start with ploidy of 2
-        int32_t *cgt = (int32_t*) malloc(no_samples*2*sizeof(int32_t));
         
         
         while(sr->read_next_position(current_recs))
@@ -192,7 +191,7 @@ class Igor : Program
                 int8_t *gt = NULL;
                 int32_t n = 0;
                 int32_t ploidy = bcf_get_genotypes(h, v, &gt, &n); //as a string
-                ploidy /= bcf_hdr_nsamples(h)
+                ploidy /= bcf_hdr_nsamples(h);
                 
                     
                 for (int32_t j=0; j<bcf_hdr_nsamples(h); ++j)
