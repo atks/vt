@@ -39,33 +39,43 @@ class VTOutput : public TCLAP::StdOutput
 	public:
 
     void failure(TCLAP::CmdLineInterface& c, TCLAP::ArgException& e);
-    
-    void usage(TCLAP::CmdLineInterface& c);        
+
+    void usage(TCLAP::CmdLineInterface& c);
 };
 
 /**
  * Provides an interface for programs in vt.
  *
- * 
- */ 
+ *
+ */
 class Program
 {
     public:
 
     std::string version;
-    
+
     /**
      * Process arguments.
      */
     Program(){};
+
+    /**
+     * Parse multiple files from command line unlabeled arguments or -L denoted file list.  If both are defined, the files are merged.
+     *
+     * @files          - file names are stored in this vector
+     * @argument_files - vector of input files
+     * @file_list      - file names stored in a file
+     *
+     */
+    void parse_files(std::vector<std::string>& files, std::vector<std::string> arg_files, std::string file_list);
 
 	/**
      * Parse intervals. Processes the interval list first followed by the interval string. Duplicates are dropped.
      *
      * @intervals       - intervals stored in this vector
      * @interval_list   - file containing intervals
-     * @interval_string - comma delimited intervals in a string 
-     */ 
+     * @interval_string - comma delimited intervals in a string
+     */
 	void parse_intervals(std::vector<GenomeInterval>& intervals, std::string interval_list, std::string interval_string);
 
 	/**
@@ -73,36 +83,41 @@ class Program
 	 *
 	 * @samples      - samples stored in this vector
 	 * @sample_map   - samples stored in this map
-	 * @sample_list  - file containing sample names 
-	 */ 
+	 * @sample_list  - file containing sample names
+	 */
 	void read_sample_list(std::vector<std::string>& samples, std::string sample_list);
-		
+
     /**
      * Initialize I/O and shared objects.
      */
     void initialize(){};
-    
+
     /**
      * Print options.
      */
     void print_options(){};
-    
+
     /**
      * Print run stats.
      */
     void print_stats(){};
- 	
+
  	/**
      * Print reference FASTA file option.
      */
     void print_ref_op(const char* option_line, std::string ref_fasta_file);
- 	
+
+    /**
+     * Print input files.
+     */
+    void print_ifiles(const char* option_line, std::vector<std::string>& files);
+
   	/**
-     * Print intervals option. 
-     */ 
+     * Print intervals option.
+     */
     void print_int_op(const char* option_line, std::vector<GenomeInterval>& intervals);
- 
+
     private:
 };
-    
+
 #endif

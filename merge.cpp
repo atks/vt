@@ -83,35 +83,20 @@ class Igor : Program
             VTOutput my; cmd.setOutput(&my);
             TCLAP::ValueArg<std::string> arg_intervals("i", "i", "intervals", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "str", cmd);
-            TCLAP::ValueArg<std::string> arg_output_vcf_file("o", "o", "output VCF file [-]", false, "-", "", cmd);
-            TCLAP::ValueArg<std::string> arg_input_vcf_file_list("L", "L", "file containing list of input VCF files", true, "", "str", cmd);
             TCLAP::SwitchArg arg_print("p", "p", "print options and summary []", cmd, false);
+            TCLAP::ValueArg<std::string> arg_output_vcf_file("o", "o", "output VCF file [-]", false, "-", "", cmd);
+            TCLAP::ValueArg<std::string> arg_input_vcf_file_list("L", "L", "file containing list of input VCF files", false, "", "str", cmd);
+            TCLAP::UnlabeledMultiArg<std::string> arg_input_vcf_files("<in1.vcf>...", "Multiple VCF files",false, "files", cmd);
             
             cmd.parse(argc, argv);
 
             input_vcf_file_list = arg_input_vcf_file_list.getValue();
             output_vcf_file = arg_output_vcf_file.getValue();
+            
+            parse_files(input_vcf_files, arg_input_vcf_files.getValue(), arg_input_vcf_file_list.getValue());
+            
             parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
             print = arg_print.getValue();
-
-            ///////////////////////
-            //parse input VCF files
-            ///////////////////////
-            htsFile *file = hts_open(input_vcf_file_list.c_str(), "r");
-            if (file==NULL)
-            {
-                std::cerr << "cannot open " << input_vcf_file_list.c_str() << "\n";
-                exit(1);
-            }
-            kstring_t *s = &file->line;
-            while (hts_getline(file, KS_SEP_LINE, s) >= 0)
-            {
-                if (s->s[0]!='#')
-                {
-                    input_vcf_files.push_back(std::string(s->s));
-                }
-            }
-            hts_close(file);
         }
         catch (TCLAP::ArgException &e)
         {
@@ -188,18 +173,15 @@ class Igor : Program
                 bcf1_t *v = current_recs[i]->v;
                 bcf_hdr_t *h = current_recs[i]->h;
     
-                int8_t *gt = NULL;
+                int32_t *gt = NULL;
                 int32_t n = 0;
                 int32_t ploidy = bcf_get_genotypes(h, v, &gt, &n); //as a string
+                
                 ploidy /= bcf_hdr_nsamples(h);
                 
                     
                 for (int32_t j=0; j<bcf_hdr_nsamples(h); ++j)
                 {
-                    
-                    int a = bcf_gt_allele(gt[j*2]);
-                    int b = bcf_gt_allele(gt[j*2+1]);
-
                     cgt[ngt*2] = gt[j*2];
                     cgt[ngt*2+1] = gt[j*2+1];
                         
@@ -234,7 +216,9 @@ class Igor : Program
         if (!print) return;
         
         std::clog << "merge v" << version << "\n\n";
-        std::clog << "options: [L] input VCF file list   " << input_vcf_file_list << " (" << input_vcf_files.size() << " files)\n";
+        print_ifiles("options:     input VCF file        ", input_vcf_files);
+        
+      //std::clog << "options: [L] input VCF file list   " << input_vcf_file_list << " (" << input_vcf_files.size() << " files)\n";
         std::clog << "         [o] output VCF file       " << output_vcf_file << "\n";
         print_int_op("         [i] intervals             ", intervals);
         std::clog << "\n";

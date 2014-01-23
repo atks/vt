@@ -101,6 +101,43 @@ void VTOutput::usage(TCLAP::CmdLineInterface& c)
 }
 
 /**
+ * Parse multiple files from command line unlabeled arguments or -L denoted file list.  If both are defined, the files are merged.
+ *
+ * @files          - file names are stored in this vector
+ * @argument_files - vector of input files
+ * @file_list      - file names stored in a file
+ *
+ */
+void Program::parse_files(std::vector<std::string>& files, std::vector<std::string> arg_files, std::string file_list)
+{
+    files.clear();
+
+    if (arg_files.size()!=0)
+    {
+        files = arg_files;
+    }    
+    
+    if (file_list != "")
+    {
+        htsFile *file = hts_open(file_list.c_str(), "r");
+        if (file==NULL)
+        {
+            std::cerr << "cannot open " << file_list << "\n";
+            exit(1);
+        }
+        kstring_t *s = &file->line;
+        while (hts_getline(file, '\n', s) >= 0)
+        {
+            if (s->s[0]!='#')
+            {
+                files.push_back(std::string(s->s));
+            }
+        }
+        hts_close(file);
+    }
+}
+
+/**
  * Parse intervals. Processes the interval list first followed by the interval string. Duplicates are dropped.
  *
  * @intervals       - intervals stored in this vector
@@ -176,6 +213,26 @@ void Program::print_int_op(const char* option_line, std::vector<GenomeInterval>&
         if (intervals.size()>5)
         {
             std::clog << " and " << (intervals.size()-5) <<  " other intervals\n";
+        }
+    }
+}
+
+/**
+ * Print input files.
+ */
+void Program::print_ifiles(const char* option_line, std::vector<std::string>& files)
+{
+    if (files.size()!=0)
+    {
+        std::clog << option_line;
+        for (uint32_t i=0; i<std::min((uint32_t)files.size(),(uint32_t)2); ++i)
+        {
+            if (i) std::clog << ",";
+            std::clog << files[i];
+        }
+        if (files.size()>2)
+        {
+            std::clog << " and " << (files.size()-2) <<  " other files\n";
         }
     }
 }
