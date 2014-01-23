@@ -206,7 +206,7 @@ class VariantManip
     /**
      * Classifies variants.
      */
-    int32_t classify_variant(bcf_hdr_t *h, bcf1_t *v, Variant& variant);
+    int32_t classify_variant(bcf_hdr_t *h, bcf1_t *v, Variant& variant, bool in_situ_left_trimming = true);
 
     /**
      * Classifies variants.
@@ -216,7 +216,7 @@ class VariantManip
     /**
      * Classifies variants.
      */
-    int32_t classify_variant(const char* chrom, uint32_t pos1, char** allele, int32_t n_allele, Variant& variant);
+    int32_t classify_variant(const char* chrom, uint32_t pos1, char** allele, int32_t n_allele, Variant& variant, bool in_situ_left_trimming = true);
 
     /**
      * Classifies variants.
