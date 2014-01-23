@@ -97,14 +97,14 @@ class Igor : Program
 
         int32_t min_shift;
         output_vcf_index_file = {0,0,0};
-
+        int32_t ret;
         if (ftype==FT_BCF_GZ)
         {
             kputs(input_vcf_file.c_str(), &output_vcf_index_file);
             kputs(".csi", &output_vcf_index_file);
             min_shift = 14;
 
-            bcf_index_build(input_vcf_file.c_str(), min_shift);
+            ret = bcf_index_build(input_vcf_file.c_str(), min_shift);
         }
         else if (ftype==FT_VCF_GZ)
         {
@@ -113,7 +113,13 @@ class Igor : Program
             min_shift = 0;
             tbx_conf_t conf = tbx_conf_vcf;
 
-            tbx_index_build(input_vcf_file.c_str(), min_shift, &conf);
+            ret = tbx_index_build(input_vcf_file.c_str(), min_shift, &conf);
+        }
+        
+        if (ret)
+        {
+            fprintf(stderr, "[%s:%d %s] Index load fail: %s\n", __FILE__, __LINE__, __FUNCTION__, input_vcf_file.c_str());
+            exit(1);
         }
     };
 
