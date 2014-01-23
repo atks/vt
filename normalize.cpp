@@ -157,7 +157,7 @@ class Igor : Program
         while (odr->read(v))
         {
             bcf_unpack(v, BCF_UN_INFO);
-            int32_t vtype = vm->classify_variant(odr->hdr, v, variant);
+            int32_t vtype = vm->classify_variant(odr->hdr, v, variant, false); //false argument to ensure no in situ left trimming
 
             if (vtype & ambiguous_variant_types)
             {

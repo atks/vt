@@ -187,9 +187,9 @@ bool VariantManip::detect_str(const char* chrom, uint32_t pos1, Variant& variant
 /**
  * Classifies variants.
  */
-int32_t VariantManip::classify_variant(bcf_hdr_t *h, bcf1_t *v,  Variant& variant)
+int32_t VariantManip::classify_variant(bcf_hdr_t *h, bcf1_t *v,  Variant& variant, bool in_situ_left_trimming)
 {
-    return classify_variant(bcf_get_chrom(h, v), bcf_get_pos1(v), bcf_get_allele(v), bcf_get_n_allele(v), variant);
+    return classify_variant(bcf_get_chrom(h, v), bcf_get_pos1(v), bcf_get_allele(v), bcf_get_n_allele(v), variant, in_situ_left_trimming);
 }
 
 /**
@@ -213,7 +213,7 @@ int32_t VariantManip::classify_variant(const char* chrom, uint32_t pos1, char** 
 /**
  * Classifies variants.
  */
-int32_t VariantManip::classify_variant(const char* chrom, uint32_t pos1, char** allele, int32_t n_allele, Variant& v)
+int32_t VariantManip::classify_variant(const char* chrom, uint32_t pos1, char** allele, int32_t n_allele, Variant& v, bool in_situ_left_trimming)
 {
     int32_t pos0 = pos1-1;
     v.clear();
@@ -229,19 +229,22 @@ int32_t VariantManip::classify_variant(const char* chrom, uint32_t pos1, char** 
         //this is required in particular for the
         //characterization of multiallelics and
         //in general, any unnormalized variant
-        while (strlen(ref)!=1 && strlen(alt)!=1)
+        if (in_situ_left_trimming)
         {
-            if (ref[0]==alt[0])
+            while (strlen(ref)!=1 && strlen(alt)!=1)
             {
-                ++ref;
-                ++alt;
-            }
-            else
-            {
-                break;
+                if (ref[0]==alt[0])
+                {
+                    ++ref;
+                    ++alt;
+                }
+                else
+                {
+                    break;
+                }
             }
         }
-
+        
         int32_t rlen = strlen(ref);
         int32_t alen = strlen(alt);
         int32_t mlen = std::min(rlen, alen);
