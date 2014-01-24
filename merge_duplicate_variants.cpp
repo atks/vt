@@ -129,7 +129,6 @@ class Igor : Program
         {
             int32_t pos1 = bcf_get_pos1(v);
             int32_t rid = bcf_get_rid(v);
-            bcf_variant2string(odw->hdr, v, &variant);
 
             //clear previous set of variants
             if (pos1!=current_pos1 || rid!=current_rid)
@@ -149,8 +148,18 @@ class Igor : Program
                 current_rid = rid;
             }
 
-            bcf_variant2string(odw->hdr, v, &variant);
-
+            if (!merge_by_pos)
+            {
+                bcf_variant2string(odw->hdr, v, &variant);
+            }
+            else
+            {
+                variant.l = 0;
+                kputw(rid, &variant);
+                kputc(':', &variant);
+                kputw(pos1, &variant);
+            }
+            
             if (kh_get(xdict, m, variant.s)==kh_end(m))
             {
                 k = kh_put(xdict, m, variant.s, &ret);
