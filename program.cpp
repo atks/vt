@@ -108,7 +108,7 @@ void VTOutput::usage(TCLAP::CmdLineInterface& c)
  * @file_list      - file names stored in a file
  *
  */
-void Program::parse_files(std::vector<std::string>& files, std::vector<std::string> arg_files, std::string file_list)
+void Program::parse_files(std::vector<std::string>& files, const std::vector<std::string>& arg_files, std::string file_list)
 {
     files.clear();
 
