@@ -67,7 +67,7 @@ class Program
      * @file_list      - file names stored in a file
      *
      */
-    void parse_files(std::vector<std::string>& files, std::vector<std::string> arg_files, std::string file_list);
+    void parse_files(std::vector<std::string>& files, const std::vector<std::string>& arg_files, std::string file_list);
 
 	/**
      * Parse intervals. Processes the interval list first followed by the interval string. Duplicates are dropped.
