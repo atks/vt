@@ -135,7 +135,7 @@ class Igor : Program
             if (n_allele > 2)
             {
                 ++no_multiallelic;
-                no_additional_biallelic += n_allele;
+                no_additional_biallelic += n_allele-1;
 
                 old_alleles.l = 0;
                 bcf_variant2string(odw->hdr, v, &old_alleles);
