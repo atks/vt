@@ -90,7 +90,7 @@ class Igor : Program
         //////////////////////////
         try
         {
-            std::string desc = "paritition variants. check the overlap of variants between 2 data sets.\n";
+            std::string desc = "partition variants. check the overlap of variants between 2 data sets.\n";
 
             version = "0.5";
             TCLAP::CmdLine cmd(desc, ' ', version);
@@ -123,7 +123,7 @@ class Igor : Program
         //////////////////////
         //i/o initialization//
         //////////////////////
-        sr = new BCFSyncedReader(input_vcf_files, intervals);
+        sr = new BCFSyncedReader(input_vcf_files, intervals, false);
 
         ///////////////////////
         //tool initialization//
@@ -161,13 +161,15 @@ class Igor : Program
                 ++presence[current_recs[i]->file_index];
             }
 
+            int32_t ins = 0;
+            int32_t del = 0;
+            int32_t ts = 0;
+            int32_t tv = 0;
+
+            update_overlap_stats(stats, presence, 0, ts, tv, ins, del);
+
             if (bcf_get_n_allele(v)==2)
             {
-                int32_t ins = 0;
-                int32_t del = 0;
-                int32_t ts = 0;
-                int32_t tv = 0;
-                
                 if (vtype == VT_SNP || vtype == VT_MNP  )
                 {
                     ts = variant.alleles[0].ts;
@@ -179,6 +181,7 @@ class Igor : Program
                     del = 1-ins;
                 }
 
+                update_overlap_stats(stats, presence, vtype, ts, tv, ins, del);
 
                 if (vtype & VT_CLUMPED)
                 {
@@ -272,20 +275,30 @@ class Igor : Program
 
     void print_stats()
     {
-        fprintf(stderr, "    A:  %s\n", input_vcf_files[0].c_str());
-        fprintf(stderr, "    B:  %s\n", input_vcf_files[1].c_str());
+        fprintf(stderr, "    A:  %10d variants\n", stats[0].a+stats[0].ab);
+        fprintf(stderr, "    B:  %10d variants\n", stats[0].ab+stats[0].b);
         fprintf(stderr, "\n");
 
-        int32_t types[4] = {VT_SNP, VT_MNP, VT_INDEL, VT_CLUMPED};
+        int32_t types[5] = {0, VT_SNP, VT_MNP, VT_INDEL, VT_CLUMPED};
         kstring_t s;
 
-        for (int32_t j=0; j<4; ++j)
+        for (int32_t j=0; j<5; ++j)
         {
             int32_t i = types[j];
             vm->vtype2string(i, &s);
-            fprintf(stderr, "    %s\n", s.s);
-            if (types[j] == VT_SNP || types[j] == VT_MNP)
+            if (types[j] == 0)
             {
+                fprintf(stderr, "    ALL\n");
+                fprintf(stderr, "    A-B %10d\n", stats[i].a);
+                fprintf(stderr, "    A&B %10d\n", stats[i].ab);
+                fprintf(stderr, "    B-A %10d\n", stats[i].b);
+                fprintf(stderr, "    of A     %4.1f%%\n", 100*(float)stats[i].ab/(stats[i].a+stats[i].ab));
+                fprintf(stderr, "    of B     %4.1f%%\n", 100*(float)stats[i].ab/(stats[i].b+stats[i].ab));
+                fprintf(stderr, "\n");
+            }
+            else if (types[j] == VT_SNP || types[j] == VT_MNP)
+            {
+                fprintf(stderr, "    %s\n", s.s);
                 fprintf(stderr, "    A-B %10d [%.2f]\n", stats[i].a,  (float)stats[i].a_ts/(stats[i].a_tv));
                 fprintf(stderr, "    A&B %10d [%.2f]\n", stats[i].ab, (float)stats[i].ab_ts/stats[i].ab_tv);
                 fprintf(stderr, "    B-A %10d [%.2f]\n", stats[i].b,  (float)stats[i].b_ts/(stats[i].b_tv));
@@ -295,6 +308,7 @@ class Igor : Program
             }
             else
             {
+                fprintf(stderr, "    %s\n", s.s);
                 fprintf(stderr, "    A-B %10d [%.2f]\n", stats[i].a,  (float)stats[i].a_ins/(stats[i].a_del));
                 fprintf(stderr, "    A&B %10d [%.2f]\n", stats[i].ab, (float)stats[i].ab_ins/stats[i].ab_del);
                 fprintf(stderr, "    B-A %10d [%.2f]\n", stats[i].b,  (float)stats[i].b_ins/(stats[i].b_del));

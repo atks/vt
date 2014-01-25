@@ -36,6 +36,7 @@
 #include "index.h"
 #include "profile_indels.h"
 #include "profile_mendel_errors.h"
+#include "decompose.h"
 
 void print_time(double t)
 {
@@ -67,6 +68,7 @@ void help()
     std::clog << "view                      view vcf/vcf.gz/bcf files\n";
     std::clog << "index                     index vcf.gz/bcf files\n";
     std::clog << "normalize                 normalize variants\n";
+    std::clog << "decompose                 decompose multiallelic variants\n";
     std::clog << "mergedups                 merge duplicate variants\n";
     std::clog << "merge                     merge VCF files\n";
     std::clog << "concat                    concatenate VCF files\n";
@@ -112,6 +114,10 @@ int main(int argc, char ** argv)
     else if (argc>1 && cmd=="concat")
     {
         print = concat(argc-1, ++argv);
+    }
+    else if (argc>1 && cmd=="decompose")
+    {
+        decompose(argc-1, ++argv);
     }
     else if (argc>1 && cmd=="normalize")
     {
