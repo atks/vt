@@ -270,6 +270,11 @@ void bcf_set_chrom(bcf_hdr_t *h, bcf1_t *v, const char* chrom);
 #define bcf_get_rid(v) ((v)->rid)
 
 /**
+ * Set RID
+ */
+#define bcf_set_rid(v, c) ((v)->rid=(c))
+
+/**
  * Check if variant is passed
  */
 bool bcf_is_passed(bcf_hdr_t *h, bcf1_t *v);

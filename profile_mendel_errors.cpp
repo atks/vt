@@ -37,6 +37,7 @@ class Igor : Program
     ///////////
     std::string input_vcf_file;
     std::string input_ped_file;
+    std::string ref_fasta_file;    
     std::vector<GenomeInterval> intervals;
     std::string interval_list;
     int32_t min_depth;
@@ -72,6 +73,7 @@ class Igor : Program
     //tools//
     /////////
     Pedigree *pedigree;
+    VariantManip *vm;
 
     Igor(int argc, char ** argv)
     {
@@ -88,6 +90,7 @@ class Igor : Program
             TCLAP::ValueArg<std::string> arg_intervals("i", "i", "intervals", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_input_ped_file("p", "p", "pedigree file", true, "", "str", cmd);
+            TCLAP::ValueArg<std::string> arg_ref_fasta_file("r", "r", "reference sequence fasta file []", true, "", "str", cmd);
             TCLAP::ValueArg<int32_t> arg_min_depth("d", "d", "minimum depth", false, 5, "str", cmd);
             TCLAP::ValueArg<float> arg_min_gq("q", "q", "minimum genotype quality", false, 2, "str", cmd);
 
@@ -144,12 +147,15 @@ class Igor : Program
         /////////
         //tools//
         /////////
+        vm = new VariantManip(ref_fasta_file);
     }
 
     void profile_mendel_errors()
     {
         bcf_hdr_t *h = odr->hdr;
         bcf1_t *v = bcf_init1();
+
+        Variant variant;
 
         std::vector<Trio>& trios = pedigree->trios;
         no_trios = trios.size();
@@ -159,42 +165,99 @@ class Igor : Program
 
         while(odr->read(v))
         {
-            int8_t *gts = NULL;
+           bcf_unpack(v, BCF_UN_STR);
+           int32_t vtype = vm->classify_variant(odr->hdr, v, variant);
+            
+            if (bcf_get_n_allele(v)!=2 || abs(variant.alleles[0].dlen)==1)
+            {
+                continue;
+            }             
+                
+            int32_t *gts = NULL;
             int32_t n = 0;
             int k = bcf_get_genotypes(h, v, &gts, &n);
 
-            bcf_unpack(v, BCF_UN_IND);
+           // std::cerr << "k " << k << "n " << n << "\n";
 
-            int32_t *dps = NULL;
-            n = 0;
-            k = bcf_get_format_int(h, v, "DP", &dps, &n);
+            
 
+           // if ()
+
+//            int32_t *dps = NULL;
+//            n = 0;
+//            k = bcf_get_format_int(h, v, "DP", &dps, &n);
+//
             int32_t *pls = NULL;
             n = 0;
             k = bcf_get_format_int(h, v, "PL", &pls, &n);
 
             bool variant_used = false;
 
+            int32_t pl[3];
+
+//bcf_print(h,v);
+
+
 
             for (int32_t i =0; i< trios.size(); ++i)
             {
                 int32_t j = bcf_hdr_id2int(h, BCF_DT_SAMPLE, trios[i].father.c_str());
-                int8_t *igt = gts+j*2;
+                int32_t *igt = gts+j*2;
                 int32_t f1 = bcf_gt_allele(igt[0]);
                 int32_t f2 = bcf_gt_allele(igt[1]);
-                int32_t fdp = dps[j];
+                pl[0] = pls[j*3];
+                pl[1] = pls[j*3+1];
+                pl[2] = pls[j*3+2];
+                
+                if ((f1+f2==0 && (pl[1]<10 || pl[2]<10)) ||
+                    (f1+f2==1 && (pl[0]<10 || pl[2]<10)) ||
+                    (f1+f2==2 && (pl[0]<10 || pl[1]<10)) )
+                {
+                    f1 = -1;
+                    f2 = -1;
+                }
+                      
+                
+                
+                
+                
+//                int32_t fdp = dps[j];
 
                 j = bcf_hdr_id2int(h, BCF_DT_SAMPLE, trios[i].mother.c_str());
                 igt = gts+j*2;
                 int32_t m1 = bcf_gt_allele(igt[0]);
                 int32_t m2 = bcf_gt_allele(igt[1]);
-                int32_t mdp = dps[j];
+                pl[0] = pls[j*3];
+                pl[1] = pls[j*3+1];
+                pl[2] = pls[j*3+2];
+                
+                if ((m1+m2==0 && (pl[1]<10 || pl[2]<10)) ||
+                    (m1+m2==1 && (pl[0]<10 || pl[2]<10)) ||
+                    (m1+m2==2 && (pl[0]<10 || pl[1]<10)) )
+                {
+                    m1 = -1;
+                    m2 = -1;
+                }
+//                int32_t mdp = dps[j];
+
 
                 j = bcf_hdr_id2int(h, BCF_DT_SAMPLE, trios[i].child.c_str());
                 igt = gts+j*2;
                 int32_t c1 = bcf_gt_allele(igt[0]);
                 int32_t c2 = bcf_gt_allele(igt[1]);
-                int32_t cdp = dps[j];
+                pl[0] = pls[j*3];
+                pl[1] = pls[j*3+1];
+                pl[2] = pls[j*3+2];
+                
+                 if ((c1+c2==0 && (pl[1]<10 || pl[2]<10)) ||
+                    (c1+c2==1 && (pl[0]<10 || pl[2]<10)) ||
+                    (c1+c2==2 && (pl[0]<10 || pl[1]<10)) )
+                {
+                    c1 = -1;
+                    c2 = -1;
+                } 
+
+//                int32_t cdp = dps[j];
 
                 if (f1<0 && f2<0 & m1<0 && m2<0 && c1<0 && c2<0)
                 {
@@ -205,6 +268,11 @@ class Igor : Program
                 {
                     ++mendel_homalt_err;
                 }
+
+
+//                            std::cerr << f1 << "/" << f2 << "\t";
+//                            std::cerr << m1 << "/" << m2 << "\t";
+//                            std::cerr << c1 << "/" << c2 << "\n";
 
                 if (!(f1<0 || f2<0 || m1<0 || m2<0 || c1<0 || c2<0))
                 {
@@ -257,8 +325,8 @@ class Igor : Program
             ++no_variants;
 
             free(gts);
-            free(dps);
-            free(pls);
+//            free(dps);
+//            free(pls);
         }
 
     std::cerr << "MISSING " << missing << "\n";
@@ -271,6 +339,7 @@ class Igor : Program
         std::clog << "merge_candidate_variants v" << version << "\n\n";
         std::clog << "options:     input VCF file        " << input_vcf_file << "\n";
         std::clog << "         [p] input PED file        " << input_ped_file << "\n";
+        print_ref_op("         [r] ref FASTA file        ", ref_fasta_file);
         print_int_op("         [i] intervals             ", intervals);
         std::clog << "\n";
     }

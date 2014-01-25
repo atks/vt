@@ -39,7 +39,8 @@ SOURCES = program\
 		merge\
 		profile_mendel_errors\
 		pedigree\
-		concat
+		concat\
+		decompose
 
 SOURCESONLY = main.cpp
 
