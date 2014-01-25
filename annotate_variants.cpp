@@ -41,6 +41,7 @@ class Igor : Program
     std::vector<GenomeInterval> intervals;
     std::string interval_list;
     std::string gencode_gtf_file;    
+    bool annotate_coding;
 
     ///////
     //i/o//
@@ -76,7 +77,7 @@ class Igor : Program
             TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_output_vcf_file("o", "o", "output VCF file [-]", false, "-", "str", cmd);
             TCLAP::ValueArg<std::string> arg_ref_fasta_file("r", "r", "reference sequence fasta file []", true, "", "str", cmd);
-            TCLAP::ValueArg<std::string> arg_gencode_gtf_file("g", "g", "GENCODE annotations GTF file []", true, "", "str", cmd);
+            TCLAP::ValueArg<std::string> arg_gencode_gtf_file("g", "g", "GENCODE annotations GTF file []", false, "", "str", cmd);
             TCLAP::UnlabeledValueArg<std::string> arg_input_vcf_file("<in.vcf>", "input VCF file", true, "","file", cmd);
 
             cmd.parse(argc, argv);
@@ -88,6 +89,7 @@ class Igor : Program
             ref_fasta_file   = arg_ref_fasta_file.getValue();
             gencode_gtf_file = arg_gencode_gtf_file.getValue();
 
+            annotate_coding = gencode_gtf_file != "" ? true : false;
         }
         catch (TCLAP::ArgException &e)
         {
@@ -100,6 +102,8 @@ class Igor : Program
 
     void initialize()
     {
+        
+        
         //******************
         //i/o initialization
         //******************
@@ -110,15 +114,22 @@ class Igor : Program
         bcf_hdr_append(odw->hdr, "##INFO=<ID=RU,Number=1,Type=String,Description=\"Repeat unit in a STR or Homopolymer\">");
         bcf_hdr_append(odw->hdr, "##INFO=<ID=RL,Number=1,Type=Integer,Description=\"Repeat Length\">");
 //        bcf_hdr_append(odw->hdr, "##INFO=<ID=NS,Number=0,Type=Flag,Description=\"Near to STR\">");
-        bcf_hdr_append(odw->hdr, "##INFO=<ID=FS,Number=0,Type=Flag,Description=\"Frameshift INDEL\">");
-        bcf_hdr_append(odw->hdr, "##INFO=<ID=NFS,Number=0,Type=Flag,Description=\"Non Frameshift INDEL\">");
+
 
         ///////////////////////
         //tool initialization//
         ///////////////////////
         vm = new VariantManip(ref_fasta_file);
-        gc = new GENCODE(gencode_gtf_file, ref_fasta_file);
-
+        
+        
+        
+        if (annotate_coding)
+        {    
+            bcf_hdr_append(odw->hdr, "##INFO=<ID=FS,Number=0,Type=Flag,Description=\"Frameshift INDEL\">");
+            bcf_hdr_append(odw->hdr, "##INFO=<ID=NFS,Number=0,Type=Flag,Description=\"Non Frameshift INDEL\">");
+            gc = new GENCODE(gencode_gtf_file, ref_fasta_file);
+        }
+        
         ////////////////////////
         //stats initialization//
         ////////////////////////
@@ -170,44 +181,46 @@ class Igor : Program
                 //synonymous and non synonymous annotation
                 
             }    
-            else if (vtype==VT_INDEL)
+            else if (vtype&VT_INDEL)
             {
                 //frame shift annotation
-                gc->search(chrom, start1+1, end1, overlaps);
-
-                bool cds_found = false;
-                bool is_fs = false;
-
-                for (int32_t i=0; i<overlaps.size(); ++i)
+                if (annotate_coding)
                 {
-                    GENCODERecord *rec = (GENCODERecord *) overlaps[i];
-                    if (rec->feature==GC_FT_CDS)
+                    gc->search(chrom, start1+1, end1, overlaps);
+    
+                    bool cds_found = false;
+                    bool is_fs = false;
+    
+                    for (int32_t i=0; i<overlaps.size(); ++i)
                     {
-                        cds_found = true;
-                        if (abs(variant.alleles[0].dlen)%3!=0)
+                        GENCODERecord *rec = (GENCODERecord *) overlaps[i];
+                        if (rec->feature==GC_FT_CDS)
                         {
-                            is_fs = true;
-                            break;
+                            cds_found = true;
+                            if (abs(variant.alleles[0].dlen)%3!=0)
+                            {
+                                is_fs = true;
+                                break;
+                            }
                         }
                     }
-                }
-                
-                if (cds_found)
-                {
-                    if (is_fs)
+                    
+                    if (cds_found)
                     {
-                        bcf_update_info_flag(odr->hdr, v, "FS", "", 1);
+                        if (is_fs)
+                        {
+                            bcf_update_info_flag(odr->hdr, v, "FS", "", 1);
+                        }
+                        else
+                        {
+                            bcf_update_info_flag(odr->hdr, v, "NFS", "", 1);
+                        }
                     }
-                    else
-                    {
-                        bcf_update_info_flag(odr->hdr, v, "NFS", "", 1);
-                    }
+                    
+                    //classify STR 
+                    std::string ru = "ACGT";
+                    int32_t rl = 4;
                 }
-                
-                //classify STR 
-                std::string ru = "ACGT";
-                int32_t rl = 4;
-                
     //            bcf_update_info_string(odr->hdr, v, "RU", ru.c_str());
     //            bcf_update_info_int32(odr->hdr, v, "RL", &rl, 1); 
             }
