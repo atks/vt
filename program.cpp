@@ -69,7 +69,8 @@ void VTOutput::usage(TCLAP::CmdLineInterface& c)
         if (typeid(**it)==typeid(TCLAP::ValueArg<std::string>) ||
             typeid(**it)==typeid(TCLAP::ValueArg<uint32_t>) ||
             typeid(**it)==typeid(TCLAP::ValueArg<int32_t>) ||
-            typeid(**it)==typeid(TCLAP::ValueArg<double>))
+            typeid(**it)==typeid(TCLAP::ValueArg<double>) ||
+            typeid(**it)==typeid(TCLAP::ValueArg<float>))
         {
             TCLAP::ValueArg<std::string> *i = (TCLAP::ValueArg<std::string> *) (*it);
 
