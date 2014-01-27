@@ -169,10 +169,11 @@ class Igor : Program
 
         while(odr->read(v))
         {
-            bcf_unpack(v, BCF_UN_STR);
+            bcf_unpack(v, BCF_UN_FLT);
             int32_t vtype = vm->classify_variant(odr->hdr, v, variant);
             
-            if (bcf_get_n_allele(v)!=2 || abs(variant.alleles[0].dlen)==1)
+            //if (bcf_get_n_allele(v)!=2 || abs(variant.alleles[0].dlen)==1)
+            if (bcf_get_n_allele(v)!=2 || vtype!=VT_SNP || !bcf_filter_exists(odr->hdr, v, "PASS"))
             {
                 continue;
             }             
@@ -228,7 +229,7 @@ class Igor : Program
 //                pl[1] = pls[j*3+1];
 //                pl[2] = pls[j*3+2];
 //                
-//                 if ((c1+c2==0 && (pl[1]<10 || pl[2]<10)) ||
+//                if ((c1+c2==0 && (pl[1]<10 || pl[2]<10)) ||
 //                    (c1+c2==1 && (pl[0]<10 || pl[2]<10)) ||
 //                    (c1+c2==2 && (pl[0]<10 || pl[1]<10)) )
 //                {
@@ -264,43 +265,10 @@ class Igor : Program
         std::clog << "\n";
     }
 
-    float get_error_rate(int32_t gt[3][3][3], int32_t f, int32_t m, bool collapse)
+    float get_error_rate(int32_t gt[3][3][3], int32_t f, int32_t m, int32_t collapse)
     {
-        if (f!=-1&&m!=-1)
+        if (collapse==-1) //ALL
         {    
-            float total = gt[f][m][0] + gt[f][m][1] + gt[f][m][2];
-            float error_count = 0;
-            if (f==m && f!=1)//0/0,2/2
-            {
-                error_count = gt[f][m][1] + gt[f][m][2-f];
-            }
-            else if (abs(f-m)==2) //0/2,2/0
-            {
-                error_count = gt[f][m][0] + gt[f][m][2];
-                if (collapse)
-                {
-                    total += gt[m][f][0] + gt[m][f][1] + gt[m][f][2];
-                    error_count += gt[m][f][0] + gt[m][f][2];
-                } 
-            }
-            else if (abs(f-m)==1)//1/2,2/1,1/0,0/1
-            {
-                error_count = gt[f][m][f==1?2-m:2-f];
-                if (collapse)
-                {
-                    total += gt[m][f][0] + gt[m][f][1] + gt[m][f][2];
-                    error_count += gt[m][f][f==1?2-m:2-f];
-                }   
-            }
-            else if (f==1 && m==1)//1/1
-            {
-                error_count = 0;
-            }
-            
-            return error_count/total*100;
-        }
-        else
-        {
             float total = 0;
             float error_count = 0;
             
@@ -333,9 +301,103 @@ class Igor : Program
             
             return error_count/total*100;
         }
+        else if (collapse==0) //no collapse
+        {
+            float total = gt[f][m][0] + gt[f][m][1] + gt[f][m][2];
+            float error_count = 0;
+            if (f==m && f!=1)//0/0,2/2
+            {
+                error_count = gt[f][m][1] + gt[f][m][2-f];
+            }
+            else if (abs(f-m)==2) //0/2,2/0
+            {
+                error_count = gt[f][m][0] + gt[f][m][2];
+            }
+            else if (abs(f-m)==1)//1/2,2/1,1/0,0/1
+            {
+                error_count = gt[f][m][f==1?2-m:2-f];
+            }
+            else if (f==1 && m==1)//1/1
+            {
+                error_count = 0;
+            } 
+            
+            return error_count/total*100;           
+        }
+        else if (collapse==1) //ignoring father/mother
+        {
+            float total = 0;
+            float error_count = 0;
+            if (f==m && f!=1)//0/0,2/2
+            {
+                total = gt[f][m][0] + gt[f][m][1] + gt[f][m][2];
+                error_count = gt[f][m][1] + gt[f][m][2-f];
+            }
+            else if (abs(f-m)==2) //0/2,2/0
+            {
+                total = gt[f][m][0] + gt[f][m][1] + gt[f][m][2];
+                total += gt[m][f][0] + gt[m][f][1] + gt[m][f][2];
+                error_count = gt[f][m][0] + gt[f][m][2];
+                error_count += gt[m][f][0] + gt[m][f][2];
+            }
+            else if (abs(f-m)==1)//1/2,2/1,1/0,0/1
+            {
+                total = gt[f][m][0] + gt[f][m][1] + gt[f][m][2];
+                total += gt[m][f][0] + gt[m][f][1] + gt[m][f][2];
+                error_count = gt[f][m][f==1?2-m:2-f];
+                error_count += gt[m][f][f==1?2-m:2-f];
+            }
+            else if (f==1 && m==1)//1/1
+            {
+                total = gt[f][m][0] + gt[f][m][1] + gt[f][m][2];
+                error_count = 0;
+            }
+            
+            return error_count/total*100;
+        }    
+        else if (collapse==2) //ignoring allele and father/mother
+        {
+            float total = 0;
+            float error_count = 0;
+            if (f==m && f!=1)//0/0,2/2
+            {
+                total = gt[f][m][0] + gt[f][m][1] + gt[f][m][2];
+                total += gt[2-f][2-m][0] + gt[2-f][2-m][1] + gt[2-f][2-m][2];
+                error_count = gt[f][m][1] + gt[f][m][2-f];
+                error_count += gt[2-f][2-m][1] + gt[2-f][2-m][f];
+            }
+            else if (abs(f-m)==2) //0/2,2/0
+            {
+                total = gt[f][m][0] + gt[f][m][1] + gt[f][m][2];
+                total += gt[m][f][0] + gt[m][f][1] + gt[m][f][2];
+                error_count = gt[f][m][0] + gt[f][m][2];
+                error_count += gt[m][f][0] + gt[m][f][2];
+            }
+            else if (abs(f-m)==1)// 1/2,2/1,1/0,0/1
+            {
+                total = gt[f][m][0] + gt[f][m][1] + gt[f][m][2];
+                total += gt[m][f][0] + gt[m][f][1] + gt[m][f][2];
+                total += gt[2-f][2-m][0] + gt[2-f][2-m][1] + gt[2-f][2-m][2];
+                total += gt[2-m][2-f][0] + gt[2-m][2-f][1] + gt[2-m][2-f][2];
+                
+                error_count = gt[f][m][f==1?2-m:2-f];
+                error_count += gt[m][f][f==1?2-m:2-f];
+                error_count += gt[2-f][2-m][f==1?m:f];   
+                error_count += gt[2-m][2-f][f==1?m:f];        
+            }
+            else if (f==1 && m==1)//1/1
+            {
+                total = gt[f][m][0] + gt[f][m][1] + gt[f][m][2];
+                error_count = 0;
+            }
+        
+            return error_count/total*100;
+        }
+        
+        return NAN;
     }; 
 
-    float get_homhet_ratio(int32_t gt[3][3][3], int32_t f, int32_t m, bool collapse)
+    float get_homhet_ratio(int32_t gt[3][3][3], int32_t f, int32_t m, int32_t collapse)
     {
         float hom = 0;
         float het = 0;
@@ -351,7 +413,7 @@ class Igor : Program
         {
             hom = gt[f][m][f==1?m:f];
             het = gt[f][m][1];
-            if (collapse)
+            if (collapse==1)
             {
                 hom += gt[m][f][f==1?m:f];
                 het += gt[m][f][1];
@@ -379,7 +441,7 @@ class Igor : Program
         {
             for (int32_t j=0; j<3; ++j)
             {
-                fprintf(stderr, "     %s    %s   %10d   %10d   %10d   %5.2f      %4.2f\n", g2s[i].c_str(), g2s[j].c_str(), trio_genotypes[i][j][0], trio_genotypes[i][j][1], trio_genotypes[i][j][2], get_error_rate(trio_genotypes, i, j, false), get_homhet_ratio(trio_genotypes, i, j, false));
+                fprintf(stderr, "     %s    %s   %10d   %10d   %10d   %6.2f      %4.2f\n", g2s[i].c_str(), g2s[j].c_str(), trio_genotypes[i][j][0], trio_genotypes[i][j][1], trio_genotypes[i][j][2], get_error_rate(trio_genotypes, i, j, 0), get_homhet_ratio(trio_genotypes, i, j, 0));
             }
         }
         fprintf(stderr, "\n");
@@ -395,17 +457,37 @@ class Igor : Program
                         int32_t rr = trio_genotypes[i][j][0] + trio_genotypes[j][i][0];
                         int32_t ra = trio_genotypes[i][j][1] + trio_genotypes[j][i][1];
                         int32_t aa = trio_genotypes[i][j][2] + trio_genotypes[j][i][2];
-                        fprintf(stderr, "     %s    %s   %10d   %10d   %10d   %5.2f      %4.2f\n", g2s[i].c_str(), g2s[j].c_str(), rr, ra, aa, get_error_rate(trio_genotypes, i, j, true), get_homhet_ratio(trio_genotypes, i, j, true));
+                        fprintf(stderr, "     %s    %s   %10d   %10d   %10d   %6.2f      %4.2f\n", g2s[i].c_str(), g2s[j].c_str(), rr, ra, aa, get_error_rate(trio_genotypes, i, j, 1), get_homhet_ratio(trio_genotypes, i, j, 1));
                     }
                 }
                 else
                 {
-                    fprintf(stderr, "     %s    %s   %10d   %10d   %10d   %5.2f      %4.2f\n", g2s[i].c_str(), g2s[j].c_str(), trio_genotypes[i][j][0], trio_genotypes[i][j][1], trio_genotypes[i][j][2], get_error_rate(trio_genotypes, i, j, true), get_homhet_ratio(trio_genotypes, i, j, true));
+                    fprintf(stderr, "     %s    %s   %10d   %10d   %10d   %6.2f      %4.2f\n", g2s[i].c_str(), g2s[j].c_str(), trio_genotypes[i][j][0], trio_genotypes[i][j][1], trio_genotypes[i][j][2], get_error_rate(trio_genotypes, i, j, 1), get_homhet_ratio(trio_genotypes, i, j, 1));
                 }
             }
         }
         fprintf(stderr, "\n");
-        fprintf(stderr, "     total mendelian error : %4.2f%%\n", get_error_rate(trio_genotypes, -1, -1, false));
+        fprintf(stderr, "     Parental            R/R          R/A          A/A   Error(%%) HomHet\n");
+        int32_t i,j, rr, ra, aa;
+        i=0; j=0;
+        rr = trio_genotypes[i][j][0] + trio_genotypes[2][2][0];
+        ra = trio_genotypes[i][j][1] + trio_genotypes[2][2][1];
+        aa = trio_genotypes[i][j][2] + trio_genotypes[2][2][2];
+        fprintf(stderr, "     %s    %s   %10d   %10d   %10d   %6.2f      %4.2f\n", "HOM", "HOM", rr, ra, aa, get_error_rate(trio_genotypes, i, j, 2), get_homhet_ratio(trio_genotypes, i, j, 2));
+        i=0; j=1;
+        rr = trio_genotypes[i][j][0] + trio_genotypes[j][i][0] + trio_genotypes[2-i][j][0] + trio_genotypes[j][2-i][0];
+        ra = trio_genotypes[i][j][1] + trio_genotypes[j][i][1] + trio_genotypes[2-i][j][1] + trio_genotypes[j][2-i][1];
+        aa = trio_genotypes[i][j][2] + trio_genotypes[j][i][2] + trio_genotypes[2-i][j][2] + trio_genotypes[j][2-i][2];
+        fprintf(stderr, "     %s    %s   %10d   %10d   %10d   %6.2f      %4.2f\n", "HOM", "HET", rr, ra, aa, get_error_rate(trio_genotypes, i, j, 2), get_homhet_ratio(trio_genotypes, i, j, 2));
+        i=1; j=1;
+        fprintf(stderr, "     %s    %s   %10d   %10d   %10d   %6.2f      %4.2f\n", "HET", "HET", trio_genotypes[i][j][0], trio_genotypes[i][j][1], trio_genotypes[i][j][2], get_error_rate(trio_genotypes, i, j, 2), get_homhet_ratio(trio_genotypes, i, j, 2));
+        i=0; j=2;
+        rr = trio_genotypes[i][j][0] + trio_genotypes[j][i][0];
+        ra = trio_genotypes[i][j][1] + trio_genotypes[j][i][1];
+        aa = trio_genotypes[i][j][2] + trio_genotypes[j][i][2];
+        fprintf(stderr, "     %s %s%10d   %10d   %10d   %6.2f      %4.2f\n", "HOMREF", "HOMALT", rr, ra, aa, get_error_rate(trio_genotypes, i, j, 2), get_homhet_ratio(trio_genotypes, i, j, 2));
+        fprintf(stderr, "\n");
+        fprintf(stderr, "     total mendelian error : %7.3f%%\n", get_error_rate(trio_genotypes, -1, -1, -1));
         fprintf(stderr, "\n");
         fprintf(stderr, "     no. of trios     : %d\n", no_trios);
         fprintf(stderr, "     no. of variants  : %d\n", no_variants);
