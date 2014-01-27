@@ -526,3 +526,18 @@ bool bcf_is_passed(bcf_hdr_t *h, bcf1_t *v)
 //    std::cerr << v->d.n_flt << ":" << v->d.flt[0] << "\n";
     return (v->d.n_flt==1 && !strcmp(h->id[BCF_DT_ID][v->d.flt[0]].key,"PASS"));
 }
+
+/**
+ * Check existence of a filter
+ */
+bool bcf_filter_exists(bcf_hdr_t* h, bcf1_t* v, char* key)
+{
+    int id = bcf_hdr_id2int(h, BCF_DT_ID, key);
+    if ( !bcf_hdr_idinfo_exists(h,BCF_HL_FLT,id) ) return false;   // no such INFO field in the header
+    if ( !(v->unpacked & BCF_UN_FLT) ) bcf_unpack(v, BCF_UN_INFO);
+    for (int32_t i=0; i<v->d.n_flt; i++)  
+    {
+        if ( v->d.flt[i]==id ) return true;
+    }
+    return false;    
+}
