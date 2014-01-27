@@ -238,13 +238,13 @@ class Igor : Program
                
                 if (!(f1<0 || f2<0 || m1<0 || m2<0 || c1<0 || c2<0))
                 {
-                    printf("%d/%d %d/%d %d/%d\n", f1,f2,m1,m2,c1,c2);
+                    //printf("%d/%d %d/%d %d/%d\n", f1,f2,m1,m2,c1,c2);
                     ++trio_genotypes[f1+f2][m1+m2][c1+c2];
 
                     variant_used = true;
                 }
             }
-            ++no_variants;
+            if (variant_used) ++no_variants;
 
             free(gts);
 //            free(dps);
@@ -264,61 +264,107 @@ class Igor : Program
         std::clog << "\n";
     }
 
-    float get_error_rate(int32_t ***gt, int32_t f, int32_t m)
+    float get_error_rate(int32_t gt[3][3][3], int32_t f, int32_t m, bool collapse)
     {
         float total = gt[f][m][0] + gt[f][m][1] + gt[f][m][2];
         float error_count = 0;
-        if (f==0 && m==0)
+        if (f==m && f!=1)//0/0,2/2
         {
-            error_count = gt[f][m][1] + gt[f][m][2];
+            error_count = gt[f][m][1] + gt[f][m][2-f];
         }
-        else if (f==0 && m==1)
-        {
-            error_count = gt[f][m][2];
-        }
-        else if (f==0 && m==2)
+        else if (abs(f-m)==2) //0/2,2/0
         {
             error_count = gt[f][m][0] + gt[f][m][2];
+            if (collapse)
+            {
+                total += gt[m][f][0] + gt[m][f][1] + gt[m][f][2];
+                error_count += gt[m][f][0] + gt[m][f][2];
+            } 
         }
-        else if (f==1 && m==0)
+        else if (abs(f-m)==1)//1/2,2/1,1/0,0/1
         {
-            error_count = gt[f][m][1] + gt[f][m][2];
+            error_count = gt[f][m][f==1?2-m:2-f];
+            if (collapse)
+            {
+                total += gt[m][f][0] + gt[m][f][1] + gt[m][f][2];
+                error_count += gt[m][f][f==1?2-m:2-f];
+            }   
         }
-        else if (f==0 && m==1)
+        else if (f==1 && m==1)//1/1
         {
-            error_count = gt[f][m][1] + gt[f][m][2];
+            error_count = 0;
         }
-        else if (f==0 && m==1)
-        {
-            error_count = gt[f][m][1] + gt[f][m][2];
-        }
-        else if (f==0 && m==1)
-        {
-            error_count = gt[f][m][1] + gt[f][m][2];
-        }
-        else if (f==0 && m==1)
-        {
-            error_count = gt[f][m][1] + gt[f][m][2];
-        }
-        else if (f==0 && m==1)
-        {
-            error_count = gt[f][m][1] + gt[f][m][2];
-        }
-        return 1;
+
+        return error_count/total*100;
     }; 
+
+    float get_homhet_ratio(int32_t gt[3][3][3], int32_t f, int32_t m, bool collapse)
+    {
+        float hom = 0;
+        float het = 0;
+        if (f==m && f!=1)//0/0,2/2
+        {
+            
+        }
+        else if (abs(f-m)==2) //0/2,2/0
+        {
+            
+        }
+        else if (abs(f-m)==1)//1/2,2/1,1/0,0/1
+        {
+            hom = gt[f][m][f==1?m:f];
+            het = gt[f][m][1];
+            if (collapse)
+            {
+                hom += gt[m][f][f==1?m:f];
+                het += gt[m][f][1];
+            }   
+        }
+        else if (f==1 && m==1)//1/1
+        {
+            hom = gt[f][m][0]+gt[f][m][2];
+            het = gt[f][m][1];
+        }
+        
+        return hom/het;
+    }; 
+
 
     void print_stats()
     {
-        fprintf(stderr, "\n");
-        fprintf(stderr, "  Mendelian Errors\n");
         std::string g2s[3] = {"R/R","R/A","A/A"};
         
-        fprintf(stderr, "              R/R     R/A    A/A       Total\n");
+        fprintf(stderr, "\n");
+        fprintf(stderr, "     Mendelian Errors\n");
+        fprintf(stderr, "\n");
+        fprintf(stderr, "     Father Mother       R/R          R/A          A/A   Error(%%) HomHet\n");
         for (int32_t i=0; i<3; ++i)
         {
             for (int32_t j=0; j<3; ++j)
             {
-                fprintf(stderr, "  %s %s   %5d   %5d  %5d \n", g2s[i].c_str(), g2s[j].c_str(), trio_genotypes[i][j][0], trio_genotypes[i][j][1], trio_genotypes[i][j][2]);
+                fprintf(stderr, "     %s    %s   %10d   %10d   %10d   %5.2f      %4.2f\n", g2s[i].c_str(), g2s[j].c_str(), trio_genotypes[i][j][0], trio_genotypes[i][j][1], trio_genotypes[i][j][2], get_error_rate(trio_genotypes, i, j, false), get_homhet_ratio(trio_genotypes, i, j, false));
+            }
+        }
+        fprintf(stderr, "\n");
+        fprintf(stderr, "     Parental            R/R          R/A          A/A   Error(%%) HomHet\n");
+        for (int32_t i=0; i<3; ++i)
+        {
+            for (int32_t j=0; j<3; ++j)
+            {
+                if (i!=j)
+                {
+                    if (i<j)
+                    {
+                        int32_t rr = trio_genotypes[i][j][0] + trio_genotypes[j][i][0];
+                        int32_t ra = trio_genotypes[i][j][1] + trio_genotypes[j][i][1];
+                        int32_t aa = trio_genotypes[i][j][2] + trio_genotypes[j][i][2];
+                        fprintf(stderr, "     %s    %s   %10d   %10d   %10d   %5.2f      %4.2f\n", g2s[i].c_str(), g2s[j].c_str(), rr, ra, aa, get_error_rate(trio_genotypes, i, j, true), get_homhet_ratio(trio_genotypes, i, j, true));
+                    }
+                }
+                else
+                {
+                    fprintf(stderr, "     %s    %s   %10d   %10d   %10d   %5.2f      %4.2f\n", g2s[i].c_str(), g2s[j].c_str(), trio_genotypes[i][j][0], trio_genotypes[i][j][1], trio_genotypes[i][j][2], get_error_rate(trio_genotypes, i, j, true), get_homhet_ratio(trio_genotypes, i, j, true));
+                }
             }
         }
         fprintf(stderr, "\n");
