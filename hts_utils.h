@@ -299,7 +299,6 @@ bool bcf_is_passed(bcf_hdr_t *h, bcf1_t *v);
  */
 #define bcf_get_end_pos1(v) ((v)->pos + strlen((v)->d.allele[0]))
 
-
 /**
  * Set 1-based position
  */
@@ -344,5 +343,10 @@ bool bcf_is_passed(bcf_hdr_t *h, bcf1_t *v);
  * Set number of samples in bcf record
  */
 #define bcf_set_n_sample(v, n) ((v)->n_sample = (n));
+
+/**
+ * Check existence of a filter
+ */
+bool bcf_filter_exists(bcf_hdr_t* h, bcf1_t* v, char* key);
 
 #endif
