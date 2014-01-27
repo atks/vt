@@ -69,6 +69,9 @@ class Igor : Program
     uint32_t no_11_01;
     uint32_t no_11_11;
 
+
+    int32_t trio_genotypes[3][3][3];
+
     /////////
     //tools//
     /////////
@@ -134,16 +137,17 @@ class Igor : Program
         no_trios = 0;
         no_variants = 0;
 
-        no_00 = 0;
-        no_00_00 = 0;
-        no_00_01 = 0;
-        no_00_11 = 0;
-
-        no_11 = 0;
-        no_11_00 = 0;
-        no_11_01 = 0;
-        no_11_11 = 0;
-
+        for (int32_t i=0; i<3; ++i)
+        {            
+            for (int32_t j=0; j<3; ++j)
+            {                
+                for (int32_t k=0; k<3; ++k)
+                {
+                    trio_genotypes[i][j][k] = 0;
+                } 
+            } 
+        }    
+        
         /////////
         //tools//
         /////////
@@ -165,8 +169,8 @@ class Igor : Program
 
         while(odr->read(v))
         {
-           bcf_unpack(v, BCF_UN_STR);
-           int32_t vtype = vm->classify_variant(odr->hdr, v, variant);
+            bcf_unpack(v, BCF_UN_STR);
+            int32_t vtype = vm->classify_variant(odr->hdr, v, variant);
             
             if (bcf_get_n_allele(v)!=2 || abs(variant.alleles[0].dlen)==1)
             {
@@ -177,147 +181,65 @@ class Igor : Program
             int32_t n = 0;
             int k = bcf_get_genotypes(h, v, &gts, &n);
 
-           // std::cerr << "k " << k << "n " << n << "\n";
-
-            
-
-           // if ()
-
-//            int32_t *dps = NULL;
-//            n = 0;
-//            k = bcf_get_format_int(h, v, "DP", &dps, &n);
-//
+   
             int32_t *pls = NULL;
             n = 0;
             k = bcf_get_format_int(h, v, "PL", &pls, &n);
 
             bool variant_used = false;
-
             int32_t pl[3];
-
-//bcf_print(h,v);
-
-
 
             for (int32_t i =0; i< trios.size(); ++i)
             {
                 int32_t j = bcf_hdr_id2int(h, BCF_DT_SAMPLE, trios[i].father.c_str());
-                int32_t *igt = gts+j*2;
-                int32_t f1 = bcf_gt_allele(igt[0]);
-                int32_t f2 = bcf_gt_allele(igt[1]);
-                pl[0] = pls[j*3];
-                pl[1] = pls[j*3+1];
-                pl[2] = pls[j*3+2];
-                
-                if ((f1+f2==0 && (pl[1]<10 || pl[2]<10)) ||
-                    (f1+f2==1 && (pl[0]<10 || pl[2]<10)) ||
-                    (f1+f2==2 && (pl[0]<10 || pl[1]<10)) )
-                {
-                    f1 = -1;
-                    f2 = -1;
-                }
-                      
-                
-                
-                
-                
-//                int32_t fdp = dps[j];
+                int32_t f1 = bcf_gt_allele(gts[j*2]);
+                int32_t f2 = bcf_gt_allele(gts[j*2+1]);
+//                pl[0] = pls[j*3];
+//                pl[1] = pls[j*3+1];
+//                pl[2] = pls[j*3+2];
+//                
+//                if ((f1+f2==0 && (pl[1]<10 || pl[2]<10)) ||
+//                    (f1+f2==1 && (pl[0]<10 || pl[2]<10)) ||
+//                    (f1+f2==2 && (pl[0]<10 || pl[1]<10)) )
+//                {
+//                    f1 = -1;
+//                    f2 = -1;
+//                }
 
                 j = bcf_hdr_id2int(h, BCF_DT_SAMPLE, trios[i].mother.c_str());
-                igt = gts+j*2;
-                int32_t m1 = bcf_gt_allele(igt[0]);
-                int32_t m2 = bcf_gt_allele(igt[1]);
-                pl[0] = pls[j*3];
-                pl[1] = pls[j*3+1];
-                pl[2] = pls[j*3+2];
-                
-                if ((m1+m2==0 && (pl[1]<10 || pl[2]<10)) ||
-                    (m1+m2==1 && (pl[0]<10 || pl[2]<10)) ||
-                    (m1+m2==2 && (pl[0]<10 || pl[1]<10)) )
-                {
-                    m1 = -1;
-                    m2 = -1;
-                }
-//                int32_t mdp = dps[j];
-
+                int32_t m1 = bcf_gt_allele(gts[j*2]);
+                int32_t m2 = bcf_gt_allele(gts[j*2+1]);
+//                pl[0] = pls[j*3];
+//                pl[1] = pls[j*3+1];
+//                pl[2] = pls[j*3+2];
+//                
+//                if ((m1+m2==0 && (pl[1]<10 || pl[2]<10)) ||
+//                    (m1+m2==1 && (pl[0]<10 || pl[2]<10)) ||
+//                    (m1+m2==2 && (pl[0]<10 || pl[1]<10)) )
+//                {
+//                    m1 = -1;
+//                    m2 = -1;
+//                }
 
                 j = bcf_hdr_id2int(h, BCF_DT_SAMPLE, trios[i].child.c_str());
-                igt = gts+j*2;
-                int32_t c1 = bcf_gt_allele(igt[0]);
-                int32_t c2 = bcf_gt_allele(igt[1]);
-                pl[0] = pls[j*3];
-                pl[1] = pls[j*3+1];
-                pl[2] = pls[j*3+2];
-                
-                 if ((c1+c2==0 && (pl[1]<10 || pl[2]<10)) ||
-                    (c1+c2==1 && (pl[0]<10 || pl[2]<10)) ||
-                    (c1+c2==2 && (pl[0]<10 || pl[1]<10)) )
-                {
-                    c1 = -1;
-                    c2 = -1;
-                } 
-
-//                int32_t cdp = dps[j];
-
-                if (f1<0 && f2<0 & m1<0 && m2<0 && c1<0 && c2<0)
-                {
-                    ++missing;
-                }
-
-                if (f1==0 && f2==1 & m1==0 && m2==1 && c1==1 && c2==1)
-                {
-                    ++mendel_homalt_err;
-                }
-
-
-//                            std::cerr << f1 << "/" << f2 << "\t";
-//                            std::cerr << m1 << "/" << m2 << "\t";
-//                            std::cerr << c1 << "/" << c2 << "\n";
-
+                int32_t c1 = bcf_gt_allele(gts[j*2]);
+                int32_t c2 = bcf_gt_allele(gts[j*2+1]);
+//                pl[0] = pls[j*3];
+//                pl[1] = pls[j*3+1];
+//                pl[2] = pls[j*3+2];
+//                
+//                 if ((c1+c2==0 && (pl[1]<10 || pl[2]<10)) ||
+//                    (c1+c2==1 && (pl[0]<10 || pl[2]<10)) ||
+//                    (c1+c2==2 && (pl[0]<10 || pl[1]<10)) )
+//                {
+//                    c1 = -1;
+//                    c2 = -1;
+//                } 
+               
                 if (!(f1<0 || f2<0 || m1<0 || m2<0 || c1<0 || c2<0))
                 {
-                    if ((f1==0 && f2==1 && m1==0 && m2==0) ||
-                        (f1==0 && f2==0 && m1==0 && m2==1))
-                    {
-                        ++no_00;
-
-                        if (c1==0 && c2==0)
-                        {
-                            ++no_00_00;
-                        }
-                        else if (c1==0 && c2==1)
-                        {
-                            ++no_00_01;
-                        }
-                        else if (c1==1 && c2==1)
-                        {
-                            ++no_00_11;
-                        }
-                        else
-                        {
-                            std::cerr << f1 << "/" << f2 << "\t";
-                            std::cerr << m1 << "/" << m2 << "\t";
-                            std::cerr << c1 << "/" << c2 << "\n";
-                        }
-                    }
-                    else if ((f1==0 && f2==1 && m1==1 && m2==1) ||
-                             (f1==1 && f2==1 && m1==0 && m2==1))
-                    {
-                        ++no_11;
-
-                        if ((c1+c2)==0)
-                        {
-                            ++no_11_00;
-                        }
-                        else if ((c1+c2)==1)
-                        {
-                            ++no_11_01;
-                        }
-                        else if ((c1+c2)==2)
-                        {
-                            ++no_11_11;
-                        }
-                    }
+                    printf("%d/%d %d/%d %d/%d\n", f1,f2,m1,m2,c1,c2);
+                    ++trio_genotypes[f1+f2][m1+m2][c1+c2];
 
                     variant_used = true;
                 }
@@ -329,8 +251,6 @@ class Igor : Program
 //            free(pls);
         }
 
-    std::cerr << "MISSING " << missing << "\n";
-    std::cerr << "HOMALT MENDEL ERROR " << mendel_homalt_err << "\n";
         odr->close();
     };
 
@@ -344,21 +264,66 @@ class Igor : Program
         std::clog << "\n";
     }
 
+    float get_error_rate(int32_t ***gt, int32_t f, int32_t m)
+    {
+        float total = gt[f][m][0] + gt[f][m][1] + gt[f][m][2];
+        float error_count = 0;
+        if (f==0 && m==0)
+        {
+            error_count = gt[f][m][1] + gt[f][m][2];
+        }
+        else if (f==0 && m==1)
+        {
+            error_count = gt[f][m][2];
+        }
+        else if (f==0 && m==2)
+        {
+            error_count = gt[f][m][0] + gt[f][m][2];
+        }
+        else if (f==1 && m==0)
+        {
+            error_count = gt[f][m][1] + gt[f][m][2];
+        }
+        else if (f==0 && m==1)
+        {
+            error_count = gt[f][m][1] + gt[f][m][2];
+        }
+        else if (f==0 && m==1)
+        {
+            error_count = gt[f][m][1] + gt[f][m][2];
+        }
+        else if (f==0 && m==1)
+        {
+            error_count = gt[f][m][1] + gt[f][m][2];
+        }
+        else if (f==0 && m==1)
+        {
+            error_count = gt[f][m][1] + gt[f][m][2];
+        }
+        else if (f==0 && m==1)
+        {
+            error_count = gt[f][m][1] + gt[f][m][2];
+        }
+        return 1;
+    }; 
+
     void print_stats()
     {
         fprintf(stderr, "\n");
         fprintf(stderr, "  Mendelian Errors\n");
-        fprintf(stderr, "              0/0     0/1    1/1       Total\n");
-        fprintf(stderr, "  0/0+0/1   %5.2f   %5.2f  %5.2f  %10d\n", (float)no_00_00/no_00*100, (float)no_00_01/no_00*100, (float)no_00_11/no_00*100, no_00);
-        fprintf(stderr, "  1/1+0/1   %5.2f   %5.2f  %5.2f  %10d\n", (float)no_11_00/no_11*100, (float)no_11_01/no_11*100, (float)no_11_11/no_11*100, no_11);
-        fprintf(stderr, "\n");
-        fprintf(stderr, "  0/0+0/1   %5d   %5d  %5d  %10d\n", no_00_00, no_00_01, no_00_11, no_00);
-        fprintf(stderr, "  1/1+0/1   %5d   %5d  %5d  %10d\n", no_11_00, no_11_01, no_11_11, no_11);
+        std::string g2s[3] = {"R/R","R/A","A/A"};
+        
+        fprintf(stderr, "              R/R     R/A    A/A       Total\n");
+        for (int32_t i=0; i<3; ++i)
+        {
+            for (int32_t j=0; j<3; ++j)
+            {
+                fprintf(stderr, "  %s %s   %5d   %5d  %5d \n", g2s[i].c_str(), g2s[j].c_str(), trio_genotypes[i][j][0], trio_genotypes[i][j][1], trio_genotypes[i][j][2]);
+            }
+        }
         fprintf(stderr, "\n");
         fprintf(stderr, "  no. of trios     : %d\n", no_trios);
         fprintf(stderr, "  no. of variants  : %d\n", no_variants);
-        fprintf(stderr, "\n");
-        fprintf(stderr, "  minimum depth    : %d\n", min_depth);
         fprintf(stderr, "\n");
     };
 
