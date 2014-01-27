@@ -266,36 +266,73 @@ class Igor : Program
 
     float get_error_rate(int32_t gt[3][3][3], int32_t f, int32_t m, bool collapse)
     {
-        float total = gt[f][m][0] + gt[f][m][1] + gt[f][m][2];
-        float error_count = 0;
-        if (f==m && f!=1)//0/0,2/2
-        {
-            error_count = gt[f][m][1] + gt[f][m][2-f];
-        }
-        else if (abs(f-m)==2) //0/2,2/0
-        {
-            error_count = gt[f][m][0] + gt[f][m][2];
-            if (collapse)
+        if (f!=-1&&m!=-1)
+        {    
+            float total = gt[f][m][0] + gt[f][m][1] + gt[f][m][2];
+            float error_count = 0;
+            if (f==m && f!=1)//0/0,2/2
             {
-                total += gt[m][f][0] + gt[m][f][1] + gt[m][f][2];
-                error_count += gt[m][f][0] + gt[m][f][2];
-            } 
-        }
-        else if (abs(f-m)==1)//1/2,2/1,1/0,0/1
-        {
-            error_count = gt[f][m][f==1?2-m:2-f];
-            if (collapse)
+                error_count = gt[f][m][1] + gt[f][m][2-f];
+            }
+            else if (abs(f-m)==2) //0/2,2/0
             {
-                total += gt[m][f][0] + gt[m][f][1] + gt[m][f][2];
-                error_count += gt[m][f][f==1?2-m:2-f];
-            }   
+                error_count = gt[f][m][0] + gt[f][m][2];
+                if (collapse)
+                {
+                    total += gt[m][f][0] + gt[m][f][1] + gt[m][f][2];
+                    error_count += gt[m][f][0] + gt[m][f][2];
+                } 
+            }
+            else if (abs(f-m)==1)//1/2,2/1,1/0,0/1
+            {
+                error_count = gt[f][m][f==1?2-m:2-f];
+                if (collapse)
+                {
+                    total += gt[m][f][0] + gt[m][f][1] + gt[m][f][2];
+                    error_count += gt[m][f][f==1?2-m:2-f];
+                }   
+            }
+            else if (f==1 && m==1)//1/1
+            {
+                error_count = 0;
+            }
+            
+            return error_count/total*100;
         }
-        else if (f==1 && m==1)//1/1
+        else
         {
-            error_count = 0;
+            float total = 0;
+            float error_count = 0;
+            
+            for (int32_t i=0; i<3; ++i)
+            {
+                for (int32_t j=0; j<3; ++j)
+                {
+                    f = i; 
+                    m = j;
+                    total += gt[f][m][0] + gt[f][m][1] + gt[f][m][2];
+                    
+                    if (f==m && f!=1)//0/0,2/2
+                    {
+                        error_count += gt[f][m][1] + gt[f][m][2-f];
+                    }
+                    else if (abs(f-m)==2) //0/2,2/0
+                    {
+                        error_count += gt[f][m][0] + gt[f][m][2];
+                    }
+                    else if (abs(f-m)==1)//1/2,2/1,1/0,0/1
+                    {
+                        error_count += gt[f][m][f==1?2-m:2-f];   
+                    }
+                    else if (f==1 && m==1)//1/1
+                    {
+                        error_count += 0;
+                    }
+                }
+            }
+            
+            return error_count/total*100;
         }
-
-        return error_count/total*100;
     }; 
 
     float get_homhet_ratio(int32_t gt[3][3][3], int32_t f, int32_t m, bool collapse)
@@ -368,8 +405,10 @@ class Igor : Program
             }
         }
         fprintf(stderr, "\n");
-        fprintf(stderr, "  no. of trios     : %d\n", no_trios);
-        fprintf(stderr, "  no. of variants  : %d\n", no_variants);
+        fprintf(stderr, "     total mendelian error : %4.2f%%\n", get_error_rate(trio_genotypes, -1, -1, false));
+        fprintf(stderr, "\n");
+        fprintf(stderr, "     no. of trios     : %d\n", no_trios);
+        fprintf(stderr, "     no. of variants  : %d\n", no_variants);
         fprintf(stderr, "\n");
     };
 
