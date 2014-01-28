@@ -40,7 +40,8 @@ SOURCES = program\
 		profile_mendel_errors\
 		pedigree\
 		concat\
-		decompose
+		decompose\
+		remove_overlap
 
 SOURCESONLY = main.cpp
 

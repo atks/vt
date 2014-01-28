@@ -37,6 +37,7 @@
 #include "profile_indels.h"
 #include "profile_mendel_errors.h"
 #include "decompose.h"
+#include "remove_overlap.h"
 
 void print_time(double t)
 {
@@ -126,6 +127,10 @@ int main(int argc, char ** argv)
     else if (argc>1 && cmd=="mergedups")
     {
         merge_duplicate_variants(argc-1, ++argv);
+    }
+    else if (argc>1 && cmd=="remove_overlap")
+    {
+        remove_overlap(argc-1, ++argv);
     }
     else if (argc>1 && cmd=="peek")
     {
