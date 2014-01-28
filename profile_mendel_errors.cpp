@@ -167,13 +167,14 @@ class Igor : Program
         int32_t missing = 0;
         int32_t mendel_homalt_err = 0;
 
+
         while(odr->read(v))
         {
             bcf_unpack(v, BCF_UN_FLT);
             int32_t vtype = vm->classify_variant(odr->hdr, v, variant);
             
             //if (bcf_get_n_allele(v)!=2 || abs(variant.alleles[0].dlen)==1)
-            if (bcf_get_n_allele(v)!=2 || vtype!=VT_SNP || !bcf_filter_exists(odr->hdr, v, "PASS"))
+            if (bcf_get_n_allele(v)!=2 || vtype!=VT_SNP || bcf_has_filter(odr->hdr, v, const_cast<char*>("PASS"))!=1)
             {
                 continue;
             }             
@@ -401,33 +402,180 @@ class Igor : Program
     {
         float hom = 0;
         float het = 0;
-        if (f==m && f!=1)//0/0,2/2
-        {
-            
-        }
-        else if (abs(f-m)==2) //0/2,2/0
-        {
-            
-        }
-        else if (abs(f-m)==1)//1/2,2/1,1/0,0/1
-        {
-            hom = gt[f][m][f==1?m:f];
-            het = gt[f][m][1];
-            if (collapse==1)
+        if (collapse==0) //ALL
+        {    
+            if (abs(f-m)==1)//1/2,2/1,1/0,0/1
             {
-                hom += gt[m][f][f==1?m:f];
-                het += gt[m][f][1];
-            }   
+                hom = gt[f][m][f==1?m:f];
+                het = gt[f][m][1];
+            }
+            else if (f==1 && m==1)//1/1
+            {
+                hom = gt[f][m][0]+gt[f][m][2];
+                het = gt[f][m][1];
+            }
         }
-        else if (f==1 && m==1)//1/1
+        else if (collapse==1) //no collapse
         {
-            hom = gt[f][m][0]+gt[f][m][2];
-            het = gt[f][m][1];
+            if (abs(f-m)==1)//1/2,2/1,1/0,0/1
+            {
+                hom = gt[f][m][f==1?m:f];
+                hom += gt[m][f][f==1?m:f];
+                het = gt[f][m][1];
+                het += gt[m][f][1];
+            }
+            else if (f==1 && m==1)//1/1
+            {
+                hom = gt[f][m][0]+gt[f][m][2];
+                het = gt[f][m][1];
+            }
+        }
+        else if (collapse==2) //no collapse
+        {
+            if (abs(f-m)==1)//1/2,2/1,1/0,0/1
+            {
+                hom = gt[f][m][f==1?m:f];
+                hom += gt[m][f][f==1?m:f];
+                hom += gt[2-f][2-m][f==1?2-m:2-f];
+                hom += gt[2-m][2-f][f==1?2-m:2-f];    
+                het = gt[f][m][1];
+                het += gt[m][f][1];
+                het += gt[2-f][2-m][1];
+                het += gt[2-m][2-f][1];
+            }
+            else if (f==1 && m==1)//1/1
+            {
+                hom = gt[f][m][0]+gt[f][m][2];
+                het = gt[f][m][1];
+            }
         }
         
-        return hom/het;
+        return (het==0 ? NAN : hom/het);
     }; 
 
+    float get_homhet_proportion(int32_t gt[3][3][3], int32_t f, int32_t m, int32_t collapse)
+    {
+        float hom = 0;
+        float het = 0;
+        if (collapse==0) //ALL
+        {    
+            if (abs(f-m)==1)//1/2,2/1,1/0,0/1
+            {
+                hom = gt[f][m][f==1?m:f];
+                het = gt[f][m][1];
+            }
+            else if (f==1 && m==1)//1/1
+            {
+                hom = gt[f][m][0]+gt[f][m][2];
+                het = gt[f][m][1];
+            }
+        }
+        else if (collapse==1) //no collapse
+        {
+            if (abs(f-m)==1)//1/2,2/1,1/0,0/1
+            {
+                hom = gt[f][m][f==1?m:f];
+                hom += gt[m][f][f==1?m:f];
+                het = gt[f][m][1];
+                het += gt[m][f][1];
+            }
+            else if (f==1 && m==1)//1/1
+            {
+                hom = gt[f][m][0]+gt[f][m][2];
+                het = gt[f][m][1];
+            }
+        }
+        else if (collapse==2) //no collapse
+        {
+            if (abs(f-m)==1)//1/2,2/1,1/0,0/1
+            {
+                hom = gt[f][m][f==1?m:f];
+                hom += gt[m][f][f==1?m:f];
+                hom += gt[2-f][2-m][f==1?2-m:2-f];
+                hom += gt[2-m][2-f][f==1?2-m:2-f];    
+                het = gt[f][m][1];
+                het += gt[m][f][1];
+                het += gt[2-f][2-m][1];
+                het += gt[2-m][2-f][1];
+            }
+            else if (f==1 && m==1)//1/1
+            {
+                hom = gt[f][m][0]+gt[f][m][2];
+                het = gt[f][m][1];
+            }
+        }
+        
+        return ((het+hom)==0 ? NAN : het/(hom+het)*100);
+    }; 
+
+
+    void print_pdf()
+    {
+        //generate file
+        mkdir("mendel_plot", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+        
+//        std::string g2s[3] = {"R/R","R/A","A/A"};
+//        
+//        fprintf(stderr, "\n");
+//        fprintf(stderr, "     Mendelian Errors\n");
+//        fprintf(stderr, "\n");
+//        fprintf(stderr, "     Father Mother       R/R          R/A          A/A    Error(%%) HomHet    Het(%%)\n");
+//        for (int32_t i=0; i<3; ++i)
+//        {
+//            for (int32_t j=0; j<3; ++j)
+//            {
+//                fprintf(stderr, "     %s    %s   %10d   %10d   %10d   %6.2f      %4.2f  %5.2f\n", g2s[i].c_str(), g2s[j].c_str(), trio_genotypes[i][j][0], trio_genotypes[i][j][1], trio_genotypes[i][j][2], get_error_rate(trio_genotypes, i, j, 0), get_homhet_ratio(trio_genotypes, i, j, 0), get_homhet_proportion(trio_genotypes, i, j, 0));
+//            }
+//        }
+//        fprintf(stderr, "\n");
+//        fprintf(stderr, "     Parental            R/R          R/A          A/A    Error(%%) HomHet    Het(%%)\n");
+//        for (int32_t i=0; i<3; ++i)
+//        {
+//            for (int32_t j=0; j<3; ++j)
+//            {
+//                if (i!=j)
+//                {
+//                    if (i<j)
+//                    {
+//                        int32_t rr = trio_genotypes[i][j][0] + trio_genotypes[j][i][0];
+//                        int32_t ra = trio_genotypes[i][j][1] + trio_genotypes[j][i][1];
+//                        int32_t aa = trio_genotypes[i][j][2] + trio_genotypes[j][i][2];
+//                        fprintf(stderr, "     %s    %s   %10d   %10d   %10d   %6.2f      %4.2f  %5.2f\n", g2s[i].c_str(), g2s[j].c_str(), rr, ra, aa, get_error_rate(trio_genotypes, i, j, 1), get_homhet_ratio(trio_genotypes, i, j, 1), get_homhet_proportion(trio_genotypes, i, j, 1));
+//                    }
+//                }
+//                else
+//                {
+//                    fprintf(stderr, "     %s    %s   %10d   %10d   %10d   %6.2f      %4.2f  %5.2f\n", g2s[i].c_str(), g2s[j].c_str(), trio_genotypes[i][j][0], trio_genotypes[i][j][1], trio_genotypes[i][j][2], get_error_rate(trio_genotypes, i, j, 1), get_homhet_ratio(trio_genotypes, i, j, 1), get_homhet_proportion(trio_genotypes, i, j, 1));
+//                }
+//            }
+//        }
+//        fprintf(stderr, "\n");
+//        fprintf(stderr, "     Parental            R/R          R/A          A/A    Error(%%) HomHet    Het(%%)\n");
+//        int32_t i,j, rr, ra, aa;
+//        i=0; j=0;
+//        rr = trio_genotypes[i][j][0] + trio_genotypes[2][2][0];
+//        ra = trio_genotypes[i][j][1] + trio_genotypes[2][2][1];
+//        aa = trio_genotypes[i][j][2] + trio_genotypes[2][2][2];
+//        fprintf(stderr, "     %s    %s   %10d   %10d   %10d   %6.2f      %4.2f  %5.2f\n", "HOM", "HOM", rr, ra, aa, get_error_rate(trio_genotypes, i, j, 2), get_homhet_ratio(trio_genotypes, i, j, 2), get_homhet_proportion(trio_genotypes, i, j, 2));
+//        i=0; j=1;
+//        rr = trio_genotypes[i][j][0] + trio_genotypes[j][i][0] + trio_genotypes[2-i][j][0] + trio_genotypes[j][2-i][0];
+//        ra = trio_genotypes[i][j][1] + trio_genotypes[j][i][1] + trio_genotypes[2-i][j][1] + trio_genotypes[j][2-i][1];
+//        aa = trio_genotypes[i][j][2] + trio_genotypes[j][i][2] + trio_genotypes[2-i][j][2] + trio_genotypes[j][2-i][2];
+//        fprintf(stderr, "     %s    %s   %10d   %10d   %10d   %6.2f      %4.2f  %5.2f\n", "HOM", "HET", rr, ra, aa, get_error_rate(trio_genotypes, i, j, 2), get_homhet_ratio(trio_genotypes, i, j, 2), get_homhet_proportion(trio_genotypes, i, j, 2));
+//        i=1; j=1;
+//        fprintf(stderr, "     %s    %s   %10d   %10d   %10d   %6.2f      %4.2f  %5.2f\n", "HET", "HET", trio_genotypes[i][j][0], trio_genotypes[i][j][1], trio_genotypes[i][j][2], get_error_rate(trio_genotypes, i, j, 2), get_homhet_ratio(trio_genotypes, i, j, 2), get_homhet_proportion(trio_genotypes, i, j, 2));
+//        i=0; j=2;
+//        rr = trio_genotypes[i][j][0] + trio_genotypes[j][i][0];
+//        ra = trio_genotypes[i][j][1] + trio_genotypes[j][i][1];
+//        aa = trio_genotypes[i][j][2] + trio_genotypes[j][i][2];
+//        fprintf(stderr, "     %s %s%10d   %10d   %10d   %6.2f      %4.2f  %5.2f\n", "HOMREF", "HOMALT", rr, ra, aa, get_error_rate(trio_genotypes, i, j, 2), get_homhet_ratio(trio_genotypes, i, j, 2), get_homhet_proportion(trio_genotypes, i, j, 2));
+//        fprintf(stderr, "\n");
+//        fprintf(stderr, "     total mendelian error : %7.3f%%\n", get_error_rate(trio_genotypes, -1, -1, -1));
+//        fprintf(stderr, "\n");
+//        fprintf(stderr, "     no. of trios     : %d\n", no_trios);
+//        fprintf(stderr, "     no. of variants  : %d\n", no_variants);
+//        fprintf(stderr, "\n");
+    };
 
     void print_stats()
     {
@@ -436,16 +584,16 @@ class Igor : Program
         fprintf(stderr, "\n");
         fprintf(stderr, "     Mendelian Errors\n");
         fprintf(stderr, "\n");
-        fprintf(stderr, "     Father Mother       R/R          R/A          A/A   Error(%%) HomHet\n");
+        fprintf(stderr, "     Father Mother       R/R          R/A          A/A    Error(%%) HomHet    Het(%%)\n");
         for (int32_t i=0; i<3; ++i)
         {
             for (int32_t j=0; j<3; ++j)
             {
-                fprintf(stderr, "     %s    %s   %10d   %10d   %10d   %6.2f      %4.2f\n", g2s[i].c_str(), g2s[j].c_str(), trio_genotypes[i][j][0], trio_genotypes[i][j][1], trio_genotypes[i][j][2], get_error_rate(trio_genotypes, i, j, 0), get_homhet_ratio(trio_genotypes, i, j, 0));
+                fprintf(stderr, "     %s    %s   %10d   %10d   %10d   %6.2f      %4.2f  %5.2f\n", g2s[i].c_str(), g2s[j].c_str(), trio_genotypes[i][j][0], trio_genotypes[i][j][1], trio_genotypes[i][j][2], get_error_rate(trio_genotypes, i, j, 0), get_homhet_ratio(trio_genotypes, i, j, 0), get_homhet_proportion(trio_genotypes, i, j, 0));
             }
         }
         fprintf(stderr, "\n");
-        fprintf(stderr, "     Parental            R/R          R/A          A/A   Error(%%) HomHet\n");
+        fprintf(stderr, "     Parental            R/R          R/A          A/A    Error(%%) HomHet    Het(%%)\n");
         for (int32_t i=0; i<3; ++i)
         {
             for (int32_t j=0; j<3; ++j)
@@ -457,35 +605,35 @@ class Igor : Program
                         int32_t rr = trio_genotypes[i][j][0] + trio_genotypes[j][i][0];
                         int32_t ra = trio_genotypes[i][j][1] + trio_genotypes[j][i][1];
                         int32_t aa = trio_genotypes[i][j][2] + trio_genotypes[j][i][2];
-                        fprintf(stderr, "     %s    %s   %10d   %10d   %10d   %6.2f      %4.2f\n", g2s[i].c_str(), g2s[j].c_str(), rr, ra, aa, get_error_rate(trio_genotypes, i, j, 1), get_homhet_ratio(trio_genotypes, i, j, 1));
+                        fprintf(stderr, "     %s    %s   %10d   %10d   %10d   %6.2f      %4.2f  %5.2f\n", g2s[i].c_str(), g2s[j].c_str(), rr, ra, aa, get_error_rate(trio_genotypes, i, j, 1), get_homhet_ratio(trio_genotypes, i, j, 1), get_homhet_proportion(trio_genotypes, i, j, 1));
                     }
                 }
                 else
                 {
-                    fprintf(stderr, "     %s    %s   %10d   %10d   %10d   %6.2f      %4.2f\n", g2s[i].c_str(), g2s[j].c_str(), trio_genotypes[i][j][0], trio_genotypes[i][j][1], trio_genotypes[i][j][2], get_error_rate(trio_genotypes, i, j, 1), get_homhet_ratio(trio_genotypes, i, j, 1));
+                    fprintf(stderr, "     %s    %s   %10d   %10d   %10d   %6.2f      %4.2f  %5.2f\n", g2s[i].c_str(), g2s[j].c_str(), trio_genotypes[i][j][0], trio_genotypes[i][j][1], trio_genotypes[i][j][2], get_error_rate(trio_genotypes, i, j, 1), get_homhet_ratio(trio_genotypes, i, j, 1), get_homhet_proportion(trio_genotypes, i, j, 1));
                 }
             }
         }
         fprintf(stderr, "\n");
-        fprintf(stderr, "     Parental            R/R          R/A          A/A   Error(%%) HomHet\n");
+        fprintf(stderr, "     Parental            R/R          R/A          A/A    Error(%%) HomHet    Het(%%)\n");
         int32_t i,j, rr, ra, aa;
         i=0; j=0;
         rr = trio_genotypes[i][j][0] + trio_genotypes[2][2][0];
         ra = trio_genotypes[i][j][1] + trio_genotypes[2][2][1];
         aa = trio_genotypes[i][j][2] + trio_genotypes[2][2][2];
-        fprintf(stderr, "     %s    %s   %10d   %10d   %10d   %6.2f      %4.2f\n", "HOM", "HOM", rr, ra, aa, get_error_rate(trio_genotypes, i, j, 2), get_homhet_ratio(trio_genotypes, i, j, 2));
+        fprintf(stderr, "     %s    %s   %10d   %10d   %10d   %6.2f      %4.2f  %5.2f\n", "HOM", "HOM", rr, ra, aa, get_error_rate(trio_genotypes, i, j, 2), get_homhet_ratio(trio_genotypes, i, j, 2), get_homhet_proportion(trio_genotypes, i, j, 2));
         i=0; j=1;
         rr = trio_genotypes[i][j][0] + trio_genotypes[j][i][0] + trio_genotypes[2-i][j][0] + trio_genotypes[j][2-i][0];
         ra = trio_genotypes[i][j][1] + trio_genotypes[j][i][1] + trio_genotypes[2-i][j][1] + trio_genotypes[j][2-i][1];
         aa = trio_genotypes[i][j][2] + trio_genotypes[j][i][2] + trio_genotypes[2-i][j][2] + trio_genotypes[j][2-i][2];
-        fprintf(stderr, "     %s    %s   %10d   %10d   %10d   %6.2f      %4.2f\n", "HOM", "HET", rr, ra, aa, get_error_rate(trio_genotypes, i, j, 2), get_homhet_ratio(trio_genotypes, i, j, 2));
+        fprintf(stderr, "     %s    %s   %10d   %10d   %10d   %6.2f      %4.2f  %5.2f\n", "HOM", "HET", rr, ra, aa, get_error_rate(trio_genotypes, i, j, 2), get_homhet_ratio(trio_genotypes, i, j, 2), get_homhet_proportion(trio_genotypes, i, j, 2));
         i=1; j=1;
-        fprintf(stderr, "     %s    %s   %10d   %10d   %10d   %6.2f      %4.2f\n", "HET", "HET", trio_genotypes[i][j][0], trio_genotypes[i][j][1], trio_genotypes[i][j][2], get_error_rate(trio_genotypes, i, j, 2), get_homhet_ratio(trio_genotypes, i, j, 2));
+        fprintf(stderr, "     %s    %s   %10d   %10d   %10d   %6.2f      %4.2f  %5.2f\n", "HET", "HET", trio_genotypes[i][j][0], trio_genotypes[i][j][1], trio_genotypes[i][j][2], get_error_rate(trio_genotypes, i, j, 2), get_homhet_ratio(trio_genotypes, i, j, 2), get_homhet_proportion(trio_genotypes, i, j, 2));
         i=0; j=2;
         rr = trio_genotypes[i][j][0] + trio_genotypes[j][i][0];
         ra = trio_genotypes[i][j][1] + trio_genotypes[j][i][1];
         aa = trio_genotypes[i][j][2] + trio_genotypes[j][i][2];
-        fprintf(stderr, "     %s %s%10d   %10d   %10d   %6.2f      %4.2f\n", "HOMREF", "HOMALT", rr, ra, aa, get_error_rate(trio_genotypes, i, j, 2), get_homhet_ratio(trio_genotypes, i, j, 2));
+        fprintf(stderr, "     %s %s%10d   %10d   %10d   %6.2f      %4.2f  %5.2f\n", "HOMREF", "HOMALT", rr, ra, aa, get_error_rate(trio_genotypes, i, j, 2), get_homhet_ratio(trio_genotypes, i, j, 2), get_homhet_proportion(trio_genotypes, i, j, 2));
         fprintf(stderr, "\n");
         fprintf(stderr, "     total mendelian error : %7.3f%%\n", get_error_rate(trio_genotypes, -1, -1, -1));
         fprintf(stderr, "\n");
@@ -510,5 +658,6 @@ void profile_mendel_errors(int argc, char ** argv)
     igor.initialize();
     igor.profile_mendel_errors();
     igor.print_stats();
+    igor.print_pdf();
 }
 
