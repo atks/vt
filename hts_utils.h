@@ -344,9 +344,4 @@ bool bcf_is_passed(bcf_hdr_t *h, bcf1_t *v);
  */
 #define bcf_set_n_sample(v, n) ((v)->n_sample = (n));
 
-/**
- * Check existence of a filter
- */
-bool bcf_filter_exists(bcf_hdr_t* h, bcf1_t* v, char* key);
-
 #endif

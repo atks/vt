@@ -24,6 +24,7 @@
 #ifndef PROFILE_MENDEL_ERRORS_H
 #define PROFILE_MENDEL_ERRORS_H
 
+#include <sys/stat.h>
 #include "htslib/vcf.h"
 #include "htslib/kseq.h"
 #include "program.h"
