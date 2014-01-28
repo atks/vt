@@ -37,7 +37,7 @@ class Igor : Program
     ///////////
     std::string input_vcf_file;
     std::string input_ped_file;
-    std::string ref_fasta_file;    
+    std::string ref_fasta_file;
     std::vector<GenomeInterval> intervals;
     std::string interval_list;
     int32_t min_depth;
@@ -138,16 +138,16 @@ class Igor : Program
         no_variants = 0;
 
         for (int32_t i=0; i<3; ++i)
-        {            
+        {
             for (int32_t j=0; j<3; ++j)
-            {                
+            {
                 for (int32_t k=0; k<3; ++k)
                 {
                     trio_genotypes[i][j][k] = 0;
-                } 
-            } 
-        }    
-        
+                }
+            }
+        }
+
         /////////
         //tools//
         /////////
@@ -167,98 +167,56 @@ class Igor : Program
         int32_t missing = 0;
         int32_t mendel_homalt_err = 0;
 
+        int32_t *gts = NULL;
+        int32_t n = 0;
 
         while(odr->read(v))
         {
-            bcf_unpack(v, BCF_UN_FLT);
+            bcf_unpack(v, BCF_UN_STR);
             int32_t vtype = vm->classify_variant(odr->hdr, v, variant);
-            
-            //if (bcf_get_n_allele(v)!=2 || abs(variant.alleles[0].dlen)==1)
-            if (bcf_get_n_allele(v)!=2 || vtype!=VT_SNP || bcf_has_filter(odr->hdr, v, const_cast<char*>("PASS"))!=1)
+
+            if (bcf_get_n_allele(v)!=2)
+            //if (bcf_get_n_allele(v)!=2 || vtype!=VT_INDEL || bcf_has_filter(odr->hdr, v, const_cast<char*>("PASS"))!=1)
             {
                 continue;
-            }             
-                
-            int32_t *gts = NULL;
-            int32_t n = 0;
+            }
+
+
             int k = bcf_get_genotypes(h, v, &gts, &n);
 
-   
-            int32_t *pls = NULL;
-            n = 0;
-            k = bcf_get_format_int(h, v, "PL", &pls, &n);
-
             bool variant_used = false;
-            int32_t pl[3];
 
             for (int32_t i =0; i< trios.size(); ++i)
             {
                 int32_t j = bcf_hdr_id2int(h, BCF_DT_SAMPLE, trios[i].father.c_str());
                 int32_t f1 = bcf_gt_allele(gts[j*2]);
                 int32_t f2 = bcf_gt_allele(gts[j*2+1]);
-//                pl[0] = pls[j*3];
-//                pl[1] = pls[j*3+1];
-//                pl[2] = pls[j*3+2];
-//                
-//                if ((f1+f2==0 && (pl[1]<10 || pl[2]<10)) ||
-//                    (f1+f2==1 && (pl[0]<10 || pl[2]<10)) ||
-//                    (f1+f2==2 && (pl[0]<10 || pl[1]<10)) )
-//                {
-//                    f1 = -1;
-//                    f2 = -1;
-//                }
+
 
                 j = bcf_hdr_id2int(h, BCF_DT_SAMPLE, trios[i].mother.c_str());
                 int32_t m1 = bcf_gt_allele(gts[j*2]);
                 int32_t m2 = bcf_gt_allele(gts[j*2+1]);
-//                pl[0] = pls[j*3];
-//                pl[1] = pls[j*3+1];
-//                pl[2] = pls[j*3+2];
-//                
-//                if ((m1+m2==0 && (pl[1]<10 || pl[2]<10)) ||
-//                    (m1+m2==1 && (pl[0]<10 || pl[2]<10)) ||
-//                    (m1+m2==2 && (pl[0]<10 || pl[1]<10)) )
-//                {
-//                    m1 = -1;
-//                    m2 = -1;
-//                }
 
                 j = bcf_hdr_id2int(h, BCF_DT_SAMPLE, trios[i].child.c_str());
                 int32_t c1 = bcf_gt_allele(gts[j*2]);
                 int32_t c2 = bcf_gt_allele(gts[j*2+1]);
-//                pl[0] = pls[j*3];
-//                pl[1] = pls[j*3+1];
-//                pl[2] = pls[j*3+2];
-//                
-//                if ((c1+c2==0 && (pl[1]<10 || pl[2]<10)) ||
-//                    (c1+c2==1 && (pl[0]<10 || pl[2]<10)) ||
-//                    (c1+c2==2 && (pl[0]<10 || pl[1]<10)) )
-//                {
-//                    c1 = -1;
-//                    c2 = -1;
-//                } 
-               
+
                 if (!(f1<0 || f2<0 || m1<0 || m2<0 || c1<0 || c2<0))
                 {
-                    //printf("%d/%d %d/%d %d/%d\n", f1,f2,m1,m2,c1,c2);
                     ++trio_genotypes[f1+f2][m1+m2][c1+c2];
-
                     variant_used = true;
                 }
             }
             if (variant_used) ++no_variants;
-
-            free(gts);
-//            free(dps);
-//            free(pls);
         }
 
+        free(gts);
         odr->close();
     };
 
     void print_options()
     {
-        std::clog << "merge_candidate_variants v" << version << "\n\n";
+        std::clog << "profile_mendelian_errors v" << version << "\n\n";
         std::clog << "options:     input VCF file        " << input_vcf_file << "\n";
         std::clog << "         [p] input PED file        " << input_ped_file << "\n";
         print_ref_op("         [r] ref FASTA file        ", ref_fasta_file);
@@ -269,18 +227,18 @@ class Igor : Program
     float get_error_rate(int32_t gt[3][3][3], int32_t f, int32_t m, int32_t collapse)
     {
         if (collapse==-1) //ALL
-        {    
+        {
             float total = 0;
             float error_count = 0;
-            
+
             for (int32_t i=0; i<3; ++i)
             {
                 for (int32_t j=0; j<3; ++j)
                 {
-                    f = i; 
+                    f = i;
                     m = j;
                     total += gt[f][m][0] + gt[f][m][1] + gt[f][m][2];
-                    
+
                     if (f==m && f!=1)//0/0,2/2
                     {
                         error_count += gt[f][m][1] + gt[f][m][2-f];
@@ -291,7 +249,7 @@ class Igor : Program
                     }
                     else if (abs(f-m)==1)//1/2,2/1,1/0,0/1
                     {
-                        error_count += gt[f][m][f==1?2-m:2-f];   
+                        error_count += gt[f][m][f==1?2-m:2-f];
                     }
                     else if (f==1 && m==1)//1/1
                     {
@@ -299,7 +257,7 @@ class Igor : Program
                     }
                 }
             }
-            
+
             return error_count/total*100;
         }
         else if (collapse==0) //no collapse
@@ -321,9 +279,9 @@ class Igor : Program
             else if (f==1 && m==1)//1/1
             {
                 error_count = 0;
-            } 
-            
-            return error_count/total*100;           
+            }
+
+            return error_count/total*100;
         }
         else if (collapse==1) //ignoring father/mother
         {
@@ -353,9 +311,9 @@ class Igor : Program
                 total = gt[f][m][0] + gt[f][m][1] + gt[f][m][2];
                 error_count = 0;
             }
-            
+
             return error_count/total*100;
-        }    
+        }
         else if (collapse==2) //ignoring allele and father/mother
         {
             float total = 0;
@@ -380,30 +338,30 @@ class Igor : Program
                 total += gt[m][f][0] + gt[m][f][1] + gt[m][f][2];
                 total += gt[2-f][2-m][0] + gt[2-f][2-m][1] + gt[2-f][2-m][2];
                 total += gt[2-m][2-f][0] + gt[2-m][2-f][1] + gt[2-m][2-f][2];
-                
+
                 error_count = gt[f][m][f==1?2-m:2-f];
                 error_count += gt[m][f][f==1?2-m:2-f];
-                error_count += gt[2-f][2-m][f==1?m:f];   
-                error_count += gt[2-m][2-f][f==1?m:f];        
+                error_count += gt[2-f][2-m][f==1?m:f];
+                error_count += gt[2-m][2-f][f==1?m:f];
             }
             else if (f==1 && m==1)//1/1
             {
                 total = gt[f][m][0] + gt[f][m][1] + gt[f][m][2];
                 error_count = 0;
             }
-        
+
             return error_count/total*100;
         }
-        
+
         return NAN;
-    }; 
+    };
 
     float get_homhet_ratio(int32_t gt[3][3][3], int32_t f, int32_t m, int32_t collapse)
     {
         float hom = 0;
         float het = 0;
         if (collapse==0) //ALL
-        {    
+        {
             if (abs(f-m)==1)//1/2,2/1,1/0,0/1
             {
                 hom = gt[f][m][f==1?m:f];
@@ -437,7 +395,7 @@ class Igor : Program
                 hom = gt[f][m][f==1?m:f];
                 hom += gt[m][f][f==1?m:f];
                 hom += gt[2-f][2-m][f==1?2-m:2-f];
-                hom += gt[2-m][2-f][f==1?2-m:2-f];    
+                hom += gt[2-m][2-f][f==1?2-m:2-f];
                 het = gt[f][m][1];
                 het += gt[m][f][1];
                 het += gt[2-f][2-m][1];
@@ -449,16 +407,16 @@ class Igor : Program
                 het = gt[f][m][1];
             }
         }
-        
+
         return (het==0 ? NAN : hom/het);
-    }; 
+    };
 
     float get_homhet_proportion(int32_t gt[3][3][3], int32_t f, int32_t m, int32_t collapse)
     {
         float hom = 0;
         float het = 0;
         if (collapse==0) //ALL
-        {    
+        {
             if (abs(f-m)==1)//1/2,2/1,1/0,0/1
             {
                 hom = gt[f][m][f==1?m:f];
@@ -492,7 +450,7 @@ class Igor : Program
                 hom = gt[f][m][f==1?m:f];
                 hom += gt[m][f][f==1?m:f];
                 hom += gt[2-f][2-m][f==1?2-m:2-f];
-                hom += gt[2-m][2-f][f==1?2-m:2-f];    
+                hom += gt[2-m][2-f][f==1?2-m:2-f];
                 het = gt[f][m][1];
                 het += gt[m][f][1];
                 het += gt[2-f][2-m][1];
@@ -504,18 +462,18 @@ class Igor : Program
                 het = gt[f][m][1];
             }
         }
-        
+
         return ((het+hom)==0 ? NAN : het/(hom+het)*100);
-    }; 
+    };
 
 
     void print_pdf()
     {
         //generate file
-        mkdir("mendel_plot", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-        
+       // mkdir("mendel_plot", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+
 //        std::string g2s[3] = {"R/R","R/A","A/A"};
-//        
+//
 //        fprintf(stderr, "\n");
 //        fprintf(stderr, "     Mendelian Errors\n");
 //        fprintf(stderr, "\n");
@@ -580,7 +538,7 @@ class Igor : Program
     void print_stats()
     {
         std::string g2s[3] = {"R/R","R/A","A/A"};
-        
+
         fprintf(stderr, "\n");
         fprintf(stderr, "     Mendelian Errors\n");
         fprintf(stderr, "\n");
@@ -658,6 +616,6 @@ void profile_mendel_errors(int argc, char ** argv)
     igor.initialize();
     igor.profile_mendel_errors();
     igor.print_stats();
-    igor.print_pdf();
+    //igor.print_pdf();
 }
 
