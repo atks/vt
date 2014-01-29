@@ -38,6 +38,7 @@
 #include "profile_mendel_errors.h"
 #include "decompose.h"
 #include "remove_overlap.h"
+#include "profile_na12878.h"
 
 void print_time(double t)
 {
@@ -71,6 +72,7 @@ void help()
     std::clog << "normalize                 normalize variants\n";
     std::clog << "decompose                 decompose multiallelic variants\n";
     std::clog << "mergedups                 merge duplicate variants\n";
+    std::clog << "remove_overlap            remover overlapping variants\n";
     std::clog << "merge                     merge VCF files\n";
     std::clog << "concat                    concatenate VCF files\n";
     std::clog << "annotate_variants         annotate variants\n";
@@ -78,6 +80,7 @@ void help()
     std::clog << "partition                 partition variants\n";
     std::clog << "profile_indels            profile indels\n";
     std::clog << "profile_mendel_errors     profile indels\n";
+    std::clog << "profile_na12878           profile na12878\n";        
     std::clog << "discover                  discover variants\n";
     std::clog << "merge_candidate_variants  merge candidate variants\n";
     std::clog << "construct_probes          construct probes for each variant\n";
@@ -167,7 +170,11 @@ int main(int argc, char ** argv)
     else if (argc>1 && cmd=="profile_mendel_errors")
     {
         profile_mendel_errors(argc-1, ++argv);
-    }    
+    }
+    else if (argc>1 && cmd=="profile_na12878")
+    {
+        profile_na12878(argc-1, ++argv);
+    }        
     else
     {
         std::clog << "Command not found: " << argv[1] << "\n\n";

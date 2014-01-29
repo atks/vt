@@ -7,7 +7,6 @@ CXX = clang++
 
 HEADERSONLY = 
 SOURCES = program\
-		filter\
 		hts_utils\
 		utils\
 		bam_ordered_reader\
@@ -41,7 +40,8 @@ SOURCES = program\
 		pedigree\
 		concat\
 		decompose\
-		remove_overlap
+		remove_overlap\
+		profile_na12878
 
 SOURCESONLY = main.cpp
 
