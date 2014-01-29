@@ -167,7 +167,7 @@ int main(int argc, char ** argv)
     {
         profile_indels(argc-1, ++argv);
     }
-    else if (argc>1 && cmd=="profile_mendel_errors")
+    else if (argc>1 && cmd=="profile_mendelian")
     {
         profile_mendelian(argc-1, ++argv);
     }
