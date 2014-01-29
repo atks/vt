@@ -38,6 +38,7 @@ class Igor : Program
     std::string input_vcf_file;
     std::string input_ped_file;
     std::string ref_fasta_file;
+    std::string output_latex_dir;
     std::vector<GenomeInterval> intervals;
     std::string interval_list;
     int32_t min_depth;
@@ -58,18 +59,6 @@ class Igor : Program
     /////////
     uint32_t no_trios;
     uint32_t no_variants;
-
-    uint32_t no_00;
-    uint32_t no_00_00;
-    uint32_t no_00_01;
-    uint32_t no_00_11;
-
-    uint32_t no_11;
-    uint32_t no_11_00;
-    uint32_t no_11_01;
-    uint32_t no_11_11;
-
-
     int32_t trio_genotypes[3][3][3];
 
     /////////
@@ -93,16 +82,17 @@ class Igor : Program
             TCLAP::ValueArg<std::string> arg_intervals("i", "i", "intervals", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_input_ped_file("p", "p", "pedigree file", true, "", "str", cmd);
+            TCLAP::ValueArg<std::string> arg_output_latex_dir("x", "x", "output latex directory []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_ref_fasta_file("r", "r", "reference sequence fasta file []", false, "", "str", cmd);
             TCLAP::ValueArg<int32_t> arg_min_depth("d", "d", "minimum depth", false, 5, "str", cmd);
             TCLAP::ValueArg<float> arg_min_gq("q", "q", "minimum genotype quality", false, 2, "str", cmd);
-
             TCLAP::UnlabeledValueArg<std::string> arg_input_vcf_file("<in.vcf>", "input VCF file", true, "","file", cmd);
 
             cmd.parse(argc, argv);
 
             input_vcf_file = arg_input_vcf_file.getValue();
             input_ped_file = arg_input_ped_file.getValue();
+            output_latex_dir = arg_output_latex_dir.getValue();
             min_depth = arg_min_depth.getValue();
             min_gq = arg_min_gq.getValue();
             parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
@@ -181,9 +171,7 @@ class Igor : Program
                 continue;
             }
 
-
             int k = bcf_get_genotypes(h, v, &gts, &n);
-
             bool variant_used = false;
 
             for (int32_t i =0; i< trios.size(); ++i)
@@ -217,10 +205,11 @@ class Igor : Program
     void print_options()
     {
         std::clog << "profile_mendelian_errors v" << version << "\n\n";
-        std::clog << "options:     input VCF file        " << input_vcf_file << "\n";
-        std::clog << "         [p] input PED file        " << input_ped_file << "\n";
-        print_ref_op("         [r] ref FASTA file        ", ref_fasta_file);
-        print_int_op("         [i] intervals             ", intervals);
+        std::clog << "options:     input VCF file         " << input_vcf_file << "\n";
+        std::clog << "         [p] input PED file         " << input_ped_file << "\n";
+        print_str_op("         [x] output latex directory ", output_latex_dir);
+        print_ref_op("         [r] ref FASTA file         ", ref_fasta_file);
+        print_int_op("         [i] intervals              ", intervals);
         std::clog << "\n";
     }
 
@@ -469,70 +458,120 @@ class Igor : Program
 
     void print_pdf()
     {
+        if (output_latex_dir == "")
+        {
+            return;
+        }    
+        
         //generate file
-       // mkdir("mendel_plot", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+        std::string output_latex_file = output_latex_dir + ".tex";
+        int32_t ret = mkdir(output_latex_dir.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+        
+        
+        std::string filepath = output_latex_dir + "/" + output_latex_file; 
+        FILE *out = fopen(filepath.c_str(), "w");
 
-//        std::string g2s[3] = {"R/R","R/A","A/A"};
-//
-//        fprintf(stderr, "\n");
-//        fprintf(stderr, "     Mendelian Errors\n");
-//        fprintf(stderr, "\n");
-//        fprintf(stderr, "     Father Mother       R/R          R/A          A/A    Error(%%) HomHet    Het(%%)\n");
-//        for (int32_t i=0; i<3; ++i)
-//        {
-//            for (int32_t j=0; j<3; ++j)
-//            {
-//                fprintf(stderr, "     %s    %s   %10d   %10d   %10d   %6.2f      %4.2f  %5.2f\n", g2s[i].c_str(), g2s[j].c_str(), trio_genotypes[i][j][0], trio_genotypes[i][j][1], trio_genotypes[i][j][2], get_error_rate(trio_genotypes, i, j, 0), get_homhet_ratio(trio_genotypes, i, j, 0), get_homhet_proportion(trio_genotypes, i, j, 0));
-//            }
-//        }
-//        fprintf(stderr, "\n");
-//        fprintf(stderr, "     Parental            R/R          R/A          A/A    Error(%%) HomHet    Het(%%)\n");
-//        for (int32_t i=0; i<3; ++i)
-//        {
-//            for (int32_t j=0; j<3; ++j)
-//            {
-//                if (i!=j)
-//                {
-//                    if (i<j)
-//                    {
-//                        int32_t rr = trio_genotypes[i][j][0] + trio_genotypes[j][i][0];
-//                        int32_t ra = trio_genotypes[i][j][1] + trio_genotypes[j][i][1];
-//                        int32_t aa = trio_genotypes[i][j][2] + trio_genotypes[j][i][2];
-//                        fprintf(stderr, "     %s    %s   %10d   %10d   %10d   %6.2f      %4.2f  %5.2f\n", g2s[i].c_str(), g2s[j].c_str(), rr, ra, aa, get_error_rate(trio_genotypes, i, j, 1), get_homhet_ratio(trio_genotypes, i, j, 1), get_homhet_proportion(trio_genotypes, i, j, 1));
-//                    }
-//                }
-//                else
-//                {
-//                    fprintf(stderr, "     %s    %s   %10d   %10d   %10d   %6.2f      %4.2f  %5.2f\n", g2s[i].c_str(), g2s[j].c_str(), trio_genotypes[i][j][0], trio_genotypes[i][j][1], trio_genotypes[i][j][2], get_error_rate(trio_genotypes, i, j, 1), get_homhet_ratio(trio_genotypes, i, j, 1), get_homhet_proportion(trio_genotypes, i, j, 1));
-//                }
-//            }
-//        }
-//        fprintf(stderr, "\n");
-//        fprintf(stderr, "     Parental            R/R          R/A          A/A    Error(%%) HomHet    Het(%%)\n");
-//        int32_t i,j, rr, ra, aa;
-//        i=0; j=0;
-//        rr = trio_genotypes[i][j][0] + trio_genotypes[2][2][0];
-//        ra = trio_genotypes[i][j][1] + trio_genotypes[2][2][1];
-//        aa = trio_genotypes[i][j][2] + trio_genotypes[2][2][2];
-//        fprintf(stderr, "     %s    %s   %10d   %10d   %10d   %6.2f      %4.2f  %5.2f\n", "HOM", "HOM", rr, ra, aa, get_error_rate(trio_genotypes, i, j, 2), get_homhet_ratio(trio_genotypes, i, j, 2), get_homhet_proportion(trio_genotypes, i, j, 2));
-//        i=0; j=1;
-//        rr = trio_genotypes[i][j][0] + trio_genotypes[j][i][0] + trio_genotypes[2-i][j][0] + trio_genotypes[j][2-i][0];
-//        ra = trio_genotypes[i][j][1] + trio_genotypes[j][i][1] + trio_genotypes[2-i][j][1] + trio_genotypes[j][2-i][1];
-//        aa = trio_genotypes[i][j][2] + trio_genotypes[j][i][2] + trio_genotypes[2-i][j][2] + trio_genotypes[j][2-i][2];
-//        fprintf(stderr, "     %s    %s   %10d   %10d   %10d   %6.2f      %4.2f  %5.2f\n", "HOM", "HET", rr, ra, aa, get_error_rate(trio_genotypes, i, j, 2), get_homhet_ratio(trio_genotypes, i, j, 2), get_homhet_proportion(trio_genotypes, i, j, 2));
-//        i=1; j=1;
-//        fprintf(stderr, "     %s    %s   %10d   %10d   %10d   %6.2f      %4.2f  %5.2f\n", "HET", "HET", trio_genotypes[i][j][0], trio_genotypes[i][j][1], trio_genotypes[i][j][2], get_error_rate(trio_genotypes, i, j, 2), get_homhet_ratio(trio_genotypes, i, j, 2), get_homhet_proportion(trio_genotypes, i, j, 2));
-//        i=0; j=2;
-//        rr = trio_genotypes[i][j][0] + trio_genotypes[j][i][0];
-//        ra = trio_genotypes[i][j][1] + trio_genotypes[j][i][1];
-//        aa = trio_genotypes[i][j][2] + trio_genotypes[j][i][2];
-//        fprintf(stderr, "     %s %s%10d   %10d   %10d   %6.2f      %4.2f  %5.2f\n", "HOMREF", "HOMALT", rr, ra, aa, get_error_rate(trio_genotypes, i, j, 2), get_homhet_ratio(trio_genotypes, i, j, 2), get_homhet_proportion(trio_genotypes, i, j, 2));
-//        fprintf(stderr, "\n");
-//        fprintf(stderr, "     total mendelian error : %7.3f%%\n", get_error_rate(trio_genotypes, -1, -1, -1));
-//        fprintf(stderr, "\n");
-//        fprintf(stderr, "     no. of trios     : %d\n", no_trios);
-//        fprintf(stderr, "     no. of variants  : %d\n", no_variants);
-//        fprintf(stderr, "\n");
+        std::string g2s[3] = {"R/R","R/A","A/A"};
+
+        fprintf(out, "\\PassOptionsToPackage{table}{xcolor}\n");
+        fprintf(out, "\\documentclass{beamer}\n");
+        fprintf(out, "\\begin{document}\n");
+        fprintf(out, "\\begin{frame}{Mendel Error (All parental genotypes)}\n");
+        fprintf(out, "\\resizebox{\\linewidth}{!}{\n");
+        fprintf(out, "\\rowcolors{2}{blue!25}{blue!10}\n");
+        fprintf(out, "\\begin{tabular}{ccrrrrrr}\n");
+        fprintf(out, "\\rowcolor{blue!50}\n");
+        fprintf(out, "father& mother & R/R & R/A & A/A & Error \\%% & HomHet & Het \\%%\\\\ \n");
+        for (int32_t i=0; i<3; ++i)
+        {
+            for (int32_t j=0; j<3; ++j)
+            {
+                fprintf(out, "%s&%s&%10d&%10d&%10d&%6.2f&%4.2f&%5.2f \\\\ \n", g2s[i].c_str(), g2s[j].c_str(), trio_genotypes[i][j][0], trio_genotypes[i][j][1], trio_genotypes[i][j][2], get_error_rate(trio_genotypes, i, j, 0), get_homhet_ratio(trio_genotypes, i, j, 0), get_homhet_proportion(trio_genotypes, i, j, 0));
+            }
+        }
+        fprintf(out, "\\end{tabular}}\n");
+        fprintf(out, "\\end{frame}\n");
+
+        fprintf(out, "\\begin{frame}{Mendel Error (Collapsed genotypes)}\n");
+        fprintf(out, "\\resizebox{\\linewidth}{!}{\n");
+        fprintf(out, "\\rowcolors{2}{blue!25}{blue!10}\n");
+        fprintf(out, "\\begin{tabular}{ccrrrrrr}\n");
+        fprintf(out, "\\rowcolor{blue!50}\n");
+        fprintf(out, "\\multicolumn{2}{c}{Parental}  & R/R & R/A & A/A & Error \\%% & HomHet & Het \\%%\\\\ \n");
+        for (int32_t i=0; i<3; ++i)
+        {
+            for (int32_t j=0; j<3; ++j)
+            {
+                if (i!=j)
+                {
+                    if (i<j)
+                    {
+                        int32_t rr = trio_genotypes[i][j][0] + trio_genotypes[j][i][0];
+                        int32_t ra = trio_genotypes[i][j][1] + trio_genotypes[j][i][1];
+                        int32_t aa = trio_genotypes[i][j][2] + trio_genotypes[j][i][2];
+                        fprintf(out, "%s&%s&%10d&%10d&%10d&%6.2f&%4.2f&%5.2f \\\\ \n", g2s[i].c_str(), g2s[j].c_str(), rr, ra, aa, get_error_rate(trio_genotypes, i, j, 1), get_homhet_ratio(trio_genotypes, i, j, 1), get_homhet_proportion(trio_genotypes, i, j, 1));
+                    }
+                }
+                else
+                {
+                    fprintf(out, "%s&%s&%10d&%10d&%10d&%6.2f&%4.2f&%5.2f \\\\ \n", g2s[i].c_str(), g2s[j].c_str(), trio_genotypes[i][j][0], trio_genotypes[i][j][1], trio_genotypes[i][j][2], get_error_rate(trio_genotypes, i, j, 1), get_homhet_ratio(trio_genotypes, i, j, 1), get_homhet_proportion(trio_genotypes, i, j, 1));
+                }
+            }
+        }
+        fprintf(out, "\n");
+        fprintf(out, "\\end{tabular}}\n");
+        fprintf(out, "\\end{frame}\n");
+
+        fprintf(out, "\\begin{frame}{Mendel Error (Collapse parental allelotypes)}\n");
+        fprintf(out, "\\resizebox{\\linewidth}{!}{\n");
+        fprintf(out, "\\rowcolors{2}{blue!25}{blue!10}\n");
+        fprintf(out, "\\begin{tabular}{ccrrrrrr}\n");
+        fprintf(out, "\\rowcolor{blue!50}\n");
+        fprintf(out, "\\multicolumn{2}{c}{Parental}  & R/R & R/A & A/A & Error \\%% & HomHet & Het \\%%\\\\ \n");
+        int32_t i,j, rr, ra, aa;
+        i=0; j=0;
+        rr = trio_genotypes[i][j][0] + trio_genotypes[2][2][0];
+        ra = trio_genotypes[i][j][1] + trio_genotypes[2][2][1];
+        aa = trio_genotypes[i][j][2] + trio_genotypes[2][2][2];
+        fprintf(out, "%s&%s&%10d&%10d&%10d&%6.2f&%4.2f&%5.2f \\\\ \n", "HOM", "HOM", rr, ra, aa, get_error_rate(trio_genotypes, i, j, 2), get_homhet_ratio(trio_genotypes, i, j, 2), get_homhet_proportion(trio_genotypes, i, j, 2));
+        i=0; j=1;
+        rr = trio_genotypes[i][j][0] + trio_genotypes[j][i][0] + trio_genotypes[2-i][j][0] + trio_genotypes[j][2-i][0];
+        ra = trio_genotypes[i][j][1] + trio_genotypes[j][i][1] + trio_genotypes[2-i][j][1] + trio_genotypes[j][2-i][1];
+        aa = trio_genotypes[i][j][2] + trio_genotypes[j][i][2] + trio_genotypes[2-i][j][2] + trio_genotypes[j][2-i][2];
+        fprintf(out, "%s&%s&%10d&%10d&%10d&%6.2f&%4.2f&%5.2f \\\\ \n", "HOM", "HET", rr, ra, aa, get_error_rate(trio_genotypes, i, j, 2), get_homhet_ratio(trio_genotypes, i, j, 2), get_homhet_proportion(trio_genotypes, i, j, 2));
+        i=1; j=1;
+        fprintf(out, "%s&%s&%10d&%10d&%10d&%6.2f&%4.2f&%5.2f \\\\ \n", "HET", "HET", trio_genotypes[i][j][0], trio_genotypes[i][j][1], trio_genotypes[i][j][2], get_error_rate(trio_genotypes, i, j, 2), get_homhet_ratio(trio_genotypes, i, j, 2), get_homhet_proportion(trio_genotypes, i, j, 2));
+        i=0; j=2;
+        rr = trio_genotypes[i][j][0] + trio_genotypes[j][i][0];
+        ra = trio_genotypes[i][j][1] + trio_genotypes[j][i][1];
+        aa = trio_genotypes[i][j][2] + trio_genotypes[j][i][2];
+        fprintf(out, "%s&%s&%10d&%10d&%10d&%6.2f&%4.2f&%5.2f \\\\ \n", "HOMREF", "HOMALT", rr, ra, aa, get_error_rate(trio_genotypes, i, j, 2), get_homhet_ratio(trio_genotypes, i, j, 2), get_homhet_proportion(trio_genotypes, i, j, 2));
+        fprintf(out, "\n");
+        fprintf(out, "\\end{tabular}}\n");
+        fprintf(out, "\\end{frame}\n");
+
+        fprintf(out, "\\begin{frame}{Mendel Error Overall Summary}\n");
+        fprintf(out, "\\resizebox{\\linewidth}{!}{\n");
+        fprintf(out, "\\begin{tabular}{lr}\n");
+        fprintf(out, "total mendelian error & %7.3f \\%% \\\\ \n", get_error_rate(trio_genotypes, -1, -1, -1));
+        fprintf(out, "no. of trios     & %d \\\\ \n", no_trios);
+        fprintf(out, "no. of variants  & %d \\\\ \n", no_variants);
+        fprintf(out, "\n");
+        fprintf(out, "\\end{tabular}}\n");
+        fprintf(out, "\\end{frame}\n");
+
+        fprintf(out, "\\end{document}\n");
+        fprintf(out, "\n");
+
+        fclose(out);
+
+        std::string cmd = "pdflatex -output-directory=" + output_latex_dir + " " + output_latex_file + " > " + output_latex_dir + "/run.log";
+       
+        //std::cerr << cmd << "\n";
+        system(cmd.c_str());
+        //system("cp mendel_plot/mendel.pdf .");
+        //system("rm -fr mendel_plot");
+
     };
 
     void print_stats()
@@ -616,6 +655,6 @@ void profile_mendel_errors(int argc, char ** argv)
     igor.initialize();
     igor.profile_mendel_errors();
     igor.print_stats();
-    //igor.print_pdf();
+    igor.print_pdf();
 }
 
