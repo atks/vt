@@ -36,7 +36,7 @@ SOURCES = program\
 		lhmm_genotyping_record\
 		peek\
 		merge\
-		profile_mendel_errors\
+		profile_mendelian\
 		pedigree\
 		concat\
 		decompose\
