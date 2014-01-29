@@ -331,8 +331,6 @@ class Igor : Program
         
         std::clog << "merge v" << version << "\n\n";
         print_ifiles("options:     input VCF file        ", input_vcf_files);
-        
-      //std::clog << "options: [L] input VCF file list   " << input_vcf_file_list << " (" << input_vcf_files.size() << " files)\n";
         std::clog << "         [o] output VCF file       " << output_vcf_file << "\n";
         print_int_op("         [i] intervals             ", intervals);
         std::clog << "\n";

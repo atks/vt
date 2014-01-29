@@ -179,12 +179,12 @@ e.g. vt profile_snps_variants -o - NA19130.vcf.gz HG00096.vcf.gz\n\n";
             variant_concordance_txt_file = arg_variant_concordance_txt_file.getValue();
             sample_concordance_txt_file = arg_sample_concordance_txt_file.getValue();
 
-            filter=NULL;
-            if (filters!="")
-            {
-                filter = new Filter();
-                filter->parse(filters);
-            }
+//            filter=NULL;
+//            if (filters!="")
+//            {
+//                filter = new Filter();
+//                filter->parse(filters);
+//            }
 
             if (arg_variant_type.getValue()=="snp")
             {

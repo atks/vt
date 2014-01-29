@@ -26,6 +26,7 @@
 #define NOT  0
 #define AND  1
 #define OR   2
+
 #define ADD  3
 #define SUB  4
 #define MUL  5
@@ -37,7 +38,11 @@ class Node
     public:
 
     Node* parent;
-    std::vector<Node*> children;
+    Node* left;
+    Node* right;
+
+    bool value;
+    float 
 
     uint32_t type;
 
@@ -57,7 +62,7 @@ class Node
     };
 };
 
-class Tree
+class ExpressionTree
 {
     public:
 

@@ -62,7 +62,7 @@ class Igor : Program
         //////////////////////////
         try
         {
-            std::string desc = "Merge VCF. Includes only GT in format field by default.";
+            std::string desc = "Concatenate VCF files.  Assumes individuals are in the same order and files share the same header.";
 
             version = "0.5";
             TCLAP::CmdLine cmd(desc, ' ', version);
@@ -70,37 +70,24 @@ class Igor : Program
             TCLAP::ValueArg<std::string> arg_intervals("i", "i", "intervals", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_output_vcf_file("o", "o", "output VCF file [-]", false, "-", "", cmd);
-            TCLAP::ValueArg<std::string> arg_input_vcf_file_list("L", "L", "file containing list of input VCF files", true, "", "str", cmd);
+            TCLAP::ValueArg<std::string> arg_input_vcf_file_list("L", "L", "file containing list of input VCF files", false, "", "str", cmd);
             TCLAP::SwitchArg arg_print("p", "p", "print options and summary []", cmd, false);
             TCLAP::SwitchArg arg_print_sites_only("s", "s", "print site information only without genotypes [false]", cmd, false);
-            
-            
+            TCLAP::UnlabeledMultiArg<std::string> arg_input_vcf_files("<in1.vcf>...", "Multiple VCF files",false, "files", cmd);
+                        
             cmd.parse(argc, argv);
 
-            input_vcf_file_list = arg_input_vcf_file_list.getValue();
+            parse_files(input_vcf_files, arg_input_vcf_files.getValue(), arg_input_vcf_file_list.getValue());
             output_vcf_file = arg_output_vcf_file.getValue();
             parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
             no_subset_samples = arg_print_sites_only.getValue() ? 0 : -1;
             print = arg_print.getValue();
-
-            ///////////////////////
-            //parse input VCF files
-            ///////////////////////
-            htsFile *file = hts_open(input_vcf_file_list.c_str(), "r");
-            if (file==NULL)
+            
+            if (input_vcf_files.size()==0)
             {
-                std::cerr << "cannot open " << input_vcf_file_list.c_str() << "\n";
+                fprintf(stderr, "[E:%s:%d %s] no input vcf files.\n", __FILE__, __LINE__, __FUNCTION__);
                 exit(1);
             }
-            kstring_t *s = &file->line;
-            while (hts_getline(file, KS_SEP_LINE, s) >= 0)
-            {
-                if (s->s[0]!='#')
-                {
-                    input_vcf_files.push_back(std::string(s->s));
-                }
-            }
-            hts_close(file);
         }
         catch (TCLAP::ArgException &e)
         {
@@ -145,7 +132,7 @@ class Igor : Program
         odw->write_hdr();   
         bcf1_t *v = odw->get_bcf1_from_pool();
         
-        for (int32_t i=1; i<input_vcf_files.size(); ++i)
+        for (int32_t i=0; i<input_vcf_files.size(); ++i)
         {
             if (i)
             {
@@ -162,6 +149,7 @@ class Igor : Program
                 }
          
                 odw->write(v);
+                ++no_variants;
                 v =  odw->get_bcf1_from_pool();
             }
             
@@ -176,7 +164,7 @@ class Igor : Program
         if (!print) return;
         
         std::clog << "concat v" << version << "\n\n";
-        std::clog << "options: [L] input VCF file list   " << input_vcf_file_list << " (" << input_vcf_files.size() << " files)\n";
+        print_ifiles("options:     input VCF file        ", input_vcf_files);
         std::clog << "         [o] output VCF file       " << output_vcf_file << "\n";
         print_int_op("         [i] intervals             ", intervals);
         std::clog << "\n";
@@ -187,7 +175,7 @@ class Igor : Program
         if (!print) return;
         
         std::clog << "\n";
-        std::cerr << "stats: Total Number of variants   " << no_variants << "\n";
+        std::cerr << "stats: no. of variants   " << no_variants << "\n";
         std::clog << "\n";
     };
 

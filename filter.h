@@ -54,9 +54,18 @@
 
 based on QUAL, FILTER, INFO and Variant type
 
--f QUAL>2 && FILTER.PASS && AF>0.05
--f FILTER.PASS && AF*>0.05
--f FILTER.PASS && (AF*>0.05 || AC/AN>0.05)
+-f QUAL>2&&PASS&&AF>0.05
+-f PASS && AF*>0.05
+-f PASS && (AF*>0.05 || AC/AN>0.05)
+
+
+reserved key words
+PASS
+QUAL
+AF
+AC
+AN
+
 
 -f, -g, -h
 
