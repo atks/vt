@@ -35,7 +35,7 @@
 #include "view.h"
 #include "index.h"
 #include "profile_indels.h"
-#include "profile_mendel_errors.h"
+#include "profile_mendelian.h"
 #include "decompose.h"
 #include "remove_overlap.h"
 #include "profile_na12878.h"
@@ -79,7 +79,7 @@ void help()
     std::clog << "peek                      summary of variants in the vcf file\n";
     std::clog << "partition                 partition variants\n";
     std::clog << "profile_indels            profile indels\n";
-    std::clog << "profile_mendel_errors     profile indels\n";
+    std::clog << "profile_mendelian         profile indels\n";
     std::clog << "profile_na12878           profile na12878\n";        
     std::clog << "discover                  discover variants\n";
     std::clog << "merge_candidate_variants  merge candidate variants\n";
@@ -169,7 +169,7 @@ int main(int argc, char ** argv)
     }
     else if (argc>1 && cmd=="profile_mendel_errors")
     {
-        profile_mendel_errors(argc-1, ++argv);
+        profile_mendelian(argc-1, ++argv);
     }
     else if (argc>1 && cmd=="profile_na12878")
     {

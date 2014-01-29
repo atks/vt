@@ -21,7 +21,7 @@
    THE SOFTWARE.
 */
 
-#include "profile_mendel_errors.h"
+#include "profile_mendelian.h"
 
 namespace
 {
@@ -74,7 +74,7 @@ class Igor : Program
         //////////////////////////
         try
         {
-            std::string desc = "Profile Mendel Errors.";
+            std::string desc = "Profile Mendelian Errors.";
 
             version = "0.5";
             TCLAP::CmdLine cmd(desc, ' ', version);
@@ -144,7 +144,7 @@ class Igor : Program
         vm = new VariantManip(ref_fasta_file);
     }
 
-    void profile_mendel_errors()
+    void profile_mendelian()
     {
         bcf_hdr_t *h = odr->hdr;
         bcf1_t *v = bcf_init1();
@@ -648,12 +648,12 @@ class Igor : Program
 
 }
 
-void profile_mendel_errors(int argc, char ** argv)
+void profile_mendelian(int argc, char ** argv)
 {
     Igor igor(argc, argv);
     igor.print_options();
     igor.initialize();
-    igor.profile_mendel_errors();
+    igor.profile_mendelian();
     igor.print_stats();
     igor.print_pdf();
 }

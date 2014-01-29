@@ -21,8 +21,8 @@
    THE SOFTWARE.
 */
 
-#ifndef PROFILE_MENDEL_ERRORS_H
-#define PROFILE_MENDEL_ERRORS_H
+#ifndef PROFILE_MENDELIAN_H
+#define PROFILE_MENDELIAN_H
 
 #include <sys/stat.h>
 #include <cstdio>
@@ -35,6 +35,6 @@
 #include "utils.h"
 #include "pedigree.h"
 
-void profile_mendel_errors(int argc, char ** argv);
+void profile_mendelian(int argc, char ** argv);
 
 #endif
