@@ -25,6 +25,7 @@
 #define PROFILE_MENDEL_ERRORS_H
 
 #include <sys/stat.h>
+#include <cstdio>
 #include "htslib/vcf.h"
 #include "htslib/kseq.h"
 #include "program.h"
@@ -32,7 +33,6 @@
 #include "bcf_ordered_reader.h"
 #include "variant_manip.h"
 #include "utils.h"
-#include "log_tool.h"
 #include "pedigree.h"
 
 void profile_mendel_errors(int argc, char ** argv);

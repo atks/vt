@@ -106,6 +106,11 @@ class Program
      * Print reference FASTA file option.
      */
     void print_ref_op(const char* option_line, std::string ref_fasta_file);
+    
+    /**
+     * Print string option, hide if not present.
+     */
+    void print_str_op(const char* option_line, std::string str_value);
 
     /**
      * Print input files.

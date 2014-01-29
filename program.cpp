@@ -199,6 +199,17 @@ void Program::print_ref_op(const char* option_line, std::string ref_fasta_file)
 }
 
 /**
+ * Print string option, hide if not present.
+ */
+void Program::print_str_op(const char* option_line, std::string str_value)
+{
+    if (str_value!="")
+    {
+        std::clog << option_line << str_value << "\n";
+    }
+}
+
+/**
  * Print intervals option.
  */
 void Program::print_int_op(const char* option_line, std::vector<GenomeInterval>& intervals)
