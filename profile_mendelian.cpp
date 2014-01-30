@@ -162,7 +162,7 @@ class Igor : Program
 
         while(odr->read(v))
         {
-            bcf_unpack(v, BCF_UN_STR);
+            bcf_unpack(v, BCF_UN_IND);
             int32_t vtype = vm->classify_variant(odr->hdr, v, variant);
 
             if (bcf_get_n_allele(v)!=2)
