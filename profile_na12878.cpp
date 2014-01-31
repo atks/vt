@@ -85,15 +85,15 @@ class Igor : Program
     std::vector<ConcordanceStats> concordance;
     std::string gencode_gtf_file;
     bool gencode_exists;
+    std::string filter_expression;
+    Filter filter;
 
     ///////
     //i/o//
     ///////
     BCFSyncedReader *sr;
     bcf1_t *v;
-    Filter *filter;
     kstring_t line;
-    Filter *rare_filter;
 
     /////////
     //stats//
@@ -127,12 +127,14 @@ class Igor : Program
             TCLAP::ValueArg<std::string> arg_ref_fasta_file("r", "r", "reference sequence fasta file []", true, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_intervals("i", "i", "intervals []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "file", cmd);
+            TCLAP::ValueArg<std::string> arg_filter_expression("f", "f", "filter expression []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_ref_data_sets_list("g", "g", "file containing list of reference datasets []", false, "", "file", cmd);
             TCLAP::UnlabeledValueArg<std::string> arg_input_vcf_file("<in.vcf>", "input VCF file", true, "","file", cmd);
 
             cmd.parse(argc, argv);
 
             ref_fasta_file = arg_ref_fasta_file.getValue();
+            filter_expression = arg_filter_expression.getValue();
             parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
             ref_data_sets_list = arg_ref_data_sets_list.getValue();
             input_vcf_file = arg_input_vcf_file.getValue();
@@ -201,6 +203,8 @@ class Igor : Program
         hts_close(hts);
         if (s.m) free(s.s);
 
+        filter.parse(filter_expression.c_str());
+
         //////////////////////
         //i/o initialization//
         //////////////////////
@@ -223,10 +227,6 @@ class Igor : Program
         no_indels = 0;
         fs = 0;
         nfs = 0;
-        rare_fs = 0;
-        rare_nfs = 0;
-        common_fs = 0;
-        common_nfs = 0;
     }
 
     void profile_na12878()
@@ -260,7 +260,8 @@ class Igor : Program
             bcf_hdr_t *h = current_recs[0]->h;
             int32_t vtype = vm->classify_variant(h, v, variant);
 
-            if (bcf_get_n_allele(v)==2 && !((vtype==VT_INDEL || vtype==(VT_SNP|VT_INDEL)) ))
+            //if (bcf_get_n_allele(v)!=2 || !(vtype==VT_INDEL || vtype==(VT_SNP|VT_INDEL)) )
+            if (bcf_get_n_allele(v)!=2 || !(vtype==VT_SNP) )
             {
                 continue;
             }
@@ -329,7 +330,6 @@ class Igor : Program
                 int k = bcf_get_genotypes(presence_bcfptr[0]->h, presence_bcfptr[0]->v, &gts, &n);
                 x1 = bcf_gt_allele(gts[na12878_index[0]*2]);
                 x2 = bcf_gt_allele(gts[na12878_index[0]*2+1]);
-
                 
                 x = x1+x2;
                 if (x==-2)
