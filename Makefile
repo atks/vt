@@ -41,7 +41,8 @@ SOURCES = program\
 		concat\
 		decompose\
 		remove_overlap\
-		profile_na12878
+		profile_na12878\
+		filter
 
 SOURCESONLY = main.cpp
 

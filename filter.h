@@ -48,16 +48,14 @@
  * VARIANT==SNP
  * AF>0.5
  * VARIANT==SNP && AF>0.5
- 
- 
- [-F] filter expression 
+
+ [-F] filter expression
 
 based on QUAL, FILTER, INFO and Variant type
 
 -f QUAL>2&&PASS&&AF>0.05
 -f PASS && AF*>0.05
 -f PASS && (AF*>0.05 || AC/AN>0.05)
-
 
 reserved key words
 PASS
@@ -66,32 +64,70 @@ AF
 AC
 AN
 
-
 -f, -g, -h
-
 In the case that a field is not found, it evaluates to false
-
-
-
 AF* - intelligent parsing - if AF is not present, estimate from AC/AN
-
- * 
+ *
  */
+class Node
+{
+    public:
+
+    Node* parent;
+    Node* left;
+    Node* right;
+
+    int32_t type;
+    bool value;
+    
+    char* tag;
+    union
+    {
+        bool b;
+        int32_t i;
+        float f;
+    };
+    
+    /**
+     * Evaluates the actions for this node.
+     */
+    void evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant);
+};
+
 class Filter
 {
     public:
-        
-    std::string tag;
-    int32_t comparison;
-    float value;
+
+    //encodes the filter expression
+    Node* tree;
+
+    //useful pointers
+    bcf_hdr_t *h;
+    bcf1_t *v;
+    Variant *variant;
 
     Filter() {};
-            
-    Filter(std::string tag, int32_t comparison, float value);
+
+    /**
+     * Applies filter to vcf record.
+     */
+    bool apply(bcf_hdr_t *h, bcf1_t *v, Variant *variant);
+
+    /**
+     * Recursive call for apply.
+     */
+    void apply(Node* node);
+
+    /**
+     * Constructs the expression tree.
+     */
+    void parse(const char* filter);
     
-    bool apply(bcf_hdr_t *h, bcf1_t *v);
+    /**
+     * Recursive call for parse.
+     */
+    void parse(const char* filter, int32_t len);
     
-    void parse(std::string filter);
 };
 
 #endif

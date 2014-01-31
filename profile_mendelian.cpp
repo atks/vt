@@ -165,8 +165,8 @@ class Igor : Program
             bcf_unpack(v, BCF_UN_IND);
             int32_t vtype = vm->classify_variant(odr->hdr, v, variant);
 
-            if (bcf_get_n_allele(v)!=2)
             //if (bcf_get_n_allele(v)!=2 || vtype!=VT_INDEL || bcf_has_filter(odr->hdr, v, const_cast<char*>("PASS"))!=1)
+            if (bcf_get_n_allele(v)!=2)
             {
                 continue;
             }
