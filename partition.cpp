@@ -76,7 +76,7 @@ class Igor : Program
     /////////
     //stats//
     /////////
-    std::vector<OverlapStats> stats;
+    OverlapStats stats;
 
     ////////////////
     //common tools//
@@ -133,9 +133,8 @@ class Igor : Program
         ////////////////////////
         //stats initialization//
         ////////////////////////
-        OverlapStats s;
-        stats.resize(32, s);
 
+       
     }
 
     void partition()
@@ -166,100 +165,42 @@ class Igor : Program
             int32_t ts = 0;
             int32_t tv = 0;
 
-            update_overlap_stats(stats, presence, 0, ts, tv, ins, del);
-
-            if (bcf_get_n_allele(v)==2)
-            {
-                if (vtype == VT_SNP || vtype == VT_MNP  )
-                {
-                    ts = variant.alleles[0].ts;
-                    tv = variant.alleles[0].tv;
-                }
-                else if (vtype == VT_INDEL)
-                {
-                    ins = variant.alleles[0].ins;
-                    del = 1-ins;
-                }
-
-                update_overlap_stats(stats, presence, vtype, ts, tv, ins, del);
-
-                if (vtype & VT_CLUMPED)
-                {
-                    
-                }
-                else if (vtype==VT_SNP)
-                {
-                    
-                }
-                else if (vtype==VT_MNP)
-                {
-                   
-                }
-                else if (vtype==VT_INDEL) //strictly simple indels
-                {
-                    
-                }
-                else if (vtype==(VT_SNP|VT_INDEL))
-                {
-                    
-                }
-                else if (vtype==(VT_MNP|VT_INDEL))
-                {
-                   
-                }
-                else if (vtype==(VT_SNP|VT_MNP|VT_INDEL))
-                {
-                  
-                }
-                else if (vtype==(VT_SNP|VT_MNP))
-                {
-                  
-                }
-                else if (vtype==VT_REF) //MNPs that are not real MNPs
-                {
-                  
-                }
-                else
-                {
-                    
-                }
-
-            }
-
+            update_overlap_stats(presence, ts, tv, ins, del);
+        
             presence[0] = 0;
             presence[1] = 0;
         }
     };
 
-    void update_overlap_stats(std::vector<OverlapStats>& stats, std::vector<int32_t>& presence, int32_t vtype, int32_t ts,  int32_t tv, int32_t ins, int32_t del)
+    void update_overlap_stats(std::vector<int32_t>& presence, int32_t ts,  int32_t tv, int32_t ins, int32_t del)
     {
         //update overlap stats
         if (presence[0] && !presence[1])
         {
-            ++stats[vtype].a;
+            ++stats.a;
 
-            stats[vtype].a_ts += ts;
-            stats[vtype].a_tv += tv;
-            stats[vtype].a_ins += ins;
-            stats[vtype].a_del += del;
+            stats.a_ts += ts;
+            stats.a_tv += tv;
+            stats.a_ins += ins;
+            stats.a_del += del;
         }
         else if (presence[0] && presence[1])
         {
-            ++stats[vtype].ab;
+            ++stats.ab;
 
-            stats[vtype].ab_ts += ts;
-            stats[vtype].ab_tv += tv;
-            stats[vtype].ab_ins += ins;
-            stats[vtype].ab_del += del;
+            stats.ab_ts += ts;
+            stats.ab_tv += tv;
+            stats.ab_ins += ins;
+            stats.ab_del += del;
         }
         else if (!presence[0] && presence[1])
         {
-            ++stats[vtype].b;
+            ++stats.b;
 
-            stats[vtype].b_ts += ts;
-            stats[vtype].b_tv += tv;
-            stats[vtype].b_ins += ins;
-            stats[vtype].b_del += del;
+            stats.b_ts += ts;
+            stats.b_tv += tv;
+            stats.b_ins += ins;
+            stats.b_del += del;
         }        
     }
 
@@ -275,48 +216,39 @@ class Igor : Program
 
     void print_stats()
     {
-        fprintf(stderr, "    A:  %10d variants\n", stats[0].a+stats[0].ab);
-        fprintf(stderr, "    B:  %10d variants\n", stats[0].ab+stats[0].b);
+        fprintf(stderr, "    A:  %10d variants\n", stats.a+stats.ab);
+        fprintf(stderr, "    B:  %10d variants\n", stats.ab+stats.b);
         fprintf(stderr, "\n");
 
-        int32_t types[5] = {0, VT_SNP, VT_MNP, VT_INDEL, VT_CLUMPED};
-        kstring_t s;
-
-        for (int32_t j=0; j<5; ++j)
+        if (0)
         {
-            int32_t i = types[j];
-            vm->vtype2string(i, &s);
-            if (types[j] == 0)
-            {
-                fprintf(stderr, "    ALL\n");
-                fprintf(stderr, "    A-B %10d\n", stats[i].a);
-                fprintf(stderr, "    A&B %10d\n", stats[i].ab);
-                fprintf(stderr, "    B-A %10d\n", stats[i].b);
-                fprintf(stderr, "    of A     %4.1f%%\n", 100*(float)stats[i].ab/(stats[i].a+stats[i].ab));
-                fprintf(stderr, "    of B     %4.1f%%\n", 100*(float)stats[i].ab/(stats[i].b+stats[i].ab));
-                fprintf(stderr, "\n");
-            }
-            else if (types[j] == VT_SNP || types[j] == VT_MNP)
-            {
-                fprintf(stderr, "    %s\n", s.s);
-                fprintf(stderr, "    A-B %10d [%.2f]\n", stats[i].a,  (float)stats[i].a_ts/(stats[i].a_tv));
-                fprintf(stderr, "    A&B %10d [%.2f]\n", stats[i].ab, (float)stats[i].ab_ts/stats[i].ab_tv);
-                fprintf(stderr, "    B-A %10d [%.2f]\n", stats[i].b,  (float)stats[i].b_ts/(stats[i].b_tv));
-                fprintf(stderr, "    of A     %4.1f%%\n", 100*(float)stats[i].ab/(stats[i].a+stats[i].ab));
-                fprintf(stderr, "    of B     %4.1f%%\n", 100*(float)stats[i].ab/(stats[i].b+stats[i].ab));
-                fprintf(stderr, "\n");
-            }
-            else
-            {
-                fprintf(stderr, "    %s\n", s.s);
-                fprintf(stderr, "    A-B %10d [%.2f]\n", stats[i].a,  (float)stats[i].a_ins/(stats[i].a_del));
-                fprintf(stderr, "    A&B %10d [%.2f]\n", stats[i].ab, (float)stats[i].ab_ins/stats[i].ab_del);
-                fprintf(stderr, "    B-A %10d [%.2f]\n", stats[i].b,  (float)stats[i].b_ins/(stats[i].b_del));
-                fprintf(stderr, "    of A     %4.1f%%\n", 100*(float)stats[i].ab/(stats[i].a+stats[i].ab));
-                fprintf(stderr, "    of B     %4.1f%%\n", 100*(float)stats[i].ab/(stats[i].b+stats[i].ab));
-                fprintf(stderr, "\n");
-            }
+            fprintf(stderr, "    ALL\n");
+            fprintf(stderr, "    A-B %10d\n", stats.a);
+            fprintf(stderr, "    A&B %10d\n", stats.ab);
+            fprintf(stderr, "    B-A %10d\n", stats.b);
+            fprintf(stderr, "    of A     %4.1f%%\n", 100*(float)stats.ab/(stats.a+stats.ab));
+            fprintf(stderr, "    of B     %4.1f%%\n", 100*(float)stats.ab/(stats.b+stats.ab));
+            fprintf(stderr, "\n");
         }
+        else if (1)
+        {
+            fprintf(stderr, "    A-B %10d [%.2f]\n", stats.a,  (float)stats.a_ts/(stats.a_tv));
+            fprintf(stderr, "    A&B %10d [%.2f]\n", stats.ab, (float)stats.ab_ts/stats.ab_tv);
+            fprintf(stderr, "    B-A %10d [%.2f]\n", stats.b,  (float)stats.b_ts/(stats.b_tv));
+            fprintf(stderr, "    of A     %4.1f%%\n", 100*(float)stats.ab/(stats.a+stats.ab));
+            fprintf(stderr, "    of B     %4.1f%%\n", 100*(float)stats.ab/(stats.b+stats.ab));
+            fprintf(stderr, "\n");
+        }
+        else
+        {
+            fprintf(stderr, "    A-B %10d [%.2f]\n", stats.a,  (float)stats.a_ins/(stats.a_del));
+            fprintf(stderr, "    A&B %10d [%.2f]\n", stats.ab, (float)stats.ab_ins/stats.ab_del);
+            fprintf(stderr, "    B-A %10d [%.2f]\n", stats.b,  (float)stats.b_ins/(stats.b_del));
+            fprintf(stderr, "    of A     %4.1f%%\n", 100*(float)stats.ab/(stats.a+stats.ab));
+            fprintf(stderr, "    of B     %4.1f%%\n", 100*(float)stats.ab/(stats.b+stats.ab));
+            fprintf(stderr, "\n");
+        }
+        
     };
 
     ~Igor()
