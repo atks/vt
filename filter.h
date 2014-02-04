@@ -27,6 +27,23 @@
 #include "htslib/vcf.h"
 #include "variant_manip.h"
 
+#define MATH_OP          0
+#define VT_VARIANT_TYPE_OP  1 
+#define INFO_OP          2
+#define VT_FILTER_OP        3
+
+#define NOT  0
+#define VT_OP_AND  1
+#define VT_OP_OR   2
+
+#define VT_OP_BIT_AND  1
+#define VT_OP_BIT_OR   2
+
+#define ADD  4
+#define SUB  5
+#define MUL  6
+#define DIV  7
+
 #define LT 0
 #define LE 1
 #define EQ 2
@@ -56,6 +73,7 @@ based on QUAL, FILTER, INFO and Variant type
 -f QUAL>2&&PASS&&AF>0.05
 -f PASS && AF*>0.05
 -f PASS && (AF*>0.05 || AC/AN>0.05)
+-f PASS && SNP
 
 reserved key words
 PASS
@@ -67,6 +85,7 @@ AN
 -f, -g, -h
 In the case that a field is not found, it evaluates to false
 AF* - intelligent parsing - if AF is not present, estimate from AC/AN
+ 
  *
  */
 class Node
@@ -80,13 +99,18 @@ class Node
     int32_t type;
     bool value;
     
-    char* tag;
+    kstring_t tag;
     union
     {
         bool b;
         int32_t i;
         float f;
     };
+    
+    
+    Node();
+    
+    Node(int32_t type);
     
     /**
      * Evaluates the actions for this node.
@@ -106,7 +130,9 @@ class Filter
     bcf1_t *v;
     Variant *variant;
 
-    Filter() {};
+    Filter();
+
+    Filter(std::string exp);
 
     /**
      * Applies filter to vcf record.
@@ -121,12 +147,18 @@ class Filter
     /**
      * Constructs the expression tree.
      */
-    void parse(const char* filter);
+    void parse(const char* exp);
+    void parse(const char* exp, int32_t len, Node * node);
+        
+
+    void update_node(int32_t OP, Node* node)
+    {
+    }
     
     /**
      * Recursive call for parse.
      */
-    void parse(const char* filter, int32_t len);
+    
     
 };
 

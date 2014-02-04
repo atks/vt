@@ -173,6 +173,9 @@ class Igor : Program
         dataset_labels.push_back("data");
         dataset_types.push_back("ref");
 
+        filter.parse(filter_expression.c_str());
+
+
         htsFile *hts = hts_open(ref_data_sets_list.c_str(), "r");
         kstring_t s = {0,0,0};
         std::vector<std::string> vec;
@@ -203,7 +206,7 @@ class Igor : Program
         hts_close(hts);
         if (s.m) free(s.s);
 
-        filter.parse(filter_expression.c_str());
+        std::cerr << "done parsing\n";
 
         //////////////////////
         //i/o initialization//
@@ -260,8 +263,16 @@ class Igor : Program
             bcf_hdr_t *h = current_recs[0]->h;
             int32_t vtype = vm->classify_variant(h, v, variant);
 
+            if (filter.apply(h, v, &variant))
+            //if (bcf_has_filter(h,v,"PASS")!=1)
+            if (bcf_get_n_allele(v)!=2 || !(vtype==VT_INDEL || vtype==(VT_SNP|VT_INDEL)) )
             //if (bcf_get_n_allele(v)!=2 || !(vtype==VT_INDEL || vtype==(VT_SNP|VT_INDEL)) )
-            if (bcf_get_n_allele(v)!=2 || !(vtype==VT_SNP) )
+            //if (bcf_get_n_allele(v)!=2 || !(vtype==VT_SNP) )
+            {
+                continue;
+            }
+
+            if (!filter.apply(h, v, &variant))
             {
                 continue;
             }
