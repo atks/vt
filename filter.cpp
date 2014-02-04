@@ -97,33 +97,96 @@ void Filter::parse(const char* exp, int32_t len, Node * node)
     for (int32_t i=0; i<len; ++i)
         std::cerr << exp[i] ;
     std::cerr << "\" " << len << "\n";
-    
-    
+        
     //trim
     while (*exp==' ') ++exp;
     while (exp[len-1]==' ') --len;
 
-    std::cerr << "\tafter trimming \n";
-    std::cerr << "\tparsing \"";
+    //trim brackets
+    if (*exp=='(' && exp[len-1]==')')
+    {
+        ++exp;
+        len -=2;
+    }
+
+    std::cerr << "\tafter trimming : \"";
     for (int32_t i=0; i<len; ++i)
         std::cerr << exp[i] ;
     std::cerr << "\" " << len << "\n";
 
     //parse literals
-    if (strcmp(exp, "PASS")==0)
+    if (strncmp(exp, "PASS", len)==0)
     {
         node->type = VT_FILTER_OP;
         kputsn(exp, len, &node->tag);
         std::cerr << "\tis filter_op\n";
         return;
     }
-    else if (strcmp(exp, "VTYPE")==0)
+    else if (strncmp(exp, "VTYPE", len)==0)
     {
         node->type = VT_VARIANT_TYPE_OP;
-        std::cerr << "is variant_op\n";
+        std::cerr << "\tis variant_op\n";
         return;
     }
-
+    else if (strncmp(exp, "N_ALLELE", len)==0)
+    {
+        node->type = VT_N_ALLELE_OP;
+        std::cerr << "\tis nallele_op\n";
+        return;
+    }
+    else if (strncmp(exp, "INDEL", len)==0)
+    {
+        node->type = VT_VARIANT_TYPE_OP;
+        node->i = VT_INDEL;
+        std::cerr << "\tis INDEL\n";
+        return;
+    }
+    else if (strncmp(exp, "SNP", len)==0)
+    {
+        node->type = VT_VARIANT_TYPE_OP;
+        node->i = VT_SNP;
+        std::cerr << "\tis SNP\n";
+        return;
+    }
+    else if (strncmp(exp, "MNP", len)==0)
+    {
+        node->type = VT_VARIANT_TYPE_OP;
+        node->i = VT_MNP;
+        std::cerr << "\tis MNP\n";
+        return;
+    }
+    else if (strncmp(exp, "CLUMPED", len)==0)
+    {
+        node->type = VT_VARIANT_TYPE_OP;
+        node->i = VT_SNP;
+        std::cerr << "\tis CLUMPED\n";
+        return;
+    }
+    else
+    {
+        const char* start = exp;
+        char *end = NULL;
+        int32_t i = std::strtoul(exp, &end, 10);
+        if (end!=start)
+        {
+            node->i = i;
+            std::cerr << "\tis int\n";
+            return;
+        }
+        
+        start = exp;
+        end = NULL;
+        int32_t f = std::strtod(exp, &end);
+        if (end!=start)
+        {
+            node->f = f;
+            std::cerr << "\tis float\n";
+            return;
+        }
+        
+        //is this a number
+    }
+        
     const char* p = exp;
     const char* q = exp;
 
@@ -133,71 +196,73 @@ void Filter::parse(const char* exp, int32_t len, Node * node)
     if (*p=='(')
         while (*q!=')') ++q;
     
-    
-    std::cerr << "\tparsing q \"";
-    for (int32_t i=0; i<len-(p-exp); ++i)
-        std::cerr << q[i] ;
-    std::cerr << "\" " << len << "\n";
-
-            
+    int32_t oplen = 0;
     while (q-p<len)
     {
         if (*q=='&' && (q-exp<len) && *(q+1)=='&')
         {
             type = VT_OP_AND;
+            oplen = 2;
             std::cerr << "\tis && operator\n";
             break;
         }
         else if (*q=='&')
         {
             type = VT_OP_BIT_AND;
+            oplen = 1;
             std::cerr << "\tis & operator\n";
             break;
         }
         else if (*q=='|' && (q-exp<len) && *(q+1)=='|')
         {
             type = VT_OP_OR;
+            oplen = 2;
             std::cerr << "\tis || operator\n";
             break;
         }
         else if (*q=='|')
         {
             type = VT_OP_BIT_OR;
+            oplen = 1;
             std::cerr << "\tis | operator\n";
             break;
         }
         else if (*q=='=' && (q-exp<len) && *(q+1)=='=')
         {
-            type = VT_OP_OR;
+            type = VT_OP_EQ;
+            oplen = 2;
             std::cerr << "\tis == operator\n";
             break;
+        }
+        else
+        {
+            
         }
         
         ++q;
     }
-    
-    if (q-p==len)
-    {
-        for (int32_t i=0; i<len; ++i)
-            std::cerr << exp[i] ;
-        std::cerr << "\" " << len;
-        
-        std::cerr << " not recognised\n";
-        exit(1);
-    }    
-    
+
     //std::cerr << "p,q address: " << &p << " " <<  &q << " " << (q-p) << "\n";
     
     node->type = type;
     node->left = new Node();
     parse(p, q-p, node->left);
-        
     
-    if (false)
+    if (q-p!=len)
     {
+        q += oplen;
+        std::cerr << "\tparsing q \"";
+        for (int32_t i=0; i<len-(q-p); ++i)
+            std::cerr << q[i] ;
+        std::cerr << "\" " << (len-(q-p)) << "\n";
+            
+            
         node->right = new Node();
-        parse(q+2, len-(q+2-exp), node->right);
-    }    
+        parse(q, len-(q-exp), node->right);
+    }   
+    
+    
+     
 }
 
 
@@ -227,6 +292,10 @@ void Filter::apply(Node* node)
 void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant)
 {
     //filter operation
+    if (type==VT_OP_AND)
+    {
+        value = (left->value==right->value);
+    }
     if (type==VT_FILTER_OP)
     {
         if (bcf_has_filter(h, v, tag.s)!=1)
@@ -240,13 +309,17 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant)
     }
     else if (type==VT_VARIANT_TYPE_OP)
     {
-        if (variant->type==i)
+        i = variant->type;
+    }
+    else if (type==VT_N_ALLELE_OP)
+    {
+        i = bcf_get_n_allele(v);
+    }
+    else if (type==VT_OP_EQ)
+    {
+        if (left->type==VT_N_ALLELE_OP || left->type==VT_VARIANT_TYPE_OP)
         {
-            value = true;
-        }
-        else
-        {
-            value = false;
+            value = (left->i==right->i);
         }
     }
     

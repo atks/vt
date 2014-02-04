@@ -263,14 +263,15 @@ class Igor : Program
             bcf_hdr_t *h = current_recs[0]->h;
             int32_t vtype = vm->classify_variant(h, v, variant);
 
-            if (filter.apply(h, v, &variant))
+            //if (filter.apply(h, v, &variant))
             //if (bcf_has_filter(h,v,"PASS")!=1)
-            if (bcf_get_n_allele(v)!=2 || !(vtype==VT_INDEL || vtype==(VT_SNP|VT_INDEL)) )
             //if (bcf_get_n_allele(v)!=2 || !(vtype==VT_INDEL || vtype==(VT_SNP|VT_INDEL)) )
-            //if (bcf_get_n_allele(v)!=2 || !(vtype==VT_SNP) )
-            {
-                continue;
-            }
+            //if (bcf_get_n_allele(v)!=2 )
+            //if (bcf_get_n_allele(v)!=2 || !(vtype==VT_INDEL || vtype==(VT_SNP|VT_INDEL)) )
+//            if (bcf_get_n_allele(v)!=2 || !(vtype==VT_INDEL) || bcf_has_filter(h,v,"PASS")!=1 )
+//            {
+//                continue;
+//            }
 
             if (!filter.apply(h, v, &variant))
             {

@@ -27,17 +27,16 @@
 #include "htslib/vcf.h"
 #include "variant_manip.h"
 
-#define MATH_OP          0
-#define VT_VARIANT_TYPE_OP  1 
-#define INFO_OP          2
-#define VT_FILTER_OP        3
-
-#define NOT  0
-#define VT_OP_AND  1
-#define VT_OP_OR   2
-
-#define VT_OP_BIT_AND  1
-#define VT_OP_BIT_OR   2
+#define VT_OP_NOT      0
+#define VT_OP_AND      1
+#define VT_OP_OR       2
+#define VT_OP_EQ       3
+#define VT_OP_BIT_AND  4
+#define VT_OP_BIT_OR   5
+#define VT_VARIANT_TYPE_OP  6
+#define VT_N_ALLELE_OP      7
+#define VT_INFO_OP          8
+#define VT_FILTER_OP        9
 
 #define ADD  4
 #define SUB  5
