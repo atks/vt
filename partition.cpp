@@ -67,6 +67,7 @@ class Igor : Program
     std::vector<std::string> input_vcf_files;
     std::vector<GenomeInterval> intervals;
     std::string interval_list;
+    std::string filter_expression;
 
     ///////
     //i/o//
@@ -97,11 +98,12 @@ class Igor : Program
             VTOutput my; cmd.setOutput(&my);
             TCLAP::ValueArg<std::string> arg_intervals("i", "i", "intervals []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "file", cmd);
-            TCLAP::ValueArg<std::string> arg_filters("f", "filters", "Filter (e.g. AF>0.3) ", false, "", "str", cmd);
+            TCLAP::ValueArg<std::string> arg_filter_expression("f", "filters", "filter", false, "", "str", cmd);
             TCLAP::UnlabeledMultiArg<std::string> arg_input_vcf_files("<in1.vcf><in2.vcf>", "2 input VCF files for comparison", true, "files", cmd);
 
             cmd.parse(argc, argv);
 
+            filter_expression = arg_filter_expression.getValue();
             parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
             input_vcf_files = arg_input_vcf_files.getValue();
 
@@ -141,6 +143,9 @@ class Igor : Program
     {
         //for combining the alleles
         std::vector<bcfptr*> current_recs;
+
+
+        Filter filter(filter_expression);
 
         Variant variant;
         std::vector<int32_t> presence(2);
@@ -210,6 +215,7 @@ class Igor : Program
         std::clog << "\n";
         std::clog << "Options:     input VCF file a   " << input_vcf_files[0] << "\n";
         std::clog << "             input VCF file b   " << input_vcf_files[1] << "\n";
+        print_str_op("         [f] filter             ", filter_expression);
         print_int_op("         [i] intervals          ", intervals);
         std::clog << "\n";
    }
