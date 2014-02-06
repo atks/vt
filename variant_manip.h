@@ -112,11 +112,11 @@ class Allele
 
     void print()
     {
-        std::cerr << "type: " << type << "\n";
-        std::cerr << "diff: " << diff << "\n";
-        std::cerr << "alen: " << alen << "\n";
-        std::cerr << "dlen: " << dlen << "\n";
-        std::cerr << "tlen: " << tlen << "\n";
+        std::cerr << "\ttype: " << type << "\n";
+        std::cerr << "\tdiff: " << diff << "\n";
+        std::cerr << "\talen: " << alen << "\n";
+        std::cerr << "\tdlen: " << dlen << "\n";
+        std::cerr << "\ttlen: " << tlen << "\n";
     };
 };
 
@@ -151,6 +151,16 @@ class Variant
             free(motif.s);
         }
     }
+
+    /**
+     * Prints variant information.
+     */
+    void print();
+
+    /**
+     * Converts VTYPE to string.
+     */
+    std::string vtype2string(int32_t VTYPE);
 
     void clear()
     {

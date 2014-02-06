@@ -27,27 +27,42 @@
 #include "htslib/vcf.h"
 #include "variant_manip.h"
 
+//ordered by precedence level
+//binary ops
 #define VT_OP_NOT      0
 #define VT_OP_AND      1
 #define VT_OP_OR       2
-#define VT_OP_EQ       3
-#define VT_OP_BIT_AND  4
-#define VT_OP_BIT_OR   5
-#define VT_VARIANT_TYPE_OP  6
-#define VT_N_ALLELE_OP      7
-#define VT_INFO_OP          8
-#define VT_FILTER_OP        9
+#define VT_OP_BIT_AND  3
+#define VT_OP_BIT_OR   4
 
-#define ADD  4
-#define SUB  5
-#define MUL  6
-#define DIV  7
+#define VT_OP_EQ       5
+#define VT_OP_NE       6
+#define VT_OP_LT       7
+#define VT_OP_LE       8
+#define VT_OP_GT       9
+#define VT_OP_GE       10
 
-#define LT 0
-#define LE 1
-#define EQ 2
-#define GT 3
-#define GE 4
+//binary math ops
+#define ADD  11
+#define SUB  12
+#define MUL  13
+#define DIV  14
+
+//unary ops (data getters for vcf)
+#define VT_VARIANT_TYPE_OP  65
+#define VT_N_ALLELE_OP      66
+#define VT_VARIANT_DLEN_OP  67
+#define VT_INFO_INT_OP      68
+#define VT_INFO_FLT_OP      69
+#define VT_INFO_STR_OP      70
+#define VT_FILTER_OP        257
+
+#define VT_INT              64
+#define VT_FLT              128
+#define VT_STR              256
+
+
+
 
 /**
  * Class for filtering VCF records.
@@ -56,8 +71,6 @@
  * FILTER
  * INFO
  * VARIANT (inferred)
- *
- * examples
  *
  * QUAL>40
  * FILTER==PASS
@@ -68,6 +81,7 @@
  [-F] filter expression
 
 based on QUAL, FILTER, INFO and Variant type
+
 
 -f QUAL>2&&PASS&&AF>0.05
 -f PASS && AF*>0.05
@@ -85,6 +99,11 @@ AN
 In the case that a field is not found, it evaluates to false
 AF* - intelligent parsing - if AF is not present, estimate from AC/AN
  
+
+Actual working examples
+
+(N_ALLELE==2)&&(VTYPE==INDEL)&&PASS
+
  *
  */
 class Node
@@ -114,7 +133,7 @@ class Node
     /**
      * Evaluates the actions for this node.
      */
-    void evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant);
+    void evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug=false);
 };
 
 class Filter
@@ -136,20 +155,26 @@ class Filter
     /**
      * Applies filter to vcf record.
      */
-    bool apply(bcf_hdr_t *h, bcf1_t *v, Variant *variant);
+    bool apply(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug=false);
 
     /**
      * Recursive call for apply.
      */
-    void apply(Node* node);
+    void apply(Node* node, bool debug=false);
 
     /**
      * Constructs the expression tree.
      */
-    void parse(const char* exp);
-    void parse(const char* exp, int32_t len, Node * node);
+    void parse(const char* exp, bool debug=false);
+    void parse(const char* exp, int32_t len, Node * node, bool debug=false);
+    
+    /**
+     * Parse literals.
+     */
+    void parse_literal(const char* exp, int32_t len, Node * node, bool debug=false);
         
-
+    bool is_literal(const char* exp, int32_t len);
+    
     void update_node(int32_t OP, Node* node)
     {
     }

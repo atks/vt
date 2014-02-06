@@ -31,14 +31,14 @@ Node::Node()
     right = NULL;
     tag = {0,0,0};
 };
-    
+
 Node::Node(int32_t type)
 {
     parent = NULL;
     left = NULL;
     right = NULL;
     this->type = type;
-    
+
 };
 
 Filter::Filter()
@@ -46,120 +46,146 @@ Filter::Filter()
     this->tree = NULL;
 };
 
-Filter::Filter(std::string exp) 
+Filter::Filter(std::string exp)
 {
     this->tree = NULL;
 };
-    
-/**
- * Applies filter to vcf record.
- */
-bool Filter::apply(bcf_hdr_t *h, bcf1_t *v, Variant *variant) //recursive
-{
-    if (tree==NULL)
-    {
-        return true;
-    }
-    
-    this->h = h;
-    this->v = v;
-    this->variant = variant;    
-    
-    apply(tree);
-    
-    return tree->value;
-}
 
 /**
  * Constructs the expression tree.
  */
-void Filter::parse(const char* exp)
+void Filter::parse(const char* exp, bool debug)
 {
     if (tree!=NULL)
     {
         delete tree;
         tree = NULL;
-    }    
-    
+    }
+
     if (tree==NULL)
     {
         tree = new Node();
-        parse(exp, strlen(exp), tree);
+        parse(exp, strlen(exp), tree, debug);
+    }
+}
+
+void trim_brackets(const char* &exp, int32_t &len)
+{
+    if (*exp=='(' && exp[len-1]==')')
+    {
+//        std::cerr << "call trim brackets\n";
+//        std::cerr << "parsing \"";
+//        for (int32_t i=0; i<len; ++i)
+//            std::cerr << exp[i] ;
+//        std::cerr << "\" " << len << "\n";
+
+        int32_t opened_brackets = 1;
+        bool nested = true;
+        int32_t j=1;
+        while(j<len-1)
+        {
+            if(exp[j]=='(')
+            {
+               if (opened_brackets<0)
+               {
+                    std::cerr << "Illegal expression: brackets not correct\n";
+               }
+
+               ++opened_brackets;
+            }
+            else if (exp[j]==')')
+            {
+               if (opened_brackets<=0)
+               {
+                    std::cerr << "Illegal expression: brackets not correct\n";
+               }
+
+               --opened_brackets;
+            }
+
+            if (opened_brackets==0)
+            {
+                nested = false;
+                break;
+            }
+            ++j;
+
+
+        }
+
+        if (nested)
+        {
+            if (opened_brackets == 1)
+            {
+                ++exp;
+                len -=2;
+
+                trim_brackets(exp, len);
+            }
+            else
+            {
+                std::cerr << "Illegal expression: brackets not correct\n";
+            }
+        }
     }
 }
 
 /**
- * Constructs the expression tree.
+ * Parse literals.
  */
-void Filter::parse(const char* exp, int32_t len, Node * node)
+void Filter::parse_literal(const char* exp, int32_t len, Node * node, bool debug)
 {
-    std::cerr << "parsing \"";
-    for (int32_t i=0; i<len; ++i)
-        std::cerr << exp[i] ;
-    std::cerr << "\" " << len << "\n";
-        
-    //trim
-    while (*exp==' ') ++exp;
-    while (exp[len-1]==' ') --len;
-
-    //trim brackets
-    if (*exp=='(' && exp[len-1]==')')
-    {
-        ++exp;
-        len -=2;
-    }
-
-    std::cerr << "\tafter trimming : \"";
-    for (int32_t i=0; i<len; ++i)
-        std::cerr << exp[i] ;
-    std::cerr << "\" " << len << "\n";
-
-    //parse literals
     if (strncmp(exp, "PASS", len)==0)
     {
         node->type = VT_FILTER_OP;
         kputsn(exp, len, &node->tag);
-        std::cerr << "\tis filter_op\n";
+        if (debug) std::cerr << "\tis filter_op\n";
         return;
     }
     else if (strncmp(exp, "VTYPE", len)==0)
     {
         node->type = VT_VARIANT_TYPE_OP;
-        std::cerr << "\tis variant_op\n";
+        if (debug) std::cerr << "\tis variant_op\n";
         return;
     }
     else if (strncmp(exp, "N_ALLELE", len)==0)
     {
         node->type = VT_N_ALLELE_OP;
-        std::cerr << "\tis nallele_op\n";
+        if (debug) std::cerr << "\tis nallele_op\n";
         return;
     }
     else if (strncmp(exp, "INDEL", len)==0)
     {
-        node->type = VT_VARIANT_TYPE_OP;
+        node->type = VT_INT;
         node->i = VT_INDEL;
-        std::cerr << "\tis INDEL\n";
+        if (debug) std::cerr << "\tis INDEL\n";
         return;
     }
     else if (strncmp(exp, "SNP", len)==0)
     {
-        node->type = VT_VARIANT_TYPE_OP;
+        node->type = VT_INT;
         node->i = VT_SNP;
-        std::cerr << "\tis SNP\n";
+        if (debug) std::cerr << "\tis SNP\n";
         return;
     }
     else if (strncmp(exp, "MNP", len)==0)
     {
-        node->type = VT_VARIANT_TYPE_OP;
+        node->type = VT_INT;
         node->i = VT_MNP;
-        std::cerr << "\tis MNP\n";
+        if (debug) std::cerr << "\tis MNP\n";
         return;
     }
     else if (strncmp(exp, "CLUMPED", len)==0)
     {
-        node->type = VT_VARIANT_TYPE_OP;
-        node->i = VT_SNP;
-        std::cerr << "\tis CLUMPED\n";
+        node->type = VT_INT;
+        node->i = VT_CLUMPED;
+        if (debug) std::cerr << "\tis CLUMPED\n";
+        return;
+    }
+    else if (strncmp(exp, "DLEN", len)==0)
+    {
+        node->type = VT_VARIANT_DLEN_OP;
+        if (debug) std::cerr << "\tis dlen\n";
         return;
     }
     else
@@ -169,134 +195,336 @@ void Filter::parse(const char* exp, int32_t len, Node * node)
         int32_t i = std::strtoul(exp, &end, 10);
         if (end!=start)
         {
+            node->type = VT_INT;
             node->i = i;
-            std::cerr << "\tis int\n";
+            if (debug) std::cerr << "\tis int\n";
             return;
         }
-        
+
         start = exp;
         end = NULL;
         int32_t f = std::strtod(exp, &end);
         if (end!=start)
         {
+            node->type = VT_FLT;
             node->f = f;
-            std::cerr << "\tis float\n";
+            if (debug) std::cerr << "\tis float\n";
             return;
         }
-        
-        //is this a number
     }
-        
-    const char* p = exp;
+
+    return;
+}
+
+bool Filter::is_literal(const char* exp, int32_t len)
+{
     const char* q = exp;
-
-    int32_t type = -1;
-
-    //handle brackets
-    if (*p=='(')
-        while (*q!=')') ++q;
-    
-    int32_t oplen = 0;
-    while (q-p<len)
+    while (q-exp<len)
     {
-        if (*q=='&' && (q-exp<len) && *(q+1)=='&')
+        if(*q=='=' ||
+           *q=='&' ||
+           *q=='|' ||
+           *q=='>' ||
+           *q=='<' ||
+           *q=='!')
         {
-            type = VT_OP_AND;
-            oplen = 2;
-            std::cerr << "\tis && operator\n";
-            break;
-        }
-        else if (*q=='&')
-        {
-            type = VT_OP_BIT_AND;
-            oplen = 1;
-            std::cerr << "\tis & operator\n";
-            break;
-        }
-        else if (*q=='|' && (q-exp<len) && *(q+1)=='|')
-        {
-            type = VT_OP_OR;
-            oplen = 2;
-            std::cerr << "\tis || operator\n";
-            break;
-        }
-        else if (*q=='|')
-        {
-            type = VT_OP_BIT_OR;
-            oplen = 1;
-            std::cerr << "\tis | operator\n";
-            break;
-        }
-        else if (*q=='=' && (q-exp<len) && *(q+1)=='=')
-        {
-            type = VT_OP_EQ;
-            oplen = 2;
-            std::cerr << "\tis == operator\n";
-            break;
-        }
-        else
-        {
-            
+            return false;
         }
         
         ++q;
     }
-
-    //std::cerr << "p,q address: " << &p << " " <<  &q << " " << (q-p) << "\n";
     
-    node->type = type;
-    node->left = new Node();
-    parse(p, q-p, node->left);
-    
-    if (q-p!=len)
-    {
-        q += oplen;
-        std::cerr << "\tparsing q \"";
-        for (int32_t i=0; i<len-(q-p); ++i)
-            std::cerr << q[i] ;
-        std::cerr << "\" " << (len-(q-p)) << "\n";
-            
-            
-        node->right = new Node();
-        parse(q, len-(q-exp), node->right);
-    }   
-    
-    
-     
+    return true;
 }
 
+/**
+ * Constructs the expression tree.
+ */
+void Filter::parse(const char* exp, int32_t len, Node *node, bool debug)
+{
+    if (debug)
+    {
+        std::cerr << "parsing \"";
+        for (int32_t i=0; i<len; ++i)
+            std::cerr << exp[i] ;
+        std::cerr << "\" " << len << "\n";
+    }
+
+    //*****************
+    //trim white spaces
+    //*****************
+    while (*exp==' ') ++exp;
+    while (exp[len-1]==' ') --len;
+
+    //*************
+    //trim brackets
+    //*************
+    trim_brackets(exp, len);
+
+    if (debug)
+    {
+        std::cerr << "\tafter trimming white spacecs and brackets: \"";
+        for (int32_t i=0; i<len; ++i)
+            std::cerr << exp[i] ;
+        std::cerr << "\" " << len << "\n";
+    }
+
+    //this is a literal
+    if (is_literal(exp, len))
+    {
+        parse_literal(exp, len, node, debug);
+    }
+    else
+    {
+        const char* p = exp;
+        const char* q = exp;
+
+        int32_t type = -1;
+
+        //handle brackets
+        if (*p=='(')
+        {
+            int32_t opened_brackets = 1;
+            while(q-p!=len)
+            {
+                if(*q=='(')
+                {
+                   if (opened_brackets<0)
+                   {
+                        std::cerr << "Illegal expression: brackets not correct\n";
+                   }
+
+                   ++opened_brackets;
+                }
+                else if (*q==')')
+                {
+                   if (opened_brackets<=0)
+                   {
+                        std::cerr << "Illegal expression: brackets not correct\n";
+                   }
+
+                   --opened_brackets;
+                }
+
+                ++q;
+
+                if (opened_brackets==0)
+                {
+                    break;
+                }
+            }
+        }
+        else
+        {
+            int32_t no_ops = 0;
+            
+            //implements left hand associativity
+            while(q-p!=len)
+            {
+                if((*q=='&' && (q-p<len) && *(q+1)=='&') ||
+                   (*q=='|' && (q-p<len) && *(q+1)=='|') ||
+                   (*q=='=' && (q-p<len) && *(q+1)=='=') ||
+                   (*q=='!' && (q-p<len) && *(q+1)=='=') ||
+                   (*q=='>' && (q-p<len) && *(q+1)=='=') ||
+                   (*q=='<' && (q-p<len) && *(q+1)=='=') ||
+                   *q=='&' ||
+                   *q=='|' ||
+                   *q=='>' ||
+                   *q=='<' ||
+                   *q=='!')
+                {
+                    if (no_ops==0)
+                    {
+                        ++no_ops;
+                    }
+                    else if (no_ops==1)
+                    {
+                        ++q;
+                        break;    
+                    }
+                }
+                
+                ++q;
+            }
+        }
+
+        int32_t oplen = 0;
+        while (q-p<len)
+        {
+            if (*q=='&' && (q-exp<len) && *(q+1)=='&')
+            {
+                type = VT_OP_AND;
+                oplen = 2;
+                if (debug) std::cerr << "\tis && operator\n";
+                break;
+            }
+            else if (*q=='&')
+            {
+                type = VT_OP_BIT_AND;
+                oplen = 1;
+                if (debug) std::cerr << "\tis & operator\n";
+                break;
+            }
+            else if (*q=='|' && (q-exp<len) && *(q+1)=='|')
+            {
+                type = VT_OP_OR;
+                oplen = 2;
+                std::cerr << "\tis || operator\n";
+                break;
+            }
+            else if (*q=='|')
+            {
+                type = VT_OP_BIT_OR;
+                oplen = 1;
+                if (debug) std::cerr << "\tis | operator\n";
+                break;
+            }
+            else if (*q=='=' && (q-exp<len) && *(q+1)=='=')
+            {
+                type = VT_OP_EQ;
+                oplen = 2;
+                if (debug) std::cerr << "\tis == operator\n";
+                break;
+            }
+            else if (*q=='>' && (q-exp<len) && *(q+1)=='=')
+            {
+                type = VT_OP_GE;
+                oplen = 2;
+                if (debug) std::cerr << "\tis >= operator\n";
+                break;
+            }
+            else if (*q=='<' && (q-exp<len) && *(q+1)=='=')
+            {
+                type = VT_OP_LE;
+                oplen = 2;
+                if (debug) std::cerr << "\tis <= operator\n";
+                break;
+            }
+            else if (*q=='!' && (q-exp<len) && *(q+1)=='=')
+            {
+                type = VT_OP_NE;
+                oplen = 2;
+                if (debug) std::cerr << "\tis != operator\n";
+                break;
+            }
+            else if (*q=='>')
+            {
+                type = VT_OP_GT;
+                oplen = 1;
+                if (debug) std::cerr << "\tis > operator\n";
+                break;
+            }
+            else if (*q=='<')
+            {
+                type = VT_OP_LT;
+                oplen = 1;
+                if (debug) std::cerr << "\tis < operator\n";
+                break;
+            }
+            else
+            {
+
+            }
+
+            ++q;
+        }
+
+        //std::cerr << "p,q address: " << &p << " " <<  &q << " " << (q-p) << "\n";
+
+        node->type = type;
+        node->left = new Node();
+        parse(p, q-p, node->left, debug);
+
+        if (q-p!=len)
+        {
+            q += oplen;
+    //        std::cerr << "\tparsing q \"";
+    //        for (int32_t i=0; i<len-(q-p); ++i)
+    //            std::cerr << q[i] ;
+    //        std::cerr << "\" " << (len-(q-p)) << "\n";
+
+            node->right = new Node();
+            parse(q, len-(q-exp), node->right, debug);
+        }
+    }
+}
+
+/**
+ * Applies filter to vcf record.
+ */
+bool Filter::apply(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug) //recursive
+{
+    if (tree==NULL)
+    {
+        return true;
+    }
+
+    this->h = h;
+    this->v = v;
+    this->variant = variant;
+
+
+    if (debug) std::cerr << "==========\n";
+
+    apply(tree, debug);
+
+    if (debug) std::cerr << "==========\n";
+
+    return tree->value;
+}
 
 /**
  * Recursive call for apply.
  */
-void Filter::apply(Node* node)
+void Filter::apply(Node* node, bool debug)
 {
     //evaluate downstream
     if (node->left!=NULL)
     {
         apply(node->left);
-    }    
-    
+    }
+
     if (node->right!=NULL)
     {
         apply(node->right);
     }
-    
-    node->evaluate(h, v, variant);
+
+    node->evaluate(h, v, variant, debug);
 }
 
 
 /**
  * Evaluates the actions for this node.
  */
-void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant)
+void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
 {
+    if (debug)
+        std::cerr << "evaluation  "  << type << "\n";
+
     //filter operation
     if (type==VT_OP_AND)
     {
-        value = (left->value==right->value);
+        if (debug)
+            std::cerr << "\tVT_OP_AND "   <<  left->value << "&" << right->value    <<  " \n";
+        value = (left->value && right->value);
     }
-    if (type==VT_FILTER_OP)
+    else if (type==VT_OP_OR)
+    {
+        value = (left->value || right->value);
+    }
+    else if (type==VT_OP_BIT_AND)
+    {
+        if (debug)
+            std::cerr << "\tVT_OP_BIT_AND "   <<  left->i << "&" << right->i << "=" << (left->i&right->i)    <<  " \n";
+        i = (left->i & right->i);
+        value = i;
+    }
+    else if (type==VT_OP_BIT_OR)
+    {
+        i = (left->i | right->i);
+        value = i;
+    }
+    else if (type==VT_FILTER_OP)
     {
         if (bcf_has_filter(h, v, tag.s)!=1)
         {
@@ -310,6 +538,14 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant)
     else if (type==VT_VARIANT_TYPE_OP)
     {
         i = variant->type;
+        value = i;
+    }
+    else if (type==VT_VARIANT_DLEN_OP)
+    {
+        i = variant->alleles[0].dlen;
+        value = i;
+
+      //  std::cerr << "DLEN ASSIGN: " << i << "\n";
     }
     else if (type==VT_N_ALLELE_OP)
     {
@@ -317,110 +553,116 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant)
     }
     else if (type==VT_OP_EQ)
     {
-        if (left->type==VT_N_ALLELE_OP || left->type==VT_VARIANT_TYPE_OP)
+        if ((left->type&VT_INT) && (right->type&VT_INT))
         {
             value = (left->i==right->i);
         }
+        else if ((left->type&VT_FLT) && (right->type&VT_FLT))
+        {
+            value = (left->f==right->f);
+        }
+        else if ((left->type&VT_STR) && (right->type&VT_STR))
+        {
+            value = strcmp(left->tag.s, right->tag.s)==0 ? true : false;
+        }
+        else
+        {
+            std::cerr << "evaluation not supported, different types to compare\n";
+        }
     }
-    
-//    float *f = 0;
-//    int32_t n = 0;
-//    int32_t *ac = 0;
-//    int32_t *an = 0;
-//    if (bcf_get_info_float(h, v, tag.c_str(), &f, &n))
-//    {
-//        switch (comparison)
-//        {
-//            case LT : return *f<value;
-//            case LE : return *f<=value;
-//            case EQ : return *f==value;
-//            case GT : return *f>value;
-//            case GE : return *f>=value;
-//            default : return true;
-//        }
-//    }
-//    else if (bcf_get_info_int(h, v, "AC", &ac, &n) && bcf_get_info_int(h, v, "AN", &an, &n))
-//    {
-//        *f = (float)(*ac)/(float)(*an);
-//
-//        switch (comparison)
-//        {
-//            case LT : return *f<value;
-//            case LE : return *f<=value;
-//            case EQ : return *f==value;
-//            case GT : return *f>value;
-//            case GE : return *f>=value;
-//            default : return true;
-//        }
-//    }
-    
+    else if (type==VT_OP_NE)
+    {
+        if ((left->type&VT_INT) && (right->type&VT_INT))
+        {
+            value = (left->i!=right->i);
+        }
+        else if ((left->type&VT_FLT) && (right->type&VT_FLT))
+        {
+            value = (left->f!=right->f);
+        }
+        else if ((left->type&VT_STR) && (right->type&VT_STR))
+        {
+            value = strcmp(left->tag.s, right->tag.s)!=0 ? true : false;
+        }
+        else
+        {
+            std::cerr << "evaluation not supported, different types to compare\n";
+        }
+    }
+    else if (type==VT_OP_LE)
+    {
+        if ((left->type&VT_INT) && (right->type&VT_INT))
+        {
+            value = (left->i<=right->i);
+        }
+        else if ((left->type&VT_FLT) && (right->type&VT_FLT))
+        {
+            value = (left->f<=right->f);
+        }
+        else if ((left->type&VT_STR) && (right->type&VT_STR))
+        {
+            value = strcmp(left->tag.s, right->tag.s) ? true : false;
+        }
+        else
+        {
+            std::cerr << "evaluation not supported, different types to compare\n";
+        }
+    }
+    else if (type==VT_OP_GE)
+    {
+        if ((left->type&VT_INT) && (right->type&VT_INT))
+        {
+            value = (left->i>=right->i);
+        }
+        else if ((left->type&VT_FLT) && (right->type&VT_FLT))
+        {
+            value = (left->f>=right->f);
+        }
+        else if ((left->type&VT_STR) && (right->type&VT_STR))
+        {
+            value = strcmp(left->tag.s, right->tag.s)>=0 ? true : false;
+        }
+        else
+        {
+            std::cerr << "evaluation not supported, different types to compare\n";
+        }
+    }
+    else if (type==VT_OP_GT)
+    {
+        if ((left->type&VT_INT) && (right->type&VT_INT))
+        {
+            value = (left->i>right->i);
+        }
+        else if ((left->type&VT_FLT) && (right->type&VT_FLT))
+        {
+            value = (left->f>right->f);
+        }
+        else if ((left->type&VT_STR) && (right->type&VT_STR))
+        {
+            value = strcmp(left->tag.s, right->tag.s)>0 ? true : false;
+        }
+        else
+        {
+            std::cerr << "evaluation not supported, different types to compare\n";
+        }
+    }
+    else if (type==VT_OP_LT)
+    {
+        if ((left->type&VT_INT) && (right->type&VT_INT))
+        {
+            value = (left->i<right->i);
+        }
+        else if ((left->type&VT_FLT) && (right->type&VT_FLT))
+        {
+            value = (left->f<right->f);
+        }
+        else if ((left->type&VT_STR) && (right->type&VT_STR))
+        {
+            value = strcmp(left->tag.s, right->tag.s)<0 ? true : false;
+        }
+        else
+        {
+            std::cerr << "evaluation not supported, different types to compare\n";
+        }
+    }
 }
-
-/**
- * Constructs the expression tree.
- */
-//void Filter::parse(const char* filter_expression)
-//{
-//    
-//    
-//    
-//    //if ()
-//    
-//    
-////        #define LE 0 <=
-////        #define LT 1 <
-////        #define EQ 2 ==
-////        #define GE 3 >=
-////        #define GT 4 >
-////
-////    kstring_t tag;
-////    tag.s=0; tag.l=tag.m=0;
-////
-////    kstring_t value;
-////    value.s=0; value.l=value.m=0;
-////
-////    comparison = 0;
-////    char c = filter.at(0);
-////    int32_t mode = 0;
-////    for (uint32_t i=0; i<filter.size(); ++i)
-////    {
-////        c = filter.at(i);
-////        if (c=='<' || c=='=' || c=='>')
-////        {
-////            if (c=='=')
-////            {
-////                ++comparison;
-////            }
-////            else if (c=='<')
-////            {
-////                comparison = LT;
-////            }
-////            else if (c=='>')
-////            {
-////                comparison = GE;
-////            }
-////
-////            mode = 1;
-////        }
-////        else if (mode==0)
-////        {
-////            kputc(c, &tag);
-////        }
-////        else
-////        {
-////            kputc(c, &value);
-////        }
-////    }
-////
-////    this->tag = std::string(tag.s);
-////    this->value = atof(value.s);
-////
-////    if (tag.s) free(tag.s);
-////    if (value.s) free(value.s);
-//
-////        std::cerr << filter << "\n";
-////        std::cerr << this->tag << ":";
-////        std::cerr << this->comparison << ":";
-////        std::cerr << this->value << "\n";
-//}
-
