@@ -131,6 +131,54 @@ void trim_brackets(const char* &exp, int32_t &len)
 }
 
 /**
+ * Moves r to the closing bracket if this expression starts with an open bracket.
+ */
+void Filter::fwd_to_closing_bracket(const char* &r, int32_t &len)
+{
+    const char* s = r;
+    if (*r=='(')
+    {
+        ++s;
+        int32_t opened_brackets = 1;
+        bool nested = true;
+        while(s-r!=len)
+        {
+            if(*s=='(')
+            {
+               if (opened_brackets<0)
+               {
+                    std::cerr << "Illegal expression: brackets not correct\n";
+                    abort();    
+               }
+
+               ++opened_brackets;
+            }
+            else if (*s==')')
+            {
+               if (opened_brackets<=0)
+               {
+                    std::cerr << "Illegal expression: brackets not correct\n";
+                    abort();
+               }
+
+               --opened_brackets;
+            }
+
+            if (opened_brackets==0)
+            {
+                r = s;
+                break;
+            }
+            
+            ++s;
+        }
+        
+        std::cerr << "Illegal expression: brackets not correct\n";
+        abort();
+    }
+}
+
+/**
  * Parse literals.
  */
 void Filter::parse_literal(const char* exp, int32_t len, Node * node, bool debug)
@@ -214,6 +262,7 @@ void Filter::parse_literal(const char* exp, int32_t len, Node * node, bool debug
     }
 
     return;
+
 }
 
 bool Filter::is_literal(const char* exp, int32_t len)
@@ -238,6 +287,77 @@ bool Filter::is_literal(const char* exp, int32_t len)
 }
 
 /**
+ * Returns -1 if no operator found. Updates oplen to be the length of the operator observed.
+ */
+int32_t Filter::peek_op(const char* &r, int32_t len, int32_t &oplen, bool debug)
+{
+    const char* s = r;
+    oplen = -1;
+    if (*s=='&' && (s+1-r<len) && *(s+1)=='&')
+    {
+        if (debug) std::cerr << "\tis && operator\n";
+        oplen = 2;
+        return VT_OP_AND;
+    }
+    else if (*s=='|' && (s+1-r<len) && *(s+1)=='|')
+    {
+        if (debug) std::cerr << "\tis || operator\n";
+        oplen = 2;
+        return VT_OP_OR;
+    }
+    else if (*s=='=' && (s+1-r<len) && *(s+1)=='=')
+    {
+        if (debug) std::cerr << "\tis == operator\n";
+        oplen = 2;
+        return VT_OP_EQ;
+    }
+    else if (*s=='>' && (s+1-r<len) && *(s+1)=='=')
+    {
+        if (debug) std::cerr << "\tis >= operator\n";
+        oplen = 2;
+        return VT_OP_GE;
+    }
+    else if (*s=='<' && (s+1-r<len) && *(s+1)=='=')
+    {
+        if (debug) std::cerr << "\tis <= operator\n";
+        oplen = 2;
+        return VT_OP_LE;
+    }
+    else if (*s=='!' && (s+1-r<len) && *(s+1)=='=')
+    {
+        if (debug) std::cerr << "\tis != operator\n";
+        oplen = 2;
+        return VT_OP_NE;
+    }
+    else if (*s=='&')
+    {
+        if (debug) std::cerr << "\tis & operator\n";
+        oplen = 1;
+        return VT_OP_BIT_AND;
+    }
+    else if (*s=='|')
+    {
+        if (debug) std::cerr << "\tis | operator\n";
+        oplen = 1;
+        return VT_OP_BIT_OR;
+    }
+    else if (*s=='>')
+    {
+        if (debug) std::cerr << "\tis > operator\n";
+        oplen = 1;
+        return VT_OP_GT;
+    }
+    else if (*s=='<')
+    {
+        if (debug) std::cerr << "\tis < operator\n";
+        oplen = 1;
+        return VT_OP_LT;
+    }
+    
+    return -1;
+}
+
+/**
  * Constructs the expression tree.
  */
 void Filter::parse(const char* exp, int32_t len, Node *node, bool debug)
@@ -250,202 +370,72 @@ void Filter::parse(const char* exp, int32_t len, Node *node, bool debug)
         std::cerr << "\" " << len << "\n";
     }
 
-    //*****************
-    //trim white spaces
-    //*****************
+    //******************************
+    //trim white spaces and brackets
+    //******************************
     while (*exp==' ') ++exp;
     while (exp[len-1]==' ') --len;
-
-    //*************
-    //trim brackets
-    //*************
     trim_brackets(exp, len);
 
     if (debug)
     {
-        std::cerr << "\tafter trimming white spacecs and brackets: \"";
+        std::cerr << "\tafter trimming white spaces and brackets: \"";
         for (int32_t i=0; i<len; ++i)
             std::cerr << exp[i] ;
         std::cerr << "\" " << len << "\n";
     }
 
+
     //this is a literal
     if (is_literal(exp, len))
     {
-        parse_literal(exp, len, node, debug);
+        //will not recurse any further
+        return parse_literal(exp, len, node, debug);
     }
+    //this is guaranteed to be decomposed unless there is an error in the expression
     else
     {
-        const char* p = exp;
-        const char* q = exp;
+        const char* p = exp; //points to end of first part
+        const char* q = exp; //points to start of second part
+        const char* r = exp; //for iteration
 
         int32_t type = -1;
-
-        //handle brackets
-        if (*p=='(')
-        {
-            int32_t opened_brackets = 1;
-            while(q-p!=len)
-            {
-                if(*q=='(')
-                {
-                   if (opened_brackets<0)
-                   {
-                        std::cerr << "Illegal expression: brackets not correct\n";
-                   }
-
-                   ++opened_brackets;
-                }
-                else if (*q==')')
-                {
-                   if (opened_brackets<=0)
-                   {
-                        std::cerr << "Illegal expression: brackets not correct\n";
-                   }
-
-                   --opened_brackets;
-                }
-
-                ++q;
-
-                if (opened_brackets==0)
-                {
-                    break;
-                }
-            }
-        }
-        else
-        {
-            int32_t no_ops = 0;
             
-            //implements left hand associativity
-            while(q-p!=len)
-            {
-                if((*q=='&' && (q-p<len) && *(q+1)=='&') ||
-                   (*q=='|' && (q-p<len) && *(q+1)=='|') ||
-                   (*q=='=' && (q-p<len) && *(q+1)=='=') ||
-                   (*q=='!' && (q-p<len) && *(q+1)=='=') ||
-                   (*q=='>' && (q-p<len) && *(q+1)=='=') ||
-                   (*q=='<' && (q-p<len) && *(q+1)=='=') ||
-                   *q=='&' ||
-                   *q=='|' ||
-                   *q=='>' ||
-                   *q=='<' ||
-                   *q=='!')
-                {
-                    if (no_ops==0)
-                    {
-                        ++no_ops;
-                    }
-                    else if (no_ops==1)
-                    {
-                        ++q;
-                        break;    
-                    }
-                }
-                
-                ++q;
-            }
-        }
-
-        int32_t oplen = 0;
-        while (q-p<len)
+        while(r-exp!=len)
         {
-            if (*q=='&' && (q-exp<len) && *(q+1)=='&')
+            fwd_to_closing_bracket(r, len);
+            
+            int32_t oplen = -1;
+            int32_t ctype = peek_op(r, len, oplen, debug);
+            
+            if(ctype!=-1)
             {
-                type = VT_OP_AND;
-                oplen = 2;
-                if (debug) std::cerr << "\tis && operator\n";
-                break;
-            }
-            else if (*q=='&')
-            {
-                type = VT_OP_BIT_AND;
-                oplen = 1;
-                if (debug) std::cerr << "\tis & operator\n";
-                break;
-            }
-            else if (*q=='|' && (q-exp<len) && *(q+1)=='|')
-            {
-                type = VT_OP_OR;
-                oplen = 2;
-                std::cerr << "\tis || operator\n";
-                break;
-            }
-            else if (*q=='|')
-            {
-                type = VT_OP_BIT_OR;
-                oplen = 1;
-                if (debug) std::cerr << "\tis | operator\n";
-                break;
-            }
-            else if (*q=='=' && (q-exp<len) && *(q+1)=='=')
-            {
-                type = VT_OP_EQ;
-                oplen = 2;
-                if (debug) std::cerr << "\tis == operator\n";
-                break;
-            }
-            else if (*q=='>' && (q-exp<len) && *(q+1)=='=')
-            {
-                type = VT_OP_GE;
-                oplen = 2;
-                if (debug) std::cerr << "\tis >= operator\n";
-                break;
-            }
-            else if (*q=='<' && (q-exp<len) && *(q+1)=='=')
-            {
-                type = VT_OP_LE;
-                oplen = 2;
-                if (debug) std::cerr << "\tis <= operator\n";
-                break;
-            }
-            else if (*q=='!' && (q-exp<len) && *(q+1)=='=')
-            {
-                type = VT_OP_NE;
-                oplen = 2;
-                if (debug) std::cerr << "\tis != operator\n";
-                break;
-            }
-            else if (*q=='>')
-            {
-                type = VT_OP_GT;
-                oplen = 1;
-                if (debug) std::cerr << "\tis > operator\n";
-                break;
-            }
-            else if (*q=='<')
-            {
-                type = VT_OP_LT;
-                oplen = 1;
-                if (debug) std::cerr << "\tis < operator\n";
-                break;
+                if (ctype>type)
+                {
+                    p = r-1;
+                    q = r+oplen;
+                
+                    r += oplen;
+                }   
             }
             else
             {
-
-            }
-
-            ++q;
+                ++r;
+            }   
         }
 
-        //std::cerr << "p,q address: " << &p << " " <<  &q << " " << (q-p) << "\n";
-
-        node->type = type;
-        node->left = new Node();
-        parse(p, q-p, node->left, debug);
-
-        if (q-p!=len)
+        if (type ==-1)
         {
-            q += oplen;
-    //        std::cerr << "\tparsing q \"";
-    //        for (int32_t i=0; i<len-(q-p); ++i)
-    //            std::cerr << q[i] ;
-    //        std::cerr << "\" " << (len-(q-p)) << "\n";
-
-            node->right = new Node();
-            parse(q, len-(q-exp), node->right, debug);
+            std::cerr << "Illegal expression: brackets not correct\n";
+            abort();  
         }
+        node->type = type;
+        
+        node->left = new Node();
+        parse(exp, p-exp+1, node->left, debug);
+        
+        node->right = new Node();
+        parse(q, len-(q-p)+1, node->right, debug);
     }
 }
 
@@ -463,11 +453,8 @@ bool Filter::apply(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug) //recu
     this->v = v;
     this->variant = variant;
 
-
     if (debug) std::cerr << "==========\n";
-
     apply(tree, debug);
-
     if (debug) std::cerr << "==========\n";
 
     return tree->value;

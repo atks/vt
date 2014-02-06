@@ -61,9 +61,6 @@
 #define VT_FLT              128
 #define VT_STR              256
 
-
-
-
 /**
  * Class for filtering VCF records.
  * Filters based on several fields:
@@ -168,6 +165,18 @@ class Filter
     void parse(const char* exp, bool debug=false);
     void parse(const char* exp, int32_t len, Node * node, bool debug=false);
     
+    
+    /**
+     * Moves r to the closing bracket if this expression starts with an open bracket.
+     */
+    void fwd_to_closing_bracket(const char* &r, int32_t &len);
+    
+    /**
+     * Returns -1 if no operator found. Updates oplen to be the length of the operator observed.
+     */
+    int32_t peek_op(const char* &r, int32_t len, int32_t &oplen, bool debug);
+    
+    
     /**
      * Parse literals.
      */
@@ -175,9 +184,7 @@ class Filter
         
     bool is_literal(const char* exp, int32_t len);
     
-    void update_node(int32_t OP, Node* node)
-    {
-    }
+    
     
     /**
      * Recursive call for parse.
