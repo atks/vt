@@ -88,7 +88,11 @@ void trim_brackets(const char* &exp, int32_t &len)
             {
                if (opened_brackets<0)
                {
-                    std::cerr << "Illegal expression: brackets not correct\n";
+                    kstring_t s = {0,0,0};
+                    kputsn(exp, len, &s);
+                    fprintf(stderr, "[%s:%d %s] brackets not correct %s\n", __FILE__, __LINE__, __FUNCTION__, s.s);
+                    if (s.m) free(s.s);
+                    exit(1);
                }
 
                ++opened_brackets;
@@ -97,7 +101,11 @@ void trim_brackets(const char* &exp, int32_t &len)
             {
                if (opened_brackets<=0)
                {
-                    std::cerr << "Illegal expression: brackets not correct\n";
+                    kstring_t s = {0,0,0};
+                    kputsn(exp, len, &s);
+                    fprintf(stderr, "[%s:%d %s] brackets not correct %s\n", __FILE__, __LINE__, __FUNCTION__, s.s);
+                    if (s.m) free(s.s);
+                    exit(1);
                }
 
                --opened_brackets;
@@ -132,8 +140,9 @@ void trim_brackets(const char* &exp, int32_t &len)
 
 /**
  * Moves r to the closing bracket if this expression starts with an open bracket.
+ * Returns -1 if end of r else 0.
  */
-void Filter::fwd_to_closing_bracket(const char* &r, int32_t &len)
+int32_t Filter::fwd_to_closing_bracket(const char* &r, int32_t &len)
 {
     const char* s = r;
     if (*r=='(')
@@ -147,8 +156,11 @@ void Filter::fwd_to_closing_bracket(const char* &r, int32_t &len)
             {
                if (opened_brackets<0)
                {
-                    std::cerr << "Illegal expression: brackets not correct\n";
-                    abort();    
+                    kstring_t s = {0,0,0};
+                    kputsn(r, len, &s);
+                    fprintf(stderr, "[%s:%d %s] brackets not correct %s\n", __FILE__, __LINE__, __FUNCTION__, s.s);
+                    if (s.m) free(s.s);
+                    exit(1);   
                }
 
                ++opened_brackets;
@@ -157,8 +169,11 @@ void Filter::fwd_to_closing_bracket(const char* &r, int32_t &len)
             {
                if (opened_brackets<=0)
                {
-                    std::cerr << "Illegal expression: brackets not correct\n";
-                    abort();
+                    kstring_t s = {0,0,0};
+                    kputsn(r, len, &s);
+                    fprintf(stderr, "[%s:%d %s] brackets not correct %s\n", __FILE__, __LINE__, __FUNCTION__, s.s);
+                    if (s.m) free(s.s);
+                    exit(1);
                }
 
                --opened_brackets;
@@ -167,15 +182,28 @@ void Filter::fwd_to_closing_bracket(const char* &r, int32_t &len)
             if (opened_brackets==0)
             {
                 r = s;
-                break;
+                
+                if (s-r==len-1)
+                {    
+                    return -1;
+                }
+                else
+                {
+                    return 0;
+                }
             }
             
             ++s;
         }
         
-        std::cerr << "Illegal expression: brackets not correct\n";
-        abort();
+        kstring_t s = {0,0,0};
+        kputsn(r, len, &s);
+        fprintf(stderr, "[%s:%d %s] brackets not correct %s\n", __FILE__, __LINE__, __FUNCTION__, s.s);
+        if (s.m) free(s.s);
+        exit(1);
     }
+    
+    return 0;
 }
 
 /**
@@ -379,12 +407,11 @@ void Filter::parse(const char* exp, int32_t len, Node *node, bool debug)
 
     if (debug)
     {
-        std::cerr << "\tafter trimming white spaces and brackets: \"";
-        for (int32_t i=0; i<len; ++i)
-            std::cerr << exp[i] ;
-        std::cerr << "\" " << len << "\n";
+//        std::cerr << "\tafter trimming white spaces and brackets: \"";
+//        for (int32_t i=0; i<len; ++i)
+//            std::cerr << exp[i] ;
+//        std::cerr << "\" " << len << "\n";
     }
-
 
     //this is a literal
     if (is_literal(exp, len))
@@ -399,7 +426,7 @@ void Filter::parse(const char* exp, int32_t len, Node *node, bool debug)
         const char* q = exp; //points to start of second part
         const char* r = exp; //for iteration
 
-        int32_t type = -1;
+        int32_t type = INT_MAX;
             
         while(r-exp!=len)
         {
@@ -410,32 +437,38 @@ void Filter::parse(const char* exp, int32_t len, Node *node, bool debug)
             
             if(ctype!=-1)
             {
-                if (ctype>type)
+                if (ctype<type)
                 {
+                    std::cerr<< "\tupdating type\n";
+                    type = ctype;
                     p = r-1;
                     q = r+oplen;
-                
-                    r += oplen;
                 }   
+                
+                r += oplen-1;
             }
-            else
-            {
-                ++r;
-            }   
+            
+            ++r;
         }
 
-        if (type ==-1)
+        if (type==-1)
         {
-            std::cerr << "Illegal expression: brackets not correct\n";
-            abort();  
+            kstring_t s = {0,0,0};
+            kputsn(exp, len, &s);
+            fprintf(stderr, "[%s:%d %s] expression not correct %s\n", __FILE__, __LINE__, __FUNCTION__, s.s);
+            if (s.m) free(s.s);
+            exit(1);
         }
+        
+        std::cerr << "creating nodes\n";
+        
         node->type = type;
         
         node->left = new Node();
         parse(exp, p-exp+1, node->left, debug);
         
         node->right = new Node();
-        parse(q, len-(q-p)+1, node->right, debug);
+        parse(q, len-(q-exp), node->right, debug);
     }
 }
 

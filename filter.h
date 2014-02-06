@@ -25,6 +25,7 @@
 #define FILTER_H
 
 #include "htslib/vcf.h"
+#include "htslib/kstring.h"
 #include "variant_manip.h"
 
 //ordered by precedence level
@@ -168,8 +169,9 @@ class Filter
     
     /**
      * Moves r to the closing bracket if this expression starts with an open bracket.
+     * Returns -1 if end of r else 0.
      */
-    void fwd_to_closing_bracket(const char* &r, int32_t &len);
+    int32_t fwd_to_closing_bracket(const char* &r, int32_t &len);
     
     /**
      * Returns -1 if no operator found. Updates oplen to be the length of the operator observed.
