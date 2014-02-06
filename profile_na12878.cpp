@@ -98,7 +98,7 @@ class Igor : Program
     /////////
     //stats//
     /////////
-    uint32_t no_indels;
+    uint32_t no_variants;
     uint32_t nfs;
     uint32_t fs;
     uint32_t rare_nfs;
@@ -173,7 +173,7 @@ class Igor : Program
         dataset_labels.push_back("data");
         dataset_types.push_back("ref");
 
-        filter.parse(filter_expression.c_str());
+        filter.parse(filter_expression.c_str(), true);
 
 
         htsFile *hts = hts_open(ref_data_sets_list.c_str(), "r");
@@ -206,8 +206,6 @@ class Igor : Program
         hts_close(hts);
         if (s.m) free(s.s);
 
-        std::cerr << "done parsing\n";
-
         //////////////////////
         //i/o initialization//
         //////////////////////
@@ -227,7 +225,7 @@ class Igor : Program
         ////////////////////////
         //stats initialization//
         ////////////////////////
-        no_indels = 0;
+        no_variants = 0;
         fs = 0;
         nfs = 0;
     }
@@ -256,6 +254,8 @@ class Igor : Program
             na12878_index[i] = bcf_hdr_id2int(sr->hdrs[i], BCF_DT_SAMPLE, "NA12878");
         }
 
+        int32_t discordance_filter = 0;
+
         while(sr->read_next_position(current_recs))
         {
             //check first variant
@@ -267,17 +267,28 @@ class Igor : Program
             //if (bcf_has_filter(h,v,"PASS")!=1)
             //if (bcf_get_n_allele(v)!=2 || !(vtype==VT_INDEL || vtype==(VT_SNP|VT_INDEL)) )
             //if (bcf_get_n_allele(v)!=2 )
-            //if (bcf_get_n_allele(v)!=2 || !(vtype==VT_INDEL || vtype==(VT_SNP|VT_INDEL)) )
-//            if (bcf_get_n_allele(v)!=2 || !(vtype==VT_INDEL) || bcf_has_filter(h,v,"PASS")!=1 )
-//            {
-//                continue;
-//            }
-
-            if (!filter.apply(h, v, &variant))
+            //if (bcf_get_n_allele(v)!=2 || !(vtype==VT_INDEL) || bcf_has_filter(h,v,"PASS")!=1 )
+//            if (bcf_get_n_allele(v)!=2 || !(vtype==VT_INDEL || vtype==(VT_SNP|VT_INDEL)) )
+//            if (bcf_get_n_allele(v)!=2 || !(vtype==VT_SNP) )
+            //if (bcf_get_n_allele(v)!=2 || !(vtype==VT_INDEL) || variant.alleles[0].dlen!=1)
+            
+            //bool v1 = (bcf_get_n_allele(v)!=2 || variant.alleles[0].dlen==0);
+            //bool v1 = !(bcf_get_n_allele(v)==2 && variant.alleles[0].dlen==1);
+            bool v1 = false;
+            //bool v2 = false;
+            bool v2 = !filter.apply(h, v, &variant);
+            if (false && v1!=v2)
+            {
+                ++discordance_filter;
+                std::cerr << "discordance in filter:"  << "v1:" << v1 << " v2:" << v2 <<  "\n";
+                bcf_print(h,v);
+                variant.print();
+            }
+            
+            if (v2)
             {
                 continue;
             }
-
             std::string chrom = bcf_get_chrom(h,v);
             int32_t start1 = bcf_get_pos1(v);
             int32_t end1 = bcf_get_end_pos1(v);
@@ -326,7 +337,7 @@ class Igor : Program
                     }
                 }
 
-                ++no_indels;
+                ++no_variants;
             }
 
             int32_t ins = variant.alleles[0].ins;
@@ -395,6 +406,9 @@ class Igor : Program
 
             presence[0] = 0;
         }
+        
+        std::cerr << "NO DISCORDANCE FILTERS " << discordance_filter << "\n";
+        
     };
 
     void print_options()

@@ -45,6 +45,69 @@ VariantManip::VariantManip()
     reference_present = false;
 }
 
+
+
+/**
+ * Prints variant information.
+ */
+void Variant::print()
+{
+    std::cerr << "type : " << vtype2string(type) << "\n";
+    std::cerr << "rlen : " << rlen << "\n";
+    //std::cerr << "motif: " << motif.s << "\n";
+    std::cerr << "mlen : " << mlen << "\n";
+    std::cerr << "tlen : " << tlen << "\n";
+    for (int32_t i=0; i<alleles.size(); ++i)
+    {
+        std::cerr << "\tallele: " << i << "\n";
+        std::cerr << "\t  type: " << vtype2string(alleles[i].type) << "\n";
+        std::cerr << "\t  diff: " << alleles[i].diff << "\n";
+        std::cerr << "\t  alen: " << alleles[i].alen << "\n";
+        std::cerr << "\t  dlen: " << alleles[i].dlen << "\n";
+        std::cerr << "\t  tlen: " << alleles[i].tlen << "\n";
+    }    
+};
+
+/**
+ * Converts VTYPE to string.
+ */
+std::string Variant::vtype2string(int32_t VTYPE)
+{
+    std::string s;
+
+    if (!VTYPE)
+    {
+        s += (s.size()==0) ? "" : ";";
+        s += "REF";
+    }
+
+    if (VTYPE & VT_SNP)
+    {
+        s += (s.size()==0) ? "" : ";";
+        s += "SNP";
+    }
+
+    if (VTYPE & VT_MNP)
+    {
+        s += (s.size()==0) ? "" : ";";
+        s += "MNP";
+    }
+
+    if (VTYPE & VT_INDEL)
+    {
+        s += (s.size()==0) ? "" : ";";
+        s += "INDEL";
+    }
+
+    if (VTYPE & VT_CLUMPED)
+    {
+        s += (s.size()==0) ? "" : ";";
+        s += "CLUMPED";
+    }
+
+    return s;
+}
+
 /**
  * Converts VTYPE to string.
  */
