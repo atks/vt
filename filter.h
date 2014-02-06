@@ -76,10 +76,9 @@
  * AF>0.5
  * VARIANT==SNP && AF>0.5
 
- [-F] filter expression
+[-F] filter expression
 
 based on QUAL, FILTER, INFO and Variant type
-
 
 -f QUAL>2&&PASS&&AF>0.05
 -f PASS && AF*>0.05
@@ -96,13 +95,10 @@ AN
 -f, -g, -h
 In the case that a field is not found, it evaluates to false
 AF* - intelligent parsing - if AF is not present, estimate from AC/AN
- 
 
-Actual working examples
-
-(N_ALLELE==2)&&(VTYPE==INDEL)&&PASS
-
+ * Working examples
  *
+ *(N_ALLELE==2)&&(VTYPE==INDEL)&&PASS
  */
 class Node
 {
@@ -114,7 +110,7 @@ class Node
 
     int32_t type;
     bool value;
-    
+
     kstring_t tag;
     union
     {
@@ -122,77 +118,95 @@ class Node
         int32_t i;
         float f;
     };
-    
-    
+
+    /**
+     * Constructor.
+     */
     Node();
-    
+
+    /**
+     * Constructor with type initlialization.
+     */
     Node(int32_t type);
-    
+
     /**
      * Evaluates the actions for this node.
      */
     void evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug=false);
 };
 
+/**
+ * Filter for VCF records.
+ */
 class Filter
 {
     public:
 
-    //encodes the filter expression
+    //filter expression
     Node* tree;
 
-    //useful pointers
+    //useful pointers for applying the filter to a vcf record
     bcf_hdr_t *h;
     bcf1_t *v;
     Variant *variant;
 
+    /**
+     * Constructor.
+     */
     Filter();
 
+    /**
+     * Constructor with expression initialization.
+     */
     Filter(std::string exp);
+
+    /**
+     * Parses filter expression.
+     */
+    void parse(const char* exp, bool debug=false);
 
     /**
      * Applies filter to vcf record.
      */
     bool apply(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug=false);
 
-    /**
-     * Recursive call for apply.
-     */
-    void apply(Node* node, bool debug=false);
+    private:
 
     /**
-     * Constructs the expression tree.
+     * Recursive call for parse.
      */
-    void parse(const char* exp, bool debug=false);
     void parse(const char* exp, int32_t len, Node * node, bool debug=false);
-    
-    
+
+    /**
+     * Parse literals.
+     */
+    bool is_literal(const char* exp, int32_t len);
+
+    /**
+     * Parse literals.
+     */
+    void parse_literal(const char* exp, int32_t len, Node * node, bool debug=false);
+
+    /**
+     * Trim brackets from an expression.
+     */
+    void trim_brackets(const char* &exp, int32_t &len);
+
     /**
      * Moves r to the closing bracket if this expression starts with an open bracket.
      * Returns -1 if end of r else 0.
      */
     int32_t fwd_to_closing_bracket(const char* &r, int32_t &len);
-    
+
     /**
      * Returns -1 if no operator found. Updates oplen to be the length of the operator observed.
      */
     int32_t peek_op(const char* &r, int32_t len, int32_t &oplen, bool debug);
-    
-    
+
     /**
-     * Parse literals.
+     * Recursive call for apply.
      */
-    void parse_literal(const char* exp, int32_t len, Node * node, bool debug=false);
-        
-    bool is_literal(const char* exp, int32_t len);
-    
-    
-    
-    /**
-     * Recursive call for parse.
-     */
-    
-    
+    void apply(Node* node, bool debug=false);
 };
 
 #endif
