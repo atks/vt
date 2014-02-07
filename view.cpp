@@ -37,7 +37,6 @@ class Igor : Program
     std::string output_vcf_file;
     std::vector<GenomeInterval> intervals;
     std::vector<std::string> samples;
-    std::string filter;
     std::string variant;
     uint32_t sort_window_size;
     bool print_header;
@@ -52,11 +51,23 @@ class Igor : Program
     BCFOrderedReader *odr;
     BCFOrderedWriter *odw;
 
+    //////////
+    //filter//
+    //////////
+    std::string fexp;
+    Filter filter;
+    bool filter_exists;
+    
     /////////
     //stats//
     /////////
     uint32_t no_variants;
     uint32_t no_samples;
+
+    /////////
+    //stats//
+    /////////
+    VariantManip *vm;
 
     Igor(int argc, char **argv)
     {
@@ -80,8 +91,7 @@ class Igor : Program
             TCLAP::SwitchArg arg_print_sites_only("s", "s", "print site information only without genotypes [false]", cmd, false);
             TCLAP::ValueArg<uint32_t> arg_sort_window_size("w", "w", "local sorting window size [0]", false, 0, "int", cmd);
             //TCLAP::ValueArg<std::string> arg_sample_list("s", "s", "file containing list of sample []", false, "", "file", cmd);
-            //TCLAP::ValueArg<std::string> arg_filter("f", "f", "filter expression []", false, "", "exp", cmd);
-            //TCLAP::ValueArg<std::string> arg_variant("v", "v", "variant type []", false, "", "exp", cmd);
+            TCLAP::ValueArg<std::string> arg_fexp("f", "f", "filter expression []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_output_vcf_file("o", "o", "output VCF/VCF.GZ/BCF file [-]", false, "-", "str", cmd);
             TCLAP::UnlabeledValueArg<std::string> arg_input_vcf_file("<in.vcf>", "input VCF file", true, "","file", cmd);
 
@@ -91,6 +101,7 @@ class Igor : Program
             output_vcf_file = arg_output_vcf_file.getValue();
             parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
             //read_sample_list(samples, arg_sample_list.getValue());
+            fexp = arg_fexp.getValue();
             print_header = arg_print_header.getValue();
             print_header_only = arg_print_header_only.getValue();
             no_subset_samples = arg_print_sites_only.getValue() ? 0 : -1;
@@ -121,11 +132,22 @@ class Igor : Program
             odw->link_hdr(bcf_hdr_subset(odr->hdr, 0, 0, 0));
         }
 
+        /////////////////////////
+        //filter initialization//
+        /////////////////////////
+        filter.parse(fexp.c_str());
+        filter_exists = fexp=="" ? false : true;
+        
         ////////////////////////
         //stats initialization//
         ////////////////////////
         no_variants = 0;
         no_samples = 0;
+        
+        ///////////////////////
+        //tool initialization//
+        ///////////////////////
+        vm = new VariantManip("");        
     }
 
     void view()
@@ -142,9 +164,19 @@ class Igor : Program
 
 
         bcf1_t *v = odw->get_bcf1_from_pool();
-
+        bcf_hdr_t *h = odr->hdr;
+        Variant variant;
         while (odr->read(v))
         {
+            if (filter_exists)
+            {
+                vm->classify_variant(h, v, variant);
+                if (!filter.apply(h, v, &variant))
+                {
+                    continue;
+                }
+            }
+            
             if (no_subset_samples==0)
             {
                 bcf_subset(odw->hdr, v, 0, 0);
@@ -173,6 +205,7 @@ class Igor : Program
         std::clog << "         [H] print header only           " << (print_header_only ? "yes" : "no") << "\n";
         std::clog << "         [s] print site information only " << (print_sites_only ? "yes" : "no") << "\n";
         std::clog << "         [p] print options and stats     " << (print ? "yes" : "no") << "\n";
+        print_str_op("         [f] filter                      ", fexp);
         print_int_op("         [i] intervals                   ", intervals);
         std::clog << "\n";
     }

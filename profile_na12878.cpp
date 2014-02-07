@@ -25,6 +25,21 @@
 
 namespace
 {
+class BroadKBStats
+{
+    public:
+
+    uint32_t tp, fp, tn, fn;
+
+    BroadKBStats()
+    {
+        tp = 0;
+        fp = 0;
+        tn = 0;
+        fn = 0;
+    };
+};
+
 class OverlapStats
 {
     public:
@@ -81,6 +96,7 @@ class Igor : Program
     std::string interval_list;
     std::vector<std::string> dataset_labels;
     std::vector<std::string> dataset_types;
+    BroadKBStats kbstats;
     std::vector<OverlapStats> stats;
     std::vector<ConcordanceStats> concordance;
     std::string gencode_gtf_file;
@@ -244,7 +260,7 @@ class Igor : Program
 
         int32_t *gts = NULL;
         int32_t n = 0;
-        int32_t x1, x2, x;
+        int32_t x1, x2, x, k0;
 
         int32_t na12878_index[no_overlap_files];
 
@@ -364,6 +380,93 @@ class Igor : Program
             //update overlap stats
             for (uint32_t i=1; i<no_overlap_files; ++i)
             {
+                //******************
+                //for BROAD KB stats
+                //******************
+                if (i==1)
+                {
+                    int32_t y1 = -1;
+                    int32_t y2 = -1;
+                    int32_t y = -2;
+                    int32_t xt = -2;
+                    
+                    char* dst = NULL;
+                    int32_t ndst = 0;
+                    
+                    if (presence[1])
+                    {
+                        bcf_unpack(presence_bcfptr[i]->v, BCF_UN_IND);
+                        k0 = bcf_get_genotypes(presence_bcfptr[1]->h, presence_bcfptr[1]->v, &gts, &n);
+    
+                        bcf_get_info_string(presence_bcfptr[1]->h, presence_bcfptr[1]->v, "TruthStatus", &dst, &ndst);
+    
+                        y1 = bcf_gt_allele(gts[na12878_index[i]*2]);
+                        y2 = bcf_gt_allele(gts[na12878_index[i]*2+1]);
+                        y = y1+y2;
+                    }
+                    
+                    if (presence[0])
+                    {
+                        xt = x1 + x2;
+                    }
+                    
+                    if (presence[0] && presence[1])
+                    {
+                        if (strcmp(dst, "TRUE_POSITIVE")==0)
+                        {
+                            if (xt>=1 && y>=1)
+                            {
+                                ++kbstats.tp;
+                            }
+                            else if (xt>=1 && y==0)
+                            {
+                                bcf_print_liten(h,v);
+                                ++kbstats.fp;
+                            }
+                        }
+                        else if (strcmp(dst, "FALSE_POSITIVE")==0)
+                        {
+                            if (xt>=1)
+                            {
+                                ++kbstats.fp;
+                            }
+                            else if (xt==0)
+                            {
+                                ++kbstats.tn;
+                            }
+                        }
+                        
+                    }
+                    else if (presence[0] && !presence[1])
+                    {
+                        //++kbstats.fp;
+                    }
+                    else if (!presence[0] && presence[1])
+                    {
+                        if (strcmp(dst, "TRUE_POSITIVE")==0)
+                        {
+                            if (y>=1)
+                            {
+                                ++kbstats.fn;
+                            }
+                            else if (y<=0)
+                            {
+                                ++kbstats.tn;
+                            }
+                        }
+                        else if (strcmp(dst, "FALSE_POSITIVE")==0)
+                        {
+                            ++kbstats.tn;
+                        }
+                    }
+                    else
+                    {
+                        //++kbstats.tn;
+                    }
+                    
+                    if (ndst) free(dst);
+                }    
+                
                 if (presence[0] && !presence[i])
                 {
                     ++stats[i].a;
@@ -386,7 +489,9 @@ class Igor : Program
                     {
                         y = 3;
                     }
-
+                    bcf_print(presence_bcfptr[0]->h, presence_bcfptr[0]->v);
+                    bcf_print(presence_bcfptr[i]->h, presence_bcfptr[i]->v);
+                    std::cerr << "k0 " << k0 << " " << "k " << k << " " << x << " "  << "(" << x1 << "," << x2 << ") " << y << "\n";
                     ++concordance[i].geno[x][y];
                 }
                 else if (!presence[0] && presence[i])
@@ -429,6 +534,18 @@ class Igor : Program
         fprintf(stderr, "    No Indels : %10d [%.2f]\n", stats[0].a,  (float)stats[0].a_ins/(stats[0].a_del));
         fprintf(stderr, "       FS/NFS : %10.2f (%d/%d)\n", (float)fs/(fs+nfs), fs, nfs);
         fprintf(stderr, "\n");
+
+        fprintf(stderr, "  Broad KB\n");
+        fprintf(stderr, "    TP  %10d \n", kbstats.tp);
+        fprintf(stderr, "    FP  %10d \n", kbstats.fp);
+        fprintf(stderr, "    TN  %10d \n", kbstats.tn);
+        fprintf(stderr, "    FN  %10d \n", kbstats.fn);
+        fprintf(stderr, "    P   %10d \n", kbstats.tp+kbstats.fp);
+        fprintf(stderr, "    N   %10d \n", kbstats.tn+kbstats.fn);        
+        fprintf(stderr, "  TDR %5.2f (TP/(TP+FP))\n", (float)kbstats.tp/(kbstats.tp+kbstats.fp));
+        fprintf(stderr, "  FNR %5.2f (FN/(TN+FN))\n", (float)kbstats.fn/(kbstats.fn+kbstats.tn));
+        fprintf(stderr, "\n");
+
 
         for (int32_t i=1; i<dataset_labels.size(); ++i)
         {

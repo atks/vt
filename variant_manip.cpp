@@ -252,6 +252,7 @@ bool VariantManip::detect_str(const char* chrom, uint32_t pos1, Variant& variant
  */
 int32_t VariantManip::classify_variant(bcf_hdr_t *h, bcf1_t *v,  Variant& variant, bool in_situ_left_trimming)
 {
+    bcf_unpack(v, BCF_UN_STR);
     return classify_variant(bcf_get_chrom(h, v), bcf_get_pos1(v), bcf_get_allele(v), bcf_get_n_allele(v), variant, in_situ_left_trimming);
 }
 
@@ -261,6 +262,7 @@ int32_t VariantManip::classify_variant(bcf_hdr_t *h, bcf1_t *v,  Variant& varian
 int32_t VariantManip::classify_variant(bcf_hdr_t *h, bcf1_t *v)
 {
     Variant variant;
+    bcf_unpack(v, BCF_UN_STR);
     return classify_variant(bcf_get_chrom(h, v), bcf_get_pos1(v), bcf_get_allele(v), bcf_get_n_allele(v), variant);
 }
 
