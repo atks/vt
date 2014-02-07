@@ -115,6 +115,8 @@ class Igor : Program
     //stats//
     /////////
     uint32_t no_variants;
+    uint32_t no_positive_variants;
+    uint32_t no_negative_variants;
     uint32_t nfs;
     uint32_t fs;
     uint32_t rare_nfs;
@@ -242,6 +244,8 @@ class Igor : Program
         //stats initialization//
         ////////////////////////
         no_variants = 0;
+        no_positive_variants = 0;
+        no_negative_variants = 0;
         fs = 0;
         nfs = 0;
     }
@@ -353,7 +357,7 @@ class Igor : Program
                     }
                 }
 
-                ++no_variants;
+                
             }
 
             int32_t ins = variant.alleles[0].ins;
@@ -371,7 +375,7 @@ class Igor : Program
                 x2 = bcf_gt_allele(gts[na12878_index[0]*2+1]);
                 
                 x = x1+x2;
-                if (x==-2)
+                if (x<0)
                 {
                     x = 3;
                 }
@@ -408,25 +412,33 @@ class Igor : Program
                     if (presence[0])
                     {
                         xt = x1 + x2;
+                        ++no_variants;
+                        
+                        if (xt>0) ++no_positive_variants;
+                        if (xt==0) ++no_negative_variants;
+                        
                     }
                     
                     if (presence[0] && presence[1])
                     {
                         if (strcmp(dst, "TRUE_POSITIVE")==0)
                         {
-                            if (xt>=1 && y>=1)
+                            if (xt>0 && y>0)
                             {
                                 ++kbstats.tp;
                             }
-                            else if (xt>=1 && y==0)
+                            else if (xt>0 && y==0)
                             {
-                                bcf_print_liten(h,v);
                                 ++kbstats.fp;
+                            }
+                            else if (xt==0 && y>0)
+                            {
+                                ++kbstats.fn;
                             }
                         }
                         else if (strcmp(dst, "FALSE_POSITIVE")==0)
                         {
-                            if (xt>=1)
+                            if (xt>0)
                             {
                                 ++kbstats.fp;
                             }
@@ -445,11 +457,11 @@ class Igor : Program
                     {
                         if (strcmp(dst, "TRUE_POSITIVE")==0)
                         {
-                            if (y>=1)
+                            if (y>0)
                             {
                                 ++kbstats.fn;
                             }
-                            else if (y<=0)
+                            else if (y==0)
                             {
                                 ++kbstats.tn;
                             }
@@ -485,13 +497,20 @@ class Igor : Program
                     int32_t y1 = bcf_gt_allele(gts[na12878_index[i]*2]);
                     int32_t y2 = bcf_gt_allele(gts[na12878_index[i]*2+1]);
                     int32_t y = y1+y2;
-                    if (y==-2)
+                    if (y<0)
                     {
                         y = 3;
                     }
-                    bcf_print(presence_bcfptr[0]->h, presence_bcfptr[0]->v);
-                    bcf_print(presence_bcfptr[i]->h, presence_bcfptr[i]->v);
-                    std::cerr << "k0 " << k0 << " " << "k " << k << " " << x << " "  << "(" << x1 << "," << x2 << ") " << y << "\n";
+//                    bcf_print(presence_bcfptr[0]->h, presence_bcfptr[0]->v);
+//                    bcf_print(presence_bcfptr[i]->h, presence_bcfptr[i]->v);
+                    
+                    if (x2==bcf_int32_missing)
+                    {
+                        std::cerr << "x2 encodes int32_t missing\n";
+                    }    
+                    
+                    
+                    //std::cerr << "k0 " << k0 << " " << "k " << k << " " << x << " "  << "(" << x1 << "," << x2 << ") " << y << "\n";
                     ++concordance[i].geno[x][y];
                 }
                 else if (!presence[0] && presence[i])
@@ -531,7 +550,7 @@ class Igor : Program
     {
         fprintf(stderr, "\n");
         fprintf(stderr, "  %s\n", "data set");
-        fprintf(stderr, "    No Indels : %10d [%.2f]\n", stats[0].a,  (float)stats[0].a_ins/(stats[0].a_del));
+        fprintf(stderr, "  No Variants : %10d [%.2f]\n", stats[0].a,  (float)stats[0].a_ins/(stats[0].a_del));
         fprintf(stderr, "       FS/NFS : %10.2f (%d/%d)\n", (float)fs/(fs+nfs), fs, nfs);
         fprintf(stderr, "\n");
 
@@ -542,8 +561,10 @@ class Igor : Program
         fprintf(stderr, "    FN  %10d \n", kbstats.fn);
         fprintf(stderr, "    P   %10d \n", kbstats.tp+kbstats.fp);
         fprintf(stderr, "    N   %10d \n", kbstats.tn+kbstats.fn);        
-        fprintf(stderr, "  TDR %5.2f (TP/(TP+FP))\n", (float)kbstats.tp/(kbstats.tp+kbstats.fp));
-        fprintf(stderr, "  FNR %5.2f (FN/(TN+FN))\n", (float)kbstats.fn/(kbstats.fn+kbstats.tn));
+        fprintf(stderr, "    +   %10d \n", no_positive_variants);
+        fprintf(stderr, "    -   %10d \n", no_negative_variants);
+        fprintf(stderr, "  TDR %5.2f (TP/(TP+FP))\n", (float)kbstats.tp/(kbstats.tp+kbstats.fp)*100);
+        fprintf(stderr, "  FNR %5.2f (FN/(TN+FN))\n", (float)kbstats.fn/(kbstats.fn+kbstats.tn)*100);
         fprintf(stderr, "\n");
 
 
@@ -600,7 +621,6 @@ class Igor : Program
 
             fprintf(stderr, "\n");
         }
-
     };
 
     ~Igor()

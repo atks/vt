@@ -195,19 +195,16 @@ class Igor : Program
 
         while (odr->read(v))
         {
-            int32_t vtype = -1;
+            int32_t vtype = vm->classify_variant(odr->hdr, v, variant);
             
             if (filter_exists)
             {
-                vtype = vm->classify_variant(odr->hdr, v, variant);
                 if (!filter.apply(odr->hdr, v, &variant))
                 {
                     continue;
                 }
             }
 
-            vtype = vtype==-1? vm->classify_variant(odr->hdr, v, variant) : vtype;                        
-            
             if ((k = kh_get(32, h, bcf_get_rid(v))) == kh_end(h))
             {
                 kh_put(32, h, bcf_get_rid(v), &ret);
