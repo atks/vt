@@ -33,8 +33,6 @@
 #define VT_OP_NOT      0
 #define VT_OP_AND      1
 #define VT_OP_OR       2
-#define VT_OP_BIT_AND  3
-#define VT_OP_BIT_OR   4
 
 #define VT_OP_EQ       5
 #define VT_OP_NE       6
@@ -48,14 +46,17 @@
 #define SUB  12
 #define MUL  13
 #define DIV  14
+#define VT_OP_BIT_AND  81
+#define VT_OP_BIT_OR   82
 
 //unary ops (data getters for vcf)
 #define VT_VARIANT_TYPE_OP  65
 #define VT_N_ALLELE_OP      66
 #define VT_VARIANT_DLEN_OP  67
-#define VT_INFO_INT_OP      68
-#define VT_INFO_FLT_OP      69
-#define VT_INFO_STR_OP      70
+#define VT_VARIANT_LEN_OP   68
+#define VT_INFO_INT_OP      69
+#define VT_INFO_FLT_OP      70
+#define VT_INFO_STR_OP      71
 #define VT_FILTER_OP        257
 
 #define VT_INT              64
@@ -170,6 +171,12 @@ class Filter
      */
     bool apply(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug=false);
 
+    
+    /**
+     * Attempts to simplify the expression tree by collapsing nodes that can be precomputed.
+     */
+    void simplify();
+    
     private:
 
     /**

@@ -32,6 +32,7 @@
 #include "hts_utils.h"
 #include "bcf_ordered_reader.h"
 #include "variant_manip.h"
+#include "filter.h"
 
 void peek(int argc, char ** argv);
     

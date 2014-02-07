@@ -46,6 +46,13 @@ class Igor : Program
     BCFOrderedReader *odr;
     bcf1_t *v;
 
+    //////////
+    //filter//
+    //////////
+    std::string fexp;
+    Filter filter;
+    bool filter_exists;
+    
     /////////
     //stats//
     /////////
@@ -126,6 +133,12 @@ class Igor : Program
         odr = new BCFOrderedReader(input_vcf_file, intervals);
 		v = bcf_init1();
 
+        /////////////////////////
+        //filter initialization//
+        /////////////////////////
+        filter.parse(fexp.c_str());
+        filter_exists = fexp=="" ? false : true;
+
         ////////////////////////
         //stats initialization//
         ////////////////////////
@@ -180,7 +193,18 @@ class Igor : Program
 
         while (odr->read(v))
         {
-            bcf_unpack(v, BCF_UN_STR);
+            int32_t vtype = -1;
+            
+            if (filter_exists)
+            {
+                vtype = vm->classify_variant(odr->hdr, v, variant);
+                if (!filter.apply(odr->hdr, v, &variant))
+                {
+                    continue;
+                }
+            }
+
+            vtype = vtype==-1? vm->classify_variant(odr->hdr, v, variant) : vtype;                        
             
             if ((k = kh_get(32, h, bcf_get_rid(v))) == kh_end(h))
             {
@@ -188,8 +212,6 @@ class Igor : Program
                 kh_value(h, k) = 1; //not really necessary.
                 ++no_chromosomes;   
             }
-
-            int32_t vtype = vm->classify_variant(odr->hdr, v, variant);
             
             if (vtype & VT_CLUMPED)
             {

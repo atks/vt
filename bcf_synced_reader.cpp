@@ -72,6 +72,7 @@ BCFSyncedReader::BCFSyncedReader(std::vector<std::string>& vcf_files, std::vecto
             if (!load_index(i))
             {
                 fprintf(stderr, "[I:%s:%d %s] index cannot be loaded for %s\n", __FILE__, __LINE__, __FUNCTION__, vcf_files[i].c_str());
+                exit(1);
             }
 
             if (!exists_selected_intervals)

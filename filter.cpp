@@ -68,7 +68,9 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
     else if (type==VT_OP_BIT_AND)
     {
         if (debug)
+        {    
             std::cerr << "\tVT_OP_BIT_AND "   <<  left->i << "&" << right->i << "=" << (left->i&right->i)    <<  " \n";
+        }
         i = (left->i & right->i);
         value = i;
     }
@@ -100,6 +102,13 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
 
       //  std::cerr << "DLEN ASSIGN: " << i << "\n";
     }
+    else if (type==VT_VARIANT_LEN_OP)
+    {
+        i = abs(variant->alleles[0].dlen);
+        value = i;
+
+      //  std::cerr << "DLEN ASSIGN: " << i << "\n";
+    }
     else if (type==VT_N_ALLELE_OP)
     {
         i = bcf_get_n_allele(v);
@@ -120,7 +129,8 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
         }
         else
         {
-            std::cerr << "evaluation not supported, different types to compare\n";
+            fprintf(stderr, "[%s:%d %s] evaluation not supported : ==\n", __FILE__, __LINE__, __FUNCTION__);
+            exit(1);
         }
     }
     else if (type==VT_OP_NE)
@@ -139,7 +149,8 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
         }
         else
         {
-            std::cerr << "evaluation not supported, different types to compare\n";
+            fprintf(stderr, "[%s:%d %s] evaluation not supported : !=\n", __FILE__, __LINE__, __FUNCTION__);
+            exit(1);
         }
     }
     else if (type==VT_OP_LE)
@@ -158,7 +169,8 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
         }
         else
         {
-            std::cerr << "evaluation not supported, different types to compare\n";
+            fprintf(stderr, "[%s:%d %s] evaluation not supported : <=\n", __FILE__, __LINE__, __FUNCTION__);
+            exit(1);
         }
     }
     else if (type==VT_OP_GE)
@@ -177,7 +189,8 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
         }
         else
         {
-            std::cerr << "evaluation not supported, different types to compare\n";
+            fprintf(stderr, "[%s:%d %s] evaluation not supported : >=\n", __FILE__, __LINE__, __FUNCTION__);
+            exit(1);
         }
     }
     else if (type==VT_OP_GT)
@@ -196,7 +209,8 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
         }
         else
         {
-            std::cerr << "evaluation not supported, different types to compare\n";
+            fprintf(stderr, "[%s:%d %s] evaluation not supported : >\n", __FILE__, __LINE__, __FUNCTION__);
+            exit(1);
         }
     }
     else if (type==VT_OP_LT)
@@ -215,7 +229,8 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
         }
         else
         {
-            std::cerr << "evaluation not supported, different types to compare\n";
+            fprintf(stderr, "[%s:%d %s] evaluation not supported : <\n", __FILE__, __LINE__, __FUNCTION__);
+            exit(1);
         }
     }
 }
@@ -241,16 +256,22 @@ Filter::Filter(std::string exp)
  */
 void Filter::parse(const char* exp, bool debug)
 {
-    if (tree!=NULL)
+    if (strlen(exp)!=0)
     {
-        delete tree;
-        tree = NULL;
+        if (tree!=NULL)
+        {
+            delete tree;
+            tree = NULL;
+        }
+        else
+        {
+            tree = new Node();
+            parse(exp, strlen(exp), tree, debug);
+        }
     }
-
-    if (tree==NULL)
+    else
     {
-        tree = new Node();
-        parse(exp, strlen(exp), tree, debug);
+        tree = NULL;
     }
 }
 
@@ -329,7 +350,7 @@ void Filter::parse(const char* exp, int32_t len, Node *node, bool debug)
             {
                 if (ctype<type)
                 {
-                    std::cerr<< "\tupdating type\n";
+                    if (debug) std::cerr<< "\tupdating type\n";
                     type = ctype;
                     p = r-1;
                     q = r+oplen;
@@ -396,7 +417,7 @@ void Filter::parse_literal(const char* exp, int32_t len, Node * node, bool debug
         if (debug) std::cerr << "\tis filter_op\n";
         return;
     }
-    else if (strncmp(exp, "VTYPE", len)==0)
+    else if (strncmp(exp, "VTYPE", 5)==0)
     {
         node->type = VT_VARIANT_TYPE_OP;
         if (debug) std::cerr << "\tis variant_op\n";
@@ -442,6 +463,12 @@ void Filter::parse_literal(const char* exp, int32_t len, Node * node, bool debug
         if (debug) std::cerr << "\tis dlen\n";
         return;
     }
+    else if (strncmp(exp, "LEN", len)==0)
+    {
+        node->type = VT_VARIANT_LEN_OP;
+        if (debug) std::cerr << "\tis len\n";
+        return;
+    }
     else
     {
         const char* start = exp;
@@ -465,10 +492,13 @@ void Filter::parse_literal(const char* exp, int32_t len, Node * node, bool debug
             if (debug) std::cerr << "\tis float\n";
             return;
         }
+        
+        kputsn(exp, len, &node->tag);
+        if (debug) std::cerr << "\tis string\n";
+        return;
     }
 
     return;
-
 }
 
 /**

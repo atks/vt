@@ -30,6 +30,7 @@
 #include "bcf_ordered_writer.h"
 #include "hts_utils.h"
 #include "variant_manip.h"
+#include "filter.h"
 
 bool view(int argc, char ** argv);
     
