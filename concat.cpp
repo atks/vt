@@ -50,10 +50,22 @@ class Igor : Program
     BCFOrderedReader *odr;
     BCFOrderedWriter *odw;
 
+    //////////
+    //filter//
+    //////////
+    std::string fexp;
+    Filter filter;
+    bool filter_exists;
+    
     /////////
     //stats//
     /////////
     uint32_t no_variants;
+    
+    /////////
+    //tools//
+    /////////
+    VariantManip *vm;
     
     Igor(int argc, char ** argv)
     {
@@ -71,6 +83,7 @@ class Igor : Program
             TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_output_vcf_file("o", "o", "output VCF file [-]", false, "-", "", cmd);
             TCLAP::ValueArg<std::string> arg_input_vcf_file_list("L", "L", "file containing list of input VCF files", false, "", "str", cmd);
+            TCLAP::ValueArg<std::string> arg_fexp("f", "f", "filter expression []", false, "", "str", cmd);
             TCLAP::SwitchArg arg_print("p", "p", "print options and summary []", cmd, false);
             TCLAP::SwitchArg arg_print_sites_only("s", "s", "print site information only without genotypes [false]", cmd, false);
             TCLAP::UnlabeledMultiArg<std::string> arg_input_vcf_files("<in1.vcf>...", "Multiple VCF files",false, "files", cmd);
@@ -79,6 +92,7 @@ class Igor : Program
 
             parse_files(input_vcf_files, arg_input_vcf_files.getValue(), arg_input_vcf_file_list.getValue());
             output_vcf_file = arg_output_vcf_file.getValue();
+            fexp = arg_fexp.getValue();
             parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
             no_subset_samples = arg_print_sites_only.getValue() ? 0 : -1;
             print = arg_print.getValue();
@@ -113,24 +127,28 @@ class Igor : Program
             odw->link_hdr(bcf_hdr_subset(odr->hdr, 0, 0, 0));
         }
 
-        ///////////////
-        //general use//
-        ///////////////
-
+        /////////////////////////
+        //filter initialization//
+        /////////////////////////
+        filter.parse(fexp.c_str());
+        filter_exists = fexp=="" ? false : true;
+      
         ////////////////////////
         //stats initialization//
         ////////////////////////
         no_variants = 0;
 
-        /////////
-        //tools//
-        /////////
+        ///////////////////////
+        //tool initialization//
+        ///////////////////////
+        vm = new VariantManip("");    
     }
 
     void concat()
     {
         odw->write_hdr();   
         bcf1_t *v = odw->get_bcf1_from_pool();
+        Variant variant;
         
         for (int32_t i=0; i<input_vcf_files.size(); ++i)
         {
@@ -139,8 +157,19 @@ class Igor : Program
                 odr = new BCFOrderedReader(input_vcf_files[i], intervals);
             }
             
+            bcf_hdr_t *h = odr->hdr;
+            
             while(odr->read(v))
             {
+                if (filter_exists)
+                {
+                    vm->classify_variant(h, v, variant);
+                    if (!filter.apply(h, v, &variant))
+                    {
+                        continue;
+                    }
+                }
+                
                 if (no_subset_samples==0)
                 {
                     bcf_subset(odw->hdr, v, 0, 0);
@@ -166,6 +195,7 @@ class Igor : Program
         std::clog << "concat v" << version << "\n\n";
         print_ifiles("options:     input VCF file        ", input_vcf_files);
         std::clog << "         [o] output VCF file       " << output_vcf_file << "\n";
+        print_str_op("         [f] filter                      ", fexp);
         print_int_op("         [i] intervals             ", intervals);
         std::clog << "\n";
     }

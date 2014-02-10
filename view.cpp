@@ -65,7 +65,7 @@ class Igor : Program
     uint32_t no_samples;
 
     /////////
-    //stats//
+    //tools//
     /////////
     VariantManip *vm;
 
