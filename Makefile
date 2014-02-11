@@ -42,6 +42,7 @@ SOURCES = program\
 		decompose\
 		remove_overlap\
 		profile_na12878\
+		profile_snps\
 		filter
 
 SOURCESONLY = main.cpp

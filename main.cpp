@@ -39,6 +39,7 @@
 #include "decompose.h"
 #include "remove_overlap.h"
 #include "profile_na12878.h"
+#include "profile_snps.h"
 
 void print_time(double t)
 {
@@ -167,6 +168,10 @@ int main(int argc, char ** argv)
     {
         profile_indels(argc-1, ++argv);
     }
+    else if (argc>1 && cmd=="profile_snps")
+    {
+        profile_snps(argc-1, ++argv);
+    }    
     else if (argc>1 && cmd=="profile_mendelian")
     {
         profile_mendelian(argc-1, ++argv);
