@@ -50,13 +50,32 @@
 #define GC_FT_START_CODON 2
 #define GC_FT_STOP_CODON 3
 
+#define NT_N 0
+#define NT_A 1
+#define NT_C 2
+#define NT_G 4
+#define NT_T 8
+
 #define ALA 0
 #define ARG 1
 #define ASN 2
 #define ASP 3
 #define CYS 4
-
-
+#define GLN 5
+#define GLU 6
+#define GLY 7
+#define HIS 8
+#define ILE 9
+#define LEU 10
+#define LYS 11
+#define MET 12
+#define PHE 13
+#define PRO 14
+#define SER 15
+#define THR 16
+#define TRP 17
+#define TYR 18
+#define VAL 19
 
 class GENCODERecord : public Interval
 {
@@ -66,6 +85,7 @@ class GENCODERecord : public Interval
     std::string chrom;
     char strand;
     int32_t frame;
+    int32_t *syn; // synonymous array for sequence, defined only if CDS.
     int32_t exonNo;
     bool fivePrimeConservedEssentialSpliceSite;
     bool threePrimeConservedEssentialSpliceSite;
@@ -97,6 +117,8 @@ class GENCODERecord : public Interval
     private:
 };
 
+KHASH_MAP_INIT_STR(aadict, int32_t)
+
 class GENCODE
 {
     public:
@@ -105,6 +127,7 @@ class GENCODE
     faidx_t *fai;
     std::map<std::string, IntervalTree*> CHROM;
     std::stringstream token;
+    khash_t(aadict) *codon2syn;
 
     /**
      * Constructs and initialize a GENCODE object.
