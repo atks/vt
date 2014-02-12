@@ -50,6 +50,14 @@
 #define GC_FT_START_CODON 2
 #define GC_FT_STOP_CODON 3
 
+#define ALA 0
+#define ARG 1
+#define ASN 2
+#define ASP 3
+#define CYS 4
+
+
+
 class GENCODERecord : public Interval
 {
     public:
@@ -63,13 +71,18 @@ class GENCODERecord : public Interval
     bool threePrimeConservedEssentialSpliceSite;
     bool containsStartCodon;
     bool containsStopCodon;
-    uint32_t level;
+    int32_t level;
 
-    GENCODERecord(std::string& _chrom, uint32_t _start, uint32_t _end, char _strand,
-                  std::string& _gene, int32_t _feature, int32_t _frame, int32_t _exonNo,
-                  bool _fivePrimeConservedEssentialSpliceSite, bool _threePrimeConservedEssentialSpliceSite,
-                  bool _containsStartCodon, bool _containsStopCodon,
-                  uint32_t _level);
+    GENCODERecord(std::string& chrom, int32_t start, int32_t end, char strand,
+                  std::string& gene, int32_t feature, int32_t frame, int32_t exonNo,
+                  bool fivePrimeConservedEssentialSpliceSite, bool threePrimeConservedEssentialSpliceSite,
+                  bool containsStartCodon, bool containsStopCodon,
+                  int32_t level);
+
+    /**
+     * Checks if base at position position is synonymous.
+     */
+    bool is_synonymous(int32_t pos1, char base);
 
     /**
      * Prints this GENCODE record to STDERR.
@@ -122,6 +135,11 @@ class GENCODE
      * Splits a line into a map - PERL style.
      */
     void split_gtf_attribute_field(std::map<std::string, std::string>& map, std::string& str);
+        
+    /**
+     * Generate array for ease of checking synonymous, non synonymous SNPs.
+     */
+    void fill_synonymous(GENCODERecord *g);
 };
 
 #endif

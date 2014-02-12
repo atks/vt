@@ -29,7 +29,7 @@ class OverlapStats
 {
     public:
 
-    uint32_t a,ab,b,a_ins,ab_ins,b_ins,a_del,ab_del,b_del;
+    uint32_t a,ab,b,a_ts,ab_ts,b_ts,a_tv,ab_tv,b_tv;
 
     OverlapStats()
     {
@@ -37,12 +37,12 @@ class OverlapStats
         ab = 0;
         b = 0;
 
-        a_ins = 0;
-        a_del = 0;
-        ab_ins = 0;
-        ab_del = 0;
-        b_ins = 0;
-        b_del = 0;
+        a_ts = 0;
+        a_tv = 0;
+        ab_ts = 0;
+        ab_tv = 0;
+        b_ts = 0;
+        b_tv = 0;
     };
 };
 
@@ -61,34 +61,31 @@ class Igor : Program
     std::string ref_data_sets_list;
     std::vector<GenomeInterval> intervals;
     std::string interval_list;
-
     std::vector<std::string> dataset_labels;
     std::vector<std::string> dataset_types;
-
     std::vector<OverlapStats> stats;
-
     std::string gencode_gtf_file;
-
 
     ///////
     //i/o//
     ///////
     BCFSyncedReader *sr;
     bcf1_t *v;
-    Filter *filter;
     kstring_t line;
-    Filter *rare_filter;
+
+    //////////
+    //filter//
+    //////////
+    std::string fexp;
+    Filter filter;
+    bool filter_exists;
 
     /////////
     //stats//
     /////////
     uint32_t no_snps;
-    uint32_t nfs;
-    uint32_t fs;
-    uint32_t rare_nfs;
-    uint32_t rare_fs;
-    uint32_t common_nfs;
-    uint32_t common_fs;
+    uint32_t nonsyn;
+    uint32_t syn;
 
     ////////////////
     //common tools//
@@ -204,12 +201,8 @@ class Igor : Program
         //stats initialization//
         ////////////////////////
         no_snps = 0;
-        fs = 0;
-        nfs = 0;
-        rare_fs = 0;
-        rare_nfs = 0;
-        common_fs = 0;
-        common_nfs = 0;
+        nonsyn = 0;
+        syn = 0;
     }
 
     void profile_snps()
@@ -229,9 +222,19 @@ class Igor : Program
             bcf_hdr_t *h = current_recs[0]->h;
             int32_t vtype = vm->classify_variant(h, v, variant);
 
-            if (!((vtype==VT_INDEL || vtype==(VT_SNP|VT_INDEL)) && bcf_get_n_allele(v)==2))
+            if (bcf_get_n_allele(v)!=2 || !(vtype&VT_SNP))
             {
-                continue;
+                if (filter_exists)
+                {
+                    if (!filter.apply(h,v,&variant))
+                    {
+                        continue;
+                    }
+                }    
+                else
+                {
+                    continue;
+                }
             }
 
             std::string chrom = bcf_get_chrom(h,v);
@@ -250,7 +253,7 @@ class Igor : Program
                 gc->search(chrom, start1+1, end1, overlaps);
 
                 bool cds_found = false;
-                bool is_fs = false;
+                bool is_nonsyn = false;
                     
                 for (int32_t i=0; i<overlaps.size(); ++i)
                 {
@@ -260,7 +263,7 @@ class Igor : Program
                         cds_found = true;
                         if (abs(variant.alleles[0].dlen)%3!=0)
                         {
-                            is_fs = true;
+                            is_nonsyn = true;
                             break;
                         }
                     }
@@ -268,27 +271,27 @@ class Igor : Program
 
                 if (cds_found)
                 {
-                    if (is_fs)
+                    if (is_nonsyn)
                     {
-                        ++fs;
+                        ++nonsyn;
                     }
                     else
                     {
-                        ++nfs;
+                        ++syn;
                     }
                 }
 
                 ++no_snps;
             }
 
-            int32_t ins = variant.alleles[0].ins;
-            int32_t del = 1-ins;
+            int32_t ts = variant.alleles[0].ts;
+            int32_t tv = variant.alleles[0].ts;
 
             if (presence[0])
             {
                 ++stats[0].a;
-                stats[0].a_ins += ins;
-                stats[0].a_del += del;
+                stats[0].a_ts += ts;
+                stats[0].a_tv += tv;
             }
 
             //update overlap stats
@@ -297,20 +300,20 @@ class Igor : Program
                 if (presence[0] && !presence[i])
                 {
                     ++stats[i].a;
-                    stats[i].a_ins += ins;
-                    stats[i].a_del += del;
+                    stats[i].a_ts += ts;
+                    stats[i].a_tv += tv;
                 }
                 else if (presence[0] && presence[i])
                 {
                     ++stats[i].ab;
-                    stats[i].ab_ins += ins;
-                    stats[i].ab_del += del;
+                    stats[i].ab_ts += ts;
+                    stats[i].ab_tv += tv;
                 }
                 else if (!presence[0] && presence[i])
                 {
                     ++stats[i].b;
-                    stats[i].b_ins += ins;
-                    stats[i].b_del += del;
+                    stats[i].b_ts += ts;
+                    stats[i].b_tv += tv;
                 }
                 else
                 {
@@ -332,23 +335,23 @@ class Igor : Program
         std::clog << "         [g] reference data sets list file  " << ref_data_sets_list << "\n";
         std::clog << "         [r] reference FASTA file           " << ref_fasta_file << "\n";
         print_int_op("         [i] intervals                      ", intervals);
-        std::clog << "\n";
+        std::clog << "\n\n";
    }
 
     void print_stats()
     {
         fprintf(stderr, "\n");
         fprintf(stderr, "  %s\n", "data set");
-        fprintf(stderr, "    No Indels : %10d [%.2f]\n", stats[0].a,  (float)stats[0].a_ins/(stats[0].a_del));
-        fprintf(stderr, "       SYN/NONSYN : %10.2f (%d/%d)\n", (float)fs/(fs+nfs), fs, nfs);
+        fprintf(stderr, "     No. SNPs : %10d [%.2f]\n", stats[0].a,  (float)stats[0].a_ts/(stats[0].a_tv));
+        fprintf(stderr, "   SYN/NONSYN : %10.2f (%d/%d)\n", (float)nonsyn/(nonsyn+syn), nonsyn, syn);
         fprintf(stderr, "\n");
 
         for (int32_t i=1; i<dataset_labels.size(); ++i)
         {
             fprintf(stderr, "  %s\n", dataset_labels[i].c_str());
-            fprintf(stderr, "    A-B %10d [%.2f]\n", stats[i].a,  (float)stats[i].a_ins/(stats[i].a_del));
-            fprintf(stderr, "    A&B %10d [%.2f]\n", stats[i].ab, (float)stats[i].ab_ins/stats[i].ab_del);
-            fprintf(stderr, "    B-A %10d [%.2f]\n", stats[i].b,  (float)stats[i].b_ins/(stats[i].b_del));
+            fprintf(stderr, "    A-B %10d [%.2f]\n", stats[i].a,  (float)stats[i].a_ts/(stats[i].a_tv));
+            fprintf(stderr, "    A&B %10d [%.2f]\n", stats[i].ab, (float)stats[i].ab_ts/stats[i].ab_tv);
+            fprintf(stderr, "    B-A %10d [%.2f]\n", stats[i].b,  (float)stats[i].b_ts/(stats[i].b_tv));
 
             if (dataset_types[i]=="TP")
             {

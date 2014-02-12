@@ -101,8 +101,6 @@ class Igor : Program
     std::vector<ConcordanceStats> concordance;
     std::string gencode_gtf_file;
     bool gencode_exists;
-    std::string filter_expression;
-    Filter filter;
 
     ///////
     //i/o//
@@ -110,6 +108,13 @@ class Igor : Program
     BCFSyncedReader *sr;
     bcf1_t *v;
     kstring_t line;
+
+    //////////
+    //filter//
+    //////////
+    std::string fexp;
+    Filter filter;
+    bool filter_exists;
 
     /////////
     //stats//
@@ -145,14 +150,14 @@ class Igor : Program
             TCLAP::ValueArg<std::string> arg_ref_fasta_file("r", "r", "reference sequence fasta file []", true, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_intervals("i", "i", "intervals []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "file", cmd);
-            TCLAP::ValueArg<std::string> arg_filter_expression("f", "f", "filter expression []", false, "", "str", cmd);
+            TCLAP::ValueArg<std::string> arg_fexp("f", "f", "filter expression []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_ref_data_sets_list("g", "g", "file containing list of reference datasets []", false, "", "file", cmd);
             TCLAP::UnlabeledValueArg<std::string> arg_input_vcf_file("<in.vcf>", "input VCF file", true, "","file", cmd);
 
             cmd.parse(argc, argv);
 
             ref_fasta_file = arg_ref_fasta_file.getValue();
-            filter_expression = arg_filter_expression.getValue();
+            fexp = arg_fexp.getValue();
             parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
             ref_data_sets_list = arg_ref_data_sets_list.getValue();
             input_vcf_file = arg_input_vcf_file.getValue();
@@ -191,8 +196,7 @@ class Igor : Program
         dataset_labels.push_back("data");
         dataset_types.push_back("ref");
 
-        filter.parse(filter_expression.c_str(), true);
-
+        filter.parse(fexp.c_str(), true);
 
         htsFile *hts = hts_open(ref_data_sets_list.c_str(), "r");
         kstring_t s = {0,0,0};

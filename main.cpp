@@ -79,8 +79,9 @@ void help()
     std::clog << "annotate_variants         annotate variants\n";
     std::clog << "peek                      summary of variants in the vcf file\n";
     std::clog << "partition                 partition variants\n";
+    std::clog << "profile_snps              profile snps\n";
     std::clog << "profile_indels            profile indels\n";
-    std::clog << "profile_mendelian         profile indels\n";
+    std::clog << "profile_mendelian         profile mendelian errors\n";
     std::clog << "profile_na12878           profile na12878\n";        
     std::clog << "discover                  discover variants\n";
     std::clog << "merge_candidate_variants  merge candidate variants\n";
