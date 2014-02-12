@@ -107,6 +107,28 @@ GENCODE::GENCODE(std::string& gencode_gtf_file, std::string& ref_fasta_file, std
     fai = fai_load(ref_fasta_file.c_str());
     this->gencode_gtf_file = gencode_gtf_file;
     initialize(intervals);
+    
+    
+    
+    khiter_t k;
+    int32_t ret;
+    codon2syn = kh_init(aadict);
+    
+    
+    //constructs the mapping for amino acids
+    //ALA
+    k = kh_put(aadict, codon2syn, "GCA", &ret); 
+    kh_value(codon2syn, k) = (NT_G<<8) & (NT_C<<4) & (NT_A|NT_C|NT_G|NT_T);
+    k = kh_put(aadict, codon2syn, "GCC", &ret); 
+    kh_value(codon2syn, k) = (NT_G<<8) & (NT_C<<4) & (NT_A|NT_C|NT_G|NT_T);
+    k = kh_put(aadict, codon2syn, "GCG", &ret); 
+    kh_value(codon2syn, k) = (NT_G<<8) & (NT_C<<4) & (NT_A|NT_C|NT_G|NT_T);
+    k = kh_put(aadict, codon2syn, "GCT", &ret); 
+    kh_value(codon2syn, k) = (NT_G<<8) & (NT_C<<4) & (NT_A|NT_C|NT_G|NT_T);
+    //ALA
+    k = kh_put(aadict, codon2syn, "GCA", &ret); 
+    kh_value(codon2syn, k) = (NT_G<<8) & (NT_C<<4) & (NT_A|NT_C|NT_G|NT_T);
+       
 }
 
 /**
@@ -129,12 +151,26 @@ void GENCODE::fill_synonymous(GENCODERecord *g)
         int32_t ref_len;
         char* seq = faidx_fetch_seq(fai, g->chrom.c_str(), g->start, g->end, &ref_len);
         
+        g->syn = new int32_t[ref_len];
+        kstring_t s = {0,0,0}; 
         //check for each codon, check the nucleotides for each 
         //frame that will not induce a non synonymous amino acid
-        for (int32_t i=g->frame; i<strlen(seq); i+=3)
+        for (int32_t i=g->frame; i<ref_len; i+=3)
         {
+            //get the 3 bases
+            s.l=0;
+            kputc(seq[i], &s);
+            kputc(seq[i+1], &s);
+            kputc(seq[i+2], &s);
             
+            //access the syn value 
+           // int32_t val = kh_get(hm;
+            int32_t val = 0;
             
+            //populate syn
+            g->syn[i] = (val >> 8) & 15;
+            g->syn[i+1] = (val >> 4) & 15;
+            g->syn[i+2] = val & 15;
         }
         
         free(seq);
