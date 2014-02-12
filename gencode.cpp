@@ -23,26 +23,35 @@ THE SOFTWARE.
 
 #include "gencode.h"
 
-GENCODERecord::GENCODERecord(std::string& _chrom, uint32_t _start, uint32_t _end, char _strand,
-          std::string& _gene, int32_t _feature, int32_t _frame, int32_t _exonNo,
-          bool _fivePrimeConservedEssentialSpliceSite, bool _threePrimeConservedEssentialSpliceSite,
-          bool _containsStartCodon, bool _containsStopCodon,
-          uint32_t _level)
+GENCODERecord::GENCODERecord(std::string& chrom, int32_t start, int32_t end, char strand,
+          std::string& gene, int32_t feature, int32_t frame, int32_t exonNo,
+          bool fivePrimeConservedEssentialSpliceSite, bool threePrimeConservedEssentialSpliceSite,
+          bool containsStartCodon, bool containsStopCodon,
+          int32_t level)
 {
-    chrom = _chrom;
-    start = _start;
-    end = _end;
-    strand = _strand;
-    gene = _gene;
-    feature = _feature;
-    frame = _frame;
-    exonNo = _exonNo;
-    fivePrimeConservedEssentialSpliceSite = _fivePrimeConservedEssentialSpliceSite;
-    threePrimeConservedEssentialSpliceSite = _threePrimeConservedEssentialSpliceSite;
-    containsStartCodon = _containsStartCodon;
-    containsStopCodon = _containsStopCodon;
-    level = _level;
+    this->chrom = chrom;
+    this->start = start;
+    this->end = end;
+    this->strand = strand;
+    this->gene = gene;
+    this->feature = feature;
+    this->frame = frame;
+    this->exonNo = exonNo;
+    this->fivePrimeConservedEssentialSpliceSite = fivePrimeConservedEssentialSpliceSite;
+    this->threePrimeConservedEssentialSpliceSite = threePrimeConservedEssentialSpliceSite;
+    this->containsStartCodon = containsStartCodon;
+    this->containsStopCodon = containsStopCodon;
+    this->level = level;
 };
+
+/**
+ * Checks if base at position position is synonymous.
+ */
+bool is_synonymous(int32_t pos1, char base)
+{
+    
+    return true;
+}
 
 /**
  * Prints this GENCODE record to STDERR.
@@ -110,6 +119,29 @@ GENCODE::GENCODE(std::string& gencode_gtf_file, std::string& ref_fasta_file)
 }
 
 /**
+ * Generate array for ease of checking synonymous, non synonymous SNPs.
+ */
+void GENCODE::fill_synonymous(GENCODERecord *g)
+{
+    if (g->feature==GC_FT_CDS)
+    {
+        //extract sequence
+        int32_t ref_len;
+        char* seq = faidx_fetch_seq(fai, g->chrom.c_str(), g->start, g->end, &ref_len);
+        
+        //check for each codon, check the nucleotides for each 
+        //frame that will not induce a non synonymous amino acid
+        for (int32_t i=g->frame; i<strlen(seq); i+=3)
+        {
+            
+            
+        }
+        
+        free(seq);
+    }    
+}
+
+/**
  * Initialize a vector of intervals.
  */
 void GENCODE::initialize(std::vector<GenomeInterval>& intervals)
@@ -121,7 +153,7 @@ void GENCODE::initialize(std::vector<GenomeInterval>& intervals)
         std::string chrom = intervals[i].to_string();
         if (CHROM.find(chrom)==CHROM.end())
         {
-            std::clog << "Initializing GENCODE tree for chromosome " << chrom << "\n";
+            std::clog << "Initializing GENCODE tree for chromosome " << chrom << " ...\n";
             CHROM[chrom] = new IntervalTree();
             chromosomes.push_back(intervals[i]);
         }
@@ -289,6 +321,7 @@ void GENCODE::initialize(std::vector<GenomeInterval>& intervals)
         CHROM[chrom]->insert(record);
     }
 
+    std::clog << " done.\n";
     todr->close();
 }
 

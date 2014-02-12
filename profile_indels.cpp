@@ -206,10 +206,6 @@ class Igor : Program
         no_indels = 0;
         fs = 0;
         nfs = 0;
-        rare_fs = 0;
-        rare_nfs = 0;
-        common_fs = 0;
-        common_nfs = 0;
     }
 
     void profile_indels()
