@@ -196,7 +196,7 @@ bool VariantManip::detect_str(const char* chrom, uint32_t pos1, Variant& variant
     int32_t ref_len;
     //STR related
     char* ru = 0;
-    ru = faidx_fetch_seq(fai, chrom, pos1, pos1, &ref_len);
+    ru = faidx_fetch_uc_seq(fai, chrom, pos1, pos1, &ref_len);
     //std::cerr << "first ru: "<< ru << "\n";
 
     int32_t tract_len = 1;
@@ -208,7 +208,7 @@ bool VariantManip::detect_str(const char* chrom, uint32_t pos1, Variant& variant
     while (1)
     {
         char* next_ru = 0;
-        next_ru = faidx_fetch_seq(fai, chrom, pos1+tract_len*motif_len, pos1+(tract_len)*motif_len, &ref_len);
+        next_ru = faidx_fetch_uc_seq(fai, chrom, pos1+tract_len*motif_len, pos1+(tract_len)*motif_len, &ref_len);
 
         //motif repeated
         if (strcmp(ru, next_ru)==0)
@@ -236,7 +236,7 @@ bool VariantManip::detect_str(const char* chrom, uint32_t pos1, Variant& variant
             free(ru);
             ++motif_len;
             tract_len=1;
-            ru = faidx_fetch_seq(fai, chrom, pos1, pos1+motif_len-1, &ref_len);
+            ru = faidx_fetch_uc_seq(fai, chrom, pos1, pos1+motif_len-1, &ref_len);
         }
 
         free(next_ru);
@@ -428,7 +428,7 @@ void VariantManip::left_align(std::vector<std::string>& alleles, uint32_t& pos1,
 
         int ref_len = 0;
 
-        char *ref = faidx_fetch_seq(fai, chrom, pos1-1, pos1-1, &ref_len);
+        char *ref = faidx_fetch_uc_seq(fai, chrom, pos1-1, pos1-1, &ref_len);
         base = std::string(ref);
         free(ref);
 
@@ -486,7 +486,7 @@ void VariantManip::generate_probes(const char* chrom,
         int32_t ref_len;
         while (bases.size()<4 || preamble.size()<min_flank_length)
         {
-            base = faidx_fetch_seq(fai, const_cast<char*>(chrom), pos1-1, pos1-1, &ref_len);
+            base = faidx_fetch_uc_seq(fai, const_cast<char*>(chrom), pos1-1, pos1-1, &ref_len);
             preamble.append(1,base[0]);
             bases[base[0]] = 1;
             if (ref_len>0) free(base);
@@ -498,7 +498,7 @@ void VariantManip::generate_probes(const char* chrom,
         uint32_t alleleLength = alleles[0].size();
         while (bases.size()<4 || postamble.size()<min_flank_length)
         {
-            base = faidx_fetch_seq(fai, const_cast<char*>(chrom), pos1+alleleLength+i, pos1+alleleLength+i, &ref_len);
+            base = faidx_fetch_uc_seq(fai, const_cast<char*>(chrom), pos1+alleleLength+i, pos1+alleleLength+i, &ref_len);
             postamble.append(1,base[0]);
             bases[base[0]] = 1;
             if (ref_len>0) free(base);
@@ -545,7 +545,7 @@ void VariantManip::generate_probes(const char* chrom,
         int32_t ref_len = 0;
         while (bases.size()<4 && preamble.size()<min_flank_length)
         {
-            base = faidx_fetch_seq(fai, const_cast<char*>(chrom), pos1+i-1, pos1+i-1, &ref_len);
+            base = faidx_fetch_uc_seq(fai, const_cast<char*>(chrom), pos1+i-1, pos1+i-1, &ref_len);
             preamble.append(1,base[0]);
             bases[base[0]] = 1;
             ++i;
@@ -594,7 +594,7 @@ void VariantManip::generate_probes(const char* chrom,
                 {
                     int32_t start1 = (pos1+length-alleles[i].size()+alleles[0].size()-1);
                     int32_t ref_len;
-                    char* base = faidx_fetch_seq(fai, const_cast<char*>(chrom), start1 , start1, &ref_len);
+                    char* base = faidx_fetch_uc_seq(fai, const_cast<char*>(chrom), start1 , start1, &ref_len);
                     probes[i].append(1, base[0]);
                     if (ref_len>0) free(base);
                 }

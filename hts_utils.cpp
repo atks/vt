@@ -26,6 +26,48 @@
 KHASH_MAP_INIT_STR(vdict, bcf_idinfo_t)
 typedef khash_t(vdict) vdict_t;
 
+/**********
+ *FAI UTILS
+ **********/
+
+/**
+ * An alternate sequence fetcher for upper case sequence.
+ */
+char *faidx_fetch_uc_seq(const faidx_t *fai, const char *c_name, int p_beg_i, int p_end_i, int *len)
+{
+    int l;
+    char c;
+    khiter_t iter;
+    faidx1_t val;
+    char *seq=NULL;
+
+    // Adjust position
+    iter = kh_get(s, fai->hash, c_name);
+    if(iter == kh_end(fai->hash)) return 0;
+    val = kh_value(fai->hash, iter);
+    if(p_end_i < p_beg_i) p_beg_i = p_end_i;
+    if(p_beg_i < 0) p_beg_i = 0;
+    else if(val.len <= p_beg_i) p_beg_i = val.len - 1;
+    if(p_end_i < 0) p_end_i = 0;
+    else if(val.len <= p_end_i) p_end_i = val.len - 1;
+
+    // Now retrieve the sequence
+    int ret = bgzf_useek(fai->bgzf, val.offset + p_beg_i / val.line_blen * val.line_len + p_beg_i % val.line_blen, SEEK_SET);
+    if ( ret<0 )
+    {
+        *len = -1;
+        fprintf(stderr, "[fai_fetch_seq] Error: fai_fetch failed. (Seeking in a compressed, .gzi unindexed, file?)\n");
+        return NULL;
+    }
+    l = 0;
+    seq = (char*)malloc(p_end_i - p_beg_i + 2);
+    while ( (c=bgzf_getc(fai->bgzf))>=0 && l < p_end_i - p_beg_i + 1)
+        if (isgraph(c)) seq[l++] = toupper(c);
+    seq[l] = '\0';
+    *len = l;
+    return seq;
+}
+
 /**************
  *BAM HDR UTILS
  **************/
@@ -244,19 +286,19 @@ void bcf_hdr_transfer_contigs(const bcf_hdr_t *hsrc, bcf_hdr_t *hdest)
     const char **names = (const char**) calloc(m,sizeof(const char*));
     int len[m];
     khint_t k;
-    
-    
+
+
     for (k=kh_begin(d); k<kh_end(d); k++)
     {
         if ( !kh_exist(d,k) ) continue;
         tid = kh_val(d,k).id;
-        len[tid] = bcf_hrec_find_key(kh_val(d, k).hrec[0],"length"); 
+        len[tid] = bcf_hrec_find_key(kh_val(d, k).hrec[0],"length");
         int j;
-        if ( sscanf(kh_val(d, k).hrec[0]->vals[len[tid]],"%d",&j) ) 
-            len[tid] = j;     
+        if ( sscanf(kh_val(d, k).hrec[0]->vals[len[tid]],"%d",&j) )
+            len[tid] = j;
         names[tid] = kh_key(d,k);
     }
-    
+
     kstring_t s = {0,0,0};
     for (tid=0; tid<m; tid++)
     {
@@ -338,7 +380,7 @@ bcf_hdr_t *bcf_alt_hdr_read(htsFile *fp)
         htsFile *alt_hdr = hts_open(alt_hdr_fn.s, "r");
         h = bcf_hdr_read(alt_hdr);
         hts_close(alt_hdr);
-    
+
         //helps move the pointer to the right place
         bcf_hdr_t *temp_h = bcf_hdr_read(fp);
         bcf_hdr_destroy(temp_h);
@@ -416,8 +458,8 @@ void bcf_variant2string(bcf_hdr_t *h, bcf1_t *v, kstring_t *var)
 /**
  * strcmp wrapper for qsort.
  */
-int32_t cmpstr(void const *a, void const *b) 
-{ 
+int32_t cmpstr(void const *a, void const *b)
+{
     char const *aa = (char const *)a;
     char const *bb = (char const *)b;
 
@@ -430,14 +472,14 @@ int32_t cmpstr(void const *a, void const *b)
 void bcf_variant2string_sorted(bcf_hdr_t *h, bcf1_t *v, kstring_t *var)
 {
     bcf_print_liten(h,v);
-    
+
     bcf_unpack(v, BCF_UN_STR);
     var->l = 0;
     kputs(bcf_get_chrom(h, v), var);
     kputc(':', var);
     kputw(bcf_get_pos1(v), var);
     kputc(':', var);
-    
+
     if (v->n_allele==2)
     {
         kputs(bcf_get_alt(v, 0), var);
@@ -470,7 +512,7 @@ void bcf_alleles2string_sorted(bcf_hdr_t *h, bcf1_t *v, kstring_t *var)
 {
     bcf_unpack(v, BCF_UN_STR);
     var->l = 0;
-    
+
     if (v->n_allele==2)
     {
         kputs(bcf_get_alt(v, 0), var);
@@ -485,16 +527,16 @@ void bcf_alleles2string_sorted(bcf_hdr_t *h, bcf1_t *v, kstring_t *var)
         {
             temp[i-1] = allele[i];
         }
-        
+
         std::qsort(temp, bcf_get_n_allele(v)-1, sizeof(char*), cmpstr);
-        
+
         kputs(bcf_get_alt(v, 0), var);
         for (int32_t i=0; i<v->n_allele-1; ++i)
         {
             kputc(',', var);
             kputs(temp[i], var);
         }
-        
+
         free(temp);
     }
 }
@@ -517,4 +559,3 @@ void bcf_set_chrom(bcf_hdr_t *h, bcf1_t *v, const char* chrom)
     }
     v->rid = kh_val(d, k).id;
 };
-
