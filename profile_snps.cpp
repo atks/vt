@@ -1,6 +1,6 @@
 /* The MIT License
 
-   Copyright (c) 2013 Adrian Tan <atks@umich.edu>
+   Copyright (c) 2014 Adrian Tan <atks@umich.edu>
 
    Permission is hereby granted, free of charge, to any person obtaining a copy
    of this software and associated documentation files (the "Software"), to deal
@@ -109,12 +109,14 @@ class Igor : Program
             TCLAP::ValueArg<std::string> arg_intervals("i", "i", "intervals []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "file", cmd);
             TCLAP::ValueArg<std::string> arg_ref_data_sets_list("g", "g", "file containing list of reference datasets []", false, "", "file", cmd);
+            TCLAP::ValueArg<std::string> arg_fexp("f", "f", "filter expression []", false, "", "str", cmd);
             TCLAP::UnlabeledValueArg<std::string> arg_input_vcf_file("<in.vcf>", "input VCF file", true, "","file", cmd);
 
             cmd.parse(argc, argv);
 
             ref_fasta_file = arg_ref_fasta_file.getValue();
             parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
+            fexp = arg_fexp.getValue();
             ref_data_sets_list = arg_ref_data_sets_list.getValue();
             input_vcf_file = arg_input_vcf_file.getValue();
 
@@ -285,7 +287,7 @@ class Igor : Program
             }
 
             int32_t ts = variant.alleles[0].ts;
-            int32_t tv = variant.alleles[0].ts;
+            int32_t tv = variant.alleles[0].tv;
 
             if (presence[0])
             {
@@ -332,6 +334,7 @@ class Igor : Program
         std::clog << "profile_snps v" << version << "\n\n";
         std::clog << "\n";
         std::clog << "Options:     input VCF File                 " << input_vcf_file << "\n";
+        print_str_op("         [f] filter                         ", fexp);
         std::clog << "         [g] reference data sets list file  " << ref_data_sets_list << "\n";
         std::clog << "         [r] reference FASTA file           " << ref_fasta_file << "\n";
         print_int_op("         [i] intervals                      ", intervals);

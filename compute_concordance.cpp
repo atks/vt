@@ -104,6 +104,7 @@ class Igor : Program
 
     int32_t variant_type;
 
+
     ///////
     //i/o//
     ///////
@@ -112,9 +113,14 @@ class Igor : Program
 
     BCFSyncedReader *sr;
     bcf1_t *v;
-    Filter *filter;
-    Filter *rare_filter;
 
+    //////////
+    //filter//
+    //////////
+    std::string fexp;
+    Filter filter;
+    bool filter_exists;
+    
     /////////
     //stats//
     /////////
@@ -391,6 +397,8 @@ e.g. vt profile_snps_variants -o - NA19130.vcf.gz HG00096.vcf.gz\n\n";
 
         std::clog << "Options:     Input VCF File    " << input_vcf_files.size() << "\n";
         std::clog << "         [i] Intervals         " << intervals.size() << " intervals\n";
+        print_str_op("         [f] filter            ", fexp);
+        
     }
 
     void print_stats()

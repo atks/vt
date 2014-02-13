@@ -34,6 +34,7 @@
 #include "variant_manip.h"
 #include "utils.h"
 #include "pedigree.h"
+#include "filter.h"
 
 void profile_mendelian(int argc, char ** argv);
 

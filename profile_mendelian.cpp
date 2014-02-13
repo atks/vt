@@ -54,6 +54,13 @@ class Igor : Program
     ///////////////
     kstring_t variant;
 
+    //////////
+    //filter//
+    //////////
+    std::string fexp;
+    Filter filter;
+    bool filter_exists;
+
     /////////
     //stats//
     /////////
@@ -82,6 +89,7 @@ class Igor : Program
             TCLAP::ValueArg<std::string> arg_intervals("i", "i", "intervals", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_input_ped_file("p", "p", "pedigree file", true, "", "str", cmd);
+            TCLAP::ValueArg<std::string> arg_fexp("f", "f", "filter expression []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_output_latex_dir("x", "x", "output latex directory []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_ref_fasta_file("r", "r", "reference sequence fasta file []", false, "", "str", cmd);
             TCLAP::ValueArg<int32_t> arg_min_depth("d", "d", "minimum depth", false, 5, "str", cmd);
@@ -92,6 +100,7 @@ class Igor : Program
 
             input_vcf_file = arg_input_vcf_file.getValue();
             input_ped_file = arg_input_ped_file.getValue();
+            fexp = arg_fexp.getValue();
             output_latex_dir = arg_output_latex_dir.getValue();
             min_depth = arg_min_depth.getValue();
             min_gq = arg_min_gq.getValue();

@@ -108,12 +108,9 @@ GENCODE::GENCODE(std::string& gencode_gtf_file, std::string& ref_fasta_file, std
     this->gencode_gtf_file = gencode_gtf_file;
     initialize(intervals);
     
-    
-    
     khiter_t k;
     int32_t ret;
-    codon2syn = kh_init(aadict);
-    
+    codon2syn = kh_init(aadict);    
     
     //constructs the mapping for amino acids
     //ALA
@@ -126,9 +123,145 @@ GENCODE::GENCODE(std::string& gencode_gtf_file, std::string& ref_fasta_file, std
     k = kh_put(aadict, codon2syn, "GCT", &ret); 
     kh_value(codon2syn, k) = (NT_G<<8) & (NT_C<<4) & (NT_A|NT_C|NT_G|NT_T);
     //ALA
-    k = kh_put(aadict, codon2syn, "GCA", &ret); 
-    kh_value(codon2syn, k) = (NT_G<<8) & (NT_C<<4) & (NT_A|NT_C|NT_G|NT_T);
-       
+    k = kh_put(aadict, codon2syn, "CGA", &ret); 
+    kh_value(codon2syn, k) = ((NT_A|NT_C)<<8) & (NT_G<<4) & (NT_A|NT_C|NT_G|NT_T);
+    k = kh_put(aadict, codon2syn, "CGC", &ret); 
+    kh_value(codon2syn, k) = ((NT_A|NT_C)<<8) & (NT_G<<4) & (NT_A|NT_C|NT_G|NT_T);    
+    k = kh_put(aadict, codon2syn, "CGG", &ret); 
+    kh_value(codon2syn, k) = ((NT_A|NT_C)<<8) & (NT_G<<4) & (NT_A|NT_C|NT_G|NT_T);    
+    k = kh_put(aadict, codon2syn, "CGT", &ret); 
+    kh_value(codon2syn, k) = ((NT_A|NT_C)<<8) & (NT_G<<4) & (NT_A|NT_C|NT_G|NT_T);
+    k = kh_put(aadict, codon2syn, "AGA", &ret); 
+    kh_value(codon2syn, k) = ((NT_A|NT_C)<<8) & (NT_G<<4) & (NT_A|NT_C|NT_G|NT_T);    
+    k = kh_put(aadict, codon2syn, "AGG", &ret); 
+    kh_value(codon2syn, k) = ((NT_A|NT_C)<<8) & (NT_G<<4) & (NT_A|NT_C|NT_G|NT_T);
+    //ASN
+    k = kh_put(aadict, codon2syn, "AAC", &ret); 
+    kh_value(codon2syn, k) = ((NT_A)<<8) & ((NT_A)<<4) & (NT_C|NT_T);
+    k = kh_put(aadict, codon2syn, "AAT", &ret); 
+    kh_value(codon2syn, k) = ((NT_A)<<8) & ((NT_A)<<4) & (NT_C|NT_T);
+    //ASP
+    k = kh_put(aadict, codon2syn, "GAC", &ret); 
+    kh_value(codon2syn, k) = ((NT_G)<<8) & ((NT_A)<<4) & (NT_C|NT_T);
+    k = kh_put(aadict, codon2syn, "GAT", &ret); 
+    kh_value(codon2syn, k) = ((NT_G)<<8) & ((NT_A)<<4) & (NT_C|NT_T);
+    //CYS
+    k = kh_put(aadict, codon2syn, "TGT", &ret); 
+    kh_value(codon2syn, k) = ((NT_T)<<8) & ((NT_G)<<4) & (NT_C|NT_T);
+    k = kh_put(aadict, codon2syn, "TGC", &ret); 
+    kh_value(codon2syn, k) = ((NT_T)<<8) & ((NT_G)<<4) & (NT_C|NT_T);       
+    //GLN
+    k = kh_put(aadict, codon2syn, "CAA", &ret); 
+    kh_value(codon2syn, k) = ((NT_C)<<8) & ((NT_A)<<4) & (NT_A|NT_G);
+    k = kh_put(aadict, codon2syn, "CAG", &ret); 
+    kh_value(codon2syn, k) = ((NT_C)<<8) & ((NT_A)<<4) & (NT_A|NT_G);
+    //GLU
+    k = kh_put(aadict, codon2syn, "GAA", &ret); 
+    kh_value(codon2syn, k) = ((NT_G)<<8) & ((NT_A)<<4) & (NT_A|NT_G);
+    k = kh_put(aadict, codon2syn, "GAG", &ret); 
+    kh_value(codon2syn, k) = ((NT_G)<<8) & ((NT_A)<<4) & (NT_A|NT_G);
+    //GLY
+    k = kh_put(aadict, codon2syn, "GGA", &ret); 
+    kh_value(codon2syn, k) = ((NT_G)<<8) & ((NT_G)<<4) & (NT_A|NT_C|NT_G|NT_T);
+    k = kh_put(aadict, codon2syn, "GGC", &ret); 
+    kh_value(codon2syn, k) = ((NT_G)<<8) & ((NT_G)<<4) & (NT_A|NT_C|NT_G|NT_T);
+    k = kh_put(aadict, codon2syn, "GGG", &ret); 
+    kh_value(codon2syn, k) = ((NT_G)<<8) & ((NT_G)<<4) & (NT_A|NT_C|NT_G|NT_T);
+    k = kh_put(aadict, codon2syn, "GGT", &ret); 
+    kh_value(codon2syn, k) = ((NT_G)<<8) & ((NT_G)<<4) & (NT_A|NT_C|NT_G|NT_T);        
+    //HIS
+    k = kh_put(aadict, codon2syn, "CAT", &ret); 
+    kh_value(codon2syn, k) = ((NT_C)<<8) & ((NT_A)<<4) & (NT_C|NT_T);
+    k = kh_put(aadict, codon2syn, "CAC", &ret); 
+    kh_value(codon2syn, k) = ((NT_C)<<8) & ((NT_A)<<4) & (NT_C|NT_T);
+    //ILE
+    k = kh_put(aadict, codon2syn, "ATT", &ret); 
+    kh_value(codon2syn, k) = ((NT_A)<<8) & ((NT_T)<<4) & (NT_A|NT_C|NT_T);    
+    k = kh_put(aadict, codon2syn, "ATC", &ret); 
+    kh_value(codon2syn, k) = ((NT_A)<<8) & ((NT_T)<<4) & (NT_A|NT_C|NT_T);   
+    k = kh_put(aadict, codon2syn, "ATA", &ret); 
+    kh_value(codon2syn, k) = ((NT_A)<<8) & ((NT_T)<<4) & (NT_A|NT_C|NT_T); 
+    //LEU
+    k = kh_put(aadict, codon2syn, "TTA", &ret); 
+    kh_value(codon2syn, k) = ((NT_C|NT_T)<<8) & ((NT_T)<<4) & (NT_A|NT_C|NT_G|NT_T); 
+    k = kh_put(aadict, codon2syn, "TTG", &ret); 
+    kh_value(codon2syn, k) = ((NT_C|NT_T)<<8) & ((NT_T)<<4) & (NT_A|NT_C|NT_G|NT_T); 
+    k = kh_put(aadict, codon2syn, "CTT", &ret); 
+    kh_value(codon2syn, k) = ((NT_C|NT_T)<<8) & ((NT_T)<<4) & (NT_A|NT_C|NT_G|NT_T); 
+    k = kh_put(aadict, codon2syn, "CTC", &ret); 
+    kh_value(codon2syn, k) = ((NT_C|NT_T)<<8) & ((NT_T)<<4) & (NT_A|NT_C|NT_G|NT_T); 
+    k = kh_put(aadict, codon2syn, "CTA", &ret); 
+    kh_value(codon2syn, k) = ((NT_C|NT_T)<<8) & ((NT_T)<<4) & (NT_A|NT_C|NT_G|NT_T); 
+    k = kh_put(aadict, codon2syn, "CTG", &ret); 
+    kh_value(codon2syn, k) = ((NT_C|NT_T)<<8) & ((NT_T)<<4) & (NT_A|NT_C|NT_G|NT_T); 
+    //LYS
+    k = kh_put(aadict, codon2syn, "AAA", &ret); 
+    kh_value(codon2syn, k) = ((NT_C|NT_A)<<8) & ((NT_A)<<4) & (NT_A|NT_G);     
+    k = kh_put(aadict, codon2syn, "AAG", &ret); 
+    kh_value(codon2syn, k) = ((NT_C|NT_A)<<8) & ((NT_A)<<4) & (NT_A|NT_G);      
+    //MET
+    k = kh_put(aadict, codon2syn, "AUG", &ret); 
+    kh_value(codon2syn, k) = ((NT_C|NT_A)<<8) & ((NT_T)<<4) & (NT_G);  
+    //PHE
+    k = kh_put(aadict, codon2syn, "TTT", &ret); 
+    kh_value(codon2syn, k) = ((NT_T)<<8) & ((NT_T)<<4) & (NT_T|NT_C);  
+    k = kh_put(aadict, codon2syn, "TTC", &ret); 
+    kh_value(codon2syn, k) = ((NT_T)<<8) & ((NT_T)<<4) & (NT_T|NT_C);  
+    //PRO
+    k = kh_put(aadict, codon2syn, "CCA", &ret); 
+    kh_value(codon2syn, k) = ((NT_C)<<8) & ((NT_C)<<4) & (NT_A|NT_C|NT_G|NT_T);  
+    k = kh_put(aadict, codon2syn, "CCC", &ret); 
+    kh_value(codon2syn, k) = ((NT_C)<<8) & ((NT_C)<<4) & (NT_A|NT_C|NT_G|NT_T);  
+    k = kh_put(aadict, codon2syn, "CCT", &ret); 
+    kh_value(codon2syn, k) = ((NT_C)<<8) & ((NT_C)<<4) & (NT_A|NT_C|NT_G|NT_T);  
+    k = kh_put(aadict, codon2syn, "CCG", &ret); 
+    kh_value(codon2syn, k) = ((NT_C)<<8) & ((NT_C)<<4) & (NT_A|NT_C|NT_G|NT_T);          
+    //SER
+    k = kh_put(aadict, codon2syn, "TCT", &ret); 
+    kh_value(codon2syn, k) = ((NT_A|NT_T)<<8) & ((NT_C|NT_G)<<4) & (NT_A|NT_C|NT_G|NT_T);  
+    k = kh_put(aadict, codon2syn, "TCC", &ret); 
+    kh_value(codon2syn, k) = ((NT_A|NT_T)<<8) & ((NT_C|NT_G)<<4) & (NT_A|NT_C|NT_G|NT_T);  
+    k = kh_put(aadict, codon2syn, "TCA", &ret); 
+    kh_value(codon2syn, k) = ((NT_A|NT_T)<<8) & ((NT_C|NT_G)<<4) & (NT_A|NT_C|NT_G|NT_T);      
+    k = kh_put(aadict, codon2syn, "TCG", &ret); 
+    kh_value(codon2syn, k) = ((NT_A|NT_T)<<8) & ((NT_C|NT_G)<<4) & (NT_A|NT_C|NT_G|NT_T);  
+    k = kh_put(aadict, codon2syn, "AGT", &ret); 
+    kh_value(codon2syn, k) = ((NT_A|NT_T)<<8) & ((NT_C|NT_G)<<4) & (NT_A|NT_C|NT_G|NT_T);  
+    k = kh_put(aadict, codon2syn, "AGC", &ret); 
+    kh_value(codon2syn, k) = ((NT_A|NT_T)<<8) & ((NT_C|NT_G)<<4) & (NT_A|NT_C|NT_G|NT_T);   
+    //THR
+    k = kh_put(aadict, codon2syn, "ACA", &ret); 
+    kh_value(codon2syn, k) = ((NT_A)<<8) & ((NT_C)<<4) & (NT_A|NT_C|NT_G|NT_T);  
+    k = kh_put(aadict, codon2syn, "ACC", &ret); 
+    kh_value(codon2syn, k) = ((NT_A)<<8) & ((NT_C)<<4) & (NT_A|NT_C|NT_G|NT_T);  
+    k = kh_put(aadict, codon2syn, "ACG", &ret); 
+    kh_value(codon2syn, k) = ((NT_A)<<8) & ((NT_C)<<4) & (NT_A|NT_C|NT_G|NT_T);             
+    k = kh_put(aadict, codon2syn, "ACT", &ret); 
+    kh_value(codon2syn, k) = ((NT_A)<<8) & ((NT_C)<<4) & (NT_A|NT_C|NT_G|NT_T);  
+    //TRP
+    k = kh_put(aadict, codon2syn, "TGG", &ret); 
+    kh_value(codon2syn, k) = ((NT_T)<<8) & ((NT_G)<<4) & (NT_G); 
+    //TYR
+    k = kh_put(aadict, codon2syn, "TAT", &ret); 
+    kh_value(codon2syn, k) = ((NT_T)<<8) & ((NT_A)<<4) & (NT_C|NT_T); 
+    k = kh_put(aadict, codon2syn, "TAC", &ret); 
+    kh_value(codon2syn, k) = ((NT_T)<<8) & ((NT_A)<<4) & (NT_C|NT_T); 
+    //VAL
+    k = kh_put(aadict, codon2syn, "GTA", &ret); 
+    kh_value(codon2syn, k) = ((NT_G)<<8) & ((NT_T)<<4) & (NT_A|NT_C|NT_G|NT_T); 
+    k = kh_put(aadict, codon2syn, "GTC", &ret); 
+    kh_value(codon2syn, k) = ((NT_G)<<8) & ((NT_T)<<4) & (NT_A|NT_C|NT_G|NT_T); 
+    k = kh_put(aadict, codon2syn, "GTG", &ret); 
+    kh_value(codon2syn, k) = ((NT_G)<<8) & ((NT_T)<<4) & (NT_A|NT_C|NT_G|NT_T); 
+    k = kh_put(aadict, codon2syn, "GTT", &ret); 
+    kh_value(codon2syn, k) = ((NT_G)<<8) & ((NT_T)<<4) & (NT_A|NT_C|NT_G|NT_T);             
+    //STOP
+    k = kh_put(aadict, codon2syn, "TAA", &ret); 
+    kh_value(codon2syn, k) = ((NT_T)<<8) & ((NT_A|NT_G)<<4) & (NT_A|NT_G);     
+    k = kh_put(aadict, codon2syn, "TGA", &ret); 
+    kh_value(codon2syn, k) = ((NT_T)<<8) & ((NT_A|NT_G)<<4) & (NT_A|NT_G);  
+    k = kh_put(aadict, codon2syn, "TAG", &ret); 
+    kh_value(codon2syn, k) = ((NT_T)<<8) & ((NT_A|NT_G)<<4) & (NT_A|NT_G);                
 }
 
 /**
@@ -151,29 +284,30 @@ void GENCODE::fill_synonymous(GENCODERecord *g)
         int32_t ref_len;
         char* seq = faidx_fetch_seq(fai, g->chrom.c_str(), g->start, g->end, &ref_len);
         
-        g->syn = new int32_t[ref_len];
-        kstring_t s = {0,0,0}; 
-        //check for each codon, check the nucleotides for each 
-        //frame that will not induce a non synonymous amino acid
-        for (int32_t i=g->frame; i<ref_len; i+=3)
-        {
-            //get the 3 bases
-            s.l=0;
-            kputc(seq[i], &s);
-            kputc(seq[i+1], &s);
-            kputc(seq[i+2], &s);
-            
-            //access the syn value 
-           // int32_t val = kh_get(hm;
-            int32_t val = 0;
-            
-            //populate syn
-            g->syn[i] = (val >> 8) & 15;
-            g->syn[i+1] = (val >> 4) & 15;
-            g->syn[i+2] = val & 15;
-        }
+//        g->syn = new int32_t[ref_len];
+//        kstring_t s = {0,0,0}; 
+//        //check for each codon, check the nucleotides for each 
+//        //frame that will not induce a non synonymous amino acid
+//        for (int32_t i=g->frame; i<ref_len; i+=3)
+//        {
+//            //get the 3 bases
+//            s.l=0;
+//            kputc(seq[i], &s);
+//            kputc(seq[i+1], &s);
+//            kputc(seq[i+2], &s);
+//            
+//            //access the syn value 
+//           // int32_t val = kh_get(hm;
+//            int32_t val = 0;
+//            
+//            //populate syn
+//            g->syn[i] = (val >> 8) & 15;
+//            g->syn[i+1] = (val >> 4) & 15;
+//            g->syn[i+2] = val & 15;
+//        }
         
         free(seq);
+        //if (s.m) free(s.s);
     }    
 }
 
@@ -189,7 +323,7 @@ void GENCODE::initialize(std::vector<GenomeInterval>& intervals)
         std::string chrom = intervals[i].to_string();
         if (CHROM.find(chrom)==CHROM.end())
         {
-            std::clog << "Initializing GENCODE tree for chromosome " << chrom << " ...\n";
+            std::clog << "Initializing GENCODE tree for chromosome " << chrom << " ... ";
             CHROM[chrom] = new IntervalTree();
             chromosomes.push_back(intervals[i]);
         }
@@ -353,6 +487,11 @@ void GENCODE::initialize(std::vector<GenomeInterval>& intervals)
                                              fivePrimeConservedEssentialSpliceSite, threePrimeConservedEssentialSpliceSite,
                                              containsStartCodon, containsStopCodon,
                                              level);
+
+        if (gencode_feature == GC_FT_CDS)
+        {
+            fill_synonymous(record);
+        }
 
         CHROM[chrom]->insert(record);
     }
