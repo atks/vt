@@ -166,6 +166,12 @@ class Igor : Program
                 std::vector<std::string> alleles;
                 for (uint32_t i=0; i<bcf_get_n_allele(v); ++i)
                 {
+                    char *s = bcf_get_alt(v, i);
+                    while (*s)
+                    {
+                        *s = toupper(*s);
+                        ++s;
+                    }
                     alleles.push_back(std::string(bcf_get_alt(v, i)));
                 }
                 left_aligned = left_trimmed = right_trimmed = 0;
