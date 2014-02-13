@@ -74,6 +74,13 @@ class Igor : Program
     ///////
     BCFSyncedReader *sr;
 
+    //////////
+    //filter//
+    //////////
+    std::string fexp;
+    Filter filter;
+    bool filter_exists;
+    
     /////////
     //stats//
     /////////
@@ -154,9 +161,11 @@ class Igor : Program
         {
             bcf1_t *v = current_recs[0]->v;
             bcf_hdr_t *h = current_recs[0]->h;
-            std::string chrom = bcf_get_chrom(h,v);
-            int32_t start1 = bcf_get_pos1(v);
-            int32_t end1 = bcf_get_end_pos1(v);
+         
+         
+         
+         
+         
             int32_t vtype = vm->classify_variant(h, v, variant);
 
             //check existence

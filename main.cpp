@@ -76,13 +76,16 @@ void help()
     std::clog << "remove_overlap            remover overlapping variants\n";
     std::clog << "merge                     merge VCF files\n";
     std::clog << "concat                    concatenate VCF files\n";
-    std::clog << "annotate_variants         annotate variants\n";
+    std::clog << "\n";
     std::clog << "peek                      summary of variants in the vcf file\n";
     std::clog << "partition                 partition variants\n";
+    std::clog << "annotate_variants         annotate variants\n";
+    std::clog << "compute_concordance       compute genotype concordance between 2 call sets\n";
     std::clog << "profile_snps              profile snps\n";
     std::clog << "profile_indels            profile indels\n";
     std::clog << "profile_mendelian         profile mendelian errors\n";
     std::clog << "profile_na12878           profile na12878\n";        
+    std::clog << "\n";
     std::clog << "discover                  discover variants\n";
     std::clog << "merge_candidate_variants  merge candidate variants\n";
     std::clog << "construct_probes          construct probes for each variant\n";

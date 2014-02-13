@@ -107,8 +107,7 @@ class Igor : Program
     ///////
     BCFSyncedReader *sr;
     bcf1_t *v;
-    kstring_t line;
-
+    
     //////////
     //filter//
     //////////
@@ -124,10 +123,6 @@ class Igor : Program
     uint32_t no_negative_variants;
     uint32_t nfs;
     uint32_t fs;
-    uint32_t rare_nfs;
-    uint32_t rare_fs;
-    uint32_t common_nfs;
-    uint32_t common_fs;
 
     ////////////////
     //common tools//
@@ -544,6 +539,7 @@ class Igor : Program
         std::clog << "profile_na12878 v" << version << "\n\n";
         std::clog << "\n";
         std::clog << "Options:     input VCF File                 " << input_vcf_file << "\n";
+        print_str_op("         [f] filter                         ", fexp);
         std::clog << "         [g] reference data sets list file  " << ref_data_sets_list << "\n";
         std::clog << "         [r] reference FASTA file           " << ref_fasta_file << "\n";
         print_int_op("         [i] intervals                      ", intervals);
