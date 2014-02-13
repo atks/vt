@@ -39,8 +39,31 @@
 #include "htslib/hts.h"
 #include "htslib/sam.h"
 #include "htslib/vcf.h"
-#include "htslib/vcfutils.h"
+#include "htslib/bgzf.h"
+#include "htslib/faidx.h"
 #include "utils.h"
+
+/**********
+ *FAI UTILS
+ **********/
+typedef struct {
+    int32_t line_len, line_blen;
+    int64_t len;
+    uint64_t offset;
+} faidx1_t;
+KHASH_MAP_INIT_STR(s, faidx1_t)
+
+struct __faidx_t {
+    BGZF *bgzf;
+    int n, m;
+    char **name;
+    khash_t(s) *hash;
+};
+
+/**
+ * An alternate sequence fetcher for upper case sequence.
+ */
+char *faidx_fetch_uc_seq(const faidx_t *fai, const char *c_name, int p_beg_i, int p_end_i, int *len);
 
 /**************
  *BAM HDR UTILS
