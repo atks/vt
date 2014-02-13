@@ -75,7 +75,7 @@ class Allele
     int32_t mlen;  //min shared length
     int32_t ts;    //no of transitions
     int32_t tv;    //no of tranversions (mlen-ts)
-    int32_t ins;   //no of insertions
+    int32_t ins;   //is insertion
 
     Allele(int32_t type, int32_t diff, int32_t alen, int32_t dlen, int32_t tlen, int32_t mlen, int32_t ts, int32_t ins)
     {

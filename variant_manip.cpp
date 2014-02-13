@@ -33,7 +33,7 @@ VariantManip::VariantManip(std::string ref_fasta_file)
     if (ref_fasta_file!="")
     {
         fai = fai_load(ref_fasta_file.c_str());
-        reference_present = fai!=NULL;
+        reference_present = (fai!=NULL);
     }
 };
 
@@ -197,8 +197,7 @@ bool VariantManip::detect_str(const char* chrom, uint32_t pos1, Variant& variant
     //STR related
     char* ru = 0;
     ru = faidx_fetch_uc_seq(fai, chrom, pos1, pos1, &ref_len);
-    //std::cerr << "first ru: "<< ru << "\n";
-
+    
     int32_t tract_len = 1;
     int32_t motif_len = 1;
 
@@ -449,6 +448,10 @@ void VariantManip::left_align(std::vector<std::string>& alleles, uint32_t& pos1,
 
         ++right_trimmed;
         return left_align(alleles, pos1, chrom, left_aligned, right_trimmed);
+    }
+    else
+    {
+        //base case - all done.
     }
 };
 
