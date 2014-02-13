@@ -1,6 +1,6 @@
 UNAME = $(shell uname)
 
-OPTFLAG ?= -O0 -ggdb
+OPTFLAG ?= -O3 -ggdb
 INCLUDES = -I./lib/include/ -I. -I./lib/include/htslib
 CFLAGS = -pipe -std=c++0x $(OPTFLAG) $(INCLUDES) -D__STDC_LIMIT_MACROS
 CXX = clang++
