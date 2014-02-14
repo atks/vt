@@ -324,10 +324,10 @@ int32_t VariantManip::classify_variant(const char* chrom, uint32_t pos1, char** 
             {
                 ++diff;
 
-                if ((ref[j]=='G' && alt[j]=='A') ||
-                    (ref[j]=='A' && alt[j]=='G') ||
-                    (ref[j]=='C' && alt[j]=='T') ||
-                    (ref[j]=='T' && alt[j]=='C'))
+                if ((::toupper(ref[j])=='G' && ::toupper(alt[j])=='A') ||
+                    (::toupper(ref[j])=='A' && ::toupper(alt[j])=='G') ||
+                    (::toupper(ref[j])=='C' && ::toupper(alt[j])=='T') ||
+                    (::toupper(ref[j])=='T' && ::toupper(alt[j])=='C'))
                 {
                     ++ts;
                 }
@@ -371,7 +371,7 @@ void VariantManip::left_trim(std::vector<std::string>& alleles, uint32_t& pos1, 
 
     for (uint32_t i=0; i<alleles.size(); ++i)
     {
-        if (alleles[i].size()==1 || alleles[i].at(0)!=alleles[0].at(0))
+        if (alleles[i].size()==1 || ::tolower(alleles[i].at(0)) != ::tolower(alleles[0].at(0)))
         {
             may_left_trim = false;
             break;
@@ -405,8 +405,8 @@ void VariantManip::left_align(std::vector<std::string>& alleles, uint32_t& pos1,
     {
         if (!alleles[i].empty())
         {
-            lastBase = (lastBase != ' ') ? lastBase : alleles[i].at(alleles[i].size()-1);
-            if (lastBase != alleles[i].at(alleles[i].size()-1))
+            lastBase = (lastBase != ' ') ? lastBase : ::tolower(alleles[i].at(alleles[i].size()-1));
+            if (lastBase != ::tolower(alleles[i].at(alleles[i].size()-1)))
             {
                 may_right_trim = false;
             }
@@ -429,6 +429,7 @@ void VariantManip::left_align(std::vector<std::string>& alleles, uint32_t& pos1,
 
         char *ref = faidx_fetch_uc_seq(fai, chrom, pos1-1, pos1-1, &ref_len);
         base = std::string(ref);
+        std::transform(base.begin(), base.end(), base.begin(), ::tolower);
         free(ref);
 
         for (uint32_t i=0; i<alleles.size(); ++i)

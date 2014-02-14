@@ -35,6 +35,7 @@
 #include <list>
 #include <string>
 #include <iostream>
+#include <algorithm>
 #include "htslib/faidx.h"
 #include "htslib/kstring.h"
 #include "htslib/vcf.h"
