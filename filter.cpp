@@ -55,7 +55,13 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
         std::cerr << "evaluation  "  << type << "\n";
 
     //filter operation
-    if (type==VT_OP_AND)
+    if (type==VT_OP_NOT)
+    {
+        if (debug)
+            std::cerr << "\tVT_OP_NOT "   <<  left->value << " \n";
+        value = !(left->value);
+    }
+    else if (type==VT_OP_AND)
     {
         if (debug)
             std::cerr << "\tVT_OP_AND "   <<  left->value << "&" << right->value    <<  " \n";
@@ -90,6 +96,75 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
             value = true;
         }
     }
+    else if (type==VT_INFO_OP)
+    {
+        int32_t *data = NULL;
+        int32_t n=0;
+        
+        if (bcf_get_info_int(h, v, tag.s, &data, &n)>0)
+        {
+            type = VT_INFO_INT_OP;
+            i = *data;
+        }
+        else if (bcf_get_info_float(h, v, tag.s, &data, &n)>0)
+        {
+            type = VT_INFO_FLT_OP;
+            f = (float)(*data);
+        }
+        else if (bcf_get_info_string(h, v, tag.s, &data, &n)>0)
+        {
+            type = VT_INFO_STR_OP;
+            s.l=0;
+            for (int32_t i=0; i<n; ++i)
+            {
+                kputc(data[i], &s);
+            }
+        }
+        
+        if (n) free(data);
+    }
+    else if (type==VT_INFO_INT_OP)
+    {
+        int32_t *data = NULL;
+        int32_t n=0;
+
+        if (bcf_get_info_int(h, v, tag.s, &data, &n)>0)
+        {
+            i = *((int*)data);
+        }
+        
+        if (n) free(data);
+    }
+    else if (type==VT_INFO_FLT_OP)
+    {
+        int32_t *data = NULL;
+        int32_t n=0;
+
+        if (bcf_get_info_float(h, v, tag.s, &data, &n)>0)
+        {
+            f = *((float*)data);
+        
+        //    std::cerr << "FLOAT " << f << "\n";
+        }
+        
+        if (n) free(data);
+    }
+    else if (type==VT_INFO_STR_OP)
+    {
+        int32_t *data = NULL;
+        int32_t n=0;
+
+        if (bcf_get_info_string(h, v, tag.s, &data, &n)>0)
+        {
+            s.l=0;
+            for (int32_t i=0; i<n; ++i)
+            {
+                kputc(data[i], &s);
+            }
+        }
+        
+        if (n) free(data);
+    }
     else if (type==VT_VARIANT_TYPE_OP)
     {
         i = variant->type;
@@ -99,15 +174,11 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
     {
         i = variant->alleles[0].dlen;
         value = i;
-
-      //  std::cerr << "DLEN ASSIGN: " << i << "\n";
     }
     else if (type==VT_VARIANT_LEN_OP)
     {
         i = abs(variant->alleles[0].dlen);
         value = i;
-
-      //  std::cerr << "DLEN ASSIGN: " << i << "\n";
     }
     else if (type==VT_N_ALLELE_OP)
     {
@@ -133,6 +204,7 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
             exit(1);
         }
     }
+    
     else if (type==VT_OP_NE)
     {
         if ((left->type&VT_INT) && (right->type&VT_INT))
@@ -221,7 +293,13 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
         }
         else if ((left->type&VT_FLT) && (right->type&VT_FLT))
         {
+                        
+            
             value = (left->f<right->f);
+            
+            
+           // std::cerr << left->f << "<" << right->f << " " <<value << "\n";
+            
         }
         else if ((left->type&VT_STR) && (right->type&VT_STR))
         {
@@ -410,6 +488,18 @@ bool Filter::is_literal(const char* exp, int32_t len)
  */
 void Filter::parse_literal(const char* exp, int32_t len, Node * node, bool debug)
 {
+    // if not sign in front of literal
+    if (exp[0]=='~')
+    {
+        node->type = VT_OP_NOT;
+        node->left = new Node();
+        if (debug) std::cerr << "\tis not_op\n";
+        
+        node = node->left;
+        ++exp;
+        --len;
+    }
+    
     if (strncmp(exp, "PASS", len)==0)
     {
         node->type = VT_FILTER_OP;
@@ -417,12 +507,22 @@ void Filter::parse_literal(const char* exp, int32_t len, Node * node, bool debug
         if (debug) std::cerr << "\tis filter_op\n";
         return;
     }
-    else if (strncmp(exp, "FILTER", 5)==0)
+    else if (strncmp(exp, "FILTER.", 7)==0)
     {
         node->type = VT_FILTER_OP;
-        if (debug) std::cerr << "\tis variant_op\n";
+        exp += 7;
+        kputsn(exp, len-7, &node->tag);
+        if (debug) std::cerr << "\tis filter_op\n";
         return;
     }
+    else if (strncmp(exp, "INFO.", 5)==0)
+    {
+        node->type = VT_INFO_OP;
+        exp += 5;
+        kputsn(exp, len-5, &node->tag);
+        if (debug) std::cerr << "\tis info_op\n";
+        return;
+    }    
     else if (strncmp(exp, "VTYPE", 5)==0)
     {
         node->type = VT_VARIANT_TYPE_OP;
@@ -480,7 +580,7 @@ void Filter::parse_literal(const char* exp, int32_t len, Node * node, bool debug
         const char* start = exp;
         char *end = NULL;
         int32_t i = std::strtoul(exp, &end, 10);
-        if (end!=start)
+        if (end==exp+len)
         {
             node->type = VT_INT;
             node->i = i;
@@ -490,18 +590,27 @@ void Filter::parse_literal(const char* exp, int32_t len, Node * node, bool debug
 
         start = exp;
         end = NULL;
-        int32_t f = std::strtod(exp, &end);
-        if (end!=start)
+        float f = std::strtod(exp, &end);
+        if (end==exp+len)
         {
             node->type = VT_FLT;
             node->f = f;
-            if (debug) std::cerr << "\tis float\n";
+            if (debug) std::cerr << "\tis float: " << f << "\n";
             return;
         }
         
         kputsn(exp, len, &node->tag);
         if (debug) std::cerr << "\tis string\n";
         return;
+    }
+    
+    if (debug)
+    {
+        std::cerr << "\tvalue " << node->value << "\n";
+        std::cerr << "\ttag   " << node->tag.s << "\n";
+        std::cerr << "\tb     " << node->b << "\n";
+        std::cerr << "\ti     " << node->i << "\n";   
+        std::cerr << "\tf     " << node->f << "\n";        
     }
 
     return;
