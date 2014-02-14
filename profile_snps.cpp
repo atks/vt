@@ -100,7 +100,7 @@ class Igor : Program
         //////////////////////////
         try
         {
-            std::string desc = "profile Indels";
+            std::string desc = "profile SNPs";
 
             version = "0.5";
             TCLAP::CmdLine cmd(desc, ' ', version);
@@ -187,6 +187,12 @@ class Igor : Program
         }
         hts_close(hts);
         if (s.m) free(s.s);
+
+        /////////////////////////
+        //filter initialization//
+        /////////////////////////
+        filter.parse(fexp.c_str());
+        filter_exists = fexp=="" ? false : true;
 
         //////////////////////
         //i/o initialization//

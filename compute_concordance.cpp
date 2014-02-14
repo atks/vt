@@ -100,10 +100,7 @@ class Igor : Program
     std::string variant_concordance_txt_file;
     std::string sample_concordance_txt_file;
 
-    std::vector<ConcordanceStats> stats;
-
     int32_t variant_type;
-
 
     ///////
     //i/o//
@@ -124,6 +121,7 @@ class Igor : Program
     /////////
     //stats//
     /////////
+    std::vector<ConcordanceStats> stats;
     uint32_t no_candidate_snps;
     uint32_t no_candidate_indels;
 
@@ -222,6 +220,13 @@ e.g. vt profile_snps_variants -o - NA19130.vcf.gz HG00096.vcf.gz\n\n";
         variant_concordance_txt = hts_open(variant_concordance_txt_file.c_str(), "w");
         sample_concordance_txt = hts_open(sample_concordance_txt_file.c_str(), "w");
 
+
+        /////////////////////////
+        //filter initialization//
+        /////////////////////////
+        filter.parse(fexp.c_str());
+        filter_exists = fexp=="" ? false : true;
+
         ////////////////////////
         //stats initialization//
         ////////////////////////
@@ -257,6 +262,8 @@ e.g. vt profile_snps_variants -o - NA19130.vcf.gz HG00096.vcf.gz\n\n";
         std::map<std::string, bcfptr*> variants;
         std::stringstream ss;
 
+        Variant variant;
+
         while(sr->read_next_position(current_recs))
         {
             if (current_recs.size()>=2)
@@ -269,12 +276,12 @@ e.g. vt profile_snps_variants -o - NA19130.vcf.gz HG00096.vcf.gz\n\n";
                     ss.str("");
 
                     int32_t d = current_recs[i]->file_index;
+                    bcf_hdr_t *h = current_recs[i]->h;
                     bcf1_t *v = current_recs[i]->v;
-                    //bcf_set_variant_types(v);
-
-                    if (bcf_get_var_type(v)!=variant_type || bcf_get_n_allele(v)!=2)
+                    
+                    if (bcf_get_n_allele(v)!=2 || (filter_exists && !filter.apply(h,v,&variant)))
                     {
-                       continue;
+                        continue;
                     }
 
                     ss << bcf_get_alt(v, 0) << ":" << bcf_get_alt(v, 1);
@@ -357,7 +364,6 @@ e.g. vt profile_snps_variants -o - NA19130.vcf.gz HG00096.vcf.gz\n\n";
                             }
 
                             kputs("\n", line);
-                            //hts_write(variant_concordance_txt);
                         }
                     }
                 }
@@ -381,13 +387,11 @@ e.g. vt profile_snps_variants -o - NA19130.vcf.gz HG00096.vcf.gz\n\n";
                 {
                     kputw(stats[i].concordance[j][k], line);
                     kputs("\t", line);
-
                 }
             }
 
             kputs("\n", line);
             //hts_write(sample_concordance_txt);
-
         }
     };
 
@@ -396,9 +400,8 @@ e.g. vt profile_snps_variants -o - NA19130.vcf.gz HG00096.vcf.gz\n\n";
         std::clog << "compute_concordance v" << version << "\n\n";
 
         std::clog << "Options:     Input VCF File    " << input_vcf_files.size() << "\n";
-        std::clog << "         [i] Intervals         " << intervals.size() << " intervals\n";
         print_str_op("         [f] filter            ", fexp);
-        
+        print_int_op("         [i] Intervals         ", intervals);
     }
 
     void print_stats()

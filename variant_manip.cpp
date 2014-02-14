@@ -65,7 +65,7 @@ void Variant::print()
         std::cerr << "\t  alen: " << alleles[i].alen << "\n";
         std::cerr << "\t  dlen: " << alleles[i].dlen << "\n";
         std::cerr << "\t  tlen: " << alleles[i].tlen << "\n";
-    }    
+    }
 };
 
 /**
@@ -197,7 +197,7 @@ bool VariantManip::detect_str(const char* chrom, uint32_t pos1, Variant& variant
     //STR related
     char* ru = 0;
     ru = faidx_fetch_uc_seq(fai, chrom, pos1, pos1, &ref_len);
-    
+
     int32_t tract_len = 1;
     int32_t motif_len = 1;
 
@@ -308,7 +308,7 @@ int32_t VariantManip::classify_variant(const char* chrom, uint32_t pos1, char** 
                 }
             }
         }
-        
+
         int32_t rlen = strlen(ref);
         int32_t alen = strlen(alt);
         int32_t mlen = std::min(rlen, alen);

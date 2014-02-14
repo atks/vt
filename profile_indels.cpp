@@ -191,6 +191,12 @@ class Igor : Program
         hts_close(hts);
         if (s.m) free(s.s);
 
+        /////////////////////////
+        //filter initialization//
+        /////////////////////////
+        filter.parse(fexp.c_str());
+        filter_exists = fexp=="" ? false : true;
+
         //////////////////////
         //i/o initialization//
         //////////////////////
@@ -227,9 +233,19 @@ class Igor : Program
             bcf_hdr_t *h = current_recs[0]->h;
             int32_t vtype = vm->classify_variant(h, v, variant);
 
-            if (!((vtype==VT_INDEL || vtype==(VT_SNP|VT_INDEL)) && bcf_get_n_allele(v)==2))
+            if (bcf_get_n_allele(v)!=2 || !(vtype&VT_INDEL))
             {
-                continue;
+                if (filter_exists)
+                {
+                    if (!filter.apply(h,v,&variant))
+                    {
+                        continue;
+                    }
+                }    
+                else
+                {
+                    continue;
+                }
             }
 
             std::string chrom = bcf_get_chrom(h,v);
@@ -327,6 +343,7 @@ class Igor : Program
         std::clog << "profile_indels v" << version << "\n\n";
         std::clog << "\n";
         std::clog << "Options:     input VCF File                 " << input_vcf_file << "\n";
+        print_str_op("         [f] filter                         ", fexp);
         std::clog << "         [g] reference data sets list file  " << ref_data_sets_list << "\n";
         std::clog << "         [r] reference FASTA file           " << ref_fasta_file << "\n";
         print_int_op("         [i] intervals                      ", intervals);

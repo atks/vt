@@ -28,7 +28,7 @@ namespace
 
 /**
  * Specific to Broad's KB.
- */    
+ */
 class BroadKBStats
 {
     public:
@@ -55,7 +55,7 @@ class OverlapStats
         a = 0;
         ab = 0;
         b = 0;
-        
+
         a_ts = 0;
         a_tv = 0;
         ab_ts = 0;
@@ -104,14 +104,14 @@ class Igor : Program
     std::string ref_fasta_file;
     std::vector<GenomeInterval> intervals;
     std::string interval_list;
-    
+
     ///////////////////////
     //reference data sets//
     ///////////////////////
     std::string ref_data_sets_list;
     std::vector<std::string> dataset_labels;
-    std::vector<std::string> dataset_types;    
-    
+    std::vector<std::string> dataset_types;
+
     std::string gencode_gtf_file;
     bool gencode_exists;
 
@@ -120,7 +120,7 @@ class Igor : Program
     ///////
     BCFSyncedReader *sr;
     bcf1_t *v;
-    
+
     //////////
     //filter//
     //////////
@@ -145,8 +145,8 @@ class Igor : Program
     int32_t del;
     int32_t fs;
     int32_t nfs;
-    
-    
+
+
     ////////////////
     //common tools//
     ////////////////
@@ -298,7 +298,7 @@ class Igor : Program
             {
                 fprintf(stderr, "[E:%s:%d %s] NA12878 not found in %s\n", __FILE__, __LINE__, __FUNCTION__, input_vcf_files[i].c_str());
                 exit(1);
-            }    
+            }
         }
 
         int32_t discordance_filter = 0;
@@ -321,7 +321,7 @@ class Igor : Program
                 bcf_print(h,v);
                 variant.print();
             }
-             
+
             if (bcf_get_n_allele(v)!=2 || v2)
             {
                 continue;
@@ -392,9 +392,9 @@ class Igor : Program
                 int k = bcf_get_genotypes(presence_bcfptr[0]->h, presence_bcfptr[0]->v, &gts, &n);
                 x1 = bcf_gt_allele(gts[na12878_index[0]*2]);
                 x2 = bcf_gt_allele(gts[na12878_index[0]*2+1]);
-                
-                x = x1+x2;                
-                                
+
+                x = x1+x2;
+
                 if (x<0)
                 {
                     x = 3;
@@ -413,32 +413,32 @@ class Igor : Program
                     int32_t y2 = -1;
                     int32_t y = -2;
                     int32_t xt = -2;
-                    
+
                     char* dst = NULL;
                     int32_t ndst = 0;
-                    
+
                     if (presence[1])
                     {
                         bcf_unpack(presence_bcfptr[i]->v, BCF_UN_IND);
                         k0 = bcf_get_genotypes(presence_bcfptr[1]->h, presence_bcfptr[1]->v, &gts, &n);
-    
+
                         bcf_get_info_string(presence_bcfptr[1]->h, presence_bcfptr[1]->v, "TruthStatus", &dst, &ndst);
-    
+
                         y1 = bcf_gt_allele(gts[na12878_index[i]*2]);
                         y2 = bcf_gt_allele(gts[na12878_index[i]*2+1]);
                         y = y1+y2;
                     }
-                    
+
                     if (presence[0])
                     {
                         xt = x1 + x2;
                         ++no_variants;
-                        
+
                         if (xt>0) ++no_positive_variants;
                         if (xt==0) ++no_negative_variants;
-                        
+
                     }
-                    
+
                     if (presence[0] && presence[1])
                     {
                         if (strcmp(dst, "TRUE_POSITIVE")==0)
@@ -467,7 +467,7 @@ class Igor : Program
                                 ++kbstats.tn;
                             }
                         }
-                        
+
                     }
                     else if (presence[0] && !presence[1])
                     {
@@ -495,10 +495,10 @@ class Igor : Program
                     {
                         //++kbstats.tn; potentially true negative BUT knowledge base is curated manually.
                     }
-                    
+
                     if (ndst) free(dst);
-                }    
-                
+                }
+
                 if (presence[0] && !presence[i])
                 {
                     ++stats[i].a;
@@ -573,7 +573,7 @@ class Igor : Program
         fprintf(stderr, "    TN  %10d \n", kbstats.tn);
         fprintf(stderr, "    FN  %10d \n", kbstats.fn);
         fprintf(stderr, "    P   %10d \n", kbstats.tp+kbstats.fp);
-        fprintf(stderr, "    N   %10d \n", kbstats.tn+kbstats.fn);        
+        fprintf(stderr, "    N   %10d \n", kbstats.tn+kbstats.fn);
         fprintf(stderr, "    +   %10d \n", no_positive_variants);
         fprintf(stderr, "    -   %10d \n", no_negative_variants);
         fprintf(stderr, "  TDR %5.2f (TP/(TP+FP))\n", (float)kbstats.tp/(kbstats.tp+kbstats.fp)*100);

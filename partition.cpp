@@ -67,8 +67,7 @@ class Igor : Program
     std::vector<std::string> input_vcf_files;
     std::vector<GenomeInterval> intervals;
     std::string interval_list;
-    std::string filter_expression;
-
+    
     ///////
     //i/o//
     ///////
@@ -80,7 +79,7 @@ class Igor : Program
     std::string fexp;
     Filter filter;
     bool filter_exists;
-    
+
     /////////
     //stats//
     /////////
@@ -105,12 +104,12 @@ class Igor : Program
             VTOutput my; cmd.setOutput(&my);
             TCLAP::ValueArg<std::string> arg_intervals("i", "i", "intervals []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "file", cmd);
-            TCLAP::ValueArg<std::string> arg_filter_expression("f", "filters", "filter", false, "", "str", cmd);
+            TCLAP::ValueArg<std::string> arg_fexp("f", "filters", "filter", false, "", "str", cmd);
             TCLAP::UnlabeledMultiArg<std::string> arg_input_vcf_files("<in1.vcf><in2.vcf>", "2 input VCF files for comparison", true, "files", cmd);
 
             cmd.parse(argc, argv);
 
-            filter_expression = arg_filter_expression.getValue();
+            fexp = arg_fexp.getValue();
             parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
             input_vcf_files = arg_input_vcf_files.getValue();
 
@@ -132,55 +131,61 @@ class Igor : Program
         //////////////////////
         //i/o initialization//
         //////////////////////
-        sr = new BCFSyncedReader(input_vcf_files, intervals, false);
+        sr = new BCFSyncedReader(input_vcf_files, intervals, SYNC_BY_VAR);
 
         ///////////////////////
         //tool initialization//
         ///////////////////////
         vm = new VariantManip("");
 
+        /////////////////////////
+        //filter initialization//
+        /////////////////////////
+        filter.parse(fexp.c_str());
+        filter_exists = fexp=="" ? false : true;
+
         ////////////////////////
         //stats initialization//
         ////////////////////////
-
-       
     }
 
     void partition()
     {
         //for combining the alleles
-        std::vector<bcfptr*> current_recs;
-
-
-        Filter filter(filter_expression);
-
+        std::vector<bcfptr*> crecs;
         Variant variant;
-        std::vector<int32_t> presence(2);
+        std::vector<int32_t> presence(2, 0);
 
-        while(sr->read_next_position(current_recs))
+        while(sr->read_next_position(crecs))
         {
-            bcf1_t *v = current_recs[0]->v;
-            bcf_hdr_t *h = current_recs[0]->h;
-         
-         
-         
-         
-         
-            int32_t vtype = vm->classify_variant(h, v, variant);
+            int32_t vtype = vm->classify_variant(crecs[0]->h, crecs[0]->v, variant);
 
             //check existence
-            for (uint32_t i=0; i<current_recs.size(); ++i)
+            for (int32_t i=0; i<crecs.size(); ++i)
             {
-                ++presence[current_recs[i]->file_index];
+                if (filter_exists && !filter.apply(crecs[i]->h,crecs[i]->v,&variant))
+                {
+                    continue;
+                }
+                
+                ++presence[crecs[i]->file_index];
             }
 
-            int32_t ins = 0;
-            int32_t del = 0;
             int32_t ts = 0;
             int32_t tv = 0;
+            int32_t ins = 0;
+            int32_t del = 0;
+            std::vector<Allele>& alleles = variant.alleles;
+            for (int32_t i=0; i<alleles.size(); ++i)
+            {
+                ts += alleles[i].ts;
+                tv += alleles[i].tv;
+                ins += alleles[i].dlen ? variant.alleles[i].ins : 0;
+                del += alleles[i].dlen ? 1-variant.alleles[i].ins : 0;
+            }
 
             update_overlap_stats(presence, ts, tv, ins, del);
-        
+
             presence[0] = 0;
             presence[1] = 0;
         }
@@ -215,7 +220,7 @@ class Igor : Program
             stats.b_tv += tv;
             stats.b_ins += ins;
             stats.b_del += del;
-        }        
+        }
     }
 
     void print_options()
@@ -224,46 +229,24 @@ class Igor : Program
         std::clog << "\n";
         std::clog << "Options:     input VCF file a   " << input_vcf_files[0] << "\n";
         std::clog << "             input VCF file b   " << input_vcf_files[1] << "\n";
-        print_str_op("         [f] filter             ", filter_expression);
+        print_str_op("         [f] filter             ", fexp);
         print_int_op("         [i] intervals          ", intervals);
         std::clog << "\n";
    }
 
     void print_stats()
     {
+        fprintf(stderr, "\n");
         fprintf(stderr, "    A:  %10d variants\n", stats.a+stats.ab);
         fprintf(stderr, "    B:  %10d variants\n", stats.ab+stats.b);
         fprintf(stderr, "\n");
-
-        if (0)
-        {
-            fprintf(stderr, "    ALL\n");
-            fprintf(stderr, "    A-B %10d\n", stats.a);
-            fprintf(stderr, "    A&B %10d\n", stats.ab);
-            fprintf(stderr, "    B-A %10d\n", stats.b);
-            fprintf(stderr, "    of A     %4.1f%%\n", 100*(float)stats.ab/(stats.a+stats.ab));
-            fprintf(stderr, "    of B     %4.1f%%\n", 100*(float)stats.ab/(stats.b+stats.ab));
-            fprintf(stderr, "\n");
-        }
-        else if (1)
-        {
-            fprintf(stderr, "    A-B %10d [%.2f]\n", stats.a,  (float)stats.a_ts/(stats.a_tv));
-            fprintf(stderr, "    A&B %10d [%.2f]\n", stats.ab, (float)stats.ab_ts/stats.ab_tv);
-            fprintf(stderr, "    B-A %10d [%.2f]\n", stats.b,  (float)stats.b_ts/(stats.b_tv));
-            fprintf(stderr, "    of A     %4.1f%%\n", 100*(float)stats.ab/(stats.a+stats.ab));
-            fprintf(stderr, "    of B     %4.1f%%\n", 100*(float)stats.ab/(stats.b+stats.ab));
-            fprintf(stderr, "\n");
-        }
-        else
-        {
-            fprintf(stderr, "    A-B %10d [%.2f]\n", stats.a,  (float)stats.a_ins/(stats.a_del));
-            fprintf(stderr, "    A&B %10d [%.2f]\n", stats.ab, (float)stats.ab_ins/stats.ab_del);
-            fprintf(stderr, "    B-A %10d [%.2f]\n", stats.b,  (float)stats.b_ins/(stats.b_del));
-            fprintf(stderr, "    of A     %4.1f%%\n", 100*(float)stats.ab/(stats.a+stats.ab));
-            fprintf(stderr, "    of B     %4.1f%%\n", 100*(float)stats.ab/(stats.b+stats.ab));
-            fprintf(stderr, "\n");
-        }
-        
+        fprintf(stderr, "                   ts/tv  ins/del\n");
+        fprintf(stderr, "    A-B %10d [%.2f] [%.2f]\n", stats.a,  (float)stats.a_ts/(stats.a_tv), (float)stats.a_ins/(stats.a_del));
+        fprintf(stderr, "    A&B %10d [%.2f] [%.2f]\n", stats.ab, (float)stats.ab_ts/stats.ab_tv, (float)stats.ab_ins/(stats.ab_del));
+        fprintf(stderr, "    B-A %10d [%.2f] [%.2f]\n", stats.b,  (float)stats.b_ts/(stats.b_tv), (float)stats.b_ins/(stats.b_del));
+        fprintf(stderr, "    of A     %4.1f%%\n", 100*(float)stats.ab/(stats.a+stats.ab));
+        fprintf(stderr, "    of B     %4.1f%%\n", 100*(float)stats.ab/(stats.b+stats.ab));
+        fprintf(stderr, "\n");
     };
 
     ~Igor()
