@@ -40,6 +40,9 @@
 #include "genome_interval.h"
 #include "hts_utils.h"
 
+#define SYNC_BY_POS true
+#define SYNC_BY_VAR false
+
 /**
  * Wrapper class for the bcf object.
  */

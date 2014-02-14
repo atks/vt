@@ -125,6 +125,12 @@ class Igor : Program
         ///////////////////////////
         pedigree = new Pedigree(input_ped_file);
 
+        /////////////////////////
+        //filter initialization//
+        /////////////////////////
+        filter.parse(fexp.c_str());
+        filter_exists = fexp=="" ? false : true;
+
         ///////////////
         //general use//
         ///////////////
