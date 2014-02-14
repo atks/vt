@@ -181,7 +181,6 @@ class Igor : Program
             {
                 bcf_subset(odw->hdr, v, 0, 0);
                 //maybe add some additional adhoc fixing for BCF files that do not have a complete header.
-
             }
             odw->write(v);
             v = odw->get_bcf1_from_pool();

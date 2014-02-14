@@ -46,22 +46,33 @@
 #define SUB  12
 #define MUL  13
 #define DIV  14
+
 #define VT_OP_BIT_AND  81
 #define VT_OP_BIT_OR   82
 
 //unary ops (data getters for vcf)
+#define VT_INFO_OP          50
+#define VT_FILTER_OP        1024
+
+//INT
+#define VT_INT              64
 #define VT_VARIANT_TYPE_OP  65
 #define VT_N_ALLELE_OP      66
 #define VT_VARIANT_DLEN_OP  67
 #define VT_VARIANT_LEN_OP   68
 #define VT_INFO_INT_OP      69
-#define VT_INFO_FLT_OP      70
-#define VT_INFO_STR_OP      71
-#define VT_FILTER_OP        257
 
-#define VT_INT              64
+//FLOAT
 #define VT_FLT              128
+#define VT_INFO_FLT_OP      129
+
+//STRING
 #define VT_STR              256
+#define VT_INFO_STR_OP      257
+
+//FLAG
+#define VT_FLG              512
+
 
 /**
  * Class for filtering VCF records.
@@ -113,6 +124,7 @@ class Node
     bool value;
 
     kstring_t tag;
+    kstring_t s;
     union
     {
         bool b;
