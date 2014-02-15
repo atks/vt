@@ -74,7 +74,7 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
     else if (type==VT_OP_BIT_AND)
     {
         if (debug)
-        {    
+        {
             std::cerr << "\tVT_OP_BIT_AND "   <<  left->i << "&" << right->i << "=" << (left->i&right->i)    <<  " \n";
         }
         i = (left->i & right->i);
@@ -100,9 +100,10 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
     {
         int32_t *data = NULL;
         int32_t n=0;
-        
+
         if (bcf_get_info_int(h, v, tag.s, &data, &n)>0)
         {
+            std::cerr << "INFO INT\n";
             type = VT_INFO_INT_OP;
             i = *data;
         }
@@ -120,7 +121,7 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
                 kputc(data[i], &s);
             }
         }
-        
+
         if (n) free(data);
     }
     else if (type==VT_INFO_INT_OP)
@@ -132,7 +133,7 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
         {
             i = *((int*)data);
         }
-        
+
         if (n) free(data);
     }
     else if (type==VT_INFO_FLT_OP)
@@ -143,10 +144,10 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
         if (bcf_get_info_float(h, v, tag.s, &data, &n)>0)
         {
             f = *((float*)data);
-        
+
         //    std::cerr << "FLOAT " << f << "\n";
         }
-        
+
         if (n) free(data);
     }
     else if (type==VT_INFO_STR_OP)
@@ -162,7 +163,7 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
                 kputc(data[i], &s);
             }
         }
-        
+
         if (n) free(data);
     }
     else if (type==VT_VARIANT_TYPE_OP)
@@ -204,7 +205,7 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
             exit(1);
         }
     }
-    
+
     else if (type==VT_OP_NE)
     {
         if ((left->type&VT_INT) && (right->type&VT_INT))
@@ -293,13 +294,13 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
         }
         else if ((left->type&VT_FLT) && (right->type&VT_FLT))
         {
-                        
-            
+
+
             value = (left->f<right->f);
-            
-            
+
+
            // std::cerr << left->f << "<" << right->f << " " <<value << "\n";
-            
+
         }
         else if ((left->type&VT_STR) && (right->type&VT_STR))
         {
@@ -307,7 +308,103 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
         }
         else
         {
-            fprintf(stderr, "[%s:%d %s] evaluation not supported : <\n", __FILE__, __LINE__, __FUNCTION__);
+            fprintf(stderr, "[%s:%d %s] evaluation not supported : < %d %d\n", __FILE__, __LINE__, __FUNCTION__, left->type, right->type);
+            exit(1);
+        }
+    }
+    else if (type==VT_OP_ADD)
+    {
+        if ((left->type&VT_INT) && (right->type&VT_INT))
+        {
+            f = (left->i+right->i);
+        }
+        else if ((left->type&VT_FLT) && (right->type&VT_FLT))
+        {
+            f = (left->f+right->f);
+        }
+        else if ((left->type&VT_INT) && (right->type&VT_FLT))
+        {
+            f = (left->i+right->f);
+        }
+        else if ((left->type&VT_FLT) && (right->type&VT_INT))
+        {
+            f = (left->f+right->i);
+        }
+        else
+        {
+            fprintf(stderr, "[%s:%d %s] evaluation not supported : +\n", __FILE__, __LINE__, __FUNCTION__);
+            exit(1);
+        }
+    }
+    else if (type==VT_OP_SUB)
+    {
+        if ((left->type&VT_INT) && (right->type&VT_INT))
+        {
+            f = (left->i-right->i);
+        }
+        else if ((left->type&VT_FLT) && (right->type&VT_FLT))
+        {
+            f = (left->f-right->f);
+        }
+        else if ((left->type&VT_INT) && (right->type&VT_FLT))
+        {
+            f = (left->i-right->f);
+        }
+        else if ((left->type&VT_FLT) && (right->type&VT_INT))
+        {
+            f = (left->f-right->i);
+        }
+        else
+        {
+            fprintf(stderr, "[%s:%d %s] evaluation not supported : -\n", __FILE__, __LINE__, __FUNCTION__);
+            exit(1);
+        }
+    }
+    else if (type==VT_OP_MUL)
+    {
+        if ((left->type&VT_INT) && (right->type&VT_INT))
+        {
+            f = (left->i*right->i);
+        }
+        else if ((left->type&VT_FLT) && (right->type&VT_FLT))
+        {
+            f = (left->f*right->f);
+        }
+        else if ((left->type&VT_INT) && (right->type&VT_FLT))
+        {
+            f = (left->i*right->f);
+        }
+        else if ((left->type&VT_FLT) && (right->type&VT_INT))
+        {
+            f = (left->f*right->i);
+        }
+        else
+        {
+            fprintf(stderr, "[%s:%d %s] evaluation not supported : *\n", __FILE__, __LINE__, __FUNCTION__);
+            exit(1);
+        }
+    }
+    else if (type==VT_OP_DIV)
+    {
+        if ((left->type&VT_INT) && (right->type&VT_INT))
+        {
+            f = (left->i/right->i);
+        }
+        else if ((left->type&VT_FLT) && (right->type&VT_FLT))
+        {
+            f = (left->f/right->f);
+        }
+        else if ((left->type&VT_INT) && (right->type&VT_FLT))
+        {
+            f = (left->i/right->f);
+        }
+        else if ((left->type&VT_FLT) && (right->type&VT_INT))
+        {
+            f = (left->f/right->i);
+        }
+        else
+        {
+            fprintf(stderr, "[%s:%d %s] evaluation not supported : /\n", __FILE__, __LINE__, __FUNCTION__);
             exit(1);
         }
     }
@@ -472,7 +569,11 @@ bool Filter::is_literal(const char* exp, int32_t len)
            *q=='|' ||
            *q=='>' ||
            *q=='<' ||
-           *q=='!')
+           *q=='!' ||
+           *q=='+' ||
+           *q=='*' ||
+           *q=='/' ||
+           (*q=='-' && exp!=q))
         {
             return false;
         }
@@ -494,12 +595,12 @@ void Filter::parse_literal(const char* exp, int32_t len, Node * node, bool debug
         node->type = VT_OP_NOT;
         node->left = new Node();
         if (debug) std::cerr << "\tis not_op\n";
-        
+
         node = node->left;
         ++exp;
         --len;
     }
-    
+
     if (strncmp(exp, "PASS", len)==0)
     {
         node->type = VT_FILTER_OP;
@@ -522,7 +623,7 @@ void Filter::parse_literal(const char* exp, int32_t len, Node * node, bool debug
         kputsn(exp, len-5, &node->tag);
         if (debug) std::cerr << "\tis info_op\n";
         return;
-    }    
+    }
     else if (strncmp(exp, "VTYPE", 5)==0)
     {
         node->type = VT_VARIANT_TYPE_OP;
@@ -598,19 +699,19 @@ void Filter::parse_literal(const char* exp, int32_t len, Node * node, bool debug
             if (debug) std::cerr << "\tis float: " << f << "\n";
             return;
         }
-        
+
         kputsn(exp, len, &node->tag);
         if (debug) std::cerr << "\tis string\n";
         return;
     }
-    
+
     if (debug)
     {
         std::cerr << "\tvalue " << node->value << "\n";
         std::cerr << "\ttag   " << node->tag.s << "\n";
         std::cerr << "\tb     " << node->b << "\n";
-        std::cerr << "\ti     " << node->i << "\n";   
-        std::cerr << "\tf     " << node->f << "\n";        
+        std::cerr << "\ti     " << node->i << "\n";
+        std::cerr << "\tf     " << node->f << "\n";
     }
 
     return;
@@ -798,6 +899,30 @@ int32_t Filter::peek_op(const char* &r, int32_t len, int32_t &oplen, bool debug)
         if (debug) std::cerr << "\tis != operator\n";
         oplen = 2;
         return VT_OP_NE;
+    }
+    else if (*s=='+')
+    {
+        if (debug) std::cerr << "\tis + operator\n";
+        oplen = 1;
+        return VT_OP_ADD;
+    }
+    else if (*s=='-')
+    {
+        if (debug) std::cerr << "\tis - operator\n";
+        oplen = 1;
+        return VT_OP_SUB;
+    }
+    else if (*s=='*')
+    {
+        if (debug) std::cerr << "\tis * operator\n";
+        oplen = 1;
+        return VT_OP_MUL;
+    }
+    else if (*s=='/')
+    {
+        if (debug) std::cerr << "\tis / operator\n";
+        oplen = 1;
+        return VT_OP_DIV;
     }
     else if (*s=='&')
     {

@@ -42,10 +42,10 @@
 #define VT_OP_GE       10
 
 //binary math ops
-#define ADD  11
-#define SUB  12
-#define MUL  13
-#define DIV  14
+#define VT_OP_ADD  (1024&128)
+#define VT_OP_SUB  (1025&128)
+#define VT_OP_MUL  (1026&128)
+#define VT_OP_DIV  (1027&128)
 
 #define VT_OP_BIT_AND  81
 #define VT_OP_BIT_OR   82
