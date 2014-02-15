@@ -80,6 +80,8 @@ typedef struct {
     bcf_hrec_t **hrec;
     int nhrec;
     int ntransl, *transl[2];    // for bcf_translate()
+    int nsamples_ori;           // for bcf_hdr_set_samples()
+    uint8_t *keep_samples;
 	kstring_t mem;
 } bcf_hdr_t;
 
@@ -251,6 +253,29 @@ extern "C" {
     /** Reads VCF or BCF header */
 	bcf_hdr_t *bcf_hdr_read(htsFile *fp);
 
+    /**
+     *  bcf_hdr_set_samples() - for more efficient VCF parsing when only one/few samples are needed
+     *  @samples: samples to include or exclude from file or as a comma-separated string.
+     *              LIST    .. select samples in list
+     *              :FILE   .. read samples from file
+     *              ^LIST   .. exclude samples from list
+     *              ^:FILE  .. exclude samples form file
+     *              -       .. include all samples
+     *              NULL    .. exclude all samples
+     *
+     *  The bottleneck of VCF reading is parsing of genotype fields. If the
+     *  reader knows in advance that only subset of samples is needed (possibly
+     *  no samples at all), the performance of bcf_read() can be significantly
+     *  improved by calling bcf_hdr_set_samples after bcf_hdr_read().
+     *  The function bcf_read() will automaically subset the VCF/BCF records.
+     *
+     *  Returns 0 on success, -1 on error or a positive integer if the list
+     *  contains samples not present in the VCF header. In such a case, the
+     *  return value is the index of the offending sample.
+     */
+    int bcf_hdr_set_samples(bcf_hdr_t *hdr, const char *samples);
+
+
     /** Writes VCF or BCF header */
 	int bcf_hdr_write(htsFile *fp, const bcf_hdr_t *h);
 
@@ -302,7 +327,7 @@ extern "C" {
 	int vcf_write(htsFile *fp, const bcf_hdr_t *h, bcf1_t *v);
 
 	/** Helper function for the bcf_itr_next() macro; internal use, ignore it */
-	int bcf_readrec(BGZF *fp, void *null, bcf1_t *v, int *tid, int *beg, int *end);
+	int bcf_readrec(BGZF *fp, void *null, void *v, int *tid, int *beg, int *end);
 
 
 
@@ -507,7 +532,8 @@ extern "C" {
      *
      *  Returns negative value on error or the number of written values on
      *  success. bcf_get_info_string() returns on success the number of 
-     *  characters written excluding the null-terminating byte. 
+     *  characters written excluding the null-terminating byte. bcf_get_info_flag()
+     *  returns 1 when flag is set or 0 if not.
      *
      *  List of return codes:
      *      -1 .. no such INFO tag defined in the header
@@ -517,6 +543,7 @@ extern "C" {
     #define bcf_get_info_int(hdr,line,tag,dst,ndst)    bcf_get_info_values(hdr,line,tag,(void**)(dst),ndst,BCF_HT_INT)
     #define bcf_get_info_float(hdr,line,tag,dst,ndst)  bcf_get_info_values(hdr,line,tag,(void**)(dst),ndst,BCF_HT_REAL)
     #define bcf_get_info_string(hdr,line,tag,dst,ndst)  bcf_get_info_values(hdr,line,tag,(void**)(dst),ndst,BCF_HT_STR)
+    #define bcf_get_info_flag(hdr,line,tag,dst,ndst)  bcf_get_info_values(hdr,line,tag,(void**)(dst),ndst,BCF_HT_FLAG)
     int bcf_get_info_values(bcf_hdr_t *hdr, bcf1_t *line, const char *tag, void **dst, int *ndst, int type);
 
     /**
@@ -611,9 +638,9 @@ extern "C" {
 	 **************************************************************************/
  
 	#define bcf_itr_destroy(iter) hts_itr_destroy(iter)
-	#define bcf_itr_queryi(idx, tid, beg, end) hts_itr_query((idx), (tid), (beg), (end))
-	#define bcf_itr_querys(idx, hdr, s) hts_itr_querys((idx), (s), (hts_name2id_f)(bcf_hdr_name2id), (hdr))
-	#define bcf_itr_next(htsfp, itr, r) hts_itr_next((htsfp)->fp.bgzf, (itr), (r), (hts_readrec_f)(bcf_readrec), 0)
+	#define bcf_itr_queryi(idx, tid, beg, end) hts_itr_query((idx), (tid), (beg), (end), bcf_readrec)
+	#define bcf_itr_querys(idx, hdr, s) hts_itr_querys((idx), (s), (hts_name2id_f)(bcf_hdr_name2id), (hdr), hts_itr_query, bcf_readrec)
+	#define bcf_itr_next(htsfp, itr, r) hts_itr_next((htsfp)->fp.bgzf, (itr), (r), 0)
 	#define bcf_index_load(fn) hts_idx_load(fn, HTS_FMT_CSI)
 	#define bcf_index_seqnames(idx, hdr, nptr) hts_idx_seqnames((idx),(nptr),(hts_id2name_f)(bcf_hdr_id2name),(hdr))
 
