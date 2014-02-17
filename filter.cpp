@@ -106,6 +106,7 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
             std::cerr << "INFO INT\n";
             type = VT_INFO_INT_OP;
             i = *data;
+            f = (float)i;
         }
         else if (bcf_get_info_float(h, v, tag.s, &data, &n)>0)
         {
@@ -189,6 +190,7 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
     {
         if ((left->type&VT_INT) && (right->type&VT_INT))
         {
+            //std::cerr << left->i << " " << right->i << " " << (left->i==right->i) <<"\n";
             value = (left->i==right->i);
         }
         else if ((left->type&VT_FLT) && (right->type&VT_FLT))
@@ -198,6 +200,12 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
         else if ((left->type&VT_STR) && (right->type&VT_STR))
         {
             value = strcmp(left->tag.s, right->tag.s)==0 ? true : false;
+        }
+        else if ((left->type&(VT_INT|VT_FLT)) && (right->type&(VT_INT|VT_FLT)))
+        {
+            //std::cerr << left->f << " " << right->f << " " << (left->f==right->f) <<"\n";
+
+            value = (left->f==right->f);
         }
         else
         {
@@ -685,6 +693,7 @@ void Filter::parse_literal(const char* exp, int32_t len, Node * node, bool debug
         {
             node->type = VT_INT;
             node->i = i;
+            node->f = (float)i;
             if (debug) std::cerr << "\tis int\n";
             return;
         }

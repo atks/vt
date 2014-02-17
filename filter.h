@@ -42,10 +42,10 @@
 #define VT_OP_GE       10
 
 //binary math ops
-#define VT_OP_ADD  (1024&128)
-#define VT_OP_SUB  (1025&128)
-#define VT_OP_MUL  (1026&128)
-#define VT_OP_DIV  (1027&128)
+#define VT_OP_ADD  (1024|128)
+#define VT_OP_SUB  (1025|128)
+#define VT_OP_MUL  (1026|128)
+#define VT_OP_DIV  (1027|128)
 
 #define VT_OP_BIT_AND  81
 #define VT_OP_BIT_OR   82
@@ -125,13 +125,10 @@ class Node
 
     kstring_t tag;
     kstring_t s;
-    union
-    {
-        bool b;
-        int32_t i;
-        float f;
-    };
-
+    bool b;
+    int32_t i;
+    float f;
+    
     /**
      * Constructor.
      */
