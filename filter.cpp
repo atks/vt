@@ -54,364 +54,507 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
     if (debug)
         std::cerr << "evaluation  "  << type << "\n";
 
-    //filter operation
-    if (type==VT_OP_NOT)
+    if (type&VT_LOGIC_OP)
     {
-        if (debug)
-            std::cerr << "\tVT_OP_NOT "   <<  left->value << " \n";
-        value = !(left->value);
-    }
-    else if (type==VT_OP_AND)
-    {
-        if (debug)
-            std::cerr << "\tVT_OP_AND "   <<  left->value << "&" << right->value    <<  " \n";
-        value = (left->value && right->value);
-    }
-    else if (type==VT_OP_OR)
-    {
-        value = (left->value || right->value);
-    }
-    else if (type==VT_OP_BIT_AND)
-    {
-        if (debug)
+        if (type==VT_NOT)
         {
-            std::cerr << "\tVT_OP_BIT_AND "   <<  left->i << "&" << right->i << "=" << (left->i&right->i)    <<  " \n";
+            if (debug)
+                std::cerr << "\tVT_NOT "   <<  left->value << " \n";
+            value = !(left->value);
         }
-        i = (left->i & right->i);
-        value = i;
-    }
-    else if (type==VT_OP_BIT_OR)
-    {
-        i = (left->i | right->i);
-        value = i;
-    }
-    else if (type==VT_FILTER_OP)
-    {
-        if (bcf_has_filter(h, v, tag.s)!=1)
+        else if (type==VT_AND)
         {
-            value = false;
+            if (debug)
+                std::cerr << "\tVT_AND "   <<  left->value << "&" << right->value    <<  " \n";
+            value = (left->value && right->value);
         }
-        else
+        else if (type==VT_OR)
         {
-            value = true;
+            value = (left->value || right->value);
         }
     }
-    else if (type==VT_INFO_OP)
+    else if (type&VT_MATH_CMP)   
     {
-        int32_t *data = NULL;
-        int32_t n=0;
-
-        if (bcf_get_info_int(h, v, tag.s, &data, &n)>0)
+        if (type==VT_BIT_AND)
         {
-            std::cerr << "INFO INT\n";
-            type = VT_INFO_INT_OP;
-            i = *data;
-            f = (float)i;
+            if (debug)
+                std::cerr << "\tVT_BIT_AND "   <<  left->i << "&" << right->i << "=" << (left->i&right->i)    <<  " \n";
+            i = (left->i & right->i);
+            value = i;
         }
-        else if (bcf_get_info_float(h, v, tag.s, &data, &n)>0)
+        else if (type==VT_BIT_OR)
         {
-            type = VT_INFO_FLT_OP;
-            f = (float)(*data);
-        }
-        else if (bcf_get_info_string(h, v, tag.s, &data, &n)>0)
+            i = (left->i | right->i);
+            value = i;
+        }        
+        else if (type==VT_EQ)
         {
-            type = VT_INFO_STR_OP;
-            s.l=0;
-            for (int32_t i=0; i<n; ++i)
+            if ((left->type&VT_INT))
             {
-                kputc(data[i], &s);
+                if ((right->type&VT_INT))
+                {
+                    value = (left->i==right->i);
+                    return;
+                }
+                else if ((right->type&VT_FLT))
+                {
+                    value = (left->i==right->f);
+                    return;
+                }
             }
-        }
-
-        if (n) free(data);
-    }
-    else if (type==VT_INFO_INT_OP)
-    {
-        int32_t *data = NULL;
-        int32_t n=0;
-
-        if (bcf_get_info_int(h, v, tag.s, &data, &n)>0)
-        {
-            i = *((int*)data);
-        }
-
-        if (n) free(data);
-    }
-    else if (type==VT_INFO_FLT_OP)
-    {
-        int32_t *data = NULL;
-        int32_t n=0;
-
-        if (bcf_get_info_float(h, v, tag.s, &data, &n)>0)
-        {
-            f = *((float*)data);
-
-        //    std::cerr << "FLOAT " << f << "\n";
-        }
-
-        if (n) free(data);
-    }
-    else if (type==VT_INFO_STR_OP)
-    {
-        int32_t *data = NULL;
-        int32_t n=0;
-
-        if (bcf_get_info_string(h, v, tag.s, &data, &n)>0)
-        {
-            s.l=0;
-            for (int32_t i=0; i<n; ++i)
+            else if ((left->type&VT_FLT))
             {
-                kputc(data[i], &s);
+                if ((right->type&VT_INT))
+                {
+                    value = (left->f==right->i);
+                    return;
+                }
+                else if ((right->type&VT_FLT))
+                {
+                    value = (left->f==right->f);
+                    return;
+                }
             }
-        }
-
-        if (n) free(data);
-    }
-    else if (type==VT_VARIANT_TYPE_OP)
-    {
-        i = variant->type;
-        value = i;
-    }
-    else if (type==VT_VARIANT_DLEN_OP)
-    {
-        i = variant->alleles[0].dlen;
-        value = i;
-    }
-    else if (type==VT_VARIANT_LEN_OP)
-    {
-        i = abs(variant->alleles[0].dlen);
-        value = i;
-    }
-    else if (type==VT_N_ALLELE_OP)
-    {
-        i = bcf_get_n_allele(v);
-    }
-    else if (type==VT_OP_EQ)
-    {
-        if ((left->type&VT_INT) && (right->type&VT_INT))
-        {
-            //std::cerr << left->i << " " << right->i << " " << (left->i==right->i) <<"\n";
-            value = (left->i==right->i);
-        }
-        else if ((left->type&VT_FLT) && (right->type&VT_FLT))
-        {
-            value = (left->f==right->f);
-        }
-        else if ((left->type&VT_STR) && (right->type&VT_STR))
-        {
-            value = strcmp(left->tag.s, right->tag.s)==0 ? true : false;
-        }
-        else if ((left->type&(VT_INT|VT_FLT)) && (right->type&(VT_INT|VT_FLT)))
-        {
-            //std::cerr << left->f << " " << right->f << " " << (left->f==right->f) <<"\n";
-
-            value = (left->f==right->f);
-        }
-        else
-        {
-            fprintf(stderr, "[%s:%d %s] evaluation not supported : ==\n", __FILE__, __LINE__, __FUNCTION__);
+            else if ((left->type&VT_STR) && (right->type&VT_STR))
+            {
+                value = strcmp(left->tag.s, right->tag.s)==0 ? true : false;
+                return;
+            }
+    
+            fprintf(stderr, "[%s:%d %s] evaluation not supported : == %d %d\n", __FILE__, __LINE__, __FUNCTION__, left->type, right->type);
             exit(1);
-        }
-    }
-
-    else if (type==VT_OP_NE)
-    {
-        if ((left->type&VT_INT) && (right->type&VT_INT))
+        }    
+        else if (type==VT_NE)
         {
-            value = (left->i!=right->i);
-        }
-        else if ((left->type&VT_FLT) && (right->type&VT_FLT))
-        {
-            value = (left->f!=right->f);
-        }
-        else if ((left->type&VT_STR) && (right->type&VT_STR))
-        {
-            value = strcmp(left->tag.s, right->tag.s)!=0 ? true : false;
-        }
-        else
-        {
+            if ((left->type&VT_INT))
+            {
+                if ((right->type&VT_INT))
+                {
+                    value = (left->i!=right->i);
+                    return;
+                }
+                else if ((right->type&VT_FLT))
+                {
+                    value = (left->i!=right->f);
+                    return;
+                }
+            }
+            else if ((left->type&VT_FLT))
+            {
+                if ((right->type&VT_INT))
+                {
+                    value = (left->f!=right->i);
+                    return;
+                }
+                else if ((right->type&VT_FLT))
+                {
+                    value = (left->f!=right->f);
+                    return;
+                }
+            }
+            else if ((left->type&VT_STR) && (right->type&VT_STR))
+            {
+                value = strcmp(left->tag.s, right->tag.s)==0 ? false : true;
+                return;
+            }
+    
             fprintf(stderr, "[%s:%d %s] evaluation not supported : !=\n", __FILE__, __LINE__, __FUNCTION__);
             exit(1);
         }
-    }
-    else if (type==VT_OP_LE)
-    {
-        if ((left->type&VT_INT) && (right->type&VT_INT))
+        else if (type==VT_LE)
         {
-            value = (left->i<=right->i);
-        }
-        else if ((left->type&VT_FLT) && (right->type&VT_FLT))
-        {
-            value = (left->f<=right->f);
-        }
-        else if ((left->type&VT_STR) && (right->type&VT_STR))
-        {
-            value = strcmp(left->tag.s, right->tag.s) ? true : false;
-        }
-        else
-        {
+            if ((left->type&VT_INT))
+            {
+                if ((right->type&VT_INT))
+                {
+                    value = (left->i<=right->i);
+                    return;
+                }
+                else if ((right->type&VT_FLT))
+                {
+                    value = (left->i<=right->f);
+                    return;
+                }
+            }
+            else if ((left->type&VT_FLT))
+            {
+                if ((right->type&VT_INT))
+                {
+                    type |= VT_INT;
+                    value = (left->f<=right->i);
+                    return;
+                }
+                else if ((right->type&VT_FLT))
+                {
+                    value = (left->f<=right->f);
+                    return;
+                }
+            }
+            else if ((left->type&VT_STR) && (right->type&VT_STR))
+            {
+                value = strcmp(left->tag.s, right->tag.s)<=0 ? true : false;
+                return;
+            }
+    
             fprintf(stderr, "[%s:%d %s] evaluation not supported : <=\n", __FILE__, __LINE__, __FUNCTION__);
             exit(1);
         }
-    }
-    else if (type==VT_OP_GE)
-    {
-        if ((left->type&VT_INT) && (right->type&VT_INT))
+        else if (type==VT_GE)
         {
-            value = (left->i>=right->i);
-        }
-        else if ((left->type&VT_FLT) && (right->type&VT_FLT))
-        {
-            value = (left->f>=right->f);
-        }
-        else if ((left->type&VT_STR) && (right->type&VT_STR))
-        {
-            value = strcmp(left->tag.s, right->tag.s)>=0 ? true : false;
-        }
-        else
-        {
+            if ((left->type&VT_INT))
+            {
+                if ((right->type&VT_INT))
+                {
+                    value = (left->i>=right->i);
+                    return;
+                }
+                else if ((right->type&VT_FLT))
+                {
+                    value = (left->i>=right->f);
+                    return;
+                }
+            }
+            else if ((left->type&VT_FLT))
+            {
+                if ((right->type&VT_INT))
+                {
+                    value = (left->f>=right->i);
+                    return;
+                }
+                else if ((right->type&VT_FLT))
+                {
+                    value = (left->f>=right->f);
+                    return;
+                }
+            }
+            else if ((left->type&VT_STR) && (right->type&VT_STR))
+            {
+                value = strcmp(left->tag.s, right->tag.s)>=0 ? true : false;
+                return;
+            }
+    
             fprintf(stderr, "[%s:%d %s] evaluation not supported : >=\n", __FILE__, __LINE__, __FUNCTION__);
             exit(1);
         }
-    }
-    else if (type==VT_OP_GT)
-    {
-        if ((left->type&VT_INT) && (right->type&VT_INT))
+        else if (type==VT_GT)
         {
-            value = (left->i>right->i);
+            if ((left->type&VT_INT))
+            {
+                if ((right->type&VT_INT))
+                {
+                    value = (left->i>right->i);
+                    return;
+                }
+                else if ((right->type&VT_FLT))
+                {
+                    value = (left->i>right->f);
+                    return;
+                }
+            }
+            else if ((left->type&VT_FLT))
+            {
+                if ((right->type&VT_INT))
+                {
+                    value = (left->f>right->i);
+                    return;
+                }
+                else if ((right->type&VT_FLT))
+                {
+                    value = (left->f>right->f);
+                    return;
+                }
+            }
+            else if ((left->type&VT_STR) && (right->type&VT_STR))
+            {
+                value = strcmp(left->tag.s, right->tag.s)>0 ? true : false;
+                return;
+            }
+    
+            fprintf(stderr, "[%s:%d %s] evaluation not supported : >\n", __FILE__, __LINE__, __FUNCTION__);
+            exit(1);
         }
-        else if ((left->type&VT_FLT) && (right->type&VT_FLT))
+        else if (type==VT_LT)
         {
-            value = (left->f>right->f);
-        }
-        else if ((left->type&VT_STR) && (right->type&VT_STR))
-        {
-            value = strcmp(left->tag.s, right->tag.s)>0 ? true : false;
-        }
-        else
-        {
+            if ((left->type&VT_INT))
+            {
+                if ((right->type&VT_INT))
+                {
+                    value = (left->i<right->i);
+                    return;
+                }
+                else if ((right->type&VT_FLT))
+                {
+                    value = (left->i<right->f);
+                    return;
+                }
+            }
+            else if ((left->type&VT_FLT))
+            {
+                if ((right->type&VT_INT))
+                {
+                    value = (left->f<right->i);
+                    return;
+                }
+                else if ((right->type&VT_FLT))
+                {
+                    value = (left->f<right->f);
+                    return;
+                }
+            }
+            else if ((left->type&VT_STR) && (right->type&VT_STR))
+            {
+                value = strcmp(left->tag.s, right->tag.s)<0 ? true : false;
+                return;
+            }
+    
             fprintf(stderr, "[%s:%d %s] evaluation not supported : >\n", __FILE__, __LINE__, __FUNCTION__);
             exit(1);
         }
     }
-    else if (type==VT_OP_LT)
+    else if (type&VT_BCF_OP)   
     {
-        if ((left->type&VT_INT) && (right->type&VT_INT))
+        if (type==VT_FILTER)
         {
-            value = (left->i<right->i);
+            if (bcf_has_filter(h, v, tag.s)!=1)
+            {
+                value = false;
+            }
+            else
+            {
+                value = true;
+            }
         }
-        else if ((left->type&VT_FLT) && (right->type&VT_FLT))
+        else if (type==VT_INFO)
         {
-
-
-            value = (left->f<right->f);
-
-
-           // std::cerr << left->f << "<" << right->f << " " <<value << "\n";
-
+            int32_t *data = NULL;
+            int32_t n=0;
+    
+            if (bcf_get_info_int(h, v, tag.s, &data, &n)>0)
+            {
+                type |= VT_INT;
+                i = *data;
+                f = (float)i;
+            }
+            else if (bcf_get_info_float(h, v, tag.s, &data, &n)>0)
+            {
+                type |= VT_FLT;
+                f = (float)(*data);
+            }
+            else if (bcf_get_info_string(h, v, tag.s, &data, &n)>0)
+            {
+                type |= VT_STR;
+                s.l=0;
+                for (int32_t i=0; i<n; ++i)
+                {
+                    kputc(data[i], &s);
+                }
+            }
+    
+            if (n) free(data);
         }
-        else if ((left->type&VT_STR) && (right->type&VT_STR))
+        else if (type==(VT_INFO|VT_INT))
         {
-            value = strcmp(left->tag.s, right->tag.s)<0 ? true : false;
+            int32_t *data = NULL;
+            int32_t n=0;
+    
+            if (bcf_get_info_int(h, v, tag.s, &data, &n)>0)
+            {
+                i = *((int*)data);
+            }
+    
+            if (n) free(data);
         }
-        else
+        else if (type==(VT_INFO|VT_FLT))
         {
-            fprintf(stderr, "[%s:%d %s] evaluation not supported : < %d %d\n", __FILE__, __LINE__, __FUNCTION__, left->type, right->type);
-            exit(1);
+            int32_t *data = NULL;
+            int32_t n=0;
+    
+            if (bcf_get_info_float(h, v, tag.s, &data, &n)>0)
+            {
+                f = *((float*)data);
+            }
+    
+            if (n) free(data);
+        }
+        else if (type==(VT_INFO|VT_STR))
+        {
+            int32_t *data = NULL;
+            int32_t n=0;
+    
+            if (bcf_get_info_string(h, v, tag.s, &data, &n)>0)
+            {
+                s.l=0;
+                for (int32_t i=0; i<n; ++i)
+                {
+                    kputc(data[i], &s);
+                }
+            }
+    
+            if (n) free(data);
+        }
+        else if (type==VT_VARIANT_TYPE)
+        {
+            i = variant->type;
+            value = i;
+        }
+        else if (type==VT_VARIANT_DLEN)
+        {
+            i = variant->alleles[0].dlen;
+            value = i;
+        }
+        else if (type==VT_VARIANT_LEN)
+        {
+            i = abs(variant->alleles[0].dlen);
+            value = i;
+        }
+        else if (type==VT_N_ALLELE)
+        {
+            i = bcf_get_n_allele(v);
         }
     }
-    else if (type==VT_OP_ADD)
-    {
-        if ((left->type&VT_INT) && (right->type&VT_INT))
+    else if (type&VT_MATH_OP)
+    {        
+        if ((type&15)==VT_ADD)
         {
-            f = (left->i+right->i);
-        }
-        else if ((left->type&VT_FLT) && (right->type&VT_FLT))
-        {
-            f = (left->f+right->f);
-        }
-        else if ((left->type&VT_INT) && (right->type&VT_FLT))
-        {
-            f = (left->i+right->f);
-        }
-        else if ((left->type&VT_FLT) && (right->type&VT_INT))
-        {
-            f = (left->f+right->i);
-        }
-        else
-        {
+            if ((left->type&VT_INT))
+            {
+                if ((right->type&VT_INT))
+                {
+                    type |= VT_INT;
+                    i = (left->i+right->i);
+                    return;
+                }
+                else if ((right->type&VT_FLT))
+                {
+                    type |= VT_FLT;
+                    f = (left->i+right->f);
+                    return;
+                }
+            }
+            else if ((left->type&VT_FLT))
+            {
+                if ((right->type&VT_INT))
+                {
+                    type |= VT_FLT;
+                    f = (left->f+right->i);
+                    return;
+                }
+                else if ((right->type&VT_FLT))
+                {
+                    type |= VT_FLT;
+                    f = (left->f+right->f);
+                    return;
+                }
+            }
+    
             fprintf(stderr, "[%s:%d %s] evaluation not supported : +\n", __FILE__, __LINE__, __FUNCTION__);
             exit(1);
         }
-    }
-    else if (type==VT_OP_SUB)
-    {
-        if ((left->type&VT_INT) && (right->type&VT_INT))
+        else if ((type&15)==VT_SUB)
         {
-            f = (left->i-right->i);
-        }
-        else if ((left->type&VT_FLT) && (right->type&VT_FLT))
-        {
-            f = (left->f-right->f);
-        }
-        else if ((left->type&VT_INT) && (right->type&VT_FLT))
-        {
-            f = (left->i-right->f);
-        }
-        else if ((left->type&VT_FLT) && (right->type&VT_INT))
-        {
-            f = (left->f-right->i);
-        }
-        else
-        {
+            if ((left->type&VT_INT))
+            {
+                if ((right->type&VT_INT))
+                {
+                    type |= VT_INT;
+                    i = (left->i-right->i);
+                    return;
+                }
+                else if ((right->type&VT_FLT))
+                {
+                    type |= VT_FLT;
+                    f = (left->i-right->f);
+                    return;
+                }
+            }
+            else if ((left->type&VT_FLT))
+            {
+                if ((right->type&VT_INT))
+                {
+                    type |= VT_FLT;
+                    f = (left->f-right->i);
+                    return;
+                }
+                else if ((right->type&VT_FLT))
+                {
+                    type |= VT_FLT;
+                    f = (left->f-right->f);
+                    return;
+                }
+            }
+    
             fprintf(stderr, "[%s:%d %s] evaluation not supported : -\n", __FILE__, __LINE__, __FUNCTION__);
             exit(1);
         }
-    }
-    else if (type==VT_OP_MUL)
-    {
-        if ((left->type&VT_INT) && (right->type&VT_INT))
+        else if ((type&15)==VT_MUL)
         {
-            f = (left->i*right->i);
-        }
-        else if ((left->type&VT_FLT) && (right->type&VT_FLT))
-        {
-            f = (left->f*right->f);
-        }
-        else if ((left->type&VT_INT) && (right->type&VT_FLT))
-        {
-            f = (left->i*right->f);
-        }
-        else if ((left->type&VT_FLT) && (right->type&VT_INT))
-        {
-            f = (left->f*right->i);
-        }
-        else
-        {
+            if ((left->type&VT_INT))
+            {
+                if ((right->type&VT_INT))
+                {
+                    type |= VT_INT;
+                    i = (left->i*right->i);
+                    return;
+                }
+                else if ((right->type&VT_FLT))
+                {
+                    type |= VT_FLT;
+                    f = (left->i*right->f);
+                    return;
+                }
+            }
+            else if ((left->type&VT_FLT))
+            {
+                if ((right->type&VT_INT))
+                {
+                    type |= VT_FLT;
+                    f = (left->f*right->i);
+                    return;
+                }
+                else if ((right->type&VT_FLT))
+                {
+                    type |= VT_FLT;
+                    f = (left->f*right->f);
+                    return;
+                }
+            }
+    
             fprintf(stderr, "[%s:%d %s] evaluation not supported : *\n", __FILE__, __LINE__, __FUNCTION__);
             exit(1);
         }
-    }
-    else if (type==VT_OP_DIV)
-    {
-        if ((left->type&VT_INT) && (right->type&VT_INT))
+        else if ((type&15)==VT_DIV)
         {
-            f = (left->i/right->i);
-        }
-        else if ((left->type&VT_FLT) && (right->type&VT_FLT))
-        {
-            f = (left->f/right->f);
-        }
-        else if ((left->type&VT_INT) && (right->type&VT_FLT))
-        {
-            f = (left->i/right->f);
-        }
-        else if ((left->type&VT_FLT) && (right->type&VT_INT))
-        {
-            f = (left->f/right->i);
-        }
-        else
-        {
+            if (left->type&VT_INT)
+            {
+                if (right->type&VT_INT)
+                {
+                    type |= VT_FLT;
+                    f = (left->i/right->i);
+                    return;
+                }
+                else if (right->type&VT_FLT)
+                {
+                    type |= VT_FLT;
+                    f = (left->i/right->f);
+                    return;
+                }
+            }
+            else if (left->type&VT_FLT)
+            {
+                if (right->type&VT_INT)
+                {
+                    type |= VT_FLT;
+                    f = (left->f/right->i);
+                    return;
+                }
+                else if (right->type&VT_FLT)
+                {
+                    type |= VT_FLT;
+                    f = (left->f/right->f);
+                    return;
+                }
+            }
+    
             fprintf(stderr, "[%s:%d %s] evaluation not supported : /\n", __FILE__, __LINE__, __FUNCTION__);
             exit(1);
         }
@@ -600,7 +743,7 @@ void Filter::parse_literal(const char* exp, int32_t len, Node * node, bool debug
     // if not sign in front of literal
     if (exp[0]=='~')
     {
-        node->type = VT_OP_NOT;
+        node->type = VT_NOT;
         node->left = new Node();
         if (debug) std::cerr << "\tis not_op\n";
 
@@ -611,14 +754,14 @@ void Filter::parse_literal(const char* exp, int32_t len, Node * node, bool debug
 
     if (strncmp(exp, "PASS", len)==0)
     {
-        node->type = VT_FILTER_OP;
+        node->type = VT_FILTER;
         kputsn(exp, len, &node->tag);
         if (debug) std::cerr << "\tis filter_op\n";
         return;
     }
     else if (strncmp(exp, "FILTER.", 7)==0)
     {
-        node->type = VT_FILTER_OP;
+        node->type = VT_FILTER;
         exp += 7;
         kputsn(exp, len-7, &node->tag);
         if (debug) std::cerr << "\tis filter_op\n";
@@ -626,7 +769,7 @@ void Filter::parse_literal(const char* exp, int32_t len, Node * node, bool debug
     }
     else if (strncmp(exp, "INFO.", 5)==0)
     {
-        node->type = VT_INFO_OP;
+        node->type = VT_INFO;
         exp += 5;
         kputsn(exp, len-5, &node->tag);
         if (debug) std::cerr << "\tis info_op\n";
@@ -634,13 +777,13 @@ void Filter::parse_literal(const char* exp, int32_t len, Node * node, bool debug
     }
     else if (strncmp(exp, "VTYPE", 5)==0)
     {
-        node->type = VT_VARIANT_TYPE_OP;
+        node->type = VT_VARIANT_TYPE;
         if (debug) std::cerr << "\tis variant_op\n";
         return;
     }
     else if (strncmp(exp, "N_ALLELE", len)==0)
     {
-        node->type = VT_N_ALLELE_OP;
+        node->type = VT_N_ALLELE;
         if (debug) std::cerr << "\tis nallele_op\n";
         return;
     }
@@ -674,13 +817,13 @@ void Filter::parse_literal(const char* exp, int32_t len, Node * node, bool debug
     }
     else if (strncmp(exp, "DLEN", len)==0)
     {
-        node->type = VT_VARIANT_DLEN_OP;
+        node->type = VT_VARIANT_DLEN;
         if (debug) std::cerr << "\tis dlen\n";
         return;
     }
     else if (strncmp(exp, "LEN", len)==0)
     {
-        node->type = VT_VARIANT_LEN_OP;
+        node->type = VT_VARIANT_LEN;
         if (debug) std::cerr << "\tis len\n";
         return;
     }
@@ -877,85 +1020,85 @@ int32_t Filter::peek_op(const char* &r, int32_t len, int32_t &oplen, bool debug)
     {
         if (debug) std::cerr << "\tis && operator\n";
         oplen = 2;
-        return VT_OP_AND;
+        return VT_AND;
     }
     else if (*s=='|' && (s+1-r<len) && *(s+1)=='|')
     {
         if (debug) std::cerr << "\tis || operator\n";
         oplen = 2;
-        return VT_OP_OR;
+        return VT_OR;
     }
     else if (*s=='=' && (s+1-r<len) && *(s+1)=='=')
     {
         if (debug) std::cerr << "\tis == operator\n";
         oplen = 2;
-        return VT_OP_EQ;
+        return VT_EQ;
     }
     else if (*s=='>' && (s+1-r<len) && *(s+1)=='=')
     {
         if (debug) std::cerr << "\tis >= operator\n";
         oplen = 2;
-        return VT_OP_GE;
+        return VT_GE;
     }
     else if (*s=='<' && (s+1-r<len) && *(s+1)=='=')
     {
         if (debug) std::cerr << "\tis <= operator\n";
         oplen = 2;
-        return VT_OP_LE;
+        return VT_LE;
     }
     else if (*s=='!' && (s+1-r<len) && *(s+1)=='=')
     {
         if (debug) std::cerr << "\tis != operator\n";
         oplen = 2;
-        return VT_OP_NE;
+        return VT_NE;
     }
     else if (*s=='+')
     {
         if (debug) std::cerr << "\tis + operator\n";
         oplen = 1;
-        return VT_OP_ADD;
+        return VT_ADD;
     }
     else if (*s=='-')
     {
         if (debug) std::cerr << "\tis - operator\n";
         oplen = 1;
-        return VT_OP_SUB;
+        return VT_SUB;
     }
     else if (*s=='*')
     {
         if (debug) std::cerr << "\tis * operator\n";
         oplen = 1;
-        return VT_OP_MUL;
+        return VT_MUL;
     }
     else if (*s=='/')
     {
         if (debug) std::cerr << "\tis / operator\n";
         oplen = 1;
-        return VT_OP_DIV;
+        return VT_DIV;
     }
     else if (*s=='&')
     {
         if (debug) std::cerr << "\tis & operator\n";
         oplen = 1;
-        return VT_OP_BIT_AND;
+        return VT_BIT_AND;
     }
     else if (*s=='|')
     {
         if (debug) std::cerr << "\tis | operator\n";
         oplen = 1;
-        return VT_OP_BIT_OR;
+        return VT_BIT_OR;
     }
     else if (*s=='>')
     {
         if (debug) std::cerr << "\tis > operator\n";
         oplen = 1;
-        return VT_OP_GT;
+        return VT_GT;
     }
     else if (*s=='<')
     {
         if (debug) std::cerr << "\tis < operator\n";
         oplen = 1;
-        return VT_OP_LT;
+        return VT_LT;
     }
 
     return -1;
@@ -972,10 +1115,41 @@ void Filter::apply(Node* node, bool debug)
         apply(node->left);
     }
 
-    if (node->right!=NULL)
+    //can do some lazy evaluation here for && and || types.
+    if (node->type&VT_LOGIC_OP)
     {
-        apply(node->right);
+        if (node->type==VT_AND)
+        {
+            if (!node->left->value)
+            {
+                node->value = false;
+                return;
+            }
+            else
+            {
+                 apply(node->right);
+            }
+        }
+        else if (node->type==VT_OR)
+        {
+            if (node->left->value)
+            {
+                node->value = true;
+                return;
+            }
+            else
+            {
+                 apply(node->right);
+            }
+        }
     }
-
+    else
+    {
+        if (node->right!=NULL)
+        {
+            apply(node->right);
+        }
+    }
+   
     node->evaluate(h, v, variant, debug);
 }

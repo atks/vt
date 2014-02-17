@@ -28,50 +28,45 @@
 #include "htslib/kstring.h"
 #include "variant_manip.h"
 
-//ordered by precedence level
-//binary ops
-#define VT_OP_NOT      0
-#define VT_OP_AND      1
-#define VT_OP_OR       2
 
-#define VT_OP_EQ       5
-#define VT_OP_NE       6
-#define VT_OP_LT       7
-#define VT_OP_LE       8
-#define VT_OP_GT       9
-#define VT_OP_GE       10
+//TYPES
+#define VT_LOGIC_OP  2048
+#define VT_MATH_CMP  4096
+#define VT_MATH_OP   8192
+#define VT_BCF_OP    16384
 
-//binary math ops
-#define VT_OP_ADD  (1024|128)
-#define VT_OP_SUB  (1025|128)
-#define VT_OP_MUL  (1026|128)
-#define VT_OP_DIV  (1027|128)
+#define VT_BOOL     64
+#define VT_INT      128
+#define VT_FLT      256
+#define VT_STR      512
+#define VT_FLG      1024
 
-#define VT_OP_BIT_AND  81
-#define VT_OP_BIT_OR   82
+//common unary and binary ops (ordered by precedence level)
+#define VT_NOT      (0|VT_LOGIC_OP)
+#define VT_AND      (1|VT_LOGIC_OP)
+#define VT_OR       (2|VT_LOGIC_OP)
+
+#define VT_EQ       (3|VT_MATH_CMP)
+#define VT_NE       (4|VT_MATH_CMP)
+#define VT_LT       (5|VT_MATH_CMP)
+#define VT_LE       (6|VT_MATH_CMP)
+#define VT_GT       (7|VT_MATH_CMP)
+#define VT_GE       (8|VT_MATH_CMP)
+
+#define VT_ADD      (9|VT_MATH_OP)
+#define VT_SUB      (10|VT_MATH_OP)
+#define VT_MUL      (11|VT_MATH_OP)
+#define VT_DIV      (12|VT_MATH_OP)
+#define VT_BIT_AND  (13|VT_INT|VT_MATH_OP)
+#define VT_BIT_OR   (14|VT_INT|VT_MATH_OP)
 
 //unary ops (data getters for vcf)
-#define VT_INFO_OP          50
-#define VT_FILTER_OP        1024
-
-//INT
-#define VT_INT              64
-#define VT_VARIANT_TYPE_OP  65
-#define VT_N_ALLELE_OP      66
-#define VT_VARIANT_DLEN_OP  67
-#define VT_VARIANT_LEN_OP   68
-#define VT_INFO_INT_OP      69
-
-//FLOAT
-#define VT_FLT              128
-#define VT_INFO_FLT_OP      129
-
-//STRING
-#define VT_STR              256
-#define VT_INFO_STR_OP      257
-
-//FLAG
-#define VT_FLG              512
+#define VT_FILTER        (33|VT_BCF_OP)
+#define VT_INFO          (34|VT_BCF_OP)
+#define VT_N_ALLELE      (35|VT_INT|VT_BCF_OP)
+#define VT_VARIANT_TYPE  (36|VT_INT|VT_BCF_OP)
+#define VT_VARIANT_DLEN  (37|VT_INT|VT_BCF_OP)
+#define VT_VARIANT_LEN   (38|VT_INT|VT_BCF_OP)
 
 
 /**
@@ -180,7 +175,6 @@ class Filter
      */
     bool apply(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug=false);
 
-    
     /**
      * Attempts to simplify the expression tree by collapsing nodes that can be precomputed.
      */
