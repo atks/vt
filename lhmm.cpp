@@ -25,8 +25,6 @@
 
 LHMM::LHMM()
 {
-    maxLength = 2000;
-
 //  delta = 0.01;
 //  epsilon = 0.1;
 //  tau = 0.1;
@@ -55,7 +53,7 @@ LHMM::LHMM()
 
     logOneSixteenth = log10(1.0/16.0);
 
-    //for matched portion
+    //for matched portion 
     tMM = log10(1-2*delta-tau);
     tMI = log10(delta);
     tMD = log10(delta);
@@ -89,39 +87,49 @@ LHMM::LHMM()
     tzz = log10((1-eta)/(1-eta));
 
     //assume alignments can't possibly be maxLength bases or more
-    //todo:: allow for resizing if you do encounter fragments which are really long
-    std::vector<double> temp(maxLength+1, -DBL_MAX);
-    std::vector<char> tempX(maxLength+1, 'Y');
-    tempX[0] = 'X';
-    std::vector<char> tempY(maxLength+1, 'Y');
-    tempY[0] = 'X';
-
-    for (uint32_t i=0; i<maxLength+1; ++i)
+    for (uint32_t i=0; i<MAXLEN; ++i)
     {
-        X.push_back(temp);
-        Y.push_back(temp);
-        M.push_back(temp);
-        I.push_back(temp);
-        D.push_back(temp);
-        W.push_back(temp);
-        Z.push_back(temp);
-        pathX.push_back(tempX);
-        pathY.push_back(tempY);
-        pathM.push_back(tempX);
-        pathD.push_back(tempX);
-        pathI.push_back(tempX);
-        pathW.push_back(tempX);
-        pathZ.push_back(tempX);
+    	for (uint32_t j=0; j<MAXLEN; ++j)
+    	{
+	        scoreX[i][j] = -DBL_MAX;
+	        scoreY[i][j] = -DBL_MAX;
+	        scoreM[i][j] = -DBL_MAX;
+	        scoreI[i][j] = -DBL_MAX;
+	        scoreD[i][j] = -DBL_MAX;
+	        scoreW[i][j] = -DBL_MAX;
+	        scoreZ[i][j] = -DBL_MAX;
+	        
+	        if (j==0)
+	        {
+		        pathX[i][j] = 'X';
+		        pathY[i][j] = 'X';
+		        pathM[i][j] = 'X';
+		        pathI[i][j] = 'X';
+		        pathD[i][j] = 'X';
+		        pathW[i][j] = 'X';
+		        pathZ[i][j] = 'X';
+	    	}
+	    	else
+    		{
+    			pathX[i][j] = 'Y';
+		        pathY[i][j] = 'Y';
+		        pathM[i][j] = 'Y';
+		        pathI[i][j] = 'Y';
+		        pathD[i][j] = 'Y';
+		        pathW[i][j] = 'Y';
+		        pathZ[i][j] = 'Y';
+    		}
+	    }
     }
 
     logEta = log10(eta);
     logTau = log10(tau);
 
-    X[0][0] = 0;
-    Y[0][0] = 0;
-    M[0][0] = 0;
-    W[0][0] = 0;
-    Z[0][0] = 0;
+    scoreX[0][0] = 0;
+    scoreY[0][0] = 0;
+    scoreM[0][0] = 0;
+    scoreW[0][0] = 0;
+    scoreZ[0][0] = 0;
     pathX[0][0] = 'N';
     pathX[1][0] = 'S';
     pathY[0][0] = 'N';
@@ -129,22 +137,22 @@ LHMM::LHMM()
     pathM[0][0] = 'N';
     pathM[1][1] = 'S';
 
-    for (uint32_t k=1; k<maxLength+1; ++k)
+    for (uint32_t k=1; k<MAXLEN; ++k)
     {
-        X[k][0] = X[k-1][0] + txx;
-        X[0][k] = -DBL_MAX;
-        Y[k][0] = -DBL_MAX;
-        Y[0][k] = Y[0][k-1] + tyy;
-        W[k][0] = W[k-1][0] + tww;
-        W[0][k] = -DBL_MAX;
-        Z[k][0] = -DBL_MAX;
-        Z[0][k] = Z[0][k-1] + tzz;
+        scoreX[k][0] = scoreX[k-1][0] + txx;
+        scoreX[0][k] = -DBL_MAX;
+        scoreY[k][0] = -DBL_MAX;
+        scoreY[0][k] = scoreY[0][k-1] + tyy;
+        scoreW[k][0] = scoreW[k-1][0] + tww;
+        scoreW[0][k] = -DBL_MAX;
+        scoreZ[k][0] = -DBL_MAX;
+        scoreZ[0][k] = scoreZ[0][k-1] + tzz;
     }
 
-    X[0][0] = -DBL_MAX;
-    Y[0][0] = -DBL_MAX;
-    W[0][0] = -DBL_MAX;
-    Z[0][0] = -DBL_MAX;
+    scoreX[0][0] = -DBL_MAX;
+    scoreY[0][0] = -DBL_MAX;
+    scoreW[0][0] = -DBL_MAX;
+    scoreZ[0][0] = -DBL_MAX;
 
 };
 
@@ -154,7 +162,7 @@ bool LHMM::containsIndel()
 }
 
 /**
-convert PLs to probabilities.
+ * convert PLs to probabilities.
 */
 double LHMM::pl2prob(uint32_t PL)
 {
@@ -173,20 +181,20 @@ double LHMM::pl2prob(uint32_t PL)
 }
 
 /**
- *Updates matchStart, matchEnd, globalMaxPath and path.
+ * Updates matchStart, matchEnd, globalMaxPath and path.
  */
 void LHMM::tracePath()
 {
-    double globalMax = M[xlen][ylen];
+    double globalMax = scoreM[xlen][ylen];
     char globalMaxPath = 'M';
-    if (W[xlen][ylen]>globalMax)
+    if (scoreW[xlen][ylen]>globalMax)
     {
-        globalMax = W[xlen][ylen];
+        globalMax = scoreW[xlen][ylen];
         globalMaxPath = 'W';
     }
-    if (Z[xlen][ylen]>globalMax)
+    if (scoreZ[xlen][ylen]>globalMax)
     {
-        globalMax = Z[xlen][ylen];
+        globalMax = scoreZ[xlen][ylen];
         globalMaxPath = 'Z';
     }
 
@@ -450,7 +458,7 @@ void LHMM::left_align()
             {
 //                printAlignment();
 //
-//                std::cerr << "X[" << indelStartsInX[i]-1 << "] "  << x[indelStartsInX[i]-1] << "\n";
+//                std::cerr << "scoreX[" << indelStartsInX[i]-1 << "] "  << x[indelStartsInX[i]-1] << "\n";
 //                std::cerr << "Y[" << indelStartsInY[i]-1 << "] "  << y[indelStartsInY[i]-1] << "\n";
 //                std::cerr << "Y[" << indelEndsInY[i]-1 << "] "  << y[indelEndsInY[i]-1] << "\n";
 //
@@ -507,7 +515,7 @@ void LHMM::left_align()
             while (indelStartsInX[i]>1 && indelStartsInY[i]>1)
             {
 //                printAlignment();
-//                std::cerr << "X[" << indelStartsInX[i]-1 << "] "  << x[indelStartsInX[i]-1] << "\n";
+//                std::cerr << "scoreX[" << indelStartsInX[i]-1 << "] "  << x[indelStartsInX[i]-1] << "\n";
 //                std::cerr << "Y[" << indelStartsInY[i]-1 << "] "  << y[indelStartsInY[i]-1] << "\n";
 //                std::cerr << "Y[" << indelEndsInY[i]-1 << "] "  << y[indelEndsInY[i]-1] << "\n";
 
@@ -569,17 +577,17 @@ void LHMM::align(double& llk, const char* _x, const char* _y, const char* _qual,
             //std::cerr << i << " " << j  << "\n" ;
 
             //X
-            double xx = X[i-1][j] + txx;
+            double xx = scoreX[i-1][j] + txx;
 
             max = xx;
             maxPath = 'X';
 
-            X[i][j] = max;
+            scoreX[i][j] = max;
             pathX[i][j] = maxPath;
 
             //Y
-            double xy = X[i][j-1] + txy;
-            double yy = Y[i][j-1] + tyy;
+            double xy = scoreX[i][j-1] + txy;
+            double yy = scoreY[i][j-1] + tyy;
 
             max = xy;
             maxPath = 'X';
@@ -590,15 +598,15 @@ void LHMM::align(double& llk, const char* _x, const char* _y, const char* _qual,
                 maxPath = 'Y';
             }
 
-            Y[i][j] = max;
+            scoreY[i][j] = max;
             pathY[i][j] = maxPath;
 
             //M
-            double xm = X[i-1][j-1] + txm;
-            double ym = Y[i-1][j-1] + tym;
-            double mm = M[i-1][j-1] + ((i==1&&j==1) ? tsm : tmm);
-            double im = I[i-1][j-1] + tim;
-            double dm = D[i-1][j-1] + tdm;
+            double xm = scoreX[i-1][j-1] + txm;
+            double ym = scoreY[i-1][j-1] + tym;
+            double mm = scoreM[i-1][j-1] + ((i==1&&j==1) ? tsm : tmm);
+            double im = scoreI[i-1][j-1] + tim;
+            double dm = scoreD[i-1][j-1] + tdm;
 
             max = xm;
             maxPath = 'X';
@@ -624,12 +632,12 @@ void LHMM::align(double& llk, const char* _x, const char* _y, const char* _qual,
                 maxPath = 'D';
             }
 
-            M[i][j] = max + logEmissionOdds(x[i-1], y[j-1], pl2prob((uint32_t) qual[j-1]-33));
+            scoreM[i][j] = max + logEmissionOdds(x[i-1], y[j-1], pl2prob((uint32_t) qual[j-1]-33));
             pathM[i][j] = maxPath;
 
             //D
-            double md = M[i-1][j] + tmd;
-            double dd = D[i-1][j] + tdd;
+            double md = scoreM[i-1][j] + tmd;
+            double dd = scoreD[i-1][j] + tdd;
 
             max = md;
             maxPath = 'M';
@@ -640,12 +648,12 @@ void LHMM::align(double& llk, const char* _x, const char* _y, const char* _qual,
                 maxPath = 'D';
             }
 
-            D[i][j] = max;
+            scoreD[i][j] = max;
             pathD[i][j] = maxPath;
 
             //I
-            double mi = M[i][j-1] + tmi;
-            double ii = I[i][j-1] + tii;
+            double mi = scoreM[i][j-1] + tmi;
+            double ii = scoreI[i][j-1] + tii;
 
             max = mi;
             maxPath = 'M';
@@ -656,12 +664,12 @@ void LHMM::align(double& llk, const char* _x, const char* _y, const char* _qual,
                 maxPath = 'I';
             }
 
-            I[i][j] = max;
+            scoreI[i][j] = max;
             pathI[i][j] = maxPath;
 
             //W
-            double mw = M[i-1][j] + tmw;
-            double ww = W[i-1][j] + tww;
+            double mw = scoreM[i-1][j] + tmw;
+            double ww = scoreW[i-1][j] + tww;
 
             max = mw;
             maxPath = 'M';
@@ -672,13 +680,13 @@ void LHMM::align(double& llk, const char* _x, const char* _y, const char* _qual,
                 maxPath = 'W';
             }
 
-            W[i][j] = max;
+            scoreW[i][j] = max;
             pathW[i][j] = maxPath;
 
             //Z
-            double mz = M[i][j-1] + tmz;
-            double wz = W[i][j-1] + twz;
-            double zz = Z[i][j-1] + tzz;
+            double mz = scoreM[i][j-1] + tmz;
+            double wz = scoreW[i][j-1] + twz;
+            double zz = scoreZ[i][j-1] + tzz;
 
             max = mz;
             maxPath = 'M';
@@ -694,29 +702,29 @@ void LHMM::align(double& llk, const char* _x, const char* _y, const char* _qual,
                 maxPath = 'Z';
             }
 
-            Z[i][j] = max;
+            scoreZ[i][j] = max;
             pathZ[i][j] = maxPath;
         }
 
-        M[xlen][ylen] += logTau-logEta;
+        scoreM[xlen][ylen] += logTau-logEta;
     }
 
     if (debug)
     {
         std::cerr << "\n=X=\n";
-        printVector(X, xlen+1, ylen+1);
+        printVector(scoreX, xlen+1, ylen+1);
         std::cerr << "\n=Y=\n";
-        printVector(Y, xlen+1, ylen+1);
+        printVector(scoreY, xlen+1, ylen+1);
         std::cerr << "\n=M=\n";
-        printVector(M, xlen+1, ylen+1);
+        printVector(scoreM, xlen+1, ylen+1);
         std::cerr << "\n=D=\n";
-        printVector(D, xlen+1, ylen+1);
+        printVector(scoreD, xlen+1, ylen+1);
         std::cerr << "\n=I=\n";
-        printVector(I, xlen+1, ylen+1);
+        printVector(scoreI, xlen+1, ylen+1);
         std::cerr << "\n=W=\n";
-        printVector(W, xlen+1, ylen+1);
+        printVector(scoreW, xlen+1, ylen+1);
         std::cerr << "\n=Z=\n";
-        printVector(Z, xlen+1, ylen+1);
+        printVector(scoreZ, xlen+1, ylen+1);
         std::cerr << "\n=Path X=\n";
         printVector(pathX, xlen+1, ylen+1);
         std::cerr << "\n=Path Y=\n";
@@ -1104,7 +1112,7 @@ std::string LHMM::reverse(std::string s)
     return rs;
 };
 
-void LHMM::printVector(std::vector<std::vector<double> >& v, uint32_t xLen, uint32_t yLen)
+void LHMM::printVector(double v[][MAXLEN], uint32_t xLen, uint32_t yLen)
 {
     for (uint32_t i=0; i<xLen; ++i)
     {
@@ -1117,7 +1125,7 @@ void LHMM::printVector(std::vector<std::vector<double> >& v, uint32_t xLen, uint
     }
 };
 
-void LHMM::printVector(std::vector<std::vector<char> >& v, uint32_t xLen, uint32_t yLen)
+void LHMM::printVector(char v[][MAXLEN], uint32_t xLen, uint32_t yLen)
 {
     for (uint32_t i=0; i<xLen; ++i)
     {
@@ -1130,11 +1138,11 @@ void LHMM::printVector(std::vector<std::vector<char> >& v, uint32_t xLen, uint32
     }
 };
 
-void LHMM::printVector(std::vector<std::vector<double> >& v)
+void LHMM::printVector(double v[][MAXLEN])
 {
-    for (uint32_t i=0; i<v.size(); ++i)
+    for (uint32_t i=0; i<MAXLEN; ++i)
     {
-        for (uint32_t j=0; j<v[i].size(); ++j)
+        for (uint32_t j=0; j<MAXLEN; ++j)
         {
           std::cerr << v[i][j] << "\t";
         }

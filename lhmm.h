@@ -28,6 +28,15 @@
 #include "log_tool.h"
 #include <regex.h>
 
+//#define X 0
+//#define Y 0
+//#define M 0
+//#define I 0
+//#define D 0
+//#define W 0
+//#define Z 0
+#define MAXLEN 2000
+
 class LHMM
 {
     public:
@@ -35,20 +44,24 @@ class LHMM
     const char* y;
     const char* qual;
 
-    std::vector<std::vector<double> > X;
-    std::vector<std::vector<double> > Y;
-    std::vector<std::vector<double> > M;
-    std::vector<std::vector<double> > I;
-    std::vector<std::vector<double> > D;
-    std::vector<std::vector<double> > W;
-    std::vector<std::vector<double> > Z;
-    std::vector<std::vector<char> > pathX;
-    std::vector<std::vector<char> > pathY;
-    std::vector<std::vector<char> > pathM;
-    std::vector<std::vector<char> > pathD;
-    std::vector<std::vector<char> > pathI;
-    std::vector<std::vector<char> > pathW;
-    std::vector<std::vector<char> > pathZ;
+	
+
+    double scoreX[MAXLEN][MAXLEN];
+    double scoreY[MAXLEN][MAXLEN];
+    double scoreM[MAXLEN][MAXLEN];
+    double scoreI[MAXLEN][MAXLEN];  
+	double scoreD[MAXLEN][MAXLEN];
+	double scoreW[MAXLEN][MAXLEN];
+    double scoreZ[MAXLEN][MAXLEN];
+
+	double pathX[MAXLEN][MAXLEN];
+    double pathY[MAXLEN][MAXLEN];
+    double pathM[MAXLEN][MAXLEN];
+    double pathI[MAXLEN][MAXLEN];  
+	double pathD[MAXLEN][MAXLEN];
+	double pathW[MAXLEN][MAXLEN];
+    double pathZ[MAXLEN][MAXLEN];
+
     std::vector<double> PLs;
 
     uint32_t maxLength;
@@ -174,11 +187,11 @@ class LHMM
 
     std::string reverse(std::string s);
 
-    void printVector(std::vector<std::vector<double> >& v, uint32_t xLen, uint32_t yLen);
+    void printVector(double v[][MAXLEN], uint32_t xLen, uint32_t yLen);
 
-    void printVector(std::vector<std::vector<char> >& v, uint32_t xLen, uint32_t yLen);
+    void printVector(char v[][MAXLEN], uint32_t xLen, uint32_t yLen);
 
-    void printVector(std::vector<std::vector<double> >& v);
+    void printVector(double v[][MAXLEN]);
 
     void printAlignment();
 
