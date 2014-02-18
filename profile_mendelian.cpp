@@ -583,7 +583,7 @@ class Igor : Program
         std::string cmd = "pdflatex -output-directory=" + output_latex_dir + " " + output_latex_file + " > " + output_latex_dir + "/run.log";
        
         //std::cerr << cmd << "\n";
-        system(cmd.c_str());
+        int32_t sys_ret = system(cmd.c_str());
         //system("cp mendel_plot/mendel.pdf .");
         //system("rm -fr mendel_plot");
 
