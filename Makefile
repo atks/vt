@@ -1,4 +1,5 @@
 UNAME = $(shell uname)
+SHELL := /bin/bash
 
 OPTFLAG ?= -O3 -ggdb
 INCLUDES = -I./lib/include/ -I. -I./lib/include/htslib
@@ -43,7 +44,8 @@ SOURCES = program\
 		remove_overlap\
 		profile_na12878\
 		profile_snps\
-		filter
+		filter\
+		align
 
 SOURCESONLY = main.cpp
 

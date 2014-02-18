@@ -40,6 +40,7 @@
 #include "remove_overlap.h"
 #include "profile_na12878.h"
 #include "profile_snps.h"
+#include "align.h"
 
 void print_time(double t)
 {
@@ -183,7 +184,11 @@ int main(int argc, char ** argv)
     else if (argc>1 && cmd=="profile_na12878")
     {
         profile_na12878(argc-1, ++argv);
-    }        
+    } 
+    else if (argc>1 && cmd=="align")
+    {
+        align(argc-1, ++argv);
+    }            
     else
     {
         std::clog << "Command not found: " << argv[1] << "\n\n";
