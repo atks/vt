@@ -125,8 +125,8 @@ class Igor : Program
         
         if (annotate_coding)
         {    
-            bcf_hdr_append(odw->hdr, "##INFO=<ID=FS,Number=0,Type=Flag,Description=\"Frameshift INDEL\">");
-            bcf_hdr_append(odw->hdr, "##INFO=<ID=NFS,Number=0,Type=Flag,Description=\"Non Frameshift INDEL\">");
+            bcf_hdr_append(odw->hdr, "##INFO=<ID=GENCODE_FS,Number=0,Type=Flag,Description=\"Frameshift INDEL\">");
+            bcf_hdr_append(odw->hdr, "##INFO=<ID=GENCODE_NFS,Number=0,Type=Flag,Description=\"Non Frameshift INDEL\">");
             gc = new GENCODE(gencode_gtf_file, ref_fasta_file);
         }
         
@@ -209,11 +209,11 @@ class Igor : Program
                     {
                         if (is_fs)
                         {
-                            bcf_update_info_flag(odr->hdr, v, "FS", "", 1);
+                            bcf_update_info_flag(odr->hdr, v, "GENCODE_FS", "", 1);
                         }
                         else
                         {
-                            bcf_update_info_flag(odr->hdr, v, "NFS", "", 1);
+                            bcf_update_info_flag(odr->hdr, v, "GENCODE_NFS", "", 1);
                         }
                     }
                     
