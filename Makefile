@@ -1,7 +1,4 @@
-UNAME = $(shell uname)
-SHELL := /bin/bash
-
-OPTFLAG ?= -O3 -ggdb
+OPTFLAG = -O3 -ggdb
 INCLUDES = -I./lib/include/ -I. -I./lib/include/htslib
 CFLAGS = -pipe -std=c++0x $(OPTFLAG) $(INCLUDES) -D__STDC_LIMIT_MACROS
 CXX = g++
@@ -33,6 +30,7 @@ SOURCES = program\
 		gencode\
 		annotate_variants\
 		lhmm\
+		lhmm1\
 		genotyping_buffer\
 		lhmm_genotyping_record\
 		peek\

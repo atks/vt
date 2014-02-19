@@ -76,14 +76,12 @@ class Igor : Program
             abort();
         }
     };
-
+ 
     void align()
     {
         if (method=="lhmm")
         {
             LHMM lhmm;
-            
-            //void align(double& llk, const char* _x, const char* _y, const char* qual, bool debug=false);
             double llk;
             std::string qual;
             for (int32_t i=0; i<y.size(); ++i)
@@ -92,6 +90,18 @@ class Igor : Program
             }
             lhmm.align(llk, x.c_str(), y.c_str(), qual.c_str());
             lhmm.printAlignment();
+        }
+        else if (method=="lhmm1")
+        {
+            LHMM1 lhmm1;
+            double llk;
+            std::string qual;
+            for (int32_t i=0; i<y.size(); ++i)
+            {
+                qual += 'K';
+            }
+            lhmm1.align(llk, x.c_str(), y.c_str(), qual.c_str());
+            lhmm1.printAlignment();
         }
     };
 
@@ -109,7 +119,7 @@ class Igor : Program
     {
         std::clog << "\n";
 
-        std::clog << "\n";
+        std::clog << "what's wrong\n";
     };
 
     ~Igor() {};
