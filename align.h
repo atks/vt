@@ -27,7 +27,7 @@
 #include "program.h"
 #include "lhmm1.h"
 #include "lhmm.h"
-
+#include "chmm.h"
 
 void align(int argc, char ** argv);
     

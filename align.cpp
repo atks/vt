@@ -25,6 +25,28 @@
 
 namespace
 {
+void print_time(float t)
+{
+    if (t<60)
+    {
+        fprintf(stderr, "Alignment time elapsed: %fs\n\n", t);
+    }
+    else if (t<60*60) //less than an hour
+    {
+        fprintf(stderr, "Time elapsed: %dm %ds\n\n", ((int32_t)(t/60)), ((int32_t)fmod(t, 60)));
+    }
+    else if (t<60*60*24) //less than a day
+    {
+        double m = fmod(t, 60*60); //remaining minutes
+        fprintf(stderr, "Time elapsed: %dh %dm %ds\n\n", ((int32_t)(t/(60*60))), ((int32_t)(m/60)), ((int32_t)fmod(m, 60)));
+    }
+    else if (t<60*60*24*365) //less than a year
+    {
+        double h = fmod(t, 60*60*24); //remaining hours
+        double m = fmod(h, 60*60); //remaining minutes
+        fprintf(stderr, "Alignment time elapsed: %dd %dh %dm %.6fs\n\n", ((int32_t)(t/(60*60*24))), ((int32_t)(h/(60*60))), ((int32_t)(m/60)), (fmod(m, 60)));
+    }
+};
 
 class Igor : Program
 {
@@ -88,8 +110,26 @@ class Igor : Program
             {
                 qual += 'K';
             }
+            clock_t t0 = clock();
             lhmm.align(llk, x.c_str(), y.c_str(), qual.c_str());
             lhmm.printAlignment();
+            clock_t t1 = clock();
+            print_time((float)(t1-t0)/CLOCKS_PER_SEC);
+        }
+        else if (method=="chmm")
+        {
+            CHMM chmm;
+            double llk;
+            std::string qual;
+            for (int32_t i=0; i<y.size(); ++i)
+            {
+                qual += 'K';
+            }
+            clock_t t0 = clock();
+            chmm.align(llk, x.c_str(), y.c_str(), qual.c_str());
+            chmm.printAlignment();
+            clock_t t1 = clock();
+             print_time((float)(t1-t0)/CLOCKS_PER_SEC);
         }
         else if (method=="lhmm1")
         {
@@ -100,8 +140,11 @@ class Igor : Program
             {
                 qual += 'K';
             }
+            clock_t t0 = clock();
             lhmm1.align(llk, x.c_str(), y.c_str(), qual.c_str());
             lhmm1.printAlignment();
+            clock_t t1 = clock();
+             print_time((float)(t1-t0)/CLOCKS_PER_SEC);
         }
     };
 
