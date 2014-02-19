@@ -25,7 +25,9 @@
 #define ALIGN_H
 
 #include "program.h"
+#include "lhmm1.h"
 #include "lhmm.h"
+
 
 void align(int argc, char ** argv);
     

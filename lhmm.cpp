@@ -1,5 +1,5 @@
 /* The MIT License
-
+ 
    Copyright (c) 2013 Adrian Tan <atks@umich.edu>
 
    Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -25,27 +25,6 @@
 
 LHMM::LHMM()
 {
-//  delta = 0.01;
-//  epsilon = 0.1;
-//  tau = 0.1;
-//  eta = 0.001;
-
-//  delta = 0.01;
-//  epsilon = 0.1;
-//  tau = 0.1;
-//  eta = 0.001;
-
-//  last
-//  delta = 0.001;
-//  epsilon = 0.5;
-//  tau = 0.1;
-//  eta = 0.01;
-
-//  delta = 0.01;
-//  epsilon = 0.5;
-//  tau = 0.1;
-//  eta = 0.001;
-
     delta = 0.001;
     epsilon = 0.5;
     tau = 0.1;
@@ -53,148 +32,346 @@ LHMM::LHMM()
 
     logOneSixteenth = log10(1.0/16.0);
 
-    //for matched portion 
-    tMM = log10(1-2*delta-tau);
-    tMI = log10(delta);
-    tMD = log10(delta);
-    tII = log10(epsilon);
-    tDD = log10(epsilon);
-    tDM = log10(1-epsilon);
-    tIM = log10(1-epsilon);
+    transition[X][X] = 0; //log10((1-eta)/(1-eta));
+    transition[X][Y] = 0; //log10((eta*(1-eta))/(eta*(1-eta)));
+    transition[Y][Y] = 0; //log10((1-eta)/(1-eta));
 
-    txx = log10((1-eta)/(1-eta));
-    txy = log10((eta*(1-eta))/(eta*(1-eta)));
-    tyy = log10((1-eta)/(1-eta));
+    transition[X][M] = log10(1/((1-eta)*(1-eta))); //log10((eta*eta)/(eta*eta*(1-eta)*(1-eta)));
+    transition[Y][M] = transition[X][M]; //log10((eta)/(eta*(1-eta)*(1-eta)));
+    transition[S][M] = log10(1/(eta*(1-eta)*(1-eta))); //log10((eta*eta)/(eta*eta*eta*(1-eta)*(1-eta)));
+    transition[M][M] = log10((1-2*delta-tau)/((1-eta)*(1-eta)));
+    transition[I][M] = log10((1-epsilon)/(1-eta));
+    transition[D][M] = transition[I][M]; //log10((1-epsilon)/(1-eta));
 
-    txm = log10((eta*eta)/(eta*eta*(1-eta)*(1-eta)));
-    tym = log10((eta)/(eta*(1-eta)*(1-eta)));
-    tsm = log10((eta*eta)/(eta*eta*eta*(1-eta)*(1-eta)));
-    tmm = log10((1-2*delta-tau)/((1-eta)*(1-eta)));
-    tim = log10((1-epsilon)/(1-eta));
-    tdm = log10((1-epsilon)/(1-eta));
+    transition[M][D] = log10(delta/(1-eta));
+    transition[D][D] = log10(epsilon/(1-eta));
 
-    tmd = log10(delta/(1-eta));
-    tdd = log10(epsilon/(1-eta));
+    transition[M][I] = transition[M][D]; //log10(delta/(1-eta));
+    transition[I][I] = transition[D][D]; //log10(epsilon/(1-eta));
 
-    tmi = log10(delta/(1-eta));
-    tii = log10(epsilon/(1-eta));
+    transition[M][W] = log10(tau/eta); //log10((tau*(1-eta))/(eta*(1-eta)));
+    transition[W][W] = 0; //log10((1-eta)/(1-eta));
 
-    tmw = log10((tau*(1-eta))/(eta*(1-eta)));
-    tww = log10((1-eta)/(1-eta));
+    transition[M][Z] = transition[M][W]; //log10((tau*eta*(1-eta))/(eta*eta*(1-eta)));
+    transition[W][Z] = 0; //log10((eta*(1-eta))/(eta*(1-eta)));
+    transition[Z][Z] = 0; //log10((1-eta)/(1-eta));
 
-    tmz = log10((tau*eta*(1-eta))/(eta*eta*(1-eta)));
-    twz = log10((eta*(1-eta))/(eta*(1-eta)));
-    tzz = log10((1-eta)/(1-eta));
-
+    scoreX = new double[MAXLEN*MAXLEN];
+    scoreY = new double[MAXLEN*MAXLEN];
+    scoreM = new double[MAXLEN*MAXLEN];
+    scoreI = new double[MAXLEN*MAXLEN];
+    scoreD = new double[MAXLEN*MAXLEN];
+    scoreW = new double[MAXLEN*MAXLEN];
+    scoreZ = new double[MAXLEN*MAXLEN];
+    
+    pathX = new char[MAXLEN*MAXLEN];
+    pathY = new char[MAXLEN*MAXLEN];
+    pathM = new char[MAXLEN*MAXLEN];
+    pathI = new char[MAXLEN*MAXLEN];
+    pathD = new char[MAXLEN*MAXLEN];
+    pathW = new char[MAXLEN*MAXLEN];
+    pathZ = new char[MAXLEN*MAXLEN];
+    
     //assume alignments can't possibly be maxLength bases or more
-    for (uint32_t i=0; i<MAXLEN; ++i)
+    for (int32_t i=0; i<MAXLEN; ++i)
     {
-    	for (uint32_t j=0; j<MAXLEN; ++j)
-    	{
-	        scoreX[i][j] = -DBL_MAX;
-	        scoreY[i][j] = -DBL_MAX;
-	        scoreM[i][j] = -DBL_MAX;
-	        scoreI[i][j] = -DBL_MAX;
-	        scoreD[i][j] = -DBL_MAX;
-	        scoreW[i][j] = -DBL_MAX;
-	        scoreZ[i][j] = -DBL_MAX;
-	        
-	        if (j==0)
-	        {
-		        pathX[i][j] = 'X';
-		        pathY[i][j] = 'X';
-		        pathM[i][j] = 'X';
-		        pathI[i][j] = 'X';
-		        pathD[i][j] = 'X';
-		        pathW[i][j] = 'X';
-		        pathZ[i][j] = 'X';
-	    	}
-	    	else
-    		{
-    			pathX[i][j] = 'Y';
-		        pathY[i][j] = 'Y';
-		        pathM[i][j] = 'Y';
-		        pathI[i][j] = 'Y';
-		        pathD[i][j] = 'Y';
-		        pathW[i][j] = 'Y';
-		        pathZ[i][j] = 'Y';
-    		}
-	    }
+        for (int32_t j=0; j<MAXLEN; ++j)
+        {
+            scoreX[i*MAXLEN+j] = -DBL_MAX;
+            scoreY[i*MAXLEN+j] = -DBL_MAX;
+            scoreM[i*MAXLEN+j] = -DBL_MAX;
+            scoreI[i*MAXLEN+j] = -DBL_MAX;
+            scoreD[i*MAXLEN+j] = -DBL_MAX;
+            scoreW[i*MAXLEN+j] = -DBL_MAX;
+            scoreZ[i*MAXLEN+j] = -DBL_MAX;
+            
+            if (j)
+            {
+                pathX[i*MAXLEN+j] = 'Y';
+                pathY[i*MAXLEN+j] = 'Y';
+                pathM[i*MAXLEN+j] = 'Y';
+                pathI[i*MAXLEN+j] = 'Y';
+                pathD[i*MAXLEN+j] = 'Y';
+                pathW[i*MAXLEN+j] = 'Y';
+                pathZ[i*MAXLEN+j] = 'Y';
+            }
+            else
+            {
+                pathX[i*MAXLEN+j] = 'X';
+                pathY[i*MAXLEN+j] = 'X';
+                pathM[i*MAXLEN+j] = 'X';
+                pathI[i*MAXLEN+j] = 'X';
+                pathD[i*MAXLEN+j] = 'X';
+                pathW[i*MAXLEN+j] = 'X';
+                pathZ[i*MAXLEN+j] = 'X';
+            }
+        }
     }
 
     logEta = log10(eta);
     logTau = log10(tau);
 
-    scoreX[0][0] = 0;
-    scoreY[0][0] = 0;
-    scoreM[0][0] = 0;
-    scoreW[0][0] = 0;
-    scoreZ[0][0] = 0;
-    pathX[0][0] = 'N';
-    pathX[1][0] = 'S';
-    pathY[0][0] = 'N';
-    pathY[0][1] = 'S';
-    pathM[0][0] = 'N';
-    pathM[1][1] = 'S';
+    scoreX[0*MAXLEN+0] = 0;
+    scoreY[0*MAXLEN+0] = 0;
+    scoreM[0*MAXLEN+0] = 0;
+    scoreW[0*MAXLEN+0] = 0;
+    scoreZ[0*MAXLEN+0] = 0;
+    pathX[0*MAXLEN+0] = 'N';
+    pathX[1*MAXLEN+0] = 'S';
+    pathY[0*MAXLEN+0] = 'N';
+    pathY[0*MAXLEN+1] = 'S';
+    pathM[0*MAXLEN+0] = 'N';
+    pathM[1*MAXLEN+1] = 'S';
 
     for (uint32_t k=1; k<MAXLEN; ++k)
     {
-        scoreX[k][0] = scoreX[k-1][0] + txx;
-        scoreX[0][k] = -DBL_MAX;
-        scoreY[k][0] = -DBL_MAX;
-        scoreY[0][k] = scoreY[0][k-1] + tyy;
-        scoreW[k][0] = scoreW[k-1][0] + tww;
-        scoreW[0][k] = -DBL_MAX;
-        scoreZ[k][0] = -DBL_MAX;
-        scoreZ[0][k] = scoreZ[0][k-1] + tzz;
+        scoreX[k*MAXLEN+0] = scoreX[(k-1)*MAXLEN+0] + transition[X][X];
+        scoreX[0*MAXLEN+k] = -DBL_MAX;
+        scoreY[k*MAXLEN+0] = -DBL_MAX;
+        scoreY[0*MAXLEN+k] = scoreY[0*MAXLEN+(k-1)] + transition[Y][Y];
+        scoreW[k*MAXLEN+0] = scoreW[(k-1)*MAXLEN+0] + transition[W][W];
+        scoreW[0*MAXLEN+k] = -DBL_MAX;
+        scoreZ[k*MAXLEN+0] = -DBL_MAX;
+        scoreZ[0*MAXLEN+k] = scoreZ[0*MAXLEN+(k-1)] + transition[Z][Z];
     }
 
-    scoreX[0][0] = -DBL_MAX;
-    scoreY[0][0] = -DBL_MAX;
-    scoreW[0][0] = -DBL_MAX;
-    scoreZ[0][0] = -DBL_MAX;
+    scoreX[0*MAXLEN+0] = -DBL_MAX;
+    scoreY[0*MAXLEN+0] = -DBL_MAX;
+    scoreW[0*MAXLEN+0] = -DBL_MAX;
+    scoreZ[0*MAXLEN+0] = -DBL_MAX;
 
 };
 
-bool LHMM::containsIndel()
-{
-    return (indelStatusInPath.size()!=0);
-}
-
 /**
- * convert PLs to probabilities.
+Align and compute genotype likelihood.
 */
-double LHMM::pl2prob(uint32_t PL)
+void LHMM::align(double& llk, const char* x, const char* y, const char* qual, bool debug)
 {
-    if (PL>=PLs.size())
-    {
-        if (PL > 3236)
-            PL = 3236;
+    //std::cerr << "Running this\n" ;
+    this->x = x;
+    this->y = y;
+    this->qual = qual;
 
-        for (uint32_t i=PLs.size(); i<=PL; ++i)
+    //adds a starting character at the fron of each string that must be matched
+    xlen = strlen(x);
+    ylen = strlen(y);
+    double max = 0;
+    char maxPath = 'X';
+
+    //construct possible solutions
+    for (uint32_t i=1; i<=xlen; ++i)
+    {
+        for (uint32_t j=1; j<=ylen; ++j)
         {
-            PLs.push_back(pow(10, -((double) i)/10.0));
+            //X
+            double xx = scoreX[(i-1)*MAXLEN+j] + transition[X][X];
+
+            max = xx;
+            maxPath = 'X';
+
+            scoreX[i*MAXLEN+j] = max;
+            pathX[i*MAXLEN+j] = maxPath;
+
+            //Y
+            double xy = scoreX[i*MAXLEN+(j-1)] + transition[X][Y];
+            double yy = scoreY[i*MAXLEN+(j-1)] + transition[Y][Y];
+
+            max = xy;
+            maxPath = 'X';
+
+            if (yy>max)
+            {
+                max = yy;
+                maxPath = 'Y';
+            }
+
+            scoreY[i*MAXLEN+j] = max;
+            pathY[i*MAXLEN+j] = maxPath;
+
+            //M
+            double xm = scoreX[(i-1)*MAXLEN+(j-1)] + transition[X][M];
+            double ym = scoreY[(i-1)*MAXLEN+(j-1)] + transition[Y][M];
+            double mm = scoreM[(i-1)*MAXLEN+(j-1)] + ((i==1&&j==1) ? transition[S][M] : transition[M][M]);
+            double im = scoreI[(i-1)*MAXLEN+(j-1)] + transition[I][M];
+            double dm = scoreD[(i-1)*MAXLEN+(j-1)] + transition[D][M];
+
+            max = xm;
+            maxPath = 'X';
+
+            if (ym>max) //special case
+            {
+                max = ym;
+                maxPath = 'Y';
+            }
+            if (mm>max)
+            {
+                max = mm;
+                maxPath = (i==1&&j==1) ? 'S' : 'M';
+            }
+            if (im>max)
+            {
+                max = im;
+                maxPath = 'I';
+            }
+            if (dm>max)
+            {
+                max = dm;
+                maxPath = 'D';
+            }
+
+            scoreM[i*MAXLEN+j] = max + logEmissionOdds(x[i-1], y[j-1], lt.pl2prob((uint32_t) qual[j-1]-33));
+            pathM[i*MAXLEN+j] = maxPath;
+
+            //D
+            double md = scoreM[(i-1)*MAXLEN+j] + transition[M][D];
+            double dd = scoreD[(i-1)*MAXLEN+j] + transition[D][D];
+
+            max = md;
+            maxPath = 'M';
+
+            if (dd>max)
+            {
+                max = dd;
+                maxPath = 'D';
+            }
+
+            scoreD[i*MAXLEN+j] = max;
+            pathD[i*MAXLEN+j] = maxPath;
+
+            //I
+            double mi = scoreM[i*MAXLEN+(j-1)] + transition[M][I];
+            double ii = scoreI[i*MAXLEN+(j-1)] + transition[I][I];
+
+            max = mi;
+            maxPath = 'M';
+
+            if (ii>max)
+            {
+                max = ii;
+                maxPath = 'I';
+            }
+
+            scoreI[i*MAXLEN+j] = max;
+            pathI[i*MAXLEN+j] = maxPath;
+
+            //W
+            double mw = scoreM[(i-1)*MAXLEN+j] + transition[M][W];
+            double ww = scoreW[(i-1)*MAXLEN+j] + transition[W][W];
+
+            max = mw;
+            maxPath = 'M';
+
+            if (ww>max)
+            {
+                max = ww;
+                maxPath = 'W';
+            }
+
+            scoreW[i*MAXLEN+j] = max;
+            pathW[i*MAXLEN+j] = maxPath;
+
+            //Z
+            double mz = scoreM[i*MAXLEN+(j-1)] + transition[M][Z];
+            double wz = scoreW[i*MAXLEN+(j-1)] + transition[W][Z];
+            double zz = scoreZ[i*MAXLEN+(j-1)] + transition[Z][Z];
+
+            max = mz;
+            maxPath = 'M';
+
+            if (wz>max)
+            {
+                max = wz;
+                maxPath = 'W';
+            }
+            if (zz>max)
+            {
+                max = zz;
+                maxPath = 'Z';
+            }
+
+            scoreZ[i*MAXLEN+j] = max;
+            pathZ[i*MAXLEN+j] = maxPath;
         }
+
+        scoreM[xlen*MAXLEN+ylen] += logTau-logEta;
     }
 
-    return PLs[PL];
-}
+    if (debug)
+    {
+//        std::cerr << "\n=X=\n";
+//        printVector(scoreX, xlen+1, ylen+1);
+//        std::cerr << "\n=Y=\n";
+//        printVector(scoreY, xlen+1, ylen+1);
+//        std::cerr << "\n=M=\n";
+//        printVector(scoreM, xlen+1, ylen+1);
+//        std::cerr << "\n=D=\n";
+//        printVector(scoreD, xlen+1, ylen+1);
+//        std::cerr << "\n=I=\n";
+//        printVector(scoreI, xlen+1, ylen+1);
+//        std::cerr << "\n=W=\n";
+//        printVector(scoreW, xlen+1, ylen+1);
+//        std::cerr << "\n=Z=\n";
+//        printVector(scoreZ, xlen+1, ylen+1);
+//        std::cerr << "\n=Path X=\n";
+//        printVector(pathX, xlen+1, ylen+1);
+//        std::cerr << "\n=Path Y=\n";
+//        printVector(pathY, xlen+1, ylen+1);
+//        std::cerr << "\n=Path M=\n";
+//        printVector(pathM, xlen+1, ylen+1);
+//        std::cerr << "\n=Path D=\n";
+//        printVector(pathD, xlen+1, ylen+1);
+//        std::cerr << "\n=Path I=\n";
+//        printVector(pathI, xlen+1, ylen+1);
+//        std::cerr << "\n=Path W=\n";
+//        printVector(pathW, xlen+1, ylen+1);
+//        std::cerr << "\n=Path Z=\n";
+//        printVector(pathZ, xlen+1, ylen+1);
+    }
+
+    tracePath();
+};
+
+double LHMM::logEmissionOdds(char readBase, char probeBase, double e)
+{
+    //4 encodes for N
+    if (readBase=='N' || probeBase=='N')
+    {
+        //silent match
+        return 0;
+    }
+
+    if (readBase!=probeBase)
+    {
+        return log10(e/3)-logOneSixteenth;
+    }
+    else
+    {
+        return log10(1-e)-logOneSixteenth;
+    }
+};
+
+//bool LHMM::containsIndel()
+//{
+//    return (indelStatusInPath.size()!=0);
+//}
+
+
 
 /**
  * Updates matchStart, matchEnd, globalMaxPath and path.
  */
 void LHMM::tracePath()
 {
-    double globalMax = scoreM[xlen][ylen];
+    double globalMax = scoreM[xlen*MAXLEN+ylen];
     char globalMaxPath = 'M';
-    if (scoreW[xlen][ylen]>globalMax)
+    if (scoreW[xlen*MAXLEN+ylen]>globalMax)
     {
-        globalMax = scoreW[xlen][ylen];
+        globalMax = scoreW[xlen*MAXLEN+ylen];
         globalMaxPath = 'W';
     }
-    if (scoreZ[xlen][ylen]>globalMax)
+    if (scoreZ[xlen*MAXLEN+ylen]>globalMax)
     {
-        globalMax = scoreZ[xlen][ylen];
+        globalMax = scoreZ[xlen*MAXLEN+ylen];
         globalMaxPath = 'Z';
     }
 
@@ -257,7 +434,7 @@ void LHMM::tracePath()
             indelEndsInPath.push_back(i);
             indelEndsInX.push_back(x);
             indelEndsInY.push_back(y);
-        }
+        } 
 
         if (!inD && path[i]=='D')
         {
@@ -324,15 +501,15 @@ void LHMM::tracePath(std::stringstream& ss, char state, uint32_t i, uint32_t j)
     {
         if (state=='X')
         {
-            //std::cerr << pathX[i][j] << " " << i << " " << j << " " << matchStartY << "\n";
-            ss << pathX[i][j];
-            tracePath(ss, pathX[i][j], i-1, j);
+            //std::cerr << pathX[i*MAXLEN+j] << " " << i << " " << j << " " << matchStartY << "\n";
+            ss << pathX[i*MAXLEN+j];
+            tracePath(ss, pathX[i*MAXLEN+j], i-1, j);
         }
         else if (state=='Y')
         {
-            //std::cerr << pathY[i][j] << " " << i << " " << j << " " << matchStartY << "\n";
-            ss << pathY[i][j];
-            tracePath(ss, pathY[i][j], i, j-1);
+            //std::cerr << pathY[i*MAXLEN+j] << " " << i << " " << j << " " << matchStartY << "\n";
+            ss << pathY[i*MAXLEN+j];
+            tracePath(ss, pathY[i*MAXLEN+j], i, j-1);
         }
         else if (state=='M')
         {
@@ -344,7 +521,7 @@ void LHMM::tracePath(std::stringstream& ss, char state, uint32_t i, uint32_t j)
 //                //std::cerr << "set matchEndX "  << matchEndX  << " " << matchEndY  <<  "\n";
 //            }
 //
-            if (matchStartX==-1 && (pathM[i][j] =='X' || pathM[i][j]=='Y'))
+            if (matchStartX==-1 && (pathM[i*MAXLEN+j] =='X' || pathM[i*MAXLEN+j]=='Y'))
             {
                matchStartX = i;
                matchStartY = j;
@@ -353,48 +530,48 @@ void LHMM::tracePath(std::stringstream& ss, char state, uint32_t i, uint32_t j)
             }
 
 
-            //std::cout << pathM[i][j] << " " << i << " " << j << " " << matchEndY << "\n";
-            ss << pathM[i][j];
-            tracePath(ss, pathM[i][j], i-1, j-1);
+            //std::cout << pathM[i*MAXLEN+j] << " " << i << " " << j << " " << matchEndY << "\n";
+            ss << pathM[i*MAXLEN+j];
+            tracePath(ss, pathM[i*MAXLEN+j], i-1, j-1);
             ++noBasesAligned;
         }
         else if (state=='I')
         {
-            //std::cout << pathI[i][j] << " " << i << " " << j << "\n";
-            ss << pathI[i][j];
-            tracePath(ss, pathI[i][j], i, j-1);
+            //std::cout << pathI[i*MAXLEN+j] << " " << i << " " << j << "\n";
+            ss << pathI[i*MAXLEN+j];
+            tracePath(ss, pathI[i*MAXLEN+j], i, j-1);
         }
         else if (state=='D')
         {
-            //std::cout << pathD[i][j] << " " << i << " " << j << "\n";
-            ss << pathD[i][j];
-            tracePath(ss, pathD[i][j], i-1, j);
+            //std::cout << pathD[i*MAXLEN+j] << " " << i << " " << j << "\n";
+            ss << pathD[i*MAXLEN+j];
+            tracePath(ss, pathD[i*MAXLEN+j], i-1, j);
             ++noBasesAligned;
         }
         else if (state=='W')
         {
-            if (matchEndX==-1 && pathW[i][j] =='M')
+            if (matchEndX==-1 && pathW[i*MAXLEN+j] =='M')
             {
                 matchEndX = i-1;
                 matchEndY = j;
             }
 
 
-            //std::cout << pathW[i][j] << " " << i << " " << j << "\n";
-            ss << pathW[i][j];
-            tracePath(ss, pathW[i][j], i-1, j);
+            //std::cout << pathW[i*MAXLEN+j] << " " << i << " " << j << "\n";
+            ss << pathW[i*MAXLEN+j];
+            tracePath(ss, pathW[i*MAXLEN+j], i-1, j);
         }
         else if (state=='Z')
         {
-            if (matchEndX==-1 && pathZ[i][j] =='M')
+            if (matchEndX==-1 && pathZ[i*MAXLEN+j] =='M')
             {
                 matchEndX = i;
                 matchEndY = j-1;
             }
 
-            //std::cout << pathZ[i][j] << " " << i << " " << j << "\n";
-            ss << pathZ[i][j];
-            tracePath(ss, pathZ[i][j], i, j-1);
+            //std::cout << pathZ[i*MAXLEN+j] << " " << i << " " << j << "\n";
+            ss << pathZ[i*MAXLEN+j];
+            tracePath(ss, pathZ[i*MAXLEN+j], i, j-1);
         }
         else if (state=='S')
         {
@@ -418,9 +595,9 @@ void LHMM::tracePath(std::stringstream& ss, char state, uint32_t i, uint32_t j)
            matchStartY = j+1;
         }
 
-        // std::cout << pathY[i][j] << " " << i << " " << j << "\n";
-        ss << pathY[i][j];
-        tracePath(ss, pathY[i][j], i, j-1);
+        // std::cout << pathY[i*MAXLEN+j] << " " << i << " " << j << "\n";
+        ss << pathY[i*MAXLEN+j];
+        tracePath(ss, pathY[i*MAXLEN+j], i, j-1);
     }
     else if (i>0 && j==0)
     {
@@ -428,14 +605,14 @@ void LHMM::tracePath(std::stringstream& ss, char state, uint32_t i, uint32_t j)
         {
            matchStartY = j+1;
         }
-        // std::cout << pathX[i][j] << " " << i << " " << j << "\n";
-        ss << pathX[i][j];
-        tracePath(ss, pathX[i][j], i-1, j);
+        // std::cout << pathX[i*MAXLEN+j] << " " << i << " " << j << "\n";
+        ss << pathX[i*MAXLEN+j];
+        tracePath(ss, pathX[i*MAXLEN+j], i-1, j);
     }
     else
     {
         //std::cout << "\n";
-        //ss << pathX[i][j];
+        //ss << pathX[i*MAXLEN+j];
     }
 }
 
@@ -550,518 +727,12 @@ void LHMM::left_align()
     }
 }
 
-/**
-Align and compute genotype likelihood.
-*/
-void LHMM::align(double& llk, const char* _x, const char* _y, const char* _qual, bool debug)
-{
-    //std::cerr << "Running this\n" ;
-    x = _x;
-    y = _y;
-    qual = _qual;
-
-    //adds a starting character at the fron of each string that must be matched
-    xlen = strlen(x);
-    ylen = strlen(y);
-    double max = 0;
-    char maxPath = 'X';
-
-    //std::cerr << "x: " << x << " " << xlen << "\n" ;
-    //std::cerr << "y: " << y << " " << ylen << "\n" ;
-
-    //construct possible solutions
-    for (uint32_t i=1; i<=xlen; ++i)
-    {
-        for (uint32_t j=1; j<=ylen; ++j)
-        {
-            //std::cerr << i << " " << j  << "\n" ;
-
-            //X
-            double xx = scoreX[i-1][j] + txx;
-
-            max = xx;
-            maxPath = 'X';
-
-            scoreX[i][j] = max;
-            pathX[i][j] = maxPath;
-
-            //Y
-            double xy = scoreX[i][j-1] + txy;
-            double yy = scoreY[i][j-1] + tyy;
-
-            max = xy;
-            maxPath = 'X';
-
-            if (yy>max)
-            {
-                max = yy;
-                maxPath = 'Y';
-            }
-
-            scoreY[i][j] = max;
-            pathY[i][j] = maxPath;
-
-            //M
-            double xm = scoreX[i-1][j-1] + txm;
-            double ym = scoreY[i-1][j-1] + tym;
-            double mm = scoreM[i-1][j-1] + ((i==1&&j==1) ? tsm : tmm);
-            double im = scoreI[i-1][j-1] + tim;
-            double dm = scoreD[i-1][j-1] + tdm;
-
-            max = xm;
-            maxPath = 'X';
-
-            if (ym>max) //special case
-            {
-                max = ym;
-                maxPath = 'Y';
-            }
-            if (mm>max)
-            {
-                max = mm;
-                maxPath = (i==1&&j==1) ? 'S' : 'M';
-            }
-            if (im>max)
-            {
-                max = im;
-                maxPath = 'I';
-            }
-            if (dm>max)
-            {
-                max = dm;
-                maxPath = 'D';
-            }
-
-            scoreM[i][j] = max + logEmissionOdds(x[i-1], y[j-1], pl2prob((uint32_t) qual[j-1]-33));
-            pathM[i][j] = maxPath;
-
-            //D
-            double md = scoreM[i-1][j] + tmd;
-            double dd = scoreD[i-1][j] + tdd;
-
-            max = md;
-            maxPath = 'M';
-
-            if (dd>max)
-            {
-                max = dd;
-                maxPath = 'D';
-            }
-
-            scoreD[i][j] = max;
-            pathD[i][j] = maxPath;
-
-            //I
-            double mi = scoreM[i][j-1] + tmi;
-            double ii = scoreI[i][j-1] + tii;
-
-            max = mi;
-            maxPath = 'M';
-
-            if (ii>max)
-            {
-                max = ii;
-                maxPath = 'I';
-            }
-
-            scoreI[i][j] = max;
-            pathI[i][j] = maxPath;
-
-            //W
-            double mw = scoreM[i-1][j] + tmw;
-            double ww = scoreW[i-1][j] + tww;
-
-            max = mw;
-            maxPath = 'M';
-
-            if (ww>max)
-            {
-                max = ww;
-                maxPath = 'W';
-            }
-
-            scoreW[i][j] = max;
-            pathW[i][j] = maxPath;
-
-            //Z
-            double mz = scoreM[i][j-1] + tmz;
-            double wz = scoreW[i][j-1] + twz;
-            double zz = scoreZ[i][j-1] + tzz;
-
-            max = mz;
-            maxPath = 'M';
-
-            if (wz>max)
-            {
-                max = wz;
-                maxPath = 'W';
-            }
-            if (zz>max)
-            {
-                max = zz;
-                maxPath = 'Z';
-            }
-
-            scoreZ[i][j] = max;
-            pathZ[i][j] = maxPath;
-        }
-
-        scoreM[xlen][ylen] += logTau-logEta;
-    }
-
-    if (debug)
-    {
-        std::cerr << "\n=X=\n";
-        printVector(scoreX, xlen+1, ylen+1);
-        std::cerr << "\n=Y=\n";
-        printVector(scoreY, xlen+1, ylen+1);
-        std::cerr << "\n=M=\n";
-        printVector(scoreM, xlen+1, ylen+1);
-        std::cerr << "\n=D=\n";
-        printVector(scoreD, xlen+1, ylen+1);
-        std::cerr << "\n=I=\n";
-        printVector(scoreI, xlen+1, ylen+1);
-        std::cerr << "\n=W=\n";
-        printVector(scoreW, xlen+1, ylen+1);
-        std::cerr << "\n=Z=\n";
-        printVector(scoreZ, xlen+1, ylen+1);
-        std::cerr << "\n=Path X=\n";
-        printVector(pathX, xlen+1, ylen+1);
-        std::cerr << "\n=Path Y=\n";
-        printVector(pathY, xlen+1, ylen+1);
-        std::cerr << "\n=Path M=\n";
-        printVector(pathM, xlen+1, ylen+1);
-        std::cerr << "\n=Path D=\n";
-        printVector(pathD, xlen+1, ylen+1);
-        std::cerr << "\n=Path I=\n";
-        printVector(pathI, xlen+1, ylen+1);
-        std::cerr << "\n=Path W=\n";
-        printVector(pathW, xlen+1, ylen+1);
-        std::cerr << "\n=Path Z=\n";
-        printVector(pathZ, xlen+1, ylen+1);
-    }
-
-    tracePath();
-};
-
-/**
-*Compute log likelihood of matched portion of alignment
-*/
-void LHMM::computeLogLikelihood(double& llk, std::string& _path, const char* qual)
-{
-
-//  std::cerr <<" basequals " << qual << "\n";
-//  std::cerr <<" read      " << y << "\n";
-//  std::cerr <<" path      " << path << "\n";
-    matchedBases = 0;
-    mismatchedBases = 0;
-
-    llk = 0;
-    double q = 0;
-    char lastState = 'S';
-    uint32_t xIndex=0, yIndex=0;
-    for (uint32_t i=0; i<_path.size(); ++i)
-    {
-        char state = _path.at(i);
-        //std::cerr << state << " " << xIndex << " " << yIndex << "\n";
-
-        if (state=='M')
-        {
-            q = pl2prob((uint32_t) qual[yIndex]-33);
-            llk = lt.log10prod(llk, logEmission(x[xIndex], y[yIndex], q));
-            //compute for perfect fit
-
-            if (x[xIndex]== y[yIndex])
-            {
-                ++matchedBases;
-            }
-            else
-            {
-                ++mismatchedBases;
-            }
-
-            if (lastState=='M')
-            {
-                llk = lt.log10prod(llk, tMM);
-            }
-            else if (lastState=='D')
-            {
-                llk = lt.log10prod(llk, tDM);
-            }
-            else if (lastState=='I')
-            {
-                llk = lt.log10prod(llk, tIM);
-            }
-
-            //std::cerr << "M) "<< lastState << " "  << llk << " " << x[xIndex] << " " <<  y[yIndex] << " " << pl2prob((uint32_t) qual[yIndex]-33) << " "<< qual[yIndex-1]-33 << "\n";
-
-            ++xIndex;
-            ++yIndex;
-        }
-        else if (state=='D')
-        {
-            if (lastState=='M')
-            {
-                llk = lt.log10prod(llk, tMD);
-            }
-            else if (lastState=='D')
-            {
-                llk = lt.log10prod(llk, tDD);
-            }
-
-            //std::cerr << "D) " << lastState << " " << llk << " " << x[xIndex] << " " <<  y[yIndex] << "\n";
-
-            ++xIndex;
-        }
-        else if (state=='I')
-        {
-            if (lastState=='M')
-            {
-                llk = lt.log10prod(llk, tMI);
-            }
-            else if (lastState=='I')
-            {
-                llk = lt.log10prod(llk, tII);
-            }
-
-            //std::cerr << "I) " << lastState << " " << llk << " " << x[xIndex] << " " <<  y[yIndex] << "\n";
-
-            ++yIndex;
-        }
-        else if (state=='X')
-        {
-            ++xIndex;
-        }
-        else if (state=='Y')
-        {
-            ++yIndex;
-        }
-        else if (state=='W')
-        {
-            ++xIndex;
-        }
-        else if (state=='Z')
-        {
-            ++yIndex;
-        }
-
-        lastState = state;
-    }
-};
-
-/**
- * Compute log likelihood of matched portion of alignment
- */
-void LHMM::computeLogLikelihood(double& llk, double& perfectllk, std::string& _path, const char* qual)
-{
-
-//  std::cerr <<" basequals " << qual << "\n";
-//  std::cerr <<" read      " << y << "\n";
-//  std::cerr <<" path      " << path << "\n";
-    matchedBases = 0;
-    mismatchedBases = 0;
-
-    llk = 0;
-    perfectllk = 0;
-    double q = 0;
-    char lastState = 'S';
-    uint32_t xIndex=0, yIndex=0;
-    for (uint32_t i=0; i<_path.size(); ++i)
-    {
-
-        char state = _path.at(i);
-        //std::cerr << state << " " << xIndex << " " << yIndex << "\n";
-
-        if (state=='M')
-        {
-            q = pl2prob((uint32_t) qual[yIndex]-33);
-            llk = lt.log10prod(llk, logEmission(x[xIndex], y[yIndex], q));
-            //compute for perfect fit
-            perfectllk = lt.log10prod(perfectllk, logEmission(x[xIndex], x[xIndex], q));
-
-            if (x[xIndex]== y[yIndex])
-            {
-                ++matchedBases;
-            }
-            else
-            {
-                ++mismatchedBases;
-            }
-
-            if (lastState=='M')
-            {
-                llk = lt.log10prod(llk, tMM);
-            }
-            else if (lastState=='D')
-            {
-                llk = lt.log10prod(llk, tDM);
-            }
-            else if (lastState=='I')
-            {
-                llk = lt.log10prod(llk, tIM);
-            }
-
-            perfectllk = lt.log10prod(llk, tMM);
-
-            //std::cerr << "M) "<< lastState << " "  << llk << " " << x[xIndex] << " " <<  y[yIndex] << " " << pl2prob((uint32_t) qual[yIndex]-33) << " "<< qual[yIndex-1]-33 << "\n";
-
-            ++xIndex;
-            ++yIndex;
-        }
-        else if (state=='D')
-        {
-            if (lastState=='M')
-            {
-                llk = lt.log10prod(llk, tMD);
-            }
-            else if (lastState=='D')
-            {
-                llk = lt.log10prod(llk, tDD);
-            }
-
-           // std::cerr << "D) " << lastState << " " << llk << " " << x[xIndex] << " " <<  y[yIndex] << "\n";
-
-            ++xIndex;
-        }
-        else if (state=='I')
-        {
-            if (lastState=='M')
-            {
-                llk = lt.log10prod(llk, tMI);
-            }
-            else if (lastState=='I')
-            {
-                llk = lt.log10prod(llk, tII);
-            }
-
-            // std::cerr << "I) " << lastState << " " << llk << " " << x[xIndex] << " " <<  y[yIndex] << "\n";
-
-            ++yIndex;
-        }
-        else if (state=='X')
-        {
-            ++xIndex;
-        }
-        else if (state=='Y')
-        {
-            ++yIndex;
-        }
-        else if (state=='W')
-        {
-            ++xIndex;
-        }
-        else if (state=='Z')
-        {
-            ++yIndex;
-        }
-
-        lastState = state;
-    }
-};
-
-/**
-*Compute log likelihood of matched portion of alignment
-*/
-void LHMM::computeLogLikelihood(double& llk, const char* qual)
-{
-    tracePath();
-    llk = 0;
-    char lastState = 'S';
-    uint32_t xIndex=0, yIndex=0;
-
-    for (uint32_t i=0; i<path.size(); ++i)
-    {
-        //std::cerr << xIndex << " " << yIndex << "\n";
-
-        char state = path.at(i);
-
-        if (state=='M')
-        {
-            llk = lt.log10prod(llk, logEmission(x[xIndex], y[yIndex], pl2prob((uint32_t) qual[yIndex-1]-33)));
-            if (lastState=='M')
-            {
-                llk = lt.log10prod(llk, tMM);
-            }
-            else if (lastState=='D')
-            {
-                llk = lt.log10prod(llk, tDM);
-            }
-            else if (lastState=='I')
-            {
-                llk = lt.log10prod(llk, tIM);
-            }
-
-            ++xIndex;
-            ++yIndex;
-        }
-        else if (state=='D')
-        {
-            if (lastState=='M')
-            {
-                llk = lt.log10prod(llk, tMD);
-            }
-            else if (lastState=='D')
-            {
-                llk = lt.log10prod(llk, tDD);
-            }
-            ++xIndex;
-        }
-        else if (state=='I')
-        {
-            if (lastState=='M')
-            {
-                llk = lt.log10prod(llk, tMI);
-            }
-            else if (lastState=='I')
-            {
-                llk = lt.log10prod(llk, tII);
-            }
-            ++yIndex;
-        }
-        else if (state=='X')
-        {
-            ++xIndex;
-        }
-        else if (state=='Y')
-        {
-            ++yIndex;
-        }
-        else if (state=='W')
-        {
-            ++xIndex;
-        }
-        else if (state=='Z')
-        {
-            ++yIndex;
-        }
-
-        lastState = state;
-    }
-}
-
 std::string& LHMM::getPath()
 {
     return path;
 }
 
-double LHMM::logEmissionOdds(char readBase, char probeBase, double e)
-{
-    //4 encodes for N
-    if (readBase=='N' || probeBase=='N')
-    {
-        //silent match
-        return 0;
-    }
 
-    if (readBase!=probeBase)
-    {
-        return log10(e/3)-logOneSixteenth;
-    }
-    else
-    {
-        return log10(1-e)-logOneSixteenth;
-    }
-};
 
 double LHMM::logEmission(char readBase, char probeBase, double e)
 {
@@ -1382,16 +1053,16 @@ double LHMM::score(char a, char b)
 bool LHMM::deletion_start_exists(uint32_t pos, uint32_t& rpos)
 {
     rpos = 0;
-    for (uint32_t i=0; i<indelStatusInPath.size(); ++i) 
+    for (uint32_t i=0; i<indelStatusInPath.size(); ++i)
     {
         if (indelStatusInPath[i]=='D' &&
             indelStartsInX[i]==pos)
         {
             rpos = indelStartsInY[i];
             return true;
-        }    
+        }
     }
-    
+
     return false;
 }
 
@@ -1401,15 +1072,15 @@ bool LHMM::deletion_start_exists(uint32_t pos, uint32_t& rpos)
 bool LHMM::insertion_start_exists(uint32_t pos, uint32_t& rpos)
 {
     rpos = 0;
-    for (uint32_t i=0; i<indelStatusInPath.size(); ++i) 
+    for (uint32_t i=0; i<indelStatusInPath.size(); ++i)
     {
         if (indelStatusInPath[i]=='I' &&
             indelStartsInX[i]==pos)
         {
             rpos = indelStartsInY[i];
             return true;
-        }    
+        }
     }
-    
+
     return false;
 }

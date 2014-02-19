@@ -26,16 +26,19 @@
 
 #include "utils.h"
 #include "log_tool.h"
-#include <regex.h>
 
-//#define X 0
-//#define Y 0
-//#define M 0
-//#define I 0
-//#define D 0
-//#define W 0
-//#define Z 0
-#define MAXLEN 2000
+#define MAXLEN 250
+
+#define S 0
+#define X 1
+#define Y 2
+#define M 3
+#define I 4
+#define D 5
+#define W 6
+#define Z 7
+#define E 8
+#define NSTATES 9
 
 class LHMM
 {
@@ -44,29 +47,8 @@ class LHMM
     const char* y;
     const char* qual;
 
-	
-
-    double scoreX[MAXLEN][MAXLEN];
-    double scoreY[MAXLEN][MAXLEN];
-    double scoreM[MAXLEN][MAXLEN];
-    double scoreI[MAXLEN][MAXLEN];  
-	double scoreD[MAXLEN][MAXLEN];
-	double scoreW[MAXLEN][MAXLEN];
-    double scoreZ[MAXLEN][MAXLEN];
-
-	double pathX[MAXLEN][MAXLEN];
-    double pathY[MAXLEN][MAXLEN];
-    double pathM[MAXLEN][MAXLEN];
-    double pathI[MAXLEN][MAXLEN];  
-	double pathD[MAXLEN][MAXLEN];
-	double pathW[MAXLEN][MAXLEN];
-    double pathZ[MAXLEN][MAXLEN];
-
-    std::vector<double> PLs;
-
-    uint32_t maxLength;
-    uint32_t xlen;
-    uint32_t ylen;
+    int32_t xlen;
+    int32_t ylen;
     std::string path;
     double maxLogOdds;
 
@@ -83,42 +65,24 @@ class LHMM
     double logEta;
     double logTau;
 
-    double tsx;
-    double txx;
-    double tsy;
-    double txy;
-    double tyy;
-    double txm;
-    double tym;
-    double txi;
-    double txd;
-    double tsm;
-    double tmm;
-    double tim;
-    double tdm;
-    double tmi;
-    double tmd;
-    double tii;
-    double tdd;
-    double tyi;
-    double tyd;
-    double tmw;
-    double tiw;
-    double tdw;
-    double tww;
-    double tmz;
-    double tiz;
-    double tdz;
-    double twz;
-    double tzz;
+    double transition[NSTATES][NSTATES];
 
-    double tMM;
-    double tMI;
-    double tMD;
-    double tII;
-    double tDD;
-    double tDM;
-    double tIM;
+    //scoring matrix
+    double *scoreX;
+    double *scoreY;
+    double *scoreM;
+    double *scoreI;
+	double *scoreD;
+	double *scoreW;
+    double *scoreZ;
+
+    char *pathX;
+    char *pathY;
+    char *pathM;
+    char *pathI;
+    char *pathD;
+    char *pathW;
+    char *pathZ;
 
     int32_t matchStartX;
     int32_t matchEndX;
@@ -141,14 +105,39 @@ class LHMM
 
     /*Constructor*/
     LHMM();
-
-    bool containsIndel();
+    
+    
+    ~LHMM()
+    {   
+        delete scoreX;
+        delete scoreY;
+        delete scoreM;
+        delete scoreI;
+        delete scoreD;
+        delete scoreW;
+        delete scoreZ;
+        
+        delete pathX;
+        delete pathY;
+        delete pathM;
+        delete pathI;
+        delete pathD;
+        delete pathW;
+        delete pathZ;
+    };
 
     /**
-     * Convert PLs to probabilities.
+     * Align and compute genotype likelihood.
      */
-    double pl2prob(uint32_t PL);
+    void align(double& llk, const char* _x, const char* _y, const char* qual, bool debug=false);
 
+    bool containsIndel();
+//
+//    /**
+//     * Convert PLs to probabilities.
+//     */
+//    double pl2prob(uint32_t PL);
+//
     /**
      * Updates matchStart, matchEnd, globalMaxPath and path
      * Updates locations of insertions and deletions
@@ -156,19 +145,8 @@ class LHMM
     void tracePath();
     void tracePath(std::stringstream& ss, char state, uint32_t i, uint32_t j);
 
-    /**
-     * Align and compute genotype likelihood.
-     */
-    void align(double& llk, const char* _x, const char* _y, const char* qual, bool debug=false);
 
-    //computes log likelihood based on path given in arguments
-    void computeLogLikelihood(double& llk, double& perfectllk, std::string& _path, const char* qual);
 
-    //computes log likelihood based on path given in arguments
-    void computeLogLikelihood(double& llk, std::string& _path, const char* qual);
-
-    //computes log likelihood based on path saved
-    void computeLogLikelihood(double& llk, const char* qual);
 
     //get path
     std::string& getPath();
@@ -187,7 +165,7 @@ class LHMM
 
     std::string reverse(std::string s);
 
-    void printVector(double v[][MAXLEN], uint32_t xLen, uint32_t yLen);
+    void printVector(double (*v)[MAXLEN], uint32_t xLen, uint32_t yLen);
 
     void printVector(char v[][MAXLEN], uint32_t xLen, uint32_t yLen);
 
@@ -200,7 +178,7 @@ class LHMM
     void printAlignment(std::string& pad, std::stringstream& log);
 
     double score(char a, char b);
-    
+
     /**
      * Checks if deletion exists in alignment.
      */
@@ -210,7 +188,7 @@ class LHMM
      * Checks if insertion exists in alignment.
      */
     bool insertion_start_exists(uint32_t pos, uint32_t& rpos);
-        
+
 };
 
 #endif

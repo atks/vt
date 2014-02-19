@@ -121,8 +121,6 @@ class Igor : Program
         ///////////////////////
         vm = new VariantManip(ref_fasta_file);
         
-        
-        
         if (annotate_coding)
         {    
             bcf_hdr_append(odw->hdr, "##INFO=<ID=GENCODE_FS,Number=0,Type=Flag,Description=\"Frameshift INDEL\">");
