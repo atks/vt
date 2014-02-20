@@ -26,7 +26,7 @@
 #include <sstream>
 #include "log_tool.h"
 
-#define NSTATES 9
+#define NSTATES 15
 
 class CHMM
 {
@@ -54,40 +54,31 @@ class CHMM
     //scoring matrix
     double *scoreX;
     double *scoreY;
+    double *scoreLM;
+    double *scoreLI;
+    double *scoreLD;
     double *scoreM;
     double *scoreI;
     double *scoreD;
+    double *scoreRM;
+    double *scoreRI;
+    double *scoreRD;    
     double *scoreW;
     double *scoreZ;
 
     char *pathX;
     char *pathY;
+    char *pathLM;
+    char *pathLI;
+    char *pathLD;
     char *pathM;
     char *pathI;
     char *pathD;
+    char *pathRM;
+    char *pathRI;
+    char *pathRD; 
     char *pathW;
     char *pathZ;
-
-    //tracking of features
-    int32_t matchStartX;
-    int32_t matchEndX;
-    int32_t matchStartY;
-    int32_t matchEndY;
-    int32_t matchedBases;
-    int32_t mismatchedBases;
-
-    //for left alignment
-    std::vector<uint32_t> indelStartsInX;
-    std::vector<uint32_t> indelEndsInX;
-    std::vector<uint32_t> indelStartsInY;
-    std::vector<uint32_t> indelEndsInY;
-    std::vector<uint32_t> indelStartsInPath;
-    std::vector<uint32_t> indelEndsInPath;
-    std::vector<char> indelStatusInPath;
-
-    std::stringstream ss;
-
-    uint32_t noBasesAligned;
 
     LogTool *lt;
 
@@ -117,41 +108,15 @@ class CHMM
     void align(double& llk, const char* _x, const char* _y, const char* qual, bool debug=false);
 
     /**
-     * Updates matchStart, matchEnd, globalMaxPath and path
+     * Traces path.
      */
     void trace_path();
 
     /**
-     * Recursive call for trace_path
-     */
-    void trace_path(char state, uint32_t i, uint32_t j);
-
-    /**
-     * Left align indels in an alignment
-     */
-    void left_align();
-
-    /**
-     * Compute log10 emission odds based on equal error probability distribution.
-     * Substracting log10(1/16).
+     * Compute log10 emission odds based on equal error probability distribution contrasted against log10(1/16).
      */
     double log10_emission_odds(char readBase, char probeBase, double e);
-
-    /**
-     * Reverses a string.
-     */
-    std::string reverse(std::string s);
-
-    /**
-     * Checks if deletion exists in alignment.
-     */
-    bool deletion_start_exists(uint32_t pos, uint32_t& rpos);
-
-    /**
-     * Checks if insertion exists in alignment.
-     */
-    bool insertion_start_exists(uint32_t pos, uint32_t& rpos);
-
+    
     /**
      * Prints an alignment.
      */

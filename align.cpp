@@ -162,7 +162,6 @@ class Igor : Program
     {
         std::clog << "\n";
 
-        std::clog << "what's wrong\n";
     };
 
     ~Igor() {};
