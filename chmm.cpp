@@ -1,6 +1,6 @@
 /* The MIT License
  
-   Copyright (c) 2013 Adrian Tan <atks@umich.edu>
+   Copyright (c) 2014 Adrian Tan <atks@umich.edu>
 
    Permission is hereby granted, free of charge, to any person obtaining a copy
    of this software and associated documentation files (the "Software"), to deal
@@ -405,52 +405,28 @@ void CHMM::tracePath()
     //std::cerr << "*************************************\n";
     //std::cerr << "PATH :" << path << "\n";
 
-    ////////////////////////////////////////////////
-    //records appearance of Indels in probe and read
-    ////////////////////////////////////////////////
-    indelStartsInX.clear();
-    indelEndsInX.clear();
-    indelStartsInY.clear();
-    indelEndsInY.clear();
-    indelStartsInPath.clear();
-    indelEndsInPath.clear();
-    indelStatusInPath.clear();
-
+   
     uint32_t x=0, y=0;
     for (uint32_t i=0; i<path.size(); ++i)
     {
         if (!inI && path[i]=='I')
         {
             inI = true;
-            indelStartsInPath.push_back(i);
-            indelStatusInPath.push_back('I');
-            indelStartsInX.push_back(x);
-            indelStartsInY.push_back(y);
         }
 
         if (inI && path[i]!='I')
         {
             inI = false;
-            indelEndsInPath.push_back(i);
-            indelEndsInX.push_back(x);
-            indelEndsInY.push_back(y);
         } 
 
         if (!inD && path[i]=='D')
         {
             inD = true;
-            indelStartsInPath.push_back(i);
-            indelStatusInPath.push_back('D');
-            indelStartsInX.push_back(x);
-            indelStartsInY.push_back(y);
         }
 
         if (inD && path[i]!='D')
         {
             inD = false;
-            indelEndsInPath.push_back(i);
-            indelEndsInX.push_back(x);
-            indelEndsInY.push_back(y);
         }
 
         if (path[i]=='M')
@@ -485,7 +461,7 @@ void CHMM::tracePath()
 //    std::cerr << "\n";
 //    std::cerr << "*************************************\n";
     //left align path
-    left_align();
+ //   left_align();
 
 //    std::cerr << "*************************************\n";
 //    printAlignment();
@@ -616,116 +592,6 @@ void CHMM::tracePath(std::stringstream& ss, char state, uint32_t i, uint32_t j)
     }
 }
 
-/**
- *Left align indels in an alignment
- */
-void CHMM::left_align()
-{
-//.......... GATAAGTGAG GAGGAAAAGC GA---GGAGA TCTTATTTGACAACTGCE
-//YYYYYYYYYY MMMMMMMMMM MMMMMMMMMM MMIIIMMMMM MMMMMWWWWWWWWWWWWE
-//ACTGCTTCTA GATAAGTGAG GAGGAAAAGC GATAAGGAGA TCTTA............E
-//# INS in Probe : (22,22)
-//# INS in Read : (32,35)
-
-    for (uint32_t i=0; i<indelStatusInPath.size(); ++i)
-    {
-        if (indelStatusInPath[i]=='I')
-        {
-            while (indelStartsInX[i]>1 && indelStartsInY[i]>1)
-            {
-//                printAlignment();
-//
-//                std::cerr << "scoreX[" << indelStartsInX[i]-1 << "] "  << x[indelStartsInX[i]-1] << "\n";
-//                std::cerr << "Y[" << indelStartsInY[i]-1 << "] "  << y[indelStartsInY[i]-1] << "\n";
-//                std::cerr << "Y[" << indelEndsInY[i]-1 << "] "  << y[indelEndsInY[i]-1] << "\n";
-//
-                if (//(indelStartsInY[i]!=indelEndsInY[i]-1) && //single indel need not be shifted
-                    x[indelStartsInX[i]-1]==y[indelStartsInY[i]-1] &&
-                    y[indelStartsInY[i]-1]==y[indelEndsInY[i]-1])
-                {
-//                    std::cerr << "CHECK BEFORE:" << path << "\n";
-//                    std::cerr << "P[" << indelStartsInPath[i]-1 << "] "  << path[indelStartsInPath[i]-1] << "\n";
-//                    std::cerr << "P[" << indelEndsInPath[i]-1 << "] "  << path[indelEndsInPath[i]-1] << "\n";
-
-                    path[indelStartsInPath[i]-1] = 'I';
-                    path[indelEndsInPath[i]-1] = 'M';
-
-                    --indelStartsInX[i];
-                    --indelEndsInX[i];
-                    --indelStartsInY[i];
-                    --indelEndsInY[i];
-                    --indelStartsInPath[i];
-                    --indelEndsInPath[i];
-
-//                    std::cerr << "SHIFT 1 to the left\n";
-
-                }
-                else
-                {
-                    break;
-                }
-            }
-        }
-        else
-        {
-            //  ==================
-            //  2) 6:81319178:AATTT:A:-4
-            //  ==================
-            //  ref probe     ATCTATTAAAGATATATGTCAATTTATTAGTGCATATCAAAGAGCAAGT (20/49)
-            //  read sequence GATATATGTCAATTAGTGCATATCAAAGAGCAAGTTGACATGTTTTTTCAATATATTCATTTCTCTAATTTATCTC
-            //  ==================
-            //  X    SATCTATTAAAGATATATGTCAATTTATTAGTGCATATCAAAGAGCAAGT.........................................E
-            //  Path SXXXXXXXXXXMMMMMMMMMMMMMDDDDMMMMMMMMMMMMMMMMMMMMMMZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZE
-            //  Y    S..........GATATATGTCAAT----TAGTGCATATCAAAGAGCAAGTTGACATGTTTTTTCAATATATTCATTTCTCTAATTTATCTCE
-            //  Match Start     : 0
-            //  Match End       : 35
-            //  # Aligned Bases : 39
-            //  # Matched Bases : 35
-            //  # Mismatched Bases : 0
-            //  # INS in Probe :
-            //  # INS in Read :
-            //  # INS in Path :
-            //  # DEL in Probe : (23,27)
-            //  # DEL in Read : (13,13)
-            //  # DEL in Path : (24,28)
-
-            while (indelStartsInX[i]>1 && indelStartsInY[i]>1)
-            {
-//                printAlignment();
-//                std::cerr << "scoreX[" << indelStartsInX[i]-1 << "] "  << x[indelStartsInX[i]-1] << "\n";
-//                std::cerr << "Y[" << indelStartsInY[i]-1 << "] "  << y[indelStartsInY[i]-1] << "\n";
-//                std::cerr << "Y[" << indelEndsInY[i]-1 << "] "  << y[indelEndsInY[i]-1] << "\n";
-
-                if (//(indelStartsInX[i]!=indelEndsInX[i]-1) && //single indel need not be shifted
-                    x[indelStartsInX[i]-1]==y[indelStartsInY[i]-1] &&
-                    x[indelStartsInX[i]-1]==x[indelEndsInX[i]-1])
-                {
-//                    std::cerr << "CHECK BEFORE:" << path << "\n";
-//                    std::cerr << "P[" << indelStartsInPath[i]-1 << "] "  << path[indelStartsInPath[i]-1] << "\n";
-//                    std::cerr << "P[" << indelEndsInPath[i]-1 << "] "  << path[indelEndsInPath[i]-1] << "\n";
-
-                    path[indelStartsInPath[i]-1] = 'D';
-                    path[indelEndsInPath[i]-1] = 'M';
-
-                    --indelStartsInX[i];
-                    --indelEndsInX[i];
-                    --indelStartsInY[i];
-                    --indelEndsInY[i];
-                    --indelStartsInPath[i];
-                    --indelEndsInPath[i];
-
-//                    std::cerr << "SHIFT 1 to the left\n";
-
-                }
-                else
-                {
-                    break;
-                }
-            }
-
-        }
-    }
-}
 
 std::string& CHMM::getPath()
 {
@@ -880,46 +746,7 @@ void CHMM::printAlignment(std::string& pad, std::stringstream& log)
     log << pad << "# Matched Bases : " << matchedBases << "\n";
     log << pad << "# Mismatched Bases : " << mismatchedBases << "\n";
 
-    log << pad << "# INS in Probe : ";
-    for (uint32_t i=0; i<indelStatusInPath.size(); ++i)
-    {
-        if (indelStatusInPath[i]=='I')
-        {
-            log << "[" << indelStartsInX[i] << "," << indelEndsInX[i] <<"] ";
-        }
-    }
-    log << "\n";
-
-    log << pad << "# DELS in Probe : ";
-    for (uint32_t i=0; i<indelStatusInPath.size(); ++i)
-    {
-        if (indelStatusInPath[i]=='D')
-        {
-            log << "[" << indelStartsInX[i] << "," << indelEndsInX[i] <<"] ";
-        }
-    }
-    log << "\n";
-
-    log << pad << "# INS in Read : ";
-    for (uint32_t i=0; i<indelStatusInPath.size(); ++i)
-    {
-        if (indelStatusInPath[i]=='I')
-        {
-            log << "[" << indelStartsInY[i] << "," << indelEndsInY[i] <<"] ";
-        }
-    }
-    log << "\n";
-
-    log << pad << "# DELS in Read : ";
-    for (uint32_t i=0; i<indelStatusInPath.size(); ++i)
-    {
-        if (indelStatusInPath[i]=='D')
-        {
-            log << "[" << indelStartsInY[i] << "," << indelEndsInY[i] <<"] ";
-        }
-    }
-    log << "\n";
-
+   
     log << pad << "Max Log odds    : " << maxLogOdds << "\n";
 };
 
@@ -990,45 +817,7 @@ void CHMM::printAlignment(std::string& pad)
     std::cerr << pad << "# Matched Bases : " << matchedBases << "\n";
     std::cerr << pad << "# Mismatched Bases : " << mismatchedBases << "\n";
 
-    std::cerr << pad << "# INS in Probe : ";
-    for (uint32_t i=0; i<indelStatusInPath.size(); ++i)
-    {
-        if (indelStatusInPath[i]=='I')
-        {
-            std::cerr << "[" << indelStartsInX[i] << "," << indelEndsInX[i] <<"] ";
-        }
-    }
-    std::cerr << "\n";
-
-    std::cerr << pad << "# DELS in Probe : ";
-    for (uint32_t i=0; i<indelStatusInPath.size(); ++i)
-    {
-        if (indelStatusInPath[i]=='D')
-        {
-            std::cerr << "[" << indelStartsInX[i] << "," << indelEndsInX[i] <<"] ";
-        }
-    }
-    std::cerr << "\n";
-
-    std::cerr << pad << "# INS in Read : ";
-    for (uint32_t i=0; i<indelStatusInPath.size(); ++i)
-    {
-        if (indelStatusInPath[i]=='I')
-        {
-            std::cerr << "[" << indelStartsInY[i] << "," << indelEndsInY[i] <<"] ";
-        }
-    }
-    std::cerr << "\n";
-
-    std::cerr << pad << "# DELS in Read : ";
-    for (uint32_t i=0; i<indelStatusInPath.size(); ++i)
-    {
-        if (indelStatusInPath[i]=='D')
-        {
-            std::cerr << "[" << indelStartsInY[i] << "," << indelEndsInY[i] <<"] ";
-        }
-    }
-    std::cerr << "\n";
+   
 
     std::cerr << pad << "Max Log odds    : " << maxLogOdds << "\n";
 };
@@ -1046,41 +835,3 @@ double CHMM::score(char a, char b)
     else
         return -1;
 };
-
-/**
- * Checks if deletion exists in alignment.
- */
-bool CHMM::deletion_start_exists(uint32_t pos, uint32_t& rpos)
-{
-    rpos = 0;
-    for (uint32_t i=0; i<indelStatusInPath.size(); ++i)
-    {
-        if (indelStatusInPath[i]=='D' &&
-            indelStartsInX[i]==pos)
-        {
-            rpos = indelStartsInY[i];
-            return true;
-        }
-    }
-
-    return false;
-}
-
-/**
- * Checks if insertion exists in alignment.
- */
-bool CHMM::insertion_start_exists(uint32_t pos, uint32_t& rpos)
-{
-    rpos = 0;
-    for (uint32_t i=0; i<indelStatusInPath.size(); ++i)
-    {
-        if (indelStatusInPath[i]=='I' &&
-            indelStartsInX[i]==pos)
-        {
-            rpos = indelStartsInY[i];
-            return true;
-        }
-    }
-
-    return false;
-}
