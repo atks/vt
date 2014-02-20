@@ -134,7 +134,7 @@ class Igor : Program
 
         /////////////////////////
         //filter initialization//
-        /////////////////////////
+        /////////////////////////       
         filter.parse(fexp.c_str());
         filter_exists = fexp=="" ? false : true;
         

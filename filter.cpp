@@ -307,7 +307,7 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
                 return;
             }
     
-            fprintf(stderr, "[%s:%d %s] evaluation not supported : >\n", __FILE__, __LINE__, __FUNCTION__);
+            fprintf(stderr, "[%s:%d %s] evaluation not supported: %d %d: <\n", __FILE__, __LINE__, __FUNCTION__, left->type, right->type);
             exit(1);
         }
     }
@@ -413,8 +413,8 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
         }
     }
     else if (type&VT_MATH_OP)
-    {        
-        if ((type&15)==VT_ADD)
+    {   
+        if ((type&8207)==VT_ADD)
         {
             if ((left->type&VT_INT))
             {
@@ -450,7 +450,7 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
             fprintf(stderr, "[%s:%d %s] evaluation not supported : +\n", __FILE__, __LINE__, __FUNCTION__);
             exit(1);
         }
-        else if ((type&15)==VT_SUB)
+        else if ((type&8207)==VT_SUB)
         {
             if ((left->type&VT_INT))
             {
@@ -486,7 +486,7 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
             fprintf(stderr, "[%s:%d %s] evaluation not supported : -\n", __FILE__, __LINE__, __FUNCTION__);
             exit(1);
         }
-        else if ((type&15)==VT_MUL)
+        else if ((type&8207)==VT_MUL)
         {
             if ((left->type&VT_INT))
             {
@@ -522,14 +522,14 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
             fprintf(stderr, "[%s:%d %s] evaluation not supported : *\n", __FILE__, __LINE__, __FUNCTION__);
             exit(1);
         }
-        else if ((type&15)==VT_DIV)
+        else if ((type&8207)==VT_DIV)
         {
             if (left->type&VT_INT)
             {
                 if (right->type&VT_INT)
                 {
                     type |= VT_FLT;
-                    f = (left->i/right->i);
+                    f = ((float)left->i/right->i);
                     return;
                 }
                 else if (right->type&VT_FLT)
@@ -556,6 +556,11 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
             }
     
             fprintf(stderr, "[%s:%d %s] evaluation not supported : /\n", __FILE__, __LINE__, __FUNCTION__);
+            exit(1);
+        }
+        else
+        {
+            fprintf(stderr, "[%s:%d %s] math op not supported : %d\n", __FILE__, __LINE__, __FUNCTION__, (type&15));
             exit(1);
         }
     }
