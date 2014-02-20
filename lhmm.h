@@ -56,14 +56,10 @@ class LHMM
     double epsilon;
     double tau;
     double eta;
-    double logOneSixteenth;
-
-//    double a;
-//    double e;
-//    double d;
-//    double c;
+    
     double logEta;
     double logTau;
+    double logOneSixteenth;
 
     double transition[NSTATES][NSTATES];
 
@@ -99,13 +95,16 @@ class LHMM
     std::vector<uint32_t> indelEndsInPath;
     std::vector<char> indelStatusInPath;
 
+    std::stringstream ss;
+
     uint32_t noBasesAligned;
 
     LogTool lt;
 
-    /*Constructor*/
+    /**
+     * Constructor
+     */
     LHMM();
-    
     
     ~LHMM()
     {   
@@ -130,14 +129,7 @@ class LHMM
      * Align and compute genotype likelihood.
      */
     void align(double& llk, const char* _x, const char* _y, const char* qual, bool debug=false);
-
-    bool containsIndel();
-//
-//    /**
-//     * Convert PLs to probabilities.
-//     */
-//    double pl2prob(uint32_t PL);
-//
+    
     /**
      * Updates matchStart, matchEnd, globalMaxPath and path
      * Updates locations of insertions and deletions
@@ -145,39 +137,21 @@ class LHMM
     void tracePath();
     void tracePath(std::stringstream& ss, char state, uint32_t i, uint32_t j);
 
-
-
-
-    //get path
-    std::string& getPath();
-
     /**
      * Left align indels in an alignment
      */
     void left_align();
 
-    double logEmissionOdds(char readBase, char probeBase, double e);
+    /**
+     * Compute log10 emission odds based on equal error probability distribution.
+     * Substracting log10(1/16).
+     */
+    double log10EmissionOdds(char readBase, char probeBase, double e);
 
-    //compute log emission based on equal error probability distribution
-    double logEmission(char readBase, char probeBase, double e);
-
-    double emission(char readBase, char probeBase, double e);
-
+    /**
+     * Reverses a string.
+     */
     std::string reverse(std::string s);
-
-    void printVector(double (*v)[MAXLEN], uint32_t xLen, uint32_t yLen);
-
-    void printVector(char v[][MAXLEN], uint32_t xLen, uint32_t yLen);
-
-    void printVector(double v[][MAXLEN]);
-
-    void printAlignment();
-
-    void printAlignment(std::string& pad);
-
-    void printAlignment(std::string& pad, std::stringstream& log);
-
-    double score(char a, char b);
 
     /**
      * Checks if deletion exists in alignment.
@@ -189,6 +163,25 @@ class LHMM
      */
     bool insertion_start_exists(uint32_t pos, uint32_t& rpos);
 
+    /**
+     * Prints an alignment.
+     */
+    void printAlignment();
+
+    /**
+     * Prints an alignment with padding.
+     */
+    void printAlignment(std::string& pad);
+        
+    /**
+     * Prints a double matrix.
+     */
+    void print(double *v, uint32_t xlen, uint32_t ylen);
+    
+    /**
+     * Prints a char matrix.
+     */
+    void print(char *v, uint32_t xlen, uint32_t ylen);
 };
 
 #endif
