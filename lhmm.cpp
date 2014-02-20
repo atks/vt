@@ -1,5 +1,5 @@
 /* The MIT License
- 
+
    Copyright (c) 2013 Adrian Tan <atks@umich.edu>
 
    Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -23,10 +23,61 @@
 
 #include "lhmm.h"
 
+#define MAXLEN 250
+#define S 0
+#define X 1
+#define Y 2
+#define M 3
+#define I 4
+#define D 5
+#define W 6
+#define Z 7
+#define E 8
+
 /**
  * Constructor.
  */
 LHMM::LHMM()
+{
+    initialize();
+    lt = new LogTool();
+};
+
+/**
+ * Constructor.
+ */
+LHMM::LHMM(LogTool *lt)
+{
+    initialize();
+    this->lt = lt;
+};
+
+/**
+ * Destructor.
+ */
+LHMM::~LHMM()
+{
+    delete scoreX;
+    delete scoreY;
+    delete scoreM;
+    delete scoreI;
+    delete scoreD;
+    delete scoreW;
+    delete scoreZ;
+
+    delete pathX;
+    delete pathY;
+    delete pathM;
+    delete pathI;
+    delete pathD;
+    delete pathW;
+    delete pathZ;
+};
+
+/**
+ * Initializes object, helper function for constructor.
+ */
+void LHMM::initialize()
 {
     delta = 0.001;
     epsilon = 0.5;
@@ -66,7 +117,7 @@ LHMM::LHMM()
     scoreD = new double[MAXLEN*MAXLEN];
     scoreW = new double[MAXLEN*MAXLEN];
     scoreZ = new double[MAXLEN*MAXLEN];
-    
+
     pathX = new char[MAXLEN*MAXLEN];
     pathY = new char[MAXLEN*MAXLEN];
     pathM = new char[MAXLEN*MAXLEN];
@@ -74,7 +125,7 @@ LHMM::LHMM()
     pathD = new char[MAXLEN*MAXLEN];
     pathW = new char[MAXLEN*MAXLEN];
     pathZ = new char[MAXLEN*MAXLEN];
-    
+
     //assume alignments can't possibly be maxLength bases or more
     for (int32_t i=0; i<MAXLEN; ++i)
     {
@@ -87,7 +138,7 @@ LHMM::LHMM()
             scoreD[i*MAXLEN+j] = -DBL_MAX;
             scoreW[i*MAXLEN+j] = -DBL_MAX;
             scoreZ[i*MAXLEN+j] = -DBL_MAX;
-            
+
             if (j)
             {
                 pathX[i*MAXLEN+j] = 'Y';
@@ -142,7 +193,6 @@ LHMM::LHMM()
     scoreY[0*MAXLEN+0] = -DBL_MAX;
     scoreW[0*MAXLEN+0] = -DBL_MAX;
     scoreZ[0*MAXLEN+0] = -DBL_MAX;
-
 };
 
 /**
@@ -222,7 +272,7 @@ void LHMM::align(double& llk, const char* x, const char* y, const char* qual, bo
                 maxPath = 'D';
             }
 
-            scoreM[i*MAXLEN+j] = max + log10EmissionOdds(x[i-1], y[j-1], lt.pl2prob((uint32_t) qual[j-1]-33));
+            scoreM[i*MAXLEN+j] = max + log10_emission_odds(x[i-1], y[j-1], lt->pl2prob((uint32_t) qual[j-1]-33));
             pathM[i*MAXLEN+j] = maxPath;
 
             //D
@@ -331,32 +381,13 @@ void LHMM::align(double& llk, const char* x, const char* y, const char* qual, bo
         print(pathZ, xlen+1, ylen+1);
     }
 
-    tracePath();
-};
-
-double LHMM::log10EmissionOdds(char readBase, char probeBase, double e)
-{
-    //4 encodes for N
-    if (readBase=='N' || probeBase=='N')
-    {
-        //silent match
-        return 0;
-    }
-
-    if (readBase!=probeBase)
-    {
-        return log10(e/3)-logOneSixteenth;
-    }
-    else
-    {
-        return log10(1-e)-logOneSixteenth;
-    }
+    trace_path();
 };
 
 /**
  * Updates matchStart, matchEnd, globalMaxPath and path.
  */
-void LHMM::tracePath()
+void LHMM::trace_path()
 {
     double globalMax = scoreM[xlen*MAXLEN+ylen];
     char globalMaxPath = 'M';
@@ -385,25 +416,18 @@ void LHMM::tracePath()
 
     maxLogOdds = globalMax;
 
-    //std::cerr << "\tGlobal max Path : " << globalMaxPath << "\n";
-    //std::cerr << "\tGlobal max log odds : " << globalMax << "\n";
-
-    std::stringstream ss;
+    ss.str("");
     ss << globalMaxPath;
 
     //recursively trace path
-    tracePath(ss, globalMaxPath, xlen, ylen);
+    trace_path(globalMaxPath, xlen, ylen);
 
     path = reverse(ss.str());
 
     bool inI = false;
     bool inD = false;
-    //std::cerr << "*************************************\n";
-    //std::cerr << "PATH :" << path << "\n";
 
-    ////////////////////////////////////////////////
     //records appearance of Indels in probe and read
-    ////////////////////////////////////////////////
     indelStartsInX.clear();
     indelEndsInX.clear();
     indelStartsInY.clear();
@@ -433,7 +457,7 @@ void LHMM::tracePath()
             indelEndsInPath.push_back(i);
             indelEndsInX.push_back(x_index);
             indelEndsInY.push_back(y_index);
-        } 
+        }
 
         if (!inD && path[i]=='D')
         {
@@ -462,7 +486,7 @@ void LHMM::tracePath()
             {
                 ++mismatchedBases;
             }
-            
+
             ++x_index;
             ++y_index;
         }
@@ -477,24 +501,26 @@ void LHMM::tracePath()
             ++x_index;
         }
     }
-    
-    //left align path
+
     left_align();
 }
 
-void LHMM::tracePath(std::stringstream& ss, char state, uint32_t i, uint32_t j)
+/**
+ * Recursive call for trace_path
+ */
+void LHMM::trace_path(char state, uint32_t i, uint32_t j)
 {
     if (i>0 && j>0)
     {
         if (state=='X')
         {
             ss << pathX[i*MAXLEN+j];
-            tracePath(ss, pathX[i*MAXLEN+j], i-1, j);
+            trace_path(pathX[i*MAXLEN+j], i-1, j);
         }
         else if (state=='Y')
         {
             ss << pathY[i*MAXLEN+j];
-            tracePath(ss, pathY[i*MAXLEN+j], i, j-1);
+            trace_path(pathY[i*MAXLEN+j], i, j-1);
         }
         else if (state=='M')
         {
@@ -505,18 +531,18 @@ void LHMM::tracePath(std::stringstream& ss, char state, uint32_t i, uint32_t j)
             }
 
             ss << pathM[i*MAXLEN+j];
-            tracePath(ss, pathM[i*MAXLEN+j], i-1, j-1);
+            trace_path(pathM[i*MAXLEN+j], i-1, j-1);
             ++noBasesAligned;
         }
         else if (state=='I')
         {
             ss << pathI[i*MAXLEN+j];
-            tracePath(ss, pathI[i*MAXLEN+j], i, j-1);
+            trace_path(pathI[i*MAXLEN+j], i, j-1);
         }
         else if (state=='D')
         {
             ss << pathD[i*MAXLEN+j];
-            tracePath(ss, pathD[i*MAXLEN+j], i-1, j);
+            trace_path(pathD[i*MAXLEN+j], i-1, j);
             ++noBasesAligned;
         }
         else if (state=='W')
@@ -528,7 +554,7 @@ void LHMM::tracePath(std::stringstream& ss, char state, uint32_t i, uint32_t j)
             }
 
             ss << pathW[i*MAXLEN+j];
-            tracePath(ss, pathW[i*MAXLEN+j], i-1, j);
+            trace_path(pathW[i*MAXLEN+j], i-1, j);
         }
         else if (state=='Z')
         {
@@ -539,11 +565,10 @@ void LHMM::tracePath(std::stringstream& ss, char state, uint32_t i, uint32_t j)
             }
 
             ss << pathZ[i*MAXLEN+j];
-            tracePath(ss, pathZ[i*MAXLEN+j], i, j-1);
+            trace_path(pathZ[i*MAXLEN+j], i, j-1);
         }
         else if (state=='S')
         {
-            //std::cout << "\n";
             if (matchStartX==-1)
             {
                matchStartX = i+1;
@@ -563,7 +588,7 @@ void LHMM::tracePath(std::stringstream& ss, char state, uint32_t i, uint32_t j)
         }
 
         ss << pathY[i*MAXLEN+j];
-        tracePath(ss, pathY[i*MAXLEN+j], i, j-1);
+        trace_path(pathY[i*MAXLEN+j], i, j-1);
     }
     else if (i>0 && j==0)
     {
@@ -571,9 +596,9 @@ void LHMM::tracePath(std::stringstream& ss, char state, uint32_t i, uint32_t j)
         {
            matchStartY = j+1;
         }
-        
+
         ss << pathX[i*MAXLEN+j];
-        tracePath(ss, pathX[i*MAXLEN+j], i-1, j);
+        trace_path(pathX[i*MAXLEN+j], i-1, j);
     }
     else
     {
@@ -581,7 +606,7 @@ void LHMM::tracePath(std::stringstream& ss, char state, uint32_t i, uint32_t j)
 }
 
 /**
- * Left align indels in an alignment
+ * Left align gaps in an alignment
  */
 void LHMM::left_align()
 {
@@ -639,6 +664,32 @@ void LHMM::left_align()
     }
 }
 
+/**
+ * Compute log10 emission odds based on equal error probability distribution.
+ * Substracting log10(1/16).
+ */
+double LHMM::log10_emission_odds(char readBase, char probeBase, double e)
+{
+    //4 encodes for N
+    if (readBase=='N' || probeBase=='N')
+    {
+        //silent match
+        return 0;
+    }
+
+    if (readBase!=probeBase)
+    {
+        return log10(e/3)-logOneSixteenth;
+    }
+    else
+    {
+        return log10(1-e)-logOneSixteenth;
+    }
+};
+
+/**
+ * Reverses a string.
+ */
 std::string LHMM::reverse(std::string s)
 {
     std::string rs;
@@ -651,9 +702,56 @@ std::string LHMM::reverse(std::string s)
 };
 
 /**
+ * Checks if insertion exists in alignment.
+ */
+bool LHMM::insertion_start_exists(uint32_t pos, uint32_t& rpos)
+{
+    rpos = 0;
+    for (uint32_t i=0; i<indelStatusInPath.size(); ++i)
+    {
+        if (indelStatusInPath[i]=='I' &&
+            indelStartsInX[i]==pos)
+        {
+            rpos = indelStartsInY[i];
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/**
+ * Checks if deletion exists in alignment.
+ */
+bool LHMM::deletion_start_exists(uint32_t pos, uint32_t& rpos)
+{
+    rpos = 0;
+    for (uint32_t i=0; i<indelStatusInPath.size(); ++i)
+    {
+        if (indelStatusInPath[i]=='D' &&
+            indelStartsInX[i]==pos)
+        {
+            rpos = indelStartsInY[i];
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/**
+ * Prints an alignment.
+ */
+void LHMM::print_alignment()
+{
+    std::string pad = "\t";
+    print_alignment(pad);
+};
+
+/**
  * Prints an alignment with padding.
  */
-void LHMM::printAlignment(std::string& pad)
+void LHMM::print_alignment(std::string& pad)
 {
     std::stringstream xAligned;
     std::stringstream yAligned;
@@ -755,53 +853,6 @@ void LHMM::printAlignment(std::string& pad)
 };
 
 /**
- * Checks if insertion exists in alignment.
- */
-bool LHMM::insertion_start_exists(uint32_t pos, uint32_t& rpos)
-{
-    rpos = 0;
-    for (uint32_t i=0; i<indelStatusInPath.size(); ++i)
-    {
-        if (indelStatusInPath[i]=='I' &&
-            indelStartsInX[i]==pos)
-        {
-            rpos = indelStartsInY[i];
-            return true;
-        }
-    }
-
-    return false;
-}
-
-/**
- * Checks if deletion exists in alignment.
- */
-bool LHMM::deletion_start_exists(uint32_t pos, uint32_t& rpos)
-{
-    rpos = 0;
-    for (uint32_t i=0; i<indelStatusInPath.size(); ++i)
-    {
-        if (indelStatusInPath[i]=='D' &&
-            indelStartsInX[i]==pos)
-        {
-            rpos = indelStartsInY[i];
-            return true;
-        }
-    }
-
-    return false;
-}
-
-/**
- * Prints an alignment.
- */
-void LHMM::printAlignment()
-{
-    std::string pad = "\t";
-    printAlignment(pad);
-};
-
-/**
  * Prints a double matrix.
  */
 void LHMM::print(double *v, uint32_t xlen, uint32_t ylen)
@@ -832,3 +883,14 @@ void LHMM::print(char *v, uint32_t xlen, uint32_t ylen)
         std::cerr << "\n";
     }
 };
+
+#undef MAXLEN
+#undef S
+#undef X
+#undef Y
+#undef M
+#undef I
+#undef D
+#undef W
+#undef Z
+#undef E

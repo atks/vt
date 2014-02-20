@@ -22,8 +22,61 @@
 */
 
 #include "chmm.h"
+#define MAXLEN 250
+#define S 0
+#define X 1
+#define Y 2
+#define M 3
+#define I 4
+#define D 5
+#define W 6
+#define Z 7
+#define E 8
 
+/**
+ * Constructor.
+ */
 CHMM::CHMM()
+{
+    initialize();
+    lt = new LogTool();
+};
+
+/**
+ * Constructor.
+ */
+CHMM::CHMM(LogTool *lt)
+{
+    initialize();
+    this->lt = lt;
+};
+
+/**
+ * Destructor.
+ */
+CHMM::~CHMM()
+{
+    delete scoreX;
+    delete scoreY;
+    delete scoreM;
+    delete scoreI;
+    delete scoreD;
+    delete scoreW;
+    delete scoreZ;
+
+    delete pathX;
+    delete pathY;
+    delete pathM;
+    delete pathI;
+    delete pathD;
+    delete pathW;
+    delete pathZ;
+};
+
+/**
+ * Initializes object, helper function for constructor.
+ */
+void CHMM::initialize()
 {
     delta = 0.001;
     epsilon = 0.5;
@@ -63,7 +116,7 @@ CHMM::CHMM()
     scoreD = new double[MAXLEN*MAXLEN];
     scoreW = new double[MAXLEN*MAXLEN];
     scoreZ = new double[MAXLEN*MAXLEN];
-    
+
     pathX = new char[MAXLEN*MAXLEN];
     pathY = new char[MAXLEN*MAXLEN];
     pathM = new char[MAXLEN*MAXLEN];
@@ -71,7 +124,7 @@ CHMM::CHMM()
     pathD = new char[MAXLEN*MAXLEN];
     pathW = new char[MAXLEN*MAXLEN];
     pathZ = new char[MAXLEN*MAXLEN];
-    
+
     //assume alignments can't possibly be maxLength bases or more
     for (int32_t i=0; i<MAXLEN; ++i)
     {
@@ -84,7 +137,7 @@ CHMM::CHMM()
             scoreD[i*MAXLEN+j] = -DBL_MAX;
             scoreW[i*MAXLEN+j] = -DBL_MAX;
             scoreZ[i*MAXLEN+j] = -DBL_MAX;
-            
+
             if (j)
             {
                 pathX[i*MAXLEN+j] = 'Y';
@@ -139,12 +192,11 @@ CHMM::CHMM()
     scoreY[0*MAXLEN+0] = -DBL_MAX;
     scoreW[0*MAXLEN+0] = -DBL_MAX;
     scoreZ[0*MAXLEN+0] = -DBL_MAX;
-
 };
 
 /**
-Align and compute genotype likelihood.
-*/
+ * Align y against x.
+ */
 void CHMM::align(double& llk, const char* x, const char* y, const char* qual, bool debug)
 {
     //std::cerr << "Running this\n" ;
@@ -219,7 +271,7 @@ void CHMM::align(double& llk, const char* x, const char* y, const char* qual, bo
                 maxPath = 'D';
             }
 
-            scoreM[i*MAXLEN+j] = max + logEmissionOdds(x[i-1], y[j-1], lt.pl2prob((uint32_t) qual[j-1]-33));
+            scoreM[i*MAXLEN+j] = max + log10_emission_odds(x[i-1], y[j-1], lt->pl2prob((uint32_t) qual[j-1]-33));
             pathM[i*MAXLEN+j] = maxPath;
 
             //D
@@ -298,69 +350,43 @@ void CHMM::align(double& llk, const char* x, const char* y, const char* qual, bo
 
     if (debug)
     {
-//        std::cerr << "\n=X=\n";
-//        printVector(scoreX, xlen+1, ylen+1);
-//        std::cerr << "\n=Y=\n";
-//        printVector(scoreY, xlen+1, ylen+1);
-//        std::cerr << "\n=M=\n";
-//        printVector(scoreM, xlen+1, ylen+1);
-//        std::cerr << "\n=D=\n";
-//        printVector(scoreD, xlen+1, ylen+1);
-//        std::cerr << "\n=I=\n";
-//        printVector(scoreI, xlen+1, ylen+1);
-//        std::cerr << "\n=W=\n";
-//        printVector(scoreW, xlen+1, ylen+1);
-//        std::cerr << "\n=Z=\n";
-//        printVector(scoreZ, xlen+1, ylen+1);
-//        std::cerr << "\n=Path X=\n";
-//        printVector(pathX, xlen+1, ylen+1);
-//        std::cerr << "\n=Path Y=\n";
-//        printVector(pathY, xlen+1, ylen+1);
-//        std::cerr << "\n=Path M=\n";
-//        printVector(pathM, xlen+1, ylen+1);
-//        std::cerr << "\n=Path D=\n";
-//        printVector(pathD, xlen+1, ylen+1);
-//        std::cerr << "\n=Path I=\n";
-//        printVector(pathI, xlen+1, ylen+1);
-//        std::cerr << "\n=Path W=\n";
-//        printVector(pathW, xlen+1, ylen+1);
-//        std::cerr << "\n=Path Z=\n";
-//        printVector(pathZ, xlen+1, ylen+1);
+        std::cerr << "\n=X=\n";
+        print(scoreX, xlen+1, ylen+1);
+        std::cerr << "\n=Y=\n";
+        print(scoreY, xlen+1, ylen+1);
+        std::cerr << "\n=M=\n";
+        print(scoreM, xlen+1, ylen+1);
+        std::cerr << "\n=D=\n";
+        print(scoreD, xlen+1, ylen+1);
+        std::cerr << "\n=I=\n";
+        print(scoreI, xlen+1, ylen+1);
+        std::cerr << "\n=W=\n";
+        print(scoreW, xlen+1, ylen+1);
+        std::cerr << "\n=Z=\n";
+        print(scoreZ, xlen+1, ylen+1);
+        std::cerr << "\n=Path X=\n";
+        print(pathX, xlen+1, ylen+1);
+        std::cerr << "\n=Path Y=\n";
+        print(pathY, xlen+1, ylen+1);
+        std::cerr << "\n=Path M=\n";
+        print(pathM, xlen+1, ylen+1);
+        std::cerr << "\n=Path D=\n";
+        print(pathD, xlen+1, ylen+1);
+        std::cerr << "\n=Path I=\n";
+        print(pathI, xlen+1, ylen+1);
+        std::cerr << "\n=Path W=\n";
+        print(pathW, xlen+1, ylen+1);
+        std::cerr << "\n=Path Z=\n";
+        print(pathZ, xlen+1, ylen+1);
     }
 
-    tracePath();
+    trace_path();
 };
-
-double CHMM::logEmissionOdds(char readBase, char probeBase, double e)
-{
-    //4 encodes for N
-    if (readBase=='N' || probeBase=='N')
-    {
-        //silent match
-        return 0;
-    }
-
-    if (readBase!=probeBase)
-    {
-        return log10(e/3)-logOneSixteenth;
-    }
-    else
-    {
-        return log10(1-e)-logOneSixteenth;
-    }
-};
-
-//bool CHMM::containsIndel()
-//{
-//    return (indelStatusInPath.size()!=0);
-//}
-
-
 
 /**
  * Updates matchStart, matchEnd, globalMaxPath and path.
  */
-void CHMM::tracePath()
+void CHMM::trace_path()
 {
     double globalMax = scoreM[xlen*MAXLEN+ylen];
     char globalMaxPath = 'M';
@@ -389,139 +415,133 @@ void CHMM::tracePath()
 
     maxLogOdds = globalMax;
 
-    //std::cerr << "\tGlobal max Path : " << globalMaxPath << "\n";
-    //std::cerr << "\tGlobal max log odds : " << globalMax << "\n";
-
-    std::stringstream ss;
+    ss.str("");
     ss << globalMaxPath;
 
     //recursively trace path
-    tracePath(ss, globalMaxPath, xlen, ylen);
+    trace_path(globalMaxPath, xlen, ylen);
 
     path = reverse(ss.str());
 
     bool inI = false;
     bool inD = false;
-    //std::cerr << "*************************************\n";
-    //std::cerr << "PATH :" << path << "\n";
 
-   
-    uint32_t x=0, y=0;
+    //records appearance of Indels in probe and read
+    indelStartsInX.clear();
+    indelEndsInX.clear();
+    indelStartsInY.clear();
+    indelEndsInY.clear();
+    indelStartsInPath.clear();
+    indelEndsInPath.clear();
+    indelStatusInPath.clear();
+
+    matchedBases = 0;
+    mismatchedBases = 0;
+
+    uint32_t x_index=0, y_index=0;
     for (uint32_t i=0; i<path.size(); ++i)
     {
         if (!inI && path[i]=='I')
         {
             inI = true;
+            indelStartsInPath.push_back(i);
+            indelStatusInPath.push_back('I');
+            indelStartsInX.push_back(x_index);
+            indelStartsInY.push_back(y_index);
         }
 
         if (inI && path[i]!='I')
         {
             inI = false;
-        } 
+            indelEndsInPath.push_back(i);
+            indelEndsInX.push_back(x_index);
+            indelEndsInY.push_back(y_index);
+        }
 
         if (!inD && path[i]=='D')
         {
             inD = true;
+            indelStartsInPath.push_back(i);
+            indelStatusInPath.push_back('D');
+            indelStartsInX.push_back(x_index);
+            indelStartsInY.push_back(y_index);
         }
 
         if (inD && path[i]!='D')
         {
             inD = false;
+            indelEndsInPath.push_back(i);
+            indelEndsInX.push_back(x_index);
+            indelEndsInY.push_back(y_index);
         }
 
         if (path[i]=='M')
         {
-            ++x;
-            ++y;
+            if (x[x_index]== y[y_index])
+            {
+                ++matchedBases;
+            }
+            else
+            {
+                ++mismatchedBases;
+            }
+
+            ++x_index;
+            ++y_index;
         }
 
         if (path[i]=='I' || path[i]=='Y' || path[i]=='Z')
         {
-            ++y;
+            ++y_index;
         }
 
         if (path[i]=='D' || path[i]=='X' || path[i]=='W')
         {
-            ++x;
+            ++x_index;
         }
     }
 
-//    std::cerr << "\t# INS in Path : ";
-//    for (uint32_t i=0; i<insertionStartsInPath.size(); ++i)
-//    {
-//         std::cerr << "(" << insertionStartsInPath[i] << "," << insertionEndsInPath[i] << ") ";
-//    }
-//    std::cerr << "\n";
-//
-//    std::cerr << "\t# DEL in Path : ";
-//    for (uint32_t i=0; i<deletionStartsInPath.size(); ++i)
-//    {
-//         std::cerr << "(" << deletionStartsInPath[i] << "," << deletionEndsInPath[i] << ") ";
-//    }
-//    std::cerr << "\n";
-//    std::cerr << "*************************************\n";
-    //left align path
- //   left_align();
-
-//    std::cerr << "*************************************\n";
-//    printAlignment();
-//    std::cerr << "*************************************\n";
-
-    // std::cerr << "\tPath: " << path << "\n";
+    left_align();
 }
 
-void CHMM::tracePath(std::stringstream& ss, char state, uint32_t i, uint32_t j)
+/**
+ * Recursive call for trace_path
+ */
+void CHMM::trace_path(char state, uint32_t i, uint32_t j)
 {
-    //std::cout << state << "\n";
     if (i>0 && j>0)
     {
         if (state=='X')
         {
-            //std::cerr << pathX[i*MAXLEN+j] << " " << i << " " << j << " " << matchStartY << "\n";
             ss << pathX[i*MAXLEN+j];
-            tracePath(ss, pathX[i*MAXLEN+j], i-1, j);
+            trace_path(pathX[i*MAXLEN+j], i-1, j);
         }
         else if (state=='Y')
         {
-            //std::cerr << pathY[i*MAXLEN+j] << " " << i << " " << j << " " << matchStartY << "\n";
             ss << pathY[i*MAXLEN+j];
-            tracePath(ss, pathY[i*MAXLEN+j], i, j-1);
+            trace_path(pathY[i*MAXLEN+j], i, j-1);
         }
         else if (state=='M')
         {
-//            if (matchEndX==-1)
-//            {
-//                matchEndX = i;
-//                matchEndY = j;
-//
-//                //std::cerr << "set matchEndX "  << matchEndX  << " " << matchEndY  <<  "\n";
-//            }
-//
             if (matchStartX==-1 && (pathM[i*MAXLEN+j] =='X' || pathM[i*MAXLEN+j]=='Y'))
             {
                matchStartX = i;
                matchStartY = j;
-
-               //std::cerr << "set match starts "  << matchStartX  << " " << matchStartY  <<  "\n";
             }
 
-
-            //std::cout << pathM[i*MAXLEN+j] << " " << i << " " << j << " " << matchEndY << "\n";
             ss << pathM[i*MAXLEN+j];
-            tracePath(ss, pathM[i*MAXLEN+j], i-1, j-1);
+            trace_path(pathM[i*MAXLEN+j], i-1, j-1);
             ++noBasesAligned;
         }
         else if (state=='I')
         {
-            //std::cout << pathI[i*MAXLEN+j] << " " << i << " " << j << "\n";
             ss << pathI[i*MAXLEN+j];
-            tracePath(ss, pathI[i*MAXLEN+j], i, j-1);
+            trace_path(pathI[i*MAXLEN+j], i, j-1);
         }
         else if (state=='D')
         {
-            //std::cout << pathD[i*MAXLEN+j] << " " << i << " " << j << "\n";
             ss << pathD[i*MAXLEN+j];
-            tracePath(ss, pathD[i*MAXLEN+j], i-1, j);
+            trace_path(pathD[i*MAXLEN+j], i-1, j);
             ++noBasesAligned;
         }
         else if (state=='W')
@@ -532,10 +552,8 @@ void CHMM::tracePath(std::stringstream& ss, char state, uint32_t i, uint32_t j)
                 matchEndY = j;
             }
 
-
-            //std::cout << pathW[i*MAXLEN+j] << " " << i << " " << j << "\n";
             ss << pathW[i*MAXLEN+j];
-            tracePath(ss, pathW[i*MAXLEN+j], i-1, j);
+            trace_path(pathW[i*MAXLEN+j], i-1, j);
         }
         else if (state=='Z')
         {
@@ -545,13 +563,11 @@ void CHMM::tracePath(std::stringstream& ss, char state, uint32_t i, uint32_t j)
                 matchEndY = j-1;
             }
 
-            //std::cout << pathZ[i*MAXLEN+j] << " " << i << " " << j << "\n";
             ss << pathZ[i*MAXLEN+j];
-            tracePath(ss, pathZ[i*MAXLEN+j], i, j-1);
+            trace_path(pathZ[i*MAXLEN+j], i, j-1);
         }
         else if (state=='S')
         {
-            //std::cout << "\n";
             if (matchStartX==-1)
             {
                matchStartX = i+1;
@@ -561,7 +577,6 @@ void CHMM::tracePath(std::stringstream& ss, char state, uint32_t i, uint32_t j)
             {
                matchStartY = j+1;
             }
-
         }
     }
     else if (i==0 && j>0)
@@ -571,9 +586,8 @@ void CHMM::tracePath(std::stringstream& ss, char state, uint32_t i, uint32_t j)
            matchStartY = j+1;
         }
 
-        // std::cout << pathY[i*MAXLEN+j] << " " << i << " " << j << "\n";
         ss << pathY[i*MAXLEN+j];
-        tracePath(ss, pathY[i*MAXLEN+j], i, j-1);
+        trace_path(pathY[i*MAXLEN+j], i, j-1);
     }
     else if (i>0 && j==0)
     {
@@ -581,26 +595,79 @@ void CHMM::tracePath(std::stringstream& ss, char state, uint32_t i, uint32_t j)
         {
            matchStartY = j+1;
         }
-        // std::cout << pathX[i*MAXLEN+j] << " " << i << " " << j << "\n";
+
         ss << pathX[i*MAXLEN+j];
-        tracePath(ss, pathX[i*MAXLEN+j], i-1, j);
+        trace_path(pathX[i*MAXLEN+j], i-1, j);
     }
     else
     {
-        //std::cout << "\n";
-        //ss << pathX[i*MAXLEN+j];
     }
 }
 
-
-std::string& CHMM::getPath()
+/**
+ * Left align gaps in an alignment
+ */
+void CHMM::left_align()
 {
-    return path;
+    for (uint32_t i=0; i<indelStatusInPath.size(); ++i)
+    {
+        if (indelStatusInPath[i]=='I')
+        {
+            while (indelStartsInX[i]>1 && indelStartsInY[i]>1)
+            {
+                if (//(indelStartsInY[i]!=indelEndsInY[i]-1) && //single indel need not be shifted
+                    x[indelStartsInX[i]-1]==y[indelStartsInY[i]-1] &&
+                    y[indelStartsInY[i]-1]==y[indelEndsInY[i]-1])
+                {
+                    path[indelStartsInPath[i]-1] = 'I';
+                    path[indelEndsInPath[i]-1] = 'M';
+
+                    --indelStartsInX[i];
+                    --indelEndsInX[i];
+                    --indelStartsInY[i];
+                    --indelEndsInY[i];
+                    --indelStartsInPath[i];
+                    --indelEndsInPath[i];
+                }
+                else
+                {
+                    break;
+                }
+            }
+        }
+        else
+        {
+            while (indelStartsInX[i]>1 && indelStartsInY[i]>1)
+            {
+                if (//(indelStartsInX[i]!=indelEndsInX[i]-1) && //single indel need not be shifted
+                    x[indelStartsInX[i]-1]==y[indelStartsInY[i]-1] &&
+                    x[indelStartsInX[i]-1]==x[indelEndsInX[i]-1])
+                {
+                    path[indelStartsInPath[i]-1] = 'D';
+                    path[indelEndsInPath[i]-1] = 'M';
+
+                    --indelStartsInX[i];
+                    --indelEndsInX[i];
+                    --indelStartsInY[i];
+                    --indelEndsInY[i];
+                    --indelStartsInPath[i];
+                    --indelEndsInPath[i];
+                }
+                else
+                {
+                    break;
+                }
+            }
+
+        }
+    }
 }
 
-
-
-double CHMM::logEmission(char readBase, char probeBase, double e)
+/**
+ * Compute log10 emission odds based on equal error probability distribution.
+ * Substracting log10(1/16).
+ */
+double CHMM::log10_emission_odds(char readBase, char probeBase, double e)
 {
     //4 encodes for N
     if (readBase=='N' || probeBase=='N')
@@ -611,33 +678,17 @@ double CHMM::logEmission(char readBase, char probeBase, double e)
 
     if (readBase!=probeBase)
     {
-        return log10(e/3);
+        return log10(e/3)-logOneSixteenth;
     }
     else
     {
-        return log10(1-e);
+        return log10(1-e)-logOneSixteenth;
     }
 };
 
-double CHMM::emission(char readBase, char probeBase, double e)
-{
-    //4 encodes for N
-    if (readBase=='N' || probeBase=='N')
-    {
-        //silent match
-        return 0;
-    }
-
-    if (readBase!=probeBase)
-    {
-        return e/3;
-    }
-    else
-    {
-        return 1-e;
-    }
-};
-
+/**
+ * Reverses a string.
+ */
 std::string CHMM::reverse(std::string s)
 {
     std::string rs;
@@ -649,118 +700,58 @@ std::string CHMM::reverse(std::string s)
     return rs;
 };
 
-void CHMM::printVector(double v[][MAXLEN], uint32_t xLen, uint32_t yLen)
+/**
+ * Checks if insertion exists in alignment.
+ */
+bool CHMM::insertion_start_exists(uint32_t pos, uint32_t& rpos)
 {
-    for (uint32_t i=0; i<xLen; ++i)
+    rpos = 0;
+    for (uint32_t i=0; i<indelStatusInPath.size(); ++i)
     {
-        for (uint32_t j=0; j<yLen; ++j)
+        if (indelStatusInPath[i]=='I' &&
+            indelStartsInX[i]==pos)
         {
-          std::cerr << (v[i][j]==-DBL_MAX?-1000:v[i][j]) << "\t";
-        }
-
-        std::cerr << "\n";
-    }
-};
-
-void CHMM::printVector(char v[][MAXLEN], uint32_t xLen, uint32_t yLen)
-{
-    for (uint32_t i=0; i<xLen; ++i)
-    {
-        for (uint32_t j=0; j<yLen; ++j)
-        {
-          std::cerr << v[i][j] << "\t";
-        }
-
-        std::cerr << "\n";
-    }
-};
-
-void CHMM::printVector(double v[][MAXLEN])
-{
-    for (uint32_t i=0; i<MAXLEN; ++i)
-    {
-        for (uint32_t j=0; j<MAXLEN; ++j)
-        {
-          std::cerr << v[i][j] << "\t";
-        }
-
-        std::cerr << "\n";
-    }
-};
-
-void CHMM::printAlignment(std::string& pad, std::stringstream& log)
-{
-    std::stringstream xAligned;
-    std::stringstream yAligned;
-    std::stringstream qualAligned;
-    uint32_t xIndex=0, yIndex=0;
-    for (uint32_t i=0; i<path.size(); ++i)
-    {
-        char state = path.at(i);
-        if (state=='S' || state=='E')
-        {
-            xAligned << state;
-            yAligned << state;
-            qualAligned << state;
-        }
-        else if (state=='X'||state=='W')
-        {
-            xAligned << x[xIndex++];
-            yAligned << '.';
-            qualAligned << '.';
-        }
-        else if (state=='M')
-        {
-            xAligned << x[xIndex++];
-            yAligned << y[yIndex];
-            qualAligned << qual[yIndex++];
-        }
-        else if (state=='D')
-        {
-            xAligned << x[xIndex++];
-            yAligned << '-';
-            qualAligned << '-';
-        }
-        else if (state=='I')
-        {
-            xAligned << '-';
-            yAligned << y[yIndex];
-            qualAligned << qual[yIndex++];
-        }
-        else if (state=='Y'||state=='Z')
-        {
-            xAligned << '.';
-            yAligned << y[yIndex];
-            qualAligned << qual[yIndex++];
+            rpos = indelStartsInY[i];
+            return true;
         }
     }
 
-    log << pad << "X    " << xAligned.str() << "E\n";
-    log << pad << "Path " << path << "E\n";
-    log << pad << "Y    " << yAligned.str() << "E\n";
-    log << pad << "Qual " << qualAligned.str() << "E\n\n";
+    return false;
+}
 
-    log << pad << "Alignment in Probe : [" << matchStartX << "," << matchEndX<< "]\n";
-    log << pad << "Alignment in Read  : [" << matchStartY << "," << matchEndY<< "]\n";
-    log << pad << "# Aligned Bases : " << noBasesAligned << "\n";
-    log << pad << "# Matched Bases : " << matchedBases << "\n";
-    log << pad << "# Mismatched Bases : " << mismatchedBases << "\n";
+/**
+ * Checks if deletion exists in alignment.
+ */
+bool CHMM::deletion_start_exists(uint32_t pos, uint32_t& rpos)
+{
+    rpos = 0;
+    for (uint32_t i=0; i<indelStatusInPath.size(); ++i)
+    {
+        if (indelStatusInPath[i]=='D' &&
+            indelStartsInX[i]==pos)
+        {
+            rpos = indelStartsInY[i];
+            return true;
+        }
+    }
 
-   
-    log << pad << "Max Log odds    : " << maxLogOdds << "\n";
+    return false;
+}
+
+/**
+ * Prints an alignment.
+ */
+void CHMM::print_alignment()
+{
+    std::string pad = "\t";
+    print_alignment(pad);
 };
 
-void CHMM::printAlignment(std::string& pad)
+/**
+ * Prints an alignment with padding.
+ */
+void CHMM::print_alignment(std::string& pad)
 {
-    //std::cerr << "\tAlignments\n" ;
-
-    //trace back
-    //std::cerr << "\tBefore alignment" << "\n";
-    //std::cerr << "\tX    " << x << "\n";
-    //std::cerr << "\tY    " << y << "\n";
-    //std::cerr << "\n";
-    //std::cerr << "\tAfter alignment" << "\n";
-    //use path to align x and y
     std::stringstream xAligned;
     std::stringstream yAligned;
     std::stringstream qualAligned;
@@ -817,21 +808,88 @@ void CHMM::printAlignment(std::string& pad)
     std::cerr << pad << "# Matched Bases : " << matchedBases << "\n";
     std::cerr << pad << "# Mismatched Bases : " << mismatchedBases << "\n";
 
-   
+    std::cerr << pad << "# INS in Probe : ";
+    for (uint32_t i=0; i<indelStatusInPath.size(); ++i)
+    {
+        if (indelStatusInPath[i]=='I')
+        {
+            std::cerr << "[" << indelStartsInX[i] << "," << indelEndsInX[i] <<"] ";
+        }
+    }
+    std::cerr << "\n";
+
+    std::cerr << pad << "# DELS in Probe : ";
+    for (uint32_t i=0; i<indelStatusInPath.size(); ++i)
+    {
+        if (indelStatusInPath[i]=='D')
+        {
+            std::cerr << "[" << indelStartsInX[i] << "," << indelEndsInX[i] <<"] ";
+        }
+    }
+    std::cerr << "\n";
+
+    std::cerr << pad << "# INS in Read : ";
+    for (uint32_t i=0; i<indelStatusInPath.size(); ++i)
+    {
+        if (indelStatusInPath[i]=='I')
+        {
+            std::cerr << "[" << indelStartsInY[i] << "," << indelEndsInY[i] <<"] ";
+        }
+    }
+    std::cerr << "\n";
+
+    std::cerr << pad << "# DELS in Read : ";
+    for (uint32_t i=0; i<indelStatusInPath.size(); ++i)
+    {
+        if (indelStatusInPath[i]=='D')
+        {
+            std::cerr << "[" << indelStartsInY[i] << "," << indelEndsInY[i] <<"] ";
+        }
+    }
+    std::cerr << "\n";
 
     std::cerr << pad << "Max Log odds    : " << maxLogOdds << "\n";
 };
 
-void CHMM::printAlignment()
+/**
+ * Prints a double matrix.
+ */
+void CHMM::print(double *v, uint32_t xlen, uint32_t ylen)
 {
-    std::string pad = "\t";
-    printAlignment(pad);
+    for (uint32_t i=0; i<xlen; ++i)
+    {
+        for (uint32_t j=0; j<ylen; ++j)
+        {
+            std::cerr << (v[i*MAXLEN+j]==-DBL_MAX?-1000:v[i*MAXLEN+j]) << "\t";
+        }
+
+        std::cerr << "\n";
+    }
 };
 
-double CHMM::score(char a, char b)
+/**
+ * Prints a char matrix.
+ */
+void CHMM::print(char *v, uint32_t xlen, uint32_t ylen)
 {
-    if (a==b)
-        return 0;
-    else
-        return -1;
+    for (uint32_t i=0; i<xlen; ++i)
+    {
+        for (uint32_t j=0; j<ylen; ++j)
+        {
+          std::cerr << v[i*MAXLEN+j] << "\t";
+        }
+
+        std::cerr << "\n";
+    }
 };
+
+#undef MAXLEN
+#undef S
+#undef X
+#undef Y
+#undef M
+#undef I
+#undef D
+#undef W
+#undef Z
+#undef E
