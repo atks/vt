@@ -112,7 +112,7 @@ class Igor : Program
             }
             clock_t t0 = clock();
             lhmm.align(llk, x.c_str(), y.c_str(), qual.c_str());
-            lhmm.printAlignment();
+            lhmm.print_alignment();
             clock_t t1 = clock();
             print_time((float)(t1-t0)/CLOCKS_PER_SEC);
         }
@@ -127,9 +127,9 @@ class Igor : Program
             }
             clock_t t0 = clock();
             chmm.align(llk, x.c_str(), y.c_str(), qual.c_str());
-            chmm.printAlignment();
+            chmm.print_alignment();
             clock_t t1 = clock();
-             print_time((float)(t1-t0)/CLOCKS_PER_SEC);
+            print_time((float)(t1-t0)/CLOCKS_PER_SEC);
         }
         else if (method=="lhmm1")
         {

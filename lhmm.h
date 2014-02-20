@@ -24,20 +24,9 @@
 #ifndef LHMM_H
 #define LHMM_H
 
-#include "utils.h"
+#include <sstream>
 #include "log_tool.h"
 
-#define MAXLEN 250
-
-#define S 0
-#define X 1
-#define Y 2
-#define M 3
-#define I 4
-#define D 5
-#define W 6
-#define Z 7
-#define E 8
 #define NSTATES 9
 
 class LHMM
@@ -56,7 +45,7 @@ class LHMM
     double epsilon;
     double tau;
     double eta;
-    
+
     double logEta;
     double logTau;
     double logOneSixteenth;
@@ -68,8 +57,8 @@ class LHMM
     double *scoreY;
     double *scoreM;
     double *scoreI;
-	double *scoreD;
-	double *scoreW;
+    double *scoreD;
+    double *scoreW;
     double *scoreZ;
 
     char *pathX;
@@ -80,6 +69,7 @@ class LHMM
     char *pathW;
     char *pathZ;
 
+    //tracking of features
     int32_t matchStartX;
     int32_t matchEndX;
     int32_t matchStartY;
@@ -87,6 +77,7 @@ class LHMM
     int32_t matchedBases;
     int32_t mismatchedBases;
 
+    //for left alignment
     std::vector<uint32_t> indelStartsInX;
     std::vector<uint32_t> indelEndsInX;
     std::vector<uint32_t> indelStartsInY;
@@ -99,43 +90,42 @@ class LHMM
 
     uint32_t noBasesAligned;
 
-    LogTool lt;
+    LogTool *lt;
 
     /**
-     * Constructor
+     * Constructor.
      */
     LHMM();
-    
-    ~LHMM()
-    {   
-        delete scoreX;
-        delete scoreY;
-        delete scoreM;
-        delete scoreI;
-        delete scoreD;
-        delete scoreW;
-        delete scoreZ;
-        
-        delete pathX;
-        delete pathY;
-        delete pathM;
-        delete pathI;
-        delete pathD;
-        delete pathW;
-        delete pathZ;
-    };
+
+    /**
+     * Constructor.
+     */
+    LHMM(LogTool *lt);
+
+    /**
+     * Destructor.
+     */
+    ~LHMM();
+
+    /**
+     * Initializes object, helper function for constructor.
+     */
+    void initialize();
 
     /**
      * Align and compute genotype likelihood.
      */
     void align(double& llk, const char* _x, const char* _y, const char* qual, bool debug=false);
-    
+
     /**
      * Updates matchStart, matchEnd, globalMaxPath and path
-     * Updates locations of insertions and deletions
      */
-    void tracePath();
-    void tracePath(std::stringstream& ss, char state, uint32_t i, uint32_t j);
+    void trace_path();
+
+    /**
+     * Recursive call for trace_path
+     */
+    void trace_path(char state, uint32_t i, uint32_t j);
 
     /**
      * Left align indels in an alignment
@@ -146,7 +136,7 @@ class LHMM
      * Compute log10 emission odds based on equal error probability distribution.
      * Substracting log10(1/16).
      */
-    double log10EmissionOdds(char readBase, char probeBase, double e);
+    double log10_emission_odds(char readBase, char probeBase, double e);
 
     /**
      * Reverses a string.
@@ -166,22 +156,24 @@ class LHMM
     /**
      * Prints an alignment.
      */
-    void printAlignment();
+    void print_alignment();
 
     /**
      * Prints an alignment with padding.
      */
-    void printAlignment(std::string& pad);
-        
+    void print_alignment(std::string& pad);
+
     /**
      * Prints a double matrix.
      */
     void print(double *v, uint32_t xlen, uint32_t ylen);
-    
+
     /**
      * Prints a char matrix.
      */
     void print(char *v, uint32_t xlen, uint32_t ylen);
 };
+
+#undef NSTATES
 
 #endif

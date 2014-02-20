@@ -20,30 +20,13 @@
    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
    THE SOFTWARE.
 */
-
 #ifndef CHMM_H
 #define CHMM_H
 
-#include "utils.h"
+#include <sstream>
 #include "log_tool.h"
-#include "lhmm.h"
 
-//#define MAXLEN 250
-
-//#define S  0
-//#define X  1
-//#define Y  2
-//#define M  3
-//#define I  4
-//#define D  5
-//#define W  6
-//#define Z  7
-//#define E  8
-#define LM 9
-#define LI 10
-#define LD 11
-
-#define CHMM_NSTATES 12
+#define NSTATES 9
 
 class CHMM
 {
@@ -61,20 +44,20 @@ class CHMM
     double epsilon;
     double tau;
     double eta;
-    double logOneSixteenth;
 
     double logEta;
     double logTau;
+    double logOneSixteenth;
 
-    double transition[CHMM_NSTATES][CHMM_NSTATES];
+    double transition[NSTATES][NSTATES];
 
     //scoring matrix
     double *scoreX;
     double *scoreY;
     double *scoreM;
     double *scoreI;
-	double *scoreD;
-	double *scoreW;
+    double *scoreD;
+    double *scoreW;
     double *scoreZ;
 
     char *pathX;
@@ -85,6 +68,7 @@ class CHMM
     char *pathW;
     char *pathZ;
 
+    //tracking of features
     int32_t matchStartX;
     int32_t matchEndX;
     int32_t matchStartY;
@@ -92,72 +76,103 @@ class CHMM
     int32_t matchedBases;
     int32_t mismatchedBases;
 
+    //for left alignment
+    std::vector<uint32_t> indelStartsInX;
+    std::vector<uint32_t> indelEndsInX;
+    std::vector<uint32_t> indelStartsInY;
+    std::vector<uint32_t> indelEndsInY;
+    std::vector<uint32_t> indelStartsInPath;
+    std::vector<uint32_t> indelEndsInPath;
+    std::vector<char> indelStatusInPath;
+
+    std::stringstream ss;
+
     uint32_t noBasesAligned;
 
-    LogTool lt;
+    LogTool *lt;
 
-    CHMM();  
-    
-    ~CHMM()
-    {   
-        delete scoreX;
-        delete scoreY;
-        delete scoreM;
-        delete scoreI;
-        delete scoreD;
-        delete scoreW;
-        delete scoreZ;
-        
-        delete pathX;
-        delete pathY;
-        delete pathM;
-        delete pathI;
-        delete pathD;
-        delete pathW;
-        delete pathZ;
-    };
+    /**
+     * Constructor.
+     */
+    CHMM();
+
+    /**
+     * Constructor.
+     */
+    CHMM(LogTool *lt);
+
+    /**
+     * Destructor.
+     */
+    ~CHMM();
+
+    /**
+     * Initializes object, helper function for constructor.
+     */
+    void initialize();
 
     /**
      * Align and compute genotype likelihood.
      */
     void align(double& llk, const char* _x, const char* _y, const char* qual, bool debug=false);
 
-    bool containsIndel();
-
     /**
      * Updates matchStart, matchEnd, globalMaxPath and path
-     * Updates locations of insertions and deletions
      */
-    void tracePath();
-    void tracePath(std::stringstream& ss, char state, uint32_t i, uint32_t j);
+    void trace_path();
 
-    //get path
-    std::string& getPath();
+    /**
+     * Recursive call for trace_path
+     */
+    void trace_path(char state, uint32_t i, uint32_t j);
 
-    double logEmissionOdds(char readBase, char probeBase, double e);
+    /**
+     * Left align indels in an alignment
+     */
+    void left_align();
 
-    //compute log emission based on equal error probability distribution
-    double logEmission(char readBase, char probeBase, double e);
+    /**
+     * Compute log10 emission odds based on equal error probability distribution.
+     * Substracting log10(1/16).
+     */
+    double log10_emission_odds(char readBase, char probeBase, double e);
 
-    double emission(char readBase, char probeBase, double e);
-
+    /**
+     * Reverses a string.
+     */
     std::string reverse(std::string s);
 
-    void printVector(double (*v)[MAXLEN], uint32_t xLen, uint32_t yLen);
+    /**
+     * Checks if deletion exists in alignment.
+     */
+    bool deletion_start_exists(uint32_t pos, uint32_t& rpos);
 
-    void printVector(char v[][MAXLEN], uint32_t xLen, uint32_t yLen);
+    /**
+     * Checks if insertion exists in alignment.
+     */
+    bool insertion_start_exists(uint32_t pos, uint32_t& rpos);
 
-    void printVector(double v[][MAXLEN]);
+    /**
+     * Prints an alignment.
+     */
+    void print_alignment();
 
-    void printAlignment();
+    /**
+     * Prints an alignment with padding.
+     */
+    void print_alignment(std::string& pad);
 
-    void printAlignment(std::string& pad);
+    /**
+     * Prints a double matrix.
+     */
+    void print(double *v, uint32_t xlen, uint32_t ylen);
 
-    void printAlignment(std::string& pad, std::stringstream& log);
-
-    double score(char a, char b);
-
-
+    /**
+     * Prints a char matrix.
+     */
+    void print(char *v, uint32_t xlen, uint32_t ylen);
 };
+
+#undef NSTATES
 
 #endif
