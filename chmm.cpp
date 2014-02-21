@@ -1,5 +1,5 @@
 /* The MIT License
- 
+
    Copyright (c) 2014 Adrian Tan <atks@umich.edu>
 
    Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -83,7 +83,7 @@ CHMM::~CHMM()
     delete pathLD;
     delete pathM;
     delete pathI;
-    delete pathD;    
+    delete pathD;
     delete pathRM;
     delete pathRI;
     delete pathRD;
@@ -105,12 +105,12 @@ void CHMM::initialize()
 
     transition[S][X] = log10((1-eta)/(1-eta));
     transition[X][X] = log10((1-eta)/(1-eta));
-    
+
     transition[S][Y] = log10((eta*(1-eta))/(eta*(1-eta)));
     transition[X][Y] = log10((eta*(1-eta))/(eta*(1-eta)));
     transition[Y][Y] = log10((1-eta)/(1-eta));
 
-    transition[S][LM] = log10((eta*eta*(1-tau))/(eta*eta*(1-eta)*(1-eta))); 
+    transition[S][LM] = log10((eta*eta*(1-tau))/(eta*eta*(1-eta)*(1-eta)));
     transition[X][LM] = log10((eta*eta*(1-tau))/(eta*eta*(1-eta)*(1-eta)));
     transition[Y][LM] = log10((eta*(1-tau))/(eta*eta*(1-eta)*(1-eta)));
     transition[LM][LM] = log10(((1-2*delta-tau))/((1-eta)*(1-eta)));
@@ -121,7 +121,7 @@ void CHMM::initialize()
     transition[LM][LD] = log10((delta)/((1-eta)));
     transition[LD][LD] = log10((epsilon)/((1-eta)));
 
-    transition[S][M] = log10((eta*eta*tau*(1-delta-tau))/(eta*eta*eta*eta*(1-eta)*(1-eta))); 
+    transition[S][M] = log10((eta*eta*tau*(1-delta-tau))/(eta*eta*eta*eta*(1-eta)*(1-eta)));
     transition[X][M] = log10((eta*eta*tau*(1-delta-tau))/(eta*eta*eta*eta*(1-eta)*(1-eta)));
     transition[Y][M] = log10((eta*tau*(1-delta-tau))/(eta*eta*eta*eta*(1-eta)*(1-eta)));
     transition[LM][M] = log10(((1-tau)*(1-delta-tau))/(eta*eta*(1-eta)*(1-eta)));
@@ -130,36 +130,29 @@ void CHMM::initialize()
     transition[D][M] = log10(((1-epsilon))/((1-eta)*(1-eta)));
     transition[M][I] = log10((delta)/((1-eta)));
     transition[I][I] = log10((epsilon)/((1-eta)));
-    transition[S][D] = log10((eta*eta*tau*delta)/(eta*eta*eta*eta*(1-eta))); 
-    transition[X][D] = log10((eta*eta*tau*delta)/(eta*eta*eta*eta*(1-eta))); 
-    transition[Y][D] = log10((eta*tau*delta)/(eta*eta*eta*eta*(1-eta))); 
+    transition[S][D] = log10((eta*eta*tau*delta)/(eta*eta*eta*eta*(1-eta)));
+    transition[X][D] = log10((eta*eta*tau*delta)/(eta*eta*eta*eta*(1-eta)));
+    transition[Y][D] = log10((eta*tau*delta)/(eta*eta*eta*eta*(1-eta)));
     transition[M][D] = log10((delta)/((1-eta)));
     transition[D][D] = log10((epsilon)/((1-eta)));
 
-
-    transition[S][RM] = log10((eta*eta*tau*(1-delta-tau))/(eta*eta*eta*eta*(1-eta)*(1-eta))); 
+    transition[S][RM] = log10((eta*eta*tau*(1-delta-tau))/(eta*eta*eta*eta*(1-eta)*(1-eta)));
     transition[X][RM] = log10((eta*eta*tau*(1-delta-tau))/(eta*eta*eta*eta*(1-eta)*(1-eta)));
     transition[Y][RM] = log10((eta*tau*(1-delta-tau))/(eta*eta*eta*eta*(1-eta)*(1-eta)));
     transition[M][RM] = log10(((1-tau)*(1-delta-tau))/(eta*eta*(1-eta)*(1-eta)));
     transition[RM][RM] = log10(((1-2*delta-tau))/((1-eta)*(1-eta)));
     transition[RI][RM] = log10(((1-epsilon))/((1-eta)*(1-eta)));
     transition[RD][RM] = log10(((1-epsilon))/((1-eta)*(1-eta)));
-    
+
     transition[M][I] = log10((delta)/((1-eta)));
     transition[I][I] = log10((epsilon)/((1-eta)));
-    
-    transition[S][D] = log10((eta*eta*tau*delta)/(eta*eta*eta*eta*(1-eta))); 
-    transition[X][D] = log10((eta*eta*tau*delta)/(eta*eta*eta*eta*(1-eta))); 
-    transition[Y][D] = log10((eta*tau*delta)/(eta*eta*eta*eta*(1-eta))); 
+
+    transition[S][D] = log10((eta*eta*tau*delta)/(eta*eta*eta*eta*(1-eta)));
+    transition[X][D] = log10((eta*eta*tau*delta)/(eta*eta*eta*eta*(1-eta)));
+    transition[Y][D] = log10((eta*tau*delta)/(eta*eta*eta*eta*(1-eta)));
     transition[M][D] = log10((delta)/((1-eta)));
     transition[D][D] = log10((epsilon)/((1-eta)));
 
-    
-
-
-
-
-//
 //    transition[X][M] = log10(1/((1-eta)*(1-eta))); //log10((eta*eta)/(eta*eta*(1-eta)*(1-eta)));
 //    transition[Y][M] = transition[X][M]; //log10((eta)/(eta*(1-eta)*(1-eta)));
 //    transition[S][M] = log10(1/(eta*(1-eta)*(1-eta))); //log10((eta*eta)/(eta*eta*eta*(1-eta)*(1-eta)));
@@ -270,7 +263,6 @@ void CHMM::initialize()
  */
 void CHMM::align(double& llk, const char* x, const char* y, const char* qual, bool debug)
 {
-    //std::cerr << "Running this\n" ;
     this->x = x;
     this->y = y;
     this->qual = qual;
@@ -278,6 +270,13 @@ void CHMM::align(double& llk, const char* x, const char* y, const char* qual, bo
     //adds a starting character at the fron of each string that must be matched
     xlen = strlen(x);
     ylen = strlen(y);
+    
+    if (xlen>MAXLEN||ylen>MAXLEN)
+    {
+        fprintf(stderr, "[%s:%d %s] Sequence to be aligned is greater than %d currently supported: %d\n", __FILE__, __LINE__, __FUNCTION__, MAXLEN, xlen>ylen?xlen:ylen);
+        exit(1);
+    }    
+    
     double max = 0;
     char maxPath = 'X';
 
@@ -455,7 +454,7 @@ void CHMM::align(double& llk, const char* x, const char* y, const char* qual, bo
 };
 
 /**
- * Updates matchStart, matchEnd, globalMaxPath and path.
+ * Trace path after alignment.
  */
 void CHMM::trace_path()
 {

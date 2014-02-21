@@ -62,7 +62,7 @@ class CHMM
     double *scoreD;
     double *scoreRM;
     double *scoreRI;
-    double *scoreRD;    
+    double *scoreRD;
     double *scoreW;
     double *scoreZ;
 
@@ -76,7 +76,7 @@ class CHMM
     char *pathD;
     char *pathRM;
     char *pathRI;
-    char *pathRD; 
+    char *pathRD;
     char *pathW;
     char *pathZ;
 
@@ -108,7 +108,7 @@ class CHMM
     void align(double& llk, const char* _x, const char* _y, const char* qual, bool debug=false);
 
     /**
-     * Traces path.
+     * Trace path after alignment.
      */
     void trace_path();
 
@@ -116,7 +116,7 @@ class CHMM
      * Compute log10 emission odds based on equal error probability distribution contrasted against log10(1/16).
      */
     double log10_emission_odds(char readBase, char probeBase, double e);
-    
+
     /**
      * Prints an alignment.
      */

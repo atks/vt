@@ -71,41 +71,6 @@
 
 /**
  * Class for filtering VCF records.
- * Filters based on several fields:
- * QUAL
- * FILTER
- * INFO
- * VARIANT (inferred)
- *
- * QUAL>40
- * FILTER==PASS
- * VARIANT==SNP
- * AF>0.5
- * VARIANT==SNP && AF>0.5
-
-[-F] filter expression
-
-based on QUAL, FILTER, INFO and Variant type
-
--f QUAL>2&&PASS&&AF>0.05
--f PASS && AF*>0.05
--f PASS && (AF*>0.05 || AC/AN>0.05)
--f PASS && SNP
-
-reserved key words
-PASS
-QUAL
-AF
-AC
-AN
-
--f, -g, -h
-In the case that a field is not found, it evaluates to false
-AF* - intelligent parsing - if AF is not present, estimate from AC/AN
-
- * Working examples
- *
- *(N_ALLELE==2)&&(VTYPE==INDEL)&&PASS
  */
 class Node
 {
