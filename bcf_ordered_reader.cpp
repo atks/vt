@@ -41,7 +41,8 @@ BCFOrderedReader::BCFOrderedReader(std::string vcf_file, std::vector<GenomeInter
     this->vcf_file = vcf_file;
     this->intervals = intervals;
     interval_index = 0;
-
+    index_loaded = false;
+    
     vcf = NULL;
     hdr = NULL;
     idx = NULL;
@@ -88,6 +89,12 @@ BCFOrderedReader::BCFOrderedReader(std::string vcf_file, std::vector<GenomeInter
     }
 
     random_access_enabled = intervals_present && index_loaded;
+    
+    if (intervals_present && !index_loaded)
+    {
+        fprintf(stderr, "[E:%s] index not available for random accessing %s\n", __FUNCTION__, vcf_file.c_str());
+        exit(1);
+    }
 };
 
 /**
