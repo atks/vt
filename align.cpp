@@ -131,6 +131,21 @@ class Igor : Program
             clock_t t1 = clock();
             print_time((float)(t1-t0)/CLOCKS_PER_SEC);
         }
+        else if (method=="fhmm")
+        {
+            FHMM hmm;
+            double llk;
+            std::string qual;
+            for (int32_t i=0; i<y.size(); ++i)
+            {
+                qual += 'K';
+            }
+            clock_t t0 = clock();
+            hmm.align(llk, x.c_str(), y.c_str(), qual.c_str());
+            hmm.print_alignment();
+            clock_t t1 = clock();
+            print_time((float)(t1-t0)/CLOCKS_PER_SEC);
+        }
         else if (method=="lhmm1")
         {
             LHMM1 lhmm1;
