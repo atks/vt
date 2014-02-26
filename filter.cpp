@@ -787,8 +787,6 @@ void Filter::parse_literal(const char* exp, int32_t len, Node * node, bool debug
     else if (strncmp(exp, "VTYPE", 5)==0)
     {
         node->type = VT_VARIANT_TYPE;
-        std::cerr << "VTYPE " << node->type << "\n";
-        
         if (debug) std::cerr << "\tis variant_op\n";
         return;
     }
