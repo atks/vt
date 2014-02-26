@@ -28,7 +28,6 @@
 #include "htslib/kstring.h"
 #include "variant_manip.h"
 
-
 //TYPES
 #define VT_LOGIC_OP  2048
 #define VT_MATH_CMP  4096
@@ -68,7 +67,6 @@
 #define VT_VARIANT_DLEN  (37|VT_INT|VT_BCF_OP)
 #define VT_VARIANT_LEN   (38|VT_INT|VT_BCF_OP)
 
-
 /**
  * Class for filtering VCF records.
  */
@@ -88,7 +86,7 @@ class Node
     bool b;
     int32_t i;
     float f;
-    
+
     /**
      * Constructor.
      */
@@ -144,7 +142,7 @@ class Filter
      * Attempts to simplify the expression tree by collapsing nodes that can be precomputed.
      */
     void simplify();
-    
+
     private:
 
     /**

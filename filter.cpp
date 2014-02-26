@@ -647,14 +647,6 @@ void Filter::parse(const char* exp, int32_t len, Node *node, bool debug)
     while (exp[len-1]==' ') --len;
     trim_brackets(exp, len);
 
-    if (debug)
-    {
-//        std::cerr << "\tafter trimming white spaces and brackets: \"";
-//        for (int32_t i=0; i<len; ++i)
-//            std::cerr << exp[i] ;
-//        std::cerr << "\" " << len << "\n";
-    }
-
     //this is a literal
     if (is_literal(exp, len))
     {
@@ -881,12 +873,6 @@ void Filter::trim_brackets(const char* &exp, int32_t &len)
 {
     if (*exp=='(' && exp[len-1]==')')
     {
-//        std::cerr << "call trim brackets\n";
-//        std::cerr << "parsing \"";
-//        for (int32_t i=0; i<len; ++i)
-//            std::cerr << exp[i] ;
-//        std::cerr << "\" " << len << "\n";
-
         int32_t opened_brackets = 1;
         bool nested = true;
         int32_t j=1;
