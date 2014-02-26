@@ -75,19 +75,7 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
     }
     else if (type&VT_MATH_CMP)   
     {
-        if (type==VT_BIT_AND)
-        {
-            if (debug)
-                std::cerr << "\tVT_BIT_AND "   <<  left->i << "&" << right->i << "=" << (left->i&right->i)    <<  " \n";
-            i = (left->i & right->i);
-            value = i;
-        }
-        else if (type==VT_BIT_OR)
-        {
-            i = (left->i | right->i);
-            value = i;
-        }        
-        else if (type==VT_EQ)
+        if (type==VT_EQ)
         {
             if ((left->type&VT_INT))
             {
@@ -558,6 +546,30 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
             fprintf(stderr, "[%s:%d %s] evaluation not supported : /\n", __FILE__, __LINE__, __FUNCTION__);
             exit(1);
         }
+        else if (type==VT_BIT_AND)
+        {
+            if ((left->type&VT_INT) && (right->type&VT_INT))
+            {
+                i = (left->i & right->i);
+                value = i;
+                return;
+            }
+            
+            fprintf(stderr, "[%s:%d %s] evaluation not supported for & :  %d %d\n", __FILE__, __LINE__, __FUNCTION__, left->type, right->type);
+            exit(1);
+        }
+        else if (type==VT_BIT_OR)
+        {
+            if ((left->type&VT_INT) && (right->type&VT_INT))
+            {
+                i = (left->i | right->i);
+                value = i;
+                return;
+            }
+            
+            fprintf(stderr, "[%s:%d %s] evaluation not supported for | : %d %d\n", __FILE__, __LINE__, __FUNCTION__, left->type, right->type);
+            exit(1);
+        }    
         else
         {
             fprintf(stderr, "[%s:%d %s] math op not supported : %d\n", __FILE__, __LINE__, __FUNCTION__, (type&15));
@@ -775,6 +787,8 @@ void Filter::parse_literal(const char* exp, int32_t len, Node * node, bool debug
     else if (strncmp(exp, "VTYPE", 5)==0)
     {
         node->type = VT_VARIANT_TYPE;
+        std::cerr << "VTYPE " << node->type << "\n";
+        
         if (debug) std::cerr << "\tis variant_op\n";
         return;
     }
