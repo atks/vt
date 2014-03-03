@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <sys/stat.h>
 #include "htslib/bgzf.h"
 #include "htslib/hts.h"
 #include "cram/cram.h"
@@ -137,7 +138,7 @@ htsFile *hts_open(const char *fn, const char *mode)
 			fp->is_kstream = 1;
 		}
 	}
-	else if (strchr(mode, 'w')) {
+	else if (strchr(mode, 'w') || strchr(mode, 'a')) {
 		fp->is_write = 1;
 		if (strchr(mode, 'b')) fp->is_bin = 1;
 		if (strchr(mode, 'c')) fp->is_cram = 1;
@@ -194,7 +195,6 @@ int hts_close(htsFile *fp)
 	if (fp->is_bin || (fp->is_write && fp->is_compressed==1)) {
 		ret = bgzf_close(fp->fp.bgzf);
 	} else if (fp->is_cram) {
-		ret = cram_close(fp->fp.cram);
 		if (!fp->is_write) {
 			switch (cram_eof(fp->fp.cram)) {
 			case 0:
@@ -207,6 +207,7 @@ int hts_close(htsFile *fp)
 				break;
 			}
 		}
+		ret = cram_close(fp->fp.cram);
 	} else if (fp->is_kstream) {
 	#if KS_BGZF
 		BGZF *gzfp = ((kstream_t*)fp->fp.voidp)->f;
@@ -936,9 +937,11 @@ hts_itr_t *hts_itr_query(const hts_idx_t *idx, int tid, int beg, int end, hts_re
 	hts_itr_t *iter = 0;
 
 	if (tid < 0) {
+		int finished0 = 0;
 		uint64_t off0 = (uint64_t)-1;
 		khint_t k;
-		if (tid == HTS_IDX_START) {
+		switch (tid) {
+		case HTS_IDX_START:
             if ( idx->n <=0 ) return 0;
             // Find the smallest offset, note that sequence ids may not be ordered sequentially
             for (i=0; i<idx->n; i++)
@@ -948,22 +951,40 @@ hts_itr_t *hts_itr_query(const hts_idx_t *idx, int tid, int beg, int end, hts_re
                 if (k == kh_end(bidx)) continue;
                 if ( off0 > kh_val(bidx, k).list[0].u ) off0 = kh_val(bidx, k).list[0].u;
             }
-		} else if (tid == HTS_IDX_NOCOOR) {
+            break;
+
+		case HTS_IDX_NOCOOR:
 			if (idx->n > 0) {
 				bidx = idx->bidx[idx->n - 1];
 				k = kh_get(bin, bidx, idx->n_bins + 1);
 				if (k == kh_end(bidx)) return 0;
 				off0 = kh_val(bidx, k).list[0].v;
 			} else return 0;
-		} else off0 = 0;
+			break;
+
+		case HTS_IDX_REST:
+			off0 = 0;
+			break;
+
+		case HTS_IDX_NONE:
+			finished0 = 1;
+			off0 = 0;
+			break;
+
+		default:
+			return 0;
+		}
+
 		if (off0 != (uint64_t)-1) {
 			iter = (hts_itr_t*)calloc(1, sizeof(hts_itr_t));
 			iter->read_rest = 1;
+			iter->finished = finished0;
 			iter->curr_off = off0;
 			iter->readrec = readrec;
 			return iter;
 		} else return 0;
 	}
+
 	if (beg < 0) beg = 0;
 	if (end < beg) return 0;
 	if ((bidx = idx->bidx[tid]) == 0) return 0;
@@ -1077,7 +1098,7 @@ hts_itr_t *hts_itr_querys(const hts_idx_t *idx, const char *reg, hts_name2id_f g
 int hts_itr_next(BGZF *fp, hts_itr_t *iter, void *r, void *data)
 {
 	int ret, tid, beg, end;
-	if (iter && iter->finished) return -1;
+	if (iter == NULL || iter->finished) return -1;
 	if (iter->read_rest) {
 		if (iter->curr_off) { // seek to the start
 			bgzf_seek(fp, iter->curr_off, SEEK_SET);
@@ -1115,34 +1136,32 @@ int hts_itr_next(BGZF *fp, hts_itr_t *iter, void *r, void *data)
 static char *test_and_fetch(const char *fn)
 {
 	FILE *fp;
+	// FIXME Use is_remote_scheme() helper that's true for ftp/http/irods/etc
 	if (strstr(fn, "ftp://") == fn || strstr(fn, "http://") == fn) {
-#ifdef _USE_KETFILE
 		const int buf_size = 1 * 1024 * 1024;
-		knetFile *fp_remote;
+		hFILE *fp_remote;
 		uint8_t *buf;
+		int l;
 		const char *p;
-		for (p = fn + strlen(fn) - 1; p >= url; --p)
+		for (p = fn + strlen(fn) - 1; p >= fn; --p)
 			if (*p == '/') break;
 		++p; // p now points to the local file name
-		if ((fp_remote = knet_open(fn, "r")) == 0) {
-			if (hts_verbose >= 1) fprintf(stderr, "[E::%s] fail to open remote file\n", __func__);
+		if ((fp_remote = hopen(fn, "r")) == 0) {
+			if (hts_verbose >= 1) fprintf(stderr, "[E::%s] fail to open remote file '%s'\n", __func__, fn);
 			return 0;
 		}
-		if ((fp = fopen(fn, "w")) == 0) {
-			if (hts_verbose >= 1) fprintf(stderr, "[E::%s] fail to create file in the working directory\n", __func__);
-			knet_close(fp_remote);
+		if ((fp = fopen(p, "w")) == 0) {
+			if (hts_verbose >= 1) fprintf(stderr, "[E::%s] fail to create file '%s' in the working directory\n", __func__, p);
+			hclose_abruptly(fp_remote);
 			return 0;
 		}
 		if (hts_verbose >= 3) fprintf(stderr, "[M::%s] downloading file '%s' to local directory\n", __func__, fn);
 		buf = (uint8_t*)calloc(buf_size, 1);
-		while ((l = knet_read(fp_remote, buf, buf_size)) != 0) fwrite(buf, 1, l, fp);
+		while ((l = hread(fp_remote, buf, buf_size)) > 0) fwrite(buf, 1, l, fp);
 		free(buf);
 		fclose(fp);
-		knet_close(fp_remote);
+		if (hclose(fp_remote) != 0) fprintf(stderr, "[E::%s] fail to close remote file '%s'\n", __func__, fn);
 		return (char*)p;
-#else
-		return 0;
-#endif
 	} else {
 		if ((fp = fopen(fn, "rb")) == 0) return 0;
 		fclose(fp);
@@ -1180,6 +1199,14 @@ hts_idx_t *hts_idx_load(const char *fn, int fmt)
 	if (fnidx) fmt = HTS_FMT_CSI;
 	else fnidx = hts_idx_getfn(fn, fmt == HTS_FMT_BAI? ".bai" : ".tbi");
 	if (fnidx == 0) return 0;
+
+    // Check that the index file is up to date, the main file might have changed
+    struct stat stat_idx,stat_main;
+    if ( !stat(fn, &stat_main) && !stat(fnidx, &stat_idx) )
+    {
+        if ( stat_idx.st_mtime < stat_main.st_mtime )
+            fprintf(stderr, "Warning: The index file is older than the data file: %s\n", fnidx);
+    }
 	idx = hts_idx_load_local(fnidx, fmt);
 	free(fnidx);
 	return idx;

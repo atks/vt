@@ -317,7 +317,7 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
             int32_t *data = NULL;
             int32_t n=0;
     
-            if (bcf_get_info_int(h, v, tag.s, &data, &n)>0)
+            if (bcf_get_info_int32(h, v, tag.s, &data, &n)>0)
             {
                 type |= VT_INT;
                 i = *data;
@@ -345,7 +345,7 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
             int32_t *data = NULL;
             int32_t n=0;
     
-            if (bcf_get_info_int(h, v, tag.s, &data, &n)>0)
+            if (bcf_get_info_int32(h, v, tag.s, &data, &n)>0)
             {
                 i = *((int*)data);
             }
