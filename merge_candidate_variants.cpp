@@ -241,8 +241,8 @@ Each VCF file is required to have the FORMAT flags E and N and should have exact
 //                std::cerr << current_recs[i].pos1 << "  : ";
 //                bcf_print(h,v);
 
-                nE = bcf_get_format_int(h, v, "E", &E, &n);
-                nN = bcf_get_format_int(h, v, "N", &N, &n);
+                nE = bcf_get_format_int32(h, v, "E", &E, &n);
+                nN = bcf_get_format_int32(h, v, "N", &N, &n);
 
                 if (nE==1 && nN==1)
                 {

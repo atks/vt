@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2012-2013 Genome Research Ltd.
+Copyright (c) 2012-2014 Genome Research Ltd.
 Author: James Bonfield <jkb@sanger.ac.uk>
 
 Redistribution and use in source and binary forms, with or without 
@@ -527,15 +527,14 @@ int int32_put(cram_block *b, int32_t val) {
  * They're static here as they're only used within the cram_compress_block
  * and cram_uncompress_block functions, which are the external interface.
  */
-
 static char *zlib_mem_inflate(char *cdata, size_t csize, size_t *size) {
     z_stream s;
     unsigned char *data = NULL; /* Uncompressed output */
     int data_alloc = 0;
     int err;
 
-    /* Starting point at uncompressed size, 4x compressed */
-    data = malloc(data_alloc = csize+10);
+    /* Starting point at uncompressed size, and scale after that */
+    data = malloc(data_alloc = csize*1.2+100);
     if (!data)
 	return NULL;
 
@@ -561,6 +560,7 @@ static char *zlib_mem_inflate(char *cdata, size_t csize, size_t *size) {
     /* Decode to 'data' array */
     for (;s.avail_in;) {
 	unsigned char *data_tmp;
+	int alloc_inc;
 
 	s.next_out = &data[s.total_out];
 	err = inflate(&s, Z_NO_FLUSH);
@@ -572,13 +572,14 @@ static char *zlib_mem_inflate(char *cdata, size_t csize, size_t *size) {
 	    break;
 	}
 
-	/* More to come, so realloc */
-	data = realloc((data_tmp = data), data_alloc += s.avail_in + 10);
+	/* More to come, so realloc based on growth so far */
+	alloc_inc = (double)s.avail_in/s.total_in * s.total_out + 100;
+	data = realloc((data_tmp = data), data_alloc += alloc_inc);
 	if (!data) {
 	    free(data_tmp);
 	    return NULL;
 	}
-	s.avail_out += s.avail_in+10;
+	s.avail_out += alloc_inc;
     }
     inflateEnd(&s);
 
@@ -785,6 +786,7 @@ int cram_uncompress_block(cram_block *b) {
 	    return -1;
 	free(b->data);
 	b->data = (unsigned char *)uncomp;
+	b->alloc = uncomp_size;
 	b->method = RAW;
 	break;
 
@@ -800,6 +802,7 @@ int cram_uncompress_block(cram_block *b) {
 	    return -1;
 	}
 	b->data = (unsigned char *)uncomp;
+	b->alloc = usize;
 	b->method = RAW;
 	b->uncomp_size = usize; // Just incase it differs
 	break;
@@ -1656,6 +1659,11 @@ static char *load_ref_portion(FILE *fp, ref_entry *e, int start, int end) {
 	    fprintf(stderr, "Malformed reference file?\n");
 	    free(seq);
 	    return NULL;
+	}
+    } else {
+	int i;
+	for (i = 0; i < len; i++) {
+	    seq[i] = seq[i] & ~0x20; // uppercase in ASCII
 	}
     }
 
@@ -2742,11 +2750,9 @@ cram_file_def *cram_read_file_def(cram_fd *fd) {
 	return NULL;
     }
 
-    if (!(def->major_version == 1 && def->minor_version == 0) &&
-	!(def->major_version == 1 && def->minor_version == 1) &&
-	!(def->major_version == 2 && def->minor_version == 0)) {
+    if (def->major_version > 2) {
 	fprintf(stderr, "CRAM version number mismatch\n"
-		"Expected 1.0 or 2.0, got %d.%d\n",
+		"Expected 1.x or 2.x, got %d.%d\n",
 		def->major_version, def->minor_version);
 	free(def);
 	return NULL;
@@ -2951,8 +2957,11 @@ int cram_write_SAM_hdr(cram_fd *fd, SAM_hdr *hdr) {
 		rlen = fd->refs->ref_id[i]->length;
 		MD5_Init(&md5);
 		ref = cram_get_ref(fd, i, 1, rlen);
+		if (NULL == ref) return -1;
+		rlen = fd->refs->ref_id[i]->length; /* In case it just loaded */
 		MD5_Update(&md5, ref, rlen);
 		MD5_Final(buf, &md5);
+		cram_ref_decr(fd->refs, i);
 
 		for (j = 0; j < 16; j++) {
 		    buf2[j*2+0] = "0123456789abcdef"[buf[j]>>4];
@@ -2961,7 +2970,6 @@ int cram_write_SAM_hdr(cram_fd *fd, SAM_hdr *hdr) {
 		buf2[32] = 0;
 		if (sam_hdr_update(hdr, ty, "M5", buf2, NULL))
 		    return -1;
-		cram_ref_decr(fd->refs, i);
 	    }
 
 	    if (fd->ref_fn) {
@@ -3033,7 +3041,7 @@ int cram_write_SAM_hdr(cram_fd *fd, SAM_hdr *hdr) {
 #endif
 
 #ifdef PADDED_BLOCK
-	padded_length = MAX(c->length*2, 10000) - c->length;
+	padded_length = MAX(c->length*1.5, 10000) - c->length;
 	c->length += padded_length;
 	if (NULL == (pads = calloc(1, padded_length))) {
 	    cram_free_block(b);
@@ -3187,7 +3195,7 @@ static void cram_init_tables(cram_fd *fd) {
 
 // Default version numbers for CRAM
 static int major_version = 2;
-static int minor_version = 0;
+static int minor_version = 1;
 
 /*
  * Opens a CRAM file for read (mode "rb") or write ("wb").
@@ -3574,9 +3582,17 @@ int cram_set_voption(cram_fd *fd, enum cram_option opt, va_list args) {
 	return cram_load_reference(fd, va_arg(args, char *));
 
     case CRAM_OPT_VERSION: {
+	int major, minor;
 	char *s = va_arg(args, char *);
-	if (2 != sscanf(s, "%d.%d", &major_version, &minor_version)) {
+	if (2 != sscanf(s, "%d.%d", &major, &minor)) {
 	    fprintf(stderr, "Malformed version string %s\n", s);
+	    return -1;
+	}
+	if (!((major == 1 &&  minor == 0) ||
+	      (major == 2 && (minor == 0 || minor == 1)) ||
+	      (major == 3 &&  minor == 0))) {
+	    fprintf(stderr, "Unknown version string; "
+		    "use 1.0, 2.0, 2.1 or 3.0\n");
 	    return -1;
 	}
 	break;

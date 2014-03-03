@@ -267,13 +267,17 @@ extern "C" {
      *  reader knows in advance that only subset of samples is needed (possibly
      *  no samples at all), the performance of bcf_read() can be significantly
      *  improved by calling bcf_hdr_set_samples after bcf_hdr_read().
-     *  The function bcf_read() will automaically subset the VCF/BCF records.
+     *  The function bcf_read() will subset the VCF/BCF records automatically
+     *  with the notable exception when reading records via bcf_itr_next().
+     *  In this case, bcf_subset_format() must be called explicitly, because
+     *  bcf_readrec() does not see the header.
      *
      *  Returns 0 on success, -1 on error or a positive integer if the list
      *  contains samples not present in the VCF header. In such a case, the
      *  return value is the index of the offending sample.
      */
     int bcf_hdr_set_samples(bcf_hdr_t *hdr, const char *samples);
+    int bcf_subset_format(const bcf_hdr_t *hdr, bcf1_t *rec);
 
 
     /** Writes VCF or BCF header */
@@ -540,10 +544,10 @@ extern "C" {
      *      -2 .. clash between types defined in the header and encountered in the VCF record
      *      -3 .. tag is not present in the VCF record
      */
-    #define bcf_get_info_int(hdr,line,tag,dst,ndst)    bcf_get_info_values(hdr,line,tag,(void**)(dst),ndst,BCF_HT_INT)
+    #define bcf_get_info_int32(hdr,line,tag,dst,ndst)  bcf_get_info_values(hdr,line,tag,(void**)(dst),ndst,BCF_HT_INT)
     #define bcf_get_info_float(hdr,line,tag,dst,ndst)  bcf_get_info_values(hdr,line,tag,(void**)(dst),ndst,BCF_HT_REAL)
-    #define bcf_get_info_string(hdr,line,tag,dst,ndst)  bcf_get_info_values(hdr,line,tag,(void**)(dst),ndst,BCF_HT_STR)
-    #define bcf_get_info_flag(hdr,line,tag,dst,ndst)  bcf_get_info_values(hdr,line,tag,(void**)(dst),ndst,BCF_HT_FLAG)
+    #define bcf_get_info_string(hdr,line,tag,dst,ndst) bcf_get_info_values(hdr,line,tag,(void**)(dst),ndst,BCF_HT_STR)
+    #define bcf_get_info_flag(hdr,line,tag,dst,ndst)   bcf_get_info_values(hdr,line,tag,(void**)(dst),ndst,BCF_HT_FLAG)
     int bcf_get_info_values(bcf_hdr_t *hdr, bcf1_t *line, const char *tag, void **dst, int *ndst, int type);
 
     /**
@@ -567,10 +571,10 @@ extern "C" {
      *      int ngt, *gt_arr = NULL, ngt_arr = 0;
      *      ngt = bcf_get_format_int(hdr, line, "GT", &gt_arr, &ngt_arr);
      */
-    #define bcf_get_format_int(hdr,line,tag,dst,ndst)  bcf_get_format_values(hdr,line,tag,(void**)(dst),ndst,BCF_HT_INT)
+    #define bcf_get_format_int32(hdr,line,tag,dst,ndst)  bcf_get_format_values(hdr,line,tag,(void**)(dst),ndst,BCF_HT_INT)
     #define bcf_get_format_float(hdr,line,tag,dst,ndst)  bcf_get_format_values(hdr,line,tag,(void**)(dst),ndst,BCF_HT_REAL)
-    #define bcf_get_format_char(hdr,line,tag,dst,ndst)  bcf_get_format_values(hdr,line,tag,(void**)(dst),ndst,BCF_HT_STR)
-    #define bcf_get_genotypes(hdr,line,dst,ndst)  bcf_get_format_values(hdr,line,"GT",(void**)(dst),ndst,BCF_HT_INT)
+    #define bcf_get_format_char(hdr,line,tag,dst,ndst)   bcf_get_format_values(hdr,line,tag,(void**)(dst),ndst,BCF_HT_STR)
+    #define bcf_get_genotypes(hdr,line,dst,ndst)         bcf_get_format_values(hdr,line,"GT",(void**)(dst),ndst,BCF_HT_INT)
     int bcf_get_format_string(const bcf_hdr_t *hdr, bcf1_t *line, const char *tag, char ***dst, int *ndst);
     int bcf_get_format_values(const bcf_hdr_t *hdr, bcf1_t *line, const char *tag, void **dst, int *ndst, int type);
 

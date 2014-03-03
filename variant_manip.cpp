@@ -45,8 +45,6 @@ VariantManip::VariantManip()
     reference_present = false;
 }
 
-
-
 /**
  * Prints variant information.
  */

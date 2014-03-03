@@ -276,7 +276,7 @@ class Igor : Program
                 
                 int32_t *pl = NULL;
                 n=0;
-                bcf_get_format_int(h, v, "PL",&pl, &n);
+                bcf_get_format_int32(h, v, "PL",&pl, &n);
                     
                 for (int32_t j=0; j<bcf_hdr_nsamples(h); ++j)
                 {

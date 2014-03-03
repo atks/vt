@@ -43,7 +43,7 @@ typedef struct __kstring_t {
 #define hts_expand0(type_t, n, m, ptr) if ((n) > (m)) { \
 		int t = (m); (m) = (n); kroundup32(m); \
 		(ptr) = (type_t*)realloc((ptr), (m) * sizeof(type_t)); \
-        memset((ptr)+t,0,sizeof(type_t)*((m)-t)); \
+        memset(((type_t*)ptr)+t,0,sizeof(type_t)*((m)-t)); \
 	}
 
 /************
@@ -89,11 +89,12 @@ const char *hts_version();
 /*!
   @abstract       Open a SAM/BAM/CRAM/VCF/BCF/etc file
   @param fn       The file name or "-" for stdin/stdout
-  @param mode     Mode matching /[rw][bcuz0-9]+/
+  @param mode     Mode matching /[rwa][bcuz0-9]+/
   @discussion
       With 'r' opens for reading; any further format mode letters are ignored
       as the format is detected by checking the first few bytes or BGZF blocks
-      of the file.  With 'w' opens for writing, with format specifier letters:
+      of the file.  With 'w' or 'a' opens for writing or appending, with format
+      specifier letters:
         b  binary format (BAM, BCF, etc) rather than text (SAM, VCF, etc)
         c  CRAM format
         u  uncompressed
@@ -138,9 +139,19 @@ int hts_set_fai_filename(htsFile *fp, const char *fn_aux);
  * Indexing *
  ************/
 
+/*!
+These HTS_IDX_* macros are used as special tid values for hts_itr_query()/etc,
+producing iterators operating as follows:
+ - HTS_IDX_NOCOOR iterates over unmapped reads sorted at the end of the file
+ - HTS_IDX_START  iterates over the entire file
+ - HTS_IDX_REST   iterates from the current position to the end of the file
+ - HTS_IDX_NONE   always returns "no more alignment records"
+When one of these special tid values is used, beg and end are ignored.
+*/
 #define HTS_IDX_NOCOOR (-2)
 #define HTS_IDX_START  (-3)
 #define HTS_IDX_REST   (-4)
+#define HTS_IDX_NONE   (-5)
 
 #define HTS_FMT_CSI 0
 #define HTS_FMT_BAI 1
