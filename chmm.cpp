@@ -144,50 +144,44 @@ void CHMM::initialize()
     transition[RI][RM] = log10(((1-epsilon))/((1-eta)*(1-eta)));
     transition[RD][RM] = log10(((1-epsilon))/((1-eta)*(1-eta)));
 
-    transition[M][I] = log10((delta)/((1-eta)));
-    transition[I][I] = log10((epsilon)/((1-eta)));
+    transition[M][RI] = log10((delta)/((1-eta)));
+    transition[I][RI] = log10((epsilon)/((1-eta)));
 
-    transition[S][D] = log10((eta*eta*tau*delta)/(eta*eta*eta*eta*(1-eta)));
-    transition[X][D] = log10((eta*eta*tau*delta)/(eta*eta*eta*eta*(1-eta)));
-    transition[Y][D] = log10((eta*tau*delta)/(eta*eta*eta*eta*(1-eta)));
-    transition[M][D] = log10((delta)/((1-eta)));
-    transition[D][D] = log10((epsilon)/((1-eta)));
+    transition[S][RD] = log10((eta*eta*tau*delta)/(eta*eta*eta*eta*(1-eta)));
+    transition[X][RD] = log10((eta*eta*tau*delta)/(eta*eta*eta*eta*(1-eta)));
+    transition[Y][RD] = log10((eta*tau*delta)/(eta*eta*eta*eta*(1-eta)));
+    transition[M][RD] = log10((delta)/((1-eta)));
+    transition[D][RD] = log10((epsilon)/((1-eta)));
 
-//    transition[X][M] = log10(1/((1-eta)*(1-eta))); //log10((eta*eta)/(eta*eta*(1-eta)*(1-eta)));
-//    transition[Y][M] = transition[X][M]; //log10((eta)/(eta*(1-eta)*(1-eta)));
-//    transition[S][M] = log10(1/(eta*(1-eta)*(1-eta))); //log10((eta*eta)/(eta*eta*eta*(1-eta)*(1-eta)));
-//    transition[M][M] = log10((1-2*delta-tau)/((1-eta)*(1-eta)));
-//    transition[I][M] = log10((1-epsilon)/(1-eta));
-//    transition[D][M] = transition[I][M]; //log10((1-epsilon)/(1-eta));
-//
-//    transition[M][D] = log10(delta/(1-eta));
-//    transition[D][D] = log10(epsilon/(1-eta));
-//
-//    transition[M][I] = transition[M][D]; //log10(delta/(1-eta));
-//    transition[I][I] = transition[D][D]; //log10(epsilon/(1-eta));
-//
-//    transition[M][W] = log10(tau/eta); //log10((tau*(1-eta))/(eta*(1-eta)));
-//    transition[W][W] = 0; //log10((1-eta)/(1-eta));
-//
-//    transition[M][Z] = transition[M][W]; //log10((tau*eta*(1-eta))/(eta*eta*(1-eta)));
-//    transition[W][Z] = 0; //log10((eta*(1-eta))/(eta*(1-eta)));
-//    transition[Z][Z] = 0; //log10((1-eta)/(1-eta));
-//
-//    scoreX = new double[MAXLEN*MAXLEN];
-//    scoreY = new double[MAXLEN*MAXLEN];
-//    scoreM = new double[MAXLEN*MAXLEN];
-//    scoreI = new double[MAXLEN*MAXLEN];
-//    scoreD = new double[MAXLEN*MAXLEN];
-//    scoreW = new double[MAXLEN*MAXLEN];
-//    scoreZ = new double[MAXLEN*MAXLEN];
-//
-//    pathX = new char[MAXLEN*MAXLEN];
-//    pathY = new char[MAXLEN*MAXLEN];
-//    pathM = new char[MAXLEN*MAXLEN];
-//    pathI = new char[MAXLEN*MAXLEN];
-//    pathD = new char[MAXLEN*MAXLEN];
-//    pathW = new char[MAXLEN*MAXLEN];
-//    pathZ = new char[MAXLEN*MAXLEN];
+    transition[S][W] = log10(tau/eta); //log10((tau*(1-eta))/(eta*(1-eta)));
+    transition[X][W] = log10(tau/eta); //log10((tau*(1-eta))/(eta*(1-eta)));
+    transition[Y][W] = log10(tau/eta); //log10((tau*(1-eta))/(eta*(1-eta)));
+    transition[LM][W] = log10(tau/eta); //log10((tau*(1-eta))/(eta*(1-eta)));
+    transition[LM][W] = log10(tau/eta); //log10((tau*(1-eta))/(eta*(1-eta)));
+    transition[LM][W] = log10(tau/eta); //log10((tau*(1-eta))/(eta*(1-eta)));
+    
+    transition[M][W] = log10(tau/eta); //log10((tau*(1-eta))/(eta*(1-eta)));
+    transition[W][W] = 0; //log10((1-eta)/(1-eta));
+
+    transition[M][Z] = transition[M][W]; //log10((tau*eta*(1-eta))/(eta*eta*(1-eta)));
+    transition[W][Z] = 0; //log10((eta*(1-eta))/(eta*(1-eta)));
+    transition[Z][Z] = 0; //log10((1-eta)/(1-eta));
+
+    scoreX = new double[MAXLEN*MAXLEN];
+    scoreY = new double[MAXLEN*MAXLEN];
+    scoreM = new double[MAXLEN*MAXLEN];
+    scoreI = new double[MAXLEN*MAXLEN];
+    scoreD = new double[MAXLEN*MAXLEN];
+    scoreW = new double[MAXLEN*MAXLEN];
+    scoreZ = new double[MAXLEN*MAXLEN];
+
+    pathX = new char[MAXLEN*MAXLEN];
+    pathY = new char[MAXLEN*MAXLEN];
+    pathM = new char[MAXLEN*MAXLEN];
+    pathI = new char[MAXLEN*MAXLEN];
+    pathD = new char[MAXLEN*MAXLEN];
+    pathW = new char[MAXLEN*MAXLEN];
+    pathZ = new char[MAXLEN*MAXLEN];
 //
 //    //assume alignments can't possibly be maxLength bases or more
 //    for (int32_t i=0; i<MAXLEN; ++i)
