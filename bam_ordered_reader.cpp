@@ -28,12 +28,12 @@ BAMOrderedReader::BAMOrderedReader(std::string bam_file, std::vector<GenomeInter
 {
     const char* fname = bam_file.c_str();
     int len = strlen(fname);
-    if ( strcasecmp(".bam",fname+len-4) )
+    if ( !strcasecmp(".bam", fname+len-4) && !strcasecmp("-", fname) && !strcasecmp(".cram", fname+len-5))
     {
-        fprintf(stderr, "[%s:%d %s] Not a BAM file: %s\n", __FILE__, __LINE__, __FUNCTION__, bam_file.c_str());
+        fprintf(stderr, "[%s:%d %s] Not a BAM/CRAM file: %s\n", __FILE__, __LINE__, __FUNCTION__, bam_file.c_str());
         exit(1);
     }
-
+        
     sam = sam_open(bam_file.c_str(), "r");
     hdr = sam_hdr_read(sam);
     s = bam_init1();
@@ -41,8 +41,8 @@ BAMOrderedReader::BAMOrderedReader(std::string bam_file, std::vector<GenomeInter
     idx = bam_index_load(bam_file.c_str());
     if (idx==0)
     {
-        fprintf(stderr, "[%s:%d %s] fail to load index for %s\n", __FILE__, __LINE__, __FUNCTION__, bam_file.c_str());
-        abort();
+        //fprintf(stderr, "[%s:%d %s] fail to load index for %s\n", __FILE__, __LINE__, __FUNCTION__, bam_file.c_str());
+        index_loaded = false;
     }
     else
     {
@@ -55,6 +55,7 @@ BAMOrderedReader::BAMOrderedReader(std::string bam_file, std::vector<GenomeInter
     interval_index = 0;
 
     random_access_enabled = intervals_present && index_loaded;
+    
 };
 
 /**
@@ -124,10 +125,8 @@ bool BAMOrderedReader::read(bam1_t *s)
     }
     else
     {
-        if (bam_read1(sam->fp.bgzf, s)>=0)
+        if (sam_read1(sam, hdr, s)>=0)
         {
-            //todo: filter via interval tree
-            //if found in tree, return true else false
             return true;
         }
         else

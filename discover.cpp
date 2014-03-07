@@ -880,7 +880,7 @@ class Igor : Program
         int32_t ret;
 
         while (odr->read(s))
-        {
+        {   
             ++no_reads;
 
             //this read is the first of the pair
