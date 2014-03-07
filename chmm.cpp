@@ -182,74 +182,74 @@ void CHMM::initialize()
     pathD = new char[MAXLEN*MAXLEN];
     pathW = new char[MAXLEN*MAXLEN];
     pathZ = new char[MAXLEN*MAXLEN];
-//
-//    //assume alignments can't possibly be maxLength bases or more
-//    for (int32_t i=0; i<MAXLEN; ++i)
-//    {
-//        for (int32_t j=0; j<MAXLEN; ++j)
-//        {
-//            scoreX[i*MAXLEN+j] = -DBL_MAX;
-//            scoreY[i*MAXLEN+j] = -DBL_MAX;
-//            scoreM[i*MAXLEN+j] = -DBL_MAX;
-//            scoreI[i*MAXLEN+j] = -DBL_MAX;
-//            scoreD[i*MAXLEN+j] = -DBL_MAX;
-//            scoreW[i*MAXLEN+j] = -DBL_MAX;
-//            scoreZ[i*MAXLEN+j] = -DBL_MAX;
-//
-//            if (j)
-//            {
-//                pathX[i*MAXLEN+j] = 'Y';
-//                pathY[i*MAXLEN+j] = 'Y';
-//                pathM[i*MAXLEN+j] = 'Y';
-//                pathI[i*MAXLEN+j] = 'Y';
-//                pathD[i*MAXLEN+j] = 'Y';
-//                pathW[i*MAXLEN+j] = 'Y';
-//                pathZ[i*MAXLEN+j] = 'Y';
-//            }
-//            else
-//            {
-//                pathX[i*MAXLEN+j] = 'X';
-//                pathY[i*MAXLEN+j] = 'X';
-//                pathM[i*MAXLEN+j] = 'X';
-//                pathI[i*MAXLEN+j] = 'X';
-//                pathD[i*MAXLEN+j] = 'X';
-//                pathW[i*MAXLEN+j] = 'X';
-//                pathZ[i*MAXLEN+j] = 'X';
-//            }
-//        }
-//    }
-//
-//    logEta = log10(eta);
-//    logTau = log10(tau);
-//
-//    scoreX[0*MAXLEN+0] = 0;
-//    scoreY[0*MAXLEN+0] = 0;
-//    scoreM[0*MAXLEN+0] = 0;
-//    scoreW[0*MAXLEN+0] = 0;
-//    scoreZ[0*MAXLEN+0] = 0;
-//    pathX[0*MAXLEN+0] = 'N';
-//    pathX[1*MAXLEN+0] = 'S';
-//    pathY[0*MAXLEN+0] = 'N';
-//    pathY[0*MAXLEN+1] = 'S';
-//    pathM[0*MAXLEN+0] = 'N';
-//    pathM[1*MAXLEN+1] = 'S';
-//
-//    for (uint32_t k=1; k<MAXLEN; ++k)
-//    {
-//        scoreX[k*MAXLEN+0] = scoreX[(k-1)*MAXLEN+0] + transition[X][X];
-//        scoreX[0*MAXLEN+k] = -DBL_MAX;
-//        scoreY[k*MAXLEN+0] = -DBL_MAX;
-//        scoreY[0*MAXLEN+k] = scoreY[0*MAXLEN+(k-1)] + transition[Y][Y];
-//        scoreW[k*MAXLEN+0] = scoreW[(k-1)*MAXLEN+0] + transition[W][W];
-//        scoreW[0*MAXLEN+k] = -DBL_MAX;
-//        scoreZ[k*MAXLEN+0] = -DBL_MAX;
-//        scoreZ[0*MAXLEN+k] = scoreZ[0*MAXLEN+(k-1)] + transition[Z][Z];
-//    }
-//
-//    scoreX[0*MAXLEN+0] = -DBL_MAX;
-//    scoreY[0*MAXLEN+0] = -DBL_MAX;
-//    scoreW[0*MAXLEN+0] = -DBL_MAX;
-//    scoreZ[0*MAXLEN+0] = -DBL_MAX;
+
+    //assume alignments can't possibly be maxLength bases or more
+    for (int32_t i=0; i<MAXLEN; ++i)
+    {
+        for (int32_t j=0; j<MAXLEN; ++j)
+        {
+            scoreX[i*MAXLEN+j] = -DBL_MAX;
+            scoreY[i*MAXLEN+j] = -DBL_MAX;
+            scoreM[i*MAXLEN+j] = -DBL_MAX;
+            scoreI[i*MAXLEN+j] = -DBL_MAX;
+            scoreD[i*MAXLEN+j] = -DBL_MAX;
+            scoreW[i*MAXLEN+j] = -DBL_MAX;
+            scoreZ[i*MAXLEN+j] = -DBL_MAX;
+
+            if (j)
+            {
+                pathX[i*MAXLEN+j] = 'Y';
+                pathY[i*MAXLEN+j] = 'Y';
+                pathM[i*MAXLEN+j] = 'Y';
+                pathI[i*MAXLEN+j] = 'Y';
+                pathD[i*MAXLEN+j] = 'Y';
+                pathW[i*MAXLEN+j] = 'Y';
+                pathZ[i*MAXLEN+j] = 'Y';
+            }
+            else
+            {
+                pathX[i*MAXLEN+j] = 'X';
+                pathY[i*MAXLEN+j] = 'X';
+                pathM[i*MAXLEN+j] = 'X';
+                pathI[i*MAXLEN+j] = 'X';
+                pathD[i*MAXLEN+j] = 'X';
+                pathW[i*MAXLEN+j] = 'X';
+                pathZ[i*MAXLEN+j] = 'X';
+            }
+        }
+    }
+
+    logEta = log10(eta);
+    logTau = log10(tau);
+
+    scoreX[0*MAXLEN+0] = 0;
+    scoreY[0*MAXLEN+0] = 0;
+    scoreM[0*MAXLEN+0] = 0;
+    scoreW[0*MAXLEN+0] = 0;
+    scoreZ[0*MAXLEN+0] = 0;
+    pathX[0*MAXLEN+0] = 'N';
+    pathX[1*MAXLEN+0] = 'S';
+    pathY[0*MAXLEN+0] = 'N';
+    pathY[0*MAXLEN+1] = 'S';
+    pathM[0*MAXLEN+0] = 'N';
+    pathM[1*MAXLEN+1] = 'S';
+
+    for (uint32_t k=1; k<MAXLEN; ++k)
+    {
+        scoreX[k*MAXLEN+0] = scoreX[(k-1)*MAXLEN+0] + transition[X][X];
+        scoreX[0*MAXLEN+k] = -DBL_MAX;
+        scoreY[k*MAXLEN+0] = -DBL_MAX;
+        scoreY[0*MAXLEN+k] = scoreY[0*MAXLEN+(k-1)] + transition[Y][Y];
+        scoreW[k*MAXLEN+0] = scoreW[(k-1)*MAXLEN+0] + transition[W][W];
+        scoreW[0*MAXLEN+k] = -DBL_MAX;
+        scoreZ[k*MAXLEN+0] = -DBL_MAX;
+        scoreZ[0*MAXLEN+k] = scoreZ[0*MAXLEN+(k-1)] + transition[Z][Z];
+    }
+
+    scoreX[0*MAXLEN+0] = -DBL_MAX;
+    scoreY[0*MAXLEN+0] = -DBL_MAX;
+    scoreW[0*MAXLEN+0] = -DBL_MAX;
+    scoreZ[0*MAXLEN+0] = -DBL_MAX;
 };
 
 /**

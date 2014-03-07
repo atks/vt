@@ -131,7 +131,7 @@ int main(int argc, char ** argv)
     }
     else if (argc>1 && cmd=="normalize")
     {
-        normalize(argc-1, ++argv);
+        print = normalize(argc-1, ++argv);
     }
     else if (argc>1 && cmd=="mergedups")
     {
