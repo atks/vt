@@ -32,6 +32,6 @@
 #include "bcf_ordered_writer.h"
 #include "variant_manip.h"
 
-void normalize(int argc, char ** argv);
+bool normalize(int argc, char ** argv);
     
 #endif

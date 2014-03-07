@@ -37,6 +37,7 @@ class Igor : Program
     std::string output_vcf_file;
     std::vector<GenomeInterval> intervals;
     std::string ref_fasta_file;
+    bool print;
 
     ///////
     //i/o//
@@ -87,6 +88,7 @@ class Igor : Program
             TCLAP::ValueArg<std::string> arg_ref_fasta_file("r", "r", "reference sequence fasta file []", true, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_intervals("i", "i", "intervals []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "file", cmd);
+            TCLAP::SwitchArg arg_quiet("q", "q", "do not print options and summary []", cmd, false);
             TCLAP::ValueArg<std::string> arg_output_vcf_file("o", "o", "output VCF file [-]", false, "-", "str", cmd);
             TCLAP::UnlabeledValueArg<std::string> arg_input_vcf_file("<in.vcf>", "input VCF file", true, "","file", cmd);
 
@@ -95,6 +97,7 @@ class Igor : Program
             input_vcf_file = arg_input_vcf_file.getValue();
             output_vcf_file = arg_output_vcf_file.getValue();
             parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
+            print = !arg_quiet.getValue();
             ref_fasta_file = arg_ref_fasta_file.getValue();
         }
         catch (TCLAP::ArgException &e)
@@ -267,6 +270,8 @@ class Igor : Program
 
     void print_options()
     {
+        if (!print) return;
+        
         std::clog << "normalize v" << version << "\n";
         std::clog << "\n";
         std::clog << "options:     input VCF file        " << input_vcf_file << "\n";
@@ -278,6 +283,8 @@ class Igor : Program
 
     void print_stats()
     {
+        if (!print) return;
+        
         std::clog << "\n";
         std::clog << "stats: biallelic\n";
         std::clog << "          no. left trimmed                      : " << no_lt << "\n";
@@ -304,11 +311,13 @@ class Igor : Program
 
 }
 
-void normalize(int argc, char ** argv)
+bool normalize(int argc, char ** argv)
 {
     Igor igor(argc, argv);
     igor.print_options();
     igor.initialize();
     igor.normalize();
     igor.print_stats();
+    
+    return igor.print;
 };
