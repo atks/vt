@@ -60,7 +60,6 @@ BCFOrderedReader::BCFOrderedReader(std::string vcf_file, std::vector<GenomeInter
         if ((idx = bcf_index_load(vcf_file.c_str())))
         {
             index_loaded = true;
-            //fprintf(stderr, "[I:%s] index loaded for %s\n", __FUNCTION__, vcf_file.c_str());
         }
         else
         {
@@ -76,7 +75,6 @@ BCFOrderedReader::BCFOrderedReader(std::string vcf_file, std::vector<GenomeInter
         if ((tbx = tbx_index_load(vcf_file.c_str())))
         {
             index_loaded = true;
-            //fprintf(stderr, "[I:%s] index loaded for %s\n", __FUNCTION__, vcf_file.c_str());
         }
         else
         {
@@ -222,8 +220,6 @@ bool BCFOrderedReader::read(bcf1_t *v)
     {
         if (bcf_read(vcf, hdr, v)==0)
         {
-            //todo: filter via interval tree
-            //if found in tree, return true else false
             return true;
         }
         else
