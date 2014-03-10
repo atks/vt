@@ -39,6 +39,7 @@ class Igor : Program
     std::string input_vcf_file;
     std::string input_sam_file;
     std::string output_vcf_file;
+    std::string ref_fasta_file;
     std::vector<GenomeInterval> intervals;
     bool iterate_by_site;
     bool debug;
@@ -61,7 +62,7 @@ class Igor : Program
     /////////
     //tools//
     /////////
-   
+
     Igor(int argc, char ** argv)
     {
         //////////////////////////
@@ -79,6 +80,7 @@ class Igor : Program
             TCLAP::ValueArg<std::string> arg_input_sam_file("b", "b", "input BAM file", true, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_output_vcf_file("o", "o", "output VCF file", false, "-", "file", cmd);
             TCLAP::ValueArg<std::string> arg_sample_id("s", "s", "sample ID", true, "", "str", cmd);
+            TCLAP::ValueArg<std::string> arg_ref_fasta_file("r", "r", "reference sequence fasta file []", true, "", "str", cmd);
             TCLAP::SwitchArg arg_iterate_by_site("c", "c", "iterate by candidate sites", cmd, false);
             TCLAP::SwitchArg arg_debug("d", "d", "debug alignments", cmd, false);
             TCLAP::UnlabeledValueArg<std::string> arg_input_vcf_file("<in.vcf>", "input VCF file", true, "","file", cmd);
@@ -88,6 +90,7 @@ class Igor : Program
             input_vcf_file = arg_input_vcf_file.getValue();
             input_sam_file = arg_input_sam_file.getValue();
             output_vcf_file = arg_output_vcf_file.getValue();
+            ref_fasta_file = arg_ref_fasta_file.getValue();
             sample_id = arg_sample_id.getValue();
             parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
             iterate_by_site = arg_iterate_by_site.getValue();
@@ -130,7 +133,7 @@ class Igor : Program
         //////////////////////
         //tool initialization//
         //////////////////////
-        
+
 
         ////////////////////////
         //stats initialization//
@@ -150,33 +153,33 @@ class Igor : Program
     void genotype()
     {
         if (iterate_by_site)
-        {   
-//            GenotypingRecord record;
-//            bcf1_t *v = vodw->get_bcf1_from_pool();
-//            bam1_t *s = bam_init1();
-//            while (vodr->read(v))
-//            {
-//                record.set(vodr->hdr, v);
-//                
-//                std::string chrom(bcf_get_chrom(vodr->hdr, v));
-//                GenomeInterval interval(chrom, bcf_get_pos1(v), bcf_get_pos1(v));
-//                sodr->jump_to_interval(interval);
-//                while(sodr->read(s))
-//                {
-//                    record.genotype(s, 0);
-//                }
-//                
-//                record.print(vodw);
-//            }
+        {
+            //iterate by records
+//          GenotypingRecord record;
+            bcf1_t *v = vodw->get_bcf1_from_pool();
+            bam1_t *s = bam_init1();
+            while (vodr->read(v))
+            {
+//                record.set(v);
+                std::string chrom(bcf_get_chrom(vodr->hdr, v));
+                GenomeInterval interval(chrom, bcf_get_pos1(v), bcf_get_pos1(v));
+                sodr->jump_to_interval(interval);
+                while(sodr->read(s))
+                {
+//                 record.genotype(s, 0);
+                }
+
+//                 record.print(vodw);
+            }
         }
         else //iterate by reads
         {
-            
-            
-            
+
+
+
             //get reads from bam
                     //let VCFPool process reads
-            
+
 //            //pick up chromosomes from bam and vcf
 //            //hash table for sequences
 //            khash_t(sdict) *h = kh_init(sdict);
