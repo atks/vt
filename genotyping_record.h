@@ -41,7 +41,8 @@ class GenotypingRecord
     bcf_hdr_t *h;
     bcf1_t *v;
     faidx_t *fai;
-
+    std::string error_msg;
+    
     GenotypingRecord();
 
     /**
@@ -59,12 +60,12 @@ class GenotypingRecord
     /**
      * Initializes a candidate variant for genotyping.
      */
-    virtual void initialize(bcf_hdr_t *h, bcf1_t *v, faidx_t *fai=NULL);
+    virtual bool initialize(bcf_hdr_t *h, bcf1_t *v, faidx_t *fai=NULL);
 
     /**
-     * Initializes a candidate VCF record.
+     * Initializes a candidate VCF record. Returns false if failure.
      */
-    virtual void set(bcf1_t *v);
+    virtual bool set(bcf1_t *v);
 
     /**
      * Genotypes a read and add to body of evidence.

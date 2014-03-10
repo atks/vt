@@ -400,6 +400,20 @@ int32_t bcf_hdr_get_n_sample(bcf_hdr_t *h)
 }
 
 /**
+ * Checks if a info header exists.
+ */
+bool bcf_hdr_info_exists(bcf_hdr_t *h, const char* key)
+{
+    int id = bcf_hdr_id2int(h, BCF_DT_ID, key);
+    if (bcf_hdr_idinfo_exists(h,BCF_HL_INFO,id))
+    { 
+        return true;
+    }
+    
+    return false;
+}
+
+/**
  * Gets sequence names and lengths
  */
 void bcf_hdr_get_seqs_and_lens(const bcf_hdr_t *h, const char**& seqs, int32_t*& lens, int *n)
