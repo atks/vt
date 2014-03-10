@@ -25,36 +25,52 @@
 #define GENOTYPING_RECORD_H
 
 #include "htslib/vcf.h"
+#include "htslib/faidx.h"
 #include "bcf_ordered_writer.h"
 
 /**
+ * A generic record that holds information for genotyping a 
+ * variant across multiple samples. 
+ *
  * Maintains read information and allows for additional reads
  * till VCF record can be printed out.
- *
- * This class distinguishes multiple samples.
  */
 class GenotypingRecord
 {
     public:
     bcf_hdr_t *h;
     bcf1_t *v;
+    faidx_t *fai;
 
     GenotypingRecord();
 
-    GenotypingRecord(bcf_hdr_t *h, bcf1_t *v);
+    /**
+     * Constructor.
+     * @h - header of the candidate vcf record.
+     * @v - candidate VCF record.
+     */
+    GenotypingRecord(bcf_hdr_t *h, bcf1_t *v, faidx_t *fai=NULL);
 
+    /**
+     * Destructor.
+     */
     ~GenotypingRecord();
 
     /**
-     * Sets a bcf record.
+     * Initializes a candidate variant for genotyping.
      */
-    virtual void set(bcf_hdr_t *h, bcf1_t *v);
+    virtual void initialize(bcf_hdr_t *h, bcf1_t *v, faidx_t *fai=NULL);
+
+    /**
+     * Initializes a candidate VCF record.
+     */
+    virtual void set(bcf1_t *v);
 
     /**
      * Genotypes a read and add to body of evidence.
      */
     virtual void genotype(bam1_t *s, int32_t sample_id);
-        
+
     /**
      * Prints record.
      */
@@ -65,6 +81,5 @@ class GenotypingRecord
      */
     virtual void clear();
 };
-
 
 #endif

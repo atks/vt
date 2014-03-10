@@ -52,26 +52,26 @@ class LHMMGenotypingRecord : GenotypingRecord
     kstring_t rqs;
     kstring_t aqs;
 
-    LHMMGenotypingRecord(bcf_hdr_t *h, bcf1_t *v)
+    LHMMGenotypingRecord(bcf_hdr_t *h, bcf1_t *v, faidx_t *fai=NULL)
     {
         reads = kh_init(rdict);
-        
+
         this->v = v;
-        
+
         ref_probe = (char*) malloc(1);
-        
+
         int32_t len;
         int32_t ret = bcf_get_info_string(h, v, "REFPROBE", &ref_probe, &len);
-        
+
         std::cerr << ref_probe << " " << len << " " << ret << "\n";
         bcf_print(h,v);
-        
-        
+
+
         exit(1);
-        
+
 //        int32_t probeLength = strlen(refProbe);
 //        int32_t variantLengthDifference = (int32_t)strlen(alt)-(int32_t)strlen(ref);
-        
+
     };
 
     ~LHMMGenotypingRecord(){};
@@ -114,7 +114,7 @@ class LHMMGenotypingRecord : GenotypingRecord
         //this read is the first of the pair
         if (bam_get_mpos1(s) && (bam_get_tid(s)==bam_get_mtid(s)))
         {
-            //first mate 
+            //first mate
             if (bam_get_mpos1(s)>bam_get_pos1(s))
             {
                 //overlapping (only insert a paired end if you know it will overlap)

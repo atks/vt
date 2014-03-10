@@ -271,7 +271,7 @@ class Igor : Program
     void print_options()
     {
         if (!print) return;
-        
+
         std::clog << "normalize v" << version << "\n";
         std::clog << "\n";
         std::clog << "options:     input VCF file        " << input_vcf_file << "\n";
@@ -284,7 +284,7 @@ class Igor : Program
     void print_stats()
     {
         if (!print) return;
-        
+
         std::clog << "\n";
         std::clog << "stats: biallelic\n";
         std::clog << "          no. left trimmed                      : " << no_lt << "\n";
@@ -318,6 +318,6 @@ bool normalize(int argc, char ** argv)
     igor.initialize();
     igor.normalize();
     igor.print_stats();
-    
+
     return igor.print;
 };
