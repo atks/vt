@@ -219,6 +219,11 @@ void bcf_hdr_transfer_contigs(const bcf_hdr_t *sh, bcf_hdr_t *vh);
 int32_t bcf_hdr_get_n_sample(bcf_hdr_t *h);
 
 /**
+ * Checks if a info header exists.
+ */
+bool bcf_hdr_info_exists(bcf_hdr_t *h, const char* key);
+
+/**
  * Reads header of a VCF file and returns the bcf header object.
  * This wraps around vcf_hdr_read from the original htslib to
  * allow for an alternative header file to be read in.
