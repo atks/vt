@@ -314,8 +314,7 @@ int32_t VariantManip::classify_variant(const char* chrom, uint32_t pos1, char** 
         int32_t diff = 0;
         int32_t ts = 0;
         int32_t tv = 0;
-        int32_t ins = 0;
-
+        
         for (int32_t j=0; j<mlen; ++j)
         {
             if (ref[j]!=alt[j])
@@ -342,8 +341,6 @@ int32_t VariantManip::classify_variant(const char* chrom, uint32_t pos1, char** 
         if (dlen)
         {
             type |= VT_INDEL;
-
-            ins = dlen>0 ? 1 : 0;
         }
 
         //clumped SNPs and MNPs
@@ -353,7 +350,7 @@ int32_t VariantManip::classify_variant(const char* chrom, uint32_t pos1, char** 
         }
 
         v.type |= type;
-        v.alleles.push_back(Allele(type, diff, alen, dlen, 0, mlen, ts, ins));
+        v.alleles.push_back(Allele(type, diff, alen, dlen, 0, mlen, ts));
     }
 
     return v.type;

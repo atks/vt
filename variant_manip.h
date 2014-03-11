@@ -73,11 +73,12 @@ class Allele
     int32_t dlen;  //length(alt)-length(ref)
     int32_t tlen;  //tract length with respect to reference
     int32_t mlen;  //min shared length
-    int32_t ts;    //no of transitions
-    int32_t tv;    //no of tranversions (mlen-ts)
-    int32_t ins;   //is insertion
+    int32_t ts;    //no. of transitions
+    int32_t tv;    //no. of tranversions (mlen-ts)
+    int32_t ins;   //no. of insertions 
+    int32_t del;   //no. of deletions 
 
-    Allele(int32_t type, int32_t diff, int32_t alen, int32_t dlen, int32_t tlen, int32_t mlen, int32_t ts, int32_t ins)
+    Allele(int32_t type, int32_t diff, int32_t alen, int32_t dlen, int32_t tlen, int32_t mlen, int32_t ts)
     {
         this->type = type;
         this->diff = diff;
@@ -87,7 +88,8 @@ class Allele
         this->mlen = mlen;
         this->ts = ts;
         this->tv = mlen-ts;
-        this->ins = ins;
+        this->ins = dlen>0?1:0;
+        this->del = dlen<0?1:0;
     }
 
     Allele()
