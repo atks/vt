@@ -34,6 +34,13 @@
 #include "variant_manip.h"
 #include "filter.h"
 
+#define MONOMORPHIC 0
+#define BIALLELIC 1
+#define TRIALLELIC 2
+#define TETRAALLELIC 3
+#define MULTIALLELIC 4
+#define POLYMORPHIC 5
+
 void peek(int argc, char ** argv);
     
 #endif
