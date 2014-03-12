@@ -3,7 +3,8 @@ INCLUDES = -I./lib/include/ -I. -I./lib/include/htslib
 CFLAGS = -pipe -std=c++0x $(OPTFLAG) $(INCLUDES) -D__STDC_LIMIT_MACROS
 CXX = g++
 
-HEADERSONLY = 
+SOURCESONLY = genotyping_record.h
+
 SOURCES = program\
 		hts_utils\
 		utils\

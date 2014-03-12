@@ -42,45 +42,50 @@ class GenotypingRecord
     bcf1_t *v;
     faidx_t *fai;
     std::string error_msg;
-    
-    GenotypingRecord();
+        
+    /**
+     * Constructor.
+     * @fai - fai index.
+     */
+    GenotypingRecord(faidx_t *fai=NULL){};
 
     /**
      * Constructor.
      * @h - header of the candidate vcf record.
      * @v - candidate VCF record.
+     * @fai - fai index.
      */
-    GenotypingRecord(bcf_hdr_t *h, bcf1_t *v, faidx_t *fai=NULL);
+    GenotypingRecord(bcf_hdr_t *h, bcf1_t *v, faidx_t *fai=NULL){};
 
     /**
      * Destructor.
      */
-    ~GenotypingRecord();
+    ~GenotypingRecord(){};
 
     /**
      * Initializes a candidate variant for genotyping.
      */
-    virtual bool initialize(bcf_hdr_t *h, bcf1_t *v, faidx_t *fai=NULL);
+    virtual bool initialize(bcf_hdr_t *h, bcf1_t *v, faidx_t *fai=NULL){return true;};
 
     /**
      * Initializes a candidate VCF record. Returns false if failure.
      */
-    virtual bool set(bcf1_t *v);
+    virtual bool set(bcf1_t *v){return true;};
 
     /**
      * Genotypes a read and add to body of evidence.
      */
-    virtual void genotype(bam1_t *s, int32_t sample_id);
+    virtual void genotype(bam1_t *s){};
 
     /**
      * Prints record.
      */
-    virtual void print(BCFOrderedWriter *odw);
+    virtual void print(BCFOrderedWriter *odw){};
 
     /**
      * Clears this record.
      */
-    virtual void clear();
+    virtual void clear(){};
 };
 
 #endif
