@@ -22,6 +22,7 @@
 */
 
 #include "genotype.h"
+#include "lhmm_genotyping_record.h"
 
 namespace
 {
@@ -40,6 +41,7 @@ class Igor : Program
     std::string input_sam_file;
     std::string output_vcf_file;
     std::string ref_fasta_file;
+    std::string model;
     std::vector<GenomeInterval> intervals;
     bool iterate_by_site;
     bool debug;
@@ -56,12 +58,13 @@ class Igor : Program
     /////////
     //stats//
     /////////
-    uint32_t no_snps_genotyped;
-    uint32_t no_indels_genotyped;
+    int32_t no_snps_genotyped;
+    int32_t no_indels_genotyped;
 
     /////////
     //tools//
     /////////
+    faidx_t *fai;
 
     Igor(int argc, char ** argv)
     {
@@ -81,6 +84,7 @@ class Igor : Program
             TCLAP::ValueArg<std::string> arg_output_vcf_file("o", "o", "output VCF file", false, "-", "file", cmd);
             TCLAP::ValueArg<std::string> arg_sample_id("s", "s", "sample ID", true, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_ref_fasta_file("r", "r", "reference sequence fasta file []", true, "", "str", cmd);
+            TCLAP::ValueArg<std::string> arg_model("m", "m", "model [lhmm]", true, "", "str", cmd);
             TCLAP::SwitchArg arg_iterate_by_site("c", "c", "iterate by candidate sites", cmd, false);
             TCLAP::SwitchArg arg_debug("d", "d", "debug alignments", cmd, false);
             TCLAP::UnlabeledValueArg<std::string> arg_input_vcf_file("<in.vcf>", "input VCF file", true, "","file", cmd);
@@ -116,12 +120,19 @@ class Igor : Program
         std::clog << "         [o] output VCF file       " << output_vcf_file << "\n";
         std::clog << "         [c] iterate by site       " << (iterate_by_site ? "yes" : "no") << "\n";
         std::clog << "         [s] sample ID             " << sample_id << "\n";
+        print_ref_op("         [r] reference fasta file  ", ref_fasta_file);
         print_int_op("         [i] intervals             ", intervals);
         std::clog << "\n";
     }
 
     void initialize()
     {
+        if (model!="lhmm" && model!="chmm")
+        {
+            fprintf(stderr, "[E:%s] Probe information appears to be missing, cannot proceed unless reference FASTA file is available\n", __FUNCTION__);
+            exit(1);
+        }
+
         //////////////////////
         //i/o initialization//
         //////////////////////
@@ -154,29 +165,36 @@ class Igor : Program
     {
         if (iterate_by_site)
         {
-            //iterate by records
-//          GenotypingRecord record;
+            GenotypingRecord *record;
+            if (model=="lhmm")
+            {
+                record = new LHMMGenotypingRecord(fai);
+            }
+            else 
+            {
+            }
+                            
             bcf1_t *v = vodw->get_bcf1_from_pool();
             bam1_t *s = bam_init1();
+            int32_t no_read = 0;
+            GenomeInterval interval;
             while (vodr->read(v))
             {
-//                record.set(v);
+                record->set(v);
                 std::string chrom(bcf_get_chrom(vodr->hdr, v));
-                GenomeInterval interval(chrom, bcf_get_pos1(v), bcf_get_pos1(v));
+                interval.set(chrom, bcf_get_pos1(v), bcf_get_pos1(v));
                 sodr->jump_to_interval(interval);
                 while(sodr->read(s))
                 {
-//                 record.genotype(s, 0);
+                    record->genotype(s);
                 }
 
-//                 record.print(vodw);
+//                record.print(vodw);
+                ++no_read;
             }
         }
         else //iterate by reads
         {
-
-
-
             //get reads from bam
                     //let VCFPool process reads
 

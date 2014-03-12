@@ -46,6 +46,11 @@ class GenomeInterval
     /**
      * Constructs a Genome Interval.
      */
+    GenomeInterval() {};
+
+    /**
+     * Constructs a Genome Interval.
+     */
     GenomeInterval(std::string& seq, int32_t start1, int32_t end1);
 
     /**
