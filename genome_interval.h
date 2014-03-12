@@ -59,6 +59,16 @@ class GenomeInterval
     GenomeInterval(std::string interval);
 
     /**
+     * Sets an interval.
+     */
+    void set(std::string& seq, int32_t start1, int32_t end1);
+
+    /**
+     * Sets an interval.
+     */
+    void set(std::string interval);
+        
+    /**
      * Converts genome interval into the entire chromosome.
      */
     void chromosomify();

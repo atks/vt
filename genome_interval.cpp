@@ -28,9 +28,7 @@
  */
 GenomeInterval::GenomeInterval(std::string& seq, int32_t start1, int32_t end1)
 {
-    this->seq = seq;
-    this->start1 = start1;
-    this->end1 = end1;
+    set(seq, start1, end1);
 };
 
 /**
@@ -42,6 +40,24 @@ GenomeInterval::GenomeInterval(std::string& seq, int32_t start1, int32_t end1)
  *     Y             the entirety of chromosome Y
  */     
 GenomeInterval::GenomeInterval(std::string interval)
+{
+    set(interval);
+};
+
+/**
+ * Sets an interval.
+ */
+void GenomeInterval::set(std::string& seq, int32_t start1, int32_t end1)
+{
+    this->seq = seq;
+    this->start1 = start1;
+    this->end1 = end1;
+};
+
+/**
+ * Sets an interval.
+ */
+void GenomeInterval::set(std::string interval)
 {
     std::vector<std::string> v;
     split(v, ":-", interval);
@@ -66,7 +82,7 @@ GenomeInterval::GenomeInterval(std::string interval)
         fprintf(stderr, "[%s:%d %s] Invalid genomic interval: %s\n", __FILE__,__LINE__,__FUNCTION__, interval.c_str());
         exit(1);
     }
-};
+}
 
 /**
  * Converts genome interval into the entire chromosome.
