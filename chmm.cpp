@@ -83,7 +83,7 @@ CHMM::~CHMM()
     delete positionRM;
     delete positionRI;
     delete positionRD;
-    
+
     delete pathX;
     delete pathY;
     delete pathLM;
@@ -127,7 +127,7 @@ void CHMM::initialize(const char* lflank, const char* ru, const char* rflank)
 
     transition[LM][LD] = log10((delta)/((1-eta)));
     transition[LD][LD] = log10((epsilon)/((1-eta)));
-    
+
     transition[LM][LI] = transition[LM][LD];
     transition[LI][LI] = transition[LD][LD];
 
@@ -161,109 +161,156 @@ void CHMM::initialize(const char* lflank, const char* ru, const char* rflank)
     transition[RM][RM] = log10(((1-2*delta-tau))/((1-eta)*(1-eta)));
     transition[RD][RM] = log10(((1-epsilon))/((1-eta)*(1-eta)));
     transition[RI][RM] = transition[RD][RM];
-    
+
     transition[RM][RD] = log10(delta/(1-eta));
     transition[RD][RD] = log10(epsilon/(1-eta));
 
     transition[RM][RI] = transition[RM][RD];
     transition[RI][RI] = transition[RM][RI];
-    
-    transition[S][W] = log10((tau*tau*tau)/(eta*eta*eta*eta*eta*eta)); 
-    transition[X][W] = transition[S][W]; 
-    transition[Y][W] = transition[S][W]; 
-    transition[LM][W] = log10((tau*tau*tau)/(eta*eta*eta*eta*eta)); 
-    transition[M][W] = log10((tau*tau)/(eta*eta*eta*eta)); 
-    transition[D][W] = transition[M][W]; 
-    transition[I][W] = log10((tau*tau)/(eta*eta*eta));  
-    transition[RM][W] = log10(tau/eta);  
-    transition[W][W] = 0;  
 
-    transition[S][Z] = log10((tau*tau*tau)/(eta*eta*eta*eta*eta*eta)); 
-    transition[X][Z] = transition[S][Z]; 
-    transition[Y][Z] = transition[S][Z]; 
-    transition[LM][Z] = log10((tau*tau*tau)/(eta*eta*eta*eta*eta)); 
-    transition[M][Z] = log10((tau*tau)/(eta*eta*eta*eta)); 
-    transition[D][Z] = transition[M][W]; 
-    transition[I][Z] = log10((tau*tau)/(eta*eta*eta));  
-    transition[RM][Z] = log10(tau/eta);  
-    transition[W][Z] = 0;  
-    transition[Z][Z] = 0;  
+    transition[S][W] = log10((tau*tau*tau)/(eta*eta*eta*eta*eta*eta));
+    transition[X][W] = transition[S][W];
+    transition[Y][W] = transition[S][W];
+    transition[LM][W] = log10((tau*tau*tau)/(eta*eta*eta*eta*eta));
+    transition[M][W] = log10((tau*tau)/(eta*eta*eta*eta));
+    transition[D][W] = transition[M][W];
+    transition[I][W] = log10((tau*tau)/(eta*eta*eta));
+    transition[RM][W] = log10(tau/eta);
+    transition[W][W] = 0;
+
+    transition[S][Z] = log10((tau*tau*tau)/(eta*eta*eta*eta*eta*eta));
+    transition[X][Z] = transition[S][Z];
+    transition[Y][Z] = transition[S][Z];
+    transition[LM][Z] = log10((tau*tau*tau)/(eta*eta*eta*eta*eta));
+    transition[M][Z] = log10((tau*tau)/(eta*eta*eta*eta));
+    transition[D][Z] = transition[M][W];
+    transition[I][Z] = log10((tau*tau)/(eta*eta*eta));
+    transition[RM][Z] = log10(tau/eta);
+    transition[W][Z] = 0;
+    transition[Z][Z] = 0;
 
     //the best alignment score for subsequence (i,j)
-    scoreX = new double[MAXLEN*MAXLEN];
-    scoreY = new double[MAXLEN*MAXLEN];
+    scoreX  = new double[MAXLEN*MAXLEN];
+    scoreY  = new double[MAXLEN*MAXLEN];
     scoreLM = new double[MAXLEN*MAXLEN];
     scoreLI = new double[MAXLEN*MAXLEN];
     scoreLD = new double[MAXLEN*MAXLEN];
-    scoreM = new double[MAXLEN*MAXLEN];
-    scoreI = new double[MAXLEN*MAXLEN];
-    scoreD = new double[MAXLEN*MAXLEN];
+    scoreM  = new double[MAXLEN*MAXLEN];
+    scoreI  = new double[MAXLEN*MAXLEN];
+    scoreD  = new double[MAXLEN*MAXLEN];
     scoreRM = new double[MAXLEN*MAXLEN];
     scoreRI = new double[MAXLEN*MAXLEN];
     scoreRD = new double[MAXLEN*MAXLEN];
-    scoreW = new double[MAXLEN*MAXLEN];
-    scoreZ = new double[MAXLEN*MAXLEN];
+    scoreW  = new double[MAXLEN*MAXLEN];
+    scoreZ  = new double[MAXLEN*MAXLEN];
 
     //the matching position of the model sequence for the best alignment for subsequence (i,j)
     positionLM = new int32_t[MAXLEN*MAXLEN];
     positionLI = new int32_t[MAXLEN*MAXLEN];
     positionLD = new int32_t[MAXLEN*MAXLEN];
-    positionM = new int32_t[MAXLEN*MAXLEN];
-    positionI = new int32_t[MAXLEN*MAXLEN];
-    positionD = new int32_t[MAXLEN*MAXLEN];
+    positionM  = new int32_t[MAXLEN*MAXLEN];
+    positionI  = new int32_t[MAXLEN*MAXLEN];
+    positionD  = new int32_t[MAXLEN*MAXLEN];
     positionRM = new int32_t[MAXLEN*MAXLEN];
     positionRI = new int32_t[MAXLEN*MAXLEN];
     positionRD = new int32_t[MAXLEN*MAXLEN];
-    
-    pathX = new char[MAXLEN*MAXLEN];
-    pathY = new char[MAXLEN*MAXLEN];
+
+    //used for back tracking, this points to the state prior to the alignment for subsequence (i,j)
+    //that ends with the corresponding state
+    pathX  = new char[MAXLEN*MAXLEN];
+    pathY  = new char[MAXLEN*MAXLEN];
     pathLM = new char[MAXLEN*MAXLEN];
     pathLI = new char[MAXLEN*MAXLEN];
     pathLD = new char[MAXLEN*MAXLEN];
-    pathM = new char[MAXLEN*MAXLEN];
-    pathI = new char[MAXLEN*MAXLEN];
-    pathD = new char[MAXLEN*MAXLEN];
+    pathM  = new char[MAXLEN*MAXLEN];
+    pathI  = new char[MAXLEN*MAXLEN];
+    pathD  = new char[MAXLEN*MAXLEN];
     pathRM = new char[MAXLEN*MAXLEN];
     pathRI = new char[MAXLEN*MAXLEN];
     pathRD = new char[MAXLEN*MAXLEN];
-    pathW = new char[MAXLEN*MAXLEN];
-    pathZ = new char[MAXLEN*MAXLEN];
+    pathW  = new char[MAXLEN*MAXLEN];
+    pathZ  = new char[MAXLEN*MAXLEN];
 
-    //assume alignments can't possibly be maxLength bases or more
-    for (int32_t i=0; i<MAXLEN; ++i)
+    for (size_t i=0; i<MAXLEN; ++i)
     {
-        for (int32_t j=0; j<MAXLEN; ++j)
+        for (size_t j=0; j<MAXLEN; ++j)
         {
-            scoreX[i*MAXLEN+j] = -DBL_MAX;
-            scoreY[i*MAXLEN+j] = -DBL_MAX;
-            scoreM[i*MAXLEN+j] = -DBL_MAX;
-            scoreI[i*MAXLEN+j] = -DBL_MAX;
-            scoreD[i*MAXLEN+j] = -DBL_MAX;
-            scoreW[i*MAXLEN+j] = -DBL_MAX;
-            scoreZ[i*MAXLEN+j] = -DBL_MAX;
-
-            if (j)
+            size_t c = i*MAXLEN+j;
+           
+            //X
+            //note that for j>0, the values are invalid in X since Y can never preceed X
+            if (j) //(i,j)
             {
-                pathX[i*MAXLEN+j] = 'Y';
-                pathY[i*MAXLEN+j] = 'Y';
-                pathM[i*MAXLEN+j] = 'Y';
-                pathI[i*MAXLEN+j] = 'Y';
-                pathD[i*MAXLEN+j] = 'Y';
-                pathW[i*MAXLEN+j] = 'Y';
-                pathZ[i*MAXLEN+j] = 'Y';
+                scoreX[c] = 0;
+                pathX[c] = 'N';
             }
             else
             {
-                pathX[i*MAXLEN+j] = 'X';
-                pathY[i*MAXLEN+j] = 'X';
-                pathM[i*MAXLEN+j] = 'X';
-                pathI[i*MAXLEN+j] = 'X';
-                pathD[i*MAXLEN+j] = 'X';
-                pathW[i*MAXLEN+j] = 'X';
-                pathZ[i*MAXLEN+j] = 'X';
+                scoreX[c] = -DBL_MAX;
+                if (i) // (i,0)
+                {
+                    pathX[c] = i==1? 'S' : 'X';
+                }  
+                else // (0,0)
+                {
+                    pathX[c] = 'N';   
+                } 
+            }    
+           
+            //Y    
+            scoreY[c] = 0;
+            if (i)
+            {
+                if (j) // (i,j)
+                {
+                    pathY[c] = j==1? 'X' : 'Y';
+                }  
+                else // (i,0)
+                {
+                    pathY[c] = 'N';   
+                } 
+            }
+            else
+            {
+                if (j) // (0,j)
+                {
+                    pathY[c] = j==1? 'S' : 'Y';
+                }  
+                else // (0,0)
+                {
+                    pathY[c] = 'N';   
+                }
+            } 
+            
+            scoreM[c] = -DBL_MAX;
+            scoreI[c] = -DBL_MAX;
+            scoreD[c] = -DBL_MAX;
+            scoreW[c] = -DBL_MAX;
+            scoreZ[c] = -DBL_MAX;
+
+            if (j)
+            {
+                pathX[c] = 'Y';
+                pathY[c] = 'Y';
+                pathM[c] = 'Y';
+                pathI[c] = 'Y';
+                pathD[c] = 'Y';
+                pathW[c] = 'Y';
+                pathZ[c] = 'Y';
+            }
+            else
+            {
+                pathX[c] = 'X';
+                pathY[c] = 'X';
+                pathM[c] = 'X';
+                pathI[c] = 'X';
+                pathD[c] = 'X';
+                pathW[c] = 'X';
+                pathZ[c] = 'X';
             }
         }
     }
+    
 
     logEta = log10(eta);
     logTau = log10(tau);
@@ -280,215 +327,181 @@ void CHMM::initialize(const char* lflank, const char* ru, const char* rflank)
     pathM[0*MAXLEN+0] = 'N';
     pathM[1*MAXLEN+1] = 'S';
 
-    for (uint32_t k=1; k<MAXLEN; ++k)
-    {
-        scoreX[k*MAXLEN+0] = scoreX[(k-1)*MAXLEN+0] + transition[X][X];
-        scoreX[0*MAXLEN+k] = -DBL_MAX;
-        scoreY[k*MAXLEN+0] = -DBL_MAX;
-        scoreY[0*MAXLEN+k] = scoreY[0*MAXLEN+(k-1)] + transition[Y][Y];
-        scoreW[k*MAXLEN+0] = scoreW[(k-1)*MAXLEN+0] + transition[W][W];
-        scoreW[0*MAXLEN+k] = -DBL_MAX;
-        scoreZ[k*MAXLEN+0] = -DBL_MAX;
-        scoreZ[0*MAXLEN+k] = scoreZ[0*MAXLEN+(k-1)] + transition[Z][Z];
-    }
-
-    scoreX[0*MAXLEN+0] = -DBL_MAX;
-    scoreY[0*MAXLEN+0] = -DBL_MAX;
-    scoreW[0*MAXLEN+0] = -DBL_MAX;
-    scoreZ[0*MAXLEN+0] = -DBL_MAX;
 };
 
 /**
  * Align y against x.
  */
-void CHMM::align(const char* y, const char* qual, bool debug)
+void CHMM::align(const char* read, const char* qual, bool debug)
 {
-    this->y = y;
+    this->read = read; //read
     this->qual = qual;
+    rlen = strlen(read);
 
-    //adds a starting character at the fron of each string that must be matched
-    xlen = strlen(x);
-    ylen = strlen(y);
-
-    if (xlen>MAXLEN||ylen>MAXLEN)
+    if (rlen>MAXLEN)
     {
-        fprintf(stderr, "[%s:%d %s] Sequence to be aligned is greater than %d currently supported: %d\n", __FILE__, __LINE__, __FUNCTION__, MAXLEN, xlen>ylen?xlen:ylen);
+        fprintf(stderr, "[%s:%d %s] Sequence to be aligned is greater than %d currently supported: %d\n", __FILE__, __LINE__, __FUNCTION__, MAXLEN, rlen);
         exit(1);
     }
 
     double max = 0;
     char maxPath = 'X';
 
-    //alignment needs to take care of repeats.
+    size_t c,d,u,l;
 
-    //construct possible solutions
-    for (size_t i=1; i<=xlen; ++i)
+    //alignment
+    //take into consideration
+    for (size_t i=1; i<=rlen; ++i)
     {
-        for (size_t j=1; j<=ylen; ++j)
+        for (size_t j=1; j<=rlen; ++j)
         {
-            //X
-            double xx = scoreX[(i-1)*MAXLEN+j] + transition[X][X];
+            c = i*MAXLEN+j;
+            d = (i-1)*MAXLEN+(j-1);
+            u = (i-1)*MAXLEN+j;
+            l = i*MAXLEN+(j-1);
 
-            max = xx;
+            //X matrices are invariant
+
+            //Y matrices are invariant
+
+            //LM
+            double xlm = transition[X][M];
+            double ylm = transition[Y][M];
+            double lmlm = scoreLM[d] + ((i==1&&j==1) ? transition[S][M] : transition[M][M]);
+            double lilm = scoreLI[d] + transition[I][M];
+            double ldlm = scoreLD[d] + transition[D][M];
+
+            max = xlm;
             maxPath = 'X';
+//
+//            if (ym>max) //special case
+//            {
+//                max = ym;
+//                maxPath = 'Y';
+//            }
+//            if (mm>max)
+//            {
+//                max = mm;
+//                maxPath = (i==1&&j==1) ? 'S' : 'M';
+//            }
+//            if (im>max)
+//            {
+//                max = im;
+//                maxPath = 'I';
+//            }
+//            if (dm>max)
+//            {
+//                max = dm;
+//                maxPath = 'D';
+//            }
+//
+//           // scoreM[i*MAXLEN+j] = max + log10_emission_odds(x[i-1], y[j-1], lt->pl2prob((uint32_t) qual[j-1]-33));
+//            pathM[i*MAXLEN+j] = maxPath;
 
-            scoreX[i*MAXLEN+j] = max;
-            pathX[i*MAXLEN+j] = maxPath;
-
-            //Y
-            double xy = scoreX[i*MAXLEN+(j-1)] + transition[X][Y];
-            double yy = scoreY[i*MAXLEN+(j-1)] + transition[Y][Y];
-
-            max = xy;
-            maxPath = 'X';
-
-            if (yy>max)
-            {
-                max = yy;
-                maxPath = 'Y';
-            }
-
-            scoreY[i*MAXLEN+j] = max;
-            pathY[i*MAXLEN+j] = maxPath;
-
-            //M
-            double xm = scoreX[(i-1)*MAXLEN+(j-1)] + transition[X][M];
-            double ym = scoreY[(i-1)*MAXLEN+(j-1)] + transition[Y][M];
-            double mm = scoreM[(i-1)*MAXLEN+(j-1)] + ((i==1&&j==1) ? transition[S][M] : transition[M][M]);
-            double im = scoreI[(i-1)*MAXLEN+(j-1)] + transition[I][M];
-            double dm = scoreD[(i-1)*MAXLEN+(j-1)] + transition[D][M];
-
-            max = xm;
-            maxPath = 'X';
-
-            if (ym>max) //special case
-            {
-                max = ym;
-                maxPath = 'Y';
-            }
-            if (mm>max)
-            {
-                max = mm;
-                maxPath = (i==1&&j==1) ? 'S' : 'M';
-            }
-            if (im>max)
-            {
-                max = im;
-                maxPath = 'I';
-            }
-            if (dm>max)
-            {
-                max = dm;
-                maxPath = 'D';
-            }
-
-            scoreM[i*MAXLEN+j] = max + log10_emission_odds(x[i-1], y[j-1], lt->pl2prob((uint32_t) qual[j-1]-33));
-            pathM[i*MAXLEN+j] = maxPath;
-
-            //D
-            double md = scoreM[(i-1)*MAXLEN+j] + transition[M][D];
-            double dd = scoreD[(i-1)*MAXLEN+j] + transition[D][D];
-
-            max = md;
-            maxPath = 'M';
-
-            if (dd>max)
-            {
-                max = dd;
-                maxPath = 'D';
-            }
-
-            scoreD[i*MAXLEN+j] = max;
-            pathD[i*MAXLEN+j] = maxPath;
-
-            //I
-            double mi = scoreM[i*MAXLEN+(j-1)] + transition[M][I];
-            double ii = scoreI[i*MAXLEN+(j-1)] + transition[I][I];
-
-            max = mi;
-            maxPath = 'M';
-
-            if (ii>max)
-            {
-                max = ii;
-                maxPath = 'I';
-            }
-
-            scoreI[i*MAXLEN+j] = max;
-            pathI[i*MAXLEN+j] = maxPath;
-
-            //W
-            double mw = scoreM[(i-1)*MAXLEN+j] + transition[M][W];
-            double ww = scoreW[(i-1)*MAXLEN+j] + transition[W][W];
-
-            max = mw;
-            maxPath = 'M';
-
-            if (ww>max)
-            {
-                max = ww;
-                maxPath = 'W';
-            }
-
-            scoreW[i*MAXLEN+j] = max;
-            pathW[i*MAXLEN+j] = maxPath;
-
-            //Z
-            double mz = scoreM[i*MAXLEN+(j-1)] + transition[M][Z];
-            double wz = scoreW[i*MAXLEN+(j-1)] + transition[W][Z];
-            double zz = scoreZ[i*MAXLEN+(j-1)] + transition[Z][Z];
-
-            max = mz;
-            maxPath = 'M';
-
-            if (wz>max)
-            {
-                max = wz;
-                maxPath = 'W';
-            }
-            if (zz>max)
-            {
-                max = zz;
-                maxPath = 'Z';
-            }
-
-            scoreZ[i*MAXLEN+j] = max;
-            pathZ[i*MAXLEN+j] = maxPath;
+//            //D
+//            double md = scoreM[(i-1)*MAXLEN+j] + transition[M][D];
+//            double dd = scoreD[(i-1)*MAXLEN+j] + transition[D][D];
+//
+//            max = md;
+//            maxPath = 'M';
+//
+//            if (dd>max)
+//            {
+//                max = dd;
+//                maxPath = 'D';
+//            }
+//
+//            scoreD[i*MAXLEN+j] = max;
+//            pathD[i*MAXLEN+j] = maxPath;
+//
+//            //I
+//            double mi = scoreM[i*MAXLEN+(j-1)] + transition[M][I];
+//            double ii = scoreI[i*MAXLEN+(j-1)] + transition[I][I];
+//
+//            max = mi;
+//            maxPath = 'M';
+//
+//            if (ii>max)
+//            {
+//                max = ii;
+//                maxPath = 'I';
+//            }
+//
+//            scoreI[i*MAXLEN+j] = max;
+//            pathI[i*MAXLEN+j] = maxPath;
+//
+//            //W
+//            double mw = scoreM[(i-1)*MAXLEN+j] + transition[M][W];
+//            double ww = scoreW[(i-1)*MAXLEN+j] + transition[W][W];
+//
+//            max = mw;
+//            maxPath = 'M';
+//
+//            if (ww>max)
+//            {
+//                max = ww;
+//                maxPath = 'W';
+//            }
+//
+//            scoreW[i*MAXLEN+j] = max;
+//            pathW[i*MAXLEN+j] = maxPath;
+//
+//            //Z
+//            double mz = scoreM[i*MAXLEN+(j-1)] + transition[M][Z];
+//            double wz = scoreW[i*MAXLEN+(j-1)] + transition[W][Z];
+//            double zz = scoreZ[i*MAXLEN+(j-1)] + transition[Z][Z];
+//
+//            max = mz;
+//            maxPath = 'M';
+//
+//            if (wz>max)
+//            {
+//                max = wz;
+//                maxPath = 'W';
+//            }
+//            if (zz>max)
+//            {
+//                max = zz;
+//                maxPath = 'Z';
+//            }
+//
+//            scoreZ[i*MAXLEN+j] = max;
+//            pathZ[i*MAXLEN+j] = maxPath;
         }
 
-        scoreM[xlen*MAXLEN+ylen] += logTau-logEta;
+        scoreM[rlen*MAXLEN+rlen] += logTau-logEta;
     }
 
     if (debug)
     {
         std::cerr << "\n=X=\n";
-        print(scoreX, xlen+1, ylen+1);
+        print(scoreX, rlen+1);
         std::cerr << "\n=Y=\n";
-        print(scoreY, xlen+1, ylen+1);
+        print(scoreY, rlen+1);
         std::cerr << "\n=M=\n";
-        print(scoreM, xlen+1, ylen+1);
+        print(scoreM, rlen+1);
         std::cerr << "\n=D=\n";
-        print(scoreD, xlen+1, ylen+1);
+        print(scoreD, rlen+1);
         std::cerr << "\n=I=\n";
-        print(scoreI, xlen+1, ylen+1);
+        print(scoreI, rlen+1);
         std::cerr << "\n=W=\n";
-        print(scoreW, xlen+1, ylen+1);
+        print(scoreW, rlen+1);
         std::cerr << "\n=Z=\n";
-        print(scoreZ, xlen+1, ylen+1);
+        print(scoreZ, rlen+1);
         std::cerr << "\n=Path X=\n";
-        print(pathX, xlen+1, ylen+1);
+        print(pathX, rlen+1);
         std::cerr << "\n=Path Y=\n";
-        print(pathY, xlen+1, ylen+1);
+        print(pathY, rlen+1);
         std::cerr << "\n=Path M=\n";
-        print(pathM, xlen+1, ylen+1);
+        print(pathM, rlen+1);
         std::cerr << "\n=Path D=\n";
-        print(pathD, xlen+1, ylen+1);
+        print(pathD, rlen+1);
         std::cerr << "\n=Path I=\n";
-        print(pathI, xlen+1, ylen+1);
+        print(pathI, rlen+1);
         std::cerr << "\n=Path W=\n";
-        print(pathW, xlen+1, ylen+1);
+        print(pathW, rlen+1);
         std::cerr << "\n=Path Z=\n";
-        print(pathZ, xlen+1, ylen+1);
+        print(pathZ, rlen+1);
     }
 
     trace_path();
@@ -499,16 +512,16 @@ void CHMM::align(const char* y, const char* qual, bool debug)
  */
 void CHMM::trace_path()
 {
-//    double globalMax = scoreM[xlen*MAXLEN+ylen];
+//    double globalMax = scoreM[rlen*MAXLEN+rlen];
 //    char globalMaxPath = 'M';
-//    if (scoreW[xlen*MAXLEN+ylen]>globalMax)
+//    if (scoreW[rlen*MAXLEN+rlen]>globalMax)
 //    {
-//        globalMax = scoreW[xlen*MAXLEN+ylen];
+//        globalMax = scoreW[rlen*MAXLEN+rlen];
 //        globalMaxPath = 'W';
 //    }
-//    if (scoreZ[xlen*MAXLEN+ylen]>globalMax)
+//    if (scoreZ[rlen*MAXLEN+rlen]>globalMax)
 //    {
-//        globalMax = scoreZ[xlen*MAXLEN+ylen];
+//        globalMax = scoreZ[rlen*MAXLEN+rlen];
 //        globalMaxPath = 'Z';
 //    }
 //
@@ -519,8 +532,8 @@ void CHMM::trace_path()
 //    noBasesAligned = 0;
 //    if (globalMaxPath == 'M')
 //    {
-//        matchEndX = xlen;
-//        matchEndY = ylen;
+//        matchEndX = rlen;
+//        matchEndY = rlen;
 //        ++noBasesAligned;
 //    }
 //
@@ -530,7 +543,7 @@ void CHMM::trace_path()
 //    ss << globalMaxPath;
 //
 //    //recursively trace path
-//    trace_path(globalMaxPath, xlen, ylen);
+//    trace_path(globalMaxPath, rlen, rlen);
 //
 //    path = reverse(ss.str());
 //
@@ -712,11 +725,11 @@ void CHMM::print_alignment(std::string& pad)
 /**
  * Prints a double matrix.
  */
-void CHMM::print(double *v, uint32_t xlen, uint32_t ylen)
+void CHMM::print(double *v, uint32_t rlen)
 {
-    for (uint32_t i=0; i<xlen; ++i)
+    for (uint32_t i=0; i<rlen; ++i)
     {
-        for (uint32_t j=0; j<ylen; ++j)
+        for (uint32_t j=0; j<rlen; ++j)
         {
             std::cerr << (v[i*MAXLEN+j]==-DBL_MAX?-1000:v[i*MAXLEN+j]) << "\t";
         }
@@ -728,11 +741,11 @@ void CHMM::print(double *v, uint32_t xlen, uint32_t ylen)
 /**
  * Prints a char matrix.
  */
-void CHMM::print(char *v, uint32_t xlen, uint32_t ylen)
+void CHMM::print(char *v, uint32_t rlen)
 {
-    for (uint32_t i=0; i<xlen; ++i)
+    for (uint32_t i=0; i<rlen; ++i)
     {
-        for (uint32_t j=0; j<ylen; ++j)
+        for (uint32_t j=0; j<rlen; ++j)
         {
           std::cerr << v[i*MAXLEN+j] << "\t";
         }
