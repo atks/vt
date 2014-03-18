@@ -367,7 +367,7 @@ void CHMM::align(const char* read, const char* qual, bool debug)
             //LM
             double xlm = transition[X][M];
             double ylm = transition[Y][M];
-            double lmlm = scoreLM[d] + ((i==1&&j==1) ? transition[S][M] : transition[M][M]);
+            double lmlm = scoreLM[d] + transition[M][M];
             double lilm = scoreLI[d] + transition[I][M];
             double ldlm = scoreLD[d] + transition[D][M];
 
