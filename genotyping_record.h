@@ -60,32 +60,32 @@ class GenotypingRecord
     /**
      * Destructor.
      */
-    ~GenotypingRecord(){};
+    virtual ~GenotypingRecord(){};
 
     /**
      * Initializes a candidate variant for genotyping.
      */
-    virtual bool initialize(bcf_hdr_t *h, bcf1_t *v, faidx_t *fai=NULL){return true;};
+    virtual bool initialize(bcf_hdr_t *h, bcf1_t *v, faidx_t *fai=NULL)=0;
 
     /**
      * Initializes a candidate VCF record. Returns false if failure.
      */
-    virtual bool set(bcf1_t *v){return true;};
+    virtual bool set(bcf1_t *v)=0;
 
     /**
      * Genotypes a read and add to body of evidence.
      */
-    virtual void genotype(bam1_t *s){};
+    virtual void genotype(bam1_t *s)=0;
 
     /**
      * Prints record.
      */
-    virtual void print(BCFOrderedWriter *odw){};
+    virtual void print(BCFOrderedWriter *odw)=0;
 
     /**
      * Clears this record.
      */
-    virtual void clear(){};
+    virtual void clear()=0;
 };
 
 #endif

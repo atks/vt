@@ -44,7 +44,6 @@
  */
 CHMM::CHMM()
 {
-    initialize();
     lt = new LogTool();
 };
 
@@ -53,7 +52,6 @@ CHMM::CHMM()
  */
 CHMM::CHMM(LogTool *lt)
 {
-    initialize();
     this->lt = lt;
 };
 
@@ -76,6 +74,16 @@ CHMM::~CHMM()
     delete scoreW;
     delete scoreZ;
 
+    delete positionLM;
+    delete positionLI;
+    delete positionLD;
+    delete positionM;
+    delete positionI;
+    delete positionD;
+    delete positionRM;
+    delete positionRI;
+    delete positionRD;
+    
     delete pathX;
     delete pathY;
     delete pathLM;
@@ -94,7 +102,7 @@ CHMM::~CHMM()
 /**
  * Initializes object, helper function for constructor.
  */
-void CHMM::initialize()
+void CHMM::initialize(const char* lflank, const char* ru, const char* rflank)
 {
     delta = 0.001;
     epsilon = 0.5;
@@ -103,83 +111,121 @@ void CHMM::initialize()
 
     logOneSixteenth = log10(1.0/16.0);
 
-    transition[S][X] = log10((1-eta)/(1-eta));
-    transition[X][X] = log10((1-eta)/(1-eta));
+    transition[S][X] = 0;
+    transition[X][X] = 0;
 
-    transition[S][Y] = log10((eta*(1-eta))/(eta*(1-eta)));
-    transition[X][Y] = log10((eta*(1-eta))/(eta*(1-eta)));
-    transition[Y][Y] = log10((1-eta)/(1-eta));
+    transition[S][Y] = 0;
+    transition[X][Y] = 0;
+    transition[Y][Y] = 0;
 
-    transition[S][LM] = log10((eta*eta*(1-tau))/(eta*eta*(1-eta)*(1-eta)));
-    transition[X][LM] = log10((eta*eta*(1-tau))/(eta*eta*(1-eta)*(1-eta)));
-    transition[Y][LM] = log10((eta*(1-tau))/(eta*eta*(1-eta)*(1-eta)));
+    transition[S][LM] = log10((1-tau)/(eta*(1-eta)*(1-eta)));
+    transition[X][LM] = transition[S][LM];
+    transition[Y][LM] = transition[S][LM];
     transition[LM][LM] = log10(((1-2*delta-tau))/((1-eta)*(1-eta)));
-    transition[LI][LM] = log10(((1-epsilon))/((1-eta)*(1-eta)));
     transition[LD][LM] = log10(((1-epsilon))/((1-eta)*(1-eta)));
-    transition[LM][LI] = log10((delta)/((1-eta)));
-    transition[LI][LI] = log10((epsilon)/((1-eta)));
+    transition[LI][LM] = transition[LD][LM];
+
     transition[LM][LD] = log10((delta)/((1-eta)));
     transition[LD][LD] = log10((epsilon)/((1-eta)));
-
-    transition[S][M] = log10((eta*eta*tau*(1-delta-tau))/(eta*eta*eta*eta*(1-eta)*(1-eta)));
-    transition[X][M] = log10((eta*eta*tau*(1-delta-tau))/(eta*eta*eta*eta*(1-eta)*(1-eta)));
-    transition[Y][M] = log10((eta*tau*(1-delta-tau))/(eta*eta*eta*eta*(1-eta)*(1-eta)));
-    transition[LM][M] = log10(((1-tau)*(1-delta-tau))/(eta*eta*(1-eta)*(1-eta)));
-    transition[M][M] = log10(((1-2*delta-tau))/((1-eta)*(1-eta)));
-    transition[I][M] = log10(((1-epsilon))/((1-eta)*(1-eta)));
-    transition[D][M] = log10(((1-epsilon))/((1-eta)*(1-eta)));
-    transition[M][I] = log10((delta)/((1-eta)));
-    transition[I][I] = log10((epsilon)/((1-eta)));
-    transition[S][D] = log10((eta*eta*tau*delta)/(eta*eta*eta*eta*(1-eta)));
-    transition[X][D] = log10((eta*eta*tau*delta)/(eta*eta*eta*eta*(1-eta)));
-    transition[Y][D] = log10((eta*tau*delta)/(eta*eta*eta*eta*(1-eta)));
-    transition[M][D] = log10((delta)/((1-eta)));
-    transition[D][D] = log10((epsilon)/((1-eta)));
-
-    transition[S][RM] = log10((eta*eta*tau*(1-delta-tau))/(eta*eta*eta*eta*(1-eta)*(1-eta)));
-    transition[X][RM] = log10((eta*eta*tau*(1-delta-tau))/(eta*eta*eta*eta*(1-eta)*(1-eta)));
-    transition[Y][RM] = log10((eta*tau*(1-delta-tau))/(eta*eta*eta*eta*(1-eta)*(1-eta)));
-    transition[M][RM] = log10(((1-tau)*(1-delta-tau))/(eta*eta*(1-eta)*(1-eta)));
-    transition[RM][RM] = log10(((1-2*delta-tau))/((1-eta)*(1-eta)));
-    transition[RI][RM] = log10(((1-epsilon))/((1-eta)*(1-eta)));
-    transition[RD][RM] = log10(((1-epsilon))/((1-eta)*(1-eta)));
-
-    transition[M][RI] = log10((delta)/((1-eta)));
-    transition[I][RI] = log10((epsilon)/((1-eta)));
-
-    transition[S][RD] = log10((eta*eta*tau*delta)/(eta*eta*eta*eta*(1-eta)));
-    transition[X][RD] = log10((eta*eta*tau*delta)/(eta*eta*eta*eta*(1-eta)));
-    transition[Y][RD] = log10((eta*tau*delta)/(eta*eta*eta*eta*(1-eta)));
-    transition[M][RD] = log10((delta)/((1-eta)));
-    transition[D][RD] = log10((epsilon)/((1-eta)));
-
-    transition[S][W] = log10(tau/eta); //log10((tau*(1-eta))/(eta*(1-eta)));
-    transition[X][W] = log10(tau/eta); //log10((tau*(1-eta))/(eta*(1-eta)));
-    transition[Y][W] = log10(tau/eta); //log10((tau*(1-eta))/(eta*(1-eta)));
-    transition[LM][W] = log10(tau/eta); //log10((tau*(1-eta))/(eta*(1-eta)));
-    transition[LM][W] = log10(tau/eta); //log10((tau*(1-eta))/(eta*(1-eta)));
-    transition[LM][W] = log10(tau/eta); //log10((tau*(1-eta))/(eta*(1-eta)));
     
-    transition[M][W] = log10(tau/eta); //log10((tau*(1-eta))/(eta*(1-eta)));
-    transition[W][W] = 0; //log10((1-eta)/(1-eta));
+    transition[LM][LI] = transition[LM][LD];
+    transition[LI][LI] = transition[LD][LD];
 
-    transition[M][Z] = transition[M][W]; //log10((tau*eta*(1-eta))/(eta*eta*(1-eta)));
-    transition[W][Z] = 0; //log10((eta*(1-eta))/(eta*(1-eta)));
-    transition[Z][Z] = 0; //log10((1-eta)/(1-eta));
+    transition[S][M] = log10((tau*(1-2*delta-tau))/(eta*eta*eta*(1-eta)*(1-eta)));
+    transition[X][M] = transition[S][M];
+    transition[Y][M] = transition[S][M];
+    transition[LM][M] = log10((tau*(1-2*delta-tau))/(eta*eta*eta*(1-eta)*(1-eta)));
+    transition[M][M] = log10((tau*(1-2*delta-tau))/(eta*eta*(1-eta)*(1-eta)));
+    transition[D][M] = log10(((1-epsilon-tau))/((1-eta)*(1-eta)));
+    transition[I][M] = transition[I][M];
 
+    transition[S][D] = log10((tau*delta)/(eta*eta*(1-eta)));
+    transition[X][D] = transition[S][D];
+    transition[Y][D] = transition[S][D];
+    transition[LM][D] = log10((tau*delta)/((1-eta)));
+    transition[M][D] = log10(delta/(1-eta));
+
+    transition[S][I] = log10((tau*delta)/(eta*eta*eta*(1-eta)));
+    transition[X][I] = transition[S][I];
+    transition[Y][I] = transition[S][I];
+    transition[LM][I] = log10((tau*delta)/(eta*(1-eta)));
+    transition[M][I] = log10(delta/(1-eta));
+
+    transition[S][RM] = log10((tau*tau*(1-tau))/(eta*eta*eta*eta*eta*(1-eta)*(1-eta)));
+    transition[X][RM] = transition[S][RM];
+    transition[Y][RM] = transition[S][RM];
+    transition[LM][RM] = log10((tau*tau*(1-tau))/(eta*eta*eta*eta*(1-eta)*(1-eta)));
+    transition[M][RM] = log10((tau*(1-tau))/(eta*eta*eta*(1-eta)*(1-eta)));
+    transition[D][RM] = transition[M][RM];
+    transition[I][RM] = log10((tau*(1-tau))/(eta*eta*(1-eta)*(1-eta)));
+    transition[RM][RM] = log10(((1-2*delta-tau))/((1-eta)*(1-eta)));
+    transition[RD][RM] = log10(((1-epsilon))/((1-eta)*(1-eta)));
+    transition[RI][RM] = transition[RD][RM];
+    
+    transition[RM][RD] = log10(delta/(1-eta));
+    transition[RD][RD] = log10(epsilon/(1-eta));
+
+    transition[RM][RI] = transition[RM][RD];
+    transition[RI][RI] = transition[RM][RI];
+    
+    transition[S][W] = log10((tau*tau*tau)/(eta*eta*eta*eta*eta*eta)); 
+    transition[X][W] = transition[S][W]; 
+    transition[Y][W] = transition[S][W]; 
+    transition[LM][W] = log10((tau*tau*tau)/(eta*eta*eta*eta*eta)); 
+    transition[M][W] = log10((tau*tau)/(eta*eta*eta*eta)); 
+    transition[D][W] = transition[M][W]; 
+    transition[I][W] = log10((tau*tau)/(eta*eta*eta));  
+    transition[RM][W] = log10(tau/eta);  
+    transition[W][W] = 0;  
+
+    transition[S][Z] = log10((tau*tau*tau)/(eta*eta*eta*eta*eta*eta)); 
+    transition[X][Z] = transition[S][Z]; 
+    transition[Y][Z] = transition[S][Z]; 
+    transition[LM][Z] = log10((tau*tau*tau)/(eta*eta*eta*eta*eta)); 
+    transition[M][Z] = log10((tau*tau)/(eta*eta*eta*eta)); 
+    transition[D][Z] = transition[M][W]; 
+    transition[I][Z] = log10((tau*tau)/(eta*eta*eta));  
+    transition[RM][Z] = log10(tau/eta);  
+    transition[W][Z] = 0;  
+    transition[Z][Z] = 0;  
+
+    //the best alignment score for subsequence (i,j)
     scoreX = new double[MAXLEN*MAXLEN];
     scoreY = new double[MAXLEN*MAXLEN];
+    scoreLM = new double[MAXLEN*MAXLEN];
+    scoreLI = new double[MAXLEN*MAXLEN];
+    scoreLD = new double[MAXLEN*MAXLEN];
     scoreM = new double[MAXLEN*MAXLEN];
     scoreI = new double[MAXLEN*MAXLEN];
     scoreD = new double[MAXLEN*MAXLEN];
+    scoreRM = new double[MAXLEN*MAXLEN];
+    scoreRI = new double[MAXLEN*MAXLEN];
+    scoreRD = new double[MAXLEN*MAXLEN];
     scoreW = new double[MAXLEN*MAXLEN];
     scoreZ = new double[MAXLEN*MAXLEN];
 
+    //the matching position of the model sequence for the best alignment for subsequence (i,j)
+    positionLM = new int32_t[MAXLEN*MAXLEN];
+    positionLI = new int32_t[MAXLEN*MAXLEN];
+    positionLD = new int32_t[MAXLEN*MAXLEN];
+    positionM = new int32_t[MAXLEN*MAXLEN];
+    positionI = new int32_t[MAXLEN*MAXLEN];
+    positionD = new int32_t[MAXLEN*MAXLEN];
+    positionRM = new int32_t[MAXLEN*MAXLEN];
+    positionRI = new int32_t[MAXLEN*MAXLEN];
+    positionRD = new int32_t[MAXLEN*MAXLEN];
+    
     pathX = new char[MAXLEN*MAXLEN];
     pathY = new char[MAXLEN*MAXLEN];
+    pathLM = new char[MAXLEN*MAXLEN];
+    pathLI = new char[MAXLEN*MAXLEN];
+    pathLD = new char[MAXLEN*MAXLEN];
     pathM = new char[MAXLEN*MAXLEN];
     pathI = new char[MAXLEN*MAXLEN];
     pathD = new char[MAXLEN*MAXLEN];
+    pathRM = new char[MAXLEN*MAXLEN];
+    pathRI = new char[MAXLEN*MAXLEN];
+    pathRD = new char[MAXLEN*MAXLEN];
     pathW = new char[MAXLEN*MAXLEN];
     pathZ = new char[MAXLEN*MAXLEN];
 
@@ -255,29 +301,30 @@ void CHMM::initialize()
 /**
  * Align y against x.
  */
-void CHMM::align(double& llk, const char* x, const char* y, const char* qual, bool debug)
+void CHMM::align(const char* y, const char* qual, bool debug)
 {
-    this->x = x;
     this->y = y;
     this->qual = qual;
 
     //adds a starting character at the fron of each string that must be matched
     xlen = strlen(x);
     ylen = strlen(y);
-    
+
     if (xlen>MAXLEN||ylen>MAXLEN)
     {
         fprintf(stderr, "[%s:%d %s] Sequence to be aligned is greater than %d currently supported: %d\n", __FILE__, __LINE__, __FUNCTION__, MAXLEN, xlen>ylen?xlen:ylen);
         exit(1);
-    }    
-    
+    }
+
     double max = 0;
     char maxPath = 'X';
 
+    //alignment needs to take care of repeats.
+
     //construct possible solutions
-    for (uint32_t i=1; i<=xlen; ++i)
+    for (size_t i=1; i<=xlen; ++i)
     {
-        for (uint32_t j=1; j<=ylen; ++j)
+        for (size_t j=1; j<=ylen; ++j)
         {
             //X
             double xx = scoreX[(i-1)*MAXLEN+j] + transition[X][X];
