@@ -66,6 +66,16 @@ class CHMM
     double *scoreW;
     double *scoreZ;
 
+    int32_t *positionLM;
+    int32_t *positionLI;
+    int32_t *positionLD;
+    int32_t *positionM;
+    int32_t *positionI;
+    int32_t *positionD;
+    int32_t *positionRM;
+    int32_t *positionRI;
+    int32_t *positionRD;
+    
     char *pathX;
     char *pathY;
     char *pathLM;
@@ -100,12 +110,12 @@ class CHMM
     /**
      * Initializes object, helper function for constructor.
      */
-    void initialize();
+    void initialize(const char* lflank, const char* ru, const char* rflank);
 
     /**
      * Align and compute genotype likelihood.
      */
-    void align(double& llk, const char* _x, const char* _y, const char* qual, bool debug=false);
+    void align(const char* y, const char* qual=NULL, bool debug=false);
 
     /**
      * Trace path after alignment.

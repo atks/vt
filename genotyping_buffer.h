@@ -99,7 +99,7 @@ class GenotypingBuffer
             }
             else
             {
-                p = new GenotypingRecord(odr->hdr, v);
+               // p = new GenotypingRecord(odr->hdr, v);
             }
 
             p->clear();

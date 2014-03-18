@@ -58,6 +58,10 @@ class Igor : Program
     std::string method;
     std::string x;
     std::string y;
+    std::string lflank;
+    std::string ru;
+    std::string rflank;
+        
     bool debug;
 
     Igor(int argc, char **argv)
@@ -78,19 +82,29 @@ class Igor : Program
             TCLAP::CmdLine cmd(desc, ' ', version);
             VTOutput my; cmd.setOutput(&my);
             TCLAP::ValueArg<std::string> arg_method("m", "method", "alignment Method", true, "", "string");
-            TCLAP::ValueArg<std::string> arg_x("x", "x_seq", "X Sequence", true, "", "string");
+            TCLAP::ValueArg<std::string> arg_x("x", "x_seq", "X Sequence", false, "", "string");
             TCLAP::ValueArg<std::string> arg_y("y", "y_seq", "Y Sequence", true, "", "string");
+            TCLAP::ValueArg<std::string> arg_lflank("l", "l", "left flanks", false, "", "string");
+            TCLAP::ValueArg<std::string> arg_ru("u", "u", "repeat unit", false, "", "string");
+            TCLAP::ValueArg<std::string> arg_rflank("r", "r", "right flanks", false, "", "string");
+                    
             TCLAP::SwitchArg arg_debug("d", "debug", "Debug", false);
 
             cmd.add(arg_method);
             cmd.add(arg_x);
             cmd.add(arg_y);
+            cmd.add(arg_lflank);
+            cmd.add(arg_ru);
+            cmd.add(arg_rflank);
             cmd.add(arg_debug);
             cmd.parse(argc, argv);
 
             method = arg_method.getValue();
             x = arg_x.getValue();
             y = arg_y.getValue();
+            lflank = arg_lflank.getValue();
+            ru = arg_ru.getValue();
+            rflank = arg_rflank.getValue();
         }
         catch (TCLAP::ArgException &e)
         {
@@ -126,7 +140,8 @@ class Igor : Program
                 qual += 'K';
             }
             clock_t t0 = clock();
-            chmm.align(llk, x.c_str(), y.c_str(), qual.c_str());
+            chmm.initialize(lflank.c_str(), ru.c_str(), rflank.c_str());
+            //chmm.align(y.c_str(), qual.c_str());
             chmm.print_alignment();
             clock_t t1 = clock();
             print_time((float)(t1-t0)/CLOCKS_PER_SEC);
@@ -159,7 +174,7 @@ class Igor : Program
             lhmm1.align(llk, x.c_str(), y.c_str(), qual.c_str());
             lhmm1.printAlignment();
             clock_t t1 = clock();
-             print_time((float)(t1-t0)/CLOCKS_PER_SEC);
+            print_time((float)(t1-t0)/CLOCKS_PER_SEC);
         }
     };
 
@@ -169,6 +184,9 @@ class Igor : Program
         std::clog << "\n";
         std::clog << "options:     method   " << method << "\n";
         std::clog << "         [x] x        " << x << "\n";
+        std::clog << "         [l] lflank   " << lflank << "\n";
+        std::clog << "         [u] repeat   " << ru << "\n";
+        std::clog << "         [r] rflank   " << rflank << "\n";
         std::clog << "         [y] y        " << y << "\n";
         std::clog << "\n";
     }

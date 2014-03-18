@@ -54,6 +54,8 @@ bool LHMMGenotypingRecord::set(bcf1_t *v)
 {
     reads = kh_init(rdict);
     
+    std::cerr << "working???\n";
+    
     int32_t ret1,ret2,ret3,len;            
     ret1 = bcf_get_info_string(h, v, "REFPROBE", &ref_probe, &len);
     ret2 = bcf_get_info_string(h, v, "ALTPROBE", &alt_probe, &len);
@@ -103,7 +105,7 @@ bool LHMMGenotypingRecord::set(bcf1_t *v)
         }
         else
         {
-            fprintf(stderr, "[E:%s] Probe information appears to be missing, cannot proceed unless reference FASTA file is available\n", __FUNCTION__);
+            fprintf(stderr, "[E %s:%d %s] Probe information appears to be missing, cannot proceed unless reference FASTA file is available\n", __FILE__, __LINE__, __FUNCTION__);
             exit(1);
         }
     }            
