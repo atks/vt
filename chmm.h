@@ -31,12 +31,10 @@
 class CHMM
 {
     public:
-    const char* x;
-    const char* y;
+    const char* read;
     const char* qual;
+    int32_t rlen;
 
-    int32_t xlen;
-    int32_t ylen;
     std::string path;
     double maxLogOdds;
 
@@ -140,12 +138,12 @@ class CHMM
     /**
      * Prints a double matrix.
      */
-    void print(double *v, uint32_t xlen, uint32_t ylen);
+    void print(double *v, uint32_t rlen);
 
     /**
      * Prints a char matrix.
      */
-    void print(char *v, uint32_t xlen, uint32_t ylen);
+    void print(char *v, uint32_t rlen);
 };
 
 #undef NSTATES
