@@ -37,7 +37,7 @@ class CHMM
     const char* ru;
     const char* rflank;
     
-    int32_t rlen, lflen, rulen, rflen;
+    int32_t rlen, plen, lflen, rulen, rflen;
 
     std::string path;
     double maxLogOdds;
