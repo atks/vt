@@ -33,7 +33,11 @@ class CHMM
     public:
     const char* read;
     const char* qual;
-    int32_t rlen;
+    const char* lflank;
+    const char* ru;
+    const char* rflank;
+    
+    int32_t rlen, lflen, rulen, rflen;
 
     std::string path;
     double maxLogOdds;
@@ -49,7 +53,6 @@ class CHMM
 
     double transition[NSTATES][NSTATES];
 
-    //scoring matrix
     double *scoreX;
     double *scoreY;
     double *scoreLM;
