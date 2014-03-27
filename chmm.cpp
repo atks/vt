@@ -337,6 +337,7 @@ void CHMM::align(const char* read, const char* qual, bool debug)
     this->read = read; //read
     this->qual = qual;
     rlen = strlen(read);
+    plen = lflen + rlen + rflen;
 
     if (rlen>MAXLEN)
     {
@@ -351,7 +352,7 @@ void CHMM::align(const char* read, const char* qual, bool debug)
 
     //alignment
     //take into consideration
-    for (size_t i=1; i<=rlen; ++i)
+    for (size_t i=1; i<=plen; ++i)
     {
         for (size_t j=1; j<=rlen; ++j)
         {
