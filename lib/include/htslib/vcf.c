@@ -9,7 +9,7 @@
 #include "htslib/bgzf.h"
 #include "htslib/vcf.h"
 #include "htslib/tbx.h"
-#include "hfile.h"
+#include "htslib/hfile.h"
 
 #include "htslib/khash.h"
 KHASH_MAP_INIT_STR(vdict, bcf_idinfo_t)
@@ -517,6 +517,7 @@ int bcf_hdr_append(bcf_hdr_t *hdr, const char *line)
 {
     int len;
     bcf_hrec_t *hrec = bcf_hdr_parse_line(hdr, (char*) line, &len);
+    if ( !hrec ) return -1;
     if ( bcf_hdr_add_hrec(hdr, hrec) )
         bcf_hdr_sync(hdr);
     return 0;

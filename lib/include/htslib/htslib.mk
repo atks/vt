@@ -1,6 +1,6 @@
 # Makefile rules useful for third-party code using htslib's public API.
 #
-#    Copyright (C) 2013 Genome Research Ltd.
+#    Copyright (C) 2013-2014 Genome Research Ltd.
 #
 #    Author: John Marshall <jm18@sanger.ac.uk>
 
@@ -28,7 +28,9 @@ include $(HTSDIR)/htslib_vars.mk
 HTSLIB_ALL = \
 	$(HTSDIR)/htslib/bgzf.h \
 	$(HTSDIR)/htslib/faidx.h \
+	$(HTSDIR)/htslib/hfile.h \
 	$(HTSDIR)/htslib/hts.h \
+	$(HTSDIR)/htslib/hts_defs.h \
 	$(HTSDIR)/htslib/khash.h \
 	$(HTSDIR)/htslib/klist.h \
 	$(HTSDIR)/htslib/knetfile.h \
@@ -45,7 +47,6 @@ HTSLIB_ALL = \
 	$(HTSDIR)/htslib/vcfutils.h \
 	$(HTSDIR)/bgzf.c \
 	$(HTSDIR)/faidx.c \
-	$(HTSDIR)/hfile.h \
 	$(HTSDIR)/hfile_internal.h \
 	$(HTSDIR)/hfile.c \
 	$(HTSDIR)/hfile_net.c \

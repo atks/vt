@@ -364,8 +364,13 @@ void CHMM::align(const char* read, const char* qual, bool debug)
 
             //Y matrices are invariant
 
+            ////////////////
             //LM
+            ////////////////
+            
+            //pick up base
             double xlm = transition[X][M];
+            
             double ylm = transition[Y][M];
             double lmlm = scoreLM[d] + transition[M][M];
             double lilm = scoreLI[d] + transition[I][M];
