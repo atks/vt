@@ -51,21 +51,21 @@ class CHMM
     double logTau;
     double logOneSixteenth;
 
-    double transition[NSTATES][NSTATES];
+    double T[NSTATES][NSTATES];
 
-    double *scoreX;
-    double *scoreY;
-    double *scoreLM;
-    double *scoreLI;
-    double *scoreLD;
-    double *scoreM;
-    double *scoreI;
-    double *scoreD;
-    double *scoreRM;
-    double *scoreRI;
-    double *scoreRD;
-    double *scoreW;
-    double *scoreZ;
+    double *V_X;
+    double *V_Y;
+    double *V_LM;
+    double *V_LI;
+    double *V_LD;
+    double *V_M;
+    double *V_I;
+    double *V_D;
+    double *V_RM;
+    double *V_RI;
+    double *V_RD;
+    double *V_W;
+    double *V_Z;
 
     int32_t *positionLM;
     int32_t *positionLI;
@@ -77,19 +77,19 @@ class CHMM
     int32_t *positionRI;
     int32_t *positionRD;
     
-    char *pathX;
-    char *pathY;
-    char *pathLM;
-    char *pathLI;
-    char *pathLD;
-    char *pathM;
-    char *pathI;
-    char *pathD;
-    char *pathRM;
-    char *pathRI;
-    char *pathRD;
-    char *pathW;
-    char *pathZ;
+    char *U_X;
+    char *U_Y;
+    char *U_LM;
+    char *U_LI;
+    char *U_LD;
+    char *U_M;
+    char *U_I;
+    char *U_D;
+    char *U_RM;
+    char *U_RI;
+    char *U_RD;
+    char *U_W;
+    char *U_Z;
 
     LogTool *lt;
 

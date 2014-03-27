@@ -60,19 +60,19 @@ CHMM::CHMM(LogTool *lt)
  */
 CHMM::~CHMM()
 {
-    delete scoreX;
-    delete scoreY;
-    delete scoreLM;
-    delete scoreLI;
-    delete scoreLD;
-    delete scoreM;
-    delete scoreI;
-    delete scoreD;
-    delete scoreRM;
-    delete scoreRI;
-    delete scoreRD;
-    delete scoreW;
-    delete scoreZ;
+    delete V_X;
+    delete V_Y;
+    delete V_LM;
+    delete V_LI;
+    delete V_LD;
+    delete V_M;
+    delete V_I;
+    delete V_D;
+    delete V_RM;
+    delete V_RI;
+    delete V_RD;
+    delete V_W;
+    delete V_Z;
 
     delete positionLM;
     delete positionLI;
@@ -84,19 +84,19 @@ CHMM::~CHMM()
     delete positionRI;
     delete positionRD;
 
-    delete pathX;
-    delete pathY;
-    delete pathLM;
-    delete pathLI;
-    delete pathLD;
-    delete pathM;
-    delete pathI;
-    delete pathD;
-    delete pathRM;
-    delete pathRI;
-    delete pathRD;
-    delete pathW;
-    delete pathZ;
+    delete U_X;
+    delete U_Y;
+    delete U_LM;
+    delete U_LI;
+    delete U_LD;
+    delete U_M;
+    delete U_I;
+    delete U_D;
+    delete U_RM;
+    delete U_RI;
+    delete U_RD;
+    delete U_W;
+    delete U_Z;
 };
 
 /**
@@ -111,98 +111,98 @@ void CHMM::initialize(const char* lflank, const char* ru, const char* rflank)
 
     logOneSixteenth = log10(1.0/16.0);
 
-    transition[S][X] = 0;
-    transition[X][X] = 0;
+    T[S][X] = 0;
+    T[X][X] = 0;
 
-    transition[S][Y] = 0;
-    transition[X][Y] = 0;
-    transition[Y][Y] = 0;
+    T[S][Y] = 0;
+    T[X][Y] = 0;
+    T[Y][Y] = 0;
 
-    transition[S][LM] = log10((1-tau)/(eta*(1-eta)*(1-eta)));
-    transition[X][LM] = transition[S][LM];
-    transition[Y][LM] = transition[S][LM];
-    transition[LM][LM] = log10(((1-2*delta-tau))/((1-eta)*(1-eta)));
-    transition[LD][LM] = log10(((1-epsilon))/((1-eta)*(1-eta)));
-    transition[LI][LM] = transition[LD][LM];
+    T[S][LM] = log10((1-tau)/(eta*(1-eta)*(1-eta)));
+    T[X][LM] = T[S][LM];
+    T[Y][LM] = T[S][LM];
+    T[LM][LM] = log10(((1-2*delta-tau))/((1-eta)*(1-eta)));
+    T[LD][LM] = log10(((1-epsilon))/((1-eta)*(1-eta)));
+    T[LI][LM] = T[LD][LM];
 
-    transition[LM][LD] = log10((delta)/((1-eta)));
-    transition[LD][LD] = log10((epsilon)/((1-eta)));
+    T[LM][LD] = log10((delta)/((1-eta)));
+    T[LD][LD] = log10((epsilon)/((1-eta)));
 
-    transition[LM][LI] = transition[LM][LD];
-    transition[LI][LI] = transition[LD][LD];
+    T[LM][LI] = T[LM][LD];
+    T[LI][LI] = T[LD][LD];
 
-    transition[S][M] = log10((tau*(1-2*delta-tau))/(eta*eta*eta*(1-eta)*(1-eta)));
-    transition[X][M] = transition[S][M];
-    transition[Y][M] = transition[S][M];
-    transition[LM][M] = log10((tau*(1-2*delta-tau))/(eta*eta*eta*(1-eta)*(1-eta)));
-    transition[M][M] = log10((tau*(1-2*delta-tau))/(eta*eta*(1-eta)*(1-eta)));
-    transition[D][M] = log10(((1-epsilon-tau))/((1-eta)*(1-eta)));
-    transition[I][M] = transition[I][M];
+    T[S][M] = log10((tau*(1-2*delta-tau))/(eta*eta*eta*(1-eta)*(1-eta)));
+    T[X][M] = T[S][M];
+    T[Y][M] = T[S][M];
+    T[LM][M] = log10((tau*(1-2*delta-tau))/(eta*eta*eta*(1-eta)*(1-eta)));
+    T[M][M] = log10((tau*(1-2*delta-tau))/(eta*eta*(1-eta)*(1-eta)));
+    T[D][M] = log10(((1-epsilon-tau))/((1-eta)*(1-eta)));
+    T[I][M] = T[I][M];
 
-    transition[S][D] = log10((tau*delta)/(eta*eta*(1-eta)));
-    transition[X][D] = transition[S][D];
-    transition[Y][D] = transition[S][D];
-    transition[LM][D] = log10((tau*delta)/((1-eta)));
-    transition[M][D] = log10(delta/(1-eta));
+    T[S][D] = log10((tau*delta)/(eta*eta*(1-eta)));
+    T[X][D] = T[S][D];
+    T[Y][D] = T[S][D];
+    T[LM][D] = log10((tau*delta)/((1-eta)));
+    T[M][D] = log10(delta/(1-eta));
 
-    transition[S][I] = log10((tau*delta)/(eta*eta*eta*(1-eta)));
-    transition[X][I] = transition[S][I];
-    transition[Y][I] = transition[S][I];
-    transition[LM][I] = log10((tau*delta)/(eta*(1-eta)));
-    transition[M][I] = log10(delta/(1-eta));
+    T[S][I] = log10((tau*delta)/(eta*eta*eta*(1-eta)));
+    T[X][I] = T[S][I];
+    T[Y][I] = T[S][I];
+    T[LM][I] = log10((tau*delta)/(eta*(1-eta)));
+    T[M][I] = log10(delta/(1-eta));
 
-    transition[S][RM] = log10((tau*tau*(1-tau))/(eta*eta*eta*eta*eta*(1-eta)*(1-eta)));
-    transition[X][RM] = transition[S][RM];
-    transition[Y][RM] = transition[S][RM];
-    transition[LM][RM] = log10((tau*tau*(1-tau))/(eta*eta*eta*eta*(1-eta)*(1-eta)));
-    transition[M][RM] = log10((tau*(1-tau))/(eta*eta*eta*(1-eta)*(1-eta)));
-    transition[D][RM] = transition[M][RM];
-    transition[I][RM] = log10((tau*(1-tau))/(eta*eta*(1-eta)*(1-eta)));
-    transition[RM][RM] = log10(((1-2*delta-tau))/((1-eta)*(1-eta)));
-    transition[RD][RM] = log10(((1-epsilon))/((1-eta)*(1-eta)));
-    transition[RI][RM] = transition[RD][RM];
+    T[S][RM] = log10((tau*tau*(1-tau))/(eta*eta*eta*eta*eta*(1-eta)*(1-eta)));
+    T[X][RM] = T[S][RM];
+    T[Y][RM] = T[S][RM];
+    T[LM][RM] = log10((tau*tau*(1-tau))/(eta*eta*eta*eta*(1-eta)*(1-eta)));
+    T[M][RM] = log10((tau*(1-tau))/(eta*eta*eta*(1-eta)*(1-eta)));
+    T[D][RM] = T[M][RM];
+    T[I][RM] = log10((tau*(1-tau))/(eta*eta*(1-eta)*(1-eta)));
+    T[RM][RM] = log10(((1-2*delta-tau))/((1-eta)*(1-eta)));
+    T[RD][RM] = log10(((1-epsilon))/((1-eta)*(1-eta)));
+    T[RI][RM] = T[RD][RM];
 
-    transition[RM][RD] = log10(delta/(1-eta));
-    transition[RD][RD] = log10(epsilon/(1-eta));
+    T[RM][RD] = log10(delta/(1-eta));
+    T[RD][RD] = log10(epsilon/(1-eta));
 
-    transition[RM][RI] = transition[RM][RD];
-    transition[RI][RI] = transition[RM][RI];
+    T[RM][RI] = T[RM][RD];
+    T[RI][RI] = T[RM][RI];
 
-    transition[S][W] = log10((tau*tau*tau)/(eta*eta*eta*eta*eta*eta));
-    transition[X][W] = transition[S][W];
-    transition[Y][W] = transition[S][W];
-    transition[LM][W] = log10((tau*tau*tau)/(eta*eta*eta*eta*eta));
-    transition[M][W] = log10((tau*tau)/(eta*eta*eta*eta));
-    transition[D][W] = transition[M][W];
-    transition[I][W] = log10((tau*tau)/(eta*eta*eta));
-    transition[RM][W] = log10(tau/eta);
-    transition[W][W] = 0;
+    T[S][W] = log10((tau*tau*tau)/(eta*eta*eta*eta*eta*eta));
+    T[X][W] = T[S][W];
+    T[Y][W] = T[S][W];
+    T[LM][W] = log10((tau*tau*tau)/(eta*eta*eta*eta*eta));
+    T[M][W] = log10((tau*tau)/(eta*eta*eta*eta));
+    T[D][W] = T[M][W];
+    T[I][W] = log10((tau*tau)/(eta*eta*eta));
+    T[RM][W] = log10(tau/eta);
+    T[W][W] = 0;
 
-    transition[S][Z] = log10((tau*tau*tau)/(eta*eta*eta*eta*eta*eta));
-    transition[X][Z] = transition[S][Z];
-    transition[Y][Z] = transition[S][Z];
-    transition[LM][Z] = log10((tau*tau*tau)/(eta*eta*eta*eta*eta));
-    transition[M][Z] = log10((tau*tau)/(eta*eta*eta*eta));
-    transition[D][Z] = transition[M][W];
-    transition[I][Z] = log10((tau*tau)/(eta*eta*eta));
-    transition[RM][Z] = log10(tau/eta);
-    transition[W][Z] = 0;
-    transition[Z][Z] = 0;
+    T[S][Z] = log10((tau*tau*tau)/(eta*eta*eta*eta*eta*eta));
+    T[X][Z] = T[S][Z];
+    T[Y][Z] = T[S][Z];
+    T[LM][Z] = log10((tau*tau*tau)/(eta*eta*eta*eta*eta));
+    T[M][Z] = log10((tau*tau)/(eta*eta*eta*eta));
+    T[D][Z] = T[M][W];
+    T[I][Z] = log10((tau*tau)/(eta*eta*eta));
+    T[RM][Z] = log10(tau/eta);
+    T[W][Z] = 0;
+    T[Z][Z] = 0;
 
-    //the best alignment score for subsequence (i,j)
-    scoreX  = new double[MAXLEN*MAXLEN];
-    scoreY  = new double[MAXLEN*MAXLEN];
-    scoreLM = new double[MAXLEN*MAXLEN];
-    scoreLI = new double[MAXLEN*MAXLEN];
-    scoreLD = new double[MAXLEN*MAXLEN];
-    scoreM  = new double[MAXLEN*MAXLEN];
-    scoreI  = new double[MAXLEN*MAXLEN];
-    scoreD  = new double[MAXLEN*MAXLEN];
-    scoreRM = new double[MAXLEN*MAXLEN];
-    scoreRI = new double[MAXLEN*MAXLEN];
-    scoreRD = new double[MAXLEN*MAXLEN];
-    scoreW  = new double[MAXLEN*MAXLEN];
-    scoreZ  = new double[MAXLEN*MAXLEN];
+    //the best alignment V_ for subsequence (i,j)
+    V_X  = new double[MAXLEN*MAXLEN];
+    V_Y  = new double[MAXLEN*MAXLEN];
+    V_LM = new double[MAXLEN*MAXLEN];
+    V_LI = new double[MAXLEN*MAXLEN];
+    V_LD = new double[MAXLEN*MAXLEN];
+    V_M  = new double[MAXLEN*MAXLEN];
+    V_I  = new double[MAXLEN*MAXLEN];
+    V_D  = new double[MAXLEN*MAXLEN];
+    V_RM = new double[MAXLEN*MAXLEN];
+    V_RI = new double[MAXLEN*MAXLEN];
+    V_RD = new double[MAXLEN*MAXLEN];
+    V_W  = new double[MAXLEN*MAXLEN];
+    V_Z  = new double[MAXLEN*MAXLEN];
 
     //the matching position of the model sequence for the best alignment for subsequence (i,j)
     positionLM = new int32_t[MAXLEN*MAXLEN];
@@ -217,19 +217,19 @@ void CHMM::initialize(const char* lflank, const char* ru, const char* rflank)
 
     //used for back tracking, this points to the state prior to the alignment for subsequence (i,j)
     //that ends with the corresponding state
-    pathX  = new char[MAXLEN*MAXLEN];
-    pathY  = new char[MAXLEN*MAXLEN];
-    pathLM = new char[MAXLEN*MAXLEN];
-    pathLI = new char[MAXLEN*MAXLEN];
-    pathLD = new char[MAXLEN*MAXLEN];
-    pathM  = new char[MAXLEN*MAXLEN];
-    pathI  = new char[MAXLEN*MAXLEN];
-    pathD  = new char[MAXLEN*MAXLEN];
-    pathRM = new char[MAXLEN*MAXLEN];
-    pathRI = new char[MAXLEN*MAXLEN];
-    pathRD = new char[MAXLEN*MAXLEN];
-    pathW  = new char[MAXLEN*MAXLEN];
-    pathZ  = new char[MAXLEN*MAXLEN];
+    U_X  = new char[MAXLEN*MAXLEN];
+    U_Y  = new char[MAXLEN*MAXLEN];
+    U_LM = new char[MAXLEN*MAXLEN];
+    U_LI = new char[MAXLEN*MAXLEN];
+    U_LD = new char[MAXLEN*MAXLEN];
+    U_M  = new char[MAXLEN*MAXLEN];
+    U_I  = new char[MAXLEN*MAXLEN];
+    U_D  = new char[MAXLEN*MAXLEN];
+    U_RM = new char[MAXLEN*MAXLEN];
+    U_RI = new char[MAXLEN*MAXLEN];
+    U_RD = new char[MAXLEN*MAXLEN];
+    U_W  = new char[MAXLEN*MAXLEN];
+    U_Z  = new char[MAXLEN*MAXLEN];
 
     for (size_t i=0; i<MAXLEN; ++i)
     {
@@ -241,72 +241,72 @@ void CHMM::initialize(const char* lflank, const char* ru, const char* rflank)
             //note that for j>0, the values are invalid in X since Y can never preceed X
             if (j) //(i,j)
             {
-                scoreX[c] = 0;
-                pathX[c] = 'N';
+                V_X[c] = 0;
+                U_X[c] = 'N';
             }
             else
             {
-                scoreX[c] = -DBL_MAX;
+                V_X[c] = -DBL_MAX;
                 if (i) // (i,0)
                 {
-                    pathX[c] = i==1? 'S' : 'X';
+                    U_X[c] = i==1? 'S' : 'X';
                 }  
                 else // (0,0)
                 {
-                    pathX[c] = 'N';   
+                    U_X[c] = 'N';   
                 } 
             }    
            
             //Y    
-            scoreY[c] = 0;
+            V_Y[c] = 0;
             if (i)
             {
                 if (j) // (i,j)
                 {
-                    pathY[c] = j==1? 'X' : 'Y';
+                    U_Y[c] = j==1? 'X' : 'Y';
                 }  
                 else // (i,0)
                 {
-                    pathY[c] = 'N';   
+                    U_Y[c] = 'N';   
                 } 
             }
             else
             {
                 if (j) // (0,j)
                 {
-                    pathY[c] = j==1? 'S' : 'Y';
+                    U_Y[c] = j==1? 'S' : 'Y';
                 }  
                 else // (0,0)
                 {
-                    pathY[c] = 'N';   
+                    U_Y[c] = 'N';   
                 }
             } 
             
-            scoreM[c] = -DBL_MAX;
-            scoreI[c] = -DBL_MAX;
-            scoreD[c] = -DBL_MAX;
-            scoreW[c] = -DBL_MAX;
-            scoreZ[c] = -DBL_MAX;
+            V_M[c] = -DBL_MAX;
+            V_I[c] = -DBL_MAX;
+            V_D[c] = -DBL_MAX;
+            V_W[c] = -DBL_MAX;
+            V_Z[c] = -DBL_MAX;
 
             if (j)
             {
-                pathX[c] = 'Y';
-                pathY[c] = 'Y';
-                pathM[c] = 'Y';
-                pathI[c] = 'Y';
-                pathD[c] = 'Y';
-                pathW[c] = 'Y';
-                pathZ[c] = 'Y';
+                U_X[c] = 'Y';
+                U_Y[c] = 'Y';
+                U_M[c] = 'Y';
+                U_I[c] = 'Y';
+                U_D[c] = 'Y';
+                U_W[c] = 'Y';
+                U_Z[c] = 'Y';
             }
             else
             {
-                pathX[c] = 'X';
-                pathY[c] = 'X';
-                pathM[c] = 'X';
-                pathI[c] = 'X';
-                pathD[c] = 'X';
-                pathW[c] = 'X';
-                pathZ[c] = 'X';
+                U_X[c] = 'X';
+                U_Y[c] = 'X';
+                U_M[c] = 'X';
+                U_I[c] = 'X';
+                U_D[c] = 'X';
+                U_W[c] = 'X';
+                U_Z[c] = 'X';
             }
         }
     }
@@ -315,17 +315,17 @@ void CHMM::initialize(const char* lflank, const char* ru, const char* rflank)
     logEta = log10(eta);
     logTau = log10(tau);
 
-    scoreX[0*MAXLEN+0] = 0;
-    scoreY[0*MAXLEN+0] = 0;
-    scoreM[0*MAXLEN+0] = 0;
-    scoreW[0*MAXLEN+0] = 0;
-    scoreZ[0*MAXLEN+0] = 0;
-    pathX[0*MAXLEN+0] = 'N';
-    pathX[1*MAXLEN+0] = 'S';
-    pathY[0*MAXLEN+0] = 'N';
-    pathY[0*MAXLEN+1] = 'S';
-    pathM[0*MAXLEN+0] = 'N';
-    pathM[1*MAXLEN+1] = 'S';
+    V_X[0*MAXLEN+0] = 0;
+    V_Y[0*MAXLEN+0] = 0;
+    V_M[0*MAXLEN+0] = 0;
+    V_W[0*MAXLEN+0] = 0;
+    V_Z[0*MAXLEN+0] = 0;
+    U_X[0*MAXLEN+0] = 'N';
+    U_X[1*MAXLEN+0] = 'S';
+    U_Y[0*MAXLEN+0] = 'N';
+    U_Y[0*MAXLEN+1] = 'S';
+    U_M[0*MAXLEN+0] = 'N';
+    U_M[1*MAXLEN+1] = 'S';
 
 };
 
@@ -352,7 +352,7 @@ void CHMM::align(const char* read, const char* qual, bool debug)
 
     //alignment
     //take into consideration
-    for (size_t i=1; i<=plen; ++i)
+    for (size_t i=1; i<=rlen; ++i)
     {
         for (size_t j=1; j<=rlen; ++j)
         {
@@ -370,12 +370,12 @@ void CHMM::align(const char* read, const char* qual, bool debug)
             ////////////////
             
             //pick up base
-            double xlm = transition[X][M];
+            double xlm = T[X][M];
             
-            double ylm = transition[Y][M];
-            double lmlm = scoreLM[d] + transition[M][M];
-            double lilm = scoreLI[d] + transition[I][M];
-            double ldlm = scoreLD[d] + transition[D][M];
+            double ylm = T[Y][M];
+            double lmlm = V_LM[d] + T[M][M];
+            double lilm = V_LI[d] + T[I][M];
+            double ldlm = V_LD[d] + T[D][M];
 
             max = xlm;
             maxPath = 'X';
@@ -401,12 +401,12 @@ void CHMM::align(const char* read, const char* qual, bool debug)
 //                maxPath = 'D';
 //            }
 //
-//           // scoreM[i*MAXLEN+j] = max + log10_emission_odds(x[i-1], y[j-1], lt->pl2prob((uint32_t) qual[j-1]-33));
-//            pathM[i*MAXLEN+j] = maxPath;
+//           // V_M[i*MAXLEN+j] = max + log10_emission_odds(x[i-1], y[j-1], lt->pl2prob((uint32_t) qual[j-1]-33));
+//            U_M[i*MAXLEN+j] = maxPath;
 
 //            //D
-//            double md = scoreM[(i-1)*MAXLEN+j] + transition[M][D];
-//            double dd = scoreD[(i-1)*MAXLEN+j] + transition[D][D];
+//            double md = V_M[(i-1)*MAXLEN+j] + T[M][D];
+//            double dd = V_D[(i-1)*MAXLEN+j] + T[D][D];
 //
 //            max = md;
 //            maxPath = 'M';
@@ -417,12 +417,12 @@ void CHMM::align(const char* read, const char* qual, bool debug)
 //                maxPath = 'D';
 //            }
 //
-//            scoreD[i*MAXLEN+j] = max;
-//            pathD[i*MAXLEN+j] = maxPath;
+//            V_D[i*MAXLEN+j] = max;
+//            U_D[i*MAXLEN+j] = maxPath;
 //
 //            //I
-//            double mi = scoreM[i*MAXLEN+(j-1)] + transition[M][I];
-//            double ii = scoreI[i*MAXLEN+(j-1)] + transition[I][I];
+//            double mi = V_M[i*MAXLEN+(j-1)] + T[M][I];
+//            double ii = V_I[i*MAXLEN+(j-1)] + T[I][I];
 //
 //            max = mi;
 //            maxPath = 'M';
@@ -433,12 +433,12 @@ void CHMM::align(const char* read, const char* qual, bool debug)
 //                maxPath = 'I';
 //            }
 //
-//            scoreI[i*MAXLEN+j] = max;
-//            pathI[i*MAXLEN+j] = maxPath;
+//            V_I[i*MAXLEN+j] = max;
+//            U_I[i*MAXLEN+j] = maxPath;
 //
 //            //W
-//            double mw = scoreM[(i-1)*MAXLEN+j] + transition[M][W];
-//            double ww = scoreW[(i-1)*MAXLEN+j] + transition[W][W];
+//            double mw = V_M[(i-1)*MAXLEN+j] + T[M][W];
+//            double ww = V_W[(i-1)*MAXLEN+j] + T[W][W];
 //
 //            max = mw;
 //            maxPath = 'M';
@@ -449,13 +449,13 @@ void CHMM::align(const char* read, const char* qual, bool debug)
 //                maxPath = 'W';
 //            }
 //
-//            scoreW[i*MAXLEN+j] = max;
-//            pathW[i*MAXLEN+j] = maxPath;
+//            V_W[i*MAXLEN+j] = max;
+//            U_W[i*MAXLEN+j] = maxPath;
 //
 //            //Z
-//            double mz = scoreM[i*MAXLEN+(j-1)] + transition[M][Z];
-//            double wz = scoreW[i*MAXLEN+(j-1)] + transition[W][Z];
-//            double zz = scoreZ[i*MAXLEN+(j-1)] + transition[Z][Z];
+//            double mz = V_M[i*MAXLEN+(j-1)] + T[M][Z];
+//            double wz = V_W[i*MAXLEN+(j-1)] + T[W][Z];
+//            double zz = V_Z[i*MAXLEN+(j-1)] + T[Z][Z];
 //
 //            max = mz;
 //            maxPath = 'M';
@@ -471,63 +471,63 @@ void CHMM::align(const char* read, const char* qual, bool debug)
 //                maxPath = 'Z';
 //            }
 //
-//            scoreZ[i*MAXLEN+j] = max;
-//            pathZ[i*MAXLEN+j] = maxPath;
+//            V_Z[i*MAXLEN+j] = max;
+//            U_Z[i*MAXLEN+j] = maxPath;
         }
 
-        scoreM[rlen*MAXLEN+rlen] += logTau-logEta;
+        V_M[rlen*MAXLEN+rlen] += logTau-logEta;
     }
 
     if (debug)
     {
         std::cerr << "\n=X=\n";
-        print(scoreX, rlen+1);
+        print(V_X, rlen+1);
         std::cerr << "\n=Y=\n";
-        print(scoreY, rlen+1);
+        print(V_Y, rlen+1);
         std::cerr << "\n=M=\n";
-        print(scoreM, rlen+1);
+        print(V_M, rlen+1);
         std::cerr << "\n=D=\n";
-        print(scoreD, rlen+1);
+        print(V_D, rlen+1);
         std::cerr << "\n=I=\n";
-        print(scoreI, rlen+1);
+        print(V_I, rlen+1);
         std::cerr << "\n=W=\n";
-        print(scoreW, rlen+1);
+        print(V_W, rlen+1);
         std::cerr << "\n=Z=\n";
-        print(scoreZ, rlen+1);
+        print(V_Z, rlen+1);
         std::cerr << "\n=Path X=\n";
-        print(pathX, rlen+1);
+        print(U_X, rlen+1);
         std::cerr << "\n=Path Y=\n";
-        print(pathY, rlen+1);
+        print(U_Y, rlen+1);
         std::cerr << "\n=Path M=\n";
-        print(pathM, rlen+1);
+        print(U_M, rlen+1);
         std::cerr << "\n=Path D=\n";
-        print(pathD, rlen+1);
+        print(U_D, rlen+1);
         std::cerr << "\n=Path I=\n";
-        print(pathI, rlen+1);
+        print(U_I, rlen+1);
         std::cerr << "\n=Path W=\n";
-        print(pathW, rlen+1);
+        print(U_W, rlen+1);
         std::cerr << "\n=Path Z=\n";
-        print(pathZ, rlen+1);
+        print(U_Z, rlen+1);
     }
 
     trace_path();
 };
 
 /**
- * Trace path after alignment.
+ * Trace U_ after alignment.
  */
 void CHMM::trace_path()
 {
-//    double globalMax = scoreM[rlen*MAXLEN+rlen];
+//    double globalMax = V_M[rlen*MAXLEN+rlen];
 //    char globalMaxPath = 'M';
-//    if (scoreW[rlen*MAXLEN+rlen]>globalMax)
+//    if (V_W[rlen*MAXLEN+rlen]>globalMax)
 //    {
-//        globalMax = scoreW[rlen*MAXLEN+rlen];
+//        globalMax = V_W[rlen*MAXLEN+rlen];
 //        globalMaxPath = 'W';
 //    }
-//    if (scoreZ[rlen*MAXLEN+rlen]>globalMax)
+//    if (V_Z[rlen*MAXLEN+rlen]>globalMax)
 //    {
-//        globalMax = scoreZ[rlen*MAXLEN+rlen];
+//        globalMax = V_Z[rlen*MAXLEN+rlen];
 //        globalMaxPath = 'Z';
 //    }
 //
@@ -548,10 +548,10 @@ void CHMM::trace_path()
 //    ss.str("");
 //    ss << globalMaxPath;
 //
-//    //recursively trace path
-//    trace_path(globalMaxPath, rlen, rlen);
+//    //recursively trace U_
+//    trace_U_(globalMaxPath, rlen, rlen);
 //
-//    path = reverse(ss.str());
+//    U_ = reverse(ss.str());
 //
 //    bool inI = false;
 //    bool inD = false;
@@ -569,9 +569,9 @@ void CHMM::trace_path()
 //    mismatchedBases = 0;
 //
 //    uint32_t x_index=0, y_index=0;
-//    for (uint32_t i=0; i<path.size(); ++i)
+//    for (uint32_t i=0; i<U_.size(); ++i)
 //    {
-//        if (!inI && path[i]=='I')
+//        if (!inI && U_[i]=='I')
 //        {
 //            inI = true;
 //            indelStartsInPath.push_back(i);
@@ -580,7 +580,7 @@ void CHMM::trace_path()
 //            indelStartsInY.push_back(y_index);
 //        }
 //
-//        if (inI && path[i]!='I')
+//        if (inI && U_[i]!='I')
 //        {
 //            inI = false;
 //            indelEndsInPath.push_back(i);
@@ -588,7 +588,7 @@ void CHMM::trace_path()
 //            indelEndsInY.push_back(y_index);
 //        }
 //
-//        if (!inD && path[i]=='D')
+//        if (!inD && U_[i]=='D')
 //        {
 //            inD = true;
 //            indelStartsInPath.push_back(i);
@@ -597,7 +597,7 @@ void CHMM::trace_path()
 //            indelStartsInY.push_back(y_index);
 //        }
 //
-//        if (inD && path[i]!='D')
+//        if (inD && U_[i]!='D')
 //        {
 //            inD = false;
 //            indelEndsInPath.push_back(i);
@@ -605,7 +605,7 @@ void CHMM::trace_path()
 //            indelEndsInY.push_back(y_index);
 //        }
 //
-//        if (path[i]=='M')
+//        if (U_[i]=='M')
 //        {
 //            if (x[x_index]== y[y_index])
 //            {
@@ -620,12 +620,12 @@ void CHMM::trace_path()
 //            ++y_index;
 //        }
 //
-//        if (path[i]=='I' || path[i]=='Y' || path[i]=='Z')
+//        if (U_[i]=='I' || U_[i]=='Y' || U_[i]=='Z')
 //        {
 //            ++y_index;
 //        }
 //
-//        if (path[i]=='D' || path[i]=='X' || path[i]=='W')
+//        if (U_[i]=='D' || U_[i]=='X' || U_[i]=='W')
 //        {
 //            ++x_index;
 //        }
@@ -674,9 +674,9 @@ void CHMM::print_alignment(std::string& pad)
 //    std::stringstream yAligned;
 //    std::stringstream qualAligned;
 //    uint32_t xIndex=0, yIndex=0;
-//    for (uint32_t i=0; i<path.size(); ++i)
+//    for (uint32_t i=0; i<U_.size(); ++i)
 //    {
-//        char state = path.at(i);
+//        char state = U_.at(i);
 //        if (state=='S' || state=='E')
 //        {
 //            xAligned << state;
@@ -716,7 +716,7 @@ void CHMM::print_alignment(std::string& pad)
 //    }
 //
 //    std::cerr << pad << "X    " << xAligned.str() << "E\n";
-//    std::cerr << pad << "Path " << path << "E\n";
+//    std::cerr << pad << "Path " << U_ << "E\n";
 //    std::cerr << pad << "Y    " << yAligned.str() << "E\n";
 //    std::cerr << pad << "Qual " << qualAligned.str() << "E\n\n";
 //
