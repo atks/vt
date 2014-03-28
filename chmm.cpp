@@ -26,15 +26,15 @@
 #define S  0
 #define X  1
 #define Y  2
-#define LM 3
-#define LI 4
-#define LD 5
+#define ML 3
+#define IL 4
+#define DL 5
 #define M  6
 #define I  7
 #define D  8
-#define RM 9
-#define RI 10
-#define RD 11
+#define MR 9
+#define IR 10
+#define DR 11
 #define W  12
 #define Z  13
 #define E  14
@@ -62,39 +62,29 @@ CHMM::~CHMM()
 {
     delete V_X;
     delete V_Y;
-    delete V_LM;
-    delete V_LI;
-    delete V_LD;
+    delete V_ML;
+    delete V_IL;
+    delete V_DL;
     delete V_M;
     delete V_I;
     delete V_D;
-    delete V_RM;
-    delete V_RI;
-    delete V_RD;
+    delete V_MR;
+    delete V_IR;
+    delete V_DR;
     delete V_W;
     delete V_Z;
 
-    delete positionLM;
-    delete positionLI;
-    delete positionLD;
-    delete positionM;
-    delete positionI;
-    delete positionD;
-    delete positionRM;
-    delete positionRI;
-    delete positionRD;
-
     delete U_X;
     delete U_Y;
-    delete U_LM;
-    delete U_LI;
-    delete U_LD;
+    delete U_ML;
+    delete U_IL;
+    delete U_DL;
     delete U_M;
     delete U_I;
     delete U_D;
-    delete U_RM;
-    delete U_RI;
-    delete U_RD;
+    delete U_MR;
+    delete U_IR;
+    delete U_DR;
     delete U_W;
     delete U_Z;
 };
@@ -118,23 +108,23 @@ void CHMM::initialize(const char* lflank, const char* ru, const char* rflank)
     T[X][Y] = 0;
     T[Y][Y] = 0;
 
-    T[S][LM] = log10((1-tau)/(eta*(1-eta)*(1-eta)));
-    T[X][LM] = T[S][LM];
-    T[Y][LM] = T[S][LM];
-    T[LM][LM] = log10(((1-2*delta-tau))/((1-eta)*(1-eta)));
-    T[LD][LM] = log10(((1-epsilon))/((1-eta)*(1-eta)));
-    T[LI][LM] = T[LD][LM];
+    T[S][ML] = log10((1-tau)/(eta*(1-eta)*(1-eta)));
+    T[X][ML] = T[S][ML];
+    T[Y][ML] = T[S][ML];
+    T[ML][ML] = log10(((1-2*delta-tau))/((1-eta)*(1-eta)));
+    T[DL][ML] = log10(((1-epsilon))/((1-eta)*(1-eta)));
+    T[IL][ML] = T[DL][ML];
 
-    T[LM][LD] = log10((delta)/((1-eta)));
-    T[LD][LD] = log10((epsilon)/((1-eta)));
+    T[ML][DL] = log10((delta)/((1-eta)));
+    T[DL][DL] = log10((epsilon)/((1-eta)));
 
-    T[LM][LI] = T[LM][LD];
-    T[LI][LI] = T[LD][LD];
+    T[ML][IL] = T[ML][DL];
+    T[IL][IL] = T[DL][DL];
 
     T[S][M] = log10((tau*(1-2*delta-tau))/(eta*eta*eta*(1-eta)*(1-eta)));
     T[X][M] = T[S][M];
     T[Y][M] = T[S][M];
-    T[LM][M] = log10((tau*(1-2*delta-tau))/(eta*eta*eta*(1-eta)*(1-eta)));
+    T[ML][M] = log10((tau*(1-2*delta-tau))/(eta*eta*eta*(1-eta)*(1-eta)));
     T[M][M] = log10((tau*(1-2*delta-tau))/(eta*eta*(1-eta)*(1-eta)));
     T[D][M] = log10(((1-epsilon-tau))/((1-eta)*(1-eta)));
     T[I][M] = T[I][M];
@@ -142,101 +132,90 @@ void CHMM::initialize(const char* lflank, const char* ru, const char* rflank)
     T[S][D] = log10((tau*delta)/(eta*eta*(1-eta)));
     T[X][D] = T[S][D];
     T[Y][D] = T[S][D];
-    T[LM][D] = log10((tau*delta)/((1-eta)));
+    T[ML][D] = log10((tau*delta)/((1-eta)));
     T[M][D] = log10(delta/(1-eta));
 
     T[S][I] = log10((tau*delta)/(eta*eta*eta*(1-eta)));
     T[X][I] = T[S][I];
     T[Y][I] = T[S][I];
-    T[LM][I] = log10((tau*delta)/(eta*(1-eta)));
+    T[ML][I] = log10((tau*delta)/(eta*(1-eta)));
     T[M][I] = log10(delta/(1-eta));
 
-    T[S][RM] = log10((tau*tau*(1-tau))/(eta*eta*eta*eta*eta*(1-eta)*(1-eta)));
-    T[X][RM] = T[S][RM];
-    T[Y][RM] = T[S][RM];
-    T[LM][RM] = log10((tau*tau*(1-tau))/(eta*eta*eta*eta*(1-eta)*(1-eta)));
-    T[M][RM] = log10((tau*(1-tau))/(eta*eta*eta*(1-eta)*(1-eta)));
-    T[D][RM] = T[M][RM];
-    T[I][RM] = log10((tau*(1-tau))/(eta*eta*(1-eta)*(1-eta)));
-    T[RM][RM] = log10(((1-2*delta-tau))/((1-eta)*(1-eta)));
-    T[RD][RM] = log10(((1-epsilon))/((1-eta)*(1-eta)));
-    T[RI][RM] = T[RD][RM];
+    T[S][MR] = log10((tau*tau*(1-tau))/(eta*eta*eta*eta*eta*(1-eta)*(1-eta)));
+    T[X][MR] = T[S][MR];
+    T[Y][MR] = T[S][MR];
+    T[ML][MR] = log10((tau*tau*(1-tau))/(eta*eta*eta*eta*(1-eta)*(1-eta)));
+    T[M][MR] = log10((tau*(1-tau))/(eta*eta*eta*(1-eta)*(1-eta)));
+    T[D][MR] = T[M][MR];
+    T[I][MR] = log10((tau*(1-tau))/(eta*eta*(1-eta)*(1-eta)));
+    T[MR][MR] = log10(((1-2*delta-tau))/((1-eta)*(1-eta)));
+    T[DR][MR] = log10(((1-epsilon))/((1-eta)*(1-eta)));
+    T[IR][MR] = T[DR][MR];
 
-    T[RM][RD] = log10(delta/(1-eta));
-    T[RD][RD] = log10(epsilon/(1-eta));
+    T[MR][DR] = log10(delta/(1-eta));
+    T[DR][DR] = log10(epsilon/(1-eta));
 
-    T[RM][RI] = T[RM][RD];
-    T[RI][RI] = T[RM][RI];
+    T[MR][IR] = T[MR][DR];
+    T[IR][IR] = T[MR][IR];
 
     T[S][W] = log10((tau*tau*tau)/(eta*eta*eta*eta*eta*eta));
     T[X][W] = T[S][W];
     T[Y][W] = T[S][W];
-    T[LM][W] = log10((tau*tau*tau)/(eta*eta*eta*eta*eta));
+    T[ML][W] = log10((tau*tau*tau)/(eta*eta*eta*eta*eta));
     T[M][W] = log10((tau*tau)/(eta*eta*eta*eta));
     T[D][W] = T[M][W];
     T[I][W] = log10((tau*tau)/(eta*eta*eta));
-    T[RM][W] = log10(tau/eta);
+    T[MR][W] = log10(tau/eta);
     T[W][W] = 0;
 
     T[S][Z] = log10((tau*tau*tau)/(eta*eta*eta*eta*eta*eta));
     T[X][Z] = T[S][Z];
     T[Y][Z] = T[S][Z];
-    T[LM][Z] = log10((tau*tau*tau)/(eta*eta*eta*eta*eta));
+    T[ML][Z] = log10((tau*tau*tau)/(eta*eta*eta*eta*eta));
     T[M][Z] = log10((tau*tau)/(eta*eta*eta*eta));
     T[D][Z] = T[M][W];
     T[I][Z] = log10((tau*tau)/(eta*eta*eta));
-    T[RM][Z] = log10(tau/eta);
+    T[MR][Z] = log10(tau/eta);
     T[W][Z] = 0;
     T[Z][Z] = 0;
 
     //the best alignment V_ for subsequence (i,j)
     V_X  = new double[MAXLEN*MAXLEN];
     V_Y  = new double[MAXLEN*MAXLEN];
-    V_LM = new double[MAXLEN*MAXLEN];
-    V_LI = new double[MAXLEN*MAXLEN];
-    V_LD = new double[MAXLEN*MAXLEN];
+    V_ML = new double[MAXLEN*MAXLEN];
+    V_IL = new double[MAXLEN*MAXLEN];
+    V_DL = new double[MAXLEN*MAXLEN];
     V_M  = new double[MAXLEN*MAXLEN];
     V_I  = new double[MAXLEN*MAXLEN];
     V_D  = new double[MAXLEN*MAXLEN];
-    V_RM = new double[MAXLEN*MAXLEN];
-    V_RI = new double[MAXLEN*MAXLEN];
-    V_RD = new double[MAXLEN*MAXLEN];
+    V_MR = new double[MAXLEN*MAXLEN];
+    V_IR = new double[MAXLEN*MAXLEN];
+    V_DR = new double[MAXLEN*MAXLEN];
     V_W  = new double[MAXLEN*MAXLEN];
     V_Z  = new double[MAXLEN*MAXLEN];
 
-    //the matching position of the model sequence for the best alignment for subsequence (i,j)
-    positionLM = new int32_t[MAXLEN*MAXLEN];
-    positionLI = new int32_t[MAXLEN*MAXLEN];
-    positionLD = new int32_t[MAXLEN*MAXLEN];
-    positionM  = new int32_t[MAXLEN*MAXLEN];
-    positionI  = new int32_t[MAXLEN*MAXLEN];
-    positionD  = new int32_t[MAXLEN*MAXLEN];
-    positionRM = new int32_t[MAXLEN*MAXLEN];
-    positionRI = new int32_t[MAXLEN*MAXLEN];
-    positionRD = new int32_t[MAXLEN*MAXLEN];
-
     //used for back tracking, this points to the state prior to the alignment for subsequence (i,j)
     //that ends with the corresponding state
-    U_X  = new char[MAXLEN*MAXLEN];
-    U_Y  = new char[MAXLEN*MAXLEN];
-    U_LM = new char[MAXLEN*MAXLEN];
-    U_LI = new char[MAXLEN*MAXLEN];
-    U_LD = new char[MAXLEN*MAXLEN];
-    U_M  = new char[MAXLEN*MAXLEN];
-    U_I  = new char[MAXLEN*MAXLEN];
-    U_D  = new char[MAXLEN*MAXLEN];
-    U_RM = new char[MAXLEN*MAXLEN];
-    U_RI = new char[MAXLEN*MAXLEN];
-    U_RD = new char[MAXLEN*MAXLEN];
-    U_W  = new char[MAXLEN*MAXLEN];
-    U_Z  = new char[MAXLEN*MAXLEN];
+    U_X  = new int32_t[MAXLEN*MAXLEN];
+    U_Y  = new int32_t[MAXLEN*MAXLEN];
+    U_ML = new int32_t[MAXLEN*MAXLEN];
+    U_IL = new int32_t[MAXLEN*MAXLEN];
+    U_DL = new int32_t[MAXLEN*MAXLEN];
+    U_M  = new int32_t[MAXLEN*MAXLEN];
+    U_I  = new int32_t[MAXLEN*MAXLEN];
+    U_D  = new int32_t[MAXLEN*MAXLEN];
+    U_MR = new int32_t[MAXLEN*MAXLEN];
+    U_IR = new int32_t[MAXLEN*MAXLEN];
+    U_DR = new int32_t[MAXLEN*MAXLEN];
+    U_W  = new int32_t[MAXLEN*MAXLEN];
+    U_Z  = new int32_t[MAXLEN*MAXLEN];
 
     for (size_t i=0; i<MAXLEN; ++i)
     {
         for (size_t j=0; j<MAXLEN; ++j)
         {
             size_t c = i*MAXLEN+j;
-           
+
             //X
             //note that for j>0, the values are invalid in X since Y can never preceed X
             if (j) //(i,j)
@@ -250,38 +229,38 @@ void CHMM::initialize(const char* lflank, const char* ru, const char* rflank)
                 if (i) // (i,0)
                 {
                     U_X[c] = i==1? 'S' : 'X';
-                }  
+                }
                 else // (0,0)
                 {
-                    U_X[c] = 'N';   
-                } 
-            }    
-           
-            //Y    
+                    U_X[c] = 'N';
+                }
+            }
+
+            //Y
             V_Y[c] = 0;
             if (i)
             {
                 if (j) // (i,j)
                 {
                     U_Y[c] = j==1? 'X' : 'Y';
-                }  
+                }
                 else // (i,0)
                 {
-                    U_Y[c] = 'N';   
-                } 
+                    U_Y[c] = 'N';
+                }
             }
             else
             {
                 if (j) // (0,j)
                 {
                     U_Y[c] = j==1? 'S' : 'Y';
-                }  
+                }
                 else // (0,0)
                 {
-                    U_Y[c] = 'N';   
+                    U_Y[c] = 'N';
                 }
-            } 
-            
+            }
+
             V_M[c] = -DBL_MAX;
             V_I[c] = -DBL_MAX;
             V_D[c] = -DBL_MAX;
@@ -310,7 +289,7 @@ void CHMM::initialize(const char* lflank, const char* ru, const char* rflank)
             }
         }
     }
-    
+
 
     logEta = log10(eta);
     logTau = log10(tau);
@@ -368,14 +347,14 @@ void CHMM::align(const char* read, const char* qual, bool debug)
             ////////////////
             //LM
             ////////////////
-            
+
             //pick up base
             double xlm = T[X][M];
-            
+
             double ylm = T[Y][M];
-            double lmlm = V_LM[d] + T[M][M];
-            double lilm = V_LI[d] + T[I][M];
-            double ldlm = V_LD[d] + T[D][M];
+            double lmlm = V_ML[d] + T[M][M];
+            double lilm = V_IL[d] + T[I][M];
+            double ldlm = V_DL[d] + T[D][M];
 
             max = xlm;
             maxPath = 'X';
@@ -514,7 +493,7 @@ void CHMM::align(const char* read, const char* qual, bool debug)
 };
 
 /**
- * Trace U_ after alignment.
+ * Trace path after alignment.
  */
 void CHMM::trace_path()
 {
@@ -731,11 +710,11 @@ void CHMM::print_alignment(std::string& pad)
 /**
  * Prints a double matrix.
  */
-void CHMM::print(double *v, uint32_t rlen)
+void CHMM::print(double *v, size_t rlen)
 {
-    for (uint32_t i=0; i<rlen; ++i)
+    for (size_t i=0; i<rlen; ++i)
     {
-        for (uint32_t j=0; j<rlen; ++j)
+        for (size_t j=0; j<rlen; ++j)
         {
             std::cerr << (v[i*MAXLEN+j]==-DBL_MAX?-1000:v[i*MAXLEN+j]) << "\t";
         }
@@ -747,11 +726,11 @@ void CHMM::print(double *v, uint32_t rlen)
 /**
  * Prints a char matrix.
  */
-void CHMM::print(char *v, uint32_t rlen)
+void CHMM::print(int32_t *v, size_t rlen)
 {
-    for (uint32_t i=0; i<rlen; ++i)
+    for (size_t i=0; i<rlen; ++i)
     {
-        for (uint32_t j=0; j<rlen; ++j)
+        for (size_t j=0; j<rlen; ++j)
         {
           std::cerr << v[i*MAXLEN+j] << "\t";
         }
@@ -764,15 +743,15 @@ void CHMM::print(char *v, uint32_t rlen)
 #undef S
 #undef X
 #undef Y
-#undef LM
-#undef LI
-#undef LD
+#undef ML
+#undef IL
+#undef DL
 #undef M
 #undef I
 #undef D
-#undef RM
-#undef RI
-#undef RD
+#undef MR
+#undef IR
+#undef DR
 #undef W
 #undef Z
 #undef E
