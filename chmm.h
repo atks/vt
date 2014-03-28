@@ -28,6 +28,14 @@
 
 #define NSTATES 15
 
+/*functions for getting trace back information*/
+#define track_u(x) (((x)&0xFF000000)>>24)
+#define track_d(x) (((x)&0x00FF0000)>>16)
+#define track_c(x) (((x)&0x0000FF00)>>8)
+#define track_p(x) (((x)&0x000000FF))
+
+
+
 class CHMM
 {
     public:
@@ -55,41 +63,31 @@ class CHMM
 
     double *V_X;
     double *V_Y;
-    double *V_LM;
-    double *V_LI;
-    double *V_LD;
+    double *V_ML;
+    double *V_IL;
+    double *V_DL;
     double *V_M;
     double *V_I;
     double *V_D;
-    double *V_RM;
-    double *V_RI;
-    double *V_RD;
+    double *V_MR;
+    double *V_IR;
+    double *V_DR;
     double *V_W;
     double *V_Z;
 
-    int32_t *positionLM;
-    int32_t *positionLI;
-    int32_t *positionLD;
-    int32_t *positionM;
-    int32_t *positionI;
-    int32_t *positionD;
-    int32_t *positionRM;
-    int32_t *positionRI;
-    int32_t *positionRD;
-    
-    char *U_X;
-    char *U_Y;
-    char *U_LM;
-    char *U_LI;
-    char *U_LD;
-    char *U_M;
-    char *U_I;
-    char *U_D;
-    char *U_RM;
-    char *U_RI;
-    char *U_RD;
-    char *U_W;
-    char *U_Z;
+    int32_t *U_X;
+    int32_t *U_Y;
+    int32_t *U_ML;
+    int32_t *U_IL;
+    int32_t *U_DL;
+    int32_t *U_M;
+    int32_t *U_I;
+    int32_t *U_D;
+    int32_t *U_MR;
+    int32_t *U_IR;
+    int32_t *U_DR;
+    int32_t *U_W;
+    int32_t *U_Z;
 
     LogTool *lt;
 
@@ -129,6 +127,11 @@ class CHMM
     double log10_emission_odds(char readBase, char probeBase, double e);
 
     /**
+     * Advance position in model.
+     */
+    inline int32_t advance_X(int32_t state, int32_t track);
+
+    /**
      * Prints an alignment.
      */
     void print_alignment();
@@ -141,12 +144,12 @@ class CHMM
     /**
      * Prints a double matrix.
      */
-    void print(double *v, uint32_t rlen);
+    void print(double *v, size_t rlen);
 
     /**
-     * Prints a char matrix.
+     * Prints a int32_t matrix.
      */
-    void print(char *v, uint32_t rlen);
+    void print(int32_t *v, size_t rlen);
 };
 
 #undef NSTATES
