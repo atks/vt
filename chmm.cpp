@@ -24,20 +24,21 @@
 #include "chmm.h"
 #define MAXLEN 250
 #define S  0
-#define X  1
+#define X  1 
 #define Y  2
 #define ML 3
-#define IL 4
-#define DL 5
+#define DL 4
+#define IL 5
 #define M  6
-#define I  7
-#define D  8
+#define D  7
+#define I  8
 #define MR 9
-#define IR 10
-#define DR 11
+#define DR 10
+#define IR 11
 #define W  12
 #define Z  13
 #define E  14
+#define N  15
 
 /**
  * Constructor.
@@ -94,6 +95,10 @@ CHMM::~CHMM()
  */
 void CHMM::initialize(const char* lflank, const char* ru, const char* rflank)
 {
+    this->lflank = lflank;
+    this->ru = ru;
+    this->rflank = rflank;
+    
     delta = 0.001;
     epsilon = 0.5;
     tau = 0.1;
@@ -220,12 +225,12 @@ void CHMM::initialize(const char* lflank, const char* ru, const char* rflank)
             //note that for j>0, the values are invalid in X since Y can never preceed X
             if (j) //(i,j)
             {
-                V_X[c] = 0;
+                V_X[c] = -DBL_MAX;
                 U_X[c] = 'N';
             }
             else
             {
-                V_X[c] = -DBL_MAX;
+                V_X[c] = 0;
                 if (i) // (i,0)
                 {
                     U_X[c] = i==1? 'S' : 'X';
@@ -246,6 +251,7 @@ void CHMM::initialize(const char* lflank, const char* ru, const char* rflank)
                 }
                 else // (i,0)
                 {
+                    V_Y[c] = -DBL_MAX;
                     U_Y[c] = 'N';
                 }
             }
@@ -316,6 +322,8 @@ void CHMM::align(const char* read, const char* qual, bool debug)
     this->read = read; //read
     this->qual = qual;
     rlen = strlen(read);
+    lflen = strlen(lflank);
+    rflen = strlen(rflank);
     plen = lflen + rlen + rflen;
 
     if (rlen>MAXLEN)
@@ -324,6 +332,20 @@ void CHMM::align(const char* read, const char* qual, bool debug)
         exit(1);
     }
 
+    if (1)
+    {
+        std::cerr << "rflank: " << rflank << "\n";
+        std::cerr << "ru: " << ru << "\n";
+        std::cerr << "lflank: " << lflank << "\n";
+        std::cerr << "lflen: " << lflen << "\n";
+        std::cerr << "rflen: " << rflen << "\n";
+        std::cerr << "plen: " << plen << "\n";
+            
+        std::cerr << "read: " << read << "\n";
+        std::cerr << "rlen: " << rlen << "\n";
+            
+    }    
+
     double max = 0;
     char maxPath = 'X';
 
@@ -331,7 +353,7 @@ void CHMM::align(const char* read, const char* qual, bool debug)
 
     //alignment
     //take into consideration
-    for (size_t i=1; i<=rlen; ++i)
+    for (size_t i=1; i<=plen; ++i)
     {
         for (size_t j=1; j<=rlen; ++j)
         {
@@ -340,25 +362,30 @@ void CHMM::align(const char* read, const char* qual, bool debug)
             u = (i-1)*MAXLEN+j;
             l = i*MAXLEN+(j-1);
 
+            //////////////////////////
             //X matrices are invariant
+            //////////////////////////
 
+            //////////////////////////
             //Y matrices are invariant
-
-            ////////////////
-            //LM
-            ////////////////
+            //////////////////////////
+            
+            ////
+            //ML
+            ////
 
             //pick up base
-            double xlm = T[X][M];
-
-            double ylm = T[Y][M];
-            double lmlm = V_ML[d] + T[M][M];
-            double lilm = V_IL[d] + T[I][M];
-            double ldlm = V_DL[d] + T[D][M];
-
-            max = xlm;
-            maxPath = 'X';
+//            double x_ml = T[X][M];
+//            double y_ml = T[Y][M];
+//            
+//            //advance the path for the step before.
+//            double ml_ml = V_ML[d] + T[M][M];
+//            double il_ml = V_IL[d] + T[I][M];
+//            double dl_ml = V_DL[d] + T[D][M];
 //
+//            max = x_ml;
+//            maxPath = 'X';
+
 //            if (ym>max) //special case
 //            {
 //                max = ym;
@@ -380,7 +407,7 @@ void CHMM::align(const char* read, const char* qual, bool debug)
 //                maxPath = 'D';
 //            }
 //
-//           // V_M[i*MAXLEN+j] = max + log10_emission_odds(x[i-1], y[j-1], lt->pl2prob((uint32_t) qual[j-1]-33));
+//            V_M[i*MAXLEN+j] = max + log10_emission_odds(x[i-1], y[j-1], lt->pl2prob((uint32_t) qual[j-1]-33));
 //            U_M[i*MAXLEN+j] = maxPath;
 
 //            //D
@@ -454,40 +481,43 @@ void CHMM::align(const char* read, const char* qual, bool debug)
 //            U_Z[i*MAXLEN+j] = maxPath;
         }
 
-        V_M[rlen*MAXLEN+rlen] += logTau-logEta;
+//        V_M[rlen*MAXLEN+rlen] += logTau-logEta;
     }
 
-    if (debug)
+    if (1)
     {
-        std::cerr << "\n=X=\n";
-        print(V_X, rlen+1);
+        std::cerr << "\n=V_X=\n";
+        print(V_X, plen+1, rlen+1);
+        std::cerr << "\n=U_X=\n";
+        print_U(U_X, plen+1, rlen+1);
         std::cerr << "\n=Y=\n";
-        print(V_Y, rlen+1);
-        std::cerr << "\n=M=\n";
-        print(V_M, rlen+1);
-        std::cerr << "\n=D=\n";
-        print(V_D, rlen+1);
-        std::cerr << "\n=I=\n";
-        print(V_I, rlen+1);
-        std::cerr << "\n=W=\n";
-        print(V_W, rlen+1);
-        std::cerr << "\n=Z=\n";
-        print(V_Z, rlen+1);
-        std::cerr << "\n=Path X=\n";
-        print(U_X, rlen+1);
-        std::cerr << "\n=Path Y=\n";
-        print(U_Y, rlen+1);
-        std::cerr << "\n=Path M=\n";
-        print(U_M, rlen+1);
-        std::cerr << "\n=Path D=\n";
-        print(U_D, rlen+1);
-        std::cerr << "\n=Path I=\n";
-        print(U_I, rlen+1);
-        std::cerr << "\n=Path W=\n";
-        print(U_W, rlen+1);
-        std::cerr << "\n=Path Z=\n";
-        print(U_Z, rlen+1);
+        print(V_Y, plen+1, rlen+1);
+//        std::cerr << "\n=M=\n";
+//        print(V_M, plen+1, rlen+1);
+//        std::cerr << "\n=D=\n";
+//        print(V_D, plen+1, rlen+1);
+//        std::cerr << "\n=I=\n";
+//        print(V_I, plen+1, rlen+1);
+//        std::cerr << "\n=W=\n";
+//        print(V_W, plen+1, rlen+1);
+//        std::cerr << "\n=Z=\n";
+//        print(V_Z, plen+1, rlen+1);
+//        std::cerr << "\n=Path X=\n";
+//        print(U_X, plen+1, rlen+1);
+//        std::cerr << "\n=Path Y=\n";
+//        print(U_Y, plen+1, rlen+1);
+//        std::cerr << "\n=Path M=\n";
+//        print(U_M, plen+1, rlen+1);
+//        std::cerr << "\n=Path D=\n";
+//        print(U_D, plen+1, rlen+1);
+//        std::cerr << "\n=Path I=\n";
+//        print(U_I, plen+1, rlen+1);
+//        std::cerr << "\n=Path W=\n";
+//        print(U_W, plen+1, rlen+1);
+//        std::cerr << "\n=Path Z=\n";
+//        print(U_Z, plen+1, rlen+1);
     }
+    
 
     trace_path();
 };
@@ -616,22 +646,22 @@ void CHMM::trace_path()
 /**
  * Compute log10 emission odds based on equal error probability distribution.
  */
-double CHMM::log10_emission_odds(char readBase, char probeBase, double e)
+double CHMM::log10_emission_odds(char readBase, char probeBase, uint32_t pl)
 {
     //4 encodes for N
     if (readBase=='N' || probeBase=='N')
     {
         //silent match
-        return 0;
+        return -DBL_MAX;
     }
 
     if (readBase!=probeBase)
     {
-        return log10(e/3)-logOneSixteenth;
+        return lt->pl2log10_ed3(pl);
     }
     else
     {
-        return log10(1-e)-logOneSixteenth;
+        return lt->pl2log10_1me(pl);
     }
 };
 
@@ -710,13 +740,13 @@ void CHMM::print_alignment(std::string& pad)
 /**
  * Prints a double matrix.
  */
-void CHMM::print(double *v, size_t rlen)
+void CHMM::print(double *v, size_t plen, size_t rlen)
 {
-    for (size_t i=0; i<rlen; ++i)
+    for (size_t i=0; i<plen; ++i)
     {
         for (size_t j=0; j<rlen; ++j)
         {
-            std::cerr << (v[i*MAXLEN+j]==-DBL_MAX?-1000:v[i*MAXLEN+j]) << "\t";
+            std::cerr << (v[i*MAXLEN+j]==-DBL_MAX?NAN:v[i*MAXLEN+j]) << "\t";
         }
 
         std::cerr << "\n";
@@ -726,9 +756,9 @@ void CHMM::print(double *v, size_t rlen)
 /**
  * Prints a char matrix.
  */
-void CHMM::print(int32_t *v, size_t rlen)
+void CHMM::print(int32_t *v, size_t plen, size_t rlen)
 {
-    for (size_t i=0; i<rlen; ++i)
+    for (size_t i=0; i<plen; ++i)
     {
         for (size_t j=0; j<rlen; ++j)
         {
@@ -738,6 +768,29 @@ void CHMM::print(int32_t *v, size_t rlen)
         std::cerr << "\n";
     }
 };
+
+/**
+ * Prints U.
+ */
+void CHMM::print_U(int32_t *U, size_t plen, size_t rlen)
+{
+    for (size_t i=0; i<plen; ++i)
+    {
+        for (size_t j=0; j<rlen; ++j)
+        {
+            int32_t t = U[i*MAXLEN+j];
+            std::cerr << state2string(track_get_u(t)) << "|"
+                      << track_get_d(t) << "|"
+                      << track_get_c(t) << "|"
+                      << track_get_p(t) << (j==rlen-1?"\n":"\t");
+        }
+    }
+};
+
+#define track_get_u(t) (((t)&0xFF000000)>>24)
+#define track_get_d(t) (((t)&0x00FF0000)>>16)
+#define track_get_c(t) (((t)&0x0000FF00)>>8)
+#define track_get_p(t) (((t)&0x000000FF))
 
 #undef MAXLEN
 #undef S
