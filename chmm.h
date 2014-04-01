@@ -26,15 +26,39 @@
 #include <sstream>
 #include "log_tool.h"
 
+#define S  0
+#define X  1
+#define Y  2
+#define ML 3
+#define DL 4
+#define IL 5
+#define M  6
+#define D  7
+#define I  8
+#define MR 9
+#define DR 10
+#define IR 11
+#define W  12
+#define Z  13
+#define E  14
+#define N  15
 #define NSTATES 15
 
 /*functions for getting trace back information*/
-#define track_u(x) (((x)&0xFF000000)>>24)
-#define track_d(x) (((x)&0x00FF0000)>>16)
-#define track_c(x) (((x)&0x0000FF00)>>8)
-#define track_p(x) (((x)&0x000000FF))
-
-
+#define track_get_u(t) (((t)&0xFF000000)>>24)
+#define track_get_d(t) (((t)&0x00FF0000)>>16)
+#define track_get_c(t) (((t)&0x0000FF00)>>8)
+#define track_get_p(t) (((t)&0x000000FF))
+#define track_set_u(t,u) (((t)&0x00FFFFFF)|((u)<<24))
+#define track_set_d(t,d) (((t)&0xFF00FFFF)|((d)<<16))
+#define track_set_c(t,c) (((t)&0xFFFF00FF)|((c)<<8))
+#define track_set_p(t,p) (((t)&0xFFFFFF00)|(p))
+#define make_track(t,u,d,c,p) {\
+        track_set_u(t,u); \
+        track_set_d(t,d); \
+        track_set_c(t,c); \
+        track_set_p(t,p); }
+#define NULL_TRACK 0x0F000000
 
 class CHMM
 {
@@ -44,7 +68,7 @@ class CHMM
     const char* lflank;
     const char* ru;
     const char* rflank;
-    
+
     int32_t rlen, plen, lflen, rulen, rflen;
 
     std::string path;
@@ -124,12 +148,97 @@ class CHMM
     /**
      * Compute log10 emission odds based on equal error probability distribution contrasted against log10(1/16).
      */
-    double log10_emission_odds(char readBase, char probeBase, double e);
+    double log10_emission_odds(char readBase, char probeBase, uint32_t pl);
 
     /**
      * Advance position in model.
      */
-    inline int32_t advance_X(int32_t state, int32_t track);
+    inline int32_t advance_X(int32_t state, int32_t t)
+    {
+        if (track_get_d(t)==N && track_get_p(t)<lflen)
+        {
+            return track_set_d(t, track_get_p(t)+1);
+        }
+        else
+        {
+            return NULL_TRACK;
+        }
+    }
+
+    /**
+     * Prints an alignment.
+     */
+    std::string state2string(int32_t state)
+    {
+        if (state==S)
+        {
+            return "S";
+        }
+        else if (state==X)
+        {
+            return "X";
+        }
+        else if (state==Y)
+        {
+            return "Y";
+        }
+        else if (state==ML)
+        {
+            return "L";
+        }
+        else if (state==DL)
+        {
+            return "D";
+        }
+        else if (state==IL)
+        {
+            return "I";
+        }
+        else if (state==M)
+        {
+            return "M";
+        }
+        else if (state==D)
+        {
+            return "D";
+        }
+        else if (state==I)
+        {
+            return "I";
+        }
+        else if (state==MR)
+        {
+            return "R";
+        }
+        else if (state==DR)
+        {
+            return "D";
+        }
+        else if (state==IR)
+        {
+            return "I";
+        }
+        else if (state==W)
+        {
+            return "W";
+        }
+        else if (state==Z)
+        {
+            return "Z";
+        }
+        else if (state==E)
+        {
+            return "E";
+        }
+        else if (state==N)
+        {
+            return "N";
+        }
+        else
+        {
+            return "!";
+        }
+    }
 
     /**
      * Prints an alignment.
@@ -144,14 +253,37 @@ class CHMM
     /**
      * Prints a double matrix.
      */
-    void print(double *v, size_t rlen);
+    void print(double *v, size_t plen, size_t rlen);
 
     /**
      * Prints a int32_t matrix.
      */
-    void print(int32_t *v, size_t rlen);
+    void print(int32_t *v, size_t plen, size_t rlen);
+    
+    /**
+     * Prints U.
+     */
+    void print_U(int32_t *U, size_t plen, size_t rlen);
+    
 };
 
+#undef MAXLEN
+#undef S
+#undef X
+#undef Y
+#undef ML
+#undef IL
+#undef DL
+#undef M
+#undef I
+#undef D
+#undef MR
+#undef IR
+#undef DR
+#undef W
+#undef Z
+#undef E
+#undef N
 #undef NSTATES
 
 #endif

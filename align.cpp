@@ -61,7 +61,7 @@ class Igor : Program
     std::string lflank;
     std::string ru;
     std::string rflank;
-        
+
     bool debug;
 
     Igor(int argc, char **argv)
@@ -87,7 +87,7 @@ class Igor : Program
             TCLAP::ValueArg<std::string> arg_lflank("l", "l", "left flanks", false, "", "string");
             TCLAP::ValueArg<std::string> arg_ru("u", "u", "repeat unit", false, "", "string");
             TCLAP::ValueArg<std::string> arg_rflank("r", "r", "right flanks", false, "", "string");
-                    
+
             TCLAP::SwitchArg arg_debug("d", "debug", "Debug", false);
 
             cmd.add(arg_method);
@@ -112,7 +112,7 @@ class Igor : Program
             abort();
         }
     };
- 
+
     void align()
     {
         if (method=="lhmm")
@@ -141,7 +141,7 @@ class Igor : Program
             }
             clock_t t0 = clock();
             chmm.initialize(lflank.c_str(), ru.c_str(), rflank.c_str());
-            //chmm.align(y.c_str(), qual.c_str());
+            chmm.align(y.c_str(), qual.c_str());
             chmm.print_alignment();
             clock_t t1 = clock();
             print_time((float)(t1-t0)/CLOCKS_PER_SEC);
