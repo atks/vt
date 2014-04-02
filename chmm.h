@@ -44,6 +44,12 @@
 #define N  15
 #define NSTATES 15
 
+#define LFLANK 0
+#define MOTIF  1 
+#define RFLANK 2
+#define UNMODELED 3
+#define UNCERTAIN 4
+
 /*functions for getting trace back information*/
 #define track_get_u(t) (((t)&0xFF000000)>>24)
 #define track_get_d(t) (((t)&0x00FF0000)>>16)
@@ -53,11 +59,11 @@
 #define track_set_d(t,d) (((t)&0xFF00FFFF)|((d)<<16))
 #define track_set_c(t,c) (((t)&0xFFFF00FF)|((c)<<8))
 #define track_set_p(t,p) (((t)&0xFFFFFF00)|(p))
-#define make_track(t,u,d,c,p) {\
-        track_set_u(t,u); \
-        track_set_d(t,d); \
-        track_set_c(t,c); \
-        track_set_p(t,p); }
+#define make_track(t,u,d,c,p) (\
+        (((t)&0x00000000)|((u)<<24))| \
+        (((t)&0x00000000)|((d)<<16))| \
+        (((t)&0x00000000)|((c)<<8))| \
+        (((t)&0x00000000)|(p)))
 #define NULL_TRACK 0x0F000000
 
 class CHMM
@@ -85,34 +91,9 @@ class CHMM
 
     double T[NSTATES][NSTATES];
 
-    double *V_X;
-    double *V_Y;
-    double *V_ML;
-    double *V_IL;
-    double *V_DL;
-    double *V_M;
-    double *V_I;
-    double *V_D;
-    double *V_MR;
-    double *V_IR;
-    double *V_DR;
-    double *V_W;
-    double *V_Z;
-
-    int32_t *U_X;
-    int32_t *U_Y;
-    int32_t *U_ML;
-    int32_t *U_IL;
-    int32_t *U_DL;
-    int32_t *U_M;
-    int32_t *U_I;
-    int32_t *U_D;
-    int32_t *U_MR;
-    int32_t *U_IR;
-    int32_t *U_DR;
-    int32_t *U_W;
-    int32_t *U_Z;
-
+    double **V;
+    int32_t **U;
+    
     LogTool *lt;
 
     /**
@@ -135,6 +116,11 @@ class CHMM
      */
     void initialize(const char* lflank, const char* ru, const char* rflank);
 
+    /**
+     * 
+     */
+    void proc_comp(int32_t A, int32_t B, int32_t i, bool match);
+    
     /**
      * Align and compute genotype likelihood.
      */
@@ -166,7 +152,7 @@ class CHMM
     }
 
     /**
-     * Prints an alignment.
+     * Converts state to string representation.
      */
     std::string state2string(int32_t state)
     {
@@ -241,6 +227,37 @@ class CHMM
     }
 
     /**
+     * Converts model component to string representation.
+     */
+    std::string component2string(int32_t component)
+    {
+        if (component==LFLANK)
+        {
+            return "l";
+        }
+        else if (component==MOTIF)
+        {
+            return "m";
+        }
+        else if (component==RFLANK)
+        {
+            return "r";
+        }
+        else if (component==UNMODELED)
+        {
+            return "!";
+        }
+        else if (component==UNCERTAIN)
+        {
+            return "?";
+        }
+        
+        else
+        {
+            return "!";
+        }
+    }
+    /**
      * Prints an alignment.
      */
     void print_alignment();
@@ -265,6 +282,10 @@ class CHMM
      */
     void print_U(int32_t *U, size_t plen, size_t rlen);
     
+    /**
+     * Prints track.
+     */
+    void print_track(int32_t t);
 };
 
 #undef MAXLEN
@@ -285,5 +306,9 @@ class CHMM
 #undef E
 #undef N
 #undef NSTATES
+
+#undef LFLANK 
+#undef MOTIF   
+#undef RFLANK
 
 #endif
