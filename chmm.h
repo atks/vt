@@ -24,6 +24,7 @@
 #define CHMM_H
 
 #include <sstream>
+#include <iomanip>
 #include "log_tool.h"
 
 #define S  0
@@ -45,25 +46,24 @@
 #define NSTATES 15
 
 #define LFLANK 0
-#define MOTIF  1 
+#define MOTIF  1
 #define RFLANK 2
-#define UNMODELED 3
-#define UNCERTAIN 4
+#define READ   3
+#define UNMODELED 4
+#define UNCERTAIN 5
 
 /*functions for getting trace back information*/
 #define track_get_u(t) (((t)&0xFF000000)>>24)
 #define track_get_d(t) (((t)&0x00FF0000)>>16)
 #define track_get_c(t) (((t)&0x0000FF00)>>8)
 #define track_get_p(t) (((t)&0x000000FF))
+#define track_get_base(t) (model[track_get_d(t)][track_get_p(t)])
 #define track_set_u(t,u) (((t)&0x00FFFFFF)|((u)<<24))
 #define track_set_d(t,d) (((t)&0xFF00FFFF)|((d)<<16))
 #define track_set_c(t,c) (((t)&0xFFFF00FF)|((c)<<8))
 #define track_set_p(t,p) (((t)&0xFFFFFF00)|(p))
-#define make_track(t,u,d,c,p) (\
-        (((t)&0x00000000)|((u)<<24))| \
-        (((t)&0x00000000)|((d)<<16))| \
-        (((t)&0x00000000)|((c)<<8))| \
-        (((t)&0x00000000)|(p)))
+#define make_track(u,d,c,p) (((u)<<24)|((d)<<16)|((c)<<8)|(p))
+
 #define NULL_TRACK 0x0F000000
 
 class CHMM
@@ -71,14 +71,17 @@ class CHMM
     public:
     const char* read;
     const char* qual;
-    const char* lflank;
-    const char* ru;
-    const char* rflank;
-
-    int32_t rlen, plen, lflen, rulen, rflen;
+    //array indexed by LFLANK, MOTIF, RFLANK
+    char **model;
+    //length of read, probe and components in the model
+    int32_t rlen, plen, lflen, mlen, rflen;
 
     std::string path;
     double maxLogOdds;
+
+    //for track intermediate scores during Viterbi algorithm
+    double max_score;
+    double max_track;
 
     double delta;
     double epsilon;
@@ -93,8 +96,13 @@ class CHMM
 
     double **V;
     int32_t **U;
-    
+
     LogTool *lt;
+
+    typedef int32_t (CHMM::*move) (int32_t t, int32_t j);
+    move **moves;
+
+    std::stringstream ss;
 
     /**
      * Constructor.
@@ -117,10 +125,14 @@ class CHMM
     void initialize(const char* lflank, const char* ru, const char* rflank);
 
     /**
-     * 
+     *
+     *
+     * @A - start state
+     * @B - end state
+     * @i - index
      */
-    void proc_comp(int32_t A, int32_t B, int32_t i, bool match);
-    
+    void proc_comp(int32_t A, int32_t B, int32_t i, int32_t j, int32_t match_type);
+
     /**
      * Align and compute genotype likelihood.
      */
@@ -134,12 +146,12 @@ class CHMM
     /**
      * Compute log10 emission odds based on equal error probability distribution contrasted against log10(1/16).
      */
-    double log10_emission_odds(char readBase, char probeBase, uint32_t pl);
+    double log10_emission_odds(char read_base, char probe_base, uint32_t pl);
 
     /**
      * Advance position in model.
      */
-    inline int32_t advance_X(int32_t state, int32_t t)
+    inline int32_t track_next(int32_t start, int32_t end, int32_t t)
     {
         if (track_get_d(t)==N && track_get_p(t)<lflen)
         {
@@ -154,109 +166,13 @@ class CHMM
     /**
      * Converts state to string representation.
      */
-    std::string state2string(int32_t state)
-    {
-        if (state==S)
-        {
-            return "S";
-        }
-        else if (state==X)
-        {
-            return "X";
-        }
-        else if (state==Y)
-        {
-            return "Y";
-        }
-        else if (state==ML)
-        {
-            return "L";
-        }
-        else if (state==DL)
-        {
-            return "D";
-        }
-        else if (state==IL)
-        {
-            return "I";
-        }
-        else if (state==M)
-        {
-            return "M";
-        }
-        else if (state==D)
-        {
-            return "D";
-        }
-        else if (state==I)
-        {
-            return "I";
-        }
-        else if (state==MR)
-        {
-            return "R";
-        }
-        else if (state==DR)
-        {
-            return "D";
-        }
-        else if (state==IR)
-        {
-            return "I";
-        }
-        else if (state==W)
-        {
-            return "W";
-        }
-        else if (state==Z)
-        {
-            return "Z";
-        }
-        else if (state==E)
-        {
-            return "E";
-        }
-        else if (state==N)
-        {
-            return "N";
-        }
-        else
-        {
-            return "!";
-        }
-    }
+    std::string state2string(int32_t state);
 
     /**
      * Converts model component to string representation.
      */
-    std::string component2string(int32_t component)
-    {
-        if (component==LFLANK)
-        {
-            return "l";
-        }
-        else if (component==MOTIF)
-        {
-            return "m";
-        }
-        else if (component==RFLANK)
-        {
-            return "r";
-        }
-        else if (component==UNMODELED)
-        {
-            return "!";
-        }
-        else if (component==UNCERTAIN)
-        {
-            return "?";
-        }
-        
-        else
-        {
-            return "!";
-        }
-    }
+    std::string component2string(int32_t component);
+
     /**
      * Prints an alignment.
      */
@@ -276,16 +192,614 @@ class CHMM
      * Prints a int32_t matrix.
      */
     void print(int32_t *v, size_t plen, size_t rlen);
-    
+
     /**
      * Prints U.
      */
     void print_U(int32_t *U, size_t plen, size_t rlen);
-    
+
+    /**
+     * Returns a string representation of track.
+     */
+    std::string track2string(int32_t t);
+
     /**
      * Prints track.
      */
     void print_track(int32_t t);
+
+    /**
+     * Moves.
+     */
+    int32_t move_S_X(int32_t t, int32_t j)
+    {
+        return make_track(S,LFLANK,0,1);
+    }
+
+    int32_t move_X_X(int32_t t, int32_t j)
+    {
+        int32_t p;
+        if ((p=track_get_p(t))<lflen)
+        {
+            return make_track(X,LFLANK,0,p+1);
+        }
+        else
+        {
+            return NULL_TRACK;
+        }
+    }
+
+    int32_t move_S_Y(int32_t t, int32_t j)
+    {
+        return make_track(S,LFLANK,0,1);
+    }
+
+    int32_t move_X_Y(int32_t t, int32_t j)
+    {
+        if (track_get_p(t)<lflen)
+        {
+            return t;
+        }
+        else
+        {
+            return NULL_TRACK;
+        }
+
+        return t;
+    }
+
+    int32_t move_Y_Y(int32_t t, int32_t j)
+    {
+        if (j<rlen)
+        {
+            return t;
+        }
+        else
+        {
+            return NULL_TRACK;
+        }
+    }
+
+    //////////////
+    //Left flank//
+    //////////////
+
+    int32_t move_S_ML(int32_t t, int32_t j)
+    {
+        return make_track(S,LFLANK,0,1);
+    }
+
+    int32_t move_X_ML(int32_t t, int32_t j)
+    {
+        int32_t p;
+        if ((p=track_get_p(t))<lflen)
+        {
+            return make_track(X,LFLANK,0,p+1);
+        }
+        else
+        {
+            return NULL_TRACK;
+        }
+    }
+
+    int32_t move_Y_ML(int32_t t, int32_t j)
+    {
+        int32_t p;
+        if ((p=track_get_p(t))<lflen)
+        {
+            return make_track(Y,LFLANK,0,p+1);
+        }
+        else
+        {
+            return NULL_TRACK;
+        }
+    }
+
+    int32_t move_ML_ML(int32_t t, int32_t j)
+    {
+        int32_t p;
+        if ((p=track_get_p(t))<lflen)
+        {
+            return make_track(ML,LFLANK,0,p+1);
+        }
+        else
+        {
+            return NULL_TRACK;
+        }
+    }
+
+    int32_t move_DL_ML(int32_t t, int32_t j)
+    {
+        int32_t p;
+        if ((p=track_get_p(t))<lflen)
+        {
+            return make_track(DL,LFLANK,0,p+1);
+        }
+        else
+        {
+            return NULL_TRACK;
+        }
+    }
+
+    int32_t move_IL_ML(int32_t t, int32_t j)
+    {
+        int32_t p;
+        if ((p=track_get_p(t))<lflen)
+        {
+            return make_track(IL,LFLANK,0,p+1);
+        }
+        else
+        {
+            return NULL_TRACK;
+        }
+    }
+
+    int32_t move_ML_DL(int32_t t, int32_t j)
+    {
+        int32_t p;
+        if ((p=track_get_p(t))<lflen)
+        {
+            return make_track(IL,LFLANK,0,p+1);
+        }
+        else
+        {
+            return NULL_TRACK;
+        }
+    }
+
+    int32_t move_DL_DL(int32_t t, int32_t j)
+    {
+        int32_t p;
+        if ((p=track_get_p(t))<lflen)
+        {
+            return make_track(IL,LFLANK,0,p+1);
+        }
+        else
+        {
+            return NULL_TRACK;
+        }
+    }
+
+    int32_t move_ML_IL(int32_t t, int32_t j)
+    {
+        int32_t p;
+        if ((p=track_get_p(t))<lflen)
+        {
+            return make_track(IL,LFLANK,0,p+1);
+        }
+        else
+        {
+            return NULL_TRACK;
+        }
+    }
+
+    int32_t move_IL_IL(int32_t t, int32_t j)
+    {
+        int32_t p;
+        if ((p=track_get_p(t))<lflen)
+        {
+            return make_track(IL,LFLANK,0,p+1);
+        }
+        else
+        {
+            return NULL_TRACK;
+        }
+    }
+
+
+    ///////////////////
+    //Repeating Motif//
+    ///////////////////
+
+    int32_t move_S_M(int32_t t, int32_t j)
+    {
+        return make_track(S,MOTIF,0,1);
+    }
+
+    int32_t move_X_M(int32_t t, int32_t j)
+    {
+        return make_track(S,MOTIF,0,1);
+    }
+
+    int32_t move_Y_M(int32_t t, int32_t j)
+    {
+        int32_t p;
+        if ((p=track_get_p(t))<rlen)
+        {
+            return make_track(Y,MOTIF,0,1);
+        }
+        else
+        {
+            return NULL_TRACK;
+        }
+    }
+
+    int32_t move_ML_M(int32_t t, int32_t j)
+    {
+        int32_t p;
+        if ((p=track_get_p(t))==mlen)
+        {
+            return make_track(X,MOTIF,0,1);
+        }
+        else
+        {
+            return make_track(X,MOTIF,0,p+1);
+        }
+    }
+
+    int32_t move_M_M(int32_t t, int32_t j)
+    {
+        int32_t p;
+        if ((p=track_get_p(t))==mlen)
+        {
+            return make_track(X,MOTIF,0,1);
+        }
+        else
+        {
+            return make_track(X,MOTIF,0,p+1);
+        }
+    }
+
+    int32_t move_D_M(int32_t t, int32_t j)
+    {
+        int32_t p;
+        if ((p=track_get_p(t))==mlen)
+        {
+            return make_track(D,MOTIF,0,1);
+        }
+        else
+        {
+            return make_track(D,MOTIF,0,p+1);
+        }
+    }
+
+    int32_t move_I_M(int32_t t, int32_t j)
+    {
+        int32_t p;
+        if ((p=track_get_p(t))==mlen)
+        {
+            return make_track(I,MOTIF,0,1);
+        }
+        else
+        {
+            return make_track(I,MOTIF,0,p+1);
+        }
+    }
+
+    int32_t move_M_D(int32_t t, int32_t j)
+    {
+        int32_t p;
+        if ((p=track_get_p(t))==mlen)
+        {
+            return make_track(I,MOTIF,0,1);
+        }
+        else
+        {
+            return make_track(I,MOTIF,0,p+1);
+        }
+    }
+
+    int32_t move_D_D(int32_t t, int32_t j)
+    {
+        int32_t p;
+        if ((p=track_get_p(t))==mlen)
+        {
+            return make_track(I,MOTIF,0,1);
+        }
+        else
+        {
+            return make_track(I,MOTIF,0,p+1);
+        }
+    }
+
+    int32_t move_M_I(int32_t t, int32_t j)
+    {
+        if (j<rlen)
+        {
+            return make_track(I,MOTIF,0,j+1);
+        }
+        else
+        {
+            return NULL_TRACK;
+        }
+    }
+
+    int32_t move_I_I(int32_t t, int32_t j)
+    {
+        if (j<rlen)
+        {
+            return make_track(I,MOTIF,0,j+1);
+        }
+        else
+        {
+            return NULL_TRACK;
+        }
+    }
+
+    ///////////////
+    //Right flank//
+    ///////////////
+
+    int32_t move_S_MR(int32_t t, int32_t j)
+    {
+        return make_track(S,MOTIF,0,1);
+    }
+
+    int32_t move_X_MR(int32_t t, int32_t j)
+    {
+        return make_track(S,MOTIF,0,1);
+    }
+
+    int32_t move_Y_MR(int32_t t, int32_t j)
+    {
+        int32_t p;
+        if ((p=track_get_p(t))<rlen)
+        {
+            return make_track(Y,MOTIF,0,1);
+        }
+        else
+        {
+            return NULL_TRACK;
+        }
+    }
+
+    int32_t move_ML_MR(int32_t t, int32_t j)
+    {
+        int32_t p;
+        if ((p=track_get_p(t))==mlen)
+        {
+            return make_track(X,MOTIF,0,1);
+        }
+        else
+        {
+            return make_track(X,MOTIF,0,p+1);
+        }
+    }
+
+    int32_t move_M_MR(int32_t t, int32_t j)
+    {
+        int32_t p;
+        if ((p=track_get_p(t))==mlen)
+        {
+            return make_track(X,MOTIF,0,1);
+        }
+        else
+        {
+            return make_track(X,MOTIF,0,p+1);
+        }
+    }
+
+    int32_t move_MR_MR(int32_t t, int32_t j)
+    {
+        int32_t p;
+        if ((p=track_get_p(t))==mlen)
+        {
+            return make_track(X,MOTIF,0,1);
+        }
+        else
+        {
+            return make_track(X,MOTIF,0,p+1);
+        }
+    }
+
+    int32_t move_DR_MR(int32_t t, int32_t j)
+    {
+        int32_t p;
+        if ((p=track_get_p(t))==mlen)
+        {
+            return make_track(D,MOTIF,0,1);
+        }
+        else
+        {
+            return make_track(D,MOTIF,0,p+1);
+        }
+    }
+
+    int32_t move_IR_MR(int32_t t, int32_t j)
+    {
+        int32_t p;
+        if ((p=track_get_p(t))==mlen)
+        {
+            return make_track(I,MOTIF,0,1);
+        }
+        else
+        {
+            return make_track(I,MOTIF,0,p+1);
+        }
+    }
+
+    int32_t move_MR_DR(int32_t t, int32_t j)
+    {
+        int32_t p;
+        if ((p=track_get_p(t))==mlen)
+        {
+            return make_track(I,MOTIF,0,1);
+        }
+        else
+        {
+            return make_track(I,MOTIF,0,p+1);
+        }
+    }
+
+    int32_t move_DR_DR(int32_t t, int32_t j)
+    {
+        int32_t p;
+        if ((p=track_get_p(t))==mlen)
+        {
+            return make_track(I,MOTIF,0,1);
+        }
+        else
+        {
+            return make_track(I,MOTIF,0,p+1);
+        }
+    }
+
+    int32_t move_MR_IR(int32_t t, int32_t j)
+    {
+        if (j<rlen)
+        {
+            return make_track(I,MOTIF,0,j+1);
+        }
+        else
+        {
+            return NULL_TRACK;
+        }
+    }
+
+    int32_t move_IR_IR(int32_t t, int32_t j)
+    {
+        if (j<rlen)
+        {
+            return make_track(I,MOTIF,0,j+1);
+        }
+        else
+        {
+            return NULL_TRACK;
+        }
+    }
+
+    ////////////////////////
+    //Unmapped right flank//
+    ////////////////////////
+
+    int32_t move_X_W(int32_t t, int32_t j)
+    {
+        return make_track(S,MOTIF,0,1);
+    }
+
+    int32_t move_Y_W(int32_t t, int32_t j)
+    {
+        int32_t p;
+        if ((p=track_get_p(t))<rlen)
+        {
+            return make_track(Y,MOTIF,0,1);
+        }
+        else
+        {
+            return NULL_TRACK;
+        }
+    }
+
+    int32_t move_ML_W(int32_t t, int32_t j)
+    {
+        int32_t p;
+        if ((p=track_get_p(t))==mlen)
+        {
+            return make_track(X,MOTIF,0,1);
+        }
+        else
+        {
+            return make_track(X,MOTIF,0,p+1);
+        }
+    }
+
+    int32_t move_M_W(int32_t t, int32_t j)
+    {
+        int32_t p;
+        if ((p=track_get_p(t))==mlen)
+        {
+            return make_track(X,MOTIF,0,1);
+        }
+        else
+        {
+            return make_track(X,MOTIF,0,p+1);
+        }
+    }
+
+    int32_t move_D_W(int32_t t, int32_t j)
+    {
+        int32_t p;
+        if ((p=track_get_p(t))==mlen)
+        {
+            return make_track(X,MOTIF,0,1);
+        }
+        else
+        {
+            return make_track(X,MOTIF,0,p+1);
+        }
+    }
+
+    int32_t move_I_W(int32_t t, int32_t j)
+    {
+        int32_t p;
+        if ((p=track_get_p(t))==mlen)
+        {
+            return make_track(D,MOTIF,0,1);
+        }
+        else
+        {
+            return make_track(D,MOTIF,0,p+1);
+        }
+    }
+
+    int32_t move_MR_W(int32_t t, int32_t j)
+    {
+        int32_t p;
+        if ((p=track_get_p(t))==mlen)
+        {
+            return make_track(I,MOTIF,0,1);
+        }
+        else
+        {
+            return make_track(I,MOTIF,0,p+1);
+        }
+    }
+
+    int32_t move_W_W(int32_t t, int32_t j)
+    {
+        int32_t p;
+        if ((p=track_get_p(t))==mlen)
+        {
+            return make_track(I,MOTIF,0,1);
+        }
+        else
+        {
+            return make_track(I,MOTIF,0,p+1);
+        }
+    }
+
+    /////
+    //Z//
+    /////
+    int32_t move_MR_Z(int32_t t, int32_t j)
+    {
+        int32_t p;
+        if ((p=track_get_p(t))==rflen)
+        {
+            return make_track(I,RFLANK,0,1);
+        }
+        else
+        {
+            return NULL_TRACK;
+        }
+    }
+
+    int32_t move_W_Z(int32_t t, int32_t j)
+    {
+        int32_t p;
+        if ((p=track_get_p(t))==mlen)
+        {
+            return make_track(I,MOTIF,0,1);
+        }
+        else
+        {
+            return make_track(I,MOTIF,0,p+1);
+        }
+    }
+
+    int32_t move_Z_Z(int32_t t, int32_t j)
+    {
+        int32_t p;
+        if ((p=track_get_p(t))==mlen)
+        {
+            return make_track(I,MOTIF,0,1);
+        }
+        else
+        {
+            return make_track(I,MOTIF,0,p+1);
+        }
+    }
+
 };
 
 #undef MAXLEN
@@ -307,8 +821,11 @@ class CHMM
 #undef N
 #undef NSTATES
 
-#undef LFLANK 
-#undef MOTIF   
+#undef LFLANK
+#undef MOTIF
 #undef RFLANK
+#undef READ
+#undef UNMODELED
+#undef UNCERTAIN
 
 #endif
