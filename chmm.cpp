@@ -427,22 +427,20 @@ void CHMM::align(const char* read, const char* qual, bool debug)
     {
         for (size_t j=1; j<=rlen; ++j)
         {
-            c = (i*MAXLEN)+j;
-            d = ((i-1)*MAXLEN)+(j-1);
-            u = ((i-1)*MAXLEN)+j;
-            l =  (i*MAXLEN)+(j-1);
-//            c = (i<<MAXLEN_BITLEN)+j;
-//            d = ((i-1)<<MAXLEN_BITLEN)+(j-1);
-//            u = ((i-1)<<MAXLEN_BITLEN)+j;
-//            l =  (i<<MAXLEN_BITLEN)+(j-1);
+            c = (i<<MAXLEN_BITLEN)+j;
+            d = ((i-1)<<MAXLEN_BITLEN)+(j-1);
+            u = ((i-1)<<MAXLEN_BITLEN)+j;
+            l =  (i<<MAXLEN_BITLEN)+(j-1);
 
-            ////////////////////////////
-            //X matrices are invariant//
-            ////////////////////////////
-
-            ////////////////////////////
-            //Y matrices are invariant//
-            ////////////////////////////
+            /////
+            //X//
+            /////
+            //invariant
+            
+            /////
+            //Y//
+            /////
+            //invariant
 
             //////
             //ML//
@@ -461,7 +459,7 @@ void CHMM::align(const char* read, const char* qual, bool debug)
             //////
             //DL//
             //////
-            std::cerr << "(" << i << "," << j << ")\n";
+            std::cerr << "\n";
             max_score = -INFINITY;
             proc_comp(ML, DL, d, j, PROBE_ONLY);
             proc_comp(DL, DL, d, j, PROBE_ONLY);
@@ -469,66 +467,176 @@ void CHMM::align(const char* read, const char* qual, bool debug)
             U[DL][c] = max_track;
             std::cerr << "\tset DL " << max_score << " - " << track2string(max_track) << "\n";
                 
+            //////
+            //IL//
+            //////
+            std::cerr << "\n";
+            max_score = -INFINITY;
+            proc_comp(ML, IL, d, j-1, READ_ONLY);
+            proc_comp(IL, IL, d, j-1, READ_ONLY);
+            V[IL][c] = max_score;
+            U[IL][c] = max_track;
+            std::cerr << "\tset IL " << max_score << " - " << track2string(max_track) << "\n";    
+            
+            /////
+            //M//
+            /////
+            max_score = -INFINITY;
+            proc_comp(X, M, d, j-1, MATCH);          
+            proc_comp(Y, M, d, j-1, MATCH);
+            proc_comp(ML, M, d, j-1, MATCH);
+            proc_comp(D, M, d, j-1, MATCH);
+            proc_comp(I, M, d, j-1, MATCH);
+            V[M][c] = max_score;
+            U[M][c] = max_track;
+            std::cerr << "\tset M " << max_score << " - " << track2string(max_track) << "\n";
+
+            /////
+            //D//
+            /////
+            std::cerr << "\n";
+            max_score = -INFINITY;
+            proc_comp(M, D, d, j, PROBE_ONLY);
+            proc_comp(D, D, d, j, PROBE_ONLY);
+            V[D][c] = max_score;
+            U[D][c] = max_track;
+            std::cerr << "\tset D " << max_score << " - " << track2string(max_track) << "\n";
+                
+            /////
+            //I//
+            /////
+            std::cerr << "\n";
+            max_score = -INFINITY;
+            proc_comp(M, I, d, j-1, READ_ONLY);
+            proc_comp(I, I, d, j-1, READ_ONLY);
+            V[I][c] = max_score;
+            U[I][c] = max_track;
+            std::cerr << "\tset I " << max_score << " - " << track2string(max_track) << "\n";      
+
+            //////
+            //MR//
+            //////
+            max_score = -INFINITY;
+            proc_comp(X, MR, d, j-1, MATCH);          
+            proc_comp(Y, MR, d, j-1, MATCH);
+            proc_comp(ML, MR, d, j-1, MATCH);
+            proc_comp(M, MR, d, j-1, MATCH);
+            proc_comp(DR, MR, d, j-1, MATCH);
+            proc_comp(IR, MR, d, j-1, MATCH);
+            V[MR][c] = max_score;
+            U[MR][c] = max_track;
+            std::cerr << "\tset MR " << max_score << " - " << track2string(max_track) << "\n";
+
+            //////
+            //DR//
+            //////
+            std::cerr << "\n";
+            max_score = -INFINITY;
+            proc_comp(MR, DR, d, j, PROBE_ONLY);
+            proc_comp(DR, DR, d, j, PROBE_ONLY);
+            V[DR][c] = max_score;
+            U[DR][c] = max_track;
+            std::cerr << "\tset DR " << max_score << " - " << track2string(max_track) << "\n";
+                
+            //////
+            //IR//
+            //////
+            std::cerr << "\n";
+            max_score = -INFINITY;
+            proc_comp(MR, IR, d, j-1, READ_ONLY);
+            proc_comp(IR, IR, d, j-1, READ_ONLY);
+            V[IR][c] = max_score;
+            U[IR][c] = max_track;
+            std::cerr << "\tset IR " << max_score << " - " << track2string(max_track) << "\n";     
+                
+            /////
+            //W//
+            /////
+            max_score = -INFINITY;
+            proc_comp(X, W, d, j-1, MATCH);          
+            proc_comp(Y, W, d, j-1, MATCH);
+            proc_comp(ML, W, d, j-1, MATCH);
+            proc_comp(M, W, d, j-1, MATCH);
+            proc_comp(D, W, d, j-1, MATCH);
+            proc_comp(I, W, d, j-1, MATCH);
+            proc_comp(MR, W, d, j-1, MATCH);
+            proc_comp(W, W, d, j-1, MATCH);
+            V[W][c] = max_score;
+            U[W][c] = max_track;
+            std::cerr << "\tset W " << max_score << " - " << track2string(max_track) << "\n";
+
+            //////
+            //Z//
+            //////
+            std::cerr << "\n";
+            max_score = -INFINITY;
+            proc_comp(MR, Z, d, j, READ_ONLY);
+            proc_comp(W, Z, d, j, READ_ONLY);
+            proc_comp(Z, Z, d, j, READ_ONLY);
+            V[Z][c] = max_score;
+            U[Z][c] = max_track;
+            std::cerr << "\tset Z " << max_score << " - " << track2string(max_track) << "\n";                  
         }
     }
 
     if (1)
     {
-        std::cerr << "\n=V[X]=\n";
+        std::cerr << "\n   =V[X]=\n";
         print(V[X], plen+1, rlen+1);
-        std::cerr << "\n=U[X]=\n";
+        std::cerr << "\n   =U[X]=\n";
         print_U(U[X], plen+1, rlen+1);
-        std::cerr << "\n=V[Y]=\n";
+        std::cerr << "\n   =V[Y]=\n";
         print(V[Y], plen+1, rlen+1);
-        std::cerr << "\n=U[Y]=\n";
+        std::cerr << "\n   =U[Y]=\n";
         print_U(U[Y], plen+1, rlen+1);
-        std::cerr << "\n=V[ML]=\n";
+        
+        std::cerr << "\n   =V[ML]=\n";
         print(V[ML], plen+1, rlen+1);
-        std::cerr << "\n=U[ML]=\n";
+        std::cerr << "\n   =U[ML]=\n";
         print_U(U[ML], plen+1, rlen+1);
-//        std::cerr << "\n=V[DL]=\n";
-//        print(V[DL], plen+1, rlen+1);
-//        std::cerr << "\n=U[DL]=\n";
-//        print_U(U[DL], plen+1, rlen+1);
-//        std::cerr << "\n=V[IL]=\n";
-//        print(V[IL], plen+1, rlen+1);
-//        std::cerr << "\n=U[IL]=\n";
-//        print_U(U[IL], plen+1, rlen+1);
-//
-//        std::cerr << "\n=V[M]=\n";
-//        print(V[M], plen+1, rlen+1);
-//        std::cerr << "\n=U[M]=\n";
-//        print_U(U[M], plen+1, rlen+1);
-//        std::cerr << "\n=V[D]=\n";
-//        print(V[D], plen+1, rlen+1);
-//        std::cerr << "\n=U[D]=\n";
-//        print_U(U[D], plen+1, rlen+1);
-//        std::cerr << "\n=V[I]=\n";
-//        print(V[I], plen+1, rlen+1);
-//        std::cerr << "\n=U[I]=\n";
-//        print_U(U[I], plen+1, rlen+1);
-//
-//        std::cerr << "\n=V[MR]=\n";
-//        print(V[MR], plen+1, rlen+1);
-//        std::cerr << "\n=U[MR]=\n";
-//        print_U(U[MR], plen+1, rlen+1);
-//        std::cerr << "\n=V[DR]=\n";
-//        print(V[DR], plen+1, rlen+1);
-//        std::cerr << "\n=U[DR]=\n";
-//        print_U(U[DR], plen+1, rlen+1);
-//        std::cerr << "\n=V[IR]=\n";
-//        print(V[IR], plen+1, rlen+1);
-//        std::cerr << "\n=U[IR]=\n";
-//        print_U(U[IR], plen+1, rlen+1);
-//
-//        std::cerr << "\n=V[W]=\n";
-//        print(V[W], plen+1, rlen+1);
-//        std::cerr << "\n=U[W]=\n";
-//        print_U(U[W], plen+1, rlen+1);
-//        std::cerr << "\n=V[Z]=\n";
-//        print(V[Z], plen+1, rlen+1);
-//        std::cerr << "\n=U[Z]=\n";
-//        print_U(U[Z], plen+1, rlen+1);
+        std::cerr << "\n   =V[DL]=\n";
+        print(V[DL], plen+1, rlen+1);
+        std::cerr << "\n   =U[DL]=\n";
+        print_U(U[DL], plen+1, rlen+1);
+        std::cerr << "\n   =V[IL]=\n";
+        print(V[IL], plen+1, rlen+1);
+        std::cerr << "\n   =U[IL]=\n";
+        print_U(U[IL], plen+1, rlen+1);
+
+        std::cerr << "\n   =V[M]=\n";
+        print(V[M], plen+1, rlen+1);
+        std::cerr << "\n   =U[M]=\n";
+        print_U(U[M], plen+1, rlen+1);
+        std::cerr << "\n   =V[D]=\n";
+        print(V[D], plen+1, rlen+1);
+        std::cerr << "\n   =U[D]=\n";
+        print_U(U[D], plen+1, rlen+1);
+        std::cerr << "\n   =V[I]=\n";
+        print(V[I], plen+1, rlen+1);
+        std::cerr << "\n   =U[I]=\n";
+        print_U(U[I], plen+1, rlen+1);
+
+        std::cerr << "\n   =V[MR]=\n";
+        print(V[MR], plen+1, rlen+1);
+        std::cerr << "\n   =U[MR]=\n";
+        print_U(U[MR], plen+1, rlen+1);
+        std::cerr << "\n   =V[DR]=\n";
+        print(V[DR], plen+1, rlen+1);
+        std::cerr << "\n   =U[DR]=\n";
+        print_U(U[DR], plen+1, rlen+1);
+        std::cerr << "\n   =V[IR]=\n";
+        print(V[IR], plen+1, rlen+1);
+        std::cerr << "\n   =U[IR]=\n";
+        print_U(U[IR], plen+1, rlen+1);
+
+        std::cerr << "\n   =V[W]=\n";
+        print(V[W], plen+1, rlen+1);
+        std::cerr << "\n   =U[W]=\n";
+        print_U(U[W], plen+1, rlen+1);
+        std::cerr << "\n   =V[Z]=\n";
+        print(V[Z], plen+1, rlen+1);
+        std::cerr << "\n   =U[Z]=\n";
+        print_U(U[Z], plen+1, rlen+1);
 
         std::cerr << "\n";
     }
@@ -751,12 +859,14 @@ void CHMM::print_alignment(std::string& pad)
  */
 void CHMM::print(double *v, size_t plen, size_t rlen)
 {
-    std::cerr << std::setprecision(3);
+    double val;
+    std::cerr << std::setprecision(1) << std::fixed;
     for (size_t i=0; i<plen; ++i)
     {
         for (size_t j=0; j<rlen; ++j)
         {
-            std::cerr << v[i*MAXLEN+j] << "\t";
+            val =  v[(i<<MAXLEN_BITLEN)+j];
+            std::cerr << (val<0?"  ":"   ") << val;
         }
 
         std::cerr << "\n";
@@ -768,11 +878,13 @@ void CHMM::print(double *v, size_t plen, size_t rlen)
  */
 void CHMM::print(int32_t *v, size_t plen, size_t rlen)
 {
+    double val;
     for (size_t i=0; i<plen; ++i)
     {
         for (size_t j=0; j<rlen; ++j)
         {
-          std::cerr << v[i*MAXLEN+j] << "\t";
+          val =  v[(i<<MAXLEN_BITLEN)+j];
+          std::cerr << (val<0?"  ":"   ") << val;
         }
 
         std::cerr << "\n";
@@ -788,8 +900,9 @@ void CHMM::print_U(int32_t *U, size_t plen, size_t rlen)
     {
         for (size_t j=0; j<rlen; ++j)
         {
-            int32_t t = U[i*MAXLEN+j];
-            std::cerr << state2string(track_get_u(t)) << "|"
+            int32_t t = U[(i<<MAXLEN_BITLEN)+j];
+            std::cerr << "   "
+                      << state2string(track_get_u(t)) << "|"
                       << component2string(track_get_d(t)) << "|"
                       << track_get_c(t) << "|"
                       << track_get_p(t) << (j==rlen-1?"\n":"   ");
