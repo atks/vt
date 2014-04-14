@@ -40,7 +40,7 @@
 #define Z  13
 #define E  14
 #define N  15
-
+#define TBD 16
 #define NSTATES 15
 
 #define LFLANK 0
@@ -179,14 +179,14 @@ void CHMM::initialize(const char* lflank, const char* motif, const char* rflank)
     V = new double*[NSTATES];
     U = new int32_t*[NSTATES];
     moves = new move*[NSTATES];
-    for (size_t state=X; state<=Z; ++state)
+    for (size_t state=S; state<=Z; ++state)
     {
         V[state] = new double[MAXLEN*MAXLEN];
         U[state] = new int32_t[MAXLEN*MAXLEN];
         moves[state] = new move[NSTATES];
     }
 
-    for (size_t state=S; state<=E; ++state)
+    for (size_t state=S; state<E; ++state)
     {
         moves[state] = new move[NSTATES];
     }
@@ -253,8 +253,11 @@ void CHMM::initialize(const char* lflank, const char* motif, const char* rflank)
     {
         for (size_t j=0; j<MAXLEN; ++j)
         {
-            size_t c = i*MAXLEN+j;
+            size_t c = (i<<MAXLEN_BITLEN)+j;
 
+            V[S][c] = -INFINITY;
+            U[S][c] = NULL_TRACK;
+            
             //X
             if (j) //(i,j)
             {
@@ -289,7 +292,7 @@ void CHMM::initialize(const char* lflank, const char* motif, const char* rflank)
             {
                 if (j) // (i,j)
                 {
-                    U[Y][c] = j==1? make_track(X,LFLANK,0,0) : make_track(Y,LFLANK,0,0);
+                    U[Y][c] = j==1? make_track(X,LFLANK,0,i) : make_track(Y,LFLANK,0,i);
                 }
                 else // (i,0)
                 {
@@ -301,7 +304,7 @@ void CHMM::initialize(const char* lflank, const char* motif, const char* rflank)
             {
                 if (j) // (0,j)
                 {
-                    U[Y][c] = j==1? make_track(S,UNMODELED,0,0) : make_track(Y,LFLANK,0,0);
+                    U[Y][c] = j==1? make_track(S,LFLANK,0,0) : make_track(Y,LFLANK,0,0);
                 }
                 else // (0,0)
                 {
@@ -309,6 +312,39 @@ void CHMM::initialize(const char* lflank, const char* motif, const char* rflank)
                 }
             }
 
+            //ML
+            V[ML][c] = -INFINITY;
+            if (!i || !j)
+            {
+                U[ML][c] = make_track(N,UNMODELED,0,0);
+            }
+            else
+            {
+                U[ML][c] = make_track(TBD,UNCERTAIN,0,0);
+            }
+            
+            //DL
+            V[DL][c] = -INFINITY;
+            if (!i || !j)
+            {
+                U[DL][c] = make_track(N,UNMODELED,0,0);
+            }
+            else
+            {
+                U[DL][c] = make_track(TBD,UNCERTAIN,0,0);
+            }
+
+            //IL
+            V[IL][c] = -INFINITY;
+            if (!i || !j)
+            {
+                U[IL][c] = make_track(N,UNMODELED,0,0);
+            }
+            else
+            {
+                U[IL][c] = make_track(TBD,UNCERTAIN,0,0);
+            }
+            
             //M
             V[M][c] = -INFINITY;
             if (!i || !j)
@@ -317,20 +353,109 @@ void CHMM::initialize(const char* lflank, const char* motif, const char* rflank)
             }
             else
             {
-                U[M][c] = make_track(N,UNCERTAIN,0,0);
+                U[M][c] = make_track(TBD,UNCERTAIN,0,0);
             }
+            
+            //D
+            V[D][c] = -INFINITY;
+            if (!i || !j)
+            {
+                U[D][c] = make_track(N,UNMODELED,0,0);
+            }
+            else
+            {
+                U[D][c] = make_track(TBD,UNCERTAIN,0,0);
+            }
+
+            //I
+            V[I][c] = -INFINITY;
+            if (!i || !j)
+            {
+                U[I][c] = make_track(N,UNMODELED,0,0);
+            }
+            else
+            {
+                U[I][c] = make_track(TBD,UNCERTAIN,0,0);
+            }
+            
+            //MR
+            V[MR][c] = -INFINITY;
+            if (!i || !j)
+            {
+                U[MR][c] = make_track(N,UNMODELED,0,0);
+            }
+            else
+            {
+                U[MR][c] = make_track(TBD,UNCERTAIN,0,0);
+            }
+            
+            //DR
+            V[DR][c] = -INFINITY;
+            if (!i || !j)
+            {
+                U[DR][c] = make_track(N,UNMODELED,0,0);
+            }
+            else
+            {
+                U[DR][c] = make_track(TBD,UNCERTAIN,0,0);
+            }
+
+            //IR
+            V[IR][c] = -INFINITY;
+            if (!i || !j)
+            {
+                U[IR][c] = make_track(N,UNMODELED,0,0);
+            }
+            else
+            {
+                U[IR][c] = make_track(TBD,UNCERTAIN,0,0);
+            }
+            
+            //W
+            V[W][c] = -INFINITY;
+            if (!i || !j)
+            {
+                U[W][c] = make_track(N,UNMODELED,0,0);
+            }
+            else
+            {
+                U[W][c] = make_track(TBD,UNCERTAIN,0,0);
+            }
+
+            //Z
+            V[Z][c] = -INFINITY;
+            if (!i || !j)
+            {
+                U[Z][c] = make_track(N,UNMODELED,0,0);
+            }
+            else
+            {
+                U[Z][c] = make_track(TBD,UNCERTAIN,0,0);
+            }
+            
         }
     }
 
-
     logEta = log10(eta);
     logTau = log10(tau);
-
-    V[X][0*MAXLEN+0] = 0;
-    V[Y][0*MAXLEN+0] = 0;
-    V[M][0*MAXLEN+0] = 0;
-    V[W][0*MAXLEN+0] = 0;
-    V[Z][0*MAXLEN+0] = 0;
+    
+    V[S][(0<<MAXLEN_BITLEN)+0] = 0;
+    U[S][(0<<MAXLEN_BITLEN)+0] = make_track(N,LFLANK,0,0);
+    
+    V[X][(0<<MAXLEN_BITLEN)+0] = -INFINITY;
+    U[X][(0<<MAXLEN_BITLEN)+0] = make_track(N,LFLANK,0,0);
+    
+    V[Y][(0<<MAXLEN_BITLEN)+0] = -INFINITY;
+    U[Y][(0<<MAXLEN_BITLEN)+0] = make_track(N,LFLANK,0,0);
+    
+    V[ML][(0<<MAXLEN_BITLEN)+0] = -INFINITY;
+    
+    
+    
+    V[M][(0<<MAXLEN_BITLEN)+0] = -INFINITY;
+    V[MR][(0<<MAXLEN_BITLEN)+0] = -INFINITY;
+    V[W][(0<<MAXLEN_BITLEN)+0] = -INFINITY;
+    V[Z][(0<<MAXLEN_BITLEN)+0] = -INFINITY;
 };
 
 /**
@@ -345,44 +470,38 @@ void CHMM::initialize(const char* lflank, const char* motif, const char* rflank)
  */
 void CHMM::proc_comp(int32_t A, int32_t B, int32_t index1, int32_t j, int32_t match_type)
 {
-    std::cerr << "\t" << state2string(A) << "=>" << state2string(B) << " d:" << index1 << " (" << ((index1-j)>>MAXLEN_BITLEN) << "," << j << ")\n";
-
-    //check if move is valid
-    if (V[A][index1]!=-INFINITY && T[A][B]!=-INFINITY)
-    {
-        double emission = 0;
-        int32_t  t =  (this->*(moves[A][B]))(t,j);
-
-        if (t==NULL_TRACK) 
-        {
-            //do nothing since this will be an invalid path 
-            return;
-        }
+    double emission = 0, score = 0, valid = 0;
         
-        if (match_type==0)
-        {
-            emission = log10_emission_odds(track_get_base(t), read[j], qual[j]);
-        }
-
-        if (emission!=-INFINITY)
-        {
-            double score = V[A][index1] + T[A][B] + emission;
-
-            if (score>max_score)
-            {
-                max_score = score;
-                max_track = t;
-            }
-        }
-        else
-        {
-            //else do nothing since this will be an invalid path - need to prove
-        }
-    }
-    else
+    int32_t  t =  (this->*(moves[A][B]))(U[A][index1],j);
+    
+    if (t==NULL_TRACK)
     {
-        //else do nothing since this will be an invalid path - need to prove
+        valid = -INFINITY;
     }
+    
+    if (match_type==0)
+    {
+          emission = log10_emission_odds(track_get_base(t), read[j], qual[j]);
+    }
+
+    score = V[A][index1] + T[A][B] + emission;
+
+    if (score>max_score)
+    {
+        max_score = score;
+        max_track = t;
+    }        
+
+    
+    
+    std::cerr << "\t" << state2string(A) << "=>" << state2string(B) 
+              << " (" << ((index1-j)>>MAXLEN_BITLEN) << "," << j << ") " 
+              << emission << " (e) + "
+              << T[A][B] << " (t) + "
+              << V[A][index1] << " (p) + "
+              << valid << " (v) = "
+              << score << "\n";
+
 }
 
 /**
@@ -421,10 +540,14 @@ void CHMM::align(const char* read, const char* qual, bool debug)
 
     size_t c,d,u,l;
 
+   
+
     //alignment
     //take into consideration
     for (size_t i=1; i<=plen; ++i)
     {
+        //break;
+        
         for (size_t j=1; j<=rlen; ++j)
         {
             c = (i<<MAXLEN_BITLEN)+j;
@@ -436,7 +559,7 @@ void CHMM::align(const char* read, const char* qual, bool debug)
             //X//
             /////
             //invariant
-            
+
             /////
             //Y//
             /////
@@ -447,7 +570,8 @@ void CHMM::align(const char* read, const char* qual, bool debug)
             //////
             std::cerr << "(" << i << "," << j << ")\n";
             max_score = -INFINITY;
-            proc_comp(X, ML, d, j-1, MATCH);          
+            proc_comp(S, ML, d, j-1, MATCH);
+            proc_comp(X, ML, d, j-1, MATCH);
             proc_comp(Y, ML, d, j-1, MATCH);
             proc_comp(ML, ML, d, j-1, MATCH);
             proc_comp(DL, ML, d, j-1, MATCH);
@@ -461,30 +585,32 @@ void CHMM::align(const char* read, const char* qual, bool debug)
             //////
             std::cerr << "\n";
             max_score = -INFINITY;
-            proc_comp(ML, DL, d, j, PROBE_ONLY);
-            proc_comp(DL, DL, d, j, PROBE_ONLY);
+            proc_comp(ML, DL, u, j, PROBE_ONLY);
+            proc_comp(DL, DL, u, j, PROBE_ONLY);
             V[DL][c] = max_score;
             U[DL][c] = max_track;
             std::cerr << "\tset DL " << max_score << " - " << track2string(max_track) << "\n";
-                
+
             //////
             //IL//
             //////
             std::cerr << "\n";
             max_score = -INFINITY;
-            proc_comp(ML, IL, d, j-1, READ_ONLY);
-            proc_comp(IL, IL, d, j-1, READ_ONLY);
+            proc_comp(ML, IL, l, j-1, READ_ONLY);
+            proc_comp(IL, IL, l, j-1, READ_ONLY);
             V[IL][c] = max_score;
             U[IL][c] = max_track;
-            std::cerr << "\tset IL " << max_score << " - " << track2string(max_track) << "\n";    
-            
+            std::cerr << "\tset IL " << max_score << " - " << track2string(max_track) << "\n";
+
             /////
             //M//
             /////
+            //only need to update this i>rflen
             max_score = -INFINITY;
-            proc_comp(X, M, d, j-1, MATCH);          
+            proc_comp(X, M, d, j-1, MATCH);
             proc_comp(Y, M, d, j-1, MATCH);
             proc_comp(ML, M, d, j-1, MATCH);
+            proc_comp(M, M, d, j-1, MATCH);
             proc_comp(D, M, d, j-1, MATCH);
             proc_comp(I, M, d, j-1, MATCH);
             V[M][c] = max_score;
@@ -496,28 +622,28 @@ void CHMM::align(const char* read, const char* qual, bool debug)
             /////
             std::cerr << "\n";
             max_score = -INFINITY;
-            proc_comp(M, D, d, j, PROBE_ONLY);
-            proc_comp(D, D, d, j, PROBE_ONLY);
+            proc_comp(M, D, u, j, PROBE_ONLY);
+            proc_comp(D, D, u, j, PROBE_ONLY);
             V[D][c] = max_score;
             U[D][c] = max_track;
             std::cerr << "\tset D " << max_score << " - " << track2string(max_track) << "\n";
-                
+
             /////
             //I//
             /////
             std::cerr << "\n";
             max_score = -INFINITY;
-            proc_comp(M, I, d, j-1, READ_ONLY);
-            proc_comp(I, I, d, j-1, READ_ONLY);
+            proc_comp(M, I, l, j-1, READ_ONLY);
+            proc_comp(I, I, l, j-1, READ_ONLY);
             V[I][c] = max_score;
             U[I][c] = max_track;
-            std::cerr << "\tset I " << max_score << " - " << track2string(max_track) << "\n";      
+            std::cerr << "\tset I " << max_score << " - " << track2string(max_track) << "\n";
 
             //////
             //MR//
             //////
             max_score = -INFINITY;
-            proc_comp(X, MR, d, j-1, MATCH);          
+            proc_comp(X, MR, d, j-1, MATCH);
             proc_comp(Y, MR, d, j-1, MATCH);
             proc_comp(ML, MR, d, j-1, MATCH);
             proc_comp(M, MR, d, j-1, MATCH);
@@ -532,35 +658,35 @@ void CHMM::align(const char* read, const char* qual, bool debug)
             //////
             std::cerr << "\n";
             max_score = -INFINITY;
-            proc_comp(MR, DR, d, j, PROBE_ONLY);
-            proc_comp(DR, DR, d, j, PROBE_ONLY);
+            proc_comp(MR, DR, u, j, PROBE_ONLY);
+            proc_comp(DR, DR, u, j, PROBE_ONLY);
             V[DR][c] = max_score;
             U[DR][c] = max_track;
             std::cerr << "\tset DR " << max_score << " - " << track2string(max_track) << "\n";
-                
+
             //////
             //IR//
             //////
             std::cerr << "\n";
             max_score = -INFINITY;
-            proc_comp(MR, IR, d, j-1, READ_ONLY);
-            proc_comp(IR, IR, d, j-1, READ_ONLY);
+            proc_comp(MR, IR, l, j-1, READ_ONLY);
+            proc_comp(IR, IR, l, j-1, READ_ONLY);
             V[IR][c] = max_score;
             U[IR][c] = max_track;
-            std::cerr << "\tset IR " << max_score << " - " << track2string(max_track) << "\n";     
-                
+            std::cerr << "\tset IR " << max_score << " - " << track2string(max_track) << "\n";
+
             /////
             //W//
             /////
             max_score = -INFINITY;
-            proc_comp(X, W, d, j-1, MATCH);          
-            proc_comp(Y, W, d, j-1, MATCH);
-            proc_comp(ML, W, d, j-1, MATCH);
-            proc_comp(M, W, d, j-1, MATCH);
-            proc_comp(D, W, d, j-1, MATCH);
-            proc_comp(I, W, d, j-1, MATCH);
-            proc_comp(MR, W, d, j-1, MATCH);
-            proc_comp(W, W, d, j-1, MATCH);
+            proc_comp(X, W, u, j, MATCH);
+            proc_comp(Y, W, u, j, MATCH);
+            proc_comp(ML, W, u, j, MATCH);
+            proc_comp(M, W, u, j, MATCH);
+            proc_comp(D, W, u, j, MATCH);
+            proc_comp(I, W, u, j, MATCH);
+            proc_comp(MR, W, u, j, MATCH);
+            proc_comp(W, W, u, j, MATCH);
             V[W][c] = max_score;
             U[W][c] = max_track;
             std::cerr << "\tset W " << max_score << " - " << track2string(max_track) << "\n";
@@ -570,17 +696,58 @@ void CHMM::align(const char* read, const char* qual, bool debug)
             //////
             std::cerr << "\n";
             max_score = -INFINITY;
-            proc_comp(MR, Z, d, j, READ_ONLY);
-            proc_comp(W, Z, d, j, READ_ONLY);
-            proc_comp(Z, Z, d, j, READ_ONLY);
+            proc_comp(MR, Z, l, j-1, READ_ONLY);
+            proc_comp(W, Z, l, j-1, READ_ONLY);
+            proc_comp(Z, Z, l, j-1, READ_ONLY);
             V[Z][c] = max_score;
             U[Z][c] = max_track;
-            std::cerr << "\tset Z " << max_score << " - " << track2string(max_track) << "\n";                  
+            std::cerr << "\tset Z " << max_score << " - " << track2string(max_track) << "\n";
+
         }
     }
 
     if (1)
     {
+//        std::cerr << "\n   =S=\n";
+//        print_trace(S, plen+1, rlen+1);
+//        std::cerr << "\n   =X=\n";
+//        print_trace(X, plen+1, rlen+1);
+//        std::cerr << "\n   =Y=\n";
+//        print_trace(Y, plen+1, rlen+1);
+//        
+//        std::cerr << "\n   =ML=\n";
+//        print_trace(ML, plen+1, rlen+1);
+//        std::cerr << "\n   =DL=\n";
+//        print_trace(DL, plen+1, rlen+1);
+//        std::cerr << "\n   =IL=\n";
+//        print_trace(IL, plen+1, rlen+1);
+//        
+//        std::cerr << "\n   =M=\n";
+//        print_trace(M, plen+1, rlen+1);
+//        std::cerr << "\n   =D=\n";
+//        print_trace(D, plen+1, rlen+1);
+//        std::cerr << "\n   =I=\n";
+//        print_trace(I, plen+1, rlen+1);
+//        
+//        std::cerr << "\n   =MR=\n";
+//        print_trace(MR, plen+1, rlen+1);
+//        std::cerr << "\n   =DR=\n";
+//        print_trace(DR, plen+1, rlen+1);
+//        std::cerr << "\n   =IR=\n";
+//        print_trace(IR, plen+1, rlen+1);
+//        
+//        std::cerr << "\n   =W=\n";
+//        print_trace(W, plen+1, rlen+1);
+//        std::cerr << "\n   =Z=\n";
+//        print_trace(Z, plen+1, rlen+1);
+//        
+
+
+        
+        std::cerr << "\n   =V[S]=\n";
+        print(V[S], plen+1, rlen+1);
+        std::cerr << "\n   =U[S]=\n";
+        print_U(U[S], plen+1, rlen+1);
         std::cerr << "\n   =V[X]=\n";
         print(V[X], plen+1, rlen+1);
         std::cerr << "\n   =U[X]=\n";
@@ -589,7 +756,7 @@ void CHMM::align(const char* read, const char* qual, bool debug)
         print(V[Y], plen+1, rlen+1);
         std::cerr << "\n   =U[Y]=\n";
         print_U(U[Y], plen+1, rlen+1);
-        
+
         std::cerr << "\n   =V[ML]=\n";
         print(V[ML], plen+1, rlen+1);
         std::cerr << "\n   =U[ML]=\n";
@@ -649,13 +816,13 @@ void CHMM::align(const char* read, const char* qual, bool debug)
  */
 void CHMM::trace_path()
 {
-
+    
 }
 
 /**
  * Compute log10 emission odds based on equal error probability distribution.
  */
-double CHMM::log10_emission_odds(char read_base, char probe_base, uint32_t pl)
+double CHMM::log10_emission_odds(char probe_base, char read_base, uint32_t pl)
 {
     //4 encodes for N
     if (read_base=='N' || probe_base=='N')
@@ -743,6 +910,10 @@ std::string CHMM::state2string(int32_t state)
     {
         return "N";
     }
+    else if (state==TBD)
+    {
+        return "*";
+    }    
     else
     {
         return "!";
@@ -896,12 +1067,35 @@ void CHMM::print(int32_t *v, size_t plen, size_t rlen)
  */
 void CHMM::print_U(int32_t *U, size_t plen, size_t rlen)
 {
+    std::cerr << std::setprecision(1) << std::fixed;
     for (size_t i=0; i<plen; ++i)
     {
         for (size_t j=0; j<rlen; ++j)
         {
             int32_t t = U[(i<<MAXLEN_BITLEN)+j];
             std::cerr << "   "
+                      << state2string(track_get_u(t)) << "|"
+                      << component2string(track_get_d(t)) << "|"
+                      << track_get_c(t) << "|"
+                      << track_get_p(t) << (j==rlen-1?"\n":"   ");
+        }
+    }
+};
+
+/**
+ * Prints U and V.
+ */
+void CHMM::print_trace(int32_t state, size_t plen, size_t rlen)
+{
+    std::cerr << std::setprecision(1) << std::fixed;
+    for (size_t i=0; i<plen; ++i)
+    {
+        for (size_t j=0; j<rlen; ++j)
+        {
+            int32_t t = U[state][(i<<MAXLEN_BITLEN)+j];
+            double val =  V[state][(i<<MAXLEN_BITLEN)+j];
+            std::cerr << "   "
+                      << (val<0?"  ":"   ") << val << "|"
                       << state2string(track_get_u(t)) << "|"
                       << component2string(track_get_d(t)) << "|"
                       << track_get_c(t) << "|"

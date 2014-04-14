@@ -27,44 +27,45 @@
 #include <iomanip>
 #include "log_tool.h"
 
-#define S  0
-#define X  1
-#define Y  2
-#define ML 3
-#define DL 4
-#define IL 5
-#define M  6
-#define D  7
-#define I  8
-#define MR 9
-#define DR 10
-#define IR 11
-#define W  12
-#define Z  13
-#define E  14
-#define N  15
-#define NSTATES 15
+#define S   0
+#define X   1
+#define Y   2
+#define ML  3
+#define DL  4
+#define IL  5
+#define M   6
+#define D   7
+#define I   8
+#define MR  9
+#define DR  10
+#define IR  11
+#define W   12
+#define Z   13
+#define E   14
+#define N   15
+#define TBD 16
+#define NSTATES 16
 
-#define LFLANK 0
-#define MOTIF  1
-#define RFLANK 2
-#define READ   3
+#define LFLANK    0
+#define MOTIF     1
+#define RFLANK    2
+#define READ      3
 #define UNMODELED 4
 #define UNCERTAIN 5
 
 /*functions for getting trace back information*/
-#define track_get_u(t) (((t)&0xFF000000)>>24)
-#define track_get_d(t) (((t)&0x00FF0000)>>16)
-#define track_get_c(t) (((t)&0x0000FF00)>>8)
-#define track_get_p(t) (((t)&0x000000FF))
-#define track_get_base(t) (model[track_get_d(t)][track_get_p(t)])
-#define track_set_u(t,u) (((t)&0x00FFFFFF)|((u)<<24))
-#define track_set_d(t,d) (((t)&0xFF00FFFF)|((d)<<16))
-#define track_set_c(t,c) (((t)&0xFFFF00FF)|((c)<<8))
-#define track_set_p(t,p) (((t)&0xFFFFFF00)|(p))
+#define track_get_u(t)    (((t)&0xFF000000)>>24)
+#define track_get_d(t)    (((t)&0x00FF0000)>>16)
+#define track_get_c(t)    (((t)&0x0000FF00)>>8)
+#define track_get_p(t)    (((t)&0x000000FF))
+#define track_get_base(t) (model[track_get_d(t)][track_get_p(t)-1])
+#define track_set_u(t,u)  (((t)&0x00FFFFFF)|((u)<<24))
+#define track_set_d(t,d)  (((t)&0xFF00FFFF)|((d)<<16))
+#define track_set_c(t,c)  (((t)&0xFFFF00FF)|((c)<<8))
+#define track_set_p(t,p)  (((t)&0xFFFFFF00)|(p))
 #define make_track(u,d,c,p) (((u)<<24)|((d)<<16)|((c)<<8)|(p))
 
-#define NULL_TRACK 0x0F000000
+#define NULL_TRACK 0x0F040000
 
 class CHMM
 {
@@ -197,6 +198,11 @@ class CHMM
      * Prints U.
      */
     void print_U(int32_t *U, size_t plen, size_t rlen);
+    
+    /**
+     * Prints U and V.
+     */
+    void print_trace(int32_t state, size_t plen, size_t rlen);
 
     /**
      * Returns a string representation of track.
@@ -223,10 +229,8 @@ class CHMM
         {
             return make_track(X,LFLANK,0,p+1);
         }
-        else
-        {
-            return NULL_TRACK;
-        }
+    
+        return NULL_TRACK;
     }
 
     int32_t move_S_Y(int32_t t, int32_t j)
@@ -236,16 +240,12 @@ class CHMM
 
     int32_t move_X_Y(int32_t t, int32_t j)
     {
-        if (track_get_p(t)<lflen)
+        if (j<rlen)
         {
             return t;
         }
-        else
-        {
-            return NULL_TRACK;
-        }
-
-        return t;
+    
+        return NULL_TRACK;
     }
 
     int32_t move_Y_Y(int32_t t, int32_t j)
@@ -254,16 +254,13 @@ class CHMM
         {
             return t;
         }
-        else
-        {
-            return NULL_TRACK;
-        }
+        
+        return NULL_TRACK;
     }
 
     //////////////
     //Left flank//
     //////////////
-
     int32_t move_S_ML(int32_t t, int32_t j)
     {
         return make_track(S,LFLANK,0,1);
@@ -272,66 +269,56 @@ class CHMM
     int32_t move_X_ML(int32_t t, int32_t j)
     {
         int32_t p;
-        if ((p=track_get_p(t))<lflen)
+        if ((p=track_get_p(t))<lflen && j<rlen)
         {
             return make_track(X,LFLANK,0,p+1);
         }
-        else
-        {
-            return NULL_TRACK;
-        }
+        
+        return NULL_TRACK;
     }
 
     int32_t move_Y_ML(int32_t t, int32_t j)
     {
         int32_t p;
-        if ((p=track_get_p(t))<lflen)
+        if ((p=track_get_p(t))<lflen && j<rlen)
         {
             return make_track(Y,LFLANK,0,p+1);
         }
-        else
-        {
-            return NULL_TRACK;
-        }
+        
+        return NULL_TRACK;
     }
 
     int32_t move_ML_ML(int32_t t, int32_t j)
     {
         int32_t p;
-        if ((p=track_get_p(t))<lflen)
+        if ((p=track_get_p(t))<lflen && j<rlen)
         {
             return make_track(ML,LFLANK,0,p+1);
         }
-        else
-        {
-            return NULL_TRACK;
-        }
+    
+        return NULL_TRACK;
     }
 
     int32_t move_DL_ML(int32_t t, int32_t j)
     {
         int32_t p;
-        if ((p=track_get_p(t))<lflen)
+        if ((p=track_get_p(t))<lflen && j<rlen)
         {
             return make_track(DL,LFLANK,0,p+1);
         }
-        else
-        {
-            return NULL_TRACK;
-        }
+        
+        return NULL_TRACK;
     }
 
     int32_t move_IL_ML(int32_t t, int32_t j)
     {
         int32_t p;
-        if ((p=track_get_p(t))<lflen)
+        if ((p=track_get_p(t))<lflen && j<rlen)
         {
             return make_track(IL,LFLANK,0,p+1);
         }
-        else
-        {
-            return NULL_TRACK;
-        }
+    
+        return NULL_TRACK;
     }
 
     int32_t move_ML_DL(int32_t t, int32_t j)
@@ -339,12 +326,10 @@ class CHMM
         int32_t p;
         if ((p=track_get_p(t))<lflen)
         {
-            return make_track(IL,LFLANK,0,p+1);
+            return make_track(ML,LFLANK,0,p+1);
         }
-        else
-        {
-            return NULL_TRACK;
-        }
+        
+        return NULL_TRACK;
     }
 
     int32_t move_DL_DL(int32_t t, int32_t j)
@@ -352,12 +337,10 @@ class CHMM
         int32_t p;
         if ((p=track_get_p(t))<lflen)
         {
-            return make_track(IL,LFLANK,0,p+1);
+            return make_track(DL,LFLANK,0,p+1);
         }
-        else
-        {
-            return NULL_TRACK;
-        }
+    
+        return NULL_TRACK;
     }
 
     int32_t move_ML_IL(int32_t t, int32_t j)
@@ -365,12 +348,10 @@ class CHMM
         int32_t p;
         if ((p=track_get_p(t))<lflen)
         {
-            return make_track(IL,LFLANK,0,p+1);
+            return track_set_u(t, ML);
         }
-        else
-        {
-            return NULL_TRACK;
-        }
+        
+        return NULL_TRACK;
     }
 
     int32_t move_IL_IL(int32_t t, int32_t j)
@@ -378,14 +359,11 @@ class CHMM
         int32_t p;
         if ((p=track_get_p(t))<lflen)
         {
-            return make_track(IL,LFLANK,0,p+1);
+            return track_set_u(t, IL);
         }
-        else
-        {
-            return NULL_TRACK;
-        }
+    
+        return NULL_TRACK;
     }
-
 
     ///////////////////
     //Repeating Motif//
@@ -398,98 +376,74 @@ class CHMM
 
     int32_t move_X_M(int32_t t, int32_t j)
     {
-        return make_track(S,MOTIF,0,1);
+        int32_t p;
+        if ((p=track_get_p(t))==lflen)
+            return make_track(ML,MOTIF,1,1);
+        
+        return NULL_TRACK;
     }
 
     int32_t move_Y_M(int32_t t, int32_t j)
     {
         int32_t p;
-        if ((p=track_get_p(t))<rlen)
-        {
-            return make_track(Y,MOTIF,0,1);
-        }
-        else
-        {
-            return NULL_TRACK;
-        }
+        if ((p=track_get_p(t))==lflen)
+            return make_track(ML,MOTIF,1,1);
+        
+        return NULL_TRACK;
     }
 
     int32_t move_ML_M(int32_t t, int32_t j)
     {
         int32_t p;
-        if ((p=track_get_p(t))==mlen)
-        {
-            return make_track(X,MOTIF,0,1);
-        }
-        else
-        {
-            return make_track(X,MOTIF,0,p+1);
-        }
+        if ((p=track_get_p(t))==lflen)
+            return make_track(ML,MOTIF,1,1);
+        
+        return make_track(ML,MOTIF,1,1);
     }
 
     int32_t move_M_M(int32_t t, int32_t j)
     {
         int32_t p;
         if ((p=track_get_p(t))==mlen)
-        {
-            return make_track(X,MOTIF,0,1);
-        }
-        else
-        {
-            return make_track(X,MOTIF,0,p+1);
-        }
+            return make_track(M,MOTIF,track_get_c(t)+1,1);
+     
+        return make_track(M,MOTIF,track_get_c(t),p+1);
     }
 
     int32_t move_D_M(int32_t t, int32_t j)
     {
         int32_t p;
         if ((p=track_get_p(t))==mlen)
-        {
-            return make_track(D,MOTIF,0,1);
-        }
-        else
-        {
-            return make_track(D,MOTIF,0,p+1);
-        }
+            return make_track(D,MOTIF,track_get_c(t)+1,1);
+    
+        return make_track(D,MOTIF,track_get_c(t),p+1);
     }
 
     int32_t move_I_M(int32_t t, int32_t j)
     {
         int32_t p;
         if ((p=track_get_p(t))==mlen)
-        {
-            return make_track(I,MOTIF,0,1);
-        }
-        else
-        {
-            return make_track(I,MOTIF,0,p+1);
-        }
+            return make_track(I,MOTIF,track_get_c(t)+1,1);
+        
+        return make_track(I,MOTIF,track_get_c(t),p+1);
     }
 
     int32_t move_M_D(int32_t t, int32_t j)
     {
         int32_t p;
         if ((p=track_get_p(t))==mlen)
-        {
-            return make_track(I,MOTIF,0,1);
-        }
-        else
-        {
-            return make_track(I,MOTIF,0,p+1);
-        }
+            return make_track(I,MOTIF,track_get_c(t)+1,1);
+        
+        return make_track(I,MOTIF,track_get_c(t),p+1);
     }
 
     int32_t move_D_D(int32_t t, int32_t j)
     {
         int32_t p;
         if ((p=track_get_p(t))==mlen)
-        {
-            return make_track(I,MOTIF,0,1);
-        }
-        else
-        {
-            return make_track(I,MOTIF,0,p+1);
-        }
+            return make_track(D,MOTIF,track_get_c(t)+1,1);
+        
+        return make_track(D,MOTIF,track_get_c(t),p+1);
     }
 
     int32_t move_M_I(int32_t t, int32_t j)
