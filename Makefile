@@ -24,6 +24,8 @@ SOURCES = program\
 		compute_concordance\
 		partition\
 		profile_indels\
+		profile_snps\
+		profile_na12878\
 		discover\
 		merge_candidate_variants\
 		construct_probes\
@@ -44,8 +46,6 @@ SOURCES = program\
 		concat\
 		decompose\
 		remove_overlap\
-		profile_na12878\
-		profile_snps\
 		filter\
 		align
 
