@@ -235,7 +235,7 @@ class Igor : Program
 };
 }
 
-void annotate_variants(int argc, char ** argv)
+void annotate_str(int argc, char ** argv)
 {
     Igor igor(argc, argv);
     igor.print_options();

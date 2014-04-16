@@ -27,6 +27,7 @@
 #include "construct_probes.h"
 #include "discover.h"
 #include "annotate_variants.h"
+#include "annotate_str.h"
 #include "genotype.h"
 #include "merge_candidate_variants.h"
 #include "merge.h"

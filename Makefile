@@ -30,6 +30,7 @@ SOURCES = program\
 		genotype\
 		gencode\
 		annotate_variants\
+		annotate_str\
 		lhmm\
 		chmm\
 		fhmm\
