@@ -22,38 +22,6 @@
 */
 
 #include "chmm.h"
-#define MAXLEN 256
-#define MAXLEN_NBITS 8
-#define S  0
-#define X  1
-#define Y  2
-#define ML 3
-#define DL 4
-#define IL 5
-#define M  6
-#define D  7
-#define I  8
-#define MR 9
-#define DR 10
-#define IR 11
-#define W  12
-#define Z  13
-#define E  14
-#define N  15
-#define TBD 16
-#define NSTATES 15
-
-#define LFLANK 0
-#define MOTIF  1
-#define RFLANK 2
-#define READ   3
-#define UNMODELED 4
-#define UNCERTAIN 5
-
-//match type
-#define MATCH      0
-#define READ_ONLY  1
-#define PROBE_ONLY 2
 
 /**
  * Constructor.
@@ -499,7 +467,7 @@ void CHMM::proc_comp(int32_t A, int32_t B, int32_t index1, int32_t j, int32_t ma
         max_score = score;
         max_track = t;
     }
-       
+
 //    std::cerr << "\t" << state2string(A) << "=>" << state2string(B);
 //    std::cerr << " (" << ((index1-j)>>MAXLEN_NBITS) << "," << j << ") ";
 //    std::cerr << track2string(U[A][index1]) << "=>";
@@ -516,7 +484,7 @@ void CHMM::proc_comp(int32_t A, int32_t B, int32_t index1, int32_t j, int32_t ma
  */
 void CHMM::align(const char* read, const char* qual, bool debug)
 {
-    this->read = read; //read
+    this->read = read;
     this->qual = qual;
     rlen = strlen(read);
     plen = lflen + rlen + rflen;
@@ -883,7 +851,7 @@ void CHMM::trace_path()
     std::cerr << "max track: " << track2string(max_track) << "\n";
     std::cerr << "max i: " << max_i << "\n";
     std::cerr << "max j: " << rlen << "\n";
-            
+
     //trace path
     int32_t* path = max_path+(MAXLEN<<2)-1;
     *path = U[max_state][index(max_i,rlen)];
@@ -894,7 +862,7 @@ void CHMM::trace_path()
     while (track_get_u(*path)!=S)
     {
         std::cerr << "\t" << state2string(u) << " : " << track2string(*path) << " (" << i << "," << j << ")=>";
-    
+
         if (u==ML || u==M || u==MR)
         {
             --i;
@@ -908,16 +876,16 @@ void CHMM::trace_path()
         {
             --j;
         }
-        
+
         std::cerr << "(" << i << "," << j << ")\n";
-    
+
         u = track_get_u(*path);
         --path;
         *path = U[u][index(i,j)];
-    
+
     }
     std::cerr << "\tS\n\n";
-    
+
     //print path
     while (path<=max_path+(MAXLEN<<2)-1)
     {
@@ -1278,7 +1246,7 @@ void CHMM::print_U(int32_t *U, size_t plen, size_t rlen)
 void CHMM::print_trace(int32_t state, size_t plen, size_t rlen)
 {
     std::cerr << std::setprecision(1) << std::fixed;
-    int32_t *u = U[state]; 
+    int32_t *u = U[state];
     double *v = V[state];
     std::string s;
     for (size_t i=0; i<plen; ++i)
@@ -1294,7 +1262,7 @@ void CHMM::print_trace(int32_t state, size_t plen, size_t rlen)
                       << track_get_p(t) << "|"
                       << v[index(i,j)];
         }
-        
+
         std::cerr << "\n";
     }
 };
@@ -1343,6 +1311,10 @@ void CHMM::print_track(int32_t t)
 #undef W
 #undef Z
 #undef E
+#undef N
+#undef NSTATES
+
+#undef index 
 
 #undef LFLANK
 #undef MOTIF

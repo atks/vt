@@ -1,6 +1,6 @@
 /* The MIT License
 
-   Copyright (c) 2013 Adrian Tan <atks@umich.edu>
+   Copyright (c) 2014 Adrian Tan <atks@umich.edu>
 
    Permission is hereby granted, free of charge, to any person obtaining a copy
    of this software and associated documentation files (the "Software"), to deal
@@ -21,8 +21,8 @@
    THE SOFTWARE.
 */
 
-#ifndef ANNOTATE_VARIANTS_H
-#define ANNOTATE_VARIANTS_H
+#ifndef ANNOTATE_STR_H
+#define ANNOTATE_STR_H
 
 #include <cstdlib>
 #include <cstdint>
@@ -49,6 +49,6 @@
 #include "log_tool.h"
 #include "gencode.h"
 
-void annotate_variants(int argc, char ** argv);
+void annotate_str(int argc, char ** argv);
 
 #endif

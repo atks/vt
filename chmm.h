@@ -47,7 +47,7 @@
 #define E   14
 #define N   15
 #define TBD 16
-#define NSTATES 16
+#define NSTATES 15
 
 #define LFLANK    0
 #define MOTIF     1
@@ -865,32 +865,5 @@ class CHMM
     }
 
 };
-
-#undef MAXLEN
-#undef MAXLEN_NBITS
-#undef S
-#undef X
-#undef Y
-#undef ML
-#undef IL
-#undef DL
-#undef M
-#undef I
-#undef D
-#undef MR
-#undef IR
-#undef DR
-#undef W
-#undef Z
-#undef E
-#undef N
-#undef NSTATES
-
-#undef LFLANK
-#undef MOTIF
-#undef RFLANK
-#undef READ
-#undef UNMODELED
-#undef UNCERTAIN
 
 #endif
