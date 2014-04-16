@@ -77,6 +77,7 @@
 #define track_set_p(t,p)  (((t)&0xFFFFFF00)|(p))
 #define make_track(u,d,c,p) (((u)<<24)|((d)<<16)|((c)<<8)|(p))
 
+//[]
 #define NULL_TRACK  0x0F040000
 //[N|l|0|0]
 #define START_TRACK 0x0F000000
