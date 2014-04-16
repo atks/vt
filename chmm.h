@@ -27,6 +27,9 @@
 #include <iomanip>
 #include "log_tool.h"
 
+#define MAXLEN 256
+#define MAXLEN_NBITS 8
+
 #define S   0
 #define X   1
 #define Y   2
@@ -53,6 +56,9 @@
 #define UNMODELED 4
 #define UNCERTAIN 5
 
+/*for indexing single array*/
+#define index(i,j) (((i)<<MAXLEN_NBITS)+(j))
+
 /*functions for getting trace back information*/
 #define track_get_u(t)    (((t)&0xFF000000)>>24)
 #define track_get_d(t)    (((t)&0x00FF0000)>>16)
@@ -65,7 +71,8 @@
 #define track_set_p(t,p)  (((t)&0xFFFFFF00)|(p))
 #define make_track(u,d,c,p) (((u)<<24)|((d)<<16)|((c)<<8)|(p))
 
-#define NULL_TRACK 0x0F040000
+#define NULL_TRACK  0x0F040000
+#define START_TRACK 0x0F000000
 
 class CHMM
 {
@@ -83,6 +90,7 @@ class CHMM
     //for track intermediate scores during Viterbi algorithm
     double max_score;
     double max_track;
+    int32_t *max_path;
 
     double delta;
     double epsilon;
@@ -215,7 +223,12 @@ class CHMM
     void print_track(int32_t t);
 
     /**
-     * Moves.
+     * move_A_B
+     *
+     * A - source state
+     * B - destination state
+     * t - source track (model position)
+     * j - source read position
      */
     int32_t move_S_X(int32_t t, int32_t j)
     {
@@ -263,7 +276,12 @@ class CHMM
     //////////////
     int32_t move_S_ML(int32_t t, int32_t j)
     {
-        return make_track(S,LFLANK,0,1);
+        if (t==START_TRACK)
+        {
+            return make_track(S,LFLANK,0,1);
+        }
+        
+        return NULL_TRACK;
     }
 
     int32_t move_X_ML(int32_t t, int32_t j)
@@ -346,9 +364,9 @@ class CHMM
     int32_t move_ML_IL(int32_t t, int32_t j)
     {
         int32_t p;
-        if ((p=track_get_p(t))<lflen)
+        if (j<rlen)
         {
-            return track_set_u(t, ML);
+            return track_set_u(t, IL);
         }
         
         return NULL_TRACK;
@@ -357,7 +375,7 @@ class CHMM
     int32_t move_IL_IL(int32_t t, int32_t j)
     {
         int32_t p;
-        if ((p=track_get_p(t))<lflen)
+        if (j<rlen)
         {
             return track_set_u(t, IL);
         }
@@ -371,14 +389,21 @@ class CHMM
 
     int32_t move_S_M(int32_t t, int32_t j)
     {
-        return make_track(S,MOTIF,0,1);
+        if (t==START_TRACK)
+        {
+            return make_track(S,MOTIF,1,1);
+        }
+        
+        return NULL_TRACK;
     }
 
     int32_t move_X_M(int32_t t, int32_t j)
     {
         int32_t p;
-        if ((p=track_get_p(t))==lflen)
-            return make_track(ML,MOTIF,1,1);
+        if ((p=track_get_p(t))==lflen && j<rlen)
+        {
+            return make_track(X,MOTIF,1,1);
+        }
         
         return NULL_TRACK;
     }
@@ -386,8 +411,10 @@ class CHMM
     int32_t move_Y_M(int32_t t, int32_t j)
     {
         int32_t p;
-        if ((p=track_get_p(t))==lflen)
-            return make_track(ML,MOTIF,1,1);
+        if ((p=track_get_p(t))==lflen && j<rlen)
+        {
+            return make_track(Y,MOTIF,1,1);
+        }
         
         return NULL_TRACK;
     }
@@ -395,62 +422,119 @@ class CHMM
     int32_t move_ML_M(int32_t t, int32_t j)
     {
         int32_t p;
-        if ((p=track_get_p(t))==lflen)
+        if ((p=track_get_p(t))==lflen && j<rlen)
+        {
             return make_track(ML,MOTIF,1,1);
+        }
         
-        return make_track(ML,MOTIF,1,1);
+        return NULL_TRACK;
     }
 
     int32_t move_M_M(int32_t t, int32_t j)
     {
         int32_t p;
-        if ((p=track_get_p(t))==mlen)
-            return make_track(M,MOTIF,track_get_c(t)+1,1);
-     
-        return make_track(M,MOTIF,track_get_c(t),p+1);
+        if ((p=track_get_p(t))<=mlen && j<rlen)
+        {    
+            if (p==mlen)
+            {    
+                return make_track(M,MOTIF,track_get_c(t)+1,1);
+            }
+            else
+            {
+                return make_track(M,MOTIF,track_get_c(t),p+1);
+            }
+        }
+        else
+        {    
+            return NULL_TRACK;
+        }
     }
 
     int32_t move_D_M(int32_t t, int32_t j)
     {
         int32_t p;
-        if ((p=track_get_p(t))==mlen)
-            return make_track(D,MOTIF,track_get_c(t)+1,1);
-    
-        return make_track(D,MOTIF,track_get_c(t),p+1);
+        if ((p=track_get_p(t))<=mlen && j<rlen)
+        {    
+            if (p==mlen)
+            {    
+                return make_track(D,MOTIF,track_get_c(t)+1,1);
+            }
+            else
+            {
+                return make_track(D,MOTIF,track_get_c(t),p+1);
+            }
+        }
+        else
+        {    
+            return NULL_TRACK;
+        }
     }
 
     int32_t move_I_M(int32_t t, int32_t j)
     {
         int32_t p;
-        if ((p=track_get_p(t))==mlen)
-            return make_track(I,MOTIF,track_get_c(t)+1,1);
-        
-        return make_track(I,MOTIF,track_get_c(t),p+1);
+        if ((p=track_get_p(t))<=mlen)
+        {    
+            if (p==mlen)
+            {    
+                return make_track(I,MOTIF,track_get_c(t)+1,1);
+            }
+            else
+            {
+                return make_track(I,MOTIF,track_get_c(t),p+1);
+            }
+        }
+        else
+        {    
+            return NULL_TRACK;
+        }
     }
 
     int32_t move_M_D(int32_t t, int32_t j)
     {
         int32_t p;
-        if ((p=track_get_p(t))==mlen)
-            return make_track(I,MOTIF,track_get_c(t)+1,1);
-        
-        return make_track(I,MOTIF,track_get_c(t),p+1);
+        if ((p=track_get_p(t))<=mlen)
+        {    
+            if (p==mlen)
+            {    
+                return make_track(M,MOTIF,track_get_c(t)+1,1);
+            }
+            else
+            {
+                return make_track(M,MOTIF,track_get_c(t),p+1);
+            }
+        }
+        else
+        {    
+            return NULL_TRACK;
+        }
     }
 
     int32_t move_D_D(int32_t t, int32_t j)
     {
         int32_t p;
-        if ((p=track_get_p(t))==mlen)
-            return make_track(D,MOTIF,track_get_c(t)+1,1);
-        
-        return make_track(D,MOTIF,track_get_c(t),p+1);
+        if ((p=track_get_p(t))<=mlen)
+        {    
+            if (p==mlen)
+            {    
+                return make_track(D,MOTIF,track_get_c(t)+1,1);
+            }
+            else
+            {
+                return make_track(D,MOTIF,track_get_c(t),p+1);
+            }
+        }
+        else
+        {    
+            return NULL_TRACK;
+        }
     }
 
     int32_t move_M_I(int32_t t, int32_t j)
     {
         if (j<rlen)
         {
-            return make_track(I,MOTIF,0,j+1);
+            return track_set_u(t,M);
         }
         else
         {
@@ -462,7 +546,7 @@ class CHMM
     {
         if (j<rlen)
         {
-            return make_track(I,MOTIF,0,j+1);
+            return track_set_u(t,I);
         }
         else
         {
@@ -481,15 +565,29 @@ class CHMM
 
     int32_t move_X_MR(int32_t t, int32_t j)
     {
-        return make_track(S,MOTIF,0,1);
+        if (track_get_d(t)==LFLANK && track_get_p(t)==lflen && j<rlen)
+        {
+            return make_track(Y,RFLANK,0,1);
+        }
+        else
+        {
+            return NULL_TRACK;
+        }        
     }
 
     int32_t move_Y_MR(int32_t t, int32_t j)
     {
-        int32_t p;
-        if ((p=track_get_p(t))<rlen)
+        if (j<rlen)
         {
-            return make_track(Y,MOTIF,0,1);
+            if ((track_get_d(t)==LFLANK && track_get_p(t)==lflen) ||
+                (track_get_d(t)==MOTIF && track_get_p(t)==mlen))
+            {
+                return make_track(Y,RFLANK,0,1);
+            }
+            else
+            {
+                return NULL_TRACK;
+            }
         }
         else
         {
@@ -500,91 +598,90 @@ class CHMM
     int32_t move_ML_MR(int32_t t, int32_t j)
     {
         int32_t p;
-        if ((p=track_get_p(t))==mlen)
+        if ((p=track_get_p(t))==lflen && j<rlen)
         {
-            return make_track(X,MOTIF,0,1);
+            return make_track(ML,RFLANK,0,1);
         }
         else
         {
-            return make_track(X,MOTIF,0,p+1);
+            return NULL_TRACK;
         }
     }
 
     int32_t move_M_MR(int32_t t, int32_t j)
     {
-        int32_t p;
-        if ((p=track_get_p(t))==mlen)
+        if (track_get_p(t)==mlen && j<rlen)
         {
-            return make_track(X,MOTIF,0,1);
+            return make_track(M,RFLANK,0,1);
         }
         else
         {
-            return make_track(X,MOTIF,0,p+1);
+            return NULL_TRACK;
         }
     }
 
     int32_t move_MR_MR(int32_t t, int32_t j)
     {
         int32_t p;
-        if ((p=track_get_p(t))==mlen)
+        if ((p=track_get_p(t))<rflen && j<rlen)
         {
-            return make_track(X,MOTIF,0,1);
+            return make_track(MR,RFLANK,0,p+1);
         }
         else
         {
-            return make_track(X,MOTIF,0,p+1);
+            return NULL_TRACK;
         }
     }
 
     int32_t move_DR_MR(int32_t t, int32_t j)
     {
         int32_t p;
-        if ((p=track_get_p(t))==mlen)
+        if ((p=track_get_p(t))<rflen && j<rlen)
         {
-            return make_track(D,MOTIF,0,1);
+            return make_track(IR,RFLANK,0,p+1);
         }
         else
         {
-            return make_track(D,MOTIF,0,p+1);
+            return NULL_TRACK;
         }
     }
 
     int32_t move_IR_MR(int32_t t, int32_t j)
     {
         int32_t p;
-        if ((p=track_get_p(t))==mlen)
+        if ((p=track_get_p(t))<rflen && j<rlen)
         {
-            return make_track(I,MOTIF,0,1);
+            return make_track(IR,RFLANK,0,p+1);
         }
         else
         {
-            return make_track(I,MOTIF,0,p+1);
+            return NULL_TRACK;
         }
     }
 
     int32_t move_MR_DR(int32_t t, int32_t j)
     {
         int32_t p;
-        if ((p=track_get_p(t))==mlen)
+        if ((p=track_get_p(t))<rflen)
         {
-            return make_track(I,MOTIF,0,1);
+            return make_track(MR,RFLANK,0,p+1);
         }
         else
         {
-            return make_track(I,MOTIF,0,p+1);
+            return NULL_TRACK;
         }
     }
 
     int32_t move_DR_DR(int32_t t, int32_t j)
     {
         int32_t p;
-        if ((p=track_get_p(t))==mlen)
+        if ((p=track_get_p(t))<rflen)
         {
-            return make_track(I,MOTIF,0,1);
+            return make_track(DR,RFLANK,0,p+1);
         }
         else
         {
-            return make_track(I,MOTIF,0,p+1);
+            return NULL_TRACK;
         }
     }
 
@@ -592,7 +689,7 @@ class CHMM
     {
         if (j<rlen)
         {
-            return make_track(I,MOTIF,0,j+1);
+            return t;
         }
         else
         {
@@ -604,7 +701,7 @@ class CHMM
     {
         if (j<rlen)
         {
-            return make_track(I,MOTIF,0,j+1);
+            return t;
         }
         else
         {
@@ -618,15 +715,21 @@ class CHMM
 
     int32_t move_X_W(int32_t t, int32_t j)
     {
-        return make_track(S,MOTIF,0,1);
+        if (track_get_p(t)==LFLANK && track_get_p(t)==lflen && j<rlen)
+        {
+            return make_track(X,RFLANK,0,1);
+        }
+        else
+        {
+            return NULL_TRACK;
+        }
     }
 
     int32_t move_Y_W(int32_t t, int32_t j)
     {
-        int32_t p;
-        if ((p=track_get_p(t))<rlen)
+        if (track_get_p(t)==LFLANK && track_get_p(t)==lflen)
         {
-            return make_track(Y,MOTIF,0,1);
+            return make_track(Y,RFLANK,0,1);
         }
         else
         {
@@ -636,79 +739,73 @@ class CHMM
 
     int32_t move_ML_W(int32_t t, int32_t j)
     {
-        int32_t p;
-        if ((p=track_get_p(t))==mlen)
+        if (track_get_p(t)==LFLANK && track_get_p(t)==lflen)
         {
-            return make_track(X,MOTIF,0,1);
+            return make_track(ML,RFLANK,0,1);
         }
         else
         {
-            return make_track(X,MOTIF,0,p+1);
+            return NULL_TRACK;
         }
     }
 
     int32_t move_M_W(int32_t t, int32_t j)
     {
-        int32_t p;
-        if ((p=track_get_p(t))==mlen)
+        if (track_get_p(t)==MOTIF && track_get_p(t)==mlen)
         {
-            return make_track(X,MOTIF,0,1);
+            return make_track(M,RFLANK,0,1);
         }
         else
         {
-            return make_track(X,MOTIF,0,p+1);
+            return NULL_TRACK;
         }
     }
 
     int32_t move_D_W(int32_t t, int32_t j)
     {
-        int32_t p;
-        if ((p=track_get_p(t))==mlen)
+        if (track_get_p(t)==MOTIF && track_get_p(t)==mlen)
         {
-            return make_track(X,MOTIF,0,1);
+            return make_track(D,RFLANK,0,1);
         }
         else
         {
-            return make_track(X,MOTIF,0,p+1);
+            return NULL_TRACK;
         }
     }
 
     int32_t move_I_W(int32_t t, int32_t j)
     {
-        int32_t p;
-        if ((p=track_get_p(t))==mlen)
+        if (track_get_p(t)==MOTIF && track_get_p(t)==mlen)
         {
-            return make_track(D,MOTIF,0,1);
+            return make_track(I,RFLANK,0,1);
         }
         else
         {
-            return make_track(D,MOTIF,0,p+1);
+            return NULL_TRACK;
         }
     }
 
     int32_t move_MR_W(int32_t t, int32_t j)
     {
-        int32_t p;
-        if ((p=track_get_p(t))==mlen)
+        if (track_get_p(t)==RFLANK && track_get_p(t)<rflen)
         {
-            return make_track(I,MOTIF,0,1);
+            return make_track(MR,RFLANK,0,1);
         }
         else
         {
-            return make_track(I,MOTIF,0,p+1);
+            return NULL_TRACK;
         }
     }
 
     int32_t move_W_W(int32_t t, int32_t j)
     {
-        int32_t p;
-        if ((p=track_get_p(t))==mlen)
+        if (track_get_p(t)<rflen)
         {
-            return make_track(I,MOTIF,0,1);
+            return make_track(W,RFLANK,0,1);
         }
         else
         {
-            return make_track(I,MOTIF,0,p+1);
+            return NULL_TRACK;
         }
     }
 
@@ -717,10 +814,9 @@ class CHMM
     /////
     int32_t move_MR_Z(int32_t t, int32_t j)
     {
-        int32_t p;
-        if ((p=track_get_p(t))==rflen)
+        if (track_get_d(t)==RFLANK && track_get_p(t)==rflen && j<rlen)
         {
-            return make_track(I,RFLANK,0,1);
+            return t;
         }
         else
         {
@@ -731,32 +827,33 @@ class CHMM
     int32_t move_W_Z(int32_t t, int32_t j)
     {
         int32_t p;
-        if ((p=track_get_p(t))==mlen)
+        if (track_get_d(t)==RFLANK && track_get_p(t)==rflen && j<rlen)
         {
-            return make_track(I,MOTIF,0,1);
+            return t;
         }
         else
         {
-            return make_track(I,MOTIF,0,p+1);
+            return NULL_TRACK;
         }
     }
 
     int32_t move_Z_Z(int32_t t, int32_t j)
     {
         int32_t p;
-        if ((p=track_get_p(t))==mlen)
+        if (j<rlen)
         {
-            return make_track(I,MOTIF,0,1);
+            return t;
         }
         else
         {
-            return make_track(I,MOTIF,0,p+1);
+            return NULL_TRACK;
         }
     }
 
 };
 
 #undef MAXLEN
+#undef MAXLEN_NBITS
 #undef S
 #undef X
 #undef Y
