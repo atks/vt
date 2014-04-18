@@ -71,6 +71,7 @@
 #define track_get_c(t)    (((t)&0x0000FF00)>>8)
 #define track_get_p(t)    (((t)&0x000000FF))
 #define track_get_base(t) (model[track_get_d(t)][track_get_p(t)-1])
+#define track_valid(t) ((track_get_d(t)==RFLANK||track_get_d(t)==MOTIF||track_get_d(t)==LFLANK)&&track_get_p(t)!=0)
 #define track_set_u(t,u)  (((t)&0x00FFFFFF)|((u)<<24))
 #define track_set_d(t,d)  (((t)&0xFF00FFFF)|((d)<<16))
 #define track_set_c(t,c)  (((t)&0xFFFF00FF)|((c)<<8))
@@ -92,14 +93,23 @@ class CHMM
     //length of read, probe and components in the model
     int32_t rlen, plen, lflen, mlen, rflen;
 
-    std::string path;
     double maxLogOdds;
 
     //for track intermediate scores during Viterbi algorithm
     double max_score;
-    double max_track;
-    int32_t *max_path;
-
+    int32_t max_track;
+    
+    //for optimal alignment
+    bool optimal_path_traced;
+    double optimal_score;
+    int32_t optimal_state;
+    int32_t optimal_track;
+    int32_t optimal_probe_len;
+    int32_t *optimal_path; // for storage
+    int32_t *optimal_path_ptr; //just a pointer
+    int32_t optimal_path_len;
+    
+    
     double delta;
     double epsilon;
     double tau;
@@ -189,7 +199,17 @@ class CHMM
      * Converts state to cigar string representation.
      */
     std::string state2cigarstring(int32_t state);
-    
+
+    /**
+     * Converts state to cigar string representation.
+     */
+    std::string track2cigarstring1(int32_t state, int32_t j);
+        
+    /**
+     * Converts state to cigar string representation.
+     */
+    std::string track2cigarstring2(int32_t state);
+            
     /**
      * Converts model component to string representation.
      */
@@ -216,6 +236,11 @@ class CHMM
     void print(int32_t *v, size_t plen, size_t rlen);
 
     /**
+     * Prints the transition matrix.
+     */
+    void print_T();
+    
+    /**
      * Prints U.
      */
     void print_U(int32_t *U, size_t plen, size_t rlen);
@@ -236,7 +261,7 @@ class CHMM
     void print_track(int32_t t);
 
     /**
-     * move_A_B
+     * move_A_B(int32_t t, int32_t j)
      *
      * A - source state
      * B - destination state
@@ -503,6 +528,18 @@ class CHMM
         }
     }
 
+    int32_t move_ML_D(int32_t t, int32_t j)
+    {
+        if (track_get_p(t)==lflen)
+        {    
+            return make_track(ML,MOTIF,1,1);
+        }
+        else
+        {    
+            return NULL_TRACK;
+        }
+    }
+    
     int32_t move_M_D(int32_t t, int32_t j)
     {
         int32_t p;
@@ -543,6 +580,18 @@ class CHMM
         }
     }
 
+    int32_t move_ML_I(int32_t t, int32_t j)
+    {
+        if (j<rlen)
+        {    
+            return make_track(ML,MOTIF,1,1);
+        }
+        else
+        {    
+            return NULL_TRACK;
+        }
+    }
+    
     int32_t move_M_I(int32_t t, int32_t j)
     {
         if (t!=NULL_TRACK && j<rlen)
@@ -627,6 +676,30 @@ class CHMM
         {
             return make_track(M,RFLANK,0,1);
         }
+        
+        return NULL_TRACK;
+    }
+
+    int32_t move_D_MR(int32_t t, int32_t j)
+    {
+        int32_t p;
+        if ((p=track_get_p(t))==mlen)
+        {
+            return make_track(D,RFLANK,0,1);
+        }
+        else
+        {
+            return NULL_TRACK;
+        }
+    }
+
+    int32_t move_I_MR(int32_t t, int32_t j)
+    {
+        int32_t p;
+        if (j<rlen)
+        {
+            return make_track(I,RFLANK,0,1);
+        }
         else
         {
             return NULL_TRACK;
@@ -702,7 +775,7 @@ class CHMM
     {
         if (j<rlen)
         {
-            return t;
+            return track_set_u(t, MR);
         }
         else
         {
@@ -714,7 +787,7 @@ class CHMM
     {
         if (j<rlen)
         {
-            return t;
+            return track_set_u(t, IR);
         }
         else
         {
@@ -756,22 +829,17 @@ class CHMM
         {
             return make_track(ML,RFLANK,0,1);
         }
-        else
-        {
-            return NULL_TRACK;
-        }
+        
+        return NULL_TRACK;
     }
 
     int32_t move_M_W(int32_t t, int32_t j)
     {
-        if (track_get_p(t)==MOTIF && track_get_p(t)==mlen)
+        if (track_get_d(t)==MOTIF && track_get_p(t)==mlen)
         {
             return make_track(M,RFLANK,0,1);
         }
-        else
-        {
-            return NULL_TRACK;
-        }
+        return NULL_TRACK;
     }
 
     int32_t move_D_W(int32_t t, int32_t j)
@@ -780,10 +848,8 @@ class CHMM
         {
             return make_track(D,RFLANK,0,1);
         }
-        else
-        {
-            return NULL_TRACK;
-        }
+        
+        return NULL_TRACK;
     }
 
     int32_t move_I_W(int32_t t, int32_t j)
@@ -792,10 +858,8 @@ class CHMM
         {
             return make_track(I,RFLANK,0,1);
         }
-        else
-        {
-            return NULL_TRACK;
-        }
+        
+        return NULL_TRACK;
     }
 
     int32_t move_MR_W(int32_t t, int32_t j)
@@ -803,12 +867,10 @@ class CHMM
         int32_t p;
         if (track_get_d(t)==RFLANK && (p=track_get_p(t))<rflen)
         {
-            return make_track(W,RFLANK,0,p+1);
+            return make_track(MR,RFLANK,0,p+1);
         }
-        else
-        {
-            return NULL_TRACK;
-        }
+    
+        return NULL_TRACK;
     }
 
     int32_t move_W_W(int32_t t, int32_t j)
@@ -818,10 +880,8 @@ class CHMM
         {
             return make_track(W,RFLANK,0,p+1);
         }
-        else
-        {
-            return NULL_TRACK;
-        }
+        
+        return NULL_TRACK;
     }
 
     /////
