@@ -68,8 +68,9 @@ double LogTool::pl2log10_ed3(uint32_t pl)
         for (size_t i=LOG10_1ME.size(); i<=pl; ++i)
         {
             double e = std::pow(10, -((double) i)/10.0);
-            LOG10_ED3.push_back(log10(e/3));
-            LOG10_1ME.push_back(log10(1-e));
+            double v = log10(e*(1-e))/2;
+            LOG10_ED3.push_back(v);
+            LOG10_1ME.push_back(-v);
         }
     }
 
@@ -91,8 +92,9 @@ double LogTool::pl2log10_1me(uint32_t pl)
         for (size_t i=LOG10_1ME.size(); i<=pl; ++i)
         {
             double e = std::pow(10, -((double) i)/10.0);
-            LOG10_ED3.push_back(log10(e/3));
-            LOG10_1ME.push_back(log10(1-e));
+            double v = log10(e*(1-e))/2;
+            LOG10_ED3.push_back(v);
+            LOG10_1ME.push_back(-v);
         }
     }
 

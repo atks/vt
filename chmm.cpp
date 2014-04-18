@@ -44,7 +44,7 @@ CHMM::CHMM(LogTool *lt)
  */
 CHMM::~CHMM()
 {
-    delete max_path;
+    delete optimal_path;
 
     //the best alignment V_ for subsequence (i,j)
     for (size_t state=X; state<=Z; ++state)
@@ -71,14 +71,24 @@ void CHMM::initialize(const char* lflank, const char* motif, const char* rflank)
     mlen = strlen(model[MOTIF]);
     rflen = strlen(model[RFLANK]);
 
-    max_path = new int32_t[4*MAXLEN];
+    optimal_path = new int32_t[MAXLEN<<2];
+    optimal_path_traced = false;
 
     delta = 0.001;
-    epsilon = 0.5;
+    epsilon = 0.05;
     tau = 0.01;
-    eta = 0.001;
+    eta = 0.01;
 
     log10OneSixteenth = log10(1.0/16.0);
+    log10OneSixteenth = log10(0.03160696);
+
+    for (size_t i=S; i<=Z; ++i)
+    {
+        for (size_t j=S; j<=Z; ++j)
+        {
+            T[i][j] = -INFINITY;
+        }
+    }
 
     T[S][X] = 0;
     T[X][X] = 0;
@@ -104,7 +114,7 @@ void CHMM::initialize(const char* lflank, const char* motif, const char* rflank)
     T[X][M] = T[S][M];
     T[Y][M] = T[S][M];
     T[ML][M] = log10((tau*(1-2*delta-tau))/(eta*eta*eta*(1-eta)*(1-eta)));
-    T[M][M] = log10((tau*(1-2*delta-tau))/(eta*eta*(1-eta)*(1-eta)));
+    T[M][M] = log10(((1-2*delta-tau))/((1-eta)*(1-eta)));
     T[D][M] = log10(((1-epsilon-tau))/((1-eta)*(1-eta)));
     T[I][M] = T[I][M];
 
@@ -191,8 +201,10 @@ void CHMM::initialize(const char* lflank, const char* motif, const char* rflank)
     moves[M][M] = &CHMM::move_M_M;
     moves[D][M] = &CHMM::move_D_M;
     moves[I][M] = &CHMM::move_I_M;
+    moves[ML][D] = &CHMM::move_ML_D;
     moves[M][D] = &CHMM::move_M_D;
     moves[D][D] = &CHMM::move_D_D;
+    moves[ML][I] = &CHMM::move_ML_I;
     moves[M][I] = &CHMM::move_M_I;
     moves[I][I] = &CHMM::move_I_I;
 
@@ -200,6 +212,8 @@ void CHMM::initialize(const char* lflank, const char* motif, const char* rflank)
     moves[Y][MR] = &CHMM::move_Y_MR;
     moves[ML][MR] = &CHMM::move_ML_MR;
     moves[M][MR] = &CHMM::move_M_MR;
+    moves[D][MR] = &CHMM::move_D_MR;
+    moves[I][MR] = &CHMM::move_I_MR;
     moves[MR][MR] = &CHMM::move_MR_MR;
     moves[DR][MR] = &CHMM::move_DR_MR;
     moves[IR][MR] = &CHMM::move_IR_MR;
@@ -247,11 +261,11 @@ void CHMM::initialize(const char* lflank, const char* motif, const char* rflank)
                 {
                     if (i==1)
                     {
-                        t =  make_track(S,LFLANK,0,i);
+                        t = make_track(S,LFLANK,0,i);
                     }
                     else
                     {
-                        t =  make_track(X,LFLANK,0,i);
+                        t = make_track(X,LFLANK,0,i);
                     }
 
                     U[X][c] = t;
@@ -440,8 +454,8 @@ void CHMM::initialize(const char* lflank, const char* motif, const char* rflank)
  *
  * @A      - start state
  * @B      - end state
- * @index1 - flattened index of the one dimensional array of source state
- * @j      - 1 based position of read of source state
+ * @index1 - flattened index of the one dimensional array of start state
+ * @j      - 1 based position of read of start state
  * @m      - base match required (MATCH, PROBE_ONLY, READ_ONLY)
  */
 void CHMM::proc_comp(int32_t A, int32_t B, int32_t index1, int32_t j, int32_t match_type)
@@ -457,7 +471,7 @@ void CHMM::proc_comp(int32_t A, int32_t B, int32_t index1, int32_t j, int32_t ma
     }
     else if (match_type==MATCH)
     {
-          emission = log10_emission_odds(track_get_base(t), read[j], qual[j]);
+          emission = log10_emission_odds(track_get_base(t), read[j], qual[j]-33);
     }
 
     score = V[A][index1] + T[A][B] + emission + valid;
@@ -468,15 +482,18 @@ void CHMM::proc_comp(int32_t A, int32_t B, int32_t index1, int32_t j, int32_t ma
         max_track = t;
     }
 
-//    std::cerr << "\t" << state2string(A) << "=>" << state2string(B);
-//    std::cerr << " (" << ((index1-j)>>MAXLEN_NBITS) << "," << j << ") ";
-//    std::cerr << track2string(U[A][index1]) << "=>";
-//    std::cerr << track2string(t) << " ";
-//    std::cerr << emission << " (e: " << (track_get_d(t)<=RFLANK?track_get_base(t):'N') << " vs " << (j!=0?read[j-1]:'N')  << ") + ";
-//    std::cerr << T[A][B] << " (t) + ";
-//    std::cerr << V[A][index1] << " (p) + ";
-//    std::cerr << valid << " (v) = ";
-//    std::cerr << score << "\n";
+    if (1)
+    {
+        std::cerr << "\t" << state2string(A) << "=>" << state2string(B);
+        std::cerr << " (" << ((index1-j)>>MAXLEN_NBITS) << "," << j << ") ";
+        std::cerr << track2string(U[A][index1]) << "=>";
+        std::cerr << track2string(t) << " ";
+        std::cerr << emission << " (e: " << (track_get_d(t)<=RFLANK?track_get_base(t):'N') << " vs " << (j!=rlen?read[j]:'N')  << ") + ";
+        std::cerr << T[A][B] << " (t) + ";
+        std::cerr << V[A][index1] << " (p) + ";
+        std::cerr << valid << " (v) = ";
+        std::cerr << score << "\n";
+    }
 }
 
 /**
@@ -484,6 +501,7 @@ void CHMM::proc_comp(int32_t A, int32_t B, int32_t index1, int32_t j, int32_t ma
  */
 void CHMM::align(const char* read, const char* qual, bool debug)
 {
+    optimal_path_traced = false;
     this->read = read;
     this->qual = qual;
     rlen = strlen(read);
@@ -495,25 +513,12 @@ void CHMM::align(const char* read, const char* qual, bool debug)
         exit(1);
     }
 
-    if (1)
-    {
-        std::cerr << "rflank       : " << model[LFLANK] << "\n";
-        std::cerr << "repeat motif : " << model[MOTIF] << "\n";
-        std::cerr << "lflank       : " << model[RFLANK] << "\n";
-        std::cerr << "lflen        : " << lflen << "\n";
-        std::cerr << "rflen        : " << rflen << "\n";
-        std::cerr << "plen         : " << plen << "\n";
-
-        std::cerr << "read         : " << read << "\n";
-        std::cerr << "rlen         : " << rlen << "\n";
-    }
-
     double max = 0;
     char maxPath = 'X';
 
     size_t c,d,u,l;
 
-    debug = false;
+    debug = true;
 
     //alignment
     //take into consideration
@@ -541,7 +546,7 @@ void CHMM::align(const char* read, const char* qual, bool debug)
             //////
             //ML//
             //////
-            std::cerr << "(" << i << "," << j << ")\n";
+            if (debug) std::cerr << "(" << i << "," << j << ")\n";
             max_score = -INFINITY;
             max_track = NULL_TRACK;
             proc_comp(S, ML, d, j-1, MATCH);
@@ -557,7 +562,6 @@ void CHMM::align(const char* read, const char* qual, bool debug)
             //////
             //DL//
             //////
-            std::cerr << "\n";
             max_score = -INFINITY;
             max_track = NULL_TRACK;
             proc_comp(ML, DL, u, j, PROBE_ONLY);
@@ -569,7 +573,6 @@ void CHMM::align(const char* read, const char* qual, bool debug)
             //////
             //IL//
             //////
-            std::cerr << "\n";
             max_score = -INFINITY;
             max_track = NULL_TRACK;
             proc_comp(ML, IL, l, j-1, READ_ONLY);
@@ -597,9 +600,9 @@ void CHMM::align(const char* read, const char* qual, bool debug)
             /////
             //D//
             /////
-            std::cerr << "\n";
             max_score = -INFINITY;
             max_track = NULL_TRACK;
+            proc_comp(ML, D, u, j, PROBE_ONLY);
             proc_comp(M, D, u, j, PROBE_ONLY);
             proc_comp(D, D, u, j, PROBE_ONLY);
             V[D][c] = max_score;
@@ -609,9 +612,9 @@ void CHMM::align(const char* read, const char* qual, bool debug)
             /////
             //I//
             /////
-            std::cerr << "\n";
             max_score = -INFINITY;
             max_track = NULL_TRACK;
+            proc_comp(ML, I, l, j-1, READ_ONLY);
             proc_comp(M, I, l, j-1, READ_ONLY);
             proc_comp(I, I, l, j-1, READ_ONLY);
             V[I][c] = max_score;
@@ -627,6 +630,8 @@ void CHMM::align(const char* read, const char* qual, bool debug)
             proc_comp(Y, MR, d, j-1, MATCH);
             proc_comp(ML, MR, d, j-1, MATCH);
             proc_comp(M, MR, d, j-1, MATCH);
+            proc_comp(D, MR, d, j-1, MATCH);
+            proc_comp(I, MR, d, j-1, MATCH);
             proc_comp(MR, MR, d, j-1, MATCH);
             proc_comp(DR, MR, d, j-1, MATCH);
             proc_comp(IR, MR, d, j-1, MATCH);
@@ -637,7 +642,6 @@ void CHMM::align(const char* read, const char* qual, bool debug)
             //////
             //DR//
             //////
-            std::cerr << "\n";
             max_score = -INFINITY;
             max_track = NULL_TRACK;
             proc_comp(MR, DR, u, j, PROBE_ONLY);
@@ -649,7 +653,6 @@ void CHMM::align(const char* read, const char* qual, bool debug)
             //////
             //IR//
             //////
-            std::cerr << "\n";
             max_score = -INFINITY;
             max_track = NULL_TRACK;
             proc_comp(MR, IR, l, j-1, READ_ONLY);
@@ -678,7 +681,6 @@ void CHMM::align(const char* read, const char* qual, bool debug)
             //////
             //Z//
             //////
-            std::cerr << "\n";
             max_score = -INFINITY;
             max_track = NULL_TRACK;
             proc_comp(MR, Z, l, j-1, READ_ONLY);
@@ -691,7 +693,7 @@ void CHMM::align(const char* read, const char* qual, bool debug)
         }
     }
 
-    if (0)
+    if (1)
     {
 //        std::cerr << "\n   =S=\n";
 //        print_trace(S, plen+1, rlen+1);
@@ -800,73 +802,55 @@ void CHMM::trace_path()
 {
     //search for a complete path in M or W or Z
     size_t c;
-    double max_score = -INFINITY;
-    int32_t max_track = NULL_TRACK;
-    int32_t max_state = TBD;
-    size_t max_i = 0;
-    for (size_t i=rflen; i<=plen; ++i)
+    optimal_score = -INFINITY;
+    optimal_track = NULL_TRACK;
+    optimal_state = TBD;
+    optimal_probe_len = 0;
+    for (size_t i=(lflen+rflen); i<=plen; ++i)
     {
         c = index(i,rlen);
-        if (V[MR][c]>=max_score)
+        if (V[MR][c]>=optimal_score)
         {
-            max_score = V[MR][c];
-            max_track = U[MR][c];
-            max_state = MR;
-            max_i = i;
+            optimal_score = V[MR][c];
+            optimal_track = U[MR][c];
+            optimal_state = MR;
+            optimal_probe_len = i;
         }
 
-        if (V[W][c]>=max_score)
+        if (V[W][c]>=optimal_score)
         {
-            max_score = V[W][c];
-            max_track = U[W][c];
-            max_state = W;
-            max_i = i;
+            optimal_score = V[W][c];
+            optimal_track = U[W][c];
+            optimal_state = W;
+            optimal_probe_len = i;
         }
 
-        if (V[Z][c]>=max_score)
+        if (V[Z][c]>=optimal_score)
         {
-            max_score = V[Z][c];
-            max_track = U[Z][c];
-            max_state = Z;
-            max_i = i;
+            optimal_score = V[Z][c];
+            optimal_track = U[Z][c];
+            optimal_state = Z;
+            optimal_probe_len = i;
         }
     }
-
-    if (1)
-    {
-        std::cerr << "rflank       : " << model[LFLANK] << "\n";
-        std::cerr << "repeat motif : " << model[MOTIF] << "\n";
-        std::cerr << "lflank       : " << model[RFLANK] << "\n";
-        std::cerr << "lflen        : " << lflen << "\n";
-        std::cerr << "rflen        : " << rflen << "\n";
-        std::cerr << "plen         : " << plen << "\n";
-
-        std::cerr << "read         : " << read << "\n";
-        std::cerr << "rlen         : " << rlen << "\n";
-    }
-
-
-    std::cerr << "max score: " << max_score << "\n";
-    std::cerr << "max state: " << state2string(max_state) << "\n";
-    std::cerr << "max track: " << track2string(max_track) << "\n";
-    std::cerr << "max i: " << max_i << "\n";
-    std::cerr << "max j: " << rlen << "\n";
 
     //trace path
-    int32_t* path = max_path+(MAXLEN<<2)-1;
-    *path = U[max_state][index(max_i,rlen)];
-    int32_t i = max_i;
-    int32_t j = rlen;
-    int32_t u = max_state;
-    std::cerr << "BACK TRACKING: E\n\t" << state2cigarstring(max_state) << "\n";
-    while (track_get_u(*path)!=S)
+    optimal_path_ptr = optimal_path+(MAXLEN<<2)-1;
+    int32_t i=optimal_probe_len, j=rlen;
+    int32_t last_t = make_track(optimal_state, RFLANK, 0, rflen+1);
+    optimal_path_len = 0;
+    int32_t u;
+    do
     {
-        std::cerr << "\t" << state2string(u) << " : " << track2string(*path) << " (" << i << "," << j << ")=>";
+        u = track_get_u(last_t);
+        last_t = U[u][index(i,j)];
+        *optimal_path_ptr = track_set_u(last_t, u);
+
+        std::cerr << track2string(*optimal_path_ptr) << " (" << i << "," << j << ")\n";
 
         if (u==ML || u==M || u==MR)
         {
-            --i;
-            --j;
+            --i; --j;
         }
         else if (u==X || u==DL || u==D || u==DR || u==W)
         {
@@ -877,22 +861,12 @@ void CHMM::trace_path()
             --j;
         }
 
-        std::cerr << "(" << i << "," << j << ")\n";
+        --optimal_path_ptr;
+        ++optimal_path_len;        
+    } while (track_get_u(last_t)!=S);
 
-        u = track_get_u(*path);
-        --path;
-        *path = U[u][index(i,j)];
-
-    }
-    std::cerr << "\tS\n\n";
-
-    //print path
-    while (path<=max_path+(MAXLEN<<2)-1)
-    {
-        std::cerr << state2cigarstring(track_get_u(*path));
-        ++path;
-    }
-    std::cerr << state2cigarstring(max_state) << "E\n";
+    ++optimal_path_ptr;
+    optimal_path_traced = true;
 };
 
 /**
@@ -909,11 +883,11 @@ double CHMM::log10_emission_odds(char probe_base, char read_base, uint32_t pl)
 
     if (read_base!=probe_base)
     {
-        return lt->pl2log10_ed3(pl) - log10OneSixteenth;
+        return lt->pl2log10_ed3(pl);
     }
     else
     {
-        return lt->pl2log10_1me(pl) - log10OneSixteenth;
+        return lt->pl2log10_1me(pl);
     }
 };
 
@@ -1076,6 +1050,102 @@ std::string CHMM::state2cigarstring(int32_t state)
 }
 
 /**
+ * Converts state to cigar string representation.
+ */
+std::string CHMM::track2cigarstring1(int32_t t, int32_t j)
+{
+    int32_t state = track_get_u(t);
+
+    if (state==S)
+    {
+        return "S";
+    }
+    else if (state==X)
+    {
+        return "X";
+    }
+    else if (state==Y)
+    {
+        return "Y";
+    }
+    else if (state==ML || state==M || state==MR)
+    {
+        if (track_get_base(t)==read[j-1])
+        {
+            return "M";
+        }
+        else
+        {
+            return "*";
+        }
+    }
+    else if (state==DL || state==D || state==DR)
+    {
+        return "D";
+    }
+    else if (state==IL || state==I || state==IR)
+    {
+        return "I";
+    }
+    else if (state==W)
+    {
+        return "W";
+    }
+    else if (state==Z)
+    {
+        return "Z";
+    }
+    else if (state==E)
+    {
+        return "E";
+    }
+    else if (state==N)
+    {
+        return "N";
+    }
+    else if (state==TBD)
+    {
+        return "*";
+    }
+    else
+    {
+        return "!";
+    }
+}
+
+/**
+ * Converts state to cigar string representation.
+ */
+std::string CHMM::track2cigarstring2(int32_t t)
+{
+    int32_t state = track_get_u(t);
+
+    if (state==ML || state==DL || state==IL)
+    {
+        return "L";
+    }
+    else if (state==M)
+    {
+        return (track_get_c(t)%2==0?"+":"o");
+    }
+    else if (state==D)
+    {
+        return (track_get_c(t)%2==0?"+":"o");
+    }
+    else if (state==I)
+    {
+        return (track_get_c(t)%2==0?"+":"o");
+    }
+    else if (state==MR || state==DR || state==IR)
+    {
+        return "R";
+    }
+    else
+    {
+        return " ";
+    }
+}
+/**
  * Converts model component to string representation.
  */
 std::string CHMM::component2string(int32_t component)
@@ -1108,7 +1178,9 @@ std::string CHMM::component2string(int32_t component)
     {
         return "!";
     }
-}/**
+}
+
+/**
  * Prints an alignment.
  */
 void CHMM::print_alignment()
@@ -1122,51 +1194,104 @@ void CHMM::print_alignment()
  */
 void CHMM::print_alignment(std::string& pad)
 {
-//    std::stringstream xAligned;
-//    std::stringstream yAligned;
-//    std::stringstream qualAligned;
-//    uint32_t xIndex=0, yIndex=0;
-//    for (uint32_t i=0; i<U_.size(); ++i)
+    if (!optimal_path_traced)
+    {
+        std::cerr << "path not traced\n";
+    }
+
+    std::cerr << "rflank       : " << model[LFLANK] << "\n";
+    std::cerr << "repeat motif : " << model[MOTIF] << "\n";
+    std::cerr << "lflank       : " << model[RFLANK] << "\n";
+    std::cerr << "lflen        : " << lflen << "\n";
+    std::cerr << "rflen        : " << rflen << "\n";
+    std::cerr << "plen         : " << plen << "\n";
+    std::cerr << "\n";
+    std::cerr << "read         : " << read << "\n";
+    std::cerr << "rlen         : " << rlen << "\n";
+    std::cerr << "\n";
+    std::cerr << "optimal score: " << optimal_score << "\n";
+    std::cerr << "optimal state: " << state2string(optimal_state) << "\n";
+    std::cerr << "optimal track: " << track2string(optimal_track) << "\n";
+    std::cerr << "optimal probe len: " << optimal_probe_len << "\n";
+    std::cerr << "optimal path length : " << optimal_path_len << "\n";
+    std::cerr << "optimal path     : " << optimal_path << "\n";
+    std::cerr << "optimal path ptr : " << optimal_path_ptr  << "\n";
+    std::cerr << "max j: " << rlen << "\n";
+
+    //print path
+    int32_t* path;
+    path = optimal_path_ptr;
+    std::cerr << "Model:  ";
+    int32_t t = NULL_TRACK;
+    int32_t j = 0;
+    while (path<optimal_path+(MAXLEN<<2))
+    {
+        int32_t u = track_get_u(*path);
+        if (u==X || u==ML || u==DL || u==M || u==D || u==MR || u==DR || u==W)
+        {
+            std::cerr << track_get_base(*path);
+        }
+        else
+        {
+            std::cerr << '-';
+        }
+        ++path;
+    }
+    std::cerr << " \n";
+
+    std::cerr << "       S";
+    path = optimal_path_ptr;
+    j=1;
+    while (path<optimal_path+(MAXLEN<<2))
+    {
+        std::cerr << track2cigarstring1(*path,j);
+        int32_t u = track_get_u(*path);
+        if (u==Y || u==ML || u==IL || u==M || u==I || u==MR || u==IR || u==Z)
+        {
+            ++j;
+        }
+        ++path;
+    }
+    std::cerr << "E\n";
+
+    path = optimal_path_ptr;
+    std::cerr << "        ";
+    while (path<optimal_path+(MAXLEN<<2))
+    {
+        std::cerr << track2cigarstring2(*path);
+        ++path;
+    }
+    std::cerr << " \n";
+
+    path = optimal_path_ptr;
+    j=1;
+    std::cerr << "Read:   ";
+    while (path<optimal_path+(MAXLEN<<2))
+    {
+        int32_t u = track_get_u(*path);
+        if (u==Y || u==ML || u==IL || u==M || u==I || u==MR || u==IR || u==Z)
+        {
+            std::cerr << read[j-1];
+            ++j;
+        }
+        else
+        {
+            std::cerr << '-';
+        }
+        ++path;
+    }
+    std::cerr << " \n";
+
+//    print_T();
+
+//    //print path
+//    while (path<=max_path+(MAXLEN<<2)-1)
 //    {
-//        char state = U_.at(i);
-//        if (state=='S' || state=='E')
-//        {
-//            xAligned << state;
-//            yAligned << state;
-//            qualAligned << state;
-//        }
-//        else if (state=='X'||state=='W')
-//        {
-//            xAligned << x[xIndex++];
-//            yAligned << '.';
-//            qualAligned << '.';
-//        }
-//        else if (state=='M')
-//        {
-//            xAligned << x[xIndex++];
-//            yAligned << y[yIndex];
-//            qualAligned << qual[yIndex++];
-//        }
-//        else if (state=='D')
-//        {
-//            xAligned << x[xIndex++];
-//            yAligned << '-';
-//            qualAligned << '-';
-//        }
-//        else if (state=='I')
-//        {
-//            xAligned << '-';
-//            yAligned << y[yIndex];
-//            qualAligned << qual[yIndex++];
-//        }
-//        else if (state=='Y'||state=='Z')
-//        {
-//            xAligned << '.';
-//            yAligned << y[yIndex];
-//            qualAligned << qual[yIndex++];
-//        }
+//        std::cerr << state2cigarstring(track_get_u(*path));
+//        ++path;
 //    }
-//
+//    std::cerr << state2cigarstring(max_state) << "E\n";
+
 //    std::cerr << pad << "X    " << xAligned.str() << "E\n";
 //    std::cerr << pad << "Path " << U_ << "E\n";
 //    std::cerr << pad << "Y    " << yAligned.str() << "E\n";
@@ -1214,6 +1339,34 @@ void CHMM::print(int32_t *v, size_t plen, size_t rlen)
           std::cerr << (val<0?"  ":"   ") << val;
         }
 
+        std::cerr << "\n";
+    }
+};
+
+/**
+ * Prints the transition matrix.
+ */
+void CHMM::print_T()
+{
+    for (size_t j=S; j<=Z; ++j)
+    {
+        std::cerr << std::setw(8) << std::setprecision(2) << std::fixed << state2string(j);
+    }
+    std::cerr << "\n";
+
+    for (size_t i=S; i<=Z; ++i)
+    {
+        for (size_t j=S; j<=Z; ++j)
+        {
+            if (j)
+            {
+                std::cerr << std::setw(8) << std::setprecision(2) << std::fixed << T[i][j];
+            }
+            else
+            {
+                std::cerr << state2string(i) << std::setw(8) << std::setprecision(2) << std::fixed << T[i][j];
+            }
+        }
         std::cerr << "\n";
     }
 };
@@ -1314,7 +1467,7 @@ void CHMM::print_track(int32_t t)
 #undef N
 #undef NSTATES
 
-#undef index 
+#undef index
 
 #undef LFLANK
 #undef MOTIF

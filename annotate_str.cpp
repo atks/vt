@@ -111,21 +111,13 @@ class Igor : Program
         bcf_hdr_append(odw->hdr, "##INFO=<ID=VT,Number=1,Type=String,Description=\"Variant Type - SNP, MNP, INDEL, CLUMPED\">");
         bcf_hdr_append(odw->hdr, "##INFO=<ID=RU,Number=1,Type=String,Description=\"Repeat unit in a STR or Homopolymer\">");
         bcf_hdr_append(odw->hdr, "##INFO=<ID=RL,Number=1,Type=Integer,Description=\"Repeat Length\">");
-//        bcf_hdr_append(odw->hdr, "##INFO=<ID=LFLANK,Number=1,Type=String,Description=\"Right Flank\">");
-//        bcf_hdr_append(odw->hdr, "##INFO=<ID=RFLANK,Number=1,Type=String,Description=\"Left Flank\">");
-//        bcf_hdr_append(odw->hdr, "##INFO=<ID=NS,Number=0,Type=Flag,Description=\"Near to STR\">");
+        bcf_hdr_append(odw->hdr, "##INFO=<ID=LFLANK,Number=1,Type=String,Description=\"Right Flank\">");
+        bcf_hdr_append(odw->hdr, "##INFO=<ID=RFLANK,Number=1,Type=String,Description=\"Left Flank\">");
 
         ///////////////////////
         //tool initialization//
         ///////////////////////
         vm = new VariantManip(ref_fasta_file);
-        
-        if (annotate_coding)
-        {    
-            bcf_hdr_append(odw->hdr, "##INFO=<ID=GENCODE_FS,Number=0,Type=Flag,Description=\"Frameshift INDEL\">");
-            bcf_hdr_append(odw->hdr, "##INFO=<ID=GENCODE_NFS,Number=0,Type=Flag,Description=\"Non Frameshift INDEL\">");
-            gc = new GENCODE(gencode_gtf_file, ref_fasta_file);
-        }
         
         ////////////////////////
         //stats initialization//
