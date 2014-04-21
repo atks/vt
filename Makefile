@@ -22,6 +22,7 @@ SOURCES = program\
 		interval_tree\
 		genome_interval\
 		compute_concordance\
+		compute_features\
 		partition\
 		profile_indels\
 		profile_snps\
