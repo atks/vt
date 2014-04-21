@@ -440,4 +440,45 @@ class RFHMM
     }
 };
 
+#undef MAXLEN
+#undef MAXLEN_NBITS
+
+#undef S
+#undef Y
+#undef M
+#undef I
+#undef D
+#undef E
+#undef N
+#undef TBD
+#undef NSTATES
+
+#undef index
+
+#undef MOTIF
+#undef READ
+#undef UNMODELED
+#undef UNCERTAIN
+
+#undef MATCH
+#undef READ_ONLY
+#undef PROBE_ONLY
+
+#undef index
+#undef track_get_u
+#undef track_get_d
+#undef track_get_d
+#undef track_get_c
+#undef track_get_p
+#undef track_get_base
+#undef track_valid
+#undef track_set_u
+#undef track_set_d
+#undef track_set_c
+#undef track_set_p
+#undef make_track
+
+#undef NULL_TRACK
+#undef START_TRACK
+
 #endif
