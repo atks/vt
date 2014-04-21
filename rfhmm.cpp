@@ -23,6 +23,49 @@
 
 #include "rfhmm.h"
 
+#define MAXLEN 256
+#define MAXLEN_NBITS 8
+
+#define S   0
+#define Y   1
+#define M   2
+#define D   3
+#define I   4
+#define E   5
+#define N   6
+#define TBD 7
+#define NSTATES 6
+
+#define MOTIF     0
+#define READ      1
+#define UNMODELED 2
+#define UNCERTAIN 3
+
+//match type
+#define MATCH      0
+#define READ_ONLY  1
+#define PROBE_ONLY 2
+
+/*for indexing single array*/
+#define index(i,j) (((i)<<MAXLEN_NBITS)+(j))
+
+/*functions for getting trace back information*/
+#define track_get_u(t)    (((t)&0xFF000000)>>24)
+#define track_get_d(t)    (((t)&0x00FF0000)>>16)
+#define track_get_c(t)    (((t)&0x0000FF00)>>8)
+#define track_get_p(t)    (((t)&0x000000FF))
+#define track_get_base(t) (model[track_get_d(t)][track_get_p(t)-1])
+#define track_valid(t) ((track_get_d(t)==MOTIF)&&track_get_p(t)!=0)
+#define track_set_u(t,u)  (((t)&0x00FFFFFF)|((u)<<24))
+#define track_set_d(t,d)  (((t)&0xFF00FFFF)|((d)<<16))
+#define track_set_c(t,c)  (((t)&0xFFFF00FF)|((c)<<8))
+#define track_set_p(t,p)  (((t)&0xFFFFFF00)|(p))
+#define make_track(u,d,c,p) (((u)<<24)|((d)<<16)|((c)<<8)|(p))
+
+//[]
+#define NULL_TRACK  0x0F040000
+//[N|l|0|0]
+#define START_TRACK 0x0F000000
 /**
  * Constructor.
  */
@@ -134,7 +177,7 @@ void RFHMM::initialize(const char* motif)
     moves[Y][D] = &RFHMM::move_Y_D;
     moves[M][D] = &RFHMM::move_M_D;
     moves[D][D] = &RFHMM::move_D_D;
-    
+
     moves[S][I] = &RFHMM::move_S_I;
     moves[Y][I] = &RFHMM::move_Y_I;
     moves[M][I] = &RFHMM::move_M_I;
@@ -171,7 +214,7 @@ void RFHMM::initialize(const char* motif)
                     U[Y][c] = make_track(Y,MOTIF,0,0);
                 }
             }
-            
+
             //M
             V[M][c] = -INFINITY;
             if (!i || !j)
@@ -276,7 +319,7 @@ void RFHMM::align(const char* read, const char* qual, bool debug)
     this->qual = qual;
     rlen = strlen(read);
     plen = rlen;
-    
+
     if (rlen>MAXLEN)
     {
         fprintf(stderr, "[%s:%d %s] Sequence to be aligned is greater than %d currently supported: %d\n", __FILE__, __LINE__, __FUNCTION__, MAXLEN, rlen);
@@ -400,7 +443,7 @@ void RFHMM::trace_path()
             optimal_state = M;
             optimal_probe_len = i;
         }
-        
+
         if (V[D][c]>=optimal_score)
         {
             optimal_score = V[D][c];
@@ -408,7 +451,7 @@ void RFHMM::trace_path()
             optimal_state = D;
             optimal_probe_len = i;
         }
-        
+
         if (V[I][c]>=optimal_score)
         {
             optimal_score = V[I][c];
@@ -901,6 +944,7 @@ void RFHMM::print_track(int32_t t)
 
 #undef MAXLEN
 #undef MAXLEN_NBITS
+
 #undef S
 #undef Y
 #undef M
@@ -908,6 +952,7 @@ void RFHMM::print_track(int32_t t)
 #undef D
 #undef E
 #undef N
+#undef TBD
 #undef NSTATES
 
 #undef index
@@ -916,3 +961,24 @@ void RFHMM::print_track(int32_t t)
 #undef READ
 #undef UNMODELED
 #undef UNCERTAIN
+
+#undef MATCH
+#undef READ_ONLY
+#undef PROBE_ONLY
+
+#undef index
+#undef track_get_u
+#undef track_get_d
+#undef track_get_d
+#undef track_get_c
+#undef track_get_p
+#undef track_get_base
+#undef track_valid
+#undef track_set_u
+#undef track_set_d
+#undef track_set_c
+#undef track_set_p
+#undef make_track
+
+#undef NULL_TRACK
+#undef START_TRACK
