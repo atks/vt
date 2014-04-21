@@ -117,8 +117,7 @@ class CHMM
 
     double logEta;
     double logTau;
-    double log10OneSixteenth;
-
+    
     double T[NSTATES][NSTATES];
 
     double **V;
@@ -174,21 +173,6 @@ class CHMM
      * Compute log10 emission odds based on equal error probability distribution contrasted against log10(1/16).
      */
     double log10_emission_odds(char read_base, char probe_base, uint32_t pl);
-
-    /**
-     * Advance position in model.
-     */
-    inline int32_t track_next(int32_t start, int32_t end, int32_t t)
-    {
-        if (track_get_d(t)==N && track_get_p(t)<lflen)
-        {
-            return track_set_d(t, track_get_p(t)+1);
-        }
-        else
-        {
-            return NULL_TRACK;
-        }
-    }
 
     /**
      * Converts state to string representation.
