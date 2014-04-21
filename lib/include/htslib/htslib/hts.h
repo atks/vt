@@ -84,7 +84,7 @@ extern "C" {
   @return    For released versions, a string like "N.N[.N]"; or git describe
   output if using a library built within a Git repository.
 */
-const char *hts_version();
+const char *hts_version(void);
 
 /*!
   @abstract       Open a SAM/BAM/CRAM/VCF/BCF/etc file
@@ -120,7 +120,15 @@ int hts_close(htsFile *fp);
 
 int hts_getline(htsFile *fp, int delimiter, kstring_t *str);
 char **hts_readlines(const char *fn, int *_n);
-char **hts_readlist(const char *fn, int *_n);
+/*!
+    @abstract       Parse comma-separated list or read list from a file
+    @param list     File name or comma-separated list
+    @param is_file
+    @param _n       Size of the output array (number of items read)
+    @return         NULL on failure or pointer to newly allocated array of
+                    strings
+*/
+char **hts_readlist(const char *fn, int is_file, int *_n);
 
 /*!
   @abstract  Set .fai filename for a file opened for reading
@@ -147,6 +155,7 @@ producing iterators operating as follows:
  - HTS_IDX_REST   iterates from the current position to the end of the file
  - HTS_IDX_NONE   always returns "no more alignment records"
 When one of these special tid values is used, beg and end are ignored.
+When REST or NONE is used, idx is also ignored and may be NULL.
 */
 #define HTS_IDX_NOCOOR (-2)
 #define HTS_IDX_START  (-3)
@@ -251,7 +260,7 @@ static inline int hts_bin_bot(int bin, int n_lvls)
  * Endianness *
  **************/
 
-static inline int ed_is_big()
+static inline int ed_is_big(void)
 {
 	long one= 1;
 	return !(*((char *)(&one)));

@@ -574,10 +574,10 @@ int bcf_hdr_printf(bcf_hdr_t *hdr, const char *fmt, ...)
     vsnprintf(line, n, fmt, ap);
     va_end(ap);
 
-    bcf_hdr_append(hdr, line);
+    int ret = bcf_hdr_append(hdr, line);
 
     free(line);
-    return 0;
+    return ret;
 }
 
 
@@ -749,6 +749,10 @@ static inline int bcf_read1_core(BGZF *fp, bcf1_t *v)
 	v->n_allele = x[6]>>16; v->n_info = x[6]&0xffff;
 	v->n_fmt = x[7]>>24; v->n_sample = x[7]&0xffffff;
 	v->shared.l = x[0], v->indiv.l = x[1];
+
+    // silent fix of broken BCFs produced by earlier versions of bcf_subset, prior to and including bd6ed8b4
+    if ( (!v->indiv.l || !v->n_sample) && v->n_fmt ) v->n_fmt = 0;
+
 	bgzf_read(fp, v->shared.s, v->shared.l);
 	bgzf_read(fp, v->indiv.s, v->indiv.l);
 	return 0;
@@ -830,7 +834,6 @@ static inline void bcf1_sync_alleles(bcf1_t *line, kstring_t *str)
     int i;
     for (i=0; i<line->n_allele; i++)
         bcf_enc_vchar(str, strlen(line->d.allele[i]), line->d.allele[i]);
-    line->rlen = line->n_allele ? strlen(line->d.allele[0]) : 0;     // beware: this neglects SV's END tag
 }
 static inline void bcf1_sync_filter(bcf1_t *line, kstring_t *str)
 {
@@ -863,7 +866,6 @@ static inline void bcf1_sync_info(bcf1_t *line, kstring_t *str)
 
 static int bcf1_sync(bcf1_t *line)
 {
-    int i;
     kstring_t tmp = {0,0,0};
     if ( !line->shared.l )
     {
@@ -877,57 +879,40 @@ static int bcf1_sync(bcf1_t *line)
     }
     else if ( line->d.shared_dirty )
     {
-        // The line was edited, update the BCF data block
-        uint8_t *ptr, *ptr_ori = (uint8_t *) line->shared.s;
-        int type, size;
+        // The line was edited, update the BCF data block, ptr_ori points
+        // to the original unchanged BCF data. 
+        uint8_t *ptr_ori = (uint8_t *) line->shared.s;
 
         // ID: single typed string
-        size = bcf_dec_size(ptr_ori, &ptr, &type);
-        size = (size << bcf_type_shift[type]) + (ptr - ptr_ori);
         if ( line->d.shared_dirty & BCF1_DIRTY_ID ) 
             bcf1_sync_id(line, &tmp);
         else 
-            kputsn_(ptr_ori, size, &tmp);
-        ptr_ori += size;
+            kputsn_(ptr_ori, line->unpack_size[0], &tmp);
+        ptr_ori += line->unpack_size[0];
 
         // REF+ALT: list of typed strings
-        uint8_t *_ptr, *_ptr_ori = ptr_ori;
-        size = 0;
-        for (i=0; i<line->n_allele; i++) 
-        {
-            int _size = bcf_dec_size(_ptr_ori, &_ptr, &type);
-            size += (_size << bcf_type_shift[type]) + (_ptr - _ptr_ori);
-            _ptr_ori = _ptr + (_size << bcf_type_shift[type]);
-        }
-        if ( line->d.shared_dirty & BCF1_DIRTY_ALS ) 
+        if ( line->d.shared_dirty & BCF1_DIRTY_ALS  )
             bcf1_sync_alleles(line, &tmp);
         else
-        {
-            line->rlen = line->n_allele ? strlen(line->d.allele[0]) : 0;     // beware: this neglects SV's END tag
-            kputsn_(ptr_ori, size, &tmp);
-        }
-        ptr_ori += size;
+            kputsn_(ptr_ori, line->unpack_size[1], &tmp);
+        line->rlen = line->n_allele ? strlen(line->d.allele[0]) : 0;     // beware: this neglects SV's END tag
+        ptr_ori += line->unpack_size[1];
 
         // FILTER: typed vector of integers
-        ptr = ptr_ori;
-        size = bcf_dec_size(ptr_ori, &ptr, &type);
-        for (i=0; i<size; i++) 
-            bcf_dec_int1(ptr, type, &ptr);
-        size = ptr - ptr_ori;
         if ( line->d.shared_dirty & BCF1_DIRTY_FLT )
             bcf1_sync_filter(line, &tmp);
         else if ( line->d.n_flt ) 
-            kputsn_(ptr_ori, size, &tmp);
+            kputsn_(ptr_ori, line->unpack_size[2], &tmp);
         else
             bcf_enc_vint(&tmp, 0, 0, -1);
-        ptr_ori += size;
+        ptr_ori += line->unpack_size[2];
 
         // INFO: pairs of typed vectors
         if ( line->d.shared_dirty & BCF1_DIRTY_INF ) 
             bcf1_sync_info(line, &tmp);
         else
         {
-            size = line->shared.l - (size_t)ptr_ori + (size_t)line->shared.s;
+            int size = line->shared.l - (size_t)ptr_ori + (size_t)line->shared.s;
             kputsn_(ptr_ori, size, &tmp);
         }
         free(line->shared.s);
@@ -935,7 +920,7 @@ static int bcf1_sync(bcf1_t *line)
     }
     if ( line->n_sample && line->n_fmt && (!line->indiv.l || line->d.indiv_dirty) )
     {
-        // The genotype fields has changed or are not present
+        // The genotype fields changed or are not present
         tmp.l = tmp.m = 0; tmp.s = NULL;
         int i, irm = -1;
         for (i=0; i<line->n_fmt; i++)
@@ -959,6 +944,7 @@ static int bcf1_sync(bcf1_t *line)
         free(line->indiv.s);
         line->indiv = tmp;
     }
+    if ( !line->n_sample ) line->n_fmt = 0;
     return 0;
 }
 
@@ -1713,7 +1699,7 @@ static inline uint8_t *bcf_unpack_info_core1(uint8_t *ptr, bcf_info_t *info)
 int bcf_unpack(bcf1_t *b, int which)
 {
     if ( !b->shared.l ) return 0; // Building a new BCF record from scratch
-	uint8_t *ptr = (uint8_t*)b->shared.s;
+	uint8_t *ptr = (uint8_t*)b->shared.s, *ptr_ori;
 	int *offset, i;
 	bcf_dec_t *d = &b->d;
 	if (which & BCF_UN_FLT) which |= BCF_UN_STR;
@@ -1724,19 +1710,22 @@ int bcf_unpack(bcf1_t *b, int which)
 
         // ID
         tmp.l = 0; tmp.s = d->id; tmp.m = d->m_id;
+        ptr_ori = ptr;
         ptr = bcf_fmt_sized_array(&tmp, ptr); 
+        b->unpack_size[0] = ptr - ptr_ori;
         kputc('\0', &tmp);
         d->id = tmp.s; d->m_id = tmp.m;
 
         // REF and ALT are in a single block (d->als) and d->alleles are pointers into this block
         tmp.l = 0; tmp.s = d->als; tmp.m = d->m_als;
         offset = (int*)alloca(b->n_allele * sizeof(int));
-        offset = (int*)alloca(b->n_allele * sizeof(int));
+        ptr_ori = ptr;
         for (i = 0; i < b->n_allele; ++i) {
             offset[i] = tmp.l;
             ptr = bcf_fmt_sized_array(&tmp, ptr);
             kputc('\0', &tmp);
         }
+        b->unpack_size[1] = ptr - ptr_ori;
         d->als = tmp.s; d->m_als = tmp.m;
 
         hts_expand(char*, b->n_allele, d->m_allele, d->allele); // NM: hts_expand() is a macro
@@ -1747,6 +1736,7 @@ int bcf_unpack(bcf1_t *b, int which)
 	}
 	if ((which&BCF_UN_FLT) && !(b->unpacked&BCF_UN_FLT)) { // FILTER
 		ptr = b->unpack_ptr;
+        ptr_ori = ptr;
 		if (*ptr>>4) {
 			int type;
 			d->n_flt = bcf_dec_size(ptr, &ptr, &type);
@@ -1754,6 +1744,7 @@ int bcf_unpack(bcf1_t *b, int which)
 			for (i = 0; i < d->n_flt; ++i)
 				d->flt[i] = bcf_dec_int1(ptr, type, &ptr);
 		} else ++ptr, d->n_flt = 0;
+        b->unpack_size[2] = ptr - ptr_ori;
 		b->unpack_ptr = ptr;
 		b->unpacked |= BCF_UN_FLT;
 	}
@@ -2108,6 +2099,8 @@ bcf_hdr_t *bcf_hdr_subset(const bcf_hdr_t *h0, int n, char *const* samples, int 
 	bcf_hdr_t *h;
 	str.l = str.m = 0; str.s = 0;
 	h = bcf_hdr_init("w");
+    int j;
+    for (j=0; j<n; j++) imap[j] = -1;
 	if ( bcf_hdr_nsamples(h0) > 0) {
 		char *p;
 		int i = 0, end = n? 8 : 7;
@@ -2134,7 +2127,7 @@ bcf_hdr_t *bcf_hdr_subset(const bcf_hdr_t *h0, int n, char *const* samples, int 
 	return h;
 }
 
-int bcf_hdr_set_samples(bcf_hdr_t *hdr, const char *samples)
+int bcf_hdr_set_samples(bcf_hdr_t *hdr, const char *samples, int is_file)
 {
     if ( samples && !strcmp("-",samples) ) return 0;            // keep all samples 
 
@@ -2147,7 +2140,7 @@ int bcf_hdr_set_samples(bcf_hdr_t *hdr, const char *samples)
         for (i=0; i<bcf_hdr_nsamples(hdr); i++) bit_array_set(hdr->keep_samples,i);
 
     int idx, n, ret = 0;
-    char **smpls = hts_readlist(samples[0]=='^'?samples+1:samples, &n);
+    char **smpls = hts_readlist(samples[0]=='^'?samples+1:samples, is_file, &n);
     if ( !smpls ) return -1;
     for (i=0; i<n; i++)
     {
@@ -2221,6 +2214,7 @@ int bcf_subset(const bcf_hdr_t *h, bcf1_t *v, int n, int *imap)
 		for (i = j = 0; j < n; ++j) if (imap[j] >= 0) ++i;
 		v->n_sample = i;
 	} else v->n_sample = 0;
+    if ( !v->n_sample ) v->n_fmt = 0;
 	free(v->indiv.s);
 	v->indiv = ind;
     v->unpacked &= ~BCF_UN_FMT;    // only BCF is ready for output, VCF will need to unpack again
@@ -2592,6 +2586,8 @@ int bcf_has_filter(const bcf_hdr_t *hdr, bcf1_t *line, char *filter)
 
 static inline int _bcf1_sync_alleles(const bcf_hdr_t *hdr, bcf1_t *line, int nals)
 {
+    line->d.shared_dirty |= BCF1_DIRTY_ALS;
+
     line->n_allele = nals;
     hts_expand(char*, line->n_allele, line->d.m_allele, line->d.allele);
 
@@ -2604,8 +2600,6 @@ static inline int _bcf1_sync_alleles(const bcf_hdr_t *hdr, bcf1_t *line, int nal
         als++;
         n++;
     }
-    line->n_allele = nals;
-    line->d.shared_dirty |= BCF1_DIRTY_ALS;
     return 0;
 }
 int bcf_update_alleles(const bcf_hdr_t *hdr, bcf1_t *line, const char **alleles, int nals)
@@ -2689,7 +2683,7 @@ bcf_info_t *bcf_get_info(const bcf_hdr_t *hdr, bcf1_t *line, const char *key)
     return NULL;
 }
 
-int bcf_get_info_values(bcf_hdr_t *hdr, bcf1_t *line, const char *tag, void **dst, int *ndst, int type)
+int bcf_get_info_values(const bcf_hdr_t *hdr, bcf1_t *line, const char *tag, void **dst, int *ndst, int type)
 {
     int i,j, tag_id = bcf_hdr_id2int(hdr, BCF_DT_ID, tag);
     if ( !bcf_hdr_idinfo_exists(hdr,BCF_HL_INFO,tag_id) ) return -1;    // no such INFO field in the header
@@ -2811,7 +2805,7 @@ int bcf_get_format_values(const bcf_hdr_t *hdr, bcf1_t *line, const char *tag, v
 
     if ( type==BCF_HT_STR )
     {
-        int n = (fmt->n+1)*bcf_hdr_nsamples(hdr);
+        int n = fmt->n*bcf_hdr_nsamples(hdr);
         if ( *ndst < n ) 
         {
             *dst  = realloc(*dst, n);

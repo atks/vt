@@ -177,6 +177,7 @@ typedef struct {
     int max_unpack;         // Set to BCF_UN_STR, BCF_UN_FLT, or BCF_UN_INFO to boost performance of vcf_parse when some of the fields won't be needed
 	int unpacked;           // remember what has been unpacked to allow calling bcf_unpack() repeatedly without redoing the work
 	uint8_t *unpack_ptr;    // position of the last unpack call
+    int unpack_size[3];     // the original block size of ID, REF+ALT and FILTER 
     int errcode;    // one of BCF_ERR_* codes
 } bcf1_t;
 
@@ -224,7 +225,7 @@ extern "C" {
 	void bcf_hdr_destroy(bcf_hdr_t *h);
 
 	/** Initialize a bcf1_t object; equivalent to calloc(1, sizeof(bcf1_t)) */
-	bcf1_t *bcf_init();
+	bcf1_t *bcf_init(void);
 	
 	/** Deallocate a bcf1_t object */
 	void bcf_destroy(bcf1_t *v);
@@ -256,12 +257,11 @@ extern "C" {
     /**
      *  bcf_hdr_set_samples() - for more efficient VCF parsing when only one/few samples are needed
      *  @samples: samples to include or exclude from file or as a comma-separated string.
-     *              LIST    .. select samples in list
-     *              :FILE   .. read samples from file
-     *              ^LIST   .. exclude samples from list
-     *              ^:FILE  .. exclude samples form file
-     *              -       .. include all samples
-     *              NULL    .. exclude all samples
+     *              LIST|FILE   .. select samples in list/file
+     *              ^LIST|FILE  .. exclude samples from list/file
+     *              -           .. include all samples
+     *              NULL        .. exclude all samples
+     *  @is_file: @samples is a file (1) or a comma-separated list (1)
      *
      *  The bottleneck of VCF reading is parsing of genotype fields. If the
      *  reader knows in advance that only subset of samples is needed (possibly
@@ -276,7 +276,7 @@ extern "C" {
      *  contains samples not present in the VCF header. In such a case, the
      *  return value is the index of the offending sample.
      */
-    int bcf_hdr_set_samples(bcf_hdr_t *hdr, const char *samples);
+    int bcf_hdr_set_samples(bcf_hdr_t *hdr, const char *samples, int is_file);
     int bcf_subset_format(const bcf_hdr_t *hdr, bcf1_t *rec);
 
 
@@ -478,7 +478,7 @@ extern "C" {
      *  @values:    pointer to the array of values, the same number of elements
      *              is expected for each sample. Missing values must be padded 
      *              with bcf_*_missing or bcf_*_vector_end values.
-     *  @n:         total size of the array. If n==0, existing tag is removed.
+     *  @n:         number of values in the array. If n==0, existing tag is removed.
      *
      *  The function bcf_update_format_string() is a higher-level (slower) variant of
      *  bcf_update_format_char(). The former accepts array of \0-terminated strings
@@ -548,7 +548,7 @@ extern "C" {
     #define bcf_get_info_float(hdr,line,tag,dst,ndst)  bcf_get_info_values(hdr,line,tag,(void**)(dst),ndst,BCF_HT_REAL)
     #define bcf_get_info_string(hdr,line,tag,dst,ndst) bcf_get_info_values(hdr,line,tag,(void**)(dst),ndst,BCF_HT_STR)
     #define bcf_get_info_flag(hdr,line,tag,dst,ndst)   bcf_get_info_values(hdr,line,tag,(void**)(dst),ndst,BCF_HT_FLAG)
-    int bcf_get_info_values(bcf_hdr_t *hdr, bcf1_t *line, const char *tag, void **dst, int *ndst, int type);
+    int bcf_get_info_values(const bcf_hdr_t *hdr, bcf1_t *line, const char *tag, void **dst, int *ndst, int type);
 
     /**
      *  bcf_get_format_*() - same as bcf_get_info*() above
@@ -569,7 +569,7 @@ extern "C" {
      *
      *  Example: 
      *      int ngt, *gt_arr = NULL, ngt_arr = 0;
-     *      ngt = bcf_get_format_int(hdr, line, "GT", &gt_arr, &ngt_arr);
+     *      ngt = bcf_get_genotypes(hdr, line, &gt_arr, &ngt_arr);
      */
     #define bcf_get_format_int32(hdr,line,tag,dst,ndst)  bcf_get_format_values(hdr,line,tag,(void**)(dst),ndst,BCF_HT_INT)
     #define bcf_get_format_float(hdr,line,tag,dst,ndst)  bcf_get_format_values(hdr,line,tag,(void**)(dst),ndst,BCF_HT_REAL)
