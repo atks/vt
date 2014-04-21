@@ -549,12 +549,15 @@ void CHMM::align(const char* read, const char* qual, bool debug)
             if (debug) std::cerr << "(" << i << "," << j << ")\n";
             max_score = -INFINITY;
             max_track = NULL_TRACK;
-            proc_comp(S, ML, d, j-1, MATCH);
-            proc_comp(X, ML, d, j-1, MATCH);
-            proc_comp(Y, ML, d, j-1, MATCH);
-            proc_comp(ML, ML, d, j-1, MATCH);
-            proc_comp(DL, ML, d, j-1, MATCH);
-            proc_comp(IL, ML, d, j-1, MATCH);
+            if (i<=lflen)
+            {
+                proc_comp(S, ML, d, j-1, MATCH);
+                proc_comp(X, ML, d, j-1, MATCH);
+                proc_comp(Y, ML, d, j-1, MATCH);
+                proc_comp(ML, ML, d, j-1, MATCH);
+                proc_comp(DL, ML, d, j-1, MATCH);
+                proc_comp(IL, ML, d, j-1, MATCH);
+            }
             V[ML][c] = max_score;
             U[ML][c] = max_track;
             if (debug) std::cerr << "\tset ML " << max_score << " - " << track2string(max_track) << "\n";
@@ -564,8 +567,11 @@ void CHMM::align(const char* read, const char* qual, bool debug)
             //////
             max_score = -INFINITY;
             max_track = NULL_TRACK;
-            proc_comp(ML, DL, u, j, PROBE_ONLY);
-            proc_comp(DL, DL, u, j, PROBE_ONLY);
+            if (i<=lflen)
+            {
+                proc_comp(ML, DL, u, j, PROBE_ONLY);
+                proc_comp(DL, DL, u, j, PROBE_ONLY);
+            }
             V[DL][c] = max_score;
             U[DL][c] = max_track;
             if (debug) std::cerr << "\tset DL " << max_score << " - " << track2string(max_track) << "\n";
@@ -575,8 +581,11 @@ void CHMM::align(const char* read, const char* qual, bool debug)
             //////
             max_score = -INFINITY;
             max_track = NULL_TRACK;
-            proc_comp(ML, IL, l, j-1, READ_ONLY);
-            proc_comp(IL, IL, l, j-1, READ_ONLY);
+            if (i<=lflen)
+            {
+                proc_comp(ML, IL, l, j-1, READ_ONLY);
+                proc_comp(IL, IL, l, j-1, READ_ONLY);
+            }
             V[IL][c] = max_score;
             U[IL][c] = max_track;
             if (debug) std::cerr << "\tset IL " << max_score << " - " << track2string(max_track) << "\n";
@@ -587,12 +596,15 @@ void CHMM::align(const char* read, const char* qual, bool debug)
             //only need to update this i>rflen
             max_score = -INFINITY;
             max_track = NULL_TRACK;
-            proc_comp(X, M, d, j-1, MATCH);
-            proc_comp(Y, M, d, j-1, MATCH);
-            proc_comp(ML, M, d, j-1, MATCH);
-            proc_comp(M, M, d, j-1, MATCH);
-            proc_comp(D, M, d, j-1, MATCH);
-            proc_comp(I, M, d, j-1, MATCH);
+            if (i>lflen)
+            {
+                proc_comp(X, M, d, j-1, MATCH);
+                proc_comp(Y, M, d, j-1, MATCH);
+                proc_comp(ML, M, d, j-1, MATCH);
+                proc_comp(M, M, d, j-1, MATCH);
+                proc_comp(D, M, d, j-1, MATCH);
+                proc_comp(I, M, d, j-1, MATCH);
+            }
             V[M][c] = max_score;
             U[M][c] = max_track;
             if (debug) std::cerr << "\tset M " << max_score << " - " << track2string(max_track) << "\n";
@@ -602,9 +614,12 @@ void CHMM::align(const char* read, const char* qual, bool debug)
             /////
             max_score = -INFINITY;
             max_track = NULL_TRACK;
-            proc_comp(ML, D, u, j, PROBE_ONLY);
-            proc_comp(M, D, u, j, PROBE_ONLY);
-            proc_comp(D, D, u, j, PROBE_ONLY);
+            if (i>lflen)
+            {
+                proc_comp(ML, D, u, j, PROBE_ONLY);
+                proc_comp(M, D, u, j, PROBE_ONLY);
+                proc_comp(D, D, u, j, PROBE_ONLY);
+            }
             V[D][c] = max_score;
             U[D][c] = max_track;
             if (debug) std::cerr << "\tset D " << max_score << " - " << track2string(max_track) << "\n";
@@ -614,9 +629,12 @@ void CHMM::align(const char* read, const char* qual, bool debug)
             /////
             max_score = -INFINITY;
             max_track = NULL_TRACK;
-            proc_comp(ML, I, l, j-1, READ_ONLY);
-            proc_comp(M, I, l, j-1, READ_ONLY);
-            proc_comp(I, I, l, j-1, READ_ONLY);
+            if (i>lflen)
+            {
+                proc_comp(ML, I, l, j-1, READ_ONLY);
+                proc_comp(M, I, l, j-1, READ_ONLY);
+                proc_comp(I, I, l, j-1, READ_ONLY);
+            }
             V[I][c] = max_score;
             U[I][c] = max_track;
             if (debug) std::cerr << "\tset I " << max_score << " - " << track2string(max_track) << "\n";
@@ -626,15 +644,18 @@ void CHMM::align(const char* read, const char* qual, bool debug)
             //////
             max_score = -INFINITY;
             max_track = NULL_TRACK;
-            proc_comp(X, MR, d, j-1, MATCH);
-            proc_comp(Y, MR, d, j-1, MATCH);
-            proc_comp(ML, MR, d, j-1, MATCH);
-            proc_comp(M, MR, d, j-1, MATCH);
-            proc_comp(D, MR, d, j-1, MATCH);
-            proc_comp(I, MR, d, j-1, MATCH);
-            proc_comp(MR, MR, d, j-1, MATCH);
-            proc_comp(DR, MR, d, j-1, MATCH);
-            proc_comp(IR, MR, d, j-1, MATCH);
+            if (i>lflen)
+            {
+                proc_comp(X, MR, d, j-1, MATCH);
+                proc_comp(Y, MR, d, j-1, MATCH);
+                proc_comp(ML, MR, d, j-1, MATCH);
+                proc_comp(M, MR, d, j-1, MATCH);
+                proc_comp(D, MR, d, j-1, MATCH);
+                proc_comp(I, MR, d, j-1, MATCH);
+                proc_comp(MR, MR, d, j-1, MATCH);
+                proc_comp(DR, MR, d, j-1, MATCH);
+                proc_comp(IR, MR, d, j-1, MATCH);
+            }
             V[MR][c] = max_score;
             U[MR][c] = max_track;
             if (debug) std::cerr << "\tset MR " << max_score << " - " << track2string(max_track) << "\n";
@@ -642,8 +663,11 @@ void CHMM::align(const char* read, const char* qual, bool debug)
             //////
             //DR//
             //////
-            max_score = -INFINITY;
-            max_track = NULL_TRACK;
+            if (i>lflen)
+            {
+                max_score = -INFINITY;
+                max_track = NULL_TRACK;
+            }
             proc_comp(MR, DR, u, j, PROBE_ONLY);
             proc_comp(DR, DR, u, j, PROBE_ONLY);
             V[DR][c] = max_score;
@@ -655,8 +679,11 @@ void CHMM::align(const char* read, const char* qual, bool debug)
             //////
             max_score = -INFINITY;
             max_track = NULL_TRACK;
-            proc_comp(MR, IR, l, j-1, READ_ONLY);
-            proc_comp(IR, IR, l, j-1, READ_ONLY);
+            if (i>lflen)
+            {
+                proc_comp(MR, IR, l, j-1, READ_ONLY);
+                proc_comp(IR, IR, l, j-1, READ_ONLY);
+            }
             V[IR][c] = max_score;
             U[IR][c] = max_track;
             if (debug) std::cerr << "\tset IR " << max_score << " - " << track2string(max_track) << "\n";
@@ -666,14 +693,17 @@ void CHMM::align(const char* read, const char* qual, bool debug)
             /////
             max_score = -INFINITY;
             max_track = NULL_TRACK;
-            proc_comp(X, W, u, j, PROBE_ONLY);
-            proc_comp(Y, W, u, j, PROBE_ONLY);
-            proc_comp(ML, W, u, j, PROBE_ONLY);
-            proc_comp(M, W, u, j, PROBE_ONLY);
-            proc_comp(D, W, u, j, PROBE_ONLY);
-            proc_comp(I, W, u, j, PROBE_ONLY);
-            proc_comp(MR, W, u, j, PROBE_ONLY);
-            proc_comp(W, W, u, j, PROBE_ONLY);
+            if (i>lflen)
+            {
+                proc_comp(X, W, u, j, PROBE_ONLY);
+                proc_comp(Y, W, u, j, PROBE_ONLY);
+                proc_comp(ML, W, u, j, PROBE_ONLY);
+                proc_comp(M, W, u, j, PROBE_ONLY);
+                proc_comp(D, W, u, j, PROBE_ONLY);
+                proc_comp(I, W, u, j, PROBE_ONLY);
+                proc_comp(MR, W, u, j, PROBE_ONLY);
+                proc_comp(W, W, u, j, PROBE_ONLY);
+            }
             V[W][c] = max_score;
             U[W][c] = max_track;
             if (debug) std::cerr << "\tset W " << max_score << " - " << track2string(max_track) << "\n";
@@ -683,9 +713,12 @@ void CHMM::align(const char* read, const char* qual, bool debug)
             //////
             max_score = -INFINITY;
             max_track = NULL_TRACK;
-            proc_comp(MR, Z, l, j-1, READ_ONLY);
-            proc_comp(W, Z, l, j-1, READ_ONLY);
-            proc_comp(Z, Z, l, j-1, READ_ONLY);
+            if (i>lflen)
+            {
+                proc_comp(MR, Z, l, j-1, READ_ONLY);
+                proc_comp(W, Z, l, j-1, READ_ONLY);
+                proc_comp(Z, Z, l, j-1, READ_ONLY);
+            }
             V[Z][c] = max_score;
             U[Z][c] = max_track;
             if (debug) std::cerr << "\tset Z " << max_score << " - " << track2string(max_track) << "\n";
@@ -883,11 +916,11 @@ double CHMM::log10_emission_odds(char probe_base, char read_base, uint32_t pl)
 
     if (read_base!=probe_base)
     {
-        return lt->pl2log10_ed3(pl);
+        return lt->pl2log10_varp(pl);
     }
     else
     {
-        return lt->pl2log10_1me(pl);
+        return -lt->pl2log10_varp(pl);
     }
 };
 
