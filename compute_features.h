@@ -49,6 +49,6 @@
 #include "log_tool.h"
 #include "gencode.h"
 
-void annotate_str(int argc, char ** argv);
+void compute_features(int argc, char ** argv);
 
 #endif
