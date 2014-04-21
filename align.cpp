@@ -146,9 +146,9 @@ class Igor : Program
             clock_t t1 = clock();
             print_time((float)(t1-t0)/CLOCKS_PER_SEC);
         }
-        else if (method=="fhmm")
+        else if (method=="lfhmm")
         {
-            FHMM hmm;
+            LFHMM hmm;
             double llk;
             std::string qual;
             for (int32_t i=0; i<y.size(); ++i)
@@ -156,7 +156,24 @@ class Igor : Program
                 qual += 'K';
             }
             clock_t t0 = clock();
-            hmm.align(llk, x.c_str(), y.c_str(), qual.c_str());
+            hmm.initialize(lflank.c_str(), ru.c_str(), rflank.c_str());
+            hmm.align(y.c_str(), qual.c_str());
+            hmm.print_alignment();
+            clock_t t1 = clock();
+            print_time((float)(t1-t0)/CLOCKS_PER_SEC);
+        }
+        else if (method=="rfhmm")
+        {
+            RFHMM hmm;
+            double llk;
+            std::string qual;
+            for (int32_t i=0; i<y.size(); ++i)
+            {
+                qual += 'K';
+            }
+            clock_t t0 = clock();
+            hmm.initialize(lflank.c_str(), ru.c_str(), rflank.c_str());
+            hmm.align(y.c_str(), qual.c_str());
             hmm.print_alignment();
             clock_t t1 = clock();
             print_time((float)(t1-t0)/CLOCKS_PER_SEC);
