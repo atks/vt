@@ -35,7 +35,8 @@ SOURCES = program\
 		annotate_str\
 		lhmm\
 		chmm\
-		fhmm\
+		lfhmm\
+		rfhmm\
 		lhmm1\
 		genotyping_buffer\
 		lhmm_genotyping_record\
