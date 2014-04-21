@@ -74,13 +74,10 @@ void CHMM::initialize(const char* lflank, const char* motif, const char* rflank)
     optimal_path = new int32_t[MAXLEN<<2];
     optimal_path_traced = false;
 
-    delta = 0.001;
+    delta = 0.01;
     epsilon = 0.05;
     tau = 0.01;
     eta = 0.01;
-
-    log10OneSixteenth = log10(1.0/16.0);
-    log10OneSixteenth = log10(0.03160696);
 
     for (size_t i=S; i<=Z; ++i)
     {
@@ -1474,11 +1471,6 @@ void CHMM::print_track(int32_t t)
 {
     std::cerr << track2string(t) << "\n";
 }
-
-#define track_get_u(t) (((t)&0xFF000000)>>24)
-#define track_get_d(t) (((t)&0x00FF0000)>>16)
-#define track_get_c(t) (((t)&0x0000FF00)>>8)
-#define track_get_p(t) (((t)&0x000000FF))
 
 #undef MAXLEN
 #undef MAXLEN_NBITS
