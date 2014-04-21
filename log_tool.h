@@ -45,8 +45,7 @@ class LogTool
 {
     private:
     std::vector<double> PL;
-    std::vector<double> LOG10_ED3;
-    std::vector<double> LOG10_1ME;
+    std::vector<double> LOG10_VARP;
     std::vector<double> LOG10FACT;
 
     public:
@@ -58,14 +57,9 @@ class LogTool
     double pl2prob(uint32_t PL);
 
     /**
-     * Convert PL to log10(e/3).
+     * Convert PL to log10(sqrt(e(1-e))).
      */
-    double pl2log10_ed3(uint32_t PL);
-
-    /**
-     * Convert PL to log10(1-e).
-     */
-    double pl2log10_1me(uint32_t PL);
+    double pl2log10_varp(uint32_t PL);
 
     /**
      * Convert probabilities to PHRED score.

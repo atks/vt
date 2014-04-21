@@ -52,53 +52,27 @@ double LogTool::pl2prob(uint32_t pl)
     return PL[pl];
 }
 
-
 /**
- * Convert PL to log10(e/3).
+ * Convert PL to log10(sqrt(e(1-e))).
  */
-double LogTool::pl2log10_ed3(uint32_t pl)
+double LogTool::pl2log10_varp(uint32_t pl)
 {
-   if (pl>=LOG10_ED3.size())
+    if (pl>=LOG10_VARP.size())
     {
         if (pl > 3236)
         {
             pl = 3236;
         }
 
-        for (size_t i=LOG10_1ME.size(); i<=pl; ++i)
+        for (size_t i=LOG10_VARP.size(); i<=pl; ++i)
         {
             double e = std::pow(10, -((double) i)/10.0);
             double v = log10(e*(1-e))/2;
-            LOG10_ED3.push_back(v);
-            LOG10_1ME.push_back(-v);
+            LOG10_VARP.push_back(v);
         }
     }
 
-    return LOG10_ED3[pl]; 
-}
-
-/**
- * Convert PL to log10(1-e).
- */
-double LogTool::pl2log10_1me(uint32_t pl)
-{
-    if (pl>=LOG10_1ME.size())
-    {
-        if (pl > 3236)
-        {
-            pl = 3236;
-        }
-
-        for (size_t i=LOG10_1ME.size(); i<=pl; ++i)
-        {
-            double e = std::pow(10, -((double) i)/10.0);
-            double v = log10(e*(1-e))/2;
-            LOG10_ED3.push_back(v);
-            LOG10_1ME.push_back(-v);
-        }
-    }
-
-    return LOG10_1ME[pl];     
+    return LOG10_VARP[pl];     
 }
 
 /**

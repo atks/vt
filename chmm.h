@@ -286,14 +286,14 @@ class CHMM
 
     int32_t move_S_Y(int32_t t, int32_t j)
     {
-        return make_track(S,LFLANK,0,1);
+        return make_track(S,LFLANK,0,0);
     }
 
     int32_t move_X_Y(int32_t t, int32_t j)
     {
         if (j<rlen)
         {
-            return t;
+            return track_set_u(t, X);
         }
     
         return NULL_TRACK;
@@ -303,7 +303,7 @@ class CHMM
     {
         if (j<rlen)
         {
-            return t;
+            return track_set_u(t, Y);
         }
         
         return NULL_TRACK;
@@ -752,10 +752,8 @@ class CHMM
         {
             return make_track(MR,RFLANK,0,p+1);
         }
-        else
-        {
-            return NULL_TRACK;
-        }
+        
+        return NULL_TRACK;
     }
 
     int32_t move_DR_DR(int32_t t, int32_t j)
