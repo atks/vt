@@ -49,14 +49,13 @@
 #define LFLANK    0
 #define MOTIF     1
 #define RFLANK    2
-#define READ      3
-#define UNMODELED 4
-#define UNCERTAIN 5
+#define UNMODELED 3
+#define UNCERTAIN 4
 
 //match type
-#define MATCH      0
-#define READ_ONLY  1
-#define PROBE_ONLY 2
+#define PROBE 0
+#define READ  1
+#define MATCH 2
 
 
 /*for indexing single array*/
@@ -476,7 +475,6 @@ void CHMM::initialize(const char* lflank, const char* motif, const char* rflank)
             {
                 U[Z][c] = make_track(TBD,UNCERTAIN,0,0);
             }
-
         }
     }
 
@@ -510,7 +508,7 @@ void CHMM::initialize(const char* lflank, const char* motif, const char* rflank)
  * @B      - end state
  * @index1 - flattened index of the one dimensional array of start state
  * @j      - 1 based position of read of start state
- * @m      - base match required (MATCH, PROBE_ONLY, READ_ONLY)
+ * @m      - base match required (MATCH, PROBE, READ)
  */
 void CHMM::proc_comp(int32_t A, int32_t B, int32_t index1, int32_t j, int32_t match_type)
 {
@@ -525,7 +523,7 @@ void CHMM::proc_comp(int32_t A, int32_t B, int32_t index1, int32_t j, int32_t ma
     }
     else if (match_type==MATCH)
     {
-          emission = log10_emission_odds(track_get_base(t), read[j], qual[j]-33);
+        emission = log10_emission_odds(track_get_base(t), read[j], qual[j]-33);
     }
 
     score = V[A][index1] + T[A][B] + emission + valid;
@@ -623,8 +621,8 @@ void CHMM::align(const char* read, const char* qual, bool debug)
             max_track = NULL_TRACK;
             if (i<=lflen)
             {
-                proc_comp(ML, DL, u, j, PROBE_ONLY);
-                proc_comp(DL, DL, u, j, PROBE_ONLY);
+                proc_comp(ML, DL, u, j, PROBE);
+                proc_comp(DL, DL, u, j, PROBE);
             }
             V[DL][c] = max_score;
             U[DL][c] = max_track;
@@ -637,8 +635,8 @@ void CHMM::align(const char* read, const char* qual, bool debug)
             max_track = NULL_TRACK;
             if (i<=lflen)
             {
-                proc_comp(ML, IL, l, j-1, READ_ONLY);
-                proc_comp(IL, IL, l, j-1, READ_ONLY);
+                proc_comp(ML, IL, l, j-1, READ);
+                proc_comp(IL, IL, l, j-1, READ);
             }
             V[IL][c] = max_score;
             U[IL][c] = max_track;
@@ -670,9 +668,9 @@ void CHMM::align(const char* read, const char* qual, bool debug)
             max_track = NULL_TRACK;
             if (i>lflen)
             {
-                proc_comp(ML, D, u, j, PROBE_ONLY);
-                proc_comp(M, D, u, j, PROBE_ONLY);
-                proc_comp(D, D, u, j, PROBE_ONLY);
+                proc_comp(ML, D, u, j, PROBE);
+                proc_comp(M, D, u, j, PROBE);
+                proc_comp(D, D, u, j, PROBE);
             }
             V[D][c] = max_score;
             U[D][c] = max_track;
@@ -685,9 +683,9 @@ void CHMM::align(const char* read, const char* qual, bool debug)
             max_track = NULL_TRACK;
             if (i>lflen)
             {
-                proc_comp(ML, I, l, j-1, READ_ONLY);
-                proc_comp(M, I, l, j-1, READ_ONLY);
-                proc_comp(I, I, l, j-1, READ_ONLY);
+                proc_comp(ML, I, l, j-1, READ);
+                proc_comp(M, I, l, j-1, READ);
+                proc_comp(I, I, l, j-1, READ);
             }
             V[I][c] = max_score;
             U[I][c] = max_track;
@@ -722,8 +720,8 @@ void CHMM::align(const char* read, const char* qual, bool debug)
                 max_score = -INFINITY;
                 max_track = NULL_TRACK;
             }
-            proc_comp(MR, DR, u, j, PROBE_ONLY);
-            proc_comp(DR, DR, u, j, PROBE_ONLY);
+            proc_comp(MR, DR, u, j, PROBE);
+            proc_comp(DR, DR, u, j, PROBE);
             V[DR][c] = max_score;
             U[DR][c] = max_track;
             if (debug) std::cerr << "\tset DR " << max_score << " - " << track2string(max_track) << "\n";
@@ -735,8 +733,8 @@ void CHMM::align(const char* read, const char* qual, bool debug)
             max_track = NULL_TRACK;
             if (i>lflen)
             {
-                proc_comp(MR, IR, l, j-1, READ_ONLY);
-                proc_comp(IR, IR, l, j-1, READ_ONLY);
+                proc_comp(MR, IR, l, j-1, READ);
+                proc_comp(IR, IR, l, j-1, READ);
             }
             V[IR][c] = max_score;
             U[IR][c] = max_track;
@@ -749,72 +747,38 @@ void CHMM::align(const char* read, const char* qual, bool debug)
             max_track = NULL_TRACK;
             if (i>lflen)
             {
-                proc_comp(X, W, u, j, PROBE_ONLY);
-                proc_comp(Y, W, u, j, PROBE_ONLY);
-                proc_comp(ML, W, u, j, PROBE_ONLY);
-                proc_comp(M, W, u, j, PROBE_ONLY);
-                proc_comp(D, W, u, j, PROBE_ONLY);
-                proc_comp(I, W, u, j, PROBE_ONLY);
-                proc_comp(MR, W, u, j, PROBE_ONLY);
-                proc_comp(W, W, u, j, PROBE_ONLY);
+                proc_comp(X, W, u, j, PROBE);
+                proc_comp(Y, W, u, j, PROBE);
+                proc_comp(ML, W, u, j, PROBE);
+                proc_comp(M, W, u, j, PROBE);
+                proc_comp(D, W, u, j, PROBE);
+                proc_comp(I, W, u, j, PROBE);
+                proc_comp(MR, W, u, j, PROBE);
+                proc_comp(W, W, u, j, PROBE);
             }
             V[W][c] = max_score;
             U[W][c] = max_track;
             if (debug) std::cerr << "\tset W " << max_score << " - " << track2string(max_track) << "\n";
 
-            //////
+            /////
             //Z//
-            //////
+            /////
             max_score = -INFINITY;
             max_track = NULL_TRACK;
             if (i>lflen)
             {
-                proc_comp(MR, Z, l, j-1, READ_ONLY);
-                proc_comp(W, Z, l, j-1, READ_ONLY);
-                proc_comp(Z, Z, l, j-1, READ_ONLY);
+                proc_comp(MR, Z, l, j-1, READ);
+                proc_comp(W, Z, l, j-1, READ);
+                proc_comp(Z, Z, l, j-1, READ);
             }
             V[Z][c] = max_score;
             U[Z][c] = max_track;
             if (debug) std::cerr << "\tset Z " << max_score << " - " << track2string(max_track) << "\n";
-
         }
     }
 
     if (1)
     {
-//        std::cerr << "\n   =S=\n";
-//        print_trace(S, plen+1, rlen+1);
-//        std::cerr << "\n   =X=\n";
-//        print_trace(X, plen+1, rlen+1);
-//        std::cerr << "\n   =Y=\n";
-//        print_trace(Y, plen+1, rlen+1);
-//
-//        std::cerr << "\n   =ML=\n";
-//        print_trace(ML, plen+1, rlen+1);
-//        std::cerr << "\n   =DL=\n";
-//        print_trace(DL, plen+1, rlen+1);
-//        std::cerr << "\n   =IL=\n";
-//        print_trace(IL, plen+1, rlen+1);
-//
-//        std::cerr << "\n   =M=\n";
-//        print_trace(M, plen+1, rlen+1);
-//        std::cerr << "\n   =D=\n";
-//        print_trace(D, plen+1, rlen+1);
-//        std::cerr << "\n   =I=\n";
-//        print_trace(I, plen+1, rlen+1);
-//
-//        std::cerr << "\n   =MR=\n";
-//        print_trace(MR, plen+1, rlen+1);
-//        std::cerr << "\n   =DR=\n";
-//        print_trace(DR, plen+1, rlen+1);
-//        std::cerr << "\n   =IR=\n";
-//        print_trace(IR, plen+1, rlen+1);
-//
-//        std::cerr << "\n   =W=\n";
-//        print_trace(W, plen+1, rlen+1);
-//        std::cerr << "\n   =Z=\n";
-//        print_trace(Z, plen+1, rlen+1);
-
         std::cerr << "\n   =V[S]=\n";
         print(V[S], plen+1, rlen+1);
         std::cerr << "\n   =U[S]=\n";
@@ -927,11 +891,14 @@ void CHMM::trace_path()
     int32_t last_t = make_track(optimal_state, RFLANK, 0, rflen+1);
     optimal_path_len = 0;
     int32_t u;
+   
     do
     {
         u = track_get_u(last_t);
         last_t = U[u][index(i,j)];
         *optimal_path_ptr = track_set_u(last_t, u);
+
+        //collect_statistics(*optimal_path_ptr, j);
 
         std::cerr << track2string(*optimal_path_ptr) << " (" << i << "," << j << ")\n";
 
@@ -949,13 +916,100 @@ void CHMM::trace_path()
         }
 
         --optimal_path_ptr;
-        ++optimal_path_len;        
+        ++optimal_path_len;  
+              
     } while (track_get_u(last_t)!=S);
 
     ++optimal_path_ptr;
     optimal_path_traced = true;
 };
 
+/**
+ * Collect alignment summary statistics.
+ */
+void CHMM::collect_statistics(int32_t t1, int32_t t2, int32_t j)
+{
+//    int32_t u1 = track_get_u(t1);
+//    int32_t u2 = track_get_u(t2);
+//    
+//    if (u1==E && u2==MR)
+//    {
+//        rflank_start[PROBE] = track_get_p(t);
+//        rflank_start[READ] = j;
+//    }
+//    else if (u1==E && u2==MR)
+//    {
+//        rflank_start[PROBE] = track_get_p(t);
+//        rflank_start[READ] = j;
+//    }
+//    
+//    if (u==ML)
+//    {
+//        if (lflank_start[PROBE]==-1)
+//        {
+//            lflank_start[PROBE] = track_get_p(t);
+//            lflank_start[READ] = j;
+//        }
+//    } 
+//    else if (u==ML)
+//    {
+//        if (motif)
+//    }
+//
+//    if (lflank_start[PROBE]==-1 && u==ML)
+//    {
+//        lflank_start[PROBE] = track_get_p(t);
+//        lflank_start[READ] = j;
+//    } 
+//
+//    if (rflank_start[PROBE]==-1 && u==MR)
+//    {
+//        rflank_start[PROBE] = track_get_p(t);
+//        rflank_start[READ] = j;
+//    }    
+};
+
+/**
+ * Clear alignment statistics.
+ */
+void CHMM::clear_statistics()
+{
+    lflank_start[PROBE] = -1;
+    lflank_start[READ] = -1;
+    lflank_end[PROBE] = -1;
+    lflank_end[READ] = -1;
+    motif_start[PROBE] = -1;
+    motif_start[READ] = -1;
+    motif_end[PROBE] = -1;
+    motif_end[READ] = -1;
+    rflank_start[PROBE] = -1;
+    rflank_start[READ] = -1;
+    rflank_end[PROBE] = -1;
+    rflank_end[READ] = -1;
+    motif_count = 0;
+    exact_motif_count = 0;
+    motif_m = 0;
+    motif_xid = 0;
+    motif_concordance = 0;
+}
+
+/**
+ * Update alignment statistics after collection.
+ */
+void CHMM::update_statistics()
+{
+    motif_concordance = (double)motif_m/(motif_m+motif_xid);
+}
+
+/**
+ * Returns true if flanks are mapped.
+ */
+bool CHMM::flanks_are_mapped()
+{
+    return lflank_end[PROBE]==lflen && rflank_start[PROBE]==rflen;
+}
+     
+     
 /**
  * Compute log10 emission odds based on equal error probability distribution.
  */
@@ -1305,6 +1359,11 @@ void CHMM::print_alignment(std::string& pad)
     std::cerr << "optimal path ptr : " << optimal_path_ptr  << "\n";
     std::cerr << "max j: " << rlen << "\n";
 
+    std::cerr << "lflank: " << " [" << lflank_start[PROBE] << "," << lflank_end[PROBE] << "]\n";
+    std::cerr << "rflank: " << " [" << rflank_start[PROBE] << "," << rflank_end[PROBE] << "]\n";
+    std::cerr << "motif : " << motif_count << " [" << motif_start[PROBE] << "," << motif_end[PROBE] << "]\n";
+    std::cerr << "motif %   " << motif_concordance << " (" << exact_motif_count << "/" << motif_count << ")\n"; 
+
     //print path
     int32_t* path;
     path = optimal_path_ptr;
@@ -1368,28 +1427,6 @@ void CHMM::print_alignment(std::string& pad)
         ++path;
     }
     std::cerr << " \n";
-
-//    print_T();
-
-//    //print path
-//    while (path<=max_path+(MAXLEN<<2)-1)
-//    {
-//        std::cerr << state2cigarstring(track_get_u(*path));
-//        ++path;
-//    }
-//    std::cerr << state2cigarstring(max_state) << "E\n";
-
-//    std::cerr << pad << "X    " << xAligned.str() << "E\n";
-//    std::cerr << pad << "Path " << U_ << "E\n";
-//    std::cerr << pad << "Y    " << yAligned.str() << "E\n";
-//    std::cerr << pad << "Qual " << qualAligned.str() << "E\n\n";
-//
-//    std::cerr << pad << "Alignment in Probe : [" << matchStartX << "," << matchEndX<< "]\n";
-//    std::cerr << pad << "Alignment in Read  : [" << matchStartY << "," << matchEndY<< "]\n";
-//    std::cerr << pad << "# Aligned Bases : " << noBasesAligned << "\n";
-//    std::cerr << pad << "# Matched Bases : " << matchedBases << "\n";
-//    std::cerr << pad << "# Mismatched Bases : " << mismatchedBases << "\n";
-//    std::cerr << pad << "Max Log odds    : " << maxLogOdds << "\n";
 };
 
 /**
@@ -1553,13 +1590,12 @@ void CHMM::print_track(int32_t t)
 #undef LFLANK
 #undef MOTIF
 #undef RFLANK
-#undef READ
 #undef UNMODELED
 #undef UNCERTAIN
 
+#undef READ
+#undef PROBE
 #undef MATCH
-#undef READ_ONLY
-#undef PROBE_ONLY
 
 #undef index
 #undef track_get_u

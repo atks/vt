@@ -52,14 +52,13 @@
 #define LFLANK    0
 #define MOTIF     1
 #define RFLANK    2
-#define READ      3
-#define UNMODELED 4
-#define UNCERTAIN 5
+#define UNMODELED 3
+#define UNCERTAIN 4
 
 //match type
-#define MATCH      0
-#define READ_ONLY  1
-#define PROBE_ONLY 2
+#define PROBE 0
+#define READ  1
+#define MATCH 2
 
 
 /*for indexing single array*/
@@ -109,7 +108,6 @@ class CHMM
     int32_t *optimal_path_ptr; //just a pointer
     int32_t optimal_path_len;
     
-    
     double delta;
     double epsilon;
     double tau;
@@ -129,7 +127,12 @@ class CHMM
     move **moves;
 
     std::stringstream ss;
-
+        
+    /*result variables*/    
+    int32_t lflank_start[2], lflank_end[2], motif_start[2], motif_end[2], rflank_start[2], rflank_end[2];
+    int32_t motif_count, exact_motif_count, motif_m, motif_xid;
+    double motif_concordance;
+    
     /**
      * Constructor.
      */
@@ -151,11 +154,14 @@ class CHMM
     void initialize(const char* lflank, const char* ru, const char* rflank);
 
     /**
+     * Computes the score associated with the move from A to B
+     * Updates the max_score and associated max_track.
      *
-     *
-     * @A - start state
-     * @B - end state
-     * @i - index
+     * @A      - start state
+     * @B      - end state
+     * @index1 - flattened index of the one dimensional array of start state
+     * @j      - 1 based position of read of start state
+     * @m      - base match required (MATCH, PROBE_ONLY, READ_ONLY)
      */
     void proc_comp(int32_t A, int32_t B, int32_t i, int32_t j, int32_t match_type);
 
@@ -233,7 +239,27 @@ class CHMM
      * Prints U and V.
      */
     void print_trace(int32_t state, size_t plen, size_t rlen);
-
+    
+    /**
+     * Collect alignment summary statistics.
+     */
+    void collect_statistics(int32_t t1, int32_t t2, int32_t j);
+   
+    /**
+     * Clear alignment statistics.
+     */
+    void clear_statistics();
+    
+    /**
+     * Update alignment statistics after collection.
+     */
+    void update_statistics();
+    
+    /**
+     * Returns true if flanks are mapped.
+     */
+    bool flanks_are_mapped();
+        
     /**
      * Returns a string representation of track.
      */
@@ -933,13 +959,12 @@ class CHMM
 #undef LFLANK
 #undef MOTIF
 #undef RFLANK
-#undef READ
 #undef UNMODELED
 #undef UNCERTAIN
 
+#undef READ
+#undef PROBE
 #undef MATCH
-#undef READ_ONLY
-#undef PROBE_ONLY
 
 #undef index
 #undef track_get_u
