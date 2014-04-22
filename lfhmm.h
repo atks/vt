@@ -138,13 +138,16 @@ class LFHMM
      * Initializes object, helper function for constructor.
      */
     void initialize(const char* ru);
-
+    
     /**
+     * Computes the score associated with the move from A to B
+     * Updates the max_score and associated max_track.
      *
-     *
-     * @A - start state
-     * @B - end state
-     * @i - index
+     * @A      - start state
+     * @B      - end state
+     * @index1 - flattened index of the one dimensional array of start state
+     * @j      - 1 based position of read of start state
+     * @m      - base match required (MATCH, PROBE_ONLY, READ_ONLY)
      */
     void proc_comp(int32_t A, int32_t B, int32_t i, int32_t j, int32_t match_type);
 
