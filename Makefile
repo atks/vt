@@ -49,7 +49,8 @@ SOURCES = program\
 		decompose\
 		remove_overlap\
 		filter\
-		align
+		align\
+		subset
 
 SOURCESONLY = main.cpp
 

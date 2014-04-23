@@ -32,6 +32,7 @@
 #include "merge_candidate_variants.h"
 #include "merge.h"
 #include "concat.h"
+#include "subset.h"
 #include "partition.h"
 #include "view.h"
 #include "index.h"
@@ -125,6 +126,10 @@ int main(int argc, char ** argv)
     else if (argc>1 && cmd=="concat")
     {
         print = concat(argc-1, ++argv);
+    }
+    else if (argc>1 && cmd=="subset")
+    {
+        subset(argc-1, ++argv);
     }
     else if (argc>1 && cmd=="decompose")
     {
