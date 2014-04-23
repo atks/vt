@@ -253,15 +253,14 @@ void Program::print_ifiles(const char* option_line, std::vector<std::string>& fi
 /**
  * Parse samples. Processes the sample list. Duplicates are dropped.
  *
- * @samples      - samples stored in this vector
- * @sample_map   - samples stored in this map
+ * @nsamples     - number of unique samples found in list
  * @sample_list  - file containing sample names
  */
-void Program::read_sample_list(std::vector<std::string>& samples, std::string sample_list)
+char** Program::read_sample_list(int32_t& nsamples, std::string sample_list)
 {
-    samples.clear();
+    std::vector<std::string> vsamples;
     std::map<std::string, int32_t> map;
-
+    
     if (sample_list!="")
     {
         htsFile *file = hts_open(sample_list.c_str(), "r");
@@ -274,10 +273,22 @@ void Program::read_sample_list(std::vector<std::string>& samples, std::string sa
                 if (map.find(ss)==map.end())
                 {
                     map[ss] = 1;
-                    samples.push_back(ss);
+                    vsamples.push_back(ss);
                 }
             }
             hts_close(file);
         }
+    
+        nsamples = vsamples.size();
+        char** samples = (char**) malloc(sizeof(char*)*nsamples);
+        
+        for (int32_t i=0; i<vsamples.size(); ++i)
+        {
+            samples[i] = strdup(vsamples[i].c_str());
+        }
+
+        return samples;
     }
+    
+    return NULL;
 }
