@@ -78,14 +78,13 @@ class Program
      */
 	void parse_intervals(std::vector<GenomeInterval>& intervals, std::string interval_list, std::string interval_string);
 
-	/**
-	 * Parse samples. Processes the sample list. Duplicates are dropped.
-	 *
-	 * @samples      - samples stored in this vector
-	 * @sample_map   - samples stored in this map
-	 * @sample_list  - file containing sample names
-	 */
-	void read_sample_list(std::vector<std::string>& samples, std::string sample_list);
+    /**
+     * Parse samples. Processes the sample list. Duplicates are dropped.
+     *
+     * @nsamples     - number of unique samples found in list
+     * @sample_list  - file containing sample names
+     */
+    char** read_sample_list(int32_t& nsamples, std::string sample_list);
 
     /**
      * Initialize I/O and shared objects.
