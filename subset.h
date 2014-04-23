@@ -31,11 +31,9 @@
 #include "htslib/khash.h"
 #include "hts_utils.h"
 #include "program.h"
-#include "bcf_synced_reader.h"
+#include "bcf_ordered_reader.h"
+#include "bcf_ordered_writer.h"
 #include "filter.h"
-
-KHASH_MAP_INIT_STR(vdict, bcf_idinfo_t)
-typedef khash_t(vdict) vdict_t;
 
 void subset(int argc, char ** argv);   
 
