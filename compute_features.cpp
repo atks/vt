@@ -1,6 +1,6 @@
 /* The MIT License
 
-   Copyright (c) 2013 Adrian Tan <atks@umich.edu>
+   Copyright (c) 2014 Adrian Tan <atks@umich.edu>
 
    Permission is hereby granted, free of charge, to any person obtaining a copy
    of this software and associated documentation files (the "Software"), to deal
@@ -36,31 +36,40 @@ class Igor : Program
     //options//
     ///////////
     std::string input_vcf_file;
-    std::string ref_fasta_file;
     std::string output_vcf_file;
     std::vector<GenomeInterval> intervals;
     std::string interval_list;
-    std::string gencode_gtf_file;    
-    bool annotate_coding;
-
+    std::string arg_sample_list;
+    char** samples;
+    int32_t *imap;
+    int32_t nsamples;    
+    bool print_sites_only;
+    
     ///////
     //i/o//
     ///////
     BCFOrderedReader *odr;
     BCFOrderedWriter *odw;
 
+    //////////
+    //filter//
+    //////////
+    std::string fexp;
+    Filter filter;
+    bool filter_exists;
+
     /////////
     //stats//
     /////////
-    uint32_t no_variants_annotated;
-
-    ////////////////
-    //common tools//
-    ////////////////
+    int32_t no_samples;
+    int32_t no_variants;
+    
+    /////////
+    //tools//
+    /////////
     VariantManip *vm;
-    GENCODE *gc;
 
-    Igor(int argc, char **argv)
+    Igor(int argc, char ** argv)
     {
         version = "0.5";
 
@@ -69,15 +78,16 @@ class Igor : Program
         //////////////////////////
         try
         {
-            std::string desc = "annotates variants in a VCF file";
+            std::string desc = "Subsets a VCF file to a set of variants that are polymorphic on a selected set of individuals.";
 
             TCLAP::CmdLine cmd(desc, ' ', version);
-            VTOutput my; cmd.setOutput(&my);
-            TCLAP::ValueArg<std::string> arg_intervals("i", "i", "intervals", false, "", "str", cmd);
-            TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "str", cmd);
-            TCLAP::ValueArg<std::string> arg_output_vcf_file("o", "o", "output VCF file [-]", false, "-", "str", cmd);
-            TCLAP::ValueArg<std::string> arg_ref_fasta_file("r", "r", "reference sequence fasta file []", true, "", "str", cmd);
-            TCLAP::ValueArg<std::string> arg_gencode_gtf_file("g", "g", "GENCODE annotations GTF file []", false, "", "str", cmd);
+            VTOutput my;
+            cmd.setOutput(&my);
+            TCLAP::ValueArg<std::string> arg_intervals("i", "intervals", "Intervals", false, "", "str", cmd);
+            TCLAP::ValueArg<std::string> arg_interval_list("I", "interval-list", "File containing list of intervals", false, "", "file", cmd);
+            TCLAP::ValueArg<std::string> arg_fexp("f", "f", "filter expression []", false, "", "str", cmd);
+            TCLAP::ValueArg<std::string> arg_output_vcf_file("o", "o", "output VCF/VCF.GZ/BCF file [-]", false, "-", "str", cmd);
+            TCLAP::SwitchArg arg_print_sites_only("s", "s", "print site information only without genotypes [false]", cmd, false);
             TCLAP::UnlabeledValueArg<std::string> arg_input_vcf_file("<in.vcf>", "input VCF file", true, "","file", cmd);
 
             cmd.parse(argc, argv);
@@ -85,146 +95,146 @@ class Igor : Program
             input_vcf_file = arg_input_vcf_file.getValue();
             output_vcf_file = arg_output_vcf_file.getValue();
             parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
-            parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
-            ref_fasta_file   = arg_ref_fasta_file.getValue();
-            gencode_gtf_file = arg_gencode_gtf_file.getValue();
-
-            annotate_coding = gencode_gtf_file != "" ? true : false;
+            print_sites_only = arg_print_sites_only.getValue();
+            fexp = arg_fexp.getValue();
         }
         catch (TCLAP::ArgException &e)
         {
-            std::cerr << "error: " << e.error() << " for arg " << e.argId() << std::endl;
+            std::cerr << "error: " << e.error() << " for arg " << e.argId() << "\n";
             abort();
         }
     };
 
-    ~Igor() {};
-
     void initialize()
     {
-        //******************
-        //i/o initialization
-        //******************
+        //////////////////////
+        //i/o initialization//
+        //////////////////////
         odr = new BCFOrderedReader(input_vcf_file, intervals);
         odw = new BCFOrderedWriter(output_vcf_file);
-        odw->link_hdr(odr->hdr);
-        bcf_hdr_append(odw->hdr, "##INFO=<ID=VT,Number=1,Type=String,Description=\"Variant Type - SNP, MNP, INDEL, CLUMPED\">");
-        bcf_hdr_append(odw->hdr, "##INFO=<ID=RU,Number=1,Type=String,Description=\"Repeat unit in a STR or Homopolymer\">");
-        bcf_hdr_append(odw->hdr, "##INFO=<ID=RL,Number=1,Type=Integer,Description=\"Repeat Length\">");
-        bcf_hdr_append(odw->hdr, "##INFO=<ID=LFLANK,Number=1,Type=String,Description=\"Right Flank\">");
-        bcf_hdr_append(odw->hdr, "##INFO=<ID=RFLANK,Number=1,Type=String,Description=\"Left Flank\">");
-
-        ///////////////////////
-        //tool initialization//
-        ///////////////////////
-        vm = new VariantManip(ref_fasta_file);
+        if (print_sites_only)
+        {
+            odw->link_hdr(bcf_hdr_subset(odr->hdr, 0, 0, 0));
+        }
+        else
+        {
+            odw->link_hdr(odr->hdr);
+        }
         
+        bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_AC,Number=A,Type=Integer,Description=\"Allele count in genotypes, for each ALT allele, in the same order as listed\">\n");
+        bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_AN,Number=1,Type=Integer,Description=\"Total number of alleles in called genotypes\">\n");
+      
+        /////////////////////////
+        //filter initialization//
+        /////////////////////////
+        filter.parse(fexp.c_str());
+        filter_exists = fexp=="" ? false : true;
+
         ////////////////////////
         //stats initialization//
         ////////////////////////
-        no_variants_annotated = 0;
+        no_samples = bcf_hdr_nsamples(odr->hdr);
+        no_variants = 0;
+        
+        ///////////////////////
+        //tool initialization//
+        ///////////////////////
+        vm = new VariantManip("");
     }
+
+    void compute_features()
+    {
+        bcf1_t *v = odw->get_bcf1_from_pool();
+        bcf_hdr_t *h = odr->hdr;
+        Variant variant;
+
+        int32_t *gts = NULL;
+        int32_t n = 0;
+        
+        odw->write_hdr();    
+            
+        while(odr->read(v))
+        {
+            variant.clear();
+            bool printed = false;
+
+            ++no_variants;
+            
+            if (filter_exists && !filter.apply(h,v,&variant))
+            {
+                vm->classify_variant(h, v, variant);
+                continue;
+            }
+
+//            //update AC
+//            bcf_unpack(v, BCF_UN_ALL);
+//            int32_t ploidy = bcf_get_genotypes(odw->hdr, v, &gts, &n)/no_samples;        
+//            int32_t n_allele = bcf_get_n_allele(v); 
+//            
+//            int32_t g[ploidy];
+//            for (int32_t i=0; i<ploidy; ++i) g[i]=0;
+//            int32_t AC[n_allele];
+//            for (int32_t i=0; i<n_allele; ++i) AC[i]=0;
+//            int32_t AN=0;
+//            
+//            for (int32_t i=0; i<no_samples; ++i)
+//            {
+//                for (int32_t j=0; j<ploidy; ++j)
+//                {   
+//                    g[j] = bcf_gt_allele(gts[i*ploidy+j]);
+//                    
+//                    if (g[j]>=0)
+//                    {
+//                        ++AC[g[j]];
+//                        ++AN;
+//                    }
+//                }
+//            }
+//                
+//            if (AC[0]<AN)
+//            {   
+//                int32_t* AC_PTR = &AC[1];
+//                bcf_update_info_int32(odw->hdr,v,"VT_AC",AC_PTR,n_allele-1); 
+//                bcf_update_info_int32(odw->hdr,v,"VT_AN",&AN,1);  
+//            }
+            
+            if (print_sites_only)
+            {
+                bcf_subset(odw->hdr, v, 0, 0);
+            }
+
+            odw->write(v);        
+            ++no_variants;
+        }
+
+        odw->close();
+    };
 
     void print_options()
     {
-        std::clog << "annotate_indels v" << version << "\n";
+        std::clog << "compute_features v" << version << "\n";
         std::clog << "\n";
-        std::clog << "options:     input VCF file(s)     " << input_vcf_file << "\n";
-        std::clog << "         [o] output VCF file       " << output_vcf_file << "\n";
-        print_ref_op("         [r] ref FASTA file        ", ref_fasta_file);
-        print_int_op("         [i] intervals             ", intervals);
+        std::clog << "Options:     input VCF File    " << input_vcf_file << "\n";
+        print_str_op("         [f] filter            ", fexp);
+        print_int_op("         [i] Intervals         ", intervals);
         std::clog << "\n";
     }
 
     void print_stats()
     {
         std::clog << "\n";
-        std::cerr << "stats: no. of variants annotated     " << no_variants_annotated << "\n";
+        std::clog << "stats: variants   : " << no_variants << "\n";
         std::clog << "\n";
-    }
-
-    void annotate_variants()
-    {
-        odw->write_hdr();
-
-        bcf1_t *v = odw->get_bcf1_from_pool();
-        std::vector<Interval*> overlaps;
-        Variant variant;
-        kstring_t s = {0,0,0};
-        while (odr->read(v))
-        {
-            bcf_unpack(v, BCF_UN_STR);
-            int32_t vtype = vm->classify_variant(odr->hdr, v, variant);
-            std::string chrom = bcf_get_chrom(odr->hdr,v);
-            int32_t start1 = bcf_get_pos1(v);
-            int32_t end1 = bcf_get_end_pos1(v);
-            
-            vm->vtype2string(vtype, &s);
-            if (s.l)
-            {    
-                bcf_update_info_string(odr->hdr, v, "VT", s.s);
-            }
-            
-            if (vtype==VT_SNP)
-            {
-                //synonymous and non synonymous annotation
-                
-            }    
-            else if (vtype&VT_INDEL)
-            {
-                //frame shift annotation
-                if (annotate_coding)
-                {
-                    gc->search(chrom, start1+1, end1, overlaps);
-    
-                    bool cds_found = false;
-                    bool is_fs = false;
-    
-                    for (int32_t i=0; i<overlaps.size(); ++i)
-                    {
-                        GENCODERecord *rec = (GENCODERecord *) overlaps[i];
-                        if (rec->feature==GC_FT_CDS)
-                        {
-                            cds_found = true;
-                            if (abs(variant.alleles[0].dlen)%3!=0)
-                            {
-                                is_fs = true;
-                                break;
-                            }
-                        }
-                    }
-                    
-                    if (cds_found)
-                    {
-                        if (is_fs)
-                        {
-                            bcf_update_info_flag(odr->hdr, v, "GENCODE_FS", "", 1);
-                        }
-                        else
-                        {
-                            bcf_update_info_flag(odr->hdr, v, "GENCODE_NFS", "", 1);
-                        }
-                    }
-                    
-                    //classify STR 
-                    std::string ru = "ACGT";
-                    int32_t rl = 4;
-                }
-    //            bcf_update_info_string(odr->hdr, v, "RU", ru.c_str());
-    //            bcf_update_info_int32(odr->hdr, v, "RL", &rl, 1); 
-            }
-            
-            ++no_variants_annotated;
-            odw->write(v);
-            v = odw->get_bcf1_from_pool();
-        }
-        
-        odw->close();
     };
-    
-    private:
 
+    ~Igor()
+    {
+
+    };
+
+    private:
 };
+
 }
 
 void compute_features(int argc, char ** argv)
@@ -232,6 +242,7 @@ void compute_features(int argc, char ** argv)
     Igor igor(argc, argv);
     igor.print_options();
     igor.initialize();
-    igor.annotate_variants();
+    igor.compute_features();
     igor.print_stats();
-};
+}
+

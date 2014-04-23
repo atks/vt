@@ -195,7 +195,7 @@ class Igor : Program
         std::clog << "concat v" << version << "\n\n";
         print_ifiles("options:     input VCF file        ", input_vcf_files);
         std::clog << "         [o] output VCF file       " << output_vcf_file << "\n";
-        print_str_op("         [f] filter                      ", fexp);
+        print_str_op("         [f] filter                ", fexp);
         print_int_op("         [i] intervals             ", intervals);
         std::clog << "\n";
     }

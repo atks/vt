@@ -43,6 +43,7 @@
 #include "profile_na12878.h"
 #include "profile_snps.h"
 #include "align.h"
+#include "compute_features.h"
 
 void print_time(double t)
 {
@@ -194,7 +195,11 @@ int main(int argc, char ** argv)
     else if (argc>1 && cmd=="align")
     {
         align(argc-1, ++argv);
-    }            
+    } 
+    else if (argc>1 && cmd=="compute_features")
+    {
+        compute_features(argc-1, ++argv);
+    }                
     else
     {
         std::clog << "Command not found: " << argv[1] << "\n\n";
