@@ -1,6 +1,6 @@
 /* The MIT License
 
-   Copyright (c) 2013 Adrian Tan <atks@umich.edu>
+   Copyright (c) 2014 Adrian Tan <atks@umich.edu>
 
    Permission is hereby granted, free of charge, to any person obtaining a copy
    of this software and associated documentation files (the "Software"), to deal
@@ -143,10 +143,6 @@ class Igor : Program
 
     void subset()
     {
-        std::vector<std::string> s;
-        std::vector<int32_t> a;
-        std::vector<int32_t> b;
-
         bcf1_t *v = odw->get_bcf1_from_pool();
         bcf_hdr_t *h = odr->hdr;
         Variant variant;

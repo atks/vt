@@ -48,6 +48,7 @@
 #include "variant_manip.h"
 #include "log_tool.h"
 #include "gencode.h"
+#include "filter.h"
 
 void compute_features(int argc, char ** argv);
 
