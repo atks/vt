@@ -1,5 +1,5 @@
 OPTFLAG = -O3 -ggdb
-INCLUDES = -I./lib/include/ -I. -I./lib/include/htslib
+INCLUDES = -I./lib/include/ -I. -I./lib/include/htslib -I./lib/include/Rmath 
 CFLAGS = -pipe -std=c++0x $(OPTFLAG) $(INCLUDES) -D__STDC_LIMIT_MACROS
 CXX = g++
 
@@ -50,7 +50,8 @@ SOURCES = program\
 		remove_overlap\
 		filter\
 		align\
-		subset
+		subset\
+		estimators
 
 SOURCESONLY = main.cpp
 
@@ -58,14 +59,18 @@ TARGET = vt
 TOOLSRC = $(SOURCES:=.cpp) $(SOURCESONLY)
 TOOLOBJ = $(TOOLSRC:.cpp=.o)
 LIBHTS = lib/include/htslib/libhts.a
+LIBRMATH = lib/include/Rmath/libRmath.a
 
 all : ${LIBHTS} $(TARGET)
 
 ${LIBHTS} :
 	cd lib/include/htslib; $(MAKE) libhts.a || exit 1; cd ..
 
-$(TARGET) : ${LIBHTS} $(TOOLOBJ)
-	$(CXX) $(CFLAGS) -o $@ $(TOOLOBJ) $(LIBHTS) -lz -lpthread
+${LIBRMATH} :
+	cd lib/include/Rmath; $(MAKE) libRmath.a || exit 1; cd ..
+	
+$(TARGET) : ${LIBHTS} ${LIBRMATH} $(TOOLOBJ)
+	$(CXX) $(CFLAGS) -o $@ $(TOOLOBJ) $(LIBHTS) $(LIBRMATH) -lz -lpthread
 
 $(TOOLOBJ): $(HEADERSONLY)
 
@@ -73,7 +78,8 @@ $(TOOLOBJ): $(HEADERSONLY)
 	$(CXX) $(CFLAGS) -o $@ -c $*.cpp
 
 clean :
-	cd lib/include/htslib; $(MAKE) clean; cd ..
+	cd lib/include/htslib; $(MAKE) clean
+	cd lib/include/Rmath; $(MAKE) clean
 	-rm -rf $(TARGET) $(TOOLOBJ)
 
 cleanvt :
