@@ -23,7 +23,6 @@
 
 #include "compute_features.h"
 
-#define MATHLIB_STANDALONE
 #include <Rmath/Rmath.h>
 
 namespace
