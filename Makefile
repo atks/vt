@@ -51,7 +51,7 @@ SOURCES = program\
 		filter\
 		align\
 		subset\
-		estimators
+		estimator
 
 SOURCESONLY = main.cpp
 
