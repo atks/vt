@@ -35,7 +35,9 @@
 #endif
 
 /*-- Mathlib as part of R --  define this for standalone : */
-/* #undef MATHLIB_STANDALONE */
+#ifndef MATHLIB_STANDALONE
+#define MATHLIB_STANDALONE
+#endif
 
 #define R_VERSION_STRING "2.15.2"
 
