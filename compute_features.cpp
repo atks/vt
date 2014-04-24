@@ -168,8 +168,6 @@ class Igor : Program
                 continue;
             }
 
-            
-
 //            //update AC
 //            bcf_unpack(v, BCF_UN_ALL);
 //            int32_t ploidy = bcf_get_genotypes(odw->hdr, v, &gts, &n)/no_samples;        
@@ -202,7 +200,7 @@ class Igor : Program
 //                bcf_update_info_int32(odw->hdr,v,"VT_AN",&AN,1);  
 //            }
             
-             std::cerr << "PVAL for 12 : " << pchisq(12, 1,0,0) << "\n";
+            std::cerr << "PVAL for 12 : " << pchisq(12, 1,0,0) << "\n";
             
             if (print_sites_only)
             {

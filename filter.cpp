@@ -589,7 +589,7 @@ Filter::Filter()
 /**
  * Constructor with expression initialization.
  */
-Filter::Filter(std::string exp)
+Filter::Filter(std::string exp, VariantManip *vm)
 {
     parse(exp.c_str(), false);
 };
@@ -707,6 +707,9 @@ void Filter::parse(const char* exp, int32_t len, Node *node, bool debug)
         }
 
         node->type = type;
+        
+        need_to_classif_variant = true;
+        
 
         node->left = new Node();
         parse(exp, p-exp+1, node->left, debug);
