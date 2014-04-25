@@ -80,6 +80,7 @@ void help()
     std::clog << "remove_overlap            remover overlapping variants\n";
     std::clog << "merge                     merge VCF files\n";
     std::clog << "concat                    concatenate VCF files\n";
+    std::clog << "subset                    subset VCF file to variants polymorphic in a sample\n";
     std::clog << "\n";
     std::clog << "peek                      summary of variants in the vcf file\n";
     std::clog << "partition                 partition variants\n";

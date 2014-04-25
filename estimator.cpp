@@ -39,6 +39,8 @@
 void Estimator::compute_hwe_af(int32_t *gts, int32_t *pls, int32_t nsamples, int32_t ploidy,
                 int32_t n_allele, float *MLE_HWE_AF, float *MLE_HWE_GF, int32_t& n, double e)
 {
+    int32_t iter = 0;
+
     if (n_allele==2 && ploidy==2)
     {
         n = 0;
@@ -62,8 +64,8 @@ void Estimator::compute_hwe_af(int32_t *gts, int32_t *pls, int32_t nsamples, int
         float gf[3];
         float gf_indiv[3];
 
-        int32_t iter = 0;
         float mse = e+1;
+        float diff = 0;
         while (mse>e)
         {
             gf[0] = af[0]*af[0];
@@ -92,8 +94,10 @@ void Estimator::compute_hwe_af(int32_t *gts, int32_t *pls, int32_t nsamples, int
             MLE_HWE_AF[0] /= n;
             MLE_HWE_AF[1] /= n;
 
-            mse = (af[0]-MLE_HWE_AF[0]);
-            mse *= mse;
+            diff = (af[0]-MLE_HWE_AF[0]);
+            mse = diff*diff;
+            diff = (af[1]-MLE_HWE_AF[1]);
+            mse += diff*diff;
 
             af[0] = MLE_HWE_AF[0];
             af[1] = MLE_HWE_AF[1];
@@ -125,8 +129,6 @@ void Estimator::compute_hwe_af(int32_t *gts, int32_t *pls, int32_t nsamples, int
             return;
         }
 
-//        std::cerr << "n: " << n  << "\n";
-
         float af[n_allele];
         float p = 1.0/n_allele;
         for (size_t i=0; i<n_allele; ++i)
@@ -136,17 +138,23 @@ void Estimator::compute_hwe_af(int32_t *gts, int32_t *pls, int32_t nsamples, int
         float gf[n_genotype];
         float gf_indiv[n_genotype];
 
-        int32_t iter = 0;
+        bool debug = false;
+
         float mse = e+1;
-        while (mse>e)
+        while (mse>e && iter<50)
         {
             //initialization
+            for (size_t i=0; i<n_genotype; ++i)
+            {
+                gf[i] = 0;
+            }
+
             for (size_t i=0; i<n_allele; ++i)
             {
                 MLE_HWE_AF[i] = 0;
                 for (size_t j=0; j<=i; ++j)
                 {
-                    gf[bcf_alleles2gt(i,j)] = (i==j?2:1)*af[i]*af[j];
+                    gf[bcf_alleles2gt(i,j)] += (i!=j?2:1)*af[i]*af[j];
                 }
             }
 
@@ -155,65 +163,86 @@ void Estimator::compute_hwe_af(int32_t *gts, int32_t *pls, int32_t nsamples, int
             {
                 size_t offset = imap[i]*n_genotype;
 
-                std::cerr << "Priot GFs : "; 
-                for (size_t i=0; i<n_genotype; ++i)
+                if (debug)
                 {
-                    std::cerr << " " << gf[i] ;
-                }
-                std::cerr << "\n";
-                    
+                    std::cerr << iter << "\n";
 
-                for (size_t i=0; i<n_allele; ++i)
-                {
-                    std::cerr << " " << MLE_HWE_AF[i] ;
+                    std::cerr << "Prior AFs : ";
+                    for (size_t i=0; i<n_allele; ++i)
+                    {
+                        std::cerr << " " << af[i] ;
+                    }
+                    std::cerr << "\n";
+
+                    std::cerr << "Prior GFs : ";
+                    for (size_t i=0; i<n_genotype; ++i)
+                    {
+                        std::cerr << " " << gf[i] ;
+                    }
+                    std::cerr << "\n";
+
+                    std::cerr << "Prior MLE HWE AFs : ";
+                    for (size_t i=0; i<n_allele; ++i)
+                    {
+                        std::cerr << " " << MLE_HWE_AF[i] ;
+                    }
+                    std::cerr << "\n";
+
+                    std::cerr << "PLs : ";
+                    for (size_t i=0; i<n_genotype; ++i)
+                    {
+                        std::cerr << " " << pls[offset+i] ;
+                    }
+                    std::cerr << "\n";
+
+
                 }
-                std::cerr << "\n";
 
                 float prob_data = 0;
                 for (size_t i=0; i<n_genotype; ++i)
                 {
                     prob_data += (gf_indiv[i] = gf[i]*lt->pl2prob(pls[offset+i]));
                 }
-                
-                 
-//                std::cerr << imap[i] << ") PSEUDO COUNTS " << gf_indiv[0] << " " << gf_indiv[1] << " " << gf_indiv[2]
-//                    <<  " prob_data : " << prob_data
-//                    << pls[offset] << " " << pls[offset+1] << " " << pls[offset+2] <<"\n";
+
+                if (debug) std::cerr << "Prob Data : " << prob_data << "\n";
 
                 for (size_t i=0; i<n_genotype; ++i)
                 {
                     gf_indiv[i] /= prob_data;
                 }
-//                  
-                std::cerr << "Individual GLs : "; 
-                for (size_t i=0; i<n_genotype; ++i)
-                {
-                    std::cerr << " " << gf_indiv[i] ;
-                }
-                std::cerr << "\n";
 
-//                for (size_t i=0; i<n_allele; ++i)
-//                {
-//                    MLE_HWE_AF[i] = 0;
-//                }
-                
+                if (debug)
+                {
+                    std::cerr << "Individual GLs : ";
+                    for (size_t i=0; i<n_genotype; ++i)
+                    {
+                        std::cerr << " " << gf_indiv[i] ;
+                    }
+                    std::cerr << "\n";
+                }
+
                 for (size_t i=0; i<n_allele; ++i)
                 {
                     for (size_t j=0; j<i; ++j)
                     {
                         int32_t gf_index = bcf_alleles2gt(i,j);
-                        MLE_HWE_AF[i] += 0.5*gf[gf_index];
-                        MLE_HWE_AF[j] += 0.5*gf[gf_index];
+                        MLE_HWE_AF[i] += 0.5*gf_indiv[gf_index];
+                        MLE_HWE_AF[j] += 0.5*gf_indiv[gf_index];
                     }
-                    MLE_HWE_AF[i] += gf[bcf_alleles2gt(i,i)];
+                    MLE_HWE_AF[i] += gf_indiv[bcf_alleles2gt(i,i)];
                 }
 
-//                std::cerr << "\tMLE COUNTS: " << MLE_HWE_AF[0] << ":" << MLE_HWE_AF[1] << " " << n << "\n";
-//
-                if (i==10)exit(1);
+                if (debug)
+                {
+                    std::cerr << "Posterior MLE HWE AFs : ";
+                    for (size_t i=0; i<n_allele; ++i)
+                    {
+                        std::cerr << " " << MLE_HWE_AF[i] ;
+                    }
+                    std::cerr << "\n";
+                    std::cerr << "===================================\n";
+                }
             }
-
-//            std::cerr << "MLE_PSEUDO_COUNTS : " << MLE_HWE_AF[0] << ":" << MLE_HWE_AF[0] << "\n";
 
             //normalize to frequency
             mse = 0;
@@ -225,242 +254,24 @@ void Estimator::compute_hwe_af(int32_t *gts, int32_t *pls, int32_t nsamples, int
                 mse += (diff *= diff);
                 af[i] = MLE_HWE_AF[i];
             }
-            
-//            std::cerr << af[0] << ":" << af[1] << "\n";
 
             ++iter;
         }
 
         for (size_t i=0; i<n_allele; ++i)
         {
+            MLE_HWE_GF[i] = 0;
+        }
+
+        for (size_t i=0; i<n_allele; ++i)
+        {
             for (size_t j=0; j<=i; ++j)
             {
-                MLE_HWE_GF[bcf_alleles2gt(i,j)] = (i==j?2:1)*MLE_HWE_AF[i]*MLE_HWE_AF[j];
+                MLE_HWE_GF[bcf_alleles2gt(i,j)] += (i!=j?2:1)*MLE_HWE_AF[i]*MLE_HWE_AF[j];
             }
         }
     }
 }
-
-
-/**
-Computes HWE allele frequencies using EM algorithm
-Input:
-1)Genotype Likelihoods
-
-Output:
-1) estimated HWE allele frequencies
-2) sample size
-*/
-bool estimateHWEAlleleFrequencies(std::vector<std::vector<double> >& GLs, double eps, std::vector<double>& mleHWEAlleleFreq, uint32_t& N, uint32_t noAlleles)
-{
-    if (noAlleles==2)
-    {
-        N = 0;
-        for (uint32_t i=0; i<GLs.size(); ++i)
-        {
-            //count non missing data
-            if (GLs[i].size()!=0)
-            {
-                ++N;
-            }
-        }
-
-        if (N==0)
-        {
-            return false;
-        }
-
-        std::vector<double> genotypeFreqPrior(3);
-        std::vector<double> alleleFreqPrior(noAlleles, 0.5);
-        std::vector<double> individualGenotypePosterior(3);
-        mleHWEAlleleFreq.resize(2);
-        double probData = 0;
-
-        int iter = 0;
-        double mse = eps+1;
-        while (mse>eps)
-        {
-            genotypeFreqPrior[0] = alleleFreqPrior[0]*alleleFreqPrior[0];
-            genotypeFreqPrior[1] = 2*alleleFreqPrior[0]*alleleFreqPrior[1];
-            genotypeFreqPrior[2] = alleleFreqPrior[1]*alleleFreqPrior[1];
-
-            mleHWEAlleleFreq[0] = 0;
-            mleHWEAlleleFreq[1] = 0;
-
-            for (uint32_t i=0; i<GLs.size(); ++i)
-            {
-                if (GLs[i].size()==0)
-                {
-                    continue;
-                }
-
-                //std::cerr << "GLS " << GLs[i][0] << " " << GLs[i][0] << " "  << GLs[i][0] << "\n" ;
-
-                individualGenotypePosterior[0] = genotypeFreqPrior[0]*GLs[i][0];
-                individualGenotypePosterior[1] = genotypeFreqPrior[1]*GLs[i][1];
-                individualGenotypePosterior[2] = genotypeFreqPrior[2]*GLs[i][2];
-                probData = individualGenotypePosterior[0];
-                probData += individualGenotypePosterior[1];
-                probData += individualGenotypePosterior[2];
-
-                //std::cerr << "tot " << probData <<  "\n" ;
-
-                individualGenotypePosterior[0] /= probData;
-                individualGenotypePosterior[1] /= probData;
-                individualGenotypePosterior[2] /= probData;
-
-                mleHWEAlleleFreq[0] += individualGenotypePosterior[0] + 0.5*individualGenotypePosterior[1];
-                mleHWEAlleleFreq[1] += individualGenotypePosterior[2] + 0.5*individualGenotypePosterior[1];
-
-                //std::cerr << "AF " << mleHWEAlleleFreq[0] <<  " " << mleHWEAlleleFreq[1] <<"\n" ;
-            }
-
-            mleHWEAlleleFreq[0] /= N;
-            mleHWEAlleleFreq[1] /= N;
-
-            mse = (alleleFreqPrior[0]-mleHWEAlleleFreq[0])*(alleleFreqPrior[0]-mleHWEAlleleFreq[0]);
-            mse += (alleleFreqPrior[1]-mleHWEAlleleFreq[1])*(alleleFreqPrior[1]-mleHWEAlleleFreq[1]);
-
-            alleleFreqPrior[0] = mleHWEAlleleFreq[0];
-            alleleFreqPrior[1] = mleHWEAlleleFreq[1];
-
-            ++iter;
-        }
-
-        return true;
-    }
-    else
-    {
-        //effective size
-        N = 0;
-        uint32_t noGenotypes = (noAlleles*(noAlleles+1))/2;
-
-        for (uint32_t i=0; i<GLs.size(); ++i)
-        {
-            //count non missing data
-            if (GLs[i].size()!=0)
-            {
-                ++N;
-            }
-        }
-
-        if (N==0)
-        {
-            return false;
-        }
-
-        //==========================================
-        //sets up map from genotype code to genotype
-        //==========================================
-        std::vector<std::vector<uint32_t> > index2Genotype(noGenotypes);
-        int32_t genotypeCode = 0;
-        for (uint32_t i=0; i<noAlleles; ++i)
-        {
-            for (uint32_t j=0; j<=i; ++j)
-            {
-                index2Genotype[genotypeCode].resize(2);
-                index2Genotype[genotypeCode][0] = j;
-                index2Genotype[genotypeCode][1] = i;
-
-                ++genotypeCode;
-            }
-        }
-
-        std::vector<double> genotypeFreqPrior(noGenotypes);
-        std::vector<double> alleleFreqPrior(noAlleles, 1.0/noAlleles);
-        std::vector<double> individualGenotypePosterior(noGenotypes);
-        mleHWEAlleleFreq.resize(noAlleles);
-        double probData;
-
-        //track convergence
-        int iter = 0;
-        //double oldRelDiff = 0;
-        //double relDiff = 0;
-        //mse convergence used as it is guaranteed to converge thanks to MLE consistency property
-        double mse = DBL_MAX;
-        //check for convergence on prior
-        //if(relDiff<eps || check_tol(oldRelDiff, relDiff, eps))
-        while (mse>eps)
-        {
-            //initialize genotype prior under HWE
-            for (uint32_t j=0; j<noGenotypes; ++j)
-            {
-                genotypeFreqPrior[j] = alleleFreqPrior[index2Genotype[j][0]]*alleleFreqPrior[index2Genotype[j][1]];
-
-                if(index2Genotype[j][0]!=index2Genotype[j][1])
-                {
-                    genotypeFreqPrior[j] *= 2;
-                }
-            }
-
-            //initialize MLE
-            for (uint32_t j=0; j<noAlleles; ++j)
-            {
-                mleHWEAlleleFreq[j] = 0;
-            }
-
-            for (uint32_t i=0; i<GLs.size(); ++i)
-            {
-                //missing data
-                if (GLs[i].size()==0)
-                {
-                    continue;
-                }
-
-                //======
-                //E Step
-                //======
-                //compute genotype posterior probabilities
-                probData = 0;
-                for (uint32_t j=0; j<noGenotypes; ++j)
-                {
-                    individualGenotypePosterior[j] = genotypeFreqPrior[j]*GLs[i][j];
-                    probData += individualGenotypePosterior[j];
-                }
-
-                for (uint32_t j=0; j<noGenotypes; ++j)
-                {
-                    individualGenotypePosterior[j] /= probData;
-
-                    //==============
-                    //M Step Summing
-                    //==============
-                    mleHWEAlleleFreq[index2Genotype[j][0]] += 0.5*individualGenotypePosterior[j];
-                    mleHWEAlleleFreq[index2Genotype[j][1]] += 0.5*individualGenotypePosterior[j];
-                }
-            }
-
-            mse = 0;
-            for (uint32_t j=0; j<noAlleles; ++j)
-            {
-                //===============
-                //M Step Dividing
-                //===============
-                mleHWEAlleleFreq[j] /= N;
-                mse += (alleleFreqPrior[j]-mleHWEAlleleFreq[j])*(alleleFreqPrior[j]-mleHWEAlleleFreq[j]);
-                alleleFreqPrior[j] = mleHWEAlleleFreq[j];
-                //oldRelDiff = relDiff;
-                //relDiff += update(alleleFreqPrior[j], mleHWEAlleleFreq[j]);
-            }
-
-            /*
-            print("ALLELE ");
-            print(iter);
-            print(" ");
-            print(oldRelDiff);
-            print(" ");
-            print(relDiff);
-            print(" ");
-            println(mleHWEAlleleFreq);
-            */
-
-            ++iter;
-        }
-
-        return true;
-    }
-};
-
 
 /**
 Computes genotype frequencies using EM algorithm
