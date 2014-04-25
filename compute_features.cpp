@@ -23,8 +23,6 @@
 
 #include "compute_features.h"
 
-#include <Rmath/Rmath.h>
-
 namespace
 {
 
@@ -70,6 +68,7 @@ class Igor : Program
     //tools//
     /////////
     VariantManip *vm;
+    Estimator *est;
 
     Igor(int argc, char ** argv)
     {
@@ -123,8 +122,8 @@ class Igor : Program
             odw->link_hdr(odr->hdr);
         }
         
-        bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_AC,Number=A,Type=Integer,Description=\"Allele count in genotypes, for each ALT allele, in the same order as listed\">\n");
-        bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_AN,Number=1,Type=Integer,Description=\"Total number of alleles in called genotypes\">\n");
+        bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_AF,Number=A,Type=Float,Description=\"MLE Allele Frequency assuming HWE\">\n");
+        bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_GF,Number=G,Type=Float,Description=\"MLE Genotype Frequency assuming HWE\">\n");
       
         /////////////////////////
         //filter initialization//
@@ -142,6 +141,7 @@ class Igor : Program
         //tool initialization//
         ///////////////////////
         vm = new VariantManip("");
+        est = new Estimator();
     }
 
     void compute_features()
@@ -151,7 +151,9 @@ class Igor : Program
         Variant variant;
 
         int32_t *gts = NULL;
-        int32_t n = 0;
+        int32_t *pls = NULL;
+        int32_t n_gts = 0;
+        int32_t n_pls = 0;
         
         odw->write_hdr();    
             
@@ -161,47 +163,45 @@ class Igor : Program
             bool printed = false;
 
             ++no_variants;
-            
+            vm->classify_variant(h, v, variant);
             if (filter_exists && !filter.apply(h,v,&variant))
             {
-                vm->classify_variant(h, v, variant);
+                
                 continue;
             }
 
-//            //update AC
-//            bcf_unpack(v, BCF_UN_ALL);
-//            int32_t ploidy = bcf_get_genotypes(odw->hdr, v, &gts, &n)/no_samples;        
-//            int32_t n_allele = bcf_get_n_allele(v); 
-//            
-//            int32_t g[ploidy];
-//            for (int32_t i=0; i<ploidy; ++i) g[i]=0;
-//            int32_t AC[n_allele];
-//            for (int32_t i=0; i<n_allele; ++i) AC[i]=0;
-//            int32_t AN=0;
-//            
-//            for (int32_t i=0; i<no_samples; ++i)
-//            {
-//                for (int32_t j=0; j<ploidy; ++j)
-//                {   
-//                    g[j] = bcf_gt_allele(gts[i*ploidy+j]);
-//                    
-//                    if (g[j]>=0)
-//                    {
-//                        ++AC[g[j]];
-//                        ++AN;
-//                    }
-//                }
-//            }
-//                
-//            if (AC[0]<AN)
-//            {   
-//                int32_t* AC_PTR = &AC[1];
-//                bcf_update_info_int32(odw->hdr,v,"VT_AC",AC_PTR,n_allele-1); 
-//                bcf_update_info_int32(odw->hdr,v,"VT_AN",&AN,1);  
-//            }
+            //update AC
+            bcf_unpack(v, BCF_UN_ALL);
+            int32_t ploidy = bcf_get_genotypes(odr->hdr, v, &gts, &n_gts);   
+            ploidy /= no_samples;
             
-            std::cerr << "PVAL for 12 : " << pchisq(12, 1,0,0) << "\n";
+            bcf_get_format_int32(odr->hdr, v, "PL", &pls, &n_pls);        
+            int32_t n_allele = bcf_get_n_allele(v); 
             
+            std::cerr << "ploidy " << ploidy << " no_samples " << no_samples << "\n";  
+            
+            int32_t g[ploidy];
+            for (int32_t i=0; i<ploidy; ++i) g[i]=0;
+            int32_t AC[n_allele];
+            for (int32_t i=0; i<n_allele; ++i) AC[i]=0;
+            int32_t AN=0;
+            
+            float MLE_HWE_AF[n_allele];
+            int32_t no_genotypes = ((n_allele+1)*n_allele)>>1;
+            float MLE_HWE_GF[no_genotypes];
+            int32_t n = 0;
+            est->compute_hwe_af(gts, pls, no_samples, ploidy,n_allele, MLE_HWE_AF, MLE_HWE_GF,  n, 1e-20);
+            
+            std::cerr << "no_allele    " << n_allele << " " << n << "\n";    
+            std::cerr << "no_genotypes " << no_genotypes << " " << n << "\n";    
+            if (n)
+            {   
+                float* MLE_HWE_AF_PTR = &MLE_HWE_AF[1];
+                bcf_update_info_float(odw->hdr, v, "VT_AF", MLE_HWE_AF_PTR, n_allele-1); 
+                bcf_update_info_float(odw->hdr, v, "VT_GF", &MLE_HWE_GF, no_genotypes);  
+            }
+            
+    
             if (print_sites_only)
             {
                 bcf_subset(odw->hdr, v, 0, 0);
