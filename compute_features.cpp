@@ -165,8 +165,7 @@ class Igor : Program
             ++no_variants;
             vm->classify_variant(h, v, variant);
             if (filter_exists && !filter.apply(h,v,&variant))
-            {
-                
+            {   
                 continue;
             }
 
@@ -177,8 +176,6 @@ class Igor : Program
             
             bcf_get_format_int32(odr->hdr, v, "PL", &pls, &n_pls);        
             int32_t n_allele = bcf_get_n_allele(v); 
-            
-            std::cerr << "ploidy " << ploidy << " no_samples " << no_samples << "\n";  
             
             int32_t g[ploidy];
             for (int32_t i=0; i<ploidy; ++i) g[i]=0;
@@ -192,15 +189,12 @@ class Igor : Program
             int32_t n = 0;
             est->compute_hwe_af(gts, pls, no_samples, ploidy,n_allele, MLE_HWE_AF, MLE_HWE_GF,  n, 1e-20);
             
-            std::cerr << "no_allele    " << n_allele << " " << n << "\n";    
-            std::cerr << "no_genotypes " << no_genotypes << " " << n << "\n";    
             if (n)
             {   
                 float* MLE_HWE_AF_PTR = &MLE_HWE_AF[1];
                 bcf_update_info_float(odw->hdr, v, "VT_AF", MLE_HWE_AF_PTR, n_allele-1); 
                 bcf_update_info_float(odw->hdr, v, "VT_GF", &MLE_HWE_GF, no_genotypes);  
             }
-            
     
             if (print_sites_only)
             {

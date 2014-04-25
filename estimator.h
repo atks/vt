@@ -82,22 +82,24 @@ class Estimator
     void compute_hwe_af(int32_t *gts, int32_t *pls, int32_t nsamples, int32_t ploidy,
                     int32_t n_allele, float *MLE_HWE_AF, float *MLE_HWE_GF, int32_t& n, double e);
 
+
+    /**
+    Performs the HWE Likelihood Ratio Test.
+    Input:
+    1)Diploid
+    2)Multi-allelic
+    3)Genotype Likelihoods (qscores)
+    
+    Output:
+    1)Degrees of freedom
+    2)P-values
+    */
+    bool hweLRT(std::vector<std::vector<double> >& GLs,
+                std::vector<double>& mleGenotypeFreq,
+                std::vector<double>& mleHWEAlleleFreq,
+                double& lrts, double& pValue, uint32_t& dof, uint32_t noAlleles);
     private:
 };
-
-
-
-/**
-Computes HWE allele frequencies using EM algorithm
-Input:
-1)Genotype Likelihoods
-
-Output:
-1) estimated HWE allele frequencies
-2) sample size
-*/
-bool estimateHWEAlleleFrequencies(std::vector<std::vector<double> >& GLs, double eps, std::vector<double>& mleHWEAlleleFreq, uint32_t& N, uint32_t noAlleles);
-
 
 /**
 Computes genotype frequencies using EM algorithm
@@ -113,21 +115,7 @@ bool estimateGenotypeFrequencies(std::vector<std::vector<double> >& GLs,
                                  uint32_t& N, uint32_t noAlleles);
 
 
-/**
-Performs the HWE Likelihood Ratio Test.
-Input:
-1)Diploid
-2)Multi-allelic
-3)Genotype Likelihoods (qscores)
 
-Output:
-1)Degrees of freedom
-2)P-values
-*/
-bool hweLRT(std::vector<std::vector<double> >& GLs,
-            std::vector<double>& mleGenotypeFreq,
-            std::vector<double>& mleHWEAlleleFreq,
-            double& lrts, double& pValue, uint32_t& dof, uint32_t noAlleles);
 
 /**
  Estimate Fis.
