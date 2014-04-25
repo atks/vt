@@ -243,6 +243,11 @@ int bcf_hdr_subset_samples(const bcf_hdr_t *h, bcf1_t *v, std::vector<int32_t>& 
  **********/
 
 /**
+ * Gets number of expected genotypes from number of allelles for a ploidy of 2.
+ */ 
+#define bcf_an2gn(n) (((n+1)*n)>>1)
+
+/**
  * Gets a string representation of a variant.
  */
 void bcf_variant2string(bcf_hdr_t *h, bcf1_t *v, kstring_t *var);

@@ -23,6 +23,10 @@
 
 #include "hts_utils.h"
 
+/********
+ *General
+ ********/
+
 KHASH_MAP_INIT_STR(vdict, bcf_idinfo_t)
 typedef khash_t(vdict) vdict_t;
 
