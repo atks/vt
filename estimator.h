@@ -40,6 +40,7 @@
 #include "utils.h"
 #include "hts_utils.h"
 #include "log_tool.h"
+#include "Rmath/Rmath.h"
 
 /**
  * Class containing estimating methods of common features.
@@ -67,9 +68,9 @@ class Estimator
     };
 
     /**
-     * Computes HWE allele frequencies using EM algorithm
+     * Computes allele frequencies using EM algorithm from genotype likelihoods 
+     * under assumption of Hardy-Weinberg Equilibrium.
      *
-     * @gts        - genotypes
      * @pls        - PHRED genotype likelihoods
      * @nsamples   - number of samples
      * @ploidy     - ploidy
@@ -77,27 +78,45 @@ class Estimator
      * @MLE_HWE_AF - estimated AF
      * @MLE_HWE_GF - estimated GF
      * @n          - effective sample size
-     * @eps        - error
+     * @e          - error
      */
-    void compute_hwe_af(int32_t *gts, int32_t *pls, int32_t nsamples, int32_t ploidy,
-                    int32_t n_allele, float *MLE_HWE_AF, float *MLE_HWE_GF, int32_t& n, double e);
-
+    void compute_gl_af_hwe(int32_t *pls, int32_t nsamples, int32_t ploidy,
+                    int32_t n_allele, float *MLE_HWE_AF, float *MLE_HWE_GF, int32_t& n, 
+                    double e);
 
     /**
-    Performs the HWE Likelihood Ratio Test.
-    Input:
-    1)Diploid
-    2)Multi-allelic
-    3)Genotype Likelihoods (qscores)
-    
-    Output:
-    1)Degrees of freedom
-    2)P-values
-    */
-    bool hweLRT(std::vector<std::vector<double> >& GLs,
-                std::vector<double>& mleGenotypeFreq,
-                std::vector<double>& mleHWEAlleleFreq,
-                double& lrts, double& pValue, uint32_t& dof, uint32_t noAlleles);
+     * Computes allele frequencies using EM algorithm from genotype likelihoods.
+     *
+     * @pls        - PHRED genotype likelihoods
+     * @nsamples   - number of samples
+     * @ploidy     - ploidy
+     * @n_alleles  - number of alleles
+     * @MLE_AF     - estimated AF
+     * @MLE_GF     - estimated GF
+     * @n          - effective sample size
+     * @e          - error
+     */
+    void compute_gl_af(int32_t *pls, int32_t nsamples, int32_t ploidy,
+                    int32_t n_allele, float *MLE_AF, float *MLE_GF, int32_t& n, 
+                    double e);
+
+    /**
+     * Computes the Hardy-Weinberg Likelihood Ratio Test Statistic
+     *
+     * @pls        - PHRED genotype likelihoods
+     * @nsamples   - number of samples
+     * @ploidy     - ploidy
+     * @n_allele   - number of alleles
+     * @MLE_HWE_AF - estimated AF
+     * @MLE_HWE_GF - estimated GF
+     * @n          - effective sample size
+     * @lrts       - log10 likelihood ratio test statistic p value
+     * @dof        - degrees of freedom
+     *
+     */
+    void compute_hwe_lrt(int32_t *pls, int32_t nsamples, int32_t ploidy,
+                int32_t n_allele, float *MLE_HWE_GF, float *MLE_GF, int32_t& n,
+                float& lrts, float& logp, int32_t& df);
     private:
 };
 
