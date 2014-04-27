@@ -24,9 +24,9 @@
 #include "estimator.h"
 
 /**
- * Computes HWE allele frequencies using EM algorithm
+ * Computes allele frequencies using EM algorithm from genotype likelihoods 
+ * under assumption of Hardy-Weinberg Equilibrium.
  *
- * @gts        - genotypes
  * @pls        - PHRED genotype likelihoods
  * @nsamples   - number of samples
  * @ploidy     - ploidy
@@ -34,10 +34,11 @@
  * @MLE_HWE_AF - estimated AF
  * @MLE_HWE_GF - estimated GF
  * @n          - effective sample size
- * @eps        - error
+ * @e          - error
  */
-void Estimator::compute_hwe_af(int32_t *gts, int32_t *pls, int32_t nsamples, int32_t ploidy,
-                int32_t n_allele, float *MLE_HWE_AF, float *MLE_HWE_GF, int32_t& n, double e)
+void Estimator::compute_gl_af_hwe(int32_t *pls, int32_t nsamples, int32_t ploidy,
+                int32_t n_allele, float *MLE_HWE_AF, float *MLE_HWE_GF, int32_t& n, 
+                double e)
 {
     int32_t iter = 0;
 
@@ -116,7 +117,6 @@ void Estimator::compute_hwe_af(int32_t *gts, int32_t *pls, int32_t nsamples, int
         int32_t n_genotype = bcf_an2gn(n_allele);
         for (size_t i=0; i<nsamples; ++i)
         {
-
             if (pls[i*n_genotype]!=bcf_int32_missing)
             {
                 imap[n] = i;
@@ -124,10 +124,7 @@ void Estimator::compute_hwe_af(int32_t *gts, int32_t *pls, int32_t nsamples, int
             }
         }
 
-        if (!n)
-        {
-            return;
-        }
+        if (!n) return;
 
         float af[n_allele];
         float p = 1.0/n_allele;
@@ -163,84 +160,26 @@ void Estimator::compute_hwe_af(int32_t *gts, int32_t *pls, int32_t nsamples, int
             {
                 size_t offset = imap[i]*n_genotype;
 
-                if (debug)
-                {
-                    std::cerr << iter << "\n";
-
-                    std::cerr << "Prior AFs : ";
-                    for (size_t i=0; i<n_allele; ++i)
-                    {
-                        std::cerr << " " << af[i] ;
-                    }
-                    std::cerr << "\n";
-
-                    std::cerr << "Prior GFs : ";
-                    for (size_t i=0; i<n_genotype; ++i)
-                    {
-                        std::cerr << " " << gf[i] ;
-                    }
-                    std::cerr << "\n";
-
-                    std::cerr << "Prior MLE HWE AFs : ";
-                    for (size_t i=0; i<n_allele; ++i)
-                    {
-                        std::cerr << " " << MLE_HWE_AF[i] ;
-                    }
-                    std::cerr << "\n";
-
-                    std::cerr << "PLs : ";
-                    for (size_t i=0; i<n_genotype; ++i)
-                    {
-                        std::cerr << " " << pls[offset+i] ;
-                    }
-                    std::cerr << "\n";
-
-
-                }
-
                 float prob_data = 0;
-                for (size_t i=0; i<n_genotype; ++i)
+                for (size_t j=0; j<n_genotype; ++j)
                 {
-                    prob_data += (gf_indiv[i] = gf[i]*lt->pl2prob(pls[offset+i]));
+                    prob_data += (gf_indiv[j] = gf[j]*lt->pl2prob(pls[offset+j]));
                 }
 
-                if (debug) std::cerr << "Prob Data : " << prob_data << "\n";
-
-                for (size_t i=0; i<n_genotype; ++i)
+                for (size_t j=0; j<n_genotype; ++j)
                 {
-                    gf_indiv[i] /= prob_data;
+                    gf_indiv[j] /= prob_data;
                 }
 
-                if (debug)
+                for (size_t j=0; j<n_allele; ++j)
                 {
-                    std::cerr << "Individual GLs : ";
-                    for (size_t i=0; i<n_genotype; ++i)
+                    for (size_t k=0; k<j; ++k)
                     {
-                        std::cerr << " " << gf_indiv[i] ;
-                    }
-                    std::cerr << "\n";
-                }
-
-                for (size_t i=0; i<n_allele; ++i)
-                {
-                    for (size_t j=0; j<i; ++j)
-                    {
-                        int32_t gf_index = bcf_alleles2gt(i,j);
-                        MLE_HWE_AF[i] += 0.5*gf_indiv[gf_index];
+                        int32_t gf_index = bcf_alleles2gt(j,k);
                         MLE_HWE_AF[j] += 0.5*gf_indiv[gf_index];
+                        MLE_HWE_AF[k] += 0.5*gf_indiv[gf_index];
                     }
-                    MLE_HWE_AF[i] += gf_indiv[bcf_alleles2gt(i,i)];
-                }
-
-                if (debug)
-                {
-                    std::cerr << "Posterior MLE HWE AFs : ";
-                    for (size_t i=0; i<n_allele; ++i)
-                    {
-                        std::cerr << " " << MLE_HWE_AF[i] ;
-                    }
-                    std::cerr << "\n";
-                    std::cerr << "===================================\n";
+                    MLE_HWE_AF[j] += gf_indiv[bcf_alleles2gt(j,j)];
                 }
             }
 
@@ -274,330 +213,230 @@ void Estimator::compute_hwe_af(int32_t *gts, int32_t *pls, int32_t nsamples, int
 }
 
 /**
-Computes genotype frequencies using EM algorithm
-Input:
-1)Genotype Likelihoods (qscores)
-
-Output:
-1) estimated genotype frequencies
-2) maximum likelihood (Q score)
-
-*/
-bool estimateGenotypeFrequencies(std::vector<std::vector<double> >& GLs,
-                                 double eps, std::vector<double>& mleGenotypeFreq,
-                                 uint32_t& N, uint32_t noAlleles)
+ * Computes allele frequencies using EM algorithm from genotype likelihoods.
+ *
+ * @pls        - PHRED genotype likelihoods
+ * @nsamples   - number of samples
+ * @ploidy     - ploidy
+ * @n_alleles  - number of alleles
+ * @MLE_AF     - estimated AF
+ * @MLE_GF     - estimated GF
+ * @n          - effective sample size
+ * @e          - error
+ */
+void Estimator::compute_gl_af(int32_t *pls, int32_t nsamples, int32_t ploidy,
+                int32_t n_allele, float *MLE_AF, float *MLE_GF, int32_t& n, 
+                double e)
 {
-    //std::cerr << "BEFORE In GL# " << GLs.size() << "\n";
-    //std::cerr << "BEFORE In GF estimate allele# " << noAlleles << "\n";
-    //std::cerr << "BEFORE In GF estimate genotype# " << mleGenotypeFreq.size() << "\n";
+    int32_t iter = 0;
 
-    if (noAlleles==2)
+    if (n_allele==2 && ploidy==2)
     {
-        N = 0;
-        for (uint32_t i=0; i<GLs.size(); ++i)
+        n = 0;
+        int32_t imap[nsamples];
+
+        for (size_t i=0; i<nsamples; ++i)
         {
-            if (GLs[i].size()!=0)
+            if (pls[i*3]!=bcf_int32_missing)
             {
-                ++N;
+                imap[n] = i;
+                ++n;
             }
         }
 
-        if(N==0)
+        if (!n)
         {
-            return false;
+            return;
         }
 
-        std::vector<double> genotypeFreqPrior(3, 1.0/3.0);
-        std::vector<double> individualGenotypeFreqPosterior(3);
-        mleGenotypeFreq.resize(3);
-        double probData = 0;
+        float gf[3];
+        float gf_indiv[3];
 
-        int iter = 0;
-        double mse=eps+1;
-        while (mse>eps && iter<1000)
+        float mse = e+1;
+        float diff = 0;
+        while (mse>e && iter<50)
         {
-            //initialize MLE
-            mleGenotypeFreq[0] = 0;
-            mleGenotypeFreq[1] = 0;
-            mleGenotypeFreq[2] = 0;
+            MLE_GF[0] = 0;
+            MLE_GF[1] = 0;
+            MLE_GF[2] = 0;
 
-            for (uint32_t i=0; i<GLs.size(); ++i)
+            for (size_t i=0; i<n; ++i)
             {
-                //missing data
-                if (GLs[i].size()==0)
-                    continue;
+                size_t offset = imap[i]*3;
 
-                individualGenotypeFreqPosterior[0] = genotypeFreqPrior[0] * GLs[i][0];
-                individualGenotypeFreqPosterior[1] = genotypeFreqPrior[1] * GLs[i][1];
-                individualGenotypeFreqPosterior[2] = genotypeFreqPrior[2] * GLs[i][2];
+                float prob_data = (gf_indiv[0] = gf[0]*lt->pl2prob(pls[offset]));
+                prob_data += (gf_indiv[1] = gf[1]*lt->pl2prob(pls[offset+1]));
+                prob_data += (gf_indiv[2] = gf[2]*lt->pl2prob(pls[offset+2]));
 
-                probData = individualGenotypeFreqPosterior[0];
-                probData += individualGenotypeFreqPosterior[1];
-                probData += individualGenotypeFreqPosterior[2];
-
-                mleGenotypeFreq[0] += individualGenotypeFreqPosterior[0]/probData;
-                mleGenotypeFreq[1] += individualGenotypeFreqPosterior[1]/probData;
-                mleGenotypeFreq[2] += individualGenotypeFreqPosterior[2]/probData;
+                MLE_GF[0] = (gf_indiv[0] /= prob_data);
+                MLE_GF[1] = (gf_indiv[1] /= prob_data);
+                MLE_GF[2] = (gf_indiv[2] /= prob_data);
             }
 
-            mleGenotypeFreq[0] /= N;
-            mleGenotypeFreq[1] /= N;
-            mleGenotypeFreq[2] /= N;
-            mse = (genotypeFreqPrior[0]-mleGenotypeFreq[0])*(genotypeFreqPrior[0]-mleGenotypeFreq[0]);
-            mse += (genotypeFreqPrior[1]-mleGenotypeFreq[1])*(genotypeFreqPrior[1]-mleGenotypeFreq[1]);
-            mse += (genotypeFreqPrior[2]-mleGenotypeFreq[2])*(genotypeFreqPrior[2]-mleGenotypeFreq[2]);
+            MLE_GF[0] /= n;
+            MLE_GF[1] /= n;
+            MLE_GF[2] /= n;
 
-            genotypeFreqPrior[0] = mleGenotypeFreq[0];
-            genotypeFreqPrior[1] = mleGenotypeFreq[1];
-            genotypeFreqPrior[2] = mleGenotypeFreq[2];
-
+            diff = (gf[0]-MLE_GF[0]);
+            mse = diff*diff;
+            diff = (gf[1]-MLE_GF[1]);
+            mse += diff*diff;
+            diff = (gf[2]-MLE_GF[2]);
+            mse += diff*diff;
+            
+            gf[0] = MLE_GF[0];
+            gf[1] = MLE_GF[1];
+            gf[2] = MLE_GF[2];
+            
             ++iter;
         }
 
-        return true;
+        MLE_AF[0] = MLE_GF[0]+0.5*MLE_GF[1];
+        MLE_AF[1] = MLE_GF[2]+0.5*MLE_GF[1];
     }
     else
     {
-        //effective size
-        uint32_t N = 0;
-        uint32_t noGenotypes = (noAlleles*(noAlleles+1))/2;
-
-        for (uint32_t i=0; i<GLs.size(); ++i)
+        n = 0;
+        int32_t imap[nsamples];
+        int32_t n_genotype = bcf_an2gn(n_allele);
+        for (size_t i=0; i<nsamples; ++i)
         {
-            //count non missing data
-            if (GLs[i].size()!=0)
+            if (pls[i*n_genotype]!=bcf_int32_missing)
             {
-                ++N;
-
-                //ensures same number of genotypes
-                if(noGenotypes!=GLs[i].size())
-                {
-                    std::cerr << "Number of genotypes not consistent for individuals\n";
-                    exit(0);
-                }
+                imap[n] = i;
+                ++n;
             }
         }
 
-        if (N==0)
+        if (!n) return;
+
+        float gf[n_genotype];
+        float gf_indiv[n_genotype];
+
+        float mse = e+1;
+        while (mse>e && iter<50)
         {
-            return false;
-            //throw(Exception("No observations to estimate frequencies"));
-        }
-
-        //==========================================
-        //sets up map from genotype code to genotype
-        //this is a critical part for multi allellic
-        //loci
-        //==========================================
-//      uint32_t index2genotype[noGenotypes][2];
-//      uint32_t genotypeCode = 0;
-//      for (uint32_t i=0; i<noAlleles; ++i)
-//      {
-//          for (uint32_t j=0; j<=i; ++j)
-//          {
-//              index2genotype[genotypeCode][0] = j;
-//              index2genotype[genotypeCode][1] = i;
-//              ++genotypeCode;
-//          }
-//      }
-        //by default start with a uniform prior
-        std::vector<double> genotypeFreqPrior(noGenotypes, 1.0/noGenotypes);
-
-        std::vector<double> individualGenotypeFreqPosterior(noGenotypes);
-        mleGenotypeFreq.resize(noGenotypes);
-        double probData;
-
-        //track convergence
-        //2 ways to terminate, MSE or by reldiff
-        //mse is used right now as it terminates more reliably
-        int iter = 0;
-        //double oldRelDiff = 0;
-        //double relDiff = 0;
-        double mse=DBL_MAX;
-        //check for convergence on prior
-        //if(relDiff<eps || check_tol(oldRelDiff, relDiff, eps))
-        while (mse>eps && iter<1000)
-        {
-            //initialize MLE
-            for (uint32_t j=0; j<noGenotypes; ++j)
+            //initialization
+            for (size_t i=0; i<n_genotype; ++i)
             {
-                mleGenotypeFreq[j] = 0;
+                MLE_GF[i] = 0;
             }
 
-            //across samples
-            for (uint32_t i=0; i<GLs.size(); ++i)
+            //iterate through individuals
+            for (size_t i=0; i<n; ++i)
             {
-                //missing data
-                if (GLs[i].size()==0)
-                    continue;
+                size_t offset = imap[i]*n_genotype;
 
-                //======
-                //E Step
-                //======
-                //compute genotype posterior probabilities
-                probData = 0;
-                for (uint32_t j=0; j<noGenotypes; ++j)
+                float prob_data = 0;
+                for (size_t j=0; j<n_genotype; ++j)
                 {
-                    individualGenotypeFreqPosterior[j] = genotypeFreqPrior[j] * GLs[i][j];
-                    probData += individualGenotypeFreqPosterior[j];
+                    prob_data += (gf_indiv[j] = gf[j]*lt->pl2prob(pls[offset+j]));
                 }
 
-                for (uint32_t j=0; j<noGenotypes; ++j)
+                for (size_t j=0; j<n_genotype; ++j)
                 {
-                    individualGenotypeFreqPosterior[j] /= probData;
-
-                    //======
-                    //M Step
-                    //======
-                    mleGenotypeFreq[j] += individualGenotypeFreqPosterior[j];
+                    MLE_GF[j] = (gf_indiv[j] /= prob_data);
                 }
             }
 
-            //std::cerr << "In GF estimate " << noGenotypes << "\n";
-
-            mse=0;
-            for (uint32_t j=0; j<noGenotypes; ++j)
+            mse = 0;
+            float diff;
+            for (size_t i=0; i<n_allele; ++i)
             {
-                //======
-                //M Step
-                //======
-                mleGenotypeFreq[j] /= N;
-                //oldRelDiff = relDiff;
-                //relDiff += update(genotypeFreqPrior[j], mleGenotypeFreq[j]);
-                mse += (genotypeFreqPrior[j]-mleGenotypeFreq[j])*(genotypeFreqPrior[j]-mleGenotypeFreq[j]);
-                genotypeFreqPrior[j] = mleGenotypeFreq[j];
+                MLE_GF[i] /= n;
+                diff = gf[i]-MLE_GF[i];
+                mse += (diff *= diff);
+                gf[i] = MLE_GF[i];
             }
 
             ++iter;
         }
 
-        return true;
-        //std::cerr << "In GF estimate " << noGenotypes << "\n";
+        for (size_t i=0; i<n_allele; ++i)
+        {
+            MLE_AF[i] = 0;
+        }
+
+        for (size_t i=0; i<n_allele; ++i)
+        {
+            for (size_t j=0; j<=i; ++j)
+            {
+                int32_t index = bcf_alleles2gt(i,j);
+                MLE_AF[i] += 0.5*MLE_GF[index];
+                MLE_AF[i] += 0.5*MLE_GF[index];
+            }
+        }
     }
-
-    //std::cerr << "In GF estimate allele#" << noAlleles << "\n";
-    //std::cerr << "In GF estimate genotype#" << mleGenotypeFreq.size() << "\n";
-};
-
+}
 
 /**
-Performs the HWE Likelihood Ratio Test.
-Input:
-1)Diploid
-2)Multi-allelic
-3)Genotype Likelihoods (qscores)
-
-Output:
-1)Degrees of freedom
-2)P-values
-*/
-bool hweLRT(std::vector<std::vector<double> >& GLs,
-            std::vector<double>& mleGenotypeFreq,
-            std::vector<double>& mleHWEAlleleFreq,
-            double& lrts, double& pValue, uint32_t& dof, uint32_t noAlleles)
+ * Computes the Hardy-Weinberg Likelihood Ratio Test Statistic
+ *
+ * @pls        - PHRED genotype likelihoods
+ * @nsamples   - number of samples
+ * @ploidy     - ploidy
+ * @n_allele   - number of alleles
+ * @MLE_HWE_AF - estimated AF assuming HWE
+ * @MLE_GF     - estimated GF
+ * @n          - effective sample size
+ * @lrts       - log10 likelihood ratio test statistic p value
+ * @dof        - degrees of freedom
+ *
+ */
+void Estimator::compute_hwe_lrt(int32_t *pls, int32_t nsamples, int32_t ploidy,
+            int32_t n_allele, float *MLE_HWE_GF, float *MLE_GF, int32_t& n,
+            float& lrts, float& logp, int32_t& df)                
 {
-    uint32_t noGenotypes = noAlleles*(noAlleles+1)/2;
-    dof = noAlleles*(noAlleles-1)/2;
-
-    if (noAlleles!=mleHWEAlleleFreq.size() || noGenotypes!=mleGenotypeFreq.size())
-    {
-        return false;
-    }
-
-    //==========================================
-    //sets up map from genotype code to genotype
-    //==========================================
-    std::vector<std::vector<uint32_t> > index2Genotype(noGenotypes);
-    int32_t genotypeCode = 0;
-    for (uint32_t i=0; i<noAlleles; ++i)
-    {
-        for (uint32_t j=0; j<=i; ++j)
+    if (n_allele==2 && ploidy==2)
+    {    
+        int32_t n_genotype = 3;
+        df = 1;
+    
+        //compute LRT statistic
+        float l0=0, l0i=0, la=0, lai=0;
+        int32_t n = 0;
+        for (size_t i=0; i<nsamples; ++i)
         {
-            index2Genotype[genotypeCode].resize(2);
-            index2Genotype[genotypeCode][0] = j;
-            index2Genotype[genotypeCode][1] = i;
-
-            ++genotypeCode;
+            size_t offset = i*3;
+    
+            if (pls[offset]==bcf_int32_missing) continue;
+            ++n;
+                
+            l0i=0;
+            lai=0;
+            for (size_t j=0; j<n_genotype; ++j)
+            {
+                int32_t pl = lt->pl2prob(pls[offset+j]);
+                l0i += MLE_HWE_GF[j] * pl;
+                lai += MLE_GF[j] * pl;
+            }
+    
+            l0 += log10(l0i);
+            la += log10(lai);
         }
+    
+        if (!n) return;
+        
+        lrts = -2*(l0-la)<0 ? 0 : -2*(l0-la);
+        logp = pchisq(lrts, df, 0, 1);
     }
-
-    //compute genotype frequencies under HWE
-    std::vector<double> mleHWEGenotypeFreq(noGenotypes);
-    for (uint32_t j=0; j<noGenotypes; ++j)
-    {
-        mleHWEGenotypeFreq[j] = mleHWEAlleleFreq[index2Genotype[j][0]]*mleHWEAlleleFreq[index2Genotype[j][1]];
-
-        if(index2Genotype[j][0]!=index2Genotype[j][1])
-        {
-            mleHWEGenotypeFreq[j] *= 2;
-        }
-    }
-
-
-    //compute LRT statistic
-    double l0=0, l0i=0, la=0, lai=0;
-    uint32_t N = 0;
-    for (uint32_t i=0; i<GLs.size(); ++i)
-    {
-        //missing data
-        if (GLs[i].size()==0)
-        {
-            continue;
-        }
-
-        ++N;
-
-        //std::cerr << "GL: ";
-        l0i=0;
-        lai=0;
-        for (uint32_t j=0; j<noGenotypes; ++j)
-        {
-            //std::cerr << j << ")" << GLs[i][j] << "\t";
-            //std::cerr << i  << ": " <<  GLs[i][j] << "\n";
-            l0i += mleHWEGenotypeFreq[j] * GLs[i][j];
-            lai += mleGenotypeFreq[j] * GLs[i][j];
-            //std::cerr << i  << ": " <<  lai << "\n";
-        }
-
-
-        //std::cerr << "\n";
-        l0 += log(l0i);
-        la += log(lai);
-    }
-    lrts = -2*(l0-la);
-
-    if (N==0)
-    {
-        return false;
-    }
-
-
-    if (lrts<0)
-    {
-        //std::cerr << "lrts less than 0 " << lrts << "\t";
-        lrts = 0;
-    }
-
- //   boost::math::chi_squared chisqDist(dof);
-  //  pValue = boost::math::cdf(complement(chisqDist, lrts));
-
-    return true;
 };
 
 /**
- Estimate FIC.
-Input:
-1)Diploid
-2)Multi-allelic
-3)Genotype Likelihoods (qscores)
-
-Output:
-1)Fis
-*/
-bool estimateFIC(std::vector<std::vector<double> >& GLs, //genotype likelihoods
-                 std::vector<double>& pG, //prior genotype frequencies
-                 std::vector<double>& pA_HWE,
-                 double& F, uint32_t noAlleles)
+ * Computes the Inbreeding Coefficient Statistic from Genotype likelihoods.
+ *
+ * @pls        - PHRED genotype likelihoods
+ * @nsamples   - number of samples
+ * @ploidy     - ploidy
+ * @n_allele   - number of alleles
+ * @MLE_HWE_AF - estimated AF
+ * @MLE_HWE_GF - estimated GF
+ * @n          - effective sample size
+ * @lrts       - log10 likelihood ratio test statistic p value
+ * @dof        - degrees of freedom
+ *
+ */
+bool Estimator::compute_gl_fic(int32_t * pls, float* GF, float* HWE_AF, float& F, int32_t n_allele)
 {
     uint32_t noGenotypes = noAlleles*(noAlleles+1)/2;
 
@@ -611,7 +450,6 @@ bool estimateFIC(std::vector<std::vector<double> >& GLs, //genotype likelihoods
     //==========================================
     std::vector<std::vector<uint32_t> > index2Genotype(noGenotypes);
     int32_t genotypeCode = 0;
-    //std::cerr << "no alleles in FIC estimation " << noAlleles << " " << noGenotypes << "\n";
     for (uint32_t i=0; i<noAlleles; ++i)
     {
         for (uint32_t j=0; j<=i; ++j)
@@ -692,9 +530,19 @@ bool estimateFIC(std::vector<std::vector<double> >& GLs, //genotype likelihoods
 };
 
 /**
-Allele Balance Statistic developed by Tom Blackwell.
-Works only for biallelic variants
-*/
+ * Computes the Allele Balance from genotype likelihoods.
+ *
+ * @pls        - PHRED genotype likelihoods
+ * @nsamples   - number of samples
+ * @ploidy     - ploidy
+ * @n_allele   - number of alleles
+ * @MLE_HWE_AF - estimated AF
+ * @MLE_HWE_GF - estimated GF
+ * @n          - effective sample size
+ * @lrts       - log10 likelihood ratio test statistic p value
+ * @dof        - degrees of freedom
+ *
+ */
 void estimateAlleleBalance(std::vector<std::vector<uint32_t> >& PLs, std::vector<std::vector<double> >& GLs, std::vector<uint32_t>& DPs, std::vector<double>& genotypeFreq, double& ab)
 {
     double num = 0, denum = 0;
@@ -722,241 +570,4 @@ void estimateAlleleBalance(std::vector<std::vector<uint32_t> >& PLs, std::vector
 
     //std::cerr << "num/denum " << num  << ", "  << denum << "\n";
     ab = (0.05+num)/(0.10+denum);
-};
-
-/**
-Ratio of observe variance against expected variance - RSQ.
-Works only for biallelic variants
-*/
-bool computeRSQ(std::vector<std::vector<double> >& GLs, std::vector<double>& mleHWEAlleleFreq, double& RSQ, uint32_t noAlleles)
-{
-    if (noAlleles!=mleHWEAlleleFreq.size())
-    {
-        return false;
-    }
-
-    if (noAlleles==2)
-    {
-        double pRR = mleHWEAlleleFreq[0]*mleHWEAlleleFreq[0];
-        double pRA = 2*mleHWEAlleleFreq[0]*mleHWEAlleleFreq[1];
-        double pAA = mleHWEAlleleFreq[1]*mleHWEAlleleFreq[1];
-
-        double postRR = 0;
-        double postRA = 0;
-        double postAA = 0;
-        double total = 0;
-
-        double sumD2 = 0;
-        double sumD = 0;
-        double n = 0;
-        double D_i = 0;
-
-        for (uint32_t i=0; i<GLs.size(); ++i)
-        {
-            if(GLs[i].size()==0)
-            {
-                continue;
-            }
-
-            postRR = GLs[i][0] * pRR;
-            postRA = GLs[i][1] * pRA;
-            postAA = GLs[i][2] * pAA;
-            total = postRR + postRA + postAA;
-            postRR /= total;
-            postRA /= total;
-            postAA /= total;
-
-            D_i = postRA + 2*postAA;
-            sumD2 += D_i * D_i;
-            sumD += D_i;
-
-            ++n;
-        }
-
-        if (n==0)
-        {
-            return false;
-        }
-
-        double meanD = sumD/n;
-
-        RSQ = ((sumD2-n*meanD*meanD)/(n-1)) / (2*mleHWEAlleleFreq[0]*mleHWEAlleleFreq[1]);
-    }
-    else
-    {
-        RSQ = 1;
-    }
-
-    return true;
-};
-
-
-/**
-convert PLs to probabilities.
-*/
-double logFact(uint32_t n, std::vector<double>& LOGFACTS)
-{
-    if(LOGFACTS.size()==0)
-    {
-        LOGFACTS.push_back(0);
-    }
-
-    if (n>=LOGFACTS.size())
-    {
-        for (uint32_t i=LOGFACTS.size(); i<=n; ++i)
-        {
-            LOGFACTS.push_back(LOGFACTS[i-1] + log(i));
-        }
-    }
-
-    return LOGFACTS[n];
-};
-
-double logHypergeometricProb(std::vector<double>& logFacs, uint32_t a, uint32_t b, uint32_t c, uint32_t d, std::vector<double>& LOGFACTS)
-{
-    return logFact(a+b, LOGFACTS) + logFact(c+d, LOGFACTS) + logFact(a+c, LOGFACTS) + logFact(b+d, LOGFACTS) - logFact(a, LOGFACTS) - logFact(b, LOGFACTS) - logFact(c, LOGFACTS) - logFact(d, LOGFACTS) - logFact(a+b+c+d, LOGFACTS);
-};
-
-double fisher1(uint32_t a, uint32_t b, uint32_t c, uint32_t d, std::vector<double>& LOGFACTS)
-{
-    uint32_t n = a + b + c + d;
-
-    std::vector<double> logFacs(n+1);
-
-    double logpCutoff = logHypergeometricProb(logFacs, a, b, c, d, LOGFACTS);
-    double p2SidedFraction = 0;
-
-    for(uint32_t x=0; x<=n; ++x)
-    {
-        if ( a+b >= x && a+c >= x && d+x >=a )
-        {
-            ///std::cerr << "ABCDX\t" << a  << "\t" << b  << "\t" << c << "\t" << d << "\t" << x << "\n";
-            double l = logHypergeometricProb(logFacs, x, a+b-x, a+c-x, d-a+x, LOGFACTS);
-            //std::cerr << "\t" << l  << "\t" << p2SidedFraction  << "\t" << logpCutoff << "\n";
-            if (l<=logpCutoff)
-            {
-                p2SidedFraction += exp(l-logpCutoff);
-            }
-        }
-    }
-
-    return exp(log(p2SidedFraction)+logpCutoff);
-};
-
-
-//pearson correlation applied to a 2x2 table ()
-double cor(uint32_t a, uint32_t b, uint32_t c, uint32_t d)
-{
-
-    double N = a+b+c+d;
-    double sumXY = a;
-    double sumX = a+b;
-    double sumY = a+c;
-
-    //std::cerr << N << "\t" << sumXY << "\t" << sumX << "\t" << sumY << "\n";
-
-    double num = sumXY-sumX*sumY/N;
-    double denum = sqrt((sumX-sumX*sumX/N)*(sumY-sumY*sumY/N));
-    return denum!=0 ? num/denum : 0;
-};
-
-//pearson correlation applied to 2 vectors
-double cor(std::vector<double> a, std::vector<double> b)
-{
-    double N = a.size();
-    double sumXY = 0;
-    double sumXX = 0;
-    double sumX = 0;
-    double sumYY = 0;
-    double sumY = 0;
-
-    for (uint32_t i=0; i<a.size(); ++i)
-    {
-        //std::cerr << a[i] << "\t" << b[i] << "\n";
-        sumXY += a[i] * b[i];
-        sumXX += a[i] * a[i];
-        sumX += a[i];
-        sumYY += b[i] * b[i];
-        sumY += b[i];
-    }
-
-    double num = sumXY-sumX*sumY/N;
-    double denum = sqrt((sumXX-sumX*sumX/N)*(sumYY-sumY*sumY/N));
-    return denum!=0 ? num/denum : 0;
-};
-
-
-bool computeQualAndBF(std::vector<std::vector<double> >& GLs,
-                 std::vector<double>& pG,
-                 double& qual, double& bf, uint32_t noAlleles)
-{
-    if (noAlleles==2)
-    {
-        uint32_t noGenotypes = noAlleles*(noAlleles+1)/2;
-        if (noGenotypes!=pG.size())
-        {
-            return false;
-        }
-
-
-        qual = 0;
-        bf = 0;
-        uint32_t N = 0;
-        double paa=0, pab=0, pbb=0, total=0;
-        double homRefPrior=pG[0], hetPrior=pG[1], homAltPrior=pG[2];
-        for (uint32_t i=0; i<GLs.size(); ++i)
-        {
-            //missing data
-            if (GLs[i].size()==0)
-            {
-                continue;
-            }
-
-            total = (paa = GLs[i][0] * homRefPrior);
-            total += (pab = GLs[i][1] * hetPrior);
-            total += (pbb = GLs[i][2] * homAltPrior);
-
-            qual +=  log10((pab + pbb)/total);
-            bf +=  log10(total) - log10(GLs[i][0]);
-            ++N;
-        }
-
-        return (N==0? false : true);
-    }
-    else
-    {
-        qual = 0;
-        bf = 0;
-        uint32_t N = 0;
-        uint32_t noGenotypes = (noAlleles * (noAlleles+1))/2;
-        double total=0;
-
-        std::vector<double> p(noGenotypes, 0);
-        for (uint32_t i=0; i<GLs.size(); ++i)
-        {
-            //missing data
-            if (GLs[i].size()==0)
-            {
-                continue;
-            }
-
-            total = 0;
-
-            for (uint32_t j=0; j<noGenotypes; ++j)
-            {
-                total += (p[j] =  GLs[i][j] * pG[j]);
-            }
-
-            for (uint32_t j=0; j<noGenotypes; ++j)
-            {
-                p[j] /= total;
-            }
-             ++N;
-            //evidence for alternate alleles
-            qual +=  log10((total-p[0])/total);
-            bf +=  log10(total) - log10(GLs[i][0]);
-        }
-
-        return (N==0? false : true);
-    }
 };

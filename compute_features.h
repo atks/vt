@@ -32,7 +32,6 @@
 #include "program.h"
 #include "filter.h"
 #include "estimator.h"
-#include "Rmath/Rmath.h"
 
 void compute_features(int argc, char ** argv);
 

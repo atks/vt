@@ -187,7 +187,7 @@ class Igor : Program
             int32_t no_genotypes = ((n_allele+1)*n_allele)>>1;
             float MLE_HWE_GF[no_genotypes];
             int32_t n = 0;
-            est->compute_hwe_af(gts, pls, no_samples, ploidy,n_allele, MLE_HWE_AF, MLE_HWE_GF,  n, 1e-20);
+            est->compute_gl_af_hwe(pls, no_samples, ploidy,n_allele, MLE_HWE_AF, MLE_HWE_GF,  n, 1e-20);
             
             if (n)
             {   
