@@ -434,11 +434,14 @@ void Estimator::compute_hwe_lrt(int32_t *pls, int32_t nsamples, int32_t ploidy,
  * @F          - estimated inbreeding coefficient
  * @n          - effective sample size
  */
-void Estimator::compute_gl_fic(int32_t * pls, int32_t no_samples, int32_t ploidy, float* HWE_AF, int32_t no_alleles, float* GF, float& F, int32_t& n)
+void Estimator::compute_gl_fic(int32_t * pls, int32_t no_samples, int32_t ploidy, 
+                               float* HWE_AF, int32_t no_alleles, float* GF, 
+                               float& F, int32_t& n)
 {
+    n = 0;
+    
     if (ploidy!=2)
     {
-        n = 0;
         return;
     }
     
@@ -453,20 +456,17 @@ void Estimator::compute_gl_fic(int32_t * pls, int32_t no_samples, int32_t ploidy
         }
     }
 
-    //compute Fst
-    float num = 0;
-    
+    float num = 0;    
     float o_het_sum;
     float o_sum;
-    
-    
     for (size_t k=0; k<no_samples; ++k)
     {
-        if (pls[k*no_genotypes]!=bcf_int32_missing)
+        if (pls[k*no_genotypes]==bcf_int32_missing)
         {
             continue;
         }
 
+        ++n;
         o_het_sum = 0;
         o_sum = 0;
     
@@ -502,84 +502,43 @@ void Estimator::compute_gl_fic(int32_t * pls, int32_t no_samples, int32_t ploidy
     F = 1-num/denum;
 };
 
-
-
-//	for (uint32_t i=0; i<GLs.size(); ++i)
-//	{                        
-//	    //missing data            
-//	    if (GLs[i].size()==0)
-//	    {
-//	        continue;
-//	    }            
-//	
-//		pHet_Reads_sum=0;
-//		pG_Reads_sum=0;
-//		pHet_sum=0;
-//		
-//		pHet_ReadsHWE_sum=0;
-//		pG_ReadsHWE_sum=0;
-//		pHet_HWE_sum=0;
-//						
-//		for (uint32_t j=0; j<noGenotypes; ++j)
-//	    {	
-//	        pG_Reads = GLs[i][j] * pG[j];
-//	    	pG_ReadsHWE = GLs[i][j] * pG_HWE[j];
-//	    	
-//	    	//hets
-//	    	if(index2Genotype[j][0]!=index2Genotype[j][1])
-//	    	{
-//	    		pHet_Reads_sum += pG_Reads;
-//	    		pHet_sum += pG[j];
-//		    	
-//		    	pHet_ReadsHWE_sum += pG_ReadsHWE;
-//		    	pHet_HWE_sum += pG_HWE[j];
-//	    	}
-//	    	
-//	    	pG_Reads_sum += pG_Reads;
-//	    	pG_ReadsHWE_sum += pG_ReadsHWE;
-//	    }
-//           
-//    	FPNum += pHet_ReadsHWE_sum/pG_ReadsHWE_sum;
-//		FPDenum += pHet_HWE_sum;
-//	}
-
-
-
 /**
- * Computes the Allele Balance from genotype likelihoods.
+ * Computes Allele Balance from genotype likelihoods.
  *
  * @pls        - PHRED genotype likelihoods
- * @nsamples   - number of samples
+ * @no_samples - number of samples
  * @ploidy     - ploidy
- * @n_allele   - number of alleles
- * @MLE_HWE_AF - estimated AF
- * @MLE_HWE_GF - estimated GF
+ * @dps        - depths
+ * @GF         - estimated GF
+ * @no_alleles - number of alleles
+ * @ab         - estimate of allele balance
  * @n          - effective sample size
- * @lrts       - log10 likelihood ratio test statistic p value
- * @dof        - degrees of freedom
- *
  */
-void estimateAlleleBalance(std::vector<std::vector<uint32_t> >& PLs, std::vector<std::vector<double> >& GLs, std::vector<uint32_t>& DPs, std::vector<double>& genotypeFreq, double& ab)
+void Estimator::compute_allele_balance(int32_t *pls, int32_t no_samples, int32_t ploidy,
+                                        int32_t *dps, 
+                                        float* GF, int32_t no_alleles,
+                                        double& ab, int32_t& n)
 {
+    n = 0;
+    
+    if (no_alleles!=2) return;
+    
     double num = 0, denum = 0;
-    uint32_t n=0;
-    for (uint32_t i=0; i<GLs.size(); ++i)
+    for (size_t k=0; k<no_samples; ++k)
     {
-        if(GLs[i].size()!=0 && DPs[i]!=0)
+        size_t offset = k*ploidy;
+        if(pls[k]!=bcf_int32_missing && dps[k]!=0)
         {
-            double nrefnum = (double)PLs[i][2]-(double)PLs[i][0];
-            double nrefdenum = (double)PLs[i][0]+(double)PLs[i][2]-2*(double)PLs[i][1] +6*DPs[i];
-            double nref = 0.5*DPs[i]*(1+nrefnum/nrefdenum);
-            double phet = GLs[i][1]*genotypeFreq[1] / (GLs[i][0]*genotypeFreq[0]+GLs[i][1]*genotypeFreq[1]+GLs[i][2]*genotypeFreq[2]);
+            double nrefnum = pls[offset+2]-pls[offset+0];
+            double nrefdenum = pls[offset]+pls[offset+2]-2*pls[offset+1] +6*dps[k];
+            double nref = 0.5*dps[k]*(1+nrefnum/nrefdenum);
+            double phet = lt->pl2prob(pls[offset+1])*GF[1] / 
+                         ( lt->pl2prob(pls[offset])*GF[0]
+                          +lt->pl2prob(pls[offset+1])*GF[1]
+                          +lt->pl2prob(pls[offset+2])*GF[2]);
 
-//          std::cerr << "nrefnum " << nrefnum << "\n";
-//          std::cerr << "nrefdenum " << nrefdenum << "\n";
-//          std::cerr << "phet " << phet << "\n";
-            //std::cerr << "GLs " << GLs[i][0] << "," << GLs[i][1] << "," << GLs[i][2] << "\n";
-
-            //double phet = genotypeFreq[1];
             num += phet*nref;
-            denum += phet*DPs[i];
+            denum += phet*dps[k];
             ++n;
         }
     }
