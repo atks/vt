@@ -68,7 +68,7 @@ class Estimator
     };
 
     /**
-     * Computes allele frequencies using EM algorithm from genotype likelihoods 
+     * Computes allele frequencies using EM algorithm from genotype likelihoods
      * under assumption of Hardy-Weinberg Equilibrium.
      *
      * @pls        - PHRED genotype likelihoods
@@ -81,7 +81,7 @@ class Estimator
      * @e          - error
      */
     void compute_gl_af_hwe(int32_t *pls, int32_t nsamples, int32_t ploidy,
-                    int32_t n_allele, float *MLE_HWE_AF, float *MLE_HWE_GF, int32_t& n, 
+                    int32_t n_allele, float *MLE_HWE_AF, float *MLE_HWE_GF, int32_t& n,
                     double e);
 
     /**
@@ -97,27 +97,28 @@ class Estimator
      * @e          - error
      */
     void compute_gl_af(int32_t *pls, int32_t nsamples, int32_t ploidy,
-                    int32_t n_allele, float *MLE_AF, float *MLE_GF, int32_t& n, 
+                    int32_t n_allele, float *MLE_AF, float *MLE_GF, int32_t& n,
                     double e);
 
     /**
      * Computes the Hardy-Weinberg Likelihood Ratio Test Statistic
      *
      * @pls        - PHRED genotype likelihoods
-     * @nsamples   - number of samples
+     * @no_samples - number of samples
      * @ploidy     - ploidy
-     * @n_allele   - number of alleles
-     * @MLE_HWE_AF - estimated AF
-     * @MLE_HWE_GF - estimated GF
+     * @no_alleles - number of alleles
+     * @MLE_HWE_AF - estimated AF assuming HWE
+     * @MLE_GF     - estimated GF
      * @n          - effective sample size
-     * @lrts       - log10 likelihood ratio test statistic p value
-     * @dof        - degrees of freedom
+     * @lr         - log10 likelihood ratio
+     * @logp       - likelihood ratio test log p-value
+     * @df         - degrees of freedom
      *
      */
-    void compute_hwe_lrt(int32_t *pls, int32_t nsamples, int32_t ploidy,
-                int32_t n_allele, float *MLE_HWE_GF, float *MLE_GF, int32_t& n,
-                float& lrts, float& logp, int32_t& df);
-                
+    void compute_hwe_lrt(int32_t *pls, int32_t no_samples, int32_t ploidy,
+                int32_t no_alleles, float *MLE_HWE_GF, float *MLE_GF, int32_t& n,
+                float& lr, float& logp, int32_t& df);
+
     /**
      * Computes the Inbreeding Coefficient Statistic from Genotype likelihoods.
      *
@@ -130,8 +131,8 @@ class Estimator
      * @F          - estimated inbreeding coefficient
      * @n          - effective sample size
      */
-    void compute_gl_fic(int32_t * pls, int32_t no_samples, int32_t ploidy, 
-                                   float* HWE_AF, int32_t no_alleles, float* GF, 
+    void compute_gl_fic(int32_t * pls, int32_t no_samples, int32_t ploidy,
+                                   float* HWE_AF, int32_t no_alleles, float* GF,
                                    float& F, int32_t& n);
 
     /**
@@ -147,7 +148,7 @@ class Estimator
      * @n          - effective sample size
      */
     void compute_allele_balance(int32_t *pls, int32_t no_samples, int32_t ploidy,
-                                int32_t *dps, 
+                                int32_t *dps,
                                 float* GF, int32_t no_alleles,
                                 double& ab, int32_t& n);
 

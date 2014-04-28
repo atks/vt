@@ -42,9 +42,9 @@ class Igor : Program
     std::string arg_sample_list;
     char** samples;
     int32_t *imap;
-    int32_t nsamples;    
+    int32_t nsamples;
     bool print_sites_only;
-    
+
     ///////
     //i/o//
     ///////
@@ -63,7 +63,7 @@ class Igor : Program
     /////////
     int32_t no_samples;
     int32_t no_variants;
-    
+
     /////////
     //tools//
     /////////
@@ -121,16 +121,17 @@ class Igor : Program
         {
             odw->link_hdr(odr->hdr);
         }
-        
+
         bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_HWEAF,Number=A,Type=Float,Description=\"Genotype likelihood based MLE Allele Frequency assuming HWE\">\n");
         bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_HWEGF,Number=G,Type=Float,Description=\"Genotype likelihood based MLE Genotype Frequency assuming HWE\">\n");
         bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_MLEAF,Number=A,Type=Float,Description=\"Genotype likelihood based MLE Allele Frequency\">\n");
         bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_MLEGF,Number=G,Type=Float,Description=\"Genotype likelihood based MLE Genotype Frequency\">\n");
-        bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_HWE,Number=1,Type=Float,Description=\"Genotype likelihood based Hardy Weinberg Likelihood Ratio\">\n");
-        bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_LHWEP,Number=1,Type=Float,Description=\"Genotype likelihood based Hardy Weinberg Likelihood Ratio Test Statistic ln(p-value)\">\n");
+        bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_HWE_LLR,Number=1,Type=Float,Description=\"Genotype likelihood based Hardy Weinberg ln(Likelihood Ratio)\">\n");
+        bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_HWE_LPVAL,Number=1,Type=Float,Description=\"Genotype likelihood based Hardy Weinberg Likelihood Ratio Test Statistic ln(p-value)\">\n");
+        bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_HWE_DF,Number=1,Type=Integer,Description=\"Degrees of freedom for Genotype likelihood based Hardy Weinberg Likelihood Ratio Test Statistic\">\n");
         bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_FIC,Number=1,Type=Float,Description=\"Genotype likelihood based Inbreeding Coefficient\">\n");
         bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_AB,Number=1,Type=Float,Description=\"Genotype likelihood based Allele Balance\">\n");
-      
+
         /////////////////////////
         //filter initialization//
         /////////////////////////
@@ -142,7 +143,7 @@ class Igor : Program
         ////////////////////////
         no_samples = bcf_hdr_nsamples(odr->hdr);
         no_variants = 0;
-        
+
         ///////////////////////
         //tool initialization//
         ///////////////////////
@@ -160,9 +161,9 @@ class Igor : Program
         int32_t *pls = NULL;
         int32_t n_gts = 0;
         int32_t n_pls = 0;
-        
-        odw->write_hdr();    
-            
+
+        odw->write_hdr();
+
         while(odr->read(v))
         {
             variant.clear();
@@ -171,53 +172,77 @@ class Igor : Program
             ++no_variants;
             vm->classify_variant(h, v, variant);
             if (filter_exists && !filter.apply(h,v,&variant))
-            {   
+            {
                 continue;
             }
 
             //update AC
             bcf_unpack(v, BCF_UN_ALL);
-            int32_t ploidy = bcf_get_genotypes(odr->hdr, v, &gts, &n_gts);   
+            int32_t ploidy = bcf_get_genotypes(odr->hdr, v, &gts, &n_gts);
             ploidy /= no_samples;
-            
-            bcf_get_format_int32(odr->hdr, v, "PL", &pls, &n_pls);        
-            int32_t n_allele = bcf_get_n_allele(v); 
-            
+
+            bcf_get_format_int32(odr->hdr, v, "PL", &pls, &n_pls);
+            int32_t no_alleles = bcf_get_n_allele(v);
+
             int32_t g[ploidy];
             for (int32_t i=0; i<ploidy; ++i) g[i]=0;
-            int32_t AC[n_allele];
-            for (int32_t i=0; i<n_allele; ++i) AC[i]=0;
+            int32_t AC[no_alleles];
+            for (int32_t i=0; i<no_alleles; ++i) AC[i]=0;
             int32_t AN=0;
-            
-            float MLE_HWE_AF[n_allele];
-            int32_t no_genotypes = bcf_an2gn(n_allele);
+
+            float MLE_HWE_AF[no_alleles];
+            int32_t no_genotypes = bcf_an2gn(no_alleles);
             float MLE_HWE_GF[no_genotypes];
             int32_t n = 0;
-            est->compute_gl_af_hwe(pls, no_samples, ploidy,n_allele, MLE_HWE_AF, MLE_HWE_GF,  n, 1e-20);
+            est->compute_gl_af_hwe(pls, no_samples, ploidy,no_alleles, MLE_HWE_AF, MLE_HWE_GF,  n, 1e-20);
             if (n)
-            {   
+            {
                 float* MLE_HWE_AF_PTR = &MLE_HWE_AF[1];
-                bcf_update_info_float(odw->hdr, v, "VT_HWEAF", MLE_HWE_AF_PTR, n_allele-1); 
-                bcf_update_info_float(odw->hdr, v, "VT_HWEGF", &MLE_HWE_GF, no_genotypes);  
+                bcf_update_info_float(odw->hdr, v, "VT_HWEAF", MLE_HWE_AF_PTR, no_alleles-1);
+                bcf_update_info_float(odw->hdr, v, "VT_HWEGF", &MLE_HWE_GF, no_genotypes);
             }
-            
-            float MLE_AF[n_allele];
+
+            float MLE_AF[no_alleles];
             float MLE_GF[no_genotypes];
             n = 0;
-            est->compute_gl_af(pls, no_samples, ploidy,n_allele, MLE_AF, MLE_GF,  n, 1e-20);
+            est->compute_gl_af(pls, no_samples, ploidy,no_alleles, MLE_AF, MLE_GF,  n, 1e-20);
             if (n)
-            {   
+            {
                 float* MLE_AF_PTR = &MLE_AF[1];
-                bcf_update_info_float(odw->hdr, v, "VT_MLEAF", MLE_AF_PTR, n_allele-1); 
-                bcf_update_info_float(odw->hdr, v, "VT_MLEGF", &MLE_GF, no_genotypes);  
+                bcf_update_info_float(odw->hdr, v, "VT_MLEAF", MLE_AF_PTR, no_alleles-1);
+                bcf_update_info_float(odw->hdr, v, "VT_MLEGF", &MLE_GF, no_genotypes);
             }
-    
+
+            float lrts;
+            float logp;
+            int32_t df;
+            n = 0;
+            est->compute_hwe_lrt(pls, no_samples, ploidy,
+                                 no_alleles, MLE_HWE_GF, MLE_GF, n,
+                                 lrts, logp, df);
+            if (n)
+            {
+                bcf_update_info_float(odw->hdr, v, "VT_HWE_LLR", &lrts, 1);
+                bcf_update_info_float(odw->hdr, v, "VT_HWE_LPVAL", &logp, 1);
+                bcf_update_info_int32(odw->hdr, v, "VT_HWE_DF", &df, 1);
+            }
+
+            float f;
+            n = 0;
+            est->compute_gl_fic(pls, no_samples, ploidy,
+                               MLE_HWE_AF, no_alleles, MLE_GF,
+                               f, n);
+            if (n)
+            {
+                bcf_update_info_float(odw->hdr, v, "VT_FIC", &f, 1);
+            }
+
             if (print_sites_only)
             {
                 bcf_subset(odw->hdr, v, 0, 0);
             }
 
-            odw->write(v);        
+            odw->write(v);
             ++no_variants;
         }
 
