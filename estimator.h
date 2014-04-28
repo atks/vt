@@ -117,6 +117,24 @@ class Estimator
     void compute_hwe_lrt(int32_t *pls, int32_t nsamples, int32_t ploidy,
                 int32_t n_allele, float *MLE_HWE_GF, float *MLE_GF, int32_t& n,
                 float& lrts, float& logp, int32_t& df);
+                
+    /**
+     * Computes the Inbreeding Coefficient Statistic from Genotype likelihoods.
+     *
+     * @pls        - PHRED genotype likelihoods
+     * @no_samples - number of samples
+     * @ploidy     - ploidy
+     * @GF         - GF
+     * @HWE_AF     - AF under HWE assumption
+     * @no_alleles - number of alleles
+     * @F          - estimated inbreeding coefficient
+     * @n          - effective sample size
+     */
+    void compute_gl_fic(int32_t * pls, int32_t no_samples, int32_t ploidy, 
+                                   float* HWE_AF, int32_t no_alleles, float* GF, 
+                                   float& F, int32_t& n);
+
+    
     private:
 };
 
