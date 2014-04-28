@@ -426,108 +426,124 @@ void Estimator::compute_hwe_lrt(int32_t *pls, int32_t nsamples, int32_t ploidy,
  * Computes the Inbreeding Coefficient Statistic from Genotype likelihoods.
  *
  * @pls        - PHRED genotype likelihoods
- * @nsamples   - number of samples
+ * @no_samples - number of samples
  * @ploidy     - ploidy
- * @n_allele   - number of alleles
- * @MLE_HWE_AF - estimated AF
- * @MLE_HWE_GF - estimated GF
+ * @GF         - GF
+ * @HWE_AF     - AF under HWE assumption
+ * @no_alleles - number of alleles
+ * @F          - estimated inbreeding coefficient
  * @n          - effective sample size
- * @lrts       - log10 likelihood ratio test statistic p value
- * @dof        - degrees of freedom
- *
  */
-bool Estimator::compute_gl_fic(int32_t * pls, float* GF, float* HWE_AF, float& F, int32_t n_allele)
+void Estimator::compute_gl_fic(int32_t * pls, int32_t no_samples, int32_t ploidy, float* HWE_AF, int32_t no_alleles, float* GF, float& F, int32_t& n)
 {
-    uint32_t noGenotypes = noAlleles*(noAlleles+1)/2;
-
-    if (pG.size()!=noGenotypes)
+    if (ploidy!=2)
     {
-        return false;
+        n = 0;
+        return;
     }
+    
+    int32_t no_genotypes = bcf_an2gn(no_alleles);
 
-    //==========================================
-    //sets up map from genotype code to genotype
-    //==========================================
-    std::vector<std::vector<uint32_t> > index2Genotype(noGenotypes);
-    int32_t genotypeCode = 0;
-    for (uint32_t i=0; i<noAlleles; ++i)
+    float HWE_GF[no_genotypes];
+    for (size_t i=0; i<no_alleles; ++i)
     {
-        for (uint32_t j=0; j<=i; ++j)
+        for (size_t j=0; j<no_alleles; ++j)
         {
-            index2Genotype[genotypeCode].resize(2);
-            index2Genotype[genotypeCode][0] = j;
-            index2Genotype[genotypeCode][1] = i;
-
-            ++genotypeCode;
-        }
-    }
-
-    //compute genotype frequencies under HWE
-    std::vector<double> pG_HWE(noGenotypes);
-    for (uint32_t j=0; j<noGenotypes; ++j)
-    {
-        pG_HWE[j] = pA_HWE[index2Genotype[j][0]]*pA_HWE[index2Genotype[j][1]];
-
-        if(index2Genotype[j][0]!=index2Genotype[j][1])
-        {
-            pG_HWE[j] *= 2;
+            HWE_GF[bcf_alleles2gt(i,j)] = (i==j?2:1)*HWE_AF[i]*HWE_AF[j];   
         }
     }
 
     //compute Fst
-    double FPNum=0, FPDenum=0;
-    double pG_Reads=0;
-    double pHet_Reads_sum=0;
-    double pG_Reads_sum=0;
-    double pHet_sum=0;
-
-    double pG_ReadsHWE=0;
-    double pHet_ReadsHWE_sum=0;
-    double pG_ReadsHWE_sum=0;
-    double pHet_HWE_sum=0;
-
-    for (uint32_t i=0; i<GLs.size(); ++i)
+    float num = 0;
+    
+    float o_het_sum;
+    float o_sum;
+    
+    
+    for (size_t k=0; k<no_samples; ++k)
     {
-        //missing data
-        if (GLs[i].size()==0)
+        if (pls[k*no_genotypes]!=bcf_int32_missing)
         {
             continue;
         }
 
-        pHet_Reads_sum=0;
-        pG_Reads_sum=0;
-        pHet_sum=0;
-
-        pHet_ReadsHWE_sum=0;
-        pG_ReadsHWE_sum=0;
-        pHet_HWE_sum=0;
-
-        for (uint32_t j=0; j<noGenotypes; ++j)
+        o_het_sum = 0;
+        o_sum = 0;
+    
+        size_t offset = k*ploidy;
+        int32_t gt_index = 0;
+        for (size_t i=0; i<no_alleles; ++i)
         {
-            pG_Reads = GLs[i][j] * pG[j];
-            pG_ReadsHWE = GLs[i][j] * pG_HWE[j];
-
-            //hets
-            if(index2Genotype[j][0]!=index2Genotype[j][1])
+            for (size_t j=0; j<no_alleles; ++j)
             {
-                pHet_Reads_sum += pG_Reads;
-                pHet_sum += pG[j];
-
-                pHet_ReadsHWE_sum += pG_ReadsHWE;
-                pHet_HWE_sum += pG_HWE[j];
+                float p = lt->pl2prob(pls[offset+gt_index]);
+                o_het_sum = p * GF[gt_index];
+                o_sum = p * GF[gt_index];
+                ++gt_index;
             }
-
-            pG_Reads_sum += pG_Reads;
-            pG_ReadsHWE_sum += pG_ReadsHWE;
+            
+            //for homozygote
+            o_sum = lt->pl2prob(pls[offset+gt_index]) * GF[gt_index];
+            ++gt_index; 
         }
-
-        FPNum += pHet_ReadsHWE_sum/pG_ReadsHWE_sum;
-        FPDenum += pHet_HWE_sum;
+        
+        num += o_het_sum/o_sum;
     }
 
-    F = 1-FPNum/FPDenum;
-    return true;
+    float denum = 0;
+    for (size_t i=0; i<no_alleles; ++i)
+    {
+        for (size_t j=0; j<no_alleles; ++j)
+        {
+            denum += 2*HWE_GF[i]*HWE_GF[j];
+        }
+    }
+ 
+    F = 1-num/denum;
 };
+
+
+
+//	for (uint32_t i=0; i<GLs.size(); ++i)
+//	{                        
+//	    //missing data            
+//	    if (GLs[i].size()==0)
+//	    {
+//	        continue;
+//	    }            
+//	
+//		pHet_Reads_sum=0;
+//		pG_Reads_sum=0;
+//		pHet_sum=0;
+//		
+//		pHet_ReadsHWE_sum=0;
+//		pG_ReadsHWE_sum=0;
+//		pHet_HWE_sum=0;
+//						
+//		for (uint32_t j=0; j<noGenotypes; ++j)
+//	    {	
+//	        pG_Reads = GLs[i][j] * pG[j];
+//	    	pG_ReadsHWE = GLs[i][j] * pG_HWE[j];
+//	    	
+//	    	//hets
+//	    	if(index2Genotype[j][0]!=index2Genotype[j][1])
+//	    	{
+//	    		pHet_Reads_sum += pG_Reads;
+//	    		pHet_sum += pG[j];
+//		    	
+//		    	pHet_ReadsHWE_sum += pG_ReadsHWE;
+//		    	pHet_HWE_sum += pG_HWE[j];
+//	    	}
+//	    	
+//	    	pG_Reads_sum += pG_Reads;
+//	    	pG_ReadsHWE_sum += pG_ReadsHWE;
+//	    }
+//           
+//    	FPNum += pHet_ReadsHWE_sum/pG_ReadsHWE_sum;
+//		FPDenum += pHet_HWE_sum;
+//	}
+
+
 
 /**
  * Computes the Allele Balance from genotype likelihoods.
