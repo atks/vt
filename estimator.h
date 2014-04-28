@@ -134,73 +134,24 @@ class Estimator
                                    float* HWE_AF, int32_t no_alleles, float* GF, 
                                    float& F, int32_t& n);
 
-    
+    /**
+     * Computes Allele Balance from genotype likelihoods.
+     *
+     * @pls        - PHRED genotype likelihoods
+     * @no_samples - number of samples
+     * @ploidy     - ploidy
+     * @dps        - depths
+     * @GF         - estimated GF
+     * @no_alleles - number of alleles
+     * @ab         - estimate of allele balance
+     * @n          - effective sample size
+     */
+    void compute_allele_balance(int32_t *pls, int32_t no_samples, int32_t ploidy,
+                                int32_t *dps, 
+                                float* GF, int32_t no_alleles,
+                                double& ab, int32_t& n);
+
     private:
 };
-
-/**
-Computes genotype frequencies using EM algorithm
-Input:
-1)Genotype Likelihoods (qscores)
-
-Output:
-1) estimated genotype frequencies
-2) maximum likelihood (Q score)
-*/
-bool estimateGenotypeFrequencies(std::vector<std::vector<double> >& GLs,
-                                 double eps, std::vector<double>& mleGenotypeFreq,
-                                 uint32_t& N, uint32_t noAlleles);
-
-
-
-
-/**
- Estimate Fis.
-Input:
-1)Diploid
-2)Multi-allelic
-3)Genotype Likelihoods (qscores)
-
-Output:
-1)Fis
-*/
-bool estimateFIC(std::vector<std::vector<double> >& GLs, //genotype likelihoods
-                 std::vector<double>& pG, //prior genotype frequencies
-                 std::vector<double>& pA_HWE,
-                 double& F, uint32_t noAlleles);
-
-/**
-Allele Balance Statistic developed by Tom Blackwell.
-Works only for biallelic variants
-*/
-void estimateAlleleBalance(std::vector<std::vector<uint32_t> >& PLs, std::vector<std::vector<double> >& GLs, std::vector<uint32_t>& DPs, std::vector<double>& genotypeFreq, double& ab);
-
-/**
-Ratio of observe variance against expected variance - RSQ.
-Works only for biallelic variants
-*/
-bool computeRSQ(std::vector<std::vector<double> >& GLs, std::vector<double>& mleHWEAlleleFreq, double& RSQ, uint32_t noAlleles);
-
-/**
-convert PLs to probabilities.
-*/
-double logFact(uint32_t n, std::vector<double>& LOGFACTS);
-
-double logHypergeometricProb(std::vector<double>& logFacs, uint32_t a, uint32_t b, uint32_t c, uint32_t d, std::vector<double>& LOGFACTS);
-
-double fisher1(uint32_t a, uint32_t b, uint32_t c, uint32_t d, std::vector<double>& LOGFACTS);
-
-//pearson correlation applied to a 2x2 table ()
-double cor(uint32_t a, uint32_t b, uint32_t c, uint32_t d);
-
-//pearson correlation applied to 2 vectors
-double cor(std::vector<double> a, std::vector<double> b);
-
-
-bool computeQualAndBF(std::vector<std::vector<double> >& GLs,
-                 std::vector<double>& pG,
-                 double& qual, double& bf, uint32_t noAlleles);
-
-
 
 #endif
