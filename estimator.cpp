@@ -248,12 +248,17 @@ void Estimator::compute_gl_af(int32_t *pls, int32_t nsamples, int32_t ploidy,
         {
             return;
         }
-
+        
         float gf[3];
         float gf_indiv[3];
 
         float mse = e+1;
         float diff = 0;
+
+        gf[0] = 1.0/3;
+        gf[1] = gf[0];
+        gf[2] = gf[1];
+        
         while (mse>e && iter<50)
         {
             MLE_GF[0] = 0;
@@ -268,9 +273,9 @@ void Estimator::compute_gl_af(int32_t *pls, int32_t nsamples, int32_t ploidy,
                 prob_data += (gf_indiv[1] = gf[1]*lt->pl2prob(pls[offset+1]));
                 prob_data += (gf_indiv[2] = gf[2]*lt->pl2prob(pls[offset+2]));
 
-                MLE_GF[0] = (gf_indiv[0] /= prob_data);
-                MLE_GF[1] = (gf_indiv[1] /= prob_data);
-                MLE_GF[2] = (gf_indiv[2] /= prob_data);
+                MLE_GF[0] += (gf_indiv[0] /= prob_data);
+                MLE_GF[1] += (gf_indiv[1] /= prob_data);
+                MLE_GF[2] += (gf_indiv[2] /= prob_data);
             }
 
             MLE_GF[0] /= n;
@@ -287,6 +292,7 @@ void Estimator::compute_gl_af(int32_t *pls, int32_t nsamples, int32_t ploidy,
             gf[0] = MLE_GF[0];
             gf[1] = MLE_GF[1];
             gf[2] = MLE_GF[2];
+            
             
             ++iter;
         }
@@ -313,6 +319,13 @@ void Estimator::compute_gl_af(int32_t *pls, int32_t nsamples, int32_t ploidy,
         float gf[n_genotype];
         float gf_indiv[n_genotype];
 
+        //initialization
+        gf[0] = 1.0/n_genotype;
+        for (size_t i=1; i<n_genotype; ++i)
+        {
+            gf[i] = gf[0];
+        }
+
         float mse = e+1;
         while (mse>e && iter<50)
         {
@@ -335,13 +348,13 @@ void Estimator::compute_gl_af(int32_t *pls, int32_t nsamples, int32_t ploidy,
 
                 for (size_t j=0; j<n_genotype; ++j)
                 {
-                    MLE_GF[j] = (gf_indiv[j] /= prob_data);
+                    MLE_GF[j] += (gf_indiv[j] /= prob_data);
                 }
             }
 
             mse = 0;
             float diff;
-            for (size_t i=0; i<n_allele; ++i)
+            for (size_t i=0; i<n_genotype; ++i)
             {
                 MLE_GF[i] /= n;
                 diff = gf[i]-MLE_GF[i];
