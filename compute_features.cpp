@@ -278,6 +278,8 @@ class Igor : Program
                                dps, MLE_GF, no_alleles, 
                                ab, n);
                                
+            std::cerr << ab << " " << n << "\n";
+                               
             if (n)
             {
                 bcf_update_info_float(odw->hdr, v, "VT_AB", &ab, 1);
