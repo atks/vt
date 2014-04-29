@@ -315,8 +315,6 @@ void Estimator::compute_gl_af_hwe(int32_t *pls, int32_t no_samples, int32_t ploi
                 }
             }
 
-
-
             //normalize to frequency
             mse = 0;
             float diff;
@@ -750,7 +748,7 @@ void Estimator::compute_gl_ab(int32_t *pls, int32_t no_samples, int32_t ploidy,
             {
                 float nrefnum = pls[offset+2]-pls[offset+0];
                 float nrefdenum = pls[offset]+pls[offset+2]-2*pls[offset+1] +6*dps[k];
-                float nref = 0.5*dps[k]*(1+(nrefnum?nrefnum/nrefdenum:0));
+                float nref = 0.5*dps[k]*(1+(nrefdenum?nrefnum/nrefdenum:0));
                 float phet = lt->pl2prob(pls[offset+1])*GF[1] /
                              ( lt->pl2prob(pls[offset])*GF[0]
                               +lt->pl2prob(pls[offset+1])*GF[1]
@@ -775,22 +773,32 @@ void Estimator::compute_gl_ab(int32_t *pls, int32_t no_samples, int32_t ploidy,
             {
                 float prob_data, p_ref;
                 int32_t gt_index = 0;
+                    
+//              std::cerr << k << ") "<< num << " " << denum << "\n";    
+                    
                 for (size_t j=1; j<no_alleles; ++j)
                 {
                     size_t het_index = bcf_alleles2gt(0,j);
                     size_t homalt_index = bcf_alleles2gt(j,j);
                     float nrefnum = pls[offset+homalt_index]-pls[offset];
                     float nrefdenum = pls[offset]+pls[offset+homalt_index]-2*pls[offset+het_index] +6*dps[k];
-                    
-                    float nref = 0.5*dps[k]*(1+(nrefnum?nrefnum/nrefdenum:0));
-                    float phet = lt->pl2prob(pls[offset+het_index])*GF[het_index] /
-                                 ( lt->pl2prob(pls[offset])*GF[0]
-                                  +lt->pl2prob(pls[offset+het_index])*GF[het_index]
-                                  +lt->pl2prob(pls[offset+homalt_index])*GF[homalt_index]);
-
+                    float nref = 0.5*dps[k]*(1+(nrefdenum?nrefnum/nrefdenum:0));
+                
+                    float n = lt->pl2prob(pls[offset+het_index])*GF[het_index] ;
+                    float d = (lt->pl2prob(pls[offset])*GF[0]
+                               +n
+                               +lt->pl2prob(pls[offset+homalt_index])*GF[homalt_index]);
+                    float phet = d?n/d:0.333;
+//                  std::cerr << "\t\tPL: " << pls[offset] << " " << pls[offset+het_index] << " " << pls[offset+homalt_index] << "\n"; 
+//                  std::cerr << "\t\tPL probs: " << lt->pl2prob(pls[offset]) << " " << lt->pl2prob(pls[offset+het_index]) << " " << lt->pl2prob(pls[offset+homalt_index]) << "\n"; 
+//                  std::cerr << "\t\tGF " << GF[0] << " " << GF[het_index] << " " << GF[homalt_index] << "\n"; 
+//                  std::cerr << "\t\tphet compon " << n << "/"<< d << "\n"; 
+//                  std::cerr << "\t" << nrefnum << " " << nrefdenum << " " << phet << " " << nref << " " << dps[k]<<"\n"; 
                     num += phet*nref;
                     denum += phet*dps[k];
                 }
+                
+                //if (k>1022) exit(1);
                 
                 ++n;           
             }
