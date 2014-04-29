@@ -51,7 +51,8 @@ SOURCES = program\
 		filter\
 		align\
 		subset\
-		estimator
+		estimator\
+		plot_afs\
 
 SOURCESONLY = main.cpp
 
