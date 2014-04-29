@@ -337,6 +337,10 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
                     kputc(data[i], &s);
                 }
             }
+            else
+            {
+                
+            }
     
             if (n) free(data);
         }
