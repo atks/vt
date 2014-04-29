@@ -737,32 +737,65 @@ void Estimator::compute_gl_ab(int32_t *pls, int32_t no_samples, int32_t ploidy,
                               float& ab, int32_t& n)
 {
     n = 0;
+    
+    if (ploidy!=2) return;
 
-    if (no_alleles!=2 || ploidy!=2) return;
-
-    int32_t no_genotypes = bcf_an2gn(no_alleles);
-    double num = 0, denum = 0;
-    for (size_t k=0; k<no_samples; ++k)
+    if (no_alleles==2) 
     {
-        size_t offset = k*no_genotypes;
-        if(pls[k]!=bcf_int32_missing && dps[k]!=0)
+        float num = 0, denum = 0;
+        for (size_t k=0; k<no_samples; ++k)
         {
-            double nrefnum = pls[offset+2]-pls[offset+0];
-            double nrefdenum = pls[offset]+pls[offset+2]-2*pls[offset+1] +6*dps[k];
-            double nref = 0.5*dps[k]*(1+nrefnum/nrefdenum);
-            double phet = lt->pl2prob(pls[offset+1])*GF[1] /
-                         ( lt->pl2prob(pls[offset])*GF[0]
-                          +lt->pl2prob(pls[offset+1])*GF[1]
-                          +lt->pl2prob(pls[offset+2])*GF[2]);
-
-            num += phet*nref;
-            denum += phet*dps[k];
-            ++n;
+            size_t offset = k*3;
+            if(pls[offset]!=bcf_int32_missing && dps[k]!=0)
+            {
+                float nrefnum = pls[offset+2]-pls[offset+0];
+                float nrefdenum = pls[offset]+pls[offset+2]-2*pls[offset+1] +6*dps[k];
+                float nref = 0.5*dps[k]*(1+(nrefnum?nrefnum/nrefdenum:0));
+                float phet = lt->pl2prob(pls[offset+1])*GF[1] /
+                             ( lt->pl2prob(pls[offset])*GF[0]
+                              +lt->pl2prob(pls[offset+1])*GF[1]
+                              +lt->pl2prob(pls[offset+2])*GF[2]);
+    
+                num += phet*nref;
+                denum += phet*dps[k];
+                ++n;           
+            }
         }
+    
+        ab = (0.05+num)/(0.10+denum);
     }
+    else
+    {
+        int32_t no_genotypes = bcf_an2gn(no_alleles);
+        float num = 0, denum = 0;
+        for (size_t k=0; k<no_samples; ++k)
+        {
+            size_t offset = k*no_genotypes;
+            if(pls[offset]!=bcf_int32_missing)
+            {
+                float prob_data, p_ref;
+                int32_t gt_index = 0;
+                for (size_t j=1; j<no_alleles; ++j)
+                {
+                    size_t het_index = bcf_alleles2gt(0,j);
+                    size_t homalt_index = bcf_alleles2gt(j,j);
+                    float nrefnum = pls[offset+homalt_index]-pls[offset];
+                    float nrefdenum = pls[offset]+pls[offset+homalt_index]-2*pls[offset+het_index] +6*dps[k];
+                    
+                    float nref = 0.5*dps[k]*(1+(nrefnum?nrefnum/nrefdenum:0));
+                    float phet = lt->pl2prob(pls[offset+het_index])*GF[het_index] /
+                                 ( lt->pl2prob(pls[offset])*GF[0]
+                                  +lt->pl2prob(pls[offset+het_index])*GF[het_index]
+                                  +lt->pl2prob(pls[offset+homalt_index])*GF[homalt_index]);
 
-
-
-    //std::cerr << "num/denum " << num  << ", "  << denum << "\n";
-    ab = (0.05+num)/(0.10+denum);
+                    num += phet*nref;
+                    denum += phet*dps[k];
+                }
+                
+                ++n;           
+            }
+        }
+        
+        ab = (0.05+num)/(0.10+denum);
+    }
 };
