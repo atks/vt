@@ -24,13 +24,147 @@
 #include "estimator.h"
 
 /**
+ * Computes allele frequencies using hard calls.
+ *
+ * @gts        - genotypes
+ * @no_samples - number of samples
+ * @ploidy     - ploidy
+ * @no_alleles - number of alleles
+ * @AC         - alternate allele counts
+ * @AN         - total number of allele counts
+ * @AF         - alternate allele frequency
+ * @GC         - genotype counts
+ * @GN         - total number of genotype counts
+ * @GF         - genotype frequency
+ * @NS         - number of samples with data
+ */
+void Estimator::compute_af(int32_t *gts, int32_t no_samples, int32_t ploidy,
+                int32_t no_alleles, int32_t *AC, int32_t& AN, float *AF,
+                int32_t *GC,  int32_t& GN, float *GF, int32_t& NS)
+{
+    int32_t iter = 0;
+
+    if (no_alleles==2 && ploidy==2)
+    {
+        NS = 0;
+        int32_t no_genotypes = 3;
+        AC[0] = 0;
+        AC[1] = 0;
+
+        GC[0] = 0;
+        GC[1] = 0;
+        GC[2] = 0;
+
+        GN=0;
+
+        for (size_t k=0; k<no_samples; ++k)
+        {
+            size_t offset = k*ploidy;
+
+            int32_t g1 = bcf_gt_allele(gts[offset]);
+            if (g1>=0)
+            {
+                ++AC[g1];
+                ++AN;
+            }
+            int32_t g2 = bcf_gt_allele(gts[offset+1]);
+            if (g2>=0)
+            {
+                ++AC[g2];
+                ++AN;
+            }
+
+            if (g1>=0 && g2>=0)
+            {
+                ++GC[g1+g2];
+                ++GN;
+            }
+
+            if (g1>=0||g2>=0) ++NS;
+        }
+
+        if (!NS)
+        {
+            return;
+        }
+
+        AF[0] = (float)AC[0]/AN;
+        AF[1] = (float)AC[1]/AN;
+
+        GF[0] = (float)GC[0]/GN;
+        GF[1] = (float)GC[1]/GN;
+        GF[2] = (float)GC[2]/GN;
+    }
+    else
+    {
+        NS = 0;
+        AN = 0;
+        GN = 0;
+        int32_t no_genotypes = bcf_an2gn(no_alleles);
+        for (size_t i=0; i<no_alleles; ++i)
+        {
+            AC[i] = 0;
+        }
+
+        for (size_t i=0; i<no_genotypes; ++i)
+        {
+            GC[i] = 0;
+        }
+
+        int32_t gt_indiv[ploidy];
+
+        for (size_t k=0; k<no_samples; ++k)
+        {
+            size_t offset = k*ploidy;
+
+            int32_t last_AN = AN;
+            for (size_t i=0; i<ploidy; ++i)
+            {
+                gt_indiv[i] = bcf_gt_allele(gts[offset+i]);
+                
+                if (gt_indiv[i]>=0)
+                {
+                    ++AC[gt_indiv[i]];
+                    ++AN;
+                }
+            }
+            
+            if (last_AN<AN) ++NS;
+            
+            if (ploidy==2 && gt_indiv[0]>=0 && gt_indiv[1]>=0)
+            {
+                if (gt_indiv[1]<gt_indiv[0])
+                {
+                    gt_indiv[0] += gt_indiv[1];
+                    gt_indiv[1] = gt_indiv[0] - gt_indiv[1];
+                    gt_indiv[0] -= gt_indiv[1];
+                }
+                
+                ++GC[bcf_alleles2gt(gt_indiv[0],gt_indiv[1])];
+                ++GN;
+            }
+        }
+
+        for (size_t i=0; i<no_alleles; ++i)
+        {
+            AF[i] = (float)AC[i]/AN;
+        }
+
+        for (size_t i=0; i<no_genotypes; ++i)
+        {
+            GF[i] = (float)GC[i]/GN;
+        }
+    }
+}
+
+/**
  * Computes allele frequencies using EM algorithm from genotype likelihoods
  * under assumption of Hardy-Weinberg Equilibrium.
  *
  * @pls        - PHRED genotype likelihoods
- * @nsamples   - number of samples
+ * @no_samples - number of samples
  * @ploidy     - ploidy
- * @n_alleles  - number of alleles
+ * @no_alleles - number of alleles
  * @MLE_HWE_AF - estimated AF
  * @MLE_HWE_GF - estimated GF
  * @n          - effective sample size
@@ -46,7 +180,7 @@ void Estimator::compute_gl_af_hwe(int32_t *pls, int32_t no_samples, int32_t ploi
     {
         return;
     }
-    
+
     if (no_alleles==2)
     {
         n = 0;
@@ -181,7 +315,7 @@ void Estimator::compute_gl_af_hwe(int32_t *pls, int32_t no_samples, int32_t ploi
                 }
             }
 
-            
+
 
             //normalize to frequency
             mse = 0;
@@ -211,7 +345,7 @@ void Estimator::compute_gl_af_hwe(int32_t *pls, int32_t no_samples, int32_t ploi
  * Computes allele frequencies using EM algorithm from genotype likelihoods.
  *
  * @pls        - PHRED genotype likelihoods
- * @nsamples   - number of samples
+ * @no_samples - number of samples
  * @ploidy     - ploidy
  * @n_alleles  - number of alleles
  * @MLE_AF     - estimated AF
@@ -476,7 +610,7 @@ void Estimator::compute_hwe_lrt(int32_t *pls, int32_t no_samples, int32_t ploidy
  * @n          - effective sample size
  */
 void Estimator::compute_gl_fic(int32_t * pls, int32_t no_samples, int32_t ploidy,
-                               float* HWE_AF, int32_t no_alleles, float* GF, 
+                               float* HWE_AF, int32_t no_alleles, float* GF,
                                float& F, int32_t& n)
 {
     n = 0;
@@ -494,33 +628,29 @@ void Estimator::compute_gl_fic(int32_t * pls, int32_t no_samples, int32_t ploidy
     if (no_alleles==2)
     {
         int32_t no_genotypes = 3;
-        
+
         float num = 0, denum=0;
         for (size_t k=0; k<no_samples; ++k)
         {
             size_t offset = k*no_genotypes;
-            
+
             if (pls[offset]==bcf_int32_missing)
             {
                 continue;
             }
-    
+
             ++n;
-            
-            float o_het_sum = lt->pl2prob(pls[offset+1])*GF[1];            
+
+            float o_het_sum = lt->pl2prob(pls[offset+1])*GF[1];
             float o_sum = lt->pl2prob(pls[offset])*GF[0];
             o_sum += o_het_sum;
             o_sum += lt->pl2prob(pls[offset+2])*GF[2];
-            
-            float e_het_sum = lt->pl2prob(pls[offset+1])*HWE_GF[1];            
+
+            float e_het_sum = lt->pl2prob(pls[offset+1])*HWE_GF[1];
             float e_sum = lt->pl2prob(pls[offset])*HWE_GF[0];
             e_sum += e_het_sum;
             e_sum += lt->pl2prob(pls[offset+2])*HWE_GF[2];
-                       
-//            std::cerr << k << ")" << num << "\t" << o_het_sum/o_sum << "\n";
-//            std::cerr << "\t" <<  o_het_sum<< " "  << o_sum << "\n";
-//            std::cerr << "\t" <<  lt->pl2prob(pls[offset])*GF[0] << " "  <<  lt->pl2prob(pls[offset+1])*GF[1] << " "  <<  lt->pl2prob(pls[offset+2])*GF[2] << "\n";
-            
+
             num += o_het_sum/o_sum;
             denum += e_het_sum/e_sum;
         }
@@ -530,9 +660,9 @@ void Estimator::compute_gl_fic(int32_t * pls, int32_t no_samples, int32_t ploidy
     else
     {
         int32_t no_genotypes = bcf_an2gn(no_alleles);
-  
+
         float HWE_GF[no_genotypes];
-    
+
         for (size_t i=0; i<no_alleles; ++i)
         {
             for (size_t j=0; j<=i; ++j)
@@ -540,7 +670,7 @@ void Estimator::compute_gl_fic(int32_t * pls, int32_t no_samples, int32_t ploidy
                 HWE_GF[bcf_alleles2gt(i,j)] = (i!=j?2:1)*HWE_AF[i]*HWE_AF[j];
             }
         }
-    
+
         float num=0, denum=0;
         float o_het_sum;
         float o_sum;
@@ -553,14 +683,14 @@ void Estimator::compute_gl_fic(int32_t * pls, int32_t no_samples, int32_t ploidy
             {
                 continue;
             }
-    
+
             ++n;
-            
+
             o_het_sum = 0;
-            o_sum = 0; 
+            o_sum = 0;
             e_het_sum = 0;
-            e_sum = 0;                
-            int32_t gt_index = 0;            
+            e_sum = 0;
+            int32_t gt_index = 0;
             for (size_t i=0; i<no_alleles; ++i)
             {
                 for (size_t j=0; j<i; ++j)
@@ -568,23 +698,23 @@ void Estimator::compute_gl_fic(int32_t * pls, int32_t no_samples, int32_t ploidy
                     float p = lt->pl2prob(pls[offset+gt_index]);
                     o_het_sum += p * GF[gt_index];
                     o_sum += p * GF[gt_index];
-                    
+
                     e_het_sum += p * HWE_GF[gt_index];
                     e_sum += p * HWE_GF[gt_index];
-                    
+
                     ++gt_index;
                 }
-    
+
                 //for homozygote
                 o_sum += lt->pl2prob(pls[offset+gt_index]) * GF[gt_index];
                 e_sum += lt->pl2prob(pls[offset+gt_index]) * HWE_GF[gt_index];
                 ++gt_index;
             }
-    
+
             num += o_het_sum/o_sum;
             denum += e_het_sum/e_sum;
         }
-        
+
         F = 1-num/denum;
     }
 };
@@ -601,19 +731,20 @@ void Estimator::compute_gl_fic(int32_t * pls, int32_t no_samples, int32_t ploidy
  * @ab         - estimate of allele balance
  * @n          - effective sample size
  */
-void Estimator::compute_allele_balance(int32_t *pls, int32_t no_samples, int32_t ploidy,
-                                        int32_t *dps,
-                                        float* GF, int32_t no_alleles,
-                                        double& ab, int32_t& n)
+void Estimator::compute_gl_ab(int32_t *pls, int32_t no_samples, int32_t ploidy,
+                              int32_t *dps,
+                              float* GF, int32_t no_alleles,
+                              float& ab, int32_t& n)
 {
     n = 0;
 
-    if (no_alleles!=2) return;
+    if (no_alleles!=2 || ploidy!=2) return;
 
+    int32_t no_genotypes = bcf_an2gn(no_alleles);
     double num = 0, denum = 0;
     for (size_t k=0; k<no_samples; ++k)
     {
-        size_t offset = k*ploidy;
+        size_t offset = k*no_genotypes;
         if(pls[k]!=bcf_int32_missing && dps[k]!=0)
         {
             double nrefnum = pls[offset+2]-pls[offset+0];
@@ -629,6 +760,8 @@ void Estimator::compute_allele_balance(int32_t *pls, int32_t no_samples, int32_t
             ++n;
         }
     }
+
+
 
     //std::cerr << "num/denum " << num  << ", "  << denum << "\n";
     ab = (0.05+num)/(0.10+denum);

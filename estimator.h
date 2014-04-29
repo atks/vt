@@ -66,22 +66,41 @@ class Estimator
     {
         this->lt = lt;
     };
-
+    
+    /**
+     * Computes allele frequencies using hard calls.
+     *
+     * @gts        - genotypes
+     * @no_samples - number of samples
+     * @ploidy     - ploidy
+     * @no_alleles - number of alleles
+     * @AC         - alternate allele counts
+     * @AN         - total number of allele counts
+     * @AF         - alternate allele frequency
+     * @GC         - genotype counts
+     * @GN         - total number of genotype counts
+     * @GF         - genotype frequency
+     * @NS         - number of samples with data
+     */
+    void compute_af(int32_t *gts, int32_t no_samples, int32_t ploidy,
+                    int32_t no_alleles, int32_t *AC, int32_t& AN, float *AF, 
+                    int32_t *GC,  int32_t& GN, float *GF, int32_t& NS);
+                
     /**
      * Computes allele frequencies using EM algorithm from genotype likelihoods
      * under assumption of Hardy-Weinberg Equilibrium.
      *
      * @pls        - PHRED genotype likelihoods
-     * @nsamples   - number of samples
+     * @no_samples - number of samples
      * @ploidy     - ploidy
-     * @n_alleles  - number of alleles
+     * @no_alleles - number of alleles
      * @MLE_HWE_AF - estimated AF
      * @MLE_HWE_GF - estimated GF
      * @n          - effective sample size
      * @e          - error
      */
-    void compute_gl_af_hwe(int32_t *pls, int32_t nsamples, int32_t ploidy,
-                    int32_t n_allele, float *MLE_HWE_AF, float *MLE_HWE_GF, int32_t& n,
+    void compute_gl_af_hwe(int32_t *pls, int32_t no_samples, int32_t ploidy,
+                    int32_t no_alleles, float *MLE_HWE_AF, float *MLE_HWE_GF, int32_t& n,
                     double e);
 
     /**
@@ -147,10 +166,10 @@ class Estimator
      * @ab         - estimate of allele balance
      * @n          - effective sample size
      */
-    void compute_allele_balance(int32_t *pls, int32_t no_samples, int32_t ploidy,
-                                int32_t *dps,
-                                float* GF, int32_t no_alleles,
-                                double& ab, int32_t& n);
+    void compute_gl_ab(int32_t *pls, int32_t no_samples, int32_t ploidy,
+                    int32_t *dps,
+                    float* GF, int32_t no_alleles,
+                    float& ab, int32_t& n);
 
     private:
 };
