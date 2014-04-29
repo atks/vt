@@ -153,6 +153,12 @@ class Igor : Program
         no_samples = bcf_hdr_nsamples(odr->hdr);
         no_variants = 0;
 
+        if (!no_samples)
+        {
+            fprintf(stderr, "[%s:%d %s] No samples in VCF file: %s\n", __FILE__, __LINE__, __FUNCTION__, input_vcf_file.c_str());
+            exit(1);
+        }
+        
         ///////////////////////
         //tool initialization//
         ///////////////////////
@@ -187,14 +193,23 @@ class Igor : Program
                 continue;
             }
 
-            //update AC
             bcf_unpack(v, BCF_UN_ALL);
             int32_t ploidy = bcf_get_genotypes(odr->hdr, v, &gts, &n_gts);
             ploidy /= no_samples;
-
+            
+            if (!n_gts)
+            {
+                continue;
+            }
+        
             bcf_get_format_int32(odr->hdr, v, "PL", &pls, &n_pls);
             int32_t no_alleles = bcf_get_n_allele(v);
 
+            if (!n_pls)
+            {
+                continue;
+            }
+            
             int32_t g[ploidy];
             for (int32_t i=0; i<ploidy; ++i) g[i]=0;
             int32_t AC[no_alleles];
@@ -272,19 +287,20 @@ class Igor : Program
             }
 
             bcf_get_format_int32(odr->hdr, v, "DP", &dps, &n_dps);
-            float ab;
-            n = 0;
-            est->compute_gl_ab(pls, no_samples, ploidy,
-                               dps, MLE_GF, no_alleles, 
-                               ab, n);
-                               
-            std::cerr << ab << " " << n << "\n";
-                               
-            if (n)
+            if (n_dps)
             {
-                bcf_update_info_float(odw->hdr, v, "VT_AB", &ab, 1);
+                float ab;
+                n = 0;
+                est->compute_gl_ab(pls, no_samples, ploidy,
+                                   dps, MLE_GF, no_alleles, 
+                                   ab, n);
+                                   
+                if (n)
+                {
+                    bcf_update_info_float(odw->hdr, v, "VT_AB", &ab, 1);
+                }
             }
-
+            
             if (print_sites_only)
             {
                 bcf_subset(odw->hdr, v, 0, 0);
