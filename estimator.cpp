@@ -774,8 +774,6 @@ void Estimator::compute_gl_ab(int32_t *pls, int32_t no_samples, int32_t ploidy,
                 float prob_data, p_ref;
                 int32_t gt_index = 0;
                     
-//              std::cerr << k << ") "<< num << " " << denum << "\n";    
-                    
                 for (size_t j=1; j<no_alleles; ++j)
                 {
                     size_t het_index = bcf_alleles2gt(0,j);
@@ -789,16 +787,9 @@ void Estimator::compute_gl_ab(int32_t *pls, int32_t no_samples, int32_t ploidy,
                                +n
                                +lt->pl2prob(pls[offset+homalt_index])*GF[homalt_index]);
                     float phet = d?n/d:0.333;
-//                  std::cerr << "\t\tPL: " << pls[offset] << " " << pls[offset+het_index] << " " << pls[offset+homalt_index] << "\n"; 
-//                  std::cerr << "\t\tPL probs: " << lt->pl2prob(pls[offset]) << " " << lt->pl2prob(pls[offset+het_index]) << " " << lt->pl2prob(pls[offset+homalt_index]) << "\n"; 
-//                  std::cerr << "\t\tGF " << GF[0] << " " << GF[het_index] << " " << GF[homalt_index] << "\n"; 
-//                  std::cerr << "\t\tphet compon " << n << "/"<< d << "\n"; 
-//                  std::cerr << "\t" << nrefnum << " " << nrefdenum << " " << phet << " " << nref << " " << dps[k]<<"\n"; 
                     num += phet*nref;
                     denum += phet*dps[k];
                 }
-                
-                //if (k>1022) exit(1);
                 
                 ++n;           
             }
