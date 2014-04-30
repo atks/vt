@@ -44,7 +44,8 @@
 #include "profile_snps.h"
 #include "align.h"
 #include "compute_features.h"
-#include "plot_afs.h"
+#include "profile_afs.h"
+#include "profile_hwe.h"
 
 void print_time(double t)
 {
@@ -202,9 +203,13 @@ int main(int argc, char ** argv)
     {
         compute_features(argc-1, ++argv);
     }  
-    else if (argc>1 && cmd=="plot_afs")
+    else if (argc>1 && cmd=="profile_afs")
     {
-        plot_afs(argc-1, ++argv);
+        profile_afs(argc-1, ++argv);
+    }  
+    else if (argc>1 && cmd=="profile_hwe")
+    {
+        profile_hwe(argc-1, ++argv);
     }                
     else
     {

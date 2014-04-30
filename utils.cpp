@@ -138,3 +138,27 @@ bool str2uint32(std::string& s, uint32_t& i)
     i = std::strtoul(s.c_str(), &end, 10);
     return (end!=start);
 };
+
+/**
+ * Appends cuurent working directoy to a path.
+ * Returns true if successful.
+ */
+bool append_cwd(std::string& path)
+{
+    if (path.size()>0 && path.c_str()[0]!='/')
+    {
+        char cwd[1024];
+        if (getcwd(cwd, sizeof(cwd))!=NULL)
+        {
+            std::string cwd_path(cwd);  
+            path = cwd_path + "/" + path;     
+            
+            return true;        
+        }
+    } 
+    
+    return false;
+};
+
+
+

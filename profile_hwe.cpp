@@ -21,7 +21,7 @@
    THE SOFTWARE.
 */
 
-#include "plot_afs.h"
+#include "profile_hwe.h"
 
 namespace
 {
@@ -141,7 +141,7 @@ class Igor : Program
         vm = new VariantManip();
     }
 
-    void plot_afs()
+    void profile_hwe()
     {
         bcf1_t *v = bcf_init1();
 
@@ -223,23 +223,11 @@ class Igor : Program
   
     void print_pdf()
     {
-        if (output_dir.c_str()[0]!='/')
-        {
-            char cwd[1024];
-            if (getcwd(cwd, sizeof(cwd))!=NULL)
-            {
-                std::string path(cwd);  
-                output_dir = path + "/" + output_dir;     
-            }
-            else
-            {
-                fprintf(stderr, "[%s:%d %s] Cannot get current working directory\n", __FILE__, __LINE__, __FUNCTION__);
-            }
-        }    
+        append_cwd(output_dir);
+        append_cwd(output_pdf_file);
                 
         //create directory
-        int32_t ret = mkdir(output_dir.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-        
+        mkdir(output_dir.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
         
         //create data file
         std::string file_path = output_dir + "/data.txt"; 
@@ -281,9 +269,9 @@ class Igor : Program
         
         fclose(out);
 
-        std::string cmd = "cd "  + output_dir + "; cat plot.r | R --vanilla > run.log";
-       
-        int32_t sys_ret = system(cmd.c_str());
+        //run script
+//        std::string cmd = "cd "  + output_dir + "; cat plot.r | R --vanilla > run.log";
+//        system(cmd.c_str());
     };
 
     void print_stats()
@@ -304,12 +292,12 @@ class Igor : Program
 
 }
 
-void plot_afs(int argc, char ** argv)
+void profile_hwe(int argc, char ** argv)
 {
     Igor igor(argc, argv);
     igor.print_options();
     igor.initialize();
-    igor.plot_afs();
+    igor.profile_hwe();
     igor.print_stats();
     igor.print_pdf();
 }

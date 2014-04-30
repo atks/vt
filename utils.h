@@ -24,6 +24,7 @@
 #ifndef UTILS_H
 #define UTILS_H
 
+#include <unistd.h>
 #include <iostream>
 #include <sstream>
 #include <string>
@@ -63,5 +64,12 @@ bool str2int32(std::string& s, int32_t& i);
  * Casts a string into uint32.  Returns true if successful.
  */
 bool str2uint32(std::string& s, uint32_t& i);
-    
+
+
+/**
+ * Appends cuurent working directoy to a path.
+ * Returns true if successful.
+ */
+bool append_cwd(std::string& path);
+
 #endif
