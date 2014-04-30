@@ -48,8 +48,7 @@ GENCODERecord::GENCODERecord(std::string& chrom, int32_t start, int32_t end, cha
  * Checks if base at position position is synonymous.
  */
 bool is_synonymous(int32_t pos1, char base)
-{
-    
+{   
     return true;
 }
 
@@ -282,7 +281,7 @@ void GENCODE::fill_synonymous(GENCODERecord *g)
     {
         //extract sequence
         int32_t ref_len;
-        char* seq = faidx_fetch_seq(fai, g->chrom.c_str(), g->start, g->end, &ref_len);
+//        char* seq = faidx_fetch_seq(fai, g->chrom.c_str(), g->start, g->end, &ref_len);
         
 //        g->syn = new int32_t[ref_len];
 //        kstring_t s = {0,0,0}; 
@@ -306,7 +305,7 @@ void GENCODE::fill_synonymous(GENCODERecord *g)
 //            g->syn[i+2] = val & 15;
 //        }
         
-        free(seq);
+//        free(seq);
         //if (s.m) free(s.s);
     }    
 }

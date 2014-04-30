@@ -24,25 +24,19 @@
 #include "variant_manip.h"
 
 /**
- * Constructor.
- *
- * @ref_fasta_file reference sequence FASTA file.
+ * Returns true if variant contains an allele that is potentially frame shifting.
  */
-VariantManip::VariantManip(std::string ref_fasta_file)
+bool Variant::exists_frame_shift()
 {
-    if (ref_fasta_file!="")
+    for (size_t i=0; i<alleles.size(); ++i)
     {
-        fai = fai_load(ref_fasta_file.c_str());
-        reference_present = (fai!=NULL);
+        if (abs(alleles[i].dlen)%3!=0)
+        {
+            return true;
+        }
     }
-};
 
-/**
- * Constructor.
- */
-VariantManip::VariantManip()
-{
-    reference_present = false;
+    return false;
 }
 
 /**
@@ -104,6 +98,28 @@ std::string Variant::vtype2string(int32_t VTYPE)
     }
 
     return s;
+}
+
+/**
+ * Constructor.
+ *
+ * @ref_fasta_file reference sequence FASTA file.
+ */
+VariantManip::VariantManip(std::string ref_fasta_file)
+{
+    if (ref_fasta_file!="")
+    {
+        fai = fai_load(ref_fasta_file.c_str());
+        reference_present = (fai!=NULL);
+    }
+};
+
+/**
+ * Constructor.
+ */
+VariantManip::VariantManip()
+{
+    reference_present = false;
 }
 
 /**
@@ -314,7 +330,7 @@ int32_t VariantManip::classify_variant(const char* chrom, uint32_t pos1, char** 
         int32_t diff = 0;
         int32_t ts = 0;
         int32_t tv = 0;
-        
+
         for (int32_t j=0; j<mlen; ++j)
         {
             if (ref[j]!=alt[j])

@@ -183,6 +183,18 @@ class Igor : Program
                 //frame shift annotation
                 if (annotate_coding)
                 {
+//                    if (gc->overlaps_with(chrom, start1+1, end1, GC_FT_CDS))
+//                    {
+//                        if (variant.exists_frame_shift())
+//                        {
+//                            bcf_update_info_flag(odr->hdr, v, "GENCODE_FS", "", 1);
+//                        }
+//                        else
+//                        {
+//                            bcf_update_info_flag(odr->hdr, v, "GENCODE_NFS", "", 1);
+//                        }
+//                    }    
+                    
                     gc->search(chrom, start1+1, end1, overlaps);
     
                     bool cds_found = false;
