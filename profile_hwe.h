@@ -21,12 +21,11 @@
    THE SOFTWARE.
 */
 
-#ifndef PLOT_AFS_H
-#define PLOT_AFS_H
+#ifndef PROFILE_HWE_H
+#define PROFILE_HWE_H
 
 #include <sys/stat.h>
 #include <cstdio>
-#include <unistd.h>
 #include "htslib/vcf.h"
 #include "htslib/khash.h"
 #include "htslib/kseq.h"
@@ -38,6 +37,6 @@
 #include "pedigree.h"
 #include "filter.h"
 
-void plot_afs(int argc, char ** argv);
+void profile_hwe(int argc, char ** argv);
 
 #endif
