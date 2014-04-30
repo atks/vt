@@ -206,8 +206,8 @@ class Igor : Program
     {
         std::clog << "plot_afs v" << version << "\n\n";
         std::clog << "options:     input VCF file         " << input_vcf_file << "\n";
-        std::clog << "         [c] HWE_LPVAL tag          " << HWE_LPVAL << "\n";
-        std::clog << "         [n] AF tag                 " << AF << "\n";
+        std::clog << "         [h] HWE_LPVAL tag          " << HWE_LPVAL << "\n";
+        std::clog << "         [a] AF tag                 " << AF << "\n";
         print_str_op("         [x] output directory       ", output_dir);
         print_str_op("         [y] output pdf file        ", output_pdf_file);
         print_int_op("         [i] intervals              ", intervals);
