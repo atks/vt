@@ -26,6 +26,7 @@
 
 #include <sys/stat.h>
 #include <cstdio>
+#include <unistd.h>
 #include "htslib/vcf.h"
 #include "htslib/khash.h"
 #include "htslib/kseq.h"

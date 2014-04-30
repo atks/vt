@@ -52,7 +52,7 @@ SOURCES = program\
 		align\
 		subset\
 		estimator\
-		plot_afs\
+		plot_afs
 
 SOURCESONLY = main.cpp
 

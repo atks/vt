@@ -173,6 +173,8 @@ class Igor : Program
             
             if (ac[0]>(an[0]>>1)) {ac[0] = an[0]-ac[0];}
             
+            if (ac[0]==0) continue;
+            
             k = kh_get(32, afs, ac[0]);
             if (k==kh_end(afs))
             {
@@ -221,9 +223,18 @@ class Igor : Program
   
     void print_pdf()
     {
-        if (output_dir == "")
+        if (output_dir.c_str()[0]!='/')
         {
-            return;
+            char cwd[1024];
+            if (getcwd(cwd, sizeof(cwd))!=NULL)
+            {
+                std::string path(cwd);  
+                output_dir = path + "/" + output_dir;     
+            }
+            else
+            {
+                fprintf(stderr, "[%s:%d %s] Cannot get current working directory\n", __FILE__, __LINE__, __FUNCTION__);
+            }
         }    
                 
         //create directory
@@ -253,31 +264,16 @@ class Igor : Program
         
         fclose(out);
 
-
-
-//setwd("~/sardinia/sardinia/20140421_sardinia_indel_analysis")
-//
-//data.pass = subset(data, pass==1)
-//data.pass.bi = subset(data, df==1)
-//data$mac = ifelse (data$ac>data$an/2, data$an-data$ac, data$ac)
-//afs = as.data.frame(table(data.pass.bi$mac))
-//plot(as.numeric(afs[,1]), afs[,2],  log="xy", pch=20, cex=0.5, col=rgb(1,0,0,0.5), main="Folded Allele Frequency Spectrum", xlab="Minor allele counts", ylab="Frequency", panel.last=grid(equilogs=FALSE, col="grey"))
-
-//data.pass.bi = subset(data, pass==1 & df==1)
-
-//afs = as.data.frame(table(data.pass.bi$mac))
-//points(as.numeric(afs[,1]), afs[,2], pch=20, cex=0.5, col=rgb(0,0,1,0.5))
-//legend("topright", c("pass", "fail"), col = c(rgb(0,0,1,0.5), rgb(1,0,0,0.5)), pch = 20)
-
         //create r script
         file_path = output_dir + "/plot.r"; 
         out = fopen(file_path.c_str(), "w");
         
-        //fprintf(out, "setwd(\"%s\")\n", output_dir.c_str());
+        fprintf(out, "setwd(\"%s\")\n", output_dir.c_str());
         fprintf(out, "\n");
         fprintf(out, "data = read.table(\"data.txt\", header=T)\n");
-        fprintf(out, "pdf(\"%s\")\n", output_pdf_file.c_str());
-        fprintf(out, "plot(data$mac, data$f,  log=\"xy\", pch=20, cex=0.5, col=rgb(1,0,0,0.5), main=\"Folded Allele Frequency Spectrum\", xlab=\"Minor allele counts\", ylab=\"Frequency\", panel.last=grid(equilogs=FALSE, col=\"grey\"))\n");
+        fprintf(out, "data.all=subset(data, pass==0)\n");
+        fprintf(out, "pdf(\"%s\",7,5)\n", output_pdf_file.c_str());
+        fprintf(out, "plot(data.all$mac, data.all$f,  log=\"xy\", pch=20, cex=0.5, col=rgb(1,0,0,0.5), main=\"Folded Allele Frequency Spectrum\", xlab=\"Minor allele counts\", ylab=\"Frequency\", panel.last=grid(equilogs=FALSE, col=\"grey\"))\n");
         fprintf(out, "data.pass=subset(data, pass==1)\n");
         fprintf(out, "points(data.pass$mac, data.pass$f, pch=20, cex=0.5, col=rgb(0,0,1,0.5))\n");
         fprintf(out, "legend(\"topright\", c(\"pass\", \"all\"), col = c(rgb(0,0,1,0.5), rgb(1,0,0,0.5)), pch = 20)\n");

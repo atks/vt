@@ -81,6 +81,7 @@ void IntervalTreeNode::print()
 IntervalTree::IntervalTree()
 {
     root = NULL;
+
     height = 0;
     no_elements = 0;
 };

@@ -158,11 +158,209 @@ class GENCODE
      * Splits a line into a map - PERL style.
      */
     void split_gtf_attribute_field(std::map<std::string, std::string>& map, std::string& str);
-        
+
     /**
      * Generate array for ease of checking synonymous, non synonymous SNPs.
      */
     void fill_synonymous(GENCODERecord *g);
+
+    /**
+     * Parses a string to a GENCODERecord
+     */
+    GENCODERecord* parse_gencode(kstring_t *s)
+    {
+//        std::vector<std::string> fields;
+//        std::map<std::string, std::string> attrib_map;
+//                
+//        split(fields, "\t", s.s);
+//
+//        std::string chrom = fields[0]=="M" ? std::string("MT") : fields[0];
+//        std::string& feature = fields[2];
+//        int32_t gencode_feature = -1;
+//
+//        if (feature!="exon" && feature!="CDS" && feature!="start_codon" && feature!="stop_codon")
+//        {
+//            continue;
+//        }
+//
+//        //process fields
+//        std::string& attrib = fields[8];
+//        split_gtf_attribute_field(attrib_map, attrib);
+//
+//        int32_t start1; str2int32(fields[3], start1);
+//        int32_t end1; str2int32(fields[4], end1);
+//        char strand = fields[6].at(0);
+//        std::string& gene = attrib_map["gene_name"];
+//
+//        int32_t frame;
+//        if (!str2int32(fields[7], frame)) frame = -1;
+//
+//        int32_t level;
+//        if (!str2int32(attrib_map["level"], level))
+//        {
+//            level = -1;
+//        }
+//
+//        bool fivePrimeConservedEssentialSpliceSite = false;
+//        bool threePrimeConservedEssentialSpliceSite = false;
+//        bool containsStartCodon = false;
+//        bool containsStopCodon = false;
+//
+//        int32_t exon_no = -1;
+//
+//        if (feature=="CDS")
+//        {
+//            gencode_feature = GC_FT_CDS;
+//        }
+//
+//        if (feature=="exon")
+//        {
+//            gencode_feature = GC_FT_EXON;
+//
+//            if(attrib_map.find("exon_number")!=attrib_map.end() && !str2int32(attrib_map["exon_number"], exon_no))
+//            {
+//                exon_no = -1;
+//            }
+//
+//            int32_t ref_len1 = 0;
+//            int32_t ref_len2 = 0;
+//
+//            char *dnc1 = faidx_fetch_seq(fai, chrom.c_str(), start1-3, start1-2, &ref_len1);
+//            char *dnc2 = faidx_fetch_seq(fai, chrom.c_str(), end1, end1+1, &ref_len2);
+//
+//            if(strand=='+')
+//            {
+//                if (!strcmp(dnc1,"AG"))
+//                {
+//                    fivePrimeConservedEssentialSpliceSite = true;
+//                }
+//
+//                if (!strcmp(dnc2,"GT"))
+//                {
+//                    threePrimeConservedEssentialSpliceSite = true;
+//                }
+//            }
+//
+//            if(strand=='-')
+//            {
+//                if (!strcmp(dnc2,"CT"))
+//                {
+//                    fivePrimeConservedEssentialSpliceSite = true;
+//                }
+//
+//                if (!strcmp(dnc1,"AC"))
+//                {
+//                    threePrimeConservedEssentialSpliceSite = true;
+//                }
+//            }
+//
+//            if (ref_len1) free(dnc1);
+//            if (ref_len2) free(dnc2);
+//        }
+//
+//        if (feature=="stop_codon")
+//        {
+//            gencode_feature = GC_FT_START_CODON;
+//
+//            CHROM[chrom]->search(start1, end1, overlaps);
+//
+//            for (uint32_t i=0; i<overlaps.size(); ++i)
+//            {
+//                GENCODERecord* record = (GENCODERecord*)overlaps[i];
+//                if (record->feature == GC_FT_EXON && record->gene == gene)
+//                {
+//                    record->containsStopCodon = true;
+//                }
+//            }
+//        }
+//
+//        if (feature=="start_codon")
+//        {
+//            gencode_feature = GC_FT_STOP_CODON;
+//
+//            CHROM[chrom]->search(start1, end1, overlaps);
+//
+//            for (uint32_t i=0; i<overlaps.size(); ++i)
+//            {
+//                GENCODERecord* record = (GENCODERecord*)overlaps[i];
+//                if (record->feature == GC_FT_EXON && record->gene == gene)
+//                {
+//                    record->containsStartCodon = true;
+//                }
+//            }
+//        }
+//        
+//        GENCODERecord* record = new GENCODERecord(chrom, start1, end1, strand,
+//                                             gene, gencode_feature, frame, exon_no,
+//                                             fivePrimeConservedEssentialSpliceSite, threePrimeConservedEssentialSpliceSite,
+//                                             containsStartCodon, containsStopCodon,
+//                                             level);
+        return NULL;
+    }
+    
+    /**
+     * Checks if a record is overlapping.  This uses the orderedness of the gtf file to search through the records.
+     */
+    bool overlaps_with(std::string& chrom, int32_t start1, int32_t end1, int32_t feature_type)
+    {
+        bool search_flag = false;
+        bool fill_buffer = true;
+        
+        //is this the right chromosome?
+        if (current_chrom!=chrom)
+        {
+            GenomeInterval interval(chrom);
+            todr->jump_to_interval(interval);
+        }
+
+        std::list<GENCODERecord*>::iterator i;
+        while ( i!=buffer.end())
+        {
+            if ((*i)->end<start1)
+            {
+                delete *i;
+                i = buffer.erase(i);
+            }    
+            else if ((*i)->overlaps_with(start1, end1))   
+            {
+                if ((*i)->feature==feature_type)
+                {
+                    search_flag=true;
+                }
+            }
+            else //after end1
+            {
+                fill_buffer = false;
+                break;
+            }
+        }
+        
+        //read and store records till record is after target
+        if (fill_buffer)
+        {
+            kstring_t s = {0,0,0};
+            
+            while (todr->read(&s))
+            {
+                GENCODERecord *rec = parse_gencode(&s);
+                buffer.push_back(rec);
+                
+                if (rec->start>end1)
+                {
+                    break;
+                }    
+            }
+            
+            if (s.m) free(s.s);
+        }    
+        
+        return search_flag;
+    };
+
+    private:
+    std::string current_chrom;
+    std::list<GENCODERecord*> buffer;
+    TBXOrderedReader *todr;
 };
 
 #endif

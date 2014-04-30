@@ -160,6 +160,11 @@ class Variant
     void print();
 
     /**
+     * Returns true if variant contains an allele that is potentially frame shifting.
+     */
+    bool exists_frame_shift();
+    
+    /**
      * Converts VTYPE to string.
      */
     std::string vtype2string(int32_t VTYPE);
@@ -244,7 +249,7 @@ class VariantManip
      * Left aligns a variant.
      */
     void left_align(std::vector<std::string>& alleles, uint32_t& pos1, const char* chrom, uint32_t& leftAligned, uint32_t& right_trimmed);
-
+    
     /**
      * Generates a probing haplotype with flanks around the variant of interest.
      */
