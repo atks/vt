@@ -28,6 +28,16 @@ namespace
 
 KHASH_MAP_INIT_INT(32, int32_t)
 
+struct len_t
+{
+    float len;
+    float maf;
+    float ab;
+    int32_t coding_t;
+    int32_t no_alleles;
+    int32_t pass;
+};
+
 class Igor : Program
 {
     public:
@@ -53,6 +63,7 @@ class Igor : Program
     ///////////////
     //general use//
     ///////////////
+    std::vector<len_t> len_pts;
     int ret, is_missing;
   	khiter_t k;
     khash_t(32) *afs;
@@ -83,7 +94,7 @@ class Igor : Program
         //////////////////////////
         try
         {
-            std::string desc = "Plot Allele Frequency Spectrum.";
+            std::string desc = "Profile length distribution";
 
             version = "0.5";
             TCLAP::CmdLine cmd(desc, ' ', version);
@@ -211,7 +222,7 @@ class Igor : Program
 
     void print_options()
     {
-        std::clog << "plot_afs v" << version << "\n\n";
+        std::clog << "plot_len v" << version << "\n\n";
         std::clog << "options:     input VCF file         " << input_vcf_file << "\n";
         std::clog << "         [c] AC tag                 " << AC << "\n";
         std::clog << "         [n] AN tag                 " << AN << "\n";
