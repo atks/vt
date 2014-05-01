@@ -136,7 +136,7 @@ class Igor : Program
         //filter initialization//
         /////////////////////////
         filter.parse(fexp.c_str());
-        filter_exists = fexp=="" ? false : true;
+        filter_exists = fexp!="";
 
         ///////////////
         //general use//
@@ -224,17 +224,16 @@ class Igor : Program
             for (int32_t i =0; i< trios.size(); ++i)
             {
                 int32_t j = trios[i].father_index;
-                int32_t f1 = bcf_gt_allele(gts[j*2]);
-                int32_t f2 = bcf_gt_allele(gts[j*2+1]);
-
+                int32_t f1 = bcf_gt_allele(gts[(j<<1)]);
+                int32_t f2 = bcf_gt_allele(gts[(j<<1)+1]);
 
                 j = trios[i].mother_index;
-                int32_t m1 = bcf_gt_allele(gts[j*2]);
-                int32_t m2 = bcf_gt_allele(gts[j*2+1]);
+                int32_t m1 = bcf_gt_allele(gts[(j<<1)]);
+                int32_t m2 = bcf_gt_allele(gts[(j<<1)+1]);
 
                 j = trios[i].child_index;
-                int32_t c1 = bcf_gt_allele(gts[j*2]);
-                int32_t c2 = bcf_gt_allele(gts[j*2+1]);
+                int32_t c1 = bcf_gt_allele(gts[(j<<1)]);
+                int32_t c2 = bcf_gt_allele(gts[(j<<1)+1]);
 
                 if (!(f1<0 || f2<0 || m1<0 || m2<0 || c1<0 || c2<0))
                 {
@@ -609,7 +608,6 @@ class Igor : Program
         fclose(out);
 
         std::string cmd = "cd "  + output_tabulate_dir + "; pdflatex tabulate.tex > run.log; mv tabulate.pdf " + output_pdf_file;
-        std::cerr << cmd << "\n";
        
         int32_t sys_ret = system(cmd.c_str());
     };
