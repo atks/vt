@@ -59,6 +59,8 @@ class Igor : Program
     std::vector<std::string> input_vcf_files;
     std::string ref_fasta_file;
     std::string ref_data_sets_list;
+    std::string output_tabulate_dir;
+    std::string output_pdf_file;
     std::vector<GenomeInterval> intervals;
     std::string interval_list;
 
@@ -114,6 +116,8 @@ class Igor : Program
             TCLAP::ValueArg<std::string> arg_intervals("i", "i", "intervals []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "file", cmd);
             TCLAP::ValueArg<std::string> arg_fexp("f", "f", "filter expression []", false, "N_ALLELE==2&&VTYPE==INDEL", "str", cmd);
+            TCLAP::ValueArg<std::string> arg_output_tabulate_dir("x", "x", "output latex directory [tabulate_indels]", false, "tabulate_indels", "str", cmd);
+            TCLAP::ValueArg<std::string> arg_output_pdf_file("y", "y", "output pdf file [indels.pdf]", false, "indels.pdf", "str", cmd);
             TCLAP::ValueArg<std::string> arg_ref_data_sets_list("g", "g", "file containing list of reference datasets []", true, "", "file", cmd);
             TCLAP::UnlabeledValueArg<std::string> arg_input_vcf_file("<in.vcf>", "input VCF file", true, "","file", cmd);
 
@@ -122,6 +126,8 @@ class Igor : Program
             ref_fasta_file = arg_ref_fasta_file.getValue();
             parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
             fexp = arg_fexp.getValue();
+            output_tabulate_dir = arg_output_tabulate_dir.getValue();
+            output_pdf_file = arg_output_pdf_file.getValue();
             ref_data_sets_list = arg_ref_data_sets_list.getValue();
             input_vcf_file = arg_input_vcf_file.getValue();
 
@@ -198,7 +204,7 @@ class Igor : Program
         /////////////////////////
         //filter initialization//
         /////////////////////////
-        for (size_t i = 0; i<dataset_fexps.size(); ++i)
+        for (size_t i=0; i<dataset_fexps.size(); ++i)
         {
             filters.push_back(Filter(dataset_fexps[i]));
             //filters[i].parse(fexps[i].c_str());
@@ -350,10 +356,166 @@ class Igor : Program
         print_str_op("         [f] filter                         ", fexp);
         std::clog << "         [g] reference data sets list file  " << ref_data_sets_list << "\n";
         std::clog << "         [r] reference FASTA file           " << ref_fasta_file << "\n";
+        print_str_op("         [x] output tabulate directory      ", output_tabulate_dir);
+        print_str_op("         [y] output pdf file                ", output_pdf_file);
         print_int_op("         [i] intervals                      ", intervals);
         std::clog << "\n";
    }
 
+    void print_pdf()
+    {
+        append_cwd(output_tabulate_dir);
+        
+        //generate file
+        int32_t ret = mkdir(output_tabulate_dir.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+        
+        
+        std::string filepath = output_tabulate_dir + "/tabulate.tex"; 
+        FILE *out = fopen(filepath.c_str(), "w");
+
+        std::string g2s[3] = {"R/R","R/A","A/A"};
+
+        fprintf(out, "\\PassOptionsToPackage{table}{xcolor}\n");
+        fprintf(out, "\\documentclass{beamer}\n");
+        fprintf(out, "\\begin{document}\n");
+        fprintf(out, "\n");
+        fprintf(out, "\\begin{frame}{Data set summary}\n");
+        fprintf(out, "\\resizebox{\\linewidth}{!}{\n");
+        fprintf(out, "\\rowcolors{2}{blue!25}{blue!10}\n");
+        fprintf(out, "\\begin{tabular}{rrrr}\n");
+        fprintf(out, "\\rowcolor{blue!50}\n");
+        fprintf(out, "No. Indels & Ins/Del & Insertions & Deletions \\\\ \n");
+        fprintf(out, "%d & %.1f & %d & %d \\\\ \n", stats[0].a, (float)stats[0].a_ins/(stats[0].a_del), stats[0].a_ins, stats[0].a_del);
+        fprintf(out, "\\end{tabular}}\n");
+        fprintf(out, "\\resizebox{\\linewidth}{!}{\n");
+        fprintf(out, "\\rowcolors{2}{blue!25}{blue!10}\n");
+        fprintf(out, "\\begin{tabular}{rrr}\n");
+        fprintf(out, "\\rowcolor{blue!50}\n");
+        fprintf(out, "Frameshift Indel Proportion (\\%%) & FS & NFS \\\\ \n");
+        fprintf(out, "%.2f & %d & %d \\\\ \n", (float)fs/(fs+nfs), fs, nfs);
+        fprintf(out, "\\end{tabular}}\n");
+        fprintf(out, "\\end{frame}\n");
+
+
+        for (int32_t i=1; i<dataset_labels.size(); ++i)
+        {
+            fprintf(out, "\n");
+            fprintf(out, "\\begin{frame}{Data set summary}\n");
+            fprintf(out, "\\resizebox{\\linewidth}{!}{\n");
+            fprintf(out, "\\rowcolors{2}{blue!25}{blue!10}\n");
+            fprintf(out, "\\begin{tabular}{rrrrr}\n");
+            fprintf(out, "\\rowcolor{blue!50}\n");
+            fprintf(out, "%s & no. indels & ins/del & ins & del\\\\ \n", dataset_labels[i].c_str());
+            fprintf(out, "A-B & %d & %.1f & %d & %d\\\\ \n",  stats[i].a, (float)stats[i].a_ins/(stats[i].a_del), stats[i].a_ins, stats[i].a_del);
+            fprintf(out, "A\\&B & %d & %.1f & %d & %d\\\\ \n",  stats[i].ab, (float)stats[i].ab_ins/(stats[i].ab_del), stats[i].ab_ins, stats[i].ab_del);
+            fprintf(out, "B-A & %d & %.1f & %d & %d\\\\ \n",  stats[i].b, (float)stats[i].b_ins/(stats[i].b_del), stats[i].b_ins, stats[i].b_del);
+            fprintf(out, " &  &  & &  \\\\ \n");
+            fprintf(out, " Precision & %.2f\\%% &  &  & \\\\ \n", 100*(float)stats[i].ab/(stats[i].a+stats[i].ab));
+            fprintf(out, " Sensitivity & %.2f\\%% &  &  &  \\\\ \n", 100*(float)stats[i].ab/(stats[i].b+stats[i].ab));
+            fprintf(out, "\\end{tabular}}\n");
+            fprintf(out, "\\end{frame}\n");
+        }
+
+////////        for (int32_t i=1; i<dataset_labels.size(); ++i)
+////////        {
+////////            fprintf(stderr, "  %s\n", dataset_labels[i].c_str());
+////////            fprintf(stderr, "    A-B %10d [%.2f]\n", stats[i].a,  (float)stats[i].a_ins/(stats[i].a_del));
+////////            fprintf(stderr, "    A&B %10d [%.2f]\n", stats[i].ab, (float)stats[i].ab_ins/stats[i].ab_del);
+////////            fprintf(stderr, "    B-A %10d [%.2f]\n", stats[i].b,  (float)stats[i].b_ins/(stats[i].b_del));
+////////
+////////            if (dataset_types[i]=="TP")
+////////            {
+////////                fprintf(stderr, "    Precision    %4.1f%%\n", 100*(float)stats[i].ab/(stats[i].a+stats[i].ab));
+////////                fprintf(stderr, "    Sensitivity  %4.1f%%\n", 100*(float)stats[i].ab/(stats[i].b+stats[i].ab));
+////////            }
+////////            else
+////////            {
+////////                fprintf(stderr, "    FDR          %4.1f%%\n", 100*(float)stats[i].ab/(stats[i].a+stats[i].ab));
+////////                fprintf(stderr, "    Type I Error %4.1f%%\n", 100*(float)stats[i].ab/(stats[i].b+stats[i].ab));
+////////            }
+////////            fprintf(stderr, "\n");
+////////        }
+
+
+//
+//        fprintf(out, "\\begin{frame}{Mendel Error (Collapsed genotypes)}\n");
+//        fprintf(out, "\\resizebox{\\linewidth}{!}{\n");
+//        fprintf(out, "\\rowcolors{2}{blue!25}{blue!10}\n");
+//        fprintf(out, "\\begin{tabular}{ccrrrrrr}\n");
+//        fprintf(out, "\\rowcolor{blue!50}\n");
+//        fprintf(out, "\\multicolumn{2}{c}{Parental}  & R/R & R/A & A/A & Error \\%% & HomHet & Het \\%%\\\\ \n");
+//        for (int32_t i=0; i<3; ++i)
+//        {
+//            for (int32_t j=0; j<3; ++j)
+//            {
+//                if (i!=j)
+//                {
+//                    if (i<j)
+//                    {
+//                        int32_t rr = trio_genotypes[i][j][0] + trio_genotypes[j][i][0];
+//                        int32_t ra = trio_genotypes[i][j][1] + trio_genotypes[j][i][1];
+//                        int32_t aa = trio_genotypes[i][j][2] + trio_genotypes[j][i][2];
+//                        fprintf(out, "%s&%s&%10d&%10d&%10d&%6.2f&%4.2f&%5.2f \\\\ \n", g2s[i].c_str(), g2s[j].c_str(), rr, ra, aa, get_error_rate(trio_genotypes, i, j, 1), get_homhet_ratio(trio_genotypes, i, j, 1), get_homhet_proportion(trio_genotypes, i, j, 1));
+//                    }
+//                }
+//                else
+//                {
+//                    fprintf(out, "%s&%s&%10d&%10d&%10d&%6.2f&%4.2f&%5.2f \\\\ \n", g2s[i].c_str(), g2s[j].c_str(), trio_genotypes[i][j][0], trio_genotypes[i][j][1], trio_genotypes[i][j][2], get_error_rate(trio_genotypes, i, j, 1), get_homhet_ratio(trio_genotypes, i, j, 1), get_homhet_proportion(trio_genotypes, i, j, 1));
+//                }
+//            }
+//        }
+//        fprintf(out, "\n");
+//        fprintf(out, "\\end{tabular}}\n");
+//        fprintf(out, "\\end{frame}\n");
+//
+//        fprintf(out, "\\begin{frame}{Mendel Error (Collapse parental allelotypes)}\n");
+//        fprintf(out, "\\resizebox{\\linewidth}{!}{\n");
+//        fprintf(out, "\\rowcolors{2}{blue!25}{blue!10}\n");
+//        fprintf(out, "\\begin{tabular}{ccrrrrrr}\n");
+//        fprintf(out, "\\rowcolor{blue!50}\n");
+//        fprintf(out, "\\multicolumn{2}{c}{Parental}  & R/R & R/A & A/A & Error \\%% & HomHet & Het \\%%\\\\ \n");
+//        int32_t i,j, rr, ra, aa;
+//        i=0; j=0;
+//        rr = trio_genotypes[i][j][0] + trio_genotypes[2][2][0];
+//        ra = trio_genotypes[i][j][1] + trio_genotypes[2][2][1];
+//        aa = trio_genotypes[i][j][2] + trio_genotypes[2][2][2];
+//        fprintf(out, "%s&%s&%10d&%10d&%10d&%6.2f&%4.2f&%5.2f \\\\ \n", "HOM", "HOM", rr, ra, aa, get_error_rate(trio_genotypes, i, j, 2), get_homhet_ratio(trio_genotypes, i, j, 2), get_homhet_proportion(trio_genotypes, i, j, 2));
+//        i=0; j=1;
+//        rr = trio_genotypes[i][j][0] + trio_genotypes[j][i][0] + trio_genotypes[2-i][j][0] + trio_genotypes[j][2-i][0];
+//        ra = trio_genotypes[i][j][1] + trio_genotypes[j][i][1] + trio_genotypes[2-i][j][1] + trio_genotypes[j][2-i][1];
+//        aa = trio_genotypes[i][j][2] + trio_genotypes[j][i][2] + trio_genotypes[2-i][j][2] + trio_genotypes[j][2-i][2];
+//        fprintf(out, "%s&%s&%10d&%10d&%10d&%6.2f&%4.2f&%5.2f \\\\ \n", "HOM", "HET", rr, ra, aa, get_error_rate(trio_genotypes, i, j, 2), get_homhet_ratio(trio_genotypes, i, j, 2), get_homhet_proportion(trio_genotypes, i, j, 2));
+//        i=1; j=1;
+//        fprintf(out, "%s&%s&%10d&%10d&%10d&%6.2f&%4.2f&%5.2f \\\\ \n", "HET", "HET", trio_genotypes[i][j][0], trio_genotypes[i][j][1], trio_genotypes[i][j][2], get_error_rate(trio_genotypes, i, j, 2), get_homhet_ratio(trio_genotypes, i, j, 2), get_homhet_proportion(trio_genotypes, i, j, 2));
+//        i=0; j=2;
+//        rr = trio_genotypes[i][j][0] + trio_genotypes[j][i][0];
+//        ra = trio_genotypes[i][j][1] + trio_genotypes[j][i][1];
+//        aa = trio_genotypes[i][j][2] + trio_genotypes[j][i][2];
+//        fprintf(out, "%s&%s&%10d&%10d&%10d&%6.2f&%4.2f&%5.2f \\\\ \n", "HOMREF", "HOMALT", rr, ra, aa, get_error_rate(trio_genotypes, i, j, 2), get_homhet_ratio(trio_genotypes, i, j, 2), get_homhet_proportion(trio_genotypes, i, j, 2));
+//        fprintf(out, "\n");
+//        fprintf(out, "\\end{tabular}}\n");
+//        fprintf(out, "\\end{frame}\n");
+//
+//        fprintf(out, "\\begin{frame}{Mendel Error Overall Summary}\n");
+//        fprintf(out, "\\resizebox{\\linewidth}{!}{\n");
+//        fprintf(out, "\\begin{tabular}{lr}\n");
+//        fprintf(out, "total mendelian error & %7.3f \\%% \\\\ \n", get_error_rate(trio_genotypes, -1, -1, -1));
+//        fprintf(out, "no. of trios     & %d \\\\ \n", no_trios);
+//        fprintf(out, "no. of variants  & %d \\\\ \n", no_variants);
+//        fprintf(out, "\n");
+//        fprintf(out, "\\end{tabular}}\n");
+//        fprintf(out, "\\end{frame}\n");
+//
+        fprintf(out, "\n");
+        fprintf(out, "\\end{document}\n");
+        
+        fclose(out);
+
+        std::string cmd = "cd "  + output_tabulate_dir + "; pdflatex tabulate.tex > run.log; mv tabulate.pdf " + output_pdf_file;
+        std::cerr << cmd << "\n";
+        int32_t sys_ret = system(cmd.c_str());
+    };
+    
     void print_stats()
     {
         fprintf(stderr, "\n");
@@ -399,4 +561,5 @@ void profile_indels(int argc, char ** argv)
     igor.initialize();
     igor.profile_indels();
     igor.print_stats();
+    igor.print_pdf();
 }

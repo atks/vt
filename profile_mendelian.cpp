@@ -126,7 +126,7 @@ class Igor : Program
             fprintf(stderr, "[%s:%d %s] No samples in VCF file: %s\n", __FILE__, __LINE__, __FUNCTION__, input_vcf_file.c_str());
             exit(1);
         }
-        
+
         ///////////////////////////
         //ped file initialization//
         ///////////////////////////
@@ -174,22 +174,22 @@ class Igor : Program
         Variant variant;
 
         std::vector<Trio> trios;
-        
+
         for (size_t i=0; i<pedigree->trios.size(); ++i)
         {
             int32_t f = bcf_hdr_id2int(h, BCF_DT_SAMPLE, pedigree->trios[i].father.c_str());
             int32_t m = bcf_hdr_id2int(h, BCF_DT_SAMPLE, pedigree->trios[i].mother.c_str());
             int32_t c = bcf_hdr_id2int(h, BCF_DT_SAMPLE, pedigree->trios[i].child.c_str());
-         
+
             if (f>=0 && m>=0 && c>=0)
             {
                 pedigree->trios[i].father_index = f;
                 pedigree->trios[i].mother_index = m;
                 pedigree->trios[i].child_index = c;
                 trios.push_back(pedigree->trios[i]);
-            }   
+            }
         }
-        
+
         no_trios = trios.size();
 
         int32_t missing = 0;
@@ -501,16 +501,15 @@ class Igor : Program
         return ((het+hom)==0 ? NAN : het/(hom+het)*100);
     };
 
-
     void print_pdf()
     {
         append_cwd(output_tabulate_dir);
-        
+
         //generate file
         int32_t ret = mkdir(output_tabulate_dir.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-        
-        
-        std::string filepath = output_tabulate_dir + "/tabulate.tex"; 
+
+
+        std::string filepath = output_tabulate_dir + "/tabulate.tex";
         FILE *out = fopen(filepath.c_str(), "w");
 
         std::string g2s[3] = {"R/R","R/A","A/A"};
@@ -608,7 +607,7 @@ class Igor : Program
         fclose(out);
 
         std::string cmd = "cd "  + output_tabulate_dir + "; pdflatex tabulate.tex > run.log; mv tabulate.pdf " + output_pdf_file;
-       
+
         int32_t sys_ret = system(cmd.c_str());
     };
 
