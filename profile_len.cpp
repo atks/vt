@@ -25,17 +25,14 @@
 
 namespace
 {
-
-KHASH_MAP_INIT_INT(32, int32_t)
-
 struct len_t
 {
-    float len;
+    int32_t dlen;
     float maf;
-    float ab;
-    int32_t coding_t;
     int32_t no_alleles;
     int32_t pass;
+    float ab;
+    int32_t coding;
 };
 
 class Igor : Program
@@ -50,8 +47,11 @@ class Igor : Program
     std::string input_vcf_file;
     std::string output_dir;
     std::string output_pdf_file;
-    const char* AC;
-    const char* AN;
+    const char* AF;
+    const char* AB;
+    const char* GENCODE_NFS;
+    const char* GENCODE_FS;
+    
     std::vector<GenomeInterval> intervals;
     std::string interval_list;
     
@@ -64,10 +64,6 @@ class Igor : Program
     //general use//
     ///////////////
     std::vector<len_t> len_pts;
-    int ret, is_missing;
-  	khiter_t k;
-    khash_t(32) *afs;
-    khash_t(32) *pass_afs;
 
     //////////
     //filter//
@@ -102,10 +98,10 @@ class Igor : Program
             TCLAP::ValueArg<std::string> arg_intervals("i", "i", "intervals", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_fexp("f", "f", "filter expression []", false, "", "str", cmd);
-            TCLAP::ValueArg<std::string> arg_output_dir("x", "x", "output directory []", false, "plot_afs", "str", cmd);
-            TCLAP::ValueArg<std::string> arg_output_pdf_file("y", "y", "output PDF file []", false, "afs.pdf", "str", cmd);
-            TCLAP::ValueArg<std::string> arg_AC("c", "ac", "AC tag [AC]", false, "AC", "str", cmd);
-            TCLAP::ValueArg<std::string> arg_AN("n", "an", "AN tag [AN]", false, "AN", "str", cmd);
+            TCLAP::ValueArg<std::string> arg_output_dir("x", "x", "output directory []", false, "plot_len", "str", cmd);
+            TCLAP::ValueArg<std::string> arg_output_pdf_file("y", "y", "output PDF file []", false, "len.pdf", "str", cmd);
+            TCLAP::ValueArg<std::string> arg_AF("a", "af", "AF tag [AF]", false, "AF", "str", cmd);
+            TCLAP::ValueArg<std::string> arg_AB("b", "ab", "AB tag [AB]", false, "AB", "str", cmd);
             TCLAP::UnlabeledValueArg<std::string> arg_input_vcf_file("<in.vcf>", "input VCF file", true, "","file", cmd);
 
             cmd.parse(argc, argv);
@@ -114,8 +110,8 @@ class Igor : Program
             fexp = arg_fexp.getValue();
             output_dir = arg_output_dir.getValue();
             output_pdf_file = arg_output_pdf_file.getValue();
-            AC = strdup(arg_AC.getValue().c_str());
-            AN = strdup(arg_AN.getValue().c_str());
+            AF = strdup(arg_AF.getValue().c_str());
+            AB = strdup(arg_AB.getValue().c_str());
             parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
         }
         catch (TCLAP::ArgException &e)
@@ -138,9 +134,6 @@ class Igor : Program
         filter.parse(fexp.c_str());
         filter_exists = fexp=="" ? false : true;
 
-        afs = kh_init(32);
-        pass_afs = kh_init(32);
-
         ////////////////////////
         //stats initialization//
         ////////////////////////
@@ -157,7 +150,8 @@ class Igor : Program
         bcf1_t *v = bcf_init1();
 
         Variant variant;
-        int32_t *ac=NULL, *an=NULL, n_ac=0, n_an=0;
+        float *af=NULL, *ab=NULL;
+        int32_t n_af=0, n_ab=0;
         
         while(odr->read(v))
         {
@@ -167,55 +161,48 @@ class Igor : Program
             {
                 continue;
             }
+
+            vm->classify_variant(odr->hdr, v, variant);
             
             if (filter_exists)
             {
-                int32_t vtype = vm->classify_variant(odr->hdr, v, variant);
                 if (!filter.apply(odr->hdr, v, &variant))
                 {
                     continue;
                 }
             }
             
-            bool pass = (bcf_has_filter(odr->hdr, v, const_cast<char*>("PASS"))==1);
-            
-            bcf_get_info_int32(odr->hdr, v, AC, &ac, &n_ac);
-            bcf_get_info_int32(odr->hdr, v, AN, &an, &n_an);
-            
-            if (ac[0]>(an[0]>>1)) {ac[0] = an[0]-ac[0];}
-            
-            if (ac[0]==0) continue;
-            
-            k = kh_get(32, afs, ac[0]);
-            if (k==kh_end(afs))
+            int32_t dlen = variant.alleles[0].dlen;
+            bcf_get_info_float(odr->hdr, v, AF, &af, &n_af);
+            int32_t no_alleles = bcf_get_n_allele(v);
+            int32_t pass = bcf_has_filter(odr->hdr, v, const_cast<char*>("PASS"));
+            bcf_get_info_float(odr->hdr, v, AB, &ab, &n_ab);
+            int32_t fs = bcf_get_info_flag(odr->hdr,v, const_cast<char*>("GENCODE_FS"), 0, 0);
+            int32_t nfs = bcf_get_info_flag(odr->hdr,v, const_cast<char*>("GENCODE_NFS"), 0, 0);
+            int32_t coding = fs==1 ? 1 : (nfs==1 ? 2 : -1);
+            float maf = 0;
+            if (no_alleles==2)
             {
-                k = kh_put(32, afs, ac[0], &ret);
-                kh_value(afs, k) = 1;
+                maf = af[0]>0.5? 1-af[0]: af[0];
             }
             else
             {
-                kh_value(afs, k) = kh_value(afs, k) + 1;
-            }    
-            
-            if (pass)
-            {
-                k = kh_get(32, pass_afs, ac[0]);
-                if (k==kh_end(pass_afs))
+                for (size_t i=0; i<n_af; ++i)
                 {
-                    k = kh_put(32, pass_afs, ac[0], &ret);
-                    kh_value(pass_afs, k) = 1;
+                    maf += af[i];
                 }
-                else
-                {
-                    kh_value(pass_afs, k) = kh_value(pass_afs, k) + 1;
-                } 
-            }    
+
+                maf = maf>0.5? 1-maf: maf;
+            }
+            
+            len_t h = {dlen, maf, no_alleles, pass, ab[0], coding};
+            len_pts.push_back(h);
             
             ++no_variants;
         }
 
-        if (n_ac) free(ac);
-        if (n_an) free(an);
+        if (n_af) free(af);
+        if (n_ab) free(ab);
         
         odr->close();
     };
@@ -224,8 +211,8 @@ class Igor : Program
     {
         std::clog << "plot_len v" << version << "\n\n";
         std::clog << "options:     input VCF file         " << input_vcf_file << "\n";
-        std::clog << "         [c] AC tag                 " << AC << "\n";
-        std::clog << "         [n] AN tag                 " << AN << "\n";
+        std::clog << "         [a] AF tag                 " << AF << "\n";
+        std::clog << "         [b] AB tag                 " << AB << "\n";
         print_str_op("         [x] output directory       ", output_dir);
         print_str_op("         [y] output pdf file        ", output_pdf_file);
         print_int_op("         [i] intervals              ", intervals);
@@ -241,25 +228,15 @@ class Igor : Program
         
         //create data file
         std::string file_path = output_dir + "/data.txt"; 
+        
+        
         FILE *out = fopen(file_path.c_str(), "w");
-        
-        fprintf(out, "mac\tf\tpass\n");
-        for (k=kh_begin(afs); k!=kh_end(afs); ++k)
-    	{
-    	    if (kh_exist(afs, k))
-    	    {
-    	        fprintf(out, "%d\t%d\t0\n", k , kh_value(afs, k));
-    	    }
-    	}
-    	
-    	for (k=kh_begin(pass_afs); k!=kh_end(pass_afs); ++k)
-    	{
-    	    if (kh_exist(pass_afs, k))
-    	    {
-    	        fprintf(out, "%d\t%d\t1\n", k , kh_value(pass_afs, k));
-    	    }
-    	}
-        
+        fprintf(out, "dlen\tmaf\tno_alleles\tpass\tab\tcoding\n");
+        for (size_t i=0; i<len_pts.size(); ++i)
+        {
+            fprintf(out, "%d\t%f\t%d\t%d\t%f\t%d\n", len_pts[i].dlen, len_pts[i].maf, len_pts[i].no_alleles, 
+                                                     len_pts[i].pass, len_pts[i].ab, len_pts[i].coding);
+        }
         fclose(out);
 
         //create r script
@@ -269,14 +246,47 @@ class Igor : Program
         fprintf(out, "setwd(\"%s\")\n", output_dir.c_str());
         fprintf(out, "\n");
         fprintf(out, "data = read.table(\"data.txt\", header=T)\n");
-        fprintf(out, "data.all=subset(data, pass==0)\n");
+        fprintf(out, "\n");
         fprintf(out, "pdf(\"%s\",7,5)\n", output_pdf_file.c_str());
-        fprintf(out, "plot(data.all$mac, data.all$f,  log=\"xy\", pch=20, cex=0.5, col=rgb(1,0,0,0.5), main=\"Folded Allele Frequency Spectrum\", xlab=\"Minor allele counts\", ylab=\"Frequency\", panel.last=grid(equilogs=FALSE, col=\"grey\"))\n");
-        fprintf(out, "data.pass=subset(data, pass==1)\n");
-        fprintf(out, "points(data.pass$mac, data.pass$f, pch=20, cex=0.5, col=rgb(0,0,1,0.5))\n");
-        fprintf(out, "legend(\"topright\", c(\"pass\", \"all\"), col = c(rgb(0,0,1,0.5), rgb(1,0,0,0.5)), pch = 20)\n");
+        fprintf(out, "\n");
+        fprintf(out, "layout(matrix(c(1,2), 2, 1, byrow = TRUE))\n");
+        fprintf(out, "data.subset = subset(data, abs(dlen)<=10 & pass==1 & no_alleles==2)\n");
+        fprintf(out, "hist(data.subset$dlen, breaks=seq(-10,10,1),col=rgb(0,0,1,0.5), xlab=\"length\", main=\"Passed Indel Length Distribution\")\n");
+        fprintf(out, "\n");
+        fprintf(out, "data.subset = subset(data, abs(dlen)<=10 & pass!=1 & no_alleles==2)\n");
+        fprintf(out, "hist(data.subset$dlen, breaks=seq(-10,10,1),col=rgb(1,0,0,0.5), xlab=\"length\", main=\"Failed Indel Length Distribution\")\n");
+        fprintf(out, "\n");        
+        fprintf(out, "layout(matrix(c(1,2), 2, 1, byrow = TRUE))\n");
+        fprintf(out, "\n");
+        fprintf(out, "data.subset = subset(data, abs(dlen)<=10 & pass==1 & no_alleles==2 & coding>0)\n");
+        fprintf(out, "hist(data.subset$dlen, breaks=seq(-10,10,1),col=rgb(0,0,1,0.5), xlab=\"length\", main=\"Passed Coding Indel Length Distribution\")\n");
+        fprintf(out, "\n");
+        fprintf(out, "data.subset = subset(data, abs(dlen)<=10 & pass!=1 & no_alleles==2 & coding>0)\n");
+        fprintf(out, "hist(data.subset$dlen, breaks=seq(-10,10,1),col=rgb(1,0,0,0.5), xlab=\"length\", main=\"Failed Coding Indel Length Distribution\")\n");
+        fprintf(out, "\n");
+        fprintf(out, "layout(matrix(c(1,2), 1, 2, byrow = TRUE))\n");
+        fprintf(out, "data.subset = subset(data, dlen>0 & pass!=1 & no_alleles==2)\n");
+        fprintf(out, "x = table(abs(data.subset$dlen))/nrow(data.subset)\n");
+        fprintf(out, "pie(x, main=\"Passed Indel Length Proportion\")\n");
+        fprintf(out, "\n");
+        fprintf(out, "data.subset = subset(data, dlen<0 & pass!=1 & no_alleles==2)\n");
+        fprintf(out, "x = table(abs(data.subset$dlen))/nrow(data.subset)\n");
+        fprintf(out, "pie(x, main=\"Failed Indel Length Proportion\")\n");
+        fprintf(out, "\n");
+        fprintf(out, "layout(matrix(c(1,1), 2, 1, byrow = TRUE))\n");
+        fprintf(out, "\n");
+        fprintf(out, "data.subset = subset(data, abs(dlen)<=30 & pass==1 & no_alleles==2)\n");
+        fprintf(out, "boxplot(data.subset$ab~data.subset$dlen, col=rgb(0,0,1,0.5), pch=\".\", main=\"Passed Indel Allele Balance Profile\")\n");
+        fprintf(out, "abline(h=0.5, col=\"grey\")\n");
+        fprintf(out, "\n");
+        fprintf(out, "layout(matrix(c(1,1), 2, 1, byrow = TRUE))\n");
+        fprintf(out, "\n");
+        fprintf(out, "data.subset = subset(data, abs(dlen)<=30 & pass!=1 & no_alleles==2)\n");
+        fprintf(out, "boxplot(data.subset$ab~data.subset$dlen, col=rgb(1,0,0,0.5), pch=\".\", main=\"Failed Indel Allele Balance Profile\")\n");
+        fprintf(out, "abline(h=0.5, col=\"grey\")\n");
+        fprintf(out, "\n");
         fprintf(out, "dev.off()\n");
-        
+               
         fclose(out);
 
         //run script
@@ -297,8 +307,6 @@ class Igor : Program
 
     ~Igor()
     {
-        kh_destroy(32, afs);
-        kh_destroy(32, pass_afs);
     };
 
     private:
