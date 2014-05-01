@@ -24,6 +24,8 @@
 #ifndef UTILS_H
 #define UTILS_H
 
+#include <sys/stat.h>
+#include <cstdio>
 #include <unistd.h>
 #include <iostream>
 #include <sstream>

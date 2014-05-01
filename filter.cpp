@@ -146,7 +146,7 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
                 return;
             }
     
-            fprintf(stderr, "[%s:%d %s] evaluation not supported : !=\n", __FILE__, __LINE__, __FUNCTION__);
+            fprintf(stderr, "[%s:%d %s] evaluation not supported: %d %d: !=\n", __FILE__, __LINE__, __FUNCTION__, left->type, right->type);
             exit(1);
         }
         else if (type==VT_LE)
@@ -184,7 +184,7 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
                 return;
             }
     
-            fprintf(stderr, "[%s:%d %s] evaluation not supported : <=\n", __FILE__, __LINE__, __FUNCTION__);
+            fprintf(stderr, "[%s:%d %s] evaluation not supported: %d %d: <=\n", __FILE__, __LINE__, __FUNCTION__, left->type, right->type);
             exit(1);
         }
         else if (type==VT_GE)
@@ -221,7 +221,7 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
                 return;
             }
     
-            fprintf(stderr, "[%s:%d %s] evaluation not supported : >=\n", __FILE__, __LINE__, __FUNCTION__);
+            fprintf(stderr, "[%s:%d %s] evaluation not supported: %d %d: >=\n", __FILE__, __LINE__, __FUNCTION__, left->type, right->type);
             exit(1);
         }
         else if (type==VT_GT)
@@ -258,7 +258,7 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
                 return;
             }
     
-            fprintf(stderr, "[%s:%d %s] evaluation not supported : >\n", __FILE__, __LINE__, __FUNCTION__);
+            fprintf(stderr, "[%s:%d %s] evaluation not supported: %d %d: >\n", __FILE__, __LINE__, __FUNCTION__, left->type, right->type);
             exit(1);
         }
         else if (type==VT_LT)
@@ -595,6 +595,7 @@ Filter::Filter()
  */
 Filter::Filter(std::string exp, VariantManip *vm)
 {
+    this->tree = NULL;
     parse(exp.c_str(), false);
 };
 

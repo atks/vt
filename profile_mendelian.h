@@ -24,8 +24,6 @@
 #ifndef PROFILE_MENDELIAN_H
 #define PROFILE_MENDELIAN_H
 
-#include <sys/stat.h>
-#include <cstdio>
 #include "htslib/vcf.h"
 #include "htslib/kseq.h"
 #include "program.h"
