@@ -53,7 +53,8 @@ SOURCES = program\
 		subset\
 		estimator\
 		profile_afs\
-		profile_hwe
+		profile_hwe\
+		profile_len
 
 SOURCESONLY = main.cpp
 

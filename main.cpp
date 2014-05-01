@@ -46,6 +46,7 @@
 #include "compute_features.h"
 #include "profile_afs.h"
 #include "profile_hwe.h"
+#include "profile_len.h"
 
 void print_time(double t)
 {
@@ -210,6 +211,10 @@ int main(int argc, char ** argv)
     else if (argc>1 && cmd=="profile_hwe")
     {
         profile_hwe(argc-1, ++argv);
+    }   
+    else if (argc>1 && cmd=="profile_len")
+    {
+        profile_len(argc-1, ++argv);
     }                
     else
     {
