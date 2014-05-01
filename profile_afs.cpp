@@ -224,8 +224,7 @@ class Igor : Program
     void print_pdf()
     {
         append_cwd(output_dir);
-        append_cwd(output_pdf_file);
-                
+                        
         //create directory
         mkdir(output_dir.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
         

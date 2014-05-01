@@ -52,6 +52,9 @@ class Trio
     std::string father;
     std::string mother;
     std::string child;
+    int32_t father_index;
+    int32_t mother_index;
+    int32_t child_index;
     int32_t child_sex;    
     
     Trio(std::string pedigree, std::string father, std::string mother, std::string child, int32_t child_sex);
