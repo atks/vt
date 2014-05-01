@@ -37,8 +37,8 @@ class Igor : Program
     ///////////
     std::string input_vcf_file;
     std::string input_ped_file;
-    std::string ref_fasta_file;
-    std::string output_latex_dir;
+    std::string output_tabulate_dir;
+    std::string output_pdf_file;
     std::vector<GenomeInterval> intervals;
     std::string interval_list;
     int32_t min_depth;
@@ -90,8 +90,8 @@ class Igor : Program
             TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_input_ped_file("p", "p", "pedigree file", true, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_fexp("f", "f", "filter expression []", false, "", "str", cmd);
-            TCLAP::ValueArg<std::string> arg_output_latex_dir("x", "x", "output latex directory []", false, "", "str", cmd);
-            TCLAP::ValueArg<std::string> arg_ref_fasta_file("r", "r", "reference sequence fasta file []", false, "", "str", cmd);
+            TCLAP::ValueArg<std::string> arg_output_tabulate_dir("x", "x", "output latex directory [tabulate_mendelian]", false, "tabulate_mendelian", "str", cmd);
+            TCLAP::ValueArg<std::string> arg_output_pdf_file("y", "y", "output pdf file [mendelian.pdf]", false, "mendelian.pdf", "str", cmd);
             TCLAP::ValueArg<int32_t> arg_min_depth("d", "d", "minimum depth", false, 5, "str", cmd);
             TCLAP::ValueArg<float> arg_min_gq("q", "q", "minimum genotype quality", false, 2, "str", cmd);
             TCLAP::UnlabeledValueArg<std::string> arg_input_vcf_file("<in.vcf>", "input VCF file", true, "","file", cmd);
@@ -101,7 +101,8 @@ class Igor : Program
             input_vcf_file = arg_input_vcf_file.getValue();
             input_ped_file = arg_input_ped_file.getValue();
             fexp = arg_fexp.getValue();
-            output_latex_dir = arg_output_latex_dir.getValue();
+            output_tabulate_dir = arg_output_tabulate_dir.getValue();
+            output_pdf_file = arg_output_pdf_file.getValue();
             min_depth = arg_min_depth.getValue();
             min_gq = arg_min_gq.getValue();
             parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
@@ -120,6 +121,12 @@ class Igor : Program
         //////////////////////
         odr = new BCFOrderedReader(input_vcf_file, intervals);
 
+        if (bcf_hdr_nsamples(odr->hdr)==0)
+        {
+            fprintf(stderr, "[%s:%d %s] No samples in VCF file: %s\n", __FILE__, __LINE__, __FUNCTION__, input_vcf_file.c_str());
+            exit(1);
+        }
+        
         ///////////////////////////
         //ped file initialization//
         ///////////////////////////
@@ -156,7 +163,7 @@ class Igor : Program
         /////////
         //tools//
         /////////
-        vm = new VariantManip(ref_fasta_file);
+        vm = new VariantManip();
     }
 
     void profile_mendelian()
@@ -166,7 +173,23 @@ class Igor : Program
 
         Variant variant;
 
-        std::vector<Trio>& trios = pedigree->trios;
+        std::vector<Trio> trios;
+        
+        for (size_t i=0; i<pedigree->trios.size(); ++i)
+        {
+            int32_t f = bcf_hdr_id2int(h, BCF_DT_SAMPLE, pedigree->trios[i].father.c_str());
+            int32_t m = bcf_hdr_id2int(h, BCF_DT_SAMPLE, pedigree->trios[i].mother.c_str());
+            int32_t c = bcf_hdr_id2int(h, BCF_DT_SAMPLE, pedigree->trios[i].child.c_str());
+         
+            if (f>=0 && m>=0 && c>=0)
+            {
+                pedigree->trios[i].father_index = f;
+                pedigree->trios[i].mother_index = m;
+                pedigree->trios[i].child_index = c;
+                trios.push_back(pedigree->trios[i]);
+            }   
+        }
+        
         no_trios = trios.size();
 
         int32_t missing = 0;
@@ -186,21 +209,30 @@ class Igor : Program
                 continue;
             }
 
+            if (filter_exists)
+            {
+                vm->classify_variant(odr->hdr, v, variant);
+                if (!filter.apply(odr->hdr, v, &variant))
+                {
+                    continue;
+                }
+            }
+
             int k = bcf_get_genotypes(h, v, &gts, &n);
             bool variant_used = false;
 
             for (int32_t i =0; i< trios.size(); ++i)
             {
-                int32_t j = bcf_hdr_id2int(h, BCF_DT_SAMPLE, trios[i].father.c_str());
+                int32_t j = trios[i].father_index;
                 int32_t f1 = bcf_gt_allele(gts[j*2]);
                 int32_t f2 = bcf_gt_allele(gts[j*2+1]);
 
 
-                j = bcf_hdr_id2int(h, BCF_DT_SAMPLE, trios[i].mother.c_str());
+                j = trios[i].mother_index;
                 int32_t m1 = bcf_gt_allele(gts[j*2]);
                 int32_t m2 = bcf_gt_allele(gts[j*2+1]);
 
-                j = bcf_hdr_id2int(h, BCF_DT_SAMPLE, trios[i].child.c_str());
+                j = trios[i].child_index;
                 int32_t c1 = bcf_gt_allele(gts[j*2]);
                 int32_t c2 = bcf_gt_allele(gts[j*2+1]);
 
@@ -220,11 +252,11 @@ class Igor : Program
     void print_options()
     {
         std::clog << "profile_mendelian_errors v" << version << "\n\n";
-        std::clog << "options:     input VCF file         " << input_vcf_file << "\n";
-        std::clog << "         [p] input PED file         " << input_ped_file << "\n";
-        print_str_op("         [x] output latex directory ", output_latex_dir);
-        print_ref_op("         [r] ref FASTA file         ", ref_fasta_file);
-        print_int_op("         [i] intervals              ", intervals);
+        std::clog << "options:     input VCF file            " << input_vcf_file << "\n";
+        std::clog << "         [p] input PED file            " << input_ped_file << "\n";
+        print_str_op("         [x] output tabulate directory ", output_tabulate_dir);
+        print_str_op("         [y] output pdf file           ", output_pdf_file);
+        print_int_op("         [i] intervals                 ", intervals);
         std::clog << "\n";
     }
 
@@ -473,17 +505,13 @@ class Igor : Program
 
     void print_pdf()
     {
-        if (output_latex_dir == "")
-        {
-            return;
-        }    
+        append_cwd(output_tabulate_dir);
         
         //generate file
-        std::string output_latex_file = output_latex_dir + ".tex";
-        int32_t ret = mkdir(output_latex_dir.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+        int32_t ret = mkdir(output_tabulate_dir.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
         
         
-        std::string filepath = output_latex_dir + "/" + output_latex_file; 
+        std::string filepath = output_tabulate_dir + "/tabulate.tex"; 
         FILE *out = fopen(filepath.c_str(), "w");
 
         std::string g2s[3] = {"R/R","R/A","A/A"};
@@ -580,13 +608,10 @@ class Igor : Program
 
         fclose(out);
 
-        std::string cmd = "pdflatex -output-directory=" + output_latex_dir + " " + output_latex_file + " > " + output_latex_dir + "/run.log";
+        std::string cmd = "cd "  + output_tabulate_dir + "; pdflatex tabulate.tex > run.log; mv tabulate.pdf " + output_pdf_file;
+        std::cerr << cmd << "\n";
        
-        //std::cerr << cmd << "\n";
         int32_t sys_ret = system(cmd.c_str());
-        //system("cp mendel_plot/mendel.pdf .");
-        //system("rm -fr mendel_plot");
-
     };
 
     void print_stats()

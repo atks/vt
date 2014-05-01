@@ -29,7 +29,7 @@ Trio::Trio(std::string pedigree, std::string father, std::string mother, std::st
     this->father = father;
     this->mother = mother;
     this->child = child;
-    this->child_sex = child_sex;    
+    this->child_sex = child_sex;
 };
 
 Pedigree::Pedigree(std::string& ped_file)
@@ -43,17 +43,25 @@ Pedigree::Pedigree(std::string& ped_file)
             continue;
 
         std::string line(s.s);
-        split(vec, "\t", line);
+        split(vec, "\t ", line);
 
         std::string& pedigree = vec[0];
         std::string& father = vec[2];
         std::string& mother = vec[3];
         std::string& child = vec[1];
-        int32_t child_sex = vec[4] == "Male" ? PED_MALE : (vec[4] == "Female" ? PED_FEMALE : PED_UNKNOWN_SEX);
-        
+        int32_t child_sex = PED_UNKNOWN_SEX;
+        if (vec[4] == "Male")
+        {
+            child_sex = PED_MALE;
+        }
+        else if (vec[4] == "Female")
+        {
+            child_sex = PED_FEMALE;
+        }
+
         Trio trio(pedigree, father, mother, child, child_sex);
         trios.push_back(trio);
     }
     hts_close(hts);
     if (s.m) free(s.s);
-};    
+};
