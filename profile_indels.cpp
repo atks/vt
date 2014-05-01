@@ -67,6 +67,7 @@ class Igor : Program
     //////////////////////////////////////////////
     std::vector<std::string> dataset_labels;
     std::vector<std::string> dataset_types;
+    std::vector<std::string> dataset_fexps;
     std::string gencode_gtf_file;
 
     ///////
@@ -79,8 +80,9 @@ class Igor : Program
     //filter//
     //////////
     std::string fexp;
-    Filter filter;
-    bool filter_exists;
+    std::vector<Filter> filters;
+    std::vector<bool> filter_exists;
+    int32_t no_filters;
     
     /////////
     //stats//
@@ -111,8 +113,8 @@ class Igor : Program
             TCLAP::ValueArg<std::string> arg_ref_fasta_file("r", "r", "reference sequence fasta file []", true, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_intervals("i", "i", "intervals []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "file", cmd);
-            TCLAP::ValueArg<std::string> arg_fexp("f", "f", "filter expression []", false, "", "str", cmd);
-            TCLAP::ValueArg<std::string> arg_ref_data_sets_list("g", "g", "file containing list of reference datasets []", false, "", "file", cmd);
+            TCLAP::ValueArg<std::string> arg_fexp("f", "f", "filter expression []", false, "N_ALLELE==2&&VTYPE==INDEL", "str", cmd);
+            TCLAP::ValueArg<std::string> arg_ref_data_sets_list("g", "g", "file containing list of reference datasets []", true, "", "file", cmd);
             TCLAP::UnlabeledValueArg<std::string> arg_input_vcf_file("<in.vcf>", "input VCF file", true, "","file", cmd);
 
             cmd.parse(argc, argv);
@@ -160,7 +162,8 @@ class Igor : Program
         input_vcf_files.push_back(input_vcf_file);
         dataset_labels.push_back("data");
         dataset_types.push_back("ref");
-
+        dataset_fexps.push_back(fexp);
+        
         htsFile *hts = hts_open(ref_data_sets_list.c_str(), "r");
         kstring_t s = {0,0,0};
         std::vector<std::string> vec;
@@ -176,7 +179,8 @@ class Igor : Program
             {
                 dataset_labels.push_back(vec[0]);
                 dataset_types.push_back(vec[1]);
-                input_vcf_files.push_back(vec[3]);
+                dataset_fexps.push_back(vec[2]);
+                input_vcf_files.push_back(vec[3]);                
             }
             else if (vec[1] == "annotation")
             {
@@ -194,9 +198,14 @@ class Igor : Program
         /////////////////////////
         //filter initialization//
         /////////////////////////
-        filter.parse(fexp.c_str());
-        filter_exists = fexp=="" ? false : true;
-
+        for (size_t i = 0; i<dataset_fexps.size(); ++i)
+        {
+            filters.push_back(Filter(dataset_fexps[i]));
+            //filters[i].parse(fexps[i].c_str());
+            filter_exists.push_back(dataset_fexps[i]!="");
+        }
+        no_filters = filters.size();
+        
         //////////////////////
         //i/o initialization//
         //////////////////////
@@ -233,21 +242,6 @@ class Igor : Program
             bcf_hdr_t *h = current_recs[0]->h;
             int32_t vtype = vm->classify_variant(h, v, variant);
 
-            if (bcf_get_n_allele(v)!=2 || !(vtype&VT_INDEL))
-            {
-                if (filter_exists)
-                {
-                    if (!filter.apply(h,v,&variant))
-                    {
-                        continue;
-                    }
-                }    
-                else
-                {
-                    continue;
-                }
-            }
-
             std::string chrom = bcf_get_chrom(h,v);
             int32_t start1 = bcf_get_pos1(v);
             int32_t end1 = bcf_get_end_pos1(v);
@@ -255,7 +249,17 @@ class Igor : Program
             //check existence
             for (uint32_t i=0; i<current_recs.size(); ++i)
             {
-                ++presence[current_recs[i]->file_index];
+                int32_t index = current_recs[i]->file_index;
+                
+                if (filter_exists[index])
+                {
+                    if (!filters[index].apply(h,v,&variant))
+                    {
+                        continue;
+                    }
+                }
+                
+                ++presence[index];
             }
 
             //annotate
