@@ -89,10 +89,14 @@ void help()
     std::clog << "partition                 partition variants\n";
     std::clog << "annotate_variants         annotate variants\n";
     std::clog << "compute_concordance       compute genotype concordance between 2 call sets\n";
+    std::clog << "compute_features          compute genotype likelihood based statistics\n";
     std::clog << "profile_snps              profile snps\n";
     std::clog << "profile_indels            profile indels\n";
     std::clog << "profile_mendelian         profile mendelian errors\n";
-    std::clog << "profile_na12878           profile na12878\n";        
+    std::clog << "profile_na12878           profile na12878\n";
+    std::clog << "profile_afs               profile allele frequency spectrum\n";
+    std::clog << "profile_hwe               profile hardy weinberg equilibrium\n";
+    std::clog << "profile_len               profile indel characteristics by indel length\n";
     std::clog << "\n";
     std::clog << "discover                  discover variants\n";
     std::clog << "merge_candidate_variants  merge candidate variants\n";
@@ -106,24 +110,24 @@ int main(int argc, char ** argv)
     clock_t t0;
     t0 = clock();
     bool print = true;
-        
+
     if (argc==1)
     {
         help();
         exit(0);
     }
-    
+
     std::string cmd(argv[1]);
-    
+
     //primitive programs that do not require help pages and summary statistics by default
     if (argc>1 && cmd=="view")
     {
         print = view(argc-1, ++argv);
-    } 
+    }
     else if (argc>1 && cmd=="index")
     {
         print = index(argc-1, ++argv);
-    } 
+    }
     else if (argc>1 && cmd=="merge")
     {
         print = merge(argc-1, ++argv);
@@ -155,15 +159,15 @@ int main(int argc, char ** argv)
     else if (argc>1 && cmd=="peek")
     {
         peek(argc-1, ++argv);
-    }  
+    }
     else if (argc>1 && cmd=="partition")
     {
         partition(argc-1, ++argv);
-    } 
+    }
     else if (argc>1 && cmd=="annotate_variants")
     {
         annotate_variants(argc-1, ++argv);
-    }     
+    }
     else if (argc>1 && cmd=="discover")
     {
         discover(argc-1, ++argv);
@@ -175,7 +179,7 @@ int main(int argc, char ** argv)
     else if (argc>1 && cmd=="genotype")
     {
         genotype(argc-1, ++argv);
-    } 
+    }
     else if (argc>1 && cmd=="construct_probes")
     {
         construct_probes(argc-1, ++argv);
@@ -187,7 +191,7 @@ int main(int argc, char ** argv)
     else if (argc>1 && cmd=="profile_snps")
     {
         profile_snps(argc-1, ++argv);
-    }    
+    }
     else if (argc>1 && cmd=="profile_mendelian")
     {
         profile_mendelian(argc-1, ++argv);
@@ -195,27 +199,27 @@ int main(int argc, char ** argv)
     else if (argc>1 && cmd=="profile_na12878")
     {
         profile_na12878(argc-1, ++argv);
-    } 
+    }
     else if (argc>1 && cmd=="align")
     {
         align(argc-1, ++argv);
-    } 
+    }
     else if (argc>1 && cmd=="compute_features")
     {
         compute_features(argc-1, ++argv);
-    }  
+    }
     else if (argc>1 && cmd=="profile_afs")
     {
         profile_afs(argc-1, ++argv);
-    }  
+    }
     else if (argc>1 && cmd=="profile_hwe")
     {
         profile_hwe(argc-1, ++argv);
-    }   
+    }
     else if (argc>1 && cmd=="profile_len")
     {
         profile_len(argc-1, ++argv);
-    }                
+    }
     else
     {
         std::clog << "Command not found: " << argv[1] << "\n\n";
