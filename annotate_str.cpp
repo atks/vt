@@ -21,7 +21,7 @@
    THE SOFTWARE.
 */
 
-#include "annotate_variants.h"
+#include "annotate_str.h"
 
 namespace
 {
@@ -52,7 +52,7 @@ class Igor : Program
     /////////
     //stats//
     /////////
-    uint32_t no_variants_annotated;
+    int32_t no_variants_annotated;
 
     ////////////////
     //common tools//
@@ -113,6 +113,8 @@ class Igor : Program
         bcf_hdr_append(odw->hdr, "##INFO=<ID=RL,Number=1,Type=Integer,Description=\"Repeat Length\">");
         bcf_hdr_append(odw->hdr, "##INFO=<ID=LFLANK,Number=1,Type=String,Description=\"Right Flank\">");
         bcf_hdr_append(odw->hdr, "##INFO=<ID=RFLANK,Number=1,Type=String,Description=\"Left Flank\">");
+        bcf_hdr_append(odw->hdr, "##INFO=<ID=LFLANKPOS,Number=2,Type=Integer,Description=\"Location of left flank\">");
+        bcf_hdr_append(odw->hdr, "##INFO=<ID=RFLANKPOS,Number=2,Type=Integer,Description=\"Location of right flank\">");
 
         ///////////////////////
         //tool initialization//
@@ -143,7 +145,7 @@ class Igor : Program
         std::clog << "\n";
     }
 
-    void annotate_variants()
+    void annotate_str()
     {
         odw->write_hdr();
 
@@ -159,60 +161,6 @@ class Igor : Program
             int32_t start1 = bcf_get_pos1(v);
             int32_t end1 = bcf_get_end_pos1(v);
             
-            vm->vtype2string(vtype, &s);
-            if (s.l)
-            {    
-                bcf_update_info_string(odr->hdr, v, "VT", s.s);
-            }
-            
-            if (vtype==VT_SNP)
-            {
-                //synonymous and non synonymous annotation
-                
-            }    
-            else if (vtype&VT_INDEL)
-            {
-                //frame shift annotation
-                if (annotate_coding)
-                {
-                    gc->search(chrom, start1+1, end1, overlaps);
-    
-                    bool cds_found = false;
-                    bool is_fs = false;
-    
-                    for (int32_t i=0; i<overlaps.size(); ++i)
-                    {
-                        GENCODERecord *rec = (GENCODERecord *) overlaps[i];
-                        if (rec->feature==GC_FT_CDS)
-                        {
-                            cds_found = true;
-                            if (abs(variant.alleles[0].dlen)%3!=0)
-                            {
-                                is_fs = true;
-                                break;
-                            }
-                        }
-                    }
-                    
-                    if (cds_found)
-                    {
-                        if (is_fs)
-                        {
-                            bcf_update_info_flag(odr->hdr, v, "GENCODE_FS", "", 1);
-                        }
-                        else
-                        {
-                            bcf_update_info_flag(odr->hdr, v, "GENCODE_NFS", "", 1);
-                        }
-                    }
-                    
-                    //classify STR 
-                    std::string ru = "ACGT";
-                    int32_t rl = 4;
-                }
-    //            bcf_update_info_string(odr->hdr, v, "RU", ru.c_str());
-    //            bcf_update_info_int32(odr->hdr, v, "RL", &rl, 1); 
-            }
             
             ++no_variants_annotated;
             odw->write(v);
@@ -232,6 +180,6 @@ void annotate_str(int argc, char ** argv)
     Igor igor(argc, argv);
     igor.print_options();
     igor.initialize();
-    igor.annotate_variants();
+    igor.annotate_str();
     igor.print_stats();
 };
