@@ -37,6 +37,8 @@ class Igor : Program
     ///////////
     std::string input_vcf_file;
     std::string output_vcf_file;
+    std::string output_tabulate_dir;
+    std::string output_pdf_file;
     std::vector<GenomeInterval> intervals;
     std::string ref_fasta_file;
 
@@ -92,6 +94,8 @@ class Igor : Program
             TCLAP::ValueArg<std::string> arg_intervals("i", "i", "intervals []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "file", cmd);
             TCLAP::ValueArg<std::string> arg_fexp("f", "f", "filter expression []", false, "", "str", cmd);
+            TCLAP::ValueArg<std::string> arg_output_tabulate_dir("x", "x", "output latex directory []", false, "", "str", cmd);
+            TCLAP::ValueArg<std::string> arg_output_pdf_file("y", "y", "output pdf file [summary.pdf]", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_output_vcf_file("o", "o", "output VCF file [-]", false, "-", "str", cmd);
             TCLAP::UnlabeledValueArg<std::string> arg_input_vcf_file("<in.vcf>", "input VCF file", true, "","file", cmd);
 
@@ -100,6 +104,8 @@ class Igor : Program
             input_vcf_file = arg_input_vcf_file.getValue();
             output_vcf_file = arg_output_vcf_file.getValue();
             fexp = arg_fexp.getValue();
+            output_tabulate_dir = arg_output_tabulate_dir.getValue();
+            output_pdf_file = arg_output_pdf_file.getValue();
             parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
             ref_fasta_file = arg_ref_fasta_file.getValue();
         }
@@ -238,11 +244,13 @@ class Igor : Program
     {
         std::clog << "peek v" << version << "\n\n";
 
-        std::clog << "options:     input VCF file        " << input_vcf_file << "\n";
-        std::clog << "         [o] output VCF file       " << output_vcf_file << "\n";
-        print_str_op("         [f] filter                ", fexp);
-        print_ref_op("         [r] reference FASTA file  ", ref_fasta_file);
-        print_int_op("         [i] intervals             ", intervals);
+        std::clog << "options:     input VCF file            " << input_vcf_file << "\n";
+        std::clog << "         [o] output VCF file           " << output_vcf_file << "\n";
+        print_str_op("         [f] filter                    ", fexp);
+        print_ref_op("         [r] reference FASTA file      ", ref_fasta_file);
+        print_str_op("         [x] output tabulate directory ", output_tabulate_dir);
+        print_str_op("         [y] output pdf file           ", output_pdf_file);
+        print_int_op("         [i] intervals                 ", intervals);
         std::clog << "\n";
     }
 
@@ -350,6 +358,249 @@ class Igor : Program
         fprintf(stderr, "\n");
     };
 
+    void print_pdf()
+    {
+        if (output_tabulate_dir=="")
+        {
+            return;
+        }
+        else
+        {
+            if (output_pdf_file=="")
+            {
+                output_pdf_file = "summary.pdf";
+            }
+        }
+
+        append_cwd(output_tabulate_dir);
+
+        //generate file
+        int32_t ret = mkdir(output_tabulate_dir.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+
+
+        std::string filepath = output_tabulate_dir + "/tabulate.tex";
+        FILE *out = fopen(filepath.c_str(), "w");
+
+        fprintf(out, "\\PassOptionsToPackage{table}{xcolor}\n");
+        fprintf(out, "\\documentclass{article}\n");
+        fprintf(out, "\\usepackage{xcolor}\n");
+        fprintf(out, "\\begin{document}\n");
+
+        fprintf(out, "\\begin{table}[H]\n");
+        fprintf(out, "\\centering\n");
+        //fprintf(out, "\\rowcolors{2}{blue!25}{blue!10}\n");
+        fprintf(out, "\\begin{tabular}{lcr}\n");
+        fprintf(out, "no. of samples & :& %d \\\\ \n", no_samples);
+        fprintf(out, "no. of chromosomes & : & %d \\\\ \n", no_chromosomes);
+        fprintf(out, "\\end{tabular}\n");
+        fprintf(out, "\\end{table}\n");
+
+        fprintf(out, "\\begin{table}[H]\n");
+        fprintf(out, "\\centering\n");
+        //fprintf(out, "\\rowcolors{2}{blue!25}{blue!10}\n");
+        fprintf(out, "\\begin{tabular}{lrrrrrrrrrr}\n");
+        fprintf(out, "\\multicolumn{3}{r}{} & counts & subcounts & ts/tv & ts & tv & ins/del & ins & del \\\\ \n");
+        fprintf(out, "\\hline\n");
+        fprintf(out, "\\multicolumn{3}{l}{SNPs} & %d & & & & & & & \\\\ \n", VAR_COUNT[POLYMORPHIC][VT_SNP]);
+        fprintf(out, "\\multicolumn{3}{r}{2 alleles} & & %d & %.2f & %d & %d & & & \\\\ \n",  VAR_COUNT[BIALLELIC][VT_SNP],
+                                                                (float)VAR_TS[BIALLELIC][VT_SNP]/VAR_TV[BIALLELIC][VT_SNP],
+                                                                 VAR_TS[BIALLELIC][VT_SNP], VAR_TV[BIALLELIC][VT_SNP]);
+        fprintf(out, "\\multicolumn{3}{r}{3 alleles} & & %d & %.2f & %d & %d & & & \\\\ \n", VAR_COUNT[TRIALLELIC][VT_SNP],
+                                                                 (float)VAR_TS[TRIALLELIC][VT_SNP]/VAR_TV[TRIALLELIC][VT_SNP],
+                                                                 VAR_TS[TRIALLELIC][VT_SNP], VAR_TV[TRIALLELIC][VT_SNP]);
+        fprintf(out, "\\multicolumn{3}{r}{4 alleles} & & %d & %.2f & %d & %d & & & \\\\ \n", VAR_COUNT[TETRAALLELIC][VT_SNP],
+                                                                 (float)VAR_TS[TETRAALLELIC][VT_SNP]/VAR_TV[TETRAALLELIC][VT_SNP],
+                                                                 VAR_TS[TETRAALLELIC][VT_SNP], VAR_TV[TETRAALLELIC][VT_SNP]);
+        fprintf(out, "\\multicolumn{11}{l}{} \\\\\n");
+        fprintf(out, "\\hline\n");
+        fprintf(out, "\\multicolumn{11}{l}{} \\\\\n");
+        fprintf(out, "\\multicolumn{3}{l}{MNPs} & %d & & & & & & & \\\\ \n", VAR_COUNT[POLYMORPHIC][VT_MNP]);
+        fprintf(out, "&&\\multicolumn{1}{r}{2 alleles} & & %d & %.2f & %d & %d & & & \\\\ \n", VAR_COUNT[BIALLELIC][VT_MNP],
+                                                                 (float)VAR_TS[BIALLELIC][VT_MNP]/VAR_TV[BIALLELIC][VT_MNP],
+                                                                 VAR_TS[BIALLELIC][VT_MNP], VAR_TV[BIALLELIC][VT_MNP]);
+        fprintf(out, "&&\\multicolumn{1}{r}{multiallelic} & & %d & %.2f & %d & %d & & & \\\\ \n", VAR_COUNT[MULTIALLELIC][VT_MNP],
+                                                                 (float)VAR_TS[MULTIALLELIC][VT_MNP]/VAR_TV[MULTIALLELIC][VT_MNP],
+                                                                 VAR_TS[MULTIALLELIC][VT_MNP], VAR_TV[MULTIALLELIC][VT_MNP]);
+        fprintf(out, "\\multicolumn{11}{l}{} \\\\\n");
+        fprintf(out, "\\hline\n");
+        fprintf(out, "\\multicolumn{11}{l}{} \\\\\n");
+        fprintf(out, "\\multicolumn{3}{l}{Indel} & %d & & & & & & & \\\\ \n", VAR_COUNT[POLYMORPHIC][VT_INDEL]);
+        fprintf(out, "&&\\multicolumn{1}{r}{2 alleles} & & %d & & & & %.2f & %d & %d \\\\ \n", VAR_COUNT[BIALLELIC][VT_INDEL],
+                                                                 (float)VAR_INS[BIALLELIC][VT_INDEL]/VAR_DEL[BIALLELIC][VT_INDEL],
+                                                                 VAR_INS[BIALLELIC][VT_INDEL], VAR_DEL[BIALLELIC][VT_INDEL]);
+        fprintf(out, "&&\\multicolumn{1}{r}{multiallelic} & & %d & & & & %.2f & %d & %d \\\\ \n", VAR_COUNT[MULTIALLELIC][VT_INDEL],
+                                                                 (float)VAR_INS[MULTIALLELIC][VT_INDEL]/VAR_DEL[MULTIALLELIC][VT_INDEL],
+                                                                 VAR_INS[MULTIALLELIC][VT_INDEL], VAR_DEL[MULTIALLELIC][VT_INDEL]);
+        fprintf(out, "\\multicolumn{11}{l}{} \\\\\n");
+        fprintf(out, "\\hline\n");
+        fprintf(out, "\\multicolumn{11}{l}{} \\\\\n");
+        fprintf(out, "\\multicolumn{3}{l}{SNP/MNP} & %d & & & & & & & \\\\ \n", VAR_COUNT[POLYMORPHIC][VT_SNP|VT_MNP]);
+        fprintf(out, "&&\\multicolumn{1}{r}{multiallelic} & & & & & & & & \\\\ \n");
+        fprintf(out, "\\multicolumn{11}{l}{} \\\\\n");
+        fprintf(out, "\\hline\n");
+        fprintf(out, "\\multicolumn{11}{l}{} \\\\\n");
+        fprintf(out, "\\multicolumn{3}{l}{SNP/Indel} & %d & & & & &  & & \\\\ \n", VAR_COUNT[POLYMORPHIC][VT_SNP|VT_INDEL]);
+        fprintf(out, "&&\\multicolumn{1}{r}{biallelic} & & %d & %.2f & %d & %d & %.2f & %d & %d \\\\ \n", VAR_COUNT[BIALLELIC][VT_SNP|VT_INDEL],
+                                                                 (float)VAR_TS[BIALLELIC][VT_SNP|VT_INDEL]/VAR_TV[BIALLELIC][VT_SNP|VT_INDEL],
+                                                                  VAR_TS[BIALLELIC][VT_SNP|VT_INDEL],
+                                                                  VAR_TV[BIALLELIC][VT_SNP|VT_INDEL],
+                                                                 (float)VAR_INS[BIALLELIC][VT_SNP|VT_INDEL]/VAR_DEL[BIALLELIC][VT_SNP|VT_INDEL],
+                                                                  VAR_INS[BIALLELIC][VT_SNP|VT_INDEL],
+                                                                  VAR_DEL[BIALLELIC][VT_SNP|VT_INDEL]);
+        fprintf(out, "&&\\multicolumn{1}{r}{multiallelic} & & %d & %.2f & %d & %d & %.2f & %d & %d \\\\ \n", VAR_COUNT[MULTIALLELIC][VT_SNP|VT_INDEL],
+                                                                 (float)VAR_TS[MULTIALLELIC][VT_SNP|VT_INDEL]/VAR_TV[MULTIALLELIC][VT_SNP|VT_INDEL],
+                                                                  VAR_TS[MULTIALLELIC][VT_SNP|VT_INDEL],
+                                                                  VAR_TV[MULTIALLELIC][VT_SNP|VT_INDEL],
+                                                                 (float)VAR_INS[MULTIALLELIC][VT_SNP|VT_INDEL]/VAR_DEL[MULTIALLELIC][VT_SNP|VT_INDEL],
+                                                                  VAR_INS[MULTIALLELIC][VT_SNP|VT_INDEL],
+                                                                  VAR_DEL[MULTIALLELIC][VT_SNP|VT_INDEL]);
+        fprintf(out, "\\multicolumn{11}{l}{} \\\\\n");
+        fprintf(out, "\\hline\n");
+        fprintf(out, "\\multicolumn{11}{l}{} \\\\\n");
+        fprintf(out, "\\multicolumn{3}{l}{MNP/Indel} & %d &  & & & & & & \\\\ \n", VAR_COUNT[POLYMORPHIC][VT_MNP|VT_INDEL]);
+        fprintf(out, "&&\\multicolumn{1}{r}{biallelic} & & %d & %.2f & %d & %d & %.2f & %d & %d \\\\ \n", VAR_COUNT[BIALLELIC][VT_MNP|VT_INDEL],
+                                                                 (float)VAR_TS[BIALLELIC][VT_MNP|VT_INDEL]/VAR_TV[BIALLELIC][VT_MNP|VT_INDEL],
+                                                                 VAR_TS[BIALLELIC][VT_MNP|VT_INDEL],
+                                                                 VAR_TV[BIALLELIC][VT_MNP|VT_INDEL],
+                                                                 (float)VAR_INS[BIALLELIC][VT_MNP|VT_INDEL]/VAR_DEL[BIALLELIC][VT_MNP|VT_INDEL],
+                                                                 VAR_INS[BIALLELIC][VT_MNP|VT_INDEL],
+                                                                 VAR_DEL[BIALLELIC][VT_MNP|VT_INDEL]);
+        fprintf(out, "&&\\multicolumn{1}{r}{multiallelic} & & %d & %.2f & %d & %d & %.2f & %d & %d \\\\ \n", VAR_COUNT[MULTIALLELIC][VT_MNP|VT_INDEL],
+                                                                 (float)VAR_TS[MULTIALLELIC][VT_MNP|VT_INDEL]/VAR_TV[MULTIALLELIC][VT_MNP|VT_INDEL],
+                                                                 VAR_TS[MULTIALLELIC][VT_MNP|VT_INDEL],
+                                                                 VAR_TV[MULTIALLELIC][VT_MNP|VT_INDEL],
+                                                                 (float)VAR_INS[MULTIALLELIC][VT_MNP|VT_INDEL]/VAR_DEL[MULTIALLELIC][VT_MNP|VT_INDEL],
+                                                                 VAR_INS[MULTIALLELIC][VT_MNP|VT_INDEL],
+                                                                 VAR_DEL[MULTIALLELIC][VT_MNP|VT_INDEL]);
+        fprintf(out, "\\multicolumn{11}{l}{} \\\\\n");
+        fprintf(out, "\\hline\n");
+        fprintf(out, "\\multicolumn{11}{l}{} \\\\\n");
+        fprintf(out, "\\multicolumn{3}{l}{SNP/MNP/Indel} & %d &  & & & & & & \\\\ \n", VAR_COUNT[MULTIALLELIC][VT_SNP|VT_MNP|VT_INDEL]);
+        fprintf(out, "\\multicolumn{3}{l}{(multiallelic)} & & %d & & & & & & \\\\ \n", VAR_COUNT[MULTIALLELIC][VT_SNP|VT_MNP|VT_INDEL]);
+        fprintf(out, "\\multicolumn{11}{l}{} \\\\\n");
+        fprintf(out, "\\hline\n");
+        fprintf(out, "\\multicolumn{11}{l}{} \\\\\n");
+        fprintf(out, "\\multicolumn{3}{l}{Clumped} & %d & & & & & & & \\\\ \n",  VAR_COUNT[POLYMORPHIC][VT_CLUMPED]);
+        fprintf(out, "&&\\multicolumn{1}{r}{biallelic} & & %d & & & & & & \\\\ \n", VAR_COUNT[BIALLELIC][VT_CLUMPED]);
+        fprintf(out, "&&\\multicolumn{1}{r}{multiallelic} & & %d & & & & & & \\\\ \n", VAR_COUNT[MULTIALLELIC][VT_CLUMPED]);
+        fprintf(out, "\\end{tabular}\n");
+        fprintf(out, "\\end{table}\n");
+
+        fprintf(out, "\\begin{table}[H]\n");
+        fprintf(out, "\\centering\n");
+        //fprintf(out, "\\rowcolors{2}{blue!25}{blue!10}\n");
+        fprintf(out, "\\begin{tabular}{lcr}\n");
+        fprintf(out, "no. of reference& :& %d \\\\ \n", VAR_COUNT[MONOMORPHIC][VT_REF]);
+        fprintf(out, "no. of observed & : & %d \\\\ \n", no_observed_variants);
+        fprintf(out, "no. of unclassified & : & %d \\\\ \n", no_observed_variants-no_classified_variants);
+        fprintf(out, "\\end{tabular}\n");
+        fprintf(out, "\\end{table}\n");
+
+        fprintf(out, "\\end{document}\n");
+
+
+
+
+
+
+//        fprintf(out, "\\begin{table}[ht]\n");
+//        fprintf(out, "\\centering\n");
+//        fprintf(out, "\\rowcolors{2}{blue!25}{blue!10}\n");
+//        fprintf(out, "\\begin{tabular}{lr}\n");
+//        fprintf(out, "no. of samples & %d \\\\ \n", no_samples);
+//        fprintf(out, "no. of chromosomes  & %d \\\\ \n", no_chromosomes);
+//        fprintf(out, "\\end{tabular}\n");
+//        fprintf(out, "\\end{table}\n");
+//
+//        fprintf(out, "\\begin{table}[ht]\n");
+//        fprintf(out, "\\centering\n");
+//        fprintf(out, "\\rowcolors{2}{blue!25}{blue!10}\n");
+//        fprintf(out, "\\begin{tabular}{lr}\n");
+//        fprintf(out, "no. of Indels & %d \\\\ \n", VAR_COUNT[POLYMORPHIC][VT_INDEL]);
+//        fprintf(out, "multicloumBiallelic (ins/del) & %d (%.2f) \\\\ \n", VAR_COUNT[BIALLELIC][VT_INDEL], (float)VAR_INS[BIALLELIC][VT_INDEL]/VAR_DEL[BIALLELIC][VT_INDEL]);
+//        fprintf(out, "\\end{tabular}\n");
+//        fprintf(out, "\\end{table}\n");
+
+//        fprintf(stderr, "       no. Indels                         : %10d\n", VAR_COUNT[POLYMORPHIC][VT_INDEL]);
+//        fprintf(stderr, "           biallelic (ins/del)            : %15d (%.2f) [%d/%d]\n",
+//                                                                 VAR_COUNT[BIALLELIC][VT_INDEL],
+//                                                                 (float)VAR_INS[BIALLELIC][VT_INDEL]/VAR_DEL[BIALLELIC][VT_INDEL],
+//                                                                 VAR_INS[BIALLELIC][VT_INDEL], VAR_DEL[BIALLELIC][VT_INDEL]);
+//        fprintf(stderr, "               insertions                 : %15d\n", VAR_INS[BIALLELIC][VT_INDEL]);
+//        fprintf(stderr, "               deletions                  : %15d\n", VAR_DEL[BIALLELIC][VT_INDEL]);
+//        fprintf(stderr, "           multiallelic (ins/del)         : %15d (%.2f) [%d/%d]\n",
+//                                                                 VAR_COUNT[MULTIALLELIC][VT_INDEL],
+//                                                                 (float)VAR_INS[MULTIALLELIC][VT_INDEL]/VAR_DEL[MULTIALLELIC][VT_INDEL],
+//                                                                 VAR_INS[MULTIALLELIC][VT_INDEL], VAR_DEL[MULTIALLELIC][VT_INDEL]);
+//        fprintf(stderr, "\n");
+//        fprintf(stderr, "       no. SNP/MNP                        : %10d\n", VAR_COUNT[POLYMORPHIC][VT_SNP|VT_MNP]);
+//        fprintf(stderr, "           (multiallelic)\n");
+//        fprintf(stderr, "\n");
+//        fprintf(stderr, "       no. SNP/Indels                     : %10d\n", VAR_COUNT[POLYMORPHIC][VT_SNP|VT_INDEL]);
+//        fprintf(stderr, "           biallelic (ts/tv) (ins/del)    : %15d (%.2f) [%d/%d] (%.2f) [%d/%d]\n",
+//                                                                 VAR_COUNT[BIALLELIC][VT_SNP|VT_INDEL],
+//                                                                 (float)VAR_TS[BIALLELIC][VT_SNP|VT_INDEL]/VAR_TV[BIALLELIC][VT_SNP|VT_INDEL],
+//                                                                  VAR_TS[BIALLELIC][VT_SNP|VT_INDEL],
+//                                                                  VAR_TV[BIALLELIC][VT_SNP|VT_INDEL],
+//                                                                 (float)VAR_INS[BIALLELIC][VT_SNP|VT_INDEL]/VAR_DEL[BIALLELIC][VT_SNP|VT_INDEL],
+//                                                                  VAR_INS[BIALLELIC][VT_SNP|VT_INDEL],
+//                                                                  VAR_DEL[BIALLELIC][VT_SNP|VT_INDEL]);
+//        fprintf(stderr, "               insertions                 : %15d\n", VAR_INS[BIALLELIC][VT_SNP|VT_INDEL]);
+//        fprintf(stderr, "               deletions                  : %15d\n", VAR_DEL[BIALLELIC][VT_SNP|VT_INDEL]);
+//        fprintf(stderr, "           multiallelic (ts/tv) (ins/del) : %15d (%.2f) [%d/%d] (%.2f) [%d/%d]\n",
+//                                                                 VAR_COUNT[MULTIALLELIC][VT_SNP|VT_INDEL],
+//                                                                 (float)VAR_TS[MULTIALLELIC][VT_SNP|VT_INDEL]/VAR_TV[MULTIALLELIC][VT_SNP|VT_INDEL],
+//                                                                  VAR_TS[MULTIALLELIC][VT_SNP|VT_INDEL],
+//                                                                  VAR_TV[MULTIALLELIC][VT_SNP|VT_INDEL],
+//                                                                 (float)VAR_INS[MULTIALLELIC][VT_SNP|VT_INDEL]/VAR_DEL[MULTIALLELIC][VT_SNP|VT_INDEL],
+//                                                                  VAR_INS[MULTIALLELIC][VT_SNP|VT_INDEL],
+//                                                                  VAR_DEL[MULTIALLELIC][VT_SNP|VT_INDEL]);
+//        fprintf(stderr, "\n");
+//        fprintf(stderr, "       no. MNP/Indels                     : %10d\n", VAR_COUNT[POLYMORPHIC][VT_MNP|VT_INDEL]);
+//        fprintf(stderr, "           biallelic (ts/tv) (ins/del)    : %15d (%.2f) [%d/%d] (%.2f) [%d/%d]\n",  VAR_COUNT[BIALLELIC][VT_MNP|VT_INDEL],
+//                                                                 (float)VAR_TS[BIALLELIC][VT_MNP|VT_INDEL]/VAR_TV[BIALLELIC][VT_MNP|VT_INDEL],
+//                                                                 VAR_TS[BIALLELIC][VT_MNP|VT_INDEL],
+//                                                                 VAR_TV[BIALLELIC][VT_MNP|VT_INDEL],
+//                                                                 (float)VAR_INS[BIALLELIC][VT_MNP|VT_INDEL]/VAR_DEL[BIALLELIC][VT_MNP|VT_INDEL],
+//                                                                 VAR_INS[BIALLELIC][VT_MNP|VT_INDEL],
+//                                                                 VAR_DEL[BIALLELIC][VT_MNP|VT_INDEL]);
+//        fprintf(stderr, "               insertions                 : %15d\n", VAR_INS[BIALLELIC][VT_MNP|VT_INDEL]);
+//        fprintf(stderr, "               deletions                  : %15d\n", VAR_DEL[BIALLELIC][VT_MNP|VT_INDEL]);
+//        fprintf(stderr, "           multiallelic (ts/tv) (ins/del) : %15d (%.2f) [%d/%d] (%.2f) [%d/%d]\n",
+//                                                                 VAR_COUNT[MULTIALLELIC][VT_MNP|VT_INDEL],
+//                                                                 (float)VAR_TS[MULTIALLELIC][VT_MNP|VT_INDEL]/VAR_TV[MULTIALLELIC][VT_MNP|VT_INDEL],
+//                                                                 VAR_TS[MULTIALLELIC][VT_MNP|VT_INDEL],
+//                                                                 VAR_TV[MULTIALLELIC][VT_MNP|VT_INDEL],
+//                                                                 (float)VAR_INS[MULTIALLELIC][VT_MNP|VT_INDEL]/VAR_DEL[MULTIALLELIC][VT_MNP|VT_INDEL],
+//                                                                 VAR_INS[MULTIALLELIC][VT_MNP|VT_INDEL],
+//                                                                 VAR_DEL[MULTIALLELIC][VT_MNP|VT_INDEL]);
+//        fprintf(stderr, "\n");
+//        fprintf(stderr, "       no. SNP/MNP/Indels                 : %10d\n", VAR_COUNT[MULTIALLELIC][VT_SNP|VT_MNP|VT_INDEL]);
+//        fprintf(stderr, "           (multiallelic)\n");
+//        fprintf(stderr, "\n");
+//        fprintf(stderr, "       no. of clumped variants            : %10d\n", VAR_COUNT[POLYMORPHIC][VT_CLUMPED]);
+//        fprintf(stderr, "           biallelic                      : %15d\n", VAR_COUNT[BIALLELIC][VT_CLUMPED]);
+//        fprintf(stderr, "           multiallelic                   : %15d\n", VAR_COUNT[MULTIALLELIC][VT_CLUMPED]);
+//        fprintf(stderr, "\n");
+//        fprintf(stderr, "       no. of reference                   : %10d\n", VAR_COUNT[MONOMORPHIC][VT_REF]);
+//        fprintf(stderr, "\n");
+//        fprintf(stderr, "       no. of observed variants           : %10d\n", no_observed_variants);
+//        fprintf(stderr, "       no. of unclassified variants       : %10d\n", no_observed_variants-no_classified_variants);
+//        fprintf(stderr, "\n");
+
+
+
+
+
+
+        fclose(out);
+
+        std::string cmd = "cd "  + output_tabulate_dir + "; pdflatex tabulate.tex > run.log; mv tabulate.pdf " + output_pdf_file;
+        std::cerr << cmd << "\n";
+
+        int32_t sys_ret = system(cmd.c_str());
+    };
+
     ~Igor() {};
 
     private:
@@ -364,4 +615,5 @@ void peek(int argc, char ** argv)
     igor.initialize();
     igor.peek();
     igor.print_stats();
+    igor.print_pdf();
 };
