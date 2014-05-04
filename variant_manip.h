@@ -77,7 +77,7 @@ class Allele
     int32_t tv;    //no. of tranversions (mlen-ts)
     int32_t ins;   //no. of insertions 
     int32_t del;   //no. of deletions 
-
+    
     Allele(int32_t type, int32_t diff, int32_t alen, int32_t dlen, int32_t tlen, int32_t mlen, int32_t ts)
     {
         this->type = type;
@@ -136,7 +136,7 @@ class Variant
     int32_t mlen;    //motif length
     int32_t tlen;    //reference tract length
     std::vector<Allele> alleles;
-
+    
     Variant()
     {
         type = VT_REF;

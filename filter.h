@@ -119,7 +119,7 @@ class Filter
     bcf_hdr_t *h;
     bcf1_t *v;
     Variant *variant;
-    bool need_to_classif_variant;
+    bool need_to_classify_variant;
 
     /**
      * Constructor.
