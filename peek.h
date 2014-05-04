@@ -38,8 +38,12 @@
 #define BIALLELIC 1
 #define TRIALLELIC 2
 #define TETRAALLELIC 3
-#define MULTIALLELIC 4
-#define POLYMORPHIC 5
+#define GE_PENTAALLELIC 4
+#define GE_TRIALLELIC 5
+#define GE_TETRAALLELIC 6
+#define POLYMORPHIC 7
+
+#define NO_ALLELE_CATEGORIES 8
 
 void peek(int argc, char ** argv);
     
