@@ -604,6 +604,7 @@ Filter::Filter(std::string exp, VariantManip *vm)
  */
 void Filter::parse(const char* exp, bool debug)
 {
+    need_to_classify_variant = false;
     if (strlen(exp)!=0)
     {
         if (tree!=NULL)
@@ -713,9 +714,6 @@ void Filter::parse(const char* exp, int32_t len, Node *node, bool debug)
 
         node->type = type;
         
-        need_to_classif_variant = true;
-        
-
         node->left = new Node();
         parse(exp, p-exp+1, node->left, debug);
 
@@ -796,6 +794,7 @@ void Filter::parse_literal(const char* exp, int32_t len, Node * node, bool debug
     }
     else if (strncmp(exp, "VTYPE", 5)==0)
     {
+        need_to_classify_variant = true;
         node->type = VT_VARIANT_TYPE;
         if (debug) std::cerr << "\tis variant_op\n";
         return;
@@ -808,6 +807,7 @@ void Filter::parse_literal(const char* exp, int32_t len, Node * node, bool debug
     }
     else if (strncmp(exp, "INDEL", len)==0)
     {
+        need_to_classify_variant = true;
         node->type = VT_INT;
         node->i = VT_INDEL;
         if (debug) std::cerr << "\tis INDEL\n";
@@ -815,6 +815,7 @@ void Filter::parse_literal(const char* exp, int32_t len, Node * node, bool debug
     }
     else if (strncmp(exp, "SNP", len)==0)
     {
+        need_to_classify_variant = true;
         node->type = VT_INT;
         node->i = VT_SNP;
         if (debug) std::cerr << "\tis SNP\n";
@@ -822,6 +823,7 @@ void Filter::parse_literal(const char* exp, int32_t len, Node * node, bool debug
     }
     else if (strncmp(exp, "MNP", len)==0)
     {
+        need_to_classify_variant = true;
         node->type = VT_INT;
         node->i = VT_MNP;
         if (debug) std::cerr << "\tis MNP\n";
@@ -829,6 +831,7 @@ void Filter::parse_literal(const char* exp, int32_t len, Node * node, bool debug
     }
     else if (strncmp(exp, "CLUMPED", len)==0)
     {
+        need_to_classify_variant = true;
         node->type = VT_INT;
         node->i = VT_CLUMPED;
         if (debug) std::cerr << "\tis CLUMPED\n";
@@ -836,12 +839,14 @@ void Filter::parse_literal(const char* exp, int32_t len, Node * node, bool debug
     }
     else if (strncmp(exp, "DLEN", len)==0)
     {
+        need_to_classify_variant = true;
         node->type = VT_VARIANT_DLEN;
         if (debug) std::cerr << "\tis dlen\n";
         return;
     }
     else if (strncmp(exp, "LEN", len)==0)
     {
+        need_to_classify_variant = true;
         node->type = VT_VARIANT_LEN;
         if (debug) std::cerr << "\tis len\n";
         return;
