@@ -757,6 +757,8 @@ bool Filter::is_literal(const char* exp, int32_t len)
  */
 void Filter::parse_literal(const char* exp, int32_t len, Node * node, bool debug)
 {
+    node->type = VT_UNKNOWN;
+    
     // if not sign in front of literal
     if (exp[0]=='~')
     {
@@ -846,6 +848,7 @@ void Filter::parse_literal(const char* exp, int32_t len, Node * node, bool debug
     }
     else
     {
+        //integer type
         const char* start = exp;
         char *end = NULL;
         int32_t i = std::strtoul(exp, &end, 10);
@@ -858,6 +861,7 @@ void Filter::parse_literal(const char* exp, int32_t len, Node * node, bool debug
             return;
         }
 
+        //float type
         start = exp;
         end = NULL;
         float f = std::strtod(exp, &end);
@@ -868,10 +872,24 @@ void Filter::parse_literal(const char* exp, int32_t len, Node * node, bool debug
             if (debug) std::cerr << "\tis float: " << f << "\n";
             return;
         }
-
-        kputsn(exp, len, &node->tag);
-        if (debug) std::cerr << "\tis string\n";
-        return;
+    
+        //string type
+        if (exp[0]=='"' && exp[len-1]=='"')
+        {
+            node->type = VT_STR;
+            kputsn(exp, len, &node->tag);
+            if (debug) std::cerr << "\tis string\n";
+            return;
+        }
+        
+        if (node->type==VT_UNKNOWN)
+        {
+            kstring_t s = {0,0,0}; 
+            kputsn(exp, len, &s);
+            fprintf(stderr, "[E:%s] %s is not recognised\n", __FUNCTION__, s.s);
+            print_filter_help();
+            exit(1);
+        }
     }
 
     if (debug)
@@ -884,6 +902,41 @@ void Filter::parse_literal(const char* exp, int32_t len, Node * node, bool debug
     }
 
     return;
+}
+
+/**
+ * Help message on filter expressions.
+ */
+void Filter::print_filter_help()
+{
+    fprintf(stderr, "\n");
+    fprintf(stderr, "  Variant characteristics\n");
+    fprintf(stderr, "    VTYPE,N_ALLELE,DLEN,LEN\n");
+    fprintf(stderr, "\n");
+    fprintf(stderr, "  Variant value types\n");
+    fprintf(stderr, "    SNP,MNP,INDEL,CLUMPED\n");
+    fprintf(stderr, "\n");
+    fprintf(stderr, "  Biallelic SNPs only                       : VTYPE==SNP&&N_ALLELE==2\n");
+    fprintf(stderr, "  Biallelic Indels with embedded SNP        : VTYPE==(SNP|INDEL)&&N_ALLELE==2\n");
+    fprintf(stderr, "  Biallelic variants involving insertions   : VTYPE&INDEL&&DLEN>0&&N_ALLELE==2\n");
+    fprintf(stderr, "  Biallelic variants involving 1bp variants : LEN==1&&N_ALLELE==2\n");
+    fprintf(stderr, "\n");
+    fprintf(stderr, "  FILTER fields\n");
+    fprintf(stderr, "    PASS, FILTER.<tag>\n");
+    fprintf(stderr, "\n");
+    fprintf(stderr, "  INFO fields\n");
+    fprintf(stderr, "    INFO.<tag>\n");
+    fprintf(stderr, "\n");
+    fprintf(stderr, "  Passed biallelic SNPs only                  : PASS&&VTYPE==SNP&&N_ALLELE==2\n");
+    fprintf(stderr, "  Passed Common biallelic SNPs only           : PASS&&VTYPE==SNP&&N_ALLELE==2&&INFO.AF>0.005\n");
+    fprintf(stderr, "  Passed Common biallelic SNPs or rare indels : (PASS&&VTYPE==SNP&&N_ALLELE==2&&INFO.AF>0.005)||(VTYPE&INDEL&&INFO.AF<=0.005)\n");
+    fprintf(stderr, "\n");
+    fprintf(stderr, "  Operations\n");
+    fprintf(stderr, "    ==,~,&&,||,&,|,+,-,*,/\n");
+    fprintf(stderr, "\n");
+    fprintf(stderr, "  Failed rare variants : (~PASS&&INFO.AC/INFO.AN<0.005\n");
+    fprintf(stderr, "\n");
+    
 }
 
 /**

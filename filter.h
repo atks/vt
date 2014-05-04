@@ -67,6 +67,8 @@
 #define VT_VARIANT_DLEN  (37|VT_INT|VT_BCF_OP)
 #define VT_VARIANT_LEN   (38|VT_INT|VT_BCF_OP)
 
+#define VT_UNKNOWN -1
+
 /**
  * Class for filtering VCF records.
  */
@@ -181,6 +183,11 @@ class Filter
      * Recursive call for apply.
      */
     void apply(Node* node, bool debug=false);
+    
+    /**
+     * Help message on filter expressions.
+     */
+    void print_filter_help();
 };
 
 #endif
