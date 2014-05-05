@@ -127,3 +127,11 @@ void GenomeInterval::to_string(kstring_t *interval)
         kputw(end1, interval);
     }
 };
+
+/**
+ * Checks if this interval overlap.
+ */
+bool GenomeInterval::overlaps_with(std::string& chrom, int32_t start1, int32_t end1)
+{
+    return (seq==chrom && this->start1<=end1 && this->end1>=start1);
+};

@@ -40,7 +40,7 @@ class Igor : Program
     std::string output_vcf_file;
     std::vector<GenomeInterval> intervals;
     std::string interval_list;
-    std::string gencode_gtf_file;    
+    std::string gencode_gtf_file;
     bool annotate_coding;
 
     ///////
@@ -48,6 +48,7 @@ class Igor : Program
     ///////
     BCFOrderedReader *odr;
     BCFOrderedWriter *odw;
+    OverlapRegionMatcher *orm;
 
     /////////
     //stats//
@@ -114,19 +115,20 @@ class Igor : Program
 //        bcf_hdr_append(odw->hdr, "##INFO=<ID=LFLANK,Number=1,Type=String,Description=\"Right Flank\">");
 //        bcf_hdr_append(odw->hdr, "##INFO=<ID=RFLANK,Number=1,Type=String,Description=\"Left Flank\">");
 //        bcf_hdr_append(odw->hdr, "##INFO=<ID=NS,Number=0,Type=Flag,Description=\"Near to STR\">");
+        bcf_hdr_append(odw->hdr, "##INFO=<ID=LOW_COMPLEXITY,Number=0,Type=Flag,Description=\"INDEL is in low complexity region\">");
 
         ///////////////////////
         //tool initialization//
         ///////////////////////
         vm = new VariantManip(ref_fasta_file);
-        
+
         if (annotate_coding)
-        {    
+        {
             bcf_hdr_append(odw->hdr, "##INFO=<ID=GENCODE_FS,Number=0,Type=Flag,Description=\"Frameshift INDEL\">");
             bcf_hdr_append(odw->hdr, "##INFO=<ID=GENCODE_NFS,Number=0,Type=Flag,Description=\"Non Frameshift INDEL\">");
             gc = new GENCODE(gencode_gtf_file, ref_fasta_file);
         }
-        
+
         ////////////////////////
         //stats initialization//
         ////////////////////////
@@ -155,6 +157,9 @@ class Igor : Program
     {
         odw->write_hdr();
 
+        std::string str = "/net/fantasia/home/atks/ref/vt/grch37/mdust.bed.gz";
+        orm = new OverlapRegionMatcher(str);
+
         bcf1_t *v = odw->get_bcf1_from_pool();
         std::vector<Interval*> overlaps;
         Variant variant;
@@ -166,40 +171,33 @@ class Igor : Program
             std::string chrom = bcf_get_chrom(odr->hdr,v);
             int32_t start1 = bcf_get_pos1(v);
             int32_t end1 = bcf_get_end_pos1(v);
-            
+
             vm->vtype2string(vtype, &s);
             if (s.l)
-            {    
+            {
                 bcf_update_info_string(odr->hdr, v, "VT", s.s);
             }
-            
+
             if (vtype==VT_SNP)
             {
                 //synonymous and non synonymous annotation
-                
-            }    
+
+            }
             else if (vtype&VT_INDEL)
             {
+                if (orm->overlaps_with(chrom, start1+1, end1))
+                {
+                    bcf_update_info_flag(odr->hdr, v, "LOW_COMPLEXITY", "", 1);
+                }
+
                 //frame shift annotation
                 if (annotate_coding)
                 {
-//                    if (gc->overlaps_with(chrom, start1+1, end1, GC_FT_CDS))
-//                    {
-//                        if (variant.exists_frame_shift())
-//                        {
-//                            bcf_update_info_flag(odr->hdr, v, "GENCODE_FS", "", 1);
-//                        }
-//                        else
-//                        {
-//                            bcf_update_info_flag(odr->hdr, v, "GENCODE_NFS", "", 1);
-//                        }
-//                    }    
-                    
                     gc->search(chrom, start1+1, end1, overlaps);
-    
+
                     bool cds_found = false;
                     bool is_fs = false;
-    
+
                     for (int32_t i=0; i<overlaps.size(); ++i)
                     {
                         GENCODERecord *rec = (GENCODERecord *) overlaps[i];
@@ -213,7 +211,7 @@ class Igor : Program
                             }
                         }
                     }
-                    
+
                     if (cds_found)
                     {
                         if (is_fs)
@@ -225,23 +223,23 @@ class Igor : Program
                             bcf_update_info_flag(odr->hdr, v, "GENCODE_NFS", "", 1);
                         }
                     }
-                    
-                    //classify STR 
+
+                    //classify STR
                     std::string ru = "ACGT";
                     int32_t rl = 4;
                 }
     //            bcf_update_info_string(odr->hdr, v, "RU", ru.c_str());
-    //            bcf_update_info_int32(odr->hdr, v, "RL", &rl, 1); 
+    //            bcf_update_info_int32(odr->hdr, v, "RL", &rl, 1);
             }
-            
+
             ++no_variants_annotated;
             odw->write(v);
             v = odw->get_bcf1_from_pool();
         }
-        
+
         odw->close();
     };
-    
+
     private:
 
 };

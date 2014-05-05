@@ -1,6 +1,6 @@
 /* The MIT License
 
-   Copyright (c) 2013 Adrian Tan <atks@umich.edu>
+   Copyright (c) 2014 Adrian Tan <atks@umich.edu>
 
    Permission is hereby granted, free of charge, to any person obtaining a copy
    of this software and associated documentation files (the "Software"), to deal
@@ -21,35 +21,5 @@
    THE SOFTWARE.
 */
 
-#ifndef ANNOTATE_VARIANTS_H
-#define ANNOTATE_VARIANTS_H
-
-#include <cstdlib>
-#include <cstdint>
-#include <cstring>
-#include <cmath>
-#include <cfloat>
-#include <vector>
-#include <map>
-#include <queue>
-#include <list>
-#include <string>
-#include <iostream>
-#include "htslib/faidx.h"
-#include "htslib/kstring.h"
-#include "htslib/vcf.h"
-#include "bcf_ordered_reader.h"
-#include "bcf_ordered_writer.h"
-#include "hts_utils.h"
-#include "utils.h"
-#include "interval_tree.h"
-#include "variant_manip.h"
-#include "program.h"
-#include "variant_manip.h"
-#include "log_tool.h"
-#include "gencode.h"
 #include "overlap_region_matcher.h"
 
-void annotate_variants(int argc, char ** argv);
-
-#endif

@@ -84,14 +84,21 @@ class TBXOrderedReader
 
     //shared objects for string manipulation
     kstring_t s;
-
+    
+    /**
+     * Initialize files and intervals.
+     *
+     * @hts              name of the input file
+     */
+    TBXOrderedReader(std::string& hts_file);
+   
     /**
      * Initialize files and intervals.
      *
      * @hts              name of the input file
      * @intervals        list of intervals, if empty, all records are selected.
      */
-    TBXOrderedReader(std::string hts_file, std::vector<GenomeInterval>& intervals);
+    TBXOrderedReader(std::string& hts_file, std::vector<GenomeInterval>& intervals);
 
     /**
      * Jump to interval. Returns false if not successful.

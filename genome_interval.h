@@ -72,7 +72,7 @@ class GenomeInterval
      * Sets an interval.
      */
     void set(std::string interval);
-        
+
     /**
      * Converts genome interval into the entire chromosome.
      */
@@ -87,6 +87,11 @@ class GenomeInterval
      * Returns a string representation of this Genome Interval.
      */
     void to_string(kstring_t *interval);
+
+    /**
+     * Checks if this interval overlap.
+     */
+    bool overlaps_with(std::string& chrom, int32_t start1, int32_t end1);
 };
 
 #endif
