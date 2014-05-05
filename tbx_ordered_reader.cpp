@@ -23,7 +23,38 @@
 
 #include "tbx_ordered_reader.h"
 
-TBXOrderedReader::TBXOrderedReader(std::string hts_file, std::vector<GenomeInterval>& intervals)
+/**
+ * Initialize files and intervals.
+ *
+ * @hts              name of the input file
+ */
+TBXOrderedReader::TBXOrderedReader(std::string& hts_file)
+{		
+    this->hts_file = hts_file;
+    interval_index = 0;
+
+    hts = NULL;
+    tbx = NULL;
+    itr = NULL;
+
+    hts = hts_open(hts_file.c_str(), "r");
+		
+	index_loaded = false;	
+    if ((tbx = tbx_index_load(hts_file.c_str())))
+    {
+        index_loaded = true;
+    }
+
+    random_access_enabled = index_loaded;
+};
+
+/**
+ * Initialize files and intervals.
+ *
+ * @hts              name of the input file
+ * @intervals        list of intervals, if empty, all records are selected.
+ */
+TBXOrderedReader::TBXOrderedReader(std::string& hts_file, std::vector<GenomeInterval>& intervals)
 {		
     this->hts_file = hts_file;
     this->intervals = intervals;

@@ -54,7 +54,9 @@ SOURCES = program\
 		estimator\
 		profile_afs\
 		profile_hwe\
-		profile_len
+		profile_len\
+		overlap_region_matcher\
+		bed
 
 SOURCESONLY = main.cpp
 
