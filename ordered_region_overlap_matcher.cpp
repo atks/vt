@@ -45,100 +45,54 @@ bool OrderedRegionOverlapMatcher::overlaps_with(std::string& chrom, int32_t star
 {
     bool overlaps = false;
     
+    //moves to new chromosome
     if (current_interval.seq!=chrom)
     {
         buffer.clear();
         current_interval.set(chrom);
         todr->jump_to_interval(current_interval);
-//        std::cerr << "completed jump\n";
         while (todr->read(&s))
         {
             BEDRecord br(&s);
-            
-            if (br.end1<start1)
-            {
-                continue;
-            }
-            
-            overlaps = br.start1<=end1;
-            
+            if (br.end1<start1) continue;
+            overlaps = br.start1<=end1;            
             buffer.push_back(br);
-            
-            if (overlaps)
-            {
-//                std::cerr << "\t" << current_interval.seq << ":" << br.start1 << "-" << br.end1 << "\n";
-            }
-            
-            if (br.start1>end1)
-            {
-                break;
-            }
+            if (br.start1>end1) break;
         }
     }
     else
     {
-        //process intervals in buffer
+        //scythe preceding bed records
         std::list<BEDRecord>::iterator i = buffer.begin();
         while (i!=buffer.end())
         {
-            //preceding region
             if ((*i).end1<start1)
             {
                 i = buffer.erase(i);
                 continue;
             }
             
-            //overlaps
-            if ((*i).start1<=end1)
-            {
-                overlaps = true;
-//                std::cerr << "\tin buffer: " << (*i).chrom << ":" << (*i).start1 << "-" << (*i).end1 << "\n";
-                break;
-            }
-            else
-            {
-                overlaps = false;
-                break;
-            }
+            overlaps = ((*i).start1<=end1);
+            if (overlaps) break;            
+            ++i;
         }
         
-        if (buffer.size()==0 && !overlaps)
+        if (!overlaps)
         {
-            //add records
             while (todr->read(&s))
             {
                 BEDRecord br(&s);
                 
-                if (br.end1<start1)
-                {
-                    continue;
-                }
+                if (br.end1<start1) continue;
                 
                 overlaps = br.start1<=end1;
                 
-                if (overlaps)
-                {
-//                    std::cerr << "\tadding: " << current_interval.seq << ":" << br.start1 << "-" << br.end1 << "\n";
-                }
-                
                 buffer.push_back(br);
                 
-                if (br.start1>end1)
-                {
-                    break;
-                }
+                if (br.start1>end1) break;
             }
         }
     }
     
-    
-    
     return overlaps;
 };
-
-/**
- * Clear buffer.
- */
-void OrderedRegionOverlapMatcher::clear_buffer()
-{
-}

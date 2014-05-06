@@ -116,6 +116,8 @@ class Igor : Program
 //        bcf_hdr_append(odw->hdr, "##INFO=<ID=RFLANK,Number=1,Type=String,Description=\"Left Flank\">");
 //        bcf_hdr_append(odw->hdr, "##INFO=<ID=NS,Number=0,Type=Flag,Description=\"Near to STR\">");
         bcf_hdr_append(odw->hdr, "##INFO=<ID=LOW_COMPLEXITY,Number=0,Type=Flag,Description=\"INDEL is in low complexity region\">");
+        bcf_hdr_append(odw->hdr, "##INFO=<ID=LCPLX_FS,Number=0,Type=Flag,Description=\"INDEL is in low complexity region\">");
+        bcf_hdr_append(odw->hdr, "##INFO=<ID=LCPLX_NFS,Number=0,Type=Flag,Description=\"INDEL is in low complexity region\">");
 
         ///////////////////////
         //tool initialization//
@@ -158,6 +160,7 @@ class Igor : Program
         odw->write_hdr();
 
         std::string str = "/net/fantasia/home/atks/ref/vt/grch37/mdust.bed.gz";
+        str = "/net/fantasia/home/atks/dev/vt/bundle/cds.bed.gz";
         orom = new OrderedRegionOverlapMatcher(str);
 
         bcf1_t *v = odw->get_bcf1_from_pool();
@@ -185,50 +188,60 @@ class Igor : Program
             }
             else if (vtype&VT_INDEL)
             {
-                if (start1<=end1 && orom->overlaps_with(chrom, start1+1, end1))
+                if (orom->overlaps_with(chrom, start1, end1))
                 {
 //                    std::cerr << chrom << ":" << start1 << "-" << end1 << "\n";
-                    bcf_update_info_flag(odr->hdr, v, "LOW_COMPLEXITY", "", 1);
+//                    bcf_update_info_flag(odr->hdr, v, "LOW_COMPLEXITY", "", 1);
+                    
+                    if (abs(variant.alleles[0].dlen)%3!=0)
+                    {
+                        bcf_update_info_flag(odr->hdr, v, "LCPLX_FS", "", 1);
+                    }
+                    else
+                    {
+                        bcf_update_info_flag(odr->hdr, v, "LCPLX_NFS", "", 1);
+                    }
                 }
 
                 //frame shift annotation
                 if (annotate_coding)
                 {
-                    gc->search(chrom, start1+1, end1, overlaps);
-
-                    bool cds_found = false;
-                    bool is_fs = false;
-
-                    for (int32_t i=0; i<overlaps.size(); ++i)
-                    {
-                        GENCODERecord *rec = (GENCODERecord *) overlaps[i];
-                        if (rec->feature==GC_FT_CDS)
+                        gc->search(chrom, start1, end1, overlaps);
+    
+                        bool cds_found = false;
+                        bool is_fs = false;
+    
+                        for (int32_t i=0; i<overlaps.size(); ++i)
                         {
-                            cds_found = true;
-                            if (abs(variant.alleles[0].dlen)%3!=0)
+                            GENCODERecord *rec = (GENCODERecord *) overlaps[i];
+                            if (rec->feature==GC_FT_CDS)
                             {
-                                is_fs = true;
-                                break;
+                                cds_found = true;
+                                if (abs(variant.alleles[0].dlen)%3!=0)
+                                {
+                                    is_fs = true;
+                                    break;
+                                }
                             }
                         }
-                    }
-
-                    if (cds_found)
-                    {
-                        if (is_fs)
+    
+                        if (cds_found)
                         {
-                            bcf_update_info_flag(odr->hdr, v, "GENCODE_FS", "", 1);
+                            if (is_fs)
+                            {
+                                bcf_update_info_flag(odr->hdr, v, "GENCODE_FS", "", 1);
+                            }
+                            else
+                            {
+                                bcf_update_info_flag(odr->hdr, v, "GENCODE_NFS", "", 1);
+                            }
                         }
-                        else
-                        {
-                            bcf_update_info_flag(odr->hdr, v, "GENCODE_NFS", "", 1);
-                        }
+    
+                        //classify STR
+                        std::string ru = "ACGT";
+                        int32_t rl = 4;
                     }
-
-                    //classify STR
-                    std::string ru = "ACGT";
-                    int32_t rl = 4;
-                }
+                
     //            bcf_update_info_string(odr->hdr, v, "RU", ru.c_str());
     //            bcf_update_info_int32(odr->hdr, v, "RL", &rl, 1);
             }

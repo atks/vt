@@ -67,12 +67,7 @@ class OrderedRegionOverlapMatcher
      * Returns true if chrom:start1-end1 overlaps with a region in the file.
      */
     bool overlaps_with(std::string& chrom, int32_t start1, int32_t end1);
-    
-    /**
-     * Clear buffer.
-     */
-    void clear_buffer();
-    
+        
     private:
 };
     
