@@ -43,40 +43,37 @@ OrderedRegionOverlapMatcher::~OrderedRegionOverlapMatcher() {};
  */
 bool OrderedRegionOverlapMatcher::overlaps_with(std::string& chrom, int32_t start1, int32_t end1)
 {
-    
-    std::cerr << "DEBUG\t\"" << current_interval.seq << "\"   "  <<  chrom  <<  "\n";
-    
     bool overlaps = false;
     
     if (current_interval.seq!=chrom)
     {
-        //std::cerr << "jump to: "  << chrom  <<  "\n";
-            
-        
         buffer.clear();
         current_interval.set(chrom);
         todr->jump_to_interval(current_interval);
-        std::cerr << "completed jump\n";
-        exit(1);
-//            while (todr->read(&s))
-//            {
-//                std::cerr << "read in: " << s.s << "\n";
-//                BEDRecord br(&s);
-//                
-//                if (br.end1<start1)
-//                {
-//                    continue;
-//                }
-//                
-//                overlaps = br.start1<=end1;
-//                
-//                buffer.push_back(br);
-//                
-//                if (br.start1>end1)
-//                {
-//                    break;
-//                }
-//            }
+//        std::cerr << "completed jump\n";
+        while (todr->read(&s))
+        {
+            BEDRecord br(&s);
+            
+            if (br.end1<start1)
+            {
+                continue;
+            }
+            
+            overlaps = br.start1<=end1;
+            
+            buffer.push_back(br);
+            
+            if (overlaps)
+            {
+//                std::cerr << "\t" << current_interval.seq << ":" << br.start1 << "-" << br.end1 << "\n";
+            }
+            
+            if (br.start1>end1)
+            {
+                break;
+            }
+        }
     }
     else
     {
@@ -95,6 +92,7 @@ bool OrderedRegionOverlapMatcher::overlaps_with(std::string& chrom, int32_t star
             if ((*i).start1<=end1)
             {
                 overlaps = true;
+//                std::cerr << "\tin buffer: " << (*i).chrom << ":" << (*i).start1 << "-" << (*i).end1 << "\n";
                 break;
             }
             else
@@ -118,6 +116,11 @@ bool OrderedRegionOverlapMatcher::overlaps_with(std::string& chrom, int32_t star
                 
                 overlaps = br.start1<=end1;
                 
+                if (overlaps)
+                {
+//                    std::cerr << "\tadding: " << current_interval.seq << ":" << br.start1 << "-" << br.end1 << "\n";
+                }
+                
                 buffer.push_back(br);
                 
                 if (br.start1>end1)
@@ -127,6 +130,8 @@ bool OrderedRegionOverlapMatcher::overlaps_with(std::string& chrom, int32_t star
             }
         }
     }
+    
+    
     
     return overlaps;
 };
