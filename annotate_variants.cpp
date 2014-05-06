@@ -185,10 +185,9 @@ class Igor : Program
             }
             else if (vtype&VT_INDEL)
             {
-                std::cerr << chrom << ":" << start1 << "-" << end1 << "\n";
-                std::cerr << "dt\n";
                 if (start1<=end1 && orom->overlaps_with(chrom, start1+1, end1))
                 {
+//                    std::cerr << chrom << ":" << start1 << "-" << end1 << "\n";
                     bcf_update_info_flag(odr->hdr, v, "LOW_COMPLEXITY", "", 1);
                 }
 

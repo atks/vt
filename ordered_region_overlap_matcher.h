@@ -45,8 +45,7 @@ class OrderedRegionOverlapMatcher
     ///////
     //i/o//
     ///////
-    TBXOrderedReader *todr;
-    
+    TBXOrderedReader *todr;    
     
     kstring_t s;
     

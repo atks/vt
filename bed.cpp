@@ -28,13 +28,12 @@ THE SOFTWARE.
  */
 BEDRecord::BEDRecord(kstring_t *s)
 {
-    std::cerr << "creating bed: " << s->s << "\n";
     std::vector<std::string> fields;
     split(fields, "\t", s->s);
 
     chrom = fields[0];
-    str2int32(fields[3], start1);
-    str2int32(fields[4], end1);
+    str2int32(fields[1], start1);
+    str2int32(fields[2], end1);
 };
 
 /**
