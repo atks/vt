@@ -31,6 +31,7 @@
 #include "tbx_ordered_reader.h"
 #include "interval_tree.h"
 #include <list>
+#include "bed.h"
 
 class OverlapRegionMatcher
 {
@@ -50,12 +51,16 @@ class OverlapRegionMatcher
     kstring_t s;
     
     GenomeInterval current_interval;
-    std::list<Interval> buffer;
+    std::list<BEDRecord> buffer;
     bool end_of_file;
     
     OverlapRegionMatcher(std::string& file)
     {
+        //std::cerr << "INITIALIZING\n";
+        
         todr = new TBXOrderedReader(file);
+        s = {0,0,0};
+        current_interval.seq = "";
     };
 
     /**
@@ -63,28 +68,91 @@ class OverlapRegionMatcher
      */
     bool overlaps_with(std::string& chrom, int32_t start1, int32_t end1)
     {
+        
+       // std::cerr << "DEBUG\t\"" << current_interval.seq << "\"   "  <<  chrom  <<  "\n";
+        
+        bool overlaps = false;
+        
         if (current_interval.seq!=chrom)
         {
+            //std::cerr << "jump to: "  << chrom  <<  "\n";
+                
+            
             buffer.clear();
-            GenomeInterval ginterval(chrom);
-            todr->jump_to_interval(ginterval);
+            current_interval.set(chrom);
+            std::cerr << chrom << "\n";
+            todr->jump_to_interval(current_interval);
+            
             while (todr->read(&s))
             {
+                BEDRecord br(&s);
                 
-               // buffer.add()
+                if (br.end1<start1)
+                {
+                    continue;
+                }
+                
+                overlaps = br.start1<=end1;
+                
+                buffer.push_back(br);
+                
+                if (br.start1>end1)
+                {
+                    break;
+                }
             }
-            
         }
-        if (current_interval.start1<end1&&current_interval.end1>=start1)
-        {
-            return true;
-        }   
         else
         {
-            return false;
-        } 
-    
+            //process intervals in buffer
+            std::list<BEDRecord>::iterator i = buffer.begin();
+            while (i!=buffer.end())
+            {
+                //preceding region
+                if ((*i).end1<start1)
+                {
+                    i = buffer.erase(i);
+                    continue;
+                }
+                
+                //overlaps
+                if ((*i).start1<=end1)
+                {
+                    overlaps = true;
+                    break;
+                }
+                else
+                {
+                    overlaps = false;
+                    break;
+                }
+            }
+            
+            if (buffer.size()==0 && !overlaps)
+            {
+                //add records
+                while (todr->read(&s))
+                {
+                    BEDRecord br(&s);
+                    
+                    if (br.end1<start1)
+                    {
+                        continue;
+                    }
+                    
+                    overlaps = br.start1<=end1;
+                    
+                    buffer.push_back(br);
+                    
+                    if (br.start1>end1)
+                    {
+                        break;
+                    }
+                }
+            }
+        }
         
+        return overlaps;
     };
     
     /**

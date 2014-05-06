@@ -185,10 +185,12 @@ class Igor : Program
             }
             else if (vtype&VT_INDEL)
             {
-                if (orm->overlaps_with(chrom, start1+1, end1))
-                {
-                    bcf_update_info_flag(odr->hdr, v, "LOW_COMPLEXITY", "", 1);
-                }
+//                std::cerr << chrom << ":" << start1 << "-" << end1 << "\n";
+//                
+//                if (start1<=end1 && orm->overlaps_with(chrom, start1+1, end1))
+//                {
+//                    bcf_update_info_flag(odr->hdr, v, "LOW_COMPLEXITY", "", 1);
+//                }
 
                 //frame shift annotation
                 if (annotate_coding)
