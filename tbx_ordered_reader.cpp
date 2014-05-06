@@ -29,7 +29,7 @@
  * @hts              name of the input file
  */
 TBXOrderedReader::TBXOrderedReader(std::string& hts_file)
-{		
+{
     this->hts_file = hts_file;
     interval_index = 0;
 
@@ -37,9 +37,11 @@ TBXOrderedReader::TBXOrderedReader(std::string& hts_file)
     tbx = NULL;
     itr = NULL;
 
+    s = {0, 0, 0};
+
     hts = hts_open(hts_file.c_str(), "r");
-		
-	index_loaded = false;	
+
+    index_loaded = false;
     if ((tbx = tbx_index_load(hts_file.c_str())))
     {
         index_loaded = true;
@@ -55,7 +57,7 @@ TBXOrderedReader::TBXOrderedReader(std::string& hts_file)
  * @intervals        list of intervals, if empty, all records are selected.
  */
 TBXOrderedReader::TBXOrderedReader(std::string& hts_file, std::vector<GenomeInterval>& intervals)
-{		
+{
     this->hts_file = hts_file;
     this->intervals = intervals;
     interval_index = 0;
@@ -65,9 +67,9 @@ TBXOrderedReader::TBXOrderedReader(std::string& hts_file, std::vector<GenomeInte
     itr = NULL;
 
     s = {0, 0, 0};
-    
+
     hts = hts_open(hts_file.c_str(), "r");
-		
+
     intervals_present =  intervals.size()!=0;
 
     if ((tbx = tbx_index_load(hts_file.c_str())))
@@ -100,13 +102,13 @@ bool TBXOrderedReader::jump_to_interval(GenomeInterval& interval)
         intervals.clear();
         intervals.push_back(interval);
         interval_index = 0;
-       
+
         intervals[interval_index++].to_string(&s);
         itr = tbx_itr_querys(tbx, s.s);
         if (itr)
         {
             return true;
-        }    
+        }
     }
 
     return false;
@@ -125,7 +127,7 @@ bool TBXOrderedReader::initialize_next_interval()
         if (itr)
         {
             return true;
-        }     
+        }
     }
 
     return false;
@@ -153,13 +155,13 @@ bool TBXOrderedReader::read(kstring_t *s)
     else
     {
         if (hts_getline(hts, '\n', s) >= 0)
-		{
-		    return true;
-		}
-		else
-	    {
-	        return false;    
-	    }
+        {
+            return true;
+        }
+        else
+        {
+            return false;
+        }
     }
 
     return false;

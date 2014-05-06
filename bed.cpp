@@ -22,3 +22,29 @@ THE SOFTWARE.
 */
 
 #include "bed.h"
+
+BEDRecord::BEDRecord(kstring_t *s)
+{
+    std::cerr << "creating bed: " << s->s << "\n";
+    std::vector<std::string> fields;
+    split(fields, "\t", s->s);
+
+    chrom = fields[0];
+    str2int32(fields[3], start1);
+    str2int32(fields[4], end1);
+};
+
+BEDRecord::BEDRecord(std::string& chrom, int32_t start1, int32_t end1)
+{
+    this->chrom = chrom;
+    this->start1 = start1;
+    this->end1 = end1;
+};
+
+/**
+ * Prints this BED record to STDERR.
+ */
+void BEDRecord::print()
+{
+    std::cerr << this->chrom << ":" << this->start1 << "-" <<this->end1 << "\n";
+};
