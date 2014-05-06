@@ -53,7 +53,7 @@ class Igor : Program
     /////////
     //stats//
     /////////
-    uint32_t no_variants_annotated;
+    int32_t no_variants_annotated;
 
     ////////////////
     //common tools//

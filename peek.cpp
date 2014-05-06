@@ -127,7 +127,7 @@ class Igor : Program
         /////////////////////////
         //filter initialization//
         /////////////////////////
-        filter.parse(fexp.c_str());
+        filter.parse(fexp.c_str(), false);
         filter_exists = fexp=="" ? false : true;
 
         ////////////////////////
@@ -192,9 +192,11 @@ class Igor : Program
         {
             int32_t vtype = vm->classify_variant(odr->hdr, v, variant);
 
+            bcf_print(odr->hdr, v);
+
             if (filter_exists)
             {
-                if (!filter.apply(odr->hdr, v, &variant))
+                if (!filter.apply(odr->hdr, v, &variant, false))
                 {
                     continue;
                 }
