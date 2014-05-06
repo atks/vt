@@ -23,6 +23,9 @@
 
 #include "ordered_region_overlap_matcher.h"
 
+/**
+ * Constructor.
+ */
 OrderedRegionOverlapMatcher::OrderedRegionOverlapMatcher(std::string& file)
 {
     todr = new TBXOrderedReader(file);
@@ -30,12 +33,13 @@ OrderedRegionOverlapMatcher::OrderedRegionOverlapMatcher(std::string& file)
     current_interval.seq = "";
 };
 
-
- 
+/**
+ * Destructor.
+ */ 
 OrderedRegionOverlapMatcher::~OrderedRegionOverlapMatcher() {};
 
 /**
- *
+ * Returns true if chrom:start1-end1 overlaps with a region in the file.
  */
 bool OrderedRegionOverlapMatcher::overlaps_with(std::string& chrom, int32_t start1, int32_t end1)
 {
@@ -51,7 +55,6 @@ bool OrderedRegionOverlapMatcher::overlaps_with(std::string& chrom, int32_t star
         
         buffer.clear();
         current_interval.set(chrom);
-        std::cerr << "CRUNNRE " << chrom << "\n";
         todr->jump_to_interval(current_interval);
         std::cerr << "completed jump\n";
         exit(1);

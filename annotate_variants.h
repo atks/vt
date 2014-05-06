@@ -48,7 +48,7 @@
 #include "variant_manip.h"
 #include "log_tool.h"
 #include "gencode.h"
-#include "overlap_region_matcher.h"
+#include "ordered_region_overlap_matcher.h"
 
 void annotate_variants(int argc, char ** argv);
 

@@ -54,11 +54,18 @@ class OrderedRegionOverlapMatcher
     std::list<BEDRecord> buffer;
     bool end_of_file;
     
+    /**
+     * Constructor.
+     */
     OrderedRegionOverlapMatcher(std::string& file);
 
-    ~OrderedRegionOverlapMatcher();
     /**
-     *
+     * Destructor.
+     */
+    ~OrderedRegionOverlapMatcher();
+    
+    /**
+     * Returns true if chrom:start1-end1 overlaps with a region in the file.
      */
     bool overlaps_with(std::string& chrom, int32_t start1, int32_t end1);
     
@@ -66,9 +73,7 @@ class OrderedRegionOverlapMatcher
      * Clear buffer.
      */
     void clear_buffer();
-     
     
-
     private:
 };
     
