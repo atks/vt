@@ -23,6 +23,9 @@ THE SOFTWARE.
 
 #include "bed.h"
 
+/**
+ * Constructor.
+ */
 BEDRecord::BEDRecord(kstring_t *s)
 {
     std::cerr << "creating bed: " << s->s << "\n";
@@ -34,6 +37,9 @@ BEDRecord::BEDRecord(kstring_t *s)
     str2int32(fields[4], end1);
 };
 
+/**
+ * Constructor.
+ */
 BEDRecord::BEDRecord(std::string& chrom, int32_t start1, int32_t end1)
 {
     this->chrom = chrom;

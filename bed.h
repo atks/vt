@@ -34,8 +34,14 @@ class BEDRecord : public Interval
     std::string chrom;
     int32_t start1, end1;
     
+    /**
+     * Constructor.
+     */
     BEDRecord(kstring_t *s);
-
+    
+    /**
+     * Constructor.
+     */
     BEDRecord(std::string& chrom, int32_t start1, int32_t end1);
 
     /**

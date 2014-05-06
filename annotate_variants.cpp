@@ -48,7 +48,7 @@ class Igor : Program
     ///////
     BCFOrderedReader *odr;
     BCFOrderedWriter *odw;
-    OverlapRegionMatcher *orm;
+    OrderedRegionOverlapMatcher *orom;
 
     /////////
     //stats//
@@ -158,7 +158,7 @@ class Igor : Program
         odw->write_hdr();
 
         std::string str = "/net/fantasia/home/atks/ref/vt/grch37/mdust.bed.gz";
-        orm = new OverlapRegionMatcher(str);
+        orom = new OrderedRegionOverlapMatcher(str);
 
         bcf1_t *v = odw->get_bcf1_from_pool();
         std::vector<Interval*> overlaps;
@@ -187,7 +187,7 @@ class Igor : Program
             {
                 std::cerr << chrom << ":" << start1 << "-" << end1 << "\n";
                 std::cerr << "dt\n";
-                if (start1<=end1 && orm->overlaps_with(chrom, start1+1, end1))
+                if (start1<=end1 && orom->overlaps_with(chrom, start1+1, end1))
                 {
                     bcf_update_info_flag(odr->hdr, v, "LOW_COMPLEXITY", "", 1);
                 }
