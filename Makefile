@@ -55,7 +55,7 @@ SOURCES = program\
 		profile_afs\
 		profile_hwe\
 		profile_len\
-		overlap_region_matcher\
+		ordered_region_overlap_matcher\
 		bed
 
 SOURCESONLY = main.cpp

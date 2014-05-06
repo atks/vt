@@ -34,30 +34,14 @@ class BEDRecord : public Interval
     std::string chrom;
     int32_t start1, end1;
     
-    BEDRecord(kstring_t *s)
-    {
-        std::vector<std::string> fields;
-        split(fields, "\t", s->s);
+    BEDRecord(kstring_t *s);
 
-        chrom = fields[0];
-        str2int32(fields[3], start1);
-        str2int32(fields[4], end1);
-    };
-
-    BEDRecord(std::string& chrom, int32_t start1, int32_t end1)
-    {
-        this->chrom = chrom;
-        this->start1 = start1;
-        this->end1 = end1;
-    };
+    BEDRecord(std::string& chrom, int32_t start1, int32_t end1);
 
     /**
      * Prints this BED record to STDERR.
      */
-    void print()
-    {
-        std::cerr << this->chrom << ":" << this->start1 << "-" <<this->end1 << "\n";
-    };
+    void print();
 
     private:
 };
