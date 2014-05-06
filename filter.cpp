@@ -81,11 +81,15 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
             {
                 if ((right->type&VT_INT))
                 {
+                    if (debug)
+                        std::cerr << "\tVT_EQ "   <<  left->i << "&" << right->i    <<  " \n";
                     value = (left->i==right->i);
                     return;
                 }
                 else if ((right->type&VT_FLT))
                 {
+                    if (debug)
+                        std::cerr << "\tVT_EQ "   <<  left->i << "&" << right->f    <<  " \n";
                     value = (left->i==right->f);
                     return;
                 }
@@ -94,17 +98,23 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
             {
                 if ((right->type&VT_INT))
                 {
+                    if (debug)
+                        std::cerr << "\tVT_EQ "   <<  left->f << "&" << right->i    <<  " \n";
                     value = (left->f==right->i);
                     return;
                 }
                 else if ((right->type&VT_FLT))
                 {
+                    if (debug)
+                        std::cerr << "\tVT_EQ "   <<  left->f << "&" << right->f    <<  " \n";
                     value = (left->f==right->f);
                     return;
                 }
             }
             else if ((left->type&VT_STR) && (right->type&VT_STR))
             {
+                if (debug)
+                        std::cerr << "\tVT_EQ "   <<  left->tag.s << "&" << right->tag.s    <<  " \n";
                 value = strcmp(left->tag.s, right->tag.s)==0 ? true : false;
                 return;
             }
@@ -337,9 +347,22 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
                     kputc(data[i], &s);
                 }
             }
+            else if (bcf_get_info_flag(h, v, tag.s, 0, 0)>0)
+            {
+                type |= VT_FLG;
+                i = 1;
+                f = 1;
+                b = true;
+                value = true;
+                s.l=0; 
+            }
             else
             {
-                
+                i = 0;
+                f = 0;
+                b = false;
+                value = false;
+                s.l=0;
             }
     
             if (n) free(data);
@@ -384,23 +407,53 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
     
             if (n) free(data);
         }
+        else if (type==(VT_INFO|VT_FLG))
+        {
+            if (bcf_get_info_flag(h, v, tag.s, 0, 0)>0)
+            {
+                i = 1;
+                f = 1;
+                b = true;
+                value = true;
+                //s.l=0; kputc('1', &s);
+            }
+            else
+            {
+                i = 0;
+                f = 0;
+                b = false;
+                value = false;
+                s.l=0;
+            }
+            
+            if (debug)
+                std::cerr << "\tVT_INFO|VT_FLG "   << i << " " << f << " " << b << " " << value << " " << s.s <<  " \n";
+        }
         else if (type==VT_VARIANT_TYPE)
         {
+            if (debug)
+                std::cerr << "\tVTYPE "   <<  variant->vtype2string(variant->type) <<  " \n";
             i = variant->type;
             value = i;
         }
         else if (type==VT_VARIANT_DLEN)
         {
+            if (debug)
+                std::cerr << "\tDLEN "   <<  variant->alleles[0].dlen <<  " \n";
             i = variant->alleles[0].dlen;
             value = i;
         }
         else if (type==VT_VARIANT_LEN)
         {
+            if (debug)
+                std::cerr << "\tLEN "   <<  abs(variant->alleles[0].dlen) <<  " \n";
             i = abs(variant->alleles[0].dlen);
             value = i;
         }
         else if (type==VT_N_ALLELE)
         {
+            if (debug)
+                std::cerr << "\tN_ALLELE "   <<  bcf_get_n_allele(v) <<  " \n";
             i = bcf_get_n_allele(v);
         }
     }
@@ -1181,7 +1234,7 @@ void Filter::apply(Node* node, bool debug)
     //evaluate downstream
     if (node->left!=NULL)
     {
-        apply(node->left);
+        apply(node->left, debug);
     }
 
     //can do some lazy evaluation here for && and || types.
@@ -1196,7 +1249,7 @@ void Filter::apply(Node* node, bool debug)
             }
             else
             {
-                 apply(node->right);
+                 apply(node->right, debug);
             }
         }
         else if (node->type==VT_OR)
@@ -1208,7 +1261,7 @@ void Filter::apply(Node* node, bool debug)
             }
             else
             {
-                 apply(node->right);
+                 apply(node->right, debug);
             }
         }
     }
@@ -1216,7 +1269,7 @@ void Filter::apply(Node* node, bool debug)
     {
         if (node->right!=NULL)
         {
-            apply(node->right);
+            apply(node->right, debug);
         }
     }
    
