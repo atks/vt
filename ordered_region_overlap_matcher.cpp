@@ -52,6 +52,7 @@ bool OrderedRegionOverlapMatcher::overlaps_with(std::string& chrom, int32_t star
         buffer.clear();
         current_interval.set(chrom);
         todr->jump_to_interval(current_interval);
+        std::cerr << "Jumped to chromosome " << chrom << "\n";
         while (todr->read(&s))
         {
             BEDRecord br(&s);

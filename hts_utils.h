@@ -204,6 +204,11 @@ void bam_get_base_and_qual_and_read_and_qual(bam1_t *s, uint32_t pos, char& base
 void bcf_hdr_transfer_contigs(const bcf_hdr_t *sh, bcf_hdr_t *vh);
 
 /**
+ * Extracts sequence length by rid.
+ */
+int32_t* bcf_hdr_seqlen(const bcf_hdr_t *hdr, int32_t *nseq);
+
+/**
  * Get samples from bcf header
  */
 #define bcf_hdr_get_samples(h) ((h)->samples)

@@ -314,6 +314,29 @@ void bcf_hdr_transfer_contigs(const bcf_hdr_t *hsrc, bcf_hdr_t *hdest)
 }
 
 /**
+ * Extracts sequence length by rid.
+ */
+int32_t* bcf_hdr_seqlen(const bcf_hdr_t *hdr, int32_t *nseq)
+{
+    vdict_t *d = (vdict_t*)hdr->dict[BCF_DT_CTG];
+    int tid, m = kh_size(d);
+    int32_t *len = (int32_t*) malloc(m*sizeof(int32_t));
+    khint_t k;
+
+    for (k=kh_begin(d); k<kh_end(d); k++)
+    {
+        if ( !kh_exist(d,k) ) continue;
+        tid = kh_val(d,k).id;
+        len[tid] = bcf_hrec_find_key(kh_val(d, k).hrec[0],"length");
+        int j;
+        if ( sscanf(kh_val(d, k).hrec[0]->vals[len[tid]],"%d",&j) )
+            len[tid] = j;
+    }
+
+    return len;
+}
+
+/**
  * Prints a VCF record to STDERR.
  */
 void bcf_print(bcf_hdr_t *h, bcf1_t *v)
