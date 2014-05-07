@@ -37,10 +37,7 @@ OrderedRegionOverlapMatcher::OrderedRegionOverlapMatcher(std::string& file)
 /**
  * Destructor.
  */
-OrderedRegionOverlapMatcher::~OrderedRegionOverlapMatcher()
-{
-    if (todr) todr->close();
-};
+OrderedRegionOverlapMatcher::~OrderedRegionOverlapMatcher() {};
 
 /**
  * Returns true if chrom:start1-end1 overlaps with a region in the file.
@@ -57,10 +54,9 @@ bool OrderedRegionOverlapMatcher::overlaps_with(std::string& chrom, int32_t star
         todr->jump_to_interval(current_interval);
         while (todr->read(&s))
         {
-            ++no_regions;
             BEDRecord br(&s);
             if (br.end1<start1) continue;
-            overlaps = br.start1<=end1;
+            overlaps = overlaps || (br.start1<=end1);
             buffer.push_back(br);
             if (br.start1>end1) break;
         }
@@ -81,14 +77,19 @@ bool OrderedRegionOverlapMatcher::overlaps_with(std::string& chrom, int32_t star
             break;
         }
         
-        while (buffer.back().start1<=end1 && todr->read(&s))
+        if (!overlaps)        
         {
-            ++no_regions;
-            BEDRecord br(&s);
-            //if (br.end1<start1) continue;
-            overlaps = br.start1<=end1;
-            buffer.push_back(br);
-            //if (br.start1>end1) break;
+            if (buffer.empty())
+            {    
+                while (todr->read(&s))
+                {
+                    BEDRecord br(&s);
+                    if (br.end1<start1) continue;
+                    overlaps = overlaps || (br.start1<=end1);
+                    buffer.push_back(br);
+                    if (br.start1>end1) break;
+                }
+            }
         }
     }
 

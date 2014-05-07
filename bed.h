@@ -48,6 +48,11 @@ class BEDRecord : public Interval
      * Prints this BED record to STDERR.
      */
     void print();
+    
+    /**
+     * String version of BED record.
+     */
+    std::string to_string();
 
     private:
 };
