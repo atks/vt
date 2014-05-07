@@ -52,6 +52,7 @@ class OrderedRegionOverlapMatcher
     GenomeInterval current_interval;
     std::list<BEDRecord> buffer;
     bool end_of_file;
+    int32_t no_regions;
     
     /**
      * Constructor.
