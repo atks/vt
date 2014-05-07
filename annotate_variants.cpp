@@ -201,9 +201,8 @@ class Igor : Program
 
                 if (annotate_coding)
                 {
-                    std::cerr << "CHECK " << orom_gencode_cds->buffer.size() << "\n";
-                        
-                    if (orom_gencode_cds->overlaps_with(chrom, start1, end1))
+                    bool overlap = false; 
+                    if ((overlap = orom_gencode_cds->overlaps_with(chrom, start1, end1)))
                     {
                         if (abs(variant.alleles[0].dlen)%3!=0)
                         {
@@ -213,6 +212,7 @@ class Igor : Program
                         {
                             bcf_update_info_flag(odr->hdr, v, "GENCODE_NFS", "", 1);
                         }
+                    
                     }
                 }
             }
