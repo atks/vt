@@ -226,7 +226,6 @@ class Igor : Program
     };
 
     private:
-
 };
 }
 

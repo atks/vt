@@ -47,6 +47,7 @@
 #include "profile_afs.h"
 #include "profile_hwe.h"
 #include "profile_len.h"
+#include "profile_chrom.h"
 
 void print_time(double t)
 {
@@ -97,6 +98,7 @@ void help()
     std::clog << "profile_afs               profile allele frequency spectrum\n";
     std::clog << "profile_hwe               profile hardy weinberg equilibrium\n";
     std::clog << "profile_len               profile indel characteristics by indel length\n";
+    std::clog << "profile_chrom             profile distribution of variants\n";
     std::clog << "\n";
     std::clog << "discover                  discover variants\n";
     std::clog << "merge_candidate_variants  merge candidate variants\n";
@@ -199,6 +201,10 @@ int main(int argc, char ** argv)
     else if (argc>1 && cmd=="profile_na12878")
     {
         profile_na12878(argc-1, ++argv);
+    }
+    else if (argc>1 && cmd=="profile_chrom")
+    {
+        profile_chrom(argc-1, ++argv);
     }
     else if (argc>1 && cmd=="align")
     {
