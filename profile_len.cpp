@@ -275,13 +275,13 @@ class Igor : Program
         fprintf(out, "\n");
         fprintf(out, "layout(matrix(c(1,1), 2, 1, byrow = TRUE))\n");
         fprintf(out, "\n");
-        fprintf(out, "data.subset = subset(data, abs(dlen)<=30 & pass==1 & no_alleles==2)\n");
+        fprintf(out, "data.subset = subset(data, abs(dlen)<=30 & pass==1 & no_alleles==2 & ab<1 & ab>0)\n");
         fprintf(out, "boxplot(data.subset$ab~data.subset$dlen, col=rgb(0,0,1,0.5), pch=\".\", main=\"Passed Indel Allele Balance Profile\")\n");
         fprintf(out, "abline(h=0.5, col=\"grey\")\n");
         fprintf(out, "\n");
         fprintf(out, "layout(matrix(c(1,1), 2, 1, byrow = TRUE))\n");
         fprintf(out, "\n");
-        fprintf(out, "data.subset = subset(data, abs(dlen)<=30 & pass!=1 & no_alleles==2)\n");
+        fprintf(out, "data.subset = subset(data, abs(dlen)<=30 & pass!=1 & no_alleles==2 & ab<1 & ab>0)\n");
         fprintf(out, "boxplot(data.subset$ab~data.subset$dlen, col=rgb(1,0,0,0.5), pch=\".\", main=\"Failed Indel Allele Balance Profile\")\n");
         fprintf(out, "abline(h=0.5, col=\"grey\")\n");
         fprintf(out, "\n");
