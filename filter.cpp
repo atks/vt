@@ -992,7 +992,7 @@ void Filter::print_filter_help()
     fprintf(stderr, "  Operations\n");
     fprintf(stderr, "    ==,~,&&,||,&,|,+,-,*,/\n");
     fprintf(stderr, "\n");
-    fprintf(stderr, "  Failed rare variants : (~PASS&&INFO.AC/INFO.AN<0.005\n");
+    fprintf(stderr, "  Failed rare variants : ~PASS&&(INFO.AC/INFO.AN<0.005)\n");
     fprintf(stderr, "\n");
     
 }
