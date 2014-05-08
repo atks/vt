@@ -251,7 +251,7 @@ class Igor : Program
         fprintf(out, "\n");
         fprintf(out, "data = read.table(\"data.txt\", header=T)\n");
         fprintf(out, "data.subset = subset(data, total!=0)\n");
-        fprintf(out, "pdf(\"chrom.pdf\",9,5)\n");
+        fprintf(out, "pdf(\"%s\",9,5)\n", output_pdf_file.c_str());
         fprintf(out, "par(mar = c(5, 4, 4, 5))\n");
         fprintf(out, "plot(c(1:nrow(data.subset)), data.subset$total, type=\"h\", lwd=10, col=\"grey\", xaxt=\"n\", ylab=\"No. of variants\", xlab=\"Chromosome\")\n");
         fprintf(out, "axis(side=1, at=c(1:nrow(data.subset)), labels=data.subset$chromosome)\n");
