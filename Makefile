@@ -58,7 +58,9 @@ SOURCES = program\
 		ordered_region_overlap_matcher\
 		bed\
 		profile_chrom\
-		annotate_regions
+		annotate_regions\
+		test\
+		str
 
 SOURCESONLY = main.cpp
 

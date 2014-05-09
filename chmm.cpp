@@ -1005,8 +1005,7 @@ void CHMM::update_statistics()
 bool CHMM::flanks_are_mapped()
 {
     return lflank_end[PROBE]==lflen && rflank_start[PROBE]==rflen;
-}
-     
+}     
      
 /**
  * Compute log10 emission odds based on equal error probability distribution.

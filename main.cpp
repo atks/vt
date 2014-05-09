@@ -49,6 +49,7 @@
 #include "profile_len.h"
 #include "profile_chrom.h"
 #include "annotate_regions.h"
+#include "test.h"
 
 void print_time(double t)
 {
@@ -77,33 +78,22 @@ void help()
 {
     std::clog << "Help page on http://statgen.sph.umich.edu/wiki/Vt\n";
     std::clog << "\n";
+    std::clog << "Useful tools:\n";
     std::clog << "view                      view vcf/vcf.gz/bcf files\n";
     std::clog << "index                     index vcf.gz/bcf files\n";
     std::clog << "normalize                 normalize variants\n";
-    std::clog << "decompose                 decompose multiallelic variants\n";
     std::clog << "mergedups                 merge duplicate variants\n";
-    std::clog << "remove_overlap            remover overlapping variants\n";
-    std::clog << "merge                     merge VCF files\n";
     std::clog << "concat                    concatenate VCF files\n";
     std::clog << "subset                    subset VCF file to variants polymorphic in a sample\n";
     std::clog << "\n";
     std::clog << "peek                      summary of variants in the vcf file\n";
     std::clog << "partition                 partition variants\n";
     std::clog << "annotate_variants         annotate variants\n";
+    std::clog << "annotate_regions          annotate regions\n";
     std::clog << "compute_concordance       compute genotype concordance between 2 call sets\n";
     std::clog << "compute_features          compute genotype likelihood based statistics\n";
-    std::clog << "profile_snps              profile snps\n";
-    std::clog << "profile_indels            profile indels\n";
-    std::clog << "profile_mendelian         profile mendelian errors\n";
-    std::clog << "profile_na12878           profile na12878\n";
-    std::clog << "profile_afs               profile allele frequency spectrum\n";
-    std::clog << "profile_hwe               profile hardy weinberg equilibrium\n";
-    std::clog << "profile_len               profile indel characteristics by indel length\n";
-    std::clog << "profile_chrom             profile distribution of variants\n";
     std::clog << "\n";
     std::clog << "discover                  discover variants\n";
-    std::clog << "merge_candidate_variants  merge candidate variants\n";
-    std::clog << "construct_probes          construct probes for each variant\n";
     std::clog << "genotype                  genotype variants\n";
     std::clog << "\n";
 }
