@@ -48,6 +48,7 @@
 #include "profile_hwe.h"
 #include "profile_len.h"
 #include "profile_chrom.h"
+#include "annotate_regions.h"
 
 void print_time(double t)
 {
@@ -169,6 +170,10 @@ int main(int argc, char ** argv)
     else if (argc>1 && cmd=="annotate_variants")
     {
         annotate_variants(argc-1, ++argv);
+    }
+    else if (argc>1 && cmd=="annotate_regions")
+    {
+        annotate_regions(argc-1, ++argv);
     }
     else if (argc>1 && cmd=="discover")
     {
