@@ -161,6 +161,23 @@ class Igor : Program
             int32_t start1 = bcf_get_pos1(v);
             int32_t end1 = bcf_get_end_pos1(v);
             
+            //1. reduce variant 
+            //   ACACACAC=>AC
+            //   check concordance
+            //   Reference length
+            //   accuracy
+            //                           
+            //2. run right flank
+            //
+            //
+            //3. run left flank
+            //
+            //
+            //4. try several modes
+            //
+            //
+            
+            
             
             ++no_variants_annotated;
             odw->write(v);

@@ -23,7 +23,6 @@
 
 #include "chmm.h"
 
-
 #define MAXLEN 256
 #define MAXLEN_NBITS 8
 
@@ -56,7 +55,6 @@
 #define PROBE 0
 #define READ  1
 #define MATCH 2
-
 
 /*for indexing single array*/
 #define index(i,j) (((i)<<MAXLEN_NBITS)+(j))
@@ -534,7 +532,7 @@ void CHMM::proc_comp(int32_t A, int32_t B, int32_t index1, int32_t j, int32_t ma
         max_track = t;
     }
 
-    if (1)
+    if (0)
     {
         std::cerr << "\t" << state2string(A) << "=>" << state2string(B);
         std::cerr << " (" << ((index1-j)>>MAXLEN_NBITS) << "," << j << ") ";
@@ -570,7 +568,7 @@ void CHMM::align(const char* read, const char* qual, bool debug)
 
     size_t c,d,u,l;
 
-    debug = true;
+    debug = false;
 
     //alignment
     //take into consideration
@@ -777,7 +775,7 @@ void CHMM::align(const char* read, const char* qual, bool debug)
         }
     }
 
-    if (1)
+    if (0)
     {
         std::cerr << "\n   =V[S]=\n";
         print(V[S], plen+1, rlen+1);
