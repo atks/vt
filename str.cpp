@@ -22,4 +22,3 @@
 */
 
 #include "str.h"
-
