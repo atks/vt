@@ -23,12 +23,12 @@
 #ifndef CHMM_H
 #define CHMM_H
 
-#include <sstream>
+#include "htslib/kstring.h"
 #include <iomanip>
 #include "log_tool.h"
 
-#define MAXLEN 256
-#define MAXLEN_NBITS 8
+#define MAXLEN 1024
+#define MAXLEN_NBITS 10
 
 #define S   0
 #define X   1
@@ -85,14 +85,20 @@
 class CHMM
 {
     public:
+        
     const char* read;
     const char* qual;
+    
+    //model variables
     //array indexed by LFLANK, MOTIF, RFLANK
     char **model;
     //length of read, probe and components in the model
     int32_t rlen, plen, lflen, mlen, rflen;
 
-    double maxLogOdds;
+    /*result variables*/    
+    int32_t lflank_start[2], lflank_end[2], motif_start[2], motif_end[2], rflank_start[2], rflank_end[2];
+    int32_t motif_count, exact_motif_count, motif_m, motif_xid;
+    double motif_concordance, maxLogOdds;
 
     //for track intermediate scores during Viterbi algorithm
     double max_score;
@@ -104,7 +110,7 @@ class CHMM
     int32_t optimal_state;
     int32_t optimal_track;
     int32_t optimal_probe_len;
-    int32_t *optimal_path; // for storage
+    int32_t *optimal_path;     // for storage
     int32_t *optimal_path_ptr; //just a pointer
     int32_t optimal_path_len;
     
@@ -113,9 +119,6 @@ class CHMM
     double tau;
     double eta;
 
-    double logEta;
-    double logTau;
-    
     double T[NSTATES][NSTATES];
 
     double **V;
@@ -125,14 +128,7 @@ class CHMM
 
     typedef int32_t (CHMM::*move) (int32_t t, int32_t j);
     move **moves;
-
-    std::stringstream ss;
-        
-    /*result variables*/    
-    int32_t lflank_start[2], lflank_end[2], motif_start[2], motif_end[2], rflank_start[2], rflank_end[2];
-    int32_t motif_count, exact_motif_count, motif_m, motif_xid;
-    double motif_concordance;
-    
+           
     /**
      * Constructor.
      */

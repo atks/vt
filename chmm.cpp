@@ -23,8 +23,8 @@
 
 #include "chmm.h"
 
-#define MAXLEN 256
-#define MAXLEN_NBITS 8
+#define MAXLEN 1024
+#define MAXLEN_NBITS 10
 
 #define S   0
 #define X   1
@@ -475,10 +475,7 @@ void CHMM::initialize(const char* lflank, const char* motif, const char* rflank)
             }
         }
     }
-
-    logEta = log10(eta);
-    logTau = log10(tau);
-
+    
     V[S][index(0,0)] = 0;
     U[S][index(0,0)] = START_TRACK;
 
@@ -849,7 +846,7 @@ void CHMM::align(const char* read, const char* qual, bool debug)
  */
 void CHMM::trace_path()
 {
-    //search for a complete path in M or W or Z
+    //search for a complete path in MR or W or Z
     size_t c;
     optimal_score = -INFINITY;
     optimal_track = NULL_TRACK;
@@ -885,20 +882,27 @@ void CHMM::trace_path()
 
     //trace path
     optimal_path_ptr = optimal_path+(MAXLEN<<2)-1;
-    int32_t i=optimal_probe_len, j=rlen;
-    int32_t last_t = make_track(optimal_state, RFLANK, 0, rflen+1);
+    int32_t i = optimal_probe_len, j = rlen;
+    int32_t last_t = make_track(optimal_state, RFLANK, 0, rflen+1); //dummy end track for E
     optimal_path_len = 0;
     int32_t u;
-   
+    int32_t des_t, src_t = make_track(E, RFLANK, 0, rflen+1);
+
     do
     {
         u = track_get_u(last_t);
         last_t = U[u][index(i,j)];
         *optimal_path_ptr = track_set_u(last_t, u);
 
-        //collect_statistics(*optimal_path_ptr, j);
+        des_t = *optimal_path_ptr;
+        collect_statistics(src_t, des_t, j);
+        
+        
+        std::cerr << track2string(src_t) << " (" << i << "," << j << ") => " << track2string(des_t) << " :  " << track2string(last_t) << "\n";
+            
+        src_t = des_t;
 
-        std::cerr << track2string(*optimal_path_ptr) << " (" << i << "," << j << ")\n";
+        
 
         if (u==ML || u==M || u==MR)
         {
@@ -914,9 +918,11 @@ void CHMM::trace_path()
         }
 
         --optimal_path_ptr;
-        ++optimal_path_len;  
-              
+        ++optimal_path_len;
+
     } while (track_get_u(last_t)!=S);
+
+    collect_statistics(src_t, last_t, j);
 
     ++optimal_path_ptr;
     optimal_path_traced = true;
@@ -925,46 +931,88 @@ void CHMM::trace_path()
 /**
  * Collect alignment summary statistics.
  */
-void CHMM::collect_statistics(int32_t t1, int32_t t2, int32_t j)
+void CHMM::collect_statistics(int32_t src_t, int32_t des_t, int32_t j)
 {
-//    int32_t u1 = track_get_u(t1);
-//    int32_t u2 = track_get_u(t2);
-//    
-//    if (u1==E && u2==MR)
-//    {
-//        rflank_start[PROBE] = track_get_p(t);
-//        rflank_start[READ] = j;
-//    }
-//    else if (u1==E && u2==MR)
-//    {
-//        rflank_start[PROBE] = track_get_p(t);
-//        rflank_start[READ] = j;
-//    }
-//    
-//    if (u==ML)
-//    {
-//        if (lflank_start[PROBE]==-1)
-//        {
-//            lflank_start[PROBE] = track_get_p(t);
-//            lflank_start[READ] = j;
-//        }
-//    } 
-//    else if (u==ML)
-//    {
-//        if (motif)
-//    }
-//
-//    if (lflank_start[PROBE]==-1 && u==ML)
-//    {
-//        lflank_start[PROBE] = track_get_p(t);
-//        lflank_start[READ] = j;
-//    } 
-//
-//    if (rflank_start[PROBE]==-1 && u==MR)
-//    {
-//        rflank_start[PROBE] = track_get_p(t);
-//        rflank_start[READ] = j;
-//    }    
+    std::cerr << "\t " << track2string(src_t) << " (" << j << ") => " << track2string(des_t) << "\n";
+        
+    
+    int32_t src_u = track_get_u(src_t);
+    int32_t des_u = track_get_u(des_t);
+
+    if (src_u==E)
+    {
+        if (des_u==MR || des_u==W)
+        {    
+            rflank_end[PROBE] = track_get_p(des_t);
+            rflank_end[READ] = j;
+        }
+    }
+    else if (src_u==Z)
+    {
+        if (des_u==MR || des_u==W)
+        {    
+            rflank_end[PROBE] = track_get_p(des_t);
+            rflank_end[READ] = j;
+        }
+    }
+    else if (src_u==MR)
+    {
+        if (des_u==M)
+        {
+            rflank_start[PROBE] = track_get_p(src_t);
+            rflank_start[READ] = j+1;
+            motif_end[PROBE] = track_get_c(des_t);
+            motif_end[READ] = j;
+            
+            if (track_get_base(des_t)!=read[j])
+            {
+                
+            }
+            
+        }
+        else if (des_u==ML || des_u==X)
+        {
+            rflank_start[PROBE] = track_get_p(src_t);
+            rflank_start[READ] = j+1;
+            motif_start[PROBE] = 0;
+            motif_start[READ] = 0;
+            motif_end[PROBE] = 0;
+            motif_end[READ] = 0;
+            lflank_end[PROBE] = track_get_p(des_t);
+            lflank_end[READ] = j;
+        }    
+    }
+    else if (src_u==M)
+    {
+        if (des_u==ML || des_u==X)
+        {
+            motif_start[PROBE] = track_get_c(src_t);
+            motif_start[READ] = j+1;
+            lflank_end[PROBE] = track_get_p(des_t);
+            lflank_end[READ] = j;
+        }    
+    }
+    else if (src_u==ML)
+    {
+        if (des_u==S)
+        {
+            lflank_start[PROBE] = track_get_p(src_t);
+            lflank_start[READ] = j+1;
+        }
+        else if (des_u==X || des_u==Y)
+        {
+            lflank_start[PROBE] = track_get_p(src_t);
+            lflank_start[READ] = j+1;
+        }
+    }
+    
+    if (src_u==M)
+    {
+        if (track_get_base(des_t)!=read[j])
+        {
+            
+        }        
+    }
 };
 
 /**
@@ -1005,8 +1053,8 @@ void CHMM::update_statistics()
 bool CHMM::flanks_are_mapped()
 {
     return lflank_end[PROBE]==lflen && rflank_start[PROBE]==rflen;
-}     
-     
+}
+
 /**
  * Compute log10 emission odds based on equal error probability distribution.
  */
@@ -1356,10 +1404,15 @@ void CHMM::print_alignment(std::string& pad)
     std::cerr << "optimal path ptr : " << optimal_path_ptr  << "\n";
     std::cerr << "max j: " << rlen << "\n";
 
-    std::cerr << "lflank: " << " [" << lflank_start[PROBE] << "," << lflank_end[PROBE] << "]\n";
-    std::cerr << "rflank: " << " [" << rflank_start[PROBE] << "," << rflank_end[PROBE] << "]\n";
-    std::cerr << "motif : " << motif_count << " [" << motif_start[PROBE] << "," << motif_end[PROBE] << "]\n";
-    std::cerr << "motif %   " << motif_concordance << " (" << exact_motif_count << "/" << motif_count << ")\n"; 
+    std::cerr << "probe: " << "(" << lflank_start[PROBE] << "~" << lflank_end[PROBE] << ") "
+                          << "[" << motif_start[PROBE] << "~" << motif_end[PROBE] << "] "
+                          << "(" << rflank_start[PROBE] << "~" << rflank_end[PROBE] << ")\n";
+    std::cerr << "read : " << "(" << lflank_start[READ] << "~" << lflank_end[READ] << ") "
+                          << "[" << motif_start[READ] << "~" << motif_end[READ] << "] "
+                          << "(" << rflank_start[READ] << "~" << rflank_end[READ] << ")\n";
+    std::cerr << "\n";
+    std::cerr << "motif # : " << motif_end[PROBE] << " [" << motif_start[READ] << "," << motif_end[READ] << "]\n";
+    std::cerr << "motif % : " << motif_concordance << " (" << exact_motif_count << "/" << motif_count << ")\n";
 
     //print path
     int32_t* path;
@@ -1546,13 +1599,20 @@ void CHMM::print_trace(int32_t state, size_t plen, size_t rlen)
  */
 std::string CHMM::track2string(int32_t t)
 {
-    ss.str("");
-    ss << state2string(track_get_u(t)) <<"|"
-          <<component2string(track_get_d(t)) <<"|"
-          <<track_get_c(t) <<"|"
-          <<track_get_p(t);
+    kstring_t str = {0,0,0};
 
-    return ss.str();
+    kputs(state2string(track_get_u(t)).c_str(), &str);
+    kputc('|', &str);
+    kputs(component2string(track_get_d(t)).c_str(), &str);
+    kputc('|', &str);
+    kputw(track_get_c(t), &str);
+    kputc('|', &str);
+    kputw(track_get_p(t), &str);
+
+    std::string s(str.s);
+    if (str.m) free(str.s);
+  
+    return s;    
 }
 
 /**
