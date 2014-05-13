@@ -121,6 +121,8 @@ void CHMM::initialize(const char* lflank, const char* motif, const char* rflank)
     model[MOTIF] = strdup(motif);
     model[RFLANK] = strdup(rflank);
 
+    motif_discordance = new int32_t[MAXLEN];
+
     lflen = strlen(model[LFLANK]);
     mlen = strlen(model[MOTIF]);
     rflen = strlen(model[RFLANK]);
@@ -213,12 +215,12 @@ void CHMM::initialize(const char* lflank, const char* motif, const char* rflank)
     T[Z][Z] = 0;
 
     typedef int32_t (CHMM::*move) (int32_t t, int32_t j);
-    V = new double*[NSTATES];
+    V = new float*[NSTATES];
     U = new int32_t*[NSTATES];
     moves = new move*[NSTATES];
     for (size_t state=S; state<=Z; ++state)
     {
-        V[state] = new double[MAXLEN*MAXLEN];
+        V[state] = new float[MAXLEN*MAXLEN];
         U[state] = new int32_t[MAXLEN*MAXLEN];
         moves[state] = new move[NSTATES];
     }
@@ -475,7 +477,7 @@ void CHMM::initialize(const char* lflank, const char* motif, const char* rflank)
             }
         }
     }
-    
+
     V[S][index(0,0)] = 0;
     U[S][index(0,0)] = START_TRACK;
 
@@ -507,7 +509,7 @@ void CHMM::initialize(const char* lflank, const char* motif, const char* rflank)
  */
 void CHMM::proc_comp(int32_t A, int32_t B, int32_t index1, int32_t j, int32_t match_type)
 {
-    double emission = 0, score = 0, valid = 0;
+    float emission = 0, score = 0, valid = 0;
 
     //t is the new track
     int32_t  t =  (this->*(moves[A][B]))(U[A][index1],j);
@@ -560,7 +562,7 @@ void CHMM::align(const char* read, const char* qual, bool debug)
         exit(1);
     }
 
-    double max = 0;
+    float max = 0;
     char maxPath = 'X';
 
     size_t c,d,u,l;
@@ -896,13 +898,8 @@ void CHMM::trace_path()
 
         des_t = *optimal_path_ptr;
         collect_statistics(src_t, des_t, j);
-        
-        
-        std::cerr << track2string(src_t) << " (" << i << "," << j << ") => " << track2string(des_t) << " :  " << track2string(last_t) << "\n";
-            
+        //std::cerr << track2string(src_t) << " (" << i << "," << j << ") => " << track2string(des_t) << " :  " << track2string(last_t) << "\n";
         src_t = des_t;
-
-        
 
         if (u==ML || u==M || u==MR)
         {
@@ -933,16 +930,15 @@ void CHMM::trace_path()
  */
 void CHMM::collect_statistics(int32_t src_t, int32_t des_t, int32_t j)
 {
-    std::cerr << "\t " << track2string(src_t) << " (" << j << ") => " << track2string(des_t) << "\n";
-        
-    
+    //std::cerr << "\t " << track2string(src_t) << " (" << j << ") => " << track2string(des_t) << "\n";
+
     int32_t src_u = track_get_u(src_t);
     int32_t des_u = track_get_u(des_t);
 
     if (src_u==E)
     {
         if (des_u==MR || des_u==W)
-        {    
+        {
             rflank_end[PROBE] = track_get_p(des_t);
             rflank_end[READ] = j;
         }
@@ -950,7 +946,7 @@ void CHMM::collect_statistics(int32_t src_t, int32_t des_t, int32_t j)
     else if (src_u==Z)
     {
         if (des_u==MR || des_u==W)
-        {    
+        {
             rflank_end[PROBE] = track_get_p(des_t);
             rflank_end[READ] = j;
         }
@@ -961,14 +957,21 @@ void CHMM::collect_statistics(int32_t src_t, int32_t des_t, int32_t j)
         {
             rflank_start[PROBE] = track_get_p(src_t);
             rflank_start[READ] = j+1;
+
             motif_end[PROBE] = track_get_c(des_t);
+            motif_count = track_get_c(des_t);
             motif_end[READ] = j;
-            
-            if (track_get_base(des_t)!=read[j])
+
+            //initialize array for tracking inexact repeats
+            for (int32_t k=1; k<=motif_count; ++k)
             {
-                
+                motif_discordance[k] = 0;
             }
             
+            if (track_get_base(des_t)!=read[j-1])
+            {
+                ++motif_discordance[motif_count];
+            }  
         }
         else if (des_u==ML || des_u==X)
         {
@@ -980,7 +983,7 @@ void CHMM::collect_statistics(int32_t src_t, int32_t des_t, int32_t j)
             motif_end[READ] = 0;
             lflank_end[PROBE] = track_get_p(des_t);
             lflank_end[READ] = j;
-        }    
+        }
     }
     else if (src_u==M)
     {
@@ -990,7 +993,7 @@ void CHMM::collect_statistics(int32_t src_t, int32_t des_t, int32_t j)
             motif_start[READ] = j+1;
             lflank_end[PROBE] = track_get_p(des_t);
             lflank_end[READ] = j;
-        }    
+        }
     }
     else if (src_u==ML)
     {
@@ -1005,13 +1008,18 @@ void CHMM::collect_statistics(int32_t src_t, int32_t des_t, int32_t j)
             lflank_start[READ] = j+1;
         }
     }
-    
-    if (src_u==M)
+
+    if (des_u==M)
     {
-        if (track_get_base(des_t)!=read[j])
+        if (track_get_base(des_t)!=read[j-1])
         {
-            
-        }        
+            ++motif_discordance[track_get_c(des_t)];
+        }
+    }
+    
+    if (des_u==D || des_u==I)
+    {
+        ++motif_discordance[track_get_c(des_t)];
     }
 };
 
@@ -1044,7 +1052,7 @@ void CHMM::clear_statistics()
  */
 void CHMM::update_statistics()
 {
-    motif_concordance = (double)motif_m/(motif_m+motif_xid);
+    motif_concordance = (float)motif_m/(motif_m+motif_xid);
 }
 
 /**
@@ -1058,7 +1066,7 @@ bool CHMM::flanks_are_mapped()
 /**
  * Compute log10 emission odds based on equal error probability distribution.
  */
-double CHMM::log10_emission_odds(char probe_base, char read_base, uint32_t pl)
+float CHMM::log10_emission_odds(char probe_base, char read_base, uint32_t pl)
 {
     //4 encodes for N
     if (read_base=='N' || probe_base=='N')
@@ -1389,6 +1397,7 @@ void CHMM::print_alignment(std::string& pad)
     std::cerr << "repeat motif : " << model[MOTIF] << "\n";
     std::cerr << "lflank       : " << model[RFLANK] << "\n";
     std::cerr << "lflen        : " << lflen << "\n";
+    std::cerr << "mlen         : " << mlen << "\n";
     std::cerr << "rflen        : " << rflen << "\n";
     std::cerr << "plen         : " << plen << "\n";
     std::cerr << "\n";
@@ -1411,8 +1420,30 @@ void CHMM::print_alignment(std::string& pad)
                           << "[" << motif_start[READ] << "~" << motif_end[READ] << "] "
                           << "(" << rflank_start[READ] << "~" << rflank_end[READ] << ")\n";
     std::cerr << "\n";
-    std::cerr << "motif # : " << motif_end[PROBE] << " [" << motif_start[READ] << "," << motif_end[READ] << "]\n";
-    std::cerr << "motif % : " << motif_concordance << " (" << exact_motif_count << "/" << motif_count << ")\n";
+    std::cerr << "motif #           : " << motif_count << " [" << motif_start[READ] << "," << motif_end[READ] << "]\n";
+    
+    exact_motif_count = motif_count;
+    motif_concordance = 0;
+    for (int32_t k=1; k<=motif_count; ++k)
+    {
+        if (motif_discordance[k])
+        {
+            --exact_motif_count;
+        }
+        
+        if (mlen>=motif_discordance[k]) 
+        {
+            motif_concordance += (float)(mlen-motif_discordance[k]) / mlen; 
+        }
+    }
+    motif_concordance *= 100.0/motif_count;
+    std::cerr << "motif concordance : " << motif_concordance << "% (" << exact_motif_count << "/" << motif_count << ")\n";
+    std::cerr << "motif discordance : ";
+    for (int32_t k=1; k<=motif_count; ++k)
+    {
+        std::cerr << motif_discordance[k] << (k==motif_count?"\n":"|");
+    }
+    std::cerr << "\n";
 
     //print path
     int32_t* path;
@@ -1480,11 +1511,11 @@ void CHMM::print_alignment(std::string& pad)
 };
 
 /**
- * Prints a double matrix.
+ * Prints a float matrix.
  */
-void CHMM::print(double *v, size_t plen, size_t rlen)
+void CHMM::print(float *v, size_t plen, size_t rlen)
 {
-    double val;
+    float val;
     std::cerr << std::setprecision(1) << std::fixed;
     for (size_t i=0; i<plen; ++i)
     {
@@ -1503,7 +1534,7 @@ void CHMM::print(double *v, size_t plen, size_t rlen)
  */
 void CHMM::print(int32_t *v, size_t plen, size_t rlen)
 {
-    double val;
+    float val;
     std::cerr << std::setprecision(1) << std::fixed << std::setw(6);
     for (size_t i=0; i<plen; ++i)
     {
@@ -1574,7 +1605,7 @@ void CHMM::print_trace(int32_t state, size_t plen, size_t rlen)
 {
     std::cerr << std::setprecision(1) << std::fixed;
     int32_t *u = U[state];
-    double *v = V[state];
+    float *v = V[state];
     std::string s;
     for (size_t i=0; i<plen; ++i)
     {
@@ -1611,8 +1642,8 @@ std::string CHMM::track2string(int32_t t)
 
     std::string s(str.s);
     if (str.m) free(str.s);
-  
-    return s;    
+
+    return s;
 }
 
 /**
