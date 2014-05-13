@@ -98,15 +98,16 @@ class CHMM
     /*result variables*/    
     int32_t lflank_start[2], lflank_end[2], motif_start[2], motif_end[2], rflank_start[2], rflank_end[2];
     int32_t motif_count, exact_motif_count, motif_m, motif_xid;
-    double motif_concordance, maxLogOdds;
+    int32_t* motif_discordance;
+    float motif_concordance, maxLogOdds;
 
     //for track intermediate scores during Viterbi algorithm
-    double max_score;
+    float max_score;
     int32_t max_track;
     
     //for optimal alignment
     bool optimal_path_traced;
-    double optimal_score;
+    float optimal_score;
     int32_t optimal_state;
     int32_t optimal_track;
     int32_t optimal_probe_len;
@@ -114,14 +115,14 @@ class CHMM
     int32_t *optimal_path_ptr; //just a pointer
     int32_t optimal_path_len;
     
-    double delta;
-    double epsilon;
-    double tau;
-    double eta;
+    float delta;
+    float epsilon;
+    float tau;
+    float eta;
 
-    double T[NSTATES][NSTATES];
+    float T[NSTATES][NSTATES];
 
-    double **V;
+    float **V;
     int32_t **U;
 
     LogTool *lt;
@@ -174,7 +175,7 @@ class CHMM
     /**
      * Compute log10 emission odds based on equal error probability distribution contrasted against log10(1/16).
      */
-    double log10_emission_odds(char read_base, char probe_base, uint32_t pl);
+    float log10_emission_odds(char read_base, char probe_base, uint32_t pl);
 
     /**
      * Converts state to string representation.
@@ -212,9 +213,9 @@ class CHMM
     void print_alignment(std::string& pad);
 
     /**
-     * Prints a double matrix.
+     * Prints a float matrix.
      */
-    void print(double *v, size_t plen, size_t rlen);
+    void print(float *v, size_t plen, size_t rlen);
 
     /**
      * Prints a int32_t matrix.
@@ -702,7 +703,7 @@ class CHMM
     int32_t move_I_MR(int32_t t, int32_t j)
     {
         int32_t p;
-        if (j<rlen)
+        if (j<mlen)
         {
             return make_track(I,RFLANK,0,1);
         }
