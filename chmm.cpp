@@ -60,23 +60,22 @@
 #define index(i,j) (((i)<<MAXLEN_NBITS)+(j))
 
 /*functions for getting trace back information*/
-#define track_get_u(t)    (((t)&0xFF000000)>>24)
-#define track_get_d(t)    (((t)&0x00FF0000)>>16)
-#define track_get_c(t)    (((t)&0x0000FF00)>>8)
-#define track_get_p(t)    (((t)&0x000000FF))
+#define track_get_u(t)    (((t)&0xF8000000)>>27)
+#define track_get_d(t)    (((t)&0x07000000)>>24)
+#define track_get_c(t)    (((t)&0x00FFF000)>>12)
+#define track_get_p(t)    (((t)&0x00000FFF))
 #define track_get_base(t) (model[track_get_d(t)][track_get_p(t)-1])
 #define track_valid(t) ((track_get_d(t)==RFLANK||track_get_d(t)==MOTIF||track_get_d(t)==LFLANK)&&track_get_p(t)!=0)
-#define track_set_u(t,u)  (((t)&0x00FFFFFF)|((u)<<24))
-#define track_set_d(t,d)  (((t)&0xFF00FFFF)|((d)<<16))
-#define track_set_c(t,c)  (((t)&0xFFFF00FF)|((c)<<8))
-#define track_set_p(t,p)  (((t)&0xFFFFFF00)|(p))
-#define make_track(u,d,c,p) (((u)<<24)|((d)<<16)|((c)<<8)|(p))
+#define track_set_u(t,u)  (((t)&0x07FFFFFF)|((u)<<27))
+#define track_set_d(t,d)  (((t)&0xF8FFFFFF)|((d)<<24))
+#define track_set_c(t,c)  (((t)&0xFF000FFF)|((c)<<12))
+#define track_set_p(t,p)  (((t)&0xFFFFF000)|(p))
+#define make_track(u,d,c,p) (((u)<<27)|((d)<<24)|((c)<<12)|(p))
 
-//[]
-#define NULL_TRACK  0x0F040000
+//[N|!|0|0]
+#define NULL_TRACK  0x7C000000
 //[N|l|0|0]
-#define START_TRACK 0x0F000000
-
+#define START_TRACK 0x78000000
 /**
  * Constructor.
  */
@@ -630,7 +629,7 @@ void CHMM::align(const char* read, const char* qual, bool debug)
             //////
             max_score = -INFINITY;
             max_track = NULL_TRACK;
-            if (i<=lflen)
+            if (i>=2 && i<=lflen)
             {
                 proc_comp(ML, IL, l, j-1, READ);
                 proc_comp(IL, IL, l, j-1, READ);
@@ -898,7 +897,7 @@ void CHMM::trace_path()
 
         des_t = *optimal_path_ptr;
         collect_statistics(src_t, des_t, j);
-        //std::cerr << track2string(src_t) << " (" << i << "," << j << ") => " << track2string(des_t) << " :  " << track2string(last_t) << "\n";
+        std::cerr << track2string(src_t) << " (" << i << "," << j << ") => " << track2string(des_t) << " :  " << track2string(last_t) << "\n";
         src_t = des_t;
 
         if (u==ML || u==M || u==MR)
@@ -967,11 +966,11 @@ void CHMM::collect_statistics(int32_t src_t, int32_t des_t, int32_t j)
             {
                 motif_discordance[k] = 0;
             }
-            
+
             if (track_get_base(des_t)!=read[j-1])
             {
                 ++motif_discordance[motif_count];
-            }  
+            }
         }
         else if (des_u==ML || des_u==X)
         {
@@ -1016,7 +1015,7 @@ void CHMM::collect_statistics(int32_t src_t, int32_t des_t, int32_t j)
             ++motif_discordance[track_get_c(des_t)];
         }
     }
-    
+
     if (des_u==D || des_u==I)
     {
         ++motif_discordance[track_get_c(des_t)];
@@ -1308,7 +1307,7 @@ std::string CHMM::track2cigarstring1(int32_t t, int32_t j)
 }
 
 /**
- * Converts state to cigar string representation.
+ * Converts track to cigar string representation.
  */
 std::string CHMM::track2cigarstring2(int32_t t)
 {
@@ -1421,7 +1420,7 @@ void CHMM::print_alignment(std::string& pad)
                           << "(" << rflank_start[READ] << "~" << rflank_end[READ] << ")\n";
     std::cerr << "\n";
     std::cerr << "motif #           : " << motif_count << " [" << motif_start[READ] << "," << motif_end[READ] << "]\n";
-    
+
     exact_motif_count = motif_count;
     motif_concordance = 0;
     for (int32_t k=1; k<=motif_count; ++k)
@@ -1430,10 +1429,10 @@ void CHMM::print_alignment(std::string& pad)
         {
             --exact_motif_count;
         }
-        
-        if (mlen>=motif_discordance[k]) 
+
+        if (mlen>=motif_discordance[k])
         {
-            motif_concordance += (float)(mlen-motif_discordance[k]) / mlen; 
+            motif_concordance += (float)(mlen-motif_discordance[k]) / mlen;
         }
     }
     motif_concordance *= 100.0/motif_count;
