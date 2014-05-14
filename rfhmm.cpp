@@ -23,8 +23,8 @@
 
 #include "rfhmm.h"
 
-#define MAXLEN 256
-#define MAXLEN_NBITS 8
+#define MAXLEN 1024
+#define MAXLEN_NBITS 10
 
 #define S   0
 #define Y   1
@@ -50,22 +50,23 @@
 #define index(i,j) (((i)<<MAXLEN_NBITS)+(j))
 
 /*functions for getting trace back information*/
-#define track_get_u(t)    (((t)&0xFF000000)>>24)
-#define track_get_d(t)    (((t)&0x00FF0000)>>16)
-#define track_get_c(t)    (((t)&0x0000FF00)>>8)
-#define track_get_p(t)    (((t)&0x000000FF))
+#define track_get_u(t)    (((t)&0xF8000000)>>27)
+#define track_get_d(t)    (((t)&0x07000000)>>24)
+#define track_get_c(t)    (((t)&0x00FFF000)>>12)
+#define track_get_p(t)    (((t)&0x00000FFF))
 #define track_get_base(t) (model[track_get_d(t)][track_get_p(t)-1])
-#define track_valid(t) ((track_get_d(t)==MOTIF)&&track_get_p(t)!=0)
-#define track_set_u(t,u)  (((t)&0x00FFFFFF)|((u)<<24))
-#define track_set_d(t,d)  (((t)&0xFF00FFFF)|((d)<<16))
-#define track_set_c(t,c)  (((t)&0xFFFF00FF)|((c)<<8))
-#define track_set_p(t,p)  (((t)&0xFFFFFF00)|(p))
-#define make_track(u,d,c,p) (((u)<<24)|((d)<<16)|((c)<<8)|(p))
+#define track_valid(t) ((track_get_d(t)==RFLANK||track_get_d(t)==MOTIF||track_get_d(t)==LFLANK)&&track_get_p(t)!=0)
+#define track_set_u(t,u)  (((t)&0x07FFFFFF)|((u)<<27))
+#define track_set_d(t,d)  (((t)&0xF8FFFFFF)|((d)<<24))
+#define track_set_c(t,c)  (((t)&0xFF000FFF)|((c)<<12))
+#define track_set_p(t,p)  (((t)&0xFFFFF000)|(p))
+#define make_track(u,d,c,p) (((u)<<27)|((d)<<24)|((c)<<12)|(p))
 
-//[]
-#define NULL_TRACK  0x0F040000
+//[N|!|0|0]
+#define NULL_TRACK  0x7C000000
 //[N|l|0|0]
-#define START_TRACK 0x0F000000
+#define START_TRACK 0x78000000
+
 /**
  * Constructor.
  */
@@ -925,13 +926,20 @@ void RFHMM::print_trace(int32_t state, size_t plen, size_t rlen)
  */
 std::string RFHMM::track2string(int32_t t)
 {
-    ss.str("");
-    ss << state2string(track_get_u(t)) <<"|"
-       <<component2string(track_get_d(t)) <<"|"
-       <<track_get_c(t) <<"|"
-       <<track_get_p(t);
+    kstring_t str = {0,0,0};
 
-    return ss.str();
+    kputs(state2string(track_get_u(t)).c_str(), &str);
+    kputc('|', &str);
+    kputs(component2string(track_get_d(t)).c_str(), &str);
+    kputc('|', &str);
+    kputw(track_get_c(t), &str);
+    kputc('|', &str);
+    kputw(track_get_p(t), &str);
+
+    std::string s(str.s);
+    if (str.m) free(str.s);
+
+    return s;
 }
 
 /**

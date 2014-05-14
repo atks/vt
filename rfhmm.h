@@ -23,12 +23,12 @@
 #ifndef RFHMM_H
 #define RFHMM_H
 
-#include <sstream>
 #include <iomanip>
+#include "htslib/kstring.h"
 #include "log_tool.h"
 
-#define MAXLEN 256
-#define MAXLEN_NBITS 8
+#define MAXLEN 1024
+#define MAXLEN_NBITS 10
 
 #define S   0
 #define Y   1
@@ -54,22 +54,22 @@
 #define index(i,j) (((i)<<MAXLEN_NBITS)+(j))
 
 /*functions for getting trace back information*/
-#define track_get_u(t)    (((t)&0xFF000000)>>24)
-#define track_get_d(t)    (((t)&0x00FF0000)>>16)
-#define track_get_c(t)    (((t)&0x0000FF00)>>8)
-#define track_get_p(t)    (((t)&0x000000FF))
+#define track_get_u(t)    (((t)&0xF8000000)>>27)
+#define track_get_d(t)    (((t)&0x07000000)>>24)
+#define track_get_c(t)    (((t)&0x00FFF000)>>12)
+#define track_get_p(t)    (((t)&0x00000FFF))
 #define track_get_base(t) (model[track_get_d(t)][track_get_p(t)-1])
-#define track_valid(t) ((track_get_d(t)==MOTIF)&&track_get_p(t)!=0)
-#define track_set_u(t,u)  (((t)&0x00FFFFFF)|((u)<<24))
-#define track_set_d(t,d)  (((t)&0xFF00FFFF)|((d)<<16))
-#define track_set_c(t,c)  (((t)&0xFFFF00FF)|((c)<<8))
-#define track_set_p(t,p)  (((t)&0xFFFFFF00)|(p))
-#define make_track(u,d,c,p) (((u)<<24)|((d)<<16)|((c)<<8)|(p))
+#define track_valid(t) ((track_get_d(t)==RFLANK||track_get_d(t)==MOTIF||track_get_d(t)==LFLANK)&&track_get_p(t)!=0)
+#define track_set_u(t,u)  (((t)&0x07FFFFFF)|((u)<<27))
+#define track_set_d(t,d)  (((t)&0xF8FFFFFF)|((d)<<24))
+#define track_set_c(t,c)  (((t)&0xFF000FFF)|((c)<<12))
+#define track_set_p(t,p)  (((t)&0xFFFFF000)|(p))
+#define make_track(u,d,c,p) (((u)<<27)|((d)<<24)|((c)<<12)|(p))
 
-//[]
-#define NULL_TRACK  0x0F040000
+//[N|!|0|0]
+#define NULL_TRACK  0x7C000000
 //[N|l|0|0]
-#define START_TRACK 0x0F000000
+#define START_TRACK 0x78000000
 
 class RFHMM
 {
@@ -96,8 +96,7 @@ class RFHMM
     int32_t *optimal_path; // for storage
     int32_t *optimal_path_ptr; //just a pointer
     int32_t optimal_path_len;
-    
-    
+        
     double delta;
     double epsilon;
     double tau;
@@ -116,8 +115,6 @@ class RFHMM
 
     typedef int32_t (RFHMM::*move) (int32_t t, int32_t j);
     move **moves;
-
-    std::stringstream ss;
 
     /**
      * Constructor.
