@@ -31,24 +31,26 @@
 #define MAXLEN_NBITS 10
 
 #define S   0
-#define M   1
-#define D   2
-#define I   3
-#define Z   4
-#define E   5
-#define N   6
-#define TBD 7
-#define NSTATES 6
+#define ML  1
+#define M   2
+#define D   3
+#define I   4
+#define Z   5
+#define E   6
+#define N   7
+#define TBD 8
+#define NSTATES 8
 
-#define MOTIF     0
-#define READ      1
+#define LFLANK    0
+#define MOTIF     1
 #define UNMODELED 2
 #define UNCERTAIN 3
 
 //match type
-#define MATCH      0
-#define READ_ONLY  1
-#define PROBE_ONLY 2
+#define PROBE 0
+#define READ  1
+#define MATCH 2
+
 
 /*for indexing single array*/
 #define index(i,j) (((i)<<MAXLEN_NBITS)+(j))
@@ -74,49 +76,51 @@
 class LFHMM
 {
     public:
+        
     const char* read;
     const char* qual;
+    
+    //model variables
     //array indexed by LFLANK, MOTIF, RFLANK
     char **model;
     //length of read, probe and components in the model
-    int32_t rlen, plen, mlen;
+    int32_t rlen, plen, lflen, mlen, rflen;
 
-    double maxLogOdds;
+    /*result variables*/    
+    int32_t lflank_start[2], lflank_end[2], motif_start[2], motif_end[2], rflank_start[2], rflank_end[2];
+    int32_t motif_count, exact_motif_count, motif_m, motif_xid;
+    int32_t* motif_discordance;
+    float motif_concordance, maxLogOdds;
 
     //for track intermediate scores during Viterbi algorithm
-    double max_score;
+    float max_score;
     int32_t max_track;
     
     //for optimal alignment
     bool optimal_path_traced;
-    double optimal_score;
+    float optimal_score;
     int32_t optimal_state;
     int32_t optimal_track;
     int32_t optimal_probe_len;
-    int32_t *optimal_path; // for storage
+    int32_t *optimal_path;     // for storage
     int32_t *optimal_path_ptr; //just a pointer
     int32_t optimal_path_len;
     
-    
-    double delta;
-    double epsilon;
-    double tau;
-    double eta;
+    float delta;
+    float epsilon;
+    float tau;
+    float eta;
 
-    double logEta;
-    double logTau;
-    double log10OneSixteenth;
+    float T[NSTATES][NSTATES];
 
-    double T[NSTATES][NSTATES];
-
-    double **V;
+    float **V;
     int32_t **U;
 
     LogTool *lt;
 
     typedef int32_t (LFHMM::*move) (int32_t t, int32_t j);
     move **moves;
-
+           
     /**
      * Constructor.
      */
@@ -135,8 +139,8 @@ class LFHMM
     /**
      * Initializes object, helper function for constructor.
      */
-    void initialize(const char* ru);
-    
+    void initialize(const char* lflank, const char* ru);
+
     /**
      * Computes the score associated with the move from A to B
      * Updates the max_score and associated max_track.
@@ -162,7 +166,7 @@ class LFHMM
     /**
      * Compute log10 emission odds based on equal error probability distribution contrasted against log10(1/16).
      */
-    double log10_emission_odds(char read_base, char probe_base, uint32_t pl);
+    float log10_emission_odds(char read_base, char probe_base, uint32_t pl);
 
     /**
      * Converts state to string representation.
@@ -175,14 +179,14 @@ class LFHMM
     std::string state2cigarstring(int32_t state);
 
     /**
-     * Converts state to cigar string representation.
+     * Converts track to cigar string representation.
      */
-    std::string track2cigarstring1(int32_t state, int32_t j);
+    std::string track2cigarstring1(int32_t t, int32_t j);
         
     /**
      * Converts state to cigar string representation.
      */
-    std::string track2cigarstring2(int32_t state);
+    std::string track2cigarstring2(int32_t t);
             
     /**
      * Converts model component to string representation.
@@ -200,9 +204,9 @@ class LFHMM
     void print_alignment(std::string& pad);
 
     /**
-     * Prints a double matrix.
+     * Prints a float matrix.
      */
-    void print(double *v, size_t plen, size_t rlen);
+    void print(float *v, size_t plen, size_t rlen);
 
     /**
      * Prints a int32_t matrix.
@@ -223,7 +227,27 @@ class LFHMM
      * Prints U and V.
      */
     void print_trace(int32_t state, size_t plen, size_t rlen);
-
+    
+    /**
+     * Collect alignment summary statistics.
+     */
+    void collect_statistics(int32_t t1, int32_t t2, int32_t j);
+   
+    /**
+     * Clear alignment statistics.
+     */
+    void clear_statistics();
+    
+    /**
+     * Update alignment statistics after collection.
+     */
+    void update_statistics();
+    
+    /**
+     * Returns true if flanks are mapped.
+     */
+    bool flanks_are_mapped();
+        
     /**
      * Returns a string representation of track.
      */
@@ -242,7 +266,31 @@ class LFHMM
      * t - source track (model position)
      * j - source read position
      */
-   
+
+    //////////////
+    //Left flank//
+    //////////////
+    int32_t move_S_ML(int32_t t, int32_t j)
+    {
+        if (t==START_TRACK)
+        {
+            return make_track(S,LFLANK,0,1);
+        }
+        
+        return NULL_TRACK;
+    }
+
+    int32_t move_ML_ML(int32_t t, int32_t j)
+    {
+        int32_t p;
+        if ((p=track_get_p(t))<lflen && j<rlen)
+        {
+            return make_track(ML,LFLANK,0,p+1);
+        }
+    
+        return NULL_TRACK;
+    }
+
     ///////////////////
     //Repeating Motif//
     ///////////////////
@@ -252,6 +300,17 @@ class LFHMM
         if (t==START_TRACK)
         {
             return make_track(S,MOTIF,1,1);
+        }
+        
+        return NULL_TRACK;
+    }
+
+    int32_t move_ML_M(int32_t t, int32_t j)
+    {
+        int32_t p;
+        if ((p=track_get_p(t))==lflen && j<rlen)
+        {
+            return make_track(ML,MOTIF,1,1);
         }
         
         return NULL_TRACK;
@@ -271,8 +330,10 @@ class LFHMM
                 return make_track(M,MOTIF,track_get_c(t),p+1);
             }
         }
-        
-        return NULL_TRACK;
+        else
+        {    
+            return NULL_TRACK;
+        }
     }
 
     int32_t move_D_M(int32_t t, int32_t j)
@@ -289,8 +350,10 @@ class LFHMM
                 return make_track(D,MOTIF,track_get_c(t),p+1);
             }
         }
-         
-        return NULL_TRACK;
+        else
+        {    
+            return NULL_TRACK;
+        }
     }
 
     int32_t move_I_M(int32_t t, int32_t j)
@@ -307,18 +370,22 @@ class LFHMM
                 return make_track(I,MOTIF,track_get_c(t),p+1);
             }
         }
-
-        return NULL_TRACK;
+        else
+        {    
+            return NULL_TRACK;
+        }
     }
 
-    int32_t move_S_D(int32_t t, int32_t j)
+    int32_t move_ML_D(int32_t t, int32_t j)
     {
-        if (t==START_TRACK)
+        if (track_get_p(t)==lflen)
         {    
-            return make_track(S,MOTIF,1,1);
+            return make_track(ML,MOTIF,1,1);
         }
-            
-        return NULL_TRACK;
+        else
+        {    
+            return NULL_TRACK;
+        }
     }
     
     int32_t move_M_D(int32_t t, int32_t j)
@@ -335,8 +402,10 @@ class LFHMM
                 return make_track(M,MOTIF,track_get_c(t),p+1);
             }
         }
-   
-        return NULL_TRACK;
+        else
+        {    
+            return NULL_TRACK;
+        }
     }
 
     int32_t move_D_D(int32_t t, int32_t j)
@@ -353,73 +422,89 @@ class LFHMM
                 return make_track(D,MOTIF,track_get_c(t),p+1);
             }
         }
-  
-        return NULL_TRACK;
+        else
+        {    
+            return NULL_TRACK;
+        }
     }
 
-    int32_t move_S_I(int32_t t, int32_t j)
+    int32_t move_ML_I(int32_t t, int32_t j)
     {
         if (j<rlen)
         {    
-            return make_track(S,MOTIF,1,0);
+            return make_track(ML,MOTIF,1,1);
         }
-    
-        return NULL_TRACK;
+        else
+        {    
+            return NULL_TRACK;
+        }
     }
     
     int32_t move_M_I(int32_t t, int32_t j)
     {
-        if (j<rlen)
+        if (t!=NULL_TRACK && j<rlen)
         {
-            return track_set_u(t,M);
+            return make_track(D,MOTIF,track_get_c(t)+1,1); track_set_u(t,M);
         }
-
-        return NULL_TRACK;
+        else
+        {
+            return NULL_TRACK;
+        }
     }
 
     int32_t move_I_I(int32_t t, int32_t j)
     {
-        if (j<rlen)
+        if (t!=NULL_TRACK && j<rlen)
         {
             return track_set_u(t,I);
         }
-
-        return NULL_TRACK;
+        else
+        {
+            return NULL_TRACK;
+        }
     }
 
-    /////////////////
-    //Unmapped Read//
-    /////////////////
+    /////
+    //Z//
+    /////
     int32_t move_M_Z(int32_t t, int32_t j)
     {
-        if (track_get_p(t)==mlen && j<rlen)
+        if (track_get_d(t)==MOTIF && track_get_p(t)==rflen && j<rlen)
         {
             return track_set_u(t,M);
         }
-        
-        return NULL_TRACK;
+        else
+        {
+            return NULL_TRACK;
+        }
     }
 
     int32_t move_D_Z(int32_t t, int32_t j)
     {
-        if (track_get_p(t)==mlen && j<rlen)
+        int32_t p;
+        if (track_get_d(t)==MOTIF && track_get_p(t)==rflen && j<rlen)
         {
             return track_set_u(t,D);
         }
-        
-        return NULL_TRACK;
+        else
+        {
+            return NULL_TRACK;
+        }
     }
 
     int32_t move_I_Z(int32_t t, int32_t j)
     {
-        if (track_get_p(t)==mlen && j<rlen)
+        int32_t p;
+        if (track_get_d(t)==MOTIF && track_get_p(t)==rflen && j<rlen)
         {
-            return track_set_u(t,I);
+            return track_set_u(t,D);
         }
-        
-        return NULL_TRACK;
+        else
+        {
+            return NULL_TRACK;
+        }
     }
-    
+
     int32_t move_Z_Z(int32_t t, int32_t j)
     {
         int32_t p;
@@ -427,12 +512,20 @@ class LFHMM
         {
             return track_set_u(t,Z);
         }
-        
-        return NULL_TRACK;
+        else
+        {
+            return NULL_TRACK;
+        }
     }
+
 };
 
+#undef MAXLEN
+#undef MAXLEN_NBITS
 #undef S
+#undef X
+#undef Y
+#undef ML
 #undef M
 #undef I
 #undef D
@@ -442,14 +535,15 @@ class LFHMM
 #undef TBD
 #undef NSTATES
 
+#undef LFLANK
 #undef MOTIF
-#undef READ
+#undef RFLANK
 #undef UNMODELED
 #undef UNCERTAIN
 
+#undef READ
+#undef PROBE
 #undef MATCH
-#undef READ_ONLY
-#undef PROBE_ONLY
 
 #undef index
 #undef track_get_u

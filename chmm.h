@@ -125,6 +125,8 @@ class CHMM
     float **V;
     int32_t **U;
 
+    bool debug;
+
     LogTool *lt;
 
     typedef int32_t (CHMM::*move) (int32_t t, int32_t j);

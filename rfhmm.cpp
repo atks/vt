@@ -27,24 +27,34 @@
 #define MAXLEN_NBITS 10
 
 #define S   0
-#define Y   1
-#define M   2
-#define D   3
-#define I   4
-#define E   5
-#define N   6
-#define TBD 7
-#define NSTATES 6
+#define X   1
+#define Y   2
+#define ML  3
+#define DL  4
+#define IL  5
+#define M   6
+#define D   7
+#define I   8
+#define MR  9
+#define DR  10
+#define IR  11
+#define W   12
+#define Z   13
+#define E   14
+#define N   15
+#define TBD 16
+#define NSTATES 15
 
-#define MOTIF     0
-#define READ      1
-#define UNMODELED 2
-#define UNCERTAIN 3
+#define LFLANK    0
+#define MOTIF     1
+#define RFLANK    2
+#define UNMODELED 3
+#define UNCERTAIN 4
 
 //match type
-#define MATCH      0
-#define READ_ONLY  1
-#define PROBE_ONLY 2
+#define PROBE 0
+#define READ  1
+#define MATCH 2
 
 /*for indexing single array*/
 #define index(i,j) (((i)<<MAXLEN_NBITS)+(j))
@@ -66,7 +76,6 @@
 #define NULL_TRACK  0x7C000000
 //[N|l|0|0]
 #define START_TRACK 0x78000000
-
 /**
  * Constructor.
  */
@@ -91,7 +100,7 @@ RFHMM::~RFHMM()
     delete optimal_path;
 
     //the best alignment V_ for subsequence (i,j)
-    for (size_t state=S; state<=E; ++state)
+    for (size_t state=X; state<=Z; ++state)
     {
         delete V[state];
         delete U[state];
@@ -104,58 +113,111 @@ RFHMM::~RFHMM()
 /**
  * Initializes object, helper function for constructor.
  */
-void RFHMM::initialize(const char* motif)
+void RFHMM::initialize(const char* motif, const char* rflank)
 {
     model = new char*[3];
     model[MOTIF] = strdup(motif);
+    model[RFLANK] = strdup(rflank);
+
+    motif_discordance = new int32_t[MAXLEN];
 
     mlen = strlen(model[MOTIF]);
+    rflen = strlen(model[RFLANK]);
 
     optimal_path = new int32_t[MAXLEN<<2];
     optimal_path_traced = false;
 
-    delta = 0.001;
+    delta = 0.01;
     epsilon = 0.05;
     tau = 0.01;
     eta = 0.01;
 
-    log10OneSixteenth = log10(1.0/16.0);
-    log10OneSixteenth = log10(0.03160696);
-
-    for (size_t i=S; i<=E; ++i)
+    for (size_t i=S; i<=Z; ++i)
     {
-        for (size_t j=S; j<=E; ++j)
+        for (size_t j=S; j<=Z; ++j)
         {
             T[i][j] = -INFINITY;
         }
     }
 
+    T[S][X] = 0;
+    T[X][X] = 0;
+
     T[S][Y] = 0;
+    T[X][Y] = 0;
     T[Y][Y] = 0;
 
-    T[S][M] = log10((1-2*delta-tau)/(eta*(1-eta)*(1-eta)));
-    T[Y][M] = log10(((1-2*delta-tau))/((1-eta)*(1-eta)));
+    T[S][ML] = log10((1-tau)/(eta*(1-eta)*(1-eta)));
+    T[X][ML] = T[S][ML];
+    T[Y][ML] = T[S][ML];
+    T[ML][ML] = log10(((1-2*delta-tau))/((1-eta)*(1-eta)));
+    T[DL][ML] = log10(((1-epsilon))/((1-eta)*(1-eta)));
+    T[IL][ML] = T[DL][ML];
+
+    T[ML][DL] = log10((delta)/((1-eta)));
+    T[DL][DL] = log10((epsilon)/((1-eta)));
+
+    T[ML][IL] = T[ML][DL];
+    T[IL][IL] = T[DL][DL];
+
+    T[S][M] = log10((tau*(1-2*delta-tau))/(eta*eta*eta*(1-eta)*(1-eta)));
+    T[X][M] = T[S][M];
+    T[Y][M] = T[S][M];
+    T[ML][M] = log10((tau*(1-2*delta-tau))/(eta*eta*eta*(1-eta)*(1-eta)));
     T[M][M] = log10(((1-2*delta-tau))/((1-eta)*(1-eta)));
     T[D][M] = log10(((1-epsilon-tau))/((1-eta)*(1-eta)));
     T[I][M] = T[I][M];
 
-    T[S][D] = log10(delta/(eta*(1-eta)));
-    T[Y][D] = log10(delta/(1-eta));
+    T[S][D] = log10((tau*delta)/(eta*eta*(1-eta)));
+    T[X][D] = T[S][D];
+    T[Y][D] = T[S][D];
+    T[ML][D] = log10((tau*delta)/((1-eta)));
     T[M][D] = log10(delta/(1-eta));
-    T[D][D] = log10(delta/(1-eta));
 
-    T[S][I] = log10(delta/(eta*(1-eta)));
-    T[Y][I] = log10(delta/(1-eta));
+    T[S][I] = log10((tau*delta)/(eta*eta*eta*(1-eta)));
+    T[X][I] = T[S][I];
+    T[Y][I] = T[S][I];
+    T[ML][I] = log10((tau*delta)/(eta*(1-eta)));
     T[M][I] = log10(delta/(1-eta));
-    T[I][I] = log10(delta/(1-eta));
+
+    T[S][MR] = log10((tau*tau*(1-tau))/(eta*eta*eta*eta*eta*(1-eta)*(1-eta)));
+    T[X][MR] = T[S][MR];
+    T[Y][MR] = T[S][MR];
+    T[ML][MR] = log10((tau*tau*(1-tau))/(eta*eta*eta*eta*(1-eta)*(1-eta)));
+    T[M][MR] = log10((tau*(1-tau))/(eta*eta*eta*(1-eta)*(1-eta)));
+    T[D][MR] = T[M][MR];
+    T[I][MR] = log10((tau*(1-tau))/(eta*eta*(1-eta)*(1-eta)));
+    T[MR][MR] = log10(((1-2*delta-tau))/((1-eta)*(1-eta)));
+    T[DR][MR] = log10(((1-epsilon))/((1-eta)*(1-eta)));
+    T[IR][MR] = T[DR][MR];
+
+    T[MR][DR] = log10(delta/(1-eta));
+    T[DR][DR] = log10(epsilon/(1-eta));
+
+    T[MR][IR] = T[MR][DR];
+    T[IR][IR] = T[MR][IR];
+
+    T[S][W] = log10((tau*tau*tau)/(eta*eta*eta*eta*eta*eta));
+    T[X][W] = T[S][W];
+    T[Y][W] = T[S][W];
+    T[ML][W] = log10((tau*tau*tau)/(eta*eta*eta*eta*eta));
+    T[M][W] = log10((tau*tau)/(eta*eta*eta*eta));
+    T[D][W] = T[M][W];
+    T[I][W] = log10((tau*tau)/(eta*eta*eta));
+    T[MR][W] = log10(tau/eta);
+    T[W][W] = 0;
+
+    T[MR][Z] = log10(tau/eta);
+    T[W][Z] = 0;
+    T[Z][Z] = 0;
 
     typedef int32_t (RFHMM::*move) (int32_t t, int32_t j);
-    V = new double*[NSTATES];
+    V = new float*[NSTATES];
     U = new int32_t*[NSTATES];
     moves = new move*[NSTATES];
-    for (size_t state=S; state<=E; ++state)
+    for (size_t state=S; state<=Z; ++state)
     {
-        V[state] = new double[MAXLEN*MAXLEN];
+        V[state] = new float[MAXLEN*MAXLEN];
         U[state] = new int32_t[MAXLEN*MAXLEN];
         moves[state] = new move[NSTATES];
     }
@@ -165,24 +227,63 @@ void RFHMM::initialize(const char* motif)
         moves[state] = new move[NSTATES];
     }
 
+    moves[S][X] = &RFHMM::move_S_X;
+    moves[X][X] = &RFHMM::move_X_X;
+
     moves[S][Y] = &RFHMM::move_S_Y;
+    moves[X][Y] = &RFHMM::move_X_Y;
     moves[Y][Y] = &RFHMM::move_Y_Y;
 
-    moves[S][M] = &RFHMM::move_S_M;
+    moves[S][ML] = &RFHMM::move_S_ML;
+    moves[X][ML] = &RFHMM::move_X_ML;
+    moves[Y][ML] = &RFHMM::move_Y_ML;
+    moves[ML][ML] = &RFHMM::move_ML_ML;
+    moves[DL][ML] = &RFHMM::move_DL_ML;
+    moves[IL][ML] = &RFHMM::move_IL_ML;
+    moves[ML][DL] = &RFHMM::move_ML_DL;
+    moves[DL][DL] = &RFHMM::move_DL_DL;
+    moves[ML][IL] = &RFHMM::move_ML_IL;
+    moves[IL][IL] = &RFHMM::move_IL_IL;
+
+    moves[X][M] = &RFHMM::move_X_M;
     moves[Y][M] = &RFHMM::move_Y_M;
+    moves[ML][M] = &RFHMM::move_ML_M;
     moves[M][M] = &RFHMM::move_M_M;
     moves[D][M] = &RFHMM::move_D_M;
     moves[I][M] = &RFHMM::move_I_M;
-
-    moves[S][D] = &RFHMM::move_S_D;
-    moves[Y][D] = &RFHMM::move_Y_D;
+    moves[ML][D] = &RFHMM::move_ML_D;
     moves[M][D] = &RFHMM::move_M_D;
     moves[D][D] = &RFHMM::move_D_D;
-
-    moves[S][I] = &RFHMM::move_S_I;
-    moves[Y][I] = &RFHMM::move_Y_I;
+    moves[ML][I] = &RFHMM::move_ML_I;
     moves[M][I] = &RFHMM::move_M_I;
     moves[I][I] = &RFHMM::move_I_I;
+
+    moves[X][MR] = &RFHMM::move_X_MR;
+    moves[Y][MR] = &RFHMM::move_Y_MR;
+    moves[ML][MR] = &RFHMM::move_ML_MR;
+    moves[M][MR] = &RFHMM::move_M_MR;
+    moves[D][MR] = &RFHMM::move_D_MR;
+    moves[I][MR] = &RFHMM::move_I_MR;
+    moves[MR][MR] = &RFHMM::move_MR_MR;
+    moves[DR][MR] = &RFHMM::move_DR_MR;
+    moves[IR][MR] = &RFHMM::move_IR_MR;
+    moves[MR][DR] = &RFHMM::move_MR_DR;
+    moves[DR][DR] = &RFHMM::move_DR_DR;
+    moves[MR][IR] = &RFHMM::move_MR_IR;
+    moves[IR][IR] = &RFHMM::move_IR_IR;
+
+    moves[X][W] = &RFHMM::move_X_W;
+    moves[Y][W] = &RFHMM::move_Y_W;
+    moves[ML][W] = &RFHMM::move_ML_W;
+    moves[M][W] = &RFHMM::move_M_W;
+    moves[D][W] = &RFHMM::move_D_W;
+    moves[I][W] = &RFHMM::move_I_W;
+    moves[MR][W] = &RFHMM::move_MR_W;
+    moves[W][W] = &RFHMM::move_W_W;
+
+    moves[MR][Z] = &RFHMM::move_MR_Z;
+    moves[W][Z] = &RFHMM::move_W_Z;
+    moves[Z][Z] = &RFHMM::move_Z_Z;
 
     //used for back tracking, this points to the state prior to the alignment for subsequence (i,j)
     //that ends with the corresponding state
@@ -197,23 +298,91 @@ void RFHMM::initialize(const char* motif)
             V[S][c] = -INFINITY;
             U[S][c] = NULL_TRACK;
 
+            //X
+            if (j) //(i,j)
+            {
+                V[X][c] = -INFINITY;
+                U[X][c] = make_track(N,UNMODELED,0,0);
+            }
+            else
+            {
+                V[X][c] = 0;
+                if (i) // (i,0)
+                {
+                    if (i==1)
+                    {
+                        t = make_track(S,LFLANK,0,i);
+                    }
+                    else
+                    {
+                        t = make_track(X,LFLANK,0,i);
+                    }
+
+                    U[X][c] = t;
+                }
+                else // (0,0)
+                {
+                    U[X][c] = make_track(N,UNMODELED,0,0);
+                }
+            }
+
             //Y
             V[Y][c] = 0;
             if (i)
             {
-                V[Y][c] = -INFINITY;
-                U[Y][c] = make_track(N,UNMODELED,0,0);
+                if (j) // (i,j)
+                {
+                    U[Y][c] = j==1? make_track(X,LFLANK,0,i) : make_track(Y,LFLANK,0,i);
+                }
+                else // (i,0)
+                {
+                    V[Y][c] = -INFINITY;
+                    U[Y][c] = make_track(N,UNMODELED,0,0);
+                }
             }
             else
             {
-                if (j==1) // (0,j)
+                if (j) // (0,j)
                 {
-                    U[Y][c] = make_track(S,MOTIF,0,0);
+                    U[Y][c] = j==1? make_track(S,LFLANK,0,0) : make_track(Y,LFLANK,0,0);
                 }
                 else // (0,0)
                 {
-                    U[Y][c] = make_track(Y,MOTIF,0,0);
+                    U[Y][c] = make_track(N,UNMODELED,0,0);
                 }
+            }
+
+            //ML
+            V[ML][c] = -INFINITY;
+            if (!i || !j)
+            {
+                U[ML][c] = make_track(N,UNMODELED,0,0);
+            }
+            else
+            {
+                U[ML][c] = make_track(TBD,UNCERTAIN,0,0);
+            }
+
+            //DL
+            V[DL][c] = -INFINITY;
+            if (!i || !j)
+            {
+                U[DL][c] = make_track(N,UNMODELED,0,0);
+            }
+            else
+            {
+                U[DL][c] = make_track(TBD,UNCERTAIN,0,0);
+            }
+
+            //IL
+            V[IL][c] = -INFINITY;
+            if (!i || !j)
+            {
+                U[IL][c] = make_track(N,UNMODELED,0,0);
+            }
+            else
+            {
+                U[IL][c] = make_track(TBD,UNCERTAIN,0,0);
             }
 
             //M
@@ -248,18 +417,81 @@ void RFHMM::initialize(const char* motif)
             {
                 U[I][c] = make_track(TBD,UNCERTAIN,0,0);
             }
+
+            //MR
+            V[MR][c] = -INFINITY;
+            if (!i || !j)
+            {
+                U[MR][c] = make_track(N,UNMODELED,0,0);
+            }
+            else
+            {
+                U[MR][c] = make_track(TBD,UNCERTAIN,0,0);
+            }
+
+            //DR
+            V[DR][c] = -INFINITY;
+            if (!i || !j)
+            {
+                U[DR][c] = make_track(N,UNMODELED,0,0);
+            }
+            else
+            {
+                U[DR][c] = make_track(TBD,UNCERTAIN,0,0);
+            }
+
+            //IR
+            V[IR][c] = -INFINITY;
+            if (!i || !j)
+            {
+                U[IR][c] = make_track(N,UNMODELED,0,0);
+            }
+            else
+            {
+                U[IR][c] = make_track(TBD,UNCERTAIN,0,0);
+            }
+
+            //W
+            V[W][c] = -INFINITY;
+            if (!i || !j)
+            {
+                U[W][c] = make_track(N,UNMODELED,0,0);
+            }
+            else
+            {
+                U[W][c] = make_track(TBD,UNCERTAIN,0,0);
+            }
+
+            //Z
+            V[Z][c] = -INFINITY;
+            if (!i || !j)
+            {
+                U[Z][c] = make_track(N,UNMODELED,0,0);
+            }
+            else
+            {
+                U[Z][c] = make_track(TBD,UNCERTAIN,0,0);
+            }
         }
     }
-
-    logEta = log10(eta);
-    logTau = log10(tau);
 
     V[S][index(0,0)] = 0;
     U[S][index(0,0)] = START_TRACK;
 
-    U[Y][index(0,0)] = NULL_TRACK;
+    V[X][index(0,0)] = -INFINITY;
+    U[X][index(0,0)] = START_TRACK;
+
+    U[Y][index(1,1)] = make_track(S,LFLANK,0,1);
+    V[Y][index(0,0)] = -INFINITY;
+    U[Y][index(0,0)] = START_TRACK;
+
+    V[ML][index(0,0)] = -INFINITY;
+    U[ML][index(0,0)] = START_TRACK;
 
     V[M][index(0,0)] = -INFINITY;
+    V[MR][index(0,0)] = -INFINITY;
+    V[W][index(0,0)] = -INFINITY;
+    V[Z][index(0,0)] = -INFINITY;
 };
 
 /**
@@ -270,11 +502,11 @@ void RFHMM::initialize(const char* motif)
  * @B      - end state
  * @index1 - flattened index of the one dimensional array of start state
  * @j      - 1 based position of read of start state
- * @m      - base match required (MATCH, PROBE_ONLY, READ_ONLY)
+ * @m      - base match required (MATCH, PROBE, READ)
  */
 void RFHMM::proc_comp(int32_t A, int32_t B, int32_t index1, int32_t j, int32_t match_type)
 {
-    double emission = 0, score = 0, valid = 0;
+    float emission = 0, score = 0, valid = 0;
 
     //t is the new track
     int32_t  t =  (this->*(moves[A][B]))(U[A][index1],j);
@@ -285,7 +517,7 @@ void RFHMM::proc_comp(int32_t A, int32_t B, int32_t index1, int32_t j, int32_t m
     }
     else if (match_type==MATCH)
     {
-          emission = log10_emission_odds(track_get_base(t), read[j], qual[j]-33);
+        emission = log10_emission_odds(track_get_base(t), read[j], qual[j]-33);
     }
 
     score = V[A][index1] + T[A][B] + emission + valid;
@@ -296,13 +528,13 @@ void RFHMM::proc_comp(int32_t A, int32_t B, int32_t index1, int32_t j, int32_t m
         max_track = t;
     }
 
-    if (1)
+    if (0)
     {
         std::cerr << "\t" << state2string(A) << "=>" << state2string(B);
         std::cerr << " (" << ((index1-j)>>MAXLEN_NBITS) << "," << j << ") ";
         std::cerr << track2string(U[A][index1]) << "=>";
         std::cerr << track2string(t) << " ";
-        std::cerr << emission << " (e: " << (track_get_d(t)<=MOTIF?track_get_base(t):'N') << " vs " << (j!=rlen?read[j]:'N')  << ") + ";
+        std::cerr << emission << " (e: " << (track_get_d(t)<=RFLANK?track_get_base(t):'N') << " vs " << (j!=rlen?read[j]:'N')  << ") + ";
         std::cerr << T[A][B] << " (t) + ";
         std::cerr << V[A][index1] << " (p) + ";
         std::cerr << valid << " (v) = ";
@@ -319,7 +551,7 @@ void RFHMM::align(const char* read, const char* qual, bool debug)
     this->read = read;
     this->qual = qual;
     rlen = strlen(read);
-    plen = rlen;
+    plen = lflen + rlen + rflen;
 
     if (rlen>MAXLEN)
     {
@@ -327,12 +559,12 @@ void RFHMM::align(const char* read, const char* qual, bool debug)
         exit(1);
     }
 
-    double max = 0;
+    float max = 0;
     char maxPath = 'X';
 
     size_t c,d,u,l;
 
-    debug = true;
+    debug = false;
 
     //alignment
     //take into consideration
@@ -347,7 +579,62 @@ void RFHMM::align(const char* read, const char* qual, bool debug)
             u = index(i-1,j);
             l = index(i,j-1);
 
-            if (debug) std::cerr << "(" << i << "," << j << ")";
+            /////
+            //X//
+            /////
+            //invariant
+
+            /////
+            //Y//
+            /////
+            //invariant
+
+            //////
+            //ML//
+            //////
+            if (debug) std::cerr << "(" << i << "," << j << ")\n";
+            max_score = -INFINITY;
+            max_track = NULL_TRACK;
+            if (i<=lflen)
+            {
+                proc_comp(S, ML, d, j-1, MATCH);
+                proc_comp(X, ML, d, j-1, MATCH);
+                proc_comp(Y, ML, d, j-1, MATCH);
+                proc_comp(ML, ML, d, j-1, MATCH);
+                proc_comp(DL, ML, d, j-1, MATCH);
+                proc_comp(IL, ML, d, j-1, MATCH);
+            }
+            V[ML][c] = max_score;
+            U[ML][c] = max_track;
+            if (debug) std::cerr << "\tset ML " << max_score << " - " << track2string(max_track) << "\n";
+
+            //////
+            //DL//
+            //////
+            max_score = -INFINITY;
+            max_track = NULL_TRACK;
+            if (i<=lflen)
+            {
+                proc_comp(ML, DL, u, j, PROBE);
+                proc_comp(DL, DL, u, j, PROBE);
+            }
+            V[DL][c] = max_score;
+            U[DL][c] = max_track;
+            if (debug) std::cerr << "\tset DL " << max_score << " - " << track2string(max_track) << "\n";
+
+            //////
+            //IL//
+            //////
+            max_score = -INFINITY;
+            max_track = NULL_TRACK;
+            if (i>=2 && i<=lflen)
+            {
+                proc_comp(ML, IL, l, j-1, READ);
+                proc_comp(IL, IL, l, j-1, READ);
+            }
+            V[IL][c] = max_score;
+            U[IL][c] = max_track;
+            if (debug) std::cerr << "\tset IL " << max_score << " - " << track2string(max_track) << "\n";
 
             /////
             //M//
@@ -355,11 +642,15 @@ void RFHMM::align(const char* read, const char* qual, bool debug)
             //only need to update this i>rflen
             max_score = -INFINITY;
             max_track = NULL_TRACK;
-            proc_comp(S, M, d, j-1, MATCH);
-            proc_comp(Y, M, d, j-1, MATCH);
-            proc_comp(M, M, d, j-1, MATCH);
-            proc_comp(D, M, d, j-1, MATCH);
-            proc_comp(I, M, d, j-1, MATCH);
+            if (i>lflen)
+            {
+                proc_comp(X, M, d, j-1, MATCH);
+                proc_comp(Y, M, d, j-1, MATCH);
+                proc_comp(ML, M, d, j-1, MATCH);
+                proc_comp(M, M, d, j-1, MATCH);
+                proc_comp(D, M, d, j-1, MATCH);
+                proc_comp(I, M, d, j-1, MATCH);
+            }
             V[M][c] = max_score;
             U[M][c] = max_track;
             if (debug) std::cerr << "\tset M " << max_score << " - " << track2string(max_track) << "\n";
@@ -369,10 +660,12 @@ void RFHMM::align(const char* read, const char* qual, bool debug)
             /////
             max_score = -INFINITY;
             max_track = NULL_TRACK;
-            proc_comp(S, D, u, j, PROBE_ONLY);
-            proc_comp(Y, D, u, j, PROBE_ONLY);
-            proc_comp(M, D, u, j, PROBE_ONLY);
-            proc_comp(D, D, u, j, PROBE_ONLY);
+            if (i>lflen)
+            {
+                proc_comp(ML, D, u, j, PROBE);
+                proc_comp(M, D, u, j, PROBE);
+                proc_comp(D, D, u, j, PROBE);
+            }
             V[D][c] = max_score;
             U[D][c] = max_track;
             if (debug) std::cerr << "\tset D " << max_score << " - " << track2string(max_track) << "\n";
@@ -382,27 +675,129 @@ void RFHMM::align(const char* read, const char* qual, bool debug)
             /////
             max_score = -INFINITY;
             max_track = NULL_TRACK;
-            proc_comp(S, I, l, j-1, READ_ONLY);
-            proc_comp(Y, I, l, j-1, READ_ONLY);
-            proc_comp(M, I, l, j-1, READ_ONLY);
-            proc_comp(I, I, l, j-1, READ_ONLY);
+            if (i>lflen)
+            {
+                proc_comp(ML, I, l, j-1, READ);
+                proc_comp(M, I, l, j-1, READ);
+                proc_comp(I, I, l, j-1, READ);
+            }
             V[I][c] = max_score;
             U[I][c] = max_track;
             if (debug) std::cerr << "\tset I " << max_score << " - " << track2string(max_track) << "\n";
+
+            //////
+            //MR//
+            //////
+            max_score = -INFINITY;
+            max_track = NULL_TRACK;
+            if (i>lflen)
+            {
+                proc_comp(X, MR, d, j-1, MATCH);
+                proc_comp(Y, MR, d, j-1, MATCH);
+                proc_comp(ML, MR, d, j-1, MATCH);
+                proc_comp(M, MR, d, j-1, MATCH);
+                proc_comp(D, MR, d, j-1, MATCH);
+                proc_comp(I, MR, d, j-1, MATCH);
+                proc_comp(MR, MR, d, j-1, MATCH);
+                proc_comp(DR, MR, d, j-1, MATCH);
+                proc_comp(IR, MR, d, j-1, MATCH);
+            }
+            V[MR][c] = max_score;
+            U[MR][c] = max_track;
+            if (debug) std::cerr << "\tset MR " << max_score << " - " << track2string(max_track) << "\n";
+
+            //////
+            //DR//
+            //////
+            if (i>lflen)
+            {
+                max_score = -INFINITY;
+                max_track = NULL_TRACK;
+            }
+            proc_comp(MR, DR, u, j, PROBE);
+            proc_comp(DR, DR, u, j, PROBE);
+            V[DR][c] = max_score;
+            U[DR][c] = max_track;
+            if (debug) std::cerr << "\tset DR " << max_score << " - " << track2string(max_track) << "\n";
+
+            //////
+            //IR//
+            //////
+            max_score = -INFINITY;
+            max_track = NULL_TRACK;
+            if (i>lflen)
+            {
+                proc_comp(MR, IR, l, j-1, READ);
+                proc_comp(IR, IR, l, j-1, READ);
+            }
+            V[IR][c] = max_score;
+            U[IR][c] = max_track;
+            if (debug) std::cerr << "\tset IR " << max_score << " - " << track2string(max_track) << "\n";
+
+            /////
+            //W//
+            /////
+            max_score = -INFINITY;
+            max_track = NULL_TRACK;
+            if (i>lflen)
+            {
+                proc_comp(X, W, u, j, PROBE);
+                proc_comp(Y, W, u, j, PROBE);
+                proc_comp(ML, W, u, j, PROBE);
+                proc_comp(M, W, u, j, PROBE);
+                proc_comp(D, W, u, j, PROBE);
+                proc_comp(I, W, u, j, PROBE);
+                proc_comp(MR, W, u, j, PROBE);
+                proc_comp(W, W, u, j, PROBE);
+            }
+            V[W][c] = max_score;
+            U[W][c] = max_track;
+            if (debug) std::cerr << "\tset W " << max_score << " - " << track2string(max_track) << "\n";
+
+            /////
+            //Z//
+            /////
+            max_score = -INFINITY;
+            max_track = NULL_TRACK;
+            if (i>lflen)
+            {
+                proc_comp(MR, Z, l, j-1, READ);
+                proc_comp(W, Z, l, j-1, READ);
+                proc_comp(Z, Z, l, j-1, READ);
+            }
+            V[Z][c] = max_score;
+            U[Z][c] = max_track;
+            if (debug) std::cerr << "\tset Z " << max_score << " - " << track2string(max_track) << "\n";
         }
     }
 
-    if (1)
+    if (0)
     {
         std::cerr << "\n   =V[S]=\n";
         print(V[S], plen+1, rlen+1);
         std::cerr << "\n   =U[S]=\n";
         print_U(U[S], plen+1, rlen+1);
-
+        std::cerr << "\n   =V[X]=\n";
+        print(V[X], plen+1, rlen+1);
+        std::cerr << "\n   =U[X]=\n";
+        print_U(U[X], plen+1, rlen+1);
         std::cerr << "\n   =V[Y]=\n";
         print(V[Y], plen+1, rlen+1);
         std::cerr << "\n   =U[Y]=\n";
         print_U(U[Y], plen+1, rlen+1);
+
+        std::cerr << "\n   =V[ML]=\n";
+        print(V[ML], plen+1, rlen+1);
+        std::cerr << "\n   =U[ML]=\n";
+        print_U(U[ML], plen+1, rlen+1);
+        std::cerr << "\n   =V[DL]=\n";
+        print(V[DL], plen+1, rlen+1);
+        std::cerr << "\n   =U[DL]=\n";
+        print_U(U[DL], plen+1, rlen+1);
+        std::cerr << "\n   =V[IL]=\n";
+        print(V[IL], plen+1, rlen+1);
+        std::cerr << "\n   =U[IL]=\n";
+        print_U(U[IL], plen+1, rlen+1);
 
         std::cerr << "\n   =V[M]=\n";
         print(V[M], plen+1, rlen+1);
@@ -417,6 +812,28 @@ void RFHMM::align(const char* read, const char* qual, bool debug)
         std::cerr << "\n   =U[I]=\n";
         print_U(U[I], plen+1, rlen+1);
 
+        std::cerr << "\n   =V[MR]=\n";
+        print(V[MR], plen+1, rlen+1);
+        std::cerr << "\n   =U[MR]=\n";
+        print_U(U[MR], plen+1, rlen+1);
+        std::cerr << "\n   =V[DR]=\n";
+        print(V[DR], plen+1, rlen+1);
+        std::cerr << "\n   =U[DR]=\n";
+        print_U(U[DR], plen+1, rlen+1);
+        std::cerr << "\n   =V[IR]=\n";
+        print(V[IR], plen+1, rlen+1);
+        std::cerr << "\n   =U[IR]=\n";
+        print_U(U[IR], plen+1, rlen+1);
+
+        std::cerr << "\n   =V[W]=\n";
+        print(V[W], plen+1, rlen+1);
+        std::cerr << "\n   =U[W]=\n";
+        print_U(U[W], plen+1, rlen+1);
+        std::cerr << "\n   =V[Z]=\n";
+        print(V[Z], plen+1, rlen+1);
+        std::cerr << "\n   =U[Z]=\n";
+        print_U(U[Z], plen+1, rlen+1);
+
         std::cerr << "\n";
     }
 
@@ -428,79 +845,225 @@ void RFHMM::align(const char* read, const char* qual, bool debug)
  */
 void RFHMM::trace_path()
 {
-    //search for a complete path in M or W or Z
+    //search for a complete path in MR or W or Z
     size_t c;
     optimal_score = -INFINITY;
     optimal_track = NULL_TRACK;
     optimal_state = TBD;
     optimal_probe_len = 0;
-    for (size_t i=0; i<=plen; ++i)
+    for (size_t i=(lflen+rflen); i<=plen; ++i)
     {
         c = index(i,rlen);
-        if (V[M][c]>=optimal_score)
+        if (V[MR][c]>=optimal_score)
         {
-            optimal_score = V[M][c];
-            optimal_track = U[M][c];
-            optimal_state = M;
+            optimal_score = V[MR][c];
+            optimal_track = U[MR][c];
+            optimal_state = MR;
             optimal_probe_len = i;
         }
 
-        if (V[D][c]>=optimal_score)
+        if (V[W][c]>=optimal_score)
         {
-            optimal_score = V[D][c];
-            optimal_track = U[D][c];
-            optimal_state = D;
+            optimal_score = V[W][c];
+            optimal_track = U[W][c];
+            optimal_state = W;
             optimal_probe_len = i;
         }
 
-        if (V[I][c]>=optimal_score)
+        if (V[Z][c]>=optimal_score)
         {
-            optimal_score = V[I][c];
-            optimal_track = U[I][c];
-            optimal_state = I;
+            optimal_score = V[Z][c];
+            optimal_track = U[Z][c];
+            optimal_state = Z;
             optimal_probe_len = i;
         }
     }
 
     //trace path
     optimal_path_ptr = optimal_path+(MAXLEN<<2)-1;
-    int32_t i=optimal_probe_len, j=rlen;
-    int32_t last_t = make_track(optimal_state, MOTIF, 0, mlen+1);
+    int32_t i = optimal_probe_len, j = rlen;
+    int32_t last_t = make_track(optimal_state, RFLANK, 0, rflen+1); //dummy end track for E
     optimal_path_len = 0;
     int32_t u;
+    int32_t des_t, src_t = make_track(E, RFLANK, 0, rflen+1);
+
     do
     {
         u = track_get_u(last_t);
         last_t = U[u][index(i,j)];
         *optimal_path_ptr = track_set_u(last_t, u);
 
-        std::cerr << track2string(*optimal_path_ptr) << " (" << i << "," << j << ")\n";
+        des_t = *optimal_path_ptr;
+        collect_statistics(src_t, des_t, j);
+        std::cerr << track2string(src_t) << " (" << i << "," << j << ") => " << track2string(des_t) << " :  " << track2string(last_t) << "\n";
+        src_t = des_t;
 
-        if (u==M)
+        if (u==ML || u==M || u==MR)
         {
             --i; --j;
         }
-        else if (u==D)
+        else if (u==X || u==DL || u==D || u==DR || u==W)
         {
             --i;
         }
-        else if (u==I || u==Y)
+        else if (u==Y || u==IL || u==I || u==IR || u==Z)
         {
             --j;
         }
 
         --optimal_path_ptr;
         ++optimal_path_len;
+
     } while (track_get_u(last_t)!=S);
+
+    collect_statistics(src_t, last_t, j);
 
     ++optimal_path_ptr;
     optimal_path_traced = true;
 };
 
 /**
+ * Collect alignment summary statistics.
+ */
+void RFHMM::collect_statistics(int32_t src_t, int32_t des_t, int32_t j)
+{
+    //std::cerr << "\t " << track2string(src_t) << " (" << j << ") => " << track2string(des_t) << "\n";
+
+    int32_t src_u = track_get_u(src_t);
+    int32_t des_u = track_get_u(des_t);
+
+    if (src_u==E)
+    {
+        if (des_u==MR || des_u==W)
+        {
+            rflank_end[PROBE] = track_get_p(des_t);
+            rflank_end[READ] = j;
+        }
+    }
+    else if (src_u==Z)
+    {
+        if (des_u==MR || des_u==W)
+        {
+            rflank_end[PROBE] = track_get_p(des_t);
+            rflank_end[READ] = j;
+        }
+    }
+    else if (src_u==MR)
+    {
+        if (des_u==M)
+        {
+            rflank_start[PROBE] = track_get_p(src_t);
+            rflank_start[READ] = j+1;
+
+            motif_end[PROBE] = track_get_c(des_t);
+            motif_count = track_get_c(des_t);
+            motif_end[READ] = j;
+
+            //initialize array for tracking inexact repeats
+            for (int32_t k=1; k<=motif_count; ++k)
+            {
+                motif_discordance[k] = 0;
+            }
+
+            if (track_get_base(des_t)!=read[j-1])
+            {
+                ++motif_discordance[motif_count];
+            }
+        }
+        else if (des_u==ML || des_u==X)
+        {
+            rflank_start[PROBE] = track_get_p(src_t);
+            rflank_start[READ] = j+1;
+            motif_start[PROBE] = 0;
+            motif_start[READ] = 0;
+            motif_end[PROBE] = 0;
+            motif_end[READ] = 0;
+            lflank_end[PROBE] = track_get_p(des_t);
+            lflank_end[READ] = j;
+        }
+    }
+    else if (src_u==M)
+    {
+        if (des_u==ML || des_u==X)
+        {
+            motif_start[PROBE] = track_get_c(src_t);
+            motif_start[READ] = j+1;
+            lflank_end[PROBE] = track_get_p(des_t);
+            lflank_end[READ] = j;
+        }
+    }
+    else if (src_u==ML)
+    {
+        if (des_u==S)
+        {
+            lflank_start[PROBE] = track_get_p(src_t);
+            lflank_start[READ] = j+1;
+        }
+        else if (des_u==X || des_u==Y)
+        {
+            lflank_start[PROBE] = track_get_p(src_t);
+            lflank_start[READ] = j+1;
+        }
+    }
+
+    if (des_u==M)
+    {
+        if (track_get_base(des_t)!=read[j-1])
+        {
+            ++motif_discordance[track_get_c(des_t)];
+        }
+    }
+
+    if (des_u==D || des_u==I)
+    {
+        ++motif_discordance[track_get_c(des_t)];
+    }
+};
+
+/**
+ * Clear alignment statistics.
+ */
+void RFHMM::clear_statistics()
+{
+    lflank_start[PROBE] = -1;
+    lflank_start[READ] = -1;
+    lflank_end[PROBE] = -1;
+    lflank_end[READ] = -1;
+    motif_start[PROBE] = -1;
+    motif_start[READ] = -1;
+    motif_end[PROBE] = -1;
+    motif_end[READ] = -1;
+    rflank_start[PROBE] = -1;
+    rflank_start[READ] = -1;
+    rflank_end[PROBE] = -1;
+    rflank_end[READ] = -1;
+    motif_count = 0;
+    exact_motif_count = 0;
+    motif_m = 0;
+    motif_xid = 0;
+    motif_concordance = 0;
+}
+
+/**
+ * Update alignment statistics after collection.
+ */
+void RFHMM::update_statistics()
+{
+    motif_concordance = (float)motif_m/(motif_m+motif_xid);
+}
+
+/**
+ * Returns true if flanks are mapped.
+ */
+bool RFHMM::flanks_are_mapped()
+{
+    return lflank_end[PROBE]==lflen && rflank_start[PROBE]==rflen;
+}
+
+/**
  * Compute log10 emission odds based on equal error probability distribution.
  */
-double RFHMM::log10_emission_odds(char probe_base, char read_base, uint32_t pl)
+float RFHMM::log10_emission_odds(char probe_base, char read_base, uint32_t pl)
 {
     //4 encodes for N
     if (read_base=='N' || probe_base=='N')
@@ -528,9 +1091,25 @@ std::string RFHMM::state2string(int32_t state)
     {
         return "S";
     }
+    else if (state==X)
+    {
+        return "X";
+    }
     else if (state==Y)
     {
         return "Y";
+    }
+    else if (state==ML)
+    {
+        return "ML";
+    }
+    else if (state==DL)
+    {
+        return "DL";
+    }
+    else if (state==IL)
+    {
+        return "IL";
     }
     else if (state==M)
     {
@@ -543,6 +1122,26 @@ std::string RFHMM::state2string(int32_t state)
     else if (state==I)
     {
         return "I";
+    }
+    else if (state==MR)
+    {
+        return "MR";
+    }
+    else if (state==DR)
+    {
+        return "DR";
+    }
+    else if (state==IR)
+    {
+        return "IR";
+    }
+    else if (state==W)
+    {
+        return "W";
+    }
+    else if (state==Z)
+    {
+        return "Z";
     }
     else if (state==E)
     {
@@ -571,10 +1170,27 @@ std::string RFHMM::state2cigarstring(int32_t state)
     {
         return "S";
     }
+    else if (state==X)
+    {
+        return "X";
+    }
     else if (state==Y)
     {
         return "Y";
-    }    else if (state==M)
+    }
+    else if (state==ML)
+    {
+        return "L";
+    }
+    else if (state==DL)
+    {
+        return "l";
+    }
+    else if (state==IL)
+    {
+        return "i";
+    }
+    else if (state==M)
     {
         return "M";
     }
@@ -585,6 +1201,26 @@ std::string RFHMM::state2cigarstring(int32_t state)
     else if (state==I)
     {
         return "I";
+    }
+    else if (state==MR)
+    {
+        return "R";
+    }
+    else if (state==DR)
+    {
+        return "r";
+    }
+    else if (state==IR)
+    {
+        return "i";
+    }
+    else if (state==W)
+    {
+        return "W";
+    }
+    else if (state==Z)
+    {
+        return "Z";
     }
     else if (state==E)
     {
@@ -615,11 +1251,15 @@ std::string RFHMM::track2cigarstring1(int32_t t, int32_t j)
     {
         return "S";
     }
+    else if (state==X)
+    {
+        return "X";
+    }
     else if (state==Y)
     {
         return "Y";
     }
-    else if (state==M)
+    else if (state==ML || state==M || state==MR)
     {
         if (track_get_base(t)==read[j-1])
         {
@@ -630,13 +1270,21 @@ std::string RFHMM::track2cigarstring1(int32_t t, int32_t j)
             return "*";
         }
     }
-    else if (state==D)
+    else if (state==DL || state==D || state==DR)
     {
         return "D";
     }
-    else if (state==I)
+    else if (state==IL || state==I || state==IR)
     {
         return "I";
+    }
+    else if (state==W)
+    {
+        return "W";
+    }
+    else if (state==Z)
+    {
+        return "Z";
     }
     else if (state==E)
     {
@@ -657,13 +1305,17 @@ std::string RFHMM::track2cigarstring1(int32_t t, int32_t j)
 }
 
 /**
- * Converts state to cigar string representation.
+ * Converts track to cigar string representation.
  */
 std::string RFHMM::track2cigarstring2(int32_t t)
 {
     int32_t state = track_get_u(t);
 
-    if (state==M)
+    if (state==ML || state==DL || state==IL)
+    {
+        return "L";
+    }
+    else if (state==M)
     {
         return (track_get_c(t)%2==0?"+":"o");
     }
@@ -675,6 +1327,10 @@ std::string RFHMM::track2cigarstring2(int32_t t)
     {
         return (track_get_c(t)%2==0?"+":"o");
     }
+    else if (state==MR || state==DR || state==IR)
+    {
+        return "R";
+    }
     else
     {
         return " ";
@@ -685,9 +1341,17 @@ std::string RFHMM::track2cigarstring2(int32_t t)
  */
 std::string RFHMM::component2string(int32_t component)
 {
-    if (component==MOTIF)
+    if (component==LFLANK)
+    {
+        return "l";
+    }
+    else if (component==MOTIF)
     {
         return "m";
+    }
+    else if (component==RFLANK)
+    {
+        return "r";
     }
     else if (component==UNMODELED)
     {
@@ -726,7 +1390,12 @@ void RFHMM::print_alignment(std::string& pad)
         std::cerr << "path not traced\n";
     }
 
+    std::cerr << "rflank       : " << model[LFLANK] << "\n";
     std::cerr << "repeat motif : " << model[MOTIF] << "\n";
+    std::cerr << "lflank       : " << model[RFLANK] << "\n";
+    std::cerr << "lflen        : " << lflen << "\n";
+    std::cerr << "mlen         : " << mlen << "\n";
+    std::cerr << "rflen        : " << rflen << "\n";
     std::cerr << "plen         : " << plen << "\n";
     std::cerr << "\n";
     std::cerr << "read         : " << read << "\n";
@@ -741,6 +1410,38 @@ void RFHMM::print_alignment(std::string& pad)
     std::cerr << "optimal path ptr : " << optimal_path_ptr  << "\n";
     std::cerr << "max j: " << rlen << "\n";
 
+    std::cerr << "probe: " << "(" << lflank_start[PROBE] << "~" << lflank_end[PROBE] << ") "
+                          << "[" << motif_start[PROBE] << "~" << motif_end[PROBE] << "] "
+                          << "(" << rflank_start[PROBE] << "~" << rflank_end[PROBE] << ")\n";
+    std::cerr << "read : " << "(" << lflank_start[READ] << "~" << lflank_end[READ] << ") "
+                          << "[" << motif_start[READ] << "~" << motif_end[READ] << "] "
+                          << "(" << rflank_start[READ] << "~" << rflank_end[READ] << ")\n";
+    std::cerr << "\n";
+    std::cerr << "motif #           : " << motif_count << " [" << motif_start[READ] << "," << motif_end[READ] << "]\n";
+
+    exact_motif_count = motif_count;
+    motif_concordance = 0;
+    for (int32_t k=1; k<=motif_count; ++k)
+    {
+        if (motif_discordance[k])
+        {
+            --exact_motif_count;
+        }
+
+        if (mlen>=motif_discordance[k])
+        {
+            motif_concordance += (float)(mlen-motif_discordance[k]) / mlen;
+        }
+    }
+    motif_concordance *= 100.0/motif_count;
+    std::cerr << "motif concordance : " << motif_concordance << "% (" << exact_motif_count << "/" << motif_count << ")\n";
+    std::cerr << "motif discordance : ";
+    for (int32_t k=1; k<=motif_count; ++k)
+    {
+        std::cerr << motif_discordance[k] << (k==motif_count?"\n":"|");
+    }
+    std::cerr << "\n";
+
     //print path
     int32_t* path;
     path = optimal_path_ptr;
@@ -750,7 +1451,7 @@ void RFHMM::print_alignment(std::string& pad)
     while (path<optimal_path+(MAXLEN<<2))
     {
         int32_t u = track_get_u(*path);
-        if (u==M || u==D)
+        if (u==X || u==ML || u==DL || u==M || u==D || u==MR || u==DR || u==W)
         {
             std::cerr << track_get_base(*path);
         }
@@ -769,7 +1470,7 @@ void RFHMM::print_alignment(std::string& pad)
     {
         std::cerr << track2cigarstring1(*path,j);
         int32_t u = track_get_u(*path);
-        if (u==Y || u==M || u==I)
+        if (u==Y || u==ML || u==IL || u==M || u==I || u==MR || u==IR || u==Z)
         {
             ++j;
         }
@@ -792,7 +1493,7 @@ void RFHMM::print_alignment(std::string& pad)
     while (path<optimal_path+(MAXLEN<<2))
     {
         int32_t u = track_get_u(*path);
-        if (u==Y || u==M || u==I)
+        if (u==Y || u==ML || u==IL || u==M || u==I || u==MR || u==IR || u==Z)
         {
             std::cerr << read[j-1];
             ++j;
@@ -807,11 +1508,11 @@ void RFHMM::print_alignment(std::string& pad)
 };
 
 /**
- * Prints a double matrix.
+ * Prints a float matrix.
  */
-void RFHMM::print(double *v, size_t plen, size_t rlen)
+void RFHMM::print(float *v, size_t plen, size_t rlen)
 {
-    double val;
+    float val;
     std::cerr << std::setprecision(1) << std::fixed;
     for (size_t i=0; i<plen; ++i)
     {
@@ -830,7 +1531,7 @@ void RFHMM::print(double *v, size_t plen, size_t rlen)
  */
 void RFHMM::print(int32_t *v, size_t plen, size_t rlen)
 {
-    double val;
+    float val;
     std::cerr << std::setprecision(1) << std::fixed << std::setw(6);
     for (size_t i=0; i<plen; ++i)
     {
@@ -849,15 +1550,15 @@ void RFHMM::print(int32_t *v, size_t plen, size_t rlen)
  */
 void RFHMM::print_T()
 {
-    for (size_t j=S; j<=I; ++j)
+    for (size_t j=S; j<=Z; ++j)
     {
         std::cerr << std::setw(8) << std::setprecision(2) << std::fixed << state2string(j);
     }
     std::cerr << "\n";
 
-    for (size_t i=S; i<=I; ++i)
+    for (size_t i=S; i<=Z; ++i)
     {
-        for (size_t j=S; j<=I; ++j)
+        for (size_t j=S; j<=Z; ++j)
         {
             if (j)
             {
@@ -901,7 +1602,7 @@ void RFHMM::print_trace(int32_t state, size_t plen, size_t rlen)
 {
     std::cerr << std::setprecision(1) << std::fixed;
     int32_t *u = U[state];
-    double *v = V[state];
+    float *v = V[state];
     std::string s;
     for (size_t i=0; i<plen; ++i)
     {
@@ -952,27 +1653,34 @@ void RFHMM::print_track(int32_t t)
 
 #undef MAXLEN
 #undef MAXLEN_NBITS
-
 #undef S
+#undef X
 #undef Y
+#undef ML
+#undef IL
+#undef DL
 #undef M
 #undef I
 #undef D
+#undef MR
+#undef IR
+#undef DR
+#undef W
+#undef Z
 #undef E
 #undef N
 #undef TBD
 #undef NSTATES
 
-#undef index
-
+#undef LFLANK
 #undef MOTIF
-#undef READ
+#undef RFLANK
 #undef UNMODELED
 #undef UNCERTAIN
 
+#undef READ
+#undef PROBE
 #undef MATCH
-#undef READ_ONLY
-#undef PROBE_ONLY
 
 #undef index
 #undef track_get_u
