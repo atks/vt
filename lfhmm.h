@@ -84,7 +84,7 @@ class LFHMM
     //array indexed by LFLANK, MOTIF, RFLANK
     char **model;
     //length of read, probe and components in the model
-    int32_t rlen, plen, lflen, mlen, rflen;
+    int32_t rlen, plen, lflen, mlen;
 
     /*result variables*/    
     int32_t lflank_start[2], lflank_end[2], motif_start[2], motif_end[2], rflank_start[2], rflank_end[2];
@@ -432,7 +432,7 @@ class LFHMM
     {
         if (j<rlen)
         {    
-            return make_track(ML,MOTIF,1,1);
+            return make_track(ML,MOTIF,1,0);
         }
         else
         {    
@@ -469,7 +469,7 @@ class LFHMM
     /////
     int32_t move_M_Z(int32_t t, int32_t j)
     {
-        if (track_get_d(t)==MOTIF && track_get_p(t)==rflen && j<rlen)
+        if (track_get_d(t)==MOTIF && track_get_p(t)==mlen && j<rlen)
         {
             return track_set_u(t,M);
         }
@@ -482,7 +482,7 @@ class LFHMM
     int32_t move_D_Z(int32_t t, int32_t j)
     {
         int32_t p;
-        if (track_get_d(t)==MOTIF && track_get_p(t)==rflen && j<rlen)
+        if (track_get_d(t)==MOTIF && track_get_p(t)==mlen && j<rlen)
         {
             return track_set_u(t,D);
         }
@@ -495,7 +495,7 @@ class LFHMM
     int32_t move_I_Z(int32_t t, int32_t j)
     {
         int32_t p;
-        if (track_get_d(t)==MOTIF && track_get_p(t)==rflen && j<rlen)
+        if (track_get_d(t)==MOTIF && track_get_p(t)==mlen && j<rlen)
         {
             return track_set_u(t,D);
         }

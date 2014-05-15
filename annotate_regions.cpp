@@ -71,7 +71,7 @@ class Igor : Program
         //////////////////////////
         try
         {
-            std::string desc = "annotates variants in a VCF file";
+            std::string desc = "annotates regions in a VCF file";
 
             TCLAP::CmdLine cmd(desc, ' ', version);
             VTOutput my; cmd.setOutput(&my);
