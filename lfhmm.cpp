@@ -157,7 +157,7 @@ void LFHMM::initialize(const char* lflank, const char* motif)
     V = new float*[NSTATES];
     U = new int32_t*[NSTATES];
     moves = new move*[NSTATES];
-    for (size_t state=S; state<=Z; ++state)
+    for (size_t state=S; state<NSTATES; ++state)
     {
         V[state] = new float[MAXLEN*MAXLEN];
         U[state] = new int32_t[MAXLEN*MAXLEN];
@@ -318,7 +318,7 @@ void LFHMM::proc_comp(int32_t A, int32_t B, int32_t index1, int32_t j, int32_t m
 }
 
 /**
- * Align y against x.
+ * Align read against model.
  */
 void LFHMM::align(const char* read, const char* qual, bool debug)
 {
@@ -326,7 +326,7 @@ void LFHMM::align(const char* read, const char* qual, bool debug)
     this->read = read;
     this->qual = qual;
     rlen = strlen(read);
-    plen = lflen + rlen + rflen;
+    plen = lflen + rlen;
 
     if (rlen>MAXLEN)
     {
@@ -480,7 +480,7 @@ void LFHMM::trace_path()
     optimal_track = NULL_TRACK;
     optimal_state = TBD;
     optimal_probe_len = 0;
-    for (size_t i=(lflen+rflen); i<=plen; ++i)
+    for (size_t i=lflen; i<=plen; ++i)
     {
         c = index(i,rlen);
         
@@ -496,10 +496,10 @@ void LFHMM::trace_path()
     //trace path
     optimal_path_ptr = optimal_path+(MAXLEN<<2)-1;
     int32_t i = optimal_probe_len, j = rlen;
-    int32_t last_t = make_track(optimal_state, UNMODELED, 0, rflen+1); //dummy end track for E
+    int32_t last_t = make_track(optimal_state, UNMODELED, 0, 0); //dummy end track for E
     optimal_path_len = 0;
     int32_t u;
-    int32_t des_t, src_t = make_track(E, UNMODELED, 0, rflen+1);
+    int32_t des_t, src_t = make_track(E, UNMODELED, 0, 0);
 
     do
     {
@@ -552,10 +552,25 @@ void LFHMM::collect_statistics(int32_t src_t, int32_t des_t, int32_t j)
     }
     else if (src_u==Z)
     {
-        if (des_u==M)
+        if (des_u==M || des_u==D)
         {
-            rflank_end[PROBE] = track_get_p(des_t);
-            rflank_end[READ] = j;
+            rflank_start[PROBE] = track_get_p(src_t);
+            rflank_start[READ] = j+1;
+
+            motif_end[PROBE] = track_get_c(des_t);
+            motif_count = track_get_c(des_t);
+            motif_end[READ] = j;
+
+            //initialize array for tracking inexact repeats
+            for (int32_t k=1; k<=motif_count; ++k)
+            {
+                motif_discordance[k] = 0;
+            }
+
+            if (des_u==D || track_get_base(des_t)!=read[j-1])
+            {
+                ++motif_discordance[motif_count];
+            }
         }
     }
     else if (src_u==M)
@@ -624,7 +639,7 @@ void LFHMM::update_statistics()
  */
 bool LFHMM::flanks_are_mapped()
 {
-    return lflank_end[PROBE]==lflen && rflank_start[PROBE]==rflen;
+    return lflank_end[PROBE]==lflen;
 }
 
 /**

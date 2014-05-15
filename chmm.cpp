@@ -221,7 +221,7 @@ void CHMM::initialize(const char* lflank, const char* motif, const char* rflank)
     V = new float*[NSTATES];
     U = new int32_t*[NSTATES];
     moves = new move*[NSTATES];
-    for (size_t state=S; state<=Z; ++state)
+    for (size_t state=S; state<NSTATES; ++state)
     {
         V[state] = new float[MAXLEN*MAXLEN];
         U[state] = new int32_t[MAXLEN*MAXLEN];
@@ -549,7 +549,7 @@ void CHMM::proc_comp(int32_t A, int32_t B, int32_t index1, int32_t j, int32_t ma
 }
 
 /**
- * Align y against x.
+ * Align read against model.
  */
 void CHMM::align(const char* read, const char* qual, bool debug)
 {
