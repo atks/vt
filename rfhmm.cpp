@@ -33,12 +33,10 @@
 #define D   3
 #define I   4
 #define MR  5
-#define W   6
-#define Z   7
-#define E   8
-#define N   9
-#define TBD 10
-#define NSTATES 10
+#define E   6
+#define N   7
+#define TBD 8
+#define NSTATES 7
 
 //model components
 #define MOTIF     0
@@ -127,9 +125,9 @@ void RFHMM::initialize(const char* motif, const char* rflank)
     tau = 0.01;
     eta = 0.01;
 
-    for (size_t i=S; i<=Z; ++i)
+    for (size_t i=S; i<=NSTATES; ++i)
     {
-        for (size_t j=S; j<=Z; ++j)
+        for (size_t j=S; j<=NSTATES; ++j)
         {
             T[i][j] = -INFINITY;
         }
@@ -332,7 +330,7 @@ void RFHMM::align(const char* read, const char* qual, bool debug)
     }
 
     float max = 0;
-    char maxPath = 'X';
+    char maxPath = 'Y';
 
     size_t c,d,u,l;
 
@@ -414,12 +412,12 @@ void RFHMM::align(const char* read, const char* qual, bool debug)
         }
     }
 
-    if (0)
+    if (1)
     {
-        std::cerr << "\n   =V[S]=\n";
-        print(V[S], plen+1, rlen+1);
-        std::cerr << "\n   =U[S]=\n";
-        print_U(U[S], plen+1, rlen+1);
+//        std::cerr << "\n   =V[S]=\n";
+//        print(V[S], plen+1, rlen+1);
+//        std::cerr << "\n   =U[S]=\n";
+//        print_U(U[S], plen+1, rlen+1);
         std::cerr << "\n   =V[Y]=\n";
         print(V[Y], plen+1, rlen+1);
         std::cerr << "\n   =U[Y]=\n";
@@ -469,22 +467,6 @@ void RFHMM::trace_path()
             optimal_score = V[MR][c];
             optimal_track = U[MR][c];
             optimal_state = MR;
-            optimal_probe_len = i;
-        }
-
-        if (V[W][c]>=optimal_score)
-        {
-            optimal_score = V[W][c];
-            optimal_track = U[W][c];
-            optimal_state = W;
-            optimal_probe_len = i;
-        }
-
-        if (V[Z][c]>=optimal_score)
-        {
-            optimal_score = V[Z][c];
-            optimal_track = U[Z][c];
-            optimal_state = Z;
             optimal_probe_len = i;
         }
     }
@@ -543,14 +525,6 @@ void RFHMM::collect_statistics(int32_t src_t, int32_t des_t, int32_t j)
     int32_t des_u = track_get_u(des_t);
 
     if (src_u==E)
-    {
-        if (des_u==MR)
-        {
-            rflank_end[PROBE] = track_get_p(des_t);
-            rflank_end[READ] = j;
-        }
-    }
-    else if (src_u==Z)
     {
         if (des_u==MR)
         {
@@ -1050,15 +1024,15 @@ void RFHMM::print(int32_t *v, size_t plen, size_t rlen)
  */
 void RFHMM::print_T()
 {
-    for (size_t j=S; j<=Z; ++j)
+    for (size_t j=1; j<=NSTATES; ++j)
     {
         std::cerr << std::setw(8) << std::setprecision(2) << std::fixed << state2string(j);
     }
     std::cerr << "\n";
 
-    for (size_t i=S; i<=Z; ++i)
+    for (size_t i=1; i<=NSTATES; ++i)
     {
-        for (size_t j=S; j<=Z; ++j)
+        for (size_t j=1; j<=NSTATES; ++j)
         {
             if (j)
             {
