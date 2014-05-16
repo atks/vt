@@ -30,19 +30,19 @@
 #define MAXLEN 1024
 #define MAXLEN_NBITS 10
 
+//model states
 #define S   0
 #define Y   1
 #define M   2
 #define D   3
 #define I   4
 #define MR  5
-#define W   6
-#define Z   7
-#define E   8
-#define N   9
-#define TBD 10
-#define NSTATES 10
+#define E   6
+#define N   7
+#define TBD 8
+#define NSTATES 7
 
+//model components
 #define MOTIF     0
 #define RFLANK    1
 #define UNMODELED 2
@@ -82,7 +82,7 @@ class RFHMM
     const char* qual;
 
     //model variables
-    //array indexed by LFLANK, MOTIF, RFLANK
+    //array indexed by MOTIF, RFLANK
     char **model;
     //length of read, probe and components in the model
     int32_t rlen, plen, mlen, rflen;
@@ -530,25 +530,16 @@ class RFHMM
 #undef MAXLEN
 #undef MAXLEN_NBITS
 #undef S
-#undef X
 #undef Y
-#undef ML
-#undef IL
-#undef DL
 #undef M
 #undef I
 #undef D
 #undef MR
-#undef IR
-#undef DR
-#undef W
-#undef Z
 #undef E
 #undef N
 #undef TBD
 #undef NSTATES
 
-#undef LFLANK
 #undef MOTIF
 #undef RFLANK
 #undef UNMODELED

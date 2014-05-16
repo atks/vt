@@ -39,7 +39,7 @@
 #define E   6
 #define N   7
 #define TBD 8
-#define NSTATES 8
+#define NSTATES 7
 
 #define LFLANK    0
 #define MOTIF     1
@@ -51,7 +51,6 @@
 #define READ  1
 #define MATCH 2
 
-
 /*for indexing single array*/
 #define index(i,j) (((i)<<MAXLEN_NBITS)+(j))
 
@@ -61,7 +60,7 @@
 #define track_get_c(t)    (((t)&0x00FFF000)>>12)
 #define track_get_p(t)    (((t)&0x00000FFF))
 #define track_get_base(t) (model[track_get_d(t)][track_get_p(t)-1])
-#define track_valid(t) ((track_get_d(t)==RFLANK||track_get_d(t)==MOTIF||track_get_d(t)==LFLANK)&&track_get_p(t)!=0)
+#define track_valid(t)    ((track_get_d(t)==RFLANK||track_get_d(t)==MOTIF||track_get_d(t)==LFLANK)&&track_get_p(t)!=0)
 #define track_set_u(t,u)  (((t)&0x07FFFFFF)|((u)<<27))
 #define track_set_d(t,d)  (((t)&0xF8FFFFFF)|((d)<<24))
 #define track_set_c(t,c)  (((t)&0xFF000FFF)|((c)<<12))
@@ -69,9 +68,9 @@
 #define make_track(u,d,c,p) (((u)<<27)|((d)<<24)|((c)<<12)|(p))
 
 //[N|!|0|0]
-#define NULL_TRACK  0x7C000000
+#define NULL_TRACK  make_track(N,UNMODELED,0,0)
 //[N|l|0|0]
-#define START_TRACK 0x78000000
+#define START_TRACK make_track(N,UNCERTAIN,0,0)
 
 class LFHMM
 {
@@ -81,7 +80,7 @@ class LFHMM
     const char* qual;
     
     //model variables
-    //array indexed by LFLANK, MOTIF, RFLANK
+    //array indexed by LFLANK, MOTIF
     char **model;
     //length of read, probe and components in the model
     int32_t rlen, plen, lflen, mlen;
