@@ -263,4 +263,5 @@ bcf1_t* BCFOrderedReader::get_bcf1_from_pool()
 void BCFOrderedReader::close()
 {
     bcf_close(vcf);
+    bcf_hdr_destroy(hdr);
 }

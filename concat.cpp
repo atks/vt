@@ -119,7 +119,7 @@ class Igor : Program
         odw = new BCFOrderedWriter(output_vcf_file, 0);
         if (no_subset_samples==-1)
         {
-            odw->link_hdr(odr->hdr);
+            odw->set_hdr(odr->hdr);
         }
         //perform subsetting
         else if (no_subset_samples==0)
@@ -152,6 +152,9 @@ class Igor : Program
         
         for (int32_t i=0; i<input_vcf_files.size(); ++i)
         {
+            
+            std::cerr << "processing " << input_vcf_files[i] << "\n"; 
+            
             if (i)
             {
                 odr = new BCFOrderedReader(input_vcf_files[i], intervals);
@@ -180,6 +183,7 @@ class Igor : Program
                 odw->write(v);
                 ++no_variants;
                 v =  odw->get_bcf1_from_pool();
+                
             }
             
             odr->close();

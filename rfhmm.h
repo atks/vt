@@ -31,15 +31,15 @@
 #define MAXLEN_NBITS 10
 
 //model states
-#define S   0
-#define Y   1
-#define M   2
-#define D   3
-#define I   4
-#define MR  5
-#define E   6
-#define N   7
-#define TBD 8
+#define S       0
+#define Y       1
+#define M       2 
+#define D       3
+#define I       4
+#define MR      5
+#define E       6
+#define N       7
+#define TBD     8
 #define NSTATES 7
 
 //model components

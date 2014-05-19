@@ -27,15 +27,15 @@
 #define MAXLEN_NBITS 10
 
 //model states
-#define S   0
-#define Y   1
-#define M   2
-#define D   3
-#define I   4
-#define MR  5
-#define E   6
-#define N   7
-#define TBD 8
+#define S       0
+#define Y       1
+#define M       2
+#define D       3
+#define I       4
+#define MR      5
+#define E       6
+#define N       7
+#define TBD     8
 #define NSTATES 7
 
 //model components
@@ -53,16 +53,16 @@
 #define index(i,j) (((i)<<MAXLEN_NBITS)+(j))
 
 /*functions for getting trace back information*/
-#define track_get_u(t)    (((t)&0xF8000000)>>27)
-#define track_get_d(t)    (((t)&0x07000000)>>24)
-#define track_get_c(t)    (((t)&0x00FFF000)>>12)
-#define track_get_p(t)    (((t)&0x00000FFF))
-#define track_get_base(t) (model[track_get_d(t)][track_get_p(t)-1])
-#define track_valid(t) ((track_get_d(t)==RFLANK||track_get_d(t)==MOTIF||track_get_d(t)==LFLANK)&&track_get_p(t)!=0)
-#define track_set_u(t,u)  (((t)&0x07FFFFFF)|((u)<<27))
-#define track_set_d(t,d)  (((t)&0xF8FFFFFF)|((d)<<24))
-#define track_set_c(t,c)  (((t)&0xFF000FFF)|((c)<<12))
-#define track_set_p(t,p)  (((t)&0xFFFFF000)|(p))
+#define track_get_u(t)      (((t)&0xF8000000)>>27)
+#define track_get_d(t)      (((t)&0x07000000)>>24)
+#define track_get_c(t)      (((t)&0x00FFF000)>>12)
+#define track_get_p(t)      (((t)&0x00000FFF))
+#define track_get_base(t)   (model[track_get_d(t)][track_get_p(t)-1])
+#define track_valid(t)      ((track_get_d(t)==RFLANK||track_get_d(t)==MOTIF||track_get_d(t)==LFLANK)&&track_get_p(t)!=0)
+#define track_set_u(t,u)    (((t)&0x07FFFFFF)|((u)<<27))
+#define track_set_d(t,d)    (((t)&0xF8FFFFFF)|((d)<<24))
+#define track_set_c(t,c)    (((t)&0xFF000FFF)|((c)<<12))
+#define track_set_p(t,p)    (((t)&0xFFFFF000)|(p))
 #define make_track(u,d,c,p) (((u)<<27)|((d)<<24)|((c)<<12)|(p))
 
 //[N|!|0|0]
