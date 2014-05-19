@@ -705,7 +705,7 @@ class CHMM
     int32_t move_I_MR(int32_t t, int32_t j)
     {
         int32_t p;
-        if (j<mlen)
+        if (track_get_p(t)==mlen && j<rlen)
         {
             return make_track(I,RFLANK,0,1);
         }

@@ -170,7 +170,7 @@ void CHMM::initialize(const char* lflank, const char* motif, const char* rflank)
     T[ML][M] = log10((tau*(1-2*delta-tau))/(eta*eta*eta*(1-eta)*(1-eta)));
     T[M][M] = log10(((1-2*delta-tau))/((1-eta)*(1-eta)));
     T[D][M] = log10(((1-epsilon-tau))/((1-eta)*(1-eta)));
-    T[I][M] = T[I][M];
+    T[I][M] = T[D][M];
 
     T[S][D] = log10((tau*delta)/(eta*eta*(1-eta)));
     T[X][D] = T[S][D];
@@ -192,7 +192,7 @@ void CHMM::initialize(const char* lflank, const char* motif, const char* rflank)
     T[ML][MR] = log10((tau*tau*(1-tau))/(eta*eta*eta*eta*(1-eta)*(1-eta)));
     T[M][MR] = log10((tau*(1-tau))/(eta*eta*eta*(1-eta)*(1-eta)));
     T[D][MR] = T[M][MR];
-    T[I][MR] = log10((tau*(1-tau))/(eta*eta*(1-eta)*(1-eta)));
+    T[I][MR] = T[M][MR]; //log10((tau*(1-tau))/(eta*eta*(1-eta)*(1-eta)));
     T[MR][MR] = log10(((1-2*delta-tau))/((1-eta)*(1-eta)));
     T[DR][MR] = log10(((1-epsilon))/((1-eta)*(1-eta)));
     T[IR][MR] = T[DR][MR];
@@ -534,7 +534,7 @@ void CHMM::proc_comp(int32_t A, int32_t B, int32_t index1, int32_t j, int32_t ma
         max_track = t;
     }
 
-    if (0)
+    if (1)
     {
         std::cerr << "\t" << state2string(A) << "=>" << state2string(B);
         std::cerr << " (" << ((index1-j)>>MAXLEN_NBITS) << "," << j << ") ";
@@ -565,7 +565,7 @@ void CHMM::align(const char* read, const char* qual, bool debug)
         exit(1);
     }
 
-    debug = false;
+    debug = true;
 
     float max = 0;
     char maxPath = 'X';
@@ -777,7 +777,7 @@ void CHMM::align(const char* read, const char* qual, bool debug)
         }
     }
 
-    if (0)
+    if (1)
     {
         std::cerr << "\n   =V[S]=\n";
         print(V[S], plen+1, rlen+1);
@@ -908,7 +908,7 @@ void CHMM::trace_path()
 
         des_t = *optimal_path_ptr;
         collect_statistics(src_t, des_t, j);
-        //std::cerr << track2string(src_t) << " (" << i << "," << j << ") => " << track2string(des_t) << " :  " << track2string(last_t) << "\n";
+        std::cerr << track2string(src_t) << " (" << i << "," << j << ") => " << track2string(des_t) << " :  " << track2string(last_t) << "\n";
         src_t = des_t;
 
         if (u==ML || u==M || u==MR)
@@ -961,9 +961,9 @@ void CHMM::collect_statistics(int32_t src_t, int32_t des_t, int32_t j)
             rflank_end[READ] = j;
         }
     }
-    else if (src_u==MR)
+    else if (src_u==MR || src_u==W)
     {
-        if (des_u==M || des_u==D)
+        if (des_u==M || des_u==D || des_u==I)
         {
             rflank_start[PROBE] = track_get_p(src_t);
             rflank_start[READ] = j+1;
@@ -976,11 +976,6 @@ void CHMM::collect_statistics(int32_t src_t, int32_t des_t, int32_t j)
             for (int32_t k=1; k<=motif_count; ++k)
             {
                 motif_discordance[k] = 0;
-            }
-
-            if (des_u==D || track_get_base(des_t)!=read[j-1])
-            {
-                ++motif_discordance[motif_count];
             }
         }
         else if (des_u==ML || des_u==X)
@@ -1519,7 +1514,7 @@ void CHMM::print_alignment(std::string& pad)
     }
     std::cerr << " \n";
         
-        
+    print_T();     
         
 };
 
