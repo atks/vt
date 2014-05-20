@@ -37,6 +37,7 @@ class Igor : Program
     std::string output_vcf_file;
     std::vector<GenomeInterval> intervals;
     std::string ref_fasta_file;
+    int32_t window_size;    
     bool print;
 
     ///////
@@ -88,6 +89,7 @@ class Igor : Program
             TCLAP::ValueArg<std::string> arg_ref_fasta_file("r", "r", "reference sequence fasta file []", true, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_intervals("i", "i", "intervals []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "file", cmd);
+            TCLAP::ValueArg<int32_t> arg_window_size("w", "w", "window size for local sorting of variants [10000]", false, 10000, "integer", cmd);
             TCLAP::SwitchArg arg_quiet("q", "q", "do not print options and summary []", cmd, false);
             TCLAP::ValueArg<std::string> arg_output_vcf_file("o", "o", "output VCF file [-]", false, "-", "str", cmd);
             TCLAP::UnlabeledValueArg<std::string> arg_input_vcf_file("<in.vcf>", "input VCF file", true, "","file", cmd);
@@ -98,6 +100,7 @@ class Igor : Program
             output_vcf_file = arg_output_vcf_file.getValue();
             parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
             print = !arg_quiet.getValue();
+            window_size = arg_window_size.getValue();
             ref_fasta_file = arg_ref_fasta_file.getValue();
         }
         catch (TCLAP::ArgException &e)
@@ -114,7 +117,7 @@ class Igor : Program
         //////////////////////
         odr = new BCFOrderedReader(input_vcf_file, intervals);
 
-        odw = new BCFOrderedWriter(output_vcf_file, 100000);
+        odw = new BCFOrderedWriter(output_vcf_file, window_size);
         odw->link_hdr(odr->hdr);
         bcf_hdr_append(odw->hdr, "##INFO=<ID=OLD_VARIANT,Number=1,Type=String,Description=\"Original chr:pos:ref:alt encoding\">\n");
         odw->write_hdr();
@@ -166,6 +169,7 @@ class Igor : Program
             {
                 const char* chrom = odr->get_seqname(v);
                 uint32_t pos1 = bcf_get_pos1(v);
+                
                 std::vector<std::string> alleles;
                 for (uint32_t i=0; i<bcf_get_n_allele(v); ++i)
                 {
@@ -276,6 +280,7 @@ class Igor : Program
         std::clog << "\n";
         std::clog << "options:     input VCF file        " << input_vcf_file << "\n";
         std::clog << "         [o] output VCF file       " << output_vcf_file << "\n";
+        std::clog << "         [w] sorting window size   " << window_size << "\n";
         std::clog << "         [r] reference FASTA file  " << ref_fasta_file << "\n";
         print_int_op("         [i] intervals             ", intervals);
         std::clog << "\n";
@@ -285,6 +290,10 @@ class Igor : Program
     {
         if (!print) return;
 
+        int32_t no_biallelic_normalized = no_lt+no_lt_la+no_lt_rt+no_la+no_rt;
+        int32_t no_multiallelic_normalized = no_multi_lt+no_multi_lt_la+no_multi_lt_rt+no_multi_la+no_multi_rt;
+        int32_t no_normalized = no_biallelic_normalized + no_multiallelic_normalized;
+
         std::clog << "\n";
         std::clog << "stats: biallelic\n";
         std::clog << "          no. left trimmed                      : " << no_lt << "\n";
@@ -293,6 +302,8 @@ class Igor : Program
         std::clog << "          no. left aligned                      : " << no_la << "\n";
         std::clog << "          no. right trimmed                     : " << no_rt << "\n";
         std::clog << "\n";
+        std::clog << "       total no. biallelic normalized           : " << no_biallelic_normalized << "\n";
+        std::clog << "\n";
         std::clog << "       multiallelic\n";
         std::clog << "          no. left trimmed                      : " << no_multi_lt << "\n";
         std::clog << "          no. left trimmed and left aligned     : " << no_multi_lt_la << "\n";
@@ -300,7 +311,10 @@ class Igor : Program
         std::clog << "          no. left aligned                      : " << no_multi_la << "\n";
         std::clog << "          no. right trimmed                     : " << no_multi_rt << "\n";
         std::clog << "\n";
-        std::clog << "       no. variants observed                    : " << no_variants << "\n";
+        std::clog << "       total no. multiallelic normalized        : " << no_multiallelic_normalized << "\n";
+        std::clog << "\n";
+        std::clog << "       total no. variants normalized            : " << no_normalized << "\n";
+        std::clog << "       total no. variants observed              : " << no_variants << "\n";
         std::clog << "\n";
     };
 
