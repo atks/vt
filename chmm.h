@@ -593,7 +593,7 @@ class CHMM
     {
         if (j<rlen)
         {    
-            return make_track(ML,MOTIF,1,1);
+            return make_track(ML,MOTIF,1,0);
         }
         else
         {    
