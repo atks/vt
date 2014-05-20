@@ -263,9 +263,9 @@ class Igor : Program
             odw->write(v);
             v = odw->get_bcf1_from_pool();
         }
-
-        odr->close();
+    
         odw->close();
+        odr->close();
     };
 
     void print_options()

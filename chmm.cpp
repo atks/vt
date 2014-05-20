@@ -175,7 +175,7 @@ void CHMM::initialize(const char* lflank, const char* motif, const char* rflank)
     T[S][D] = log10((tau*delta)/(eta*eta*(1-eta)));
     T[X][D] = T[S][D];
     T[Y][D] = T[S][D];
-    T[ML][D] = log10((tau*delta)/((1-eta)));
+    T[ML][D] = log10((tau*delta)/(eta*(1-eta)));
     T[M][D] = log10(delta/(1-eta));
     T[D][D] = T[DL][DL];
 
@@ -681,7 +681,7 @@ void CHMM::align(const char* read, const char* qual, bool debug)
             /////
             max_score = -INFINITY;
             max_track = NULL_TRACK;
-            if (i>lflen)
+            if (i>=lflen)
             {
                 proc_comp(ML, I, l, j-1, READ);
                 proc_comp(M, I, l, j-1, READ);
@@ -908,7 +908,7 @@ void CHMM::trace_path()
 
         des_t = *optimal_path_ptr;
         collect_statistics(src_t, des_t, j);
-        std::cerr << track2string(src_t) << " (" << i << "," << j << ") => " << track2string(des_t) << " :  " << track2string(last_t) << "\n";
+        //std::cerr << track2string(src_t) << " (" << i << "," << j << ") => " << track2string(des_t) << " :  " << track2string(last_t) << "\n";
         src_t = des_t;
 
         if (u==ML || u==M || u==MR)
