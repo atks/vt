@@ -491,7 +491,7 @@ void bcf_variant2string(bcf_hdr_t *h, bcf1_t *v, kstring_t *var)
     kputc(':', var);
     for (int32_t i=0; i<v->n_allele; ++i)
     {
-        if (i) kputc(',', var);
+        if (i) kputc('/', var);
         kputs(bcf_get_alt(v, i), var);
     }
 }
@@ -501,8 +501,8 @@ void bcf_variant2string(bcf_hdr_t *h, bcf1_t *v, kstring_t *var)
  */
 int32_t cmpstr(void const *a, void const *b)
 {
-    char const *aa = (char const *)a;
-    char const *bb = (char const *)b;
+    char const *aa = *(char const **)a;
+    char const *bb = *(char const **)b;
 
     return strcmp(aa, bb);
 }
@@ -543,6 +543,31 @@ void bcf_variant2string_sorted(bcf_hdr_t *h, bcf1_t *v, kstring_t *var)
             kputs(temp[i], var);
         }
         free(temp);
+    }
+}
+
+/**
+ * Gets a string representation of the alleles of a variant.
+ */
+void bcf_alleles2string(bcf_hdr_t *h, bcf1_t *v, kstring_t *var)
+{
+    bcf_unpack(v, BCF_UN_STR);
+    var->l = 0;
+
+    if (v->n_allele==2)
+    {
+        kputs(bcf_get_alt(v, 0), var);
+        kputc(',', var);
+        kputs(bcf_get_alt(v, 1), var);
+    }
+    else
+    {
+        char** allele = bcf_get_allele(v);
+        for (int32_t i=0; i<v->n_allele; ++i)
+        {
+            if (i) kputc(',', var);
+            kputs(allele[i], var);
+        }
     }
 }
 

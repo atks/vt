@@ -263,6 +263,11 @@ void bcf_variant2string(bcf_hdr_t *h, bcf1_t *v, kstring_t *var);
 void bcf_variant2string_sorted(bcf_hdr_t *h, bcf1_t *v, kstring_t *var);
 
 /**
+ * Gets a string representation of the alleles of a variant.
+ */
+void bcf_alleles2string(bcf_hdr_t *h, bcf1_t *v, kstring_t *var);
+
+/**
  * Gets a sorted string representation of the alleles of a variant.
  */
 void bcf_alleles2string_sorted(bcf_hdr_t *h, bcf1_t *v, kstring_t *var);

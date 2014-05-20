@@ -72,6 +72,7 @@ class bcfptr
         alleles = {0,0,0};
         if (!sync_by_pos)
         {
+            //bcf_alleles2string(h, v, &alleles);  
             bcf_alleles2string_sorted(h, v, &alleles);  
         }        
     };
