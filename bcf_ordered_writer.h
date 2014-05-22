@@ -58,6 +58,7 @@ class BCFOrderedWriter
     std::string vcf_file;
     vcfFile *vcf;
     bcf_hdr_t *hdr;
+    bool linked_hdr;
 
     //buffer for containing records to be written out
     std::list<bcf1_t*> buffer; //most recent records in the front

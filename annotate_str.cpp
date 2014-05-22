@@ -40,9 +40,7 @@ class Igor : Program
     std::string output_vcf_file;
     std::vector<GenomeInterval> intervals;
     std::string interval_list;
-    std::string gencode_gtf_file;    
-    bool annotate_coding;
-
+    
     ///////
     //i/o//
     ///////
@@ -58,8 +56,7 @@ class Igor : Program
     //common tools//
     ////////////////
     VariantManip *vm;
-    GENCODE *gc;
-
+    
     Igor(int argc, char **argv)
     {
         version = "0.5";
@@ -77,7 +74,6 @@ class Igor : Program
             TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_output_vcf_file("o", "o", "output VCF file [-]", false, "-", "str", cmd);
             TCLAP::ValueArg<std::string> arg_ref_fasta_file("r", "r", "reference sequence fasta file []", true, "", "str", cmd);
-            TCLAP::ValueArg<std::string> arg_gencode_gtf_file("g", "g", "GENCODE annotations GTF file []", false, "", "str", cmd);
             TCLAP::UnlabeledValueArg<std::string> arg_input_vcf_file("<in.vcf>", "input VCF file", true, "","file", cmd);
 
             cmd.parse(argc, argv);
@@ -86,10 +82,7 @@ class Igor : Program
             output_vcf_file = arg_output_vcf_file.getValue();
             parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
             parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
-            ref_fasta_file   = arg_ref_fasta_file.getValue();
-            gencode_gtf_file = arg_gencode_gtf_file.getValue();
-
-            annotate_coding = gencode_gtf_file != "" ? true : false;
+            ref_fasta_file = arg_ref_fasta_file.getValue();
         }
         catch (TCLAP::ArgException &e)
         {
@@ -185,6 +178,7 @@ class Igor : Program
         }
         
         odw->close();
+        odr->close();
     };
     
     private:
