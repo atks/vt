@@ -49,6 +49,7 @@
 #include "profile_len.h"
 #include "profile_chrom.h"
 #include "annotate_regions.h"
+#include "annotate_str.h"
 #include "test.h"
 
 void print_time(double t)
@@ -220,6 +221,10 @@ int main(int argc, char ** argv)
     else if (argc>1 && cmd=="profile_len")
     {
         profile_len(argc-1, ++argv);
+    }
+    else if (argc>1 && cmd=="annotate_str")
+    {
+        annotate_str(argc-1, ++argv);
     }
     else
     {

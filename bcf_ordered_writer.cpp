@@ -53,6 +53,7 @@ BCFOrderedWriter::BCFOrderedWriter(std::string input_vcf_file, int32_t window)
 
     hdr = bcf_hdr_init("w");
     bcf_hdr_append(hdr, "##fileformat=VCFv4.1");
+    linked_hdr = false;
 }
 
 /**
@@ -65,6 +66,7 @@ void BCFOrderedWriter::set_hdr(bcf_hdr_t *hdr)
         bcf_hdr_destroy(this->hdr);
     }
     this->hdr = bcf_hdr_dup(hdr);
+    linked_hdr = false;
 }
 
 /**
@@ -77,6 +79,7 @@ void BCFOrderedWriter::set_hdr(bcf_hdr_t *hdr)
 void BCFOrderedWriter::link_hdr(bcf_hdr_t *hdr)
 {
     this->hdr = hdr;
+    linked_hdr = true;
 }
 
 /**
@@ -223,4 +226,5 @@ void BCFOrderedWriter::close()
 {
     flush(true);
     bcf_close(vcf);
+    if (!linked_hdr && hdr) bcf_hdr_destroy(hdr);
 }

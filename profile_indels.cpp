@@ -169,7 +169,7 @@ class Igor : Program
         dataset_labels.push_back("data");
         dataset_types.push_back("ref");
         dataset_fexps.push_back(fexp);
-
+        
         htsFile *hts = hts_open(ref_data_sets_list.c_str(), "r");
         kstring_t s = {0,0,0};
         std::vector<std::string> vec;
@@ -251,6 +251,9 @@ class Igor : Program
             std::string chrom = bcf_get_chrom(h,v);
             int32_t start1 = bcf_get_pos1(v);
             int32_t end1 = bcf_get_end_pos1(v);
+
+            for (uint32_t i=0; i<no_overlap_files; ++i)
+                presence[i]=0;
 
             //check existence
             for (uint32_t i=0; i<current_recs.size(); ++i)
@@ -429,7 +432,7 @@ class Igor : Program
     {
         fprintf(stderr, "\n");
         fprintf(stderr, "  %s\n", "data set");
-        fprintf(stderr, "    No Indels : %10d [%.2f]\n", stats[0].a,  (float)stats[0].a_ins/(stats[0].a_del));
+        fprintf(stderr, "    No Indels : %10d [%.2f]\n", no_indels,  (float)stats[0].a_ins/(stats[0].a_del));
         fprintf(stderr, "       FS/NFS : %10.2f (%d/%d)\n", (float)fs/(fs+nfs), fs, nfs);
         fprintf(stderr, "\n");
 
