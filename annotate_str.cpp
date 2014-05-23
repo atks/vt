@@ -40,7 +40,7 @@ class Igor : Program
     std::string output_vcf_file;
     std::vector<GenomeInterval> intervals;
     std::string interval_list;
-    
+
     ///////
     //i/o//
     ///////
@@ -55,8 +55,11 @@ class Igor : Program
     ////////////////
     //common tools//
     ////////////////
+    faidx_t *fai;
     VariantManip *vm;
-    
+    RFHMM* rfhmm;
+    LFHMM* lfhmm;
+
     Igor(int argc, char **argv)
     {
         version = "0.5";
@@ -101,23 +104,30 @@ class Igor : Program
         odr = new BCFOrderedReader(input_vcf_file, intervals);
         odw = new BCFOrderedWriter(output_vcf_file);
         odw->link_hdr(odr->hdr);
-        bcf_hdr_append(odw->hdr, "##INFO=<ID=VT,Number=1,Type=String,Description=\"Variant Type - SNP, MNP, INDEL, CLUMPED\">");
-        bcf_hdr_append(odw->hdr, "##INFO=<ID=RU,Number=1,Type=String,Description=\"Repeat unit in a STR or Homopolymer\">");
-        bcf_hdr_append(odw->hdr, "##INFO=<ID=RL,Number=1,Type=Integer,Description=\"Repeat Length\">");
-        bcf_hdr_append(odw->hdr, "##INFO=<ID=LFLANK,Number=1,Type=String,Description=\"Right Flank\">");
-        bcf_hdr_append(odw->hdr, "##INFO=<ID=RFLANK,Number=1,Type=String,Description=\"Left Flank\">");
-        bcf_hdr_append(odw->hdr, "##INFO=<ID=LFLANKPOS,Number=2,Type=Integer,Description=\"Location of left flank\">");
-        bcf_hdr_append(odw->hdr, "##INFO=<ID=RFLANKPOS,Number=2,Type=Integer,Description=\"Location of right flank\">");
+        bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_RU,Number=1,Type=String,Description=\"Repeat unit in a STR or Homopolymer\">");
+        bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_RL,Number=1,Type=Integer,Description=\"Repeat Length\">");
+        bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_LFLANK,Number=1,Type=String,Description=\"Right Flank\">");
+        bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_RFLANK,Number=1,Type=String,Description=\"Left Flank\">");
+        bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_LFLANKPOS,Number=2,Type=Integer,Description=\"Location of left flank\">");
+        bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_RFLANKPOS,Number=2,Type=Integer,Description=\"Location of right flank\">");
 
         ///////////////////////
         //tool initialization//
         ///////////////////////
         vm = new VariantManip(ref_fasta_file);
-        
+
         ////////////////////////
         //stats initialization//
         ////////////////////////
         no_variants_annotated = 0;
+
+        ////////////////////////
+        //tools initialization//
+        ////////////////////////
+        fai = fai_load(ref_fasta_file.c_str());
+        rfhmm = new RFHMM();
+        lfhmm = new LFHMM();
+
     }
 
     void print_options()
@@ -146,22 +156,49 @@ class Igor : Program
         std::vector<Interval*> overlaps;
         Variant variant;
         kstring_t s = {0,0,0};
+
+        int32_t lflank_len, ref_genome_len;
+        char* ru;
+        int32_t ru_len;
+
         while (odr->read(v))
         {
             bcf_unpack(v, BCF_UN_STR);
             int32_t vtype = vm->classify_variant(odr->hdr, v, variant);
-            std::string chrom = bcf_get_chrom(odr->hdr,v);
+            const char* chrom = bcf_get_chrom(odr->hdr,v);
             int32_t start1 = bcf_get_pos1(v);
             int32_t end1 = bcf_get_end_pos1(v);
-            
-            //1. reduce variant 
+
+            //1. reduce variant
             //   ACACACAC=>AC
             //   check concordance
             //   Reference length
             //   accuracy
-            //                           
-            //2. run right flank
             //
+
+            //2. run right flank
+
+
+            char* lflank = faidx_fetch_uc_seq(fai, chrom, start1-10, start1-1, &lflank_len);
+            bcf_get_info_string(odr->hdr, v, "RU", &ru, &ru_len);
+            char* ref_genome = faidx_fetch_uc_seq(fai, chrom, start1-10, start1+100, &ref_genome_len);
+            std::string qual;
+            for (int32_t i=0; i<ref_genome_len; ++i) qual += 'K';
+
+            bcf_print(odr->hdr, v);
+
+            std::cerr << "lflank    : " << lflank << "\n";
+            std::cerr << "RU: " << ru << "\n";
+            std::cerr << "ref_genome: " << ref_genome << "\n";
+            std::cerr << "qual      : " << qual << "\n";
+            std::cerr << "\n";
+
+            lfhmm->initialize(lflank, ru);
+
+//          rfhmm->print_alignment();
+
+            lfhmm->align(ref_genome, qual.c_str());
+            lfhmm->print_alignment();
             //
             //3. run left flank
             //
@@ -169,18 +206,20 @@ class Igor : Program
             //4. try several modes
             //
             //
-            
-            
-            
+
+
+            if (lflank_len) free(lflank);
+            if (ref_genome_len) free(ref_genome);
+
             ++no_variants_annotated;
             odw->write(v);
             v = odw->get_bcf1_from_pool();
         }
-        
+
         odw->close();
         odr->close();
     };
-    
+
     private:
 
 };

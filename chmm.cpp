@@ -1393,6 +1393,8 @@ void CHMM::print_alignment()
  */
 void CHMM::print_alignment(std::string& pad)
 {
+    print_T();
+    
     if (!optimal_path_traced)
     {
         std::cerr << "path not traced\n";
@@ -1512,10 +1514,7 @@ void CHMM::print_alignment(std::string& pad)
         }
         ++path;
     }
-    std::cerr << " \n";
-        
-    print_T();     
-        
+    std::cerr << "\n";        
 };
 
 /**

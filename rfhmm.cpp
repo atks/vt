@@ -136,25 +136,25 @@ void RFHMM::initialize(const char* motif, const char* rflank)
     T[S][Y] = 0;
     T[Y][Y] = 0;
 
-    T[S][M] = log10((tau*(1-2*delta-tau))/(eta*eta*eta*(1-eta)*(1-eta)));
+    T[S][M] = log10((tau*(1-2*delta-tau))/(tau*eta*(1-eta)*(1-eta)));
     T[Y][M] = T[S][M];
     T[M][M] = log10(((1-2*delta-tau))/((1-eta)*(1-eta)));
     T[D][M] = log10(((1-epsilon-tau))/((1-eta)*(1-eta)));
     T[I][M] = T[I][M];
 
-    T[S][D] = log10((tau*delta)/(eta*eta*(1-eta)));
+    T[S][D] = log10((tau*delta)/(eta*(1-eta)));
     T[Y][D] = T[S][D];
     T[M][D] = log10(delta/(1-eta));
 
-    T[S][I] = log10((tau*delta)/(eta*eta*eta*(1-eta)));
+    T[S][I] = log10((tau*delta)/(eta*(1-eta)));
     T[Y][I] = T[S][I];
     T[M][I] = log10(delta/(1-eta));
 
-    T[S][MR] = log10((tau*tau*(1-tau))/(eta*eta*eta*eta*eta*(1-eta)*(1-eta)));
-    T[Y][MR] = T[S][MR];
-    T[M][MR] = log10((tau*(1-tau))/(eta*eta*eta*(1-eta)*(1-eta)));
+    T[S][MR] = log10((tau*tau*(1-tau))/(tau*eta*eta*eta*(1-eta)*(1-eta)));
+    T[Y][MR] = log10((tau*tau*(1-tau))/(tau*eta*eta*eta*(1-eta)*(1-eta)));
+    T[M][MR] = log10((tau*(1-tau))/(eta*eta*(1-eta)*(1-eta)));
     T[D][MR] = T[M][MR];
-    T[I][MR] = log10((tau*(1-tau))/(eta*eta*(1-eta)*(1-eta)));
+    T[I][MR] = T[D][MR];
     T[MR][MR] = log10(((1-2*delta-tau))/((1-eta)*(1-eta)));
     
     typedef int32_t (RFHMM::*move) (int32_t t, int32_t j);
@@ -322,6 +322,8 @@ void RFHMM::align(const char* read, const char* qual, bool debug)
     this->qual = qual;
     rlen = strlen(read);
     plen = rlen + rflen;
+
+   // std::cerr << 
 
     if (rlen>MAXLEN)
     {

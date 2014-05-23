@@ -74,9 +74,9 @@ class Igor : Program
         try
         {
             std::string desc = "vt align  -m nw -x ACTGACT -y CCCCCCACTGACTGGGGGG\n"
-    "          vt align  -m sw -x ACTGACT -y CCCCCCACTGACTGGGGGG\n"
-    "          vt align  -m ghmm -x ACTGACT -y CCCCCCACTGACTGGGGGG\n"
-    "\n";
+                     "          vt align  -m sw -x ACTGACT -y CCCCCCACTGACTGGGGGG\n"
+                     "          vt align  -m ghmm -x ACTGACT -y CCCCCCACTGACTGGGGGG\n"
+                     "\n";
 
             std::string version = "0.5";
             TCLAP::CmdLine cmd(desc, ' ', version);
@@ -165,7 +165,6 @@ class Igor : Program
         else if (method=="rfhmm")
         {
             RFHMM hmm;
-            double llk;
             std::string qual;
             for (int32_t i=0; i<y.size(); ++i)
             {

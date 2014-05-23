@@ -68,9 +68,9 @@
 #define make_track(u,d,c,p) (((u)<<27)|((d)<<24)|((c)<<12)|(p))
 
 //[N|!|0|0]
-#define NULL_TRACK 0x36000000
+#define NULL_TRACK  0x7C000000
 //[N|l|0|0]
-#define START_TRACK 0x36000000
+#define START_TRACK 0x78000000
 
 class LFHMM
 {
@@ -120,15 +120,17 @@ class LFHMM
     typedef int32_t (LFHMM::*move) (int32_t t, int32_t j);
     move **moves;
            
+    bool debug;       
+           
     /**
      * Constructor.
      */
-    LFHMM();
+    LFHMM(bool debug=false);
 
     /**
      * Constructor.
      */
-    LFHMM(LogTool *lt);
+    LFHMM(LogTool *lt, bool debug=false);
 
     /**
      * Destructor.
@@ -329,10 +331,8 @@ class LFHMM
                 return make_track(M,MOTIF,track_get_c(t),p+1);
             }
         }
-        else
-        {    
-            return NULL_TRACK;
-        }
+   
+        return NULL_TRACK;
     }
 
     int32_t move_D_M(int32_t t, int32_t j)
@@ -349,10 +349,8 @@ class LFHMM
                 return make_track(D,MOTIF,track_get_c(t),p+1);
             }
         }
-        else
-        {    
-            return NULL_TRACK;
-        }
+     
+        return NULL_TRACK;
     }
 
     int32_t move_I_M(int32_t t, int32_t j)
@@ -369,10 +367,8 @@ class LFHMM
                 return make_track(I,MOTIF,track_get_c(t),p+1);
             }
         }
-        else
-        {    
-            return NULL_TRACK;
-        }
+   
+        return NULL_TRACK;
     }
 
     int32_t move_ML_D(int32_t t, int32_t j)
@@ -381,10 +377,8 @@ class LFHMM
         {    
             return make_track(ML,MOTIF,1,1);
         }
-        else
-        {    
-            return NULL_TRACK;
-        }
+        
+        return NULL_TRACK;
     }
     
     int32_t move_M_D(int32_t t, int32_t j)
@@ -401,10 +395,8 @@ class LFHMM
                 return make_track(M,MOTIF,track_get_c(t),p+1);
             }
         }
-        else
-        {    
-            return NULL_TRACK;
-        }
+    
+        return NULL_TRACK;
     }
 
     int32_t move_D_D(int32_t t, int32_t j)
@@ -421,10 +413,8 @@ class LFHMM
                 return make_track(D,MOTIF,track_get_c(t),p+1);
             }
         }
-        else
-        {    
-            return NULL_TRACK;
-        }
+    
+        return NULL_TRACK;
     }
 
     int32_t move_ML_I(int32_t t, int32_t j)
@@ -433,22 +423,18 @@ class LFHMM
         {    
             return make_track(ML,MOTIF,1,0);
         }
-        else
-        {    
-            return NULL_TRACK;
-        }
+    
+        return NULL_TRACK;
     }
     
     int32_t move_M_I(int32_t t, int32_t j)
     {
         if (t!=NULL_TRACK && j<rlen)
         {
-            return make_track(D,MOTIF,track_get_c(t)+1,1); track_set_u(t,M);
+            return track_set_u(t,M);
         }
-        else
-        {
-            return NULL_TRACK;
-        }
+    
+        return NULL_TRACK;
     }
 
     int32_t move_I_I(int32_t t, int32_t j)
@@ -457,10 +443,8 @@ class LFHMM
         {
             return track_set_u(t,I);
         }
-        else
-        {
-            return NULL_TRACK;
-        }
+    
+        return NULL_TRACK;
     }
 
     /////
@@ -472,10 +456,8 @@ class LFHMM
         {
             return track_set_u(t,M);
         }
-        else
-        {
-            return NULL_TRACK;
-        }
+    
+        return NULL_TRACK;
     }
 
     int32_t move_D_Z(int32_t t, int32_t j)
@@ -485,10 +467,8 @@ class LFHMM
         {
             return track_set_u(t,D);
         }
-        else
-        {
-            return NULL_TRACK;
-        }
+    
+        return NULL_TRACK;
     }
 
     int32_t move_I_Z(int32_t t, int32_t j)
@@ -498,10 +478,8 @@ class LFHMM
         {
             return track_set_u(t,D);
         }
-        else
-        {
-            return NULL_TRACK;
-        }
+    
+        return NULL_TRACK;
     }
 
     int32_t move_Z_Z(int32_t t, int32_t j)
@@ -511,10 +489,8 @@ class LFHMM
         {
             return track_set_u(t,Z);
         }
-        else
-        {
-            return NULL_TRACK;
-        }
+    
+        return NULL_TRACK;
     }
 
 };
