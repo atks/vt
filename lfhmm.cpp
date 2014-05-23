@@ -67,20 +67,23 @@
 #define NULL_TRACK  0x7C000000
 //[N|l|0|0]
 #define START_TRACK 0x78000000
+
 /**
  * Constructor.
  */
-LFHMM::LFHMM()
+LFHMM::LFHMM(bool debug)
 {
     lt = new LogTool();
+    this->debug = debug;
 };
 
 /**
  * Constructor.
  */
-LFHMM::LFHMM(LogTool *lt)
+LFHMM::LFHMM(LogTool *lt, bool debug)
 {
     this->lt = lt;
+    this->debug = debug;
 };
 
 /**
@@ -91,7 +94,7 @@ LFHMM::~LFHMM()
     delete optimal_path;
 
     //the best alignment V_ for subsequence (i,j)
-    for (size_t state=ML; state<=Z; ++state)
+    for (size_t state=S; state<=E; ++state)
     {
         delete V[state];
         delete U[state];
@@ -123,9 +126,9 @@ void LFHMM::initialize(const char* lflank, const char* motif)
     tau = 0.01;
     eta = 0.01;
 
-    for (size_t i=S; i<=Z; ++i)
+    for (size_t i=S; i<NSTATES; ++i)
     {
-        for (size_t j=S; j<=Z; ++j)
+        for (size_t j=S; j<NSTATES; ++j)
         {
             T[i][j] = -INFINITY;
         }
@@ -157,19 +160,18 @@ void LFHMM::initialize(const char* lflank, const char* motif)
     V = new float*[NSTATES];
     U = new int32_t*[NSTATES];
     moves = new move*[NSTATES];
-    for (size_t state=S; state<NSTATES; ++state)
+    for (size_t state=S; state<=E; ++state)
     {
         V[state] = new float[MAXLEN*MAXLEN];
         U[state] = new int32_t[MAXLEN*MAXLEN];
         moves[state] = new move[NSTATES];
     }
 
-    for (size_t state=S; state<E; ++state)
+    for (size_t state=S; state<=E; ++state)
     {
         moves[state] = new move[NSTATES];
     }
 
-    
     moves[S][ML] = &LFHMM::move_S_ML;
     moves[ML][ML] = &LFHMM::move_ML_ML;
     
@@ -186,7 +188,7 @@ void LFHMM::initialize(const char* lflank, const char* motif)
 
     moves[M][Z] = &LFHMM::move_M_Z;
     moves[D][Z] = &LFHMM::move_D_Z;
-    moves[I][Z] = &LFHMM::move_D_Z;
+    moves[I][Z] = &LFHMM::move_I_Z;
     moves[Z][Z] = &LFHMM::move_Z_Z;
 
     //used for back tracking, this points to the state prior to the alignment for subsequence (i,j)
@@ -303,7 +305,7 @@ void LFHMM::proc_comp(int32_t A, int32_t B, int32_t index1, int32_t j, int32_t m
         max_track = t;
     }
 
-    if (1)
+    if (debug)
     {
         std::cerr << "\t" << state2string(A) << "=>" << state2string(B);
         std::cerr << " (" << ((index1-j)>>MAXLEN_NBITS) << "," << j << ") ";
@@ -322,6 +324,8 @@ void LFHMM::proc_comp(int32_t A, int32_t B, int32_t index1, int32_t j, int32_t m
  */
 void LFHMM::align(const char* read, const char* qual, bool debug)
 {
+    debug= false;
+    
     optimal_path_traced = false;
     this->read = read;
     this->qual = qual;
@@ -338,8 +342,6 @@ void LFHMM::align(const char* read, const char* qual, bool debug)
     char maxPath = 'X';
 
     size_t c,d,u,l;
-
-    debug = true;
 
     //alignment
     //take into consideration
@@ -433,7 +435,7 @@ void LFHMM::align(const char* read, const char* qual, bool debug)
         }
     }
 
-    if (1)
+    if (debug)
     {
         std::cerr << "\n   =V[S]=\n";
         print(V[S], plen+1, rlen+1);
@@ -537,7 +539,7 @@ void LFHMM::trace_path()
 
         des_t = *optimal_path_ptr;
         collect_statistics(src_t, des_t, j);
-        std::cerr << track2string(src_t) << " (" << i << "," << j << ") => " << track2string(des_t) << " :  " << track2string(last_t) << "\n";
+        if (debug) std::cerr << track2string(src_t) << " (" << i << "," << j << ") => " << track2string(des_t) << " :  " << track2string(last_t) << "\n";
         src_t = des_t;
 
         if (u==ML || u==M)

@@ -321,10 +321,8 @@ class RFHMM
                 return make_track(M,MOTIF,track_get_c(t),p+1);
             }
         }
-        else
-        {
-            return NULL_TRACK;
-        }
+        
+        return NULL_TRACK;
     }
 
     int32_t move_D_M(int32_t t, int32_t j)
@@ -341,10 +339,8 @@ class RFHMM
                 return make_track(D,MOTIF,track_get_c(t),p+1);
             }
         }
-        else
-        {
-            return NULL_TRACK;
-        }
+    
+        return NULL_TRACK;
     }
 
     int32_t move_I_M(int32_t t, int32_t j)
@@ -361,10 +357,8 @@ class RFHMM
                 return make_track(I,MOTIF,track_get_c(t),p+1);
             }
         }
-        else
-        {
-            return NULL_TRACK;
-        }
+        
+        return NULL_TRACK;
     }
 
     int32_t move_Y_D(int32_t t, int32_t j)
@@ -373,10 +367,8 @@ class RFHMM
         {
             return make_track(Y,MOTIF,1,1);
         }
-        else
-        {
-            return NULL_TRACK;
-        }
+    
+        return NULL_TRACK;
     }
 
     int32_t move_M_D(int32_t t, int32_t j)
@@ -393,10 +385,8 @@ class RFHMM
                 return make_track(M,MOTIF,track_get_c(t),p+1);
             }
         }
-        else
-        {
-            return NULL_TRACK;
-        }
+
+        return NULL_TRACK;
     }
 
     int32_t move_D_D(int32_t t, int32_t j)
@@ -413,10 +403,8 @@ class RFHMM
                 return make_track(D,MOTIF,track_get_c(t),p+1);
             }
         }
-        else
-        {
-            return NULL_TRACK;
-        }
+    
+        return NULL_TRACK;
     }
 
     int32_t move_Y_I(int32_t t, int32_t j)
@@ -437,10 +425,8 @@ class RFHMM
         {
             return track_set_u(t,M);
         }
-        else
-        {
-            return NULL_TRACK;
-        }
+    
+        return NULL_TRACK;
     }
 
     int32_t move_I_I(int32_t t, int32_t j)
@@ -449,10 +435,8 @@ class RFHMM
         {
             return track_set_u(t,I);
         }
-        else
-        {
-            return NULL_TRACK;
-        }
+    
+        return NULL_TRACK;
     }
 
     ///////////////
@@ -471,10 +455,8 @@ class RFHMM
                 return NULL_TRACK;
             }
         }
-        else
-        {
-            return NULL_TRACK;
-        }
+    
+        return NULL_TRACK;
     }
 
     int32_t move_M_MR(int32_t t, int32_t j)
@@ -494,10 +476,8 @@ class RFHMM
         {
             return make_track(D,RFLANK,0,1);
         }
-        else
-        {
-            return NULL_TRACK;
-        }
+    
+        return NULL_TRACK;
     }
 
     int32_t move_I_MR(int32_t t, int32_t j)
@@ -507,10 +487,8 @@ class RFHMM
         {
             return make_track(I,RFLANK,0,1);
         }
-        else
-        {
-            return NULL_TRACK;
-        }
+    
+        return NULL_TRACK;
     }
 
     int32_t move_MR_MR(int32_t t, int32_t j)
@@ -520,10 +498,8 @@ class RFHMM
         {
             return make_track(MR,RFLANK,0,p+1);
         }
-        else
-        {
-            return NULL_TRACK;
-        }
+    
+        return NULL_TRACK;
     }
 };
 
