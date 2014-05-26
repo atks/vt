@@ -148,7 +148,7 @@ class Igor : Program
         }
         else if (method=="lfhmm")
         {
-            LFHMM hmm;
+            LFHMM hmm(true);
             double llk;
             std::string qual;
             for (int32_t i=0; i<y.size(); ++i)
@@ -164,7 +164,7 @@ class Igor : Program
         }
         else if (method=="rfhmm")
         {
-            RFHMM hmm;
+            RFHMM hmm(true);
             std::string qual;
             for (int32_t i=0; i<y.size(); ++i)
             {

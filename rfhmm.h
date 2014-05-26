@@ -121,16 +121,18 @@ class RFHMM
 
     typedef int32_t (RFHMM::*move) (int32_t t, int32_t j);
     move **moves;
+    
+    bool debug;
 
     /**
      * Constructor.
      */
-    RFHMM();
+    RFHMM(bool debug=true);
 
     /**
      * Constructor.
      */
-    RFHMM(LogTool *lt);
+    RFHMM(LogTool *lt, bool debug=true);
 
     /**
      * Destructor.

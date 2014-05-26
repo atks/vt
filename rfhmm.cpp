@@ -69,20 +69,29 @@
 #define NULL_TRACK  0x7C000000
 //[N|l|0|0]
 #define START_TRACK 0x78000000
+
 /**
  * Constructor.
  */
-RFHMM::RFHMM()
+RFHMM::RFHMM(bool debug)
 {
+    std::cerr << "NEW LOG TOOL MADE\n";
     lt = new LogTool();
+    
+    std::cerr << "PL 100: " << lt->pl2log10_varp(100) << "\n";
+    std::cerr << "PL 42: " << lt->pl2log10_varp(42) << "\n";
+    std::cerr << "PL 10: " << lt->pl2log10_varp(10) << "\n";
+    
+    this-> debug = debug;
 };
 
 /**
  * Constructor.
  */
-RFHMM::RFHMM(LogTool *lt)
+RFHMM::RFHMM(LogTool *lt, bool debug)
 {
     this->lt = lt;
+    this-> debug = debug;
 };
 
 /**
@@ -93,7 +102,7 @@ RFHMM::~RFHMM()
     delete optimal_path;
 
     //the best alignment V_ for subsequence (i,j)
-    for (size_t state=S; state<=NSTATES; ++state)
+    for (size_t state=S; state<=E; ++state)
     {
         delete V[state];
         delete U[state];
@@ -125,9 +134,9 @@ void RFHMM::initialize(const char* motif, const char* rflank)
     tau = 0.01;
     eta = 0.01;
 
-    for (size_t i=S; i<=NSTATES; ++i)
+    for (size_t i=S; i<=E; ++i)
     {
-        for (size_t j=S; j<=NSTATES; ++j)
+        for (size_t j=S; j<=E; ++j)
         {
             T[i][j] = -INFINITY;
         }
@@ -151,7 +160,7 @@ void RFHMM::initialize(const char* motif, const char* rflank)
     T[M][I] = log10(delta/(1-eta));
 
     T[S][MR] = log10((tau*tau*(1-tau))/(tau*eta*eta*eta*(1-eta)*(1-eta)));
-    T[Y][MR] = log10((tau*tau*(1-tau))/(tau*eta*eta*eta*(1-eta)*(1-eta)));
+    T[Y][MR] = log10((eta*tau)/(eta*eta*eta));
     T[M][MR] = log10((tau*(1-tau))/(eta*eta*(1-eta)*(1-eta)));
     T[D][MR] = T[M][MR];
     T[I][MR] = T[D][MR];
@@ -161,14 +170,14 @@ void RFHMM::initialize(const char* motif, const char* rflank)
     V = new float*[NSTATES];
     U = new int32_t*[NSTATES];
     moves = new move*[NSTATES];
-    for (size_t state=S; state<=NSTATES; ++state)
+    for (size_t state=S; state<=E; ++state)
     {
         V[state] = new float[MAXLEN*MAXLEN];
         U[state] = new int32_t[MAXLEN*MAXLEN];
         moves[state] = new move[NSTATES];
     }
 
-    for (size_t state=S; state<E; ++state)
+    for (size_t state=S; state<=E; ++state)
     {
         moves[state] = new move[NSTATES];
     }
@@ -180,8 +189,10 @@ void RFHMM::initialize(const char* motif, const char* rflank)
     moves[M][M] = &RFHMM::move_M_M;
     moves[D][M] = &RFHMM::move_D_M;
     moves[I][M] = &RFHMM::move_I_M;
+    moves[Y][D] = &RFHMM::move_Y_D;
     moves[M][D] = &RFHMM::move_M_D;
     moves[D][D] = &RFHMM::move_D_D;
+    moves[Y][I] = &RFHMM::move_Y_I;
     moves[M][I] = &RFHMM::move_M_I;
     moves[I][I] = &RFHMM::move_I_I;
 
@@ -298,7 +309,7 @@ void RFHMM::proc_comp(int32_t A, int32_t B, int32_t index1, int32_t j, int32_t m
         max_track = t;
     }
 
-    if (0)
+    if (debug)
     {
         std::cerr << "\t" << state2string(A) << "=>" << state2string(B);
         std::cerr << " (" << ((index1-j)>>MAXLEN_NBITS) << "," << j << ") ";
@@ -336,20 +347,16 @@ void RFHMM::align(const char* read, const char* qual, bool debug)
 
     size_t c,d,u,l;
 
-    debug = false;
-
     //alignment
     //take into consideration
     for (size_t i=1; i<=plen; ++i)
     {
-        //break;
-
         for (size_t j=1; j<=rlen; ++j)
         {
-            c = index(i,j);
-            d = index(i-1,j-1);
-            u = index(i-1,j);
-            l = index(i,j-1);
+            size_t c = index(i,j);
+            size_t d = index(i-1,j-1);
+            size_t u = index(i-1,j);
+            size_t l = index(i,j-1);
 
             /////
             //X//
@@ -380,6 +387,7 @@ void RFHMM::align(const char* read, const char* qual, bool debug)
             /////
             max_score = -INFINITY;
             max_track = NULL_TRACK;
+            proc_comp(Y, D, u, j, PROBE);
             proc_comp(M, D, u, j, PROBE);
             proc_comp(D, D, u, j, PROBE);
             V[D][c] = max_score;
@@ -391,6 +399,7 @@ void RFHMM::align(const char* read, const char* qual, bool debug)
             /////
             max_score = -INFINITY;
             max_track = NULL_TRACK;
+            proc_comp(Y, I, l, j-1, READ);
             proc_comp(M, I, l, j-1, READ);
             proc_comp(I, I, l, j-1, READ);
             V[I][c] = max_score;
@@ -414,7 +423,7 @@ void RFHMM::align(const char* read, const char* qual, bool debug)
         }
     }
 
-    if (1)
+    if (debug)
     {
 //        std::cerr << "\n   =V[S]=\n";
 //        print(V[S], plen+1, rlen+1);
@@ -442,7 +451,6 @@ void RFHMM::align(const char* read, const char* qual, bool debug)
         print(V[MR], plen+1, rlen+1);
         std::cerr << "\n   =U[MR]=\n";
         print_U(U[MR], plen+1, rlen+1);
-        std::cerr << "\n   =V[DR]=\n";
         
         std::cerr << "\n";
     }
@@ -489,7 +497,7 @@ void RFHMM::trace_path()
 
         des_t = *optimal_path_ptr;
         collect_statistics(src_t, des_t, j);
-        std::cerr << track2string(src_t) << " (" << i << "," << j << ") => " << track2string(des_t) << " :  " << track2string(last_t) << "\n";
+        if (debug) std::cerr << track2string(src_t) << " (" << i << "," << j << ") => " << track2string(des_t) << " :  " << track2string(last_t) << "\n";
         src_t = des_t;
 
         if (u==M || u==MR)
@@ -640,7 +648,7 @@ float RFHMM::log10_emission_odds(char probe_base, char read_base, uint32_t pl)
     }
     else
     {
-        return -lt->pl2log10_varp(pl);
+        return -(lt->pl2log10_varp(pl));
     }
 };
 
