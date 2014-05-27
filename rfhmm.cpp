@@ -330,12 +330,13 @@ void RFHMM::proc_comp(int32_t A, int32_t B, int32_t index1, int32_t j, int32_t m
         std::cerr << score << "\n";
     }
 }
-
+    
 /**
  * Align read against model.
  */
 void RFHMM::align(const char* read, const char* qual)
 {
+    clear_statistics();
     optimal_path_traced = false;
     this->read = read;
     this->qual = qual;
@@ -380,6 +381,7 @@ void RFHMM::align(const char* read, const char* qual)
             //M//
             /////
             //only need to update this i>rflen
+            if (debug) std::cerr << "(" << i << "," << j << ")\n";
             max_score = -INFINITY;
             max_track = NULL_TRACK;
             proc_comp(S, M, d, j-1, MATCH);
@@ -484,7 +486,7 @@ void RFHMM::trace_path()
     for (size_t i=0; i<=plen; ++i)
     {
         c = index(i,rlen);
-        if (V[MR][c]>=optimal_score)
+        if (V[MR][c]>optimal_score)
         {
             optimal_score = V[MR][c];
             optimal_track = U[MR][c];
@@ -496,7 +498,7 @@ void RFHMM::trace_path()
     //trace path
     optimal_path_ptr = optimal_path+(MAXLEN<<2)-1;
     int32_t i = optimal_probe_len, j = rlen;
-    int32_t last_t = make_track(optimal_state, RFLANK, 0, rflen+1); //dummy end track for E
+    int32_t last_t = make_track(optimal_state, RFLANK, 0, rflen+1);
     optimal_path_len = 0;
     int32_t u;
     int32_t des_t, src_t = make_track(E, RFLANK, 0, rflen+1);
@@ -607,24 +609,26 @@ void RFHMM::collect_statistics(int32_t src_t, int32_t des_t, int32_t j)
  */
 void RFHMM::clear_statistics()
 {
-    lflank_start[MODEL] = -1;
-    lflank_start[READ] = -1;
-    lflank_end[MODEL] = -1;
-    lflank_end[READ] = -1;
-    motif_start[MODEL] = -1;
-    motif_start[READ] = -1;
-    motif_end[MODEL] = -1;
-    motif_end[READ] = -1;
-    rflank_start[MODEL] = -1;
-    rflank_start[READ] = -1;
-    rflank_end[MODEL] = -1;
-    rflank_end[READ] = -1;
-    motif_count = 0;
-    exact_motif_count = 0;
-    motif_m = 0;
-    motif_xid = 0;
-    motif_concordance = 0;
+    lflank_start[MODEL] = NAN;
+    lflank_start[READ] = NAN;
+    lflank_end[MODEL] = NAN;
+    lflank_end[READ] = NAN;
+    motif_start[MODEL] = NAN;
+    motif_start[READ] = NAN;
+    motif_end[MODEL] = NAN;
+    motif_end[READ] = NAN;
+    rflank_start[MODEL] = NAN;
+    rflank_start[READ] = NAN;
+    rflank_end[MODEL] = NAN;
+    rflank_end[READ] = NAN;
+    motif_count = NAN;
+    exact_motif_count = NAN;
+    motif_m = NAN;
+    motif_xid = NAN;
+    motif_concordance = NAN;
+    maxLogOdds = NAN;
 }
+
 
 /**
  * Update alignment statistics after collection.

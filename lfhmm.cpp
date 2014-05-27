@@ -324,8 +324,7 @@ void LFHMM::proc_comp(int32_t A, int32_t B, int32_t index1, int32_t j, int32_t m
  */
 void LFHMM::align(const char* read, const char* qual, bool debug)
 {
-    debug= false;
-    
+    clear_statistics();
     optimal_path_traced = false;
     this->read = read;
     this->qual = qual;
