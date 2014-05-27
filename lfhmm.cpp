@@ -39,8 +39,9 @@
 
 #define LFLANK    0
 #define MOTIF     1
-#define UNMODELED 2
-#define UNCERTAIN 3
+#define RFLANK    2
+#define UNMODELED 3
+#define UNCERTAIN 4
 
 //match type
 #define MODEL 0
@@ -880,6 +881,10 @@ std::string LFHMM::component2string(int32_t component)
     {
         return "m";
     }
+    else if (component==RFLANK)
+    {
+        return "r";
+    }
     else if (component==UNMODELED)
     {
         return "!";
@@ -1189,6 +1194,7 @@ void LFHMM::print_track(int32_t t)
 
 #undef LFLANK
 #undef MOTIF
+#undef RFLANK
 #undef UNMODELED
 #undef UNCERTAIN
 

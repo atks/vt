@@ -43,10 +43,11 @@
 #define NSTATES 7
 
 //model components
-#define MOTIF     0
-#define RFLANK    1
-#define UNMODELED 2
-#define UNCERTAIN 3
+#define LFLANK    0
+#define MOTIF     1
+#define RFLANK    2
+#define UNMODELED 3
+#define UNCERTAIN 4
 
 //match type
 #define MODEL 0
@@ -290,7 +291,7 @@ class RFHMM
 
     int32_t move_S_M(int32_t t, int32_t j)
     {
-        if (t==START_TRACK)
+        if (t==START_TRACK && j==0)
         {
             return make_track(S,MOTIF,1,1);
         }
@@ -515,7 +516,7 @@ class RFHMM
     int32_t move_I_MR(int32_t t, int32_t j)
     {
         int32_t p;
-        if (j<mlen)
+        if ((track_get_p(t)==mlen) && j<rlen)
         {
             return make_track(I,RFLANK,0,1);
         }
@@ -548,6 +549,7 @@ class RFHMM
 #undef TBD
 #undef NSTATES
 
+#undef LFLANK
 #undef MOTIF
 #undef RFLANK
 #undef UNMODELED

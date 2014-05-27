@@ -43,8 +43,9 @@
 
 #define LFLANK    0
 #define MOTIF     1
-#define UNMODELED 2
-#define UNCERTAIN 3
+#define RFLANK    2
+#define UNMODELED 3
+#define UNCERTAIN 4
 
 //match type
 #define MODEL 0

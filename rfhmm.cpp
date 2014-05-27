@@ -39,10 +39,11 @@
 #define NSTATES 7
 
 //model components
-#define MOTIF     0
-#define RFLANK    1
-#define UNMODELED 2
-#define UNCERTAIN 3
+#define LFLANK    0
+#define MOTIF     1
+#define RFLANK    2
+#define UNMODELED 3
+#define UNCERTAIN 4
 
 //match type
 #define MODEL 0
@@ -77,11 +78,11 @@ RFHMM::RFHMM(bool debug)
 {
     std::cerr << "NEW LOG TOOL MADE\n";
     lt = new LogTool();
-    
+
     std::cerr << "PL 100: " << lt->pl2log10_varp(100) << "\n";
     std::cerr << "PL 42: " << lt->pl2log10_varp(42) << "\n";
     std::cerr << "PL 10: " << lt->pl2log10_varp(10) << "\n";
-    
+
     this-> debug = debug;
 };
 
@@ -167,7 +168,7 @@ void RFHMM::initialize(const char* motif, const char* rflank)
     T[D][MR] = T[M][MR];
     T[I][MR] = T[D][MR];
     T[MR][MR] = log10(((1-2*delta-tau))/((1-eta)*(1-eta)));
-    
+
     typedef int32_t (RFHMM::*move) (int32_t t, int32_t j);
     V = new float*[NSTATES];
     U = new int32_t*[NSTATES];
@@ -192,13 +193,13 @@ void RFHMM::initialize(const char* motif, const char* rflank)
     moves[M][M] = &RFHMM::move_M_M;
     moves[D][M] = &RFHMM::move_D_M;
     moves[I][M] = &RFHMM::move_I_M;
-    
+
     moves[S][D] = &RFHMM::move_S_D;
     moves[Y][D] = &RFHMM::move_Y_D;
     moves[M][D] = &RFHMM::move_M_D;
     moves[D][D] = &RFHMM::move_D_D;
-    
-    moves[S][I] = &RFHMM::move_S_I;    
+
+    moves[S][I] = &RFHMM::move_S_I;
     moves[Y][I] = &RFHMM::move_Y_I;
     moves[M][I] = &RFHMM::move_M_I;
     moves[I][I] = &RFHMM::move_I_I;
@@ -209,7 +210,7 @@ void RFHMM::initialize(const char* motif, const char* rflank)
     moves[D][MR] = &RFHMM::move_D_MR;
     moves[I][MR] = &RFHMM::move_I_MR;
     moves[MR][MR] = &RFHMM::move_MR_MR;
-    
+
     //used for back tracking, this points to the state prior to the alignment for subsequence (i,j)
     //that ends with the corresponding state
 
@@ -225,7 +226,23 @@ void RFHMM::initialize(const char* motif, const char* rflank)
 
             //Y
             V[Y][c] = 0;
-            
+            if (i>=1)
+            {
+                V[Y][c] = -INFINITY;
+                U[Y][c] = NULL_TRACK;
+            }
+            else
+            {
+                if (j==1)
+                {
+                    U[Y][c] = make_track(S,LFLANK,0,j);
+                }
+                else
+                {
+                    U[Y][c] =  make_track(Y,LFLANK,0,j);
+                }
+            }
+
             //M
             V[M][c] = -INFINITY;
             if (!i || !j)
@@ -274,10 +291,6 @@ void RFHMM::initialize(const char* motif, const char* rflank)
 
     V[S][index(0,0)] = 0;
     U[S][index(0,0)] = START_TRACK;
-
-    U[Y][index(1,1)] = make_track(S,UNMODELED,0,1);
-    V[Y][index(0,0)] = -INFINITY;
-    U[Y][index(0,0)] = START_TRACK;
 
     V[M][index(0,0)] = -INFINITY;
     V[MR][index(0,0)] = -INFINITY;
@@ -330,7 +343,7 @@ void RFHMM::proc_comp(int32_t A, int32_t B, int32_t index1, int32_t j, int32_t m
         std::cerr << score << "\n";
     }
 }
-    
+
 /**
  * Align read against model.
  */
@@ -343,7 +356,7 @@ void RFHMM::align(const char* read, const char* qual)
     rlen = strlen(read);
     plen = rlen + rflen;
 
-   // std::cerr << 
+   // std::cerr <<
 
     if (rlen>MAXLEN)
     {
@@ -465,7 +478,7 @@ void RFHMM::align(const char* read, const char* qual)
         print(V[MR], plen+1, rlen+1);
         std::cerr << "\n   =U[MR]=\n";
         print_U(U[MR], plen+1, rlen+1);
-        
+
         std::cerr << "\n";
     }
 
@@ -503,13 +516,15 @@ void RFHMM::trace_path()
     int32_t u;
     int32_t des_t, src_t = make_track(E, RFLANK, 0, rflen+1);
 
+    if (debug) std::cerr << "src_t (i,j) => dest_t : last_t\n";
+
     do
     {
         u = track_get_u(last_t);
         last_t = U[u][index(i,j)];
-        *optimal_path_ptr = track_set_u(last_t, u);
+        des_t = track_set_u(last_t, u);
+        *optimal_path_ptr = des_t;
 
-        des_t = *optimal_path_ptr;
         collect_statistics(src_t, des_t, j);
         if (debug) std::cerr << track2string(src_t) << " (" << i << "," << j << ") => " << track2string(des_t) << " :  " << track2string(last_t) << "\n";
         src_t = des_t;
@@ -532,6 +547,10 @@ void RFHMM::trace_path()
 
     } while (track_get_u(last_t)!=S);
 
+    if (debug) std::cerr << track2string(src_t) << " (" << i << "," << j << ") => " << track2string(des_t) << " :  " << track2string(last_t) << "\n";
+    if (debug) std::cerr << track2string(last_t) << "\n";
+    if (debug) std::cerr << "\n";
+    
     collect_statistics(src_t, last_t, j);
 
     ++optimal_path_ptr;
@@ -847,7 +866,11 @@ std::string RFHMM::track2cigarstring2(int32_t t)
  */
 std::string RFHMM::component2string(int32_t component)
 {
-    if (component==MOTIF)
+    if (component==LFLANK)
+    {
+        return "l";
+    }
+    else if (component==MOTIF)
     {
         return "m";
     }
@@ -906,8 +929,6 @@ void RFHMM::print_alignment(std::string& pad)
     std::cerr << "optimal track: " << track2string(optimal_track) << "\n";
     std::cerr << "optimal probe len: " << optimal_probe_len << "\n";
     std::cerr << "optimal path length : " << optimal_path_len << "\n";
-    std::cerr << "optimal path     : " << optimal_path << "\n";
-    std::cerr << "optimal path ptr : " << optimal_path_ptr  << "\n";
     std::cerr << "max j: " << rlen << "\n";
 
     std::cerr << "probe: " << "(" << lflank_start[MODEL] << "~" << lflank_end[MODEL] << ") "
@@ -1164,6 +1185,7 @@ void RFHMM::print_track(int32_t t)
 #undef TBD
 #undef NSTATES
 
+#undef LFLANK
 #undef MOTIF
 #undef RFLANK
 #undef UNMODELED
