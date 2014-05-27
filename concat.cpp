@@ -151,8 +151,7 @@ class Igor : Program
         Variant variant;
         
         for (int32_t i=0; i<input_vcf_files.size(); ++i)
-        {
-            
+        {   
             std::cerr << "processing " << input_vcf_files[i] << "\n"; 
             
             if (i)

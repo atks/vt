@@ -87,8 +87,7 @@ class Igor : Program
             TCLAP::ValueArg<std::string> arg_lflank("l", "l", "left flanks", false, "", "string");
             TCLAP::ValueArg<std::string> arg_ru("u", "u", "repeat unit", false, "", "string");
             TCLAP::ValueArg<std::string> arg_rflank("r", "r", "right flanks", false, "", "string");
-
-            TCLAP::SwitchArg arg_debug("d", "debug", "Debug", false);
+            TCLAP::SwitchArg arg_debug("d", "d", "debug mode", false);
 
             cmd.add(arg_method);
             cmd.add(arg_x);
@@ -105,6 +104,7 @@ class Igor : Program
             lflank = arg_lflank.getValue();
             ru = arg_ru.getValue();
             rflank = arg_rflank.getValue();
+            debug = arg_debug.getValue();
         }
         catch (TCLAP::ArgException &e)
         {
