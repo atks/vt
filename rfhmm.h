@@ -49,7 +49,7 @@
 #define UNCERTAIN 3
 
 //match type
-#define PROBE 0
+#define MODEL 0
 #define READ  1
 #define MATCH 2
 
@@ -152,14 +152,14 @@ class RFHMM
      * @B      - end state
      * @index1 - flattened index of the one dimensional array of start state
      * @j      - 1 based position of read of start state
-     * @m      - base match required (MATCH, PROBE_ONLY, READ_ONLY)
+     * @m      - base match required (MATCH, MODEL_ONLY, READ_ONLY)
      */
     void proc_comp(int32_t A, int32_t B, int32_t i, int32_t j, int32_t match_type);
 
     /**
      * Align and compute genotype likelihood.
      */
-    void align(const char* y, const char* qual=NULL, bool debug=false);
+    void align(const char* y, const char* qual=NULL);
 
     /**
      * Trace path after alignment.
@@ -363,6 +363,16 @@ class RFHMM
         return NULL_TRACK;
     }
 
+    int32_t move_S_D(int32_t t, int32_t j)
+    {
+        if (t==START_TRACK)
+        {
+            return make_track(S,MOTIF,1,1);
+        }
+
+        return NULL_TRACK;
+    }
+    
     int32_t move_Y_D(int32_t t, int32_t j)
     {
         if (j<rlen)
@@ -409,6 +419,16 @@ class RFHMM
         return NULL_TRACK;
     }
 
+    int32_t move_S_I(int32_t t, int32_t j)
+    {
+        if (t==START_TRACK)
+        {
+            return make_track(S,MOTIF,1,0);
+        }
+
+        return NULL_TRACK;
+    }
+
     int32_t move_Y_I(int32_t t, int32_t j)
     {
         if (j<rlen)
@@ -444,6 +464,16 @@ class RFHMM
     ///////////////
     //Right flank//
     ///////////////
+    int32_t move_S_MR(int32_t t, int32_t j)
+    {
+        if (t==START_TRACK)
+        {
+            return make_track(S,RFLANK,1,1);
+        }
+
+        return NULL_TRACK;
+    }
+    
     int32_t move_Y_MR(int32_t t, int32_t j)
     {
         if (j<rlen)
@@ -524,7 +554,7 @@ class RFHMM
 #undef UNCERTAIN
 
 #undef READ
-#undef PROBE
+#undef MODEL
 #undef MATCH
 
 #undef index

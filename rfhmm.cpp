@@ -45,7 +45,7 @@
 #define UNCERTAIN 3
 
 //match type
-#define PROBE 0
+#define MODEL 0
 #define READ  1
 #define MATCH 2
 
@@ -154,10 +154,12 @@ void RFHMM::initialize(const char* motif, const char* rflank)
     T[S][D] = log10((tau*delta)/(eta*(1-eta)));
     T[Y][D] = T[S][D];
     T[M][D] = log10(delta/(1-eta));
+    T[D][D] = log10(epsilon/(1-eta));
 
     T[S][I] = log10((tau*delta)/(eta*(1-eta)));
     T[Y][I] = T[S][I];
     T[M][I] = log10(delta/(1-eta));
+    T[I][I] = log10(epsilon/(1-eta));
 
     T[S][MR] = log10((tau*tau*(1-tau))/(tau*eta*eta*eta*(1-eta)*(1-eta)));
     T[Y][MR] = log10((eta*tau)/(eta*eta*eta));
@@ -185,17 +187,23 @@ void RFHMM::initialize(const char* motif, const char* rflank)
     moves[S][Y] = &RFHMM::move_S_Y;
     moves[Y][Y] = &RFHMM::move_Y_Y;
 
+    moves[S][M] = &RFHMM::move_S_M;
     moves[Y][M] = &RFHMM::move_Y_M;
     moves[M][M] = &RFHMM::move_M_M;
     moves[D][M] = &RFHMM::move_D_M;
     moves[I][M] = &RFHMM::move_I_M;
+    
+    moves[S][D] = &RFHMM::move_S_D;
     moves[Y][D] = &RFHMM::move_Y_D;
     moves[M][D] = &RFHMM::move_M_D;
     moves[D][D] = &RFHMM::move_D_D;
+    
+    moves[S][I] = &RFHMM::move_S_I;    
     moves[Y][I] = &RFHMM::move_Y_I;
     moves[M][I] = &RFHMM::move_M_I;
     moves[I][I] = &RFHMM::move_I_I;
 
+    moves[S][MR] = &RFHMM::move_Y_MR;
     moves[Y][MR] = &RFHMM::move_Y_MR;
     moves[M][MR] = &RFHMM::move_M_MR;
     moves[D][MR] = &RFHMM::move_D_MR;
@@ -283,7 +291,7 @@ void RFHMM::initialize(const char* motif, const char* rflank)
  * @B      - end state
  * @index1 - flattened index of the one dimensional array of start state
  * @j      - 1 based position of read of start state
- * @m      - base match required (MATCH, PROBE, READ)
+ * @m      - base match required (MATCH, MODEL, READ)
  */
 void RFHMM::proc_comp(int32_t A, int32_t B, int32_t index1, int32_t j, int32_t match_type)
 {
@@ -326,7 +334,7 @@ void RFHMM::proc_comp(int32_t A, int32_t B, int32_t index1, int32_t j, int32_t m
 /**
  * Align read against model.
  */
-void RFHMM::align(const char* read, const char* qual, bool debug)
+void RFHMM::align(const char* read, const char* qual)
 {
     optimal_path_traced = false;
     this->read = read;
@@ -374,6 +382,7 @@ void RFHMM::align(const char* read, const char* qual, bool debug)
             //only need to update this i>rflen
             max_score = -INFINITY;
             max_track = NULL_TRACK;
+            proc_comp(S, M, d, j-1, MATCH);
             proc_comp(Y, M, d, j-1, MATCH);
             proc_comp(M, M, d, j-1, MATCH);
             proc_comp(D, M, d, j-1, MATCH);
@@ -387,9 +396,10 @@ void RFHMM::align(const char* read, const char* qual, bool debug)
             /////
             max_score = -INFINITY;
             max_track = NULL_TRACK;
-            proc_comp(Y, D, u, j, PROBE);
-            proc_comp(M, D, u, j, PROBE);
-            proc_comp(D, D, u, j, PROBE);
+            proc_comp(S, D, u, j, MODEL);
+            proc_comp(Y, D, u, j, MODEL);
+            proc_comp(M, D, u, j, MODEL);
+            proc_comp(D, D, u, j, MODEL);
             V[D][c] = max_score;
             U[D][c] = max_track;
             if (debug) std::cerr << "\tset D " << max_score << " - " << track2string(max_track) << "\n";
@@ -399,6 +409,7 @@ void RFHMM::align(const char* read, const char* qual, bool debug)
             /////
             max_score = -INFINITY;
             max_track = NULL_TRACK;
+            proc_comp(S, I, l, j-1, READ);
             proc_comp(Y, I, l, j-1, READ);
             proc_comp(M, I, l, j-1, READ);
             proc_comp(I, I, l, j-1, READ);
@@ -411,6 +422,7 @@ void RFHMM::align(const char* read, const char* qual, bool debug)
             //////
             max_score = -INFINITY;
             max_track = NULL_TRACK;
+            proc_comp(S, MR, d, j-1, MATCH);
             proc_comp(Y, MR, d, j-1, MATCH);
             proc_comp(M, MR, d, j-1, MATCH);
             proc_comp(D, MR, d, j-1, MATCH);
@@ -538,7 +550,7 @@ void RFHMM::collect_statistics(int32_t src_t, int32_t des_t, int32_t j)
     {
         if (des_u==MR)
         {
-            rflank_end[PROBE] = track_get_p(des_t);
+            rflank_end[MODEL] = track_get_p(des_t);
             rflank_end[READ] = j;
         }
     }
@@ -546,10 +558,10 @@ void RFHMM::collect_statistics(int32_t src_t, int32_t des_t, int32_t j)
     {
         if (des_u==M)
         {
-            rflank_start[PROBE] = track_get_p(src_t);
+            rflank_start[MODEL] = track_get_p(src_t);
             rflank_start[READ] = j+1;
 
-            motif_end[PROBE] = track_get_c(des_t);
+            motif_end[MODEL] = track_get_c(des_t);
             motif_count = track_get_c(des_t);
             motif_end[READ] = j;
 
@@ -569,9 +581,9 @@ void RFHMM::collect_statistics(int32_t src_t, int32_t des_t, int32_t j)
     {
         if (des_u==Y)
         {
-            motif_start[PROBE] = track_get_c(src_t);
+            motif_start[MODEL] = track_get_c(src_t);
             motif_start[READ] = j+1;
-            lflank_end[PROBE] = track_get_p(des_t);
+            lflank_end[MODEL] = track_get_p(des_t);
             lflank_end[READ] = j;
         }
     }
@@ -595,17 +607,17 @@ void RFHMM::collect_statistics(int32_t src_t, int32_t des_t, int32_t j)
  */
 void RFHMM::clear_statistics()
 {
-    lflank_start[PROBE] = -1;
+    lflank_start[MODEL] = -1;
     lflank_start[READ] = -1;
-    lflank_end[PROBE] = -1;
+    lflank_end[MODEL] = -1;
     lflank_end[READ] = -1;
-    motif_start[PROBE] = -1;
+    motif_start[MODEL] = -1;
     motif_start[READ] = -1;
-    motif_end[PROBE] = -1;
+    motif_end[MODEL] = -1;
     motif_end[READ] = -1;
-    rflank_start[PROBE] = -1;
+    rflank_start[MODEL] = -1;
     rflank_start[READ] = -1;
-    rflank_end[PROBE] = -1;
+    rflank_end[MODEL] = -1;
     rflank_end[READ] = -1;
     motif_count = 0;
     exact_motif_count = 0;
@@ -627,7 +639,7 @@ void RFHMM::update_statistics()
  */
 bool RFHMM::flanks_are_mapped()
 {
-    return rflank_start[PROBE]==rflen;
+    return rflank_start[MODEL]==rflen;
 }
 
 /**
@@ -894,9 +906,9 @@ void RFHMM::print_alignment(std::string& pad)
     std::cerr << "optimal path ptr : " << optimal_path_ptr  << "\n";
     std::cerr << "max j: " << rlen << "\n";
 
-    std::cerr << "probe: " << "(" << lflank_start[PROBE] << "~" << lflank_end[PROBE] << ") "
-                          << "[" << motif_start[PROBE] << "~" << motif_end[PROBE] << "] "
-                          << "(" << rflank_start[PROBE] << "~" << rflank_end[PROBE] << ")\n";
+    std::cerr << "probe: " << "(" << lflank_start[MODEL] << "~" << lflank_end[MODEL] << ") "
+                          << "[" << motif_start[MODEL] << "~" << motif_end[MODEL] << "] "
+                          << "(" << rflank_start[MODEL] << "~" << rflank_end[MODEL] << ")\n";
     std::cerr << "read : " << "(" << lflank_start[READ] << "~" << lflank_end[READ] << ") "
                           << "[" << motif_start[READ] << "~" << motif_end[READ] << "] "
                           << "(" << rflank_start[READ] << "~" << rflank_end[READ] << ")\n";
@@ -1154,7 +1166,7 @@ void RFHMM::print_track(int32_t t)
 #undef UNCERTAIN
 
 #undef READ
-#undef PROBE
+#undef MODEL
 #undef MATCH
 
 #undef index

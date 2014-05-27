@@ -47,7 +47,7 @@
 #define UNCERTAIN 3
 
 //match type
-#define PROBE 0
+#define MODEL 0
 #define READ  1
 #define MATCH 2
 
@@ -150,7 +150,7 @@ class LFHMM
      * @B      - end state
      * @index1 - flattened index of the one dimensional array of start state
      * @j      - 1 based position of read of start state
-     * @m      - base match required (MATCH, PROBE_ONLY, READ_ONLY)
+     * @m      - base match required (MATCH, MODEL_ONLY, READ_ONLY)
      */
     void proc_comp(int32_t A, int32_t B, int32_t i, int32_t j, int32_t match_type);
 
@@ -517,7 +517,7 @@ class LFHMM
 #undef UNCERTAIN
 
 #undef READ
-#undef PROBE
+#undef MODEL
 #undef MATCH
 
 #undef index

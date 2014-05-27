@@ -43,7 +43,7 @@
 #define UNCERTAIN 3
 
 //match type
-#define PROBE 0
+#define MODEL 0
 #define READ  1
 #define MATCH 2
 
@@ -279,7 +279,7 @@ void LFHMM::initialize(const char* lflank, const char* motif)
  * @B      - end state
  * @index1 - flattened index of the one dimensional array of start state
  * @j      - 1 based position of read of start state
- * @m      - base match required (MATCH, PROBE, READ)
+ * @m      - base match required (MATCH, MODEL, READ)
  */
 void LFHMM::proc_comp(int32_t A, int32_t B, int32_t index1, int32_t j, int32_t match_type)
 {
@@ -395,9 +395,9 @@ void LFHMM::align(const char* read, const char* qual, bool debug)
             max_track = NULL_TRACK;
             if (i>lflen)
             {
-                proc_comp(ML, D, u, j, PROBE);
-                proc_comp(M, D, u, j, PROBE);
-                proc_comp(D, D, u, j, PROBE);
+                proc_comp(ML, D, u, j, MODEL);
+                proc_comp(M, D, u, j, MODEL);
+                proc_comp(D, D, u, j, MODEL);
             }
             V[D][c] = max_score;
             U[D][c] = max_track;
@@ -584,10 +584,10 @@ void LFHMM::collect_statistics(int32_t src_t, int32_t des_t, int32_t j)
     {
         if (des_u==M || des_u==D)
         {
-            rflank_start[PROBE] = track_get_p(src_t);
+            rflank_start[MODEL] = track_get_p(src_t);
             rflank_start[READ] = j+1;
 
-            motif_end[PROBE] = track_get_c(des_t);
+            motif_end[MODEL] = track_get_c(des_t);
             motif_count = track_get_c(des_t);
             motif_end[READ] = j;
 
@@ -607,9 +607,9 @@ void LFHMM::collect_statistics(int32_t src_t, int32_t des_t, int32_t j)
     {
         if (des_u==ML)
         {
-            motif_start[PROBE] = track_get_c(src_t);
+            motif_start[MODEL] = track_get_c(src_t);
             motif_start[READ] = j+1;
-            lflank_end[PROBE] = track_get_p(des_t);
+            lflank_end[MODEL] = track_get_p(des_t);
             lflank_end[READ] = j;
         }
     }
@@ -617,7 +617,7 @@ void LFHMM::collect_statistics(int32_t src_t, int32_t des_t, int32_t j)
     {
         if (des_u==S)
         {
-            lflank_start[PROBE] = track_get_p(src_t);
+            lflank_start[MODEL] = track_get_p(src_t);
             lflank_start[READ] = j+1;
         }
     }
@@ -641,13 +641,13 @@ void LFHMM::collect_statistics(int32_t src_t, int32_t des_t, int32_t j)
  */
 void LFHMM::clear_statistics()
 {
-    lflank_start[PROBE] = -1;
+    lflank_start[MODEL] = -1;
     lflank_start[READ] = -1;
-    lflank_end[PROBE] = -1;
+    lflank_end[MODEL] = -1;
     lflank_end[READ] = -1;
-    motif_start[PROBE] = -1;
+    motif_start[MODEL] = -1;
     motif_start[READ] = -1;
-    motif_end[PROBE] = -1;
+    motif_end[MODEL] = -1;
     motif_end[READ] = -1;
     motif_count = 0;
     exact_motif_count = 0;
@@ -669,7 +669,7 @@ void LFHMM::update_statistics()
  */
 bool LFHMM::flanks_are_mapped()
 {
-    return lflank_end[PROBE]==lflen;
+    return lflank_end[MODEL]==lflen;
 }
 
 /**
@@ -936,8 +936,8 @@ void LFHMM::print_alignment(std::string& pad)
     std::cerr << "optimal path ptr : " << optimal_path_ptr  << "\n";
     std::cerr << "max j: " << rlen << "\n";
 
-    std::cerr << "probe: " << "(" << lflank_start[PROBE] << "~" << lflank_end[PROBE] << ") "
-                          << "[" << motif_start[PROBE] << "~" << motif_end[PROBE] << "]\n";
+    std::cerr << "probe: " << "(" << lflank_start[MODEL] << "~" << lflank_end[MODEL] << ") "
+                          << "[" << motif_start[MODEL] << "~" << motif_end[MODEL] << "]\n";
     std::cerr << "read : " << "(" << lflank_start[READ] << "~" << lflank_end[READ] << ") "
                           << "[" << motif_start[READ] << "~" << motif_end[READ] << "]\n";
     std::cerr << "\n";
@@ -1194,7 +1194,7 @@ void LFHMM::print_track(int32_t t)
 #undef UNCERTAIN
 
 #undef READ
-#undef PROBE
+#undef MODEL
 #undef MATCH
 
 #undef index

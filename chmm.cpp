@@ -52,7 +52,7 @@
 #define UNCERTAIN 4
 
 //match type
-#define PROBE 0
+#define MODEL 0
 #define READ  1
 #define MATCH 2
 
@@ -508,7 +508,7 @@ void CHMM::initialize(const char* lflank, const char* motif, const char* rflank)
  * @B      - end state
  * @index1 - flattened index of the one dimensional array of start state
  * @j      - 1 based position of read of start state
- * @m      - base match required (MATCH, PROBE, READ)
+ * @m      - base match required (MATCH, MODEL, READ)
  */
 void CHMM::proc_comp(int32_t A, int32_t B, int32_t index1, int32_t j, int32_t match_type)
 {
@@ -621,8 +621,8 @@ void CHMM::align(const char* read, const char* qual, bool debug)
             max_track = NULL_TRACK;
             if (i<=lflen)
             {
-                proc_comp(ML, DL, u, j, PROBE);
-                proc_comp(DL, DL, u, j, PROBE);
+                proc_comp(ML, DL, u, j, MODEL);
+                proc_comp(DL, DL, u, j, MODEL);
             }
             V[DL][c] = max_score;
             U[DL][c] = max_track;
@@ -668,9 +668,9 @@ void CHMM::align(const char* read, const char* qual, bool debug)
             max_track = NULL_TRACK;
             if (i>lflen)
             {
-                proc_comp(ML, D, u, j, PROBE);
-                proc_comp(M, D, u, j, PROBE);
-                proc_comp(D, D, u, j, PROBE);
+                proc_comp(ML, D, u, j, MODEL);
+                proc_comp(M, D, u, j, MODEL);
+                proc_comp(D, D, u, j, MODEL);
             }
             V[D][c] = max_score;
             U[D][c] = max_track;
@@ -720,8 +720,8 @@ void CHMM::align(const char* read, const char* qual, bool debug)
                 max_score = -INFINITY;
                 max_track = NULL_TRACK;
             }
-            proc_comp(MR, DR, u, j, PROBE);
-            proc_comp(DR, DR, u, j, PROBE);
+            proc_comp(MR, DR, u, j, MODEL);
+            proc_comp(DR, DR, u, j, MODEL);
             V[DR][c] = max_score;
             U[DR][c] = max_track;
             if (debug) std::cerr << "\tset DR " << max_score << " - " << track2string(max_track) << "\n";
@@ -747,14 +747,14 @@ void CHMM::align(const char* read, const char* qual, bool debug)
             max_track = NULL_TRACK;
             if (i>lflen)
             {
-                proc_comp(X, W, u, j, PROBE);
-                proc_comp(Y, W, u, j, PROBE);
-                proc_comp(ML, W, u, j, PROBE);
-                proc_comp(M, W, u, j, PROBE);
-                proc_comp(D, W, u, j, PROBE);
-                proc_comp(I, W, u, j, PROBE);
-                proc_comp(MR, W, u, j, PROBE);
-                proc_comp(W, W, u, j, PROBE);
+                proc_comp(X, W, u, j, MODEL);
+                proc_comp(Y, W, u, j, MODEL);
+                proc_comp(ML, W, u, j, MODEL);
+                proc_comp(M, W, u, j, MODEL);
+                proc_comp(D, W, u, j, MODEL);
+                proc_comp(I, W, u, j, MODEL);
+                proc_comp(MR, W, u, j, MODEL);
+                proc_comp(W, W, u, j, MODEL);
             }
             V[W][c] = max_score;
             U[W][c] = max_track;
@@ -949,7 +949,7 @@ void CHMM::collect_statistics(int32_t src_t, int32_t des_t, int32_t j)
     {
         if (des_u==MR || des_u==W)
         {
-            rflank_end[PROBE] = track_get_p(des_t);
+            rflank_end[MODEL] = track_get_p(des_t);
             rflank_end[READ] = j;
         }
     }
@@ -957,7 +957,7 @@ void CHMM::collect_statistics(int32_t src_t, int32_t des_t, int32_t j)
     {
         if (des_u==MR || des_u==W)
         {
-            rflank_end[PROBE] = track_get_p(des_t);
+            rflank_end[MODEL] = track_get_p(des_t);
             rflank_end[READ] = j;
         }
     }
@@ -965,10 +965,10 @@ void CHMM::collect_statistics(int32_t src_t, int32_t des_t, int32_t j)
     {
         if (des_u==M || des_u==D || des_u==I)
         {
-            rflank_start[PROBE] = track_get_p(src_t);
+            rflank_start[MODEL] = track_get_p(src_t);
             rflank_start[READ] = j+1;
 
-            motif_end[PROBE] = track_get_c(des_t);
+            motif_end[MODEL] = track_get_c(des_t);
             motif_count = track_get_c(des_t);
             motif_end[READ] = j;
 
@@ -980,13 +980,13 @@ void CHMM::collect_statistics(int32_t src_t, int32_t des_t, int32_t j)
         }
         else if (des_u==ML || des_u==X)
         {
-            rflank_start[PROBE] = track_get_p(src_t);
+            rflank_start[MODEL] = track_get_p(src_t);
             rflank_start[READ] = j+1;
-            motif_start[PROBE] = 0;
+            motif_start[MODEL] = 0;
             motif_start[READ] = 0;
-            motif_end[PROBE] = 0;
+            motif_end[MODEL] = 0;
             motif_end[READ] = 0;
-            lflank_end[PROBE] = track_get_p(des_t);
+            lflank_end[MODEL] = track_get_p(des_t);
             lflank_end[READ] = j;
         }
     }
@@ -994,9 +994,9 @@ void CHMM::collect_statistics(int32_t src_t, int32_t des_t, int32_t j)
     {
         if (des_u==ML || des_u==X)
         {
-            motif_start[PROBE] = track_get_c(src_t);
+            motif_start[MODEL] = track_get_c(src_t);
             motif_start[READ] = j+1;
-            lflank_end[PROBE] = track_get_p(des_t);
+            lflank_end[MODEL] = track_get_p(des_t);
             lflank_end[READ] = j;
         }
     }
@@ -1004,12 +1004,12 @@ void CHMM::collect_statistics(int32_t src_t, int32_t des_t, int32_t j)
     {
         if (des_u==S)
         {
-            lflank_start[PROBE] = track_get_p(src_t);
+            lflank_start[MODEL] = track_get_p(src_t);
             lflank_start[READ] = j+1;
         }
         else if (des_u==X || des_u==Y)
         {
-            lflank_start[PROBE] = track_get_p(src_t);
+            lflank_start[MODEL] = track_get_p(src_t);
             lflank_start[READ] = j+1;
         }
     }
@@ -1033,17 +1033,17 @@ void CHMM::collect_statistics(int32_t src_t, int32_t des_t, int32_t j)
  */
 void CHMM::clear_statistics()
 {
-    lflank_start[PROBE] = -1;
+    lflank_start[MODEL] = -1;
     lflank_start[READ] = -1;
-    lflank_end[PROBE] = -1;
+    lflank_end[MODEL] = -1;
     lflank_end[READ] = -1;
-    motif_start[PROBE] = -1;
+    motif_start[MODEL] = -1;
     motif_start[READ] = -1;
-    motif_end[PROBE] = -1;
+    motif_end[MODEL] = -1;
     motif_end[READ] = -1;
-    rflank_start[PROBE] = -1;
+    rflank_start[MODEL] = -1;
     rflank_start[READ] = -1;
-    rflank_end[PROBE] = -1;
+    rflank_end[MODEL] = -1;
     rflank_end[READ] = -1;
     motif_count = 0;
     exact_motif_count = 0;
@@ -1065,7 +1065,7 @@ void CHMM::update_statistics()
  */
 bool CHMM::flanks_are_mapped()
 {
-    return lflank_end[PROBE]==lflen && rflank_start[PROBE]==rflen;
+    return lflank_end[MODEL]==lflen && rflank_start[MODEL]==rflen;
 }
 
 /**
@@ -1420,9 +1420,9 @@ void CHMM::print_alignment(std::string& pad)
     std::cerr << "optimal path ptr : " << optimal_path_ptr  << "\n";
     std::cerr << "max j: " << rlen << "\n";
 
-    std::cerr << "probe: " << "(" << lflank_start[PROBE] << "~" << lflank_end[PROBE] << ") "
-                          << "[" << motif_start[PROBE] << "~" << motif_end[PROBE] << "] "
-                          << "(" << rflank_start[PROBE] << "~" << rflank_end[PROBE] << ")\n";
+    std::cerr << "probe: " << "(" << lflank_start[MODEL] << "~" << lflank_end[MODEL] << ") "
+                          << "[" << motif_start[MODEL] << "~" << motif_end[MODEL] << "] "
+                          << "(" << rflank_start[MODEL] << "~" << rflank_end[MODEL] << ")\n";
     std::cerr << "read : " << "(" << lflank_start[READ] << "~" << lflank_end[READ] << ") "
                           << "[" << motif_start[READ] << "~" << motif_end[READ] << "] "
                           << "(" << rflank_start[READ] << "~" << rflank_end[READ] << ")\n";
@@ -1689,7 +1689,7 @@ void CHMM::print_track(int32_t t)
 #undef UNCERTAIN
 
 #undef READ
-#undef PROBE
+#undef MODEL
 #undef MATCH
 
 #undef index
