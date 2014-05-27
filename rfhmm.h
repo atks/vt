@@ -155,7 +155,7 @@ class RFHMM
      * @m      - base match required (MATCH, MODEL_ONLY, READ_ONLY)
      */
     void proc_comp(int32_t A, int32_t B, int32_t i, int32_t j, int32_t match_type);
-
+   
     /**
      * Align and compute genotype likelihood.
      */
