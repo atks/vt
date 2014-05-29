@@ -231,7 +231,6 @@ class Igor : Program
             std::cerr << "lflank    : " << lflank << "\n";
             std::cerr << "RU        : " << ru << "\n";
             std::cerr << "ref_genome: " << ref_genome << "\n";
-            std::cerr << "qual      : " << qual << "\n";
             std::cerr << "\n";
 
 
@@ -239,13 +238,10 @@ class Igor : Program
             lfhmm->align(ref_genome, qual.c_str());
             lfhmm->print_alignment();
 
-//            if (lfhmm->motif_concordance)
-//            {
-                bcf_print(odr->hdr, v);
-//            }
+            bcf_print(odr->hdr, v);
 
             //check if there are at least 10bp to work with
-            
+                        
 
 //            rfhmm->initialize(run, rflank);
 //            rfhmm->align(ref_genome, qual.c_str());

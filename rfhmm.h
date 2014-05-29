@@ -75,6 +75,24 @@
 //[N|l|0|0]
 #define START_TRACK 0x78000000
 
+class RFHMMParameters
+{
+    public: 
+        
+    float delta;
+    float epsilon;
+    float tau;
+    float eta;
+    
+    RFHMMParameters()
+    {
+        delta = 0.01;
+        epsilon = 0.05;
+        tau = 0.01;
+        eta = 0.01;
+    };
+};
+
 class RFHMM
 {
     public:
@@ -108,10 +126,7 @@ class RFHMM
     int32_t *optimal_path_ptr; //just a pointer
     int32_t optimal_path_len;
 
-    float delta;
-    float epsilon;
-    float tau;
-    float eta;
+    RFHMMParameters par;
 
     float T[NSTATES][NSTATES];
 
@@ -143,8 +158,28 @@ class RFHMM
     /**
      * Initializes object, helper function for constructor.
      */
-    void initialize(const char* ru, const char* rflank);
+    void initialize();
+   
+    /**
+     * Initializes objects for constructor.
+     */
+    void initialize_structures();
+        
+    /**
+     * Initialize transition matrix based on parameters.
+     */
+    void initialize_T();
+    
+    /**
+     * Initializes U and V.
+     */
+    void initialize_UV();
 
+    /**
+     * Sets a model.
+     */
+    void set_model(const char* lflank, const char* motif);
+    
     /**
      * Computes the score associated with the move from A to B
      * Updates the max_score and associated max_track.
