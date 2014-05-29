@@ -167,64 +167,15 @@ class Igor : Program
             }
         }    
         
-        bcf_hdr_append(odw->hdr, "##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">");
-        bcf_hdr_append(odw->hdr, "##FORMAT=<ID=PL,Number=G,Type=Integer,Description=\"Normalized, Phred-scaled likelihoods for genotypes\">");
+        if (no_samples)
+        {    
+            bcf_hdr_append(odw->hdr, "##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">");
+            bcf_hdr_append(odw->hdr, "##FORMAT=<ID=PL,Number=G,Type=Integer,Description=\"Normalized, Phred-scaled likelihoods for genotypes\">");
+        }
         odw->write_hdr();   
         
-        
-
-//        if ( v->n_fmt) 
-//        {
-//            int gt_i = -1;
-//            bcf_fmt_t *fmt = v->d.fmt;
-//            int first = 1;
-//            for (i = 0; i < (int)v->n_fmt; ++i) {
-//                if ( !fmt[i].p ) continue;
-//                kputc(!first ? ':' : '\t', s); first = 0;
-//                if ( fmt[i].id<0 ) //!bcf_hdr_idinfo_exists(h,BCF_HL_FMT,fmt[i].id) ) 
-//                {
-//                    fprintf(stderr, "[E::%s] invalid BCF, the FORMAT tag id=%d not present in the header.\n", __func__, fmt[i].id);
-//                    abort();
-//                }
-//                kputs(h->id[BCF_DT_ID][fmt[i].id].key, s);
-//                if (strcmp(h->id[BCF_DT_ID][fmt[i].id].key, "GT") == 0) gt_i = i;
-//            }
-//            if ( first ) kputs("\t.", s);
-//            for (j = 0; j < v->n_sample; ++j) {
-//                kputc('\t', s);
-//                first = 1;
-//                for (i = 0; i < (int)v->n_fmt; ++i) {
-//                    bcf_fmt_t *f = &fmt[i];
-//                    if ( !f->p ) continue;
-//                    if (!first) kputc(':', s); first = 0;
-//                    if (gt_i == i)
-//                        bcf_format_gt(f,j,s);
-//                    else
-//                        bcf_fmt_array(s, f->n, f->type, f->p + j * f->size);
-//                }
-//                if ( first ) kputc('.', s);
-//            }
-//        }
-//        else
-//            for (j=0; j<=v->n_sample; j++)
-//                kputs("\t.", s);
-        //prepare arrays for individual information
-        
-//        if (v->)
-//        for ()
-//        {
-//            
-//            
-//            
-//            
-//            
-//        }
-        
-        
         std::vector<bcfptr*> current_recs;
-            
         int32_t *cgt = (int32_t*) malloc(no_samples*2*sizeof(int32_t));
-        
         int32_t *pls = (int32_t*) malloc(no_samples*3*sizeof(int32_t));
         int ncount =0;
         
@@ -242,81 +193,55 @@ class Igor : Program
             bcf_update_alleles(odw->hdr, nv, const_cast<const char**>(bcf_get_allele(v)), bcf_get_n_allele(v));
             bcf_set_n_sample(nv, no_samples);
             
-//            
-//            for (uint32_t i=0; i<current_recs.size(); ++i)
-//            {
-//                int32_t file_index = current_recs[i]->file_index;
-//                for (int32_t j=0; j<bcf_hdr_nsamples(h); ++j)
-//                {
-//                    bcf_hdr_id2int(odw->hdr, BCF_DT_SAMPLE, bcf_hdr_get_sample_name(sr->hdrs[file_index], j))
-//                }
-//            }
-            
-            //get possible format values here based on first file you see.
-            
-            
-            //assign sample 
-            
-            
-            
-            int32_t ngt = 0;
-            for (uint32_t i=0; i<current_recs.size(); ++i)
+            if (no_samples)
             {
-                int32_t file_index = current_recs[i]->file_index;
-                bcf1_t *v = current_recs[i]->v;
-                bcf_hdr_t *h = current_recs[i]->h;
-    
-                int32_t *gt = NULL;
-                int32_t n = 0;
-                int32_t ploidy = bcf_get_genotypes(h, v, &gt, &n); //as a string
-                
-                ploidy /= bcf_hdr_nsamples(h);
-                
-                //bcf_print(h,v);
-                
-                int32_t *pl = NULL;
-                n=0;
-                bcf_get_format_int32(h, v, "PL",&pl, &n);
-                    
-                for (int32_t j=0; j<bcf_hdr_nsamples(h); ++j)
+                int32_t ngt = 0;
+                for (uint32_t i=0; i<current_recs.size(); ++i)
                 {
-                    int32_t k = bcf_hdr_id2int(odw->hdr, BCF_DT_SAMPLE, bcf_hdr_get_sample_name(sr->hdrs[file_index], j));
-                    cgt[k*2] = gt[j*2];
-                    cgt[k*2+1] = gt[j*2+1];
+                    int32_t file_index = current_recs[i]->file_index;
+                    bcf1_t *v = current_recs[i]->v;
+                    bcf_hdr_t *h = current_recs[i]->h;
+        
+                    int32_t *gt = NULL;
+                    int32_t n = 0;
+                    int32_t ploidy = bcf_get_genotypes(h, v, &gt, &n); //as a string
+                    
+                    ploidy /= bcf_hdr_nsamples(h);
+                    
+                    //bcf_print(h,v);
+                    
+                    int32_t *pl = NULL;
+                    n=0;
+                    bcf_get_format_int32(h, v, "PL",&pl, &n);
                         
-                    pls[k*3] = pl[j*2];
-                    pls[k*3+1] = pl[j*2+1];    
-                    pls[k*3+2] = pl[j*2+2];  
-                        
-                    ++ngt;
+                    for (int32_t j=0; j<bcf_hdr_nsamples(h); ++j)
+                    {
+                        int32_t k = bcf_hdr_id2int(odw->hdr, BCF_DT_SAMPLE, bcf_hdr_get_sample_name(sr->hdrs[file_index], j));
+                        cgt[k*2] = gt[j*2];
+                        cgt[k*2+1] = gt[j*2+1];
+                            
+                        pls[k*3] = pl[j*2];
+                        pls[k*3+1] = pl[j*2+1];    
+                        pls[k*3+2] = pl[j*2+2];  
+                            
+                        ++ngt;
+                    }
+    
+                    free(gt); //is this necessary - check later
+                    free(pl);                    
                 }
-
-                free(gt);
-                free(pl);
+                
+                bcf_update_genotypes(odw->hdr,nv,cgt,ngt*2);
+                bcf_update_format_int32(odw->hdr,nv,"PL",pls,ngt*3);
+                
+                odw->write(nv);
+            }
+            else
+            {
+                odw->write(current_recs[0]->v);
             }
             
-
             
-            //update info
-//                    for (i = 0; i < v->n_info; ++i) {
-//			bcf_info_t *z = &v->d.info[i];
-//            if ( !z->vptr ) continue;
-//			if ( !first ) kputc(';', s); first = 0;
-//			kputs(h->id[BCF_DT_ID][z->key].key, s);
-//			if (z->len <= 0) continue;
-//			kputc('=', s);
-//			if (z->len == 1) {
-//				if (z->type == BCF_BT_FLOAT) ksprintf(s, "%g", z->v1.f);
-//				else if (z->type != BCF_BT_CHAR) kputw(z->v1.i, s);
-//				else kputc(z->v1.i, s);
-//			} else bcf_fmt_array(s, z->len, z->type, z->vptr);
-//		}
-            
-            
-            //update individual information
-            bcf_update_genotypes(odw->hdr,nv,cgt,ngt*2);
-            bcf_update_format_int32(odw->hdr,nv,"PL",pls,ngt*3);
-            odw->write(nv);
         }
         
         free(cgt);
