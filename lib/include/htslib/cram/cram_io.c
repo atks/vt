@@ -2207,6 +2207,11 @@ cram_container *cram_read_container(cram_fd *fd) {
 	fd->multi_seq = 1;
     }
 
+    fd->empty_container =
+	(c->num_records == 0 &&
+	 c->ref_seq_id == -1 &&
+	 c->ref_seq_start == 0x454f46 /* EOF */) ? 1 : 0;
+
     return c;
 }
 
@@ -3326,7 +3331,7 @@ cram_fd *cram_dopen(cram_FILE *fp, const char *filename, const char *mode) {
 	fd->m[i] = cram_new_metrics();
 
     fd->range.refid = -2; // no ref.
-    fd->eof = 0;
+    fd->eof = 1;          // See samtools issue #150
     fd->ref_fn = NULL;
 
     fd->bl = NULL;
