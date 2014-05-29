@@ -76,6 +76,7 @@ LFHMM::LFHMM(bool debug)
 {
     lt = new LogTool();
     this->debug = debug;
+    initialize();
 };
 
 /**
@@ -85,6 +86,7 @@ LFHMM::LFHMM(LogTool *lt, bool debug)
 {
     this->lt = lt;
     this->debug = debug;
+    initialize();
 };
 
 /**
@@ -94,7 +96,6 @@ LFHMM::~LFHMM()
 {
     delete optimal_path;
 
-    //the best alignment V_ for subsequence (i,j)
     for (size_t state=S; state<=E; ++state)
     {
         delete V[state];
@@ -106,30 +107,243 @@ LFHMM::~LFHMM()
 };
 
 /**
- * Initializes object, helper function for constructor.
+ * Initializes objects; helper function for constructor.
  */
-void LFHMM::initialize(const char* lflank, const char* motif)
+void LFHMM::initialize()
+{
+    initialize_structures();
+    initialize_T();
+    initialize_UV();
+};
+
+///**
+// * Initializes object, helper function for constructor.
+// */
+//void LFHMM::initialize(const char* lflank, const char* motif)
+//{
+//    model = new char*[3];
+//    model[LFLANK] = strdup(lflank);
+//    model[MOTIF] = strdup(motif);
+//
+//    motif_discordance = new int32_t[MAXLEN];
+//
+//    lflen = strlen(model[LFLANK]);
+//    mlen = strlen(model[MOTIF]);
+//
+//    optimal_path = new int32_t[MAXLEN<<2];
+//    optimal_path_traced = false;
+//
+//    for (size_t i=S; i<=E; ++i)
+//    {
+//        for (size_t j=S; j<=E; ++j)
+//        {
+//            T[i][j] = -INFINITY;
+//        }
+//    }
+//
+//    T[S][ML] = 0;
+//    T[ML][ML] = 0;
+//
+//    T[ML][M] = log10(((1-2*delta-tau))/(eta*(1-eta)*(1-eta)));
+//    T[M][M] = log10(((1-2*delta-tau))/((1-eta)*(1-eta)));
+//    T[D][M] = log10(((1-epsilon-tau))/((1-eta)*(1-eta)));
+//    T[I][M] = T[D][M];
+//
+//    T[ML][D] = log10((tau*delta)/(eta*(1-eta)));
+//    T[M][D] = log10(delta/(1-eta));
+//    T[D][D] = log10(epsilon/(1-eta));;
+//
+//    T[ML][I] = T[ML][D];
+//    T[M][I] = T[M][D];
+//    T[I][I] = T[D][D];
+//
+//    T[ML][Z] = log10((tau*tau*(1-eta))/(eta*eta*eta*(1-eta)));
+//    T[M][Z] = log10((tau*(1-eta))/(eta*(1-eta)));
+//    T[D][Z] = log10((tau*(1-eta))/(eta*(1-eta)));
+//    T[I][Z] = log10((tau*(1-eta))/(eta*(1-eta)));
+//    T[Z][Z] = log10((1-eta)/(1-eta));
+//
+//    typedef int32_t (LFHMM::*move) (int32_t t, int32_t j);
+//    V = new float*[NSTATES];
+//    U = new int32_t*[NSTATES];
+//    moves = new move*[NSTATES];
+//    for (size_t state=S; state<=E; ++state)
+//    {
+//        V[state] = new float[MAXLEN*MAXLEN];
+//        U[state] = new int32_t[MAXLEN*MAXLEN];
+//        moves[state] = new move[NSTATES];
+//    }
+//
+//    for (size_t state=S; state<=E; ++state)
+//    {
+//        moves[state] = new move[NSTATES];
+//    }
+//
+//    moves[S][ML]  = &LFHMM::move_S_ML;
+//    moves[ML][ML] = &LFHMM::move_ML_ML;
+//
+//    moves[ML][M] = &LFHMM::move_ML_M;
+//    moves[M][M]  = &LFHMM::move_M_M;
+//    moves[D][M]  = &LFHMM::move_D_M;
+//    moves[I][M]  = &LFHMM::move_I_M;
+//    moves[ML][D] = &LFHMM::move_ML_D;
+//    moves[M][D]  = &LFHMM::move_M_D;
+//    moves[D][D]  = &LFHMM::move_D_D;
+//    moves[ML][I] = &LFHMM::move_ML_I;
+//    moves[M][I]  = &LFHMM::move_M_I;
+//    moves[I][I]  = &LFHMM::move_I_I;
+//
+//    moves[M][Z] = &LFHMM::move_M_Z;
+//    moves[D][Z] = &LFHMM::move_D_Z;
+//    moves[I][Z] = &LFHMM::move_I_Z;
+//    moves[Z][Z] = &LFHMM::move_Z_Z;
+//
+//    //used for back tracking, this points to the state prior to the alignment for subsequence (i,j)
+//    //that ends with the corresponding state
+//
+//    int32_t t=0;
+//    for (size_t i=0; i<MAXLEN; ++i)
+//    {
+//        for (size_t j=0; j<MAXLEN; ++j)
+//        {
+//            size_t c = index(i,j);
+//
+//            V[S][c] = -INFINITY;
+//            U[S][c] = NULL_TRACK;
+//
+//            //ML
+//            V[ML][c] = -INFINITY;
+//            if (!i || !j)
+//            {
+//                U[ML][c] = make_track(N,UNMODELED,0,0);
+//            }
+//            else
+//            {
+//                U[ML][c] = make_track(TBD,UNCERTAIN,0,0);
+//            }
+//
+//            //M
+//            V[M][c] = -INFINITY;
+//            if (!i || !j)
+//            {
+//                U[M][c] = make_track(N,UNMODELED,0,0);
+//            }
+//            else
+//            {
+//                U[M][c] = make_track(TBD,UNCERTAIN,0,0);
+//            }
+//
+//            //D
+//            V[D][c] = -INFINITY;
+//            if (!i || !j)
+//            {
+//                U[D][c] = make_track(N,UNMODELED,0,0);
+//            }
+//            else
+//            {
+//                U[D][c] = make_track(TBD,UNCERTAIN,0,0);
+//            }
+//
+//            //I
+//            V[I][c] = -INFINITY;
+//            if (!i || !j)
+//            {
+//                U[I][c] = make_track(N,UNMODELED,0,0);
+//            }
+//            else
+//            {
+//                U[I][c] = make_track(TBD,UNCERTAIN,0,0);
+//            }
+//
+//            //Z
+//            V[Z][c] = -INFINITY;
+//            if (!i || !j)
+//            {
+//                U[Z][c] = make_track(N,UNMODELED,0,0);
+//            }
+//            else
+//            {
+//                U[Z][c] = make_track(TBD,UNCERTAIN,0,0);
+//            }
+//        }
+//    }
+//
+//    V[S][index(0,0)] = 0;
+//    U[S][index(0,0)] = START_TRACK;
+//
+//    V[ML][index(0,0)] = -INFINITY;
+//    U[ML][index(0,0)] = START_TRACK;
+//
+//    V[M][index(0,0)] = -INFINITY;
+//    V[Z][index(0,0)] = -INFINITY;
+//};
+
+/**
+ * Initializes objects for constructor.
+ */
+void LFHMM::initialize_structures()
 {
     model = new char*[3];
-    model[LFLANK] = strdup(lflank);
-    model[MOTIF] = strdup(motif);
+    model[LFLANK] = NULL;
+    model[MOTIF] = NULL;
+    model[RFLANK] = NULL;
+    
+    lflen = 0;
+    mlen = 0;
     
     motif_discordance = new int32_t[MAXLEN];
-
-    lflen = strlen(model[LFLANK]);
-    mlen = strlen(model[MOTIF]);
-    
     optimal_path = new int32_t[MAXLEN<<2];
     optimal_path_traced = false;
 
-    delta = 0.01;
-    epsilon = 0.05;
-    tau = 0.01;
-    eta = 0.01;
-
-    for (size_t i=S; i<NSTATES; ++i)
+    typedef int32_t (LFHMM::*move) (int32_t t, int32_t j);
+    V = new float*[NSTATES];
+    U = new int32_t*[NSTATES];
+    moves = new move*[NSTATES];
+    for (size_t state=S; state<=E; ++state)
     {
-        for (size_t j=S; j<NSTATES; ++j)
+        V[state] = new float[MAXLEN*MAXLEN];
+        U[state] = new int32_t[MAXLEN*MAXLEN];
+        moves[state] = new move[NSTATES];
+    }
+
+    for (size_t state=S; state<=E; ++state)
+    {
+        moves[state] = new move[NSTATES];
+    }
+    
+    moves[S][ML]  = &LFHMM::move_S_ML;
+    moves[ML][ML] = &LFHMM::move_ML_ML;
+
+    moves[ML][M] = &LFHMM::move_ML_M;
+    moves[M][M]  = &LFHMM::move_M_M;
+    moves[D][M]  = &LFHMM::move_D_M;
+    moves[I][M]  = &LFHMM::move_I_M;
+    moves[ML][D] = &LFHMM::move_ML_D;
+    moves[M][D]  = &LFHMM::move_M_D;
+    moves[D][D]  = &LFHMM::move_D_D;
+    moves[ML][I] = &LFHMM::move_ML_I;
+    moves[M][I]  = &LFHMM::move_M_I;
+    moves[I][I]  = &LFHMM::move_I_I;
+
+    moves[M][Z] = &LFHMM::move_M_Z;
+    moves[D][Z] = &LFHMM::move_D_Z;
+    moves[I][Z] = &LFHMM::move_I_Z;
+    moves[Z][Z] = &LFHMM::move_Z_Z;
+};
+
+/**
+ * Initialize transition matrix based on parameters.
+ */
+void LFHMM::initialize_T()
+{
+    float delta = par.delta;
+    float epsilon = par.epsilon;
+    float tau = par.tau;
+    float eta = par.eta;
+
+    for (size_t i=S; i<=E; ++i)
+    {
+        for (size_t j=S; j<=E; ++j)
         {
             T[i][j] = -INFINITY;
         }
@@ -137,7 +351,7 @@ void LFHMM::initialize(const char* lflank, const char* motif)
 
     T[S][ML] = 0;
     T[ML][ML] = 0;
-    
+
     T[ML][M] = log10(((1-2*delta-tau))/(eta*(1-eta)*(1-eta)));
     T[M][M] = log10(((1-2*delta-tau))/((1-eta)*(1-eta)));
     T[D][M] = log10(((1-epsilon-tau))/((1-eta)*(1-eta)));
@@ -156,46 +370,13 @@ void LFHMM::initialize(const char* lflank, const char* motif)
     T[D][Z] = log10((tau*(1-eta))/(eta*(1-eta)));
     T[I][Z] = log10((tau*(1-eta))/(eta*(1-eta)));
     T[Z][Z] = log10((1-eta)/(1-eta));
+};
 
-    typedef int32_t (LFHMM::*move) (int32_t t, int32_t j);
-    V = new float*[NSTATES];
-    U = new int32_t*[NSTATES];
-    moves = new move*[NSTATES];
-    for (size_t state=S; state<=E; ++state)
-    {
-        V[state] = new float[MAXLEN*MAXLEN];
-        U[state] = new int32_t[MAXLEN*MAXLEN];
-        moves[state] = new move[NSTATES];
-    }
-
-    for (size_t state=S; state<=E; ++state)
-    {
-        moves[state] = new move[NSTATES];
-    }
-
-    moves[S][ML] = &LFHMM::move_S_ML;
-    moves[ML][ML] = &LFHMM::move_ML_ML;
-    
-    moves[ML][M] = &LFHMM::move_ML_M;
-    moves[M][M] = &LFHMM::move_M_M;
-    moves[D][M] = &LFHMM::move_D_M;
-    moves[I][M] = &LFHMM::move_I_M;
-    moves[ML][D] = &LFHMM::move_ML_D;
-    moves[M][D] = &LFHMM::move_M_D;
-    moves[D][D] = &LFHMM::move_D_D;
-    moves[ML][I] = &LFHMM::move_ML_I;
-    moves[M][I] = &LFHMM::move_M_I;
-    moves[I][I] = &LFHMM::move_I_I;
-
-    moves[M][Z] = &LFHMM::move_M_Z;
-    moves[D][Z] = &LFHMM::move_D_Z;
-    moves[I][Z] = &LFHMM::move_I_Z;
-    moves[Z][Z] = &LFHMM::move_Z_Z;
-
-    //used for back tracking, this points to the state prior to the alignment for subsequence (i,j)
-    //that ends with the corresponding state
-
-    int32_t t=0;
+/**
+ * Initializes U and V.
+ */
+void LFHMM::initialize_UV()
+{
     for (size_t i=0; i<MAXLEN; ++i)
     {
         for (size_t j=0; j<MAXLEN; ++j)
@@ -205,7 +386,6 @@ void LFHMM::initialize(const char* lflank, const char* motif)
             V[S][c] = -INFINITY;
             U[S][c] = NULL_TRACK;
 
-            //ML
             V[ML][c] = -INFINITY;
             if (!i || !j)
             {
@@ -216,7 +396,6 @@ void LFHMM::initialize(const char* lflank, const char* motif)
                 U[ML][c] = make_track(TBD,UNCERTAIN,0,0);
             }
 
-            //M
             V[M][c] = -INFINITY;
             if (!i || !j)
             {
@@ -227,7 +406,6 @@ void LFHMM::initialize(const char* lflank, const char* motif)
                 U[M][c] = make_track(TBD,UNCERTAIN,0,0);
             }
 
-            //D
             V[D][c] = -INFINITY;
             if (!i || !j)
             {
@@ -238,7 +416,6 @@ void LFHMM::initialize(const char* lflank, const char* motif)
                 U[D][c] = make_track(TBD,UNCERTAIN,0,0);
             }
 
-            //I
             V[I][c] = -INFINITY;
             if (!i || !j)
             {
@@ -249,7 +426,6 @@ void LFHMM::initialize(const char* lflank, const char* motif)
                 U[I][c] = make_track(TBD,UNCERTAIN,0,0);
             }
 
-            //Z
             V[Z][c] = -INFINITY;
             if (!i || !j)
             {
@@ -271,6 +447,22 @@ void LFHMM::initialize(const char* lflank, const char* motif)
     V[M][index(0,0)] = -INFINITY;
     V[Z][index(0,0)] = -INFINITY;
 };
+
+/**
+ * Sets a model.
+ */
+void LFHMM::set_model(const char* lflank, const char* motif)
+{
+    if (model[LFLANK]) free(model[LFLANK]);
+    if (model[MOTIF]) free(model[MOTIF]);
+    if (model[RFLANK]) free(model[RFLANK]);
+    
+    model[LFLANK] = strdup(lflank);
+    model[MOTIF] = strdup(motif);
+    
+    lflen = strlen(model[LFLANK]);
+    mlen = strlen(model[MOTIF]);
+}
 
 /**
  * Computes the score associated with the move from A to B
@@ -323,7 +515,7 @@ void LFHMM::proc_comp(int32_t A, int32_t B, int32_t index1, int32_t j, int32_t m
 /**
  * Align read against model.
  */
-void LFHMM::align(const char* read, const char* qual, bool debug)
+void LFHMM::align(const char* read, const char* qual)
 {
     clear_statistics();
     optimal_path_traced = false;
@@ -417,7 +609,7 @@ void LFHMM::align(const char* read, const char* qual, bool debug)
             V[I][c] = max_score;
             U[I][c] = max_track;
             if (debug) std::cerr << "\tset I " << max_score << " - " << track2string(max_track) << "\n";
-                
+
             /////
             //Z//
             /////
@@ -441,12 +633,12 @@ void LFHMM::align(const char* read, const char* qual, bool debug)
         print(V[S], plen+1, rlen+1);
         std::cerr << "\n   =U[S]=\n";
         print_U(U[S], plen+1, rlen+1);
-        
+
         std::cerr << "\n   =V[ML]=\n";
         print(V[ML], plen+1, rlen+1);
         std::cerr << "\n   =U[ML]=\n";
         print_U(U[ML], plen+1, rlen+1);
-        
+
         std::cerr << "\n   =V[M]=\n";
         print(V[M], plen+1, rlen+1);
         std::cerr << "\n   =U[M]=\n";
@@ -466,10 +658,9 @@ void LFHMM::align(const char* read, const char* qual, bool debug)
         print_U(U[Z], plen+1, rlen+1);
 
         std::cerr << "\n";
-            
         std::cerr << "\n";
-            
-        print_T();    
+
+        print_T();
     }
 
     trace_path();
@@ -489,7 +680,7 @@ void LFHMM::trace_path()
     for (size_t i=lflen; i<=plen; ++i)
     {
         c = index(i,rlen);
-        
+
         if (V[Z][c]>=optimal_score)
         {
             optimal_score = V[Z][c];
@@ -497,7 +688,7 @@ void LFHMM::trace_path()
             optimal_state = Z;
             optimal_probe_len = i;
         }
-        
+
         if (V[M][c]>=optimal_score)
         {
             optimal_score = V[M][c];
@@ -505,7 +696,7 @@ void LFHMM::trace_path()
             optimal_state = M;
             optimal_probe_len = i;
         }
-        
+
         if (V[D][c]>=optimal_score)
         {
             optimal_score = V[D][c];
@@ -513,7 +704,7 @@ void LFHMM::trace_path()
             optimal_state = D;
             optimal_probe_len = i;
         }
-        
+
         if (V[I][c]>=optimal_score)
         {
             optimal_score = V[I][c];
@@ -578,7 +769,7 @@ void LFHMM::collect_statistics(int32_t src_t, int32_t des_t, int32_t j)
 
     if (src_u==E)
     {
-        
+
     }
     else if (src_u==Z)
     {
@@ -641,19 +832,24 @@ void LFHMM::collect_statistics(int32_t src_t, int32_t des_t, int32_t j)
  */
 void LFHMM::clear_statistics()
 {
-    lflank_start[MODEL] = -1;
-    lflank_start[READ] = -1;
-    lflank_end[MODEL] = -1;
-    lflank_end[READ] = -1;
-    motif_start[MODEL] = -1;
-    motif_start[READ] = -1;
-    motif_end[MODEL] = -1;
-    motif_end[READ] = -1;
-    motif_count = 0;
-    exact_motif_count = 0;
-    motif_m = 0;
-    motif_xid = 0;
-    motif_concordance = 0;
+    lflank_start[MODEL] = NAN;
+    lflank_start[READ] = NAN;
+    lflank_end[MODEL] = NAN;
+    lflank_end[READ] = NAN;
+    motif_start[MODEL] = NAN;
+    motif_start[READ] = NAN;
+    motif_end[MODEL] = NAN;
+    motif_end[READ] = NAN;
+    motif_count = NAN;
+    exact_motif_count = NAN;
+    motif_m = NAN;
+    motif_xid = NAN;
+    motif_concordance = NAN;
+    rflank_start[MODEL] = NAN;
+    rflank_start[READ] = NAN;
+    rflank_end[MODEL] = NAN;
+    rflank_end[READ] = NAN;
+    
 }
 
 /**
@@ -675,20 +871,18 @@ bool LFHMM::flanks_are_mapped()
 /**
  * Compute log10 emission odds based on equal error probability distribution.
  */
-float LFHMM::log10_emission_odds(char probe_base, char read_base, uint32_t pl)
+float LFHMM::log10_emission_odds(char probe_base, char read_base, uint32_t pl, float mismatch_penalty)
 {
-    //4 encodes for N
     if (read_base=='N' || probe_base=='N')
     {
-        //silent match
-        return -INFINITY;
+        return -INFINITY;  //is this appropriate in this case?
     }
 
     if (read_base!=probe_base)
     {
-        return lt->pl2log10_varp(pl);
+        return lt->pl2log10_varp(pl)-mismatch_penalty;
     }
-    else
+    else //match
     {
         return -lt->pl2log10_varp(pl);
     }
@@ -868,6 +1062,7 @@ std::string LFHMM::track2cigarstring2(int32_t t)
         return " ";
     }
 }
+
 /**
  * Converts model component to string representation.
  */
@@ -922,6 +1117,16 @@ void LFHMM::print_alignment(std::string& pad)
         std::cerr << "path not traced\n";
     }
 
+    std::cerr << "\n";
+    print_T();
+    std::cerr << "\n";
+    std::cerr << "QUAL+33\tMATCH\tMISMATCH\tPENALTY\n";
+    int32_t qual = 'K' - 33;
+    std::cerr << qual << "\t"<< log10_emission_odds('A', 'A', qual) << "\t" 
+                             << log10_emission_odds('A', 'C', qual) << "\t" 
+                             << log10_emission_odds('A', 'C', qual, 2) << "\n";
+    std::cerr << "\n";
+
     std::cerr << "lflank       : " << model[LFLANK] << "\n";
     std::cerr << "repeat motif : " << model[MOTIF] << "\n";
     std::cerr << "lflen        : " << lflen << "\n";
@@ -936,8 +1141,6 @@ void LFHMM::print_alignment(std::string& pad)
     std::cerr << "optimal track: " << track2string(optimal_track) << "\n";
     std::cerr << "optimal probe len: " << optimal_probe_len << "\n";
     std::cerr << "optimal path length : " << optimal_path_len << "\n";
-    std::cerr << "optimal path     : " << optimal_path << "\n";
-    std::cerr << "optimal path ptr : " << optimal_path_ptr  << "\n";
     std::cerr << "max j: " << rlen << "\n";
 
     std::cerr << "probe: " << "(" << lflank_start[MODEL] << "~" << lflank_end[MODEL] << ") "

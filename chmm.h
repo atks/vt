@@ -135,12 +135,12 @@ class CHMM
     /**
      * Constructor.
      */
-    CHMM();
+    CHMM(bool debug=false);
 
     /**
      * Constructor.
      */
-    CHMM(LogTool *lt);
+    CHMM(LogTool *lt, bool debug=false);
 
     /**
      * Destructor.

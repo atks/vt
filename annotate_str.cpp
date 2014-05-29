@@ -158,8 +158,10 @@ class Igor : Program
         kstring_t s = {0,0,0};
 
         int32_t lflank_len, ref_genome_len;
-        char* ru;
+        char* lflank, *ru, *rflank, *ref_genome;
         int32_t ru_len;
+        std::string qual;
+        for (int32_t i=0; i<2048; ++i) qual += 'K';
 
         while (odr->read(v))
         {
@@ -174,31 +176,83 @@ class Igor : Program
             //   check concordance
             //   Reference length
             //   accuracy
-            //
 
             //2. run right flank
 
+            if (bcf_get_n_allele(v)!=2 && !(vtype&VT_INDEL))
+            {
+                continue;
+            }
 
-            char* lflank = faidx_fetch_uc_seq(fai, chrom, start1-10, start1-1, &lflank_len);
-            bcf_get_info_string(odr->hdr, v, "RU", &ru, &ru_len);
-            char* ref_genome = faidx_fetch_uc_seq(fai, chrom, start1-10, start1+100, &ref_genome_len);
-            std::string qual;
-            for (int32_t i=0; i<ref_genome_len; ++i) qual += 'K';
+            
+            std::cerr << "\n";
+            std::cerr << "=========================================================================================================================\n";
+            std::cerr << "\n";
+
+
+            if (!ru_len)
+            {
+                char* ref = bcf_get_alt(v, 0);
+                char* alt = bcf_get_alt(v, 1);
+
+                if (strlen(ref)>strlen(alt))
+                {            
+                    lflank = faidx_fetch_uc_seq(fai, chrom, start1-10, start1-1, &lflank_len);
+                    //bcf_get_info_string(odr->hdr, v, "RU", &ru, &ru_len);
+                    ref_genome = faidx_fetch_uc_seq(fai, chrom, start1-10, start1+100, &ref_genome_len);
+
+                    ru = ref;
+                    ++ru;
+                }
+                else // deletion
+                {
+                    lflank = faidx_fetch_uc_seq(fai, chrom, start1-10, start1-1, &lflank_len);
+                    ru = alt;
+                    kstring_t str = {(size_t)lflank_len, (size_t)lflank_len, lflank};
+                    ++ru;
+                    kputs(ru, &str);
+                    lflank_len = str.m;
+                    lflank = str.s;
+                
+                    ref_genome = faidx_fetch_uc_seq(fai, chrom, start1, start1+100, &ref_genome_len);
+                    str.l=0; str.s=0; str.m=0;
+                    kputs(lflank, &str);
+                    kputs(ru, &str);
+                    kputs(ref_genome, &str);
+                    
+                    free(ref_genome);
+                    ref_genome = str.s;
+                    ref_genome_len = str.l;
+                }
+            }
 
             bcf_print(odr->hdr, v);
 
             std::cerr << "lflank    : " << lflank << "\n";
-            std::cerr << "RU: " << ru << "\n";
+            std::cerr << "RU        : " << ru << "\n";
             std::cerr << "ref_genome: " << ref_genome << "\n";
             std::cerr << "qual      : " << qual << "\n";
             std::cerr << "\n";
 
+
             lfhmm->initialize(lflank, ru);
-
-//          rfhmm->print_alignment();
-
             lfhmm->align(ref_genome, qual.c_str());
             lfhmm->print_alignment();
+
+//            if (lfhmm->motif_concordance)
+//            {
+                bcf_print(odr->hdr, v);
+//            }
+
+            //check if there are at least 10bp to work with
+            
+
+//            rfhmm->initialize(run, rflank);
+//            rfhmm->align(ref_genome, qual.c_str());
+//            rfhmm->print_alignment();
+
+
+
             //
             //3. run left flank
             //
@@ -221,7 +275,6 @@ class Igor : Program
     };
 
     private:
-
 };
 }
 
