@@ -106,16 +106,6 @@ LFHMM::~LFHMM()
     delete U;
 };
 
-/**
- * Initializes objects; helper function for constructor.
- */
-void LFHMM::initialize()
-{
-    initialize_structures();
-    initialize_T();
-    initialize_UV();
-};
-
 ///**
 // * Initializes object, helper function for constructor.
 // */
@@ -277,6 +267,16 @@ void LFHMM::initialize()
 //    V[M][index(0,0)] = -INFINITY;
 //    V[Z][index(0,0)] = -INFINITY;
 //};
+
+/**
+ * Initializes objects; helper function for constructor.
+ */
+void LFHMM::initialize()
+{
+    initialize_structures();
+    initialize_T();
+    initialize_UV();
+};
 
 /**
  * Initializes objects for constructor.

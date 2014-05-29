@@ -171,7 +171,7 @@ class Igor : Program
                 qual += 'K';
             }
             clock_t t0 = clock();
-            hmm.initialize(ru.c_str(), rflank.c_str());
+            hmm.set_model(ru.c_str(), rflank.c_str());
             hmm.align(y.c_str(), qual.c_str());
             hmm.print_alignment();
             clock_t t1 = clock();
