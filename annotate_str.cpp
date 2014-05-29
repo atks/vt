@@ -235,7 +235,7 @@ class Igor : Program
             std::cerr << "\n";
 
 
-            lfhmm->initialize(lflank, ru);
+            lfhmm->set_model(lflank, ru);
             lfhmm->align(ref_genome, qual.c_str());
             lfhmm->print_alignment();
 
