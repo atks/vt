@@ -24,6 +24,7 @@
 #ifndef ANNOTATE_STR_H
 #define ANNOTATE_STR_H
 
+#include "htslib/kstring.h"
 #include "bcf_ordered_reader.h"
 #include "bcf_ordered_writer.h"
 #include "rfhmm.h"

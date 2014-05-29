@@ -79,17 +79,19 @@
 /**
  * Constructor.
  */
-CHMM::CHMM()
+CHMM::CHMM(bool debug)
 {
     lt = new LogTool();
+    this->debug = debug;
 };
 
 /**
  * Constructor.
  */
-CHMM::CHMM(LogTool *lt)
+CHMM::CHMM(LogTool *lt, bool debug)
 {
     this->lt = lt;
+    this->debug = debug;
 };
 
 /**
@@ -115,8 +117,6 @@ CHMM::~CHMM()
  */
 void CHMM::initialize(const char* lflank, const char* motif, const char* rflank)
 {
-    debug = true;
-    
     model = new char*[3];
     model[LFLANK] = strdup(lflank);
     model[MOTIF] = strdup(motif);

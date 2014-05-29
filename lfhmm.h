@@ -73,29 +73,49 @@
 //[N|l|0|0]
 #define START_TRACK 0x78000000
 
+class LFHMMParameters
+{
+    public: 
+        
+    float delta;
+    float epsilon;
+    float tau;
+    float eta;
+    
+    LFHMMParameters()
+    {
+        delta = 0.01;
+        epsilon = 0.05;
+        tau = 0.01;
+        eta = 0.01;
+    };
+};
+
 class LFHMM
 {
     public:
-        
+
     const char* read;
     const char* qual;
-    
+
     //model variables
     //array indexed by LFLANK, MOTIF
     char **model;
     //length of read, probe and components in the model
     int32_t rlen, plen, lflen, mlen;
 
-    /*result variables*/    
+    /*result variables*/
     int32_t lflank_start[2], lflank_end[2], motif_start[2], motif_end[2], rflank_start[2], rflank_end[2];
     int32_t motif_count, exact_motif_count, motif_m, motif_xid;
     int32_t* motif_discordance;
     float motif_concordance, maxLogOdds;
 
+    LFHMMParameters par;
+
     //for track intermediate scores during Viterbi algorithm
     float max_score;
     int32_t max_track;
-    
+
     //for optimal alignment
     bool optimal_path_traced;
     float optimal_score;
@@ -105,11 +125,6 @@ class LFHMM
     int32_t *optimal_path;     // for storage
     int32_t *optimal_path_ptr; //just a pointer
     int32_t optimal_path_len;
-    
-    float delta;
-    float epsilon;
-    float tau;
-    float eta;
 
     float T[NSTATES][NSTATES];
 
@@ -120,9 +135,9 @@ class LFHMM
 
     typedef int32_t (LFHMM::*move) (int32_t t, int32_t j);
     move **moves;
-           
-    bool debug;       
-           
+
+    bool debug;
+
     /**
      * Constructor.
      */
@@ -141,7 +156,27 @@ class LFHMM
     /**
      * Initializes object, helper function for constructor.
      */
-    void initialize(const char* lflank, const char* ru);
+    void initialize();
+
+    /**
+     * Initializes objects for constructor.
+     */
+    void initialize_structures();
+        
+    /**
+     * Initialize transition matrix based on parameters.
+     */
+    void initialize_T();
+    
+    /**
+     * Initializes U and V.
+     */
+    void initialize_UV();
+
+    /**
+     * Sets a model.
+     */
+    void set_model(const char* lflank, const char* motif);
 
     /**
      * Computes the score associated with the move from A to B
@@ -158,7 +193,7 @@ class LFHMM
     /**
      * Align and compute genotype likelihood.
      */
-    void align(const char* y, const char* qual=NULL, bool debug=false);
+    void align(const char* y, const char* qual=NULL);
 
     /**
      * Trace path after alignment.
@@ -168,7 +203,7 @@ class LFHMM
     /**
      * Compute log10 emission odds based on equal error probability distribution contrasted against log10(1/16).
      */
-    float log10_emission_odds(char read_base, char probe_base, uint32_t pl);
+    float log10_emission_odds(char read_base, char probe_base, uint32_t pl, float mismatch_penalty=1);
 
     /**
      * Converts state to string representation.
@@ -184,12 +219,12 @@ class LFHMM
      * Converts track to cigar string representation.
      */
     std::string track2cigarstring1(int32_t t, int32_t j);
-        
+
     /**
      * Converts state to cigar string representation.
      */
     std::string track2cigarstring2(int32_t t);
-            
+
     /**
      * Converts model component to string representation.
      */
@@ -219,37 +254,37 @@ class LFHMM
      * Prints the transition matrix.
      */
     void print_T();
-    
+
     /**
      * Prints U.
      */
     void print_U(int32_t *U, size_t plen, size_t rlen);
-    
+
     /**
      * Prints U and V.
      */
     void print_trace(int32_t state, size_t plen, size_t rlen);
-    
+
     /**
      * Collect alignment summary statistics.
      */
     void collect_statistics(int32_t t1, int32_t t2, int32_t j);
-   
+
     /**
      * Clear alignment statistics.
      */
     void clear_statistics();
-    
+
     /**
      * Update alignment statistics after collection.
      */
     void update_statistics();
-    
+
     /**
      * Returns true if flanks are mapped.
      */
     bool flanks_are_mapped();
-        
+
     /**
      * Returns a string representation of track.
      */
@@ -278,7 +313,7 @@ class LFHMM
         {
             return make_track(S,LFLANK,0,1);
         }
-        
+
         return NULL_TRACK;
     }
 
@@ -289,7 +324,7 @@ class LFHMM
         {
             return make_track(ML,LFLANK,0,p+1);
         }
-    
+
         return NULL_TRACK;
     }
 
@@ -303,7 +338,7 @@ class LFHMM
         {
             return make_track(S,MOTIF,1,1);
         }
-        
+
         return NULL_TRACK;
     }
 
@@ -314,7 +349,7 @@ class LFHMM
         {
             return make_track(ML,MOTIF,1,1);
         }
-        
+
         return NULL_TRACK;
     }
 
@@ -322,9 +357,9 @@ class LFHMM
     {
         int32_t p;
         if ((p=track_get_p(t))<=mlen && j<rlen)
-        {    
+        {
             if (p==mlen)
-            {    
+            {
                 return make_track(M,MOTIF,track_get_c(t)+1,1);
             }
             else
@@ -332,7 +367,7 @@ class LFHMM
                 return make_track(M,MOTIF,track_get_c(t),p+1);
             }
         }
-   
+
         return NULL_TRACK;
     }
 
@@ -340,9 +375,9 @@ class LFHMM
     {
         int32_t p;
         if ((p=track_get_p(t))<=mlen && j<rlen)
-        {    
+        {
             if (p==mlen)
-            {    
+            {
                 return make_track(D,MOTIF,track_get_c(t)+1,1);
             }
             else
@@ -350,7 +385,7 @@ class LFHMM
                 return make_track(D,MOTIF,track_get_c(t),p+1);
             }
         }
-     
+
         return NULL_TRACK;
     }
 
@@ -358,9 +393,9 @@ class LFHMM
     {
         int32_t p;
         if ((p=track_get_p(t))<=mlen)
-        {    
+        {
             if (p==mlen)
-            {    
+            {
                 return make_track(I,MOTIF,track_get_c(t)+1,1);
             }
             else
@@ -368,27 +403,27 @@ class LFHMM
                 return make_track(I,MOTIF,track_get_c(t),p+1);
             }
         }
-   
+
         return NULL_TRACK;
     }
 
     int32_t move_ML_D(int32_t t, int32_t j)
     {
         if (track_get_p(t)==lflen)
-        {    
+        {
             return make_track(ML,MOTIF,1,1);
         }
-        
+
         return NULL_TRACK;
     }
-    
+
     int32_t move_M_D(int32_t t, int32_t j)
     {
         int32_t p;
         if ((p=track_get_p(t))<=mlen)
-        {    
+        {
             if (p==mlen)
-            {    
+            {
                 return make_track(M,MOTIF,track_get_c(t)+1,1);
             }
             else
@@ -396,7 +431,7 @@ class LFHMM
                 return make_track(M,MOTIF,track_get_c(t),p+1);
             }
         }
-    
+
         return NULL_TRACK;
     }
 
@@ -404,9 +439,9 @@ class LFHMM
     {
         int32_t p;
         if ((p=track_get_p(t))<=mlen)
-        {    
+        {
             if (p==mlen)
-            {    
+            {
                 return make_track(D,MOTIF,track_get_c(t)+1,1);
             }
             else
@@ -414,27 +449,27 @@ class LFHMM
                 return make_track(D,MOTIF,track_get_c(t),p+1);
             }
         }
-    
+
         return NULL_TRACK;
     }
 
     int32_t move_ML_I(int32_t t, int32_t j)
     {
         if (j<rlen)
-        {    
+        {
             return make_track(ML,MOTIF,1,0);
         }
-    
+
         return NULL_TRACK;
     }
-    
+
     int32_t move_M_I(int32_t t, int32_t j)
     {
         if (t!=NULL_TRACK && j<rlen)
         {
             return track_set_u(t,M);
         }
-    
+
         return NULL_TRACK;
     }
 
@@ -444,7 +479,7 @@ class LFHMM
         {
             return track_set_u(t,I);
         }
-    
+
         return NULL_TRACK;
     }
 
@@ -457,7 +492,7 @@ class LFHMM
         {
             return track_set_u(t,M);
         }
-    
+
         return NULL_TRACK;
     }
 
@@ -468,7 +503,7 @@ class LFHMM
         {
             return track_set_u(t,D);
         }
-    
+
         return NULL_TRACK;
     }
 
@@ -479,7 +514,7 @@ class LFHMM
         {
             return track_set_u(t,D);
         }
-    
+
         return NULL_TRACK;
     }
 
@@ -490,7 +525,7 @@ class LFHMM
         {
             return track_set_u(t,Z);
         }
-    
+
         return NULL_TRACK;
     }
 

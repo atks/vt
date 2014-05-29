@@ -915,6 +915,9 @@ void RFHMM::print_alignment(std::string& pad)
         std::cerr << "path not traced\n";
     }
 
+    print_T();
+    std::cerr << "\n";
+
     std::cerr << "repeat motif : " << model[MOTIF] << "\n";
     std::cerr << "rflank       : " << model[RFLANK] << "\n";
     std::cerr << "mlen         : " << mlen << "\n";
@@ -1058,8 +1061,8 @@ void RFHMM::print(int32_t *v, size_t plen, size_t rlen)
     {
         for (size_t j=0; j<rlen; ++j)
         {
-          val =  v[index(i,j)];
-          std::cerr << (val<0?"  ":"   ") << val;
+            val =  v[index(i,j)];
+            std::cerr << (val<0?"  ":"   ") << val;
         }
 
         std::cerr << "\n";
@@ -1071,15 +1074,15 @@ void RFHMM::print(int32_t *v, size_t plen, size_t rlen)
  */
 void RFHMM::print_T()
 {
-    for (size_t j=1; j<=NSTATES; ++j)
+    for (size_t j=S; j<=E; ++j)
     {
         std::cerr << std::setw(8) << std::setprecision(2) << std::fixed << state2string(j);
     }
     std::cerr << "\n";
 
-    for (size_t i=1; i<=NSTATES; ++i)
+    for (size_t i=S; i<=E; ++i)
     {
-        for (size_t j=1; j<=NSTATES; ++j)
+        for (size_t j=S; j<=E; ++j)
         {
             if (j)
             {
