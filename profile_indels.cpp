@@ -70,8 +70,9 @@ class Igor : Program
     std::vector<std::string> dataset_labels;
     std::vector<std::string> dataset_types;
     std::vector<std::string> dataset_fexps;
-    std::string gencode_gtf_file;
-
+    std::string cds_bed_file;
+    std::string cplx_bed_file;
+           
     ///////
     //i/o//
     ///////
@@ -90,16 +91,19 @@ class Igor : Program
     //stats//
     /////////
     std::vector<OverlapStats> stats;
-    uint32_t no_indels;
-    uint32_t nfs;
-    uint32_t fs;
+    int32_t no_indels;
+    int32_t nfs;
+    int32_t fs;
+    int32_t lcplx;
 
     ////////////////
     //common tools//
     ////////////////
     VariantManip *vm;
     GENCODE *gc;
-
+    OrderedRegionOverlapMatcher *orom_lcplx;
+    OrderedRegionOverlapMatcher *orom_gencode_cds;
+    
     Igor(int argc, char ** argv)
     {
         //////////////////////////
@@ -115,7 +119,7 @@ class Igor : Program
             TCLAP::ValueArg<std::string> arg_ref_fasta_file("r", "r", "reference sequence fasta file []", true, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_intervals("i", "i", "intervals []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "file", cmd);
-            TCLAP::ValueArg<std::string> arg_fexp("f", "f", "filter expression []", false, "PASS&&N_ALLELE==2&&VTYPE==INDEL", "str", cmd);
+            TCLAP::ValueArg<std::string> arg_fexp("f", "f", "filter expression []", false, "VTYPE!=SNP", "str", cmd);
             TCLAP::ValueArg<std::string> arg_output_tabulate_dir("x", "x", "output latex directory [tabulate_indels]", false, "tabulate_indels", "str", cmd);
             TCLAP::ValueArg<std::string> arg_output_pdf_file("y", "y", "output pdf file [indels.pdf]", false, "indels.pdf", "str", cmd);
             TCLAP::ValueArg<std::string> arg_ref_data_sets_list("g", "g", "file containing list of reference datasets []", true, "", "file", cmd);
@@ -188,9 +192,13 @@ class Igor : Program
                 dataset_fexps.push_back(vec[2]);
                 input_vcf_files.push_back(vec[3]);
             }
-            else if (vec[1] == "annotation")
+            else if (vec[1] == "cds_annotation")
             {
-                gencode_gtf_file = vec[3];
+                cds_bed_file = vec[3];
+            }
+            else if (vec[1] == "cplx_annotation")
+            {
+                cplx_bed_file = vec[3];
             }
             else
             {
@@ -221,7 +229,8 @@ class Igor : Program
         //tool initialization//
         ///////////////////////
         vm = new VariantManip(ref_fasta_file);
-        gc = new GENCODE(gencode_gtf_file, ref_fasta_file);
+        orom_gencode_cds = new OrderedRegionOverlapMatcher(cds_bed_file);
+        orom_lcplx = new OrderedRegionOverlapMatcher(cplx_bed_file);
 
         ////////////////////////
         //stats initialization//
@@ -273,29 +282,15 @@ class Igor : Program
 
             //annotate
             if (presence[0])
-            {
-                gc->search(chrom, start1+1, end1, overlaps);
-
-                bool cds_found = false;
-                bool is_fs = false;
-
-                for (int32_t i=0; i<overlaps.size(); ++i)
+            {   
+                if (orom_lcplx->overlaps_with(chrom, start1, end1))
                 {
-                    GENCODERecord *rec = (GENCODERecord *) overlaps[i];
-                    if (rec->feature==GC_FT_CDS)
-                    {
-                        cds_found = true;
-                        if (abs(variant.alleles[0].dlen)%3!=0)
-                        {
-                            is_fs = true;
-                            break;
-                        }
-                    }
+                    ++lcplx;
                 }
-
-                if (cds_found)
+            
+                if (orom_gencode_cds->overlaps_with(chrom, start1, end1))
                 {
-                    if (is_fs)
+                    if (abs(variant.alleles[0].dlen)%3!=0)
                     {
                         ++fs;
                     }
@@ -304,7 +299,8 @@ class Igor : Program
                         ++nfs;
                     }
                 }
-
+                
+                            
                 ++no_indels;
             }
 
@@ -432,8 +428,9 @@ class Igor : Program
     {
         fprintf(stderr, "\n");
         fprintf(stderr, "  %s\n", "data set");
-        fprintf(stderr, "    No Indels : %10d [%.2f]\n", no_indels,  (float)stats[0].a_ins/(stats[0].a_del));
-        fprintf(stderr, "       FS/NFS : %10.2f (%d/%d)\n", (float)fs/(fs+nfs), fs, nfs);
+        fprintf(stderr, "    No Indels         : %10d [%.2f]\n", no_indels,  (float)stats[0].a_ins/(stats[0].a_del));
+        fprintf(stderr, "       FS/NFS         : %10.2f (%d/%d)\n", (float)fs/(fs+nfs), fs, nfs);
+        fprintf(stderr, "       Low complexity : %10.2f (%d/%d)\n", (float)lcplx/no_indels, lcplx, no_indels);
         fprintf(stderr, "\n");
 
         for (int32_t i=1; i<dataset_labels.size(); ++i)

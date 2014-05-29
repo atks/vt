@@ -54,6 +54,7 @@ class Igor : Program
     //stats//
     /////////
     int32_t no_variants_annotated;
+    int32_t no_variants;
 
     ////////////////
     //common tools//
@@ -123,6 +124,7 @@ class Igor : Program
         //stats initialization//
         ////////////////////////
         no_variants_annotated = 0;
+        no_variants = 0;
     }
 
     void print_options()
@@ -140,7 +142,7 @@ class Igor : Program
     {
         std::clog << "\n";
         std::cerr << "stats: no. of variants annotated     " << no_variants_annotated << "\n";
-        std::clog << "\n";
+        std::cerr << "       total no. of variants         " << no_variants << "\n";std::clog << "\n";
     }
 
     void annotate_regions()
@@ -162,9 +164,10 @@ class Igor : Program
             if (orom_regions->overlaps_with(chrom, start1, end1))
             {
                 bcf_update_info_flag(odr->hdr, v, REGIONS_TAG.c_str(), "", 1);
+                ++no_variants_annotated;
             }
         
-            ++no_variants_annotated;
+            ++no_variants;
             odw->write(v);
             v = odw->get_bcf1_from_pool();
         }
