@@ -41,7 +41,7 @@ class Igor : Program
     std::vector<GenomeInterval> intervals;
     std::string interval_list;
     bool print;
-    
+
     ///////
     //i/o//
     ///////
@@ -88,7 +88,7 @@ class Igor : Program
             TCLAP::ValueArg<std::string> arg_output_vcf_file("o", "o", "output VCF file [-]", false, "-", "", cmd);
             TCLAP::ValueArg<std::string> arg_input_vcf_file_list("L", "L", "file containing list of input VCF files", false, "", "str", cmd);
             TCLAP::UnlabeledMultiArg<std::string> arg_input_vcf_files("<in1.vcf>...", "Multiple VCF files",false, "files", cmd);
-            
+
             cmd.parse(argc, argv);
 
             input_vcf_file_list = arg_input_vcf_file_list.getValue();
@@ -97,7 +97,7 @@ class Igor : Program
             const std::vector<std::string>& v = arg_input_vcf_files.getValue();
             parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
             print = arg_print.getValue();
-            
+
             if (input_vcf_files.size()==0)
             {
                 fprintf(stderr, "[E:%s:%d %s] no input vcf files.\n", __FILE__, __LINE__, __FUNCTION__);
@@ -120,7 +120,7 @@ class Igor : Program
         odw = new BCFOrderedWriter(output_vcf_file, 0);
         bcf_hdr_append(odw->hdr, "##fileformat=VCFv4.1");
         bcf_hdr_transfer_contigs(sr->hdrs[0], odw->hdr);
-        
+
         ///////////////
         //general use//
         ///////////////
@@ -145,17 +145,17 @@ class Igor : Program
     void merge()
     {
         int32_t nfiles = sr->get_nfiles();
-            
+
         //add all sample names to output vcf header and yell if there are more than one occurence of a sample
-        int32_t no_samples = 0;   
+        int32_t no_samples = 0;
         for (int32_t i=0; i<nfiles; ++i)
         {
             for (int32_t j=0; j<bcf_hdr_nsamples(sr->hdrs[i]); ++j)
             {
                 if (bcf_hdr_id2int(odw->hdr, BCF_DT_SAMPLE, bcf_hdr_get_sample_name(sr->hdrs[i], j))==-1)
-                {   
+                {
                     std::cerr << "adding " << bcf_hdr_get_sample_name(sr->hdrs[i], j) << "\n";
-                    
+
                     bcf_hdr_add_sample(odw->hdr, bcf_hdr_get_sample_name(sr->hdrs[i], j));
                     ++no_samples;
                 }
@@ -165,87 +165,82 @@ class Igor : Program
                     exit(1);
                 }
             }
-        }    
-        
+        }
+
         if (no_samples)
-        {    
+        {
             bcf_hdr_append(odw->hdr, "##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">");
             bcf_hdr_append(odw->hdr, "##FORMAT=<ID=PL,Number=G,Type=Integer,Description=\"Normalized, Phred-scaled likelihoods for genotypes\">");
         }
-        odw->write_hdr();   
-        
+        odw->write_hdr();
+
         std::vector<bcfptr*> current_recs;
         int32_t *cgt = (int32_t*) malloc(no_samples*2*sizeof(int32_t));
         int32_t *pls = (int32_t*) malloc(no_samples*3*sizeof(int32_t));
         int ncount =0;
-        
+
         std::vector<bcfptr*> sample2record(no_samples, NULL);
         std::vector<int32_t> sample2index(no_samples, -1);
-        
+
         while(sr->read_next_position(current_recs))
         {
-            //update alleles
-            bcf1_t *v = current_recs[0]->v;
-            bcf_hdr_t *h = current_recs[0]->h;
-            bcf1_t *nv = odw->get_bcf1_from_pool();
-            bcf_set_chrom(odw->hdr, nv, bcf_get_chrom(h, v));
-            bcf_set_pos1(nv, bcf_get_pos1(v));
-            bcf_update_alleles(odw->hdr, nv, const_cast<const char**>(bcf_get_allele(v)), bcf_get_n_allele(v));
-            bcf_set_n_sample(nv, no_samples);
-            
             if (no_samples)
             {
+                bcf1_t *v = current_recs[0]->v;
+                bcf_hdr_t *h = current_recs[0]->h;
+                bcf1_t *nv = odw->get_bcf1_from_pool();
+                bcf_set_chrom(odw->hdr, nv, bcf_get_chrom(h, v));
+                bcf_set_pos1(nv, bcf_get_pos1(v));
+                bcf_update_alleles(odw->hdr, nv, const_cast<const char**>(bcf_get_allele(v)), bcf_get_n_allele(v));
+                bcf_set_n_sample(nv, no_samples);
+
                 int32_t ngt = 0;
-                for (uint32_t i=0; i<current_recs.size(); ++i)
+                for (size_t i=0; i<current_recs.size(); ++i)
                 {
                     int32_t file_index = current_recs[i]->file_index;
                     bcf1_t *v = current_recs[i]->v;
                     bcf_hdr_t *h = current_recs[i]->h;
-        
+
                     int32_t *gt = NULL;
                     int32_t n = 0;
-                    int32_t ploidy = bcf_get_genotypes(h, v, &gt, &n); //as a string
-                    
+                    int32_t ploidy = bcf_get_genotypes(h, v, &gt, &n);
+
                     ploidy /= bcf_hdr_nsamples(h);
-                    
-                    //bcf_print(h,v);
-                    
+
                     int32_t *pl = NULL;
                     n=0;
                     bcf_get_format_int32(h, v, "PL",&pl, &n);
-                        
+
                     for (int32_t j=0; j<bcf_hdr_nsamples(h); ++j)
                     {
                         int32_t k = bcf_hdr_id2int(odw->hdr, BCF_DT_SAMPLE, bcf_hdr_get_sample_name(sr->hdrs[file_index], j));
                         cgt[k*2] = gt[j*2];
                         cgt[k*2+1] = gt[j*2+1];
-                            
+
                         pls[k*3] = pl[j*2];
-                        pls[k*3+1] = pl[j*2+1];    
-                        pls[k*3+2] = pl[j*2+2];  
-                            
+                        pls[k*3+1] = pl[j*2+1];
+                        pls[k*3+2] = pl[j*2+2];
+
                         ++ngt;
                     }
-    
+
                     free(gt); //is this necessary - check later
-                    free(pl);                    
+                    free(pl);
                 }
-                
+
                 bcf_update_genotypes(odw->hdr,nv,cgt,ngt*2);
                 bcf_update_format_int32(odw->hdr,nv,"PL",pls,ngt*3);
-                
+
                 odw->write(nv);
             }
             else
             {
                 odw->write(current_recs[0]->v);
             }
-            
-            
         }
-        
+
         free(cgt);
-        
+
         sr->close();
         odw->close();
     };
@@ -253,7 +248,7 @@ class Igor : Program
     void print_options()
     {
         if (!print) return;
-        
+
         std::clog << "merge v" << version << "\n\n";
         print_ifiles("options:     input VCF file        ", input_vcf_files);
         std::clog << "         [o] output VCF file       " << output_vcf_file << "\n";
@@ -264,7 +259,7 @@ class Igor : Program
     void print_stats()
     {
         if (!print) return;
-        
+
         std::clog << "\n";
         std::cerr << "stats: Total Number of Candidate SNPs                 " << no_candidate_snps << "\n";
         std::clog << "\n";

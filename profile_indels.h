@@ -35,6 +35,7 @@
 #include "filter.h"
 #include "program.h"
 #include "gencode.h"
+#include "ordered_region_overlap_matcher.h"
 
 void profile_indels(int argc, char ** argv);
 
