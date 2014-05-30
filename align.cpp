@@ -140,7 +140,7 @@ class Igor : Program
                 qual += 'K';
             }
             clock_t t0 = clock();
-            chmm.initialize(lflank.c_str(), ru.c_str(), rflank.c_str());
+            chmm.set_model(lflank.c_str(), ru.c_str(), rflank.c_str());
             chmm.align(y.c_str(), qual.c_str());
             chmm.print_alignment();
             clock_t t1 = clock();
