@@ -82,6 +82,24 @@
 //[N|l|0|0]
 #define START_TRACK 0x78000000
 
+class CHMMParameters
+{
+    public: 
+        
+    float delta;
+    float epsilon;
+    float tau;
+    float eta;
+    
+    CHMMParameters()
+    {
+        delta = 0.01;
+        epsilon = 0.05;
+        tau = 0.01;
+        eta = 0.01;
+    };
+};
+
 class CHMM
 {
     public:
@@ -115,10 +133,7 @@ class CHMM
     int32_t *optimal_path_ptr; //just a pointer
     int32_t optimal_path_len;
     
-    float delta;
-    float epsilon;
-    float tau;
-    float eta;
+    CHMMParameters par;
 
     float T[NSTATES][NSTATES];
 
@@ -150,8 +165,28 @@ class CHMM
     /**
      * Initializes object, helper function for constructor.
      */
-    void initialize(const char* lflank, const char* ru, const char* rflank);
-
+    void initialize();
+   
+    /**
+     * Initializes objects for constructor.
+     */
+    void initialize_structures();
+        
+    /**
+     * Initialize transition matrix based on parameters.
+     */
+    void initialize_T();
+    
+    /**
+     * Initializes U and V.
+     */
+    void initialize_UV();
+    
+    /**
+     * Sets a model.
+     */
+    void set_model(const char* lflank, const char* ru, const char* rflank);
+    
     /**
      * Computes the score associated with the move from A to B
      * Updates the max_score and associated max_track.
