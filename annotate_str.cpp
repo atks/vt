@@ -241,22 +241,14 @@ class Igor : Program
             bcf_print(odr->hdr, v);
 
             //check if there are at least 10bp to work with
-                        
-
 //            rfhmm->initialize(run, rflank);
 //            rfhmm->align(ref_genome, qual.c_str());
 //            rfhmm->print_alignment();
 
-
-
-            //
             //3. run left flank
             //
             //
             //4. try several modes
-            //
-            //
-
 
             if (lflank_len) free(lflank);
             if (ref_genome_len) free(ref_genome);

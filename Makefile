@@ -60,7 +60,8 @@ SOURCES = program\
 		profile_chrom\
 		annotate_regions\
 		test\
-		str
+		str\
+		consolidate_variants
 
 SOURCESONLY = main.cpp
 
