@@ -48,7 +48,7 @@ bam_hdr_t *bam_hdr_dup(const bam_hdr_t *h0)
 	h->ignore_sam_err = h0->ignore_sam_err;
 	h->l_text = h0->l_text;
 	// Then the pointery stuff
-	h->cigar_tab = NULL; // TODO: check what this actually does and why it exists and document it
+	h->cigar_tab = NULL;
 	h->sdict = NULL;
 	h->text = (char*)calloc(h->l_text + 1, 1);
 	memcpy(h->text, h0->text, h->l_text);
@@ -674,7 +674,9 @@ int sam_parse1(kstring_t *s, bam_hdr_t *h, bam1_t *b)
 	str.s = (char*)b->data; str.m = b->m_data;
 	memset(c, 0, 32);
 	if (h->cigar_tab == 0) {
-		h->cigar_tab = (uint8_t*)calloc(128, sizeof(uint8_t));
+		h->cigar_tab = (int8_t*) malloc(128);
+		for (i = 0; i < 128; ++i)
+			h->cigar_tab[i] = -1;
 		for (i = 0; BAM_CIGAR_STR[i]; ++i)
 			h->cigar_tab[(int)BAM_CIGAR_STR[i]] = i;
 	}
@@ -706,17 +708,20 @@ int sam_parse1(kstring_t *s, bam_hdr_t *h, bam1_t *b)
 	// cigar
 	if (*p != '*') {
 		uint32_t *cigar;
-		for (q = p, c->n_cigar = 0; *q && *q != '\t'; ++q)
-			if (!isdigit(*q)) ++c->n_cigar;
+		size_t n_cigar = 0;
+		for (q = p; *p && *p != '\t'; ++p)
+			if (!isdigit(*p)) ++n_cigar;
+		if (*p++ != '\t') goto err_ret;
+		_parse_err(n_cigar >= 65536, "too many CIGAR operations");
+		c->n_cigar = n_cigar;
 		_get_mem(uint32_t, &cigar, &str, c->n_cigar<<2);
-		for (i = 0, q = p; i < c->n_cigar; ++i, ++q) {
+		for (i = 0; i < c->n_cigar; ++i, ++q) {
 			int op;
 			cigar[i] = strtol(q, &q, 10)<<BAM_CIGAR_SHIFT;
 			op = (uint8_t)*q >= 128? -1 : h->cigar_tab[(int)*q];
-			_parse_err(op < 0, "urecognized CIGAR operator");
+			_parse_err(op < 0, "unrecognized CIGAR operator");
 			cigar[i] |= op;
 		}
-		p = q + 1;
 		i = bam_cigar2rlen(c->n_cigar, cigar);
 	} else {
 		_parse_warn(!(c->flag&BAM_FUNMAP), "mapped query must have a CIGAR; treated as unmapped");

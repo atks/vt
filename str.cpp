@@ -26,7 +26,7 @@
 /**
  * Takes in a set of alleles and suggest a set of candidate repeat units.
  */
-char** STRMotif::infer_motif(char** alleles, int32_t n_allele)
+char** STRMotif::infer_motif(char** alleles, int32_t n_allele, int32_t &no_candidate_motifs)
 {
     char* ref = alleles[0];
     int32_t ref_len = strlen(ref);
@@ -68,7 +68,7 @@ char** STRMotif::infer_motif(char** alleles, int32_t n_allele)
         }
     }
     
-    int32_t no_candidate_motifs = kh_size(motifs);
+    no_candidate_motifs = kh_size(motifs);
     
     char** candidate_motifs = (char**) malloc(no_candidate_motifs*sizeof(char*)); 
     
@@ -82,6 +82,8 @@ char** STRMotif::infer_motif(char** alleles, int32_t n_allele)
         }
     }
     kh_clear(mdict, motifs);
+    
+    return candidate_motifs;
 }
 
 /**
@@ -120,6 +122,7 @@ char* STRMotif::get_shortest_repeat_motif(char* allele, int32_t len)
         }    
         
         if (exact) break;
+        ++i;
     }
 
     char *motif = allele+len-sub_motif_len;
