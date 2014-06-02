@@ -81,13 +81,15 @@ class LFHMMParameters
     float epsilon;
     float tau;
     float eta;
-    
+    float mismatch_penalty;
+        
     LFHMMParameters()
     {
-        delta = 0.01;
-        epsilon = 0.05;
+        delta = 0.0001;
+        epsilon = 0.001;
         tau = 0.01;
         eta = 0.01;
+        mismatch_penalty = 1;
     };
 };
 
@@ -179,6 +181,11 @@ class LFHMM
     void set_model(const char* lflank, const char* motif);
 
     /**
+     * Sets mismatch penalty.
+     */
+    void set_mismatch_penalty(float mismatch_penalty);
+
+    /**
      * Computes the score associated with the move from A to B
      * Updates the max_score and associated max_track.
      *
@@ -203,8 +210,13 @@ class LFHMM
     /**
      * Compute log10 emission odds based on equal error probability distribution contrasted against log10(1/16).
      */
-    float log10_emission_odds(char read_base, char probe_base, uint32_t pl, float mismatch_penalty=1);
+    float log10_emission_odds(char read_base, char probe_base, uint32_t pl, float mismatch_penalty);
 
+    /**
+     * Compute log10 emission odds based on equal error probability distribution contrasted against log10(1/16).
+     */
+    float log10_emission_odds(char read_base, char probe_base, uint32_t pl);
+    
     /**
      * Converts state to string representation.
      */
@@ -331,7 +343,6 @@ class LFHMM
     ///////////////////
     //Repeating Motif//
     ///////////////////
-
     int32_t move_S_M(int32_t t, int32_t j)
     {
         if (t==START_TRACK)
