@@ -59,6 +59,7 @@ class Igor : Program
     VariantManip *vm;
     RFHMM* rfhmm;
     LFHMM* lfhmm;
+    STRMotif* strm;
 
     Igor(int argc, char **argv)
     {
@@ -127,6 +128,7 @@ class Igor : Program
         fai = fai_load(ref_fasta_file.c_str());
         rfhmm = new RFHMM();
         lfhmm = new LFHMM();
+        strm = new STRMotif();
 
     }
 
@@ -189,6 +191,8 @@ class Igor : Program
             std::cerr << "=========================================================================================================================\n";
             std::cerr << "\n";
 
+            int32_t no_candidate_motifs;
+            char** candidate_motifs = strm->infer_motif(bcf_get_allele(v), bcf_get_n_allele(v), no_candidate_motifs);
 
             if (!ru_len)
             {
@@ -231,8 +235,12 @@ class Igor : Program
             std::cerr << "lflank    : " << lflank << "\n";
             std::cerr << "RU        : " << ru << "\n";
             std::cerr << "ref_genome: " << ref_genome << "\n";
+            std::cerr << "CANDIDATE MOTIFS: ";
+            for (size_t i=0; i<no_candidate_motifs; ++i)
+            {
+                std::cerr << candidate_motifs[i] << ",";
+            }
             std::cerr << "\n";
-
 
             lfhmm->set_model(lflank, ru);
             lfhmm->set_mismatch_penalty(5);
@@ -257,6 +265,9 @@ class Igor : Program
             ++no_variants_annotated;
             odw->write(v);
             v = odw->get_bcf1_from_pool();
+            
+            
+            free(candidate_motifs);
         }
 
         odw->close();

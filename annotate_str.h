@@ -31,6 +31,7 @@
 #include "lfhmm.h"
 #include "variant_manip.h"
 #include "program.h"
+#include "str.h"
 
 void annotate_str(int argc, char ** argv);
 
