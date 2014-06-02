@@ -465,6 +465,14 @@ void LFHMM::set_model(const char* lflank, const char* motif)
 }
 
 /**
+ * Sets mismatch penalty.
+ */
+void LFHMM::set_mismatch_penalty(float mismatch_penalty)
+{
+    par.mismatch_penalty = mismatch_penalty;
+}
+
+/**
  * Computes the score associated with the move from A to B
  * Updates the max_score and associated max_track.
  *
@@ -868,6 +876,7 @@ bool LFHMM::flanks_are_mapped()
     return lflank_end[MODEL]==lflen;
 }
 
+
 /**
  * Compute log10 emission odds based on equal error probability distribution.
  */
@@ -880,11 +889,31 @@ float LFHMM::log10_emission_odds(char probe_base, char read_base, uint32_t pl, f
 
     if (read_base!=probe_base)
     {
-        return lt->pl2log10_varp(pl)-mismatch_penalty;
+        return lt->pl2log10_varp(pl);
     }
     else //match
     {
-        return -lt->pl2log10_varp(pl);
+        return -(lt->pl2log10_varp(pl)-mismatch_penalty);
+    }
+};
+
+/**
+ * Compute log10 emission odds based on equal error probability distribution.
+ */
+float LFHMM::log10_emission_odds(char probe_base, char read_base, uint32_t pl)
+{
+    if (read_base=='N' || probe_base=='N')
+    {
+        return -INFINITY;  //is this appropriate in this case?
+    }
+
+    if (read_base!=probe_base)
+    {
+        return lt->pl2log10_varp(pl)-par.mismatch_penalty;
+    }
+    else //match
+    {
+        return -(lt->pl2log10_varp(pl));
     }
 };
 
@@ -1142,7 +1171,9 @@ void LFHMM::print_alignment(std::string& pad)
     std::cerr << "optimal probe len: " << optimal_probe_len << "\n";
     std::cerr << "optimal path length : " << optimal_path_len << "\n";
     std::cerr << "max j: " << rlen << "\n";
-
+    std::cerr << "mismatch penalty: " << par.mismatch_penalty << "\n";
+    std::cerr << "\n";
+    
     std::cerr << "probe: " << "(" << lflank_start[MODEL] << "~" << lflank_end[MODEL] << ") "
                           << "[" << motif_start[MODEL] << "~" << motif_end[MODEL] << "]\n";
     std::cerr << "read : " << "(" << lflank_start[READ] << "~" << lflank_end[READ] << ") "

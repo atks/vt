@@ -235,6 +235,7 @@ class Igor : Program
 
 
             lfhmm->set_model(lflank, ru);
+            lfhmm->set_mismatch_penalty(5);
             lfhmm->align(ref_genome, qual.c_str());
             lfhmm->print_alignment();
 
