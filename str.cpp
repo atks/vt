@@ -24,20 +24,19 @@
 #include "str.h"
 
 /**
- * Takes in a set of alleles and suggest a set of candidate repeat units.
+ * Suggests a set of repeat motif candidates in a set of alleles.
  */
-char** STRMotif::infer_motif(char** alleles, int32_t n_allele, int32_t &no_candidate_motifs)
+char** STRMotif::suggest_motifs(char** alleles, int32_t n_allele, int32_t &no_candidate_motifs)
 {
-    char* ref = alleles[0];
-    int32_t ref_len = strlen(ref);
-    char *alt, *motif;
-    int32_t alt_len;
-
+    char *motif;
+ 
     //grab all candidate alleles
     for (size_t i=1; i<n_allele; ++i)
     {
-        alt = alleles[i];
-        alt_len = strlen(alleles[i]);
+        char* ref = alleles[0];
+        int32_t ref_len = strlen(ref);
+        char *alt = alleles[i];
+        int32_t alt_len = strlen(alleles[i]);
 
         //get length difference
         int32_t dlen = alt_len-ref_len;
@@ -52,8 +51,7 @@ char** STRMotif::infer_motif(char** alleles, int32_t n_allele, int32_t &no_candi
         }
 
         int32_t len = abs(dlen);
-        size_t j = 0;
-        char* m = get_shortest_repeat_motif(alleles[i], len);
+        char* m = get_shortest_repeat_motif(motif, len);
 
         int32_t ret;
         khiter_t k;
@@ -91,6 +89,8 @@ char** STRMotif::infer_motif(char** alleles, int32_t n_allele, int32_t &no_candi
  */
 char* STRMotif::get_shortest_repeat_motif(char* allele, int32_t len)
 {
+    std::cerr << "get shortest repeatmotif " << allele << " : " << len << "\n"; 
+    
     size_t i = 0;
     size_t sub_motif_len;
     while ((sub_motif_len=factors[len][i])!=len)

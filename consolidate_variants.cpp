@@ -103,6 +103,12 @@ class Igor : Program
         odw->link_hdr(odr->hdr);
         odw->write_hdr();
 
+
+        bcf_hdr_append(odw->hdr, "##FILTER=<ID=olap,Description=\"Overlapping Alleles\">");
+        bcf_hdr_append(odw->hdr, "##FILTER=<ID=snpstr,Description=\"SNP in STR\">");
+        bcf_hdr_append(odw->hdr, "##FILTER=<ID=badmotif,Description=\"Poorly defined motif\">");
+        
+
         ////////////////////////
         //stats initialization//
         ////////////////////////
