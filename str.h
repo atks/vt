@@ -55,8 +55,9 @@ class STRMotif
     STRMotif()
     {
         motifs = kh_init(mdict);
-        factors = new int32_t*[32];
         
+        //update factors
+        factors = new int32_t*[32];
         for (size_t i=1; i<=32; ++i)
         {
             factors[i] = new int32_t[32];
@@ -77,9 +78,9 @@ class STRMotif
     ~STRMotif();
 
     /**
-     * Takes in a set of alleles and suggests a repeat unit.
+     * Suggests a set of repeat motif candidates in a set of alleles.
      */
-    char** infer_motif(char** alleles, int32_t n_allele, int32_t &no_candidate_motifs);
+    char** suggest_motifs(char** alleles, int32_t n_allele, int32_t &no_candidate_motifs);
 
     /**
      * Extracts the shortest repeat unit in a sequence.

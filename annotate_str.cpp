@@ -192,7 +192,7 @@ class Igor : Program
             std::cerr << "\n";
 
             int32_t no_candidate_motifs;
-            char** candidate_motifs = strm->infer_motif(bcf_get_allele(v), bcf_get_n_allele(v), no_candidate_motifs);
+            char** candidate_motifs = strm->suggest_motifs(bcf_get_allele(v), bcf_get_n_allele(v), no_candidate_motifs);
 
             if (!ru_len)
             {
@@ -238,7 +238,7 @@ class Igor : Program
             std::cerr << "CANDIDATE MOTIFS: ";
             for (size_t i=0; i<no_candidate_motifs; ++i)
             {
-                std::cerr << candidate_motifs[i] << ",";
+                std::cerr << (i?",":"") << candidate_motifs[i];
             }
             std::cerr << "\n";
 
@@ -250,13 +250,10 @@ class Igor : Program
             bcf_print(odr->hdr, v);
 
             //check if there are at least 10bp to work with
-//            rfhmm->initialize(run, rflank);
-//            rfhmm->align(ref_genome, qual.c_str());
-//            rfhmm->print_alignment();
-
+            //rfhmm->initialize(run, rflank);
+            //rfhmm->align(ref_genome, qual.c_str());
+            //rfhmm->print_alignment();
             //3. run left flank
-            //
-            //
             //4. try several modes
 
             if (lflank_len) free(lflank);
