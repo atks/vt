@@ -236,6 +236,11 @@ class VariantManip
     int32_t classify_variant(const char* chrom, uint32_t pos1, char** allele, int32_t n_allele, Variant& variant, bool in_situ_left_trimming = true);
 
     /**
+     * Checks if a variant is normalized.
+     */
+    bool is_normalized(char** alleles, int32_t n_allele);
+
+    /**
      * Classifies variants.
      */
     int32_t classify_variant(const char* chrom, uint32_t pos1, char** allele, int32_t n_allele);

@@ -38,6 +38,9 @@ char** STRMotif::suggest_motifs(char** alleles, int32_t n_allele, int32_t &no_ca
         char *alt = alleles[i];
         int32_t alt_len = strlen(alleles[i]);
 
+        //skip if not indel
+       // if ()
+
         //get length difference
         int32_t dlen = alt_len-ref_len;
         //extract fragment

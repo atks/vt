@@ -23,6 +23,7 @@
 
 #include "genotype.h"
 #include "lhmm_genotyping_record.h"
+#include "chmm.h"
 
 namespace
 {
@@ -141,10 +142,17 @@ class Igor : Program
         vodw = new BCFOrderedWriter(output_vcf_file, 0);
         bcf_hdr_add_sample(vodw->hdr, sample_id.c_str());
 
+        bcf_hdr_append(vodw->hdr, "##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">");
+        bcf_hdr_append(vodw->hdr, "##FORMAT=<ID=CT,Number=1,Type=String,Description=\"Count Genotype, number of repeat units as the genotype\">");
+        bcf_hdr_append(vodw->hdr, "##FORMAT=<ID=QT,Number=1,Type=String,Description=\"Qualitative Genotype, e for exact sequence, i for inexact sequence\">");
+        bcf_hdr_append(vodw->hdr, "##FORMAT=<ID=GQ,Number=1,Type=String,Description=\"Genotype Quality\">");
+        bcf_hdr_append(vodw->hdr, "##FORMAT=<ID=DP,Number=1,Type=Integer,Description=\"Depth\">");
+        bcf_hdr_append(vodw->hdr, "##FORMAT=<ID=AD,Number=2,Type=Integer,Description=\"Allele Depth\">");
+        bcf_hdr_append(vodw->hdr, "##FORMAT=<ID=PL,Number=G,Type=Integer,Description=\"PHRED scaled genotype likelihood\">");
+
         //////////////////////
         //tool initialization//
         //////////////////////
-
 
         ////////////////////////
         //stats initialization//
