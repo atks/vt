@@ -70,7 +70,7 @@ class Igor : Program
         //////////////////////////
         try
         {
-            std::string desc = "annotates variants in a VCF file";
+            std::string desc = "annotates indels with STR type information - repeat tract length, repeat motif, flank information";
 
             TCLAP::CmdLine cmd(desc, ' ', version);
             VTOutput my; cmd.setOutput(&my);
@@ -134,7 +134,7 @@ class Igor : Program
 
     void print_options()
     {
-        std::clog << "annotate_indels v" << version << "\n";
+        std::clog << "annotate_str v" << version << "\n";
         std::clog << "\n";
         std::clog << "options:     input VCF file(s)     " << input_vcf_file << "\n";
         std::clog << "         [o] output VCF file       " << output_vcf_file << "\n";
@@ -181,90 +181,91 @@ class Igor : Program
 
             //2. run right flank
 
-            if (bcf_get_n_allele(v)!=2 && !(vtype&VT_INDEL))
+            if (vtype&VT_INDEL)
             {
-                continue;
-            }
-
-            
-            std::cerr << "\n";
-            std::cerr << "=========================================================================================================================\n";
-            std::cerr << "\n";
-
-            int32_t no_candidate_motifs;
-            char** candidate_motifs = strm->suggest_motifs(bcf_get_allele(v), bcf_get_n_allele(v), no_candidate_motifs);
-
-            if (!ru_len)
-            {
-                char* ref = bcf_get_alt(v, 0);
-                char* alt = bcf_get_alt(v, 1);
-
-                if (strlen(ref)>strlen(alt))
-                {            
-                    lflank = faidx_fetch_uc_seq(fai, chrom, start1-10, start1-1, &lflank_len);
-                    //bcf_get_info_string(odr->hdr, v, "RU", &ru, &ru_len);
-                    ref_genome = faidx_fetch_uc_seq(fai, chrom, start1-10, start1+100, &ref_genome_len);
-
-                    ru = ref;
-                    ++ru;
-                }
-                else // deletion
+                std::cerr << "\n";
+                std::cerr << "=========================================================================================================================\n";
+                std::cerr << "\n";
+    
+                int32_t no_candidate_motifs;
+                char** candidate_motifs = strm->suggest_motifs(bcf_get_allele(v), bcf_get_n_allele(v), no_candidate_motifs);
+    
+                if (!ru_len)
                 {
-                    lflank = faidx_fetch_uc_seq(fai, chrom, start1-10, start1-1, &lflank_len);
-                    ru = alt;
-                    kstring_t str = {(size_t)lflank_len, (size_t)lflank_len, lflank};
-                    ++ru;
-                    kputs(ru, &str);
-                    lflank_len = str.m;
-                    lflank = str.s;
-                
-                    ref_genome = faidx_fetch_uc_seq(fai, chrom, start1, start1+100, &ref_genome_len);
-                    str.l=0; str.s=0; str.m=0;
-                    kputs(lflank, &str);
-                    kputs(ru, &str);
-                    kputs(ref_genome, &str);
+                    char* ref = bcf_get_alt(v, 0);
+                    char* alt = bcf_get_alt(v, 1);
+    
+                    if (strlen(ref)>strlen(alt))
+                    {            
+                        lflank = faidx_fetch_uc_seq(fai, chrom, start1-10, start1-1, &lflank_len);
+                        //bcf_get_info_string(odr->hdr, v, "RU", &ru, &ru_len);
+                        ref_genome = faidx_fetch_uc_seq(fai, chrom, start1-10, start1+100, &ref_genome_len);
+    
+                        ru = ref;
+                        ++ru;
+                    }
+                    else // deletion
+                    {
+                        lflank = faidx_fetch_uc_seq(fai, chrom, start1-10, start1-1, &lflank_len);
+                        ru = alt;
+                        kstring_t str = {(size_t)lflank_len, (size_t)lflank_len, lflank};
+                        ++ru;
+                        kputs(ru, &str);
+                        lflank_len = str.m;
+                        lflank = str.s;
                     
-                    free(ref_genome);
-                    ref_genome = str.s;
-                    ref_genome_len = str.l;
+                        ref_genome = faidx_fetch_uc_seq(fai, chrom, start1, start1+100, &ref_genome_len);
+                        str.l=0; str.s=0; str.m=0;
+                        kputs(lflank, &str);
+                        kputs(ru, &str);
+                        kputs(ref_genome, &str);
+                        
+                        free(ref_genome);
+                        ref_genome = str.s;
+                        ref_genome_len = str.l;
+                    }
                 }
+    
+                bcf_print(odr->hdr, v);
+    
+                std::cerr << "lflank           : " << lflank << "\n";
+                std::cerr << "RU               : " << ru << "\n";
+                std::cerr << "ref_genome       : " << ref_genome << "\n";
+                std::cerr << "CANDIDATE MOTIFS : ";
+                for (size_t i=0; i<no_candidate_motifs; ++i)
+                {
+                    std::cerr << (i?",":"") << candidate_motifs[i];
+                }
+                std::cerr << "\n";
+    
+                lfhmm->set_model(lflank, ru);
+                lfhmm->set_mismatch_penalty(5);
+                lfhmm->align(ref_genome, qual.c_str());
+                lfhmm->print_alignment();
+    
+                bcf_print(odr->hdr, v);
+    
+                //check if there are at least 10bp to work with
+                //rfhmm->initialize(run, rflank);
+                //rfhmm->align(ref_genome, qual.c_str());
+                //rfhmm->print_alignment();
+                //3. run left flank
+                //4. try several modes
+    
+                if (lflank_len) free(lflank);
+                if (ref_genome_len) free(ref_genome);
+    
+                ++no_variants_annotated;
+                odw->write(v);
+                v = odw->get_bcf1_from_pool();
+                
+                free(candidate_motifs);
             }
-
-            bcf_print(odr->hdr, v);
-
-            std::cerr << "lflank    : " << lflank << "\n";
-            std::cerr << "RU        : " << ru << "\n";
-            std::cerr << "ref_genome: " << ref_genome << "\n";
-            std::cerr << "CANDIDATE MOTIFS: ";
-            for (size_t i=0; i<no_candidate_motifs; ++i)
+            else
             {
-                std::cerr << (i?",":"") << candidate_motifs[i];
+                odw->write(v);
+                v = odw->get_bcf1_from_pool();
             }
-            std::cerr << "\n";
-
-            lfhmm->set_model(lflank, ru);
-            lfhmm->set_mismatch_penalty(5);
-            lfhmm->align(ref_genome, qual.c_str());
-            lfhmm->print_alignment();
-
-            bcf_print(odr->hdr, v);
-
-            //check if there are at least 10bp to work with
-            //rfhmm->initialize(run, rflank);
-            //rfhmm->align(ref_genome, qual.c_str());
-            //rfhmm->print_alignment();
-            //3. run left flank
-            //4. try several modes
-
-            if (lflank_len) free(lflank);
-            if (ref_genome_len) free(ref_genome);
-
-            ++no_variants_annotated;
-            odw->write(v);
-            v = odw->get_bcf1_from_pool();
-            
-            
-            free(candidate_motifs);
         }
 
         odw->close();

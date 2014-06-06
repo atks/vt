@@ -261,6 +261,43 @@ bool VariantManip::detect_str(const char* chrom, uint32_t pos1, Variant& variant
 }
 
 /**
+ * Checks if a variant is normalized.
+ */
+bool is_normalized(char** alleles, int32_t n_allele)
+{
+    char first_base;
+    char last_base;
+    size_t len;
+    bool exists_len_one_allele = false;
+    bool first_base_same = true;
+    bool last_base_same = true;
+    for (size_t i=0; i<n_allele; ++i)
+    {
+        if (i)
+        {
+            len = strlen(alleles[i]);
+            if (len==1) exists_len_one_allele = true;
+            if (first_base!=alleles[i][0]) first_base_same = false;
+            if (last_base!=alleles[i][len-1]) last_base_same = false;
+        }
+        else
+        {
+            len = strlen(alleles[0]);
+            if (len==1) exists_len_one_allele = true;
+            first_base = alleles[0][0];
+            last_base = alleles[0][len-1];
+        }
+    }
+    
+    if (last_base_same || (!exists_len_one_allele && first_base_same))
+    {
+        return false;
+    }
+    
+    return true;
+}
+
+/**
  * Classifies variants.
  */
 int32_t VariantManip::classify_variant(bcf_hdr_t *h, bcf1_t *v,  Variant& variant, bool in_situ_left_trimming)

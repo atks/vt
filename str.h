@@ -44,7 +44,7 @@ class STRMotif
 {
     public:
     
-    //factors[n][index]
+    //factors[n][index], for determining what sub repeat units to examine
     int32_t** factors;
     
     khash_t(mdict) *motifs;
@@ -62,7 +62,7 @@ class STRMotif
         {
             factors[i] = new int32_t[32];
             int32_t count = 0;
-            for (size_t j=1; j<=i; ++j)
+            for (size_t j=1; j<=i/2; ++j)
             {                
                 if ((i%j)==0)
                 {
