@@ -271,30 +271,55 @@ bool is_normalized(char** alleles, int32_t n_allele)
     bool exists_len_one_allele = false;
     bool first_base_same = true;
     bool last_base_same = true;
-    for (size_t i=0; i<n_allele; ++i)
-    {
-        if (i)
-        {
-            len = strlen(alleles[i]);
-            if (len==1) exists_len_one_allele = true;
-            if (first_base!=alleles[i][0]) first_base_same = false;
-            if (last_base!=alleles[i][len-1]) last_base_same = false;
-        }
-        else
-        {
-            len = strlen(alleles[0]);
-            if (len==1) exists_len_one_allele = true;
-            first_base = alleles[0][0];
-            last_base = alleles[0][len-1];
-        }
-    }
     
-    if (last_base_same || (!exists_len_one_allele && first_base_same))
+    if (n_allele==2)
     {
-        return false;
+        //ref
+        len = strlen(alleles[0]);
+        if (len==1) exists_len_one_allele = true;
+        first_base = alleles[0][0];
+        last_base = alleles[0][len-1];
+
+        //alt
+        len = strlen(alleles[1]);
+        if (len==1) exists_len_one_allele = true;
+        if (first_base!=alleles[1][0]) first_base_same = false;
+        if (last_base!=alleles[1][len-1]) last_base_same = false;
+        
+        if (last_base_same || (!exists_len_one_allele && first_base_same))
+        {
+            return false;
+        }
+        
+        return true;
     }
-    
-    return true;
+    else
+    {
+        for (size_t i=0; i<n_allele; ++i)
+        {
+            if (i)
+            {
+                len = strlen(alleles[i]);
+                if (len==1) exists_len_one_allele = true;
+                if (first_base!=alleles[i][0]) first_base_same = false;
+                if (last_base!=alleles[i][len-1]) last_base_same = false;
+            }
+            else
+            {
+                len = strlen(alleles[0]);
+                if (len==1) exists_len_one_allele = true;
+                first_base = alleles[0][0];
+                last_base = alleles[0][len-1];
+            }
+        }
+        
+        if (last_base_same || (!exists_len_one_allele && first_base_same))
+        {
+            return false;
+        }
+        
+        return true;
+    }
 }
 
 /**

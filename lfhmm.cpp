@@ -106,168 +106,6 @@ LFHMM::~LFHMM()
     delete U;
 };
 
-///**
-// * Initializes object, helper function for constructor.
-// */
-//void LFHMM::initialize(const char* lflank, const char* motif)
-//{
-//    model = new char*[3];
-//    model[LFLANK] = strdup(lflank);
-//    model[MOTIF] = strdup(motif);
-//
-//    motif_discordance = new int32_t[MAXLEN];
-//
-//    lflen = strlen(model[LFLANK]);
-//    mlen = strlen(model[MOTIF]);
-//
-//    optimal_path = new int32_t[MAXLEN<<2];
-//    optimal_path_traced = false;
-//
-//    for (size_t i=S; i<=E; ++i)
-//    {
-//        for (size_t j=S; j<=E; ++j)
-//        {
-//            T[i][j] = -INFINITY;
-//        }
-//    }
-//
-//    T[S][ML] = 0;
-//    T[ML][ML] = 0;
-//
-//    T[ML][M] = log10(((1-2*delta-tau))/(eta*(1-eta)*(1-eta)));
-//    T[M][M] = log10(((1-2*delta-tau))/((1-eta)*(1-eta)));
-//    T[D][M] = log10(((1-epsilon-tau))/((1-eta)*(1-eta)));
-//    T[I][M] = T[D][M];
-//
-//    T[ML][D] = log10((tau*delta)/(eta*(1-eta)));
-//    T[M][D] = log10(delta/(1-eta));
-//    T[D][D] = log10(epsilon/(1-eta));;
-//
-//    T[ML][I] = T[ML][D];
-//    T[M][I] = T[M][D];
-//    T[I][I] = T[D][D];
-//
-//    T[ML][Z] = log10((tau*tau*(1-eta))/(eta*eta*eta*(1-eta)));
-//    T[M][Z] = log10((tau*(1-eta))/(eta*(1-eta)));
-//    T[D][Z] = log10((tau*(1-eta))/(eta*(1-eta)));
-//    T[I][Z] = log10((tau*(1-eta))/(eta*(1-eta)));
-//    T[Z][Z] = log10((1-eta)/(1-eta));
-//
-//    typedef int32_t (LFHMM::*move) (int32_t t, int32_t j);
-//    V = new float*[NSTATES];
-//    U = new int32_t*[NSTATES];
-//    moves = new move*[NSTATES];
-//    for (size_t state=S; state<=E; ++state)
-//    {
-//        V[state] = new float[MAXLEN*MAXLEN];
-//        U[state] = new int32_t[MAXLEN*MAXLEN];
-//        moves[state] = new move[NSTATES];
-//    }
-//
-//    for (size_t state=S; state<=E; ++state)
-//    {
-//        moves[state] = new move[NSTATES];
-//    }
-//
-//    moves[S][ML]  = &LFHMM::move_S_ML;
-//    moves[ML][ML] = &LFHMM::move_ML_ML;
-//
-//    moves[ML][M] = &LFHMM::move_ML_M;
-//    moves[M][M]  = &LFHMM::move_M_M;
-//    moves[D][M]  = &LFHMM::move_D_M;
-//    moves[I][M]  = &LFHMM::move_I_M;
-//    moves[ML][D] = &LFHMM::move_ML_D;
-//    moves[M][D]  = &LFHMM::move_M_D;
-//    moves[D][D]  = &LFHMM::move_D_D;
-//    moves[ML][I] = &LFHMM::move_ML_I;
-//    moves[M][I]  = &LFHMM::move_M_I;
-//    moves[I][I]  = &LFHMM::move_I_I;
-//
-//    moves[M][Z] = &LFHMM::move_M_Z;
-//    moves[D][Z] = &LFHMM::move_D_Z;
-//    moves[I][Z] = &LFHMM::move_I_Z;
-//    moves[Z][Z] = &LFHMM::move_Z_Z;
-//
-//    //used for back tracking, this points to the state prior to the alignment for subsequence (i,j)
-//    //that ends with the corresponding state
-//
-//    int32_t t=0;
-//    for (size_t i=0; i<MAXLEN; ++i)
-//    {
-//        for (size_t j=0; j<MAXLEN; ++j)
-//        {
-//            size_t c = index(i,j);
-//
-//            V[S][c] = -INFINITY;
-//            U[S][c] = NULL_TRACK;
-//
-//            //ML
-//            V[ML][c] = -INFINITY;
-//            if (!i || !j)
-//            {
-//                U[ML][c] = make_track(N,UNMODELED,0,0);
-//            }
-//            else
-//            {
-//                U[ML][c] = make_track(TBD,UNCERTAIN,0,0);
-//            }
-//
-//            //M
-//            V[M][c] = -INFINITY;
-//            if (!i || !j)
-//            {
-//                U[M][c] = make_track(N,UNMODELED,0,0);
-//            }
-//            else
-//            {
-//                U[M][c] = make_track(TBD,UNCERTAIN,0,0);
-//            }
-//
-//            //D
-//            V[D][c] = -INFINITY;
-//            if (!i || !j)
-//            {
-//                U[D][c] = make_track(N,UNMODELED,0,0);
-//            }
-//            else
-//            {
-//                U[D][c] = make_track(TBD,UNCERTAIN,0,0);
-//            }
-//
-//            //I
-//            V[I][c] = -INFINITY;
-//            if (!i || !j)
-//            {
-//                U[I][c] = make_track(N,UNMODELED,0,0);
-//            }
-//            else
-//            {
-//                U[I][c] = make_track(TBD,UNCERTAIN,0,0);
-//            }
-//
-//            //Z
-//            V[Z][c] = -INFINITY;
-//            if (!i || !j)
-//            {
-//                U[Z][c] = make_track(N,UNMODELED,0,0);
-//            }
-//            else
-//            {
-//                U[Z][c] = make_track(TBD,UNCERTAIN,0,0);
-//            }
-//        }
-//    }
-//
-//    V[S][index(0,0)] = 0;
-//    U[S][index(0,0)] = START_TRACK;
-//
-//    V[ML][index(0,0)] = -INFINITY;
-//    U[ML][index(0,0)] = START_TRACK;
-//
-//    V[M][index(0,0)] = -INFINITY;
-//    V[Z][index(0,0)] = -INFINITY;
-//};
-
 /**
  * Initializes objects; helper function for constructor.
  */
@@ -463,6 +301,39 @@ void LFHMM::set_model(const char* lflank, const char* motif)
     lflen = strlen(model[LFLANK]);
     mlen = strlen(model[MOTIF]);
 }
+
+/**
+ * Sets delta.
+ */
+void LFHMM::set_delta(float delta)
+{
+    par.delta = delta;
+}
+
+/**
+ * Sets epsilon.
+ */
+void LFHMM::set_epsilon(float epsilon)
+{
+    par.epsilon = epsilon;
+}
+
+/**
+ * Sets tau.
+ */
+void LFHMM::set_tau(float tau)
+{
+    par.tau = tau;
+}
+
+/**
+ * Sets eta.
+ */
+void LFHMM::set_eta(float eta)
+{
+    par.eta = eta;
+}
+
 
 /**
  * Sets mismatch penalty.

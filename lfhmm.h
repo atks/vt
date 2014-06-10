@@ -181,6 +181,26 @@ class LFHMM
     void set_model(const char* lflank, const char* motif);
 
     /**
+     * Sets delta.
+     */
+    void set_delta(float delta);
+
+    /**
+     * Sets epsilon.
+     */
+    void set_epsilon(float epsilon);
+    
+    /**
+     * Sets tau.
+     */
+    void set_tau(float tau);
+    
+    /**
+     * Sets eta.
+     */
+    void set_eta(float eta);
+
+    /**
      * Sets mismatch penalty.
      */
     void set_mismatch_penalty(float mismatch_penalty);

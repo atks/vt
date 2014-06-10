@@ -115,394 +115,6 @@ CHMM::~CHMM()
     delete U;
 };
 
-///**
-// * Initializes object, helper function for constructor.
-// */
-//void CHMM::initialize(const char* lflank, const char* motif, const char* rflank)
-//{
-//    model = new char*[3];
-//    model[LFLANK] = strdup(lflank);
-//    model[MOTIF] = strdup(motif);
-//    model[RFLANK] = strdup(rflank);
-//
-//    motif_discordance = new int32_t[MAXLEN];
-//
-//    lflen = strlen(model[LFLANK]);
-//    mlen = strlen(model[MOTIF]);
-//    rflen = strlen(model[RFLANK]);
-//
-//    optimal_path = new int32_t[MAXLEN<<2];
-//    optimal_path_traced = false;
-//
-//    delta = 0.01;
-//    epsilon = 0.05;
-//    tau = 0.01;
-//    eta = 0.01;
-//
-//    for (size_t i=S; i<=Z; ++i)
-//    {
-//        for (size_t j=S; j<=Z; ++j)
-//        {
-//            T[i][j] = -INFINITY;
-//        }
-//    }
-//
-//    T[S][X] = 0;
-//    T[X][X] = 0;
-//
-//    T[S][Y] = 0;
-//    T[X][Y] = 0;
-//    T[Y][Y] = 0;
-//
-//    T[S][ML] = log10((1-tau)/(eta*(1-eta)*(1-eta)));
-//    T[X][ML] = T[S][ML];
-//    T[Y][ML] = T[S][ML];
-//    T[ML][ML] = log10(((1-2*delta-tau))/((1-eta)*(1-eta)));
-//    T[DL][ML] = log10(((1-epsilon))/((1-eta)*(1-eta)));
-//    T[IL][ML] = T[DL][ML];
-//
-//    T[ML][DL] = log10((delta)/((1-eta)));
-//    T[DL][DL] = log10((epsilon)/((1-eta)));
-//
-//    T[ML][IL] = T[ML][DL];
-//    T[IL][IL] = T[DL][DL];
-//
-//    T[S][M] = log10((tau*(1-2*delta-tau))/(eta*eta*eta*(1-eta)*(1-eta)));
-//    T[X][M] = T[S][M];
-//    T[Y][M] = T[S][M];
-//    T[ML][M] = log10((tau*(1-2*delta-tau))/(eta*eta*eta*(1-eta)*(1-eta)));
-//    T[M][M] = log10(((1-2*delta-tau))/((1-eta)*(1-eta)));
-//    T[D][M] = log10(((1-epsilon-tau))/((1-eta)*(1-eta)));
-//    T[I][M] = T[D][M];
-//
-//    T[S][D] = log10((tau*delta)/(eta*eta*(1-eta)));
-//    T[X][D] = T[S][D];
-//    T[Y][D] = T[S][D];
-//    T[ML][D] = log10((tau*delta)/(eta*(1-eta)));
-//    T[M][D] = log10(delta/(1-eta));
-//    T[D][D] = T[DL][DL];
-//
-//    T[S][I] = log10((tau*delta)/(eta*eta*eta*(1-eta)));
-//    T[X][I] = T[S][I];
-//    T[Y][I] = T[S][I];
-//    T[ML][I] = log10((tau*delta)/(eta*(1-eta)));
-//    T[M][I] = log10(delta/(1-eta));
-//    T[I][I] = T[IL][IL];
-//
-//    T[S][MR] = log10((tau*tau*(1-tau))/(eta*eta*eta*eta*eta*(1-eta)*(1-eta)));
-//    T[X][MR] = T[S][MR];
-//    T[Y][MR] = T[S][MR];
-//    T[ML][MR] = log10((tau*tau*(1-tau))/(eta*eta*eta*eta*(1-eta)*(1-eta)));
-//    T[M][MR] = log10((tau*(1-tau))/(eta*eta*eta*(1-eta)*(1-eta)));
-//    T[D][MR] = T[M][MR];
-//    T[I][MR] = T[M][MR]; //log10((tau*(1-tau))/(eta*eta*(1-eta)*(1-eta)));
-//    T[MR][MR] = log10(((1-2*delta-tau))/((1-eta)*(1-eta)));
-//    T[DR][MR] = log10(((1-epsilon))/((1-eta)*(1-eta)));
-//    T[IR][MR] = T[DR][MR];
-//
-//    T[MR][DR] = log10(delta/(1-eta));
-//    T[DR][DR] = T[DL][DL];
-//
-//    T[MR][IR] = T[MR][DR];
-//    T[IR][IR] = T[IL][IL];
-//
-//    T[S][W] = log10((tau*tau*tau)/(eta*eta*eta*eta*eta*eta));
-//    T[X][W] = T[S][W];
-//    T[Y][W] = T[S][W];
-//    T[ML][W] = log10((tau*tau*tau)/(eta*eta*eta*eta*eta));
-//    T[M][W] = log10((tau*tau)/(eta*eta*eta*eta));
-//    T[D][W] = T[M][W];
-//    T[I][W] = log10((tau*tau)/(eta*eta*eta));
-//    T[MR][W] = log10(tau/eta);
-//    T[W][W] = 0;
-//
-//    T[MR][Z] = log10(tau/eta);
-//    T[W][Z] = 0;
-//    T[Z][Z] = 0;
-//
-//    typedef int32_t (CHMM::*move) (int32_t t, int32_t j);
-//    V = new float*[NSTATES];
-//    U = new int32_t*[NSTATES];
-//    moves = new move*[NSTATES];
-//    for (size_t state=S; state<NSTATES; ++state)
-//    {
-//        V[state] = new float[MAXLEN*MAXLEN];
-//        U[state] = new int32_t[MAXLEN*MAXLEN];
-//        moves[state] = new move[NSTATES];
-//    }
-//
-//    for (size_t state=S; state<E; ++state)
-//    {
-//        moves[state] = new move[NSTATES];
-//    }
-//
-//    moves[S][X] = &CHMM::move_S_X;
-//    moves[X][X] = &CHMM::move_X_X;
-//
-//    moves[S][Y] = &CHMM::move_S_Y;
-//    moves[X][Y] = &CHMM::move_X_Y;
-//    moves[Y][Y] = &CHMM::move_Y_Y;
-//
-//    moves[S][ML] = &CHMM::move_S_ML;
-//    moves[X][ML] = &CHMM::move_X_ML;
-//    moves[Y][ML] = &CHMM::move_Y_ML;
-//    moves[ML][ML] = &CHMM::move_ML_ML;
-//    moves[DL][ML] = &CHMM::move_DL_ML;
-//    moves[IL][ML] = &CHMM::move_IL_ML;
-//    moves[ML][DL] = &CHMM::move_ML_DL;
-//    moves[DL][DL] = &CHMM::move_DL_DL;
-//    moves[ML][IL] = &CHMM::move_ML_IL;
-//    moves[IL][IL] = &CHMM::move_IL_IL;
-//
-//    moves[X][M] = &CHMM::move_X_M;
-//    moves[Y][M] = &CHMM::move_Y_M;
-//    moves[ML][M] = &CHMM::move_ML_M;
-//    moves[M][M] = &CHMM::move_M_M;
-//    moves[D][M] = &CHMM::move_D_M;
-//    moves[I][M] = &CHMM::move_I_M;
-//    moves[ML][D] = &CHMM::move_ML_D;
-//    moves[M][D] = &CHMM::move_M_D;
-//    moves[D][D] = &CHMM::move_D_D;
-//    moves[ML][I] = &CHMM::move_ML_I;
-//    moves[M][I] = &CHMM::move_M_I;
-//    moves[I][I] = &CHMM::move_I_I;
-//
-//    moves[X][MR] = &CHMM::move_X_MR;
-//    moves[Y][MR] = &CHMM::move_Y_MR;
-//    moves[ML][MR] = &CHMM::move_ML_MR;
-//    moves[M][MR] = &CHMM::move_M_MR;
-//    moves[D][MR] = &CHMM::move_D_MR;
-//    moves[I][MR] = &CHMM::move_I_MR;
-//    moves[MR][MR] = &CHMM::move_MR_MR;
-//    moves[DR][MR] = &CHMM::move_DR_MR;
-//    moves[IR][MR] = &CHMM::move_IR_MR;
-//    moves[MR][DR] = &CHMM::move_MR_DR;
-//    moves[DR][DR] = &CHMM::move_DR_DR;
-//    moves[MR][IR] = &CHMM::move_MR_IR;
-//    moves[IR][IR] = &CHMM::move_IR_IR;
-//
-//    moves[X][W] = &CHMM::move_X_W;
-//    moves[Y][W] = &CHMM::move_Y_W;
-//    moves[ML][W] = &CHMM::move_ML_W;
-//    moves[M][W] = &CHMM::move_M_W;
-//    moves[D][W] = &CHMM::move_D_W;
-//    moves[I][W] = &CHMM::move_I_W;
-//    moves[MR][W] = &CHMM::move_MR_W;
-//    moves[W][W] = &CHMM::move_W_W;
-//
-//    moves[MR][Z] = &CHMM::move_MR_Z;
-//    moves[W][Z] = &CHMM::move_W_Z;
-//    moves[Z][Z] = &CHMM::move_Z_Z;
-//
-//    //used for back tracking, this points to the state prior to the alignment for subsequence (i,j)
-//    //that ends with the corresponding state
-//
-//    int32_t t=0;
-//    for (size_t i=0; i<MAXLEN; ++i)
-//    {
-//        for (size_t j=0; j<MAXLEN; ++j)
-//        {
-//            size_t c = index(i,j);
-//
-//            V[S][c] = -INFINITY;
-//            U[S][c] = NULL_TRACK;
-//
-//            //X
-//            if (j) //(i,j)
-//            {
-//                V[X][c] = -INFINITY;
-//                U[X][c] = make_track(N,UNMODELED,0,0);
-//            }
-//            else
-//            {
-//                V[X][c] = 0;
-//                if (i) // (i,0)
-//                {
-//                    if (i==1)
-//                    {
-//                        t = make_track(S,LFLANK,0,i);
-//                    }
-//                    else
-//                    {
-//                        t = make_track(X,LFLANK,0,i);
-//                    }
-//
-//                    U[X][c] = t;
-//                }
-//                else // (0,0)
-//                {
-//                    U[X][c] = make_track(N,UNMODELED,0,0);
-//                }
-//            }
-//
-//            //Y
-//            V[Y][c] = 0;
-//            if (i)
-//            {
-//                if (j) // (i,j)
-//                {
-//                    U[Y][c] = j==1? make_track(X,LFLANK,0,i) : make_track(Y,LFLANK,0,i);
-//                }
-//                else // (i,0)
-//                {
-//                    V[Y][c] = -INFINITY;
-//                    U[Y][c] = make_track(N,UNMODELED,0,0);
-//                }
-//            }
-//            else
-//            {
-//                if (j) // (0,j)
-//                {
-//                    U[Y][c] = j==1? make_track(S,LFLANK,0,0) : make_track(Y,LFLANK,0,0);
-//                }
-//                else // (0,0)
-//                {
-//                    U[Y][c] = make_track(N,UNMODELED,0,0);
-//                }
-//            }
-//
-//            //ML
-//            V[ML][c] = -INFINITY;
-//            if (!i || !j)
-//            {
-//                U[ML][c] = make_track(N,UNMODELED,0,0);
-//            }
-//            else
-//            {
-//                U[ML][c] = make_track(TBD,UNCERTAIN,0,0);
-//            }
-//
-//            //DL
-//            V[DL][c] = -INFINITY;
-//            if (!i || !j)
-//            {
-//                U[DL][c] = make_track(N,UNMODELED,0,0);
-//            }
-//            else
-//            {
-//                U[DL][c] = make_track(TBD,UNCERTAIN,0,0);
-//            }
-//
-//            //IL
-//            V[IL][c] = -INFINITY;
-//            if (!i || !j)
-//            {
-//                U[IL][c] = make_track(N,UNMODELED,0,0);
-//            }
-//            else
-//            {
-//                U[IL][c] = make_track(TBD,UNCERTAIN,0,0);
-//            }
-//
-//            //M
-//            V[M][c] = -INFINITY;
-//            if (!i || !j)
-//            {
-//                U[M][c] = make_track(N,UNMODELED,0,0);
-//            }
-//            else
-//            {
-//                U[M][c] = make_track(TBD,UNCERTAIN,0,0);
-//            }
-//
-//            //D
-//            V[D][c] = -INFINITY;
-//            if (!i || !j)
-//            {
-//                U[D][c] = make_track(N,UNMODELED,0,0);
-//            }
-//            else
-//            {
-//                U[D][c] = make_track(TBD,UNCERTAIN,0,0);
-//            }
-//
-//            //I
-//            V[I][c] = -INFINITY;
-//            if (!i || !j)
-//            {
-//                U[I][c] = make_track(N,UNMODELED,0,0);
-//            }
-//            else
-//            {
-//                U[I][c] = make_track(TBD,UNCERTAIN,0,0);
-//            }
-//
-//            //MR
-//            V[MR][c] = -INFINITY;
-//            if (!i || !j)
-//            {
-//                U[MR][c] = make_track(N,UNMODELED,0,0);
-//            }
-//            else
-//            {
-//                U[MR][c] = make_track(TBD,UNCERTAIN,0,0);
-//            }
-//
-//            //DR
-//            V[DR][c] = -INFINITY;
-//            if (!i || !j)
-//            {
-//                U[DR][c] = make_track(N,UNMODELED,0,0);
-//            }
-//            else
-//            {
-//                U[DR][c] = make_track(TBD,UNCERTAIN,0,0);
-//            }
-//
-//            //IR
-//            V[IR][c] = -INFINITY;
-//            if (!i || !j)
-//            {
-//                U[IR][c] = make_track(N,UNMODELED,0,0);
-//            }
-//            else
-//            {
-//                U[IR][c] = make_track(TBD,UNCERTAIN,0,0);
-//            }
-//
-//            //W
-//            V[W][c] = -INFINITY;
-//            if (!i || !j)
-//            {
-//                U[W][c] = make_track(N,UNMODELED,0,0);
-//            }
-//            else
-//            {
-//                U[W][c] = make_track(TBD,UNCERTAIN,0,0);
-//            }
-//
-//            //Z
-//            V[Z][c] = -INFINITY;
-//            if (!i || !j)
-//            {
-//                U[Z][c] = make_track(N,UNMODELED,0,0);
-//            }
-//            else
-//            {
-//                U[Z][c] = make_track(TBD,UNCERTAIN,0,0);
-//            }
-//        }
-//    }
-//
-//    V[S][index(0,0)] = 0;
-//    U[S][index(0,0)] = START_TRACK;
-//
-//    V[X][index(0,0)] = -INFINITY;
-//    U[X][index(0,0)] = START_TRACK;
-//
-//    U[Y][index(1,1)] = make_track(S,LFLANK,0,1);
-//    V[Y][index(0,0)] = -INFINITY;
-//    U[Y][index(0,0)] = START_TRACK;
-//
-//    V[ML][index(0,0)] = -INFINITY;
-//    U[ML][index(0,0)] = START_TRACK;
-//
-//    V[M][index(0,0)] = -INFINITY;
-//    V[MR][index(0,0)] = -INFINITY;
-//    V[W][index(0,0)] = -INFINITY;
-//    V[Z][index(0,0)] = -INFINITY;
-//};
-
 /**
  * Initializes objects; helper function for constructor.
  */
@@ -932,6 +544,45 @@ void CHMM::set_model(const char* lflank, const char* motif, const char* rflank)
 
 }
 
+/**
+ * Sets delta.
+ */
+void CHMM::set_delta(float delta)
+{
+    par.delta = delta;
+}
+
+/**
+ * Sets epsilon.
+ */
+void CHMM::set_epsilon(float epsilon)
+{
+    par.epsilon = epsilon;
+}
+
+/**
+ * Sets tau.
+ */
+void CHMM::set_tau(float tau)
+{
+    par.tau = tau;
+}
+
+/**
+ * Sets eta.
+ */
+void CHMM::set_eta(float eta)
+{
+    par.eta = eta;
+}
+
+/**
+ * Sets mismatch penalty.
+ */
+void CHMM::set_mismatch_penalty(float mismatch_penalty)
+{
+    par.mismatch_penalty = mismatch_penalty;
+}
 
 /**
  * Computes the score associated with the move from A to B

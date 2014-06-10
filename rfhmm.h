@@ -83,6 +83,7 @@ class RFHMMParameters
     float epsilon;
     float tau;
     float eta;
+    float mismatch_penalty;
     
     RFHMMParameters()
     {
@@ -90,6 +91,7 @@ class RFHMMParameters
         epsilon = 0.05;
         tau = 0.01;
         eta = 0.01;
+        mismatch_penalty = 1;
     };
 };
 
@@ -178,7 +180,32 @@ class RFHMM
     /**
      * Sets a model.
      */
-    void set_model(const char* lflank, const char* motif);
+    void set_model(const char* motif, const char* lflank);
+ 
+    /**
+     * Sets delta.
+     */
+    void set_delta(float delta);
+    
+    /**
+     * Sets epsilon.
+     */
+    void set_epsilon(float epsilon);
+    
+    /**
+     * Sets tau.
+     */
+    void set_tau(float tau);
+    
+    /**
+     * Sets eta.
+     */
+    void set_eta(float eta);
+    
+    /**
+     * Sets mismatch penalty.
+     */
+    void set_mismatch_penalty(float mismatch_penalty);
     
     /**
      * Computes the score associated with the move from A to B

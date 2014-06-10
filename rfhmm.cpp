@@ -113,189 +113,6 @@ RFHMM::~RFHMM()
     delete U;
 };
 
-///**
-// * Initializes object, helper function for constructor.
-// */
-//void RFHMM::initialize(const char* motif, const char* rflank)
-//{
-//    model = new char*[3];
-//    model[MOTIF] = strdup(motif);
-//    model[RFLANK] = strdup(rflank);
-//
-//    motif_discordance = new int32_t[MAXLEN];
-//
-//    mlen = strlen(model[MOTIF]);
-//    rflen = strlen(model[RFLANK]);
-//
-//    optimal_path = new int32_t[MAXLEN<<2];
-//    optimal_path_traced = false;
-//
-//    delta = 0.01;
-//    epsilon = 0.05;
-//    tau = 0.01;
-//    eta = 0.01;
-//
-//    for (size_t i=S; i<=E; ++i)
-//    {
-//        for (size_t j=S; j<=E; ++j)
-//        {
-//            T[i][j] = -INFINITY;
-//        }
-//    }
-//
-//    T[S][Y] = 0;
-//    T[Y][Y] = 0;
-//
-//    T[S][M] = log10((tau*(1-2*delta-tau))/(tau*eta*(1-eta)*(1-eta)));
-//    T[Y][M] = T[S][M];
-//    T[M][M] = log10(((1-2*delta-tau))/((1-eta)*(1-eta)));
-//    T[D][M] = log10(((1-epsilon-tau))/((1-eta)*(1-eta)));
-//    T[I][M] = T[I][M];
-//
-//    T[S][D] = log10((tau*delta)/(eta*(1-eta)));
-//    T[Y][D] = T[S][D];
-//    T[M][D] = log10(delta/(1-eta));
-//    T[D][D] = log10(epsilon/(1-eta));
-//
-//    T[S][I] = log10((tau*delta)/(eta*(1-eta)));
-//    T[Y][I] = T[S][I];
-//    T[M][I] = log10(delta/(1-eta));
-//    T[I][I] = log10(epsilon/(1-eta));
-//
-//    T[S][MR] = log10((tau*tau*(1-tau))/(tau*eta*eta*eta*(1-eta)*(1-eta)));
-//    T[Y][MR] = log10((eta*tau)/(eta*eta*eta));
-//    T[M][MR] = log10((tau*(1-tau))/(eta*eta*(1-eta)*(1-eta)));
-//    T[D][MR] = T[M][MR];
-//    T[I][MR] = T[D][MR];
-//    T[MR][MR] = log10(((1-2*delta-tau))/((1-eta)*(1-eta)));
-//
-//    typedef int32_t (RFHMM::*move) (int32_t t, int32_t j);
-//    V = new float*[NSTATES];
-//    U = new int32_t*[NSTATES];
-//    moves = new move*[NSTATES];
-//    for (size_t state=S; state<=E; ++state)
-//    {
-//        V[state] = new float[MAXLEN*MAXLEN];
-//        U[state] = new int32_t[MAXLEN*MAXLEN];
-//        moves[state] = new move[NSTATES];
-//    }
-//
-//    for (size_t state=S; state<=E; ++state)
-//    {
-//        moves[state] = new move[NSTATES];
-//    }
-//
-//    moves[S][Y] = &RFHMM::move_S_Y;
-//    moves[Y][Y] = &RFHMM::move_Y_Y;
-//
-//    moves[S][M] = &RFHMM::move_S_M;
-//    moves[Y][M] = &RFHMM::move_Y_M;
-//    moves[M][M] = &RFHMM::move_M_M;
-//    moves[D][M] = &RFHMM::move_D_M;
-//    moves[I][M] = &RFHMM::move_I_M;
-//
-//    moves[S][D] = &RFHMM::move_S_D;
-//    moves[Y][D] = &RFHMM::move_Y_D;
-//    moves[M][D] = &RFHMM::move_M_D;
-//    moves[D][D] = &RFHMM::move_D_D;
-//
-//    moves[S][I] = &RFHMM::move_S_I;
-//    moves[Y][I] = &RFHMM::move_Y_I;
-//    moves[M][I] = &RFHMM::move_M_I;
-//    moves[I][I] = &RFHMM::move_I_I;
-//
-//    moves[S][MR] = &RFHMM::move_Y_MR;
-//    moves[Y][MR] = &RFHMM::move_Y_MR;
-//    moves[M][MR] = &RFHMM::move_M_MR;
-//    moves[D][MR] = &RFHMM::move_D_MR;
-//    moves[I][MR] = &RFHMM::move_I_MR;
-//    moves[MR][MR] = &RFHMM::move_MR_MR;
-//
-//    //used for back tracking, this points to the state prior to the alignment for subsequence (i,j)
-//    //that ends with the corresponding state
-//
-//    int32_t t=0;
-//    for (size_t i=0; i<MAXLEN; ++i)
-//    {
-//        for (size_t j=0; j<MAXLEN; ++j)
-//        {
-//            size_t c = index(i,j);
-//
-//            V[S][c] = -INFINITY;
-//            U[S][c] = NULL_TRACK;
-//
-//            //Y
-//            V[Y][c] = 0;
-//            if (i>=1)
-//            {
-//                V[Y][c] = -INFINITY;
-//                U[Y][c] = NULL_TRACK;
-//            }
-//            else
-//            {
-//                if (j==1)
-//                {
-//                    U[Y][c] = make_track(S,LFLANK,0,j);
-//                }
-//                else
-//                {
-//                    U[Y][c] =  make_track(Y,LFLANK,0,j);
-//                }
-//            }
-//
-//            //M
-//            V[M][c] = -INFINITY;
-//            if (!i || !j)
-//            {
-//                U[M][c] = make_track(N,UNMODELED,0,0);
-//            }
-//            else
-//            {
-//                U[M][c] = make_track(TBD,UNCERTAIN,0,0);
-//            }
-//
-//            //D
-//            V[D][c] = -INFINITY;
-//            if (!i || !j)
-//            {
-//                U[D][c] = make_track(N,UNMODELED,0,0);
-//            }
-//            else
-//            {
-//                U[D][c] = make_track(TBD,UNCERTAIN,0,0);
-//            }
-//
-//            //I
-//            V[I][c] = -INFINITY;
-//            if (!i || !j)
-//            {
-//                U[I][c] = make_track(N,UNMODELED,0,0);
-//            }
-//            else
-//            {
-//                U[I][c] = make_track(TBD,UNCERTAIN,0,0);
-//            }
-//
-//            //MR
-//            V[MR][c] = -INFINITY;
-//            if (!i || !j)
-//            {
-//                U[MR][c] = make_track(N,UNMODELED,0,0);
-//            }
-//            else
-//            {
-//                U[MR][c] = make_track(TBD,UNCERTAIN,0,0);
-//            }
-//        }
-//    }
-//
-//    V[S][index(0,0)] = 0;
-//    U[S][index(0,0)] = START_TRACK;
-//
-//    V[M][index(0,0)] = -INFINITY;
-//    V[MR][index(0,0)] = -INFINITY;
-//};
-
 /**
  * Initializes objects; helper function for constructor.
  */
@@ -512,6 +329,46 @@ void RFHMM::set_model(const char* motif, const char* rflank)
 
     mlen = strlen(model[MOTIF]);
     rflen = strlen(model[RFLANK]);
+}
+
+/**
+ * Sets delta.
+ */
+void RFHMM::set_delta(float delta)
+{
+    par.delta = delta;
+}
+
+/**
+ * Sets epsilon.
+ */
+void RFHMM::set_epsilon(float epsilon)
+{
+    par.epsilon = epsilon;
+}
+
+/**
+ * Sets tau.
+ */
+void RFHMM::set_tau(float tau)
+{
+    par.tau = tau;
+}
+
+/**
+ * Sets eta.
+ */
+void RFHMM::set_eta(float eta)
+{
+    par.eta = eta;
+}
+
+/**
+ * Sets mismatch penalty.
+ */
+void RFHMM::set_mismatch_penalty(float mismatch_penalty)
+{
+    par.mismatch_penalty = mismatch_penalty;
 }
 
 /**

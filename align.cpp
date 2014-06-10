@@ -61,6 +61,7 @@ class Igor : Program
     std::string lflank;
     std::string ru;
     std::string rflank;
+    float mismatch_penalty;
 
     bool debug;
 
@@ -87,6 +88,7 @@ class Igor : Program
             TCLAP::ValueArg<std::string> arg_lflank("l", "l", "left flanks", false, "", "string");
             TCLAP::ValueArg<std::string> arg_ru("u", "u", "repeat unit", false, "", "string");
             TCLAP::ValueArg<std::string> arg_rflank("r", "r", "right flanks", false, "", "string");
+            TCLAP::ValueArg<float> arg_mismatch_penalty("p", "p", "mismatch penalty", false, 1, "float");
             TCLAP::SwitchArg arg_debug("d", "d", "debug mode", false);
 
             cmd.add(arg_method);
@@ -95,6 +97,7 @@ class Igor : Program
             cmd.add(arg_lflank);
             cmd.add(arg_ru);
             cmd.add(arg_rflank);
+            cmd.add(arg_mismatch_penalty);
             cmd.add(arg_debug);
             cmd.parse(argc, argv);
 
@@ -104,6 +107,7 @@ class Igor : Program
             lflank = arg_lflank.getValue();
             ru = arg_ru.getValue();
             rflank = arg_rflank.getValue();
+            mismatch_penalty = arg_mismatch_penalty.getValue();
             debug = arg_debug.getValue();
         }
         catch (TCLAP::ArgException &e)
@@ -157,6 +161,7 @@ class Igor : Program
             }
             clock_t t0 = clock();
             hmm.set_model(lflank.c_str(), ru.c_str());
+            hmm.set_mismatch_penalty(mismatch_penalty);
             hmm.align(y.c_str(), qual.c_str());
             hmm.print_alignment();
             clock_t t1 = clock();

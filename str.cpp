@@ -24,6 +24,49 @@
 #include "str.h"
 
 /**
+ * Constructor.
+ */
+STRMotif::STRMotif()
+{
+    motifs = kh_init(mdict);
+    
+    //update factors
+    factors = new int32_t*[32];
+    for (size_t i=1; i<=32; ++i)
+    {
+        factors[i] = new int32_t[32];
+        int32_t count = 0;
+        
+        std::cerr << i << " : ";
+        
+        for (size_t j=1; j<=i; ++j)
+        {                
+            if ((i%j)==0)
+            {
+                factors[i][count++] = j;
+                std::cerr << (j!=1?",":"") << j;
+                    
+            }    
+            
+            
+        }   
+        std::cerr << "\n";
+    }        
+};
+
+/**
+ * Destructor.
+ */
+STRMotif::~STRMotif()
+{
+    for (size_t i=1; i<=32; ++i)
+    {
+        free(factors[i]);
+    }  
+    free(factors);
+}
+
+/**
  * Suggests a set of repeat motif candidates in a set of alleles.
  */
 char** STRMotif::suggest_motifs(char** alleles, int32_t n_allele, int32_t &no_candidate_motifs)
@@ -39,10 +82,16 @@ char** STRMotif::suggest_motifs(char** alleles, int32_t n_allele, int32_t &no_ca
         int32_t alt_len = strlen(alleles[i]);
 
         //skip if not indel
-       // if ()
+        //if ()
 
         //get length difference
+        
+        
         int32_t dlen = alt_len-ref_len;
+        
+        
+        
+        
         //extract fragment
         if (dlen>0)
         {
@@ -54,6 +103,9 @@ char** STRMotif::suggest_motifs(char** alleles, int32_t n_allele, int32_t &no_ca
         }
 
         int32_t len = abs(dlen);
+
+        std::cerr << dlen << " " << len << " "  << alleles[0] << " " << alleles[i] << "\n";
+            
         char* m = get_shortest_repeat_motif(motif, len);
 
         int32_t ret;
@@ -94,10 +146,12 @@ char* STRMotif::get_shortest_repeat_motif(char* allele, int32_t len)
 {
     std::cerr << "get shortest repeatmotif " << allele << " : " << len << "\n"; 
     
-    size_t i = 0;
+    size_t i = 1;
     size_t sub_motif_len;
     while ((sub_motif_len=factors[len][i])!=len)
     {
+        std::cerr << "sub motif len : " << sub_motif_len << " " <<  i << "\n";
+        
         bool exact = true;
 
         size_t n_sub_motif = len/sub_motif_len;
