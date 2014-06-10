@@ -200,10 +200,10 @@ void RFHMM::initialize_T()
             T[i][j] = -INFINITY;
         }
     }
-
+    
     T[S][Y] = 0;
     T[Y][Y] = 0;
-
+    
     T[S][M] = log10((tau*(1-2*delta-tau))/(tau*eta*(1-eta)*(1-eta)));
     T[Y][M] = T[S][M];
     T[M][M] = log10(((1-2*delta-tau))/((1-eta)*(1-eta)));

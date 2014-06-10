@@ -61,6 +61,10 @@ class Igor : Program
     std::string lflank;
     std::string ru;
     std::string rflank;
+    float delta;
+    float epsilon;
+    float tau;
+    float eta;
     float mismatch_penalty;
 
     bool debug;
@@ -88,6 +92,10 @@ class Igor : Program
             TCLAP::ValueArg<std::string> arg_lflank("l", "l", "left flanks", false, "", "string");
             TCLAP::ValueArg<std::string> arg_ru("u", "u", "repeat unit", false, "", "string");
             TCLAP::ValueArg<std::string> arg_rflank("r", "r", "right flanks", false, "", "string");
+            TCLAP::ValueArg<float> arg_delta("p", "p", "delta", false, -1, "float");
+            TCLAP::ValueArg<float> arg_epsilon("p", "p", "epsilon", false, -1, "float");
+            TCLAP::ValueArg<float> arg_tau("p", "p", "tau", false, -1, "float");
+            TCLAP::ValueArg<float> arg_eta("p", "p", "eta", false, -1, "float");
             TCLAP::ValueArg<float> arg_mismatch_penalty("p", "p", "mismatch penalty", false, 1, "float");
             TCLAP::SwitchArg arg_debug("d", "d", "debug mode", false);
 
@@ -97,6 +105,10 @@ class Igor : Program
             cmd.add(arg_lflank);
             cmd.add(arg_ru);
             cmd.add(arg_rflank);
+            cmd.add(arg_epsilon);
+            cmd.add(arg_delta);
+            cmd.add(arg_tau);
+            cmd.add(arg_eta);
             cmd.add(arg_mismatch_penalty);
             cmd.add(arg_debug);
             cmd.parse(argc, argv);
@@ -107,6 +119,10 @@ class Igor : Program
             lflank = arg_lflank.getValue();
             ru = arg_ru.getValue();
             rflank = arg_rflank.getValue();
+            delta = arg_delta.getValue();
+            epsilon = arg_epsilon.getValue();
+            tau = arg_tau.getValue();
+            eta = arg_eta.getValue();
             mismatch_penalty = arg_mismatch_penalty.getValue();
             debug = arg_debug.getValue();
         }
@@ -161,6 +177,10 @@ class Igor : Program
             }
             clock_t t0 = clock();
             hmm.set_model(lflank.c_str(), ru.c_str());
+            if (delta!=-1) hmm.set_delta(delta);
+            if (epsilon!=-1) hmm.set_epsilon(epsilon);
+            if (tau!=-1) hmm.set_tau(tau);
+            if (eta!=-1) hmm.set_eta(eta);
             hmm.set_mismatch_penalty(mismatch_penalty);
             hmm.align(y.c_str(), qual.c_str());
             hmm.print_alignment();
