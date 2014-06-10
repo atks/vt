@@ -162,8 +162,7 @@ class Igor : Program
         int32_t lflank_len, ref_genome_len;
         char* lflank, *ru, *rflank, *ref_genome;
         int32_t ru_len;
-        std::string qual;
-        for (int32_t i=0; i<2048; ++i) qual += 'K';
+        std::string qual(2048, 'K');
 
         while (odr->read(v))
         {
@@ -187,42 +186,48 @@ class Igor : Program
                 std::cerr << "=========================================================================================================================\n";
                 std::cerr << "\n";
     
+                bcf_print(odr->hdr, v);
+            
                 int32_t no_candidate_motifs;
+    
                 char** candidate_motifs = strm->suggest_motifs(bcf_get_allele(v), bcf_get_n_allele(v), no_candidate_motifs);
     
-                if (!ru_len)
-                {
-                    char* ref = bcf_get_alt(v, 0);
-                    char* alt = bcf_get_alt(v, 1);
-    
-                    if (strlen(ref)>strlen(alt))
-                    {            
-                        lflank = faidx_fetch_uc_seq(fai, chrom, start1-10, start1-1, &lflank_len);
-                        //bcf_get_info_string(odr->hdr, v, "RU", &ru, &ru_len);
-                        ref_genome = faidx_fetch_uc_seq(fai, chrom, start1-10, start1+100, &ref_genome_len);
-    
-                        ru = ref;
-                        ++ru;
-                    }
-                    else // deletion
+                if (bcf_get_n_allele(v)==2)
+                {    
+                    if (!ru_len)
                     {
-                        lflank = faidx_fetch_uc_seq(fai, chrom, start1-10, start1-1, &lflank_len);
-                        ru = alt;
-                        kstring_t str = {(size_t)lflank_len, (size_t)lflank_len, lflank};
-                        ++ru;
-                        kputs(ru, &str);
-                        lflank_len = str.m;
-                        lflank = str.s;
-                    
-                        ref_genome = faidx_fetch_uc_seq(fai, chrom, start1, start1+100, &ref_genome_len);
-                        str.l=0; str.s=0; str.m=0;
-                        kputs(lflank, &str);
-                        kputs(ru, &str);
-                        kputs(ref_genome, &str);
+                        char* ref = bcf_get_alt(v, 0);
+                        char* alt = bcf_get_alt(v, 1);
+        
+                        if (strlen(ref)>strlen(alt))
+                        {            
+                            lflank = faidx_fetch_uc_seq(fai, chrom, start1-10, start1-1, &lflank_len);
+                            //bcf_get_info_string(odr->hdr, v, "RU", &ru, &ru_len);
+                            ref_genome = faidx_fetch_uc_seq(fai, chrom, start1-10, start1+100, &ref_genome_len);
+        
+                            ru = ref;
+                            ++ru;
+                        }
+                        else //deletion
+                        {
+                            lflank = faidx_fetch_uc_seq(fai, chrom, start1-10, start1-1, &lflank_len);
+                            ru = alt;
+                            kstring_t str = {(size_t)lflank_len, (size_t)lflank_len, lflank};
+                            ++ru;
+                            kputs(ru, &str);
+                            lflank_len = str.m;
+                            lflank = str.s;
                         
-                        free(ref_genome);
-                        ref_genome = str.s;
-                        ref_genome_len = str.l;
+                            ref_genome = faidx_fetch_uc_seq(fai, chrom, start1, start1+100, &ref_genome_len);
+                            str.l=0; str.s=0; str.m=0;
+                            kputs(lflank, &str);
+                            kputs(ru, &str);
+                            kputs(ref_genome, &str);
+                            
+                            free(ref_genome);
+                            ref_genome = str.s;
+                            ref_genome_len = str.l;
+                        }
                     }
                 }
     

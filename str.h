@@ -43,6 +43,15 @@ KHASH_MAP_INIT_STR(mdict, int32_t);
 class STRMotif
 {
     public:
+    char* motif;
+    int32_t motif_len;
+    int32_t ref_len;
+    char* lflank;
+    char* rflank;
+    bool exact;
+    int32_t* motif_concordance;
+    float* motif_completeness;
+    float concordance;  
     
     //factors[n][index], for determining what sub repeat units to examine
     int32_t** factors;
@@ -52,30 +61,17 @@ class STRMotif
     /**
      * Constructor.
      */
-    STRMotif()
-    {
-        motifs = kh_init(mdict);
-        
-        //update factors
-        factors = new int32_t*[32];
-        for (size_t i=1; i<=32; ++i)
-        {
-            factors[i] = new int32_t[32];
-            int32_t count = 0;
-            for (size_t j=1; j<=i/2; ++j)
-            {                
-                if ((i%j)==0)
-                {
-                    factors[i][count++] = j;
-                }    
-            }   
-        }        
-    };
+    STRMotif();
 
     /**
      * Destructor.
      */
     ~STRMotif();
+
+    /**
+     * Annotates STR characteristics.
+     */
+    void annotate(char** alleles, int32_t n_allele);
 
     /**
      * Suggests a set of repeat motif candidates in a set of alleles.
@@ -90,8 +86,7 @@ class STRMotif
     /**
      * Prints variant information.
      */
-    void print();
-    
+    void print();    
 };
 
 #endif

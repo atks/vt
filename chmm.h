@@ -90,6 +90,7 @@ class CHMMParameters
     float epsilon;
     float tau;
     float eta;
+    float mismatch_penalty;
     
     CHMMParameters()
     {
@@ -97,6 +98,7 @@ class CHMMParameters
         epsilon = 0.05;
         tau = 0.01;
         eta = 0.01;
+        mismatch_penalty = 1;
     };
 };
 
@@ -186,7 +188,32 @@ class CHMM
      * Sets a model.
      */
     void set_model(const char* lflank, const char* ru, const char* rflank);
+
+    /**
+     * Sets delta.
+     */
+    void set_delta(float delta);
     
+    /**
+     * Sets epsilon.
+     */
+    void set_epsilon(float epsilon);
+    
+    /**
+     * Sets tau.
+     */
+    void set_tau(float tau);
+    
+    /**
+     * Sets eta.
+     */
+    void set_eta(float eta);
+    
+    /**
+     * Sets mismatch penalty.
+     */
+    void set_mismatch_penalty(float mismatch_penalty);
+        
     /**
      * Computes the score associated with the move from A to B
      * Updates the max_score and associated max_track.

@@ -147,6 +147,7 @@ class Igor : Program
         bcf_hdr_append(vodw->hdr, "##FORMAT=<ID=QT,Number=1,Type=String,Description=\"Qualitative Genotype, e for exact sequence, i for inexact sequence\">");
         bcf_hdr_append(vodw->hdr, "##FORMAT=<ID=GQ,Number=1,Type=String,Description=\"Genotype Quality\">");
         bcf_hdr_append(vodw->hdr, "##FORMAT=<ID=DP,Number=1,Type=Integer,Description=\"Depth\">");
+        bcf_hdr_append(vodw->hdr, "##FORMAT=<ID=RDP,Number=1,Type=Integer,Description=\"Raw Depth\">");
         bcf_hdr_append(vodw->hdr, "##FORMAT=<ID=AD,Number=2,Type=Integer,Description=\"Allele Depth\">");
         bcf_hdr_append(vodw->hdr, "##FORMAT=<ID=PL,Number=G,Type=Integer,Description=\"PHRED scaled genotype likelihood\">");
 
