@@ -55,10 +55,7 @@ class Igor : Program
     ////////////////
     //common tools//
     ////////////////
-    faidx_t *fai;
-    VariantManip *vm;
-    RFHMM* rfhmm;
-    LFHMM* lfhmm;
+    VariantManip* vm;
     STRMotif* strm;
 
     Igor(int argc, char **argv)
@@ -112,11 +109,6 @@ class Igor : Program
         bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_LFLANKPOS,Number=2,Type=Integer,Description=\"Location of left flank\">");
         bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_RFLANKPOS,Number=2,Type=Integer,Description=\"Location of right flank\">");
 
-        ///////////////////////
-        //tool initialization//
-        ///////////////////////
-        vm = new VariantManip(ref_fasta_file);
-
         ////////////////////////
         //stats initialization//
         ////////////////////////
@@ -125,11 +117,8 @@ class Igor : Program
         ////////////////////////
         //tools initialization//
         ////////////////////////
-        fai = fai_load(ref_fasta_file.c_str());
-        rfhmm = new RFHMM();
-        lfhmm = new LFHMM();
-        strm = new STRMotif();
-
+        vm = new VariantManip(ref_fasta_file);
+        strm = new STRMotif(ref_fasta_file);
     }
 
     void print_options()
@@ -155,122 +144,20 @@ class Igor : Program
         odw->write_hdr();
 
         bcf1_t *v = odw->get_bcf1_from_pool();
-        std::vector<Interval*> overlaps;
         Variant variant;
-        kstring_t s = {0,0,0};
-
-        int32_t lflank_len, ref_genome_len;
-        char* lflank, *ru, *rflank, *ref_genome;
-        int32_t ru_len;
-        std::string qual(2048, 'K');
-
+        
         while (odr->read(v))
         {
             bcf_unpack(v, BCF_UN_STR);
             int32_t vtype = vm->classify_variant(odr->hdr, v, variant);
-            const char* chrom = bcf_get_chrom(odr->hdr,v);
-            int32_t start1 = bcf_get_pos1(v);
-            int32_t end1 = bcf_get_end_pos1(v);
-
-            //1. reduce variant
-            //   ACACACAC=>AC
-            //   check concordance
-            //   Reference length
-            //   accuracy
-
-            //2. run right flank
-
             if (vtype&VT_INDEL)
             {
-                std::cerr << "\n";
-                std::cerr << "=========================================================================================================================\n";
-                std::cerr << "\n";
-    
-                bcf_print(odr->hdr, v);
-            
-                int32_t no_candidate_motifs;
-    
-                char** candidate_motifs = strm->suggest_motifs(bcf_get_allele(v), bcf_get_n_allele(v), no_candidate_motifs);
-    
-                if (bcf_get_n_allele(v)==2)
-                {    
-                    if (!ru_len)
-                    {
-                        char* ref = bcf_get_alt(v, 0);
-                        char* alt = bcf_get_alt(v, 1);
-        
-                        if (strlen(ref)>strlen(alt))
-                        {            
-                            lflank = faidx_fetch_uc_seq(fai, chrom, start1-10, start1-1, &lflank_len);
-                            //bcf_get_info_string(odr->hdr, v, "RU", &ru, &ru_len);
-                            ref_genome = faidx_fetch_uc_seq(fai, chrom, start1-10, start1+100, &ref_genome_len);
-        
-                            ru = ref;
-                            ++ru;
-                        }
-                        else //deletion
-                        {
-                            lflank = faidx_fetch_uc_seq(fai, chrom, start1-10, start1-1, &lflank_len);
-                            ru = alt;
-                            kstring_t str = {(size_t)lflank_len, (size_t)lflank_len, lflank};
-                            ++ru;
-                            kputs(ru, &str);
-                            lflank_len = str.m;
-                            lflank = str.s;
-                        
-                            ref_genome = faidx_fetch_uc_seq(fai, chrom, start1, start1+100, &ref_genome_len);
-                            str.l=0; str.s=0; str.m=0;
-                            kputs(lflank, &str);
-                            kputs(ru, &str);
-                            kputs(ref_genome, &str);
-                            
-                            free(ref_genome);
-                            ref_genome = str.s;
-                            ref_genome_len = str.l;
-                        }
-                    }
-                }
-    
-                bcf_print(odr->hdr, v);
-    
-                std::cerr << "lflank           : " << lflank << "\n";
-                std::cerr << "RU               : " << ru << "\n";
-                std::cerr << "ref_genome       : " << ref_genome << "\n";
-                std::cerr << "CANDIDATE MOTIFS : ";
-                for (size_t i=0; i<no_candidate_motifs; ++i)
-                {
-                    std::cerr << (i?",":"") << candidate_motifs[i];
-                }
-                std::cerr << "\n";
-    
-                lfhmm->set_model(lflank, ru);
-                lfhmm->set_mismatch_penalty(5);
-                lfhmm->align(ref_genome, qual.c_str());
-                lfhmm->print_alignment();
-    
-                bcf_print(odr->hdr, v);
-    
-                //check if there are at least 10bp to work with
-                //rfhmm->initialize(run, rflank);
-                //rfhmm->align(ref_genome, qual.c_str());
-                //rfhmm->print_alignment();
-                //3. run left flank
-                //4. try several modes
-    
-                if (lflank_len) free(lflank);
-                if (ref_genome_len) free(ref_genome);
-    
+                strm->annotate(odr->hdr,v);
                 ++no_variants_annotated;
-                odw->write(v);
-                v = odw->get_bcf1_from_pool();
-                
-                free(candidate_motifs);
             }
-            else
-            {
-                odw->write(v);
-                v = odw->get_bcf1_from_pool();
-            }
+
+            odw->write(v);
+            v = odw->get_bcf1_from_pool();
         }
 
         odw->close();

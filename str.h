@@ -34,15 +34,24 @@
 #include <queue>
 #include <list>
 #include "hts_utils.h"
+#include "htslib/kstring.h"
+#include "bcf_ordered_reader.h"
+#include "bcf_ordered_writer.h"
+#include "rfhmm.h"             
+#include "lfhmm.h"             
+#include "variant_manip.h"     
+#include "program.h"           
 
 KHASH_MAP_INIT_STR(mdict, int32_t);
 
-/**
- * STR Motifs
- */
+/**                                                                                 
+ * Class for determining STR motifs, flanks and STR type statistics.                
+ * RU,RL,LFLANK,RFLANK,LFLANKPOS,RFLANKPOS,MOTIF_CONCORDANCE,MOTIF_CONCORDANCE      
+ */                                                                                 
 class STRMotif
 {
     public:
+    //model
     char* motif;
     int32_t motif_len;
     int32_t ref_len;
@@ -51,17 +60,25 @@ class STRMotif
     bool exact;
     int32_t* motif_concordance;
     float* motif_completeness;
-    float concordance;  
-    
+    float concordance;
+
+    ///////
+    //tools
+    ///////
+    VariantManip *vm;
+    faidx_t* fai;
+    RFHMM* rfhmm;
+    LFHMM* lfhmm;
+
     //factors[n][index], for determining what sub repeat units to examine
     int32_t** factors;
-    
+
     khash_t(mdict) *motifs;
-    
+
     /**
      * Constructor.
      */
-    STRMotif();
+    STRMotif(std::string& ref_fasta_file);
 
     /**
      * Destructor.
@@ -70,8 +87,9 @@ class STRMotif
 
     /**
      * Annotates STR characteristics.
+     * RU,RL,LFLANK,RFLANK,LFLANKPOS,RFLANKPOS,MOTIF_CONCORDANCE,MOTIF_CONCORDANCE
      */
-    void annotate(char** alleles, int32_t n_allele);
+    void annotate(bcf_hdr_t* h, bcf1_t* v);
 
     /**
      * Suggests a set of repeat motif candidates in a set of alleles.
@@ -86,7 +104,7 @@ class STRMotif
     /**
      * Prints variant information.
      */
-    void print();    
+    void print();
 };
 
 #endif
