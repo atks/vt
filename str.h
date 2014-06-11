@@ -51,6 +51,15 @@ KHASH_MAP_INIT_STR(mdict, int32_t);
 class STRMotif
 {
     public:
+//bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_RU,Number=1,Type=String,Description=\"Repeat unit in a STR or Homopolymer\">");
+//bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_RL,Number=1,Type=Integer,Description=\"Repeat Length\">");
+//bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_LFLANK,Number=1,Type=String,Description=\"Right Flank Sequence\">");
+//bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_RFLANK,Number=1,Type=String,Description=\"Left Flank Sequence\">");
+//bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_LFLANKPOS,Number=2,Type=Integer,Description=\"Positions of left flank\">");
+//bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_RFLANKPOS,Number=2,Type=Integer,Description=\"Positions of right flank\">");
+//bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_MOTIF_DISCORDANCE,Number=1,Type=String,Description=\"Descriptive Discordance for each reference repeat unit.\">");
+//bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_STR_CONCORDANCE,Number=1,Type=Float,Description=\"Overall discordance of RUs.\">");
+
     //model
     char* motif;
     int32_t motif_len;
@@ -95,6 +104,11 @@ class STRMotif
      * Suggests a set of repeat motif candidates in a set of alleles.
      */
     char** suggest_motifs(char** alleles, int32_t n_allele, int32_t &no_candidate_motifs);
+
+    /**
+     * Detect candidate flanks given a motif fit.
+     */
+    void search_flanks(const char* chrom, int32_t start1, char* motif);
 
     /**
      * Extracts the shortest repeat unit in a sequence.
