@@ -28,10 +28,11 @@
  */
 STRMotif::STRMotif(std::string& ref_fasta_file)
 {
+    vm = new VariantManip(ref_fasta_file.c_str());
     fai = fai_load(ref_fasta_file.c_str());
     rfhmm = new RFHMM();
     lfhmm = new LFHMM();
-    
+
     motifs = kh_init(mdict);
 
     //update factors
@@ -56,6 +57,11 @@ STRMotif::STRMotif(std::string& ref_fasta_file)
  */
 STRMotif::~STRMotif()
 {
+    delete vm;
+    fai_destroy(fai);
+    delete rfhmm;
+    delete lfhmm;
+
     for (size_t i=1; i<=32; ++i)
     {
         free(factors[i]);
@@ -70,100 +76,43 @@ STRMotif::~STRMotif()
  */
 void STRMotif::annotate(bcf_hdr_t* h, bcf1_t* v)
 {
-    const char* chrom = bcf_get_chrom(h, v);
-    int32_t lflank_len, ref_genome_len;
-    char* lflank, *ru, *rflank, *ref_genome;
-    int32_t ru_len;
-    std::string qual(2048, 'K');
-
-    //handle biallelic indel types
-        //grab potential motifs based on 
-    
-    //handle multiallelic indel types
-    std::cerr << "\n";
-    std::cerr << "=========================================================================================================================\n";
-    std::cerr << "\n";
-
-    bcf_print(h, v);
-
     int32_t no_candidate_motifs;
-    char** candidate_motifs = suggest_motifs(bcf_get_allele(v), bcf_get_n_allele(v), no_candidate_motifs);
+
+    const char* chrom = bcf_get_chrom(h, v);
+    char* ref = bcf_get_alt(v, 0);
+    char* alt = bcf_get_alt(v, 1);
+    int32_t start1 = bcf_get_pos1(v);
 
     if (bcf_get_n_allele(v)==2)
-    {    
-        //choose most appropriate motif
-        
-        
-        if (!ru_len)
-        {
-            char* ref = bcf_get_alt(v, 0);
-            char* alt = bcf_get_alt(v, 1);
-            int32_t start1 = bcf_get_pos1(v);
-            
-            
-            if (strlen(ref)>strlen(alt))
-            {            
-                lflank = faidx_fetch_uc_seq(fai, chrom, start1-10, start1-1, &lflank_len);
-                //bcf_get_info_string(odr->hdr, v, "RU", &ru, &ru_len);
-                ref_genome = faidx_fetch_uc_seq(fai, chrom, start1-10, start1+100, &ref_genome_len);
+    {
+        char** candidate_motifs = suggest_motifs(bcf_get_allele(v), bcf_get_n_allele(v), no_candidate_motifs);
 
-                ru = ref;
-                ++ru;
-            }
-            else //deletion
-            {
-                lflank = faidx_fetch_uc_seq(fai, chrom, start1-10, start1-1, &lflank_len);
-                ru = alt;
-                kstring_t str = {(size_t)lflank_len, (size_t)lflank_len, lflank};
-                ++ru;
-                kputs(ru, &str);
-                lflank_len = str.m;
-                lflank = str.s;
-            
-                ref_genome = faidx_fetch_uc_seq(fai, chrom, start1, start1+100, &ref_genome_len);
-                str.l=0; str.s=0; str.m=0;
-                kputs(lflank, &str);
-                kputs(ru, &str);
-                kputs(ref_genome, &str);
-                
-                free(ref_genome);
-                ref_genome = str.s;
-                ref_genome_len = str.l;
-            }
+        for (size_t i=0; i<no_candidate_motifs; ++i)
+        {
+            //should not overwrite model parameters here.
+
+            //        std::cerr << "lflank           : " << lflank << "\n";
+//        std::cerr << "RU               : " << ru << "\n";
+//        std::cerr << "ref_genome       : " << ref_genome << "\n";
+//        std::cerr << "CANDIDATE MOTIFS : ";
+//        for (size_t i=0; i<no_candidate_motifs; ++i)
+//        {
+//            std::cerr << (i?",":"") << candidate_motifs[i];
+//        }
+
+
+          search_flanks(chrom, start1, candidate_motifs[i]);
+
+            //check if fit is good, if good, exit loop;
+            //at this point, do not store candidates.
+            //idea is to choose only really good fits.
+            //
+            //as to what exactly a good fit.
+            //motif discordance is perfect
+            //motif concordance is perfect?
+            //loosen definition for long sets.
         }
     }
-
-    bcf_print(h, v);
-
-    std::cerr << "lflank           : " << lflank << "\n";
-    std::cerr << "RU               : " << ru << "\n";
-    std::cerr << "ref_genome       : " << ref_genome << "\n";
-    std::cerr << "CANDIDATE MOTIFS : ";
-    for (size_t i=0; i<no_candidate_motifs; ++i)
-    {
-        std::cerr << (i?",":"") << candidate_motifs[i];
-    }
-    std::cerr << "\n";
-
-    lfhmm->set_model(lflank, ru);
-    lfhmm->set_mismatch_penalty(5);
-    lfhmm->align(ref_genome, qual.c_str());
-    lfhmm->print_alignment();
-
-    bcf_print(h, v);
-
-    //check if there are at least 10bp to work with
-    //rfhmm->initialize(run, rflank);
-    //rfhmm->align(ref_genome, qual.c_str());
-    //rfhmm->print_alignment();
-    //3. run left flank
-    //4. try several modes
-
-    if (lflank_len) free(lflank);
-    if (ref_genome_len) free(ref_genome);
-
-    
-    free(candidate_motifs);
 }
 
 /**
@@ -186,11 +135,7 @@ char** STRMotif::suggest_motifs(char** alleles, int32_t n_allele, int32_t &no_ca
 
         //get length difference
 
-
         int32_t dlen = alt_len-ref_len;
-
-
-
 
         //extract fragment
         if (dlen>0)
@@ -237,6 +182,61 @@ char** STRMotif::suggest_motifs(char** alleles, int32_t n_allele, int32_t &no_ca
     kh_clear(mdict, motifs);
 
     return candidate_motifs;
+}
+
+/**
+ * Detect candidate flanks given a motif fit.
+ * Update model atttributes.
+ */
+void STRMotif::search_flanks(const char* chrom, int32_t start1, char* motif)
+{
+    //given chromosome position and motif
+    //attempt to
+
+//    int32_t lflank_len, ref_genome_len;
+//    char* lflank, *ru, *rflank, *ref_genome;
+//    int32_t ru_len;
+//    std::string qual(2048, 'K');
+//
+//    //if insert, infuse a repeat unit
+//    //choose most appropriate motif
+//    if (!ru_len)
+//    {
+//        lfhmm->set_model(lflank, ru);
+//        lfhmm->set_mismatch_penalty(5);
+//        lfhmm->align(ref_genome, qual.c_str());
+//        lfhmm->print_alignment();
+//
+//        if (strlen(ref)>strlen(alt))
+//        {
+//            lflank = faidx_fetch_uc_seq(fai, chrom, start1-10, start1-1, &lflank_len);
+//            ////bcf_get_info_string(odr->hdr, v, "RU", &ru, &ru_len);
+//            ref_genome = faidx_fetch_uc_seq(fai, chrom, start1-10, start1+100, &ref_genome_len);
+//            ru = ref;
+//            ++ru;
+//        }
+//        else //deletion
+//        {
+//            lflank = faidx_fetch_uc_seq(fai, chrom, start1-10, start1-1, &lflank_len);
+//            ru = alt;
+//            kstring_t str = {(size_t)lflank_len, (size_t)lflank_len, lflank};
+//            ++ru;
+//            kputs(ru, &str);
+//            lflank_len = str.m;
+//            lflank = str.s;
+//
+//            ref_genome = faidx_fetch_uc_seq(fai, chrom, start1, start1+100, &ref_genome_len);
+//            str.l=0; str.s=0; str.m=0;
+//            kputs(lflank, &str);
+//            kputs(ru, &str);
+//            kputs(ref_genome, &str);
+//
+//            free(ref_genome);
+//            ref_genome = str.s;
+//            ref_genome_len = str.l;
+//        }
+//    }
+
 }
 
 /**
