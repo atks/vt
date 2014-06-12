@@ -122,24 +122,24 @@ class Igor : Program
             odw->link_hdr(odr->hdr);
         }
 
-        bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_AC,Number=A,Type=Integer,Description=\"Alternate Allele Counts\">\n");
-        bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_AN,Number=1,Type=Integer,Description=\"Total Number Allele Counts\">\n");
-        bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_NS,Number=1,Type=Integer,Description=\"Number of Samples With Data\">\n");
-        bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_AF,Number=A,Type=Float,Description=\"Alternate Allele Frequency\">\n");
-        bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_GC,Number=G,Type=Integer,Description=\"Genotype Counts\">\n");
-        bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_GN,Number=1,Type=Integer,Description=\"Total Number of Genotypes Counts\">\n");
-        bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_GF,Number=G,Type=Float,Description=\"Genotype Frequency\">\n");
+        bcf_hdr_append(odw->hdr, "##INFO=<ID=AC,Number=A,Type=Integer,Description=\"Alternate Allele Counts\">\n");
+        bcf_hdr_append(odw->hdr, "##INFO=<ID=AN,Number=1,Type=Integer,Description=\"Total Number Allele Counts\">\n");
+        bcf_hdr_append(odw->hdr, "##INFO=<ID=NS,Number=1,Type=Integer,Description=\"Number of Samples With Data\">\n");
+        bcf_hdr_append(odw->hdr, "##INFO=<ID=AF,Number=A,Type=Float,Description=\"Alternate Allele Frequency\">\n");
+        bcf_hdr_append(odw->hdr, "##INFO=<ID=GC,Number=G,Type=Integer,Description=\"Genotype Counts\">\n");
+        bcf_hdr_append(odw->hdr, "##INFO=<ID=GN,Number=1,Type=Integer,Description=\"Total Number of Genotypes Counts\">\n");
+        bcf_hdr_append(odw->hdr, "##INFO=<ID=GF,Number=G,Type=Float,Description=\"Genotype Frequency\">\n");
         
-        bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_HWEAF,Number=A,Type=Float,Description=\"Genotype likelihood based MLE Allele Frequency assuming HWE\">\n");
-        bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_HWEGF,Number=G,Type=Float,Description=\"Genotype likelihood based MLE Genotype Frequency assuming HWE\">\n");
-        bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_MLEAF,Number=A,Type=Float,Description=\"Genotype likelihood based MLE Allele Frequency\">\n");
-        bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_MLEGF,Number=G,Type=Float,Description=\"Genotype likelihood based MLE Genotype Frequency\">\n");
-        bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_HWE_LLR,Number=1,Type=Float,Description=\"Genotype likelihood based Hardy Weinberg ln(Likelihood Ratio)\">\n");
-        bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_HWE_LPVAL,Number=1,Type=Float,Description=\"Genotype likelihood based Hardy Weinberg Likelihood Ratio Test Statistic ln(p-value)\">\n");
-        bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_HWE_DF,Number=1,Type=Integer,Description=\"Degrees of freedom for Genotype likelihood based Hardy Weinberg Likelihood Ratio Test Statistic\">\n");
-        bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_FIC,Number=1,Type=Float,Description=\"Genotype likelihood based Inbreeding Coefficient\">\n");
-        bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_AB,Number=1,Type=Float,Description=\"Genotype likelihood based Allele Balance\">\n");
-        bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_NS,Number=1,Type=Integer,Description=\"Number of Samples with information\">\n");
+        bcf_hdr_append(odw->hdr, "##INFO=<ID=HWEAF,Number=A,Type=Float,Description=\"Genotype likelihood based MLE Allele Frequency assuming HWE\">\n");
+        bcf_hdr_append(odw->hdr, "##INFO=<ID=HWEGF,Number=G,Type=Float,Description=\"Genotype likelihood based MLE Genotype Frequency assuming HWE\">\n");
+        bcf_hdr_append(odw->hdr, "##INFO=<ID=MLEAF,Number=A,Type=Float,Description=\"Genotype likelihood based MLE Allele Frequency\">\n");
+        bcf_hdr_append(odw->hdr, "##INFO=<ID=MLEGF,Number=G,Type=Float,Description=\"Genotype likelihood based MLE Genotype Frequency\">\n");
+        bcf_hdr_append(odw->hdr, "##INFO=<ID=HWE_LLR,Number=1,Type=Float,Description=\"Genotype likelihood based Hardy Weinberg ln(Likelihood Ratio)\">\n");
+        bcf_hdr_append(odw->hdr, "##INFO=<ID=HWE_LPVAL,Number=1,Type=Float,Description=\"Genotype likelihood based Hardy Weinberg Likelihood Ratio Test Statistic ln(p-value)\">\n");
+        bcf_hdr_append(odw->hdr, "##INFO=<ID=HWE_DF,Number=1,Type=Integer,Description=\"Degrees of freedom for Genotype likelihood based Hardy Weinberg Likelihood Ratio Test Statistic\">\n");
+        bcf_hdr_append(odw->hdr, "##INFO=<ID=FIC,Number=1,Type=Float,Description=\"Genotype likelihood based Inbreeding Coefficient\">\n");
+        bcf_hdr_append(odw->hdr, "##INFO=<ID=AB,Number=1,Type=Float,Description=\"Genotype likelihood based Allele Balance\">\n");
+        bcf_hdr_append(odw->hdr, "##INFO=<ID=NS,Number=1,Type=Integer,Description=\"Number of Samples with information\">\n");
 
         /////////////////////////
         //filter initialization//
@@ -227,17 +227,17 @@ class Igor : Program
             if (NS)
             {
                 int32_t* AC_PTR = &AC[1];
-                bcf_update_info_int32(odw->hdr, v, "VT_AC", AC_PTR, no_alleles-1);
-                bcf_update_info_int32(odw->hdr, v, "VT_AN", &AN, 1);
+                bcf_update_info_int32(odw->hdr, v, "AC", AC_PTR, no_alleles-1);
+                bcf_update_info_int32(odw->hdr, v, "AN", &AN, 1);
                 float* AF_PTR = &AF[1];
-                bcf_update_info_float(odw->hdr, v, "VT_AF", AF_PTR, no_alleles-1);
+                bcf_update_info_float(odw->hdr, v, "AF", AF_PTR, no_alleles-1);
                 if (GN)            
                 {
-                    bcf_update_info_int32(odw->hdr, v, "VT_GC", GC, no_genotypes);
-                    bcf_update_info_int32(odw->hdr, v, "VT_GN", &GN, 1);
-                    bcf_update_info_float(odw->hdr, v, "VT_GF", GF, no_genotypes);
+                    bcf_update_info_int32(odw->hdr, v, "GC", GC, no_genotypes);
+                    bcf_update_info_int32(odw->hdr, v, "GN", &GN, 1);
+                    bcf_update_info_float(odw->hdr, v, "GF", GF, no_genotypes);
                 }
-                bcf_update_info_int32(odw->hdr, v, "VT_NS", &NS, 1);
+                bcf_update_info_int32(odw->hdr, v, "NS", &NS, 1);
             }
  
             float MLE_HWE_AF[no_alleles];
@@ -247,8 +247,8 @@ class Igor : Program
             if (n)
             {
                 float* MLE_HWE_AF_PTR = &MLE_HWE_AF[1];
-                bcf_update_info_float(odw->hdr, v, "VT_HWEAF", MLE_HWE_AF_PTR, no_alleles-1);
-                bcf_update_info_float(odw->hdr, v, "VT_HWEGF", &MLE_HWE_GF, no_genotypes);
+                bcf_update_info_float(odw->hdr, v, "HWEAF", MLE_HWE_AF_PTR, no_alleles-1);
+                bcf_update_info_float(odw->hdr, v, "HWEGF", &MLE_HWE_GF, no_genotypes);
             }
 
             float MLE_AF[no_alleles];
@@ -258,8 +258,8 @@ class Igor : Program
             if (n)
             {
                 float* MLE_AF_PTR = &MLE_AF[1];
-                bcf_update_info_float(odw->hdr, v, "VT_MLEAF", MLE_AF_PTR, no_alleles-1);
-                bcf_update_info_float(odw->hdr, v, "VT_MLEGF", &MLE_GF, no_genotypes);
+                bcf_update_info_float(odw->hdr, v, "MLEAF", MLE_AF_PTR, no_alleles-1);
+                bcf_update_info_float(odw->hdr, v, "MLEGF", &MLE_GF, no_genotypes);
             }
 
             float lrts;
@@ -271,9 +271,9 @@ class Igor : Program
                                  lrts, logp, df);
             if (n)
             {
-                bcf_update_info_float(odw->hdr, v, "VT_HWE_LLR", &lrts, 1);
-                bcf_update_info_float(odw->hdr, v, "VT_HWE_LPVAL", &logp, 1);
-                bcf_update_info_int32(odw->hdr, v, "VT_HWE_DF", &df, 1);
+                bcf_update_info_float(odw->hdr, v, "HWE_LLR", &lrts, 1);
+                bcf_update_info_float(odw->hdr, v, "HWE_LPVAL", &logp, 1);
+                bcf_update_info_int32(odw->hdr, v, "HWE_DF", &df, 1);
             }
 
             float f;
@@ -283,7 +283,7 @@ class Igor : Program
                                f, n);
             if (n)
             {
-                bcf_update_info_float(odw->hdr, v, "VT_FIC", &f, 1);
+                bcf_update_info_float(odw->hdr, v, "FIC", &f, 1);
             }
 
             bcf_get_format_int32(odr->hdr, v, "DP", &dps, &n_dps);
@@ -297,7 +297,7 @@ class Igor : Program
                                    
                 if (n)
                 {
-                    bcf_update_info_float(odw->hdr, v, "VT_AB", &ab, 1);
+                    bcf_update_info_float(odw->hdr, v, "AB", &ab, 1);
                 }
             }
             

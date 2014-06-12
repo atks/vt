@@ -154,7 +154,7 @@ class Igor : Program
             {
                 if (bcf_hdr_id2int(odw->hdr, BCF_DT_SAMPLE, bcf_hdr_get_sample_name(sr->hdrs[i], j))==-1)
                 {
-                    std::cerr << "adding " << bcf_hdr_get_sample_name(sr->hdrs[i], j) << "\n";
+                   // std::cerr << "adding " << bcf_hdr_get_sample_name(sr->hdrs[i], j) << "\n";
 
                     bcf_hdr_add_sample(odw->hdr, bcf_hdr_get_sample_name(sr->hdrs[i], j));
                     ++no_samples;
@@ -171,6 +171,8 @@ class Igor : Program
         {
             bcf_hdr_append(odw->hdr, "##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">");
             bcf_hdr_append(odw->hdr, "##FORMAT=<ID=PL,Number=G,Type=Integer,Description=\"Normalized, Phred-scaled likelihoods for genotypes\">");
+            bcf_hdr_append(odw->hdr, "##FORMAT=<ID=DP,Number=1,Type=Integer,Description=\"Depth\">");
+        
         }
         odw->write_hdr();
 
@@ -231,6 +233,7 @@ class Igor : Program
                         else
                         {
                             pls[k*3] = bcf_int32_missing;
+                            pls[k*3+1] = bcf_int32_vector_end;
                         }
                         
                         if (n_dp)
@@ -239,7 +242,7 @@ class Igor : Program
                         }
                         else
                         {
-                            dps[k*3] = bcf_int32_missing;
+                            dps[k] = bcf_int32_missing;
                         }
                         
                         ++ngt;
@@ -247,11 +250,13 @@ class Igor : Program
 
                     free(gt); //is this necessary - check later
                     free(pl);
+                    free(dp);
                 }
 
                 bcf_update_genotypes(odw->hdr,nv,cgt,ngt*2);
                 bcf_update_format_int32(odw->hdr,nv,"PL",pls,ngt*3);
-
+                bcf_update_format_int32(odw->hdr,nv,"DP",dps,ngt);
+                
                 odw->write(nv);
             }
             else
