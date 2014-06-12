@@ -41,7 +41,7 @@ STRMotif::STRMotif(std::string& ref_fasta_file)
     {
         factors[i] = new int32_t[32];
         int32_t count = 0;
-
+        
         for (size_t j=1; j<=i; ++j)
         {
             if ((i%j)==0)
@@ -130,11 +130,6 @@ char** STRMotif::suggest_motifs(char** alleles, int32_t n_allele, int32_t &no_ca
         char *alt = alleles[i];
         int32_t alt_len = strlen(alleles[i]);
 
-        //skip if not indel
-        //if ()
-
-        //get length difference
-
         int32_t dlen = alt_len-ref_len;
 
         //extract fragment
@@ -193,10 +188,31 @@ void STRMotif::search_flanks(const char* chrom, int32_t start1, char* motif)
     //given chromosome position and motif
     //attempt to
 
-//    int32_t lflank_len, ref_genome_len;
-//    char* lflank, *ru, *rflank, *ref_genome;
-//    int32_t ru_len;
-//    std::string qual(2048, 'K');
+    //lfhmm
+    int32_t lflank_len, ref_len;
+    char* lflank, *ru, *rflank, *ref;
+    int32_t ru_len;
+    std::string qual(2048, 'K');
+
+    lflank = faidx_fetch_uc_seq(fai, chrom, start1-10, start1-1, &lflank_len);
+    ref = faidx_fetch_uc_seq(fai, chrom, start1-10, start1+100, &ref_len);
+    ++ru;
+
+    lfhmm->set_model(lflank, motif);
+    lfhmm->set_mismatch_penalty(5);
+    lfhmm->align(ref, qual.c_str());
+    lfhmm->print_alignment();
+
+    //extract rflank
+    //
+    
+    //rfhmm
+    rfhmm->set_model(rflank, motif);
+    rfhmm->set_mismatch_penalty(5);
+    rfhmm->align(ref, qual.c_str());
+    rfhmm->print_alignment();
+
+
 //
 //    //if insert, infuse a repeat unit
 //    //choose most appropriate motif
@@ -246,7 +262,7 @@ char* STRMotif::get_shortest_repeat_motif(char* allele, int32_t len)
 {
     std::cerr << "get shortest repeatmotif " << allele << " : " << len << "\n";
 
-    size_t i = 1;
+    size_t i = 0;
     size_t sub_motif_len;
     while ((sub_motif_len=factors[len][i])!=len)
     {

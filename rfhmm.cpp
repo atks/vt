@@ -76,13 +76,7 @@
  */
 RFHMM::RFHMM(bool debug)
 {
-    std::cerr << "NEW LOG TOOL MADE\n";
     lt = new LogTool();
-
-    std::cerr << "PL 100: " << lt->pl2log10_varp(100) << "\n";
-    std::cerr << "PL 42: " << lt->pl2log10_varp(42) << "\n";
-    std::cerr << "PL 10: " << lt->pl2log10_varp(10) << "\n";
-
     this-> debug = debug;
 };
 

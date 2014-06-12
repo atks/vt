@@ -61,7 +61,8 @@ SOURCES = program\
 		annotate_regions\
 		test\
 		str\
-		consolidate_variants
+		consolidate_variants\
+		genotype2
 
 SOURCESONLY = main.cpp
 

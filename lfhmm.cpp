@@ -334,7 +334,6 @@ void LFHMM::set_eta(float eta)
     par.eta = eta;
 }
 
-
 /**
  * Sets mismatch penalty.
  */
@@ -342,6 +341,102 @@ void LFHMM::set_mismatch_penalty(float mismatch_penalty)
 {
     par.mismatch_penalty = mismatch_penalty;
 }
+
+/**
+ * Get left flank start position for model.
+ */
+int32_t LFHMM::get_lflank_model_spos1()
+{
+    return lflank_start[MODEL];
+};
+
+/**
+ * Get left flank end position for model.
+ */
+int32_t LFHMM::get_lflank_model_epos1()
+{
+    return lflank_end[MODEL];
+};
+
+/**
+ * Get motif start position for model.
+ */
+int32_t LFHMM::get_motif_model_spos1()
+{
+    return motif_start[MODEL];
+};
+
+/**
+ * Get motif end position for model.
+ */
+int32_t LFHMM::get_motif_model_epos1()
+{
+    return motif_end[MODEL];
+};
+
+/**
+ * Get right flank start position for model.
+ */
+int32_t LFHMM::get_rflank_model_spos1()
+{
+    return rflank_start[MODEL];
+};
+
+/**
+ * Get right flank end position for model.
+ */
+int32_t LFHMM::get_rflank_model_epos1()
+{
+    return rflank_end[MODEL];
+};
+
+/**
+ * Get left flank start position for read.
+ */
+int32_t LFHMM::get_lflank_read_spos1()
+{
+    return lflank_start[READ];
+};
+
+/**
+ * Get left flank end position for read.
+ */
+int32_t LFHMM::get_lflank_read_epos1()
+{
+    return lflank_end[READ];
+};
+
+/**
+ * Get motif start position for read.
+ */
+int32_t LFHMM::get_motif_read_spos1()
+{
+    return motif_start[READ];
+};
+
+/**
+ * Get motif end position for read.
+ */
+int32_t LFHMM::get_motif_read_epos1()
+{
+    return motif_end[READ];
+};
+
+/**
+ * Get right flank start position for read.
+ */
+int32_t LFHMM::get_rflank_read_spos1()
+{
+    return rflank_start[READ];
+};
+
+/**
+ * Get right flank end position for read.
+ */
+int32_t LFHMM::get_rflank_read_epos1()
+{
+    return rflank_end[READ];
+};
 
 /**
  * Computes the score associated with the move from A to B
@@ -641,14 +736,44 @@ void LFHMM::trace_path()
  */
 void LFHMM::collect_statistics(int32_t src_t, int32_t des_t, int32_t j)
 {
-    //std::cerr << "\t " << track2string(src_t) << " (" << j << ") => " << track2string(des_t) << "\n";
+    std::cerr << "\t " << track2string(src_t) << " (" << j << ") => " << track2string(des_t) << "\n";
 
     int32_t src_u = track_get_u(src_t);
     int32_t des_u = track_get_u(des_t);
 
     if (src_u==E)
     {
+        if (des_u==Z)
+        {
+            rflank_end[MODEL] = NAN;
+            rflank_end[READ] = j+1;           
+        }
+        else if (des_u==M || des_u==D || des_u==I)
+        {
+            rflank_start[MODEL] = NAN;
+            rflank_start[READ] = NAN;
+            rflank_end[MODEL] = INFINITY;
+            rflank_end[READ] = INFINITY;   
 
+
+            std::cerr << std::setprecision(1) << std::fixed;
+            std::cerr << std::setw(8) << std::setprecision(2) << std::fixed  << ((float)rflank_start[MODEL]) << " " <<  ((float)rflank_end[MODEL]) << "\n";
+
+            motif_end[MODEL] = track_get_c(des_t);
+            motif_count = track_get_c(des_t);
+            motif_end[READ] = j;
+
+            //initialize array for tracking inexact repeats
+            for (int32_t k=1; k<=motif_count; ++k)
+            {
+                motif_discordance[k] = 0;
+            }
+
+            if (des_u==D || track_get_base(des_t)!=read[j-1])
+            {
+                ++motif_discordance[motif_count];
+            }
+        }
     }
     else if (src_u==Z)
     {
@@ -1045,10 +1170,11 @@ void LFHMM::print_alignment(std::string& pad)
     std::cerr << "mismatch penalty: " << par.mismatch_penalty << "\n";
     std::cerr << "\n";
     
-    std::cerr << "probe: " << "(" << lflank_start[MODEL] << "~" << lflank_end[MODEL] << ") "
+    std::cerr << "model: " << "(" << lflank_start[MODEL] << "~" << lflank_end[MODEL] << ") "
                           << "[" << motif_start[MODEL] << "~" << motif_end[MODEL] << "]\n";
     std::cerr << "read : " << "(" << lflank_start[READ] << "~" << lflank_end[READ] << ") "
-                          << "[" << motif_start[READ] << "~" << motif_end[READ] << "]\n";
+                          << "[" << motif_start[READ] << "~" << motif_end[READ] << "]"
+                          << "[" << rflank_start[READ] << "~" << rflank_end[READ] << "]\n";
     std::cerr << "\n";
     std::cerr << "motif #           : " << motif_count << " [" << motif_start[READ] << "," << motif_end[READ] << "]\n";
 

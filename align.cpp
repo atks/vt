@@ -92,12 +92,12 @@ class Igor : Program
             TCLAP::ValueArg<std::string> arg_lflank("l", "l", "left flanks", false, "", "string");
             TCLAP::ValueArg<std::string> arg_ru("u", "u", "repeat unit", false, "", "string");
             TCLAP::ValueArg<std::string> arg_rflank("r", "r", "right flanks", false, "", "string");
-            TCLAP::ValueArg<float> arg_delta("p", "p", "delta", false, -1, "float");
-            TCLAP::ValueArg<float> arg_epsilon("p", "p", "epsilon", false, -1, "float");
-            TCLAP::ValueArg<float> arg_tau("p", "p", "tau", false, -1, "float");
-            TCLAP::ValueArg<float> arg_eta("p", "p", "eta", false, -1, "float");
+            TCLAP::ValueArg<float> arg_delta("d", "d", "delta", false, -1, "float");
+            TCLAP::ValueArg<float> arg_epsilon("e", "e", "epsilon", false, -1, "float");
+            TCLAP::ValueArg<float> arg_tau("t", "t", "tau", false, -1, "float");
+            TCLAP::ValueArg<float> arg_eta("n", "n", "eta", false, -1, "float");
             TCLAP::ValueArg<float> arg_mismatch_penalty("p", "p", "mismatch penalty", false, 1, "float");
-            TCLAP::SwitchArg arg_debug("d", "d", "debug mode", false);
+            TCLAP::SwitchArg arg_debug("v", "v", "debug mode", false);
 
             cmd.add(arg_method);
             cmd.add(arg_x);
