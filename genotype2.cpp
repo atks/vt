@@ -45,9 +45,10 @@ class Igor
     ///////
     //i/o//
     ///////
-    vcfFile *ivcf;
-    bcf_hdr_t *ivcf_hdr;
+    BCFOrderedReader *odr;
     bcf1_t *ivcf_rec;
+
+    BCFOrderedWriter* odw;
 
     vcfFile *ovcf;
     bcf_hdr_t *ovcf_hdr;
@@ -58,6 +59,8 @@ class Igor
     hts_idx_t *isam_idx;
     bam1_t *srec;
 
+    std::vector<GenomeInterval> intervals;
+    
     /////////
     //stats//
     /////////
@@ -116,8 +119,7 @@ e.g. $path/vt genotype -i $path/test/probes.sites.vcf -o out.vcf -b $path/test/N
         //i/o initialization//
         //////////////////////
         //input vcf
-        ivcf = vcf_open(ivcf_file.c_str(), "r");
-        ivcf_hdr = vcf_hdr_read(ivcf);
+        odr = new BCFOrderedReader(ivcf_file, intervals);
         ivcf_rec = bcf_init1();
 
         //input sam
@@ -132,32 +134,27 @@ e.g. $path/vt genotype -i $path/test/probes.sites.vcf -o out.vcf -b $path/test/N
         srec = bam_init1();
 
         //output vcf
-        ovcf = vcf_open(ovcf_file.c_str(), "w");
-        ovcf_hdr = bcf_hdr_init("w");
+        odw = new BCFOrderedWriter(ovcf_file);
+        odw->set_hdr(odr->hdr);        
+        bcf_hdr_remove(odw->hdr, BCF_HL_INFO, "SAMPLES");
+        bcf_hdr_remove(odw->hdr, BCF_HL_INFO, "NSAMPLES");
+        bcf_hdr_remove(odw->hdr, BCF_HL_INFO, "E");
+        bcf_hdr_remove(odw->hdr, BCF_HL_INFO, "N");
+        bcf_hdr_remove(odw->hdr, BCF_HL_INFO, "ESUM");
+        bcf_hdr_remove(odw->hdr, BCF_HL_INFO, "NSUM");
+        bcf_hdr_remove(odw->hdr, BCF_HL_INFO, "AF");
+        bcf_hdr_remove(odw->hdr, BCF_HL_INFO, "LR");
+        bcf_hdr_remove(odw->hdr, BCF_HL_INFO, "REFPROBE");
+        bcf_hdr_remove(odw->hdr, BCF_HL_INFO, "ALTPROBE");
+        bcf_hdr_remove(odw->hdr, BCF_HL_INFO, "PLEN");
         //added sample early, appending of HLs ensures syncing of the dictionaries.
-        bcf_hdr_add_sample(ovcf_hdr, strdup(sample_id.c_str()));
-        bcf_hdr_append(ovcf_hdr, "##fileformat=VCFv4.1");
-        bcf_hdr_append(ovcf_hdr, "##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">");
-        //bcf_hdr_append(ovcf_hdr, "##FORMAT=<ID=GL,Number=G,Type=Float,Description=\"Log likelihoods for genotypes\">");
-        bcf_hdr_append(ovcf_hdr, "##FORMAT=<ID=PL,Number=G,Type=Integer,Description=\"Normalized, Phred-scaled likelihoods for genotypes\">");
-        bcf_hdr_append(ovcf_hdr, "##FORMAT=<ID=DP,Number=1,Type=String,Description=\"Depth\">");
-        bcf_hdr_append(ovcf_hdr, "##FORMAT=<ID=RQ,Number=1,Type=String,Description=\"Normalized, Phred-scaled likelihoods for alleles for each reference read\">");
-        bcf_hdr_append(ovcf_hdr, "##FORMAT=<ID=AQ,Number=1,Type=String,Description=\"Normalized, Phred-scaled likelihoods for alleles for each alternate read\">");
-        bcf_hdr_append(ovcf_hdr, "##FORMAT=<ID=AL,Number=1,Type=String,Description=\"Allele called for each read\">");
-        bcf_hdr_append(ovcf_hdr, "##FORMAT=<ID=CY,Number=1,Type=String,Description=\"Cycle for the location of each variant on each read\">");
-        bcf_hdr_append(ovcf_hdr, "##FORMAT=<ID=RL,Number=1,Type=String,Description=\"Length of each read\">");
-        bcf_hdr_append(ovcf_hdr, "##FORMAT=<ID=MQ,Number=1,Type=String,Description=\"Normalized, Phred-scaled alignment likelihoods for each read\">");
-        vcf_hdr_write(ovcf, ovcf_hdr);
-        ovcf_rec = bcf_init1();
-
-        //##INFO=<ID=NS,Number=1,Type=Integer,Description="Number of Samples With Data">
-        //##INFO=<ID=DP,Number=1,Type=Integer,Description="Total Depth">
-        //##INFO=<ID=AF,Number=A,Type=Float,Description="Allele Frequency">
-        //##INFO=<ID=AA,Number=1,Type=String,Description="Ancestral Allele">
-        //##INFO=<ID=DB,Number=0,Type=Flag,Description="dbSNP membership, build 129">
-        //##INFO=<ID=H2,Number=0,Type=Flag,Description="HapMap2 membership">
-        //##FILTER=<ID=q10,Description="Quality below 10">
-        //##FILTER=<ID=s50,Description="Less than 50% of samples have data">
+        bcf_hdr_add_sample(odw->hdr, strdup(sample_id.c_str()));
+        bcf_hdr_append(odw->hdr, "##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">");
+        bcf_hdr_append(odw->hdr, "##FORMAT=<ID=PL,Number=G,Type=Integer,Description=\"Normalized, Phred-scaled likelihoods for genotypes\">");
+        bcf_hdr_append(odw->hdr, "##FORMAT=<ID=DP,Number=1,Type=String,Description=\"Depth\">");
+        
+        odw->write_hdr();
+        ovcf_rec = odw->get_bcf1_from_pool();
 
         ////////////////////////
         //stats initialization//
@@ -192,9 +189,7 @@ e.g. $path/vt genotype -i $path/test/probes.sites.vcf -o out.vcf -b $path/test/N
 
  	~Igor()
     {
-       vcf_close(ivcf);
        sam_close(isam);
-       vcf_close(ovcf);
     };
 
     /**
@@ -462,13 +457,13 @@ e.g. $path/vt genotype -i $path/test/probes.sites.vcf -o out.vcf -b $path/test/N
     		cys.str("");
     		mqs.str("");
 
-            const char* chrom = bcf_get_chrom(ivcf_hdr, ivcf_rec);
+            const char* chrom = bcf_get_chrom(odr->hdr, ivcf_rec);
             uint32_t pos = bcf_get_pos0(ivcf_rec);
             char ref = bcf_get_snp_ref(ivcf_rec);
             char alt = bcf_get_snp_alt(ivcf_rec);
             uint32_t read_no = 0;
 
-            if (!(iter = bam_itr_queryi(isam_idx, bam_name2id(isam_hdr, bcf_get_chrom(ivcf_hdr, ivcf_rec)), ivcf_rec->pos, ivcf_rec->pos+1)))
+            if (!(iter = bam_itr_queryi(isam_idx, bam_name2id(isam_hdr, bcf_get_chrom(odr->hdr, ivcf_rec)), ivcf_rec->pos, ivcf_rec->pos+1)))
             {
                 std::cerr << "fail to parse regions\n";
                 abort();    
@@ -657,19 +652,13 @@ e.g. $path/vt genotype -i $path/test/probes.sites.vcf -o out.vcf -b $path/test/N
 
     		std::stringstream ss;
     		ss << chrom << "\t" << (pos+1) << "\t.\t" << ref
-    				<< "\t" << alt << "\t.\t.\t." << "\tGT:PL:DP:RQ:AQ:AL:CY:RL:MQ\t";
+    				<< "\t" << alt << "\t.\t.\t." << "\tGT:PL:DP\t";
 
     		if (read_no!=0)
     		{
     			ss << bestGenotype << ":"
     			   << pl_rr << "," << pl_ra << "," << pl_aa << ":"
-    		       << read_no << ":"
-    		       << rqs.str() << ":"
-    		       << aqs.str() << ":"
-    		       << als.str() << ":"
-    		       << cys.str() << ":"
-    		       << rls.str() << ":"
-    			   << mqs.str() ;
+    		       << read_no;
     		}
     		else
     		{
@@ -702,21 +691,7 @@ e.g. $path/vt genotype -i $path/test/probes.sites.vcf -o out.vcf -b $path/test/N
             double log_p_ra = 0;
             double log_p_aa = 0;
 
-            std::stringstream rqs;
-         	std::stringstream aqs;
-         	std::stringstream als;
-        	std::stringstream rls;
-            std::stringstream cys;
-        	std::stringstream mqs;
-
-        	rqs.str("");
-    		aqs.str("");
-    		als.str("");
-    		rls.str("");
-    		cys.str("");
-    		mqs.str("");
-
-            const char* chrom = bcf_get_chrom(ivcf_hdr, ivcf_rec);
+            const char* chrom = bcf_get_chrom(odr->hdr, ivcf_rec);
             uint32_t pos = bcf_get_pos0(ivcf_rec);
             char* ref = bcf_get_ref(ivcf_rec);
             char* alt = bcf_get_alt(ivcf_rec, 1);
@@ -747,7 +722,7 @@ e.g. $path/vt genotype -i $path/test/probes.sites.vcf -o out.vcf -b $path/test/N
             //int32_t variantStartPos = pos;
             int32_t variantLengthDifference = (int32_t)strlen(alt)-(int32_t)strlen(ref);
 
-            if (!(iter = bam_itr_queryi(isam_idx, bam_name2id(isam_hdr, bcf_get_chrom(ivcf_hdr, ivcf_rec)), ivcf_rec->pos, ivcf_rec->pos+1)))
+            if (!(iter = bam_itr_queryi(isam_idx, bam_name2id(isam_hdr, bcf_get_chrom(odr->hdr, ivcf_rec)), ivcf_rec->pos, ivcf_rec->pos+1)))
             {
                 std::cerr << "fail to parse regions\n";
             }
@@ -1009,18 +984,7 @@ e.g. $path/vt genotype -i $path/test/probes.sites.vcf -o out.vcf -b $path/test/N
               	    baseqr = round(-10*(refllk-altllk));
                 }
 
-                rqs << (uint8_t)(baseqr>67? 126 : baseqr+59);
-    			aqs << (uint8_t)(baseqa>67? 126 : baseqa+59);
-    			als << allele;
-    			uint8_t cy1 = cycle > 67 ? 126 : cycle+59;
-    			uint8_t cy2 = cycle > 67 ? cycle-67+59 : 59;
-    			cys << cy1 << cy2;
-    			uint8_t rl1 = readLength > 67 ? 126 : readLength+59;
-    			uint8_t rl2 = readLength > 67 ? readLength-67+59 : 59;
-    			rls << rl1 << rl2;
-    			mqs << (uint8_t) (mapQual+59);
-
-    			++read_no;
+                ++read_no;
             }
 
             //////////////////////////////////////////
@@ -1031,14 +995,17 @@ e.g. $path/vt genotype -i $path/test/probes.sites.vcf -o out.vcf -b $path/test/N
     		uint32_t pl_aa = (uint32_t) round(-10*log_p_aa);
 
     		uint32_t min = pl_rr;
+    		int32_t gt = bcf_gt_unphased(0);
     		std::string bestGenotype = "0/0";
     		if (pl_ra < min)
     		{
+    		    gt = bcf_gt_unphased(1);
     		    min = pl_ra;
     		    bestGenotype = "0/1";
     		}
     		if (pl_aa < min)
     		{
+    		    gt = bcf_gt_unphased(2);
     		    min = pl_aa;
     		    bestGenotype = "1/1";
     		}
@@ -1049,37 +1016,32 @@ e.g. $path/vt genotype -i $path/test/probes.sites.vcf -o out.vcf -b $path/test/N
 
     		if (pl_rr+pl_ra+pl_aa==0)
     		{
+    		    gt = bcf_gt_unphased(-1);
     		    bestGenotype = "./.";
     	    }
 
-    		std::stringstream ss;
-    		ss << chrom << "\t" << (pos+1) << "\t.\t" << ref
-    				<< "\t" << alt << "\t.\t.\t." << "\tGT:PL:DP:RQ:AQ:AL:CY:RL:MQ\t";
-
-            //std::cerr << "reads " << read_no << "\n";
-
+            bcf_set_rid(ovcf_rec, bcf_get_rid(ivcf_rec));
+    		bcf_set_pos1(ovcf_rec, bcf_get_pos0(ivcf_rec));
+    		bcf_update_alleles(odw->hdr, ovcf_rec, const_cast<const char**>(bcf_get_allele(ivcf_rec)), bcf_get_n_allele(ivcf_rec));
+    		
     		if (read_no!=0)
     		{
-    			ss << bestGenotype << ":"
-    			   << pl_rr << "," << pl_ra << "," << pl_aa << ":"
-    		       << read_no << ":"
-    		       << rqs.str() << ":"
-    		       << aqs.str() << ":"
-    		       << als.str() << ":"
-    		       << cys.str() << ":"
-    		       << rls.str() << ":"
-    			   << mqs.str() ;
+    		    int32_t PLs[3];
+    		    PLs[0] = pl_rr;
+    		    PLs[1] = pl_ra;
+    		    PLs[2] = pl_aa;
+    		    
+    		    bcf_update_genotypes(odw->hdr, ovcf_rec, &gt, 2); 
+    		    bcf_update_format_int32(odw->hdr, ovcf_rec, "PL", &PLs, 3);    		    
+    		    bcf_update_format_int32(odw->hdr, ovcf_rec, "DP", &read_no, 1);
     		}
     		else
     		{
-    			ss << "./.";
+    		    bcf_update_genotypes(odw->hdr, ovcf_rec, &gt, 2); 
     		}
 
-    		kstring_t str;
-    		str.l = str.m = 0; str.s = 0;
-    		kputs(ss.str().c_str(), &str);
-    		vcf_parse1(&str, ovcf_hdr, ovcf_rec);
-    		vcf_write1(ovcf, ovcf_hdr, ovcf_rec);
+    		odw->write(ovcf_rec);
+    		ovcf_rec = odw->get_bcf1_from_pool();
         }
         else
         {
@@ -1089,7 +1051,7 @@ e.g. $path/vt genotype -i $path/test/probes.sites.vcf -o out.vcf -b $path/test/N
 
     void genotype()
     {
-        while (vcf_read1(ivcf, ivcf_hdr, ivcf_rec)==0)
+        while (odr->read(ivcf_rec))
         {
             bcf_unpack(ivcf_rec, BCF_UN_STR);
             int type = bcf_get_variant_types(ivcf_rec);
@@ -1097,7 +1059,7 @@ e.g. $path/vt genotype -i $path/test/probes.sites.vcf -o out.vcf -b $path/test/N
             if (type == VCF_SNP)
             {
                 ++no_snps_genotyped;
-                genotype_snp();
+                //genotype_snp();
             }
             else if (type == VCF_MNP)
             {
@@ -1113,6 +1075,9 @@ e.g. $path/vt genotype -i $path/test/probes.sites.vcf -o out.vcf -b $path/test/N
                 //std::cerr << ivcf_
             }
         }
+        
+        odr->close();
+        odw->close();
     }
 
     private:
