@@ -209,7 +209,7 @@ class Igor : Program
 
                     int32_t *pl = NULL;
                     n=0;
-                    bcf_get_format_int32(h, v, "PL",&pl, &n);
+                    bcf_get_format_int32(h, v, "PL", &pl, &n);
 
                     for (int32_t j=0; j<bcf_hdr_nsamples(h); ++j)
                     {
@@ -217,10 +217,17 @@ class Igor : Program
                         cgt[k*2] = gt[j*2];
                         cgt[k*2+1] = gt[j*2+1];
 
-                        pls[k*3] = pl[j*2];
-                        pls[k*3+1] = pl[j*2+1];
-                        pls[k*3+2] = pl[j*2+2];
-
+                        if (n)
+                        {
+                            pls[k*3] = pl[j*3];
+                            pls[k*3+1] = pl[j*3+1];
+                            pls[k*3+2] = pl[j*3+2];
+                        }
+                        else
+                        {
+                            pls[k*3] = bcf_int32_vector_end;
+                        }
+                        
                         ++ngt;
                     }
 
