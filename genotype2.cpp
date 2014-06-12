@@ -151,7 +151,7 @@ e.g. $path/vt genotype -i $path/test/probes.sites.vcf -o out.vcf -b $path/test/N
         bcf_hdr_add_sample(odw->hdr, strdup(sample_id.c_str()));
         bcf_hdr_append(odw->hdr, "##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">");
         bcf_hdr_append(odw->hdr, "##FORMAT=<ID=PL,Number=G,Type=Integer,Description=\"Normalized, Phred-scaled likelihoods for genotypes\">");
-        bcf_hdr_append(odw->hdr, "##FORMAT=<ID=DP,Number=1,Type=String,Description=\"Depth\">");
+        bcf_hdr_append(odw->hdr, "##FORMAT=<ID=DP,Number=1,Type=Integer,Description=\"Depth\">");
         
         odw->write_hdr();
         ovcf_rec = odw->get_bcf1_from_pool();
