@@ -29,6 +29,7 @@
 #include "annotate_variants.h"
 #include "annotate_str.h"
 #include "genotype.h"
+#include "genotype2.h"
 #include "merge_candidate_variants.h"
 #include "merge.h"
 #include "concat.h"
@@ -177,7 +178,7 @@ int main(int argc, char ** argv)
     }
     else if (argc>1 && cmd=="genotype")
     {
-        genotype(argc-1, ++argv);
+        genotype2(argc-1, ++argv);
     }
     else if (argc>1 && cmd=="construct_probes")
     {

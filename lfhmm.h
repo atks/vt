@@ -206,6 +206,66 @@ class LFHMM
     void set_mismatch_penalty(float mismatch_penalty);
 
     /**
+     * Get left flank start position for model.
+     */
+    int32_t get_lflank_model_spos1();
+
+    /**
+     * Get left flank end position for model.
+     */
+    int32_t get_lflank_model_epos1();
+    
+    /**
+     * Get motif start position for model.
+     */
+    int32_t get_motif_model_spos1();
+
+    /**
+     * Get motif end position for model.
+     */
+    int32_t get_motif_model_epos1();
+
+    /**
+     * Get right flank start position for model.
+     */
+    int32_t get_rflank_model_spos1();
+
+    /**
+     * Get right flank end position for model.
+     */
+    int32_t get_rflank_model_epos1();
+
+    /**
+     * Get left flank start position for read.
+     */
+    int32_t get_lflank_read_spos1();
+
+    /**
+     * Get left flank end position for read.
+     */
+    int32_t get_lflank_read_epos1();
+
+    /**
+     * Get motif start position for read.
+     */
+    int32_t get_motif_read_spos1();
+
+    /**
+     * Get motif end position for read.
+     */
+    int32_t get_motif_read_epos1();
+    
+    /**
+     * Get right flank start position for read.
+     */
+    int32_t get_rflank_read_spos1();
+
+    /**
+     * Get right flank end position for read.
+     */
+    int32_t get_rflank_read_epos1();
+    
+    /**
      * Computes the score associated with the move from A to B
      * Updates the max_score and associated max_track.
      *
