@@ -177,6 +177,7 @@ class Igor : Program
         std::vector<bcfptr*> current_recs;
         int32_t *cgt = (int32_t*) malloc(no_samples*2*sizeof(int32_t));
         int32_t *pls = (int32_t*) malloc(no_samples*3*sizeof(int32_t));
+        int32_t *dps = (int32_t*) malloc(no_samples*sizeof(int32_t));
         int ncount =0;
 
         std::vector<bcfptr*> sample2record(no_samples, NULL);
@@ -208,8 +209,12 @@ class Igor : Program
                     ploidy /= bcf_hdr_nsamples(h);
 
                     int32_t *pl = NULL;
-                    n=0;
-                    bcf_get_format_int32(h, v, "PL", &pl, &n);
+                    int32_t n_pl=0;
+                    bcf_get_format_int32(h, v, "PL", &pl, &n_pl);
+
+                    int32_t *dp = NULL;
+                    int32_t n_dp=0;
+                    bcf_get_format_int32(h, v, "DP", &dp, &n_dp);
 
                     for (int32_t j=0; j<bcf_hdr_nsamples(h); ++j)
                     {
@@ -217,7 +222,7 @@ class Igor : Program
                         cgt[k*2] = gt[j*2];
                         cgt[k*2+1] = gt[j*2+1];
 
-                        if (n)
+                        if (n_pl)
                         {
                             pls[k*3] = pl[j*3];
                             pls[k*3+1] = pl[j*3+1];
@@ -225,7 +230,16 @@ class Igor : Program
                         }
                         else
                         {
-                            pls[k*3] = bcf_int32_vector_end;
+                            pls[k*3] = bcf_int32_missing;
+                        }
+                        
+                        if (n_dp)
+                        {
+                            dps[k] = dp[j];
+                        }
+                        else
+                        {
+                            dps[k*3] = bcf_int32_missing;
                         }
                         
                         ++ngt;
