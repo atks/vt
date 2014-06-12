@@ -709,16 +709,6 @@ e.g. $path/vt genotype -i $path/test/probes.sites.vcf -o out.vcf -b $path/test/N
     		const char* altProbe = probes[1].c_str();
     		int32_t probeLength = probes[0].size();
 
-//            if (pos!=62812113)
-//            {
-//                return;
-//            }
-//
-//            std::cerr << "ref: " << refProbe << "\n";
-//            std::cerr << "alt: " << altProbe << "\n";
-//            std::cerr << "len: " << probeLength << "\n";
-//            std::cerr << "plen: " << plen << "\n";
-
             //int32_t variantStartPos = pos;
             int32_t variantLengthDifference = (int32_t)strlen(alt)-(int32_t)strlen(ref);
 
@@ -995,17 +985,21 @@ e.g. $path/vt genotype -i $path/test/probes.sites.vcf -o out.vcf -b $path/test/N
     		uint32_t pl_aa = (uint32_t) round(-10*log_p_aa);
 
     		uint32_t min = pl_rr;
-    		int32_t gt = bcf_gt_unphased(0);
+    		int32_t gt[2];
+    		gt[0] = bcf_gt_unphased(0);
+    		gt[1] = bcf_gt_unphased(0);
     		std::string bestGenotype = "0/0";
     		if (pl_ra < min)
     		{
-    		    gt = bcf_gt_unphased(1);
+        		gt[0] = bcf_gt_unphased(0);
+        		gt[1] = bcf_gt_unphased(1);
     		    min = pl_ra;
     		    bestGenotype = "0/1";
     		}
     		if (pl_aa < min)
     		{
-    		    gt = bcf_gt_unphased(2);
+        		gt[0] = bcf_gt_unphased(1);
+        		gt[1] = bcf_gt_unphased(1);
     		    min = pl_aa;
     		    bestGenotype = "1/1";
     		}
@@ -1016,7 +1010,8 @@ e.g. $path/vt genotype -i $path/test/probes.sites.vcf -o out.vcf -b $path/test/N
 
     		if (pl_rr+pl_ra+pl_aa==0)
     		{
-    		    gt = bcf_gt_unphased(-1);
+    		    gt[0] = bcf_gt_unphased(-1);
+    		    gt[1] = bcf_gt_unphased(-1);
     		    bestGenotype = "./.";
     	    }
 
