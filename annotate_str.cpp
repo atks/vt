@@ -156,11 +156,7 @@ class Igor : Program
             if (vtype&VT_INDEL)
             {
                 bcf_print(odr->hdr, v);
-                
-                
                 strm->annotate(odr->hdr, v);
-                //fill in logic for updating
-                
                 
                 
                 ++no_variants_annotated;

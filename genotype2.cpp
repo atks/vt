@@ -26,7 +26,7 @@
 namespace
 {
 
-class Igor
+class Igor : Program
 {
     public:
 
@@ -86,28 +86,29 @@ class Igor
         //////////////////////////
     	try
     	{
-    		std::string desc =
-"Genotypes variants for each sample.\n\
-$path = /net/fantasia/home/atks/programs/vt\n\
-e.g. $path/vt genotype -i $path/test/probes.sites.vcf -o out.vcf -b $path/test/NA19130.bam -s NA19130 -g ref.fa\n\n";
-
+    		std::string desc = "Genotypes variants for each sample.\n";
+    		    
        		version = "0.5";
     		TCLAP::CmdLine cmd(desc, ' ', version);
-    		TCLAP::ValueArg<std::string> arg_ivcf_file("i", "input-candidate-vcf", "Input Candidate VCF file", true, "", "string", cmd);
-    		TCLAP::ValueArg<std::string> arg_isam_file("b", "input-bam", "Input BAM file", true, "", "string", cmd);
+    		VTOutput my; cmd.setOutput(&my);
+            TCLAP::ValueArg<std::string> arg_intervals("i", "i", "intervals []", false, "", "str", cmd);
+            TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "file", cmd);
+            TCLAP::ValueArg<std::string> arg_isam_file("b", "input-bam", "Input BAM file", true, "", "string", cmd);
     		TCLAP::ValueArg<std::string> arg_ovcf_file("o", "output-vcf", "Output VCF file", false, "-", "string", cmd);
     		TCLAP::ValueArg<std::string> arg_sample_id("s", "sample-id", "Sample ID", true, "", "string", cmd);
     		TCLAP::ValueArg<std::string> arg_ref_fasta_file("g", "genome-fa", "Genome FASTA file", false, "/net/fantasia/home/atks/ref/genome/human.g1k.v37.fa", "string", cmd);
     		TCLAP::SwitchArg arg_debug("d", "debug", "Debug alignments", cmd, false);
+            TCLAP::UnlabeledValueArg<std::string> arg_input_vcf_file("<in.vcf>", "input VCF file", true, "","file", cmd);
 
     		cmd.parse(argc, argv);
 
-    		ivcf_file = arg_ivcf_file.getValue();
     		isam_file = arg_isam_file.getValue();
     		ovcf_file = arg_ovcf_file.getValue();
     		sample_id = arg_sample_id.getValue();
-    		ref_fasta_file = arg_ref_fasta_file.getValue();
-    		debug = arg_debug.getValue();
+    		parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
+            ref_fasta_file = arg_ref_fasta_file.getValue();
+    		ivcf_file = arg_input_vcf_file.getValue();
+            debug = arg_debug.getValue();
     	}
     	catch (TCLAP::ArgException &e)
     	{
