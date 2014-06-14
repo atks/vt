@@ -93,11 +93,11 @@ class Igor : Program
     		VTOutput my; cmd.setOutput(&my);
             TCLAP::ValueArg<std::string> arg_intervals("i", "i", "intervals []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "file", cmd);
-            TCLAP::ValueArg<std::string> arg_isam_file("b", "input-bam", "Input BAM file", true, "", "string", cmd);
-    		TCLAP::ValueArg<std::string> arg_ovcf_file("o", "output-vcf", "Output VCF file", false, "-", "string", cmd);
-    		TCLAP::ValueArg<std::string> arg_sample_id("s", "sample-id", "Sample ID", true, "", "string", cmd);
-    		TCLAP::ValueArg<std::string> arg_ref_fasta_file("g", "genome-fa", "Genome FASTA file", false, "/net/fantasia/home/atks/ref/genome/human.g1k.v37.fa", "string", cmd);
-    		TCLAP::SwitchArg arg_debug("d", "debug", "Debug alignments", cmd, false);
+            TCLAP::ValueArg<std::string> arg_isam_file("b", "b", "input BAM file", true, "", "string", cmd);
+    		TCLAP::ValueArg<std::string> arg_ovcf_file("o", "o", "output VCF file", false, "-", "string", cmd);
+    		TCLAP::ValueArg<std::string> arg_sample_id("s", "s", "sample ID", true, "", "string", cmd);
+    		TCLAP::ValueArg<std::string> arg_ref_fasta_file("r", "r", "reference FASTA file", false, "/net/fantasia/home/atks/ref/genome/human.g1k.v37.fa", "string", cmd);
+    		TCLAP::SwitchArg arg_debug("d", "d", "debug alignments", cmd, false);
             TCLAP::UnlabeledValueArg<std::string> arg_input_vcf_file("<in.vcf>", "input VCF file", true, "","file", cmd);
 
     		cmd.parse(argc, argv);
