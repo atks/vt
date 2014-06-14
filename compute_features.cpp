@@ -186,7 +186,6 @@ class Igor : Program
             variant.clear();
             bool printed = false;
 
-            ++no_variants;
             vm->classify_variant(h, v, variant);
             if (filter_exists && !filter.apply(h,v,&variant))
             {
