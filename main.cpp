@@ -180,6 +180,10 @@ int main(int argc, char ** argv)
     {
         genotype2(argc-1, ++argv);
     }
+    else if (argc>1 && cmd=="characterize")
+    {
+        genotype(argc-1, ++argv);
+    }
     else if (argc>1 && cmd=="construct_probes")
     {
         construct_probes(argc-1, ++argv);

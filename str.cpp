@@ -194,8 +194,11 @@ void STRMotif::search_flanks(const char* chrom, int32_t start1, char* motif)
     int32_t ru_len;
     std::string qual(2048, 'K');
 
-    lflank = faidx_fetch_uc_seq(fai, chrom, start1-10, start1-1, &lflank_len);
-    ref = faidx_fetch_uc_seq(fai, chrom, start1-10, start1+100, &ref_len);
+    //make left flank
+
+    lflank = faidx_fetch_seq(fai, chrom, start1-10, start1-1, &lflank_len);
+    
+    ref = faidx_fetch_seq(fai, chrom, start1-10, start1+100, &ref_len);
     ++ru;
 
     lfhmm->set_model(lflank, motif);
@@ -203,11 +206,19 @@ void STRMotif::search_flanks(const char* chrom, int32_t start1, char* motif)
     lfhmm->align(ref, qual.c_str());
     lfhmm->print_alignment();
 
+    //get genome position of right flank
+    //lflank->
+
     //extract rflank
-    //
+    //pick flank
+    lflank = faidx_fetch_uc_seq(fai, chrom, start1-10, start1-1, &lflank_len);
+    
+    
+    
+    
     
     //rfhmm
-    rfhmm->set_model(rflank, motif);
+    rfhmm->set_model(motif, rflank);
     rfhmm->set_mismatch_penalty(5);
     rfhmm->align(ref, qual.c_str());
     rfhmm->print_alignment();

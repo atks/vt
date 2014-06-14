@@ -78,6 +78,7 @@ RFHMM::RFHMM(bool debug)
 {
     lt = new LogTool();
     this-> debug = debug;
+    initialize();
 };
 
 /**
@@ -87,6 +88,7 @@ RFHMM::RFHMM(LogTool *lt, bool debug)
 {
     this->lt = lt;
     this-> debug = debug;
+    initialize();
 };
 
 /**
@@ -317,6 +319,8 @@ void RFHMM::set_model(const char* motif, const char* rflank)
     if (model[LFLANK]) free(model[LFLANK]);
     if (model[MOTIF]) free(model[MOTIF]);
     if (model[RFLANK]) free(model[RFLANK]);
+
+    std::cerr << "size of model " << sizeof(model)  << " " << motif << " " << rflank << "\n";
 
     model[MOTIF] = strdup(motif);
     model[RFLANK] = strdup(rflank);
