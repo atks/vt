@@ -153,6 +153,8 @@ class Igor : Program
         bcf_hdr_append(odw->hdr, "##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">");
         bcf_hdr_append(odw->hdr, "##FORMAT=<ID=PL,Number=G,Type=Integer,Description=\"Normalized, Phred-scaled likelihoods for genotypes\">");
         bcf_hdr_append(odw->hdr, "##FORMAT=<ID=DP,Number=1,Type=Integer,Description=\"Depth\">");
+        bcf_hdr_append(odw->hdr, "##FORMAT=<ID=AD,Number=3,Type=Integer,Description=\"Allele Depth\">");
+        bcf_hdr_append(odw->hdr, "##FORMAT=<ID=GQ,Number=1,Type=Integer,Description=\"Genotype Quality\">");
         
         odw->write_hdr();
         ovcf_rec = odw->get_bcf1_from_pool();
@@ -721,6 +723,9 @@ class Igor : Program
             //bool readIsExtended = false;
 
             uint32_t read_no = 0;
+            uint32_t r_no = 0;
+            uint32_t a_no = 0;
+            uint32_t n_no = 0;
             while(bam_itr_next(isam, iter, srec)>=0)
             {
                 //has secondary alignment or fail QC or is duplicate or is unmapped
@@ -968,14 +973,20 @@ class Igor : Program
                 {
                 	allele = strand=='F' ? 'R' : 'r';
                     baseqa = round(-10*(altllk-refllk));
+                    ++r_no;
                 }
                 else if (refllk<altllk)
                 {
                 	allele = strand=='F' ? 'A' : 'a';
               	    baseqr = round(-10*(refllk-altllk));
+              	    ++a_no;
+                }   
+                else
+                {
+                    ++n_no;
                 }
-
-                ++read_no;
+                
+                ++read_no;             
             }
 
             //////////////////////////////////////////
@@ -985,6 +996,7 @@ class Igor : Program
     		uint32_t pl_ra = (uint32_t) round(-10*log_p_ra);
     		uint32_t pl_aa = (uint32_t) round(-10*log_p_aa);
 
+            int32_t bestPL = 0;
     		uint32_t min = pl_rr;
     		int32_t gt[2];
     		gt[0] = bcf_gt_unphased(0);
@@ -1014,7 +1026,7 @@ class Igor : Program
     		    gt[0] = bcf_gt_unphased(-1);
     		    gt[1] = bcf_gt_unphased(-1);
     		    bestGenotype = "./.";
-    	    }
+    		}
 
             bcf_set_rid(ovcf_rec, bcf_get_rid(ivcf_rec));
     		bcf_set_pos1(ovcf_rec, bcf_get_pos0(ivcf_rec));
@@ -1026,10 +1038,22 @@ class Igor : Program
     		    PLs[0] = pl_rr;
     		    PLs[1] = pl_ra;
     		    PLs[2] = pl_aa;
+    		    int32_t ADs[3];
+    		    ADs[0] = r_no;
+    		    ADs[1] = a_no;
+    		    ADs[2] = n_no;
+    		    
+   		        int32_t gq = 0;
+    		    if (n_no!=read_no)
+    		    {    
+    		        gq = lt.round(lt.log10((1-1/(lt.pl2prob(PLs[0])+lt.pl2prob(PLs[1])+lt.pl2prob(PLs[2]))))*-10);
+    		    }
     		    
     		    bcf_update_genotypes(odw->hdr, ovcf_rec, &gt, 2); 
     		    bcf_update_format_int32(odw->hdr, ovcf_rec, "PL", &PLs, 3);    		    
     		    bcf_update_format_int32(odw->hdr, ovcf_rec, "DP", &read_no, 1);
+    		    bcf_update_format_int32(odw->hdr, ovcf_rec, "AD", &ADs, 3);
+    		    bcf_update_format_int32(odw->hdr, ovcf_rec, "GQ", &gq, 1);
     		}
     		else
     		{

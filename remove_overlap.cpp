@@ -102,7 +102,10 @@ class Igor : Program
         odw = new BCFOrderedWriter(output_vcf_file, 0);
         odw->link_hdr(odr->hdr);
         odw->write_hdr();
-
+        
+        bcf_hdr_append(odw->hdr, "##FILTER=<ID=TPASS,Description=\"Temporary pass\">");
+        bcf_hdr_append(odw->hdr, "##FILTER=<ID=overlap,Description=\"Overlapping variant\">");
+        
         ////////////////////////
         //stats initialization//
         ////////////////////////
@@ -126,6 +129,9 @@ class Igor : Program
         
         bcf1_t *v = odw->get_bcf1_from_pool();
         
+        int32_t tpass_id = bcf_hdr_id2int(odw->hdr, BCF_DT_ID, "TPASS");
+        int32_t overlap_id = bcf_hdr_id2int(odw->hdr, BCF_DT_ID, "overlap");
+     
         while (odr->read(v))
         {
             bcf_unpack(v, BCF_UN_STR);
@@ -143,6 +149,8 @@ class Igor : Program
                 if (cv)
                 {
                     ++no_overlap_variants;
+                    bcf_add_filter(odw->hdr, cv, overlap_id);
+                    odw->write(cv);
                     cv = NULL;
                 }    
                 
@@ -156,6 +164,7 @@ class Igor : Program
                 
                 if (cv)
                 {    
+                    bcf_add_filter(odw->hdr, cv, tpass_id);
                     odw->write(cv);
                     ++no_nonoverlap_variants;
                 }
@@ -169,6 +178,7 @@ class Igor : Program
         //the last non overlapping variant
         if (cv)
         {    
+            bcf_add_filter(odw->hdr, cv, tpass_id);
             odw->write(cv);
             ++no_nonoverlap_variants;
         }
