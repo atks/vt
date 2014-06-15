@@ -172,7 +172,8 @@ class Igor : Program
             bcf_hdr_append(odw->hdr, "##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">");
             bcf_hdr_append(odw->hdr, "##FORMAT=<ID=PL,Number=G,Type=Integer,Description=\"Normalized, Phred-scaled likelihoods for genotypes\">");
             bcf_hdr_append(odw->hdr, "##FORMAT=<ID=DP,Number=1,Type=Integer,Description=\"Depth\">");
-        
+            bcf_hdr_append(odw->hdr, "##FORMAT=<ID=AD,Number=3,Type=Integer,Description=\"Allele Depth\">");
+            bcf_hdr_append(odw->hdr, "##FORMAT=<ID=GQ,Number=1,Type=Integer,Description=\"Genotype Quality\">");
         }
         odw->write_hdr();
 
@@ -180,6 +181,8 @@ class Igor : Program
         int32_t *cgt = (int32_t*) malloc(no_samples*2*sizeof(int32_t));
         int32_t *pls = (int32_t*) malloc(no_samples*3*sizeof(int32_t));
         int32_t *dps = (int32_t*) malloc(no_samples*sizeof(int32_t));
+        int32_t *ads = (int32_t*) malloc(no_samples*3*sizeof(int32_t));
+        int32_t *gqs = (int32_t*) malloc(no_samples*sizeof(int32_t));
         int ncount =0;
 
         std::vector<bcfptr*> sample2record(no_samples, NULL);
@@ -217,7 +220,15 @@ class Igor : Program
                     int32_t *dp = NULL;
                     int32_t n_dp=0;
                     bcf_get_format_int32(h, v, "DP", &dp, &n_dp);
+                    
+                    int32_t *ad = NULL;
+                    int32_t n_ad=0;
+                    bcf_get_format_int32(h, v, "AD", &ad, &n_ad);
 
+                    int32_t *gq = NULL;
+                    int32_t n_gq=0;
+                    bcf_get_format_int32(h, v, "GQ", &gq, &n_gq);
+                    
                     for (int32_t j=0; j<bcf_hdr_nsamples(h); ++j)
                     {
                         int32_t k = bcf_hdr_id2int(odw->hdr, BCF_DT_SAMPLE, bcf_hdr_get_sample_name(sr->hdrs[file_index], j));
@@ -245,6 +256,27 @@ class Igor : Program
                             dps[k] = bcf_int32_missing;
                         }
                         
+                        if (n_ad)
+                        {
+                            ads[k*3] = ad[j*3];
+                            ads[k*3+1] = ad[j*3+1];
+                            ads[k*3+2] = ad[j*3+2];
+                        }
+                        else
+                        {
+                            ads[k*3] = bcf_int32_missing;
+                            ads[k*3+1] = bcf_int32_vector_end;
+                        }
+                        
+                        if (n_gq)
+                        {
+                            gqs[k] = gq[j];
+                        }
+                        else
+                        {
+                            gqs[k] = bcf_int32_missing;
+                        }
+                        
                         ++ngt;
                     }
 
@@ -256,6 +288,8 @@ class Igor : Program
                 bcf_update_genotypes(odw->hdr,nv,cgt,ngt*2);
                 bcf_update_format_int32(odw->hdr,nv,"PL",pls,ngt*3);
                 bcf_update_format_int32(odw->hdr,nv,"DP",dps,ngt);
+                bcf_update_format_int32(odw->hdr,nv,"AD",ads,ngt*3);
+                bcf_update_format_int32(odw->hdr,nv,"GQ",gqs,ngt);
                 
                 odw->write(nv);
             }
