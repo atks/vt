@@ -101,10 +101,12 @@ class Igor : Program
         odr = new BCFOrderedReader(input_vcf_file, intervals);
         odw = new BCFOrderedWriter(output_vcf_file, 0);
         odw->link_hdr(odr->hdr);
-        odw->write_hdr();
         
         bcf_hdr_append(odw->hdr, "##FILTER=<ID=TPASS,Description=\"Temporary pass\">");
         bcf_hdr_append(odw->hdr, "##FILTER=<ID=overlap,Description=\"Overlapping variant\">");
+        
+        odw->write_hdr();
+        
         
         ////////////////////////
         //stats initialization//
