@@ -621,7 +621,7 @@ void VariantManip::generate_probes(const char* chrom,
         int32_t ref_len = 0;
         while (bases.size()<4 && preamble.size()<min_flank_length)
         {
-            base = faidx_fetch_uc_seq(fai, const_cast<char*>(chrom), pos1+i-1, pos1+i-1, &ref_len);
+            base = faidx_fetch_uc_seq(fai, const_cast<char*>(chrom), pos1-i-1, pos1-i-1, &ref_len);
             preamble.append(1,base[0]);
             bases[base[0]] = 1;
             ++i;
@@ -634,7 +634,7 @@ void VariantManip::generate_probes(const char* chrom,
 
         preambleLength = preamble.size();
 
-        for (uint32_t i=0; i<alleles.size(); ++i)
+        for (size_t i=0; i<alleles.size(); ++i)
         {
             probes[i] = std::string(preamble.rbegin(), preamble.rend()).append(probes[i]);
         }
