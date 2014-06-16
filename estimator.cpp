@@ -798,3 +798,71 @@ void Estimator::compute_gl_ab(int32_t *pls, int32_t no_samples, int32_t ploidy,
         ab = (0.05+num)/(0.10+denum);
     }
 };
+
+/**
+ * Computes the phred scaled QUAL for a variant.
+ *
+ * @pls        - PHRED genotype likelihoods
+ * @no_samples - number of samples
+ * @ploidy     - ploidy
+ * @no_alleles - number of alleles
+ * @n          - effective sample size
+ * @qual       - PHRED scaled QUAL
+ */
+void Estimator::compute_qual(int32_t *pls, int32_t no_samples, int32_t ploidy,
+            int32_t no_alleles, float &qual, int32_t &n)
+{
+    n = 0;
+    if (ploidy==2)
+    {
+        if (no_alleles==2)
+        {
+            int32_t no_genotypes = 3;
+
+            qual = 0;
+            for (size_t k=0; k<no_samples; ++k)
+            {
+                size_t offset = k*3;
+
+                if (pls[offset]==bcf_int32_missing) continue;
+
+                ++n;
+
+                qual += lt->log10((1-lt->pl2prob(pls[offset])/(lt->pl2prob(pls[offset])+lt->pl2prob(pls[offset+1])+lt->pl2prob(pls[offset+2]))));
+    
+            }
+
+            if (!n) return;
+
+            qual = lt->round(-qual*10);
+        }
+        else
+        {
+            //works only for ploidy of 2
+            
+            int32_t no_genotypes = bcf_an2gn(no_alleles);
+
+            float gq = 0;
+            for (size_t k=0; k<no_samples; ++k)
+            {
+                size_t offset = k*no_genotypes;
+
+                if (pls[offset]==bcf_int32_missing) continue;
+
+                ++n;
+
+                float denom = 0;
+                for (size_t j=0; j<no_genotypes; ++j)
+                {
+                    denom += lt->pl2prob(pls[offset]);
+                }
+
+                qual += lt->log10((1-lt->pl2prob(pls[offset])/denom));
+            }
+
+            if (!n) return;
+
+            qual = lt->round(-qual*10);
+        }
+    }
+};

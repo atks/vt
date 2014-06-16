@@ -387,4 +387,14 @@ bool bcf_is_passed(bcf_hdr_t *h, bcf1_t *v);
  */
 #define bcf_set_n_sample(v, n) ((v)->n_sample = (n));
 
+/**
+ * Get qual
+ */
+#define bcf_get_qual(v) ((v)->qual)
+
+/**
+ * Set qual
+ */
+#define bcf_set_qual(v, q) ((v)->qual = (q))
+
 #endif
