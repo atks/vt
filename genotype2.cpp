@@ -1029,7 +1029,7 @@ class Igor : Program
     		}
 
             bcf_set_rid(ovcf_rec, bcf_get_rid(ivcf_rec));
-    		bcf_set_pos1(ovcf_rec, bcf_get_pos0(ivcf_rec));
+    		bcf_set_pos1(ovcf_rec, bcf_get_pos1(ivcf_rec));
     		bcf_update_alleles(odw->hdr, ovcf_rec, const_cast<const char**>(bcf_get_allele(ivcf_rec)), bcf_get_n_allele(ivcf_rec));
     		
     		if (read_no!=0)
