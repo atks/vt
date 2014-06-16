@@ -208,6 +208,14 @@ class Igor : Program
             {
                 continue;
             }
+
+            float qual = 0;
+            int32_t n = 0;
+            est->compute_qual(pls, no_samples, ploidy, no_alleles, qual, n);
+            if (n)
+            {
+                bcf_set_qual(v, qual);
+            }
             
             int32_t g[ploidy];
             for (int32_t i=0; i<ploidy; ++i) g[i]=0;
@@ -241,7 +249,7 @@ class Igor : Program
  
             float MLE_HWE_AF[no_alleles];
             float MLE_HWE_GF[no_genotypes];
-            int32_t n = 0;
+            n = 0;
             est->compute_gl_af_hwe(pls, no_samples, ploidy,no_alleles, MLE_HWE_AF, MLE_HWE_GF,  n, 1e-20);
             if (n)
             {

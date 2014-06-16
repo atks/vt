@@ -171,6 +171,20 @@ class Estimator
                     float* GF, int32_t no_alleles,
                     float& ab, int32_t& n);
 
+
+    /**
+     * Computes the phred scaled QUAL for a variant.
+     *
+     * @pls        - PHRED genotype likelihoods
+     * @no_samples - number of samples
+     * @ploidy     - ploidy
+     * @no_alleles - number of alleles
+     * @n          - effective sample size
+     * @qual       - PHRED scaled QUAL
+     */
+    void compute_qual(int32_t *pls, int32_t no_samples, int32_t ploidy,
+                int32_t no_alleles, float &qual, int32_t &n);
+
     private:
 };
 
