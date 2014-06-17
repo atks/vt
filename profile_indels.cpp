@@ -236,6 +236,7 @@ class Igor : Program
         //stats initialization//
         ////////////////////////
         no_indels = 0;
+        lcplx = 0;
         fs = 0;
         nfs = 0;
     }
