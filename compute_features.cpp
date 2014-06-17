@@ -79,7 +79,7 @@ class Igor : Program
         //////////////////////////
         try
         {
-            std::string desc = "Subsets a VCF file to a set of variants that are polymorphic on a selected set of individuals.";
+            std::string desc = "Compute features for variants.";
 
             TCLAP::CmdLine cmd(desc, ' ', version);
             VTOutput my;
@@ -89,7 +89,7 @@ class Igor : Program
             TCLAP::ValueArg<std::string> arg_fexp("f", "f", "filter expression []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_output_vcf_file("o", "o", "output VCF/VCF.GZ/BCF file [-]", false, "-", "str", cmd);
             TCLAP::SwitchArg arg_print_sites_only("s", "s", "print site information only without genotypes [false]", cmd, false);
-            TCLAP::UnlabeledValueArg<std::string> arg_input_vcf_file("<in.vcf>", "input VCF file", true, "","file", cmd);
+            TCLAP::UnlabeledValueArg<std::string> arg_input_vcf_file("<in.vcf>", "input VCF file", true, "", "file", cmd);
 
             cmd.parse(argc, argv);
 
