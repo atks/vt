@@ -153,6 +153,7 @@ typedef struct {
 
 #define BCF_ERR_CTG_UNDEF 1
 #define BCF_ERR_TAG_UNDEF 2
+#define BCF_ERR_NCOLS     4
 
 /*
     The bcf1_t structure corresponds to one VCF/BCF line. Reading from VCF file
@@ -352,6 +353,12 @@ extern "C" {
     bcf_hdr_t *bcf_hdr_dup(const bcf_hdr_t *hdr);
     /** Copy header lines from src to dst if not already present in dst. See also bcf_translate(). */
     void bcf_hdr_combine(bcf_hdr_t *dst, const bcf_hdr_t *src);
+
+    /** 
+     *  bcf_hdr_add_sample() - add a new sample. 
+     *  @param sample:  Sample name to be added. After all samples have been added, NULL 
+     *                  must be passed to update internal header structures. 
+     */
     int bcf_hdr_add_sample(bcf_hdr_t *hdr, const char *sample);
 
     /** Read VCF header from a file and update the header */
@@ -461,6 +468,11 @@ extern "C" {
      *  @alleles:           Array of alleles
      *  @nals:              Number of alleles
      *  @alleles_string:    Comma-separated alleles, starting with the REF allele  
+     *
+     *  Not that in order for indexing to work correctly in presence of INFO/END tag,
+     *  the length of reference allele (line->rlen) must be set explicitly by the caller,
+     *  or otherwise, if rlen is zero, strlen(line->d.allele[0]) is used to set the length
+     *  on bcf_write().
      */
     int bcf_update_alleles(const bcf_hdr_t *hdr, bcf1_t *line, const char **alleles, int nals);
     int bcf_update_alleles_str(const bcf_hdr_t *hdr, bcf1_t *line, const char *alleles_string);
@@ -635,7 +647,7 @@ extern "C" {
     #define bcf_hdr_id2type(hdr,type,int_id)    ((hdr)->id[BCF_DT_ID][int_id].val->info[type]>>4 & 0xf)
     #define bcf_hdr_id2coltype(hdr,type,int_id) ((hdr)->id[BCF_DT_ID][int_id].val->info[type] & 0xf)
     #define bcf_hdr_idinfo_exists(hdr,type,int_id)  ((int_id<0 || bcf_hdr_id2coltype(hdr,type,int_id)==0xf) ? 0 : 1)
-    #define bcf_hdr_id2hrec(hdr,type,int_id)    ((hdr)->id[(type)==BCF_DT_CTG?BCF_DT_CTG:BCF_DT_ID][int_id].val->hrec[(type)==BCF_DT_CTG?0:type])
+    #define bcf_hdr_id2hrec(hdr,dict_type,col_type,int_id)    ((hdr)->id[(dict_type)==BCF_DT_CTG?BCF_DT_CTG:BCF_DT_ID][int_id].val->hrec[(dict_type)==BCF_DT_CTG?0:(col_type)])
     
 	void bcf_fmt_array(kstring_t *s, int n, int type, void *data);
 	uint8_t *bcf_fmt_sized_array(kstring_t *s, uint8_t *ptr);
