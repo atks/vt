@@ -48,7 +48,7 @@ bam_hdr_t *bam_hdr_dup(const bam_hdr_t *h0)
 	h->ignore_sam_err = h0->ignore_sam_err;
 	h->l_text = h0->l_text;
 	// Then the pointery stuff
-	h->cigar_tab = NULL;
+	h->cigar_tab = NULL; // TODO: check what this actually does and why it exists and document it
 	h->sdict = NULL;
 	h->text = (char*)calloc(h->l_text + 1, 1);
 	memcpy(h->text, h0->text, h->l_text);
@@ -259,7 +259,7 @@ static inline int aux_type2size(uint8_t type)
 	}
 }
 
-static void swap_data(const bam1_core_t *c, int l_data, uint8_t *data, int is_host)
+static void swap_data(const bam1_core_t *c, int l_data, uint8_t *data)
 {
 	uint8_t *s;
 	uint32_t *cigar = (uint32_t*)(data + c->l_qname);
@@ -282,9 +282,7 @@ static void swap_data(const bam1_core_t *c, int l_data, uint8_t *data, int is_ho
 			break;
 		case 'B':
 			size = aux_type2size(*s); ++s;
-			if (is_host) memcpy(&n, s, 4), ed_swap_4p(s);
-			else ed_swap_4p(s), memcpy(&n, s, 4);
-			s += 4;
+			ed_swap_4p(s); memcpy(&n, s, 4); s += 4;
 			switch (size) {
 			case 1: s += n; break;
 			case 2: for (i = 0; i < n; ++i, s += 2) ed_swap_2p(s); break;
@@ -328,7 +326,7 @@ int bam_read1(BGZF *fp, bam1_t *b)
 	}
 	if (bgzf_read(fp, b->data, b->l_data) != b->l_data) return -4;
 	//b->l_aux = b->l_data - c->n_cigar * 4 - c->l_qname - c->l_qseq - (c->l_qseq+1)/2;
-	if (fp->is_be) swap_data(c, b->l_data, b->data, 0);
+	if (fp->is_be) swap_data(c, b->l_data, b->data);
 	return 4 + block_len;
 }
 
@@ -350,13 +348,13 @@ int bam_write1(BGZF *fp, const bam1_t *b)
 		for (i = 0; i < 8; ++i) ed_swap_4p(x + i);
 		y = block_len;
 		if (ok) ok = (bgzf_write(fp, ed_swap_4p(&y), 4) >= 0);
-		swap_data(c, b->l_data, b->data, 1);
+		swap_data(c, b->l_data, b->data);
 	} else {
 		if (ok) ok = (bgzf_write(fp, &block_len, 4) >= 0);
 	}
 	if (ok) ok = (bgzf_write(fp, x, 32) >= 0);
 	if (ok) ok = (bgzf_write(fp, b->data, b->l_data) >= 0);
-	if (fp->is_be) swap_data(c, b->l_data, b->data, 0);
+	if (fp->is_be) swap_data(c, b->l_data, b->data);
 	return ok? 4 + block_len : -1;
 }
 
@@ -387,13 +385,7 @@ static hts_idx_t *bam_index(BGZF *fp, int min_shift)
 		l = bam_cigar2rlen(b->core.n_cigar, bam_get_cigar(b));
 		if (l == 0) l = 1; // no zero-length records
 		ret = hts_idx_push(idx, b->core.tid, b->core.pos, b->core.pos + l, bgzf_tell(fp), !(b->core.flag&BAM_FUNMAP));
-		if (ret < 0)
-        {
-            // unsorted
-            bam_destroy1(b);
-            hts_idx_destroy(idx);
-            return NULL;
-        }
+		if (ret < 0) break; // unsorted
 	}
 	hts_idx_finish(idx, bgzf_tell(fp));
 	bam_destroy1(b);
@@ -410,12 +402,7 @@ int bam_index_build(const char *fn, int min_shift)
 	if (fp->is_cram) {
 	    	ret = cram_index_build(fp->fp.cram, fn);
 	} else {
-			idx = bam_index(fp->fp.bgzf, min_shift);
-			if ( !idx )
-			{
-				hts_close(fp);
-				return -1;
-			}
+	    	idx = bam_index(fp->fp.bgzf, min_shift);
 		hts_idx_save(idx, fn, min_shift > 0
 			     ? HTS_FMT_CSI : HTS_FMT_BAI);
 		hts_idx_destroy(idx);
@@ -635,8 +622,6 @@ int sam_hdr_write(htsFile *fp, const bam_hdr_t *h)
 	} else if (fp->is_cram) {
 		cram_fd *fd = fp->fp.cram;
 		if (cram_set_header(fd, bam_header_to_cram((bam_hdr_t *)h)) < 0) return -1;
-		if (fp->fn_aux)
-		    cram_load_reference(fd, fp->fn_aux);
 		if (cram_write_SAM_hdr(fd, fd->header) < 0) return -1;
 	} else {
 		char *p;
@@ -678,9 +663,7 @@ int sam_parse1(kstring_t *s, bam_hdr_t *h, bam1_t *b)
 	str.s = (char*)b->data; str.m = b->m_data;
 	memset(c, 0, 32);
 	if (h->cigar_tab == 0) {
-		h->cigar_tab = (int8_t*) malloc(128);
-		for (i = 0; i < 128; ++i)
-			h->cigar_tab[i] = -1;
+		h->cigar_tab = (uint8_t*)calloc(128, sizeof(uint8_t));
 		for (i = 0; BAM_CIGAR_STR[i]; ++i)
 			h->cigar_tab[(int)BAM_CIGAR_STR[i]] = i;
 	}
@@ -712,20 +695,17 @@ int sam_parse1(kstring_t *s, bam_hdr_t *h, bam1_t *b)
 	// cigar
 	if (*p != '*') {
 		uint32_t *cigar;
-		size_t n_cigar = 0;
-		for (q = p; *p && *p != '\t'; ++p)
-			if (!isdigit(*p)) ++n_cigar;
-		if (*p++ != '\t') goto err_ret;
-		_parse_err(n_cigar >= 65536, "too many CIGAR operations");
-		c->n_cigar = n_cigar;
+		for (q = p, c->n_cigar = 0; *q && *q != '\t'; ++q)
+			if (!isdigit(*q)) ++c->n_cigar;
 		_get_mem(uint32_t, &cigar, &str, c->n_cigar<<2);
-		for (i = 0; i < c->n_cigar; ++i, ++q) {
+		for (i = 0, q = p; i < c->n_cigar; ++i, ++q) {
 			int op;
 			cigar[i] = strtol(q, &q, 10)<<BAM_CIGAR_SHIFT;
 			op = (uint8_t)*q >= 128? -1 : h->cigar_tab[(int)*q];
-			_parse_err(op < 0, "unrecognized CIGAR operator");
+			_parse_err(op < 0, "urecognized CIGAR operator");
 			cigar[i] |= op;
 		}
+		p = q + 1;
 		i = bam_cigar2rlen(c->n_cigar, cigar);
 	} else {
 		_parse_warn(!(c->flag&BAM_FUNMAP), "mapped query must have a CIGAR; treated as unmapped");
@@ -1111,23 +1091,6 @@ char *bam_aux2Z(const uint8_t *s)
 	type = *s++;
 	if (type == 'Z' || type == 'H') return (char*)s;
 	else return 0;
-}
-
-int sam_open_mode(char *mode, const char *fn, const char *format)
-{
-	// TODO Parse "bam5" etc for compression level
-	if (format == NULL) {
-		// Try to pick a format based on the filename extension
-		const char *ext = fn? strrchr(fn, '.') : NULL;
-		if (ext == NULL || strchr(ext, '/')) return -1;
-		return sam_open_mode(mode, fn, ext+1);
-	}
-	else if (strcmp(format, "bam") == 0) strcpy(mode, "b");
-	else if (strcmp(format, "cram") == 0) strcpy(mode, "c");
-	else if (strcmp(format, "sam") == 0) strcpy(mode, "");
-	else return -1;
-
-	return 0;
 }
 
 #define STRNCMP(a,b,n) (strncasecmp((a),(b),(n)) || strlen(a)!=(n))

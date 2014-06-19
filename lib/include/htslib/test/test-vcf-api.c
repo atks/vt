@@ -41,7 +41,6 @@ void write_bcf(char *fname)
     bcf_hdr_add_sample(hdr, "NA00001");
     bcf_hdr_add_sample(hdr, "NA00002");
     bcf_hdr_add_sample(hdr, "NA00003");
-    bcf_hdr_add_sample(hdr, NULL);      // to update internal structures
     bcf_hdr_write(fp, hdr);
 
 
