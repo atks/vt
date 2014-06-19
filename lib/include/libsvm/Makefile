@@ -21,5 +21,8 @@ svm-scale: svm-scale.c
 	$(CXX) $(CFLAGS) svm-scale.c -o svm-scale
 svm.o: svm.cpp svm.h
 	$(CXX) $(CFLAGS) -c svm.cpp
+libsvm.a: svm.o
+	rm -rf $@
+	$(AR) -rc $@ $^
 clean:
-	rm -f *~ svm.o svm-train svm-predict svm-scale libsvm.so.$(SHVER)
+	rm -f *~ svm.o svm-train svm-predict svm-scale libsvm.so.$(SHVER) libsvm.a
