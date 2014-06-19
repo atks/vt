@@ -31,12 +31,6 @@ int bcf_hdr_sync(bcf_hdr_t *h);
 
 int bcf_hdr_add_sample(bcf_hdr_t *h, const char *s)
 {
-    if ( !s )
-    {
-        bcf_hdr_sync(h);
-        return 0;
-    }
-
     const char *ss = s;
     while ( !*ss && isspace(*ss) ) ss++;
     if ( !*ss )
@@ -61,7 +55,7 @@ int bcf_hdr_add_sample(bcf_hdr_t *h, const char *s)
     int n = kh_size(d);
     h->samples = (char**) realloc(h->samples,sizeof(char*)*n);
     h->samples[n-1] = sdup;
-    h->n[BCF_DT_SAMPLE] = n;
+    bcf_hdr_sync(h);
     return 0;
 }
 
@@ -82,7 +76,6 @@ void bcf_hdr_parse_sample_line(bcf_hdr_t *h, const char *str)
         if (*q == 0 || *q == '\n') break;
         p = q + 1;
     }
-    bcf_hdr_add_sample(h,NULL);
 }
 
 int bcf_hdr_sync(bcf_hdr_t *h)
@@ -881,7 +874,7 @@ static inline void bcf1_sync_alleles(bcf1_t *line, kstring_t *str)
     int i;
     for (i=0; i<line->n_allele; i++)
         bcf_enc_vchar(str, strlen(line->d.allele[i]), line->d.allele[i]);
-    if ( !line->rlen && line->n_allele ) line->rlen = strlen(line->d.allele[0]);
+    line->rlen = line->n_allele ? strlen(line->d.allele[0]) : 0;     // beware: this neglects SV's END tag
 }
 static inline void bcf1_sync_filter(bcf1_t *line, kstring_t *str)
 {
@@ -931,8 +924,6 @@ static int bcf1_sync(bcf1_t *line)
         // to the original unchanged BCF data. 
         uint8_t *ptr_ori = (uint8_t *) line->shared.s;
 
-        assert( line->unpacked & BCF_UN_STR );
-
         // ID: single typed string
         if ( line->d.shared_dirty & BCF1_DIRTY_ID ) 
             bcf1_sync_id(line, &tmp);
@@ -946,35 +937,27 @@ static int bcf1_sync(bcf1_t *line)
         else
         {
             kputsn_(ptr_ori, line->unpack_size[1], &tmp);
-            if ( !line->rlen && line->n_allele ) line->rlen = strlen(line->d.allele[0]);
+            line->rlen = line->n_allele ? strlen(line->d.allele[0]) : 0;     // beware: this neglects SV's END tag
         }
         ptr_ori += line->unpack_size[1];
 
-        if ( line->unpacked & BCF_UN_FLT )
+        // FILTER: typed vector of integers
+        if ( line->d.shared_dirty & BCF1_DIRTY_FLT )
+            bcf1_sync_filter(line, &tmp);
+        else if ( line->d.n_flt ) 
+            kputsn_(ptr_ori, line->unpack_size[2], &tmp);
+        else
+            bcf_enc_vint(&tmp, 0, 0, -1);
+        ptr_ori += line->unpack_size[2];
+
+        // INFO: pairs of typed vectors
+        if ( line->d.shared_dirty & BCF1_DIRTY_INF ) 
+            bcf1_sync_info(line, &tmp);
+        else
         {
-            // FILTER: typed vector of integers
-            if ( line->d.shared_dirty & BCF1_DIRTY_FLT )
-                bcf1_sync_filter(line, &tmp);
-            else if ( line->d.n_flt ) 
-                kputsn_(ptr_ori, line->unpack_size[2], &tmp);
-            else
-                bcf_enc_vint(&tmp, 0, 0, -1);
-            ptr_ori += line->unpack_size[2];
-
-            if ( line->unpacked & BCF_UN_INFO )
-            {
-                // INFO: pairs of typed vectors
-                if ( line->d.shared_dirty & BCF1_DIRTY_INF ) 
-                {
-                    bcf1_sync_info(line, &tmp);
-                    ptr_ori = (uint8_t*)line->shared.s + line->shared.l;
-                }
-            }
+            int size = line->shared.l - (size_t)ptr_ori + (size_t)line->shared.s;
+            kputsn_(ptr_ori, size, &tmp);
         }
-
-        int size = line->shared.l - (size_t)ptr_ori + (size_t)line->shared.s;
-        if ( size ) kputsn_(ptr_ori, size, &tmp);
-
         free(line->shared.s);
         line->shared = tmp;
     }
@@ -1005,42 +988,12 @@ static int bcf1_sync(bcf1_t *line)
         line->indiv = tmp;
     }
     if ( !line->n_sample ) line->n_fmt = 0;
-    line->d.shared_dirty = line->d.indiv_dirty = 0;
     return 0;
-}
-
-bcf1_t *bcf_dup(bcf1_t *src)
-{
-    bcf1_sync(src);
-
-    bcf1_t *out = bcf_init1();
-    
-    out->rid  = src->rid;
-    out->pos  = src->pos;
-    out->rlen = src->rlen;
-    out->qual = src->qual;
-    out->n_info = src->n_info; out->n_allele = src->n_allele;
-    out->n_fmt = src->n_fmt; out->n_sample = src->n_sample;
-
-    out->shared.m = out->shared.l = src->shared.l;
-    out->shared.s = (char*) malloc(out->shared.l);
-    memcpy(out->shared.s,src->shared.s,out->shared.l);
-
-    out->indiv.m = out->indiv.l = src->indiv.l;
-    out->indiv.s = (char*) malloc(out->indiv.l);
-    memcpy(out->indiv.s,src->indiv.s,out->indiv.l);
-
-    return out;
 }
 
 int bcf_write(htsFile *hfp, const bcf_hdr_t *h, bcf1_t *v)
 {
-    if ( bcf_hdr_nsamples(h)!=v->n_sample )
-    {
-        fprintf(stderr,"[%s:%d %s] Broken VCF record, the number of columns at %s:%d does not match the number of samples (%d vs %d).\n", 
-            __FILE__,__LINE__,__FUNCTION__,bcf_seqname(h,v),v->pos+1, v->n_sample,bcf_hdr_nsamples(h));
-        return -1;
-    }
+    assert( bcf_hdr_nsamples(h)==v->n_sample );
 
     if ( !hfp->is_bin ) return vcf_write(hfp,h,v);
 
@@ -1584,15 +1537,6 @@ int _vcf_parse_format(kstring_t *s, const bcf_hdr_t *h, bcf1_t *v, char *p, char
 			}
 		}
 	}
-
-    if ( v->n_sample!=bcf_hdr_nsamples(h) ) 
-    {
-        fprintf(stderr,"[%s:%d %s] Number of columns at %s:%d does not match the number of samples (%d vs %d).\n", 
-             __FILE__,__LINE__,__FUNCTION__,bcf_seqname(h,v),v->pos+1, v->n_sample,bcf_hdr_nsamples(h));
-        v->errcode |= BCF_ERR_NCOLS;
-        return -1;
-    }
-
     return 0;
 }
 
@@ -2037,12 +1981,7 @@ hts_idx_t *bcf_index(htsFile *fp, int min_shift)
 	while (bcf_read1(fp,h, b) >= 0) {
 		int ret;
 		ret = hts_idx_push(idx, b->rid, b->pos, b->pos + b->rlen, bgzf_tell(fp->fp.bgzf), 1);
-		if (ret < 0)
-        {
-            bcf_destroy1(b);
-            hts_idx_destroy(idx);
-            return NULL;
-        }
+		if (ret < 0) break;
 	}
 	hts_idx_finish(idx, bgzf_tell(fp->fp.bgzf));
 	bcf_destroy1(b);
@@ -2138,7 +2077,6 @@ int bcf_translate(const bcf_hdr_t *dst_hdr, bcf_hdr_t *src_hdr, bcf1_t *line)
         int src_id = line->d.flt[i];
         if ( src_hdr->transl[BCF_DT_ID][src_id] >=0 ) 
             line->d.flt[i] = src_hdr->transl[BCF_DT_ID][src_id];
-        line->d.shared_dirty |= BCF1_DIRTY_FLT;
     }
 
     // INFO
@@ -2163,7 +2101,6 @@ int bcf_translate(const bcf_hdr_t *dst_hdr, bcf_hdr_t *src_hdr, bcf1_t *line)
             assert( !info->vptr_free );
             kstring_t str = {0,0,0};
             bcf_enc_int1(&str, dst_id);
-            bcf_enc_size(&str, info->len,info->type);
             info->vptr_off = str.l;
             kputsn((char*)info->vptr, info->vptr_len, &str);
             info->vptr = (uint8_t*)str.s + info->vptr_off;
@@ -2195,7 +2132,6 @@ int bcf_translate(const bcf_hdr_t *dst_hdr, bcf_hdr_t *src_hdr, bcf1_t *line)
             assert( !fmt->p_free );
             kstring_t str = {0,0,0};
             bcf_enc_int1(&str, dst_id);
-            bcf_enc_size(&str, fmt->n, fmt->type);
             fmt->p_off = str.l;
             kputsn((char*)fmt->p, fmt->p_len, &str);
             fmt->p = (uint8_t*)str.s + fmt->p_off;
