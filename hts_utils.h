@@ -249,7 +249,7 @@ int bcf_hdr_subset_samples(const bcf_hdr_t *h, bcf1_t *v, std::vector<int32_t>& 
 
 /**
  * Gets number of expected genotypes from number of allelles for a ploidy of 2.
- */ 
+ */
 #define bcf_an2gn(n) (((n+1)*n)>>1)
 
 /**
@@ -345,7 +345,17 @@ bool bcf_is_passed(bcf_hdr_t *h, bcf1_t *v);
 /**
  * Set 1-based position
  */
-#define bcf_set_pos1(v, p) ((v)->pos = (p)-1);
+#define bcf_set_pos1(v, p) ((v)->pos = (p)-1)
+
+/**
+ * Get id
+ */
+#define bcf_get_id(v) ((v)->d.id)
+
+/**
+ * Set id.
+ */
+void bcf_set_id(bcf1_t *v, char* id);
 
 /**
  * Get allele

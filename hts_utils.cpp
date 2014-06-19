@@ -433,10 +433,10 @@ bool bcf_hdr_info_exists(bcf_hdr_t *h, const char* key)
 {
     int id = bcf_hdr_id2int(h, BCF_DT_ID, key);
     if (bcf_hdr_idinfo_exists(h,BCF_HL_INFO,id))
-    { 
+    {
         return true;
     }
-    
+
     return false;
 }
 
@@ -608,7 +608,7 @@ void bcf_alleles2string_sorted(bcf_hdr_t *h, bcf1_t *v, kstring_t *var)
 }
 
 /**
- *Set chromosome name
+ *Set chromosome name.
  */
 void bcf_set_chrom(bcf_hdr_t *h, bcf1_t *v, const char* chrom)
 {
@@ -624,4 +624,17 @@ void bcf_set_chrom(bcf_hdr_t *h, bcf1_t *v, const char* chrom)
         k = kh_get(vdict, d, chrom);
     }
     v->rid = kh_val(d, k).id;
+};
+
+/**
+ * Set id.
+ */
+void bcf_set_id(bcf1_t *v, char* id)
+{
+    if (v->d.id)
+    {
+        free(v->d.id);
+    }
+
+    v->d.id = strdup(id);
 };

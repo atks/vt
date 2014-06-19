@@ -28,6 +28,7 @@
 #include "discover.h"
 #include "annotate_variants.h"
 #include "annotate_str.h"
+#include "annotate_dbsnp_rsid.h"
 #include "genotype.h"
 #include "genotype2.h"
 #include "merge_candidate_variants.h"
@@ -173,6 +174,10 @@ int main(int argc, char ** argv)
     else if (argc>1 && cmd=="annotate_regions")
     {
         annotate_regions(argc-1, ++argv);
+    }
+    else if (argc>1 && cmd=="annotate_dbsnp_rsid")
+    {
+        annotate_dbsnp_rsid(argc-1, ++argv);
     }
     else if (argc>1 && cmd=="discover")
     {
