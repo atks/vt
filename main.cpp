@@ -33,6 +33,7 @@
 #include "merge_candidate_variants.h"
 #include "merge.h"
 #include "concat.h"
+#include "paste.h"
 #include "subset.h"
 #include "partition.h"
 #include "view.h"
@@ -87,6 +88,7 @@ void help()
     std::clog << "normalize                 normalize variants\n";
     std::clog << "mergedups                 merge duplicate variants\n";
     std::clog << "concat                    concatenate VCF files\n";
+    std::clog << "paste                     paste VCF files\n";
     std::clog << "subset                    subset VCF file to variants polymorphic in a sample\n";
     std::clog << "\n";
     std::clog << "peek                      summary of variants in the vcf file\n";
@@ -128,6 +130,10 @@ int main(int argc, char ** argv)
     {
         print = merge(argc-1, ++argv);
     }
+    else if (argc>1 && cmd=="paste")
+    {
+        print = paste(argc-1, ++argv);
+    }    
     else if (argc>1 && cmd=="concat")
     {
         print = concat(argc-1, ++argv);

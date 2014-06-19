@@ -62,7 +62,8 @@ SOURCES = program\
 		test\
 		str\
 		consolidate_variants\
-		genotype2
+		genotype2\
+		paste
 
 SOURCESONLY = main.cpp
 
