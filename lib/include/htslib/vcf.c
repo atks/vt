@@ -61,6 +61,7 @@ int bcf_hdr_add_sample(bcf_hdr_t *h, const char *s)
     int n = kh_size(d);
     h->samples = (char**) realloc(h->samples,sizeof(char*)*n);
     h->samples[n-1] = sdup;
+    h->n[BCF_DT_SAMPLE] = n;
     return 0;
 }
 

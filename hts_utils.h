@@ -393,9 +393,14 @@ void bcf_set_id(bcf1_t *v, char* id);
 #define bcf_get_var_type(v) ((v)->d.var_type)
 
 /**
+ * Get number of samples in bcf record
+ */
+#define bcf_get_n_sample(v) ((v)->n_sample)
+
+/**
  * Set number of samples in bcf record
  */
-#define bcf_set_n_sample(v, n) ((v)->n_sample = (n));
+#define bcf_set_n_sample(v, n) ((v)->n_sample = (n))
 
 /**
  * Get qual
