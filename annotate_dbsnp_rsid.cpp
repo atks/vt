@@ -171,7 +171,7 @@ class Igor : Program
             
             if (presence[0] && presence[1])
             {
-                bcf_set_id(v, bcf_get_id(dv));
+                bcf_update_id(NULL, v, bcf_get_id(dv));
                 
                 ++no_annotated_variants;
             }
