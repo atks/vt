@@ -26,6 +26,9 @@
 BCFOrderedReader::BCFOrderedReader(std::string vcf_file, std::vector<GenomeInterval>& intervals)
 {
     ftype = hts_file_type(vcf_file.c_str());
+    
+    
+    
     if (!strcmp("+", vcf_file.c_str()))
     {
         vcf_file = "-";
@@ -51,6 +54,7 @@ BCFOrderedReader::BCFOrderedReader(std::string vcf_file, std::vector<GenomeInter
 
     s = {0, 0, 0};
     vcf = bcf_open(vcf_file.c_str(), "r");
+    if (vcf==NULL) exit(1);
     hdr = bcf_alt_hdr_read(vcf);
 
     intervals_present =  intervals.size()!=0;

@@ -41,6 +41,7 @@ BAMOrderedReader::BAMOrderedReader(std::string& bam_file, std::vector<GenomeInte
     }
         
     sam = sam_open(bam_file.c_str(), "r");
+    if (sam==NULL) exit(1);
     hdr = sam_hdr_read(sam);
     s = bam_init1();
 
@@ -82,6 +83,7 @@ BAMOrderedReader::BAMOrderedReader(std::string& input_bam_file, std::vector<Geno
     }
         
     sam = sam_open(bam_file.c_str(), "r");
+    if (sam==NULL) exit(1);
     hts_set_fai_filename(sam, reference_fasta_file.c_str());
     hdr = sam_hdr_read(sam);
     s = bam_init1();

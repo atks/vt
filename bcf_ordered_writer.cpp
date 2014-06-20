@@ -50,7 +50,8 @@ BCFOrderedWriter::BCFOrderedWriter(std::string input_vcf_file, int32_t window)
     if (ftype & FT_BCF) kputc('b', mode);
     if (ftype & FT_GZ) kputc('z', mode);
     vcf = bcf_open(vcf_file.c_str(), mode->s);
-
+    if (vcf==NULL) exit(1);
+    
     hdr = bcf_hdr_init("w");
     bcf_hdr_append(hdr, "##fileformat=VCFv4.1");
     linked_hdr = false;
