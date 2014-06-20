@@ -23,7 +23,13 @@
 
 #include "bam_ordered_reader.h"
 
-BAMOrderedReader::BAMOrderedReader(std::string bam_file, std::vector<GenomeInterval>& intervals)
+/**
+ * Initialize files and intervals. 
+ *
+ * @input_bam_file     name of the input VCF file
+ * @intervals          list of intervals, if empty, all records are selected.
+ */
+BAMOrderedReader::BAMOrderedReader(std::string& bam_file, std::vector<GenomeInterval>& intervals)
 :bam_file(bam_file), intervals(intervals), sam(0), hdr(0), idx(0), itr(0)
 {
     const char* fname = bam_file.c_str();
@@ -35,6 +41,48 @@ BAMOrderedReader::BAMOrderedReader(std::string bam_file, std::vector<GenomeInter
     }
         
     sam = sam_open(bam_file.c_str(), "r");
+    hdr = sam_hdr_read(sam);
+    s = bam_init1();
+
+    idx = bam_index_load(bam_file.c_str());
+    if (idx==0)
+    {
+        //fprintf(stderr, "[%s:%d %s] fail to load index for %s\n", __FILE__, __LINE__, __FUNCTION__, bam_file.c_str());
+        index_loaded = false;
+    }
+    else
+    {
+        index_loaded = true;
+    }
+
+    str = {0,0,0};
+
+    intervals_present =  intervals.size()!=0;
+    interval_index = 0;
+
+    random_access_enabled = intervals_present && index_loaded;
+    
+};
+
+/**
+ * Initialize files, intervals and reference file. 
+ *
+ * @input_bam_file        name of the input VCF file
+ * @intervals             list of intervals, if empty, all records are selected.
+ * @reference_fasta_file  reference FASTA file for CRAM
+ */
+BAMOrderedReader::BAMOrderedReader(std::string& input_bam_file, std::vector<GenomeInterval>& intervals, std::string& reference_fasta_file)
+{
+    const char* fname = bam_file.c_str();
+    int len = strlen(fname);
+    if ( !strcasecmp(".bam", fname+len-4) && !strcasecmp("-", fname) && !strcasecmp(".cram", fname+len-5))
+    {
+        fprintf(stderr, "[%s:%d %s] Not a BAM/CRAM file: %s\n", __FILE__, __LINE__, __FUNCTION__, bam_file.c_str());
+        exit(1);
+    }
+        
+    sam = sam_open(bam_file.c_str(), "r");
+    hts_set_fai_filename(sam, reference_fasta_file.c_str());
     hdr = sam_hdr_read(sam);
     s = bam_init1();
 

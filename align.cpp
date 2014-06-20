@@ -92,10 +92,10 @@ class Igor : Program
             TCLAP::ValueArg<std::string> arg_lflank("l", "l", "left flanks", false, "", "string");
             TCLAP::ValueArg<std::string> arg_ru("u", "u", "repeat unit", false, "", "string");
             TCLAP::ValueArg<std::string> arg_rflank("r", "r", "right flanks", false, "", "string");
-            TCLAP::ValueArg<float> arg_delta("d", "d", "delta", false, -1, "float");
-            TCLAP::ValueArg<float> arg_epsilon("e", "e", "epsilon", false, -1, "float");
-            TCLAP::ValueArg<float> arg_tau("t", "t", "tau", false, -1, "float");
-            TCLAP::ValueArg<float> arg_eta("n", "n", "eta", false, -1, "float");
+            TCLAP::ValueArg<float> arg_delta("d", "d", "delta", false, 0.01, "float");
+            TCLAP::ValueArg<float> arg_epsilon("e", "e", "epsilon", false, 0.05, "float");
+            TCLAP::ValueArg<float> arg_tau("t", "t", "tau", false, 0.01, "float");
+            TCLAP::ValueArg<float> arg_eta("n", "n", "eta", false, 0.01, "float");
             TCLAP::ValueArg<float> arg_mismatch_penalty("p", "p", "mismatch penalty", false, 1, "float");
             TCLAP::SwitchArg arg_debug("v", "v", "debug mode", false);
 
@@ -152,18 +152,25 @@ class Igor : Program
         }
         else if (method=="chmm")
         {
-            CHMM chmm(debug);
+            CHMM hmm(debug);
             double llk;
             std::string qual;
             for (int32_t i=0; i<y.size(); ++i)
             {
                 qual += 'K';
             }
+            hmm.set_model(lflank.c_str(), ru.c_str(), rflank.c_str());
+            hmm.set_delta(delta);
+            hmm.set_epsilon(epsilon);
+            hmm.set_tau(tau);
+            hmm.set_eta(eta);
+            hmm.set_mismatch_penalty(mismatch_penalty);
+            hmm.initialize_T();   
             clock_t t0 = clock();
-            chmm.set_model(lflank.c_str(), ru.c_str(), rflank.c_str());
-            chmm.align(y.c_str(), qual.c_str());
-            chmm.print_alignment();
+            hmm.align(y.c_str(), qual.c_str());
+            hmm.print_alignment();
             clock_t t1 = clock();
+            std::cerr << "\n";
             print_time((float)(t1-t0)/CLOCKS_PER_SEC);
         }
         else if (method=="lfhmm")
@@ -177,10 +184,11 @@ class Igor : Program
             }
             clock_t t0 = clock();
             hmm.set_model(lflank.c_str(), ru.c_str());
-            if (delta!=-1) hmm.set_delta(delta);
-            if (epsilon!=-1) hmm.set_epsilon(epsilon);
-            if (tau!=-1) hmm.set_tau(tau);
-            if (eta!=-1) hmm.set_eta(eta);
+            hmm.set_delta(delta);
+            hmm.set_epsilon(epsilon);
+            hmm.set_tau(tau);
+            hmm.set_eta(eta);
+            hmm.initialize_T();    
             hmm.set_mismatch_penalty(mismatch_penalty);
             hmm.align(y.c_str(), qual.c_str());
             hmm.print_alignment();
@@ -197,6 +205,12 @@ class Igor : Program
             }
             clock_t t0 = clock();
             hmm.set_model(ru.c_str(), rflank.c_str());
+            hmm.set_delta(delta);
+            hmm.set_epsilon(epsilon);
+            hmm.set_tau(tau);
+            hmm.set_eta(eta);
+            hmm.set_mismatch_penalty(mismatch_penalty);
+            hmm.initialize_T();   
             hmm.align(y.c_str(), qual.c_str());
             hmm.print_alignment();
             clock_t t1 = clock();
@@ -223,12 +237,17 @@ class Igor : Program
     {
         std::clog << "align v" << version << "\n";
         std::clog << "\n";
-        std::clog << "options:     method   " << method << "\n";
+        std::clog << "options:     method      " << method << "\n";
         std::clog << "         [x] x        " << x << "\n";
         std::clog << "         [l] lflank   " << lflank << "\n";
         std::clog << "         [u] repeat   " << ru << "\n";
         std::clog << "         [r] rflank   " << rflank << "\n";
         std::clog << "         [y] y        " << y << "\n";
+        std::clog << "         [d] delta    " << delta << "\n";
+        std::clog << "         [e] epsilon  " << epsilon << "\n";
+        std::clog << "         [t] tau      " << tau << "\n";
+        std::clog << "         [n] eta      " << eta << "\n";
+        std::clog << "         [p] p        " << mismatch_penalty << "\n";
         std::clog << "\n";
     }
 
