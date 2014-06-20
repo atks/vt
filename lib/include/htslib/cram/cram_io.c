@@ -1119,6 +1119,7 @@ static refs_t *refs_load_fai(refs_t *r_orig, char *fn, int is_err) {
     char fai_fn[PATH_MAX];
     char line[8192];
     refs_t *r = r_orig;
+    size_t fn_l = strlen(fn);
 
     RP("refs_load_fai %s\n", fn);
 
@@ -1139,15 +1140,19 @@ static refs_t *refs_load_fai(refs_t *r_orig, char *fn, int is_err) {
 
     if (!(r->fn = string_dup(r->pool, fn)))
 	goto err;
+	
+    if (fn_l > 4 && strcmp(&fn[fn_l-4], ".fai") == 0)
+	r->fn[fn_l-4] = 0;
 
-    if (!(r->fp = fopen(fn, "r"))) {
+    if (!(r->fp = fopen(r->fn, "r"))) {
 	if (is_err)
 	    perror(fn);
 	goto err;
     }
 
     /* Parse .fai file and load meta-data */
-    sprintf(fai_fn, "%.*s.fai", PATH_MAX-5, fn);
+    sprintf(fai_fn, "%.*s.fai", PATH_MAX-5, r->fn);
+
     if (stat(fai_fn, &sb) != 0) {
 	if (is_err)
 	    perror(fai_fn);
@@ -1963,7 +1968,7 @@ int cram_load_reference(cram_fd *fd, char *fn) {
     }
     fd->ref_fn = fn;
 
-    if (!fd->refs && fd->header) {
+    if ((!fd->refs || (fd->refs->nref == 0 && !fn)) && fd->header) {
 	if (!(fd->refs = refs_create()))
 	    return -1;
 	if (-1 == refs_from_header(fd->refs, fd, fd->header))
@@ -2206,6 +2211,11 @@ cram_container *cram_read_container(cram_fd *fd) {
 	c->multi_seq = 1;
 	fd->multi_seq = 1;
     }
+
+    fd->empty_container =
+	(c->num_records == 0 &&
+	 c->ref_seq_id == -1 &&
+	 c->ref_seq_start == 0x454f46 /* EOF */) ? 1 : 0;
 
     return c;
 }
@@ -3326,7 +3336,7 @@ cram_fd *cram_dopen(cram_FILE *fp, const char *filename, const char *mode) {
 	fd->m[i] = cram_new_metrics();
 
     fd->range.refid = -2; // no ref.
-    fd->eof = 0;
+    fd->eof = 1;          // See samtools issue #150
     fd->ref_fn = NULL;
 
     fd->bl = NULL;

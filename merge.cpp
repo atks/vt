@@ -166,7 +166,8 @@ class Igor : Program
                 }
             }
         }
-
+        bcf_hdr_add_sample(odw->hdr, NULL);
+        
         if (no_samples)
         {
             bcf_hdr_append(odw->hdr, "##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">");

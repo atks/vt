@@ -823,6 +823,7 @@ class Igor : Program
         bcf_hdr_append(odw->hdr, "##FORMAT=<ID=E,Number=1,Type=Integer,Description=\"Number of reads containing evidence of the alternate allele\">");
         bcf_hdr_append(odw->hdr, "##FORMAT=<ID=N,Number=1,Type=Integer,Description=\"Total number of reads at a candidate locus with reads that contain evidence of the alternate allele\">");
         bcf_hdr_add_sample(odw->hdr, sample_id.c_str());
+        bcf_hdr_add_sample(odw->hdr, NULL);
         //bcf_hdr_set_n_sample(odw->hdr, 1);
                                 
         v = NULL;
