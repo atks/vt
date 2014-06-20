@@ -97,7 +97,7 @@ class BAMOrderedReader
      * @_input_vcf_file     name of the input VCF file
      * @_intervals          list of intervals, if empty, all records are selected.
      */
-    BAMOrderedReader(std::string input_bam_file, std::vector<GenomeInterval>& _intervals, std::string reference_fasta_file);
+    BAMOrderedReader(std::string input_bam_file, std::vector<GenomeInterval>& _intervals);
     
     /**
      * Jump to interval. Returns false if not successful.

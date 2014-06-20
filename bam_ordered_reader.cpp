@@ -23,7 +23,7 @@
 
 #include "bam_ordered_reader.h"
 
-BAMOrderedReader::BAMOrderedReader(std::string bam_file, std::vector<GenomeInterval>& intervals, std::string reference_fasta_file="")
+BAMOrderedReader::BAMOrderedReader(std::string bam_file, std::vector<GenomeInterval>& intervals)
 :bam_file(bam_file), intervals(intervals), sam(0), hdr(0), idx(0), itr(0)
 {
     const char* fname = bam_file.c_str();
