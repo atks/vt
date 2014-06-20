@@ -990,7 +990,7 @@ void CHMM::trace_path()
 
         des_t = *optimal_path_ptr;
         collect_statistics(src_t, des_t, j);
-        if (debug)std::cerr << track2string(src_t) << " (" << i << "," << j << ") => " << track2string(des_t) << " :  " << track2string(last_t) << "\n";
+        if (debug) std::cerr << track2string(src_t) << " (" << i << "," << j << ") => " << track2string(des_t) << " :  " << track2string(last_t) << "\n";
         src_t = des_t;
 
         if (u==ML || u==M || u==MR)
@@ -1165,7 +1165,7 @@ float CHMM::log10_emission_odds(char probe_base, char read_base, uint32_t pl)
 
     if (read_base!=probe_base)
     {
-        return lt->pl2log10_varp(pl);
+        return lt->pl2log10_varp(pl) - par.mismatch_penalty;
     }
     else
     {

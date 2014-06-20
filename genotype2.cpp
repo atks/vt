@@ -148,7 +148,6 @@ class Igor : Program
         bcf_hdr_remove(odw->hdr, BCF_HL_INFO, "REFPROBE");
         bcf_hdr_remove(odw->hdr, BCF_HL_INFO, "ALTPROBE");
         bcf_hdr_remove(odw->hdr, BCF_HL_INFO, "PLEN");
-        //added sample early, appending of HLs ensures syncing of the dictionaries.
         bcf_hdr_add_sample(odw->hdr, strdup(sample_id.c_str()));
         bcf_hdr_add_sample(odw->hdr, NULL);
         bcf_hdr_append(odw->hdr, "##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">");
