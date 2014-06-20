@@ -618,7 +618,7 @@ void CHMM::proc_comp(int32_t A, int32_t B, int32_t index1, int32_t j, int32_t ma
         max_track = t;
     }
 
-    if (1)
+    if (debug)
     {
         std::cerr << "\t" << state2string(A) << "=>" << state2string(B);
         std::cerr << " (" << ((index1-j)>>MAXLEN_NBITS) << "," << j << ") ";
@@ -648,8 +648,6 @@ void CHMM::align(const char* read, const char* qual, bool debug)
         fprintf(stderr, "[%s:%d %s] Sequence to be aligned is greater than %d currently supported: %d\n", __FILE__, __LINE__, __FUNCTION__, MAXLEN, rlen);
         exit(1);
     }
-
-    debug = true;
 
     float max = 0;
     char maxPath = 'X';
@@ -861,7 +859,7 @@ void CHMM::align(const char* read, const char* qual, bool debug)
         }
     }
 
-    if (1)
+    if (debug)
     {
         std::cerr << "\n   =V[S]=\n";
         print(V[S], plen+1, rlen+1);
@@ -992,7 +990,7 @@ void CHMM::trace_path()
 
         des_t = *optimal_path_ptr;
         collect_statistics(src_t, des_t, j);
-        //std::cerr << track2string(src_t) << " (" << i << "," << j << ") => " << track2string(des_t) << " :  " << track2string(last_t) << "\n";
+        if (debug)std::cerr << track2string(src_t) << " (" << i << "," << j << ") => " << track2string(des_t) << " :  " << track2string(last_t) << "\n";
         src_t = des_t;
 
         if (u==ML || u==M || u==MR)
@@ -1478,7 +1476,7 @@ void CHMM::print_alignment()
  */
 void CHMM::print_alignment(std::string& pad)
 {
-    print_T();
+    if (debug) print_T();
     
     if (!optimal_path_traced)
     {
