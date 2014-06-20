@@ -15,7 +15,7 @@
 #include "htslib/kseq.h"
 #define KS_BGZF 1
 #if KS_BGZF
-    // pd3 todo: gzread() in BGZF
+    // bgzf now supports gzip-compressed files
     KSTREAM_INIT2(, BGZF*, bgzf_read, 65536)
 #else
     KSTREAM_INIT2(, gzFile, gzread, 16384)
@@ -155,6 +155,9 @@ htsFile *hts_open(const char *fn, const char *mode)
 	else if (fp->is_cram) {
 		fp->fp.cram = cram_dopen(hfile, fn, mode);
 		if (fp->fp.cram == NULL) goto error;
+		if (!fp->is_write)
+		    cram_set_option(fp->fp.cram, CRAM_OPT_DECODE_MD, 1);
+
 	}
 	else if (fp->is_kstream) {
 	#if KS_BGZF
@@ -426,6 +429,10 @@ int hts_file_type(const char *fname)
 
 #define HTS_MIN_MARKER_DIST 0x10000
 
+// Finds the special meta bin
+//  ((1<<(3 * n_lvls + 3)) - 1) / 7 + 1
+#define META_BIN(idx) ((idx)->n_bins + 1)
+
 #define pair64_lt(a,b) ((a).u < (b).u)
 
 #include "htslib/ksort.h"
@@ -507,6 +514,7 @@ hts_idx_t *hts_idx_init(int n, int fmt, uint64_t offset0, int min_shift, int n_l
 {
 	hts_idx_t *idx;
 	idx = (hts_idx_t*)calloc(1, sizeof(hts_idx_t));
+	if (idx == NULL) return NULL;
 	idx->fmt = fmt;
 	idx->min_shift = min_shift;
 	idx->n_lvls = n_lvls;
@@ -517,7 +525,9 @@ hts_idx_t *hts_idx_init(int n, int fmt, uint64_t offset0, int min_shift, int n_l
 	if (n) {
 		idx->n = idx->m = n;
 		idx->bidx = (bidx_t**)calloc(n, sizeof(bidx_t*));
+		if (idx->bidx == NULL) { free(idx); return NULL; }
 		idx->lidx = (lidx_t*) calloc(n, sizeof(lidx_t));
+		if (idx->lidx == NULL) { free(idx->bidx); free(idx); return NULL; }
 	}
 	return idx;
 }
@@ -530,7 +540,7 @@ static void update_loff(hts_idx_t *idx, int i, int free_lidx)
 	int l;
 	uint64_t offset0 = 0;
 	if (bidx) {
-		k = kh_get(bin, bidx, idx->n_bins + 1);
+		k = kh_get(bin, bidx, META_BIN(idx));
 		if (k != kh_end(bidx))
 			offset0 = kh_val(bidx, k).list[0].u;
 		for (l = 0; l < lidx->n && lidx->offset[l] == (uint64_t)-1; ++l)
@@ -542,7 +552,16 @@ static void update_loff(hts_idx_t *idx, int i, int free_lidx)
 	if (bidx == 0) return;
 	for (k = kh_begin(bidx); k != kh_end(bidx); ++k) // set loff
 		if (kh_exist(bidx, k))
-			kh_val(bidx, k).loff = kh_key(bidx, k) < idx->n_bins? lidx->offset[hts_bin_bot(kh_key(bidx, k), idx->n_lvls)] : 0;
+        {
+            if ( kh_key(bidx, k) < idx->n_bins )
+            {
+                int bot_bin = hts_bin_bot(kh_key(bidx, k), idx->n_lvls);
+                // disable linear index if bot_bin out of bounds
+                kh_val(bidx, k).loff = bot_bin < lidx->n ? lidx->offset[bot_bin] : 0;
+            }
+            else
+                kh_val(bidx, k).loff = 0;
+        }
 	if (free_lidx) {
 		free(lidx->offset);
 		lidx->m = lidx->n = 0;
@@ -603,8 +622,8 @@ void hts_idx_finish(hts_idx_t *idx, uint64_t final_offset)
 	if (idx == NULL || idx->z.finished) return; // do not run this function on an empty index or multiple times
 	if (idx->z.save_tid >= 0) {
 		insert_to_b(idx->bidx[idx->z.save_tid], idx->z.save_bin, idx->z.save_off, final_offset);
-		insert_to_b(idx->bidx[idx->z.save_tid], idx->n_bins + 1, idx->z.off_beg, final_offset);
-		insert_to_b(idx->bidx[idx->z.save_tid], idx->n_bins + 1, idx->z.n_mapped, idx->z.n_unmapped);
+		insert_to_b(idx->bidx[idx->z.save_tid], META_BIN(idx), idx->z.off_beg, final_offset);
+		insert_to_b(idx->bidx[idx->z.save_tid], META_BIN(idx), idx->z.n_mapped, idx->z.n_unmapped);
 	}
 	for (i = 0; i < idx->n; ++i) {
 		update_loff(idx, i, (idx->fmt == HTS_FMT_CSI));
@@ -656,8 +675,8 @@ int hts_idx_push(hts_idx_t *idx, int tid, int beg, int end, uint64_t offset, int
 			insert_to_b(idx->bidx[idx->z.save_tid], idx->z.save_bin, idx->z.save_off, idx->z.last_off);
 		if (idx->z.last_bin == 0xffffffffu && idx->z.save_bin != 0xffffffffu) { // change of chr; keep meta information
 			idx->z.off_end = idx->z.last_off;
-			insert_to_b(idx->bidx[idx->z.save_tid], idx->n_bins + 1, idx->z.off_beg, idx->z.off_end);
-			insert_to_b(idx->bidx[idx->z.save_tid], idx->n_bins + 1, idx->z.n_mapped, idx->z.n_unmapped);
+			insert_to_b(idx->bidx[idx->z.save_tid], META_BIN(idx), idx->z.off_beg, idx->z.off_end);
+			insert_to_b(idx->bidx[idx->z.save_tid], META_BIN(idx), idx->z.n_mapped, idx->z.n_unmapped);
 			idx->z.n_mapped = idx->z.n_unmapped = 0;
 			idx->z.off_beg = idx->z.off_end;
 		}
@@ -818,11 +837,12 @@ void hts_idx_save(const hts_idx_t *idx, const char *fn, int fmt)
 	free(fnidx);
 }
 
-static void hts_idx_load_core(hts_idx_t *idx, void *fp, int fmt)
+static int hts_idx_load_core(hts_idx_t *idx, void *fp, int fmt)
 {
 	int32_t i, n, is_be;
 	int is_bgzf = (fmt != HTS_FMT_BAI);
 	is_be = ed_is_big();
+	if (idx == NULL) return -4;
 	for (i = 0; i < idx->n; ++i) {
 		bidx_t *h;
 		lidx_t *l = &idx->lidx[i];
@@ -830,32 +850,35 @@ static void hts_idx_load_core(hts_idx_t *idx, void *fp, int fmt)
 		int j, absent;
 		bins_t *p;
 		h = idx->bidx[i] = kh_init(bin);
-		idx_read(is_bgzf, fp, &n, 4);
+		if (idx_read(is_bgzf, fp, &n, 4) != 4) return -1;
 		if (is_be) ed_swap_4p(&n);
 		for (j = 0; j < n; ++j) {
 			khint_t k;
-			idx_read(is_bgzf, fp, &key, 4);
+			if (idx_read(is_bgzf, fp, &key, 4) != 4) return -1;
 			if (is_be) ed_swap_4p(&key);
 			k = kh_put(bin, h, key, &absent);
+			if (absent <= 0) return -3; // Duplicate bin number
 			p = &kh_val(h, k);
 			if (fmt == HTS_FMT_CSI) {
-				idx_read(is_bgzf, fp, &p->loff, 8);
+				if (idx_read(is_bgzf, fp, &p->loff, 8) != 8) return -1;
 				if (is_be) ed_swap_8p(&p->loff);
 			} else p->loff = 0;
-			idx_read(is_bgzf, fp, &p->n, 4);
+			if (idx_read(is_bgzf, fp, &p->n, 4) != 4) return -1;
 			if (is_be) ed_swap_4p(&p->n);
 			p->m = p->n;
 			p->list = (hts_pair64_t*)malloc(p->m * 16);
-			idx_read(is_bgzf, fp, p->list, p->n<<4);
+			if (p->list == NULL) return -2;
+			if (idx_read(is_bgzf, fp, p->list, p->n<<4) != p->n<<4) return -1;
 			if (is_be) swap_bins(p);
 		}
 		if (fmt != HTS_FMT_CSI) { // load linear index
 			int j;
-			idx_read(is_bgzf, fp, &l->n, 4);
+			if (idx_read(is_bgzf, fp, &l->n, 4) != 4) return -1;
 			if (is_be) ed_swap_4p(&l->n);
 			l->m = l->n;
 			l->offset = (uint64_t*)malloc(l->n << 3);
-			idx_read(is_bgzf, fp, l->offset, l->n << 3);
+			if (l->offset == NULL) return -2;
+			if (idx_read(is_bgzf, fp, l->offset, l->n << 3) != l->n << 3) return -1;
 			if (is_be) for (j = 0; j < l->n; ++j) ed_swap_8p(&l->offset[j]);
 			for (j = 1; j < l->n; ++j) // fill missing values; may happen given older samtools and tabix
 				if (l->offset[j] == 0) l->offset[j] = l->offset[j-1];
@@ -864,59 +887,85 @@ static void hts_idx_load_core(hts_idx_t *idx, void *fp, int fmt)
 	}
 	if (idx_read(is_bgzf, fp, &idx->n_no_coor, 8) != 8) idx->n_no_coor = 0;
 	if (is_be) ed_swap_8p(&idx->n_no_coor);
+	return 0;
 }
 
 hts_idx_t *hts_idx_load_local(const char *fn, int fmt)
 {
 	uint8_t magic[4];
 	int i, is_be;
-	hts_idx_t *idx;
+	hts_idx_t *idx = NULL;
 	is_be = ed_is_big();
 	if (fmt == HTS_FMT_CSI) {
 		BGZF *fp;
 		uint32_t x[3], n;
 		uint8_t *meta = 0;
 		if ((fp = bgzf_open(fn, "r")) == 0) return NULL;
-		if ( bgzf_read(fp, magic, 4) != 4 ) return NULL;
-		if ( bgzf_read(fp, x, 12) != 12 ) return NULL;
+		if (bgzf_read(fp, magic, 4) != 4) goto csi_fail;
+		if (memcmp(magic, "CSI\1", 4) != 0) goto csi_fail;
+		if (bgzf_read(fp, x, 12) != 12) goto csi_fail;
 		if (is_be) for (i = 0; i < 3; ++i) ed_swap_4p(&x[i]);
 		if (x[2]) {
-			meta = (uint8_t*)malloc(x[2]);
-			if ( bgzf_read(fp, meta, x[2]) != x[2] ) return NULL;
+			if ((meta = (uint8_t*)malloc(x[2])) == NULL) goto csi_fail;
+			if (bgzf_read(fp, meta, x[2]) != x[2]) goto csi_fail;
 		}
-		if ( bgzf_read(fp, &n, 4) != 4 ) return NULL;
+		if (bgzf_read(fp, &n, 4) != 4) goto csi_fail;
 		if (is_be) ed_swap_4p(&n);
-		idx = hts_idx_init(n, fmt, 0, x[0], x[1]);
+		if ((idx = hts_idx_init(n, fmt, 0, x[0], x[1])) == NULL) goto csi_fail;
 		idx->l_meta = x[2];
 		idx->meta = meta;
-		hts_idx_load_core(idx, fp, HTS_FMT_CSI);
+		meta = NULL;
+		if (hts_idx_load_core(idx, fp, HTS_FMT_CSI) < 0) goto csi_fail;
 		bgzf_close(fp);
+		return idx;
+
+	csi_fail:
+		bgzf_close(fp);
+		hts_idx_destroy(idx);
+		free(meta);
+		return NULL;
+
 	} else if (fmt == HTS_FMT_TBI) {
 		BGZF *fp;
 		uint32_t x[8];
 		if ((fp = bgzf_open(fn, "r")) == 0) return NULL;
-		if ( bgzf_read(fp, magic, 4) != 4 ) return NULL;
-		if ( bgzf_read(fp, x, 32) != 32 ) return NULL;
+		if (bgzf_read(fp, magic, 4) != 4) goto tbi_fail;
+		if (memcmp(magic, "TBI\1", 4) != 0) goto tbi_fail;
+		if (bgzf_read(fp, x, 32) != 32) goto tbi_fail;
 		if (is_be) for (i = 0; i < 8; ++i) ed_swap_4p(&x[i]);
-		idx = hts_idx_init(x[0], fmt, 0, 14, 5);
+		if ((idx = hts_idx_init(x[0], fmt, 0, 14, 5)) == NULL) goto tbi_fail;
 		idx->l_meta = 28 + x[7];
-		idx->meta = (uint8_t*)malloc(idx->l_meta);
+		if ((idx->meta = (uint8_t*)malloc(idx->l_meta)) == NULL) goto tbi_fail;
 		memcpy(idx->meta, &x[1], 28);
-		bgzf_read(fp, idx->meta + 28, x[7]);
-		hts_idx_load_core(idx, fp, HTS_FMT_TBI);
+		if (bgzf_read(fp, idx->meta + 28, x[7]) != x[7]) goto tbi_fail;
+		if (hts_idx_load_core(idx, fp, HTS_FMT_TBI) < 0) goto tbi_fail;
 		bgzf_close(fp);
+		return idx;
+
+	tbi_fail:
+		bgzf_close(fp);
+		hts_idx_destroy(idx);
+		return NULL;
+
 	} else if (fmt == HTS_FMT_BAI) {
 		uint32_t n;
 		FILE *fp;
 		if ((fp = fopen(fn, "rb")) == 0) return NULL;
-		if ( fread(magic, 1, 4, fp) != 4 ) return NULL;
-		if ( fread(&n, 4, 1, fp) != 1 ) return NULL;
+		if (fread(magic, 1, 4, fp) != 4) goto bai_fail;
+		if (memcmp(magic, "BAI\1", 4) != 0) goto bai_fail;
+		if (fread(&n, 4, 1, fp) != 1) goto bai_fail;
 		if (is_be) ed_swap_4p(&n);
 		idx = hts_idx_init(n, fmt, 0, 14, 5);
-		hts_idx_load_core(idx, fp, HTS_FMT_BAI);
+		if (hts_idx_load_core(idx, fp, HTS_FMT_BAI) < 0) goto bai_fail;
 		fclose(fp);
+		return idx;
+
+	bai_fail:
+		fclose(fp);
+		hts_idx_destroy(idx);
+		return NULL;
+
 	} else abort();
-	return idx;
 }
 
 void hts_idx_set_meta(hts_idx_t *idx, int l_meta, uint8_t *meta, int is_copy)
@@ -953,6 +1002,30 @@ const char **hts_idx_seqnames(const hts_idx_t *idx, int *n, hts_id2name_f getid,
     }
     *n = tid;
     return names;
+}
+
+int hts_idx_get_stat(const hts_idx_t* idx, int tid, uint64_t* mapped, uint64_t* unmapped)
+{
+	if ( idx->fmt == HTS_FMT_CRAI ) {
+		*mapped = 0; *unmapped = 0;
+		return -1;
+	}
+
+	bidx_t *h = idx->bidx[tid];
+	khint_t k = kh_get(bin, h, META_BIN(idx));
+	if (k != kh_end(h)) {
+		*mapped = kh_val(h, k).list[1].u;
+		*unmapped = kh_val(h, k).list[1].v;
+		return 0;
+	} else {
+		*mapped = 0; *unmapped = 0;
+		return -1;
+	}
+}
+
+uint64_t hts_idx_get_n_no_coor(const hts_idx_t* idx)
+{
+	return idx->n_no_coor;
 }
 
 /****************
@@ -995,7 +1068,7 @@ hts_itr_t *hts_itr_query(const hts_idx_t *idx, int tid, int beg, int end, hts_re
             for (i=0; i<idx->n; i++)
             {
                 bidx = idx->bidx[i];
-                k = kh_get(bin, bidx, idx->n_bins + 1);
+                k = kh_get(bin, bidx, META_BIN(idx));
                 if (k == kh_end(bidx)) continue;
                 if ( off0 > kh_val(bidx, k).list[0].u ) off0 = kh_val(bidx, k).list[0].u;
             }
@@ -1006,7 +1079,7 @@ hts_itr_t *hts_itr_query(const hts_idx_t *idx, int tid, int beg, int end, hts_re
             if ( idx->n>0 )
             {
                 bidx = idx->bidx[idx->n - 1];
-                k = kh_get(bin, bidx, idx->n_bins + 1);
+                k = kh_get(bin, bidx, META_BIN(idx));
                 if (k != kh_end(bidx)) off0 = kh_val(bidx, k).list[0].v;
             }
             if ( off0==(uint64_t)-1 && idx->n_no_coor ) off0 = 0; // only no-coor reads in this bam

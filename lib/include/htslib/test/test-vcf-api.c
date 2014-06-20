@@ -41,6 +41,7 @@ void write_bcf(char *fname)
     bcf_hdr_add_sample(hdr, "NA00001");
     bcf_hdr_add_sample(hdr, "NA00002");
     bcf_hdr_add_sample(hdr, "NA00003");
+    bcf_hdr_add_sample(hdr, NULL);      // to update internal structures
     bcf_hdr_write(fp, hdr);
 
 
@@ -149,6 +150,25 @@ void bcf_to_vcf(char *fname)
 
     while ( bcf_read1(fp, hdr, rec)>=0 )
     {
+        bcf_write1(out, hdr_out, rec);
+
+        // Test problems caused by bcf1_sync: the data block
+        // may be realloced, also the unpacked structures must
+        // get updated.
+        bcf_unpack(rec, BCF_UN_STR);
+        bcf_update_id(hdr, rec, 0);
+        bcf_update_format_int32(hdr, rec, "GQ", NULL, 0);
+
+        bcf1_t *dup = bcf_dup(rec);     // force bcf1_sync call
+        bcf_write1(out, hdr_out, dup);
+        bcf_destroy1(dup);
+
+        bcf_update_alleles_str(hdr_out, rec, "G,A");
+        int32_t tmpi = 99;
+        bcf_update_info_int32(hdr_out, rec, "DP", &tmpi, 1);
+        int32_t tmpia[] = {9,9,9};
+        bcf_update_format_int32(hdr_out, rec, "DP", tmpia, 3);
+
         bcf_write1(out, hdr_out, rec);
     }
     
