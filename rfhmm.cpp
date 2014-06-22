@@ -128,10 +128,10 @@ void RFHMM::initialize_structures()
     model[LFLANK] = NULL;
     model[MOTIF] = NULL;
     model[RFLANK] = NULL;
-    
+
     rflen = 0;
     mlen = 0;
-    
+
     motif_discordance = new int32_t[MAXLEN];
     optimal_path = new int32_t[MAXLEN<<2];
     optimal_path_traced = false;
@@ -196,10 +196,10 @@ void RFHMM::initialize_T()
             T[i][j] = -INFINITY;
         }
     }
-    
+
     T[S][Y] = 0;
     T[Y][Y] = 0;
-    
+
     T[S][M] = log10((tau*(1-2*delta-tau))/(tau*eta*(1-eta)*(1-eta)));
     T[Y][M] = T[S][M];
     T[M][M] = log10(((1-2*delta-tau))/((1-eta)*(1-eta)));
@@ -320,8 +320,6 @@ void RFHMM::set_model(const char* motif, const char* rflank)
     if (model[MOTIF]) free(model[MOTIF]);
     if (model[RFLANK]) free(model[RFLANK]);
 
-    std::cerr << "size of model " << sizeof(model)  << " " << motif << " " << rflank << "\n";
-
     model[MOTIF] = strdup(motif);
     model[RFLANK] = strdup(rflank);
 
@@ -429,8 +427,6 @@ void RFHMM::align(const char* read, const char* qual)
     rlen = strlen(read);
     plen = rlen + rflen;
 
-   // std::cerr <<
-
     if (rlen>MAXLEN)
     {
         fprintf(stderr, "[%s:%d %s] Sequence to be aligned is greater than %d currently supported: %d\n", __FILE__, __LINE__, __FUNCTION__, MAXLEN, rlen);
@@ -525,11 +521,6 @@ void RFHMM::align(const char* read, const char* qual)
 
     if (debug)
     {
-//        std::cerr << "\n   =V[S]=\n";
-//        print(V[S], plen+1, rlen+1);
-//        std::cerr << "\n   =U[S]=\n";
-//        print_U(U[S], plen+1, rlen+1);
-        std::cerr << "\n   =V[Y]=\n";
         print(V[Y], plen+1, rlen+1);
         std::cerr << "\n   =U[Y]=\n";
         print_U(U[Y], plen+1, rlen+1);
@@ -623,7 +614,7 @@ void RFHMM::trace_path()
     if (debug) std::cerr << track2string(src_t) << " (" << i << "," << j << ") => " << track2string(des_t) << " :  " << track2string(last_t) << "\n";
     if (debug) std::cerr << track2string(last_t) << "\n";
     if (debug) std::cerr << "\n";
-    
+
     collect_statistics(src_t, last_t, j);
 
     ++optimal_path_ptr;
@@ -635,7 +626,7 @@ void RFHMM::trace_path()
  */
 void RFHMM::collect_statistics(int32_t src_t, int32_t des_t, int32_t j)
 {
-    //std::cerr << "\t " << track2string(src_t) << " (" << j << ") => " << track2string(des_t) << "\n";
+    if (debug) std::cerr << "\t " << track2string(src_t) << " (" << j << ") => " << track2string(des_t) << "\n";
 
     int32_t src_u = track_get_u(src_t);
     int32_t des_u = track_get_u(des_t);
@@ -752,7 +743,7 @@ float RFHMM::log10_emission_odds(char probe_base, char read_base, uint32_t pl)
 
     if (read_base!=probe_base)
     {
-        return lt->pl2log10_varp(pl);
+        return lt->pl2log10_varp(pl) - par.mismatch_penalty;
     }
     else
     {
@@ -988,7 +979,7 @@ void RFHMM::print_alignment(std::string& pad)
         std::cerr << "path not traced\n";
     }
 
-    print_T();
+    if (debug) print_T();
     std::cerr << "\n";
 
     std::cerr << "repeat motif : " << model[MOTIF] << "\n";
