@@ -104,6 +104,11 @@ void GENCODERecord::feature2string(int32_t feature, kstring_t *s)
 GENCODE::GENCODE(std::string& gencode_gtf_file, std::string& ref_fasta_file, std::vector<GenomeInterval>& intervals)
 {
     fai = fai_load(ref_fasta_file.c_str());
+    if (fai==NULL) 
+    {
+        fprintf(stderr, "[%s:%d %s] Cannot load genome index: %s\n", __FILE__, __LINE__, __FUNCTION__, ref_fasta_file.c_str());
+        exit(1);
+    }
     this->gencode_gtf_file = gencode_gtf_file;
     initialize(intervals);
     
@@ -269,6 +274,11 @@ GENCODE::GENCODE(std::string& gencode_gtf_file, std::string& ref_fasta_file, std
 GENCODE::GENCODE(std::string& gencode_gtf_file, std::string& ref_fasta_file)
 {
     fai = fai_load(ref_fasta_file.c_str());
+    if (fai==NULL) 
+    {
+        fprintf(stderr, "[%s:%d %s] Cannot load genome index: %s\n", __FILE__, __LINE__, __FUNCTION__, ref_fasta_file.c_str());
+        exit(1);
+    }
     this->gencode_gtf_file = gencode_gtf_file;
 }
 
