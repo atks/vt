@@ -864,7 +864,11 @@ class Igor : Program
         //tools initialization//
         ////////////////////////
         faidx_t *fai = fai_load(ref_fasta_file.c_str());
-
+        if (fai==NULL) 
+        {
+            fprintf(stderr, "[%s:%d %s] Cannot load genome index: %s\n", __FILE__, __LINE__, __FUNCTION__, ref_fasta_file.c_str());
+            exit(1);
+        }
         variantHunter = new VariantHunter(vtype,
                                     evidence_allele_count_cutoff,
                                     fractional_evidence_allele_count_cutoff,

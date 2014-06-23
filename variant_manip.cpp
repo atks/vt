@@ -110,6 +110,11 @@ VariantManip::VariantManip(std::string ref_fasta_file)
     if (ref_fasta_file!="")
     {
         fai = fai_load(ref_fasta_file.c_str());
+        if (fai==NULL) 
+        {
+            fprintf(stderr, "[%s:%d %s] Cannot load genome index: %s\n", __FILE__, __LINE__, __FUNCTION__, ref_fasta_file.c_str());
+            exit(1);
+        }
         reference_present = (fai!=NULL);
     }
 };
