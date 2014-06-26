@@ -1499,8 +1499,6 @@ void CHMM::print_alignment(std::string& pad)
     std::cerr << "optimal track: " << track2string(optimal_track) << "\n";
     std::cerr << "optimal probe len: " << optimal_probe_len << "\n";
     std::cerr << "optimal path length : " << optimal_path_len << "\n";
-    std::cerr << "optimal path     : " << optimal_path << "\n";
-    std::cerr << "optimal path ptr : " << optimal_path_ptr  << "\n";
     std::cerr << "max j: " << rlen << "\n";
 
     std::cerr << "probe: " << "(" << lflank_start[MODEL] << "~" << lflank_end[MODEL] << ") "

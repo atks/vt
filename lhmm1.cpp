@@ -25,7 +25,7 @@
 
 LHMM1::LHMM1()
 {
-    maxLength = 2000;
+    maxLength = 250;
 
 //  delta = 0.01;
 //  epsilon = 0.1;

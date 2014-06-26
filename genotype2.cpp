@@ -504,11 +504,9 @@ class Igor : Program
 
                 //get base and qual
                 char base, qual; int32_t rpos;
-                kstring_t readseq;
-                readseq.l = readseq.m = 0; readseq.s = 0;
-                kstring_t readqual;
-                readqual.l = readqual.m = 0; readqual.s = 0;
-
+                kstring_t readseq = {0,0,0};
+                kstring_t readqual = {0,0,0};
+                
     			bam_get_base_and_qual_and_read_and_qual(srec, ivcf_rec->pos, base, qual, rpos, &readseq, &readqual);
 
                 //fail to find a mapped base on the read
@@ -621,9 +619,14 @@ class Igor : Program
     			rls << rl1 << rl2;
     			mqs << (uint8_t) (mapQual+59);
 
-    			++read_no;
+                if (readseq.m) free(readseq.s);
+                if (readqual.m) free(readqual.s);
+               
+                ++read_no;
             }
 
+            hts_itr_destroy(iter);
+            
             //////////////////////////////////////////
             //compute PHRED scores and assign genotype
             //////////////////////////////////////////
@@ -744,8 +747,7 @@ class Igor : Program
     	            continue;
     	        }
 
-    	        //std::map<std::string, int> readIDs;
-    			if(read_ids.find(bam_get_qname(srec))==read_ids.end())
+                if(read_ids.find(bam_get_qname(srec))==read_ids.end())
     			{
     			    //assign id to reads to ease checking of overlapping reads
     				read_ids[bam_get_qname(srec)] = read_ids.size();
@@ -758,19 +760,19 @@ class Igor : Program
     		    }
 
                 //get base and qual
-                kstring_t str;
-    		    str.l = str.m = 0; str.s = 0;
-
+                kstring_t str1 = {0,0,0};
+                kstring_t str2 = {0,0,0};
+                
                 //read name
                 char* read_name = bam_get_qname(srec);
 
                 //sequence
-                bam_get_seq_string(srec, &str);
-                char* read_seq = strdup(str.s);
+                bam_get_seq_string(srec, &str1);
+                char* read_seq = str1.s;
 
                 //qual
-                bam_get_qual_string(srec, &str);
-                char* qual = strdup(str.s);
+                bam_get_qual_string(srec, &str2);
+                char* qual = str2.s;
 
                 //strand
                 char strand = bam_is_rev(srec) ? 'R' : 'F';
@@ -986,8 +988,14 @@ class Igor : Program
                     ++n_no;
                 }
                 
-                ++read_no;             
+                ++read_no;      
+                
+                free(read_seq);
+                free(qual);
+                       
             }
+
+            hts_itr_destroy(iter);
 
             //////////////////////////////////////////
             //compute PHRED scores and assign genotype
@@ -1097,7 +1105,7 @@ class Igor : Program
         }
         
         odr->close();
-        odw->close();
+        //odw->close();
     }
 
     private:
