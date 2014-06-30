@@ -54,7 +54,6 @@ void BEDRecord::print()
     std::cerr << this->chrom << ":" << this->start1 << "-" <<this->end1 << "\n";
 };
 
-
 /**
  * String version of BED record.
  */

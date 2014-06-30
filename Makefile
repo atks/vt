@@ -64,7 +64,8 @@ SOURCES = program\
 		consolidate_variants\
 		genotype2\
 		paste\
-		annotate_dbsnp_rsid
+		annotate_dbsnp_rsid\
+		config
 
 SOURCESONLY = main.cpp
 
