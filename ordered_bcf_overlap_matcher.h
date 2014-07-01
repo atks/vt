@@ -45,12 +45,12 @@ class OrderedBCFOverlapMatcher
     ///////
     //i/o//
     ///////
-    TBXOrderedReader *todr;    
+    BCFOrderedReader *odr;    
     
     kstring_t s;
     
     GenomeInterval current_interval;
-    std::list<BEDRecord> buffer;
+    std::list<bcf1_t> buffer;
     bool end_of_file;
     int32_t no_regions;
     
