@@ -57,6 +57,7 @@ SOURCES = program\
 		profile_hwe\
 		profile_len\
 		ordered_region_overlap_matcher\
+		ordered_bcf_overlap_matcher\
 		bed\
 		profile_chrom\
 		annotate_regions\
