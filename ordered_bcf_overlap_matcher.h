@@ -28,7 +28,7 @@
 #include "htslib/kseq.h"
 #include "program.h"
 #include "hts_utils.h"
-#include "tbx_ordered_reader.h"
+#include "bcf_ordered_reader.h"
 #include "interval_tree.h"
 #include <list>
 #include "bed.h"
@@ -47,17 +47,17 @@ class OrderedBCFOverlapMatcher
     ///////
     BCFOrderedReader *odr;    
     
-    kstring_t s;
+    bcf1_t *v;
     
     GenomeInterval current_interval;
-    std::list<bcf1_t> buffer;
+    std::list<bcf1_t*> buffer;
     bool end_of_file;
     int32_t no_regions;
     
     /**
      * Constructor.
      */
-    OrderedBCFOverlapMatcher(std::string& file);
+    OrderedBCFOverlapMatcher(std::string& file, std::vector<GenomeInterval>& intervals);
 
     /**
      * Destructor.

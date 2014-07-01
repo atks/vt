@@ -26,10 +26,10 @@
 /**
  * Constructor.
  */
-OrderedBCFOverlapMatcher::OrderedBCFOverlapMatcher(std::string& file)
+OrderedBCFOverlapMatcher::OrderedBCFOverlapMatcher(std::string& file, std::vector<GenomeInterval>& intervals)
 {
-    odr = new BCFOrderedReader(file);
-    s = {0,0,0};
+    odr = new BCFOrderedReader(file, intervals);
+    v = bcf_init();
     no_regions = 0;
     current_interval.seq = "";
 };
@@ -53,28 +53,30 @@ bool OrderedBCFOverlapMatcher::overlaps_with(std::string& chrom, int32_t start1,
         current_interval.set(chrom);
         odr->jump_to_interval(current_interval);
         std::cerr << "Jumped to chromosome " << chrom << "\n";
-        while (todr->read(&s))
+        while (odr->read(v))
         {
-            BEDRecord br(&s);
-            if (br.end1<start1) continue;
-            overlaps = overlaps || (br.start1<=end1);
-            buffer.push_back(br);
-            if (br.start1>end1) break;
+            if (bcf_get_end_pos1(v)<start1) continue;
+            overlaps = overlaps || (bcf_get_pos1(v)<=end1);
+            buffer.push_back(v);
+            if (bcf_get_pos1(v)>end1) break;
+            
+            v = bcf_init();
         }
     }
     else
     {
         //scythe preceding bed records
-        std::list<BEDRecord>::iterator i = buffer.begin();
+        std::list<bcf1_t*>::iterator i = buffer.begin();
         while (i!=buffer.end())
         {
-            if ((*i).end1<start1)
+            if (bcf_get_end_pos1(*i)<start1)
             {
+                bcf_destroy(*i);
                 i = buffer.erase(i);
                 continue;
             }
 
-            overlaps = ((*i).start1<=end1);
+            overlaps = (bcf_get_pos1(*i)<=end1);
             break;
         }
         
@@ -82,13 +84,14 @@ bool OrderedBCFOverlapMatcher::overlaps_with(std::string& chrom, int32_t start1,
         {
             if (buffer.empty())
             {    
-                while (todr->read(&s))
+                while (odr->read(v))
                 {
-                    BEDRecord br(&s);
-                    if (br.end1<start1) continue;
-                    overlaps = overlaps || (br.start1<=end1);
-                    buffer.push_back(br);
-                    if (br.start1>end1) break;
+                    if (bcf_get_end_pos1(*i)<start1) continue;
+                    overlaps = overlaps || (bcf_get_pos1(*i)<=end1);
+                    buffer.push_back(v);
+                    if (bcf_get_pos1(v)>end1) break;
+                    
+                    v = bcf_init();
                 }
             }
         }
