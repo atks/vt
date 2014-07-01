@@ -33,7 +33,7 @@ class Igor : Program
     ///////////
     //options//
     ///////////
-    std::string ref_bundle_dir;
+    std::string resource_bundle_dir;
 
     ///////
     //i/o//
@@ -60,11 +60,11 @@ class Igor : Program
 
             TCLAP::CmdLine cmd(desc, ' ', version);
             VTOutput my; cmd.setOutput(&my);
-            TCLAP::ValueArg<std::string> arg_ref_bundle_dir("r", "r", "reference sequence fasta file []", true, "", "str", cmd);
+            TCLAP::ValueArg<std::string> arg_resource_bundle_dir("r", "r", "resource bundle directory []", true, "", "str", cmd);
             //TCLAP::UnlabeledValueArg<std::string> arg_input_vcf_file("<c>", "input VCF file", true, "","file", cmd);
             cmd.parse(argc, argv);
 
-            ref_bundle_dir = arg_ref_bundle_dir.getValue();
+            resource_bundle_dir = arg_resource_bundle_dir.getValue();
         }
         catch (TCLAP::ArgException &e)
         {
@@ -89,7 +89,7 @@ class Igor : Program
     {
         //check directory?
         
-        std::string output_reference_file = ref_bundle_dir + "/indel.reference.txt";
+        std::string output_reference_file = resource_bundle_dir + "/indel.reference.txt";
 
         htsFile *file = hts_open(output_reference_file.c_str(), "w");
 
@@ -105,11 +105,11 @@ class Igor : Program
         size_t ret = hwrite(file->fp.hfile, hdr.c_str(), hdr.size());
 
         std::string dataset = "#dataset     type            filter                       path\n"
-                              "1000g        TP              N_ALLELE==2&&VTYPE==INDEL    " + ref_bundle_dir + "1000G.snps_indels.sites.bcf\n"
-                              "mills        TP              N_ALLELE==2&&VTYPE==INDEL    " + ref_bundle_dir + "mills.208620indels.sites.bcf\n"
-                              "dbsnp        TP              N_ALLELE==2&&VTYPE==INDEL    " + ref_bundle_dir + "dbsnp.13147541variants.sites.bcf\n"
-                              "GENCODE_V19  cds_annotation  .                            " + ref_bundle_dir + "gencode.cds.bed.gz\n"
-                              "DUST         cplx_annotation .                            " + ref_bundle_dir + "mdust.bed.gz\n";
+                              "1000g        TP              N_ALLELE==2&&VTYPE==INDEL    " + resource_bundle_dir + "1000G.snps_indels.sites.bcf\n"
+                              "mills        TP              N_ALLELE==2&&VTYPE==INDEL    " + resource_bundle_dir + "mills.208620indels.sites.bcf\n"
+                              "dbsnp        TP              N_ALLELE==2&&VTYPE==INDEL    " + resource_bundle_dir + "dbsnp.13147541variants.sites.bcf\n"
+                              "GENCODE_V19  cds_annotation  .                            " + resource_bundle_dir + "gencode.cds.bed.gz\n"
+                              "DUST         cplx_annotation .                            " + resource_bundle_dir + "mdust.bed.gz\n";
 
 
 //#mills.chip.common      TP           N_ALLELE==2&&VTYPE==INDEL&&INFO.AF>0.005   mills.chip.158samples.8904indels.sites.bcf
@@ -130,7 +130,7 @@ class Igor : Program
     {
         std::clog << "config v" << version << "\n";
         std::clog << "\n";
-        std::clog << "options: [r] reference bundle directory  " << ref_bundle_dir << "\n";
+        std::clog << "options: [r] resource bundle directory  " << resource_bundle_dir << "\n";
         std::clog << "\n";
     }
 
