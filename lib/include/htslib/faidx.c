@@ -113,7 +113,13 @@ faidx_t *fai_build_core(BGZF *bgzf)
 			}
 		}
 	}
-	fai_insert_index(idx, name, len, line_len, line_blen, offset);
+    if ( name )
+        fai_insert_index(idx, name, len, line_len, line_blen, offset);
+    else
+    {
+        free(idx);
+        return NULL;
+    }
 	free(name);
 	return idx;
 }
@@ -187,6 +193,11 @@ int fai_build(const char *fn)
 	}
     if ( bgzf->is_compressed ) bgzf_index_build_init(bgzf);
 	fai = fai_build_core(bgzf);
+    if ( !fai ) 
+    {
+        if ( bgzf->is_compressed && bgzf->is_gzip ) fprintf(stderr,"Cannot index files compressed with gzip, please use bgzip\n");
+        return -1;
+    }
     if ( bgzf->is_compressed ) bgzf_index_dump(bgzf, fn, ".gzi");
 	bgzf_close(bgzf);
 	fp = fopen(str, "wb");
@@ -418,4 +429,10 @@ char *faidx_fetch_seq(const faidx_t *fai, const char *c_name, int p_beg_i, int p
 	return seq;
 }
 
+int faidx_has_seq(const faidx_t *fai, const char *seq)
+{
+    khiter_t iter = kh_get(s, fai->hash, seq);
+    if (iter == kh_end(fai->hash)) return 0;
+    return 1;
+}
 

@@ -111,7 +111,7 @@ class Igor : Program
         bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_MOTIF_DISCORDANCE,Number=1,Type=Integer,Description=\"Descriptive Discordance for each reference repeat unit.\">");
         bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_MOTIF_COMPLETENESS,Number=1,Type=Integer,Description=\"Descriptive Discordance for each reference repeat unit.\">");
         bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_STR_CONCORDANCE,Number=1,Type=Float,Description=\"Overall discordance of RUs.\">");
-        
+
         ////////////////////////
         //stats initialization//
         ////////////////////////
@@ -148,7 +148,7 @@ class Igor : Program
 
         bcf1_t *v = odw->get_bcf1_from_pool();
         Variant variant;
-        
+
         while (odr->read(v))
         {
             bcf_unpack(v, BCF_UN_STR);
@@ -157,8 +157,8 @@ class Igor : Program
             {
                 bcf_print(odr->hdr, v);
                 strm->annotate(odr->hdr, v);
-                
-                
+
+
                 ++no_variants_annotated;
             }
 

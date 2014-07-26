@@ -273,9 +273,20 @@ bcf_hrec_t *bcf_hdr_parse_line(const bcf_hdr_t *h, const char *line, int *len)
     while ( *q && *q!='\n' && nopen )
     {
         p = ++q;
-        while ( *q && *q!='=' ) q++;
+        while ( *q && isalnum(*q) ) q++;
         n = q-p;
-        if ( *q!='=' || !n ) { *len = q-line+1; bcf_hrec_destroy(hrec); return NULL; } // wrong format
+        if ( *q!='=' || !n ) 
+        { 
+            // wrong format
+            while ( *q && *q!='\n' ) q++;
+            kstring_t tmp = {0,0,0};
+            kputsn(line,q-line,&tmp);
+            fprintf(stderr,"Could not parse the header line: \"%s\"\n", tmp.s);
+            free(tmp.s);
+            *len = q-line+1;
+            bcf_hrec_destroy(hrec); 
+            return NULL; 
+        }
         bcf_hrec_add_key(hrec, p, q-p);
         p = ++q;
         int quoted = *p=='"' ? 1 : 0;
@@ -396,7 +407,6 @@ int bcf_hdr_register_hrec(bcf_hdr_t *hdr, bcf_hrec_t *hrec)
                 var = BCF_VL_FIXED;
             }
             if (var != BCF_VL_FIXED) num = 0xfffff;
-
         }
     }
     uint32_t info = (uint32_t)num<<12 | var<<8 | type<<4 | hrec->type;
@@ -427,6 +437,8 @@ int bcf_hdr_register_hrec(bcf_hdr_t *hdr, bcf_hrec_t *hrec)
 
 int bcf_hdr_add_hrec(bcf_hdr_t *hdr, bcf_hrec_t *hrec)
 {
+    if ( !hrec ) return 0;
+
     hrec->type = BCF_HL_GEN;
     if ( !bcf_hdr_register_hrec(hdr,hrec) )
     {
@@ -460,20 +472,38 @@ int bcf_hdr_add_hrec(bcf_hdr_t *hdr, bcf_hrec_t *hrec)
     return hrec->type==BCF_HL_GEN ? 0 : 1;
 }
 
-bcf_hrec_t *bcf_hdr_get_hrec(const bcf_hdr_t *hdr, int type, const char *id)
+/*
+ *  Note that while querying of FLT,INFO,FMT,CTG lines is fast (the keys are hashed),
+ *  the STR,GEN lines are searched for linearly in a linked list of all header lines.
+ *  This may become a problem for VCFs with huge headers, we might need to build a
+ *  dictionary for these lines as well. 
+ */
+bcf_hrec_t *bcf_hdr_get_hrec(const bcf_hdr_t *hdr, int type, const char *key, const char *value, const char *str_class)
 {
     int i;
     if ( type==BCF_HL_GEN )
     {
         for (i=0; i<hdr->nhrec; i++)
         {
-            if ( hdr->hrec[i]->type!=BCF_HL_GEN ) continue;
-            if ( !strcmp(hdr->hrec[i]->key,id) ) return hdr->hrec[i];
+            if ( hdr->hrec[i]->type!=type ) continue;
+            if ( strcmp(hdr->hrec[i]->key,key) ) continue;
+            if ( !value || !strcmp(hdr->hrec[i]->value,value) ) return hdr->hrec[i];
+        }
+        return NULL;
+    }
+    else if ( type==BCF_HL_STR )
+    {
+        for (i=0; i<hdr->nhrec; i++)
+        {
+            if ( hdr->hrec[i]->type!=type ) continue;
+            if ( strcmp(hdr->hrec[i]->key,str_class) ) continue;
+            int j = bcf_hrec_find_key(hdr->hrec[i],key);
+            if ( j>=0 && !strcmp(hdr->hrec[i]->vals[j],value) ) return hdr->hrec[i];
         }
         return NULL;
     }
     vdict_t *d = type==BCF_HL_CTG ? (vdict_t*)hdr->dict[BCF_DT_CTG] : (vdict_t*)hdr->dict[BCF_DT_ID];
-    khint_t k = kh_get(vdict, d, id);
+    khint_t k = kh_get(vdict, d, value);
     if ( k == kh_end(d) ) return NULL;
     return kh_val(d, k).hrec[type==BCF_HL_CTG?0:type];
 }
@@ -509,7 +539,7 @@ int bcf_hdr_parse(bcf_hdr_t *hdr, char *htxt)
 
     // Check sanity: "fileformat" string must come as first
     bcf_hrec_t *hrec = bcf_hdr_parse_line(hdr,p,&len);
-    if ( !hrec->key || strcasecmp(hrec->key,"fileformat") )
+    if ( !hrec || !hrec->key || strcasecmp(hrec->key,"fileformat") )
         fprintf(stderr, "[W::%s] The first line should be ##fileformat; is the VCF/BCF header broken?\n", __func__);
     needs_sync += bcf_hdr_add_hrec(hdr, hrec);
 
@@ -523,8 +553,7 @@ int bcf_hdr_parse(bcf_hdr_t *hdr, char *htxt)
         needs_sync += bcf_hdr_add_hrec(hdr, hrec);
         p += len;
     }
-    bcf_hdr_parse_sample_line(hdr,p);
-    if ( needs_sync ) bcf_hdr_sync(hdr);
+    bcf_hdr_parse_sample_line(hdr,p);   // calls hdr_sync
     bcf_hdr_check_sanity(hdr);
     return 0;
 }
@@ -547,7 +576,7 @@ void bcf_hdr_remove(bcf_hdr_t *hdr, int type, const char *key)
     {
         if ( type==BCF_HL_FLT || type==BCF_HL_INFO || type==BCF_HL_FMT || type== BCF_HL_CTG )
         {
-            hrec = bcf_hdr_get_hrec(hdr, type, key);
+            hrec = bcf_hdr_get_hrec(hdr, type, "ID", key, NULL);
             if ( !hrec ) return;
 
             for (i=0; i<hdr->nhrec; i++)
@@ -563,7 +592,16 @@ void bcf_hdr_remove(bcf_hdr_t *hdr, int type, const char *key)
             for (i=0; i<hdr->nhrec; i++)
             {
                 if ( hdr->hrec[i]->type!=type ) continue;
-                if ( !strcmp(hdr->hrec[i]->key,key) ) break;
+                if ( type==BCF_HL_GEN )
+                {
+                    if ( !strcmp(hdr->hrec[i]->key,key) ) break;
+                }
+                else
+                {
+                    // not all structured lines have ID, we could be more sophisticated as in bcf_hdr_get_hrec()
+                    int j = bcf_hrec_find_key(hdr->hrec[i], "ID");
+                    if ( j>=0 && !strcmp(hdr->hrec[i]->vals[j],key) ) break;
+                }
             }
             if ( i==hdr->nhrec ) return;
             hrec = hdr->hrec[i];
@@ -603,7 +641,7 @@ int bcf_hdr_printf(bcf_hdr_t *hdr, const char *fmt, ...)
 
 const char *bcf_hdr_get_version(const bcf_hdr_t *hdr)
 {
-    bcf_hrec_t *hrec = bcf_hdr_get_hrec(hdr, BCF_HL_GEN, "fileformat");
+    bcf_hrec_t *hrec = bcf_hdr_get_hrec(hdr, BCF_HL_GEN, "fileformat", NULL, NULL);
     if ( !hrec ) 
     {
         fprintf(stderr,"No version string found, assuming VCFv4.2\n");
@@ -614,7 +652,7 @@ const char *bcf_hdr_get_version(const bcf_hdr_t *hdr)
 
 void bcf_hdr_set_version(bcf_hdr_t *hdr, const char *version)
 {
-    bcf_hrec_t *hrec = bcf_hdr_get_hrec(hdr, BCF_HL_GEN, "fileformat");
+    bcf_hrec_t *hrec = bcf_hdr_get_hrec(hdr, BCF_HL_GEN, "fileformat", NULL, NULL);
     if ( !hrec )
     {
         int len;
@@ -1170,7 +1208,7 @@ bcf_hdr_t *vcf_hdr_read(htsFile *fp)
         const char **names = tbx_seqnames(idx, &n);
         for (i=0; i<n; i++)
         {
-            bcf_hrec_t *hrec = bcf_hdr_get_hrec(h, BCF_DT_CTG, (char*) names[i]);
+            bcf_hrec_t *hrec = bcf_hdr_get_hrec(h, BCF_HL_CTG, "ID", (char*) names[i], NULL);
             if ( hrec ) continue;
             hrec = (bcf_hrec_t*) calloc(1,sizeof(bcf_hrec_t));
             hrec->key = strdup("contig");
@@ -1199,7 +1237,7 @@ int bcf_hdr_set(bcf_hdr_t *hdr, const char *fname)
     {
         int k;
         bcf_hrec_t *hrec = bcf_hdr_parse_line(hdr,lines[i],&k);
-        bcf_hdr_add_hrec(hdr, hrec);
+        if ( hrec ) bcf_hdr_add_hrec(hdr, hrec);
         free(lines[i]);
     }
     bcf_hdr_parse_sample_line(hdr,lines[n-1]);
@@ -2109,9 +2147,9 @@ int bcf_index_build(const char *fn, int min_shift)
  *** Utilities ***
  *****************/
 
-void bcf_hdr_combine(bcf_hdr_t *dst, const bcf_hdr_t *src)
+int bcf_hdr_combine(bcf_hdr_t *dst, const bcf_hdr_t *src)
 {
-    int i, ndst_ori = dst->nhrec, need_sync = 0;
+    int i, ndst_ori = dst->nhrec, need_sync = 0, ret = 0;
     for (i=0; i<src->nhrec; i++)
     {
         if ( src->hrec[i]->type==BCF_HL_GEN && src->hrec[i]->value )
@@ -2120,19 +2158,52 @@ void bcf_hdr_combine(bcf_hdr_t *dst, const bcf_hdr_t *src)
             for (j=0; j<ndst_ori; j++)
             {
                 if ( dst->hrec[j]->type!=BCF_HL_GEN ) continue;
-                if ( !strcmp(src->hrec[i]->key,dst->hrec[j]->key) && !strcmp(src->hrec[i]->value,dst->hrec[j]->value) ) break;
+
+                // Checking only the key part of generic lines, otherwise
+                // the VCFs are too verbose. Should we perhaps add a flag
+                // to bcf_hdr_combine() and make this optional?
+                if ( !strcmp(src->hrec[i]->key,dst->hrec[j]->key) ) break;
             }
             if ( j>=ndst_ori )
                 need_sync += bcf_hdr_add_hrec(dst, bcf_hrec_dup(src->hrec[i]));
         }
+        else if ( src->hrec[i]->type==BCF_HL_STR )
+        {
+            // NB: we are ignoring fields without ID
+            int j = bcf_hrec_find_key(src->hrec[i],"ID");
+            if ( j>=0 )
+            {
+                bcf_hrec_t *rec = bcf_hdr_get_hrec(dst, src->hrec[i]->type, "ID", src->hrec[i]->vals[j], src->hrec[i]->key);
+                if ( !rec )
+                    need_sync += bcf_hdr_add_hrec(dst, bcf_hrec_dup(src->hrec[i]));
+            }
+        }
         else
         {
-            bcf_hrec_t *rec = bcf_hdr_get_hrec(dst, src->hrec[i]->type, src->hrec[i]->vals[0]);
+            int j = bcf_hrec_find_key(src->hrec[i],"ID");
+            assert( j>=0 ); // this should always be true for valid VCFs
+            
+            bcf_hrec_t *rec = bcf_hdr_get_hrec(dst, src->hrec[i]->type, "ID", src->hrec[i]->vals[j], NULL);
             if ( !rec )
                 need_sync += bcf_hdr_add_hrec(dst, bcf_hrec_dup(src->hrec[i]));
+            else if ( src->hrec[i]->type==BCF_HL_INFO || src->hrec[i]->type==BCF_HL_FMT )
+            {
+                // Check that both records are of the same type. The bcf_hdr_id2length
+                // macro cannot be used here because dst header is not synced yet.
+                vdict_t *d_src = (vdict_t*)src->dict[BCF_DT_ID];
+                vdict_t *d_dst = (vdict_t*)dst->dict[BCF_DT_ID];
+                khint_t k_src  = kh_get(vdict, d_src, src->hrec[i]->vals[0]);
+                khint_t k_dst  = kh_get(vdict, d_dst, src->hrec[i]->vals[0]);
+                if ( (kh_val(d_src,k_src).info[rec->type]>>8 & 0xf) != (kh_val(d_dst,k_dst).info[rec->type]>>8 & 0xf) )
+                {
+                    fprintf(stderr,"Warning: trying to combine \"%s\" tag definitions of different lengths\n", src->hrec[i]->vals[0]);
+                    ret |= 1;
+                }
+            }
         }
     }
     if ( need_sync ) bcf_hdr_sync(dst);
+    return ret;
 }
 int bcf_translate(const bcf_hdr_t *dst_hdr, bcf_hdr_t *src_hdr, bcf1_t *line)
 {
@@ -2393,7 +2464,15 @@ int bcf_is_snp(bcf1_t *v)
     int i;
     bcf_unpack(v, BCF_UN_STR);
     for (i = 0; i < v->n_allele; ++i)
-        if (strlen(v->d.allele[i]) != 1) break;
+    {
+        if ( v->d.allele[i][1]==0 ) continue;
+
+        // mpileup's <X> allele, see also below. This is not completely satisfactory,
+        // a general library is here narrowly tailored to fit samtools.
+        if ( v->d.allele[i][0]=='<' && v->d.allele[i][1]=='X' && v->d.allele[i][2]=='>' ) continue;
+
+        break;
+    }
     return i == v->n_allele;
 }
 
@@ -2405,6 +2484,12 @@ static void bcf_set_variant_type(const char *ref, const char *alt, variant_t *va
         if ( *alt == '.' || *ref==*alt ) { var->n = 0; var->type = VCF_REF; return; }
         if ( *alt == 'X' ) { var->n = 0; var->type = VCF_REF; return; }  // mpileup's X allele shouldn't be treated as variant
         var->n = 1; var->type = VCF_SNP; return;
+    }
+    if ( alt[0]=='<' ) 
+    { 
+        if ( alt[1]=='X' && alt[2]=='>' ) { var->n = 0; var->type = VCF_REF; return; }  // mpileup's X allele shouldn't be treated as variant
+        var->type = VCF_OTHER; 
+        return; 
     }
 
     const char *r = ref, *a = alt;

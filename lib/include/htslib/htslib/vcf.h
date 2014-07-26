@@ -4,8 +4,8 @@
         - provide calls to abstract away structs as much as possible
  */
 
-#ifndef BCF_H
-#define BCF_H
+#ifndef HTSLIB_VCF_H
+#define HTSLIB_VCF_H
 
 #include <stdint.h>
 #include <limits.h>
@@ -350,8 +350,13 @@ extern "C" {
 
     /** Create a new header using the supplied template */
     bcf_hdr_t *bcf_hdr_dup(const bcf_hdr_t *hdr);
-    /** Copy header lines from src to dst if not already present in dst. See also bcf_translate(). */
-    void bcf_hdr_combine(bcf_hdr_t *dst, const bcf_hdr_t *src);
+    /** 
+     *  Copy header lines from src to dst if not already present in dst. See also bcf_translate(). 
+     *  Returns 0 on success or sets a bit on error:
+     *      1 .. conflicting definitions of tag length
+     *      // todo
+     */
+    int bcf_hdr_combine(bcf_hdr_t *dst, const bcf_hdr_t *src);
 
     /** 
      *  bcf_hdr_add_sample() - add a new sample. 
@@ -404,14 +409,25 @@ extern "C" {
 
 
     /** The following functions are for internal use and should rarely be called directly */
+    int bcf_hdr_parse(bcf_hdr_t *hdr, char *htxt);
+    int bcf_hdr_sync(bcf_hdr_t *h);
     bcf_hrec_t *bcf_hdr_parse_line(const bcf_hdr_t *h, const char *line, int *len);
     void bcf_hrec_format(const bcf_hrec_t *hrec, kstring_t *str);
     int bcf_hdr_add_hrec(bcf_hdr_t *hdr, bcf_hrec_t *hrec);
-    bcf_hrec_t *bcf_hdr_get_hrec(const bcf_hdr_t *hdr, int type, const char *id);   // type is one of BCF_HL_FLT,..,BCF_HL_CTG
+    /**
+     *  bcf_hdr_get_hrec() - get header line info
+     *  @param type:  one of the BCF_HL_* types: FLT,INFO,FMT,CTG,STR,GEN
+     *  @param key:   the header key for generic lines (e.g. "fileformat"), any field
+     *                  for structured lines, typically "ID".
+     *  @param value: the value which pairs with key. Can be be NULL for BCF_HL_GEN
+     *  @param str_class: the class of BCF_HL_STR line (e.g. "ALT" or "SAMPLE"), otherwise NULL
+     */
+    bcf_hrec_t *bcf_hdr_get_hrec(const bcf_hdr_t *hdr, int type, const char *key, const char *value, const char *str_class);
     bcf_hrec_t *bcf_hrec_dup(bcf_hrec_t *hrec);
     void bcf_hrec_add_key(bcf_hrec_t *hrec, const char *str, int len);
     void bcf_hrec_set_val(bcf_hrec_t *hrec, int i, const char *str, int len, int is_quoted);
     int bcf_hrec_find_key(bcf_hrec_t *hrec, const char *key);
+    void hrec_add_idx(bcf_hrec_t *hrec, int idx);
     void bcf_hrec_destroy(bcf_hrec_t *hrec);
 
 

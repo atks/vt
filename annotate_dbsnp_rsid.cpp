@@ -41,31 +41,31 @@ class Igor : Program
     std::string output_vcf_file;
     std::vector<GenomeInterval> intervals;
     std::string interval_list;
-           
+
     ///////
     //i/o//
     ///////
     BCFSyncedReader *sr;
     BCFOrderedWriter *odw;
-    
+
     //////////
     //filter//
     //////////
     std::string fexp;
     Filter filter;
     bool filter_exists;
-    
+
     /////////
     //stats//
     /////////
     int32_t no_variants;
     int32_t no_annotated_variants;
-    
+
     ////////////////
     //common tools//
     ////////////////
     VariantManip *vm;
-    
+
     Igor(int argc, char ** argv)
     {
         //////////////////////////
@@ -110,7 +110,7 @@ class Igor : Program
         /////////////////////////
         filter.parse(fexp.c_str());
         filter_exists = fexp!="";
-        
+
         //////////////////////
         //i/o initialization//
         //////////////////////
@@ -118,12 +118,12 @@ class Igor : Program
         odw = new BCFOrderedWriter(output_vcf_file);
         odw->link_hdr(sr->hdrs[0]);
         odw->write_hdr();
-        
+
         ///////////////////////
         //tool initialization//
         ///////////////////////
         vm = new VariantManip();
-        
+
         ////////////////////////
         //stats initialization//
         ////////////////////////
@@ -137,12 +137,12 @@ class Igor : Program
         std::vector<bcfptr*> crecs;
         int32_t presence[2] = {0,0};
         Variant variant;
-        
+
         while(sr->read_next_position(crecs))
         {
             bcf1_t *v = NULL;
             bcf1_t *dv = NULL;
-            
+
             //check existence
             for (size_t i=0; i<crecs.size(); ++i)
             {
@@ -160,33 +160,33 @@ class Igor : Program
                 {
                     v = crecs[i]->v;
                 }
-                
+
                 if (index==1)
                 {
                     dv = crecs[i]->v;
                 }
-                    
+
                 ++presence[index];
             }
-            
+
             if (presence[0] && presence[1])
             {
                 bcf_update_id(NULL, v, bcf_get_id(dv));
-                
+
                 ++no_annotated_variants;
             }
-            
+
             if (presence[0])
             {
                 odw->write(v);
-            
+
                 ++no_variants;
             }
-            
+
             presence[0] = 0;
             presence[1] = 0;
         }
-        
+
         odw->close();
     };
 
