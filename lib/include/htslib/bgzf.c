@@ -482,6 +482,7 @@ int bgzf_read_block(BGZF *fp)
         }
         fp->block_length = count;
         fp->block_address = block_address;
+        if ( fp->idx_build_otf ) return -1; // cannot build index for gzip
         return 0;
     }
 	size = count;
@@ -890,6 +891,7 @@ int bgzf_getline(BGZF *fp, int delim, kstring_t *str)
 	} while (state == 0);
 	if (str->l == 0 && state < 0) return state;
     fp->uncompressed_address += str->l;
+    if ( delim=='\n' && str->l>0 && str->s[str->l-1]=='\r' ) str->l--;
 	str->s[str->l] = 0;
 	return str->l;
 }

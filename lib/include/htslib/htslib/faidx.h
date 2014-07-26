@@ -25,8 +25,8 @@
 
 /* Contact: Heng Li <lh3@sanger.ac.uk>, Petr Danecek <pd3@sanger> */
 
-#ifndef FAIDX_H
-#define FAIDX_H
+#ifndef HTSLIB_FAIDX_H
+#define HTSLIB_FAIDX_H
 
 /*!
   @header
@@ -104,6 +104,14 @@ extern "C" {
 	  and should be destroyed by end users by calling free() on it.
 	 */
 	char *faidx_fetch_seq(const faidx_t *fai, const char *c_name, int p_beg_i, int p_end_i, int *len);
+
+   	/*!
+	  @abstract    Query if sequence is present
+	  @param  fai  Pointer to the faidx_t struct
+	  @param  seq  Sequence name 
+	  @return      1 if present or 0 if absent
+	 */
+    int faidx_has_seq(const faidx_t *fai, const char *seq);
 
 #ifdef __cplusplus
 }
