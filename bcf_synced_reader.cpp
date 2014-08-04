@@ -61,7 +61,8 @@ BCFSyncedReader::BCFSyncedReader(std::vector<std::string>& vcf_files, std::vecto
         vcfs[i] = bcf_open(vcf_files[i].c_str(), "r");
         if (vcfs[i]==NULL) exit(1);
         hdrs[i] = bcf_alt_hdr_read(vcfs[i]);
-
+        if (!hdrs[i]) exit(1);
+            
         if (i==0)
         {
             if (!(ftypes[i] & (FT_VCF|FT_BCF|FT_STDIN)))
