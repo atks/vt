@@ -56,7 +56,6 @@
 #define VT_CLUMPED  8   //all others
 #define VT_SV       16  //structural variant tags
 
-
 /**
  * Allele.
  *

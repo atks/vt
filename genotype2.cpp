@@ -1105,7 +1105,7 @@ class Igor : Program
         }
         
         odr->close();
-        //odw->close();
+        odw->close();
     }
 
     private:

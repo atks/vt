@@ -85,7 +85,7 @@ class Igor : Program
             TCLAP::ValueArg<std::string> arg_output_vcf_file("o", "o", "output VCF file", false, "-", "file", cmd);
             TCLAP::ValueArg<std::string> arg_sample_id("s", "s", "sample ID", true, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_ref_fasta_file("r", "r", "reference sequence fasta file []", true, "", "str", cmd);
-            TCLAP::ValueArg<std::string> arg_model("m", "m", "model [lhmm]", true, "", "str", cmd);
+            TCLAP::ValueArg<std::string> arg_model("m", "m", "model [lhmm]", true, "lhmm", "str", cmd);
             TCLAP::SwitchArg arg_iterate_by_site("c", "c", "iterate by candidate sites", cmd, false);
             TCLAP::SwitchArg arg_debug("d", "d", "debug alignments", cmd, false);
             TCLAP::UnlabeledValueArg<std::string> arg_input_vcf_file("<in.vcf>", "input VCF file", true, "","file", cmd);
@@ -172,6 +172,7 @@ class Igor : Program
 
     void genotype()
     {
+        std::cerr << "genotyoing?\n" ;
         if (iterate_by_site)
         {
             GenotypingRecord *record;
@@ -189,6 +190,8 @@ class Igor : Program
             GenomeInterval interval;
             while (vodr->read(v))
             {
+                std::cerr << "genotyoing?\n" ;
+                
                 record->set(v);
                 std::string chrom(bcf_get_chrom(vodr->hdr, v));
                 interval.set(chrom, bcf_get_pos1(v), bcf_get_pos1(v));
