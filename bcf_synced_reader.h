@@ -191,11 +191,6 @@ class BCFSyncedReader
     bool read_next_position(std::vector<bcfptr*>& current_recs);
 
     /**
-     * Reads variants that are the equivalent from all the files.
-     */
-    bool read_next_variant(std::vector<bcfptr*>& current_recs);
-
-    /**
      * Populate sequence names from files.
      */
     void add_interval(int32_t i);

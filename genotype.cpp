@@ -190,8 +190,6 @@ class Igor : Program
             GenomeInterval interval;
             while (vodr->read(v))
             {
-                std::cerr << "genotyoing?\n" ;
-                
                 record->set(v);
                 std::string chrom(bcf_get_chrom(vodr->hdr, v));
                 interval.set(chrom, bcf_get_pos1(v), bcf_get_pos1(v));
