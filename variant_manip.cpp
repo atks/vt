@@ -367,6 +367,16 @@ int32_t VariantManip::classify_variant(const char* chrom, uint32_t pos1, char** 
     {
         int32_t type = VT_REF;
 
+        //check for tags
+        if (0 && allele[i][0]=='<')
+        {
+            if (!strcmp(allele[i],"<DEL>"))
+            {
+                type = VT_SV;
+            }
+        }    
+        
+
         char* ref = allele[0];
         char* alt = allele[i];
 
