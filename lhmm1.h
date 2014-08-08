@@ -129,6 +129,9 @@ class LHMM1
     /*Constructor*/
     LHMM1();
 
+    /*Helper method for constructor*/
+    void initialize(int32_t l);
+
     bool containsIndel();
 
     /**
