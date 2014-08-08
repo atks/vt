@@ -310,7 +310,6 @@ class Igor : Program
         }
 
         return readIsExtended;
-
     }
 
     void swap(double& a, double& b)
@@ -693,6 +692,8 @@ class Igor : Program
             hts_itr_t *iter;
             std::map<std::string, int> read_ids;
 
+            //bcf_print(odr->hdr, ivcf_rec);
+
             double log_p_rr = 0;
             double log_p_ra = 0;
             double log_p_aa = 0;
@@ -715,6 +716,8 @@ class Igor : Program
     		const char* altProbe = probes[1].c_str();
     		int32_t probeLength = probes[0].size();
 
+            
+
             //int32_t variantStartPos = pos;
             int32_t variantLengthDifference = (int32_t)strlen(alt)-(int32_t)strlen(ref);
 
@@ -729,6 +732,7 @@ class Igor : Program
             uint32_t r_no = 0;
             uint32_t a_no = 0;
             uint32_t n_no = 0;
+                
             while(bam_itr_next(isam, iter, srec)>=0)
             {
                 //has secondary alignment or fail QC or is duplicate or is unmapped
@@ -797,7 +801,7 @@ class Igor : Program
                 GENOTYPE:
 
                 double refllk = 0, altllk = 0;
-
+    
     		   	lhmm_ref.align(refllk, refProbe, read_seq, qual);
     	        lhmm_ref.computeLogLikelihood(refllk, lhmm_ref.getPath(), qual);
 
@@ -955,7 +959,7 @@ class Igor : Program
                     }
                 }
 
-    	        if (debug)
+                if (debug)
     	        {
     		        std::cerr << pad << "++++++++++++++++++\n";
     	            std::cerr << pad << "reflk " << refllk << "\n";
@@ -988,11 +992,10 @@ class Igor : Program
                     ++n_no;
                 }
                 
-                ++read_no;      
-                
+                ++read_no;
+                      
                 free(read_seq);
                 free(qual);
-                       
             }
 
             hts_itr_destroy(iter);

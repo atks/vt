@@ -23,10 +23,16 @@
 
 #include "lhmm1.h"
 
+#include "lhmm1.h"
+
 LHMM1::LHMM1()
 {
-    maxLength = 250;
+    initialize(500);
+};
 
+void LHMM1::initialize(int32_t maxLength)
+{
+    this->maxLength = maxLength;
 //  delta = 0.01;
 //  epsilon = 0.1;
 //  tau = 0.1;
@@ -95,6 +101,21 @@ LHMM1::LHMM1()
     tempX[0] = 'X';
     std::vector<char> tempY(maxLength+1, 'Y');
     tempY[0] = 'X';
+
+    X.clear();
+    Y.clear();
+    M.clear();
+    I.clear();
+    D.clear();
+    W.clear();
+    Z.clear();
+    pathX.clear();
+    pathY.clear();
+    pathM.clear();
+    pathD.clear();
+    pathI.clear();
+    pathW.clear();
+    pathZ.clear();
 
     for (uint32_t i=0; i<maxLength+1; ++i)
     {
@@ -547,7 +568,6 @@ Align and compute genotype likelihood.
 */
 void LHMM1::align(double& llk, const char* _x, const char* _y, const char* _qual, bool debug)
 {
-    //std::cerr << "Running this\n" ;
     x = _x;
     y = _y;
     qual = _qual;
@@ -555,6 +575,13 @@ void LHMM1::align(double& llk, const char* _x, const char* _y, const char* _qual
     //adds a starting character at the fron of each string that must be matched
     xlen = strlen(x);
     ylen = strlen(y);
+    
+    int32_t mlen = xlen>ylen?xlen:ylen;
+    if (mlen>this->maxLength)
+    {    
+        initialize(mlen+10);
+    }
+    
     double max = 0;
     char maxPath = 'X';
 
