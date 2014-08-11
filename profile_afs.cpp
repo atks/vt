@@ -205,8 +205,6 @@ class Igor : Program
 
         if (n_ac) free(ac);
         if (n_an) free(an);
-        
-        odr->close();
     };
 
     void print_options()
@@ -286,6 +284,7 @@ class Igor : Program
 
     ~Igor()
     {
+        odr->close();
         kh_destroy(32, afs);
         kh_destroy(32, pass_afs);
     };

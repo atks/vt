@@ -203,8 +203,6 @@ class Igor : Program
 
         if (n_af) free(af);
         if (n_ab) free(ab);
-        
-        odr->close();
     };
 
     void print_options()
@@ -307,6 +305,7 @@ class Igor : Program
 
     ~Igor()
     {
+        odr->close();
     };
 
     private:
