@@ -81,7 +81,7 @@ class Igor : Program
         //////////////////////////
         try
         {
-            std::string desc = "Plot Allele Frequency Spectrum.";
+            std::string desc = "Plot Chromosome Distribution.";
 
             version = "0.5";
             TCLAP::CmdLine cmd(desc, ' ', version);
@@ -191,7 +191,7 @@ class Igor : Program
             ++no_variants;
         }
        
-        odr->close();
+        
     };
 
     void print_options()
@@ -280,6 +280,8 @@ class Igor : Program
         //do a textual histogram print out of chrom
         int32_t nseqs;
         const char** seq_names = bcf_hdr_seqnames(odr->hdr, &nseqs);
+        
+        
         int32_t* len = bcf_hdr_seqlen(odr->hdr, &nseqs);
         
         fprintf(stderr, "     chromosome     total#      pass#      length\n");
@@ -307,6 +309,7 @@ class Igor : Program
 
     ~Igor()
     {
+        odr->close();
         kh_destroy(32, chrom);
         kh_destroy(32, pass_chrom);
     };
