@@ -21,19 +21,54 @@
    THE SOFTWARE.
 */
 
-#ifndef PEEK_H
-#define PEEK_H
+#include <cstdint>
+#include <string>
+#include <iostream>
+#include <vector>
+#include "htslib/kstring.h"
+#include "allele.h"
 
-#include <cstdio>
-#include "htslib/vcf.h"
-#include "htslib/kseq.h"
-#include "htslib/khash.h"
-#include "program.h"
-#include "hts_utils.h"
-#include "bcf_ordered_reader.h"
-#include "variant_manip.h"
-#include "filter.h"
+#ifndef VARIANT_H
+#define VARIANT_H
 
-void peek(int argc, char ** argv);
-    
+
+/**
+ * Variant.
+ */
+class Variant
+{
+    public:
+
+    int32_t type;    //aggegrated type from the alleles
+    int32_t rlen;    //reference length
+    kstring_t motif; //motif
+    int32_t mlen;    //motif length
+    int32_t tlen;    //reference tract length
+    std::vector<Allele> alleles;
+
+    Variant();
+
+    ~Variant();
+
+    /**
+     * Prints variant information.
+     */
+    void print();
+
+    /**
+     * Returns true if variant contains an allele that is potentially frame shifting.
+     */
+    bool exists_frame_shift();
+
+    /**
+     * Converts VTYPE to string.
+     */
+    std::string vtype2string(int32_t VTYPE);
+
+    /**
+     * Clears variant information.
+     */
+    void clear();
+};
+
 #endif

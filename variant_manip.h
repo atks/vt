@@ -39,6 +39,8 @@
 #include "htslib/kstring.h"
 #include "htslib/vcf.h"
 #include "hts_utils.h"
+#include "variant.h"
+#include "allele.h"
 
 //int BitCount(unsigned int u)
 //{
@@ -56,129 +58,72 @@
 #define VT_CLUMPED  8   //all others
 #define VT_SV       16  //structural variant tags
 
-/**
- * Allele.
- *
- * Allele can be described to be a SNP or INDEL or etc. with respect to the reference
- * type - give the variant type
- * len  - difference in length between the ref and alt with positive inferring an insertion and negative inferring a deletion
- * tlen - assuming variant is VNTR, tlen is the tract length of the repeated motif of the VNTR
- */
-class Allele
-{
-    public:
 
-    int32_t type;
-    int32_t diff;  //number of difference bases when bases are compared
-    int32_t alen;  //length(alt)
-    int32_t dlen;  //length(alt)-length(ref)
-    int32_t tlen;  //tract length with respect to reference
-    int32_t mlen;  //min shared length
-    int32_t ts;    //no. of transitions
-    int32_t tv;    //no. of tranversions (mlen-ts)
-    int32_t ins;   //no. of insertions 
-    int32_t del;   //no. of deletions 
-    
-    Allele(int32_t type, int32_t diff, int32_t alen, int32_t dlen, int32_t tlen, int32_t mlen, int32_t ts)
-    {
-        this->type = type;
-        this->diff = diff;
-        this->alen = alen;
-        this->dlen = dlen;
-        this->tlen = tlen;
-        this->mlen = mlen;
-        this->ts = ts;
-        this->tv = mlen-ts;
-        this->ins = dlen>0?1:0;
-        this->del = dlen<0?1:0;
-    }
-
-    Allele()
-    {
-        clear();
-    };
-
-    ~Allele() {};
-
-    void clear()
-    {
-        type = VT_REF;
-        diff = 0;
-        alen = 0;
-        dlen = 0;
-        tlen = 0;
-        mlen = 0;
-        ts = 0;
-        tv = 0;
-        ins = 0;
-    }
-
-    void print()
-    {
-        std::cerr << "\ttype: " << type << "\n";
-        std::cerr << "\tdiff: " << diff << "\n";
-        std::cerr << "\talen: " << alen << "\n";
-        std::cerr << "\tdlen: " << dlen << "\n";
-        std::cerr << "\ttlen: " << tlen << "\n";
-    };
-};
-
-/**
- * Variant.
- * Describes the variant in question.
- */
-class Variant
-{
-    public:
-
-    int32_t type;    //aggegrated type from the alleles
-    int32_t rlen;    //reference length
-    kstring_t motif; //motif
-    int32_t mlen;    //motif length
-    int32_t tlen;    //reference tract length
-    std::vector<Allele> alleles;
-    
-    Variant()
-    {
-        type = VT_REF;
-        motif = {0,0,0};
-        mlen = 0;
-        tlen = 0;
-        alleles.clear();
-    }
-
-    ~Variant()
-    {
-        if (motif.m)
-        {
-            free(motif.s);
-        }
-    }
-
-    /**
-     * Prints variant information.
-     */
-    void print();
-
-    /**
-     * Returns true if variant contains an allele that is potentially frame shifting.
-     */
-    bool exists_frame_shift();
-    
-    /**
-     * Converts VTYPE to string.
-     */
-    std::string vtype2string(int32_t VTYPE);
-
-    void clear()
-    {
-        type = 0;
-        motif.l = 0;
-        mlen = 0;
-        tlen = 0;
-        alleles.clear();
-    }
-};
+///**
+// * Allele Descriptor.
+// *
+// * Imprecise types in the VCF specification follows a hierarchical structure.
+// * This object models the tree and allows one to describe such imprecise types.
+// * Such imprecise types seems to consist of Structural Variants and STR types.
+// */
+//class AlleleDescriptor
+//{
+//    public:
+//
+//    int32_t type;
+//    int32_t diff;  //number of difference bases when bases are compared
+//    int32_t alen;  //length(alt)
+//    int32_t dlen;  //length(alt)-length(ref)
+//    int32_t tlen;  //tract length with respect to reference
+//    int32_t mlen;  //min shared length
+//    int32_t ts;    //no. of transitions
+//    int32_t tv;    //no. of tranversions (mlen-ts)
+//    int32_t ins;   //no. of insertions 
+//    int32_t del;   //no. of deletions 
+//    
+//    AlleleDescriptor()
+//    {
+//        this->type = type;
+//        this->diff = diff;
+//        this->alen = alen;
+//        this->dlen = dlen;
+//        this->tlen = tlen;
+//        this->mlen = mlen;
+//        this->ts = ts;
+//        this->tv = mlen-ts;
+//        this->ins = dlen>0?1:0;
+//        this->del = dlen<0?1:0;
+//    }
+//
+//    Allele()
+//    {
+//        clear();
+//    };
+//
+//    ~Allele() {};
+//
+//    void clear()
+//    {
+//        type = VT_REF;
+//        diff = 0;
+//        alen = 0;
+//        dlen = 0;
+//        tlen = 0;
+//        mlen = 0;
+//        ts = 0;
+//        tv = 0;
+//        ins = 0;
+//    }
+//
+//    void print()
+//    {
+//        std::cerr << "\ttype: " << type << "\n";
+//        std::cerr << "\tdiff: " << diff << "\n";
+//        std::cerr << "\talen: " << alen << "\n";
+//        std::cerr << "\tdlen: " << dlen << "\n";
+//        std::cerr << "\ttlen: " << tlen << "\n";
+//    };
+//};
 
 /**
  * Methods for manipulating variants

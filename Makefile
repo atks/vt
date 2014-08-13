@@ -67,7 +67,9 @@ SOURCES = program\
 		genotype2\
 		paste\
 		annotate_dbsnp_rsid\
-		config
+		config\
+		variant\
+		allele
 
 SOURCESONLY = main.cpp
 
