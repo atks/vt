@@ -21,19 +21,47 @@
    THE SOFTWARE.
 */
 
-#ifndef PEEK_H
-#define PEEK_H
+#include "allele.h"
 
-#include <cstdio>
-#include "htslib/vcf.h"
-#include "htslib/kseq.h"
-#include "htslib/khash.h"
-#include "program.h"
-#include "hts_utils.h"
-#include "bcf_ordered_reader.h"
-#include "variant_manip.h"
-#include "filter.h"
+Allele::Allele(int32_t type, int32_t diff, int32_t alen, int32_t dlen, int32_t tlen, int32_t mlen, int32_t ts)
+{
+    this->type = type;
+    this->diff = diff;
+    this->alen = alen;
+    this->dlen = dlen;
+    this->tlen = tlen;
+    this->mlen = mlen;
+    this->ts = ts;
+    this->tv = mlen-ts;
+    this->ins = dlen>0?1:0;
+    this->del = dlen<0?1:0;
+};
 
-void peek(int argc, char ** argv);
-    
-#endif
+Allele::Allele()
+{
+    clear();
+};
+
+Allele::~Allele() {};
+
+void Allele::clear()
+{
+    type = VT_REF;
+    diff = 0;
+    alen = 0;
+    dlen = 0;
+    tlen = 0;
+    mlen = 0;
+    ts = 0;
+    tv = 0;
+    ins = 0;
+};
+
+void Allele::print()
+{
+    std::cerr << "\ttype: " << type << "\n";
+    std::cerr << "\tdiff: " << diff << "\n";
+    std::cerr << "\talen: " << alen << "\n";
+    std::cerr << "\tdlen: " << dlen << "\n";
+    std::cerr << "\ttlen: " << tlen << "\n";
+};

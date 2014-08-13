@@ -24,83 +24,6 @@
 #include "variant_manip.h"
 
 /**
- * Returns true if variant contains an allele that is potentially frame shifting.
- */
-bool Variant::exists_frame_shift()
-{
-    for (size_t i=0; i<alleles.size(); ++i)
-    {
-        if (abs(alleles[i].dlen)%3!=0)
-        {
-            return true;
-        }
-    }
-
-    return false;
-}
-
-/**
- * Prints variant information.
- */
-void Variant::print()
-{
-    std::cerr << "type : " << vtype2string(type) << "\n";
-    std::cerr << "rlen : " << rlen << "\n";
-    //std::cerr << "motif: " << motif.s << "\n";
-    std::cerr << "mlen : " << mlen << "\n";
-    std::cerr << "tlen : " << tlen << "\n";
-    for (int32_t i=0; i<alleles.size(); ++i)
-    {
-        std::cerr << "\tallele: " << i << "\n";
-        std::cerr << "\t  type: " << vtype2string(alleles[i].type) << "\n";
-        std::cerr << "\t  diff: " << alleles[i].diff << "\n";
-        std::cerr << "\t  alen: " << alleles[i].alen << "\n";
-        std::cerr << "\t  dlen: " << alleles[i].dlen << "\n";
-        std::cerr << "\t  tlen: " << alleles[i].tlen << "\n";
-    }
-};
-
-/**
- * Converts VTYPE to string.
- */
-std::string Variant::vtype2string(int32_t VTYPE)
-{
-    std::string s;
-
-    if (!VTYPE)
-    {
-        s += (s.size()==0) ? "" : ";";
-        s += "REF";
-    }
-
-    if (VTYPE & VT_SNP)
-    {
-        s += (s.size()==0) ? "" : ";";
-        s += "SNP";
-    }
-
-    if (VTYPE & VT_MNP)
-    {
-        s += (s.size()==0) ? "" : ";";
-        s += "MNP";
-    }
-
-    if (VTYPE & VT_INDEL)
-    {
-        s += (s.size()==0) ? "" : ";";
-        s += "INDEL";
-    }
-
-    if (VTYPE & VT_CLUMPED)
-    {
-        s += (s.size()==0) ? "" : ";";
-        s += "CLUMPED";
-    }
-
-    return s;
-}
-
-/**
  * Constructor.
  *
  * @ref_fasta_file reference sequence FASTA file.
@@ -110,7 +33,7 @@ VariantManip::VariantManip(std::string ref_fasta_file)
     if (ref_fasta_file!="")
     {
         fai = fai_load(ref_fasta_file.c_str());
-        if (fai==NULL) 
+        if (fai==NULL)
         {
             fprintf(stderr, "[%s:%d %s] Cannot load genome index: %s\n", __FILE__, __LINE__, __FUNCTION__, ref_fasta_file.c_str());
             exit(1);
@@ -276,7 +199,7 @@ bool is_normalized(char** alleles, int32_t n_allele)
     bool exists_len_one_allele = false;
     bool first_base_same = true;
     bool last_base_same = true;
-    
+
     if (n_allele==2)
     {
         //ref
@@ -290,12 +213,12 @@ bool is_normalized(char** alleles, int32_t n_allele)
         if (len==1) exists_len_one_allele = true;
         if (first_base!=alleles[1][0]) first_base_same = false;
         if (last_base!=alleles[1][len-1]) last_base_same = false;
-        
+
         if (last_base_same || (!exists_len_one_allele && first_base_same))
         {
             return false;
         }
-        
+
         return true;
     }
     else
@@ -317,12 +240,12 @@ bool is_normalized(char** alleles, int32_t n_allele)
                 last_base = alleles[0][len-1];
             }
         }
-        
+
         if (last_base_same || (!exists_len_one_allele && first_base_same))
         {
             return false;
         }
-        
+
         return true;
     }
 }
@@ -368,82 +291,88 @@ int32_t VariantManip::classify_variant(const char* chrom, uint32_t pos1, char** 
         int32_t type = VT_REF;
 
         //check for tags
-        if (0 && allele[i][0]=='<')
+        if (allele[i][0]=='<')
         {
+            type = VT_SV;
+            
             if (!strcmp(allele[i],"<DEL>"))
             {
-                type = VT_SV;
+                
             }
-        }    
-        
-
-        char* ref = allele[0];
-        char* alt = allele[i];
-
-        //in situ left trimming
-        //this is required in particular for the
-        //characterization of multiallelics and
-        //in general, any unnormalized variant
-        if (in_situ_left_trimming)
+            
+            v.type |= type;
+            v.alleles.push_back(Allele(type, 0, 0, 0, 0, 0, 0));
+        }
+        else
         {
-            while (strlen(ref)!=1 && strlen(alt)!=1)
+            char* ref = allele[0];
+            char* alt = allele[i];
+    
+            //in situ left trimming
+            //this is required in particular for the
+            //characterization of multiallelics and
+            //in general, any unnormalized variant
+            if (in_situ_left_trimming)
             {
-                if (ref[0]==alt[0])
+                while (strlen(ref)!=1 && strlen(alt)!=1)
                 {
-                    ++ref;
-                    ++alt;
-                }
-                else
-                {
-                    break;
+                    if (ref[0]==alt[0])
+                    {
+                        ++ref;
+                        ++alt;
+                    }
+                    else
+                    {
+                        break;
+                    }
                 }
             }
-        }
-
-        int32_t rlen = strlen(ref);
-        int32_t alen = strlen(alt);
-        int32_t mlen = std::min(rlen, alen);
-        int32_t dlen = alen-rlen;
-        int32_t diff = 0;
-        int32_t ts = 0;
-        int32_t tv = 0;
-
-        for (int32_t j=0; j<mlen; ++j)
-        {
-            if (ref[j]!=alt[j])
+    
+            int32_t rlen = strlen(ref);
+            int32_t alen = strlen(alt);
+            int32_t mlen = std::min(rlen, alen);
+            int32_t dlen = alen-rlen;
+            int32_t diff = 0;
+            int32_t ts = 0;
+            int32_t tv = 0;
+    
+            for (int32_t j=0; j<mlen; ++j)
             {
-                ++diff;
-
-                if ((ref[j]=='G' && alt[j]=='A') ||
-                    (ref[j]=='A' && alt[j]=='G') ||
-                    (ref[j]=='C' && alt[j]=='T') ||
-                    (ref[j]=='T' && alt[j]=='C'))
+                if (ref[j]!=alt[j])
                 {
-                    ++ts;
+                    ++diff;
+    
+                    if ((ref[j]=='G' && alt[j]=='A') ||
+                        (ref[j]=='A' && alt[j]=='G') ||
+                        (ref[j]=='C' && alt[j]=='T') ||
+                        (ref[j]=='T' && alt[j]=='C'))
+                    {
+                        ++ts;
+                    }
                 }
             }
+    
+            //substitution variants
+            if (mlen==diff)
+            {
+                type |= mlen==1 ? VT_SNP : VT_MNP;
+            }
+    
+            //indel variants
+            if (dlen)
+            {
+                type |= VT_INDEL;
+            }
+    
+            //clumped SNPs and MNPs
+            if (diff && diff < mlen)
+            {
+                type |= VT_CLUMPED;
+            }
+    
+            v.type |= type;
+            v.alleles.push_back(Allele(type, diff, alen, dlen, 0, mlen, ts));
         }
-
-        //substitution variants
-        if (mlen==diff)
-        {
-            type |= mlen==1 ? VT_SNP : VT_MNP;
-        }
-
-        //indel variants
-        if (dlen)
-        {
-            type |= VT_INDEL;
-        }
-
-        //clumped SNPs and MNPs
-        if (diff && diff < mlen)
-        {
-            type |= VT_CLUMPED;
-        }
-
-        v.type |= type;
-        v.alleles.push_back(Allele(type, diff, alen, dlen, 0, mlen, ts));
     }
 
     return v.type;
