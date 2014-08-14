@@ -67,7 +67,7 @@ std::string BEDRecord::to_string()
     kputc('-', &s);
     kputw(this->end1, &s);
     
-    std::string str = std::string(s.s);
-    free(s.s);
+    std::string str(s.s);
+    if (s.m) free(s.s);
     return str;
 };
