@@ -69,7 +69,8 @@ SOURCES = program\
 		annotate_dbsnp_rsid\
 		config\
 		variant\
-		allele
+		allele\
+		sv_tree
 
 SOURCESONLY = main.cpp
 

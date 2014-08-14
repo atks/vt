@@ -295,13 +295,8 @@ int32_t VariantManip::classify_variant(const char* chrom, uint32_t pos1, char** 
         {
             type = VT_SV;
             
-            if (!strcmp(allele[i],"<DEL>"))
-            {
-                
-            }
-            
             v.type |= type;
-            v.alleles.push_back(Allele(type, 0, 0, 0, 0, 0, 0));
+            v.alleles.push_back(Allele(type, 0, 0, 0, 0, 0, 0, allele[i]));
         }
         else
         {
@@ -371,7 +366,7 @@ int32_t VariantManip::classify_variant(const char* chrom, uint32_t pos1, char** 
             }
     
             v.type |= type;
-            v.alleles.push_back(Allele(type, diff, alen, dlen, 0, mlen, ts));
+            v.alleles.push_back(Allele(type, diff, alen, dlen, 0, mlen, ts, NULL));
         }
     }
 
