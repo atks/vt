@@ -34,7 +34,7 @@
 #define VT_MNP      2   //min(rlen,alen)==diff
 #define VT_INDEL    4   //diff!=0 && (rlen==1 || alen==1)
 #define VT_CLUMPED  8   //all others
-#define VT_SV       16  //structural variant tags
+#define VT_SV       16  //structural variant
 
 /**
  * Allele.
@@ -57,9 +57,10 @@ class Allele
     int32_t ts;    //no. of transitions
     int32_t tv;    //no. of tranversions (mlen-ts)
     int32_t ins;   //no. of insertions 
-    int32_t del;   //no. of deletions 
+    int32_t del;   //no. of deletions
+    char* desc;    //hierarchical descriptor for the allele
     
-    Allele(int32_t type, int32_t diff, int32_t alen, int32_t dlen, int32_t tlen, int32_t mlen, int32_t ts);
+    Allele(int32_t type, int32_t diff, int32_t alen, int32_t dlen, int32_t tlen, int32_t mlen, int32_t ts, char* desc);
 
     Allele();
     
