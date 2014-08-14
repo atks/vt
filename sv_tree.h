@@ -23,6 +23,7 @@
 
 #include "htslib/vcf.h"
 #include "htslib/kstring.h"
+#include "htslib/khash.h"
 #include "variant_manip.h"
 
 #ifndef SV_Tree_H
@@ -37,8 +38,7 @@
 #define VT_SV_TANDEM 7
 #define VT_SV_ME     8
 #define VT_SV_MT     9
-
-
+   
 /**
  * Class for filtering VCF records.
  */
@@ -49,14 +49,41 @@ class Node
     Node* parent;
     std::vector<Node*> children;
 
-    int32_t depth;
+    int32_t depth, count;
     kstring_t desc;
     
     /**
      * Constructor.
      */
-    Node();
+    Node()
+    {
+        clear();       
+    };
+    
+    /**
+     * Destructor.
+     */
+    ~Node()
+    {
+        for (int32_t i=0; i<children.size(); ++i)
+        {
+            delete children[i];
+        }
+        children.clear();
+        
+        if (desc.m) free(desc.s);
+    };
+    
+    /**
+     * Clear values.
+     */
+    void clear()
+    {
+        
+    };
 };
+
+KHASH_MAP_INIT_STR(xdict, Node*);
 
 /**
  * SV Tree for counting SVs.
@@ -72,28 +99,123 @@ class SVTree
     bcf_hdr_t *h;
     bcf1_t *v;
     
+    khash_t(xdict) *m;
+    
     /**
      * Constructor.
      */
     SVTree()
     {
         tree = NULL;
+        m = kh_init(xdict);
+    };
+    
+    /**
+     * Destructor.
+     */
+    ~SVTree()
+    {
+        if (tree)
+        {
+            delete tree;
+        }
+        tree = NULL;
+        
+        
+        m = kh_init(xdict);
     };
 
     /**
-     * Adds a new tag, returns true if succesful.
+     * Adds a new tag, returns true if successful.
      */
-    bool add(char* desc);
+    bool add(char* desc)
+    {
+        //update hash
+        khiter_t k;
+        int32_t ret = 0;
+        if ((k=kh_get(xdict, m, desc))==kh_end(m))
+        {
+            k = kh_put(xdict, m, desc, &ret);
+            if (ret)
+            {
+                kh_value(m, k) = new Node();
+            }
+            else
+            {
+                kh_value(m, k)->clear();
+            }
+            
+            
+            //update tree
+            std::vector<std::string> vec;
+            std::string s(desc);    
+            split(vec, ":", desc);
+    
+            Node* cnode = tree;
+            for (int32_t i=0; i<vec.size(); ++i)
+            {
+                bool type_found = false;
+                for (int32_t j=0; j<cnode->children.size(); ++j)
+                {
+                    if (!strcmp(cnode->children[j]->desc.s, vec[i].c_str()))
+                    {
+                        
+                    }
+                }
+            }
+            
+            
+            return true;
+        }
+        
+        
+
+        
+        return false;
+    }
 
     /**
      * Observes and update the count of a new tag.
      */
-    void count(char* desc);
+    void count(char* desc)
+    {
+         khiter_t k;
+        int32_t ret = 0;
+        if ((k=kh_get(xdict, m, desc))!=kh_end(m))
+        {
+           
+            
+        }
+        else
+        {
+            this->add(desc);
+            if (ret)
+            {
+                kh_value(m, k) = new Node();
+            }
+            else
+            {
+                kh_value(m, k)->clear();
+            }
+            
+            kh_value(m, k)->count = 1;
+        }
+    };
+
+    /**
+     * Iterator, returns first node by depth first search.
+     */
+    Node* begin()
+    {
+        
+    };
 
     /**
      * Iterator, returns node by depth first search.
      */
-    Node* next();
+    Node* next()
+    {
+    };
 
     private:
 };
