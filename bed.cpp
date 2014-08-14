@@ -59,5 +59,15 @@ void BEDRecord::print()
  */
 std::string BEDRecord::to_string()
 {
-    return  this->chrom + ":" + std::to_string(this->start1) + "-" + std::to_string(this->end1);
+    kstring_t s = {0,0,0};
+    
+    kputs(this->chrom.c_str(), &s);
+    kputc(':', &s);
+    kputw(this->start1, &s);
+    kputc('-', &s);
+    kputw(this->end1, &s);
+    
+    std::string str = std::string(s.s);
+    free(s.s);
+    return str;
 };
