@@ -73,7 +73,7 @@ void split(std::vector<std::string>& vec, const char *delims, std::string& str, 
 /**
  * Splits a line into a vector - PERL style
  */
-void split(std::vector<std::string>& vec, const char *delims, char* str, uint32_t limit, bool clear, bool collapse)
+void split(std::vector<std::string>& vec, const char *delims, const char* str, uint32_t limit, bool clear, bool collapse)
 {
     std::map<char, int32_t> delim_set;
 

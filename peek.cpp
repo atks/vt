@@ -52,7 +52,7 @@ class Igor : Program
     std::string output_pdf_file;
     std::vector<GenomeInterval> intervals;
     std::string ref_fasta_file;
-
+    
     ///////
     //i/o//
     ///////
@@ -87,6 +87,7 @@ class Igor : Program
     //tools//
     /////////
     VariantManip *vm;
+    SVTree* sv;
 
     Igor(int argc, char **argv)
     {
@@ -185,6 +186,7 @@ class Igor : Program
         //tools initialization//
         ////////////////////////
         vm = new VariantManip(ref_fasta_file);
+        sv = new SVTree();
     }
 
     void peek()
@@ -428,20 +430,11 @@ class Igor : Program
                                                                  VAR_DEL[GE_PENTAALLELIC][VT_CLUMPED]);
         fprintf(stderr, "\n");
         fprintf(stderr, "       no. of structural variants         : %10d\n", VAR_COUNT[POLYMORPHIC][VT_SV]);
+
+
+//write with iterator of sv_tree
 //        fprintf(stderr, "           2 alleles                      : %15d\n", VAR_COUNT[BIALLELIC][VT_SV]);
-//        fprintf(stderr, "               translocation              : %20d\n", VAR_COUNT[BIALLELIC][VT_SV_TRA]);
-//        fprintf(stderr, "               deletion                   : %20d\n", VAR_COUNT[BIALLELIC][VT_SV_DEL]);
-//        fprintf(stderr, "               insertion                  : %20d\n", VAR_COUNT[BIALLELIC][VT_SV_INS]);
-//        fprintf(stderr, "               duplication                : %20d\n", VAR_COUNT[BIALLELIC][VT_SV_DUP]);
-//        fprintf(stderr, "               inversion                  : %20d\n", VAR_COUNT[BIALLELIC][VT_SV_INV]);
-//        
-//        fprintf(stderr, "           3 alleles                      : %15d (%.2f) [%d/%d] (%.2f) [%d/%d]\n", VAR_COUNT[TRIALLELIC][VT_CLUMPED],
-//                                                                 (float)VAR_TS[TRIALLELIC][VT_CLUMPED]/VAR_TV[TRIALLELIC][VT_CLUMPED],
-//                                                                 VAR_TS[TRIALLELIC][VT_CLUMPED],
-//                                                                 VAR_TV[TRIALLELIC][VT_CLUMPED],
-//                                                                 (float)VAR_INS[TRIALLELIC][VT_CLUMPED]/VAR_DEL[TRIALLELIC][VT_CLUMPED],
-//                                                                 VAR_INS[TRIALLELIC][VT_CLUMPED],
-//                                                                 VAR_DEL[TRIALLELIC][VT_CLUMPED]);
+
         fprintf(stderr, "\n");
         fprintf(stderr, "       no. of reference                   : %10d\n", VAR_COUNT[MONOMORPHIC][VT_REF]);
         fprintf(stderr, "\n");

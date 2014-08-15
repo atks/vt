@@ -38,52 +38,85 @@
 #define VT_SV_TANDEM 7
 #define VT_SV_ME     8
 #define VT_SV_MT     9
-   
+
 /**
  * Class for filtering VCF records.
  */
-class Node
+class SVNode
 {
     public:
 
-    Node* parent;
-    std::vector<Node*> children;
+    SVNode* parent;
+    std::vector<SVNode*> children;
 
     int32_t depth, count;
     kstring_t desc;
-    
+
     /**
      * Constructor.
      */
-    Node()
+    SVNode()
     {
-        clear();       
+        desc = {0,0,0};
+        depth = 0;
+        count = 0;
     };
-    
+
+    /**
+     * Constructor.
+     */
+    SVNode(const char* desc)
+    {
+        this->desc = {0,0,0};
+        this->depth = 0;
+        count = 0;
+        kputs(desc, &this->desc);
+    };
+
+    /**
+     * Constructor.
+     */
+    SVNode(const char* desc, int32_t depth)
+    {
+        this->desc = {0,0,0};
+        this->depth = depth;
+        count = 0;
+        kputs(desc, &this->desc);
+    };
+
     /**
      * Destructor.
      */
-    ~Node()
+    ~SVNode()
     {
         for (int32_t i=0; i<children.size(); ++i)
         {
             delete children[i];
         }
         children.clear();
-        
+
         if (desc.m) free(desc.s);
     };
-    
+
+    /**
+     * Set depth.
+     */
+    void set_depth(int32_t depth)
+    {
+        this->depth = depth;
+    };
+
     /**
      * Clear values.
      */
     void clear()
     {
-        
+        if (desc.m) free(desc.s);
+        count = 0;
     };
 };
 
-KHASH_MAP_INIT_STR(xdict, Node*);
+KHASH_MAP_INIT_STR(xdict, SVNode*);
 
 /**
  * SV Tree for counting SVs.
@@ -93,23 +126,37 @@ class SVTree
     public:
 
     //filter expression
-    Node* tree;
+    SVNode* tree;
 
     //useful pointers for applying the filter to a vcf record
     bcf_hdr_t *h;
     bcf1_t *v;
-    
+
     khash_t(xdict) *m;
-    
+
     /**
      * Constructor.
      */
     SVTree()
     {
-        tree = NULL;
+        tree = new SVNode("root", 0);
         m = kh_init(xdict);
+
+        this->add("<TRA>");
+        this->add("<DEL>");
+        this->add("<INS>");
+        this->add("<DUP>");
+        this->add("<INV>");
+        this->add("<CNV>");
+        this->add("<DUP:TANDEM>");
+        this->add("<DEL:ME>");
+        this->add("<INS:ME>");
+        this->add("<INS:MT>");
+        this->add("<INS:ME:ALU>");
+        this->add("<INS:ME:LINE1>");
+        this->add("<INS:ME:SVA>");
     };
-    
+
     /**
      * Destructor.
      */
@@ -120,15 +167,14 @@ class SVTree
             delete tree;
         }
         tree = NULL;
-        
-        
+
         m = kh_init(xdict);
     };
 
     /**
      * Adds a new tag, returns true if successful.
      */
-    bool add(char* desc)
+    bool add(const char* desc)
     {
         //update hash
         khiter_t k;
@@ -136,42 +182,47 @@ class SVTree
         if ((k=kh_get(xdict, m, desc))==kh_end(m))
         {
             k = kh_put(xdict, m, desc, &ret);
+            SVNode* svnode = NULL;
             if (ret)
             {
-                kh_value(m, k) = new Node();
+                svnode = new SVNode(desc);
+                kh_value(m, k) = svnode;
             }
             else
             {
                 kh_value(m, k)->clear();
             }
-            
-            
+
             //update tree
             std::vector<std::string> vec;
-            std::string s(desc);    
-            split(vec, ":", desc);
-    
-            Node* cnode = tree;
+            split(vec, "<:>", desc);
+
+            SVNode* cnode = tree;
             for (int32_t i=0; i<vec.size(); ++i)
             {
-                bool type_found = false;
+                bool found_type = false;
                 for (int32_t j=0; j<cnode->children.size(); ++j)
                 {
                     if (!strcmp(cnode->children[j]->desc.s, vec[i].c_str()))
                     {
-                        
+                        cnode = cnode->children[j];
+                        found_type = true;
+                        break;
                     }
                 }
+
+                if (!found_type)
+                {
+                    SVNode* newnode = new SVNode(vec[i].c_str(), i+1);
+                    cnode->children.push_back(newnode);
+                    cnode = newnode;
+                }    
             }
-            
-            
+
             return true;
         }
-        
-        
 
-        
-        return false;
+        return false; // already exists
     }
 
     /**
@@ -183,21 +234,21 @@ class SVTree
         int32_t ret = 0;
         if ((k=kh_get(xdict, m, desc))!=kh_end(m))
         {
-           
-            
+
+
         }
         else
         {
             this->add(desc);
             if (ret)
             {
-                kh_value(m, k) = new Node();
+                kh_value(m, k) = new SVNode();
             }
             else
             {
                 kh_value(m, k)->clear();
             }
-            
+
             kh_value(m, k)->count = 1;
         }
     };
@@ -205,16 +256,17 @@ class SVTree
     /**
      * Iterator, returns first node by depth first search.
      */
-    Node* begin()
+    SVNode* begin()
     {
-        
+        return NULL;
     };
 
     /**
      * Iterator, returns node by depth first search.
      */
-    Node* next()
+    SVNode* next()
     {
+        return NULL;
     };
 
     private:

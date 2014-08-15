@@ -33,6 +33,7 @@
 #include "bcf_ordered_reader.h"
 #include "variant_manip.h"
 #include "filter.h"
+#include "sv_tree.h"
 
 void peek(int argc, char ** argv);
     
