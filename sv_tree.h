@@ -107,6 +107,14 @@ class SVNode
     };
 
     /**
+     * Increment count.
+     */
+    void increment_count()
+    {
+        ++count;
+    };
+    
+    /**
      * Clear values.
      */
     void clear()
@@ -114,6 +122,69 @@ class SVNode
         if (desc.m) free(desc.s);
         count = 0;
     };
+    
+    /**
+     * Print values.
+     */
+    void print()
+    {
+        for (int32_t i=0; i<depth; ++i)
+            std::cerr << "\t";
+        std::cerr << tags2desc() << " (" << count << ")\n";            
+    
+        for (int32_t i=0; i<children.size(); ++i)
+        {
+            children[i]->print();
+        }
+    };
+    
+    /**
+     *  For translating reserved keywords.
+     */
+    const char* tags2desc()
+    {
+        if (!strcmp(desc.s,"TRA"))
+        {
+            return "translocation";
+        }
+        else if (!strcmp(desc.s,"DEL"))
+        {
+            return "deletion";
+        }
+        else if (!strcmp(desc.s,"INS"))
+        {
+            return "insertion";
+        }
+        else if (!strcmp(desc.s,"INV"))
+        {
+            return "inversion";
+        }
+        else if (!strcmp(desc.s,"ME"))
+        {
+            return "mobile element";
+        }
+        else if (!strcmp(desc.s,"MT"))
+        {
+            return "nuclear mitochondrial";
+        }
+        else if (!strcmp(desc.s,"DUP"))
+        {
+            return "duplication";
+        }
+        else if (!strcmp(desc.s,"TANDEM"))
+        {
+            return "tandem repeats";
+        }
+        else if (!strcmp(desc.s,"CNV"))
+        {
+            return "copy number variation";
+        }
+        else
+        {
+            return desc.s;
+        }
+    };
+    
 };
 
 KHASH_MAP_INIT_STR(xdict, SVNode*);
@@ -125,8 +196,9 @@ class SVTree
 {
     public:
 
-    //filter expression
-    SVNode* tree;
+    SVNode* root;
+    int32_t max_depth;    
+
 
     //useful pointers for applying the filter to a vcf record
     bcf_hdr_t *h;
@@ -139,7 +211,7 @@ class SVTree
      */
     SVTree()
     {
-        tree = new SVNode("root", 0);
+        root = new SVNode("root", 0);
         m = kh_init(xdict);
 
         this->add("<TRA>");
@@ -155,6 +227,9 @@ class SVTree
         this->add("<INS:ME:ALU>");
         this->add("<INS:ME:LINE1>");
         this->add("<INS:ME:SVA>");
+        
+        print();
+        
     };
 
     /**
@@ -162,11 +237,11 @@ class SVTree
      */
     ~SVTree()
     {
-        if (tree)
+        if (root)
         {
-            delete tree;
+            delete root;
         }
-        tree = NULL;
+        root = NULL;
 
         m = kh_init(xdict);
     };
@@ -197,7 +272,7 @@ class SVTree
             std::vector<std::string> vec;
             split(vec, "<:>", desc);
 
-            SVNode* cnode = tree;
+            SVNode* cnode = root;
             for (int32_t i=0; i<vec.size(); ++i)
             {
                 bool found_type = false;
@@ -213,6 +288,7 @@ class SVTree
 
                 if (!found_type)
                 {
+                    max_depth = i+1>max_depth?i+1:max_depth;
                     SVNode* newnode = new SVNode(vec[i].c_str(), i+1);
                     cnode->children.push_back(newnode);
                     cnode = newnode;
@@ -230,27 +306,15 @@ class SVTree
      */
     void count(char* desc)
     {
-         khiter_t k;
+        khiter_t k;
         int32_t ret = 0;
-        if ((k=kh_get(xdict, m, desc))!=kh_end(m))
-        {
-
-
-        }
-        else
+        if ((k=kh_get(xdict, m, desc))==kh_end(m))
         {
             this->add(desc);
-            if (ret)
-            {
-                kh_value(m, k) = new SVNode();
-            }
-            else
-            {
-                kh_value(m, k)->clear();
-            }
-
-            kh_value(m, k)->count = 1;
+            k=kh_get(xdict, m, desc);
         }
+        
+        kh_value(m, k)->increment_count();
     };
 
     /**
@@ -267,6 +331,14 @@ class SVTree
     SVNode* next()
     {
         return NULL;
+    };
+
+    /**
+     * Print this tree.
+     */
+    void print()
+    {
+        root->print();
     };
 
     private:

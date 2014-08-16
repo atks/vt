@@ -22,7 +22,7 @@
 */
 
 #include <cstdint>
-#include <string>
+#include <cstring>
 #include <iostream>
 #include <vector>
 #include "htslib/kstring.h"
@@ -39,16 +39,22 @@ class Variant
 {
     public:
 
-    int32_t type;    //aggegrated type from the alleles
-    int32_t rlen;    //reference length
-    kstring_t motif; //motif
-    int32_t mlen;    //motif length
-    int32_t tlen;    //reference tract length
+    int32_t type;       //aggegrated type from the alleles
+    int32_t rlen;       //reference length
+    kstring_t motif;    //motif
+    int32_t mlen;       //motif length
+    int32_t tlen;       //reference tract length
+    kstring_t sv_type;  //sv type
     std::vector<Allele> alleles;
 
     Variant();
 
     ~Variant();
+
+    /**
+     * Sets sv_type.
+     */
+    void set_sv_type(const char* sv_type);
 
     /**
      * Prints variant information.
