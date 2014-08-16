@@ -297,6 +297,7 @@ int32_t VariantManip::classify_variant(const char* chrom, uint32_t pos1, char** 
             
             v.type |= type;
             v.alleles.push_back(Allele(type, 0, 0, 0, 0, 0, 0, allele[i]));
+            v.set_sv_type(allele[i]);
         }
         else
         {

@@ -165,9 +165,9 @@ class Igor : Program
             VAR_DEL[N_ALLELES] = new int32_t[32];
         }
 
-        int32_t vtypes[] = {VT_REF, VT_SNP, VT_MNP, VT_INDEL, VT_SNP|VT_MNP, VT_SNP|VT_INDEL, VT_MNP|VT_INDEL, VT_SNP|VT_MNP|VT_INDEL, VT_CLUMPED};
+        int32_t vtypes[] = {VT_REF, VT_SNP, VT_MNP, VT_INDEL, VT_SNP|VT_MNP, VT_SNP|VT_INDEL, VT_MNP|VT_INDEL, VT_SNP|VT_MNP|VT_INDEL, VT_CLUMPED, VT_SV};
 
-        for (int32_t i=0; i<9; ++i)
+        for (int32_t i=0; i<10; ++i)
         {
             for (int32_t N_ALLELES=0; N_ALLELES<6; ++N_ALLELES)
             {
@@ -187,6 +187,8 @@ class Igor : Program
         ////////////////////////
         vm = new VariantManip(ref_fasta_file);
         sv = new SVTree();
+        
+        
     }
 
     void peek()
@@ -213,6 +215,7 @@ class Igor : Program
                 }
             }
 
+            //observing chromosomes
             if ((k = kh_get(32, h, bcf_get_rid(v))) == kh_end(h))
             {
                 kh_put(32, h, bcf_get_rid(v), &ret);
@@ -233,8 +236,9 @@ class Igor : Program
                 VAR_DEL[NO_ALLELES][vtype] += variant.alleles[i].del;
             }
 
+            //completeness of classification check (mathematically not necessary actually, for weird variant types)
             bool classified = false;
-            for (int32_t i=0; i<9; ++i)
+            for (int32_t i=0; i<10; ++i)
             {
                 if (vtype == vtypes[i])
                 {
@@ -244,6 +248,11 @@ class Igor : Program
             }
 
             if (classified) ++no_classified_variants;
+
+            if (vtype==VT_SV)
+            {
+                sv->count(variant.sv_type.s);
+            }    
 
 
             ++no_observed_variants;
