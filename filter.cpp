@@ -890,6 +890,14 @@ void Filter::parse_literal(const char* exp, int32_t len, Node * node, bool debug
         if (debug) std::cerr << "\tis CLUMPED\n";
         return;
     }
+    else if (strncmp(exp, "REF", len)==0)
+    {
+        need_to_classify_variant = true;
+        node->type = VT_INT;
+        node->i = VT_REF;
+        if (debug) std::cerr << "\tis REF\n";
+        return;
+    }
     else if (strncmp(exp, "DLEN", len)==0)
     {
         need_to_classify_variant = true;
