@@ -56,6 +56,7 @@
 #include "consolidate_variants.h"
 #include "test.h"
 #include "config.h"
+#include "union_variants.h"
 
 void print_time(double t)
 {
@@ -191,6 +192,10 @@ int main(int argc, char ** argv)
     else if (argc>1 && cmd=="merge_candidate_variants")
     {
         merge_candidate_variants(argc-1, ++argv);
+    }
+    else if (argc>1 && cmd=="union")
+    {
+        union_variants(argc-1, ++argv);
     }
     else if (argc>1 && cmd=="genotype")
     {
