@@ -169,7 +169,7 @@ class Igor : Program
 
         for (int32_t i=0; i<10; ++i)
         {
-            for (int32_t N_ALLELES=0; N_ALLELES<6; ++N_ALLELES)
+            for (int32_t N_ALLELES=0; N_ALLELES<NO_ALLELE_CATEGORIES; ++N_ALLELES)
             {
                 VAR_COUNT[N_ALLELES][vtypes[i]] = 0;
                 VAR_TS[N_ALLELES][vtypes[i]] = 0;
@@ -199,7 +199,7 @@ class Igor : Program
         khiter_t k;
         khash_t(32) *h = kh_init(32);
 
-        int32_t vtypes[] = {VT_REF, VT_SNP, VT_MNP, VT_INDEL, VT_SNP|VT_MNP, VT_SNP|VT_INDEL, VT_MNP|VT_INDEL, VT_SNP|VT_MNP|VT_INDEL, VT_CLUMPED};
+        int32_t vtypes[] = {VT_REF, VT_SNP, VT_MNP, VT_INDEL, VT_SNP|VT_MNP, VT_SNP|VT_INDEL, VT_MNP|VT_INDEL, VT_SNP|VT_MNP|VT_INDEL, VT_CLUMPED, VT_SV};
 
         Variant variant;
 
@@ -251,6 +251,7 @@ class Igor : Program
 
             if (vtype==VT_SV)
             {
+                ++VAR_COUNT[POLYMORPHIC][VT_SV];
                 sv->count(variant.sv_type.s);
             }    
 
