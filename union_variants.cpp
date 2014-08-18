@@ -26,53 +26,6 @@
 namespace
 {
 
-class Evidence
-{
-    public:
-    uint32_t i, m;
-    uint32_t* e;
-    uint32_t* n;
-    kstring_t samples;
-    int32_t esum, nsum;
-    double af;
-    double lr;
-    bcf1_t *v;
-
-    Evidence(uint32_t m)
-    {
-        this->m = m;
-        i = 0;
-        e = (uint32_t*) malloc(m*sizeof(uint32_t));
-        n = (uint32_t*) malloc(m*sizeof(uint32_t));
-        samples = {0,0,0};
-        esum = 0;
-        nsum = 0;
-        af = 0;
-        lr = 0;
-        v = NULL;
-    };
-
-    ~Evidence()
-    {
-        i = 0;
-        free(e);
-        free(n);
-        if (samples.m) free(samples.s);
-        v = NULL;
-    };
-
-    void clear()
-    {
-        i = 0;
-        samples.l = 0;
-        esum = 0;
-        nsum = 0;
-        af = 0;
-        lr = 0;
-        v = NULL;
-    };
-};
-
 class Igor : Program
 {
     public:
@@ -84,11 +37,11 @@ class Igor : Program
     ///////////
     std::vector<std::string> input_vcf_files;
     std::string input_vcf_file_list;
+    std::vector<std::string> labels;
     std::string output_vcf_file;
     std::vector<GenomeInterval> intervals;
     std::string interval_list;
-    double lr_cutoff;
-
+    
     ///////
     //i/o//
     ///////
@@ -100,15 +53,12 @@ class Igor : Program
     //general use//
     ///////////////
     kstring_t variant;
-
+    
     /////////
     //stats//
     /////////
-    uint32_t no_samples;
-    uint32_t no_candidate_snps;
-    uint32_t no_candidate_indels;
-    uint32_t no_candidate_snpindels;
-    uint32_t no_other_variant_types;
+    int32_t no_unique_variants;
+    int32_t no_variants;
 
     /////////
     //tools//
@@ -130,33 +80,17 @@ class Igor : Program
             TCLAP::ValueArg<std::string> arg_intervals("i", "i", "intervals", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_output_vcf_file("o", "o", "output VCF file [-]", false, "-", "", cmd);
-            TCLAP::ValueArg<std::string> arg_input_vcf_file_list("L", "L", "file containing list of input VCF files", true, "", "str", cmd);
+            TCLAP::ValueArg<std::string> arg_input_vcf_file_list("L", "L", "file containing list of input VCF files", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_labels("l", "l", "Comma delimited labels for the files", true, "", "str", cmd);
-
+            TCLAP::UnlabeledMultiArg<std::string> arg_input_vcf_files("<in1.vcf>...", "Multiple VCF files",false, "files", cmd);
+            
             cmd.parse(argc, argv);
 
-            input_vcf_file_list = arg_input_vcf_file_list.getValue();
+            parse_files(input_vcf_files, arg_input_vcf_files.getValue(), arg_input_vcf_file_list.getValue());
             output_vcf_file = arg_output_vcf_file.getValue();
+            split(labels, ",", arg_labels.getValue());
             parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
-
-            ///////////////////////
-            //parse input VCF files
-            ///////////////////////
-            htsFile *file = hts_open(input_vcf_file_list.c_str(), "r");
-            if (file==NULL)
-            {
-                std::cerr << "cannot open " << input_vcf_file_list.c_str() << "\n";
-                exit(1);
-            }
-            kstring_t *s = &file->line;
-            while (hts_getline(file, KS_SEP_LINE, s) >= 0)
-            {
-                if (s->s[0]!='#')
-                {
-                    input_vcf_files.push_back(std::string(s->s));
-                }
-            }
-            hts_close(file);
+            
         }
         catch (TCLAP::ArgException &e)
         {
@@ -175,30 +109,30 @@ class Igor : Program
         odw = new BCFOrderedWriter(output_vcf_file, 0);
         bcf_hdr_append(odw->hdr, "##fileformat=VCFv4.1");
         bcf_hdr_transfer_contigs(sr->hdrs[0], odw->hdr);
-        bcf_hdr_append(odw->hdr, "##INFO=<ID=SAMPLES,Number=.,Type=String,Description=\"Samples with evidence.\">");
-        bcf_hdr_append(odw->hdr, "##INFO=<ID=NSAMPLES,Number=.,Type=Integer,Description=\"Number of samples.\">");
-        bcf_hdr_append(odw->hdr, "##INFO=<ID=E,Number=.,Type=Integer,Description=\"Evidence read counts for each sample\">");
-        bcf_hdr_append(odw->hdr, "##INFO=<ID=N,Number=.,Type=Integer,Description=\"Read counts for each sample\">");
-        bcf_hdr_append(odw->hdr, "##INFO=<ID=ESUM,Number=1,Type=Integer,Description=\"Total evidence read count\">");
-        bcf_hdr_append(odw->hdr, "##INFO=<ID=NSUM,Number=1,Type=Integer,Description=\"Total read count\">");
-        bcf_hdr_append(odw->hdr, "##INFO=<ID=AF,Number=A,Type=Float,Description=\"Allele Frequency\">");
-        bcf_hdr_append(odw->hdr, "##INFO=<ID=LR,Number=1,Type=String,Description=\"Likelihood Ratio Statistic\">");
+        bcf_hdr_append(odw->hdr, "##INFO=<ID=NCENTERS,Number=.,Type=String,Description=\"Number of centers with variant evidence.\">");
+        bcf_hdr_append(odw->hdr, "##INFO=<ID=CENTERS,Number=1,Type=String,Description=\"List of centers where variant is found.\">");
         odw->write_hdr();
 
         ///////////////
         //general use//
         ///////////////
         variant = {0,0,0};
-        no_samples = sr->nfiles;
-
+        
+        ////////////////
+        //check labels//
+        ////////////////
+        if (labels.size()!=input_vcf_files.size())
+        {
+            fprintf(stderr, "[%s:%d %s] Number of labels has match the number of input files: %zu != %zu\n", __FILE__, __LINE__, __FUNCTION__, labels.size(), input_vcf_files.size());
+            exit(1);
+        }
+        
         ////////////////////////
         //stats initialization//
         ////////////////////////
-        no_candidate_snps = 0;
-        no_candidate_indels = 0;
-        no_candidate_snpindels = 0;
-        no_other_variant_types = 0;
-
+        no_unique_variants = 0;
+        no_variants = 0;
+        
         /////////
         //tools//
         /////////
@@ -208,17 +142,47 @@ class Igor : Program
     void union_variants()
     {
         int32_t nfiles = sr->get_nfiles();
+        kstring_t centers = {0,0,0};
+        int32_t ncenter = 0;
+        int32_t *presence = new int32_t[nfiles];
 
         std::vector<bcfptr*> current_recs;
         while(sr->read_next_position(current_recs))
         {
-            for (uint32_t i=0; i<current_recs.size(); ++i)
+            ncenter = 0;
+            centers.l = 0;
+            for (size_t i=0; i<nfiles; ++i)
             {
-                int32_t file_index = current_recs[i]->file_index;
-                bcf1_t *v = current_recs[i]->v;
-                bcf_hdr_t *h = current_recs[i]->h;                
+                presence[i] = false;            
             }
-
+                        
+            for (size_t i=0; i<current_recs.size(); ++i)
+            {
+                int32_t file_index = current_recs[i]->file_index;    
+                
+                if (!presence[file_index])
+                {
+                    presence[file_index] = true;
+                    kputs(labels[file_index].c_str(), &centers);     
+                    ++no_variants;  
+                    ++ncenter;            
+                }
+            }
+                        
+            bcf1_t *v = current_recs[0]->v;
+            bcf_hdr_t *h = current_recs[0]->h;  
+            
+            //update variant information
+            bcf1_t* nv = odw->get_bcf1_from_pool();
+            bcf_set_chrom(odw->hdr, nv, bcf_get_chrom(h, v));
+            bcf_set_pos1(nv, bcf_get_pos1(v));
+            bcf_update_alleles(odw->hdr, nv, const_cast<const char**>(bcf_get_allele(v)), bcf_get_n_allele(v));
+            bcf_update_info_string(odw->hdr, nv, "CENTERS", centers.s);
+            bcf_update_info_int32(odw->hdr, nv, "NCENTERS", &ncenter, 1);
+            
+            odw->write(nv);
+            
+            ++no_unique_variants;
         }
 
         sr->close();
@@ -237,10 +201,9 @@ class Igor : Program
     void print_stats()
     {
         std::clog << "\n";
-        std::cerr << "stats: Total Number of Candidate SNPs                 " << no_candidate_snps << "\n";
-        std::cerr << "       Total Number of Candidate Indels               " << no_candidate_indels << "\n";
-        std::cerr << "       Total Number of Candidate SNPIndels            " << no_candidate_snpindels << "\n";
-        std::cerr << "       Total Number of Candidate other variant types  " << no_other_variant_types << "\n\n";
+        std::cerr << "stats: Total Number of variants                 " << no_variants << "\n";
+        std::cerr << "       Total Number of unique variants          " << no_unique_variants << "\n";
+        std::clog << "\n";
     };
 
     ~Igor()

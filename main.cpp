@@ -193,7 +193,7 @@ int main(int argc, char ** argv)
     {
         merge_candidate_variants(argc-1, ++argv);
     }
-    else if (argc>1 && cmd=="union")
+    else if (argc>1 && cmd=="union_variants")
     {
         union_variants(argc-1, ++argv);
     }
