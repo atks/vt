@@ -70,7 +70,8 @@ SOURCES = program\
 		config\
 		variant\
 		allele\
-		sv_tree
+		sv_tree\
+		union_variants
 
 SOURCESONLY = main.cpp
 
