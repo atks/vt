@@ -104,7 +104,7 @@ class Igor : Program
         //////////////////////
         //i/o initialization//
         //////////////////////
-        sr = new BCFSyncedReader(input_vcf_files, intervals);
+        sr = new BCFSyncedReader(input_vcf_files, intervals, false);
 
         odw = new BCFOrderedWriter(output_vcf_file, 0);
         bcf_hdr_append(odw->hdr, "##fileformat=VCFv4.1");
@@ -145,7 +145,8 @@ class Igor : Program
         kstring_t centers = {0,0,0};
         int32_t ncenter = 0;
         int32_t *presence = new int32_t[nfiles];
-
+        int32_t pass_filter = 0;
+        
         std::vector<bcfptr*> current_recs;
         while(sr->read_next_position(current_recs))
         {
@@ -179,6 +180,7 @@ class Igor : Program
             bcf_update_alleles(odw->hdr, nv, const_cast<const char**>(bcf_get_allele(v)), bcf_get_n_allele(v));
             bcf_update_info_string(odw->hdr, nv, "CENTERS", centers.s);
             bcf_update_info_int32(odw->hdr, nv, "NCENTERS", &ncenter, 1);
+            bcf_update_filter(odw->hdr, nv, &pass_filter, 1);
             
             odw->write(nv);
             
