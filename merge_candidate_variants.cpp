@@ -174,7 +174,7 @@ Each VCF file is required to have the FORMAT flags E and N and should have exact
         //////////////////////
         //i/o initialization//
         //////////////////////
-        sr = new BCFSyncedReader(input_vcf_files, intervals);
+        sr = new BCFSyncedReader(input_vcf_files, intervals, false);
 
         odw = new BCFOrderedWriter(output_vcf_file, 0);
         bcf_hdr_append(odw->hdr, "##fileformat=VCFv4.1");
