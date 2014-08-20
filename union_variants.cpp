@@ -107,9 +107,9 @@ class Igor : Program
         sr = new BCFSyncedReader(input_vcf_files, intervals, false);
 
         odw = new BCFOrderedWriter(output_vcf_file, 0);
-        bcf_hdr_append(odw->hdr, "##fileformat=VCFv4.1");
+        bcf_hdr_set_version(odw->hdr, "4.1");
         bcf_hdr_transfer_contigs(sr->hdrs[0], odw->hdr);
-        bcf_hdr_append(odw->hdr, "##INFO=<ID=NCENTERS,Number=.,Type=String,Description=\"Number of centers with variant evidence.\">");
+        bcf_hdr_append(odw->hdr, "##INFO=<ID=NCENTERS,Number=1,Type=Integer,Description=\"Number of centers with variant evidence.\">");
         bcf_hdr_append(odw->hdr, "##INFO=<ID=CENTERS,Number=1,Type=String,Description=\"List of centers where variant is found.\">");
         odw->write_hdr();
 
@@ -156,15 +156,17 @@ class Igor : Program
             {
                 presence[i] = false;            
             }
-                        
+                 
             for (size_t i=0; i<current_recs.size(); ++i)
             {
                 int32_t file_index = current_recs[i]->file_index;    
                 
                 if (!presence[file_index])
                 {
-                    presence[file_index] = true;
+                    if (ncenter) kputc(',', &centers); 
                     kputs(labels[file_index].c_str(), &centers);     
+                    presence[file_index] = true;
+                    
                     ++no_variants;  
                     ++ncenter;            
                 }

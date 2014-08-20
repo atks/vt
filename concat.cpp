@@ -178,7 +178,8 @@ class Igor : Program
                     //maybe add some additional adhoc fixing for BCF files that do not have a complete header.
                 }
 
-                bcf_set_chrom(odw->hdr, v, bcf_get_chrom(odr->hdr, v));
+                //assume the contigs list is the same for all?  Do we have checking for this?
+                //bcf_set_chrom(odw->hdr, v, bcf_get_chrom(odr->hdr, v));
                 odw->write(v);
                 ++no_variants;
                 v =  odw->get_bcf1_from_pool();
