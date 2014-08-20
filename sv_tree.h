@@ -48,143 +48,53 @@ class SVNode
 
     SVNode* parent;
     std::vector<SVNode*> children;
-
     int32_t depth, count;
     kstring_t desc;
 
     /**
      * Constructor.
      */
-    SVNode()
-    {
-        desc = {0,0,0};
-        depth = 0;
-        count = 0;
-    };
+    SVNode();
 
     /**
      * Constructor.
      */
-    SVNode(const char* desc)
-    {
-        this->desc = {0,0,0};
-        this->depth = 0;
-        count = 0;
-        kputs(desc, &this->desc);
-    };
+    SVNode(const char* desc);
 
     /**
      * Constructor.
      */
-    SVNode(const char* desc, int32_t depth)
-    {
-        this->desc = {0,0,0};
-        this->depth = depth;
-        count = 0;
-        kputs(desc, &this->desc);
-    };
+    SVNode(const char* desc, int32_t depth);
 
     /**
      * Destructor.
      */
-    ~SVNode()
-    {
-        for (int32_t i=0; i<children.size(); ++i)
-        {
-            delete children[i];
-        }
-        children.clear();
-
-        if (desc.m) free(desc.s);
-    };
+    ~SVNode();
 
     /**
      * Set depth.
      */
-    void set_depth(int32_t depth)
-    {
-        this->depth = depth;
-    };
+    void set_depth(int32_t depth);
 
     /**
      * Increment count.
      */
-    void increment_count()
-    {
-        ++count;
-    };
+    void increment_count();
     
     /**
      * Clear values.
      */
-    void clear()
-    {
-        if (desc.m) free(desc.s);
-        count = 0;
-    };
+    void clear();
     
     /**
      * Print values.
      */
-    void print()
-    {
-        for (int32_t i=0; i<depth; ++i)
-            std::cerr << "\t";
-        std::cerr << tags2desc() << " (" << count << ")\n";            
-    
-        for (int32_t i=0; i<children.size(); ++i)
-        {
-            children[i]->print();
-        }
-    };
+    void print();
     
     /**
      *  For translating reserved keywords.
      */
-    const char* tags2desc()
-    {
-        if (!strcmp(desc.s,"TRA"))
-        {
-            return "translocation";
-        }
-        else if (!strcmp(desc.s,"DEL"))
-        {
-            return "deletion";
-        }
-        else if (!strcmp(desc.s,"INS"))
-        {
-            return "insertion";
-        }
-        else if (!strcmp(desc.s,"INV"))
-        {
-            return "inversion";
-        }
-        else if (!strcmp(desc.s,"ME"))
-        {
-            return "mobile element";
-        }
-        else if (!strcmp(desc.s,"MT"))
-        {
-            return "nuclear mitochondrial";
-        }
-        else if (!strcmp(desc.s,"DUP"))
-        {
-            return "duplication";
-        }
-        else if (!strcmp(desc.s,"TANDEM"))
-        {
-            return "tandem repeats";
-        }
-        else if (!strcmp(desc.s,"CNV"))
-        {
-            return "copy number variation";
-        }
-        else
-        {
-            return desc.s;
-        }
-    };
-    
+    const char* tags2desc();    
 };
 
 KHASH_MAP_INIT_STR(xdict, SVNode*);
@@ -198,148 +108,50 @@ class SVTree
 
     SVNode* root;
     int32_t max_depth;    
-
-
-    //useful pointers for applying the filter to a vcf record
-    bcf_hdr_t *h;
-    bcf1_t *v;
-
+    std::vector<SVNode*> df_order;
+//    bcf_hdr_t *h;
+//    bcf1_t *v;
     khash_t(xdict) *m;
 
     /**
      * Constructor.
      */
-    SVTree()
-    {
-        root = new SVNode("root", 0);
-        m = kh_init(xdict);
-
-        this->add("<TRA>");
-        this->add("<DEL>");
-        this->add("<INS>");
-        this->add("<DUP>");
-        this->add("<INV>");
-        this->add("<CNV>");
-        this->add("<DUP:TANDEM>");
-        this->add("<DEL:ME>");
-        this->add("<INS:ME>");
-        this->add("<INS:MT>");
-        this->add("<INS:ME:ALU>");
-        this->add("<INS:ME:LINE1>");
-        this->add("<INS:ME:SVA>");
-        
-        print();
-        
-    };
+    SVTree();
 
     /**
      * Destructor.
      */
-    ~SVTree()
-    {
-        if (root)
-        {
-            delete root;
-        }
-        root = NULL;
-
-        m = kh_init(xdict);
-    };
+    ~SVTree();
 
     /**
      * Adds a new tag, returns true if successful.
      */
-    bool add(const char* desc)
-    {
-        //update hash
-        khiter_t k;
-        int32_t ret = 0;
-        if ((k=kh_get(xdict, m, desc))==kh_end(m))
-        {
-            k = kh_put(xdict, m, desc, &ret);
-            SVNode* svnode = NULL;
-            if (ret)
-            {
-                svnode = new SVNode(desc);
-                kh_value(m, k) = svnode;
-            }
-            else
-            {
-                kh_value(m, k)->clear();
-            }
-
-            //update tree
-            std::vector<std::string> vec;
-            split(vec, "<:>", desc);
-
-            SVNode* cnode = root;
-            for (int32_t i=0; i<vec.size(); ++i)
-            {
-                bool found_type = false;
-                for (int32_t j=0; j<cnode->children.size(); ++j)
-                {
-                    if (!strcmp(cnode->children[j]->desc.s, vec[i].c_str()))
-                    {
-                        cnode = cnode->children[j];
-                        found_type = true;
-                        break;
-                    }
-                }
-
-                if (!found_type)
-                {
-                    max_depth = i+1>max_depth?i+1:max_depth;
-                    SVNode* newnode = new SVNode(vec[i].c_str(), i+1);
-                    cnode->children.push_back(newnode);
-                    cnode = newnode;
-                }    
-            }
-
-            return true;
-        }
-
-        return false; // already exists
-    }
-
+    bool add(const char* desc);
+    
     /**
      * Observes and update the count of a new tag.
      */
-    void count(char* desc)
-    {
-        khiter_t k;
-        int32_t ret = 0;
-        if ((k=kh_get(xdict, m, desc))==kh_end(m))
-        {
-            this->add(desc);
-            k=kh_get(xdict, m, desc);
-        }
-        
-        kh_value(m, k)->increment_count();
-    };
+    void count(char* desc);
+
+    /**
+     * Enumerates the children in a depth first order.
+     */
+    SVNode* enumerate();
 
     /**
      * Iterator, returns first node by depth first search.
      */
-    SVNode* begin()
-    {
-        return NULL;
-    };
+    SVNode* begin();
 
     /**
      * Iterator, returns node by depth first search.
      */
-    SVNode* next()
-    {
-        return NULL;
-    };
+    SVNode* next();
 
     /**
      * Print this tree.
      */
-    void print()
-    {
-        root->print();
-    };
+    void print();
 
     private:
 };
