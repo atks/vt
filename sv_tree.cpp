@@ -111,7 +111,14 @@ void SVNode::set_depth(int32_t depth)
  */
 void SVNode::increment_count()
 {
+    std::cerr << "\tincrement " << this->desc.s << "\n";
+    
     ++count;
+
+    if (parent!=NULL)
+    {
+        parent->increment_count();
+    }
 };
 
 /**
@@ -165,7 +172,7 @@ const char* SVNode::tags2desc()
     }
     else if (!strcmp(desc.s,"MT"))
     {
-        return "nuclear mitochondrial";
+        return "nuclear mitochondrial DNA";
     }
     else if (!strcmp(desc.s,"DUP"))
     {
@@ -206,8 +213,6 @@ SVTree::SVTree()
     this->add("<INS:ME:ALU>");
     this->add("<INS:ME:LINE1>");
     this->add("<INS:ME:SVA>");
-
-    print();
 };
 
 /**
@@ -235,17 +240,7 @@ bool SVTree::add(const char* desc)
     if ((k=kh_get(xdict, m, desc))==kh_end(m))
     {
         k = kh_put(xdict, m, desc, &ret);
-        SVNode* svnode = NULL;
-        if (ret)
-        {
-            svnode = new SVNode(desc);
-            kh_value(m, k) = svnode;
-        }
-        else
-        {
-            kh_value(m, k)->clear();
-        }
-
+        
         //update tree
         std::vector<std::string> vec;
         split(vec, "<:>", desc);
@@ -267,7 +262,9 @@ bool SVTree::add(const char* desc)
             if (!found_type)
             {
                 max_depth = i+1>max_depth?i+1:max_depth;
+                std::cerr << "adding " << vec[i] << "\n";
                 SVNode* newnode = new SVNode(vec[i].c_str(), i+1);
+                kh_value(m, k) = newnode;
                 cnode->children.push_back(newnode);
                 newnode->parent = cnode;
                 cnode = newnode;
@@ -285,10 +282,14 @@ bool SVTree::add(const char* desc)
  */
 void SVTree::count(char* desc)
 {
+    std::cerr  << "counting " << desc << "\n";
+    
     khiter_t k;
     int32_t ret = 0;
     if ((k=kh_get(xdict, m, desc))==kh_end(m))
     {
+        std::cerr  << "\tadding for the first time\n";
+        
         this->add(desc);
         k=kh_get(xdict, m, desc);
     }

@@ -441,6 +441,7 @@ class Igor : Program
         fprintf(stderr, "\n");
         fprintf(stderr, "       no. of structural variants         : %10d\n", VAR_COUNT[POLYMORPHIC][VT_SV]);
 
+        sv->print();
 
 //write with iterator of sv_tree
 //        fprintf(stderr, "           2 alleles                      : %15d\n", VAR_COUNT[BIALLELIC][VT_SV]);
