@@ -142,4 +142,5 @@ void Variant::clear()
     mlen = 0;
     tlen = 0;
     alleles.clear();
+    sv_type.l = 0;
 };
