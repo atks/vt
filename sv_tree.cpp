@@ -111,8 +111,6 @@ void SVNode::set_depth(int32_t depth)
  */
 void SVNode::increment_count()
 {
-    std::cerr << "\tincrement " << this->type.s << "\n";
-    
     ++count;
 
     if (parent!=NULL)
@@ -262,7 +260,6 @@ bool SVTree::add(const char* sv_type)
             if (!found_type)
             {
                 max_depth = i+1>max_depth?i+1:max_depth;
-                std::cerr << "adding " << vec[i] << "\n";
                 SVNode* newnode = new SVNode(vec[i].c_str(), i+1);
                 kh_value(m, k) = newnode;
                 cnode->children.push_back(newnode);
@@ -287,12 +284,9 @@ void SVTree::count(Variant& variant)
 
     for (size_t i=0; i<variant.alleles.size(); ++i)
     {
-        variant.alleles[i].print();
         const char* sv_type = variant.alleles[i].sv_type.c_str();
-        std::cerr  << "counting " << sv_type << "\n";
         if ((k=kh_get(xdict, m, sv_type))==kh_end(m))
         {
-           std::cerr  << "\tadding for the first time\n";
            this->add(sv_type);
            k=kh_get(xdict, m, sv_type);
         }
