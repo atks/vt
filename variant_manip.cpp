@@ -286,8 +286,6 @@ int32_t VariantManip::classify_variant(const char* chrom, uint32_t pos1, char** 
     int32_t pos0 = pos1-1;
     v.clear();
 
-    std::cerr << "Start of classification\n";
-
     for (size_t i=1; i<n_allele; ++i)
     {
         int32_t type = VT_REF;
@@ -300,9 +298,6 @@ int32_t VariantManip::classify_variant(const char* chrom, uint32_t pos1, char** 
             v.type |= type;
             std::string sv_type(allele[i]);
             v.alleles.push_back(Allele(type, 0, 0, 0, 0, 0, 0, sv_type));
-            
-            v.alleles[i-1].print();
-            std::cerr << "SV : " << allele[i] << "\n";
         }
         else
         {
@@ -375,8 +370,6 @@ int32_t VariantManip::classify_variant(const char* chrom, uint32_t pos1, char** 
             v.alleles.push_back(Allele(type, diff, alen, dlen, 0, mlen, ts));
         }
     }
-
-    std::cerr << "End of classification\n";
 
     return v.type;
 }
