@@ -31,7 +31,6 @@
 #ifndef VARIANT_H
 #define VARIANT_H
 
-
 /**
  * Variant.
  */
@@ -44,17 +43,11 @@ class Variant
     kstring_t motif;    //motif
     int32_t mlen;       //motif length
     int32_t tlen;       //reference tract length
-    kstring_t sv_type;  //sv type
     std::vector<Allele> alleles;
 
     Variant();
 
     ~Variant();
-
-    /**
-     * Sets sv_type.
-     */
-    void set_sv_type(const char* sv_type);
 
     /**
      * Prints variant information.
@@ -70,7 +63,7 @@ class Variant
      * Converts VTYPE to string.
      */
     std::string vtype2string(int32_t VTYPE);
-
+            
     /**
      * Clears variant information.
      */

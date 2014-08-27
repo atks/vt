@@ -23,7 +23,10 @@
 
 #include "allele.h"
 
-Allele::Allele(int32_t type, int32_t diff, int32_t alen, int32_t dlen, int32_t tlen, int32_t mlen, int32_t ts, char* desc)
+/**
+ * Constructor.
+ */
+Allele::Allele(int32_t type, int32_t diff, int32_t alen, int32_t dlen, int32_t tlen, int32_t mlen, int32_t ts, std::string& sv_type)
 {
     this->type = type;
     this->diff = diff;
@@ -35,16 +38,60 @@ Allele::Allele(int32_t type, int32_t diff, int32_t alen, int32_t dlen, int32_t t
     this->tv = mlen-ts;
     this->ins = dlen>0?1:0;
     this->del = dlen<0?1:0;
-    this->desc = desc? strdup(desc) : NULL;     
+    this->sv_type = reduce_sv_type(sv_type);
 };
 
-Allele::Allele()
+/**
+ * Constructor.
+ */
+Allele::Allele(int32_t type, int32_t diff, int32_t alen, int32_t dlen, int32_t tlen, int32_t mlen, int32_t ts)
 {
-    clear();
+    this->type = type;
+    this->diff = diff;
+    this->alen = alen;
+    this->dlen = dlen;
+    this->tlen = tlen;
+    this->mlen = mlen;
+    this->ts = ts;
+    this->tv = mlen-ts;
+    this->ins = dlen>0?1:0;
+    this->del = dlen<0?1:0;
 };
 
+/**
+ * Destructor.
+ */
 Allele::~Allele() {};
 
+/**
+ * Special dictionary for some reserve types.
+ * CN\d+ be CNV
+ */
+std::string Allele::reduce_sv_type(std::string& sv_type)
+{
+    size_t len = sv_type.size();
+    if (len>=5)
+    {
+        if (sv_type.at(0)=='<' && sv_type.at(1)=='C' && sv_type.at(2)=='N' && sv_type.at(len-1)=='>' )
+        {
+            for (size_t i=3; i<len-1; ++i)
+            {
+                if (sv_type.at(i)<'0' || sv_type.at(i)>'9')
+                {
+                    return sv_type;
+                }
+            }
+
+            return "<CNV>";
+        }
+    }
+    
+    return sv_type;
+};
+
+/**
+ * Clear variables.
+ */
 void Allele::clear()
 {
     type = VT_REF;
@@ -56,9 +103,12 @@ void Allele::clear()
     ts = 0;
     tv = 0;
     ins = 0;
-    if (desc) free(this->desc);
+    sv_type = "";
 };
 
+/**
+ * Print allele.
+ */
 void Allele::print()
 {
     std::cerr << "\ttype: " << type << "\n";
@@ -66,5 +116,5 @@ void Allele::print()
     std::cerr << "\talen: " << alen << "\n";
     std::cerr << "\tdlen: " << dlen << "\n";
     std::cerr << "\ttlen: " << tlen << "\n";
-    std::cerr << "\tdesc: " << desc << "\n";
+    std::cerr << "\tsv_type: " << sv_type << "\n";
 };
