@@ -36,5 +36,5 @@
 #include "sv_tree.h"
 
 void peek(int argc, char ** argv);
-    
+
 #endif

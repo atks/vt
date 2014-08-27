@@ -54,7 +54,7 @@
 SVNode::SVNode()
 {
     this->parent = NULL;
-    this->desc = {0,0,0};
+    this->type = {0,0,0};
     this->depth = 0;
     this->count = 0;
 };
@@ -62,25 +62,25 @@ SVNode::SVNode()
 /**
  * Constructor.
  */
-SVNode::SVNode(const char* desc)
+SVNode::SVNode(const char* type)
 {
     this->parent = NULL;
-    this->desc = {0,0,0};
+    this->type = {0,0,0};
     this->depth = 0;
     count = 0;
-    kputs(desc, &this->desc);
+    kputs(type, &this->type);
 };
 
 /**
  * Constructor.
  */
-SVNode::SVNode(const char* desc, int32_t depth)
+SVNode::SVNode(const char* type, int32_t depth)
 {
     this->parent = NULL;
-    this->desc = {0,0,0};
+    this->type = {0,0,0};
     this->depth = depth;
     count = 0;
-    kputs(desc, &this->desc);
+    kputs(type, &this->type);
 };
 
 /**
@@ -95,7 +95,7 @@ SVNode::~SVNode()
     children.clear();
     this->parent = NULL;
 
-    if (desc.m) free(desc.s);
+    if (type.m) free(type.s);
 };
 
 /**
@@ -111,7 +111,7 @@ void SVNode::set_depth(int32_t depth)
  */
 void SVNode::increment_count()
 {
-    std::cerr << "\tincrement " << this->desc.s << "\n";
+    std::cerr << "\tincrement " << this->type.s << "\n";
     
     ++count;
 
@@ -126,7 +126,7 @@ void SVNode::increment_count()
  */
 void SVNode::clear()
 {
-    if (desc.m) free(desc.s);
+    if (type.m) free(type.s);
     count = 0;
 };
 
@@ -135,9 +135,9 @@ void SVNode::clear()
  */
 void SVNode::print()
 {
-    for (int32_t i=0; i<depth; ++i)
-        std::cerr << "\t";
-    std::cerr << tags2desc() << " (" << count << ")\n";
+    for (int32_t i=0; i<depth; ++i) std::cerr << "\t";
+        
+    std::cerr << sv_type2string(type.s) << " (" << count << ")\n";
 
     for (int32_t i=0; i<children.size(); ++i)
     {
@@ -148,47 +148,47 @@ void SVNode::print()
 /**
  *  For translating reserved keywords.
  */
-const char* SVNode::tags2desc()
+std::string SVNode::sv_type2string(char* sv_type)
 {
-    if (!strcmp(desc.s,"TRA"))
+    if (!strcmp(sv_type,"TRA"))
     {
         return "translocation";
     }
-    else if (!strcmp(desc.s,"DEL"))
+    else if (!strcmp(sv_type,"DEL"))
     {
         return "deletion";
     }
-    else if (!strcmp(desc.s,"INS"))
+    else if (!strcmp(sv_type,"INS"))
     {
         return "insertion";
     }
-    else if (!strcmp(desc.s,"INV"))
+    else if (!strcmp(sv_type,"INV"))
     {
         return "inversion";
     }
-    else if (!strcmp(desc.s,"ME"))
+    else if (!strcmp(sv_type,"ME"))
     {
         return "mobile element";
     }
-    else if (!strcmp(desc.s,"MT"))
+    else if (!strcmp(sv_type,"MT"))
     {
         return "nuclear mitochondrial DNA";
     }
-    else if (!strcmp(desc.s,"DUP"))
+    else if (!strcmp(sv_type,"DUP"))
     {
         return "duplication";
     }
-    else if (!strcmp(desc.s,"TANDEM"))
+    else if (!strcmp(sv_type,"TANDEM"))
     {
         return "tandem repeats";
     }
-    else if (!strcmp(desc.s,"CNV"))
+    else if (!strcmp(sv_type,"CNV"))
     {
         return "copy number variation";
     }
     else
     {
-        return desc.s;
+        return sv_type;
     }
 };
 
@@ -199,7 +199,7 @@ SVTree::SVTree()
 {
     root = new SVNode("root", 0);
     m = kh_init(xdict);
-
+    
     this->add("<TRA>");
     this->add("<DEL>");
     this->add("<INS>");
@@ -213,6 +213,8 @@ SVTree::SVTree()
     this->add("<INS:ME:ALU>");
     this->add("<INS:ME:LINE1>");
     this->add("<INS:ME:SVA>");
+
+    print();
 };
 
 /**
@@ -232,26 +234,24 @@ SVTree::~SVTree()
 /**
  * Adds a new tag, returns true if successful.
  */
-bool SVTree::add(const char* desc)
-{
+bool SVTree::add(const char* sv_type)
+{    
     //update hash
     khiter_t k;
     int32_t ret = 0;
-    if ((k=kh_get(xdict, m, desc))==kh_end(m))
+    if ((k=kh_get(xdict, m, sv_type))==kh_end(m))
     {
-        k = kh_put(xdict, m, desc, &ret);
-        
-        //update tree
+        k = kh_put(xdict, m, sv_type, &ret);
         std::vector<std::string> vec;
-        split(vec, "<:>", desc);
-
+        split(vec, "<:>", sv_type);
+        
         SVNode* cnode = root;
-        for (int32_t i=0; i<vec.size(); ++i)
+        for (size_t i=0; i<vec.size(); ++i)
         {
             bool found_type = false;
-            for (int32_t j=0; j<cnode->children.size(); ++j)
+            for (size_t j=0; j<cnode->children.size(); ++j)
             {
-                if (!strcmp(cnode->children[j]->desc.s, vec[i].c_str()))
+                if (!strcmp(cnode->children[j]->type.s, vec[i].c_str()))
                 {
                     cnode = cnode->children[j];
                     found_type = true;
@@ -280,20 +280,24 @@ bool SVTree::add(const char* desc)
 /**
  * Observes and update the count of a new tag.
  */
-void SVTree::count(char* desc)
+void SVTree::count(Variant& variant)
 {
-    std::cerr  << "counting " << desc << "\n";
-    
     khiter_t k;
     int32_t ret = 0;
-    if ((k=kh_get(xdict, m, desc))==kh_end(m))
-    {
-        std::cerr  << "\tadding for the first time\n";
-        
-        this->add(desc);
-        k=kh_get(xdict, m, desc);
-    }
 
+    for (size_t i=0; i<variant.alleles.size(); ++i)
+    {
+        variant.alleles[i].print();
+        const char* sv_type = variant.alleles[i].sv_type.c_str();
+        std::cerr  << "counting " << sv_type << "\n";
+        if ((k=kh_get(xdict, m, sv_type))==kh_end(m))
+        {
+           std::cerr  << "\tadding for the first time\n";
+           this->add(sv_type);
+           k=kh_get(xdict, m, sv_type);
+        }
+    }
+    
     kh_value(m, k)->increment_count();
 };
 

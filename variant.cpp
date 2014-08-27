@@ -29,31 +29,13 @@ Variant::Variant()
     motif = {0,0,0};
     mlen = 0;
     tlen = 0;
-    sv_type = {0,0,0};
     alleles.clear();
 }
 
 Variant::~Variant()
 {
     if (motif.m) free(motif.s);
-    if (sv_type.m) free(sv_type.s);
 }
-
-/**
- * Sets sv_type.
- */
-void Variant::set_sv_type(const char* sv_type)
-{
-    if (this->sv_type.l==0)
-    {
-        kputs(sv_type, &this->sv_type);
-    }
-    else if (strcmp(sv_type, this->sv_type.s))
-    {
-        this->sv_type.l = 0;
-        kputs("mixed SV", &this->sv_type);
-    }
-};
 
 /**
  * Returns true if variant contains an allele that is potentially frame shifting.
@@ -142,5 +124,4 @@ void Variant::clear()
     mlen = 0;
     tlen = 0;
     alleles.clear();
-    sv_type.l = 0;
 };

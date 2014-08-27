@@ -29,16 +29,6 @@
 #ifndef SV_Tree_H
 #define SV_Tree_H
 
-#define VT_SV_DEL    1
-#define VT_SV_INS    2
-#define VT_SV_DUP    3
-#define VT_SV_INV    4
-#define VT_SV_CNV    5
-#define VT_SV_TRA    6
-#define VT_SV_TANDEM 7
-#define VT_SV_ME     8
-#define VT_SV_MT     9
-
 /**
  * Class for filtering VCF records.
  */
@@ -49,7 +39,7 @@ class SVNode
     SVNode* parent;
     std::vector<SVNode*> children;
     int32_t depth, count;
-    kstring_t desc;
+    kstring_t type;
 
     /**
      * Constructor.
@@ -59,12 +49,12 @@ class SVNode
     /**
      * Constructor.
      */
-    SVNode(const char* desc);
+    SVNode(const char* type);
 
     /**
      * Constructor.
      */
-    SVNode(const char* desc, int32_t depth);
+    SVNode(const char* type, int32_t depth);
 
     /**
      * Destructor.
@@ -80,12 +70,12 @@ class SVNode
      * Increment count.
      */
     void increment_count();
-    
+
     /**
      * Clear values.
      */
     void clear();
-    
+
     /**
      * Print values.
      */
@@ -94,7 +84,7 @@ class SVNode
     /**
      *  For translating reserved keywords.
      */
-    const char* tags2desc();    
+    std::string sv_type2string(char* sv_type);
 };
 
 KHASH_MAP_INIT_STR(xdict, SVNode*);
@@ -107,10 +97,8 @@ class SVTree
     public:
 
     SVNode* root;
-    int32_t max_depth;    
+    int32_t max_depth;
     std::vector<SVNode*> df_order;
-//    bcf_hdr_t *h;
-//    bcf1_t *v;
     khash_t(xdict) *m;
 
     /**
@@ -127,11 +115,11 @@ class SVTree
      * Adds a new tag, returns true if successful.
      */
     bool add(const char* desc);
-    
+
     /**
      * Observes and update the count of a new tag.
      */
-    void count(char* desc);
+    void count(Variant& variant);
 
     /**
      * Enumerates the children in a depth first order.

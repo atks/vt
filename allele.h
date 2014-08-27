@@ -33,7 +33,7 @@
 #define VT_SNP      1   //min(rlen,alen)==1 && diff==1
 #define VT_MNP      2   //min(rlen,alen)==diff
 #define VT_INDEL    4   //diff!=0 && (rlen==1 || alen==1)
-#define VT_CLUMPED  8   //all others
+#define VT_CLUMPED  8   //all others sequence explicit
 #define VT_SV       16  //structural variant
 
 /**
@@ -41,14 +41,12 @@
  *
  * Allele can be described to be a SNP or INDEL or etc. with respect to the reference
  * type - give the variant type
- * len  - difference in length between the ref and alt with positive inferring an insertion and negative inferring a deletion
- * tlen - assuming variant is VNTR, tlen is the tract length of the repeated motif of the VNTR
  */
 class Allele
 {
     public:
 
-    int32_t type;
+    int32_t type;  //allele type
     int32_t diff;  //number of difference bases when bases are compared
     int32_t alen;  //length(alt)
     int32_t dlen;  //length(alt)-length(ref)
@@ -58,16 +56,37 @@ class Allele
     int32_t tv;    //no. of tranversions (mlen-ts)
     int32_t ins;   //no. of insertions 
     int32_t del;   //no. of deletions
-    char* desc;    //hierarchical descriptor for the allele
+    std::string sv_type; //hierarchical descriptor for the imprecise allele type
     
-    Allele(int32_t type, int32_t diff, int32_t alen, int32_t dlen, int32_t tlen, int32_t mlen, int32_t ts, char* desc);
+    /**
+     * Constructor.
+     */    
+    Allele(int32_t type, int32_t diff, int32_t alen, int32_t dlen, int32_t tlen, int32_t mlen, int32_t ts, std::string& sv_type);
 
-    Allele();
-    
+    /**
+     * Constructor.
+     */    
+    Allele(int32_t type, int32_t diff, int32_t alen, int32_t dlen, int32_t tlen, int32_t mlen, int32_t ts);
+
+    /**
+     * Destructor.
+     */
     ~Allele();
-
+    
+    /**
+     * Special dictionary for some reserve types.
+     * CN\d+ be CNV
+     */
+    std::string reduce_sv_type(std::string& sv_type);
+    
+    /**
+     * Clear variables.
+     */
     void clear();
 
+    /**
+     * Print allele.
+     */
     void print();
 };
 

@@ -247,15 +247,20 @@ class Igor : Program
                 }
             }
 
-            if (classified) ++no_classified_variants;
-
+            if (classified)
+            {
+                ++no_classified_variants;
+            }
+            else
+            {
+                bcf_print(odr->hdr, v);
+            }
+            
             if (vtype==VT_SV)
             {
                 ++VAR_COUNT[POLYMORPHIC][VT_SV];
-                sv->count(variant.sv_type.s);
+                sv->count(variant);
             }    
-
-
             ++no_observed_variants;
         }
 
