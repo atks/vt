@@ -38,7 +38,7 @@ class SVNode
 
     SVNode* parent;
     std::vector<SVNode*> children;
-    int32_t depth, count;
+    int32_t depth, count, mcount;
     kstring_t type;
 
     /**
@@ -72,6 +72,11 @@ class SVNode
     void increment_count();
 
     /**
+     * Increment mcount.
+     */
+    void increment_mcount();
+    
+    /**
      * Clear values.
      */
     void clear();
@@ -100,6 +105,7 @@ class SVTree
     int32_t max_depth;
     std::vector<SVNode*> df_order;
     khash_t(xdict) *m;
+    int32_t mixed_sv_count;
 
     /**
      * Constructor.
