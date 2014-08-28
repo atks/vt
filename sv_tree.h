@@ -120,21 +120,16 @@ class SVTree
      * Observes and update the count of a new tag.
      */
     void count(Variant& variant);
-
+  
     /**
      * Enumerates the children in a depth first order.
      */
-    SVNode* enumerate();
+    std::vector<SVNode*> enumerate_dfs();
 
     /**
-     * Iterator, returns first node by depth first search.
+     * Helper function for enumerating the children in a depth first order.
      */
-    SVNode* begin();
-
-    /**
-     * Iterator, returns node by depth first search.
-     */
-    SVNode* next();
+    void enumerate_dfs(std::vector<SVNode*>& s, SVNode* node);
 
     /**
      * Print this tree.

@@ -314,6 +314,8 @@ class Igor : Program
         fprintf(stderr, "stats: no. of samples                     : %10d\n", no_samples);
         fprintf(stderr, "       no. of chromosomes                 : %10d\n", no_chromosomes);
         fprintf(stderr, "\n");
+        fprintf(stderr, "       ========= Micro variants =========\n");
+        fprintf(stderr, "\n");
         fprintf(stderr, "       no. of SNPs                        : %10d\n", VAR_COUNT[POLYMORPHIC][VT_SNP]);
         fprintf(stderr, "           2 alleles (ts/tv)              : %15d (%.2f) [%d/%d]\n", VAR_COUNT[BIALLELIC][VT_SNP],
                                                                  (float)VAR_TS[BIALLELIC][VT_SNP]/VAR_TV[BIALLELIC][VT_SNP],
@@ -444,9 +446,47 @@ class Igor : Program
                                                                  VAR_INS[GE_PENTAALLELIC][VT_CLUMPED],
                                                                  VAR_DEL[GE_PENTAALLELIC][VT_CLUMPED]);
         fprintf(stderr, "\n");
-        fprintf(stderr, "       no. of structural variants         : %10d\n", VAR_COUNT[POLYMORPHIC][VT_SV]);
+        fprintf(stderr, "       ====== Other useful categories ======\n");
+        fprintf(stderr, "\n");
+        fprintf(stderr, "       no. complex variants               : %10d\n", VAR_COUNT[POLYMORPHIC][VT_MNP|VT_INDEL]);
+        fprintf(stderr, "           2 alleles (ts/tv) (ins/del)    : %15d (%.2f) [%d/%d] (%.2f) [%d/%d]\n",  VAR_COUNT[BIALLELIC][VT_MNP|VT_INDEL],
+                                                                 (float)VAR_TS[BIALLELIC][VT_MNP|VT_INDEL]/VAR_TV[BIALLELIC][VT_MNP|VT_INDEL],
+                                                                 VAR_TS[BIALLELIC][VT_MNP|VT_INDEL],
+                                                                 VAR_TV[BIALLELIC][VT_MNP|VT_INDEL],
+                                                                 (float)VAR_INS[BIALLELIC][VT_MNP|VT_INDEL]/VAR_DEL[BIALLELIC][VT_MNP|VT_INDEL],
+                                                                 VAR_INS[BIALLELIC][VT_MNP|VT_INDEL],
+                                                                 VAR_DEL[BIALLELIC][VT_MNP|VT_INDEL]);
+        fprintf(stderr, "           >=3 alleles (ts/tv) (ins/del)  : %15d (%.2f) [%d/%d] (%.2f) [%d/%d]\n",
+                                                                 VAR_COUNT[GE_TRIALLELIC][VT_MNP|VT_INDEL],
+                                                                 (float)VAR_TS[GE_TRIALLELIC][VT_MNP|VT_INDEL]/VAR_TV[GE_TRIALLELIC][VT_MNP|VT_INDEL],
+                                                                 VAR_TS[GE_TRIALLELIC][VT_MNP|VT_INDEL],
+                                                                 VAR_TV[GE_TRIALLELIC][VT_MNP|VT_INDEL],
+                                                                 (float)VAR_INS[GE_TRIALLELIC][VT_MNP|VT_INDEL]/VAR_DEL[GE_TRIALLELIC][VT_MNP|VT_INDEL],
+                                                                 VAR_INS[GE_TRIALLELIC][VT_MNP|VT_INDEL],
+                                                                 VAR_DEL[GE_TRIALLELIC][VT_MNP|VT_INDEL]);
+        fprintf(stderr, "\n");
+        fprintf(stderr, "       ======= Structural variants ========\n");
+        fprintf(stderr, "\n");
+        std::vector<SVNode*> s = sv->enumerate_dfs();
+        fprintf(stderr, "       no. of structural variants         : %10d\n", s[0]->count);
+
+
+
+//fprintf(stderr, "           >=3 alleles (ts/tv) (ins/del)  : %15d (%.2f) [%d/%d] (%.2f) [%d/%d]\n",
+
+        for (size_t i=1; i<s.size(); ++i)
+        {
+            fprintf(stderr, "       ");
+            for (int32_t j=0; j<s[i]->depth; ++j) std::cerr << "   ";
+            std::string desc = s[i]->sv_type2string(s[i]->type.s);
+            fprintf(stderr, "%s", desc.c_str());
+            for (int32_t j=0; j<40-desc.size()-2*s[i]->depth; ++j) std::cerr << " ";
+            fprintf(stderr, "%15d\n", s[i]->count);
+        }
 
         sv->print();
+
+        
 
 //write with iterator of sv_tree
 //        fprintf(stderr, "           2 alleles                      : %15d\n", VAR_COUNT[BIALLELIC][VT_SV]);

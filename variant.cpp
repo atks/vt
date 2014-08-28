@@ -23,6 +23,9 @@
 
 #include "variant.h"
 
+/**
+ * Constructor.
+ */
 Variant::Variant()
 {
     type = VT_REF;
@@ -32,6 +35,9 @@ Variant::Variant()
     alleles.clear();
 }
 
+/**
+ * Destructor.
+ */
 Variant::~Variant()
 {
     if (motif.m) free(motif.s);
