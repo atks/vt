@@ -170,7 +170,7 @@ std::string SVNode::sv_type2string(char* sv_type)
     }
     else if (!strcmp(sv_type,"MT"))
     {
-        return "nuclear mitochondrial DNA";
+        return "numt";
     }
     else if (!strcmp(sv_type,"DUP"))
     {
@@ -196,6 +196,7 @@ std::string SVNode::sv_type2string(char* sv_type)
 SVTree::SVTree()
 {
     root = new SVNode("root", 0);
+    max_depth = 0;
     m = kh_init(xdict);
     
     this->add("<TRA>");
@@ -211,8 +212,6 @@ SVTree::SVTree()
     this->add("<INS:ME:ALU>");
     this->add("<INS:ME:LINE1>");
     this->add("<INS:ME:SVA>");
-
-    print();
 };
 
 /**
@@ -298,25 +297,23 @@ void SVTree::count(Variant& variant)
 /**
  * Enumerates the children in a depth first order.
  */
-SVNode* SVTree::enumerate()
+std::vector<SVNode*> SVTree::enumerate_dfs()
 {
-    return NULL;
+    std::vector<SVNode*> s;
+    enumerate_dfs(s, root);
+    return s;
 };
 
 /**
- * Iterator, returns first node by depth first search.
+ * Helper function for enumerating the children in a depth first order.
  */
-SVNode* SVTree::begin()
+void SVTree::enumerate_dfs(std::vector<SVNode*>& s, SVNode* node)
 {
-    return NULL;
-};
-
-/**
- * Iterator, returns node by depth first search.
- */
-SVNode* SVTree::next()
-{
-    return NULL;
+    s.push_back(node);
+    for (size_t i=0; i<node->children.size(); ++i)
+    {
+        enumerate_dfs(s, node->children[i]);
+    }
 };
 
 /**

@@ -68,6 +68,17 @@ void GenomeInterval::set(std::string interval)
         start1 = 1;
         end1 = (1<<29) - 1;
     }
+    else if (v.size()==2)
+    {
+        seq = v[0];
+        if (!str2int32(v[1], start1))
+        {
+            fprintf(stderr, "[%s:%d %s] Invalid genomic interval: %s\n", __FILE__,__LINE__,__FUNCTION__, interval.c_str());
+            exit(1);
+        }
+        
+        end1 = start1;        
+    }
     else if (v.size()==3)
     {
         seq = v[0];

@@ -45,8 +45,14 @@ class Variant
     int32_t tlen;       //reference tract length
     std::vector<Allele> alleles;
 
+    /**
+     * Constructor.
+     */
     Variant();
 
+    /**
+     * Destructor.
+     */
     ~Variant();
 
     /**
