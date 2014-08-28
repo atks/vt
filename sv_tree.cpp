@@ -57,6 +57,7 @@ SVNode::SVNode()
     this->type = {0,0,0};
     this->depth = 0;
     this->count = 0;
+    this->mcount = 0;
 };
 
 /**
@@ -67,7 +68,8 @@ SVNode::SVNode(const char* type)
     this->parent = NULL;
     this->type = {0,0,0};
     this->depth = 0;
-    count = 0;
+    this->count = 0;
+    this->mcount = 0;
     kputs(type, &this->type);
 };
 
@@ -79,7 +81,8 @@ SVNode::SVNode(const char* type, int32_t depth)
     this->parent = NULL;
     this->type = {0,0,0};
     this->depth = depth;
-    count = 0;
+    this->count = 0;
+    this->mcount = 0;
     kputs(type, &this->type);
 };
 
@@ -116,6 +119,19 @@ void SVNode::increment_count()
     if (parent!=NULL)
     {
         parent->increment_count();
+    }
+};
+
+/**
+ * Increment mcount.
+ */
+void SVNode::increment_mcount()
+{
+    ++mcount;
+
+    if (parent!=NULL)
+    {
+        parent->increment_mcount();
     }
 };
 
@@ -197,6 +213,7 @@ SVTree::SVTree()
 {
     root = new SVNode("root", 0);
     max_depth = 0;
+    mixed_sv_count = 0;
     m = kh_init(xdict);
     
     this->add("<TRA>");
@@ -280,7 +297,8 @@ void SVTree::count(Variant& variant)
 {
     khiter_t k;
     int32_t ret = 0;
-
+    bool mixed_sv = false;
+    
     for (size_t i=0; i<variant.alleles.size(); ++i)
     {
         const char* sv_type = variant.alleles[i].sv_type.c_str();
@@ -289,9 +307,28 @@ void SVTree::count(Variant& variant)
            this->add(sv_type);
            k=kh_get(xdict, m, sv_type);
         }
+        
+        if (variant.alleles[i].sv_type!=variant.alleles[0].sv_type)
+        {
+            mixed_sv = true;
+        }
     }
     
-    kh_value(m, k)->increment_count();
+    if (mixed_sv)
+    {
+        ++mixed_sv_count;
+    }
+    else
+    {
+        if (variant.alleles.size()==1)
+        {
+            kh_value(m, k)->increment_count();
+        }
+        else
+        {
+            kh_value(m, k)->increment_mcount();
+        }    
+    }    
 };
 
 /**
