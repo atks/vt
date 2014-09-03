@@ -57,7 +57,7 @@ class Igor : Program
     std::string fexp;
     Filter filter;
     bool filter_exists;
-    
+
     /////////
     //stats//
     /////////
@@ -134,20 +134,20 @@ class Igor : Program
 
         /////////////////////////
         //filter initialization//
-        /////////////////////////       
+        /////////////////////////
         filter.parse(fexp.c_str());
         filter_exists = fexp=="" ? false : true;
-        
+
         ////////////////////////
         //stats initialization//
         ////////////////////////
         no_variants = 0;
         no_samples = 0;
-        
+
         ///////////////////////
         //tool initialization//
         ///////////////////////
-        vm = new VariantManip("");        
+        vm = new VariantManip("");
     }
 
     void view()
@@ -176,7 +176,7 @@ class Igor : Program
                     continue;
                 }
             }
-            
+
             if (no_subset_samples==0)
             {
                 bcf_subset(odw->hdr, v, 0, 0);

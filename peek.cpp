@@ -52,7 +52,7 @@ class Igor : Program
     std::string output_pdf_file;
     std::vector<GenomeInterval> intervals;
     std::string ref_fasta_file;
-
+    
     ///////
     //i/o//
     ///////
@@ -315,7 +315,7 @@ class Igor : Program
         fprintf(stderr, "\n");
         fprintf(stderr, "       ========== Micro variants ==========\n");
         fprintf(stderr, "\n");
-        fprintf(stderr, "       no. of SNPs                        : %10d\n", VAR_COUNT[POLYMORPHIC][VT_SNP]);
+        fprintf(stderr, "       no. SNPs                           : %10d\n", VAR_COUNT[POLYMORPHIC][VT_SNP]);
         fprintf(stderr, "           2 alleles (ts/tv)              : %15d (%.2f) [%d/%d]\n", VAR_COUNT[BIALLELIC][VT_SNP],
                                                                  (float)VAR_TS[BIALLELIC][VT_SNP]/VAR_TV[BIALLELIC][VT_SNP],
                                                                  VAR_TS[BIALLELIC][VT_SNP], VAR_TV[BIALLELIC][VT_SNP]);
@@ -326,7 +326,7 @@ class Igor : Program
                                                                  (float)VAR_TS[TETRAALLELIC][VT_SNP]/VAR_TV[TETRAALLELIC][VT_SNP],
                                                                  VAR_TS[TETRAALLELIC][VT_SNP], VAR_TV[TETRAALLELIC][VT_SNP]);
         fprintf(stderr, "\n");
-        fprintf(stderr, "       no. of MNPs                        : %10d\n", VAR_COUNT[POLYMORPHIC][VT_MNP]);
+        fprintf(stderr, "       no. MNPs                           : %10d\n", VAR_COUNT[POLYMORPHIC][VT_MNP]);
         fprintf(stderr, "           2 alleles (ts/tv)              : %15d (%.2f) [%d/%d]\n", VAR_COUNT[BIALLELIC][VT_MNP],
                                                                  (float)VAR_TS[BIALLELIC][VT_MNP]/VAR_TV[BIALLELIC][VT_MNP],
                                                                  VAR_TS[BIALLELIC][VT_MNP], VAR_TV[BIALLELIC][VT_MNP]);

@@ -98,7 +98,12 @@ class VariantManip
      * Converts VTYPE to string.
      */
     void vtype2string(int32_t vtype, kstring_t *s);
-
+    
+    /**
+     * Inspects variants.
+     */
+    int32_t inspect(char** allele, int32_t n_allele);
+        
     /**
      * Classifies variants.
      */

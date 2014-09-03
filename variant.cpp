@@ -125,7 +125,7 @@ std::string Variant::vtype2string(int32_t VTYPE)
  */
 void Variant::clear()
 {
-    type = 0;
+    type = VT_REF;
     motif.l = 0;
     mlen = 0;
     tlen = 0;

@@ -281,19 +281,25 @@ int32_t VariantManip::classify_variant(const char* chrom, uint32_t pos1, char** 
 /**
  * Classifies variants.
  */
-int32_t VariantManip::classify_variant(const char* chrom, uint32_t pos1, char** allele, int32_t n_allele, Variant& v, bool in_situ_left_trimming)
+int32_t VariantManip::classify_variant(const char* chrom, uint32_t pos1, char** allele, int32_t n_allele, Variant& v, bool trimming)
 {
     int32_t pos0 = pos1-1;
-    v.clear();
+    v.clear(); // this sets the type to VT_REF by default.
 
+    bool homogeneous_length = true;
+    
+    char* ref = allele[0];
+    int32_t rlen = strlen(ref);
+                
+    //if only ref allele, skip this entire for loop
     for (size_t i=1; i<n_allele; ++i)
     {
         int32_t type = VT_REF;
-
+        
         //check for tags
         if (allele[i][0]=='<')
         {
-            type = VT_SV;
+            type = VT_SV; //support for SVs, might extend to STRs in future which is not really an SV
             
             v.type |= type;
             std::string sv_type(allele[i]);
@@ -301,33 +307,66 @@ int32_t VariantManip::classify_variant(const char* chrom, uint32_t pos1, char** 
         }
         else
         {
-            char* ref = allele[0];
+            kstring_t REF = {0,0,0};
+            kstring_t ALT = {0,0,0};
+            
+            ref = allele[0];
             char* alt = allele[i];
-    
-            //in situ left trimming
+            int32_t alen = strlen(alt);
+            
+            if (rlen!=alen)
+            {
+                homogeneous_length = false;
+            }
+            
+            //trimming
             //this is required in particular for the
             //characterization of multiallelics and
             //in general, any unnormalized variant
-            if (in_situ_left_trimming)
+            int32_t rl = rlen;
+            int32_t al = alen;
+            if (trimming)
             {
-                while (strlen(ref)!=1 && strlen(alt)!=1)
+                //trim right
+                while (rl!=1 && al!=1)
                 {
-                    if (ref[0]==alt[0])
+                    if (ref[rl-1]==alt[al-1])
                     {
-                        ++ref;
-                        ++alt;
+                        --rl;
+                        --al;
                     }
                     else
                     {
                         break;
                     }
                 }
+                
+                //trim left
+                while (rl !=1 && al!=1)
+                {
+                    if (ref[0]==alt[0])
+                    {
+                        ++ref;
+                        ++alt;
+                        --rl;
+                        --al;
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }            
+                
+                kputsn(ref, rl, &REF);
+                kputsn(alt, al, &ALT);
+            
+                ref = REF.s;
+                alt = ALT.s;   
             }
-    
-            int32_t rlen = strlen(ref);
-            int32_t alen = strlen(alt);
-            int32_t mlen = std::min(rlen, alen);
-            int32_t dlen = alen-rlen;
+            
+            
+            int32_t mlen = std::min(rl, al);
+            int32_t dlen = al-rl;
             int32_t diff = 0;
             int32_t ts = 0;
             int32_t tv = 0;
@@ -345,32 +384,51 @@ int32_t VariantManip::classify_variant(const char* chrom, uint32_t pos1, char** 
                     {
                         ++ts;
                     }
+                    else
+                    {
+                        ++tv;
+                    }
                 }
             }
-    
+           
             //substitution variants
-            if (mlen==diff)
+            if (mlen==diff) 
             {
+//                std::cerr << "mlen " << mlen << " diff " << diff << "\n";
+//                std::cerr << "set MNP\n";
                 type |= mlen==1 ? VT_SNP : VT_MNP;
-            }
-    
+            }            
+                    
             //indel variants
             if (dlen)
             {
+                 //std::cerr << "set MNP\n";
                 type |= VT_INDEL;
             }
     
             //clumped SNPs and MNPs
-            if (diff && diff < mlen)
+            if (diff && diff < mlen) //internal gaps
             {
                 type |= VT_CLUMPED;
             }
-    
+                    
             v.type |= type;
-            v.alleles.push_back(Allele(type, diff, alen, dlen, 0, mlen, ts));
+            v.alleles.push_back(Allele(type, diff, alen, dlen, 0, mlen, ts, tv));
+        
+            if (REF.m) free(REF.s);
+            if (ALT.m) free(ALT.s);
         }
     }
-
+    
+    //addtionally define MNPs by length of all alleles
+    if (!(v.type&VT_SV))
+    {
+        if (homogeneous_length && rlen>1)
+        {
+            v.type |= VT_MNP;
+        }
+    }    
+    
     return v.type;
 }
 

@@ -44,7 +44,7 @@ Allele::Allele(int32_t type, int32_t diff, int32_t alen, int32_t dlen, int32_t t
 /**
  * Constructor.
  */
-Allele::Allele(int32_t type, int32_t diff, int32_t alen, int32_t dlen, int32_t tlen, int32_t mlen, int32_t ts)
+Allele::Allele(int32_t type, int32_t diff, int32_t alen, int32_t dlen, int32_t tlen, int32_t mlen, int32_t ts, int32_t tv)
 {
     this->type = type;
     this->diff = diff;
@@ -53,7 +53,7 @@ Allele::Allele(int32_t type, int32_t diff, int32_t alen, int32_t dlen, int32_t t
     this->tlen = tlen;
     this->mlen = mlen;
     this->ts = ts;
-    this->tv = mlen-ts;
+    this->tv = tv;
     this->ins = dlen>0?1:0;
     this->del = dlen<0?1:0;
 };

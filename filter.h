@@ -80,14 +80,15 @@ class Node
     Node* left;
     Node* right;
 
-    int32_t type;
-    bool value;
-   
-    kstring_t tag;
-    kstring_t s;
-    bool b;
-    int32_t i;
-    float f;
+    int32_t type;      // data type
+    bool value;        // should this be disposed?
+    bool value_exists; // if value exists
+
+    kstring_t tag; // store the INFO tag of a BCF type
+    kstring_t s;   // string value
+    bool b;        // boolean value
+    int32_t i;     // integer value
+    float f;       // float value
 
     /**
      * Constructor.
@@ -103,6 +104,11 @@ class Node
      * Evaluates the actions for this node.
      */
     void evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug=false);
+
+    /**
+     * Converts type to string.
+     */
+    std::string type2string(int32_t type);
 };
 
 /**
@@ -183,7 +189,7 @@ class Filter
      * Recursive call for apply.
      */
     void apply(Node* node, bool debug=false);
-    
+
     /**
      * Help message on filter expressions.
      */

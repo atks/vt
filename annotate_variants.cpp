@@ -51,6 +51,13 @@ class Igor : Program
     BCFOrderedReader *odr;
     BCFOrderedWriter *odw;
     
+    //////////
+    //filter//
+    //////////
+    std::string fexp;
+    Filter filter;
+    bool filter_exists;
+    
     /////////
     //stats//
     /////////
@@ -79,6 +86,7 @@ class Igor : Program
             TCLAP::ValueArg<std::string> arg_intervals("i", "i", "intervals", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_output_vcf_file("o", "o", "output VCF file [-]", false, "-", "str", cmd);
+            TCLAP::ValueArg<std::string> arg_fexp("f", "f", "filter expression []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_ref_fasta_file("r", "r", "reference sequence fasta file []", true, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_mdust_bed_file("m", "m", "mdust Low Complexity Regions BED file []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_gencode_cds_bed_file("g", "g", "GENCODE Coding Regions BED file []", false, "", "str", cmd);
@@ -90,6 +98,7 @@ class Igor : Program
             output_vcf_file = arg_output_vcf_file.getValue();
             parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
             parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
+            fexp = arg_fexp.getValue();
             ref_fasta_file   = arg_ref_fasta_file.getValue();
             mdust_bed_file = arg_mdust_bed_file.getValue();
             annotate_low_complexity_regions = mdust_bed_file != "" ? true : false;
@@ -107,9 +116,9 @@ class Igor : Program
 
     void initialize()
     {
-        //******************
-        //i/o initialization
-        //******************
+        //////////////////////
+        //i/o initialization//
+        //////////////////////
         odr = new BCFOrderedReader(input_vcf_file, intervals);
         odw = new BCFOrderedWriter(output_vcf_file);
         odw->link_hdr(odr->hdr);
@@ -117,6 +126,11 @@ class Igor : Program
         bcf_hdr_append(odw->hdr, "##INFO=<ID=RU,Number=1,Type=String,Description=\"Repeat unit in a STR or Homopolymer\">");
         bcf_hdr_append(odw->hdr, "##INFO=<ID=RL,Number=1,Type=Integer,Description=\"Repeat Length\">");
         
+        /////////////////////////
+        //filter initialization//
+        /////////////////////////
+        filter.parse(fexp.c_str(), false);
+        filter_exists = fexp=="" ? false : true;
         
         ///////////////////////
         //tool initialization//
@@ -174,16 +188,25 @@ class Igor : Program
         {
             bcf_unpack(v, BCF_UN_STR);
             int32_t vtype = vm->classify_variant(odr->hdr, v, variant);
-            std::string chrom = bcf_get_chrom(odr->hdr,v);
-            int32_t start1 = bcf_get_pos1(v);
-            int32_t end1 = bcf_get_end_pos1(v);
-
+            
+            if (filter_exists)
+            {
+                if (!filter.apply(odr->hdr, v, &variant, false))
+                {
+                    continue;
+                }
+            }
+            
             vm->vtype2string(vtype, &s);
             if (s.l)
             {
                 bcf_update_info_string(odr->hdr, v, "VT", s.s);
             }
 
+            std::string chrom = bcf_get_chrom(odr->hdr,v);
+            int32_t start1 = bcf_get_pos1(v);
+            int32_t end1 = bcf_get_end_pos1(v);
+        
             if (annotate_low_complexity_regions)
             {
                 if (orom_lcplx->overlaps_with(chrom, start1, end1))
