@@ -32,6 +32,7 @@ Node::Node()
     left = NULL;
     right = NULL;
     tag = {0,0,0};
+    s = {0,0,0};
 };
 
 /**
@@ -43,6 +44,7 @@ Node::Node(int32_t type)
     left = NULL;
     right = NULL;
     tag = {0,0,0};
+    s = {0,0,0};
     this->type = type;
 };
 
@@ -73,7 +75,7 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
             value = (left->value || right->value);
         }
     }
-    else if (type&VT_MATH_CMP)   
+    else if (type&VT_MATH_CMP)
     {
         if (type==VT_EQ)
         {
@@ -114,17 +116,27 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
             else if ((left->type&VT_STR) && (right->type&VT_STR))
             {
                 if (debug)
-                        std::cerr << "\tVT_EQ "   <<  left->tag.s << "&" << right->tag.s    <<  " \n";
-                value = strcmp(left->tag.s, right->tag.s)==0 ? true : false;
+                    std::cerr << "\tVT_EQ "   <<  left->s.s << "&" << right->s.s    <<  " \n";
+                value = strcmp(left->s.s, right->s.s)==0 ? true : false;
                 return;
             }
-    
-            fprintf(stderr, "[%s:%d %s] evaluation not supported : == %d %d\n", __FILE__, __LINE__, __FUNCTION__, left->type, right->type);
+//             else if ((left->type&VT_STR) && (right->type&VT_STR))
+//            {
+//                value = strcmp(left->tag.s, right->tag.s)==0 ? false : true;
+//                return;
+//            }
+//
+            fprintf(stderr, "[%s:%d %s] evaluation not supported : == %s %s\n", __FILE__, __LINE__, __FUNCTION__, type2string(left->type).c_str(), type2string(right->type).c_str());
             exit(1);
-        }    
+        }
         else if (type==VT_NE)
         {
-            if ((left->type&VT_INT))
+            if (!left->value_exists || !left->value_exists )
+            {
+                value = true;
+                return;
+            }
+            else if ((left->type&VT_INT))
             {
                 if ((right->type&VT_INT))
                 {
@@ -155,8 +167,8 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
                 value = strcmp(left->tag.s, right->tag.s)==0 ? false : true;
                 return;
             }
-    
-            fprintf(stderr, "[%s:%d %s] evaluation not supported: %d %d: !=\n", __FILE__, __LINE__, __FUNCTION__, left->type, right->type);
+
+            fprintf(stderr, "[%s:%d %s] evaluation not supported: %s %s: !=\n", __FILE__, __LINE__, __FUNCTION__, type2string(left->type).c_str(), type2string(right->type).c_str());
             exit(1);
         }
         else if (type==VT_LE)
@@ -193,8 +205,8 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
                 value = strcmp(left->tag.s, right->tag.s)<=0 ? true : false;
                 return;
             }
-    
-            fprintf(stderr, "[%s:%d %s] evaluation not supported: %d %d: <=\n", __FILE__, __LINE__, __FUNCTION__, left->type, right->type);
+
+            fprintf(stderr, "[%s:%d %s] evaluation not supported: %s %s: <=\n", __FILE__, __LINE__, __FUNCTION__, type2string(left->type).c_str(), type2string(right->type).c_str());
             exit(1);
         }
         else if (type==VT_GE)
@@ -230,8 +242,8 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
                 value = strcmp(left->tag.s, right->tag.s)>=0 ? true : false;
                 return;
             }
-    
-            fprintf(stderr, "[%s:%d %s] evaluation not supported: %d %d: >=\n", __FILE__, __LINE__, __FUNCTION__, left->type, right->type);
+
+            fprintf(stderr, "[%s:%d %s] evaluation not supported: %s %s: >=\n", __FILE__, __LINE__, __FUNCTION__, type2string(left->type).c_str(), type2string(right->type).c_str());
             exit(1);
         }
         else if (type==VT_GT)
@@ -267,8 +279,8 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
                 value = strcmp(left->tag.s, right->tag.s)>0 ? true : false;
                 return;
             }
-    
-            fprintf(stderr, "[%s:%d %s] evaluation not supported: %d %d: >\n", __FILE__, __LINE__, __FUNCTION__, left->type, right->type);
+
+            fprintf(stderr, "[%s:%d %s] evaluation not supported: %s %s: >\n", __FILE__, __LINE__, __FUNCTION__, type2string(left->type).c_str(), type2string(right->type).c_str());
             exit(1);
         }
         else if (type==VT_LT)
@@ -304,12 +316,12 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
                 value = strcmp(left->tag.s, right->tag.s)<0 ? true : false;
                 return;
             }
-    
-            fprintf(stderr, "[%s:%d %s] evaluation not supported: %d %d: <\n", __FILE__, __LINE__, __FUNCTION__, left->type, right->type);
+
+            fprintf(stderr, "[%s:%d %s] evaluation not supported: %s %s: <\n", __FILE__, __LINE__, __FUNCTION__, type2string(left->type).c_str(), type2string(right->type).c_str());
             exit(1);
         }
     }
-    else if (type&VT_BCF_OP)   
+    else if (type&VT_BCF_OP)
     {
         if (type==VT_FILTER)
         {
@@ -322,90 +334,120 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
                 value = true;
             }
         }
-        else if (type==VT_INFO)
+        else if (type==VT_INFO) //figure out type
         {
-            int32_t *data = NULL;
-            int32_t n=0;
-    
-            if (bcf_get_info_int32(h, v, tag.s, &data, &n)>0)
-            {
-                type |= VT_INT;
-                i = *data;
-                f = (float)i;
-            }
-            else if (bcf_get_info_float(h, v, tag.s, &data, &n)>0)
-            {
-                type |= VT_FLT;
-                f = (float)(*data);
-            }
-            else if (bcf_get_info_string(h, v, tag.s, &data, &n)>0)
-            {
-                type |= VT_STR;
-                s.l=0;
-                for (int32_t i=0; i<n; ++i)
-                {
-                    kputc(data[i], &s);
-                }
-            }
-            else if (bcf_get_info_flag(h, v, tag.s, 0, 0)>0)
+            int32_t info_type = bcf_hdr_id2type(h, BCF_HL_INFO, bcf_hdr_id2int(h, BCF_DT_ID, tag.s));
+
+            if (info_type==BCF_HT_FLAG)
             {
                 type |= VT_FLG;
-                i = 1;
-                f = 1;
-                b = true;
-                value = true;
-                s.l=0; 
+                if (bcf_get_info_flag(h, v, tag.s, 0, 0)>0)
+                {
+                    i = 1;
+                    f = 1;
+                    b = true;
+                    value = true;
+                    s.l=0;
+                }
+                else
+                {
+                    value_exists = false;
+                }
             }
-            else
+            else if (info_type==BCF_HT_INT)
             {
-                i = 0;
-                f = 0;
-                b = false;
-                value = false;
-                s.l=0;
+                type |= VT_INT;
+                int32_t ns = 0;
+                int32_t *is = NULL;
+                if (bcf_get_info_int32(h, v, tag.s, &is, &ns)>0)
+                {
+                    value_exists = true;
+                    i = is[0];
+                    f = (float)is[0];
+                }
+                else
+                {
+                    value_exists = false;
+                }
+                
+                if (ns) free(is);
             }
-    
-            if (n) free(data);
+            else if (info_type==BCF_HT_REAL)
+            {
+                type |= VT_FLT;
+                int32_t ns = 0;
+                float *fs = NULL;
+                if (bcf_get_info_float(h, v, tag.s, &fs, &ns)>0)
+                {
+                    value_exists = true;
+                    f = (float)fs[0];
+                }
+                else
+                {
+                    value_exists = false;
+                }
+                
+                if (ns) free(fs);
+            }
+            else if (info_type==BCF_HT_STR)
+            {
+                type |= VT_STR;
+                //todo: how do you handle a vector of strings?
+                int32_t n = 0;
+                if (bcf_get_info_string(h, v, tag.s, &s.s, &n)>0)
+                {
+                    value_exists = true;
+                    s.m = n;
+                }
+                else
+                {
+                    value_exists = false;
+                }
+            }
+
+//                i = 0;
+//                f = 0;
+//                b = false;
+//                value = false;
+//                s.l=0;
+
         }
         else if (type==(VT_INFO|VT_INT))
         {
             int32_t *data = NULL;
             int32_t n=0;
-    
+
             if (bcf_get_info_int32(h, v, tag.s, &data, &n)>0)
             {
                 i = *((int*)data);
             }
-    
+
             if (n) free(data);
         }
         else if (type==(VT_INFO|VT_FLT))
         {
             int32_t *data = NULL;
             int32_t n=0;
-    
+
             if (bcf_get_info_float(h, v, tag.s, &data, &n)>0)
             {
                 f = *((float*)data);
             }
-    
+
             if (n) free(data);
         }
         else if (type==(VT_INFO|VT_STR))
         {
-            int32_t *data = NULL;
             int32_t n=0;
-    
-            if (bcf_get_info_string(h, v, tag.s, &data, &n)>0)
+
+            if (bcf_get_info_string(h, v, tag.s, &s.s, &n)>0)
             {
-                s.l=0;
-                for (int32_t i=0; i<n; ++i)
-                {
-                    kputc(data[i], &s);
-                }
+                s.m=n;
             }
-    
-            if (n) free(data);
+            else
+            {
+                value_exists = false;
+            }
         }
         else if (type==(VT_INFO|VT_FLG))
         {
@@ -425,7 +467,7 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
                 value = false;
                 s.l=0;
             }
-            
+
             if (debug)
                 std::cerr << "\tVT_INFO|VT_FLG "   << i << " " << f << " " << b << " " << value << " " << s.s <<  " \n";
         }
@@ -458,7 +500,7 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
         }
     }
     else if (type&VT_MATH_OP)
-    {   
+    {
         if ((type&8207)==VT_ADD)
         {
             if ((left->type&VT_INT))
@@ -491,7 +533,7 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
                     return;
                 }
             }
-    
+
             fprintf(stderr, "[%s:%d %s] evaluation not supported : +\n", __FILE__, __LINE__, __FUNCTION__);
             exit(1);
         }
@@ -527,7 +569,7 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
                     return;
                 }
             }
-    
+
             fprintf(stderr, "[%s:%d %s] evaluation not supported : -\n", __FILE__, __LINE__, __FUNCTION__);
             exit(1);
         }
@@ -563,7 +605,7 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
                     return;
                 }
             }
-    
+
             fprintf(stderr, "[%s:%d %s] evaluation not supported : *\n", __FILE__, __LINE__, __FUNCTION__);
             exit(1);
         }
@@ -599,7 +641,7 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
                     return;
                 }
             }
-    
+
             fprintf(stderr, "[%s:%d %s] evaluation not supported : /\n", __FILE__, __LINE__, __FUNCTION__);
             exit(1);
         }
@@ -611,7 +653,7 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
                 value = i;
                 return;
             }
-            
+
             fprintf(stderr, "[%s:%d %s] evaluation not supported for & :  %d %d\n", __FILE__, __LINE__, __FUNCTION__, left->type, right->type);
             exit(1);
         }
@@ -623,10 +665,10 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
                 value = i;
                 return;
             }
-            
+
             fprintf(stderr, "[%s:%d %s] evaluation not supported for | : %d %d\n", __FILE__, __LINE__, __FUNCTION__, left->type, right->type);
             exit(1);
-        }    
+        }
         else
         {
             fprintf(stderr, "[%s:%d %s] math op not supported : %d\n", __FILE__, __LINE__, __FUNCTION__, (type&15));
@@ -634,6 +676,106 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
         }
     }
 }
+
+
+/**
+ * Converts type to string.
+ */
+std::string Node::type2string(int32_t type)
+{
+    std::string s = "";
+    if (type&VT_BOOL)
+    {
+        s += (s==""? "" : "|");
+        s += "BOOL";
+    }
+
+    if (type&VT_INT)
+    {
+        s += (s==""? "" : "|");
+        s += "INT";
+    }
+
+    if (type&VT_FLT)
+    {
+        s += (s==""? "" : "|");
+        s += "FLT";
+    }
+
+    if (type&VT_STR)
+    {
+        s += (s==""? "" : "|");
+        s += "STR";
+    }
+
+    if (type&VT_FLG)
+    {
+        s += (s==""? "" : "|");
+        s += "FLG";
+    }
+
+    if (type&VT_LOGIC_OP)
+    {
+        s += (s==""? "" : "|");
+        s += "LOGIC";
+    }
+
+    if (type&VT_MATH_CMP)
+    {
+        s += (s==""? "" : "|");
+        s += "MATH_CMP";
+    }
+
+    if (type&VT_MATH_OP)
+    {
+        s += (s==""? "" : "|");
+        s += "MATH_OP";
+    }
+
+    if (type&VT_BCF_OP)
+    {
+        s += (s==""? "" : "|");
+        s += "BCF_OP";
+    }
+
+    if (type==VT_FILTER)
+    {
+        s += (s==""? "" : "|");
+        s += "FILTER";
+    }
+
+    if (type==VT_INFO)
+    {
+        s += (s==""? "" : "|");
+        s += "INFO";
+    }
+
+    if (type==VT_N_ALLELE)
+    {
+        s += (s==""? "" : "|");
+        s += "N_ALLELE";
+    }
+
+    if (type==VT_VARIANT_TYPE)
+    {
+        s += (s==""? "" : "|");
+        s += "VARIANT_TYPE";
+    }
+
+    if (type==VT_VARIANT_DLEN)
+    {
+        s += (s==""? "" : "|");
+        s += "VARIANT_DLEN";
+    }
+
+    if (type==VT_VARIANT_LEN)
+    {
+        s += (s==""? "" : "|");
+        s += "VARIANT_LEN";
+    }
+
+    return s;
+};
 
 /**
  * Constructor.
@@ -766,7 +908,7 @@ void Filter::parse(const char* exp, int32_t len, Node *node, bool debug)
         }
 
         node->type = type;
-        
+
         node->left = new Node();
         parse(exp, p-exp+1, node->left, debug);
 
@@ -809,7 +951,7 @@ bool Filter::is_literal(const char* exp, int32_t len)
 void Filter::parse_literal(const char* exp, int32_t len, Node * node, bool debug)
 {
     node->type = VT_UNKNOWN;
-    
+
     // if not sign in front of literal
     if (exp[0]=='~')
     {
@@ -890,6 +1032,14 @@ void Filter::parse_literal(const char* exp, int32_t len, Node * node, bool debug
         if (debug) std::cerr << "\tis CLUMPED\n";
         return;
     }
+    else if (strncmp(exp, "SV", len)==0)
+    {
+        need_to_classify_variant = true;
+        node->type = VT_INT;
+        node->i = VT_SV;
+        if (debug) std::cerr << "\tis SV\n";
+        return;
+    }
     else if (strncmp(exp, "REF", len)==0)
     {
         need_to_classify_variant = true;
@@ -938,19 +1088,22 @@ void Filter::parse_literal(const char* exp, int32_t len, Node * node, bool debug
             if (debug) std::cerr << "\tis float: " << f << "\n";
             return;
         }
-    
+
         //string type
-        if (exp[0]=='"' && exp[len-1]=='"')
+        if (exp[0]=='\'' && exp[len-1]=='\'')
         {
             node->type = VT_STR;
-            kputsn(exp, len, &node->tag);
+            kputsn(exp+1, len-2, &node->tag);
+            kputc(0, &node->tag);
+            kputsn(exp+1, len-2, &node->s);
+            kputc(0, &node->s);
             if (debug) std::cerr << "\tis string\n";
             return;
         }
         
         if (node->type==VT_UNKNOWN)
         {
-            kstring_t s = {0,0,0}; 
+            kstring_t s = {0,0,0};
             kputsn(exp, len, &s);
             fprintf(stderr, "[E:%s] %s is not recognised\n", __FUNCTION__, s.s);
             print_filter_help();
@@ -1002,7 +1155,6 @@ void Filter::print_filter_help()
     fprintf(stderr, "\n");
     fprintf(stderr, "  Failed rare variants : ~PASS&&(INFO.AC/INFO.AN<0.005)\n");
     fprintf(stderr, "\n");
-    
 }
 
 /**
@@ -1280,6 +1432,6 @@ void Filter::apply(Node* node, bool debug)
             apply(node->right, debug);
         }
     }
-   
+
     node->evaluate(h, v, variant, debug);
 }
