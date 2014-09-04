@@ -60,7 +60,7 @@ std::string VariantManip::vtype2string(int32_t VTYPE)
     if (!VTYPE)
     {
         s += (s.size()==0) ? "" : "/";
-        s += "REF";
+        s += "Reference";
     }
 
     if (VTYPE & VT_SNP)
