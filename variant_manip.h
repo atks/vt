@@ -130,15 +130,15 @@ class VariantManip
     int32_t classify_variant(const char* chrom, uint32_t pos1, char** allele, int32_t n_allele);
 
     /**
+     * Right trims or left extend a variant.
+     */
+    void right_trim_or_left_extend(std::vector<std::string>& alleles, uint32_t& pos1, const char* chrom, uint32_t& left_extended, uint32_t& right_trimmed);
+        
+    /**
      * Left trims a variant with unnecesary nucleotides.
      */
     void left_trim(std::vector<std::string>& alleles, uint32_t& pos1, uint32_t& left_trimmed) ;
 
-    /**
-     * Left aligns a variant.
-     */
-    void left_align(std::vector<std::string>& alleles, uint32_t& pos1, const char* chrom, uint32_t& leftAligned, uint32_t& right_trimmed);
-    
     /**
      * Generates a probing haplotype with flanks around the variant of interest.
      */
