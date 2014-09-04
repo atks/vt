@@ -92,7 +92,7 @@ std::string VariantManip::vtype2string(int32_t VTYPE)
         s += (s.size()==0) ? "" : "/";
         s += "Structural Variants";
     }
-    
+
     return s;
 }
 
@@ -293,20 +293,20 @@ int32_t VariantManip::classify_variant(const char* chrom, uint32_t pos1, char** 
     v.clear(); // this sets the type to VT_REF by default.
 
     bool homogeneous_length = true;
-    
+
     char* ref = allele[0];
     int32_t rlen = strlen(ref);
-                
+
     //if only ref allele, skip this entire for loop
     for (size_t i=1; i<n_allele; ++i)
     {
         int32_t type = VT_REF;
-        
+
         //check for tags
         if (allele[i][0]=='<')
         {
             type = VT_SV; //support for SVs, might extend to STRs in future which is not really an SV
-            
+
             v.type |= type;
             std::string sv_type(allele[i]);
             v.alleles.push_back(Allele(type, 0, 0, 0, 0, 0, 0, sv_type));
@@ -315,16 +315,16 @@ int32_t VariantManip::classify_variant(const char* chrom, uint32_t pos1, char** 
         {
             kstring_t REF = {0,0,0};
             kstring_t ALT = {0,0,0};
-            
+
             ref = allele[0];
             char* alt = allele[i];
             int32_t alen = strlen(alt);
-            
+
             if (rlen!=alen)
             {
                 homogeneous_length = false;
             }
-            
+
             //trimming
             //this is required in particular for the
             //characterization of multiallelics and
@@ -346,7 +346,7 @@ int32_t VariantManip::classify_variant(const char* chrom, uint32_t pos1, char** 
                         break;
                     }
                 }
-                
+
                 //trim left
                 while (rl !=1 && al!=1)
                 {
@@ -361,28 +361,28 @@ int32_t VariantManip::classify_variant(const char* chrom, uint32_t pos1, char** 
                     {
                         break;
                     }
-                }            
-                
+                }
+
                 kputsn(ref, rl, &REF);
                 kputsn(alt, al, &ALT);
-            
+
                 ref = REF.s;
-                alt = ALT.s;   
+                alt = ALT.s;
             }
-            
-            
+
+
             int32_t mlen = std::min(rl, al);
             int32_t dlen = al-rl;
             int32_t diff = 0;
             int32_t ts = 0;
             int32_t tv = 0;
-    
+
             for (int32_t j=0; j<mlen; ++j)
             {
                 if (ref[j]!=alt[j])
                 {
                     ++diff;
-    
+
                     if ((ref[j]=='G' && alt[j]=='A') ||
                         (ref[j]=='A' && alt[j]=='G') ||
                         (ref[j]=='C' && alt[j]=='T') ||
@@ -396,36 +396,36 @@ int32_t VariantManip::classify_variant(const char* chrom, uint32_t pos1, char** 
                     }
                 }
             }
-           
+
             //substitution variants
-            if (mlen==diff) 
+            if (mlen==diff)
             {
 //                std::cerr << "mlen " << mlen << " diff " << diff << "\n";
 //                std::cerr << "set MNP\n";
                 type |= mlen==1 ? VT_SNP : VT_MNP;
-            }            
-                    
+            }
+
             //indel variants
             if (dlen)
             {
                  //std::cerr << "set MNP\n";
                 type |= VT_INDEL;
             }
-    
+
             //clumped SNPs and MNPs
             if (diff && diff < mlen) //internal gaps
             {
                 type |= VT_CLUMPED;
             }
-                    
+
             v.type |= type;
             v.alleles.push_back(Allele(type, diff, alen, dlen, 0, mlen, ts, tv));
-        
+
             if (REF.m) free(REF.s);
             if (ALT.m) free(ALT.s);
         }
     }
-    
+
     //addtionally define MNPs by length of all alleles
     if (!(v.type&VT_SV))
     {
@@ -433,102 +433,105 @@ int32_t VariantManip::classify_variant(const char* chrom, uint32_t pos1, char** 
         {
             v.type |= VT_MNP;
         }
-    }    
-    
+    }
+
     return v.type;
 }
 
 /**
- * Left trims a variant with unnecesary nucleotides.
- * todo: move from vector to char** - not a big issue where efficiency is concerned, the manipulation is less clunky if performed on char* directly
+ * Right trims or left extend a variant.
  */
-void VariantManip::left_trim(std::vector<std::string>& alleles, uint32_t& pos1, uint32_t& left_trimmed)
+void VariantManip::right_trim_or_left_extend(std::vector<std::string>& alleles, uint32_t& pos1, const char* chrom, uint32_t& left_extended, uint32_t& right_trimmed)
 {
-    bool may_left_trim =  true;
+    bool to_right_trim = true;
+    bool to_left_extend = false;
 
-    for (uint32_t i=0; i<alleles.size(); ++i)
+    while (to_right_trim || to_left_extend)
     {
-        if (alleles[i].size()==1 || alleles[i].at(0)!=alleles[0].at(0))
+        //checks if right trimmable or left extendable
+        to_right_trim = true;
+        to_left_extend = false;
+        for (size_t i=0; i<alleles.size(); ++i)
         {
-            may_left_trim = false;
-            break;
+            if (!alleles[i].empty())
+            {
+                if (alleles[0].at(alleles[0].size()-1) != alleles[i].at(alleles[i].size()-1))
+                {
+                    to_right_trim = false;
+                    //do not break here!!! you need to check for empty alleles that might exist!!!
+                }
+            }
+            else
+            {
+                to_right_trim = false;
+                to_left_extend = true;
+                break;
+            }
         }
-    }
 
-    if (may_left_trim)
-    {
-        for (uint32_t i=0; i<alleles.size(); ++i)
+        if (to_right_trim)
         {
-            alleles[i].erase(0, 1);
-        }
+            for (size_t i=0; i<alleles.size(); ++i)
+            {
+                alleles[i].erase(alleles[i].size()-1);
+            }
 
-        ++pos1;
-        ++left_trimmed;
-        return left_trim(alleles, pos1, left_trimmed);
+            ++right_trimmed;
+        }
+        
+        if (to_left_extend)
+        {
+            --pos1;
+            int ref_len = 0;
+
+            char *ref = faidx_fetch_uc_seq(fai, chrom, pos1-1, pos1-1, &ref_len);
+            if (!ref)
+            {
+                fprintf(stderr, "[%s:%d %s] failure to extrac base from fasta file: %s:%d: >\n", __FILE__, __LINE__, __FUNCTION__, chrom, pos1-1);
+                exit(1);
+            }
+            char base = ref[0];
+            free(ref);
+
+            for (size_t i=0; i<alleles.size(); ++i)
+            {
+                alleles[i].insert(0, 1, base);
+            }
+
+            ++left_extended;
+        }
     }
 };
 
 /**
- * Left aligns a variant.
- * @todo: rewrite input as char**
+ * Left trims a variant.
  */
-void VariantManip::left_align(std::vector<std::string>& alleles, uint32_t& pos1, const char* chrom, uint32_t& left_aligned, uint32_t& right_trimmed)
+void VariantManip::left_trim(std::vector<std::string>& alleles, uint32_t& pos1, uint32_t& left_trimmed)
 {
-    bool may_right_trim =  true;
-    bool may_left_align = false;
-    char lastBase = ' ';
-
-    for (uint32_t i=0; i<alleles.size(); ++i)
+    bool to_left_trim =  true;
+    
+    while (to_left_trim)
     {
-        if (!alleles[i].empty())
+        //checks if left trimmable.
+        for (size_t i=0; i<alleles.size(); ++i)
         {
-            lastBase = (lastBase != ' ') ? lastBase : alleles[i].at(alleles[i].size()-1);
-            if (lastBase != alleles[i].at(alleles[i].size()-1))
+            if (alleles[i].size()==1 || alleles[i].at(0)!=alleles[0].at(0))
             {
-                may_right_trim = false;
+                to_left_trim = false;
+                break;
             }
         }
-        else
+
+        if (to_left_trim)
         {
-            may_left_align = true;
-            may_right_trim = false;
-            break;
+            for (size_t i=0; i<alleles.size(); ++i)
+            {
+                alleles[i].erase(0, 1);
+            }
+
+            ++pos1;
+            ++left_trimmed;
         }
-    }
-
-    if(may_left_align)
-    {
-        std::string base = "";
-
-        --pos1;
-
-        int ref_len = 0;
-
-        char *ref = faidx_fetch_uc_seq(fai, chrom, pos1-1, pos1-1, &ref_len);
-        base = std::string(ref);
-        free(ref);
-
-        for (uint32_t i=0; i<alleles.size(); ++i)
-        {
-            alleles[i].insert(0, 1, base.at(0));
-        }
-
-        ++left_aligned;
-        return left_align(alleles, pos1, chrom, left_aligned, right_trimmed);
-    }
-    else if (may_right_trim)
-    {
-        for (uint32_t i=0; i<alleles.size(); ++i)
-        {
-            alleles[i].erase(alleles[i].size()-1);
-        }
-
-        ++right_trimmed;
-        return left_align(alleles, pos1, chrom, left_aligned, right_trimmed);
-    }
-    else
-    {
-        //base case - all done.
     }
 };
 

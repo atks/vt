@@ -37,7 +37,7 @@ class Igor : Program
     std::string output_vcf_file;
     std::vector<GenomeInterval> intervals;
     std::string ref_fasta_file;
-    int32_t window_size;    
+    int32_t window_size;
     bool print;
 
     ///////
@@ -57,16 +57,16 @@ class Igor : Program
     uint32_t no_variants;
 
     uint32_t no_lt;    //# left trimmed
-    uint32_t no_lt_la; //# left trimmed and left aligned
-    uint32_t no_lt_rt; //# left trimmed and right trimmed
-    uint32_t no_la;    //# left aligned
     uint32_t no_rt;    //# right trimmed
+    uint32_t no_lt_rt; //# left trimmed and right trimmed
+    uint32_t no_rt_la; //# right trimmed and left aligned
+    uint32_t no_la;    //# left aligned
 
-    uint32_t no_multi_lt;      //# left trimmed
-    uint32_t no_multi_lt_la;   //# left trimmed and left aligned
-    uint32_t no_multi_lt_rt;   //# left trimmed and right trimmed
-    uint32_t no_multi_la;      //# left aligned
-    uint32_t no_multi_rt;      //# right trimmed
+    uint32_t no_multi_lt;    //# left trimmed
+    uint32_t no_multi_rt;    //# right trimmed
+    uint32_t no_multi_lt_rt; //# left trimmed and right trimmed
+    uint32_t no_multi_rt_la; //# right trimmed and left aligned
+    uint32_t no_multi_la;    //# left aligned
 
     /////////
     //tools//
@@ -132,16 +132,16 @@ class Igor : Program
         no_variants = 0;
 
         no_lt = 0;
-        no_lt_la = 0;
-        no_lt_rt = 0;
-        no_la = 0;
         no_rt = 0;
+        no_lt_rt = 0;
+        no_rt_la = 0;
+        no_la = 0;
 
         no_multi_lt = 0;
-        no_multi_lt_la = 0;
-        no_multi_lt_rt = 0;
-        no_multi_la = 0;
         no_multi_rt = 0;
+        no_multi_lt_rt = 0;
+        no_multi_rt_la = 0;
+        no_multi_la = 0;
 
         ////////////////////////
         //tools initialization//
@@ -151,7 +151,7 @@ class Igor : Program
 
     void normalize()
     {
-        uint32_t left_aligned = 0;
+        uint32_t left_extended = 0;
         uint32_t left_trimmed = 0;
         uint32_t right_trimmed = 0;
 
@@ -169,7 +169,7 @@ class Igor : Program
             {
                 const char* chrom = odr->get_seqname(v);
                 uint32_t pos1 = bcf_get_pos1(v);
-                
+
                 std::vector<std::string> alleles;
                 for (uint32_t i=0; i<bcf_get_n_allele(v); ++i)
                 {
@@ -181,12 +181,12 @@ class Igor : Program
                     }
                     alleles.push_back(std::string(bcf_get_alt(v, i)));
                 }
-                left_aligned = left_trimmed = right_trimmed = 0;
+                left_extended = left_trimmed = right_trimmed = 0;
 
-                vm->left_align(alleles, pos1, chrom, left_aligned, right_trimmed);
+                vm->right_trim_or_left_extend(alleles, pos1, chrom, left_extended, right_trimmed);
                 vm->left_trim(alleles, pos1, left_trimmed);
 
-                if (left_trimmed || left_aligned || right_trimmed)
+                if (left_trimmed || left_extended || right_trimmed)
                 {
                     old_alleles.l = 0;
                     bcf_variant2string(odw->hdr, v, &old_alleles);
@@ -194,7 +194,7 @@ class Igor : Program
 
                     bcf_set_pos1(v, pos1);
                     new_alleles.l=0;
-                    for (uint32_t i=0; i<alleles.size(); ++i)
+                    for (size_t i=0; i<alleles.size(); ++i)
                     {
                         if (i) kputc(',', &new_alleles);
                         kputs(alleles[i].c_str(), &new_alleles);
@@ -203,28 +203,28 @@ class Igor : Program
 
                     if (bcf_get_n_allele(v)==2)
                     {
-                        if (left_trimmed)
+                        if (left_extended)
                         {
-                            if (left_aligned)
+                            if (right_trimmed>left_extended)
                             {
-                                ++no_lt_la;
-                            }
-                            else if (right_trimmed)
-                            {
-                                ++no_lt_rt;
+                                ++no_rt_la;
                             }
                             else
                             {
-                                ++no_lt;
+                                ++no_la;
                             }
                         }
                         else
                         {
-                            if (left_aligned)
+                            if (left_trimmed && right_trimmed>left_extended)
                             {
-                                ++no_la;
+                                ++no_lt_rt;
                             }
-                            else if (right_trimmed)
+                            else if (left_trimmed)
+                            {
+                                ++no_lt;
+                            }
+                            else if (right_trimmed>left_extended)
                             {
                                 ++no_rt;
                             }
@@ -232,28 +232,28 @@ class Igor : Program
                     }
                     else
                     {
-                        if (left_trimmed)
+                        if (left_extended)
                         {
-                            if (left_aligned)
+                            if (right_trimmed>left_extended)
                             {
-                                ++no_multi_lt_la;
-                            }
-                            else if (right_trimmed)
-                            {
-                                ++no_multi_lt_rt;
+                                ++no_multi_rt_la;
                             }
                             else
                             {
-                                ++no_multi_lt;
+                                ++no_multi_la;
                             }
                         }
                         else
                         {
-                            if (left_aligned)
+                            if (left_trimmed && right_trimmed>left_extended)
                             {
-                                ++no_multi_la;
+                                ++no_multi_lt_rt;
                             }
-                            else if (right_trimmed)
+                            else if (left_trimmed)
+                            {
+                                ++no_multi_lt;
+                            }
+                            else if (right_trimmed>left_extended)
                             {
                                 ++no_multi_rt;
                             }
@@ -267,7 +267,7 @@ class Igor : Program
             odw->write(v);
             v = odw->get_bcf1_from_pool();
         }
-    
+
         odw->close();
         odr->close();
     };
@@ -290,26 +290,26 @@ class Igor : Program
     {
         if (!print) return;
 
-        int32_t no_biallelic_normalized = no_lt+no_lt_la+no_lt_rt+no_la+no_rt;
-        int32_t no_multiallelic_normalized = no_multi_lt+no_multi_lt_la+no_multi_lt_rt+no_multi_la+no_multi_rt;
+        int32_t no_biallelic_normalized = no_lt+no_rt+no_lt_rt+no_rt_la+no_la;
+        int32_t no_multiallelic_normalized = no_multi_lt+no_multi_rt+no_multi_lt_rt+no_multi_rt_la+no_multi_la;
         int32_t no_normalized = no_biallelic_normalized + no_multiallelic_normalized;
 
         std::clog << "\n";
         std::clog << "stats: biallelic\n";
         std::clog << "          no. left trimmed                      : " << no_lt << "\n";
-        std::clog << "          no. left trimmed and left aligned     : " << no_lt_la << "\n";
-        std::clog << "          no. left trimmed and right trimmed    : " << no_lt_rt << "\n";
-        std::clog << "          no. left aligned                      : " << no_la << "\n";
         std::clog << "          no. right trimmed                     : " << no_rt << "\n";
+        std::clog << "          no. left and right trimmed            : " << no_lt_rt << "\n";
+        std::clog << "          no. right trimmed and left aligned    : " << no_rt_la << "\n";
+        std::clog << "          no. left aligned                      : " << no_la << "\n";
         std::clog << "\n";
         std::clog << "       total no. biallelic normalized           : " << no_biallelic_normalized << "\n";
         std::clog << "\n";
         std::clog << "       multiallelic\n";
         std::clog << "          no. left trimmed                      : " << no_multi_lt << "\n";
-        std::clog << "          no. left trimmed and left aligned     : " << no_multi_lt_la << "\n";
-        std::clog << "          no. left trimmed and right trimmed    : " << no_multi_lt_rt << "\n";
-        std::clog << "          no. left aligned                      : " << no_multi_la << "\n";
         std::clog << "          no. right trimmed                     : " << no_multi_rt << "\n";
+        std::clog << "          no. left and right trimmed            : " << no_multi_lt_rt << "\n";
+        std::clog << "          no. right trimmed and left aligned    : " << no_multi_rt_la << "\n";
+        std::clog << "          no. left aligned                      : " << no_multi_la << "\n";
         std::clog << "\n";
         std::clog << "       total no. multiallelic normalized        : " << no_multiallelic_normalized << "\n";
         std::clog << "\n";
