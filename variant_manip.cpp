@@ -59,34 +59,40 @@ std::string VariantManip::vtype2string(int32_t VTYPE)
 
     if (!VTYPE)
     {
-        s += (s.size()==0) ? "" : ";";
+        s += (s.size()==0) ? "" : "/";
         s += "REF";
     }
 
     if (VTYPE & VT_SNP)
     {
-        s += (s.size()==0) ? "" : ";";
+        s += (s.size()==0) ? "" : "/";
         s += "SNP";
     }
 
     if (VTYPE & VT_MNP)
     {
-        s += (s.size()==0) ? "" : ";";
+        s += (s.size()==0) ? "" : "/";
         s += "MNP";
     }
 
     if (VTYPE & VT_INDEL)
     {
-        s += (s.size()==0) ? "" : ";";
-        s += "INDEL";
+        s += (s.size()==0) ? "" : "/";
+        s += "Indel";
     }
 
     if (VTYPE & VT_CLUMPED)
     {
-        s += (s.size()==0) ? "" : ";";
-        s += "CLUMPED";
+        s += (s.size()==0) ? "" : "/";
+        s += "Clumped";
     }
 
+    if (VTYPE & VT_SV)
+    {
+        s += (s.size()==0) ? "" : "/";
+        s += "Structural Variants";
+    }
+    
     return s;
 }
 

@@ -32,7 +32,13 @@
 #define GE_TETRAALLELIC 6
 #define POLYMORPHIC 7
 
+#define NO_VARIANT_CATEGORIES 20
+#define NO_BASIC_VARIANT_CATEGORIES 16
 #define NO_ALLELE_CATEGORIES 8
+
+#define VT_NAIVE_CLUMPED 17
+#define VT_BLKSUB     18
+#define VT_CPLXSUB      19
 
 namespace
 {
@@ -52,7 +58,7 @@ class Igor : Program
     std::string output_pdf_file;
     std::vector<GenomeInterval> intervals;
     std::string ref_fasta_file;
-    
+
     ///////
     //i/o//
     ///////
@@ -156,26 +162,24 @@ class Igor : Program
         VAR_INS = new int32_t*[NO_ALLELE_CATEGORIES];
         VAR_DEL = new int32_t*[NO_ALLELE_CATEGORIES];
 
-        for (int32_t N_ALLELES=0; N_ALLELES<NO_ALLELE_CATEGORIES; ++N_ALLELES)
+        for (int32_t no_alleles=0; no_alleles<NO_ALLELE_CATEGORIES; ++no_alleles)
         {
-            VAR_COUNT[N_ALLELES] = new int32_t[32];
-            VAR_TS[N_ALLELES] = new int32_t[32];
-            VAR_TV[N_ALLELES] = new int32_t[32];
-            VAR_INS[N_ALLELES] = new int32_t[32];
-            VAR_DEL[N_ALLELES] = new int32_t[32];
+            VAR_COUNT[no_alleles] = new int32_t[NO_VARIANT_CATEGORIES];
+            VAR_TS[no_alleles] = new int32_t[NO_VARIANT_CATEGORIES];
+            VAR_TV[no_alleles] = new int32_t[NO_VARIANT_CATEGORIES];
+            VAR_INS[no_alleles] = new int32_t[NO_VARIANT_CATEGORIES];
+            VAR_DEL[no_alleles] = new int32_t[NO_VARIANT_CATEGORIES];
         }
 
-        int32_t vtypes[] = {VT_REF, VT_SNP, VT_MNP, VT_INDEL, VT_SNP|VT_MNP, VT_SNP|VT_INDEL, VT_MNP|VT_INDEL, VT_SNP|VT_MNP|VT_INDEL, VT_CLUMPED, VT_SV};
-
-        for (int32_t i=0; i<10; ++i)
+        for (int32_t vtype=0; vtype<NO_VARIANT_CATEGORIES; ++vtype)
         {
-            for (int32_t N_ALLELES=0; N_ALLELES<NO_ALLELE_CATEGORIES; ++N_ALLELES)
+            for (int32_t no_alleles=0; no_alleles<NO_ALLELE_CATEGORIES; ++no_alleles)
             {
-                VAR_COUNT[N_ALLELES][vtypes[i]] = 0;
-                VAR_TS[N_ALLELES][vtypes[i]] = 0;
-                VAR_TV[N_ALLELES][vtypes[i]] = 0;
-                VAR_INS[N_ALLELES][vtypes[i]] = 0;
-                VAR_DEL[N_ALLELES][vtypes[i]] = 0;
+                VAR_COUNT[no_alleles][vtype] = 0;
+                VAR_TS[no_alleles][vtype] = 0;
+                VAR_TV[no_alleles][vtype] = 0;
+                VAR_INS[no_alleles][vtype] = 0;
+                VAR_DEL[no_alleles][vtype] = 0;
             }
         }
 
@@ -214,45 +218,22 @@ class Igor : Program
             }
 
             //observing chromosomes
-            if ((k = kh_get(32, h, bcf_get_rid(v))) == kh_end(h))
+            if ((k = kh_get(32, h, bcf_get_rid(v)))==kh_end(h))
             {
                 kh_put(32, h, bcf_get_rid(v), &ret);
                 kh_value(h, k) = 1; //not really necessary.
                 ++no_chromosomes;
             }
 
-            vtype = vtype&VT_CLUMPED ? VT_CLUMPED : vtype;
-            int32_t NO_ALLELES = bcf_get_n_allele(v)-1>=GE_PENTAALLELIC ? GE_PENTAALLELIC : bcf_get_n_allele(v)-1;
+            int32_t no_alleles = bcf_get_n_allele(v)-1>=GE_PENTAALLELIC ? GE_PENTAALLELIC : bcf_get_n_allele(v)-1;
+            ++VAR_COUNT[no_alleles][vtype];
 
-            ++VAR_COUNT[NO_ALLELES][vtype];
-
-            for (size_t i=0; i<NO_ALLELES; ++i)
+            for (size_t i=0; i<no_alleles; ++i)
             {
-                VAR_TS[NO_ALLELES][vtype] += variant.alleles[i].ts;
-                VAR_TV[NO_ALLELES][vtype] += variant.alleles[i].tv;
-                VAR_INS[NO_ALLELES][vtype] += variant.alleles[i].ins;
-                VAR_DEL[NO_ALLELES][vtype] += variant.alleles[i].del;
-            }
-
-            //completeness of classification check (mathematically not necessary actually, for weird variant types)
-            bool classified = false;
-            for (int32_t i=0; i<10; ++i)
-            {
-                if (vtype == vtypes[i])
-                {
-                    classified = true;
-                    break;
-                }
-            }
-
-            if (classified)
-            {
-                ++no_classified_variants;
-            }
-            else
-            {
-                std::cerr << "UNCLASSIFIED : "; 
-                bcf_print(odr->hdr, v);
+                VAR_TS[no_alleles][vtype] += variant.alleles[i].ts;
+                VAR_TV[no_alleles][vtype] += variant.alleles[i].tv;
+                VAR_INS[no_alleles][vtype] += variant.alleles[i].ins;
+                VAR_DEL[no_alleles][vtype] += variant.alleles[i].del;
             }
 
             if (vtype==VT_SV)
@@ -260,6 +241,17 @@ class Igor : Program
                 ++VAR_COUNT[POLYMORPHIC][VT_SV];
                 sv->count(variant);
             }
+
+            if (vtype>0 && vtype<64)
+            {
+                ++no_classified_variants;
+            }
+            else
+            {
+                std::cerr << "UNCLASSIFIED : ";
+                bcf_print(odr->hdr, v);
+            }
+
             ++no_observed_variants;
         }
 
@@ -283,30 +275,72 @@ class Igor : Program
 
     void print_stats()
     {
-        int32_t vtypes[] = {VT_REF, VT_SNP, VT_MNP, VT_INDEL, VT_SNP|VT_MNP, VT_SNP|VT_INDEL, VT_MNP|VT_INDEL, VT_SNP|VT_MNP|VT_INDEL, VT_CLUMPED};
-        int32_t no_ref = 0;
-
-        for (int32_t i=0; i<9; ++i)
+        for (size_t vtype=0; vtype<NO_BASIC_VARIANT_CATEGORIES; ++vtype)
         {
-            VAR_COUNT[GE_TETRAALLELIC][vtypes[i]] = VAR_COUNT[TETRAALLELIC][vtypes[i]] + VAR_COUNT[GE_PENTAALLELIC][vtypes[i]];
-            VAR_COUNT[GE_TRIALLELIC][vtypes[i]] = VAR_COUNT[TRIALLELIC][vtypes[i]] + VAR_COUNT[GE_TETRAALLELIC][vtypes[i]];
-            VAR_COUNT[POLYMORPHIC][vtypes[i]] = VAR_COUNT[BIALLELIC][vtypes[i]] + VAR_COUNT[GE_TRIALLELIC][vtypes[i]];
+            if (vtype&VT_CLUMPED)
+            {
+                for (size_t no_alleles=0; no_alleles<NO_ALLELE_CATEGORIES; ++no_alleles)
+                {
+                    VAR_COUNT[no_alleles][VT_NAIVE_CLUMPED] += VAR_COUNT[no_alleles][vtype];
+                    VAR_TS[no_alleles][VT_NAIVE_CLUMPED] += VAR_TS[no_alleles][vtype];
+                    VAR_TV[no_alleles][VT_NAIVE_CLUMPED] += VAR_TV[no_alleles][vtype];
+                    VAR_INS[no_alleles][VT_NAIVE_CLUMPED] += VAR_INS[no_alleles][vtype];
+                    VAR_DEL[no_alleles][VT_NAIVE_CLUMPED] += VAR_DEL[no_alleles][vtype];
+                }
+            }
+        }
 
-            VAR_TS[GE_TETRAALLELIC][vtypes[i]] = VAR_TS[TETRAALLELIC][vtypes[i]] + VAR_TS[GE_PENTAALLELIC][vtypes[i]];
-            VAR_TS[GE_TRIALLELIC][vtypes[i]] = VAR_TS[TRIALLELIC][vtypes[i]] + VAR_TS[GE_TETRAALLELIC][vtypes[i]];
-            VAR_TS[POLYMORPHIC][vtypes[i]] = VAR_TS[BIALLELIC][vtypes[i]] + VAR_TS[GE_TRIALLELIC][vtypes[i]];
+        int32_t blksub_vtype[] = {VT_MNP, VT_SNP|VT_MNP, VT_SNP|VT_MNP|VT_CLUMPED, VT_MNP|VT_CLUMPED};
+        for (size_t i=0; i<4; ++i)
+        {
+            int32_t vtype = blksub_vtype[i];
 
-            VAR_TV[GE_TETRAALLELIC][vtypes[i]] = VAR_TV[TETRAALLELIC][vtypes[i]] + VAR_TV[GE_PENTAALLELIC][vtypes[i]];
-            VAR_TV[GE_TRIALLELIC][vtypes[i]] = VAR_TV[TRIALLELIC][vtypes[i]] + VAR_TV[GE_TETRAALLELIC][vtypes[i]];
-            VAR_TV[POLYMORPHIC][vtypes[i]] = VAR_TV[BIALLELIC][vtypes[i]] + VAR_TV[GE_TRIALLELIC][vtypes[i]];
+            for (size_t no_alleles=0; no_alleles<NO_ALLELE_CATEGORIES; ++no_alleles)
+            {
+                VAR_COUNT[no_alleles][VT_BLKSUB] += VAR_COUNT[no_alleles][vtype];
+                VAR_TS[no_alleles][VT_BLKSUB] += VAR_TS[no_alleles][vtype];
+                VAR_TV[no_alleles][VT_BLKSUB] += VAR_TV[no_alleles][vtype];
+                VAR_INS[no_alleles][VT_BLKSUB] += VAR_INS[no_alleles][vtype];
+                VAR_DEL[no_alleles][VT_BLKSUB] += VAR_DEL[no_alleles][vtype];
+            }
+        }
 
-            VAR_INS[GE_TETRAALLELIC][vtypes[i]] = VAR_INS[TETRAALLELIC][vtypes[i]] + VAR_INS[GE_PENTAALLELIC][vtypes[i]];
-            VAR_INS[GE_TRIALLELIC][vtypes[i]] = VAR_INS[TRIALLELIC][vtypes[i]] + VAR_INS[GE_TETRAALLELIC][vtypes[i]];
-            VAR_INS[POLYMORPHIC][vtypes[i]] = VAR_INS[BIALLELIC][vtypes[i]] + VAR_INS[GE_TRIALLELIC][vtypes[i]];
+        int32_t cplxsub_vtype[] = {VT_SNP|VT_INDEL, VT_MNP|VT_INDEL, VT_SNP|VT_MNP|VT_INDEL, VT_CLUMPED, VT_INDEL|VT_CLUMPED, VT_SNP|VT_INDEL|VT_CLUMPED, VT_MNP|VT_INDEL|VT_CLUMPED, VT_SNP|VT_MNP|VT_INDEL|VT_CLUMPED};
+        for (size_t i=0; i<(sizeof(cplxsub_vtype)/sizeof(int32_t)); ++i)
+        {
+            int32_t vtype = cplxsub_vtype[i];
 
-            VAR_DEL[GE_TETRAALLELIC][vtypes[i]] = VAR_DEL[TETRAALLELIC][vtypes[i]] + VAR_DEL[GE_PENTAALLELIC][vtypes[i]];
-            VAR_DEL[GE_TRIALLELIC][vtypes[i]] = VAR_DEL[TRIALLELIC][vtypes[i]] + VAR_DEL[GE_TETRAALLELIC][vtypes[i]];
-            VAR_DEL[POLYMORPHIC][vtypes[i]] = VAR_DEL[BIALLELIC][vtypes[i]] + VAR_DEL[GE_TRIALLELIC][vtypes[i]];
+            for (size_t no_alleles=0; no_alleles<NO_ALLELE_CATEGORIES; ++no_alleles)
+            {
+                VAR_COUNT[no_alleles][VT_CPLXSUB] += VAR_COUNT[no_alleles][vtype];
+                VAR_TS[no_alleles][VT_CPLXSUB] += VAR_TS[no_alleles][vtype];
+                VAR_TV[no_alleles][VT_CPLXSUB] += VAR_TV[no_alleles][vtype];
+                VAR_INS[no_alleles][VT_CPLXSUB] += VAR_INS[no_alleles][vtype];
+                VAR_DEL[no_alleles][VT_CPLXSUB] += VAR_DEL[no_alleles][vtype];
+            }
+        }
+
+        for (int32_t vtype=0; vtype<NO_VARIANT_CATEGORIES; ++vtype)
+        {
+            VAR_COUNT[GE_TETRAALLELIC][vtype] = VAR_COUNT[TETRAALLELIC][vtype] + VAR_COUNT[GE_PENTAALLELIC][vtype];
+            VAR_COUNT[GE_TRIALLELIC][vtype] = VAR_COUNT[TRIALLELIC][vtype] + VAR_COUNT[GE_TETRAALLELIC][vtype];
+            VAR_COUNT[POLYMORPHIC][vtype] = VAR_COUNT[BIALLELIC][vtype] + VAR_COUNT[GE_TRIALLELIC][vtype];
+
+            VAR_TS[GE_TETRAALLELIC][vtype] = VAR_TS[TETRAALLELIC][vtype] + VAR_TS[GE_PENTAALLELIC][vtype];
+            VAR_TS[GE_TRIALLELIC][vtype] = VAR_TS[TRIALLELIC][vtype] + VAR_TS[GE_TETRAALLELIC][vtype];
+            VAR_TS[POLYMORPHIC][vtype] = VAR_TS[BIALLELIC][vtype] + VAR_TS[GE_TRIALLELIC][vtype];
+
+            VAR_TV[GE_TETRAALLELIC][vtype] = VAR_TV[TETRAALLELIC][vtype] + VAR_TV[GE_PENTAALLELIC][vtype];
+            VAR_TV[GE_TRIALLELIC][vtype] = VAR_TV[TRIALLELIC][vtype] + VAR_TV[GE_TETRAALLELIC][vtype];
+            VAR_TV[POLYMORPHIC][vtype] = VAR_TV[BIALLELIC][vtype] + VAR_TV[GE_TRIALLELIC][vtype];
+
+            VAR_INS[GE_TETRAALLELIC][vtype] = VAR_INS[TETRAALLELIC][vtype] + VAR_INS[GE_PENTAALLELIC][vtype];
+            VAR_INS[GE_TRIALLELIC][vtype] = VAR_INS[TRIALLELIC][vtype] + VAR_INS[GE_TETRAALLELIC][vtype];
+            VAR_INS[POLYMORPHIC][vtype] = VAR_INS[BIALLELIC][vtype] + VAR_INS[GE_TRIALLELIC][vtype];
+
+            VAR_DEL[GE_TETRAALLELIC][vtype] = VAR_DEL[TETRAALLELIC][vtype] + VAR_DEL[GE_PENTAALLELIC][vtype];
+            VAR_DEL[GE_TRIALLELIC][vtype] = VAR_DEL[TRIALLELIC][vtype] + VAR_DEL[GE_TETRAALLELIC][vtype];
+            VAR_DEL[POLYMORPHIC][vtype] = VAR_DEL[BIALLELIC][vtype] + VAR_DEL[GE_TRIALLELIC][vtype];
         }
 
         fprintf(stderr, "\n");
@@ -315,242 +349,123 @@ class Igor : Program
         fprintf(stderr, "\n");
         fprintf(stderr, "       ========== Micro variants ==========\n");
         fprintf(stderr, "\n");
-        fprintf(stderr, "       no. SNPs                           : %10d\n", VAR_COUNT[POLYMORPHIC][VT_SNP]);
-        fprintf(stderr, "           2 alleles (ts/tv)              : %15d (%.2f) [%d/%d]\n", VAR_COUNT[BIALLELIC][VT_SNP],
-                                                                 (float)VAR_TS[BIALLELIC][VT_SNP]/VAR_TV[BIALLELIC][VT_SNP],
-                                                                 VAR_TS[BIALLELIC][VT_SNP], VAR_TV[BIALLELIC][VT_SNP]);
-        fprintf(stderr, "           3 alleles (ts/tv)              : %15d (%.2f) [%d/%d]\n", VAR_COUNT[TRIALLELIC][VT_SNP],
-                                                                 (float)VAR_TS[TRIALLELIC][VT_SNP]/VAR_TV[TRIALLELIC][VT_SNP],
-                                                                 VAR_TS[TRIALLELIC][VT_SNP], VAR_TV[TRIALLELIC][VT_SNP]);
-        fprintf(stderr, "           4 alleles (ts/tv)              : %15d (%.2f) [%d/%d]\n", VAR_COUNT[TETRAALLELIC][VT_SNP],
-                                                                 (float)VAR_TS[TETRAALLELIC][VT_SNP]/VAR_TV[TETRAALLELIC][VT_SNP],
-                                                                 VAR_TS[TETRAALLELIC][VT_SNP], VAR_TV[TETRAALLELIC][VT_SNP]);
-        fprintf(stderr, "\n");
-        fprintf(stderr, "       no. MNPs                           : %10d\n", VAR_COUNT[POLYMORPHIC][VT_MNP]);
-        fprintf(stderr, "           2 alleles (ts/tv)              : %15d (%.2f) [%d/%d]\n", VAR_COUNT[BIALLELIC][VT_MNP],
-                                                                 (float)VAR_TS[BIALLELIC][VT_MNP]/VAR_TV[BIALLELIC][VT_MNP],
-                                                                 VAR_TS[BIALLELIC][VT_MNP], VAR_TV[BIALLELIC][VT_MNP]);
-        fprintf(stderr, "           >=3 alleles (ts/tv)            : %15d (%.2f) [%d/%d]\n", VAR_COUNT[GE_TRIALLELIC][VT_MNP],
-                                                                 (float)VAR_TS[GE_TRIALLELIC][VT_MNP]/VAR_TV[GE_TRIALLELIC][VT_MNP],
-                                                                 VAR_TS[GE_TRIALLELIC][VT_MNP], VAR_TV[GE_TRIALLELIC][VT_MNP]);
-        fprintf(stderr, "\n");
-        fprintf(stderr, "       no. Indels                         : %10d\n", VAR_COUNT[POLYMORPHIC][VT_INDEL]);
-        fprintf(stderr, "           2 alleles (ins/del)            : %15d (%.2f) [%d/%d]\n",
-                                                                 VAR_COUNT[BIALLELIC][VT_INDEL],
-                                                                 (float)VAR_INS[BIALLELIC][VT_INDEL]/VAR_DEL[BIALLELIC][VT_INDEL],
-                                                                 VAR_INS[BIALLELIC][VT_INDEL], VAR_DEL[BIALLELIC][VT_INDEL]);
-        fprintf(stderr, "           >=3 alleles (ins/del)          : %15d (%.2f) [%d/%d]\n",
-                                                                 VAR_COUNT[GE_TRIALLELIC][VT_INDEL],
-                                                                 (float)VAR_INS[GE_TRIALLELIC][VT_INDEL]/VAR_DEL[GE_TRIALLELIC][VT_INDEL],
-                                                                 VAR_INS[GE_TRIALLELIC][VT_INDEL], VAR_DEL[GE_TRIALLELIC][VT_INDEL]);
-        fprintf(stderr, "\n");
-        fprintf(stderr, "       no. SNP/MNP                        : %10d\n", VAR_COUNT[POLYMORPHIC][VT_SNP|VT_MNP]);
-        fprintf(stderr, "           3 alleles (ts/tv)              : %15d (%.2f) [%d/%d] \n",
-                                                                 VAR_COUNT[TRIALLELIC][VT_SNP|VT_MNP],
-                                                                 (float)VAR_TS[TRIALLELIC][VT_SNP|VT_MNP]/VAR_TV[TRIALLELIC][VT_SNP|VT_MNP],
-                                                                  VAR_TS[TRIALLELIC][VT_SNP|VT_MNP],
-                                                                  VAR_TV[TRIALLELIC][VT_SNP|VT_MNP]);
-        fprintf(stderr, "           >=4 alleles (ts/tv)            : %15d (%.2f) [%d/%d] \n",
-                                                                 VAR_COUNT[GE_TETRAALLELIC][VT_SNP|VT_MNP],
-                                                                 (float)VAR_TS[GE_TETRAALLELIC][VT_SNP|VT_MNP]/VAR_TV[GE_TETRAALLELIC][VT_SNP|VT_MNP],
-                                                                  VAR_TS[GE_TETRAALLELIC][VT_SNP|VT_MNP],
-                                                                  VAR_TV[GE_TETRAALLELIC][VT_SNP|VT_MNP]);
-        fprintf(stderr, "\n");
-        fprintf(stderr, "       no. SNP/Indels                     : %10d\n", VAR_COUNT[POLYMORPHIC][VT_SNP|VT_INDEL]);
-        fprintf(stderr, "           2 alleles (ts/tv) (ins/del)    : %15d (%.2f) [%d/%d] (%.2f) [%d/%d]\n",
-                                                                 VAR_COUNT[BIALLELIC][VT_SNP|VT_INDEL],
-                                                                 (float)VAR_TS[BIALLELIC][VT_SNP|VT_INDEL]/VAR_TV[BIALLELIC][VT_SNP|VT_INDEL],
-                                                                  VAR_TS[BIALLELIC][VT_SNP|VT_INDEL],
-                                                                  VAR_TV[BIALLELIC][VT_SNP|VT_INDEL],
-                                                                 (float)VAR_INS[BIALLELIC][VT_SNP|VT_INDEL]/VAR_DEL[BIALLELIC][VT_SNP|VT_INDEL],
-                                                                  VAR_INS[BIALLELIC][VT_SNP|VT_INDEL],
-                                                                  VAR_DEL[BIALLELIC][VT_SNP|VT_INDEL]);
-        fprintf(stderr, "           >=3 alleles (ts/tv) (ins/del)  : %15d (%.2f) [%d/%d] (%.2f) [%d/%d]\n",
-                                                                 VAR_COUNT[GE_TRIALLELIC][VT_SNP|VT_INDEL],
-                                                                 (float)VAR_TS[GE_TRIALLELIC][VT_SNP|VT_INDEL]/VAR_TV[GE_TRIALLELIC][VT_SNP|VT_INDEL],
-                                                                  VAR_TS[GE_TRIALLELIC][VT_SNP|VT_INDEL],
-                                                                  VAR_TV[GE_TRIALLELIC][VT_SNP|VT_INDEL],
-                                                                 (float)VAR_INS[GE_TRIALLELIC][VT_SNP|VT_INDEL]/VAR_DEL[GE_TRIALLELIC][VT_SNP|VT_INDEL],
-                                                                  VAR_INS[GE_TRIALLELIC][VT_SNP|VT_INDEL],
-                                                                  VAR_DEL[GE_TRIALLELIC][VT_SNP|VT_INDEL]);
-        fprintf(stderr, "\n");
-        fprintf(stderr, "       no. MNP/Indels                     : %10d\n", VAR_COUNT[POLYMORPHIC][VT_MNP|VT_INDEL]);
-        fprintf(stderr, "           2 alleles (ts/tv) (ins/del)    : %15d (%.2f) [%d/%d] (%.2f) [%d/%d]\n",  VAR_COUNT[BIALLELIC][VT_MNP|VT_INDEL],
-                                                                 (float)VAR_TS[BIALLELIC][VT_MNP|VT_INDEL]/VAR_TV[BIALLELIC][VT_MNP|VT_INDEL],
-                                                                 VAR_TS[BIALLELIC][VT_MNP|VT_INDEL],
-                                                                 VAR_TV[BIALLELIC][VT_MNP|VT_INDEL],
-                                                                 (float)VAR_INS[BIALLELIC][VT_MNP|VT_INDEL]/VAR_DEL[BIALLELIC][VT_MNP|VT_INDEL],
-                                                                 VAR_INS[BIALLELIC][VT_MNP|VT_INDEL],
-                                                                 VAR_DEL[BIALLELIC][VT_MNP|VT_INDEL]);
-        fprintf(stderr, "           >=3 alleles (ts/tv) (ins/del)  : %15d (%.2f) [%d/%d] (%.2f) [%d/%d]\n",
-                                                                 VAR_COUNT[GE_TRIALLELIC][VT_MNP|VT_INDEL],
-                                                                 (float)VAR_TS[GE_TRIALLELIC][VT_MNP|VT_INDEL]/VAR_TV[GE_TRIALLELIC][VT_MNP|VT_INDEL],
-                                                                 VAR_TS[GE_TRIALLELIC][VT_MNP|VT_INDEL],
-                                                                 VAR_TV[GE_TRIALLELIC][VT_MNP|VT_INDEL],
-                                                                 (float)VAR_INS[GE_TRIALLELIC][VT_MNP|VT_INDEL]/VAR_DEL[GE_TRIALLELIC][VT_MNP|VT_INDEL],
-                                                                 VAR_INS[GE_TRIALLELIC][VT_MNP|VT_INDEL],
-                                                                 VAR_DEL[GE_TRIALLELIC][VT_MNP|VT_INDEL]);
-        fprintf(stderr, "\n");
-        fprintf(stderr, "       no. SNP/MNP/Indels                 : %10d\n", VAR_COUNT[POLYMORPHIC][VT_SNP|VT_MNP|VT_INDEL]);
-        fprintf(stderr, "           3 alleles (ts/tv) (ins/del)    : %15d (%.2f) [%d/%d] (%.2f) [%d/%d]\n",  VAR_COUNT[TRIALLELIC][VT_SNP|VT_MNP|VT_INDEL],
-                                                                 (float)VAR_TS[TRIALLELIC][VT_SNP|VT_MNP|VT_INDEL]/VAR_TV[TRIALLELIC][VT_SNP|VT_MNP|VT_INDEL],
-                                                                 VAR_TS[TRIALLELIC][VT_SNP|VT_MNP|VT_INDEL],
-                                                                 VAR_TV[TRIALLELIC][VT_SNP|VT_MNP|VT_INDEL],
-                                                                 (float)VAR_INS[TRIALLELIC][VT_SNP|VT_MNP|VT_INDEL]/VAR_DEL[TRIALLELIC][VT_SNP|VT_MNP|VT_INDEL],
-                                                                 VAR_INS[TRIALLELIC][VT_SNP|VT_MNP|VT_INDEL],
-                                                                 VAR_DEL[TRIALLELIC][VT_SNP|VT_MNP|VT_INDEL]);
-        fprintf(stderr, "           4 alleles (ts/tv) (ins/del)    : %15d (%.2f) [%d/%d] (%.2f) [%d/%d]\n",  VAR_COUNT[TETRAALLELIC][VT_SNP|VT_MNP|VT_INDEL],
-                                                                 (float)VAR_TS[TRIALLELIC][VT_SNP|VT_MNP|VT_INDEL]/VAR_TV[TETRAALLELIC][VT_SNP|VT_MNP|VT_INDEL],
-                                                                 VAR_TS[TETRAALLELIC][VT_SNP|VT_MNP|VT_INDEL],
-                                                                 VAR_TV[TETRAALLELIC][VT_SNP|VT_MNP|VT_INDEL],
-                                                                 (float)VAR_INS[TETRAALLELIC][VT_SNP|VT_MNP|VT_INDEL]/VAR_DEL[TETRAALLELIC][VT_SNP|VT_MNP|VT_INDEL],
-                                                                 VAR_INS[TETRAALLELIC][VT_SNP|VT_MNP|VT_INDEL],
-                                                                 VAR_DEL[TETRAALLELIC][VT_SNP|VT_MNP|VT_INDEL]);
-        fprintf(stderr, "           >=5 alleles (ts/tv) (ins/del)  : %15d (%.2f) [%d/%d] (%.2f) [%d/%d]\n",
-                                                                 VAR_COUNT[GE_PENTAALLELIC][VT_SNP|VT_MNP|VT_INDEL],
-                                                                 (float)VAR_TS[GE_PENTAALLELIC][VT_SNP|VT_MNP|VT_INDEL]/VAR_TV[GE_PENTAALLELIC][VT_SNP|VT_MNP|VT_INDEL],
-                                                                 VAR_TS[GE_PENTAALLELIC][VT_SNP|VT_MNP|VT_INDEL],
-                                                                 VAR_TV[GE_PENTAALLELIC][VT_SNP|VT_MNP|VT_INDEL],
-                                                                 (float)VAR_INS[GE_PENTAALLELIC][VT_SNP|VT_MNP|VT_INDEL]/VAR_DEL[GE_PENTAALLELIC][VT_SNP|VT_MNP|VT_INDEL],
-                                                                 VAR_INS[GE_PENTAALLELIC][VT_SNP|VT_MNP|VT_INDEL],
-                                                                 VAR_DEL[GE_PENTAALLELIC][VT_SNP|VT_MNP|VT_INDEL]);
-        fprintf(stderr, "\n");
-        fprintf(stderr, "       no. of clumped variants            : %10d\n", VAR_COUNT[POLYMORPHIC][VT_CLUMPED]);
-        fprintf(stderr, "           2 alleles                      : %15d (%.2f) [%d/%d] (%.2f) [%d/%d]\n", VAR_COUNT[BIALLELIC][VT_CLUMPED],
-                                                                 (float)VAR_TS[BIALLELIC][VT_CLUMPED]/VAR_TV[BIALLELIC][VT_CLUMPED],
-                                                                 VAR_TS[BIALLELIC][VT_CLUMPED],
-                                                                 VAR_TV[BIALLELIC][VT_CLUMPED],
-                                                                 (float)VAR_INS[BIALLELIC][VT_CLUMPED]/VAR_DEL[BIALLELIC][VT_CLUMPED],
-                                                                 VAR_INS[BIALLELIC][VT_CLUMPED],
-                                                                 VAR_DEL[BIALLELIC][VT_CLUMPED]);
-        fprintf(stderr, "           3 alleles                      : %15d (%.2f) [%d/%d] (%.2f) [%d/%d]\n", VAR_COUNT[TRIALLELIC][VT_CLUMPED],
-                                                                 (float)VAR_TS[TRIALLELIC][VT_CLUMPED]/VAR_TV[TRIALLELIC][VT_CLUMPED],
-                                                                 VAR_TS[TRIALLELIC][VT_CLUMPED],
-                                                                 VAR_TV[TRIALLELIC][VT_CLUMPED],
-                                                                 (float)VAR_INS[TRIALLELIC][VT_CLUMPED]/VAR_DEL[TRIALLELIC][VT_CLUMPED],
-                                                                 VAR_INS[TRIALLELIC][VT_CLUMPED],
-                                                                 VAR_DEL[TRIALLELIC][VT_CLUMPED]);
-        fprintf(stderr, "           4 alleles                      : %15d (%.2f) [%d/%d] (%.2f) [%d/%d]\n", VAR_COUNT[TETRAALLELIC][VT_CLUMPED],
-                                                                 (float)VAR_TS[TETRAALLELIC][VT_CLUMPED]/VAR_TV[TETRAALLELIC][VT_CLUMPED],
-                                                                 VAR_TS[TETRAALLELIC][VT_CLUMPED],
-                                                                 VAR_TV[TETRAALLELIC][VT_CLUMPED],
-                                                                 (float)VAR_INS[TETRAALLELIC][VT_CLUMPED]/VAR_DEL[TETRAALLELIC][VT_CLUMPED],
-                                                                 VAR_INS[TETRAALLELIC][VT_CLUMPED],
-                                                                 VAR_DEL[TETRAALLELIC][VT_CLUMPED]);
-        fprintf(stderr, "           >=5 alleles                    : %15d (%.2f) [%d/%d] (%.2f) [%d/%d]\n", VAR_COUNT[GE_PENTAALLELIC][VT_CLUMPED],
-                                                                 (float)VAR_TS[GE_PENTAALLELIC][VT_CLUMPED]/VAR_TV[GE_PENTAALLELIC][VT_CLUMPED],
-                                                                 VAR_TS[GE_PENTAALLELIC][VT_CLUMPED],
-                                                                 VAR_TV[GE_PENTAALLELIC][VT_CLUMPED],
-                                                                 (float)VAR_INS[GE_PENTAALLELIC][VT_CLUMPED]/VAR_DEL[GE_PENTAALLELIC][VT_CLUMPED],
-                                                                 VAR_INS[GE_PENTAALLELIC][VT_CLUMPED],
-                                                                 VAR_DEL[GE_PENTAALLELIC][VT_CLUMPED]);
-        fprintf(stderr, "\n");
+
+        int32_t vtypes[] = {VT_SNP, VT_MNP, VT_INDEL, 3, 5, 6, 7, 8, 9, 10, 11 ,12 , 13, 14, 15, 0};
+
+        for (int32_t i=0; i<16; ++i)
+        {
+            int32_t vtype = vtypes[i];
+            fprintf(stderr, "       no. of %-21s       : %10d\n", vm->vtype2string(vtype).c_str(), VAR_COUNT[POLYMORPHIC][vtype]);
+            for (int32_t no_alleles=1; no_alleles<=4; ++no_alleles)
+            {
+                if (no_alleles<4)
+                {
+                    if (VAR_COUNT[no_alleles][vtype])
+                    {
+                        fprintf(stderr, "           %d alleles                      : %15d (%.2f) [%d/%d] (%.2f) [%d/%d]\n", no_alleles+1, VAR_COUNT[no_alleles][vtype],
+                                                             (float)VAR_TS[no_alleles][vtype]/VAR_TV[no_alleles][vtype],
+                                                             VAR_TS[no_alleles][vtype],
+                                                             VAR_TV[no_alleles][vtype],
+                                                             (float)VAR_INS[no_alleles][vtype]/VAR_DEL[no_alleles][vtype],
+                                                             VAR_INS[no_alleles][vtype],
+                                                             VAR_DEL[no_alleles][vtype]);
+                    }
+                }
+                else
+                {
+                    if (VAR_COUNT[GE_PENTAALLELIC][vtype])
+                    {
+                        fprintf(stderr, "           >=5 alleles                    : %15d (%.2f) [%d/%d] (%.2f) [%d/%d]\n", VAR_COUNT[GE_PENTAALLELIC][vtype],
+                                                             (float)VAR_TS[GE_PENTAALLELIC][vtype]/VAR_TV[GE_PENTAALLELIC][vtype],
+                                                             VAR_TS[GE_PENTAALLELIC][vtype],
+                                                             VAR_TV[GE_PENTAALLELIC][vtype],
+                                                             (float)VAR_INS[GE_PENTAALLELIC][vtype]/VAR_DEL[GE_PENTAALLELIC][vtype],
+                                                             VAR_INS[GE_PENTAALLELIC][vtype],
+                                                             VAR_DEL[GE_PENTAALLELIC][vtype]);
+                    }
+                }
+            }
+            fprintf(stderr, "\n");
+        }
         fprintf(stderr, "       ====== Other useful categories =====\n");
         fprintf(stderr, "\n");
-        
-        int32_t no_cplxsub = VAR_COUNT[POLYMORPHIC][VT_SNP|VT_MNP] + 
-                           VAR_COUNT[POLYMORPHIC][VT_SNP|VT_INDEL] +
-                           VAR_COUNT[POLYMORPHIC][VT_MNP|VT_INDEL] +
-                           VAR_COUNT[POLYMORPHIC][VT_SNP|VT_MNP|VT_INDEL] +
-                           VAR_COUNT[POLYMORPHIC][VT_CLUMPED];
-        int32_t no_biallelic_cplxsub = VAR_COUNT[BIALLELIC][VT_SNP|VT_MNP] + 
-                           VAR_COUNT[BIALLELIC][VT_SNP|VT_INDEL] +
-                           VAR_COUNT[BIALLELIC][VT_MNP|VT_INDEL] +
-                           VAR_COUNT[BIALLELIC][VT_SNP|VT_MNP|VT_INDEL] +
-                           VAR_COUNT[BIALLELIC][VT_CLUMPED];  
-        int32_t no_biallelic_cplxsub_ts = VAR_TS[BIALLELIC][VT_SNP|VT_MNP] + 
-                           VAR_TS[BIALLELIC][VT_SNP|VT_INDEL] +
-                           VAR_TS[BIALLELIC][VT_MNP|VT_INDEL] +
-                           VAR_TS[BIALLELIC][VT_SNP|VT_MNP|VT_INDEL] +
-                           VAR_TS[BIALLELIC][VT_CLUMPED];   
-        int32_t no_biallelic_cplxsub_tv = VAR_TV[BIALLELIC][VT_SNP|VT_MNP] + 
-                           VAR_TV[BIALLELIC][VT_SNP|VT_INDEL] +
-                           VAR_TV[BIALLELIC][VT_MNP|VT_INDEL] +
-                           VAR_TV[BIALLELIC][VT_SNP|VT_MNP|VT_INDEL] +
-                           VAR_TV[BIALLELIC][VT_CLUMPED];   
-        int32_t no_biallelic_cplxsub_ins = VAR_INS[BIALLELIC][VT_SNP|VT_MNP] + 
-                           VAR_INS[BIALLELIC][VT_SNP|VT_INDEL] +
-                           VAR_INS[BIALLELIC][VT_MNP|VT_INDEL] +
-                           VAR_INS[BIALLELIC][VT_SNP|VT_MNP|VT_INDEL] +
-                           VAR_INS[BIALLELIC][VT_CLUMPED];   
-        int32_t no_biallelic_cplxsub_del = VAR_DEL[BIALLELIC][VT_SNP|VT_MNP] + 
-                           VAR_DEL[BIALLELIC][VT_SNP|VT_INDEL] +
-                           VAR_DEL[BIALLELIC][VT_MNP|VT_INDEL] +
-                           VAR_DEL[BIALLELIC][VT_SNP|VT_MNP|VT_INDEL] +
-                           VAR_DEL[BIALLELIC][VT_CLUMPED];                                                           
-        int32_t no_ge_triallelic_cplxsub = VAR_COUNT[GE_TRIALLELIC][VT_SNP|VT_MNP] + 
-                           VAR_COUNT[GE_TRIALLELIC][VT_SNP|VT_INDEL] +
-                           VAR_COUNT[GE_TRIALLELIC][VT_MNP|VT_INDEL] +
-                           VAR_COUNT[GE_TRIALLELIC][VT_SNP|VT_MNP|VT_INDEL] +
-                           VAR_COUNT[GE_TRIALLELIC][VT_CLUMPED];  
-        int32_t no_ge_triallelic_cplxsub_ts = VAR_TS[GE_TRIALLELIC][VT_SNP|VT_MNP] + 
-                           VAR_TS[GE_TRIALLELIC][VT_SNP|VT_INDEL] +
-                           VAR_TS[GE_TRIALLELIC][VT_MNP|VT_INDEL] +
-                           VAR_TS[GE_TRIALLELIC][VT_SNP|VT_MNP|VT_INDEL] +
-                           VAR_TS[GE_TRIALLELIC][VT_CLUMPED];   
-        int32_t no_ge_triallelic_cplxsub_tv = VAR_TV[GE_TRIALLELIC][VT_SNP|VT_MNP] + 
-                           VAR_TV[GE_TRIALLELIC][VT_SNP|VT_INDEL] +
-                           VAR_TV[GE_TRIALLELIC][VT_MNP|VT_INDEL] +
-                           VAR_TV[GE_TRIALLELIC][VT_SNP|VT_MNP|VT_INDEL] +
-                           VAR_TV[GE_TRIALLELIC][VT_CLUMPED];   
-        int32_t no_ge_triallelic_cplxsub_ins = VAR_INS[GE_TRIALLELIC][VT_SNP|VT_MNP] + 
-                           VAR_INS[GE_TRIALLELIC][VT_SNP|VT_INDEL] +
-                           VAR_INS[GE_TRIALLELIC][VT_MNP|VT_INDEL] +
-                           VAR_INS[GE_TRIALLELIC][VT_SNP|VT_MNP|VT_INDEL] +
-                           VAR_INS[GE_TRIALLELIC][VT_CLUMPED];   
-        int32_t no_ge_triallelic_cplxsub_del = VAR_DEL[GE_TRIALLELIC][VT_SNP|VT_MNP] + 
-                           VAR_DEL[GE_TRIALLELIC][VT_SNP|VT_INDEL] +
-                           VAR_DEL[GE_TRIALLELIC][VT_MNP|VT_INDEL] +
-                           VAR_DEL[GE_TRIALLELIC][VT_SNP|VT_MNP|VT_INDEL] +
-                           VAR_DEL[GE_TRIALLELIC][VT_CLUMPED];                                                       
-        fprintf(stderr, "       no. complex variants               : %10d\n", no_cplxsub);
-        fprintf(stderr, "           2 alleles (ts/tv) (ins/del)    : %15d (%.2f) [%d/%d] (%.2f) [%d/%d]\n",  no_biallelic_cplxsub,
-                                                                 (float)no_biallelic_cplxsub_ts/no_biallelic_cplxsub_tv,
-                                                                 no_biallelic_cplxsub_ts,
-                                                                 no_biallelic_cplxsub_tv,
-                                                                 (float)no_biallelic_cplxsub_ins/no_biallelic_cplxsub_del,
-                                                                 no_biallelic_cplxsub_ins,
-                                                                 no_biallelic_cplxsub_del);
-        fprintf(stderr, "           >=3 alleles (ts/tv) (ins/del)  : %15d (%.2f) [%d/%d] (%.2f) [%d/%d]\n",  no_ge_triallelic_cplxsub,
-                                                                 (float)no_ge_triallelic_cplxsub_ts/no_ge_triallelic_cplxsub_tv,
-                                                                 no_ge_triallelic_cplxsub_ts,
-                                                                 no_ge_triallelic_cplxsub_tv,
-                                                                 (float)no_ge_triallelic_cplxsub_ins/no_ge_triallelic_cplxsub_del,
-                                                                 no_ge_triallelic_cplxsub_ins,
-                                                                 no_ge_triallelic_cplxsub_del);                                                         
-        fprintf(stderr, "\n");
+        int32_t other_vtypes[2] = {VT_BLKSUB, VT_CPLXSUB};
+
+        for (int32_t i=0; i<2; ++i)
+        {
+            int32_t vtype = other_vtypes[i];
+            std::string variant_desc = vtype==VT_BLKSUB ? "Block Substitutions" : "Complex Substitutions";
+            fprintf(stderr, "       no. of %-21s       : %10d\n", variant_desc.c_str(), VAR_COUNT[POLYMORPHIC][vtype]);
+            for (int32_t no_alleles=1; no_alleles<=4; ++no_alleles)
+            {
+                if (no_alleles<4)
+                {
+                    if (VAR_COUNT[no_alleles][vtype])
+                    {
+                        fprintf(stderr, "           %d alleles                      : %15d (%.2f) [%d/%d] (%.2f) [%d/%d]\n", no_alleles+1, VAR_COUNT[no_alleles][vtype],
+                                                             (float)VAR_TS[no_alleles][vtype]/VAR_TV[no_alleles][vtype],
+                                                             VAR_TS[no_alleles][vtype],
+                                                             VAR_TV[no_alleles][vtype],
+                                                             (float)VAR_INS[no_alleles][vtype]/VAR_DEL[no_alleles][vtype],
+                                                             VAR_INS[no_alleles][vtype],
+                                                             VAR_DEL[no_alleles][vtype]);
+                    }
+                }
+                else
+                {
+                    if (VAR_COUNT[GE_PENTAALLELIC][vtype])
+                    {
+                        fprintf(stderr, "           >=5 alleles                    : %15d (%.2f) [%d/%d] (%.2f) [%d/%d]\n", VAR_COUNT[GE_PENTAALLELIC][vtype],
+                                                             (float)VAR_TS[GE_PENTAALLELIC][vtype]/VAR_TV[GE_PENTAALLELIC][vtype],
+                                                             VAR_TS[GE_PENTAALLELIC][vtype],
+                                                             VAR_TV[GE_PENTAALLELIC][vtype],
+                                                             (float)VAR_INS[GE_PENTAALLELIC][vtype]/VAR_DEL[GE_PENTAALLELIC][vtype],
+                                                             VAR_INS[GE_PENTAALLELIC][vtype],
+                                                             VAR_DEL[GE_PENTAALLELIC][vtype]);
+                    }
+                }
+            }
+            fprintf(stderr, "\n");
+        }
         fprintf(stderr, "       ======= Structural variants ========\n");
         fprintf(stderr, "\n");
         std::vector<SVNode*> s = sv->enumerate_dfs();
         fprintf(stderr, "       no. of structural variants         : %10d\n", s[0]->count+s[0]->mcount);
-        fprintf(stderr, "           2 alleles                      : %15d\n", s[0]->count);
-        for (size_t i=1; i<s.size(); ++i)
+        if (s[0]->count)
         {
-            if (s[i]->count)
+            fprintf(stderr, "           2 alleles                      : %15d\n", s[0]->count);
+            for (size_t i=1; i<s.size(); ++i)
             {
-                fprintf(stderr, "            ");
-                for (int32_t j=0; j<s[i]->depth; ++j) std::cerr << "   ";
-                std::string desc = s[i]->sv_type2string(s[i]->type.s);
-                fprintf(stderr, "%s", desc.c_str());
-                for (int32_t j=0; j<30-desc.size()-s[i]->depth*3; ++j) std::cerr << " ";
-                fprintf(stderr, ":           ");
-                for (int32_t j=0; j<s[i]->depth; ++j) std::cerr << "    ";
-                fprintf(stderr, "%6d\n", s[i]->count);
+                if (s[i]->count)
+                {
+                    fprintf(stderr, "            ");
+                    for (int32_t j=0; j<s[i]->depth; ++j) std::cerr << "   ";
+                    std::string desc = s[i]->sv_type2string(s[i]->type.s);
+                    fprintf(stderr, "%s", desc.c_str());
+                    for (int32_t j=0; j<30-desc.size()-s[i]->depth*3; ++j) std::cerr << " ";
+                    fprintf(stderr, ":           ");
+                    for (int32_t j=0; j<s[i]->depth; ++j) std::cerr << "    ";
+                    fprintf(stderr, "%6d\n", s[i]->count);
+                }
             }
         }
-        fprintf(stderr, "           >=3 alleles                    : %15d\n", s[0]->mcount);
-        for (size_t i=1; i<s.size(); ++i)
+
+        if (s[0]->mcount)
         {
-            if (s[i]->mcount)
+            fprintf(stderr, "           >=3 alleles                    : %15d\n", s[0]->mcount);
+            for (size_t i=1; i<s.size(); ++i)
             {
-                fprintf(stderr, "            ");
-                for (int32_t j=0; j<s[i]->depth; ++j) std::cerr << "   ";
-                std::string desc = s[i]->sv_type2string(s[i]->type.s);
-                fprintf(stderr, "%s", desc.c_str());
-                for (int32_t j=0; j<30-desc.size()-s[i]->depth*3; ++j) std::cerr << " ";
-                fprintf(stderr, ":           ");
-                for (int32_t j=0; j<s[i]->depth; ++j) std::cerr << "    ";
-                fprintf(stderr, "%6d\n", s[i]->mcount);
+                if (s[i]->mcount)
+                {
+                    fprintf(stderr, "            ");
+                    for (int32_t j=0; j<s[i]->depth; ++j) std::cerr << "   ";
+                    std::string desc = s[i]->sv_type2string(s[i]->type.s);
+                    fprintf(stderr, "%s", desc.c_str());
+                    for (int32_t j=0; j<30-desc.size()-s[i]->depth*3; ++j) std::cerr << " ";
+                    fprintf(stderr, ":           ");
+                    for (int32_t j=0; j<s[i]->depth; ++j) std::cerr << "    ";
+                    fprintf(stderr, "%6d\n", s[i]->mcount);
+                }
             }
         }
 
@@ -558,11 +473,9 @@ class Igor : Program
         {
             fprintf(stderr, "            mixed sv                     :  %15d\n", sv->mixed_sv_count);
         }
-        
+
         fprintf(stderr, "\n");
         fprintf(stderr, "       ========= General summary ==========\n");
-        fprintf(stderr, "\n");
-        fprintf(stderr, "       no. of reference                   : %10d\n", VAR_COUNT[MONOMORPHIC][VT_REF]);
         fprintf(stderr, "\n");
         fprintf(stderr, "       no. of observed variants           : %10d\n", no_observed_variants);
         fprintf(stderr, "       no. of unclassified variants       : %10d\n", no_observed_variants-no_classified_variants);
@@ -768,7 +681,29 @@ class Igor : Program
         int32_t sys_ret = system(cmd.c_str());
     };
 
-    ~Igor() {};
+    ~Igor()
+    {
+        delete odr;
+        bcf_destroy(v);
+
+        for (int32_t no_alleles=0; no_alleles<NO_ALLELE_CATEGORIES; ++no_alleles)
+        {
+            delete VAR_COUNT[no_alleles];
+            delete VAR_TS[no_alleles];
+            delete VAR_TV[no_alleles];
+            delete VAR_INS[no_alleles];
+            delete VAR_DEL[no_alleles];
+        }
+
+        delete VAR_COUNT;
+        delete VAR_TS;
+        delete VAR_TV;
+        delete VAR_INS;
+        delete VAR_DEL;
+
+        delete vm;
+        delete sv;
+    };
 
     private:
 };
