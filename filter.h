@@ -41,31 +41,31 @@
 #define VT_FLG      1024
 
 //common unary and binary ops (ordered by precedence level)
-#define VT_NOT      (0|VT_LOGIC_OP)
-#define VT_AND      (1|VT_LOGIC_OP)
-#define VT_OR       (2|VT_LOGIC_OP)
+#define VT_NOT      (0|VT_LOGIC_OP|VT_BOOL)
+#define VT_AND      (1|VT_LOGIC_OP|VT_BOOL)
+#define VT_OR       (2|VT_LOGIC_OP|VT_BOOL)
 
-#define VT_EQ       (3|VT_MATH_CMP)
-#define VT_NE       (4|VT_MATH_CMP)
-#define VT_LT       (5|VT_MATH_CMP)
-#define VT_LE       (6|VT_MATH_CMP)
-#define VT_GT       (7|VT_MATH_CMP)
-#define VT_GE       (8|VT_MATH_CMP)
+#define VT_EQ       (3|VT_MATH_CMP|VT_BOOL)
+#define VT_NE       (4|VT_MATH_CMP|VT_BOOL)
+#define VT_LT       (5|VT_MATH_CMP|VT_BOOL)
+#define VT_LE       (6|VT_MATH_CMP|VT_BOOL)
+#define VT_GT       (7|VT_MATH_CMP|VT_BOOL)
+#define VT_GE       (8|VT_MATH_CMP|VT_BOOL)
 
-#define VT_ADD      (9|VT_MATH_OP)
-#define VT_SUB      (10|VT_MATH_OP)
-#define VT_MUL      (11|VT_MATH_OP)
-#define VT_DIV      (12|VT_MATH_OP)
-#define VT_BIT_AND  (13|VT_INT|VT_MATH_OP)
-#define VT_BIT_OR   (14|VT_INT|VT_MATH_OP)
+#define VT_ADD      (9|VT_MATH_OP|VT_FLT)
+#define VT_SUB      (10|VT_MATH_OP|VT_FLT)
+#define VT_MUL      (11|VT_MATH_OP|VT_FLT)
+#define VT_DIV      (12|VT_MATH_OP|VT_FLT)
+#define VT_BIT_AND  (13|VT_INT|VT_MATH_OP|VT_INT|VT_BOOL)
+#define VT_BIT_OR   (14|VT_INT|VT_MATH_OP|VT_INT|VT_BOOL)
 
 //unary ops (data getters for vcf)
-#define VT_FILTER        (33|VT_BCF_OP)
+#define VT_FILTER        (33|VT_BCF_OP|VT_BOOL)
 #define VT_INFO          (34|VT_BCF_OP)
-#define VT_N_ALLELE      (35|VT_INT|VT_BCF_OP)
-#define VT_VARIANT_TYPE  (36|VT_INT|VT_BCF_OP)
-#define VT_VARIANT_DLEN  (37|VT_INT|VT_BCF_OP)
-#define VT_VARIANT_LEN   (38|VT_INT|VT_BCF_OP)
+#define VT_N_ALLELE      (35|VT_INT|VT_BCF_OP|VT_INT)
+#define VT_VARIANT_TYPE  (36|VT_INT|VT_BCF_OP|VT_INT|VT_BOOL)
+#define VT_VARIANT_DLEN  (37|VT_INT|VT_BCF_OP|VT_INT)
+#define VT_VARIANT_LEN   (38|VT_INT|VT_BCF_OP|VT_INT)
 
 #define VT_UNKNOWN -1
 
@@ -81,10 +81,10 @@ class Node
     Node* right;
 
     int32_t type;      // data type
-    bool value;        // should this be disposed?
+    kstring_t tag; // store the INFO tag of a BCF type
+    
     bool value_exists; // if value exists
 
-    kstring_t tag; // store the INFO tag of a BCF type
     kstring_t s;   // string value
     bool b;        // boolean value
     int32_t i;     // integer value
@@ -158,11 +158,16 @@ class Filter
      * Recursive call for parse.
      */
     void parse(const char* exp, int32_t len, Node * node, bool debug=false);
+   
+    /**
+     * Checks if exp is a literal.
+     */
+    bool is_literal(const char* exp, int32_t len, bool debug=false);
 
     /**
-     * Parse literals.
+     * Checks if exp is a unary op.
      */
-    bool is_literal(const char* exp, int32_t len);
+    bool is_unary_op(const char* exp, int32_t len, bool debug=false);
 
     /**
      * Parse literals.
@@ -172,7 +177,7 @@ class Filter
     /**
      * Trim brackets from an expression.
      */
-    void trim_brackets(const char* &exp, int32_t &len);
+    void trim_brackets(const char* &exp, int32_t &len, bool debug=false);
 
     /**
      * Moves r to the closing bracket if this expression starts with an open bracket.

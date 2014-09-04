@@ -135,7 +135,7 @@ class Igor : Program
         /////////////////////////
         //filter initialization//
         /////////////////////////
-        filter.parse(fexp.c_str());
+        filter.parse(fexp.c_str(), false);
         filter_exists = fexp=="" ? false : true;
 
         ////////////////////////
@@ -171,7 +171,7 @@ class Igor : Program
             if (filter_exists)
             {
                 vm->classify_variant(h, v, variant);
-                if (!filter.apply(h, v, &variant))
+                if (!filter.apply(h, v, &variant, false))
                 {
                     continue;
                 }

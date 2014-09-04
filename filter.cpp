@@ -55,28 +55,54 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
 {
     if (debug)
         std::cerr << "evaluation  "  << type << "\n";
+    
+    //by default
+    value_exists = true;
 
     if (type&VT_LOGIC_OP)
     {
+        if (!left->value_exists)
+        {
+            value_exists = false;
+            return;
+        }
+        
         if (type==VT_NOT)
         {
             if (debug)
-                std::cerr << "\tVT_NOT "   <<  left->value << " \n";
-            value = !(left->value);
+                std::cerr << "\tVT_NOT "   <<  left->b << " \n";
+            
+            b = !(left->b);
+            return;
         }
-        else if (type==VT_AND)
+        
+        if (!right->value_exists)
+        {
+            value_exists = false;
+            return;
+        }
+        
+        if (type==VT_AND)
         {
             if (debug)
-                std::cerr << "\tVT_AND "   <<  left->value << "&" << right->value    <<  " \n";
-            value = (left->value && right->value);
+                std::cerr << "\tVT_AND "   <<  left->b << "&" << right->b    <<  " \n";
+            b = (left->b && right->b);
+            return;
         }
         else if (type==VT_OR)
         {
-            value = (left->value || right->value);
+            b = (left->b || right->b);
+            return;
         }
     }
     else if (type&VT_MATH_CMP)
     {
+        if (!left->value_exists && !right->value_exists)
+        {
+            value_exists = false;
+            return;
+        }
+        
         if (type==VT_EQ)
         {
             if ((left->type&VT_INT))
@@ -85,14 +111,14 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
                 {
                     if (debug)
                         std::cerr << "\tVT_EQ "   <<  left->i << "&" << right->i    <<  " \n";
-                    value = (left->i==right->i);
+                    b = (left->i==right->i);
                     return;
                 }
                 else if ((right->type&VT_FLT))
                 {
                     if (debug)
                         std::cerr << "\tVT_EQ "   <<  left->i << "&" << right->f    <<  " \n";
-                    value = (left->i==right->f);
+                    b = (left->i==right->f);
                     return;
                 }
             }
@@ -102,14 +128,14 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
                 {
                     if (debug)
                         std::cerr << "\tVT_EQ "   <<  left->f << "&" << right->i    <<  " \n";
-                    value = (left->f==right->i);
+                    b = (left->f==right->i);
                     return;
                 }
                 else if ((right->type&VT_FLT))
                 {
                     if (debug)
                         std::cerr << "\tVT_EQ "   <<  left->f << "&" << right->f    <<  " \n";
-                    value = (left->f==right->f);
+                    b = (left->f==right->f);
                     return;
                 }
             }
@@ -117,7 +143,7 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
             {
                 if (debug)
                     std::cerr << "\tVT_EQ "   <<  left->s.s << "&" << right->s.s    <<  " \n";
-                value = strcmp(left->s.s, right->s.s)==0 ? true : false;
+                b = strcmp(left->s.s, right->s.s)==0 ? true : false;
                 return;
             }
 //             else if ((left->type&VT_STR) && (right->type&VT_STR))
@@ -131,21 +157,19 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
         }
         else if (type==VT_NE)
         {
-            if (!left->value_exists || !left->value_exists )
-            {
-                value = true;
-                return;
-            }
-            else if ((left->type&VT_INT))
+            //fprintf(stderr, "[%s:%d %s] check: %s %s: !=\n", __FILE__, __LINE__, __FUNCTION__, type2string(left->type).c_str(), type2string(right->type).c_str());
+            
+            if ((left->type&VT_INT))
             {
                 if ((right->type&VT_INT))
                 {
-                    value = (left->i!=right->i);
+                    //std::cerr << "CAUGHT NE int vs int\n";
+                    b = (left->i!=right->i);
                     return;
                 }
                 else if ((right->type&VT_FLT))
                 {
-                    value = (left->i!=right->f);
+                    b = (left->i!=right->f);
                     return;
                 }
             }
@@ -153,18 +177,18 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
             {
                 if ((right->type&VT_INT))
                 {
-                    value = (left->f!=right->i);
+                    b = (left->f!=right->i);
                     return;
                 }
                 else if ((right->type&VT_FLT))
                 {
-                    value = (left->f!=right->f);
+                    b = (left->f!=right->f);
                     return;
                 }
             }
             else if ((left->type&VT_STR) && (right->type&VT_STR))
             {
-                value = strcmp(left->tag.s, right->tag.s)==0 ? false : true;
+                b = strcmp(left->tag.s, right->tag.s)==0 ? false : true;
                 return;
             }
 
@@ -177,12 +201,12 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
             {
                 if ((right->type&VT_INT))
                 {
-                    value = (left->i<=right->i);
+                    b = (left->i<=right->i);
                     return;
                 }
                 else if ((right->type&VT_FLT))
                 {
-                    value = (left->i<=right->f);
+                    b = (left->i<=right->f);
                     return;
                 }
             }
@@ -191,18 +215,18 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
                 if ((right->type&VT_INT))
                 {
                     type |= VT_INT;
-                    value = (left->f<=right->i);
+                    b = (left->f<=right->i);
                     return;
                 }
                 else if ((right->type&VT_FLT))
                 {
-                    value = (left->f<=right->f);
+                    b = (left->f<=right->f);
                     return;
                 }
             }
             else if ((left->type&VT_STR) && (right->type&VT_STR))
             {
-                value = strcmp(left->tag.s, right->tag.s)<=0 ? true : false;
+                b = strcmp(left->tag.s, right->tag.s)<=0 ? true : false;
                 return;
             }
 
@@ -215,12 +239,12 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
             {
                 if ((right->type&VT_INT))
                 {
-                    value = (left->i>=right->i);
+                    b = (left->i>=right->i);
                     return;
                 }
                 else if ((right->type&VT_FLT))
                 {
-                    value = (left->i>=right->f);
+                    b = (left->i>=right->f);
                     return;
                 }
             }
@@ -228,18 +252,18 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
             {
                 if ((right->type&VT_INT))
                 {
-                    value = (left->f>=right->i);
+                    b = (left->f>=right->i);
                     return;
                 }
                 else if ((right->type&VT_FLT))
                 {
-                    value = (left->f>=right->f);
+                    b = (left->f>=right->f);
                     return;
                 }
             }
             else if ((left->type&VT_STR) && (right->type&VT_STR))
             {
-                value = strcmp(left->tag.s, right->tag.s)>=0 ? true : false;
+                b = strcmp(left->tag.s, right->tag.s)>=0 ? true : false;
                 return;
             }
 
@@ -252,12 +276,12 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
             {
                 if ((right->type&VT_INT))
                 {
-                    value = (left->i>right->i);
+                    b = (left->i>right->i);
                     return;
                 }
                 else if ((right->type&VT_FLT))
                 {
-                    value = (left->i>right->f);
+                    b = (left->i>right->f);
                     return;
                 }
             }
@@ -265,18 +289,18 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
             {
                 if ((right->type&VT_INT))
                 {
-                    value = (left->f>right->i);
+                    b = (left->f>right->i);
                     return;
                 }
                 else if ((right->type&VT_FLT))
                 {
-                    value = (left->f>right->f);
+                    b = (left->f>right->f);
                     return;
                 }
             }
             else if ((left->type&VT_STR) && (right->type&VT_STR))
             {
-                value = strcmp(left->tag.s, right->tag.s)>0 ? true : false;
+                b = strcmp(left->tag.s, right->tag.s)>0 ? true : false;
                 return;
             }
 
@@ -289,12 +313,12 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
             {
                 if ((right->type&VT_INT))
                 {
-                    value = (left->i<right->i);
+                    b = (left->i<right->i);
                     return;
                 }
                 else if ((right->type&VT_FLT))
                 {
-                    value = (left->i<right->f);
+                    b = (left->i<right->f);
                     return;
                 }
             }
@@ -302,18 +326,18 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
             {
                 if ((right->type&VT_INT))
                 {
-                    value = (left->f<right->i);
+                    b = (left->f<right->i);
                     return;
                 }
                 else if ((right->type&VT_FLT))
                 {
-                    value = (left->f<right->f);
+                    b = (left->f<right->f);
                     return;
                 }
             }
             else if ((left->type&VT_STR) && (right->type&VT_STR))
             {
-                value = strcmp(left->tag.s, right->tag.s)<0 ? true : false;
+                b = strcmp(left->tag.s, right->tag.s)<0 ? true : false;
                 return;
             }
 
@@ -323,15 +347,17 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
     }
     else if (type&VT_BCF_OP)
     {
+        value_exists = true;
+        
         if (type==VT_FILTER)
         {
             if (bcf_has_filter(h, v, tag.s)!=1)
             {
-                value = false;
+                b = false;
             }
             else
             {
-                value = true;
+                b = true;
             }
         }
         else if (type==VT_INFO) //figure out type
@@ -346,7 +372,6 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
                     i = 1;
                     f = 1;
                     b = true;
-                    value = true;
                     s.l=0;
                 }
                 else
@@ -361,7 +386,6 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
                 int32_t *is = NULL;
                 if (bcf_get_info_int32(h, v, tag.s, &is, &ns)>0)
                 {
-                    value_exists = true;
                     i = is[0];
                     f = (float)is[0];
                 }
@@ -379,7 +403,6 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
                 float *fs = NULL;
                 if (bcf_get_info_float(h, v, tag.s, &fs, &ns)>0)
                 {
-                    value_exists = true;
                     f = (float)fs[0];
                 }
                 else
@@ -396,7 +419,6 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
                 int32_t n = 0;
                 if (bcf_get_info_string(h, v, tag.s, &s.s, &n)>0)
                 {
-                    value_exists = true;
                     s.m = n;
                 }
                 else
@@ -404,13 +426,6 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
                     value_exists = false;
                 }
             }
-
-//                i = 0;
-//                f = 0;
-//                b = false;
-//                value = false;
-//                s.l=0;
-
         }
         else if (type==(VT_INFO|VT_INT))
         {
@@ -420,6 +435,11 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
             if (bcf_get_info_int32(h, v, tag.s, &data, &n)>0)
             {
                 i = *((int*)data);
+                f = (float) i;
+            }
+            else
+            {
+                value_exists = false;
             }
 
             if (n) free(data);
@@ -432,6 +452,10 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
             if (bcf_get_info_float(h, v, tag.s, &data, &n)>0)
             {
                 f = *((float*)data);
+            }
+            else
+            {
+                value_exists = false;
             }
 
             if (n) free(data);
@@ -453,54 +477,53 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
         {
             if (bcf_get_info_flag(h, v, tag.s, 0, 0)>0)
             {
-                i = 1;
-                f = 1;
                 b = true;
-                value = true;
-                //s.l=0; kputc('1', &s);
             }
             else
             {
-                i = 0;
-                f = 0;
                 b = false;
-                value = false;
-                s.l=0;
             }
-
+            
             if (debug)
-                std::cerr << "\tVT_INFO|VT_FLG "   << i << " " << f << " " << b << " " << value << " " << s.s <<  " \n";
+                std::cerr << "\tVT_INFO|VT_FLG "   << i << " " << f << " " << b << " " << s.s <<  " \n";
         }
         else if (type==VT_VARIANT_TYPE)
         {
             if (debug)
                 std::cerr << "\tVTYPE "   <<  variant->vtype2string(variant->type) <<  " \n";
             i = variant->type;
-            value = i;
+            b = i;
         }
         else if (type==VT_VARIANT_DLEN)
         {
             if (debug)
                 std::cerr << "\tDLEN "   <<  variant->alleles[0].dlen <<  " \n";
             i = variant->alleles[0].dlen;
-            value = i;
+            f = i;
         }
         else if (type==VT_VARIANT_LEN)
         {
             if (debug)
                 std::cerr << "\tLEN "   <<  abs(variant->alleles[0].dlen) <<  " \n";
             i = abs(variant->alleles[0].dlen);
-            value = i;
+            f = i;
         }
         else if (type==VT_N_ALLELE)
         {
             if (debug)
                 std::cerr << "\tN_ALLELE "   <<  bcf_get_n_allele(v) <<  " \n";
             i = bcf_get_n_allele(v);
+            f = i;
         }
     }
     else if (type&VT_MATH_OP)
     {
+        if (!left->value_exists && !right->value_exists)
+        {
+            value_exists = false;
+            return;
+        }
+        
         if ((type&8207)==VT_ADD)
         {
             if ((left->type&VT_INT))
@@ -509,6 +532,7 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
                 {
                     type |= VT_INT;
                     i = (left->i+right->i);
+                    f = i;
                     return;
                 }
                 else if ((right->type&VT_FLT))
@@ -545,6 +569,7 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
                 {
                     type |= VT_INT;
                     i = (left->i-right->i);
+                    f = i;
                     return;
                 }
                 else if ((right->type&VT_FLT))
@@ -581,6 +606,7 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
                 {
                     type |= VT_INT;
                     i = (left->i*right->i);
+                    f = i;
                     return;
                 }
                 else if ((right->type&VT_FLT))
@@ -650,7 +676,7 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
             if ((left->type&VT_INT) && (right->type&VT_INT))
             {
                 i = (left->i & right->i);
-                value = i;
+                b = i;
                 return;
             }
 
@@ -662,7 +688,7 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
             if ((left->type&VT_INT) && (right->type&VT_INT))
             {
                 i = (left->i | right->i);
-                value = i;
+                b = i;
                 return;
             }
 
@@ -812,6 +838,12 @@ void Filter::parse(const char* exp, bool debug)
             tree = new Node();
             parse(exp, strlen(exp), tree, debug);
         }
+    
+        if (!tree->type&VT_BOOL)
+        {
+            fprintf(stderr, "[%s:%d %s] filter expression not boolean %s\n", __FILE__, __LINE__, __FUNCTION__, exp);
+            exit(1);
+        } 
     }
     else
     {
@@ -837,7 +869,16 @@ bool Filter::apply(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug) //recu
     apply(tree, debug);
     if (debug) std::cerr << "==========\n";
 
-    return tree->value;
+    
+    if (tree->value_exists)
+    {
+        return tree->b;
+    }
+    else
+    {
+        bcf_print(h,v);
+        return false;
+    }
 }
 
 /**
@@ -858,17 +899,28 @@ void Filter::parse(const char* exp, int32_t len, Node *node, bool debug)
     //******************************
     while (*exp==' ') ++exp;
     while (exp[len-1]==' ') --len;
-    trim_brackets(exp, len);
+    trim_brackets(exp, len, debug);
 
     //this is a literal
-    if (is_literal(exp, len))
+    if (is_literal(exp, len, debug))
     {
         //will not recurse any further
         return parse_literal(exp, len, node, debug);
     }
-    //this is guaranteed to be decomposed unless there is an error in the expression
+    //unary operation
+    else if (is_unary_op(exp, len, debug))
+    {
+        node->type = VT_NOT;
+        if (debug) std::cerr << "\tis not_op\n";
+        
+        node->left = new Node();
+        parse(exp+1, len-1, node->left, debug);
+    }
+    //binary operation
     else
     {
+        if (debug) std::cerr << "\tis binary op\n";
+        
         const char* p = exp; //points to end of first part
         const char* q = exp; //points to start of second part
         const char* r = exp; //for iteration
@@ -877,6 +929,7 @@ void Filter::parse(const char* exp, int32_t len, Node *node, bool debug)
 
         while(r-exp!=len)
         {
+            //bypasses bracketed expressions
             fwd_to_closing_bracket(r, len);
 
             int32_t oplen = -1;
@@ -884,6 +937,7 @@ void Filter::parse(const char* exp, int32_t len, Node *node, bool debug)
 
             if(ctype!=-1)
             {
+                //this implements order of operations
                 if (ctype<type)
                 {
                     if (debug) std::cerr<< "\tupdating type\n";
@@ -917,10 +971,29 @@ void Filter::parse(const char* exp, int32_t len, Node *node, bool debug)
     }
 }
 
+
+
 /**
- * Parse literals.
+ * Checks if exp is a unary op.
  */
-bool Filter::is_literal(const char* exp, int32_t len)
+bool Filter::is_unary_op(const char* exp, int32_t len, bool debug)
+{
+    //NOT operator
+    if (exp[0]=='~')
+    {
+        if (debug) std::cerr << "\tis unary op\n";
+        return true;
+    }   
+    
+    if (debug) std::cerr << "\tis not unary op\n";
+    return false;
+}
+
+
+/**
+ * Check if exp is a literal (no binary operations, no unary operation).
+ */
+bool Filter::is_literal(const char* exp, int32_t len, bool debug)
 {
     const char* q = exp;
     while (q-exp<len)
@@ -934,14 +1007,17 @@ bool Filter::is_literal(const char* exp, int32_t len)
            *q=='+' ||
            *q=='*' ||
            *q=='/' ||
+           *q=='~' ||
            (*q=='-' && exp!=q))
         {
+            if (debug) std::cerr << "\tis not literal\n"; 
             return false;
         }
 
         ++q;
     }
 
+    if (debug) std::cerr << "\tis literal\n"; 
     return true;
 }
 
@@ -951,18 +1027,6 @@ bool Filter::is_literal(const char* exp, int32_t len)
 void Filter::parse_literal(const char* exp, int32_t len, Node * node, bool debug)
 {
     node->type = VT_UNKNOWN;
-
-    // if not sign in front of literal
-    if (exp[0]=='~')
-    {
-        node->type = VT_NOT;
-        node->left = new Node();
-        if (debug) std::cerr << "\tis not_op\n";
-
-        node = node->left;
-        ++exp;
-        --len;
-    }
 
     if (strncmp(exp, "PASS", len)==0)
     {
@@ -1005,6 +1069,7 @@ void Filter::parse_literal(const char* exp, int32_t len, Node * node, bool debug
         need_to_classify_variant = true;
         node->type = VT_INT;
         node->i = VT_INDEL;
+        node->value_exists = true;
         if (debug) std::cerr << "\tis INDEL\n";
         return;
     }
@@ -1013,6 +1078,7 @@ void Filter::parse_literal(const char* exp, int32_t len, Node * node, bool debug
         need_to_classify_variant = true;
         node->type = VT_INT;
         node->i = VT_SNP;
+        node->value_exists = true;
         if (debug) std::cerr << "\tis SNP\n";
         return;
     }
@@ -1021,6 +1087,7 @@ void Filter::parse_literal(const char* exp, int32_t len, Node * node, bool debug
         need_to_classify_variant = true;
         node->type = VT_INT;
         node->i = VT_MNP;
+        node->value_exists = true;
         if (debug) std::cerr << "\tis MNP\n";
         return;
     }
@@ -1029,6 +1096,7 @@ void Filter::parse_literal(const char* exp, int32_t len, Node * node, bool debug
         need_to_classify_variant = true;
         node->type = VT_INT;
         node->i = VT_CLUMPED;
+        node->value_exists = true;
         if (debug) std::cerr << "\tis CLUMPED\n";
         return;
     }
@@ -1045,6 +1113,7 @@ void Filter::parse_literal(const char* exp, int32_t len, Node * node, bool debug
         need_to_classify_variant = true;
         node->type = VT_INT;
         node->i = VT_REF;
+        node->value_exists = true;
         if (debug) std::cerr << "\tis REF\n";
         return;
     }
@@ -1052,6 +1121,7 @@ void Filter::parse_literal(const char* exp, int32_t len, Node * node, bool debug
     {
         need_to_classify_variant = true;
         node->type = VT_VARIANT_DLEN;
+        node->value_exists = false;
         if (debug) std::cerr << "\tis dlen\n";
         return;
     }
@@ -1059,6 +1129,7 @@ void Filter::parse_literal(const char* exp, int32_t len, Node * node, bool debug
     {
         need_to_classify_variant = true;
         node->type = VT_VARIANT_LEN;
+        node->value_exists = false;
         if (debug) std::cerr << "\tis len\n";
         return;
     }
@@ -1073,6 +1144,7 @@ void Filter::parse_literal(const char* exp, int32_t len, Node * node, bool debug
             node->type = VT_INT;
             node->i = i;
             node->f = (float)i;
+            node->value_exists = true;
             if (debug) std::cerr << "\tis int\n";
             return;
         }
@@ -1085,6 +1157,7 @@ void Filter::parse_literal(const char* exp, int32_t len, Node * node, bool debug
         {
             node->type = VT_FLT;
             node->f = f;
+            node->value_exists = true;
             if (debug) std::cerr << "\tis float: " << f << "\n";
             return;
         }
@@ -1097,6 +1170,7 @@ void Filter::parse_literal(const char* exp, int32_t len, Node * node, bool debug
             kputc(0, &node->tag);
             kputsn(exp+1, len-2, &node->s);
             kputc(0, &node->s);
+            node->value_exists = true;
             if (debug) std::cerr << "\tis string\n";
             return;
         }
@@ -1113,11 +1187,11 @@ void Filter::parse_literal(const char* exp, int32_t len, Node * node, bool debug
 
     if (debug)
     {
-        std::cerr << "\tvalue " << node->value << "\n";
-        std::cerr << "\ttag   " << node->tag.s << "\n";
-        std::cerr << "\tb     " << node->b << "\n";
-        std::cerr << "\ti     " << node->i << "\n";
-        std::cerr << "\tf     " << node->f << "\n";
+        std::cerr << "\tvalue_exists " << node->value_exists << "\n";
+        std::cerr << "\ttag          " << node->tag.s << "\n";
+        std::cerr << "\tb            " << node->b << "\n";
+        std::cerr << "\ti            " << node->i << "\n";
+        std::cerr << "\tf            " << node->f << "\n";
     }
 
     return;
@@ -1160,7 +1234,7 @@ void Filter::print_filter_help()
 /**
  * Trim brackets from an expression.
  */
-void Filter::trim_brackets(const char* &exp, int32_t &len)
+void Filter::trim_brackets(const char* &exp, int32_t &len, bool debug)
 {
     if (*exp=='(' && exp[len-1]==')')
     {
@@ -1212,8 +1286,8 @@ void Filter::trim_brackets(const char* &exp, int32_t &len)
             {
                 ++exp;
                 len -=2;
-
-                trim_brackets(exp, len);
+                if (debug) std::cerr << "\t\ttrimmed brackets\n";
+                trim_brackets(exp, len, debug);
             }
             else
             {
@@ -1402,9 +1476,10 @@ void Filter::apply(Node* node, bool debug)
     {
         if (node->type==VT_AND)
         {
-            if (!node->left->value)
+            if (node->left->value_exists && !node->left->b)
             {
-                node->value = false;
+                node->b = false;
+                node->value_exists = true;
                 return;
             }
             else
@@ -1414,9 +1489,10 @@ void Filter::apply(Node* node, bool debug)
         }
         else if (node->type==VT_OR)
         {
-            if (node->left->value)
+            if (node->left->value_exists && node->left->b)
             {
-                node->value = true;
+                node->b = true;
+                node->value_exists = true;
                 return;
             }
             else
