@@ -380,20 +380,20 @@ int32_t VariantManip::classify_variant(const char* chrom, uint32_t pos1, char** 
             if (mlen==1 && dlen)
             {
                 char ls, le, ss;
-                
-                if (rl>al) 
+
+                if (rl>al)
                 {
                      ls = ref[0];
                      le = ref[rl-1];
-                     ss = alt[0];   
+                     ss = alt[0];
                 }
                 else
                 {
                      ls = alt[0];
                      le = alt[al-1];
-                     ss = ref[0];   
+                     ss = ref[0];
                 }
-                
+
                 if (ls!=ss && le!=ss)
                 {
                     ++diff;
@@ -418,7 +418,7 @@ int32_t VariantManip::classify_variant(const char* chrom, uint32_t pos1, char** 
                     if (REF.s[j]!=ALT.s[j])
                     {
                         ++diff;
-    
+
                         if ((ref[j]=='G' && alt[j]=='A') ||
                             (ref[j]=='A' && alt[j]=='G') ||
                             (ref[j]=='C' && alt[j]=='T') ||
@@ -433,19 +433,16 @@ int32_t VariantManip::classify_variant(const char* chrom, uint32_t pos1, char** 
                     }
                 }
             }
-            
+
             //substitution variants
             if (mlen==diff)
             {
-//                std::cerr << "mlen " << mlen << " diff " << diff << "\n";
-//                std::cerr << "set MNP\n";
                 type |= mlen==1 ? VT_SNP : VT_MNP;
             }
 
             //indel variants
             if (dlen)
             {
-                 //std::cerr << "set MNP\n";
                 type |= VT_INDEL;
             }
 
@@ -515,7 +512,7 @@ void VariantManip::right_trim_or_left_extend(std::vector<std::string>& alleles, 
 
             ++right_trimmed;
         }
-        
+
         if (to_left_extend)
         {
             --pos1;
@@ -546,7 +543,7 @@ void VariantManip::right_trim_or_left_extend(std::vector<std::string>& alleles, 
 void VariantManip::left_trim(std::vector<std::string>& alleles, uint32_t& pos1, uint32_t& left_trimmed)
 {
     bool to_left_trim =  true;
-    
+
     while (to_left_trim)
     {
         //checks if left trimmable.
