@@ -50,7 +50,7 @@ void split(std::vector<std::string>& vec, const char *delims, std::string& str, 
     while (i<=lastIndex)
     {
         isDelim = (delim_set.find(tempStr[i])!=delim_set.end());
-                
+
         if (!isDelim || noTokens>=limit-1)
         {
             token << tempStr[i];
@@ -59,7 +59,7 @@ void split(std::vector<std::string>& vec, const char *delims, std::string& str, 
         if ((isDelim && noTokens<limit-1) || i==lastIndex)
         {
             if (collapse && token.str()!="")
-            {    
+            {
                 vec.push_back(token.str());
                 ++noTokens;
                 token.str("");
@@ -97,7 +97,7 @@ void split(std::vector<std::string>& vec, const char *delims, const char* str, u
     while (i<=lastIndex)
     {
         isDelim = (delim_set.find(tempStr[i])!=delim_set.end());
-                
+
         if (!isDelim || noTokens>=limit-1)
         {
             token << tempStr[i];
@@ -106,7 +106,7 @@ void split(std::vector<std::string>& vec, const char *delims, const char* str, u
         if ((isDelim && noTokens<limit-1) || i==lastIndex)
         {
             if (collapse && token.str()!="")
-            {    
+            {
                 vec.push_back(token.str());
                 ++noTokens;
                 token.str("");
@@ -150,13 +150,13 @@ bool append_cwd(std::string& path)
         char cwd[1024];
         if (getcwd(cwd, sizeof(cwd))!=NULL)
         {
-            std::string cwd_path(cwd);  
-            path = cwd_path + "/" + path;     
-            
-            return true;        
+            std::string cwd_path(cwd);
+            path = cwd_path + "/" + path;
+
+            return true;
         }
-    } 
-    
+    }
+
     return false;
 };
 
