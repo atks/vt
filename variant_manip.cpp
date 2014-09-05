@@ -377,16 +377,31 @@ int32_t VariantManip::classify_variant(const char* chrom, uint32_t pos1, char** 
             int32_t ts = 0;
             int32_t tv = 0;
 
-            for (int32_t j=0; j<mlen; ++j)
+            if (mlen==1 && dlen)
             {
-                if (ref[j]!=alt[j])
+                char ls, le, ss;
+                
+                if (rl>al) 
+                {
+                     ls = ref[0];
+                     le = ref[rl-1];
+                     ss = alt[0];   
+                }
+                else
+                {
+                     ls = alt[0];
+                     le = alt[al-1];
+                     ss = ref[0];   
+                }
+                
+                if (ls!=ss && le!=ss)
                 {
                     ++diff;
 
-                    if ((ref[j]=='G' && alt[j]=='A') ||
-                        (ref[j]=='A' && alt[j]=='G') ||
-                        (ref[j]=='C' && alt[j]=='T') ||
-                        (ref[j]=='T' && alt[j]=='C'))
+                    if ((ls=='G' && ss=='A') ||
+                        (ls=='A' && ss=='G') ||
+                        (ls=='C' && ss=='T') ||
+                        (ls=='T' && ss=='C'))
                     {
                         ++ts;
                     }
@@ -396,7 +411,29 @@ int32_t VariantManip::classify_variant(const char* chrom, uint32_t pos1, char** 
                     }
                 }
             }
-
+            else
+            {
+                for (int32_t j=0; j<mlen; ++j)
+                {
+                    if (REF.s[j]!=ALT.s[j])
+                    {
+                        ++diff;
+    
+                        if ((ref[j]=='G' && alt[j]=='A') ||
+                            (ref[j]=='A' && alt[j]=='G') ||
+                            (ref[j]=='C' && alt[j]=='T') ||
+                            (ref[j]=='T' && alt[j]=='C'))
+                        {
+                            ++ts;
+                        }
+                        else
+                        {
+                            ++tv;
+                        }
+                    }
+                }
+            }
+            
             //substitution variants
             if (mlen==diff)
             {
