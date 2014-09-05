@@ -53,7 +53,6 @@ class Igor : Program
     //options//
     ///////////
     std::string input_vcf_file;
-    std::string output_vcf_file;
     std::string output_tabulate_dir;
     std::string output_pdf_file;
     std::vector<GenomeInterval> intervals;
@@ -114,13 +113,11 @@ class Igor : Program
             TCLAP::ValueArg<std::string> arg_fexp("f", "f", "filter expression []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_output_tabulate_dir("x", "x", "output latex directory []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_output_pdf_file("y", "y", "output pdf file [summary.pdf]", false, "", "str", cmd);
-            TCLAP::ValueArg<std::string> arg_output_vcf_file("o", "o", "output VCF file [-]", false, "-", "str", cmd);
             TCLAP::UnlabeledValueArg<std::string> arg_input_vcf_file("<in.vcf>", "input VCF file", true, "","file", cmd);
 
             cmd.parse(argc, argv);
 
             input_vcf_file = arg_input_vcf_file.getValue();
-            output_vcf_file = arg_output_vcf_file.getValue();
             fexp = arg_fexp.getValue();
             output_tabulate_dir = arg_output_tabulate_dir.getValue();
             output_pdf_file = arg_output_pdf_file.getValue();
@@ -264,7 +261,6 @@ class Igor : Program
         std::clog << "peek v" << version << "\n\n";
 
         std::clog << "options:     input VCF file            " << input_vcf_file << "\n";
-        std::clog << "         [o] output VCF file           " << output_vcf_file << "\n";
         print_str_op("         [f] filter                    ", fexp);
         print_ref_op("         [r] reference FASTA file      ", ref_fasta_file);
         print_str_op("         [x] output tabulate directory ", output_tabulate_dir);
@@ -376,7 +372,7 @@ class Igor : Program
             }
             fprintf(stderr, "\n");
         }
-        fprintf(stderr, "       ====== Other useful categories =====\n");
+        fprintf(stderr, "       ++++++ Other useful categories +++++\n");
         fprintf(stderr, "\n");
         int32_t other_vtypes[3] = {VT_NAIVE_CLUMPED, VT_BLKSUB, VT_CPLXSUB};
 
@@ -385,7 +381,7 @@ class Igor : Program
             int32_t vtype = other_vtypes[i];
             
             if (!VAR_COUNT[POLYMORPHIC][vtype])  continue;
-            std::string variant_desc = vtype==VT_BLKSUB ? "Block Substitutions" : (vtype==VT_NAIVE_CLUMPED ? "Clumped Variants" : "Complex Substitutions");
+            std::string variant_desc = vtype==VT_BLKSUB ? "block substitutions" : (vtype==VT_NAIVE_CLUMPED ? "clumped variants" : "complex substitutions");
             fprintf(stderr, "       no. of %-21s       : %10d\n", variant_desc.c_str(), VAR_COUNT[POLYMORPHIC][vtype]);
             for (int32_t no_alleles=1; no_alleles<=4; ++no_alleles)
             {
@@ -409,7 +405,7 @@ class Igor : Program
         fprintf(stderr, "       ======= Structural variants ========\n");
         fprintf(stderr, "\n");
         std::vector<SVNode*> s = sv->enumerate_dfs();
-        fprintf(stderr, "       no. of Structural variants         : %10d\n", s[0]->count+s[0]->mcount);
+        fprintf(stderr, "       no. of structural variants         : %10d\n", s[0]->count+s[0]->mcount);
         if (s[0]->count)
         {
             fprintf(stderr, "           2 alleles                      : %15d\n", s[0]->count);
