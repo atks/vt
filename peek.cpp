@@ -36,9 +36,9 @@
 #define NO_BASIC_VARIANT_CATEGORIES 16
 #define NO_ALLELE_CATEGORIES 8
 
-#define VT_NAIVE_CLUMPED 17
-#define VT_BLKSUB     18
-#define VT_CPLXSUB      19
+#define VT_NAIVE_CLUMPED   17
+#define VT_BLKSUB          18
+#define VT_CPLXSUB         19
 
 namespace
 {
@@ -355,6 +355,7 @@ class Igor : Program
         for (int32_t i=0; i<16; ++i)
         {
             int32_t vtype = vtypes[i];
+            if (!VAR_COUNT[POLYMORPHIC][vtype]) continue;
             fprintf(stderr, "       no. of %-21s       : %10d\n", vm->vtype2string(vtype).c_str(), VAR_COUNT[POLYMORPHIC][vtype]);
             for (int32_t no_alleles=1; no_alleles<=4; ++no_alleles)
             {
@@ -377,12 +378,14 @@ class Igor : Program
         }
         fprintf(stderr, "       ====== Other useful categories =====\n");
         fprintf(stderr, "\n");
-        int32_t other_vtypes[2] = {VT_BLKSUB, VT_CPLXSUB};
+        int32_t other_vtypes[3] = {VT_NAIVE_CLUMPED, VT_BLKSUB, VT_CPLXSUB};
 
-        for (int32_t i=0; i<2; ++i)
+        for (int32_t i=0; i<3; ++i)
         {
             int32_t vtype = other_vtypes[i];
-            std::string variant_desc = vtype==VT_BLKSUB ? "Block Substitutions" : "Complex Substitutions";
+            
+            if (!VAR_COUNT[POLYMORPHIC][vtype])  continue;
+            std::string variant_desc = vtype==VT_BLKSUB ? "Block Substitutions" : (vtype==VT_NAIVE_CLUMPED ? "Clumped Variants" : "Complex Substitutions");
             fprintf(stderr, "       no. of %-21s       : %10d\n", variant_desc.c_str(), VAR_COUNT[POLYMORPHIC][vtype]);
             for (int32_t no_alleles=1; no_alleles<=4; ++no_alleles)
             {
@@ -396,8 +399,8 @@ class Igor : Program
                     {
                         fprintf(stderr, "           %d alleles                      : %15d", no_alleles+1, VAR_COUNT[no_alleles][vtype]);
                     }
-                    if (vtype&(VT_SNP|VT_MNP)) fprintf(stderr, " (%.2f) [%d/%d]", (float)VAR_TS[no_alleles][vtype]/VAR_TV[no_alleles][vtype], VAR_TS[no_alleles][vtype],VAR_TV[no_alleles][vtype]);
-                    if (vtype&VT_INDEL) fprintf(stderr, " (%.2f) [%d/%d]", (float)VAR_INS[no_alleles][vtype]/VAR_DEL[no_alleles][vtype], VAR_INS[no_alleles][vtype], VAR_DEL[no_alleles][vtype]); 
+                    fprintf(stderr, " (%.2f) [%d/%d]", (float)VAR_TS[no_alleles][vtype]/VAR_TV[no_alleles][vtype], VAR_TS[no_alleles][vtype],VAR_TV[no_alleles][vtype]);
+                    if (vtype!=VT_BLKSUB) fprintf(stderr, " (%.2f) [%d/%d]", (float)VAR_INS[no_alleles][vtype]/VAR_DEL[no_alleles][vtype], VAR_INS[no_alleles][vtype], VAR_DEL[no_alleles][vtype]); 
                     fprintf(stderr, "\n"); 
                 }                
             }
@@ -406,7 +409,7 @@ class Igor : Program
         fprintf(stderr, "       ======= Structural variants ========\n");
         fprintf(stderr, "\n");
         std::vector<SVNode*> s = sv->enumerate_dfs();
-        fprintf(stderr, "       no. of structural variants         : %10d\n", s[0]->count+s[0]->mcount);
+        fprintf(stderr, "       no. of Structural variants         : %10d\n", s[0]->count+s[0]->mcount);
         if (s[0]->count)
         {
             fprintf(stderr, "           2 alleles                      : %15d\n", s[0]->count);
