@@ -358,31 +358,19 @@ class Igor : Program
             fprintf(stderr, "       no. of %-21s       : %10d\n", vm->vtype2string(vtype).c_str(), VAR_COUNT[POLYMORPHIC][vtype]);
             for (int32_t no_alleles=1; no_alleles<=4; ++no_alleles)
             {
-                if (no_alleles<4)
+                if (VAR_COUNT[no_alleles][vtype])
                 {
-                    if (VAR_COUNT[no_alleles][vtype])
-                    {
-                        fprintf(stderr, "           %d alleles                      : %15d (%.2f) [%d/%d] (%.2f) [%d/%d]\n", no_alleles+1, VAR_COUNT[no_alleles][vtype],
-                                                             (float)VAR_TS[no_alleles][vtype]/VAR_TV[no_alleles][vtype],
-                                                             VAR_TS[no_alleles][vtype],
-                                                             VAR_TV[no_alleles][vtype],
-                                                             (float)VAR_INS[no_alleles][vtype]/VAR_DEL[no_alleles][vtype],
-                                                             VAR_INS[no_alleles][vtype],
-                                                             VAR_DEL[no_alleles][vtype]);
+                    if (no_alleles==4)
+                    {    
+                        fprintf(stderr, "           >=%d alleles                    : %15d", no_alleles+1, VAR_COUNT[no_alleles][vtype]);
                     }
-                }
-                else
-                {
-                    if (VAR_COUNT[GE_PENTAALLELIC][vtype])
+                    else
                     {
-                        fprintf(stderr, "           >=5 alleles                    : %15d (%.2f) [%d/%d] (%.2f) [%d/%d]\n", VAR_COUNT[GE_PENTAALLELIC][vtype],
-                                                             (float)VAR_TS[GE_PENTAALLELIC][vtype]/VAR_TV[GE_PENTAALLELIC][vtype],
-                                                             VAR_TS[GE_PENTAALLELIC][vtype],
-                                                             VAR_TV[GE_PENTAALLELIC][vtype],
-                                                             (float)VAR_INS[GE_PENTAALLELIC][vtype]/VAR_DEL[GE_PENTAALLELIC][vtype],
-                                                             VAR_INS[GE_PENTAALLELIC][vtype],
-                                                             VAR_DEL[GE_PENTAALLELIC][vtype]);
+                        fprintf(stderr, "           %d alleles                      : %15d", no_alleles+1, VAR_COUNT[no_alleles][vtype]);
                     }
+                    if (vtype&(VT_SNP|VT_MNP)) fprintf(stderr, " (%.2f) [%d/%d]", (float)VAR_TS[no_alleles][vtype]/VAR_TV[no_alleles][vtype], VAR_TS[no_alleles][vtype],VAR_TV[no_alleles][vtype]);
+                    if (vtype&VT_INDEL) fprintf(stderr, " (%.2f) [%d/%d]", (float)VAR_INS[no_alleles][vtype]/VAR_DEL[no_alleles][vtype], VAR_INS[no_alleles][vtype], VAR_DEL[no_alleles][vtype]); 
+                    fprintf(stderr, "\n");                                   
                 }
             }
             fprintf(stderr, "\n");
@@ -398,32 +386,20 @@ class Igor : Program
             fprintf(stderr, "       no. of %-21s       : %10d\n", variant_desc.c_str(), VAR_COUNT[POLYMORPHIC][vtype]);
             for (int32_t no_alleles=1; no_alleles<=4; ++no_alleles)
             {
-                if (no_alleles<4)
+                if (VAR_COUNT[no_alleles][vtype])
                 {
-                    if (VAR_COUNT[no_alleles][vtype])
-                    {
-                        fprintf(stderr, "           %d alleles                      : %15d (%.2f) [%d/%d] (%.2f) [%d/%d]\n", no_alleles+1, VAR_COUNT[no_alleles][vtype],
-                                                             (float)VAR_TS[no_alleles][vtype]/VAR_TV[no_alleles][vtype],
-                                                             VAR_TS[no_alleles][vtype],
-                                                             VAR_TV[no_alleles][vtype],
-                                                             (float)VAR_INS[no_alleles][vtype]/VAR_DEL[no_alleles][vtype],
-                                                             VAR_INS[no_alleles][vtype],
-                                                             VAR_DEL[no_alleles][vtype]);
+                    if (no_alleles==4)
+                    {    
+                        fprintf(stderr, "           >=%d alleles                    : %15d", no_alleles+1, VAR_COUNT[no_alleles][vtype]);
                     }
-                }
-                else
-                {
-                    if (VAR_COUNT[GE_PENTAALLELIC][vtype])
+                    else
                     {
-                        fprintf(stderr, "           >=5 alleles                    : %15d (%.2f) [%d/%d] (%.2f) [%d/%d]\n", VAR_COUNT[GE_PENTAALLELIC][vtype],
-                                                             (float)VAR_TS[GE_PENTAALLELIC][vtype]/VAR_TV[GE_PENTAALLELIC][vtype],
-                                                             VAR_TS[GE_PENTAALLELIC][vtype],
-                                                             VAR_TV[GE_PENTAALLELIC][vtype],
-                                                             (float)VAR_INS[GE_PENTAALLELIC][vtype]/VAR_DEL[GE_PENTAALLELIC][vtype],
-                                                             VAR_INS[GE_PENTAALLELIC][vtype],
-                                                             VAR_DEL[GE_PENTAALLELIC][vtype]);
+                        fprintf(stderr, "           %d alleles                      : %15d", no_alleles+1, VAR_COUNT[no_alleles][vtype]);
                     }
-                }
+                    if (vtype&(VT_SNP|VT_MNP)) fprintf(stderr, " (%.2f) [%d/%d]", (float)VAR_TS[no_alleles][vtype]/VAR_TV[no_alleles][vtype], VAR_TS[no_alleles][vtype],VAR_TV[no_alleles][vtype]);
+                    if (vtype&VT_INDEL) fprintf(stderr, " (%.2f) [%d/%d]", (float)VAR_INS[no_alleles][vtype]/VAR_DEL[no_alleles][vtype], VAR_INS[no_alleles][vtype], VAR_DEL[no_alleles][vtype]); 
+                    fprintf(stderr, "\n"); 
+                }                
             }
             fprintf(stderr, "\n");
         }

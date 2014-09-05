@@ -110,7 +110,7 @@ class Igor : Program
         bcf_hdr_set_version(odw->hdr, "VCFv4.1");
         bcf_hdr_transfer_contigs(sr->hdrs[0], odw->hdr);
         bcf_hdr_append(odw->hdr, "##INFO=<ID=NCENTERS,Number=1,Type=Integer,Description=\"Number of centers with variant evidence.\">");
-        bcf_hdr_append(odw->hdr, "##INFO=<ID=CENTERS,Number=1,Type=String,Description=\"List of centers where variant is found.\">");
+        bcf_hdr_append(odw->hdr, "##INFO=<ID=CENTERS,Number=.,Type=String,Description=\"List of centers where variant is found.\">");
         odw->write_hdr();
 
         ///////////////
