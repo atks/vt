@@ -937,6 +937,7 @@ void Filter::parse(const char* exp, int32_t len, Node *node, bool debug)
 
             if(ctype!=-1)
             {
+                if (debug) std::cerr<< "\ttype : " << ctype << " \n";
                 //this implements order of operations
                 if (ctype<type)
                 {
@@ -952,11 +953,12 @@ void Filter::parse(const char* exp, int32_t len, Node *node, bool debug)
             ++r;
         }
 
-        if (type==-1)
+        //valid binary operator not found
+        if (type==INT_MAX)
         {
             kstring_t s = {0,0,0};
             kputsn(exp, len, &s);
-            fprintf(stderr, "[%s:%d %s] expression not correct %s\n", __FILE__, __LINE__, __FUNCTION__, s.s);
+            fprintf(stderr, "[%s:%d %s] binary operator not found in \"%s\". Valid operators are  ==,!=,&&,||,&,|,+,-,*,/\n", __FILE__, __LINE__, __FUNCTION__, s.s);
             if (s.m) free(s.s);
             exit(1);
         }
@@ -978,6 +980,8 @@ void Filter::parse(const char* exp, int32_t len, Node *node, bool debug)
  */
 bool Filter::is_unary_op(const char* exp, int32_t len, bool debug)
 {
+    //check to make sure not a binary operator
+
     //NOT operator
     if (exp[0]=='~')
     {
@@ -987,6 +991,48 @@ bool Filter::is_unary_op(const char* exp, int32_t len, bool debug)
     
     if (debug) std::cerr << "\tis not unary op\n";
     return false;
+}
+
+/**
+ * Checks if exp is a binary op.
+ */
+bool Filter::is_binary_op(const char* exp, int32_t len, bool debug)
+{
+    const char* p = exp; //points to end of first part
+    const char* q = exp; //points to start of second part
+    const char* r = exp; //for iteration
+
+    int32_t type = INT_MAX;
+
+    while(r-exp!=len)
+    {
+        //bypasses bracketed expressions
+        fwd_to_closing_bracket(r, len);
+
+        int32_t oplen = -1;
+        int32_t ctype = peek_op(r, len, oplen, debug);
+
+        if(ctype!=-1)
+        {
+            if (debug) std::cerr<< "\ttype : " << ctype << " \n";
+            
+            //this implements order of operations
+            if (ctype<type)
+            {
+                if (debug) std::cerr<< "\tupdating type\n";
+                type = ctype;
+                p = r-1;
+                q = r+oplen;
+            }
+
+            r += oplen-1;
+        }
+
+        ++r;
+    }
+
+    
+
 }
 
 
