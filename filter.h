@@ -82,7 +82,7 @@ class Node
 
     int32_t type;      // data type
     kstring_t tag; // store the INFO tag of a BCF type
-    
+
     bool value_exists; // if value exists
 
     kstring_t s;   // string value
@@ -158,7 +158,7 @@ class Filter
      * Recursive call for parse.
      */
     void parse(const char* exp, int32_t len, Node * node, bool debug=false);
-   
+
     /**
      * Checks if exp is a literal.
      */
@@ -168,6 +168,11 @@ class Filter
      * Checks if exp is a unary op.
      */
     bool is_unary_op(const char* exp, int32_t len, bool debug=false);
+
+    /**
+     * Checks if exp is a binary op.
+     */
+    bool is_binary_op(const char* exp, int32_t len, bool debug);
 
     /**
      * Parse literals.
