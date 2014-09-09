@@ -415,7 +415,7 @@ int32_t VariantManip::classify_variant(const char* chrom, uint32_t pos1, char** 
             {
                 for (int32_t j=0; j<mlen; ++j)
                 {
-                    if (REF.s[j]!=ALT.s[j])
+                    if (ref[j]!=alt[j])
                     {
                         ++diff;
 
