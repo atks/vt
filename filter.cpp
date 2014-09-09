@@ -55,7 +55,7 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
 {
     if (debug)
         std::cerr << "evaluation  "  << type << "\n";
-    
+
     //by default
     value_exists = true;
 
@@ -66,22 +66,22 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
             value_exists = false;
             return;
         }
-        
+
         if (type==VT_NOT)
         {
             if (debug)
                 std::cerr << "\tVT_NOT "   <<  left->b << " \n";
-            
+
             b = !(left->b);
             return;
         }
-        
+
         if (!right->value_exists)
         {
             value_exists = false;
             return;
         }
-        
+
         if (type==VT_AND)
         {
             if (debug)
@@ -102,7 +102,7 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
             value_exists = false;
             return;
         }
-        
+
         if (type==VT_EQ)
         {
             if ((left->type&VT_INT))
@@ -158,7 +158,7 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
         else if (type==VT_NE)
         {
             //fprintf(stderr, "[%s:%d %s] check: %s %s: !=\n", __FILE__, __LINE__, __FUNCTION__, type2string(left->type).c_str(), type2string(right->type).c_str());
-            
+
             if ((left->type&VT_INT))
             {
                 if ((right->type&VT_INT))
@@ -348,7 +348,7 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
     else if (type&VT_BCF_OP)
     {
         value_exists = true;
-        
+
         if (type==VT_FILTER)
         {
             if (bcf_has_filter(h, v, tag.s)!=1)
@@ -393,7 +393,7 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
                 {
                     value_exists = false;
                 }
-                
+
                 if (ns) free(is);
             }
             else if (info_type==BCF_HT_REAL)
@@ -409,7 +409,7 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
                 {
                     value_exists = false;
                 }
-                
+
                 if (ns) free(fs);
             }
             else if (info_type==BCF_HT_STR)
@@ -483,7 +483,7 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
             {
                 b = false;
             }
-            
+
             if (debug)
                 std::cerr << "\tVT_INFO|VT_FLG "   << i << " " << f << " " << b << " " << s.s <<  " \n";
         }
@@ -523,7 +523,7 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
             value_exists = false;
             return;
         }
-        
+
         if ((type&8207)==VT_ADD)
         {
             if ((left->type&VT_INT))
@@ -814,7 +814,7 @@ Filter::Filter()
 /**
  * Constructor with expression initialization.
  */
-Filter::Filter(std::string exp, VariantManip *vm)
+Filter::Filter(std::string exp)
 {
     this->tree = NULL;
     parse(exp.c_str(), false);
@@ -825,7 +825,6 @@ Filter::Filter(std::string exp, VariantManip *vm)
  */
 void Filter::parse(const char* exp, bool debug)
 {
-    need_to_classify_variant = false;
     if (strlen(exp)!=0)
     {
         if (tree!=NULL)
@@ -838,12 +837,12 @@ void Filter::parse(const char* exp, bool debug)
             tree = new Node();
             parse(exp, strlen(exp), tree, debug);
         }
-    
+
         if (!tree->type&VT_BOOL)
         {
             fprintf(stderr, "[%s:%d %s] filter expression not boolean %s\n", __FILE__, __LINE__, __FUNCTION__, exp);
             exit(1);
-        } 
+        }
     }
     else
     {
@@ -869,7 +868,7 @@ bool Filter::apply(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug) //recu
     apply(tree, debug);
     if (debug) std::cerr << "==========\n";
 
-    
+
     if (tree->value_exists)
     {
         return tree->b;
@@ -912,7 +911,7 @@ void Filter::parse(const char* exp, int32_t len, Node *node, bool debug)
     {
         node->type = VT_NOT;
         if (debug) std::cerr << "\tis not_op\n";
-        
+
         node->left = new Node();
         parse(exp+1, len-1, node->left, debug);
     }
@@ -920,7 +919,7 @@ void Filter::parse(const char* exp, int32_t len, Node *node, bool debug)
     else
     {
         if (debug) std::cerr << "\tis binary op\n";
-        
+
         const char* p = exp; //points to end of first part
         const char* q = exp; //points to start of second part
         const char* r = exp; //for iteration
@@ -987,8 +986,8 @@ bool Filter::is_unary_op(const char* exp, int32_t len, bool debug)
     {
         if (debug) std::cerr << "\tis unary op\n";
         return true;
-    }   
-    
+    }
+
     if (debug) std::cerr << "\tis not unary op\n";
     return false;
 }
@@ -1015,7 +1014,7 @@ bool Filter::is_binary_op(const char* exp, int32_t len, bool debug)
         if(ctype!=-1)
         {
             if (debug) std::cerr<< "\ttype : " << ctype << " \n";
-            
+
             //this implements order of operations
             if (ctype<type)
             {
@@ -1030,11 +1029,9 @@ bool Filter::is_binary_op(const char* exp, int32_t len, bool debug)
 
         ++r;
     }
-
     
-
+    return true;
 }
-
 
 /**
  * Check if exp is a literal (no binary operations, no unary operation).
@@ -1056,14 +1053,14 @@ bool Filter::is_literal(const char* exp, int32_t len, bool debug)
            *q=='~' ||
            (*q=='-' && exp!=q))
         {
-            if (debug) std::cerr << "\tis not literal\n"; 
+            if (debug) std::cerr << "\tis not literal\n";
             return false;
         }
 
         ++q;
     }
 
-    if (debug) std::cerr << "\tis literal\n"; 
+    if (debug) std::cerr << "\tis literal\n";
     return true;
 }
 
@@ -1099,7 +1096,6 @@ void Filter::parse_literal(const char* exp, int32_t len, Node * node, bool debug
     }
     else if (strncmp(exp, "VTYPE", 5)==0)
     {
-        need_to_classify_variant = true;
         node->type = VT_VARIANT_TYPE;
         if (debug) std::cerr << "\tis variant_op\n";
         return;
@@ -1112,7 +1108,6 @@ void Filter::parse_literal(const char* exp, int32_t len, Node * node, bool debug
     }
     else if (strncmp(exp, "INDEL", len)==0)
     {
-        need_to_classify_variant = true;
         node->type = VT_INT;
         node->i = VT_INDEL;
         node->value_exists = true;
@@ -1121,7 +1116,6 @@ void Filter::parse_literal(const char* exp, int32_t len, Node * node, bool debug
     }
     else if (strncmp(exp, "SNP", len)==0)
     {
-        need_to_classify_variant = true;
         node->type = VT_INT;
         node->i = VT_SNP;
         node->value_exists = true;
@@ -1130,7 +1124,6 @@ void Filter::parse_literal(const char* exp, int32_t len, Node * node, bool debug
     }
     else if (strncmp(exp, "MNP", len)==0)
     {
-        need_to_classify_variant = true;
         node->type = VT_INT;
         node->i = VT_MNP;
         node->value_exists = true;
@@ -1139,7 +1132,6 @@ void Filter::parse_literal(const char* exp, int32_t len, Node * node, bool debug
     }
     else if (strncmp(exp, "CLUMPED", len)==0)
     {
-        need_to_classify_variant = true;
         node->type = VT_INT;
         node->i = VT_CLUMPED;
         node->value_exists = true;
@@ -1148,7 +1140,6 @@ void Filter::parse_literal(const char* exp, int32_t len, Node * node, bool debug
     }
     else if (strncmp(exp, "SV", len)==0)
     {
-        need_to_classify_variant = true;
         node->type = VT_INT;
         node->i = VT_SV;
         if (debug) std::cerr << "\tis SV\n";
@@ -1156,7 +1147,6 @@ void Filter::parse_literal(const char* exp, int32_t len, Node * node, bool debug
     }
     else if (strncmp(exp, "REF", len)==0)
     {
-        need_to_classify_variant = true;
         node->type = VT_INT;
         node->i = VT_REF;
         node->value_exists = true;
@@ -1165,7 +1155,6 @@ void Filter::parse_literal(const char* exp, int32_t len, Node * node, bool debug
     }
     else if (strncmp(exp, "DLEN", len)==0)
     {
-        need_to_classify_variant = true;
         node->type = VT_VARIANT_DLEN;
         node->value_exists = false;
         if (debug) std::cerr << "\tis dlen\n";
@@ -1173,7 +1162,6 @@ void Filter::parse_literal(const char* exp, int32_t len, Node * node, bool debug
     }
     else if (strncmp(exp, "LEN", len)==0)
     {
-        need_to_classify_variant = true;
         node->type = VT_VARIANT_LEN;
         node->value_exists = false;
         if (debug) std::cerr << "\tis len\n";
@@ -1220,7 +1208,7 @@ void Filter::parse_literal(const char* exp, int32_t len, Node * node, bool debug
             if (debug) std::cerr << "\tis string\n";
             return;
         }
-        
+
         if (node->type==VT_UNKNOWN)
         {
             kstring_t s = {0,0,0};
@@ -1556,4 +1544,4 @@ void Filter::apply(Node* node, bool debug)
     }
 
     node->evaluate(h, v, variant, debug);
-}
+};

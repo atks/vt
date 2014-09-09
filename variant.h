@@ -26,7 +26,9 @@
 #include <iostream>
 #include <vector>
 #include "htslib/kstring.h"
+#include "htslib/vcf.h"
 #include "allele.h"
+#include "hts_utils.h"
 
 #ifndef VARIANT_H
 #define VARIANT_H
@@ -56,6 +58,26 @@ class Variant
     ~Variant();
 
     /**
+     * Classifies variants.
+     */
+    int32_t classify_variant(bcf_hdr_t *h, bcf1_t *v, Variant& variant, bool in_situ_left_trimming = true);
+
+    /**
+     * Classifies variants.
+     */
+    int32_t classify_variant(bcf_hdr_t *h, bcf1_t *v);
+
+    /**
+     * Classifies variants.
+     */
+    int32_t classify_variant(const char* chrom, uint32_t pos1, char** allele, int32_t n_allele, Variant& variant, bool in_situ_left_trimming = true);
+
+    /**
+     * Classifies variants.
+     */
+    int32_t classify_variant(const char* chrom, uint32_t pos1, char** allele, int32_t n_allele);
+
+    /**
      * Prints variant information.
      */
     void print();
@@ -69,7 +91,7 @@ class Variant
      * Converts VTYPE to string.
      */
     std::string vtype2string(int32_t VTYPE);
-            
+
     /**
      * Clears variant information.
      */

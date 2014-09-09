@@ -50,14 +50,14 @@ class Igor : Program
     ///////
     BCFOrderedReader *odr;
     BCFOrderedWriter *odw;
-    
+
     //////////
     //filter//
     //////////
     std::string fexp;
     Filter filter;
     bool filter_exists;
-    
+
     /////////
     //stats//
     /////////
@@ -125,13 +125,13 @@ class Igor : Program
         bcf_hdr_append(odw->hdr, "##INFO=<ID=VT,Number=1,Type=String,Description=\"Variant Type - SNP, MNP, INDEL, CLUMPED\">");
         bcf_hdr_append(odw->hdr, "##INFO=<ID=RU,Number=1,Type=String,Description=\"Repeat unit in a STR or Homopolymer\">");
         bcf_hdr_append(odw->hdr, "##INFO=<ID=RL,Number=1,Type=Integer,Description=\"Repeat Length\">");
-        
+
         /////////////////////////
         //filter initialization//
         /////////////////////////
         filter.parse(fexp.c_str(), false);
         filter_exists = fexp=="" ? false : true;
-        
+
         ///////////////////////
         //tool initialization//
         ///////////////////////
@@ -188,7 +188,7 @@ class Igor : Program
         {
             bcf_unpack(v, BCF_UN_STR);
             int32_t vtype = vm->classify_variant(odr->hdr, v, variant);
-            
+
             if (filter_exists)
             {
                 if (!filter.apply(odr->hdr, v, &variant, false))
@@ -196,7 +196,7 @@ class Igor : Program
                     continue;
                 }
             }
-            
+
             vm->vtype2string(vtype, &s);
             if (s.l)
             {
@@ -206,7 +206,7 @@ class Igor : Program
             std::string chrom = bcf_get_chrom(odr->hdr,v);
             int32_t start1 = bcf_get_pos1(v);
             int32_t end1 = bcf_get_end_pos1(v);
-        
+
             if (annotate_low_complexity_regions)
             {
                 if (orom_lcplx->overlaps_with(chrom, start1, end1))
@@ -224,7 +224,7 @@ class Igor : Program
             {
                 if (annotate_coding)
                 {
-                    bool overlap = false; 
+                    bool overlap = false;
                     if ((overlap = orom_gencode_cds->overlaps_with(chrom, start1, end1)))
                     {
                         if (abs(variant.alleles[0].dlen)%3!=0)
@@ -235,7 +235,7 @@ class Igor : Program
                         {
                             bcf_update_info_flag(odr->hdr, v, "GENCODE_NFS", "", 1);
                         }
-                    
+
                     }
                 }
             }
