@@ -163,7 +163,12 @@ class Igor : Program
         while (odr->read(v))
         {
             bcf_unpack(v, BCF_UN_INFO);
+
+
+            bcf_print(odr->hdr, v);
+
             int32_t vtype = vm->classify_variant(odr->hdr, v, variant, false); //false argument to ensure no trimming
+
 
             if (vtype & ambiguous_variant_types)
             {
@@ -182,6 +187,8 @@ class Igor : Program
                     alleles.push_back(std::string(bcf_get_alt(v, i)));
                 }
                 left_extended = left_trimmed = right_trimmed = 0;
+
+                
 
                 vm->right_trim_or_left_extend(alleles, pos1, chrom, left_extended, right_trimmed);
                 vm->left_trim(alleles, pos1, left_trimmed);
