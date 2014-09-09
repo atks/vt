@@ -37,15 +37,6 @@ class Igor : Program
     kstring_t output_vcf_index_file;
     bool print;
 
-    ///////
-    //i/o//
-    ///////
-
-    /////////
-    //stats//
-    /////////
-
-
     Igor(int argc, char **argv)
     {
         version = "0.5";
@@ -77,13 +68,6 @@ class Igor : Program
 
     void initialize()
     {
-        //////////////////////
-        //i/o initialization//
-        //////////////////////
-
-        ////////////////////////
-        //stats initialization//
-        ////////////////////////
     }
 
     void index()
@@ -115,7 +99,7 @@ class Igor : Program
 
             ret = tbx_index_build(input_vcf_file.c_str(), min_shift, &conf);
         }
-        
+
         if (ret)
         {
             fprintf(stderr, "[%s:%d %s] Index load fail: %s\n", __FILE__, __LINE__, __FUNCTION__, input_vcf_file.c_str());
@@ -142,7 +126,6 @@ class Igor : Program
 
     private:
 };
-
 }
 
 bool index(int argc, char ** argv)

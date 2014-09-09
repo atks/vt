@@ -460,7 +460,7 @@ int32_t VariantManip::classify_variant(const char* chrom, uint32_t pos1, char** 
         }
     }
 
-    //addtionally define MNPs by length of all alleles
+    //additionally define MNPs by length of all alleles
     if (!(v.type&VT_SV))
     {
         if (homogeneous_length && rlen>1)

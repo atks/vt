@@ -98,12 +98,12 @@ class VariantManip
      * Converts VTYPE to string.
      */
     void vtype2string(int32_t vtype, kstring_t *s);
-    
+
     /**
      * Inspects variants.
      */
     int32_t inspect(char** allele, int32_t n_allele);
-        
+
     /**
      * Classifies variants.
      */
@@ -120,20 +120,20 @@ class VariantManip
     int32_t classify_variant(const char* chrom, uint32_t pos1, char** allele, int32_t n_allele, Variant& variant, bool in_situ_left_trimming = true);
 
     /**
-     * Checks if a variant is normalized.
-     */
-    bool is_normalized(char** alleles, int32_t n_allele);
-
-    /**
      * Classifies variants.
      */
     int32_t classify_variant(const char* chrom, uint32_t pos1, char** allele, int32_t n_allele);
 
     /**
+     * Checks if a variant is normalized.
+     */
+    bool is_normalized(char** alleles, int32_t n_allele);
+
+    /**
      * Right trims or left extend a variant.
      */
     void right_trim_or_left_extend(std::vector<std::string>& alleles, uint32_t& pos1, const char* chrom, uint32_t& left_extended, uint32_t& right_trimmed);
-        
+
     /**
      * Left trims a variant with unnecesary nucleotides.
      */

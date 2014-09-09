@@ -125,8 +125,7 @@ class Filter
     bcf_hdr_t *h;
     bcf1_t *v;
     Variant *variant;
-    bool need_to_classify_variant;
-
+    
     /**
      * Constructor.
      */
@@ -135,7 +134,7 @@ class Filter
     /**
      * Constructor with expression initialization.
      */
-    Filter(std::string exp, VariantManip *vm=NULL);
+    Filter(std::string exp);
 
     /**
      * Parses filter expression.
