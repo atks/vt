@@ -494,6 +494,12 @@ void VariantManip::right_trim_or_left_extend(std::vector<std::string>& alleles, 
                     to_right_trim = false;
                     //do not break here!!! you need to check for empty alleles that might exist!!!
                 }
+                
+                if (pos1==1 && alleles[i].size()==1)
+                {
+                    to_right_trim = false;
+                    break;
+                }
             }
             else
             {
@@ -502,7 +508,7 @@ void VariantManip::right_trim_or_left_extend(std::vector<std::string>& alleles, 
                 break;
             }
         }
-
+        
         if (to_right_trim)
         {
             for (size_t i=0; i<alleles.size(); ++i)
