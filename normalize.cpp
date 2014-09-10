@@ -171,7 +171,7 @@ class Igor : Program
                 uint32_t pos1 = bcf_get_pos1(v);
 
                 std::vector<std::string> alleles;
-                for (uint32_t i=0; i<bcf_get_n_allele(v); ++i)
+                for (size_t i=0; i<bcf_get_n_allele(v); ++i)
                 {
                     char *s = bcf_get_alt(v, i);
                     while (*s)

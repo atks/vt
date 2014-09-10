@@ -157,7 +157,6 @@ int32_t Variant::classify_variant(const char* chrom, uint32_t pos1, char** allel
                 alt = ALT.s;
             }
 
-
             int32_t mlen = std::min(rl, al);
             int32_t dlen = al-rl;
             int32_t diff = 0;
