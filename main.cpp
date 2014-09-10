@@ -57,6 +57,7 @@
 #include "test.h"
 #include "config.h"
 #include "union_variants.h"
+#include "profile_fic_hwe.h"
 
 void print_time(double t)
 {

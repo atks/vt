@@ -71,7 +71,8 @@ SOURCES = program\
 		variant\
 		allele\
 		sv_tree\
-		union_variants
+		union_variants\
+		profile_fic_hwe\
 
 SOURCESONLY = main.cpp
 
