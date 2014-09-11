@@ -73,6 +73,7 @@ SOURCES = program\
 		sv_tree\
 		union_variants\
 		profile_fic_hwe\
+		context_filter\
 
 SOURCESONLY = main.cpp
 
