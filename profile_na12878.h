@@ -34,7 +34,7 @@
 #include "hts_utils.h"
 #include "filter.h"
 #include "program.h"
-#include "gencode.h"
+#include "ordered_region_overlap_matcher.h"
 
 void profile_na12878(int argc, char ** argv);
 
