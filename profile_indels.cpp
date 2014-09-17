@@ -100,7 +100,6 @@ class Igor : Program
     //common tools//
     ////////////////
     VariantManip *vm;
-    GENCODE *gc;
     OrderedRegionOverlapMatcher *orom_lcplx;
     OrderedRegionOverlapMatcher *orom_gencode_cds;
     
@@ -215,7 +214,6 @@ class Igor : Program
         for (size_t i=0; i<dataset_fexps.size(); ++i)
         {
             filters.push_back(Filter(dataset_fexps[i]));
-            //filters[i].parse(fexps[i].c_str());
             filter_exists.push_back(dataset_fexps[i]!="");
         }
         no_filters = filters.size();
@@ -266,7 +264,7 @@ class Igor : Program
                 presence[i]=0;
 
             //check existence
-            for (uint32_t i=0; i<current_recs.size(); ++i)
+            for (size_t i=0; i<current_recs.size(); ++i)
             {
                 int32_t index = current_recs[i]->file_index;
 
@@ -299,8 +297,7 @@ class Igor : Program
                     {
                         ++nfs;
                     }
-                }
-                
+                }                
                             
                 ++no_indels;
             }
@@ -316,7 +313,7 @@ class Igor : Program
             }
 
             //update overlap stats
-            for (uint32_t i=1; i<no_overlap_files; ++i)
+            for (size_t i=1; i<no_overlap_files; ++i)
             {
                 if (presence[0] && !presence[i])
                 {
