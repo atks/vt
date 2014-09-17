@@ -61,10 +61,15 @@ class Igor : Program
     std::string ref_data_sets_list;
     std::vector<GenomeInterval> intervals;
     std::string interval_list;
+
+    //////////////////////////////////////////////
+    //reference file info : to store in an object?
+    //////////////////////////////////////////////
     std::vector<std::string> dataset_labels;
     std::vector<std::string> dataset_types;
-    std::vector<OverlapStats> stats;
-    std::string gencode_gtf_file;
+    std::vector<std::string> dataset_fexps;
+    std::string cds_bed_file;
+    std::string cplx_bed_file;
 
     ///////
     //i/o//
@@ -77,21 +82,25 @@ class Igor : Program
     //filter//
     //////////
     std::string fexp;
-    Filter filter;
-    bool filter_exists;
+    std::vector<Filter> filters;
+    std::vector<bool> filter_exists;
+    int32_t no_filters;
 
     /////////
     //stats//
     /////////
-    uint32_t no_snps;
-    uint32_t nonsyn;
-    uint32_t syn;
+    std::vector<OverlapStats> stats;
+    int32_t no_snps;
+    int32_t nonsyn;
+    int32_t syn;
+    int32_t lcplx;
 
     ////////////////
     //common tools//
     ////////////////
     VariantManip *vm;
-    GENCODE *gc;
+    OrderedRegionOverlapMatcher *orom_lcplx;
+    OrderedRegionOverlapMatcher *orom_gencode_cds;
 
     Igor(int argc, char ** argv)
     {
@@ -109,7 +118,7 @@ class Igor : Program
             TCLAP::ValueArg<std::string> arg_intervals("i", "i", "intervals []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "file", cmd);
             TCLAP::ValueArg<std::string> arg_ref_data_sets_list("g", "g", "file containing list of reference datasets []", false, "", "file", cmd);
-            TCLAP::ValueArg<std::string> arg_fexp("f", "f", "filter expression []", false, "", "str", cmd);
+            TCLAP::ValueArg<std::string> arg_fexp("f", "f", "filter expression []", false, "VTYPE==SNP", "str", cmd);
             TCLAP::UnlabeledValueArg<std::string> arg_input_vcf_file("<in.vcf>", "input VCF file", true, "","file", cmd);
 
             cmd.parse(argc, argv);
@@ -157,6 +166,7 @@ class Igor : Program
         input_vcf_files.push_back(input_vcf_file);
         dataset_labels.push_back("data");
         dataset_types.push_back("ref");
+        dataset_fexps.push_back(fexp);
 
         htsFile *hts = hts_open(ref_data_sets_list.c_str(), "r");
         kstring_t s = {0,0,0};
@@ -173,11 +183,16 @@ class Igor : Program
             {
                 dataset_labels.push_back(vec[0]);
                 dataset_types.push_back(vec[1]);
-                input_vcf_files.push_back(vec[3]);
+                dataset_fexps.push_back(vec[2]);
+                input_vcf_files.push_back(vec[3]);;
             }
-            else if (vec[1] == "annotation")
+            else if (vec[1] == "cds_annotation")
             {
-                gencode_gtf_file = vec[3];
+                cds_bed_file = vec[3];
+            }
+            else if (vec[1] == "cplx_annotation")
+            {
+                cplx_bed_file = vec[3];
             }
             else
             {
@@ -191,8 +206,12 @@ class Igor : Program
         /////////////////////////
         //filter initialization//
         /////////////////////////
-        filter.parse(fexp.c_str());
-        filter_exists = fexp=="" ? false : true;
+        for (size_t i=0; i<dataset_fexps.size(); ++i)
+        {
+            filters.push_back(Filter(dataset_fexps[i]));
+            filter_exists.push_back(dataset_fexps[i]!="");
+        }
+        no_filters = filters.size();
 
         //////////////////////
         //i/o initialization//
@@ -203,7 +222,8 @@ class Igor : Program
         //tool initialization//
         ///////////////////////
         vm = new VariantManip(ref_fasta_file);
-        gc = new GENCODE(gencode_gtf_file, ref_fasta_file);
+        orom_gencode_cds = new OrderedRegionOverlapMatcher(cds_bed_file);
+        orom_lcplx = new OrderedRegionOverlapMatcher(cplx_bed_file);
 
         ////////////////////////
         //stats initialization//
@@ -230,63 +250,37 @@ class Igor : Program
             bcf_hdr_t *h = current_recs[0]->h;
             int32_t vtype = vm->classify_variant(h, v, variant);
 
-            if (bcf_get_n_allele(v)!=2 || !(vtype&VT_SNP))
+            //check existence
+            for (size_t i=0; i<current_recs.size(); ++i)
             {
-                if (filter_exists)
+                int32_t index = current_recs[i]->file_index;
+
+                if (filter_exists[index])
                 {
-                    if (!filter.apply(h,v,&variant))
+                    if (!filters[index].apply(h,v,&variant))
                     {
                         continue;
                     }
-                }    
-                else
-                {
-                    continue;
                 }
+
+                ++presence[index];
             }
-
-            std::string chrom = bcf_get_chrom(h,v);
-            int32_t start1 = bcf_get_pos1(v);
-            int32_t end1 = bcf_get_end_pos1(v);
-
-            //check existence
-            for (uint32_t i=0; i<current_recs.size(); ++i)
-            {
-                ++presence[current_recs[i]->file_index];
-            }
-
+            
             //annotate
             if (presence[0])
             {
-                gc->search(chrom, start1+1, end1, overlaps);
-
-                bool cds_found = false;
-                bool is_nonsyn = false;
-                    
-                for (int32_t i=0; i<overlaps.size(); ++i)
+                std::string chrom = bcf_get_chrom(h,v);
+                int32_t start1 = bcf_get_pos1(v);
+                int32_t end1 = bcf_get_end_pos1(v);
+                
+                if (orom_lcplx->overlaps_with(chrom, start1, end1))
                 {
-                    GENCODERecord *rec = (GENCODERecord *) overlaps[i];
-                    if (rec->feature==GC_FT_CDS)
-                    {
-                        cds_found = true;
-                        if (abs(variant.alleles[0].dlen)%3!=0)
-                        {
-                            is_nonsyn = true;
-                            break;
-                        }
-                    }
+                    ++lcplx;
                 }
 
-                if (cds_found)
+                if (orom_gencode_cds->overlaps_with(chrom, start1, end1))
                 {
-                    if (is_nonsyn)
-                    {
-                        ++nonsyn;
-                    }
-                    else
-                    {
-                        ++syn;
-                    }
+                    ++nonsyn;
                 }
 
                 ++no_snps;
@@ -303,7 +297,7 @@ class Igor : Program
             }
 
             //update overlap stats
-            for (uint32_t i=1; i<no_overlap_files; ++i)
+            for (size_t i=1; i<no_overlap_files; ++i)
             {
                 if (presence[0] && !presence[i])
                 {
