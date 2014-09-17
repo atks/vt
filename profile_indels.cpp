@@ -72,7 +72,7 @@ class Igor : Program
     std::vector<std::string> dataset_fexps;
     std::string cds_bed_file;
     std::string cplx_bed_file;
-           
+
     ///////
     //i/o//
     ///////
@@ -102,7 +102,7 @@ class Igor : Program
     VariantManip *vm;
     OrderedRegionOverlapMatcher *orom_lcplx;
     OrderedRegionOverlapMatcher *orom_gencode_cds;
-    
+
     Igor(int argc, char ** argv)
     {
         //////////////////////////
@@ -118,7 +118,7 @@ class Igor : Program
             TCLAP::ValueArg<std::string> arg_ref_fasta_file("r", "r", "reference sequence fasta file []", true, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_intervals("i", "i", "intervals []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "file", cmd);
-            TCLAP::ValueArg<std::string> arg_fexp("f", "f", "filter expression []", false, "VTYPE!=SNP", "str", cmd);
+            TCLAP::ValueArg<std::string> arg_fexp("f", "f", "filter expression []", false, "VTYPE==INDEL", "str", cmd);
             TCLAP::ValueArg<std::string> arg_output_tabulate_dir("x", "x", "output latex directory [tabulate_indels]", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_output_pdf_file("y", "y", "output pdf file [indels.pdf]", false, "indels.pdf", "str", cmd);
             TCLAP::ValueArg<std::string> arg_ref_data_sets_list("g", "g", "file containing list of reference datasets []", true, "", "file", cmd);
@@ -172,7 +172,7 @@ class Igor : Program
         dataset_labels.push_back("data");
         dataset_types.push_back("ref");
         dataset_fexps.push_back(fexp);
-        
+
         htsFile *hts = hts_open(ref_data_sets_list.c_str(), "r");
         kstring_t s = {0,0,0};
         std::vector<std::string> vec;
@@ -260,7 +260,7 @@ class Igor : Program
             int32_t start1 = bcf_get_pos1(v);
             int32_t end1 = bcf_get_end_pos1(v);
 
-            for (uint32_t i=0; i<no_overlap_files; ++i)
+            for (size_t i=0; i<no_overlap_files; ++i)
                 presence[i]=0;
 
             //check existence
@@ -281,12 +281,12 @@ class Igor : Program
 
             //annotate
             if (presence[0])
-            {   
+            {
                 if (orom_lcplx->overlaps_with(chrom, start1, end1))
                 {
                     ++lcplx;
                 }
-            
+
                 if (orom_gencode_cds->overlaps_with(chrom, start1, end1))
                 {
                     if (abs(variant.alleles[0].dlen)%3!=0)
@@ -297,8 +297,8 @@ class Igor : Program
                     {
                         ++nfs;
                     }
-                }                
-                            
+                }
+
                 ++no_indels;
             }
 
@@ -362,7 +362,7 @@ class Igor : Program
     void print_pdf()
     {
         if (output_tabulate_dir=="") return;
-        
+
         append_cwd(output_tabulate_dir);
 
         //generate file
