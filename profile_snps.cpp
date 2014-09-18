@@ -154,14 +154,13 @@ class Igor : Program
 //#           file is used for GENCODE annotation of frame shift and non frame shift Indels
 //# filter  - filter applied to variants for this particular data set
 //# path    - path of indexed BCF file
-//#dataset              type         filter           path
-//mills                 TP           INDEL            /net/fantasia/home/atks/dev/vt/ftp/grch37/mills.208620indels.sites.bcf
-//mills.chip            TP           INDEL            /net/fantasia/home/atks/dev/vt/ftp/grch37/mills.chip.158samples.8904indels.sites.bcf
-//mills.chip.common     TP           INDEL&&AF>0.005  /net/fantasia/home/atks/dev/vt/ftp/grch37/mills.chip.158samples.8904indels.sites.bcf
-//affy.exome.chip       TP           INDEL            /net/fantasia/home/atks/dev/vt/ftp/grch37/affy.exome.chip.1249samples.316520variants.sites.bcf
-//affy.exome.chip.poly  TP           INDEL&&AC!=0     /net/fantasia/home/atks/dev/vt/ftp/grch37/affy.exome.chip.1249samples.316520variants.sites.bcf
-//affy.exome.chip.mono  FP           INDEL&&AC=0      /net/fantasia/home/atks/dev/vt/ftp/grch37/affy.exome.chip.1249samples.316520variants.sites.bcf
-//gencode.v19           annotation   .                /net/fantasia/home/atks/dev/vt/ftp/grch37/gencode.v19.annotation.gtf.gz
+//#dataset     type            filter                                  path
+//Omni_POLY    TP              N_ALLELE==2&&VTYPE==SNP&&INFO.AC!=0     /net/fantasia/home/atks/ref/vt/grch37/omni.chip.sites.bcf
+//Omni_MONO    FP              N_ALLELE==2&&VTYPE==SNP&&INFO.AC==0     /net/fantasia/home/atks/ref/vt/grch37/omni.chip.sites.bcf
+//1000g        TP              N_ALLELE==2&&VTYPE==SNP                 /net/fantasia/home/atks/ref/vt/grch37/1000G.snps_indels.sites.bcf
+//dbsnp        TP              N_ALLELE==2&&VTYPE==SNP                 /net/fantasia/home/atks/ref/vt/grch37/dbsnp.13147541variants.sites.bcf
+//GENCODE_V19  cds_annotation  .                                       /net/fantasia/home/atks/ref/vt/grch37/gencode.cds.bed.gz
+//DUST         cplx_annotation .                                       /net/fantasia/home/atks/ref/vt/grch37/mdust.bed.gz
 
         input_vcf_files.push_back(input_vcf_file);
         dataset_labels.push_back("data");
@@ -250,6 +249,9 @@ class Igor : Program
             bcf_hdr_t *h = current_recs[0]->h;
             int32_t vtype = vm->classify_variant(h, v, variant);
 
+//            for (size_t i=0; i<no_overlap_files; ++i)
+//                presence[i]=0;
+//                
             //check existence
             for (size_t i=0; i<current_recs.size(); ++i)
             {
