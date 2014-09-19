@@ -1090,7 +1090,7 @@ class Igor : Program
             if (type == VCF_SNP)
             {
                 ++no_snps_genotyped;
-                //genotype_snp();
+                genotype_snp();
             }
             else if (type == VCF_MNP)
             {

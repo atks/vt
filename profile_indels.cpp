@@ -159,14 +159,12 @@ class Igor : Program
 //#           file is used for GENCODE annotation of frame shift and non frame shift Indels
 //# filter  - filter applied to variants for this particular data set
 //# path    - path of indexed BCF file
-//#dataset              type         filter           path
-//mills                 TP           INDEL            /net/fantasia/home/atks/dev/vt/ftp/grch37/mills.208620indels.sites.bcf
-//mills.chip            TP           INDEL            /net/fantasia/home/atks/dev/vt/ftp/grch37/mills.chip.158samples.8904indels.sites.bcf
-//mills.chip.common     TP           INDEL&&AF>0.005  /net/fantasia/home/atks/dev/vt/ftp/grch37/mills.chip.158samples.8904indels.sites.bcf
-//affy.exome.chip       TP           INDEL            /net/fantasia/home/atks/dev/vt/ftp/grch37/affy.exome.chip.1249samples.316520variants.sites.bcf
-//affy.exome.chip.poly  TP           INDEL&&AC!=0     /net/fantasia/home/atks/dev/vt/ftp/grch37/affy.exome.chip.1249samples.316520variants.sites.bcf
-//affy.exome.chip.mono  FP           INDEL&&AC=0      /net/fantasia/home/atks/dev/vt/ftp/grch37/affy.exome.chip.1249samples.316520variants.sites.bcf
-//gencode.v19           annotation   .                /net/fantasia/home/atks/dev/vt/ftp/grch37/gencode.v19.annotation.gtf.gz
+//#dataset     type            filter                       path
+//1000g        TP              N_ALLELE==2&&VTYPE==INDEL    /net/fantasia/home/atks/ref/vt/grch37/1000G.snps_indels.sites.bcf
+//mills        TP              N_ALLELE==2&&VTYPE==INDEL    /net/fantasia/home/atks/ref/vt/grch37/mills.208620indels.sites.bcf
+//dbsnp        TP              N_ALLELE==2&&VTYPE==INDEL    /net/fantasia/home/atks/ref/vt/grch37/dbsnp.13147541variants.sites.bcf
+//GENCODE_V19  cds_annotation  .                            /net/fantasia/home/atks/ref/vt/grch37/gencode.cds.bed.gz
+//DUST         cplx_annotation .                            /net/fantasia/home/atks/ref/vt/grch37/mdust.bed.gz
 
         input_vcf_files.push_back(input_vcf_file);
         dataset_labels.push_back("data");
