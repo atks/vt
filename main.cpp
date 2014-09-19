@@ -58,6 +58,7 @@
 #include "config.h"
 #include "union_variants.h"
 #include "profile_fic_hwe.h"
+#include "cross_compare.h"
 
 void print_time(double t)
 {
@@ -258,6 +259,10 @@ int main(int argc, char ** argv)
     {
         consolidate_variants(argc-1, ++argv);
     }
+    else if (argc>1 && cmd=="cross_compare")
+    {
+        cross_compare(argc-1, ++argv);
+    }    
     else
     {
         std::clog << "Command not found: " << argv[1] << "\n\n";
