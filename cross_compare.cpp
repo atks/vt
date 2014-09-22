@@ -1,6 +1,6 @@
 /* The MIT License
 
-   Copyright (c) 2013 Adrian Tan <atks@umich.edu>
+   Copyright (c) 2014 Adrian Tan <atks@umich.edu>
 
    Permission is hereby granted, free of charge, to any person obtaining a copy
    of this software and associated documentation files (the "Software"), to deal
@@ -104,7 +104,7 @@ class Igor : Program
         //////////////////////////
         try
         {
-            std::string desc = "profile Indels";
+            std::string desc = "Cross compares VCF files";
 
             version = "0.5";
             TCLAP::CmdLine cmd(desc, ' ', version);
@@ -113,22 +113,18 @@ class Igor : Program
             TCLAP::ValueArg<std::string> arg_intervals("i", "i", "intervals []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "file", cmd);
             TCLAP::ValueArg<std::string> arg_fexp("f", "f", "filter expression []", false, "VTYPE==INDEL", "str", cmd);
-            TCLAP::ValueArg<std::string> arg_output_tabulate_dir("x", "x", "output latex directory [tabulate_indels]", false, "", "str", cmd);
-            TCLAP::ValueArg<std::string> arg_output_pdf_file("y", "y", "output pdf file [indels.pdf]", false, "indels.pdf", "str", cmd);
+            TCLAP::ValueArg<std::string> arg_output_tabulate_dir("x", "x", "output latex directory []", false, "", "str", cmd);
+            TCLAP::ValueArg<std::string> arg_output_pdf_file("y", "y", "output pdf file []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_input_vcf_file_list("L", "L", "file containing list of input VCF files", false, "", "str", cmd);
             TCLAP::UnlabeledMultiArg<std::string> arg_input_vcf_files("<in1.vcf>...", "Multiple VCF files",false, "files", cmd);
             
             cmd.parse(argc, argv);
 
             parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
-            fexp = arg_fexp.getValue();
+            parse_filters(dataset_fexps, arg_fexp.getValue());
             output_tabulate_dir = arg_output_tabulate_dir.getValue();
             output_pdf_file = arg_output_pdf_file.getValue();
             parse_files(input_vcf_files, arg_input_vcf_files.getValue(), arg_input_vcf_file_list.getValue());
-            
-            ///////////////////////
-            //parse input VCF files
-            ///////////////////////
         }
         catch (TCLAP::ArgException &e)
         {

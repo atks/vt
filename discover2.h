@@ -21,21 +21,22 @@
    THE SOFTWARE.
 */
 
-#ifndef CROSS_COMPARE_H
-#define CROSS_COMPARE_H
+#ifndef DISCOVER2_H
+#define DISCOVER2_H
 
+#include <vector>
+#include <map>
 #include "htslib/vcf.h"
-#include "htslib/vcfutils.h"
-#include "htslib/kstring.h"
 #include "htslib/kseq.h"
-#include "htslib/hts.h"
-#include "bcf_synced_reader.h"
-#include "interval_tree.h"
-#include "hts_utils.h"
-#include "filter.h"
+#include "htslib/faidx.h"
 #include "program.h"
-#include "ordered_region_overlap_matcher.h"
+#include "hts_utils.h"
+#include "bam_ordered_reader.h"
+#include "bcf_ordered_reader.h"
+#include "bcf_ordered_writer.h"
+#include "variant_manip.h"
+#include "utils.h"
 
-void cross_compare(int argc, char ** argv);
+void discover2(int argc, char ** argv);
 
 #endif

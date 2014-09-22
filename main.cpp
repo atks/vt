@@ -59,6 +59,7 @@
 #include "union_variants.h"
 #include "profile_fic_hwe.h"
 #include "cross_compare.h"
+#include "discover2.h"
 
 void print_time(double t)
 {
@@ -191,6 +192,10 @@ int main(int argc, char ** argv)
     {
         discover(argc-1, ++argv);
     }
+    else if (argc>1 && cmd=="discover2")
+    {
+        discover2(argc-1, ++argv);
+    }    
     else if (argc>1 && cmd=="merge_candidate_variants")
     {
         merge_candidate_variants(argc-1, ++argv);

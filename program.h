@@ -77,7 +77,15 @@ class Program
      * @interval_string - comma delimited intervals in a string
      */
 	void parse_intervals(std::vector<GenomeInterval>& intervals, std::string interval_list, std::string interval_string);
-
+    
+    /**
+     * Parse filters. Processes the filter list first followed by the interval string. Duplicates are dropped.
+     *
+     * @filters       - filters stored in this vector
+     * @filter_string - comma delimited filters in a string
+     */
+    void parse_filters(std::vector<std::string>& filters, std::string filter_string);
+    
     /**
      * Parse samples. Processes the sample list. Duplicates are dropped.
      *

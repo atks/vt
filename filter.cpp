@@ -868,7 +868,6 @@ bool Filter::apply(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug) //recu
     apply(tree, debug);
     if (debug) std::cerr << "==========\n";
 
-
     if (tree->value_exists)
     {
         return tree->b;
