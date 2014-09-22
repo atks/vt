@@ -26,6 +26,14 @@
 namespace
 {
 
+typedef struct
+{
+  int32_t start1, end1;
+} interval_t;
+
+
+KHASH_MAP_INIT_STR(rdict, interval_t)
+
 class Igor : Program
 {
     public:
@@ -40,7 +48,7 @@ class Igor : Program
     std::string sample_id;
     uint32_t mapq_cutoff;
     uint32_t baseq_cutoff;
-    //takes on snps, mnps, indels
+
     std::string variant_type;
     uint32_t evidence_allele_count_cutoff;
     double fractional_evidence_allele_count_cutoff;
@@ -68,9 +76,8 @@ class Igor : Program
     /////////
     //tools//
     /////////
-    VariantHunter *variantHunter;
-    BCFOrderedWriter *odw;
-    
+    BAMVariantExtractor *bve;
+   
     Igor(int argc, char **argv)
     {
         version = "0.5";
@@ -138,24 +145,20 @@ class Igor : Program
 
         std::vector<std::string> variant_types;
         split(variant_types, ",", variant_type);
-        uint32_t vtype = 0;
-        for (uint32_t i = 0; i<variant_types.size(); ++i)
+        int32_t vtype = 0;
+        for (size_t i = 0; i<variant_types.size(); ++i)
         {
             if (variant_types[i] == "snps")
             {
-                vtype |= SNP;
-            }
-            else if (variant_types[i] == "mnps")
-            {
-                vtype |= MNP;
+                vtype |= VT_SNP;
             }
             else if (variant_types[i] == "indels")
             {
-                vtype |= INDEL;
+                vtype |= VT_INDEL;
             }
             else if (variant_types[i] == "all")
             {
-                vtype = SNP|MNP|INDEL;
+                vtype = VT_SNP|VT_INDEL;
             }
         }
 
@@ -177,12 +180,11 @@ class Igor : Program
             fprintf(stderr, "[%s:%d %s] Cannot load genome index: %s\n", __FILE__, __LINE__, __FUNCTION__, ref_fasta_file.c_str());
             exit(1);
         }
-        variantHunter = new VariantHunter(vtype,
+        bve = new BAMVariantExtractor(vtype,
                                     evidence_allele_count_cutoff,
                                     fractional_evidence_allele_count_cutoff,
                                     baseq_cutoff,
-                                    fai,
-                                    odw);
+                                    fai);
     }
 
     void discover()
@@ -258,12 +260,7 @@ class Igor : Program
                bam_print(s);
             }
 
-            variantHunter->process_read(odr->hdr, s);
-
-
-
-            variantHunter->output_read(odr->hdr, s);
-
+            bve->process_read(odr->hdr, s);
             ++no_passed_reads;
         }
 

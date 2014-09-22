@@ -21,24 +21,4 @@
    THE SOFTWARE.
 */
 
-#ifndef DISCOVER2_H
-#define DISCOVER2_H
-
-#include <vector>
-#include <map>
-#include "htslib/vcf.h"
-#include "htslib/kseq.h"
-#include "htslib/faidx.h"
-#include "program.h"
-#include "hts_utils.h"
-#include "bam_ordered_reader.h"
-#include "bcf_ordered_reader.h"
-#include "bcf_ordered_writer.h"
-#include "variant_manip.h"
-#include "utils.h"
-#include "allele.h"
-#include "bam_variant_extractor.h"
-
-void discover2(int argc, char ** argv);
-
-#endif
+#include "variant_buffer.h"
