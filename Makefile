@@ -74,7 +74,8 @@ SOURCES = program\
 		union_variants\
 		profile_fic_hwe\
 		context_filter\
-		cross_compare
+		cross_compare\
+		discover2
 
 SOURCESONLY = main.cpp
 

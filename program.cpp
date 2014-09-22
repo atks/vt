@@ -176,7 +176,7 @@ void Program::parse_intervals(std::vector<GenomeInterval>& intervals, std::strin
     if (interval_string!="")
         split(v, ",", interval_string);
 
-    for (uint32_t i=0; i<v.size(); ++i)
+    for (size_t i=0; i<v.size(); ++i)
     {
         if (m.find(v[i])==m.end())
         {
@@ -184,6 +184,27 @@ void Program::parse_intervals(std::vector<GenomeInterval>& intervals, std::strin
             GenomeInterval interval(v[i]);
             intervals.push_back(interval);
         }
+    }
+}
+
+
+/**
+ * Parse filters. Processes the filter list first followed by the interval string. Duplicates are dropped.
+ *
+ * @filters       - filters stored in this vector
+ * @filter_string - comma delimited filters in a string
+ */
+void Program::parse_filters(std::vector<std::string>& filters, std::string filter_string)
+{
+    filters.clear();
+
+    std::vector<std::string> v;
+    if (filter_string!="")
+        split(v, ",", filter_string);
+
+    for (size_t i=0; i<v.size(); ++i)
+    {
+        filters.push_back(v[i]);
     }
 }
 
@@ -217,7 +238,7 @@ void Program::print_int_op(const char* option_line, std::vector<GenomeInterval>&
     if (intervals.size()!=0)
     {
         std::clog << option_line;
-        for (uint32_t i=0; i<std::min((uint32_t)intervals.size(),(uint32_t)5); ++i)
+        for (size_t i=0; i<std::min((uint32_t)intervals.size(),(uint32_t)5); ++i)
         {
             if (i) std::clog << ",";
             std::clog << intervals[i].to_string();
@@ -237,7 +258,7 @@ void Program::print_ifiles(const char* option_line, std::vector<std::string>& fi
     if (files.size()!=0)
     {
         std::clog << option_line;
-        for (uint32_t i=0; i<std::min((uint32_t)files.size(),(uint32_t)2); ++i)
+        for (size_t i=0; i<std::min((uint32_t)files.size(),(uint32_t)2); ++i)
         {
             if (i) std::clog << ",";
             std::clog << files[i];
