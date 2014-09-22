@@ -75,7 +75,10 @@ SOURCES = program\
 		profile_fic_hwe\
 		context_filter\
 		cross_compare\
-		discover2
+		discover2\
+		bam_variant_extractor\
+		variant_buffer\
+		decompose_blocksub\
 
 SOURCESONLY = main.cpp
 
