@@ -51,6 +51,7 @@ typedef struct {
     int64_t len;
     uint64_t offset;
 } faidx1_t;
+
 KHASH_MAP_INIT_STR(s, faidx1_t)
 
 struct __faidx_t {
@@ -98,7 +99,7 @@ void bam_hdr_transfer_contigs_to_bcf_hdr(const bam_hdr_t *sh, bcf_hdr_t *vh);
 #define BAM_READ_INDEX_NA -1
 
 /**
- * Gets the start position of the first mapped base in the sequence.
+ * Gets the chromosome name of the tid.
  */
 #define bam_get_chrom(h, s) ((h)->target_name[(s)->core.tid])
 
@@ -193,6 +194,11 @@ void bam_get_base_and_qual_and_read_and_qual(bam1_t *s, uint32_t pos, char& base
  * Get read length
  */
 #define bam_get_l_qseq(s) ((s)->core.l_qseq)
+
+/**
+ * Prints a bam.
+ */
+void bam_print(bam1_t *s);
 
 /**************
  *BCF HDR UTILS

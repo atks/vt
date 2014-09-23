@@ -77,7 +77,7 @@ class Igor : Program
     //tools//
     /////////
     BAMVariantExtractor *bve;
-   
+
     Igor(int argc, char **argv)
     {
         version = "0.5";
@@ -139,8 +139,6 @@ class Igor : Program
         bcf_hdr_append(odw->hdr, "##FORMAT=<ID=N,Number=1,Type=Integer,Description=\"Total number of reads at a candidate locus with reads that contain evidence of the alternate allele\">");
         bcf_hdr_add_sample(odw->hdr, sample_id.c_str());
         bcf_hdr_add_sample(odw->hdr, NULL);
-        //bcf_hdr_set_n_sample(odw->hdr, 1);
-                                
         v = NULL;
 
         std::vector<std::string> variant_types;
@@ -174,17 +172,11 @@ class Igor : Program
         ////////////////////////
         //tools initialization//
         ////////////////////////
-        faidx_t *fai = fai_load(ref_fasta_file.c_str());
-        if (fai==NULL) 
-        {
-            fprintf(stderr, "[%s:%d %s] Cannot load genome index: %s\n", __FILE__, __LINE__, __FUNCTION__, ref_fasta_file.c_str());
-            exit(1);
-        }
         bve = new BAMVariantExtractor(vtype,
                                     evidence_allele_count_cutoff,
                                     fractional_evidence_allele_count_cutoff,
                                     baseq_cutoff,
-                                    fai);
+                                    ref_fasta_file);
     }
 
     void discover()
@@ -196,8 +188,10 @@ class Igor : Program
         khiter_t k;
         int32_t ret;
 
+        bcf1_t *v = bcf_init();;
+
         while (odr->read(s))
-        {   
+        {
             ++no_reads;
 
             //this read is the first of the pair
@@ -255,52 +249,25 @@ class Igor : Program
                 continue;
             }
 
-            if (0)
-            {
-               bam_print(s);
-            }
-
             bve->process_read(odr->hdr, s);
+            
+            
+            while(bve->next_variant(v))
+            {
+                odw->write(v);
+            }
+            
             ++no_passed_reads;
         }
-
+        
+        while(bve->next_variant(v))
+        {
+            odw->write(v);
+        }
+    
         odw->close();
 
     };
-
-    void bam_print(bam1_t *s)
-    {
-        const char* chrom = bam_get_chrom(odr->hdr, s);
-        uint32_t pos1 = bam_get_pos1(s);
-        kstring_t seq = {0,0,0};
-        bam_get_seq_string(s, &seq);
-        uint32_t len = bam_get_l_qseq(s);
-        kstring_t qual = {0,0,0};
-        bam_get_qual_string(s, &qual);
-        kstring_t cigar_string = {0,0,0};
-        bam_get_cigar_string(s, &cigar_string);
-        kstring_t cigar_expanded_string = {0,0,0};
-        bam_get_cigar_expanded_string(s, &cigar_expanded_string);
-        uint16_t flag = bam_get_flag(s);
-        uint32_t mapq = bam_get_mapq(s);
-
-        std::cerr << "##################" << "\n";
-        std::cerr << "read no  : " << no_reads << "\n";
-        std::cerr << "chrom-pos: " << chrom << "-" << pos1 << "\n";
-        std::cerr << "read     : " << seq.s << "\n";
-        std::cerr << "qual     : " << qual.s << "\n";
-        std::cerr << "cigar_str: " << cigar_string.s << "\n";
-        std::cerr << "cigar    : " << cigar_expanded_string.s << "\n";
-        std::cerr << "len      : " << len << "\n";
-        std::cerr << "mapq     : " << mapq << "\n";
-        std::cerr << "mpos1    : " << bam_get_mpos1(s) << "\n";
-        std::cerr << "mtid     : " << bam_get_mtid(s) << "\n";
-
-        if (seq.m) free(seq.s);
-        if (qual.m) free(qual.s);
-        if (cigar_string.m) free(cigar_string.s);
-        if (cigar_expanded_string.m) free(cigar_expanded_string.s);
-    }
 
     void print_options()
     {
