@@ -31,63 +31,56 @@
 #include "utils.h"
 
 /**
- * Class for mining candidate variants.
- *
- * Processes an align read and records the variants observed against the reference
+ * A circular buffer for containing SNPs and Indels.
  */
 class VariantBuffer
 {
     public:
+
     /**
      * Constructor
-     * baseq_cutoff - q value cutoff to select candidate SNPs
      */
-    VariantBuffer(uint32_t vtype,
-                  uint32_t evidence_allele_count_cutoff,
-                  double fractional_evidence_allele_count_cutoff,
-                  uint32_t baseq_cutoff,
-                  faidx_t *fai);
+    VariantBuffer(size_t buffer_size=1000);
 
-    private:
+    size_t buffer_size;
+    std::vector<char> R;                      // reference bases
+    std::vector<std::vector<char> > X;        // contains read bases that differ from the reference
+    std::vector<std::vector<std::string> > I; // contains inserted bases at the anchor position including anchor
+    std::vector<std::vector<std::string> > D; // contains deleted bases at the anchor position including anchor
+    std::vector<int32_t> N;                   // number of alternative evidences observed here - sum of R, X, D and I
 
-    uint32_t buffer_size;
-    std::vector<std::vector<char> > X; // contains read bases that differ from the genome
-    std::vector<std::vector<std::string> > I; //contains inserted bases
-    std::vector<std::vector<std::string> > D; //contains reference bases that are deleted
-    std::vector<int32_t> N; // number of evidences observed here - combination of X, I and D
-    std::vector<char> REF; 
-    std::vector<char> ANCHOR;
-    std::vector<std::string> ALT;
-    char* chrom;
-
-    //key control variables for circular buffer
-    uint32_t start, end;
-    uint32_t empty_buffer_space;
-    uint32_t min_empty_buffer_size;
-    uint32_t start_genome_pos0;
-    uint32_t max_used_buffer_size_threshold;
-    uint32_t max_indel_length;
-    uint32_t baseq_cutoff;
-    uint32_t evidence_allele_count_cutoff;
-    double fractional_evidence_allele_count_cutoff;
-    faidx_t *fai;
-    uint32_t vtype;
-    kstring_t s;
-    kstring_t alleles;
-    kstring_t read_seq;
-    kstring_t qual;
-    kstring_t cigar;
+    size_t start, end;                        // non empty location in the buffer
+    size_t empty_buffer_space;                // remaining buffer space left
+    size_t start_genome_pos0;
+    
+    //not necessary?
+    size_t min_empty_buffer_size;       
+    size_t max_used_buffer_size_threshold;
+    size_t max_indel_length;
 
     bool debug;
 
     /**
-     * Processes buffer to pick up variants
-     * Empty buffer to recover space.
-     * @chrom  - remove variants on chrom
-     * @pos1   - remove variants up to pos1
-     * @flush  - remove all variants
+     * Inserts a reference base at pos0 into the buffer.
      */
-    void extract_candidate_variants(const char* chrom, uint32_t pos1, bool flush=false);
+    void insertR(size_t pos0, char r);
+
+    /**
+     * Inserts an alternate base at pos0 into the buffer.
+     */
+    void insertX(size_t pos0, char x);
+
+    /**
+     * Inserts a deletion at pos0 into the buffer.
+     */       
+    void insertD(size_t pos0, std::string& ref, std::string& alt);
+
+    /**
+     * Inserts an insertion base at pos0 into the buffer.
+     */
+    void insertI(size_t pos0, std::string& ref, std::string& alt);
+
+    private:
 
     /**
      * Checks if buffer is empty
@@ -97,33 +90,33 @@ class VariantBuffer
     /**
      *Increments buffer index i by 1.
      */
-    void add(uint32_t& i);
+    void add(size_t& i);
 
     /**
      * Increments buffer index i by j.
      */
-    uint32_t add(uint32_t i, uint32_t j);
+    size_t add(size_t i, size_t j);
 
     /**
      * Decrements buffer index i by j.
      */
-    uint32_t minus(uint32_t& i, uint32_t j);
+    size_t minus(size_t& i, size_t j);
 
     /**
      * Decrements buffer index i by 1.
      */
-    void minus(uint32_t& i);
+    void minus(size_t& i);
 
     /**
      * Returns the difference between 2 buffer positions
      */
-    uint32_t diff(uint32_t i, uint32_t j);
+    size_t diff(size_t i, size_t j);
 
     /**
      * Gets the position in the buffer that corresponds to
      * the genome position indicated by pos.
      */
-    uint32_t get_cur_pos0(uint32_t genome_pos0);
+    size_t get_cur_pos0(size_t genome_pos0);
 
     /**
      * Print buffer contents for debugging purpose
