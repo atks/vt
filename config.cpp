@@ -35,18 +35,6 @@ class Igor : Program
     ///////////
     std::string resource_bundle_dir;
 
-    ///////
-    //i/o//
-    ///////
-
-    /////////
-    //stats//
-    /////////
-
-    /////////
-    //tools//
-    /////////
-
     Igor(int argc, char **argv)
     {
         version = "0.5";
@@ -61,7 +49,6 @@ class Igor : Program
             TCLAP::CmdLine cmd(desc, ' ', version);
             VTOutput my; cmd.setOutput(&my);
             TCLAP::ValueArg<std::string> arg_resource_bundle_dir("r", "r", "resource bundle directory []", true, "", "str", cmd);
-            //TCLAP::UnlabeledValueArg<std::string> arg_input_vcf_file("<c>", "input VCF file", true, "","file", cmd);
             cmd.parse(argc, argv);
 
             resource_bundle_dir = arg_resource_bundle_dir.getValue();
@@ -75,24 +62,15 @@ class Igor : Program
 
     void initialize()
     {
-        //////////////////////
-        //i/o initialization//
-        //////////////////////
-
-
-        ////////////////////////
-        //tools initialization//
-        ////////////////////////
     }
 
     void config()
     {
-        //check directory?
-        
-        std::string output_reference_file = resource_bundle_dir + "/indel.reference.txt";
-
+        ///////
+        //SNP//
+        ///////
+        std::string output_reference_file = (resource_bundle_dir == "") ? + "snp.reference.txt" : (resource_bundle_dir + "/snp.reference.txt");
         htsFile *file = hts_open(output_reference_file.c_str(), "w");
-
         std::string hdr = "# This file contains information on how to process reference data sets.\n"
                           "# dataset - name of data set, this label will be printed.\n"
                           "# type    - True Positives (TP) and False Positives (FP).\n"
@@ -101,29 +79,32 @@ class Igor : Program
                           "#           file is used for GENCODE annotation of frame shift and non frame shift Indels.\n"
                           "# filter  - filter applied to variants for this particular data set.\n"
                           "# path    - path of indexed BCF file.\n";
-                          
         size_t ret = hwrite(file->fp.hfile, hdr.c_str(), hdr.size());
-
         std::string dataset = "#dataset     type            filter                       path\n"
                               "1000g        TP              N_ALLELE==2&&VTYPE==INDEL    " + resource_bundle_dir + "1000G.snps_indels.sites.bcf\n"
                               "mills        TP              N_ALLELE==2&&VTYPE==INDEL    " + resource_bundle_dir + "mills.208620indels.sites.bcf\n"
                               "dbsnp        TP              N_ALLELE==2&&VTYPE==INDEL    " + resource_bundle_dir + "dbsnp.13147541variants.sites.bcf\n"
                               "GENCODE_V19  cds_annotation  .                            " + resource_bundle_dir + "gencode.cds.bed.gz\n"
                               "DUST         cplx_annotation .                            " + resource_bundle_dir + "mdust.bed.gz\n";
-
-
-//#mills.chip.common      TP           N_ALLELE==2&&VTYPE==INDEL&&INFO.AF>0.005   mills.chip.158samples.8904indels.sites.bcf
-//#affy.exome.chip        TP           N_ALLELE==2&&VTYPE==SNP                    affy.exome.chip.1249samples.316520variants.sites.bcf
-//#affy.exome.chip.poly   TP           N_ALLELE==2&&VTYPE==INDEL&&INFO.AC!=0      affy.exome.chip.1249samples.316520variants.sites.bcf
-//#affy.exome.chip.mono   FP           N_ALLELE==2&&VTYPE==INDEL&&INFO.AC==0      affy.exome.chip.1249samples.316520variants.sites.bcf
-
         ret = hwrite(file->fp.hfile, dataset.c_str(), dataset.size());
-
-        std::cerr << "\twrote to " << output_reference_file << "\n";
-
-
-
         hts_close(file);
+        std::clog << "wrote to " << output_reference_file << "\n";
+        
+        /////////
+        //INDEL//
+        /////////
+        output_reference_file = (resource_bundle_dir == "") ? + "indel.reference.txt" : (resource_bundle_dir + "/indel.reference.txt");
+        file = hts_open(output_reference_file.c_str(), "w");
+        ret = hwrite(file->fp.hfile, hdr.c_str(), hdr.size());
+        dataset = "#dataset     type            filter                       path\n"
+                              "1000g        TP              N_ALLELE==2&&VTYPE==INDEL    " + resource_bundle_dir + "1000G.snps_indels.sites.bcf\n"
+                              "mills        TP              N_ALLELE==2&&VTYPE==INDEL    " + resource_bundle_dir + "mills.208620indels.sites.bcf\n"
+                              "dbsnp        TP              N_ALLELE==2&&VTYPE==INDEL    " + resource_bundle_dir + "dbsnp.13147541variants.sites.bcf\n"
+                              "GENCODE_V19  cds_annotation  .                            " + resource_bundle_dir + "gencode.cds.bed.gz\n"
+                              "DUST         cplx_annotation .                            " + resource_bundle_dir + "mdust.bed.gz\n";
+        ret = hwrite(file->fp.hfile, dataset.c_str(), dataset.size());
+        hts_close(file);
+        std::clog << "wrote to " << output_reference_file << "\n";
     };
 
     void print_options()
@@ -136,7 +117,6 @@ class Igor : Program
 
     void print_stats()
     {
-
     };
 
     ~Igor() {};

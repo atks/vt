@@ -405,17 +405,38 @@ class Igor : Program
 
                         y1 = bcf_gt_allele(gts[na12878_index[i]*2]);
                         y2 = bcf_gt_allele(gts[na12878_index[i]*2+1]);
-                        y = y1+y2;
+                        if (y1>0 || y2>0)
+                        {
+                            y = 1;
+                        }    
+                        else if (y1==0 || y2==0)
+                        {
+                            y = 0;
+                        }
+                        else if (y1<0 || y2<0)
+                        {
+                            y = -1;
+                        }
                     }
 
                     if (presence[0])
                     {
-                        xt = x1 + x2;
+                        if (x1>0 || x2>0)
+                        {
+                            xt = 1;
+                        }    
+                        else if (x1==0 || x2==0)
+                        {
+                            xt = 0;
+                        }
+                        else if (x1<0 || x2<0)
+                        {
+                            xt = -1;
+                        }
                         ++no_variants;
 
                         if (xt>0) ++no_positive_variants;
                         if (xt==0) ++no_negative_variants;
-
                     }
 
                     if (presence[0] && presence[1])
