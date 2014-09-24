@@ -118,16 +118,21 @@ class Program
      * Print string option, hide if not present.
      */
     void print_str_op(const char* option_line, std::string str_value);
+    
+    /**
+     * Print switch option, hide if not switched on.
+     */
+    void print_boo_op(const char* option_line, bool value);
+    
+    /**
+     * Print intervals option.
+     */
+    void print_int_op(const char* option_line, std::vector<GenomeInterval>& intervals);
 
     /**
      * Print input files.
      */
     void print_ifiles(const char* option_line, std::vector<std::string>& files);
-
-  	/**
-     * Print intervals option.
-     */
-    void print_int_op(const char* option_line, std::vector<GenomeInterval>& intervals);
 
     private:
 };
