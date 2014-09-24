@@ -32,6 +32,7 @@
 #include "hts_utils.h"
 #include "filter.h"
 #include "program.h"
+#include "htslib/hfile.h"
 
 void partition(int argc, char ** argv);
 

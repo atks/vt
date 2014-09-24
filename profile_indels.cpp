@@ -72,7 +72,7 @@ class Igor : Program
     std::vector<std::string> dataset_fexps;
     std::string cds_bed_file;
     std::string cplx_bed_file;
-           
+
     ///////
     //i/o//
     ///////
@@ -100,10 +100,9 @@ class Igor : Program
     //common tools//
     ////////////////
     VariantManip *vm;
-    GENCODE *gc;
     OrderedRegionOverlapMatcher *orom_lcplx;
     OrderedRegionOverlapMatcher *orom_gencode_cds;
-    
+
     Igor(int argc, char ** argv)
     {
         //////////////////////////
@@ -119,7 +118,7 @@ class Igor : Program
             TCLAP::ValueArg<std::string> arg_ref_fasta_file("r", "r", "reference sequence fasta file []", true, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_intervals("i", "i", "intervals []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "file", cmd);
-            TCLAP::ValueArg<std::string> arg_fexp("f", "f", "filter expression []", false, "VTYPE!=SNP", "str", cmd);
+            TCLAP::ValueArg<std::string> arg_fexp("f", "f", "filter expression []", false, "VTYPE==INDEL", "str", cmd);
             TCLAP::ValueArg<std::string> arg_output_tabulate_dir("x", "x", "output latex directory [tabulate_indels]", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_output_pdf_file("y", "y", "output pdf file [indels.pdf]", false, "indels.pdf", "str", cmd);
             TCLAP::ValueArg<std::string> arg_ref_data_sets_list("g", "g", "file containing list of reference datasets []", true, "", "file", cmd);
@@ -160,20 +159,18 @@ class Igor : Program
 //#           file is used for GENCODE annotation of frame shift and non frame shift Indels
 //# filter  - filter applied to variants for this particular data set
 //# path    - path of indexed BCF file
-//#dataset              type         filter           path
-//mills                 TP           INDEL            /net/fantasia/home/atks/dev/vt/ftp/grch37/mills.208620indels.sites.bcf
-//mills.chip            TP           INDEL            /net/fantasia/home/atks/dev/vt/ftp/grch37/mills.chip.158samples.8904indels.sites.bcf
-//mills.chip.common     TP           INDEL&&AF>0.005  /net/fantasia/home/atks/dev/vt/ftp/grch37/mills.chip.158samples.8904indels.sites.bcf
-//affy.exome.chip       TP           INDEL            /net/fantasia/home/atks/dev/vt/ftp/grch37/affy.exome.chip.1249samples.316520variants.sites.bcf
-//affy.exome.chip.poly  TP           INDEL&&AC!=0     /net/fantasia/home/atks/dev/vt/ftp/grch37/affy.exome.chip.1249samples.316520variants.sites.bcf
-//affy.exome.chip.mono  FP           INDEL&&AC=0      /net/fantasia/home/atks/dev/vt/ftp/grch37/affy.exome.chip.1249samples.316520variants.sites.bcf
-//gencode.v19           annotation   .                /net/fantasia/home/atks/dev/vt/ftp/grch37/gencode.v19.annotation.gtf.gz
+//#dataset     type            filter                       path
+//1000g        TP              N_ALLELE==2&&VTYPE==INDEL    /net/fantasia/home/atks/ref/vt/grch37/1000G.snps_indels.sites.bcf
+//mills        TP              N_ALLELE==2&&VTYPE==INDEL    /net/fantasia/home/atks/ref/vt/grch37/mills.208620indels.sites.bcf
+//dbsnp        TP              N_ALLELE==2&&VTYPE==INDEL    /net/fantasia/home/atks/ref/vt/grch37/dbsnp.13147541variants.sites.bcf
+//GENCODE_V19  cds_annotation  .                            /net/fantasia/home/atks/ref/vt/grch37/gencode.cds.bed.gz
+//DUST         cplx_annotation .                            /net/fantasia/home/atks/ref/vt/grch37/mdust.bed.gz
 
         input_vcf_files.push_back(input_vcf_file);
         dataset_labels.push_back("data");
         dataset_types.push_back("ref");
         dataset_fexps.push_back(fexp);
-        
+
         htsFile *hts = hts_open(ref_data_sets_list.c_str(), "r");
         kstring_t s = {0,0,0};
         std::vector<std::string> vec;
@@ -215,7 +212,6 @@ class Igor : Program
         for (size_t i=0; i<dataset_fexps.size(); ++i)
         {
             filters.push_back(Filter(dataset_fexps[i]));
-            //filters[i].parse(fexps[i].c_str());
             filter_exists.push_back(dataset_fexps[i]!="");
         }
         no_filters = filters.size();
@@ -262,11 +258,11 @@ class Igor : Program
             int32_t start1 = bcf_get_pos1(v);
             int32_t end1 = bcf_get_end_pos1(v);
 
-            for (uint32_t i=0; i<no_overlap_files; ++i)
+            for (size_t i=0; i<no_overlap_files; ++i)
                 presence[i]=0;
 
             //check existence
-            for (uint32_t i=0; i<current_recs.size(); ++i)
+            for (size_t i=0; i<current_recs.size(); ++i)
             {
                 int32_t index = current_recs[i]->file_index;
 
@@ -283,12 +279,12 @@ class Igor : Program
 
             //annotate
             if (presence[0])
-            {   
+            {
                 if (orom_lcplx->overlaps_with(chrom, start1, end1))
                 {
                     ++lcplx;
                 }
-            
+
                 if (orom_gencode_cds->overlaps_with(chrom, start1, end1))
                 {
                     if (abs(variant.alleles[0].dlen)%3!=0)
@@ -300,8 +296,7 @@ class Igor : Program
                         ++nfs;
                     }
                 }
-                
-                            
+
                 ++no_indels;
             }
 
@@ -316,7 +311,7 @@ class Igor : Program
             }
 
             //update overlap stats
-            for (uint32_t i=1; i<no_overlap_files; ++i)
+            for (size_t i=1; i<no_overlap_files; ++i)
             {
                 if (presence[0] && !presence[i])
                 {
@@ -365,7 +360,7 @@ class Igor : Program
     void print_pdf()
     {
         if (output_tabulate_dir=="") return;
-        
+
         append_cwd(output_tabulate_dir);
 
         //generate file

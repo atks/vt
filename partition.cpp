@@ -67,6 +67,7 @@ class Igor : Program
     std::vector<std::string> input_vcf_files;
     std::vector<GenomeInterval> intervals;
     std::string interval_list;
+    bool write_partition;
     
     ///////
     //i/o//
@@ -104,13 +105,15 @@ class Igor : Program
             VTOutput my; cmd.setOutput(&my);
             TCLAP::ValueArg<std::string> arg_intervals("i", "i", "intervals []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "file", cmd);
-            TCLAP::ValueArg<std::string> arg_fexp("f", "filters", "filter", false, "", "str", cmd);
+            TCLAP::ValueArg<std::string> arg_fexp("f", "f", "filter", false, "", "str", cmd);
+            TCLAP::SwitchArg arg_write_partition("w", "w", "write partitioned variants to file", cmd, false);
             TCLAP::UnlabeledMultiArg<std::string> arg_input_vcf_files("<in1.vcf><in2.vcf>", "2 input VCF files for comparison", true, "files", cmd);
 
             cmd.parse(argc, argv);
 
             fexp = arg_fexp.getValue();
             parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
+            write_partition = arg_write_partition.getValue();
             input_vcf_files = arg_input_vcf_files.getValue();
 
             if (input_vcf_files.size()!=2)
@@ -156,6 +159,17 @@ class Igor : Program
         Variant variant;
         std::vector<int32_t> presence(2, 0);
 
+        htsFile *a;
+        htsFile *ab;
+        htsFile *b;
+        kstring_t vrep = {0,0,0};
+        if (write_partition)
+        {
+            a = hts_open("a-b.txt", "w");
+            ab = hts_open("a&b.txt", "w");
+            b = hts_open("b-a.txt", "w");
+        }    
+        
         while(sr->read_next_position(crecs))
         {
             int32_t vtype = vm->classify_variant(crecs[0]->h, crecs[0]->v, variant);
@@ -186,8 +200,48 @@ class Igor : Program
 
             update_overlap_stats(presence, ts, tv, ins, del);
 
+            if (write_partition)
+            {
+                bcf_variant2string(crecs[0]->h, crecs[0]->v, &vrep);
+                kputc('\n', &vrep);
+                int32_t ret;
+                std::string partition_file;
+                if (presence[0])
+                {
+                    if (presence[1])
+                    {
+                        ret = hwrite(ab->fp.hfile, vrep.s, vrep.l);
+                        partition_file = "ab.txt";
+                    }
+                    else
+                    {
+                        ret = hwrite(a->fp.hfile, vrep.s, vrep.l);
+                        partition_file = "a.txt";
+                    }
+                }
+                else if (presence[1])
+                {
+                    ret = hwrite(b->fp.hfile, vrep.s, vrep.l);
+                    partition_file = "b.txt";
+                }
+                
+                if (ret<0)
+                {
+                    fprintf(stderr, "[E:%s] error writing to file %s\n", __FUNCTION__, partition_file.c_str());
+                    exit(1);
+                }
+            }
+
             presence[0] = 0;
             presence[1] = 0;
+        }
+        
+        if (write_partition)
+        {
+            hts_close(a);
+            hts_close(ab);
+            hts_close(b);
+            if (vrep.m) free(vrep.s);
         }
     };
 
@@ -230,6 +284,7 @@ class Igor : Program
         std::clog << "Options:     input VCF file a   " << input_vcf_files[0] << "\n";
         std::clog << "             input VCF file b   " << input_vcf_files[1] << "\n";
         print_str_op("         [f] filter             ", fexp);
+        print_boo_op("         [w] write_partition    ", write_partition);
         print_int_op("         [i] intervals          ", intervals);
         std::clog << "\n";
    }

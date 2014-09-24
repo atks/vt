@@ -362,6 +362,12 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
         }
         else if (type==VT_INFO) //figure out type
         {
+            if (!bcf_hdr_idinfo_exists(h, BCF_HL_INFO, bcf_hdr_id2int(h, BCF_DT_ID, tag.s)))
+            {
+                fprintf(stderr, "[%s:%d %s] INFO tag %s does not exist in header of VCF file.\n", __FILE__, __LINE__, __FUNCTION__, tag.s);
+                exit(1);
+            }    
+            
             int32_t info_type = bcf_hdr_id2type(h, BCF_HL_INFO, bcf_hdr_id2int(h, BCF_DT_ID, tag.s));
 
             if (info_type==BCF_HT_FLAG)
@@ -867,7 +873,6 @@ bool Filter::apply(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug) //recu
     if (debug) std::cerr << "==========\n";
     apply(tree, debug);
     if (debug) std::cerr << "==========\n";
-
 
     if (tree->value_exists)
     {

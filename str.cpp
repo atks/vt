@@ -193,6 +193,11 @@ void STRMotif::search_flanks(const char* chrom, int32_t start1, char* motif)
     //given chromosome position and motif
     //attempt to
 
+
+    ////////////////////
+    //detect right flank
+    ////////////////////
+
     //lfhmm
     int32_t lflank_len, ref_len;
     char* lflank, *ru, *rflank, *ref;
@@ -200,9 +205,7 @@ void STRMotif::search_flanks(const char* chrom, int32_t start1, char* motif)
     std::string qual(2048, 'K');
 
     //make left flank
-
     lflank = faidx_fetch_seq(fai, chrom, start1-10, start1-1, &lflank_len);
-    
     ref = faidx_fetch_seq(fai, chrom, start1-10, start1+100, &ref_len);
     ++ru;
 
@@ -212,15 +215,10 @@ void STRMotif::search_flanks(const char* chrom, int32_t start1, char* motif)
     lfhmm->print_alignment();
 
     //get genome position of right flank
-    //lflank->
 
     //extract rflank
     //pick flank
     lflank = faidx_fetch_uc_seq(fai, chrom, start1-10, start1-1, &lflank_len);
-    
-    
-    
-    
     
     //rfhmm
     rfhmm->set_model(motif, rflank);
@@ -228,8 +226,9 @@ void STRMotif::search_flanks(const char* chrom, int32_t start1, char* motif)
     rfhmm->align(ref, qual.c_str());
     rfhmm->print_alignment();
 
-
-//
+    ///////////////////
+    //detect left flank
+    ///////////////////
 //    //if insert, infuse a repeat unit
 //    //choose most appropriate motif
 //    if (!ru_len)
@@ -268,6 +267,10 @@ void STRMotif::search_flanks(const char* chrom, int32_t start1, char* motif)
 //            ref_genome_len = str.l;
 //        }
 //    }
+
+    //////////////////////////////
+    //annotate STR characteristics
+    //////////////////////////////
 
 }
 

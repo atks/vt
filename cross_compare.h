@@ -21,8 +21,8 @@
    THE SOFTWARE.
 */
 
-#ifndef PROFILE_NA12878_H
-#define PROFILE_NA12878_H
+#ifndef CROSS_COMPARE_H
+#define CROSS_COMPARE_H
 
 #include "htslib/vcf.h"
 #include "htslib/vcfutils.h"
@@ -36,6 +36,6 @@
 #include "program.h"
 #include "ordered_region_overlap_matcher.h"
 
-void profile_na12878(int argc, char ** argv);
+void cross_compare(int argc, char ** argv);
 
 #endif

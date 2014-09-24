@@ -77,7 +77,15 @@ class Program
      * @interval_string - comma delimited intervals in a string
      */
 	void parse_intervals(std::vector<GenomeInterval>& intervals, std::string interval_list, std::string interval_string);
-
+    
+    /**
+     * Parse filters. Processes the filter list first followed by the interval string. Duplicates are dropped.
+     *
+     * @filters       - filters stored in this vector
+     * @filter_string - comma delimited filters in a string
+     */
+    void parse_filters(std::vector<std::string>& filters, std::string filter_string);
+    
     /**
      * Parse samples. Processes the sample list. Duplicates are dropped.
      *
@@ -110,16 +118,21 @@ class Program
      * Print string option, hide if not present.
      */
     void print_str_op(const char* option_line, std::string str_value);
+    
+    /**
+     * Print switch option, hide if not switched on.
+     */
+    void print_boo_op(const char* option_line, bool value);
+    
+    /**
+     * Print intervals option.
+     */
+    void print_int_op(const char* option_line, std::vector<GenomeInterval>& intervals);
 
     /**
      * Print input files.
      */
     void print_ifiles(const char* option_line, std::vector<std::string>& files);
-
-  	/**
-     * Print intervals option.
-     */
-    void print_int_op(const char* option_line, std::vector<GenomeInterval>& intervals);
 
     private:
 };

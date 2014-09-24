@@ -1,6 +1,6 @@
 /* The MIT License
 
-   Copyright (c) 2014 Adrian Tan <atks@umich.edu>
+   Copyright (c) 2013 Adrian Tan <atks@umich.edu>
 
    Permission is hereby granted, free of charge, to any person obtaining a copy
    of this software and associated documentation files (the "Software"), to deal
@@ -21,21 +21,26 @@
    THE SOFTWARE.
 */
 
-#ifndef PROFILE_NA12878_H
-#define PROFILE_NA12878_H
+#ifndef CONTEXT_FILTER_H
+#define CONTEXT_FILTER_H
 
+#include <cstdlib>
+#include <cstdint>
+#include <cstring>
+#include <cmath>
+#include <cfloat>
+#include <vector>
+#include <map>
 #include "htslib/vcf.h"
-#include "htslib/vcfutils.h"
-#include "htslib/kstring.h"
 #include "htslib/kseq.h"
-#include "htslib/hts.h"
-#include "bcf_synced_reader.h"
-#include "interval_tree.h"
 #include "hts_utils.h"
-#include "filter.h"
 #include "program.h"
-#include "ordered_region_overlap_matcher.h"
+#include "genome_interval.h"
+#include "bcf_synced_reader.h"
+#include "bcf_ordered_reader.h"
+#include "bcf_ordered_writer.h"
+#include "variant_manip.h"
 
-void profile_na12878(int argc, char ** argv);
-
+void context_filter(int argc, char **argv);
+    
 #endif

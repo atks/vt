@@ -116,8 +116,8 @@ void Program::parse_files(std::vector<std::string>& files, const std::vector<std
     if (arg_files.size()!=0)
     {
         files = arg_files;
-    }    
-    
+    }
+
     if (file_list != "")
     {
         htsFile *file = hts_open(file_list.c_str(), "r");
@@ -176,7 +176,7 @@ void Program::parse_intervals(std::vector<GenomeInterval>& intervals, std::strin
     if (interval_string!="")
         split(v, ",", interval_string);
 
-    for (uint32_t i=0; i<v.size(); ++i)
+    for (size_t i=0; i<v.size(); ++i)
     {
         if (m.find(v[i])==m.end())
         {
@@ -184,6 +184,27 @@ void Program::parse_intervals(std::vector<GenomeInterval>& intervals, std::strin
             GenomeInterval interval(v[i]);
             intervals.push_back(interval);
         }
+    }
+}
+
+
+/**
+ * Parse filters. Processes the filter list first followed by the interval string. Duplicates are dropped.
+ *
+ * @filters       - filters stored in this vector
+ * @filter_string - comma delimited filters in a string
+ */
+void Program::parse_filters(std::vector<std::string>& filters, std::string filter_string)
+{
+    filters.clear();
+
+    std::vector<std::string> v;
+    if (filter_string!="")
+        split(v, ",", filter_string);
+
+    for (size_t i=0; i<v.size(); ++i)
+    {
+        filters.push_back(v[i]);
     }
 }
 
@@ -210,6 +231,17 @@ void Program::print_str_op(const char* option_line, std::string str_value)
 }
 
 /**
+ * Print switch option, hide if not switched on.
+ */
+void Program::print_boo_op(const char* option_line, bool value)
+{
+    if (value)
+    {
+        std::clog << option_line << "true" << "\n";
+    }
+}
+
+/**
  * Print intervals option.
  */
 void Program::print_int_op(const char* option_line, std::vector<GenomeInterval>& intervals)
@@ -217,7 +249,7 @@ void Program::print_int_op(const char* option_line, std::vector<GenomeInterval>&
     if (intervals.size()!=0)
     {
         std::clog << option_line;
-        for (uint32_t i=0; i<std::min((uint32_t)intervals.size(),(uint32_t)5); ++i)
+        for (size_t i=0; i<std::min((uint32_t)intervals.size(),(uint32_t)5); ++i)
         {
             if (i) std::clog << ",";
             std::clog << intervals[i].to_string();
@@ -237,7 +269,7 @@ void Program::print_ifiles(const char* option_line, std::vector<std::string>& fi
     if (files.size()!=0)
     {
         std::clog << option_line;
-        for (uint32_t i=0; i<std::min((uint32_t)files.size(),(uint32_t)2); ++i)
+        for (size_t i=0; i<std::min((uint32_t)files.size(),(uint32_t)2); ++i)
         {
             if (i) std::clog << ",";
             std::clog << files[i];
@@ -260,7 +292,7 @@ char** Program::read_sample_list(int32_t& nsamples, std::string sample_list)
 {
     std::vector<std::string> vsamples;
     std::map<std::string, int32_t> map;
-    
+
     if (sample_list!="")
     {
         htsFile *file = hts_open(sample_list.c_str(), "r");
@@ -278,10 +310,10 @@ char** Program::read_sample_list(int32_t& nsamples, std::string sample_list)
             }
             hts_close(file);
         }
-    
+
         nsamples = vsamples.size();
         char** samples = (char**) malloc(sizeof(char*)*nsamples);
-        
+
         for (int32_t i=0; i<vsamples.size(); ++i)
         {
             samples[i] = strdup(vsamples[i].c_str());
@@ -289,6 +321,6 @@ char** Program::read_sample_list(int32_t& nsamples, std::string sample_list)
 
         return samples;
     }
-    
+
     return NULL;
 }

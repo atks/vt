@@ -201,7 +201,7 @@ void bam_get_cigar_expanded_string(bam1_t *s, kstring_t *cigar_expanded_string)
 
 /**
  * Gets the base in the read that is mapped to a genomic position.
- * Extracts the read sequence and aualities too.
+ * Extracts the read sequence and qualities too.
  */
 void bam_get_base_and_qual_and_read_and_qual(bam1_t *srec, uint32_t pos, char& base, char& qual, int32_t& rpos, kstring_t* readseq, kstring_t* readqual)
 {
@@ -275,6 +275,41 @@ void bam_get_base_and_qual_and_read_and_qual(bam1_t *srec, uint32_t pos, char& b
 //    for (uint32_t i = 0; i < c->l_qseq; ++i) std::cerr << ((char)(s[i] + 33));
 };
 
+/**
+ * Prints a bam.
+ */
+void bam_print(bam_hdr_t *h, bam1_t *s)
+{
+    const char* chrom = bam_get_chrom(h, s);
+    uint32_t pos1 = bam_get_pos1(s);
+    kstring_t seq = {0,0,0};
+    bam_get_seq_string(s, &seq);
+    uint32_t len = bam_get_l_qseq(s);
+    kstring_t qual = {0,0,0};
+    bam_get_qual_string(s, &qual);
+    kstring_t cigar_string = {0,0,0};
+    bam_get_cigar_string(s, &cigar_string);
+    kstring_t cigar_expanded_string = {0,0,0};
+    bam_get_cigar_expanded_string(s, &cigar_expanded_string);
+    uint16_t flag = bam_get_flag(s);
+    uint32_t mapq = bam_get_mapq(s);
+
+    std::cerr << "##################" << "\n";
+    std::cerr << "chrom-pos: " << chrom << "-" << pos1 << "\n";
+    std::cerr << "read     : " << seq.s << "\n";
+    std::cerr << "qual     : " << qual.s << "\n";
+    std::cerr << "cigar_str: " << cigar_string.s << "\n";
+    std::cerr << "cigar    : " << cigar_expanded_string.s << "\n";
+    std::cerr << "len      : " << len << "\n";
+    std::cerr << "mapq     : " << mapq << "\n";
+    std::cerr << "mpos1    : " << bam_get_mpos1(s) << "\n";
+    std::cerr << "mtid     : " << bam_get_mtid(s) << "\n";
+
+    if (seq.m) free(seq.s);
+    if (qual.m) free(qual.s);
+    if (cigar_string.m) free(cigar_string.s);
+    if (cigar_expanded_string.m) free(cigar_expanded_string.s);
+}
 
 /**************
  *BCF HDR UTILS
