@@ -52,10 +52,11 @@ class Igor : Program
     /////////
     //stats//
     /////////
-    uint32_t no_variants;
-    uint32_t no_biallelic;
-    uint32_t no_multiallelic;
-    uint32_t no_additional_biallelic;
+    size_t no_variants;
+    size_t new_no_variants;
+    size_t no_biallelic;
+    size_t no_multiallelic;
+    size_t no_additional_biallelic;
 
     /////////
     //tools//
@@ -113,6 +114,7 @@ class Igor : Program
         //stats initialization//
         ////////////////////////
         no_variants = 0;
+        new_no_variants = 0;
         no_biallelic = 0;
         no_multiallelic = 0;
         no_additional_biallelic = 0;
@@ -143,20 +145,35 @@ class Igor : Program
                 int32_t rid = bcf_get_rid(v);
                 int32_t pos1 = bcf_get_pos1(v);
                 char** allele = bcf_get_allele(v);
+
+                char** alleles = (char**) malloc(n_allele*sizeof(char*));
+                for (size_t i=0; i<n_allele; ++i)
+                {
+                    alleles[i] = strdup(allele[i]);
+                }
+
                 for (size_t i=1; i<n_allele; ++i)
                 {
                     bcf_set_rid(v, rid);
                     bcf_set_pos1(v, pos1);
                     new_alleles.l=0;
-                    kputs(allele[0], &new_alleles);
+                    kputs(alleles[0], &new_alleles);
                     kputc(',', &new_alleles);
-                    kputs(allele[i], &new_alleles);
+                    kputs(alleles[i], &new_alleles);
+
                     bcf_update_alleles_str(odw->hdr, v, new_alleles.s);
                     bcf_update_info_string(odw->hdr, v, "OLD_MULTIALLELIC", old_alleles.s);
                     bcf_subset(odw->hdr, v, 0, 0);
                     odw->write(v);
                     v = odw->get_bcf1_from_pool();
+                    ++new_no_variants;
                 }
+
+                for (size_t i=0; i<n_allele; ++i)
+                {
+                    free(alleles[i]);
+                }
+                free(alleles);
             }
             else
             {
@@ -165,6 +182,7 @@ class Igor : Program
                 bcf_subset(odw->hdr, v, 0, 0);
                 odw->write(v);
                 v = odw->get_bcf1_from_pool();
+                ++new_no_variants;
             }
 
             ++no_variants;
@@ -192,7 +210,7 @@ class Igor : Program
         std::clog << "       no. multiallelic variants    : " << no_multiallelic << "\n";
         std::clog << "\n";
         std::clog << "       no. additional biallelics    : " << no_additional_biallelic << "\n";
-        std::clog << "       after decomposition\n";
+        std::clog << "       new no. variants             : " << new_no_variants << "\n";
         std::clog << "\n";
     };
 
