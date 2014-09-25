@@ -52,9 +52,9 @@ class VariantBuffer
     size_t start, end;                        // non empty location in the buffer
     size_t empty_buffer_space;                // remaining buffer space left
     size_t start_genome_pos0;
-    
+
     //not necessary?
-    size_t min_empty_buffer_size;       
+    size_t min_empty_buffer_size;
     size_t max_used_buffer_size_threshold;
     size_t max_indel_length;
 
@@ -72,7 +72,7 @@ class VariantBuffer
 
     /**
      * Inserts a deletion at pos0 into the buffer.
-     */       
+     */
     void insertD(size_t pos0, std::string& ref, std::string& alt);
 
     /**

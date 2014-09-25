@@ -52,10 +52,10 @@ class Igor : Program
     /////////
     //stats//
     /////////
-    uint32_t no_variants;
-    uint32_t no_biallelic;
-    uint32_t no_multiallelic;
-    uint32_t no_additional_biallelic;
+    size_t no_additional_snps;
+    size_t no_biallelic_blocksub;
+    size_t new_no_variants;
+    size_t no_variants;
 
     /////////
     //tools//
@@ -100,9 +100,9 @@ class Igor : Program
         //////////////////////
         odr = new BCFOrderedReader(input_vcf_file, intervals);
 
-        odw = new BCFOrderedWriter(output_vcf_file, 100000);
+        odw = new BCFOrderedWriter(output_vcf_file, 1000);
         odw->link_hdr(bcf_hdr_subset(odr->hdr, 0, 0, 0));
-        bcf_hdr_append(odw->hdr, "##INFO=<ID=OLD_MULTIALLELIC,Number=1,Type=String,Description=\"Original chr:pos:ref:alt encoding\">\n");
+        bcf_hdr_append(odw->hdr, "##INFO=<ID=OLD_CLUMPED,Number=1,Type=String,Description=\"Original chr:pos:ref:alt encoding\">\n");
         odw->write_hdr();
 
         s = {0,0,0};
@@ -112,11 +112,11 @@ class Igor : Program
         ////////////////////////
         //stats initialization//
         ////////////////////////
+        no_additional_snps = 0;
+        no_biallelic_blocksub = 0;
+        new_no_variants = 0;
         no_variants = 0;
-        no_biallelic = 0;
-        no_multiallelic = 0;
-        no_additional_biallelic = 0;
-
+                            
         ////////////////////////
         //tools initialization//
         ////////////////////////
@@ -132,39 +132,54 @@ class Igor : Program
             bcf_unpack(v, BCF_UN_INFO);
 
             int32_t n_allele = bcf_get_n_allele(v);
-            if (n_allele > 2)
+            char** allele = bcf_get_allele(v);
+            
+            size_t ref_len = strlen(allele[0]);
+            if (n_allele==2 && (ref_len!=1) && (ref_len==strlen(allele[1])))
             {
-                ++no_multiallelic;
-                no_additional_biallelic += n_allele-1;
-
-                old_alleles.l = 0;
-                bcf_variant2string(odw->hdr, v, &old_alleles);
-
                 int32_t rid = bcf_get_rid(v);
                 int32_t pos1 = bcf_get_pos1(v);
                 char** allele = bcf_get_allele(v);
-                for (uint32_t i=1; i<n_allele; ++i)
+                char* ref = strdup(allele[0]);
+                char* alt = strdup(allele[1]);
+                
+                old_alleles.l = 0;
+                bcf_variant2string(odw->hdr, v, &old_alleles);
+                
+                for (size_t i=0; i<ref_len; ++i)
                 {
-                    bcf_set_rid(v, rid);
-                    bcf_set_pos1(v, pos1);
-                    new_alleles.l=0;
-                    kputs(allele[0], &new_alleles);
-                    kputc(',', &new_alleles);
-                    kputs(allele[i], &new_alleles);
-                    bcf_update_alleles_str(odw->hdr, v, new_alleles.s);
-                    bcf_update_info_string(odw->hdr, v, "OLD_MULTIALLELIC", old_alleles.s);
-                    bcf_subset(odw->hdr, v, 0, 0);
-                    odw->write(v);
-                    v = odw->get_bcf1_from_pool();
+                    if (ref[i]!=alt[i])
+                    {
+                        bcf_set_rid(v, rid);
+                        bcf_set_pos1(v, pos1+i);
+                        
+                        new_alleles.l=0;
+                        kputc(ref[i], &new_alleles);
+                        kputc(',', &new_alleles);
+                        kputc(alt[i], &new_alleles);
+                        
+                        bcf_update_alleles_str(odw->hdr, v, new_alleles.s);
+                        bcf_update_info_string(odw->hdr, v, "OLD_CLUMPED", old_alleles.s);
+                        bcf_subset(odw->hdr, v, 0, 0);
+                        odw->write(v);
+                        v = odw->get_bcf1_from_pool();
+
+                        ++new_no_variants;
+                        ++no_additional_snps;
+                    }
                 }
+                
+                free(ref);
+                free(alt);
+                
+                ++no_biallelic_blocksub;
             }
             else
             {
-                ++no_biallelic;
-
                 bcf_subset(odw->hdr, v, 0, 0);
                 odw->write(v);
                 v = odw->get_bcf1_from_pool();
+                ++new_no_variants;
             }
 
             ++no_variants;
@@ -187,12 +202,11 @@ class Igor : Program
     void print_stats()
     {
         std::clog << "\n";
-        std::clog << "stats: no. variants                 : " << no_variants << "\n";
-        std::clog << "       no. biallelic variants       : " << no_biallelic << "\n";
-        std::clog << "       no. multiallelic variants    : " << no_multiallelic << "\n";
+        std::clog << "stats: no. variants                       : " << no_variants << "\n";
+        std::clog << "       no. biallelic block substitutions  : " << no_biallelic_blocksub << "\n";
         std::clog << "\n";
-        std::clog << "       no. additional biallelics    : " << no_additional_biallelic << "\n";
-        std::clog << "       after decomposition\n";
+        std::clog << "       no. additional SNPs                : " << no_additional_snps << "\n";
+        std::clog << "       no. variants after decomposition   : " << new_no_variants << "\n";
         std::clog << "\n";
     };
 

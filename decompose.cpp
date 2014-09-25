@@ -100,7 +100,7 @@ class Igor : Program
         //////////////////////
         odr = new BCFOrderedReader(input_vcf_file, intervals);
 
-        odw = new BCFOrderedWriter(output_vcf_file, 100000);
+        odw = new BCFOrderedWriter(output_vcf_file, 1000);
         odw->link_hdr(bcf_hdr_subset(odr->hdr, 0, 0, 0));
         bcf_hdr_append(odw->hdr, "##INFO=<ID=OLD_MULTIALLELIC,Number=1,Type=String,Description=\"Original chr:pos:ref:alt encoding\">\n");
         odw->write_hdr();
@@ -143,7 +143,7 @@ class Igor : Program
                 int32_t rid = bcf_get_rid(v);
                 int32_t pos1 = bcf_get_pos1(v);
                 char** allele = bcf_get_allele(v);
-                for (uint32_t i=1; i<n_allele; ++i)
+                for (size_t i=1; i<n_allele; ++i)
                 {
                     bcf_set_rid(v, rid);
                     bcf_set_pos1(v, pos1);
