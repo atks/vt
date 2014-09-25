@@ -89,7 +89,7 @@ class Igor : Program
         ret = hwrite(file->fp.hfile, dataset.c_str(), dataset.size());
         hts_close(file);
         std::clog << "wrote to " << output_reference_file << "\n";
-        
+
         /////////
         //INDEL//
         /////////

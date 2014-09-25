@@ -68,7 +68,7 @@ class Igor : Program
     std::vector<GenomeInterval> intervals;
     std::string interval_list;
     bool write_partition;
-    
+
     ///////
     //i/o//
     ///////
@@ -168,8 +168,8 @@ class Igor : Program
             a = hts_open("a-b.txt", "w");
             ab = hts_open("a&b.txt", "w");
             b = hts_open("b-a.txt", "w");
-        }    
-        
+        }
+
         while(sr->read_next_position(crecs))
         {
             int32_t vtype = vm->classify_variant(crecs[0]->h, crecs[0]->v, variant);
@@ -181,7 +181,7 @@ class Igor : Program
                 {
                     continue;
                 }
-                
+
                 ++presence[crecs[i]->file_index];
             }
 
@@ -224,7 +224,7 @@ class Igor : Program
                     ret = hwrite(b->fp.hfile, vrep.s, vrep.l);
                     partition_file = "b.txt";
                 }
-                
+
                 if (ret<0)
                 {
                     fprintf(stderr, "[E:%s] error writing to file %s\n", __FUNCTION__, partition_file.c_str());
@@ -235,7 +235,7 @@ class Igor : Program
             presence[0] = 0;
             presence[1] = 0;
         }
-        
+
         if (write_partition)
         {
             hts_close(a);
