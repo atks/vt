@@ -30,13 +30,13 @@ VariantBuffer::VariantBuffer(size_t buffer_size)
     I.resize(buffer_size);
     D.resize(buffer_size);
     N.resize(buffer_size, 0);
-    
+
     start = 0;
     end = 0;
-    
+
     empty_buffer_space = buffer_size;
 
-    start_genome_pos0 = 0;    
+    start_genome_pos0 = 0;
 };
 
 
@@ -59,7 +59,7 @@ void VariantBuffer::insertX(size_t pos0, char x)
 
 /**
  * Inserts a deletion at pos0 into the buffer.
- */       
+ */
 void VariantBuffer::insertD(size_t pos0, std::string& ref, std::string& alt)
 {
 };
@@ -190,7 +190,7 @@ void VariantBuffer::printBuffer()
         for (size_t j=0; j<D[cur_pos0].size(); ++j)
         {
             std::cerr << D[cur_pos0][j] << ",";
-        }  
+        }
 
         std::cerr << "\t" <<  N[cur_pos0] << "\n";
 

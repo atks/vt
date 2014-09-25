@@ -250,21 +250,21 @@ class Igor : Program
             }
 
             bve->process_read(odr->hdr, s);
-            
-            
+
+
             while(bve->next_variant(v))
             {
                 odw->write(v);
             }
-            
+
             ++no_passed_reads;
         }
-        
+
         while(bve->next_variant(v))
         {
             odw->write(v);
         }
-    
+
         odw->close();
 
     };

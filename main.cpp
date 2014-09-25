@@ -42,6 +42,7 @@
 #include "profile_indels.h"
 #include "profile_mendelian.h"
 #include "decompose.h"
+#include "decompose_blocksub.h"
 #include "remove_overlap.h"
 #include "profile_na12878.h"
 #include "profile_snps.h"
@@ -152,6 +153,10 @@ int main(int argc, char ** argv)
     {
         decompose(argc-1, ++argv);
     }
+    else if (argc>1 && cmd=="decompose_blocksub")
+    {
+        decompose_blocksub(argc-1, ++argv);
+    }    
     else if (argc>1 && cmd=="normalize")
     {
         print = normalize(argc-1, ++argv);
