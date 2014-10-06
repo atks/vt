@@ -23,8 +23,6 @@
 
 #include "bam_variant_extractor.h"
 
-
-
 /**
  * Constructor
  * baseq_cutoff - q value cutoff to select candidate SNPs
@@ -58,10 +56,19 @@ void BAMVariantExtractor::process_read(bam_hdr_t *h, bam1_t *s)
     
     if (strcmp(this->chrom.c_str(), chrom))
     {
-        this->chrom.assign(chrom);
+        //does not overlap
+        if (true)
+        {
+            flush_variant_buffer();
+        }    
+        
+        flush_variant_buffer();
+        
+        
     }
     else
     {
+        this->chrom.assign(chrom);
         flush_variant_buffer();
     }
 
@@ -71,15 +78,12 @@ void BAMVariantExtractor::process_read(bam_hdr_t *h, bam1_t *s)
     uint8_t* sq = bam_get_seq(s);
     bam_get_seq_string(s, &read_seq);
     
-
     size_t genome_pos0 = 0;
-    
-    
     
     const bam1_core_t *c = &s->core;
     if (c->n_cigar)
     {
-        size_t last_pos0 = c->n_cigar-1;
+        size_t last_cigar_op_index = c->n_cigar-1;
 
         uint32_t *cigar = bam_get_cigar(s);
         genome_pos0 = 1;
@@ -114,7 +118,7 @@ void BAMVariantExtractor::process_read(bam_hdr_t *h, bam1_t *s)
             }
             else if (op=='D')
             {
-                if (i && i!=last_pos0)
+                if (i && i!=last_cigar_op_index)
                 {
                     //normalize
                     ref.clear();
@@ -130,10 +134,14 @@ void BAMVariantExtractor::process_read(bam_hdr_t *h, bam1_t *s)
                     vb->insertD(genome_pos0-1, ref, alt);
                     genome_pos0 += len;
                 }
+                else
+                {
+                    //end deletions - these are kind of bonafide.
+                }
             }
             else if (op=='I')
             {
-                if (i && i!=last_pos0)
+                if (i && i!=last_cigar_op_index)
                 {
                     ref.clear();
                     alt.clear();
@@ -147,12 +155,30 @@ void BAMVariantExtractor::process_read(bam_hdr_t *h, bam1_t *s)
 
                     vb->insertI(genome_pos0, ref, alt);
                 }
+                else
+                {
+                    //end insertions
+                }
 
                 read_seq_pos0 += len;
             }
-            else
+            else if (op=='S')
             {
-                //ignore
+                if (i && i!=last_cigar_op_index)
+                {
+                    //end deletions - these are kind of bonafide.
+                }
+            }
+            else if (op=='H')
+            {
+                if (i && i!=last_cigar_op_index)
+                {
+                    //end deletions - these are kind of bonafide.
+                }
+            }
+            else 
+            {            
+                //what's this?
             }
         }
     }

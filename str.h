@@ -37,17 +37,17 @@
 #include "htslib/kstring.h"
 #include "bcf_ordered_reader.h"
 #include "bcf_ordered_writer.h"
-#include "rfhmm.h"             
-#include "lfhmm.h"             
-#include "variant_manip.h"     
-#include "program.h"           
+#include "rfhmm.h"
+#include "lfhmm.h"
+#include "variant_manip.h"
+#include "program.h"
 
 KHASH_MAP_INIT_STR(mdict, int32_t);
 
-/**                                                                                 
- * Class for determining STR motifs, flanks and STR type statistics.                
- * RU,RL,LFLANK,RFLANK,LFLANKPOS,RFLANKPOS,MOTIF_CONCORDANCE,MOTIF_CONCORDANCE      
- */                                                                                 
+/**
+ * Class for determining STR motifs, flanks and STR type statistics.
+ * RU,RL,LFLANK,RFLANK,LFLANKPOS,RFLANKPOS,MOTIF_CONCORDANCE,MOTIF_CONCORDANCE
+ */
 class STRMotif
 {
     public:
@@ -71,6 +71,8 @@ class STRMotif
     float* motif_completeness;
     float concordance;
 
+    int32_t max_len;
+    
     ///////
     //tools
     ///////
@@ -88,7 +90,12 @@ class STRMotif
      * Constructor.
      */
     STRMotif(std::string& ref_fasta_file);
-
+    
+    /**
+     * Constructor.
+     */
+    void initialize_factors(int32_t max_len);
+        
     /**
      * Destructor.
      */
@@ -98,12 +105,37 @@ class STRMotif
      * Annotates STR characteristics.
      * RU,RL,LFLANK,RFLANK,LFLANKPOS,RFLANKPOS,MOTIF_CONCORDANCE,MOTIF_CONCORDANCE
      */
-    void annotate(bcf_hdr_t* h, bcf1_t* v);
-
+    void annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant);
+    
+    /**
+     * Pick shortest motif.
+     */
+    std::string pick_motif(std::string& ref, std::string& alt);
+        
     /**
      * Suggests a set of repeat motif candidates in a set of alleles.
      */
     char** suggest_motifs(char** alleles, int32_t n_allele, int32_t &no_candidate_motifs);
+
+    /**
+     * Trim alleles.
+     */
+    void trim(int32_t& pos1, std::string& ref, std::string& alt);
+
+    /**
+     * Left align alleles. 
+     */
+    void left_align(const char* chrom, int32_t& pos1, std::string& ref, std::string& alt);
+    
+    /**
+     * Right align alleles. 
+     */
+    void right_align(const char* chrom, int32_t& pos1, std::string& ref, std::string& alt);
+        
+    /**
+     * Detect allele lower bound extent.
+     */
+    void detect_lower_bound_allele_extent(const char* chrom, int32_t& pos1, std::vector<std::string>& alleles, int32_t& start1, int32_t& end1);
 
     /**
      * Detect candidate flanks given a motif fit.

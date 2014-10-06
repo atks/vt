@@ -36,6 +36,23 @@
 #include "variant_buffer.h"
 
 /**
+ * Candidate Variant
+ */
+class CandidateVariant
+{
+    public:
+    
+    std::string chrom;
+    uint32_t pos1;    
+    std::string ref;
+    std::string alt1;
+    std::string alt2;
+    
+    uint32_t evidence_no;
+    uint32_t read_no;    
+};
+
+/**
  * Class for mining candidate variants.
  *
  * Processes an align read and records the variants observed against the reference
@@ -48,15 +65,25 @@ class BAMVariantExtractor
     
     std::string chrom;
     uint32_t start, end;
-    uint32_t min_empty_buffer_size;
+    
     uint32_t start_genome_pos0;
+    
+    //variant types
+    int32_t vtype;
+    
     uint32_t max_used_buffer_size_threshold;
     uint32_t max_indel_length;
     uint32_t baseq_cutoff;
+    
+    //cut offs for variant candidates
     uint32_t evidence_allele_count_cutoff;
     double fractional_evidence_allele_count_cutoff;
+    
+    //std:vector<evidence_t> output_buffer;
+    
+    //tools    
     faidx_t *fai;
-    int32_t vtype;
+    
     kstring_t s;
     kstring_t alleles;
     kstring_t read_seq;

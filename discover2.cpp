@@ -251,7 +251,6 @@ class Igor : Program
 
             bve->process_read(odr->hdr, s);
 
-
             while(bve->next_variant(v))
             {
                 odw->write(v);

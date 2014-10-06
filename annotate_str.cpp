@@ -102,15 +102,23 @@ class Igor : Program
         odr = new BCFOrderedReader(input_vcf_file, intervals);
         odw = new BCFOrderedWriter(output_vcf_file);
         odw->link_hdr(odr->hdr);
-        bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_RU,Number=1,Type=String,Description=\"Repeat unit in a STR or Homopolymer\">");
-        bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_RL,Number=1,Type=Integer,Description=\"Repeat Length\">");
-        bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_LFLANK,Number=1,Type=String,Description=\"Right Flank Sequence\">");
-        bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_RFLANK,Number=1,Type=String,Description=\"Left Flank Sequence\">");
-        bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_LFLANKPOS,Number=2,Type=Integer,Description=\"Positions of left flank\">");
-        bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_RFLANKPOS,Number=2,Type=Integer,Description=\"Positions of right flank\">");
-        bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_MOTIF_DISCORDANCE,Number=1,Type=Integer,Description=\"Descriptive Discordance for each reference repeat unit.\">");
-        bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_MOTIF_COMPLETENESS,Number=1,Type=Integer,Description=\"Descriptive Discordance for each reference repeat unit.\">");
-        bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_STR_CONCORDANCE,Number=1,Type=Float,Description=\"Overall discordance of RUs.\">");
+        bcf_hdr_append(odw->hdr, "##INFO=<ID=RU,Number=1,Type=String,Description=\"Repeat unit in a STR or Homopolymer\">");
+        bcf_hdr_append(odw->hdr, "##INFO=<ID=RL,Number=1,Type=Integer,Description=\"Repeat Length\">");
+        
+        
+        
+//        bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_LFLANK,Number=1,Type=String,Description=\"Right Flank Sequence\">");
+//        bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_RFLANK,Number=1,Type=String,Description=\"Left Flank Sequence\">");
+//        bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_LFLANKPOS,Number=2,Type=Integer,Description=\"Positions of left flank\">");
+//        bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_RFLANKPOS,Number=2,Type=Integer,Description=\"Positions of right flank\">");
+//        bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_MOTIF_DISCORDANCE,Number=1,Type=Integer,Description=\"Descriptive Discordance for each reference repeat unit.\">");
+//        bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_MOTIF_COMPLETENESS,Number=1,Type=Integer,Description=\"Descriptive Discordance for each reference repeat unit.\">");
+//        bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_STR_CONCORDANCE,Number=1,Type=Float,Description=\"Overall discordance of RUs.\">");
+//
+//        
+//        bcf_hdr_append(odw->hdr, "##INFO=<ID=RL,Number=1,Type=Integer,Description=\"Motif.\">");
+//        bcf_hdr_append(odw->hdr, "##INFO=<ID=EXACT_ALLELE_REGION,Number=2,Type=Integer,Description=\"Region of the motif.\">");
+//        
 
         ////////////////////////
         //stats initialization//
@@ -138,7 +146,7 @@ class Igor : Program
     void print_stats()
     {
         std::clog << "\n";
-        std::cerr << "stats: no. of variants annotated     " << no_variants_annotated << "\n";
+        std::cerr << "stats: no. of variants annotated   " << no_variants_annotated << "\n";
         std::clog << "\n";
     }
 
@@ -155,18 +163,22 @@ class Igor : Program
             int32_t vtype = vm->classify_variant(odr->hdr, v, variant);
             if (vtype&VT_INDEL)
             {
-                
-                
-                
                 bcf_print(odr->hdr, v);
-                strm->annotate(odr->hdr, v);
+                
+                strm->annotate(odr->hdr, v, variant);
 
 
-                ++no_variants_annotated;
+                bcf_update_info_string(odw->hdr, v, "RU", variant.emotif.c_str());
+//                int32_t region[2] = {variant.eregion.beg1, variant.eregion.end1};
+//                bcf_update_info_int32(odw->hdr, v, "EXACT_ALLELE_REGION", &region, 2);
+                int32_t rl = variant.eregion.end1-variant.eregion.beg1+1;
+                bcf_update_info_int32(odw->hdr, v, "RL", &rl, 1);
+    
             }
-
+            
             odw->write(v);
             v = odw->get_bcf1_from_pool();
+                
         }
 
         odw->close();

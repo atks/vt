@@ -306,7 +306,7 @@ e.g. vt profile_snps_variants -o - NA19130.vcf.gz HG00096.vcf.gz\n\n";
                             bcf_hdr_t *h2 = sr->hdrs[1];
                             bcf_fmt_t* f2 = bcf_get_fmt(h2, v2, "GT");
 
-                            for (uint32_t i=0; i<s.size(); ++i)
+                            for (size_t i=0; i<s.size(); ++i)
                             {
                                 int8_t *x1 = (int8_t*)(f1->p + a[i] * f1->size);
                                 int8_t *x2 = (int8_t*)(f2->p + b[i] * f2->size);

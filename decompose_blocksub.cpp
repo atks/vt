@@ -52,10 +52,10 @@ class Igor : Program
     /////////
     //stats//
     /////////
-    size_t no_additional_snps;
-    size_t no_biallelic_blocksub;
-    size_t new_no_variants;
-    size_t no_variants;
+    uint32_t no_additional_snps;
+    uint32_t no_biallelic_blocksub;
+    uint32_t new_no_variants;
+    uint32_t no_variants;
 
     /////////
     //tools//

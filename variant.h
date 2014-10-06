@@ -33,6 +33,14 @@
 #ifndef VARIANT_H
 #define VARIANT_H
 
+class Region
+{
+    public:
+        
+    int32_t beg1;
+    int32_t end1;
+};
+
 /**
  * Variant.
  */
@@ -45,6 +53,13 @@ class Variant
     kstring_t motif;    //motif
     int32_t mlen;       //motif length
     int32_t tlen;       //reference tract length
+   
+    std::string emotif;
+    Region eregion;
+    
+    std::string imotif;
+    Region iregion;
+    
     std::vector<Allele> alleles;
 
     /**

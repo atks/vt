@@ -45,7 +45,8 @@ class VariantBuffer
     size_t buffer_size;
     std::vector<char> R;                      // reference bases
     std::vector<std::vector<char> > X;        // contains read bases that differ from the reference
-    std::vector<std::vector<std::string> > I; // contains inserted bases at the anchor position including anchor
+    std::vector<std::vector<std::string> > I; // contains inserted bases at the left anchor position including anchor
+    std::vector<std::vector<std::string> > J; // contains inserted bases at the right anchor position including anchor
     std::vector<std::vector<std::string> > D; // contains deleted bases at the anchor position including anchor
     std::vector<int32_t> N;                   // number of alternative evidences observed here - sum of R, X, D and I
 
@@ -123,6 +124,5 @@ class VariantBuffer
      */
     void printBuffer();
 };
-
 
 #endif

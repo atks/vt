@@ -41,10 +41,30 @@ STRMotif::STRMotif(std::string& ref_fasta_file)
     motifs = kh_init(mdict);
 
     //update factors
-    factors = new int32_t*[32];
-    for (size_t i=1; i<=32; ++i)
+    factors = NULL;
+    initialize_factors(32);
+};
+
+/**
+ * Constructor.
+ */
+void STRMotif::initialize_factors(int32_t max_len)
+{
+    if (factors)
     {
-        factors[i] = new int32_t[32];
+        for (size_t i=1; i<=max_len; ++i)
+        {
+            free(factors[i]);
+        }
+        free(factors);    
+    }
+    
+    this->max_len = max_len;  
+    
+    factors = new int32_t*[max_len+1];
+    for (size_t i=1; i<=max_len; ++i)
+    {
+        factors[i] = new int32_t[max_len];
         int32_t count = 0;
         
         for (size_t j=1; j<=i; ++j)
@@ -67,33 +87,95 @@ STRMotif::~STRMotif()
     delete rfhmm;
     delete lfhmm;
 
-    for (size_t i=1; i<=32; ++i)
-    {
-        free(factors[i]);
+    if (factors)
+    {    
+        for (size_t i=1; i<=max_len; ++i)
+        {
+            free(factors[i]);
+        }
+        free(factors);
     }
-    free(factors);
-}
-
+}   
 
 /**
  * Annotates STR characteristics.
  * RU,RL,LFLANK,RFLANK,LFLANKPOS,RFLANKPOS,MOTIF_CONCORDANCE,MOTIF_CONCORDANCE
  */
-void STRMotif::annotate(bcf_hdr_t* h, bcf1_t* v)
+void STRMotif::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant)
 {
     int32_t no_candidate_motifs;
-
-    const char* chrom = bcf_get_chrom(h, v);
-    char* ref = bcf_get_alt(v, 0);
-    char* alt = bcf_get_alt(v, 1);
-    int32_t start1 = bcf_get_pos1(v);
-
+    
     if (bcf_get_n_allele(v)==2)
     {
-        char** candidate_motifs = suggest_motifs(bcf_get_allele(v), bcf_get_n_allele(v), no_candidate_motifs);
+        const char* chrom = bcf_get_chrom(h, v);
+        std::string ref(bcf_get_alt(v, 0));
+        std::string alt(bcf_get_alt(v, 1));
+        int32_t pos1 = bcf_get_pos1(v);
+        
+        /////////////
+        //EXACT STRs
+        ////////////
+        trim(pos1, ref, alt);
+//        std::cerr << "after trimming : " << pos1 << " " << ref << "\n";
+//        std::cerr << "               : " << pos1 << " " << alt << "\n";
 
-        for (size_t i=0; i<no_candidate_motifs; ++i)
-        {
+        int32_t beg1 = pos1;
+        left_align(chrom, beg1, ref, alt);
+//        std::cerr << "after left alignment : " << beg1 << " " << ref << "\n";
+//        std::cerr << "                     : " << beg1 << " " << alt << "\n";
+        
+        int32_t end1 = beg1 + ref.size() - 1;
+        right_align(chrom, end1, ref, alt);
+//        std::cerr << "after right alignment : " << end1 << " " << ref << "\n";
+//        std::cerr << "                      : " << end1 << " " << alt << "\n";
+        
+        variant.eregion.beg1 = beg1;
+        variant.eregion.end1 = end1;
+
+        
+        std::string emotif = pick_motif(ref, alt);
+
+//        std::cerr << "exact motif : " << emotif << "\n";
+        
+        variant.emotif = emotif;    
+                
+        //use exact motif to perform left and right alignment
+        
+        /////////////
+        //EXACT STRs
+        ////////////
+        
+        int32_t lflank_len, ref_len;
+        char* lflank, *ru, *rflank, *refseq;
+        int32_t ru_len;
+        std::string qual(2048, 'K');
+    
+        //make left flank
+        lflank = faidx_fetch_seq(fai, chrom, pos1-10, pos1-1, &lflank_len);
+        refseq = faidx_fetch_seq(fai, chrom, pos1-10, pos1+250, &ref_len);
+    
+        lfhmm->set_model(lflank, emotif.c_str());
+        lfhmm->set_mismatch_penalty(5);
+        lfhmm->align(refseq, qual.c_str());
+        //lfhmm->print_alignment();
+    
+        //get genome position of right flank
+    
+        //extract rflank
+        //pick flank
+//        lflank = faidx_fetch_uc_seq(fai, chrom, start1-10, start1-1, &lflank_len);
+        
+//        //rfhmm
+//        rfhmm->set_model(motif, rflank);
+//        rfhmm->set_mismatch_penalty(5);
+//        rfhmm->align(ref, qual.c_str());
+//        rfhmm->print_alignment();
+
+        
+//        char** candidate_motifs = suggest_motifs(bcf_get_allele(v), bcf_get_n_allele(v), no_candidate_motifs);
+//
+//        for (size_t i=0; i<no_candidate_motifs; ++i)
+//        {
             //should not overwrite model parameters here.
 
             //        std::cerr << "lflank           : " << lflank << "\n";
@@ -106,7 +188,7 @@ void STRMotif::annotate(bcf_hdr_t* h, bcf1_t* v)
 //        }
 
 
-          search_flanks(chrom, start1, candidate_motifs[i]);
+  //        search_flanks(chrom, start1, candidate_motifs[i]);
 
             //check if fit is good, if good, exit loop;
             //at this point, do not store candidates.
@@ -116,8 +198,68 @@ void STRMotif::annotate(bcf_hdr_t* h, bcf1_t* v)
             //motif discordance is perfect
             //motif concordance is perfect?
             //loosen definition for long sets.
-        }
+//        }
     }
+}
+
+/**
+ * Pick shortest motif.
+ */
+std::string STRMotif::pick_motif(std::string& ref, std::string& alt)
+{
+    std::string sequence;
+    if (ref.size()==1 && alt.size()!=1)
+    {
+        if (ref.at(0)==alt.at(0))
+        {
+            sequence = alt.substr(1, alt.size()-1);
+        }   
+        else if (ref.at(ref.size()-1)==alt.at(alt.size()-1))
+        {
+            sequence = alt.substr(0, alt.size()-1);
+        }     
+    }
+    else if (ref.size()!=1 && alt.size()==1)
+    {
+        if (ref.at(0)==alt.at(0))
+        {
+            sequence = ref.substr(1, ref.size()-1);
+        }
+        else if (ref.at(ref.size()-1)==alt.at(alt.size()-1))
+        {
+            sequence = ref.substr(0, ref.size()-1);
+        }      
+    }
+    
+    if (sequence.size()>max_len)
+    {    
+        initialize_factors(sequence.size()+1);
+    }
+    
+    size_t i = 0;
+    size_t sub_motif_len;
+    size_t len = sequence.size();
+    const char* seq = sequence.c_str();
+    while ((sub_motif_len=factors[sequence.size()][i])!=len)
+    {
+        size_t n_sub_motif = len/sub_motif_len;
+
+        bool exact = true;
+
+        for (size_t j=0; j<n_sub_motif; ++j)
+        {
+            if (strncmp(&seq[0], &seq[j*sub_motif_len], sub_motif_len))
+            {
+                exact = false;
+                break;
+            }
+        }
+
+        if (exact) break;
+        ++i;
+    }
+
+    return sequence.substr(0, sub_motif_len);
 }
 
 /**
@@ -182,6 +324,114 @@ char** STRMotif::suggest_motifs(char** alleles, int32_t n_allele, int32_t &no_ca
     kh_clear(mdict, motifs);
 
     return candidate_motifs;
+}
+
+/**
+ * Trim alleles.
+ */
+void STRMotif::trim(int32_t& pos1, std::string& ref, std::string& alt)
+{
+    while (true)
+    {
+        if (ref.size()==1 || alt.size()==1)
+        {
+            break;
+        }    
+        else if (ref.at(0)!=alt.at(0) && ref.at(ref.size()-1)!=alt.at(alt.size()-1))
+        {
+            break;
+        }
+        else
+        {
+            if (ref.at(ref.size()-1)==alt.at(alt.size()-1))
+            {
+                ref.erase(ref.size()-1,1);
+                alt.erase(alt.size()-1,1);
+            } 
+            else if (ref.at(0)==alt.at(0))
+            {
+                ref.erase(0,1);
+                alt.erase(0,1);
+                ++pos1;
+            }
+        }
+    }        
+}
+
+/**
+ * Left align alleles. 
+ */
+void STRMotif::left_align(const char* chrom, int32_t& pos1, std::string& ref, std::string& alt)
+{
+    int32_t seq_len;
+    char* seq;
+    while (ref.at(ref.size()-1)==alt.at(alt.size()-1) && pos1>1)
+    {
+        seq = faidx_fetch_seq(fai, chrom, pos1-2, pos1-2, &seq_len);
+        if (seq_len)
+        {
+            ref.erase(ref.size()-1,1);
+            alt.erase(alt.size()-1,1);   
+            ref.insert(0, 1, seq[0]);
+            alt.insert(0, 1, seq[0]);
+            free(seq);
+            --pos1;
+        }
+        else
+        {
+            fprintf(stderr, "[%s:%d %s] Cannot read from sequence file\n", __FILE__,__LINE__,__FUNCTION__);
+            exit(1);   
+        }
+    }        
+}
+
+/**
+ * Right align alleles. 
+ */
+void STRMotif::right_align(const char* chrom, int32_t& pos1, std::string& ref, std::string& alt)
+{
+    int32_t seq_len;
+    char* seq;
+    while (ref.at(0)==alt.at(0))
+    {
+        seq = faidx_fetch_seq(fai, chrom, pos1, pos1, &seq_len);
+        if (seq_len)
+        {   
+            ref.erase(0,1);
+            alt.erase(0,1);
+            ref.push_back(seq[0]);
+            alt.push_back(seq[0]);
+            free(seq);
+            ++pos1;
+        }
+        else
+        {
+            fprintf(stderr, "[%s:%d %s] Cannot read from sequence file\n", __FILE__,__LINE__,__FUNCTION__);
+            exit(1);   
+        }
+    }        
+}
+
+/**
+ * Detect allele lower bound extent.
+ */
+void STRMotif::detect_lower_bound_allele_extent(const char* chrom, int32_t& pos1, std::vector<std::string>& alleles, int32_t& start1, int32_t& end1)
+{
+    if (alleles.size()==2)
+    {
+        std::string ref = alleles[0];
+        std::string alt = alleles[1];
+     
+        trim(pos1, ref, alt);
+                    
+    }
+    else
+    {
+    }
+    
+
+    
+
 }
 
 /**

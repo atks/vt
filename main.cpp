@@ -260,7 +260,7 @@ int main(int argc, char ** argv)
     else if (argc>1 && cmd=="profile_len")
     {
         profile_len(argc-1, ++argv);
-    }
+    }  
     else if (argc>1 && cmd=="annotate_str")
     {
         annotate_str(argc-1, ++argv);
