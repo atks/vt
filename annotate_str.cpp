@@ -40,7 +40,7 @@ class Igor : Program
     std::string output_vcf_file;
     std::vector<GenomeInterval> intervals;
     std::string interval_list;
-
+ 
     ///////
     //i/o//
     ///////
@@ -57,6 +57,7 @@ class Igor : Program
     ////////////////
     VariantManip* vm;
     STRMotif* strm;
+    faidx_t* fai;
 
     Igor(int argc, char **argv)
     {
@@ -104,6 +105,9 @@ class Igor : Program
         odw->link_hdr(odr->hdr);
         bcf_hdr_append(odw->hdr, "##INFO=<ID=RU,Number=1,Type=String,Description=\"Repeat unit in a STR or Homopolymer\">");
         bcf_hdr_append(odw->hdr, "##INFO=<ID=RL,Number=1,Type=Integer,Description=\"Repeat Length\">");
+        bcf_hdr_append(odw->hdr, "##INFO=<ID=IRL,Number=1,Type=Integer,Description=\"Inexact Repeat Length\">");
+        bcf_hdr_append(odw->hdr, "##INFO=<ID=IRG,Number=2,Type=Integer,Description=\"Region of the motif.\">");
+        bcf_hdr_append(odw->hdr, "##INFO=<ID=ISQ,Number=1,Type=String,Description=\"Inexact STR Sequence\">");
         
         
         
@@ -130,6 +134,7 @@ class Igor : Program
         ////////////////////////
         vm = new VariantManip(ref_fasta_file);
         strm = new STRMotif(ref_fasta_file);
+        fai = fai_load(ref_fasta_file.c_str());
     }
 
     void print_options()
@@ -171,9 +176,24 @@ class Igor : Program
                 bcf_update_info_string(odw->hdr, v, "RU", variant.emotif.c_str());
 //                int32_t region[2] = {variant.eregion.beg1, variant.eregion.end1};
 //                bcf_update_info_int32(odw->hdr, v, "EXACT_ALLELE_REGION", &region, 2);
-                int32_t rl = variant.eregion.end1-variant.eregion.beg1+1;
+                int32_t rl = variant.eregion.end1-variant.eregion.beg1-1;
                 bcf_update_info_int32(odw->hdr, v, "RL", &rl, 1);
-    
+                int32_t irl = variant.iregion.end1-variant.iregion.beg1-1;
+                bcf_update_info_int32(odw->hdr, v, "IRL", &irl, 1);
+                
+                if (irl!=rl)
+                {    
+                    int32_t irg[2] = {variant.iregion.beg1, variant.iregion.end1};
+                    bcf_update_info_int32(odw->hdr, v, "IRG", &irg, 2);
+                    int32_t len = 0;
+                    const char* chrom = bcf_get_chrom(odr->hdr, v);
+                    char* seq = faidx_fetch_seq(fai, chrom, irg[0]-1, irg[1]-1, &len);
+                    bcf_update_info_string(odw->hdr, v, "ISQ", seq);
+                    if (len) free(seq);
+                }
+                 
+                std::cerr << "\t";
+                bcf_print(odr->hdr, v);
             }
             
             odw->write(v);

@@ -736,7 +736,7 @@ void LFHMM::trace_path()
  */
 void LFHMM::collect_statistics(int32_t src_t, int32_t des_t, int32_t j)
 {
-    std::cerr << "\t " << track2string(src_t) << " (" << j << ") => " << track2string(des_t) << "\n";
+    //std::cerr << "\t " << track2string(src_t) << " (" << j << ") => " << track2string(des_t) << "\n";
 
     int32_t src_u = track_get_u(src_t);
     int32_t des_u = track_get_u(des_t);

@@ -145,12 +145,12 @@ class RFHMM
     /**
      * Constructor.
      */
-    RFHMM(bool debug=true);
+    RFHMM(bool debug=false);
 
     /**
      * Constructor.
      */
-    RFHMM(LogTool *lt, bool debug=true);
+    RFHMM(LogTool *lt, bool debug=false);
 
     /**
      * Destructor.

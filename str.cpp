@@ -30,7 +30,7 @@ STRMotif::STRMotif(std::string& ref_fasta_file)
 {
     vm = new VariantManip(ref_fasta_file.c_str());
     fai = fai_load(ref_fasta_file.c_str());
-    if (fai==NULL) 
+    if (fai==NULL)
     {
         fprintf(stderr, "[%s:%d %s] Cannot load genome index: %s\n", __FILE__, __LINE__, __FUNCTION__, ref_fasta_file.c_str());
         exit(1);
@@ -56,17 +56,17 @@ void STRMotif::initialize_factors(int32_t max_len)
         {
             free(factors[i]);
         }
-        free(factors);    
+        free(factors);
     }
-    
-    this->max_len = max_len;  
-    
+
+    this->max_len = max_len;
+
     factors = new int32_t*[max_len+1];
     for (size_t i=1; i<=max_len; ++i)
     {
         factors[i] = new int32_t[max_len];
         int32_t count = 0;
-        
+
         for (size_t j=1; j<=i; ++j)
         {
             if ((i%j)==0)
@@ -88,14 +88,14 @@ STRMotif::~STRMotif()
     delete lfhmm;
 
     if (factors)
-    {    
+    {
         for (size_t i=1; i<=max_len; ++i)
         {
             free(factors[i]);
         }
         free(factors);
     }
-}   
+}
 
 /**
  * Annotates STR characteristics.
@@ -104,14 +104,14 @@ STRMotif::~STRMotif()
 void STRMotif::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant)
 {
     int32_t no_candidate_motifs;
-    
+
     if (bcf_get_n_allele(v)==2)
     {
         const char* chrom = bcf_get_chrom(h, v);
         std::string ref(bcf_get_alt(v, 0));
         std::string alt(bcf_get_alt(v, 1));
         int32_t pos1 = bcf_get_pos1(v);
-        
+
         /////////////
         //EXACT STRs
         ////////////
@@ -119,59 +119,108 @@ void STRMotif::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant)
 //        std::cerr << "after trimming : " << pos1 << " " << ref << "\n";
 //        std::cerr << "               : " << pos1 << " " << alt << "\n";
 
-        int32_t beg1 = pos1;
-        left_align(chrom, beg1, ref, alt);
-//        std::cerr << "after left alignment : " << beg1 << " " << ref << "\n";
-//        std::cerr << "                     : " << beg1 << " " << alt << "\n";
-        
-        int32_t end1 = beg1 + ref.size() - 1;
+        int32_t end1 = pos1 + ref.size() - 1;
         right_align(chrom, end1, ref, alt);
 //        std::cerr << "after right alignment : " << end1 << " " << ref << "\n";
 //        std::cerr << "                      : " << end1 << " " << alt << "\n";
-        
+
+        //do this later as you want to pefrom the alignment shortly.
+        int32_t beg1 = end1 - ref.size() + 1;
+        left_align(chrom, beg1, ref, alt);
+//        std::cerr << "after left alignment : " << beg1 << " " << ref << "\n";
+//        std::cerr << "                     : " << beg1 << " " << alt << "\n";
+
         variant.eregion.beg1 = beg1;
         variant.eregion.end1 = end1;
 
-        
+
         std::string emotif = pick_motif(ref, alt);
 
-//        std::cerr << "exact motif : " << emotif << "\n";
-        
-        variant.emotif = emotif;    
-                
+        std::cerr << "exact motif : " << emotif << "\n";
+
+        variant.emotif = emotif;
+
         //use exact motif to perform left and right alignment
-        
-        /////////////
-        //EXACT STRs
-        ////////////
-        
-        int32_t lflank_len, ref_len;
-        char* lflank, *ru, *rflank, *refseq;
+
+        ///////////////
+        //INEXACT STRs
+        //////////////
+
+       bool debug = true;
+
+        if (debug)
+        {
+            std::cerr << "//////////////////////\n";
+            std::cerr << "//FUZZY LEFT ALIGNMENT\n";
+            std::cerr << "//////////////////////\n";
+        }
+
+        int32_t lflank_len, rflank_len, lref_len, rref_len;
+        char* lflank, *ru, *rflank, *lrefseq, *rrefseq;
         int32_t ru_len;
         std::string qual(2048, 'K');
-    
-        //make left flank
-        lflank = faidx_fetch_seq(fai, chrom, pos1-10, pos1-1, &lflank_len);
-        refseq = faidx_fetch_seq(fai, chrom, pos1-10, pos1+250, &ref_len);
-    
-        lfhmm->set_model(lflank, emotif.c_str());
-        lfhmm->set_mismatch_penalty(5);
-        lfhmm->align(refseq, qual.c_str());
-        //lfhmm->print_alignment();
-    
-        //get genome position of right flank
-    
-        //extract rflank
-        //pick flank
-//        lflank = faidx_fetch_uc_seq(fai, chrom, start1-10, start1-1, &lflank_len);
+
+        int32_t flank_len = 10;
+        int32_t check_len = 100;
         
-//        //rfhmm
-//        rfhmm->set_model(motif, rflank);
-//        rfhmm->set_mismatch_penalty(5);
-//        rfhmm->align(ref, qual.c_str());
-//        rfhmm->print_alignment();
+        //left flank
+        lflank = faidx_fetch_seq(fai, chrom, pos1-flank_len, pos1-1, &lflank_len);
+        lrefseq = faidx_fetch_seq(fai, chrom, pos1-flank_len, pos1+check_len, &lref_len);
+
+
+        int32_t penalty = emotif.size()>6? 5 : emotif.size();
+
+        std::cerr << "PENALTY : " << penalty << "\n";
+
+        lfhmm->set_model(lflank, emotif.c_str());
+        lfhmm->set_mismatch_penalty(penalty);
+        lfhmm->align(lrefseq, qual.c_str());
+        if (debug) lfhmm->print_alignment();
+
+//    std::cerr << "model: " << "(" << lflank_start[MODEL] << "~" << lflank_end[MODEL] << ") "
+//                          << "[" << motif_start[MODEL] << "~" << motif_end[MODEL] << "]\n";
+//    std::cerr << "read : " << "(" << lflank_start[READ] << "~" << lflank_end[READ] << ") "
+//                          << "[" << motif_start[READ] << "~" << motif_end[READ] << "]"
+//                          << "[" << rflank_start[READ] << "~" << rflank_end[READ] << "]\n";
+
+//        int32_t lflank_start[2], lflank_end[2], motif_start[2], motif_end[2], rflank_start[2], rflank_end[2];
+//        int32_t motif_count, exact_motif_count, motif_m, motif_xid;
+
+
+        if (debug) std::cerr << "\n#################################\n\n";
+
+        if (debug)
+        {
+            std::cerr << "///////////////////////\n";
+            std::cerr << "//FUZZY RIGHT ALIGNMENT\n";
+            std::cerr << "///////////////////////\n";
+        }
 
         
+        int32_t motif_end1 = pos1+lfhmm->get_motif_read_epos1()-flank_len;
+
+        //right flank
+        rflank = faidx_fetch_seq(fai, chrom, motif_end1, motif_end1+flank_len-1, &rflank_len);
+        rrefseq = faidx_fetch_seq(fai, chrom, motif_end1-check_len, motif_end1+flank_len-1, &rref_len);
+        rfhmm->set_model(emotif.c_str(), rflank);
+        rfhmm->set_mismatch_penalty(penalty);
+        rfhmm->align(rrefseq, qual.c_str());
+        if (debug) rfhmm->print_alignment();
+
+        int32_t motif_beg1 = motif_end1 - (pos1+lfhmm->get_motif_read_epos1() - pos1+lfhmm->get_motif_read_spos1());
+
+        
+        variant.iregion.beg1 = motif_beg1;        
+        variant.iregion.end1 = motif_end1;
+
+
+        if (lflank_len) free(lflank);
+        if (lref_len) free(lrefseq);
+        if (rflank_len) free(rflank);
+        if (rref_len) free(rrefseq);
+            
+
+
 //        char** candidate_motifs = suggest_motifs(bcf_get_allele(v), bcf_get_n_allele(v), no_candidate_motifs);
 //
 //        for (size_t i=0; i<no_candidate_motifs; ++i)
@@ -207,35 +256,40 @@ void STRMotif::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant)
  */
 std::string STRMotif::pick_motif(std::string& ref, std::string& alt)
 {
+    std::cerr << "setting motifs " << ref << " " << alt << "\n";
+    
     std::string sequence;
     if (ref.size()==1 && alt.size()!=1)
     {
         if (ref.at(0)==alt.at(0))
         {
             sequence = alt.substr(1, alt.size()-1);
-        }   
+        }
         else if (ref.at(ref.size()-1)==alt.at(alt.size()-1))
         {
             sequence = alt.substr(0, alt.size()-1);
-        }     
+        }
     }
     else if (ref.size()!=1 && alt.size()==1)
     {
         if (ref.at(0)==alt.at(0))
         {
+            std::cerr << "set sequence here\n";
             sequence = ref.substr(1, ref.size()-1);
         }
         else if (ref.at(ref.size()-1)==alt.at(alt.size()-1))
         {
             sequence = ref.substr(0, ref.size()-1);
-        }      
+        }
     }
-    
+
+    std::cerr << "checking " << sequence << "\n";
+
     if (sequence.size()>max_len)
-    {    
+    {
         initialize_factors(sequence.size()+1);
     }
-    
+
     size_t i = 0;
     size_t sub_motif_len;
     size_t len = sequence.size();
@@ -336,7 +390,7 @@ void STRMotif::trim(int32_t& pos1, std::string& ref, std::string& alt)
         if (ref.size()==1 || alt.size()==1)
         {
             break;
-        }    
+        }
         else if (ref.at(0)!=alt.at(0) && ref.at(ref.size()-1)!=alt.at(alt.size()-1))
         {
             break;
@@ -347,7 +401,7 @@ void STRMotif::trim(int32_t& pos1, std::string& ref, std::string& alt)
             {
                 ref.erase(ref.size()-1,1);
                 alt.erase(alt.size()-1,1);
-            } 
+            }
             else if (ref.at(0)==alt.at(0))
             {
                 ref.erase(0,1);
@@ -355,11 +409,11 @@ void STRMotif::trim(int32_t& pos1, std::string& ref, std::string& alt)
                 ++pos1;
             }
         }
-    }        
+    }
 }
 
 /**
- * Left align alleles. 
+ * Left align alleles.
  */
 void STRMotif::left_align(const char* chrom, int32_t& pos1, std::string& ref, std::string& alt)
 {
@@ -371,7 +425,7 @@ void STRMotif::left_align(const char* chrom, int32_t& pos1, std::string& ref, st
         if (seq_len)
         {
             ref.erase(ref.size()-1,1);
-            alt.erase(alt.size()-1,1);   
+            alt.erase(alt.size()-1,1);
             ref.insert(0, 1, seq[0]);
             alt.insert(0, 1, seq[0]);
             free(seq);
@@ -380,13 +434,13 @@ void STRMotif::left_align(const char* chrom, int32_t& pos1, std::string& ref, st
         else
         {
             fprintf(stderr, "[%s:%d %s] Cannot read from sequence file\n", __FILE__,__LINE__,__FUNCTION__);
-            exit(1);   
+            exit(1);
         }
-    }        
+    }
 }
 
 /**
- * Right align alleles. 
+ * Right align alleles.
  */
 void STRMotif::right_align(const char* chrom, int32_t& pos1, std::string& ref, std::string& alt)
 {
@@ -396,7 +450,7 @@ void STRMotif::right_align(const char* chrom, int32_t& pos1, std::string& ref, s
     {
         seq = faidx_fetch_seq(fai, chrom, pos1, pos1, &seq_len);
         if (seq_len)
-        {   
+        {
             ref.erase(0,1);
             alt.erase(0,1);
             ref.push_back(seq[0]);
@@ -407,9 +461,9 @@ void STRMotif::right_align(const char* chrom, int32_t& pos1, std::string& ref, s
         else
         {
             fprintf(stderr, "[%s:%d %s] Cannot read from sequence file\n", __FILE__,__LINE__,__FUNCTION__);
-            exit(1);   
+            exit(1);
         }
-    }        
+    }
 }
 
 /**
@@ -421,17 +475,13 @@ void STRMotif::detect_lower_bound_allele_extent(const char* chrom, int32_t& pos1
     {
         std::string ref = alleles[0];
         std::string alt = alleles[1];
-     
+
         trim(pos1, ref, alt);
-                    
+
     }
     else
     {
     }
-    
-
-    
-
 }
 
 /**
@@ -469,7 +519,7 @@ void STRMotif::search_flanks(const char* chrom, int32_t start1, char* motif)
     //extract rflank
     //pick flank
     lflank = faidx_fetch_uc_seq(fai, chrom, start1-10, start1-1, &lflank_len);
-    
+
     //rfhmm
     rfhmm->set_model(motif, rflank);
     rfhmm->set_mismatch_penalty(5);
