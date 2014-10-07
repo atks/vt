@@ -343,6 +343,14 @@ void LFHMM::set_mismatch_penalty(float mismatch_penalty)
 }
 
 /**
+ * Sets debug.
+ */
+void LFHMM::set_debug(bool debug)
+{
+    this->debug = debug;
+}
+
+/**
  * Get left flank start position for model.
  */
 int32_t LFHMM::get_lflank_model_spos1()
@@ -756,8 +764,8 @@ void LFHMM::collect_statistics(int32_t src_t, int32_t des_t, int32_t j)
             rflank_end[READ] = INFINITY;   
 
 
-            std::cerr << std::setprecision(1) << std::fixed;
-            std::cerr << std::setw(8) << std::setprecision(2) << std::fixed  << ((float)rflank_start[MODEL]) << " " <<  ((float)rflank_end[MODEL]) << "\n";
+//            std::cerr << std::setprecision(1) << std::fixed;
+//            std::cerr << std::setw(8) << std::setprecision(2) << std::fixed  << ((float)rflank_start[MODEL]) << " " <<  ((float)rflank_end[MODEL]) << "\n";
 
             motif_end[MODEL] = track_get_c(des_t);
             motif_count = track_get_c(des_t);

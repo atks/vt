@@ -36,6 +36,7 @@
 #define E       6
 #define N       7
 #define TBD     8
+
 #define NSTATES 7
 
 //model components
@@ -368,6 +369,111 @@ void RFHMM::set_mismatch_penalty(float mismatch_penalty)
 }
 
 /**
+ * Sets debug.
+ */
+void RFHMM::set_debug(bool debug)
+{
+    this->debug = debug;
+}
+
+
+/**
+ * Get left flank start position for model.
+ */
+int32_t RFHMM::get_lflank_model_spos1()
+{
+    return lflank_start[MODEL];
+};
+
+/**
+ * Get left flank end position for model.
+ */
+int32_t RFHMM::get_lflank_model_epos1()
+{
+    return lflank_end[MODEL];
+};
+
+/**
+ * Get motif start position for model.
+ */
+int32_t RFHMM::get_motif_model_spos1()
+{
+    return motif_start[MODEL];
+};
+
+/**
+ * Get motif end position for model.
+ */
+int32_t RFHMM::get_motif_model_epos1()
+{
+    return motif_end[MODEL];
+};
+
+/**
+ * Get right flank start position for model.
+ */
+int32_t RFHMM::get_rflank_model_spos1()
+{
+    return rflank_start[MODEL];
+};
+
+/**
+ * Get right flank end position for model.
+ */
+int32_t RFHMM::get_rflank_model_epos1()
+{
+    return rflank_end[MODEL];
+};
+
+/**
+ * Get left flank start position for read.
+ */
+int32_t RFHMM::get_lflank_read_spos1()
+{
+    return lflank_start[READ];
+};
+
+/**
+ * Get left flank end position for read.
+ */
+int32_t RFHMM::get_lflank_read_epos1()
+{
+    return lflank_end[READ];
+};
+
+/**
+ * Get motif start position for read.
+ */
+int32_t RFHMM::get_motif_read_spos1()
+{
+    return motif_start[READ];
+};
+
+/**
+ * Get motif end position for read.
+ */
+int32_t RFHMM::get_motif_read_epos1()
+{
+    return motif_end[READ];
+};
+
+/**
+ * Get right flank start position for read.
+ */
+int32_t RFHMM::get_rflank_read_spos1()
+{
+    return rflank_start[READ];
+};
+
+/**
+ * Get right flank end position for read.
+ */
+int32_t RFHMM::get_rflank_read_epos1()
+{
+    return rflank_end[READ];
+};
+
+/**
  * Computes the score associated with the move from A to B
  * Updates the max_score and associated max_track.
  *
@@ -591,6 +697,11 @@ void RFHMM::trace_path()
 
         collect_statistics(src_t, des_t, j);
         if (debug) std::cerr << track2string(src_t) << " (" << i << "," << j << ") => " << track2string(des_t) << " :  " << track2string(last_t) << "\n";
+        
+        if (track_get_u(src_t)==TBD)
+        {
+            exit(1);
+        }
         src_t = des_t;
 
         if (u==M || u==MR)
@@ -651,7 +762,7 @@ void RFHMM::collect_statistics(int32_t src_t, int32_t des_t, int32_t j)
             motif_end[READ] = j;
 
             //initialize array for tracking inexact repeats
-            for (int32_t k=1; k<=motif_count; ++k)
+            for (size_t k=1; k<=motif_count; ++k)
             {
                 motif_discordance[k] = 0;
             }
@@ -660,6 +771,27 @@ void RFHMM::collect_statistics(int32_t src_t, int32_t des_t, int32_t j)
             {
                 ++motif_discordance[motif_count];
             }
+        }
+        else if (des_u==D)
+        {
+            rflank_start[MODEL] = track_get_p(src_t);
+            rflank_start[READ] = j+1;
+
+            motif_end[MODEL] = track_get_c(des_t);
+            motif_count = track_get_c(des_t);
+            motif_end[READ] = j;
+
+            //initialize array for tracking inexact repeats
+            for (size_t k=1; k<=motif_count; ++k)
+            {
+                motif_discordance[k] = 0;
+            }
+
+            ++motif_discordance[motif_count];
+            
+        }
+        else if (des_u==I)
+        {
         }
     }
     else if (src_u==M)
@@ -671,8 +803,18 @@ void RFHMM::collect_statistics(int32_t src_t, int32_t des_t, int32_t j)
             lflank_end[MODEL] = track_get_p(des_t);
             lflank_end[READ] = j;
         }
+        
     }
-
+    else if (src_u==Y)
+    {
+        if (des_u==S)
+        {
+            lflank_start[MODEL] = track_get_p(des_t);
+            lflank_start[READ] = j+1;
+        }
+        
+    }
+    
     if (des_u==M)
     {
         if (track_get_base(des_t)!=read[j-1])
@@ -707,7 +849,7 @@ void RFHMM::clear_statistics()
     motif_count = NAN;
     exact_motif_count = NAN;
     motif_m = NAN;
-    motif_xid = NAN;
+    motif_xid = NAN; 
     motif_concordance = NAN;
     maxLogOdds = NAN;
 }

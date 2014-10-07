@@ -168,7 +168,7 @@ class Igor : Program
             int32_t vtype = vm->classify_variant(odr->hdr, v, variant);
             if (vtype&VT_INDEL)
             {
-                bcf_print(odr->hdr, v);
+                //bcf_print(odr->hdr, v);
                 
                 strm->annotate(odr->hdr, v, variant);
 
@@ -192,8 +192,8 @@ class Igor : Program
                     if (len) free(seq);
                 }
                  
-                std::cerr << "\t";
-                bcf_print(odr->hdr, v);
+//                std::cerr << "\t";
+//                bcf_print(odr->hdr, v);
             }
             
             odw->write(v);

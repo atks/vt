@@ -206,6 +206,11 @@ class LFHMM
     void set_mismatch_penalty(float mismatch_penalty);
 
     /**
+     * Sets debug.
+     */
+    void set_debug(bool debug);
+    
+    /**
      * Get left flank start position for model.
      */
     int32_t get_lflank_model_spos1();

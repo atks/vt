@@ -52,9 +52,9 @@ void STRMotif::initialize_factors(int32_t max_len)
 {
     if (factors)
     {
-        for (size_t i=1; i<=max_len; ++i)
+        for (size_t i=1; i<=this->max_len; ++i)
         {
-            free(factors[i]);
+            delete factors[i];
         }
         free(factors);
     }
@@ -136,7 +136,7 @@ void STRMotif::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant)
 
         std::string emotif = pick_motif(ref, alt);
 
-        std::cerr << "exact motif : " << emotif << "\n";
+//        std::cerr << "exact motif : " << emotif << "\n";
 
         variant.emotif = emotif;
 
@@ -146,7 +146,10 @@ void STRMotif::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant)
         //INEXACT STRs
         //////////////
 
-       bool debug = true;
+        bool debug = true;
+
+//        std::cerr << "\t";
+        bcf_print(h, v);
 
         if (debug)
         {
@@ -167,11 +170,15 @@ void STRMotif::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant)
         lflank = faidx_fetch_seq(fai, chrom, pos1-flank_len, pos1-1, &lflank_len);
         lrefseq = faidx_fetch_seq(fai, chrom, pos1-flank_len, pos1+check_len, &lref_len);
 
-
         int32_t penalty = emotif.size()>6? 5 : emotif.size();
 
-        std::cerr << "PENALTY : " << penalty << "\n";
+        //std::cerr << "PENALTY : " << penalty << "\n";
 
+        if (pos1==164284)
+        {
+       //     std::cerr << "MOTIF AND LFLANK  " << emotif << " " << lflank << "\n";
+
+        }
         lfhmm->set_model(lflank, emotif.c_str());
         lfhmm->set_mismatch_penalty(penalty);
         lfhmm->align(lrefseq, qual.c_str());
@@ -199,55 +206,44 @@ void STRMotif::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant)
         
         int32_t motif_end1 = pos1+lfhmm->get_motif_read_epos1()-flank_len;
 
+        if (pos1==164284)
+        {
+//            rfhmm->set_debug(true);
+        }
+
         //right flank
         rflank = faidx_fetch_seq(fai, chrom, motif_end1, motif_end1+flank_len-1, &rflank_len);
         rrefseq = faidx_fetch_seq(fai, chrom, motif_end1-check_len, motif_end1+flank_len-1, &rref_len);
+        if (pos1==164284)
+        {
+        //    std::cerr << "MOTIF AND RFLANK  " << emotif << " " << rflank << "\n";
+        }
+        
         rfhmm->set_model(emotif.c_str(), rflank);
         rfhmm->set_mismatch_penalty(penalty);
         rfhmm->align(rrefseq, qual.c_str());
         if (debug) rfhmm->print_alignment();
 
-        int32_t motif_beg1 = motif_end1 - (pos1+lfhmm->get_motif_read_epos1() - pos1+lfhmm->get_motif_read_spos1());
+        std::cerr << "pos1 " << pos1 << "\n";
+        std::cerr << "motif end1 " << motif_end1 << "\n";
+        std::cerr << "read spos1 " << rfhmm->get_motif_read_spos1() << "\n";
+        std::cerr << "read epos1 " << rfhmm->get_motif_read_epos1() << "\n";    
 
+        int32_t motif_beg1 = motif_end1-check_len + rfhmm->get_motif_read_spos1();
         
         variant.iregion.beg1 = motif_beg1;        
         variant.iregion.end1 = motif_end1;
+        if (pos1==164284)
+        {
+         //   exit(1);    
+        }
 
 
         if (lflank_len) free(lflank);
         if (lref_len) free(lrefseq);
         if (rflank_len) free(rflank);
         if (rref_len) free(rrefseq);
-            
-
-
-//        char** candidate_motifs = suggest_motifs(bcf_get_allele(v), bcf_get_n_allele(v), no_candidate_motifs);
-//
-//        for (size_t i=0; i<no_candidate_motifs; ++i)
-//        {
-            //should not overwrite model parameters here.
-
-            //        std::cerr << "lflank           : " << lflank << "\n";
-//        std::cerr << "RU               : " << ru << "\n";
-//        std::cerr << "ref_genome       : " << ref_genome << "\n";
-//        std::cerr << "CANDIDATE MOTIFS : ";
-//        for (size_t i=0; i<no_candidate_motifs; ++i)
-//        {
-//            std::cerr << (i?",":"") << candidate_motifs[i];
-//        }
-
-
-  //        search_flanks(chrom, start1, candidate_motifs[i]);
-
-            //check if fit is good, if good, exit loop;
-            //at this point, do not store candidates.
-            //idea is to choose only really good fits.
-            //
-            //as to what exactly a good fit.
-            //motif discordance is perfect
-            //motif concordance is perfect?
-            //loosen definition for long sets.
-//        }
+           
     }
 }
 
@@ -256,7 +252,7 @@ void STRMotif::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant)
  */
 std::string STRMotif::pick_motif(std::string& ref, std::string& alt)
 {
-    std::cerr << "setting motifs " << ref << " " << alt << "\n";
+    //std::cerr << "setting motifs " << ref << " " << alt << "\n";
     
     std::string sequence;
     if (ref.size()==1 && alt.size()!=1)
@@ -269,25 +265,37 @@ std::string STRMotif::pick_motif(std::string& ref, std::string& alt)
         {
             sequence = alt.substr(0, alt.size()-1);
         }
+        else
+        {
+            sequence = alt.substr(1, alt.size()-1);
+        }
     }
     else if (ref.size()!=1 && alt.size()==1)
     {
         if (ref.at(0)==alt.at(0))
         {
-            std::cerr << "set sequence here\n";
+           // std::cerr << "set sequence here\n";
             sequence = ref.substr(1, ref.size()-1);
         }
         else if (ref.at(ref.size()-1)==alt.at(alt.size()-1))
         {
             sequence = ref.substr(0, ref.size()-1);
         }
+        else
+        {
+            sequence = ref.substr(1, ref.size()-1);
+        }
     }
 
-    std::cerr << "checking " << sequence << "\n";
+   // std::cerr << "checking " << sequence << " (" << sequence.size() << ")\n";
+  //  std::cerr << "maxlen " << max_len << "\n";
 
     if (sequence.size()>max_len)
     {
         initialize_factors(sequence.size()+1);
+        
+    //    std::cerr << "updated maxlen " << max_len << "\n";
+        
     }
 
     size_t i = 0;
