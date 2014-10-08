@@ -79,6 +79,7 @@ SOURCES = program\
 		bam_variant_extractor\
 		variant_buffer\
 		decompose_blocksub\
+		ahmm\
 
 SOURCESONLY = main.cpp
 

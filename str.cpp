@@ -105,8 +105,11 @@ void STRMotif::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant)
 {
     int32_t no_candidate_motifs;
 
-    if (bcf_get_n_allele(v)==2)
+    if (bcf_get_n_allele(v)>1)
     {
+        
+       // bcf_print(h, v);
+        
         const char* chrom = bcf_get_chrom(h, v);
         std::string ref(bcf_get_alt(v, 0));
         std::string alt(bcf_get_alt(v, 1));
@@ -133,7 +136,14 @@ void STRMotif::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant)
         variant.eregion.beg1 = beg1;
         variant.eregion.end1 = end1;
 
+        int32_t seq_len;
+        char* seq;
+        seq = faidx_fetch_seq(fai, chrom, beg1-1, end1-1, &seq_len);
+            
 
+        std::cerr << "EXACT REGION " << beg1 << "-" << end1 << " (" << end1-beg1+1 <<") vs " << abs(ref.size()-alt.size())  <<  "\n";
+        std::cerr << "             " << seq << "\n";
+            
         std::string emotif = pick_motif(ref, alt);
 
 //        std::cerr << "exact motif : " << emotif << "\n";
@@ -146,10 +156,10 @@ void STRMotif::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant)
         //INEXACT STRs
         //////////////
 
-        bool debug = true;
+        bool debug = false;
 
 //        std::cerr << "\t";
-        bcf_print(h, v);
+//        bcf_print(h, v);
 
         if (debug)
         {
@@ -171,16 +181,17 @@ void STRMotif::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant)
         lrefseq = faidx_fetch_seq(fai, chrom, pos1-flank_len, pos1+check_len, &lref_len);
 
         int32_t penalty = emotif.size()>6? 5 : emotif.size();
-
+        penalty = 10;
         //std::cerr << "PENALTY : " << penalty << "\n";
 
         if (pos1==164284)
         {
-       //     std::cerr << "MOTIF AND LFLANK  " << emotif << " " << lflank << "\n";
-
+            //std::cerr << "MOTIF AND LFLANK  " << emotif << " " << lflank << "\n";
         }
         lfhmm->set_model(lflank, emotif.c_str());
         lfhmm->set_mismatch_penalty(penalty);
+        lfhmm->set_delta(0.0000000001);
+        lfhmm->initialize_T();
         lfhmm->align(lrefseq, qual.c_str());
         if (debug) lfhmm->print_alignment();
 
@@ -221,14 +232,19 @@ void STRMotif::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant)
         
         rfhmm->set_model(emotif.c_str(), rflank);
         rfhmm->set_mismatch_penalty(penalty);
+        rfhmm->set_delta(0.0000000001);
+        rfhmm->initialize_T();
         rfhmm->align(rrefseq, qual.c_str());
         if (debug) rfhmm->print_alignment();
 
-        std::cerr << "pos1 " << pos1 << "\n";
-        std::cerr << "motif end1 " << motif_end1 << "\n";
-        std::cerr << "read spos1 " << rfhmm->get_motif_read_spos1() << "\n";
-        std::cerr << "read epos1 " << rfhmm->get_motif_read_epos1() << "\n";    
-
+        if (debug)
+        {
+            std::cerr << "pos1 " << pos1 << "\n";
+            std::cerr << "motif end1 " << motif_end1 << "\n";
+            std::cerr << "read spos1 " << rfhmm->get_motif_read_spos1() << "\n";
+            std::cerr << "read epos1 " << rfhmm->get_motif_read_epos1() << "\n";    
+        }
+        
         int32_t motif_beg1 = motif_end1-check_len + rfhmm->get_motif_read_spos1();
         
         variant.iregion.beg1 = motif_beg1;        
@@ -287,14 +303,14 @@ std::string STRMotif::pick_motif(std::string& ref, std::string& alt)
         }
     }
 
-   // std::cerr << "checking " << sequence << " (" << sequence.size() << ")\n";
-  //  std::cerr << "maxlen " << max_len << "\n";
+    //std::cerr << "checking " << sequence << " (" << sequence.size() << ")\n";
+    //std::cerr << "maxlen " << max_len << "\n";
 
     if (sequence.size()>max_len)
     {
         initialize_factors(sequence.size()+1);
         
-    //    std::cerr << "updated maxlen " << max_len << "\n";
+    //std::cerr << "updated maxlen " << max_len << "\n";
         
     }
 
@@ -322,6 +338,15 @@ std::string STRMotif::pick_motif(std::string& ref, std::string& alt)
     }
 
     return sequence.substr(0, sub_motif_len);
+}
+
+/**
+ * Pick shortest consensus motif.
+ */
+std::string STRMotif::pick_consensus_motif(std::string& ref)
+{
+   return "";
+ 
 }
 
 /**

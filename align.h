@@ -30,6 +30,7 @@
 #include "chmm.h"
 #include "lfhmm.h"
 #include "rfhmm.h"
+#include "ahmm.h"
 
 void align(int argc, char ** argv);
     

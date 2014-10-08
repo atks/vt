@@ -113,6 +113,11 @@ class STRMotif
     std::string pick_motif(std::string& ref, std::string& alt);
         
     /**
+     * Pick shortest consensus motif.
+     */
+    std::string pick_consensus_motif(std::string& ref);
+        
+    /**
      * Suggests a set of repeat motif candidates in a set of alleles.
      */
     char** suggest_motifs(char** alleles, int32_t n_allele, int32_t &no_candidate_motifs);

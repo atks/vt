@@ -103,8 +103,8 @@ class Igor : Program
         odr = new BCFOrderedReader(input_vcf_file, intervals);
         odw = new BCFOrderedWriter(output_vcf_file);
         odw->link_hdr(odr->hdr);
-        bcf_hdr_append(odw->hdr, "##INFO=<ID=RU,Number=1,Type=String,Description=\"Repeat unit in a STR or Homopolymer\">");
-        bcf_hdr_append(odw->hdr, "##INFO=<ID=RL,Number=1,Type=Integer,Description=\"Repeat Length\">");
+        bcf_hdr_append(odw->hdr, "##INFO=<ID=VRU,Number=1,Type=String,Description=\"Repeat unit in a STR or Homopolymer\">");
+        bcf_hdr_append(odw->hdr, "##INFO=<ID=VRL,Number=1,Type=Integer,Description=\"Repeat Length\">");
         bcf_hdr_append(odw->hdr, "##INFO=<ID=IRL,Number=1,Type=Integer,Description=\"Inexact Repeat Length\">");
         bcf_hdr_append(odw->hdr, "##INFO=<ID=IRG,Number=2,Type=Integer,Description=\"Region of the motif.\">");
         bcf_hdr_append(odw->hdr, "##INFO=<ID=ISQ,Number=1,Type=String,Description=\"Inexact STR Sequence\">");
@@ -173,11 +173,11 @@ class Igor : Program
                 strm->annotate(odr->hdr, v, variant);
 
 
-                bcf_update_info_string(odw->hdr, v, "RU", variant.emotif.c_str());
+                bcf_update_info_string(odw->hdr, v, "VRU", variant.emotif.c_str());
 //                int32_t region[2] = {variant.eregion.beg1, variant.eregion.end1};
 //                bcf_update_info_int32(odw->hdr, v, "EXACT_ALLELE_REGION", &region, 2);
                 int32_t rl = variant.eregion.end1-variant.eregion.beg1-1;
-                bcf_update_info_int32(odw->hdr, v, "RL", &rl, 1);
+                bcf_update_info_int32(odw->hdr, v, "VRL", &rl, 1);
                 int32_t irl = variant.iregion.end1-variant.iregion.beg1-1;
                 bcf_update_info_int32(odw->hdr, v, "IRL", &irl, 1);
                 
@@ -192,8 +192,8 @@ class Igor : Program
                     if (len) free(seq);
                 }
                  
-//                std::cerr << "\t";
-//                bcf_print(odr->hdr, v);
+                std::cerr << "\t";
+                bcf_print(odr->hdr, v);
             }
             
             odw->write(v);
