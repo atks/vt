@@ -282,7 +282,7 @@ class Igor : Program
 
                             if (has_GL)
                             {
-                                if (!bcf_float_is_missing(pl[j*n_genotype]))
+                                if (!bcf_float_is_missing(gl[j*n_genotype]))
                                 {
                                     float glref = gl[j*n_genotype];
                                     float glhet = gl[j*n_genotype+bcf_alleles2gt(0,i)];

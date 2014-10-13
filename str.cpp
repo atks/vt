@@ -107,9 +107,9 @@ void STRMotif::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant)
 
     if (bcf_get_n_allele(v)>1)
     {
-        
+
        // bcf_print(h, v);
-        
+
         const char* chrom = bcf_get_chrom(h, v);
         std::string ref(bcf_get_alt(v, 0));
         std::string alt(bcf_get_alt(v, 1));
@@ -139,14 +139,23 @@ void STRMotif::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant)
         int32_t seq_len;
         char* seq;
         seq = faidx_fetch_seq(fai, chrom, beg1-1, end1-1, &seq_len);
-            
+
 
         std::cerr << "EXACT REGION " << beg1 << "-" << end1 << " (" << end1-beg1+1 <<") vs " << abs(ref.size()-alt.size())  <<  "\n";
         std::cerr << "             " << seq << "\n";
-            
-        std::string emotif = pick_motif(ref, alt);
 
-//        std::cerr << "exact motif : " << emotif << "\n";
+        std::string sequence(seq);
+
+        if (seq_len>2)
+        {
+            sequence = sequence.substr(1, sequence.size()-2);
+        }
+
+        if (seq_len) free(seq);
+
+        std::string emotif = pick_motif(sequence);
+
+        std::cerr << "exact motif : " << emotif << "\n";
 
         variant.emotif = emotif;
 
@@ -175,7 +184,7 @@ void STRMotif::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant)
 
         int32_t flank_len = 10;
         int32_t check_len = 100;
-        
+
         //left flank
         lflank = faidx_fetch_seq(fai, chrom, pos1-flank_len, pos1-1, &lflank_len);
         lrefseq = faidx_fetch_seq(fai, chrom, pos1-flank_len, pos1+check_len, &lref_len);
@@ -214,7 +223,7 @@ void STRMotif::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant)
             std::cerr << "///////////////////////\n";
         }
 
-        
+
         int32_t motif_end1 = pos1+lfhmm->get_motif_read_epos1()-flank_len;
 
         if (pos1==164284)
@@ -229,7 +238,8 @@ void STRMotif::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant)
         {
         //    std::cerr << "MOTIF AND RFLANK  " << emotif << " " << rflank << "\n";
         }
-        
+        //std::cerr << "MOTIF AND RFLANK  " << emotif << " " << rflank << "\n";
+
         rfhmm->set_model(emotif.c_str(), rflank);
         rfhmm->set_mismatch_penalty(penalty);
         rfhmm->set_delta(0.0000000001);
@@ -242,16 +252,16 @@ void STRMotif::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant)
             std::cerr << "pos1 " << pos1 << "\n";
             std::cerr << "motif end1 " << motif_end1 << "\n";
             std::cerr << "read spos1 " << rfhmm->get_motif_read_spos1() << "\n";
-            std::cerr << "read epos1 " << rfhmm->get_motif_read_epos1() << "\n";    
+            std::cerr << "read epos1 " << rfhmm->get_motif_read_epos1() << "\n";
         }
-        
+
         int32_t motif_beg1 = motif_end1-check_len + rfhmm->get_motif_read_spos1();
-        
-        variant.iregion.beg1 = motif_beg1;        
+
+        variant.iregion.beg1 = motif_beg1;
         variant.iregion.end1 = motif_end1;
         if (pos1==164284)
         {
-         //   exit(1);    
+         //   exit(1);
         }
 
 
@@ -259,82 +269,75 @@ void STRMotif::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant)
         if (lref_len) free(lrefseq);
         if (rflank_len) free(rflank);
         if (rref_len) free(rrefseq);
-           
+
     }
 }
 
 /**
  * Pick shortest motif.
  */
-std::string STRMotif::pick_motif(std::string& ref, std::string& alt)
+std::string STRMotif::pick_motif(std::string& sequence)
 {
-    //std::cerr << "setting motifs " << ref << " " << alt << "\n";
-    
-    std::string sequence;
-    if (ref.size()==1 && alt.size()!=1)
-    {
-        if (ref.at(0)==alt.at(0))
-        {
-            sequence = alt.substr(1, alt.size()-1);
-        }
-        else if (ref.at(ref.size()-1)==alt.at(alt.size()-1))
-        {
-            sequence = alt.substr(0, alt.size()-1);
-        }
-        else
-        {
-            sequence = alt.substr(1, alt.size()-1);
-        }
-    }
-    else if (ref.size()!=1 && alt.size()==1)
-    {
-        if (ref.at(0)==alt.at(0))
-        {
-           // std::cerr << "set sequence here\n";
-            sequence = ref.substr(1, ref.size()-1);
-        }
-        else if (ref.at(ref.size()-1)==alt.at(alt.size()-1))
-        {
-            sequence = ref.substr(0, ref.size()-1);
-        }
-        else
-        {
-            sequence = ref.substr(1, ref.size()-1);
-        }
-    }
-
     //std::cerr << "checking " << sequence << " (" << sequence.size() << ")\n";
-    //std::cerr << "maxlen " << max_len << "\n";
 
     if (sequence.size()>max_len)
     {
         initialize_factors(sequence.size()+1);
-        
+
     //std::cerr << "updated maxlen " << max_len << "\n";
-        
+
     }
 
     size_t i = 0;
-    size_t sub_motif_len;
     size_t len = sequence.size();
+    size_t sub_motif_len;
     const char* seq = sequence.c_str();
-    while ((sub_motif_len=factors[sequence.size()][i])!=len)
+    size_t d = 0;
+    for (sub_motif_len = 1; sub_motif_len<=6; ++sub_motif_len)
     {
         size_t n_sub_motif = len/sub_motif_len;
 
         bool exact = true;
+        size_t concordant = 0;
+        size_t c1 = 0;
 
         for (size_t j=0; j<n_sub_motif; ++j)
         {
-            if (strncmp(&seq[0], &seq[j*sub_motif_len], sub_motif_len))
+            if ((strncmp(&seq[0], &seq[j*sub_motif_len], sub_motif_len)))
             {
                 exact = false;
-                break;
+
+                for (size_t k=0; k<sub_motif_len; ++k)
+                {
+                    if (seq[j*sub_motif_len+k]==seq[k])
+                    {
+                       ++concordant;
+                    }
+                }
+            }
+            else
+            {
+                ++c1;
+                concordant += sub_motif_len;
             }
         }
 
-        if (exact) break;
-        ++i;
+        if (n_sub_motif*sub_motif_len<len)
+        {
+            if (strncmp(&seq[0], &seq[n_sub_motif*sub_motif_len], len-n_sub_motif*sub_motif_len))
+            {
+                exact = false;
+            }
+        }
+
+
+        float c = (float)concordant/ (float) (n_sub_motif*sub_motif_len);
+        float cutoff = (1-sub_motif_len*0.01);
+
+        std::cerr << sequence.substr(0, sub_motif_len) << " " << c1 << " " << c  << " ("   << c1 << "/" << n_sub_motif <<")" << " ("   << concordant << "/" << n_sub_motif*sub_motif_len <<")" << " / " << cutoff << "\n";
+
+        //if (exact) break;
+        //if (c > cutoff) break;
     }
 
     return sequence.substr(0, sub_motif_len);
@@ -346,7 +349,7 @@ std::string STRMotif::pick_motif(std::string& ref, std::string& alt)
 std::string STRMotif::pick_consensus_motif(std::string& ref)
 {
    return "";
- 
+
 }
 
 /**
@@ -654,3 +657,63 @@ char* STRMotif::get_shortest_repeat_motif(char* allele, int32_t len)
 
     return motif;
 };
+
+
+/**
+ * Gets motif of a repeat unit.
+ */
+std::string STRMotif::get_motif(std::string& ru)
+{
+    std::string motif = "";
+    for (size_t i=0; i<ru.size(); ++i)
+    {
+        std::string phase = shift_phase(ru, i);
+        std::string rc = reverse_complement(phase);    
+        motif = phase < rc ? phase : rc;  
+    }
+    
+    return motif;
+}
+
+/**
+ * Reverse complement a sequence.
+ */
+std::string STRMotif::reverse_complement(std::string& seq)
+{
+    std::string rc = "";
+
+    for (int32_t i=seq.size()-1; i>=0; --i)
+    {
+        char b = seq.at(i);
+
+        switch (b) 
+        {
+            case 'A':
+                rc.append(1, 'T');
+                break;
+            case 'C':
+                rc.append(1, 'C');
+                break;
+            case 'G':
+                rc.append(1, 'C');
+                break;
+            case 'T':
+                rc.append(1, 'A');
+                break;
+        }
+    }
+    
+    return rc;
+}
+
+/**
+ * Shifts a sequence to the right by i bases.
+ */
+std::string STRMotif::shift_phase(std::string& seq, size_t i)
+{
+    i = i<seq.size() ? i : i%seq.size();
+    std::string shifted = seq.substr(i, seq.size()-i);
+    shifted.append(seq, 0, i);
+
+    return shifted;
+}

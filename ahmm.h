@@ -466,6 +466,16 @@ class AHMM
         return NULL_TRACK;
     }
 
+    int32_t move_S_D(int32_t t, int32_t j)
+    {
+        if (t==START_TRACK)
+        {
+            return make_track(S,MOTIF,1,1);
+        }
+
+        return NULL_TRACK;
+    }
+    
     int32_t move_M_D(int32_t t, int32_t j)
     {
         int32_t p;
@@ -502,6 +512,16 @@ class AHMM
         return NULL_TRACK;
     }
 
+    int32_t move_S_I(int32_t t, int32_t j)
+    {
+        if (t==START_TRACK)
+        {
+            return make_track(S,MOTIF,1,1);
+        }
+
+        return NULL_TRACK;
+    }
+    
     int32_t move_M_I(int32_t t, int32_t j)
     {
         if (t!=NULL_TRACK && j<rlen)

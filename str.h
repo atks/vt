@@ -110,12 +110,12 @@ class STRMotif
     /**
      * Pick shortest motif.
      */
-    std::string pick_motif(std::string& ref, std::string& alt);
+    std::string pick_motif(std::string& sequence);
         
     /**
      * Pick shortest consensus motif.
      */
-    std::string pick_consensus_motif(std::string& ref);
+    std::string pick_consensus_motif(std::string& sequence);
         
     /**
      * Suggests a set of repeat motif candidates in a set of alleles.
@@ -151,6 +151,21 @@ class STRMotif
      * Extracts the shortest repeat unit in a sequence.
      */
     char* get_shortest_repeat_motif(char* allele, int32_t len);
+
+    /**
+     * Gets motif of a repeat unit.
+     */
+    std::string get_motif(std::string& ru);
+    
+    /**
+     * Reverse complement a sequence.
+     */
+    std::string reverse_complement(std::string& seq);
+    
+    /**
+     * Shifts a sequence to the right by i bases.
+     */
+    std::string shift_phase(std::string& seq, size_t i);
 
     /**
      * Prints variant information.

@@ -191,7 +191,7 @@ class Igor : Program
                     bcf_update_info_string(odw->hdr, v, "ISQ", seq);
                     if (len) free(seq);
                 }
-                 
+//                 
                 std::cerr << "\t";
                 bcf_print(odr->hdr, v);
             }

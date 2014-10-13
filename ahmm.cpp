@@ -152,8 +152,10 @@ void AHMM::initialize_structures()
     moves[M][M]  = &AHMM::move_M_M;
     moves[D][M]  = &AHMM::move_D_M;
     moves[I][M]  = &AHMM::move_I_M;
+    moves[S][D]  = &AHMM::move_S_D;
     moves[M][D]  = &AHMM::move_M_D;
     moves[D][D]  = &AHMM::move_D_D;
+    moves[S][I]  = &AHMM::move_S_I;
     moves[M][I]  = &AHMM::move_M_I;
     moves[I][I]  = &AHMM::move_I_I;
 };
@@ -491,7 +493,6 @@ void AHMM::align(const char* read, const char* qual)
             proc_comp(M, M, d, j-1, MATCH);
             proc_comp(D, M, d, j-1, MATCH);
             proc_comp(I, M, d, j-1, MATCH);
-
             V[M][c] = max_score;
             U[M][c] = max_track;
             if (debug) std::cerr << "\tset M " << max_score << " - " << track2string(max_track) << "\n";
@@ -501,11 +502,9 @@ void AHMM::align(const char* read, const char* qual)
             /////
             max_score = -INFINITY;
             max_track = NULL_TRACK;
-            if (i>lflen)
-            {
-                proc_comp(M, D, u, j, MODEL);
-                proc_comp(D, D, u, j, MODEL);
-            }
+            proc_comp(S, D, u, j, MODEL);
+            proc_comp(M, D, u, j, MODEL);
+            proc_comp(D, D, u, j, MODEL);
             V[D][c] = max_score;
             U[D][c] = max_track;
             if (debug) std::cerr << "\tset D " << max_score << " - " << track2string(max_track) << "\n";
@@ -515,6 +514,7 @@ void AHMM::align(const char* read, const char* qual)
             /////
             max_score = -INFINITY;
             max_track = NULL_TRACK;
+            proc_comp(S, I, l, j-1, READ);
             proc_comp(M, I, l, j-1, READ);
             proc_comp(I, I, l, j-1, READ);
             V[I][c] = max_score;
@@ -711,7 +711,6 @@ void AHMM::clear_statistics()
     rflank_start[READ] = NAN;
     rflank_end[MODEL] = NAN;
     rflank_end[READ] = NAN;
-
 }
 
 /**
