@@ -285,6 +285,11 @@ void STRMotif::pick_candidate_motifs(bcf_hdr_t* h, bcf1_t* v, std::vector<Candid
         min_beg1 = beg1<min_beg1 ? beg1 : min_beg1;
         max_end1 = end1>max_end1 ? end1 : max_end1;
                 
+                
+                
+                
+                
+                
         int32_t seq_len;
         char* seq;
         seq = faidx_fetch_seq(fai, chrom, min_beg1-1, max_end1-1, &seq_len);        

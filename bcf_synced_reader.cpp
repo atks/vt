@@ -62,7 +62,7 @@ BCFSyncedReader::BCFSyncedReader(std::vector<std::string>& vcf_files, std::vecto
         if (vcfs[i]==NULL) exit(1);
         hdrs[i] = bcf_alt_hdr_read(vcfs[i]);
         if (!hdrs[i]) exit(1);
-            
+
         if (i==0)
         {
             if (!(ftypes[i] & (FT_VCF|FT_BCF|FT_STDIN)))
@@ -349,8 +349,6 @@ bool BCFSyncedReader::read_next_position(std::vector<bcfptr*>& current_recs)
                 cvariant = pq.top();
             }
         }
-
-        //current_pos1 = current_recs.front().pos1;
 
         return true;
     }

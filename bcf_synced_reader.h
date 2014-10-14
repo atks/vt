@@ -62,7 +62,7 @@ class bcfptr
         v = NULL;
         alleles = {0,0,0};
     };
-    
+
     bcfptr(int32_t file_index, int32_t pos1, bcf_hdr_t *h, bcf1_t *v, bool sync_by_pos)
     {
         this->file_index = file_index;
@@ -72,18 +72,18 @@ class bcfptr
         alleles = {0,0,0};
         if (!sync_by_pos)
         {
-            //bcf_alleles2string(h, v, &alleles);  
-            bcf_alleles2string_sorted(h, v, &alleles);  
-        }        
+            //bcf_alleles2string(h, v, &alleles);
+            bcf_alleles2string_sorted(h, v, &alleles);
+        }
     };
-    
+
     ~bcfptr()
     {
         if (alleles.m)
         {
            free(alleles.s);
-        }    
-    }    
+        }
+    }
 };
 
 /**
@@ -100,14 +100,14 @@ class CompareBCFPtr
             if (a->alleles.l!=0 && b->alleles.l!=0)
             {
                 int32_t d = strcmp(a->alleles.s, b->alleles.s);
-                return d>=0; 
+                return d>=0;
             }
             else
             {
                 return true;
             }
-        }        
-        
+        }
+
         return a->pos1 >= b->pos1;
     }
 };
@@ -134,12 +134,11 @@ class CompareBCFPtr
  * A) By start position
  * B) By variant
  * C) By overlapping variants (todo: under consideration)
- *
  */
 class BCFSyncedReader
 {
     public:
-    
+
     ///////
     //i/o//
     ///////
@@ -176,7 +175,7 @@ class BCFSyncedReader
     std::list<bcf1_t *> pool;
     //contains the most recent position to process
     std::priority_queue<bcfptr, std::vector<bcfptr *>, CompareBCFPtr> pq;
-    
+
     //useful stuff
 
     /**

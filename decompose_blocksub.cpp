@@ -100,7 +100,7 @@ class Igor : Program
         //////////////////////
         odr = new BCFOrderedReader(input_vcf_file, intervals);
 
-        odw = new BCFOrderedWriter(output_vcf_file, 1000, false);
+        odw = new BCFOrderedWriter(output_vcf_file, 1000);
         odw->link_hdr(odr->hdr);
         bcf_hdr_append(odw->hdr, "##INFO=<ID=OLD_CLUMPED,Number=1,Type=String,Description=\"Original chr:pos:ref:alt encoding\">\n");
         odw->write_hdr();
@@ -150,7 +150,8 @@ class Igor : Program
                 {
                     if (ref[i]!=alt[i])
                     {
-                        bcf1_t *nv = bcf_dup(v);                        
+                        bcf1_t *nv = odw->get_bcf1_from_pool();
+                        bcf_copy(nv, v);                        
                         bcf_unpack(nv, BCF_UN_ALL);
                         
                         bcf_set_pos1(nv, pos1+i);

@@ -148,8 +148,23 @@ int regidx_insert(regidx_t *idx, char *line)
     return 0;
 }
 
-regidx_t *regidx_init(const char *fname, regidx_parse_f parser, regidx_free_f free_f, ssize_t payload_size, void *usr_dat)
+regidx_t *regidx_init(const char *fname, regidx_parse_f parser, regidx_free_f free_f, size_t payload_size, void *usr_dat)
 {
+    if ( !parser )
+    {
+        if ( !fname ) parser = regidx_parse_tab;
+        else
+        {
+            int len = strlen(fname);
+            if ( len>=7 && !strcasecmp(".bed.gz",fname+len-7) )
+                parser = regidx_parse_bed;
+            else if ( len>=4 && !strcasecmp(".bed",fname+len-4) )
+                parser = regidx_parse_bed;
+            else
+                parser = regidx_parse_tab;
+        }
+    }
+
     regidx_t *idx = (regidx_t*) calloc(1,sizeof(regidx_t));
     idx->free  = free_f;
     idx->parse = parser;
@@ -163,10 +178,11 @@ regidx_t *regidx_init(const char *fname, regidx_parse_f parser, regidx_free_f fr
 
     if ( !fname ) return idx;
     
-    htsFile *fp = hts_open(fname,"r");
-    if ( !fp ) return NULL;
-
     kstring_t str = {0,0,0};
+
+    htsFile *fp = hts_open(fname,"r");
+    if ( !fp ) goto error;
+
     while ( hts_getline(fp, KS_SEP_LINE, &str) > 0 )
     {
         if ( regidx_insert(idx, str.s) ) goto error;
@@ -179,7 +195,7 @@ regidx_t *regidx_init(const char *fname, regidx_parse_f parser, regidx_free_f fr
 
 error:
     free(str.s);
-    hts_close(fp);
+    if ( fp ) hts_close(fp);
     regidx_destroy(idx);
     return NULL;
 }

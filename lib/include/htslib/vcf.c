@@ -39,14 +39,14 @@ DEALINGS IN THE SOFTWARE.  */
 
 #include "htslib/khash.h"
 KHASH_MAP_INIT_STR(vdict, bcf_idinfo_t)
-    typedef khash_t(vdict) vdict_t;
+typedef khash_t(vdict) vdict_t;
 
 #include "htslib/kseq.h"
 KSTREAM_DECLARE(gzFile, gzread)
 
-    uint32_t bcf_float_missing    = 0x7F800001;
-    uint32_t bcf_float_vector_end = 0x7F800002;
-    uint8_t bcf_type_shift[] = { 0, 0, 1, 2, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+uint32_t bcf_float_missing    = 0x7F800001;
+uint32_t bcf_float_vector_end = 0x7F800002;
+uint8_t bcf_type_shift[] = { 0, 0, 1, 2, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 static bcf_idinfo_t bcf_idinfo_def = { .info = { 15, 15, 15 }, .hrec = { NULL, NULL, NULL}, .id = -1 };
 
 /*************************
@@ -57,11 +57,7 @@ int bcf_hdr_sync(bcf_hdr_t *h);
 
 int bcf_hdr_add_sample(bcf_hdr_t *h, const char *s)
 {
-    if ( !s )
-    {
-        bcf_hdr_sync(h);
-        return 0;
-    }
+    if ( !s ) return 0;
 
     const char *ss = s;
     while ( !*ss && isspace(*ss) ) ss++;
@@ -87,6 +83,7 @@ int bcf_hdr_add_sample(bcf_hdr_t *h, const char *s)
     int n = kh_size(d);
     h->samples = (char**) realloc(h->samples,sizeof(char*)*n);
     h->samples[n-1] = sdup;
+    h->dirty = 1;
     return 0;
 }
 
@@ -142,6 +139,7 @@ int bcf_hdr_sync(bcf_hdr_t *h)
             h->id[i][kh_val(d,k).id].val = &kh_val(d,k);
         }
     }
+    h->dirty = 0;
     return 0;
 }
 
@@ -414,6 +412,7 @@ int bcf_hdr_register_hrec(bcf_hdr_t *hdr, bcf_hrec_t *hrec)
             if ( !strcmp(hrec->vals[i], "Integer") ) type = BCF_HT_INT;
             else if ( !strcmp(hrec->vals[i], "Float") ) type = BCF_HT_REAL;
             else if ( !strcmp(hrec->vals[i], "String") ) type = BCF_HT_STR;
+            else if ( !strcmp(hrec->vals[i], "Character") ) type = BCF_HT_STR;
             else if ( !strcmp(hrec->vals[i], "Flag") ) type = BCF_HT_FLAG;
             else
             {
@@ -494,6 +493,7 @@ int bcf_hdr_add_hrec(bcf_hdr_t *hdr, bcf_hrec_t *hrec)
     int n = ++hdr->nhrec;
     hdr->hrec = (bcf_hrec_t**) realloc(hdr->hrec, n*sizeof(bcf_hrec_t*));
     hdr->hrec[n-1] = hrec;
+    hdr->dirty = 1;
 
     return hrec->type==BCF_HL_GEN ? 0 : 1;
 }
@@ -579,7 +579,8 @@ int bcf_hdr_parse(bcf_hdr_t *hdr, char *htxt)
         needs_sync += bcf_hdr_add_hrec(hdr, hrec);
         p += len;
     }
-    bcf_hdr_parse_sample_line(hdr,p);   // calls hdr_sync
+    bcf_hdr_parse_sample_line(hdr,p);
+    bcf_hdr_sync(hdr);
     bcf_hdr_check_sanity(hdr);
     return 0;
 }
@@ -589,8 +590,7 @@ int bcf_hdr_append(bcf_hdr_t *hdr, const char *line)
     int len;
     bcf_hrec_t *hrec = bcf_hdr_parse_line(hdr, (char*) line, &len);
     if ( !hrec ) return -1;
-    if ( bcf_hdr_add_hrec(hdr, hrec) )
-        bcf_hdr_sync(hdr);
+    bcf_hdr_add_hrec(hdr, hrec);
     return 0;
 }
 
@@ -637,8 +637,7 @@ void bcf_hdr_remove(bcf_hdr_t *hdr, int type, const char *key)
         if ( i < hdr->nhrec )
             memmove(&hdr->hrec[i],&hdr->hrec[i+1],(hdr->nhrec-i)*sizeof(bcf_hrec_t*));
         bcf_hrec_destroy(hrec);
-
-        bcf_hdr_sync(hdr);
+        hdr->dirty = 1;
     }
 }
 
@@ -692,7 +691,7 @@ void bcf_hdr_set_version(bcf_hdr_t *hdr, const char *version)
         free(hrec->value);
         hrec->value = strdup(version);
     }
-    bcf_hdr_sync(hdr);
+    hdr->dirty = 1;
 }
 
 bcf_hdr_t *bcf_hdr_init(const char *mode)
@@ -766,8 +765,9 @@ bcf_hdr_t *bcf_hdr_read(htsFile *hfp)
     return h;
 }
 
-int bcf_hdr_write(htsFile *hfp, const bcf_hdr_t *h)
+int bcf_hdr_write(htsFile *hfp, bcf_hdr_t *h)
 {
+    if ( h->dirty ) bcf_hdr_sync(h);
     if (!hfp->is_bin) return vcf_hdr_write(hfp, h);
 
     int hlen;
@@ -1116,32 +1116,42 @@ static int bcf1_sync(bcf1_t *line)
     return 0;
 }
 
-bcf1_t *bcf_dup(bcf1_t *src)
+bcf1_t *bcf_copy(bcf1_t *dst, bcf1_t *src)
 {
     bcf1_sync(src);
 
+    bcf_clear(dst);
+    dst->rid  = src->rid;
+    dst->pos  = src->pos;
+    dst->rlen = src->rlen;
+    dst->qual = src->qual;
+    dst->n_info = src->n_info; dst->n_allele = src->n_allele;
+    dst->n_fmt = src->n_fmt; dst->n_sample = src->n_sample;
+
+    dst->shared.m = dst->shared.l = src->shared.l;
+    dst->shared.s = (char*) malloc(dst->shared.l);
+    memcpy(dst->shared.s,src->shared.s,dst->shared.l);
+
+    dst->indiv.m = dst->indiv.l = src->indiv.l;
+    dst->indiv.s = (char*) malloc(dst->indiv.l);
+    memcpy(dst->indiv.s,src->indiv.s,dst->indiv.l);
+
+    return dst;
+}
+bcf1_t *bcf_dup(bcf1_t *src)
+{
     bcf1_t *out = bcf_init1();
-
-    out->rid  = src->rid;
-    out->pos  = src->pos;
-    out->rlen = src->rlen;
-    out->qual = src->qual;
-    out->n_info = src->n_info; out->n_allele = src->n_allele;
-    out->n_fmt = src->n_fmt; out->n_sample = src->n_sample;
-
-    out->shared.m = out->shared.l = src->shared.l;
-    out->shared.s = (char*) malloc(out->shared.l);
-    memcpy(out->shared.s,src->shared.s,out->shared.l);
-
-    out->indiv.m = out->indiv.l = src->indiv.l;
-    out->indiv.s = (char*) malloc(out->indiv.l);
-    memcpy(out->indiv.s,src->indiv.s,out->indiv.l);
-
-    return out;
+    return bcf_copy(out, src);
 }
 
 int bcf_write(htsFile *hfp, const bcf_hdr_t *h, bcf1_t *v)
 {
+    if ( h->dirty )
+    {
+        // we could as well call bcf_hdr_sync here, not sure
+        fprintf(stderr,"FIXME: dirty header not synced\n");
+        exit(1);
+    }
     if ( bcf_hdr_nsamples(h)!=v->n_sample )
     {
         fprintf(stderr,"[%s:%d %s] Broken VCF record, the number of columns at %s:%d does not match the number of samples (%d vs %d).\n",

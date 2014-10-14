@@ -51,6 +51,7 @@
 #ifndef __REGIDX_H__
 #define __REGIDX_H__
 
+#include <stdio.h>
 #include <inttypes.h>
 
 typedef struct _regidx_t regidx_t;
@@ -93,14 +94,17 @@ int regidx_parse_tab(const char*,char**,char**,reg_t*,void*,void*);   // CHROM,P
 /*
  *  regidx_init() - creates new index
  *  @param fname:  input file name or NULL if regions will be added one-by-one via regidx_insert()
- *  @param parsef: regidx_parse_bed, regidx_parse_tab or see description of regidx_parse_f
+ *  @param parsef: regidx_parse_bed, regidx_parse_tab or see description of regidx_parse_f. If NULL,
+ *                 the format will be autodected, currently either regidx_parse_tab (the default) or
+ *                 regidx_parse_bed (file must be named 'bed' or 'bed.gz') will be used. Note that
+ *                 the exact autodetection algorithm will change.
  *  @param freef:  NULL or see description of regidx_parse_f
  *  @param payload_size: 0 with regidx_parse_bed, regidx_parse_tab or see regidx_parse_f
  *  @param usr:    optional user data passed to regidx_parse_f
  *
  *  Returns index on success or NULL on error.
  */
-regidx_t *regidx_init(const char *fname, regidx_parse_f parsef, regidx_free_f freef, ssize_t payload_size, void *usr);
+regidx_t *regidx_init(const char *fname, regidx_parse_f parsef, regidx_free_f freef, size_t payload_size, void *usr);
 
 /*
  *  regidx_destroy() - free memory allocated by regidx_init
