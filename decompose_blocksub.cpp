@@ -100,8 +100,8 @@ class Igor : Program
         //////////////////////
         odr = new BCFOrderedReader(input_vcf_file, intervals);
 
-        odw = new BCFOrderedWriter(output_vcf_file, 1000);
-        odw->link_hdr(bcf_hdr_subset(odr->hdr, 0, 0, 0));
+        odw = new BCFOrderedWriter(output_vcf_file, 1000, false);
+        odw->link_hdr(odr->hdr);
         bcf_hdr_append(odw->hdr, "##INFO=<ID=OLD_CLUMPED,Number=1,Type=String,Description=\"Original chr:pos:ref:alt encoding\">\n");
         odw->write_hdr();
 
@@ -129,14 +129,14 @@ class Igor : Program
 
         while (odr->read(v))
         {
-            bcf_unpack(v, BCF_UN_INFO);
+            bcf_unpack(v, BCF_UN_ALL);
 
             int32_t n_allele = bcf_get_n_allele(v);
             char** allele = bcf_get_allele(v);
             
             size_t ref_len = strlen(allele[0]);
             if (n_allele==2 && (ref_len!=1) && (ref_len==strlen(allele[1])))
-            {
+            {   
                 int32_t rid = bcf_get_rid(v);
                 int32_t pos1 = bcf_get_pos1(v);
                 char** allele = bcf_get_allele(v);
@@ -150,20 +150,19 @@ class Igor : Program
                 {
                     if (ref[i]!=alt[i])
                     {
-                        bcf_set_rid(v, rid);
-                        bcf_set_pos1(v, pos1+i);
+                        bcf1_t *nv = bcf_dup(v);                        
+                        bcf_unpack(nv, BCF_UN_ALL);
                         
+                        bcf_set_pos1(nv, pos1+i);
                         new_alleles.l=0;
                         kputc(ref[i], &new_alleles);
                         kputc(',', &new_alleles);
                         kputc(alt[i], &new_alleles);
                         
-                        bcf_update_alleles_str(odw->hdr, v, new_alleles.s);
-                        bcf_update_info_string(odw->hdr, v, "OLD_CLUMPED", old_alleles.s);
-                        bcf_subset(odw->hdr, v, 0, 0);
-                        odw->write(v);
-                        v = odw->get_bcf1_from_pool();
-
+                        bcf_update_alleles_str(odw->hdr, nv, new_alleles.s);
+                        bcf_update_info_string(odw->hdr, nv, "OLD_CLUMPED", old_alleles.s);
+                        odw->write(nv);
+                        
                         ++new_no_variants;
                         ++no_additional_snps;
                     }
@@ -176,7 +175,6 @@ class Igor : Program
             }
             else
             {
-                bcf_subset(odw->hdr, v, 0, 0);
                 odw->write(v);
                 v = odw->get_bcf1_from_pool();
                 ++new_no_variants;
@@ -185,8 +183,9 @@ class Igor : Program
             ++no_variants;
         }
 
-        odr->close();
         odw->close();
+        odr->close();
+
     };
 
     void print_options()

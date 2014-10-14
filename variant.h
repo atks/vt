@@ -36,7 +36,7 @@
 class Region
 {
     public:
-        
+
     int32_t beg1;
     int32_t end1;
 };
@@ -53,13 +53,15 @@ class Variant
     kstring_t motif;    //motif
     int32_t mlen;       //motif length
     int32_t tlen;       //reference tract length
-   
+
     std::string emotif;
+    std::string eru;
     Region eregion;
-    
+
     std::string imotif;
+    std::string iru;
     Region iregion;
-    
+
     std::vector<Allele> alleles;
 
     /**

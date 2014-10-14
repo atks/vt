@@ -107,59 +107,24 @@ void STRMotif::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant)
 
     if (bcf_get_n_allele(v)>1)
     {
-
-       // bcf_print(h, v);
-
         const char* chrom = bcf_get_chrom(h, v);
-        std::string ref(bcf_get_alt(v, 0));
-        std::string alt(bcf_get_alt(v, 1));
         int32_t pos1 = bcf_get_pos1(v);
 
-        /////////////
-        //EXACT STRs
-        ////////////
-        trim(pos1, ref, alt);
-//        std::cerr << "after trimming : " << pos1 << " " << ref << "\n";
-//        std::cerr << "               : " << pos1 << " " << alt << "\n";
-
-        int32_t end1 = pos1 + ref.size() - 1;
-        right_align(chrom, end1, ref, alt);
-//        std::cerr << "after right alignment : " << end1 << " " << ref << "\n";
-//        std::cerr << "                      : " << end1 << " " << alt << "\n";
-
-        //do this later as you want to pefrom the alignment shortly.
-        int32_t beg1 = end1 - ref.size() + 1;
-        left_align(chrom, beg1, ref, alt);
-//        std::cerr << "after left alignment : " << beg1 << " " << ref << "\n";
-//        std::cerr << "                     : " << beg1 << " " << alt << "\n";
-
-        variant.eregion.beg1 = beg1;
-        variant.eregion.end1 = end1;
-
-        int32_t seq_len;
-        char* seq;
-        seq = faidx_fetch_seq(fai, chrom, beg1-1, end1-1, &seq_len);
+        std::vector<CandidateMotif> candidate_motifs;
+        pick_candidate_motifs(h, v, candidate_motifs);
 
 
-        std::cerr << "EXACT REGION " << beg1 << "-" << end1 << " (" << end1-beg1+1 <<") vs " << abs(ref.size()-alt.size())  <<  "\n";
-        std::cerr << "             " << seq << "\n";
+        return; 
+        std::string eru = candidate_motifs[0].motif;
+        std::string emotif = get_motif(eru);
 
-        std::string sequence(seq);
-
-        if (seq_len>2)
-        {
-            sequence = sequence.substr(1, sequence.size()-2);
-        }
-
-        if (seq_len) free(seq);
-
-        std::string emotif = pick_motif(sequence);
-
+       
+       
         std::cerr << "exact motif : " << emotif << "\n";
+        std::cerr << "exact ru    : " << eru << "\n";
 
+        variant.eru = eru;
         variant.emotif = emotif;
-
-        //use exact motif to perform left and right alignment
 
         ///////////////
         //INEXACT STRs
@@ -197,7 +162,7 @@ void STRMotif::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant)
         {
             //std::cerr << "MOTIF AND LFLANK  " << emotif << " " << lflank << "\n";
         }
-        lfhmm->set_model(lflank, emotif.c_str());
+        lfhmm->set_model(lflank, eru.c_str());
         lfhmm->set_mismatch_penalty(penalty);
         lfhmm->set_delta(0.0000000001);
         lfhmm->initialize_T();
@@ -240,7 +205,7 @@ void STRMotif::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant)
         }
         //std::cerr << "MOTIF AND RFLANK  " << emotif << " " << rflank << "\n";
 
-        rfhmm->set_model(emotif.c_str(), rflank);
+        rfhmm->set_model(eru.c_str(), rflank);
         rfhmm->set_mismatch_penalty(penalty);
         rfhmm->set_delta(0.0000000001);
         rfhmm->initialize_T();
@@ -274,26 +239,94 @@ void STRMotif::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant)
 }
 
 /**
- * Pick shortest motif.
+ * Pick candidate motifs.
+ * candidate_motifs contain motifs and a measure of confidence
  */
-std::string STRMotif::pick_motif(std::string& sequence)
+void STRMotif::pick_candidate_motifs(bcf_hdr_t* h, bcf1_t* v, std::vector<CandidateMotif>& candidate_motifs)
 {
-    //std::cerr << "checking " << sequence << " (" << sequence.size() << ")\n";
-
-    if (sequence.size()>max_len)
+    const char* chrom = bcf_get_chrom(h, v);
+    
+    bcf_print(h,v);
+    
+    int32_t min_beg1 = bcf_get_pos1(v);
+    int32_t max_end1 = min_beg1;
+    
+    for (size_t i=1; i<bcf_get_n_allele(v); ++i)
     {
-        initialize_factors(sequence.size()+1);
+        std::string ref(bcf_get_alt(v, 0));
+        std::string alt(bcf_get_alt(v, i));
+        int32_t pos1 = bcf_get_pos1(v);
+    
+        /////////////////////////////////////////
+        //EXACT STRs in inserted/deleted sequence
+        /////////////////////////////////////////
+//        std::cerr << "before trimming : " << pos1 << " " << ref << "\n";
+//        std::cerr << "                : " << pos1 << " " << alt << "\n";
+        
+        trim(pos1, ref, alt);
+//        std::cerr << "after trimming : " << pos1 << " " << ref << "\n";
+//        std::cerr << "               : " << pos1 << " " << alt << "\n";
 
-    //std::cerr << "updated maxlen " << max_len << "\n";
+        std::cerr << "indel fragment : " << (ref.size()<alt.size()? alt : ref) << "\n";
+        std::cerr << "               : " << ref << ":" << alt << "\n";
 
+        
+        int32_t end1 = pos1 + ref.size() - 1;
+        right_align(chrom, end1, ref, alt);
+//        std::cerr << "after right alignment : " << end1 << " " << ref << "\n";
+//        std::cerr << "                      : " << end1 << " " << alt << "\n";
+        
+        //do this later as you want to pefrom the alignment shortly.
+        int32_t beg1 = end1 - ref.size() + 1;
+        left_align(chrom, beg1, ref, alt);
+//        std::cerr << "after left alignment : " << beg1 << " " << ref << "\n";
+//        std::cerr << "                     : " << beg1 << " " << alt << "\n";
+            
+        min_beg1 = beg1<min_beg1 ? beg1 : min_beg1;
+        max_end1 = end1>max_end1 ? end1 : max_end1;
+                
+        int32_t seq_len;
+        char* seq;
+        seq = faidx_fetch_seq(fai, chrom, min_beg1-1, max_end1-1, &seq_len);        
+        std::cerr << "EXACT REGION " << min_beg1 << "-" << max_end1 << " (" << max_end1-min_beg1+1 <<") " << "\n";
+        std::cerr << "             " << seq << "\n";
+        if (seq_len) free(seq);    
     }
 
+    int32_t seq_len;
+    char* seq;
+    seq = faidx_fetch_seq(fai, chrom, min_beg1-1, max_end1-1, &seq_len);
+    
+    std::cerr << "EXACT REGION " << min_beg1 << "-" << max_end1 << " (" << max_end1-min_beg1+1 <<") " << "\n";
+    std::cerr << "             " << seq << "\n";
+    
+    std::string sequence(seq);
+    
+    if (seq_len>2)
+    {
+        sequence = sequence.substr(1, sequence.size()-2);
+    }
+    
+    if (seq_len) free(seq);
+    
+    
+
+    scan_exact_motif(sequence);
+    
+}
+
+/**
+ * This is a quick scan for a motif that is exactly repeated.
+ */
+std::string STRMotif::scan_exact_motif(std::string& sequence)
+{
     size_t i = 0;
     size_t len = sequence.size();
     size_t sub_motif_len;
     const char* seq = sequence.c_str();
     size_t d = 0;
-    for (sub_motif_len = 1; sub_motif_len<=6; ++sub_motif_len)
+    size_t max_sub_motif_len = len/2;
+    for (sub_motif_len = 1; sub_motif_len<=max_sub_motif_len; ++sub_motif_len)
     {
         size_t n_sub_motif = len/sub_motif_len;
 
@@ -330,18 +363,15 @@ std::string STRMotif::pick_motif(std::string& sequence)
             }
         }
 
-
-        float c = (float)concordant/ (float) (n_sub_motif*sub_motif_len);
-        float cutoff = (1-sub_motif_len*0.01);
-
-        std::cerr << sequence.substr(0, sub_motif_len) << " " << c1 << " " << c  << " ("   << c1 << "/" << n_sub_motif <<")" << " ("   << concordant << "/" << n_sub_motif*sub_motif_len <<")" << " / " << cutoff << "\n";
-
-        //if (exact) break;
-        //if (c > cutoff) break;
+        if (exact)
+        {
+            return sequence.substr(0, sub_motif_len);
+        }
     }
 
-    return sequence.substr(0, sub_motif_len);
+    return "";
 }
+
 
 /**
  * Pick shortest consensus motif.
@@ -529,7 +559,6 @@ void STRMotif::search_flanks(const char* chrom, int32_t start1, char* motif)
     //given chromosome position and motif
     //attempt to
 
-
     ////////////////////
     //detect right flank
     ////////////////////
@@ -562,47 +591,6 @@ void STRMotif::search_flanks(const char* chrom, int32_t start1, char* motif)
     rfhmm->align(ref, qual.c_str());
     rfhmm->print_alignment();
 
-    ///////////////////
-    //detect left flank
-    ///////////////////
-//    //if insert, infuse a repeat unit
-//    //choose most appropriate motif
-//    if (!ru_len)
-//    {
-//        lfhmm->set_model(lflank, ru);
-//        lfhmm->set_mismatch_penalty(5);
-//        lfhmm->align(ref_genome, qual.c_str());
-//        lfhmm->print_alignment();
-//
-//        if (strlen(ref)>strlen(alt))
-//        {
-//            lflank = faidx_fetch_uc_seq(fai, chrom, start1-10, start1-1, &lflank_len);
-//            ////bcf_get_info_string(odr->hdr, v, "RU", &ru, &ru_len);
-//            ref_genome = faidx_fetch_uc_seq(fai, chrom, start1-10, start1+100, &ref_genome_len);
-//            ru = ref;
-//            ++ru;
-//        }
-//        else //deletion
-//        {
-//            lflank = faidx_fetch_uc_seq(fai, chrom, start1-10, start1-1, &lflank_len);
-//            ru = alt;
-//            kstring_t str = {(size_t)lflank_len, (size_t)lflank_len, lflank};
-//            ++ru;
-//            kputs(ru, &str);
-//            lflank_len = str.m;
-//            lflank = str.s;
-//
-//            ref_genome = faidx_fetch_uc_seq(fai, chrom, start1, start1+100, &ref_genome_len);
-//            str.l=0; str.s=0; str.m=0;
-//            kputs(lflank, &str);
-//            kputs(ru, &str);
-//            kputs(ref_genome, &str);
-//
-//            free(ref_genome);
-//            ref_genome = str.s;
-//            ref_genome_len = str.l;
-//        }
-//    }
 
     //////////////////////////////
     //annotate STR characteristics
@@ -658,7 +646,6 @@ char* STRMotif::get_shortest_repeat_motif(char* allele, int32_t len)
     return motif;
 };
 
-
 /**
  * Gets motif of a repeat unit.
  */
@@ -668,10 +655,10 @@ std::string STRMotif::get_motif(std::string& ru)
     for (size_t i=0; i<ru.size(); ++i)
     {
         std::string phase = shift_phase(ru, i);
-        std::string rc = reverse_complement(phase);    
-        motif = phase < rc ? phase : rc;  
+        std::string rc = reverse_complement(phase);
+        motif = phase < rc ? phase : rc;
     }
-    
+
     return motif;
 }
 
@@ -686,7 +673,7 @@ std::string STRMotif::reverse_complement(std::string& seq)
     {
         char b = seq.at(i);
 
-        switch (b) 
+        switch (b)
         {
             case 'A':
                 rc.append(1, 'T');
@@ -702,7 +689,7 @@ std::string STRMotif::reverse_complement(std::string& seq)
                 break;
         }
     }
-    
+
     return rc;
 }
 

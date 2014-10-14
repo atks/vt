@@ -85,7 +85,7 @@ std::string Allele::reduce_sv_type(std::string& sv_type)
             return "<CNV>";
         }
     }
-    
+
     return sv_type;
 };
 

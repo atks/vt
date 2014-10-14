@@ -288,10 +288,10 @@ class Igor : Program
                                     float glhet = gl[j*n_genotype+bcf_alleles2gt(0,i)];
                                     float glalt = gl[j*n_genotype+bcf_alleles2gt(i,i)];
 
-                                    for (size_t k=0; k<n_genotype; ++k)
-                                        std::cerr << gl[j*n_genotype+k] << ",";
+//                                    for (size_t k=0; k<n_genotype; ++k)
+//                                        std::cerr << gl[j*n_genotype+k] << ",";
 
-                                    std::cerr << " => " << glref << "," << glhet <<  "," << glalt << "\n";
+                                    //std::cerr << " => " << glref << "," << glhet <<  "," << glalt << "\n";
                                         
                                     gls[j*3] = glref;
                                     gls[j*3+1] = glhet;

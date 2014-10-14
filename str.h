@@ -44,6 +44,26 @@
 
 KHASH_MAP_INIT_STR(mdict, int32_t);
 
+class CandidateMotif
+{
+    public:
+    std::string motif;
+    float score;
+};
+
+/**
+ * Comparator for BCFPtr class.  Used in priority_queue; ensures that
+ * records are ordered according to file order.
+ */
+class CompareCandidateMotif
+{
+    public:
+    bool operator()(CandidateMotif& a, CandidateMotif& b)
+    {
+        return a.score >= b.score;
+    }
+};
+
 /**
  * Class for determining STR motifs, flanks and STR type statistics.
  * RU,RL,LFLANK,RFLANK,LFLANKPOS,RFLANKPOS,MOTIF_CONCORDANCE,MOTIF_CONCORDANCE
@@ -72,7 +92,7 @@ class STRMotif
     float concordance;
 
     int32_t max_len;
-    
+
     ///////
     //tools
     ///////
@@ -85,17 +105,18 @@ class STRMotif
     int32_t** factors;
 
     khash_t(mdict) *motifs;
-
-    /**
-     * Constructor.
-     */
-    STRMotif(std::string& ref_fasta_file);
+    std::priority_queue<CandidateMotif, std::vector<CandidateMotif>, CompareCandidateMotif> pq;
     
     /**
      * Constructor.
      */
+    STRMotif(std::string& ref_fasta_file);
+
+    /**
+     * Constructor.
+     */
     void initialize_factors(int32_t max_len);
-        
+
     /**
      * Destructor.
      */
@@ -106,17 +127,28 @@ class STRMotif
      * RU,RL,LFLANK,RFLANK,LFLANKPOS,RFLANKPOS,MOTIF_CONCORDANCE,MOTIF_CONCORDANCE
      */
     void annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant);
-    
+
     /**
      * Pick shortest motif.
      */
     std::string pick_motif(std::string& sequence);
-        
+
+    /**
+     * This is a quick scan for a motif that is exactly repeated.
+     */
+    std::string scan_exact_motif(std::string& sequence);
+
+    /**
+     * Pick candidate motifs.
+     * candidate_motifs contain motifs and a measure of confidence
+     */
+    void pick_candidate_motifs(bcf_hdr_t* h, bcf1_t* v, std::vector<CandidateMotif>& candidate_motifs);
+
     /**
      * Pick shortest consensus motif.
      */
     std::string pick_consensus_motif(std::string& sequence);
-        
+
     /**
      * Suggests a set of repeat motif candidates in a set of alleles.
      */
@@ -128,15 +160,15 @@ class STRMotif
     void trim(int32_t& pos1, std::string& ref, std::string& alt);
 
     /**
-     * Left align alleles. 
+     * Left align alleles.
      */
     void left_align(const char* chrom, int32_t& pos1, std::string& ref, std::string& alt);
-    
+
     /**
-     * Right align alleles. 
+     * Right align alleles.
      */
     void right_align(const char* chrom, int32_t& pos1, std::string& ref, std::string& alt);
-        
+
     /**
      * Detect allele lower bound extent.
      */
@@ -156,12 +188,12 @@ class STRMotif
      * Gets motif of a repeat unit.
      */
     std::string get_motif(std::string& ru);
-    
+
     /**
      * Reverse complement a sequence.
      */
     std::string reverse_complement(std::string& seq);
-    
+
     /**
      * Shifts a sequence to the right by i bases.
      */

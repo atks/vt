@@ -69,12 +69,14 @@ class BCFOrderedWriter
     std::stringstream ss;
 
     int32_t window;
+    bool recycle;
 
     /**
      * Initialize output file.
      * @window - the window to keep variants in buffer to check for local disorder, 0 for no buffering
+     * @recycle - keep unused records in a pool for reuse
      */
-    BCFOrderedWriter(std::string input_vcf_file, int32_t window=0);
+    BCFOrderedWriter(std::string input_vcf_file, int32_t window=0, bool recycle=true);
 
     /**
      * Duplicates a hdr and sets it.

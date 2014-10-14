@@ -40,7 +40,7 @@ class Igor : Program
     std::string output_vcf_file;
     std::vector<GenomeInterval> intervals;
     std::string interval_list;
- 
+
     ///////
     //i/o//
     ///////
@@ -103,14 +103,15 @@ class Igor : Program
         odr = new BCFOrderedReader(input_vcf_file, intervals);
         odw = new BCFOrderedWriter(output_vcf_file);
         odw->link_hdr(odr->hdr);
+        bcf_hdr_append(odw->hdr, "##INFO=<ID=VMOTIF,Number=1,Type=String,Description=\"Canonical Motif in an STR or Homopolymer\">");
         bcf_hdr_append(odw->hdr, "##INFO=<ID=VRU,Number=1,Type=String,Description=\"Repeat unit in a STR or Homopolymer\">");
         bcf_hdr_append(odw->hdr, "##INFO=<ID=VRL,Number=1,Type=Integer,Description=\"Repeat Length\">");
         bcf_hdr_append(odw->hdr, "##INFO=<ID=IRL,Number=1,Type=Integer,Description=\"Inexact Repeat Length\">");
         bcf_hdr_append(odw->hdr, "##INFO=<ID=IRG,Number=2,Type=Integer,Description=\"Region of the motif.\">");
         bcf_hdr_append(odw->hdr, "##INFO=<ID=ISQ,Number=1,Type=String,Description=\"Inexact STR Sequence\">");
-        
-        
-        
+
+
+
 //        bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_LFLANK,Number=1,Type=String,Description=\"Right Flank Sequence\">");
 //        bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_RFLANK,Number=1,Type=String,Description=\"Left Flank Sequence\">");
 //        bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_LFLANKPOS,Number=2,Type=Integer,Description=\"Positions of left flank\">");
@@ -119,10 +120,10 @@ class Igor : Program
 //        bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_MOTIF_COMPLETENESS,Number=1,Type=Integer,Description=\"Descriptive Discordance for each reference repeat unit.\">");
 //        bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_STR_CONCORDANCE,Number=1,Type=Float,Description=\"Overall discordance of RUs.\">");
 //
-//        
+//
 //        bcf_hdr_append(odw->hdr, "##INFO=<ID=RL,Number=1,Type=Integer,Description=\"Motif.\">");
 //        bcf_hdr_append(odw->hdr, "##INFO=<ID=EXACT_ALLELE_REGION,Number=2,Type=Integer,Description=\"Region of the motif.\">");
-//        
+//
 
         ////////////////////////
         //stats initialization//
@@ -169,20 +170,19 @@ class Igor : Program
             if (vtype&VT_INDEL)
             {
                 //bcf_print(odr->hdr, v);
-                
                 strm->annotate(odr->hdr, v, variant);
 
-
-                bcf_update_info_string(odw->hdr, v, "VRU", variant.emotif.c_str());
+                bcf_update_info_string(odw->hdr, v, "VMOTIF", variant.emotif.c_str());
+                bcf_update_info_string(odw->hdr, v, "VRU", variant.eru.c_str());
 //                int32_t region[2] = {variant.eregion.beg1, variant.eregion.end1};
 //                bcf_update_info_int32(odw->hdr, v, "EXACT_ALLELE_REGION", &region, 2);
                 int32_t rl = variant.eregion.end1-variant.eregion.beg1-1;
                 bcf_update_info_int32(odw->hdr, v, "VRL", &rl, 1);
                 int32_t irl = variant.iregion.end1-variant.iregion.beg1-1;
                 bcf_update_info_int32(odw->hdr, v, "IRL", &irl, 1);
-                
+
                 if (irl!=rl)
-                {    
+                {
                     int32_t irg[2] = {variant.iregion.beg1, variant.iregion.end1};
                     bcf_update_info_int32(odw->hdr, v, "IRG", &irg, 2);
                     int32_t len = 0;
@@ -191,14 +191,15 @@ class Igor : Program
                     bcf_update_info_string(odw->hdr, v, "ISQ", seq);
                     if (len) free(seq);
                 }
-//                 
+
+                ++no_variants_annotated;
+
                 std::cerr << "\t";
                 bcf_print(odr->hdr, v);
             }
-            
+
             odw->write(v);
             v = odw->get_bcf1_from_pool();
-                
         }
 
         odw->close();

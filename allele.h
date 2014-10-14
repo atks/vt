@@ -54,31 +54,31 @@ class Allele
     int32_t mlen;  //min shared length
     int32_t ts;    //no. of transitions
     int32_t tv;    //no. of tranversions (mlen-ts)
-    int32_t ins;   //no. of insertions 
+    int32_t ins;   //no. of insertions
     int32_t del;   //no. of deletions
     std::string sv_type; //hierarchical descriptor for the imprecise allele type
-    
+
     /**
      * Constructor.
-     */    
+     */
     Allele(int32_t type, int32_t diff, int32_t alen, int32_t dlen, int32_t tlen, int32_t mlen, int32_t ts, std::string& sv_type);
 
     /**
      * Constructor.
-     */    
+     */
     Allele(int32_t type, int32_t diff, int32_t alen, int32_t dlen, int32_t tlen, int32_t mlen, int32_t ts, int32_t tv);
 
     /**
      * Destructor.
      */
     ~Allele();
-    
+
     /**
      * Special dictionary for some reserve types.
      * CN\d+ be CNV
      */
     std::string reduce_sv_type(std::string& sv_type);
-    
+
     /**
      * Clear variables.
      */
