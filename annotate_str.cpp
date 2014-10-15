@@ -110,8 +110,6 @@ class Igor : Program
         bcf_hdr_append(odw->hdr, "##INFO=<ID=IRG,Number=2,Type=Integer,Description=\"Region of the motif.\">");
         bcf_hdr_append(odw->hdr, "##INFO=<ID=ISQ,Number=1,Type=String,Description=\"Inexact STR Sequence\">");
 
-
-
 //        bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_LFLANK,Number=1,Type=String,Description=\"Right Flank Sequence\">");
 //        bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_RFLANK,Number=1,Type=String,Description=\"Left Flank Sequence\">");
 //        bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_LFLANKPOS,Number=2,Type=Integer,Description=\"Positions of left flank\">");

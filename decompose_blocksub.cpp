@@ -71,7 +71,7 @@ class Igor : Program
         //////////////////////////
         try
         {
-            std::string desc = "decomposes multialleic variants into biallelic in a VCF file, only sites are output.";
+            std::string desc = "decomposes biallelic block substitutions into its constituent SNPs.";
 
             TCLAP::CmdLine cmd(desc, ' ', version);
             VTOutput my; cmd.setOutput(&my);
@@ -191,7 +191,7 @@ class Igor : Program
 
     void print_options()
     {
-        std::clog << "decompose v" << version << "\n";
+        std::clog << "decompose_blocksub v" << version << "\n";
         std::clog << "\n";
         std::clog << "options:     input VCF file        " << input_vcf_file << "\n";
         std::clog << "         [o] output VCF file       " << output_vcf_file << "\n";

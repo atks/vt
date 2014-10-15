@@ -307,6 +307,33 @@ void STRMotif::pick_candidate_motifs(bcf_hdr_t* h, bcf1_t* v, std::vector<Candid
     
     std::string sequence(seq);
     
+    
+    int32_t bases[4] = {0,0,0,0};
+    for (size_t i=0; i<sequence.size(); ++i)
+    {
+        if (seq[i]=='A')
+        {
+            ++bases[0];
+        }
+        else if (seq[i]=='C')
+        {
+            ++bases[1];
+        }
+        else if (seq[i]=='G')
+        {
+            ++bases[2];
+        }
+        else if (seq[i]=='T')
+        {
+            ++bases[3];
+        }
+    }
+    
+    std::cerr << "             A " << ((float)bases[0]/sequence.size()) << "\n";
+    std::cerr << "             C " << ((float)bases[1]/sequence.size()) << "\n";
+    std::cerr << "             G " << ((float)bases[2]/sequence.size()) << "\n";
+    std::cerr << "             T " << ((float)bases[3]/sequence.size()) << "\n";
+    
     if (seq_len>2)
     {
         sequence = sequence.substr(1, sequence.size()-2);
