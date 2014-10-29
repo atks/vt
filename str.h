@@ -41,28 +41,9 @@
 #include "lfhmm.h"
 #include "variant_manip.h"
 #include "program.h"
+#include "motif_suffix_tree.h"
 
 KHASH_MAP_INIT_STR(mdict, int32_t);
-
-class CandidateMotif
-{
-    public:
-    std::string motif;
-    float score;
-};
-
-/**
- * Comparator for BCFPtr class.  Used in priority_queue; ensures that
- * records are ordered according to file order.
- */
-class CompareCandidateMotif
-{
-    public:
-    bool operator()(CandidateMotif& a, CandidateMotif& b)
-    {
-        return a.score >= b.score;
-    }
-};
 
 /**
  * Class for determining STR motifs, flanks and STR type statistics.

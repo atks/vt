@@ -80,7 +80,8 @@ SOURCES = program\
 		variant_buffer\
 		decompose_blocksub\
 		ahmm\
-		suffix_tree\
+		motif_suffix_tree\
+		candidate_motif\
 
 SOURCESONLY = main.cpp
 

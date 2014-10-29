@@ -251,6 +251,7 @@ void STRMotif::pick_candidate_motifs(bcf_hdr_t* h, bcf1_t* v, std::vector<Candid
     int32_t min_beg1 = bcf_get_pos1(v);
     int32_t max_end1 = min_beg1;
     
+    //merge candidate search region
     for (size_t i=1; i<bcf_get_n_allele(v); ++i)
     {
         std::string ref(bcf_get_alt(v, 0));
@@ -304,6 +305,11 @@ void STRMotif::pick_candidate_motifs(bcf_hdr_t* h, bcf1_t* v, std::vector<Candid
     
     std::cerr << "EXACT REGION " << min_beg1 << "-" << max_end1 << " (" << max_end1-min_beg1+1 <<") " << "\n";
     std::cerr << "             " << seq << "\n";
+    
+    //detect motif
+    
+    
+    
     
     std::string sequence(seq);
     
@@ -411,7 +417,6 @@ std::string STRMotif::scan_exact_motif(std::string& sequence)
 std::string STRMotif::pick_consensus_motif(std::string& ref)
 {
    return "";
-
 }
 
 /**

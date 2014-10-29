@@ -1,6 +1,6 @@
 /* The MIT License
 
-   Copyright (c) 2013 Adrian Tan <atks@umich.edu>
+   Copyright (c) 2014 Adrian Tan <atks@umich.edu>
 
    Permission is hereby granted, free of charge, to any person obtaining a copy
    of this software and associated documentation files (the "Software"), to deal
@@ -21,62 +21,31 @@
    THE SOFTWARE.
 */
 
-#include "suffix_tree.h"
+#ifndef CANDIDATE_MOTIF_H
+#define CANDIDATE_MOTIF_H
+
+#include <string>
 
 /**
- * Constructs an SuffixTreeNode and initialize it with an interval.
+ * Candidate Motif.
  */
-SuffixTreeNode::SuffixTreeNode()
+class CandidateMotif
 {
-    
+    public:
+    std::string motif;
+    float score;
 };
 
 /**
- * Constructs an SuffixTreeNode.
+ * Comparator for Candidate Motif for use in priority_queue.
  */
-SuffixTreeNode::~SuffixTreeNode()
+class CompareCandidateMotif
 {
+    public:
+    bool operator()(CandidateMotif& a, CandidateMotif& b)
+    {
+        return a.score >= b.score;
+    }
 };
 
-/**
- * Constructor.
- */
-SuffixTree::SuffixTree()
-{
-};
-
-/**
- * Destructor.
- */
-SuffixTree::~SuffixTree()
-{
-};
-
-/**
- * Construct suffix tree based on sequence.
- */
-void SuffixTree::set_sequence(std::string& sequence)
-{
-};    
-
-/**
- * Construct suffix tree based on sequence up to max_motif_len.
- */
-void SuffixTree::construct_tree(std::string& sequence, int32_t max_motif_len)
-{
-};
-
-/**
- * Gets candidate motifs up to max_motif_len.
- */
-void SuffixTree::get_candidate_motifs(std::vector<CandidateMotif*>& candidate_motifs, int32_t max_motif_len)
-{
-};
-
-/**
- * Adds a suffix to the tree.
- */
-void SuffixTree::add_suffix(std::string seq, int32_t start)
-{
-};
-    
+#endif

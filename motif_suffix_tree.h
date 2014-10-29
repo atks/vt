@@ -1,6 +1,6 @@
 /* The MIT License
 
-   Copyright (c) 2013 Adrian Tan <atks@umich.edu>
+   Copyright (c) 2014 Adrian Tan <atks@umich.edu>
 
    Permission is hereby granted, free of charge, to any person obtaining a copy
    of this software and associated documentation files (the "Software"), to deal
@@ -21,61 +21,61 @@
    THE SOFTWARE.
 */
 
-#ifndef SUFFIX_TREE_H
-#define SUFFIX_TREE_H
+#ifndef MOTIF_SUFFIX_TREE_H
+#define MOTIF_SUFFIX_TREE_H
 
 #include <cstdint>
 #include <vector>
 #include <iostream>
+#include "candidate_motif.h"
 
 #define A 0
 #define C 1
 #define G 2
 #define T 3
 
-class CandidateMotif
+/**
+ * A node for the Motif Suffix Tree.
+ */
+class MotifSuffixTreeNode
 {
     public:
-    std::string motif;
-    float score;
-};
-
-class SuffixTreeNode
-{
-    public:
-    SuffixTreeNode* parent;
-    SuffixTreeNode* children[4];
-    SuffixTreeNode* n_children[4];
+    MotifSuffixTreeNode* parent;
+    MotifSuffixTreeNode* children[4];
+    MotifSuffixTreeNode* n_children[4];
     std::string suffix;
     int32_t count;
 
     /**
-     * Constructs an SuffixTreeNode and initialize it with an interval.
+     * Constructs an MotifSuffixTreeNode and initialize it with an interval.
      */
-    SuffixTreeNode();
+    MotifSuffixTreeNode();
 
     /**
-     * Constructs an SuffixTreeNode.
+     * Constructs an MotifSuffixTreeNode.
      */
-    ~SuffixTreeNode();
+    ~MotifSuffixTreeNode();
     
     private:
 };
 
-class SuffixTree
+/**
+ * Motif Suffix Tree for selecting candidate motifs.
+ */
+class MotifSuffixTree
 {
     public:
-    SuffixTreeNode* root;
+    MotifSuffixTreeNode* root;
 
     /**
      * Constructor.
      */
-    SuffixTree();
+    MotifSuffixTree();
 
     /**
      * Destructor.
      */
-    ~SuffixTree();
+    ~MotifSuffixTree();
 
     /**
      * Construct suffix tree based on sequence.
@@ -99,5 +99,10 @@ class SuffixTree
      */
     void add_suffix(std::string seq, int32_t start);   
 };
+
+#undef A
+#undef C
+#undef G
+#undef T
 
 #endif
