@@ -168,6 +168,8 @@ class Igor : Program
             if (vtype&VT_INDEL)
             {
                 //bcf_print(odr->hdr, v);
+                
+                //annotate indel like variant
                 strm->annotate(odr->hdr, v, variant);
 
                 bcf_update_info_string(odw->hdr, v, "VMOTIF", variant.emotif.c_str());

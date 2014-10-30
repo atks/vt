@@ -35,6 +35,7 @@ STRMotif::STRMotif(std::string& ref_fasta_file)
         fprintf(stderr, "[%s:%d %s] Cannot load genome index: %s\n", __FILE__, __LINE__, __FUNCTION__, ref_fasta_file.c_str());
         exit(1);
     }
+    mst = new MotifSuffixTree();
     rfhmm = new RFHMM();
     lfhmm = new LFHMM();
 
@@ -113,12 +114,9 @@ void STRMotif::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant)
         std::vector<CandidateMotif> candidate_motifs;
         pick_candidate_motifs(h, v, candidate_motifs);
 
-
         return; 
         std::string eru = candidate_motifs[0].motif;
         std::string emotif = get_motif(eru);
-
-       
        
         std::cerr << "exact motif : " << emotif << "\n";
         std::cerr << "exact ru    : " << eru << "\n";
@@ -286,11 +284,6 @@ void STRMotif::pick_candidate_motifs(bcf_hdr_t* h, bcf1_t* v, std::vector<Candid
         min_beg1 = beg1<min_beg1 ? beg1 : min_beg1;
         max_end1 = end1>max_end1 ? end1 : max_end1;
                 
-                
-                
-                
-                
-                
         int32_t seq_len;
         char* seq;
         seq = faidx_fetch_seq(fai, chrom, min_beg1-1, max_end1-1, &seq_len);        
@@ -307,7 +300,7 @@ void STRMotif::pick_candidate_motifs(bcf_hdr_t* h, bcf1_t* v, std::vector<Candid
     std::cerr << "             " << seq << "\n";
     
     //detect motif
-    
+    mst->set_sequence(seq);
     
     
     

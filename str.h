@@ -79,6 +79,7 @@ class STRMotif
     ///////
     VariantManip *vm;
     faidx_t* fai;
+    MotifSuffixTree* mst;
     RFHMM* rfhmm;
     LFHMM* lfhmm;
 

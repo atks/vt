@@ -25,6 +25,7 @@
 #define MOTIF_SUFFIX_TREE_H
 
 #include <cstdint>
+#include <cstring>
 #include <vector>
 #include <iostream>
 #include "candidate_motif.h"
@@ -42,20 +43,24 @@ class MotifSuffixTreeNode
     public:
     MotifSuffixTreeNode* parent;
     MotifSuffixTreeNode* children[4];
-    MotifSuffixTreeNode* n_children[4];
     std::string suffix;
     int32_t count;
 
     /**
-     * Constructs an MotifSuffixTreeNode and initialize it with an interval.
+     * Constructs a MotifSuffixTreeNode.
      */
     MotifSuffixTreeNode();
+
+    /**
+     * Constructs a MotifSuffixTreeNode and initialize it with a parent and suffix.
+     */
+    MotifSuffixTreeNode(MotifSuffixTreeNode* parent, std::string& suffix);
 
     /**
      * Constructs an MotifSuffixTreeNode.
      */
     ~MotifSuffixTreeNode();
-    
+
     private:
 };
 
@@ -80,24 +85,23 @@ class MotifSuffixTree
     /**
      * Construct suffix tree based on sequence.
      */
-    void set_sequence(std::string& sequence);
+    void set_sequence(char* sequence);
 
     /**
      * Construct suffix tree based on sequence up to max_motif_len.
      */
-    void construct_tree(std::string& sequence, int32_t max_motif_len);
+    void set_sequence(char* sequence, int32_t max_motif_len);
 
     /**
      * Gets candidate motifs up to max_motif_len.
      */
     void get_candidate_motifs(std::vector<CandidateMotif*>& candidate_motifs, int32_t max_motif_len);
-    
-    private:
 
+    private:
     /**
-     * Adds a suffix to the tree.
+     * Adds a suffix of sequence from start to end.
      */
-    void add_suffix(std::string seq, int32_t start);   
+    void add_suffix(char* sequence, int32_t start, int32_t end);
 };
 
 #undef A
