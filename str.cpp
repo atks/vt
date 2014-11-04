@@ -301,6 +301,7 @@ void STRMotif::pick_candidate_motifs(bcf_hdr_t* h, bcf1_t* v, std::vector<Candid
     
     //detect motif
     mst->set_sequence(seq);
+    //mst->
     
     
     

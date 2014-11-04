@@ -27,6 +27,7 @@
 #define C 1
 #define G 2
 #define T 3
+#define N 4
 
 /**
  * Constructs a MotifSuffixTreeNode.
@@ -34,7 +35,7 @@
 MotifSuffixTreeNode::MotifSuffixTreeNode()
 {
     parent = NULL;
-    for (size_t b = A; A<=T; ++b)
+    for (size_t b = A; b<=T; ++b)
     {
         children[b] = NULL;
     }
@@ -48,11 +49,27 @@ MotifSuffixTreeNode::MotifSuffixTreeNode()
 MotifSuffixTreeNode::MotifSuffixTreeNode(MotifSuffixTreeNode* parent, std::string& suffix)
 {
     parent = parent;
-    for (size_t b = A; A<=T; ++b)
+    for (size_t b = A; b<=T; ++b)
     {
         children[b] = NULL;
     }
     this->suffix = suffix;
+    count = 0;
+};
+
+
+/**
+ * Clear the suffix tree node.
+ */
+void MotifSuffixTreeNode::clear()
+{
+    for (size_t b = A; b<=T; ++b)
+    {
+        if (children[b])
+        {    
+            children[b]->clear();
+        }
+    }
     count = 0;
 };
 
@@ -79,7 +96,7 @@ MotifSuffixTreeNode::~MotifSuffixTreeNode()
  */
 MotifSuffixTree::MotifSuffixTree()
 {
-    root = NULL;
+    root = new MotifSuffixTreeNode();
 };
 
 /**
@@ -104,11 +121,6 @@ void MotifSuffixTree::set_sequence(char* sequence)
  */
 void MotifSuffixTree::set_sequence(char* sequence, int32_t max_motif_len)
 {
-    if (!root)
-    {
-        root = new MotifSuffixTreeNode();
-    }
-
     size_t len = strlen(sequence);
 
     //i is starting
@@ -121,8 +133,17 @@ void MotifSuffixTree::set_sequence(char* sequence, int32_t max_motif_len)
 /**
  * Gets candidate motifs up to max_motif_len.
  */
-void MotifSuffixTree::get_candidate_motifs(std::vector<CandidateMotif*>& candidate_motifs, int32_t max_motif_len)
+void MotifSuffixTree::get_candidate_motifs(std::priority_queue<CandidateMotif, std::vector<CandidateMotif *>, CompareCandidateMotif>& candidate_motifs)
 {
+    //travel through tree
+    MotifSuffixTreeNode* node = root;
+     
+     
+   // std::priority_queue<CandidateMotif, std::vector<CandidateMotif *>, CompareCandidateMotif> pq;
+     
+     
+     
+    
 };
 
 /**
@@ -134,14 +155,13 @@ void MotifSuffixTree::add_suffix(char* sequence, int32_t start, int32_t end)
 
     for (size_t i = start; i<=end; ++i)
     {
-        char base = sequence[i];
+        int32_t base = base2index(sequence[i]);
 
-        if (base==0) break;
+        if (base==N) break;
 
         if (node->children[base]==NULL)
         {
             node->children[base] = new MotifSuffixTreeNode(node, node->suffix.append(1,base));
-            node->count = 0;
         }
 
         node = node->children[base];
@@ -149,7 +169,32 @@ void MotifSuffixTree::add_suffix(char* sequence, int32_t start, int32_t end)
     }
 };
 
+/**
+ * Converts base to index.
+ */
+int32_t MotifSuffixTree::base2index(char base)
+{
+    switch (base)
+    {
+        case 'A':
+            return A;
+            break;
+        case 'C':
+            return C;
+            break;
+        case 'G':
+            return G;
+            break;
+        case 'T':
+            return T;
+            break;
+        default:
+            return N;
+    }
+};
+
 #undef A
 #undef C
 #undef G
 #undef T
+#undef N

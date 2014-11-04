@@ -46,7 +46,8 @@
 KHASH_MAP_INIT_STR(mdict, int32_t);
 
 /**
- * Class for determining STR motifs, flanks and STR type statistics.
+ * Class for determining basic traits of an indel
+ * motifs, flanks and STR type statistics.
  * RU,RL,LFLANK,RFLANK,LFLANKPOS,RFLANKPOS,MOTIF_CONCORDANCE,MOTIF_CONCORDANCE
  */
 class STRMotif

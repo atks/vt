@@ -28,6 +28,7 @@
 #include <cstring>
 #include <vector>
 #include <iostream>
+#include <queue>
 #include "candidate_motif.h"
 
 #define A 0
@@ -57,6 +58,11 @@ class MotifSuffixTreeNode
     MotifSuffixTreeNode(MotifSuffixTreeNode* parent, std::string& suffix);
 
     /**
+     * Clear the suffix tree node.
+     */
+    void clear();
+
+    /**
      * Constructs an MotifSuffixTreeNode.
      */
     ~MotifSuffixTreeNode();
@@ -83,6 +89,11 @@ class MotifSuffixTree
     ~MotifSuffixTree();
 
     /**
+     * Clear the suffix tree.
+     */
+    void clear();
+
+    /**
      * Construct suffix tree based on sequence.
      */
     void set_sequence(char* sequence);
@@ -95,13 +106,18 @@ class MotifSuffixTree
     /**
      * Gets candidate motifs up to max_motif_len.
      */
-    void get_candidate_motifs(std::vector<CandidateMotif*>& candidate_motifs, int32_t max_motif_len);
-
+    void get_candidate_motifs(std::priority_queue<CandidateMotif, std::vector<CandidateMotif *>, CompareCandidateMotif>& candidate_motifs);
+        
     private:
     /**
      * Adds a suffix of sequence from start to end.
      */
     void add_suffix(char* sequence, int32_t start, int32_t end);
+    
+    /**
+     * Converts base to index.
+     */
+    int32_t base2index(char base);
 };
 
 #undef A
