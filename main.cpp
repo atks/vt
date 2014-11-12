@@ -27,7 +27,6 @@
 #include "construct_probes.h"
 #include "discover.h"
 #include "annotate_variants.h"
-#include "annotate_str.h"
 #include "annotate_dbsnp_rsid.h"
 #include "genotype.h"
 #include "genotype2.h"
@@ -53,7 +52,7 @@
 #include "profile_len.h"
 #include "profile_chrom.h"
 #include "annotate_regions.h"
-#include "annotate_str.h"
+#include "annotate_indel.h"
 #include "consolidate_variants.h"
 #include "test.h"
 #include "config.h"
@@ -261,9 +260,9 @@ int main(int argc, char ** argv)
     {
         profile_len(argc-1, ++argv);
     }  
-    else if (argc>1 && cmd=="annotate_str")
+    else if (argc>1 && cmd=="annotate_indel")
     {
-        annotate_str(argc-1, ++argv);
+        annotate_indel(argc-1, ++argv);
     }
     else if (argc>1 && cmd=="consolidate_variants")
     {

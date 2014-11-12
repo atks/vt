@@ -56,11 +56,7 @@ class Igor : Program
     //options//
     ///////////
     std::string method;
-    std::string x;
-    std::string y;
-    std::string lflank;
-    std::string ru;
-    std::string rflank;
+    std::string seq;
 
     bool debug;
 
@@ -73,38 +69,22 @@ class Igor : Program
         //////////////////////////
         try
         {
-            std::string desc = "vt align  -m nw -x ACTGACT -y CCCCCCACTGACTGGGGGG\n"
-    "          vt align  -m sw -x ACTGACT -y CCCCCCACTGACTGGGGGG\n"
-    "          vt align  -m ghmm -x ACTGACT -y CCCCCCACTGACTGGGGGG\n"
-    "\n";
+            std::string desc = "vt test  -m detect_motif -s ACTGACT \n";
 
             std::string version = "0.5";
             TCLAP::CmdLine cmd(desc, ' ', version);
             VTOutput my; cmd.setOutput(&my);
             TCLAP::ValueArg<std::string> arg_method("m", "method", "alignment Method", true, "", "string");
-            TCLAP::ValueArg<std::string> arg_x("x", "x_seq", "X Sequence", false, "", "string");
-            TCLAP::ValueArg<std::string> arg_y("y", "y_seq", "Y Sequence", true, "", "string");
-            TCLAP::ValueArg<std::string> arg_lflank("l", "l", "left flanks", false, "", "string");
-            TCLAP::ValueArg<std::string> arg_ru("u", "u", "repeat unit", false, "", "string");
-            TCLAP::ValueArg<std::string> arg_rflank("r", "r", "right flanks", false, "", "string");
-
+            TCLAP::ValueArg<std::string> arg_seq("s", "seq", "sequence", false, "", "string");
             TCLAP::SwitchArg arg_debug("d", "debug", "Debug", false);
 
             cmd.add(arg_method);
-            cmd.add(arg_x);
-            cmd.add(arg_y);
-            cmd.add(arg_lflank);
-            cmd.add(arg_ru);
-            cmd.add(arg_rflank);
+            cmd.add(arg_seq);
             cmd.add(arg_debug);
             cmd.parse(argc, argv);
 
             method = arg_method.getValue();
-            x = arg_x.getValue();
-            y = arg_y.getValue();
-            lflank = arg_lflank.getValue();
-            ru = arg_ru.getValue();
-            rflank = arg_rflank.getValue();
+            seq = arg_seq.getValue();
         }
         catch (TCLAP::ArgException &e)
         {
@@ -115,7 +95,11 @@ class Igor : Program
 
     void test()
     {
-        
+        if (method == "detect_motifs")
+        {
+            
+            
+        }
     };
 
     void print_stats()

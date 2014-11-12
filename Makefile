@@ -24,6 +24,7 @@ SOURCES = program\
 		genome_interval\
 		compute_concordance\
 		compute_features\
+		compute_freq\
 		partition\
 		profile_indels\
 		profile_snps\
@@ -34,12 +35,13 @@ SOURCES = program\
 		genotype\
 		gencode\
 		annotate_variants\
-		annotate_str\
+		annotate_indel\
 		lhmm\
 		chmm\
 		lfhmm\
 		rfhmm\
 		lhmm1\
+    	ahmm\
 		genotyping_buffer\
 		lhmm_genotyping_record\
 		peek\
@@ -79,7 +81,6 @@ SOURCES = program\
 		bam_variant_extractor\
 		variant_buffer\
 		decompose_blocksub\
-		ahmm\
 		motif_suffix_tree\
 		candidate_motif\
 

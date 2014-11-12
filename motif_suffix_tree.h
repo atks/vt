@@ -27,6 +27,7 @@
 #include <cstdint>
 #include <cstring>
 #include <vector>
+#include <list>
 #include <iostream>
 #include <queue>
 #include "candidate_motif.h"
@@ -44,6 +45,7 @@ class MotifSuffixTreeNode
     public:
     MotifSuffixTreeNode* parent;
     MotifSuffixTreeNode* children[4];
+    int32_t n_children[4];
     std::string suffix;
     int32_t count;
 
@@ -77,7 +79,7 @@ class MotifSuffixTree
 {
     public:
     MotifSuffixTreeNode* root;
-
+            
     /**
      * Constructor.
      */
@@ -106,9 +108,10 @@ class MotifSuffixTree
     /**
      * Gets candidate motifs up to max_motif_len.
      */
-    void get_candidate_motifs(std::priority_queue<CandidateMotif, std::vector<CandidateMotif *>, CompareCandidateMotif>& candidate_motifs);
+    void get_candidate_motifs(std::vector<CandidateMotif>& candidate_motifs);
         
     private:
+        
     /**
      * Adds a suffix of sequence from start to end.
      */

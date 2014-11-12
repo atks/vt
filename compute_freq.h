@@ -21,18 +21,18 @@
    THE SOFTWARE.
 */
 
-#ifndef ANNOTATE_STR_H
-#define ANNOTATE_STR_H
+#ifndef COMPUTE_FREQ_H
+#define COMPUTE_FREQ_H
 
-#include "htslib/kstring.h"
+#include <cstdlib>
+#include <cfloat>
 #include "bcf_ordered_reader.h"
 #include "bcf_ordered_writer.h"
-#include "rfhmm.h"
-#include "lfhmm.h"
 #include "variant_manip.h"
 #include "program.h"
-#include "str.h"
+#include "filter.h"
+#include "estimator.h"
 
-void annotate_str(int argc, char ** argv);
+void compute_freq(int argc, char ** argv);
 
 #endif

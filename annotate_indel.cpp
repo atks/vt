@@ -21,7 +21,7 @@
    THE SOFTWARE.
 */
 
-#include "annotate_str.h"
+#include "annotate_indel.h"
 
 namespace
 {
@@ -154,7 +154,7 @@ class Igor : Program
         std::clog << "\n";
     }
 
-    void annotate_str()
+    void annotate_indel()
     {
         odw->write_hdr();
 
@@ -210,11 +210,11 @@ class Igor : Program
 };
 }
 
-void annotate_str(int argc, char ** argv)
+void annotate_indel(int argc, char ** argv)
 {
     Igor igor(argc, argv);
     igor.print_options();
     igor.initialize();
-    igor.annotate_str();
+    igor.annotate_indel();
     igor.print_stats();
 };

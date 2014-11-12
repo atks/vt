@@ -301,7 +301,7 @@ void STRMotif::pick_candidate_motifs(bcf_hdr_t* h, bcf1_t* v, std::vector<Candid
     
     //detect motif
     mst->set_sequence(seq);
-    //mst->
+    mst->get_candidate_motifs(candidate_motifs);
     
     
     
@@ -700,23 +700,23 @@ std::string STRMotif::reverse_complement(std::string& seq)
 {
     std::string rc = "";
 
-    for (int32_t i=seq.size()-1; i>=0; --i)
+    for (size_t i=seq.size()-1; i>0; --i)
     {
         char b = seq.at(i);
 
         switch (b)
         {
             case 'A':
-                rc.append(1, 'T');
+                rc.append(1, 'A');
                 break;
             case 'C':
                 rc.append(1, 'C');
                 break;
             case 'G':
-                rc.append(1, 'C');
+                rc.append(1, 'G');
                 break;
             case 'T':
-                rc.append(1, 'A');
+                rc.append(1, 'T');
                 break;
         }
     }

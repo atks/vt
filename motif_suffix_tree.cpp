@@ -66,7 +66,7 @@ void MotifSuffixTreeNode::clear()
     for (size_t b = A; b<=T; ++b)
     {
         if (children[b])
-        {    
+        {
             children[b]->clear();
         }
     }
@@ -133,17 +133,26 @@ void MotifSuffixTree::set_sequence(char* sequence, int32_t max_motif_len)
 /**
  * Gets candidate motifs up to max_motif_len.
  */
-void MotifSuffixTree::get_candidate_motifs(std::priority_queue<CandidateMotif, std::vector<CandidateMotif *>, CompareCandidateMotif>& candidate_motifs)
+void MotifSuffixTree::get_candidate_motifs(std::vector<CandidateMotif>& candidate_motifs)
 {
     //travel through tree
-    MotifSuffixTreeNode* node = root;
-     
-     
-   // std::priority_queue<CandidateMotif, std::vector<CandidateMotif *>, CompareCandidateMotif> pq;
-     
-     
-     
-    
+    std::list<MotifSuffixTreeNode*> nodes;
+    nodes.push_back(root);
+
+    std::priority_queue<CandidateMotif, std::vector<CandidateMotif>, CompareCandidateMotif> pq;
+
+    while (nodes.size()!=0)
+    {
+        MotifSuffixTreeNode* node = nodes.front();
+        for (size_t i=A; i<=T; ++i)
+        {
+            if (node->children[i]->count)
+            {
+                
+            }
+        }
+        nodes.pop_front();
+    }
 };
 
 /**
