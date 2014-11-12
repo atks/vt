@@ -41,7 +41,8 @@ class Igor : Program
     std::string interval_list;
     std::string arg_sample_list;
     bool compute_estimate[NO_EST];
-    
+    std::string estimates;
+        
     char** samples;
     int32_t *imap;
     int32_t nsamples;
@@ -72,6 +73,61 @@ class Igor : Program
     VariantManip *vm;
     Estimator *est;
 
+
+    /**
+     * Parse filters. Processes the filter list first followed by the interval string. Duplicates are dropped.
+     *
+     * @filters       - filters stored in this vector
+     * @filter_string - comma delimited filters in a string
+     */
+    void parse_estimators(bool compute_estimate[], std::string estimates_string)
+    {
+        for (size_t i=0; i<NO_EST; ++i)
+        {
+            compute_estimate[i] = false;
+        }
+        
+        std::vector<std::string> v;
+        if (estimates_string!="")
+            split(v, ",", estimates_string);
+    
+        for (size_t i=0; i<v.size(); ++i)
+        {
+            if (v[i]=="AF")
+            {
+                compute_estimate[EST_AF] = true;
+            } 
+            else if (v[i]=="HWEAF")
+            {
+                compute_estimate[EST_HWEAF] = true;
+            } 
+            else if (v[i]=="MLEAF")
+            {
+                compute_estimate[EST_MLEAF] = true;
+            } 
+            else if (v[i]=="HWE")
+            {
+                compute_estimate[EST_HWEAF] = true;
+                compute_estimate[EST_MLEAF] = true;
+                compute_estimate[EST_HWE] = true;
+            } 
+            else if (v[i]=="AB")
+            {
+                compute_estimate[EST_HWEAF] = true;
+                compute_estimate[EST_AB] = true;
+            } 
+            else if (v[i]=="FIC")
+            {
+                compute_estimate[EST_HWEAF] = true;
+                compute_estimate[EST_FIC] = true;
+            } 
+            else
+            {
+                
+            }
+        }
+    }
+
     Igor(int argc, char ** argv)
     {
         version = "0.5";
@@ -81,14 +137,36 @@ class Igor : Program
         //////////////////////////
         try
         {
-            std::string desc = "Compute features for variants.";
-
+            std::string desc = "Compute variant based estimates.\n\n"
+                  "   AF         Genotype (GT) based allele frequencies\n"
+                  "              If genotypes are unavailable, best guess\n"
+                  "              genotypes are inferred based on genotype\n"
+                  "              likelihoods (GL or PL)\n"
+                  "              AC        : Alternate Allele counts\n"
+                  "              AN        : Total allele counts\n"
+                  "              NS        : No. of samples.\n"
+                  "              AF        : Alternate allele frequencies.\n"
+                  "   MLEAF      GL based allele frequencies estimates\n"
+                  "              MLEAF     : Alternate allele frequency derived from MLEGF\n"
+                  "              MLEGF     : Genotype frequencies.\n"
+                  "   HWEAF      GL based allele frequencies estimates assuming HWE\n"
+                  "              HWEAF     : Alternate allele frequencies\n"
+                  "              HWEGF     : Genotype frequencies derived from HWEAF.\n"
+                  "   HWE        GL based Hardy-Weinberg statistics.\n"
+                  "              HWE_LLR   : log likelihood ratio\n"
+                  "              HWE_LPVAL : log p-value\n"
+                  "              HWE_DF    : degrees of freedom\n"
+                  "   AB         GL based Allele Balance.\n"
+                  "   FIC        GL based Inbreeding Coefficient\n"
+                  "              \n";
+            
             TCLAP::CmdLine cmd(desc, ' ', version);
             VTOutput my;
             cmd.setOutput(&my);
             TCLAP::ValueArg<std::string> arg_intervals("i", "intervals", "Intervals", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_interval_list("I", "interval-list", "File containing list of intervals", false, "", "file", cmd);
             TCLAP::ValueArg<std::string> arg_fexp("f", "f", "filter expression []", false, "", "str", cmd);
+            TCLAP::ValueArg<std::string> arg_estimates("e", "e", "comma separated estimates to be computed []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_output_vcf_file("o", "o", "output VCF/VCF.GZ/BCF file [-]", false, "-", "str", cmd);
             TCLAP::SwitchArg arg_print_sites_only("s", "s", "print site information only without genotypes [false]", cmd, false);
             TCLAP::UnlabeledValueArg<std::string> arg_input_vcf_file("<in.vcf>", "input VCF file", true, "", "file", cmd);
@@ -100,6 +178,9 @@ class Igor : Program
             parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
             print_sites_only = arg_print_sites_only.getValue();
             fexp = arg_fexp.getValue();
+            
+            parse_estimators(compute_estimate, estimates);
+            
         }
         catch (TCLAP::ArgException &e)
         {
@@ -244,22 +325,24 @@ class Igor : Program
                 bcf_set_qual(v, qual);
             }
             
-            int32_t g[ploidy];
-            for (int32_t i=0; i<ploidy; ++i) g[i]=0;
-            int32_t AC[no_alleles];
-            float AF[no_alleles];
-            for (int32_t i=0; i<no_alleles; ++i) AC[i]=0;
-            int32_t AN=0;
-            int32_t NS=0;
-            int32_t no_genotypes = bcf_an2gn(no_alleles);
-            int32_t GC[no_genotypes];
-            int32_t GN=0;
-            float GF[no_genotypes];
-            
-            est->compute_af(gts, no_samples, ploidy, no_alleles, AC, AN, AF, GC, GN, GF, NS);
-
-            if (NS)
+                int32_t no_genotypes = bcf_an2gn(no_alleles);
+                            
+            if (compute_estimate[EST_AF])
             {
+                int32_t g[ploidy];
+                for (int32_t i=0; i<ploidy; ++i) g[i]=0;
+                int32_t AC[no_alleles];
+                float AF[no_alleles];
+                for (int32_t i=0; i<no_alleles; ++i) AC[i]=0;
+                int32_t AN=0;
+                int32_t NS=0;
+
+                int32_t GC[no_genotypes];
+                int32_t GN=0;
+                float GF[no_genotypes];
+            
+                est->compute_af(gts, no_samples, ploidy, no_alleles, AC, AN, AF, GC, GN, GF, NS);
+
                 int32_t* AC_PTR = &AC[1];
                 bcf_update_info_int32(odw->hdr, v, "AC", AC_PTR, no_alleles-1);
                 bcf_update_info_int32(odw->hdr, v, "AN", &AN, 1);
@@ -272,7 +355,9 @@ class Igor : Program
                     bcf_update_info_float(odw->hdr, v, "GF", GF, no_genotypes);
                 }
                 bcf_update_info_int32(odw->hdr, v, "NS", &NS, 1);
+
             }
+            
  
             float MLE_HWE_AF[no_alleles];
             float MLE_HWE_GF[no_genotypes];
