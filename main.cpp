@@ -47,6 +47,7 @@
 #include "profile_snps.h"
 #include "align.h"
 #include "compute_features.h"
+#include "estimate.h"
 #include "profile_afs.h"
 #include "profile_hwe.h"
 #include "profile_len.h"
@@ -247,6 +248,10 @@ int main(int argc, char ** argv)
     else if (argc>1 && cmd=="compute_features")
     {
         compute_features(argc-1, ++argv);
+    }
+    else if (argc>1 && cmd=="estimate")
+    {
+        estimate(argc-1, ++argv);
     }
     else if (argc>1 && cmd=="profile_afs")
     {

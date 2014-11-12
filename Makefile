@@ -25,6 +25,7 @@ SOURCES = program\
 		compute_concordance\
 		compute_features\
 		compute_freq\
+		estimate\
 		partition\
 		profile_indels\
 		profile_snps\

@@ -21,7 +21,7 @@
    THE SOFTWARE.
 */
 
-#include "compute_features.h"
+#include "estimate.h"
 
 namespace
 {
@@ -40,11 +40,13 @@ class Igor : Program
     std::vector<GenomeInterval> intervals;
     std::string interval_list;
     std::string arg_sample_list;
+    bool compute_estimate[NO_EST];
+    
     char** samples;
     int32_t *imap;
     int32_t nsamples;
     bool print_sites_only;
-
+    
     ///////
     //i/o//
     ///////
@@ -122,24 +124,50 @@ class Igor : Program
             odw->link_hdr(odr->hdr);
         }
 
-        bcf_hdr_append(odw->hdr, "##INFO=<ID=AC,Number=A,Type=Integer,Description=\"Alternate Allele Counts\">\n");
-        bcf_hdr_append(odw->hdr, "##INFO=<ID=AN,Number=1,Type=Integer,Description=\"Total Number Allele Counts\">\n");
-        bcf_hdr_append(odw->hdr, "##INFO=<ID=NS,Number=1,Type=Integer,Description=\"Number of Samples With Data\">\n");
-        bcf_hdr_append(odw->hdr, "##INFO=<ID=AF,Number=A,Type=Float,Description=\"Alternate Allele Frequency\">\n");
-        bcf_hdr_append(odw->hdr, "##INFO=<ID=GC,Number=G,Type=Integer,Description=\"Genotype Counts\">\n");
-        bcf_hdr_append(odw->hdr, "##INFO=<ID=GN,Number=1,Type=Integer,Description=\"Total Number of Genotypes Counts\">\n");
-        bcf_hdr_append(odw->hdr, "##INFO=<ID=GF,Number=G,Type=Float,Description=\"Genotype Frequency\">\n");
+        if (compute_estimate[EST_AF])
+        {
+            bcf_hdr_append(odw->hdr, "##INFO=<ID=AC,Number=A,Type=Integer,Description=\"Alternate Allele Counts\">\n");
+            bcf_hdr_append(odw->hdr, "##INFO=<ID=AN,Number=1,Type=Integer,Description=\"Total Number Allele Counts\">\n");
+            bcf_hdr_append(odw->hdr, "##INFO=<ID=NS,Number=1,Type=Integer,Description=\"Number of Samples With Data\">\n");
+            bcf_hdr_append(odw->hdr, "##INFO=<ID=AF,Number=A,Type=Float,Description=\"Alternate Allele Frequency\">\n");
+        }
         
-        bcf_hdr_append(odw->hdr, "##INFO=<ID=HWEAF,Number=A,Type=Float,Description=\"Genotype likelihood based MLE Allele Frequency assuming HWE\">\n");
-        bcf_hdr_append(odw->hdr, "##INFO=<ID=HWEGF,Number=G,Type=Float,Description=\"Genotype likelihood based MLE Genotype Frequency assuming HWE\">\n");
-        bcf_hdr_append(odw->hdr, "##INFO=<ID=MLEAF,Number=A,Type=Float,Description=\"Genotype likelihood based MLE Allele Frequency\">\n");
-        bcf_hdr_append(odw->hdr, "##INFO=<ID=MLEGF,Number=G,Type=Float,Description=\"Genotype likelihood based MLE Genotype Frequency\">\n");
-        bcf_hdr_append(odw->hdr, "##INFO=<ID=HWE_LLR,Number=1,Type=Float,Description=\"Genotype likelihood based Hardy Weinberg ln(Likelihood Ratio)\">\n");
-        bcf_hdr_append(odw->hdr, "##INFO=<ID=HWE_LPVAL,Number=1,Type=Float,Description=\"Genotype likelihood based Hardy Weinberg Likelihood Ratio Test Statistic ln(p-value)\">\n");
-        bcf_hdr_append(odw->hdr, "##INFO=<ID=HWE_DF,Number=1,Type=Integer,Description=\"Degrees of freedom for Genotype likelihood based Hardy Weinberg Likelihood Ratio Test Statistic\">\n");
-        bcf_hdr_append(odw->hdr, "##INFO=<ID=FIC,Number=1,Type=Float,Description=\"Genotype likelihood based Inbreeding Coefficient\">\n");
-        bcf_hdr_append(odw->hdr, "##INFO=<ID=AB,Number=1,Type=Float,Description=\"Genotype likelihood based Allele Balance\">\n");
+        if (compute_estimate[EST_GF])
+        {
+            bcf_hdr_append(odw->hdr, "##INFO=<ID=GC,Number=G,Type=Integer,Description=\"Genotype Counts\">\n");
+            bcf_hdr_append(odw->hdr, "##INFO=<ID=GN,Number=1,Type=Integer,Description=\"Total Number of Genotypes Counts\">\n");
+            bcf_hdr_append(odw->hdr, "##INFO=<ID=GF,Number=G,Type=Float,Description=\"Genotype Frequency\">\n");
+        }
         
+        if (compute_estimate[EST_HWEAF])
+        {
+            bcf_hdr_append(odw->hdr, "##INFO=<ID=HWEAF,Number=A,Type=Float,Description=\"Genotype likelihood based MLE Allele Frequency assuming HWE\">\n");
+            bcf_hdr_append(odw->hdr, "##INFO=<ID=HWEGF,Number=G,Type=Float,Description=\"Genotype likelihood based MLE Genotype Frequency assuming HWE\">\n");
+        }
+        
+        if (compute_estimate[EST_MLEAF])
+        {
+            bcf_hdr_append(odw->hdr, "##INFO=<ID=MLEAF,Number=A,Type=Float,Description=\"Genotype likelihood based MLE Allele Frequency\">\n");
+            bcf_hdr_append(odw->hdr, "##INFO=<ID=MLEGF,Number=G,Type=Float,Description=\"Genotype likelihood based MLE Genotype Frequency\">\n");
+        }
+        
+        if (compute_estimate[EST_HWE])
+        {
+            bcf_hdr_append(odw->hdr, "##INFO=<ID=HWE_LLR,Number=1,Type=Float,Description=\"Genotype likelihood based Hardy Weinberg ln(Likelihood Ratio)\">\n");
+            bcf_hdr_append(odw->hdr, "##INFO=<ID=HWE_LPVAL,Number=1,Type=Float,Description=\"Genotype likelihood based Hardy Weinberg Likelihood Ratio Test Statistic ln(p-value)\">\n");
+            bcf_hdr_append(odw->hdr, "##INFO=<ID=HWE_DF,Number=1,Type=Integer,Description=\"Degrees of freedom for Genotype likelihood based Hardy Weinberg Likelihood Ratio Test Statistic\">\n");
+        }
+        
+        if (compute_estimate[EST_FIC])
+        {
+            bcf_hdr_append(odw->hdr, "##INFO=<ID=FIC,Number=1,Type=Float,Description=\"Genotype likelihood based Inbreeding Coefficient\">\n");
+        }
+        
+        if (compute_estimate[EST_AB])
+        {
+            bcf_hdr_append(odw->hdr, "##INFO=<ID=AB,Number=1,Type=Float,Description=\"Genotype likelihood based Allele Balance\">\n");
+        }
+                
         /////////////////////////
         //filter initialization//
         /////////////////////////
@@ -165,7 +193,7 @@ class Igor : Program
         est = new Estimator();
     }
 
-    void compute_features()
+    void estimate()
     {
         bcf1_t *v = odw->get_bcf1_from_pool();
         bcf_hdr_t *h = odr->hdr;
@@ -349,12 +377,12 @@ class Igor : Program
 
 }
 
-void compute_features(int argc, char ** argv)
+void estimate(int argc, char ** argv)
 {
     Igor igor(argc, argv);
     igor.print_options();
     igor.initialize();
-    igor.compute_features();
+    igor.estimate();
     igor.print_stats();
 }
 
