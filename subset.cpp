@@ -85,7 +85,7 @@ class Igor : Program
             VTOutput my;
             cmd.setOutput(&my);
             TCLAP::ValueArg<std::string> arg_intervals("i", "intervals", "Intervals", false, "", "str", cmd);
-            TCLAP::ValueArg<std::string> arg_interval_list("I", "interval-list", "File containing list of intervals", false, "", "file", cmd);
+            TCLAP::ValueArg<std::string> arg_interval_list("I", "interval-list", "file containing list of intervals", false, "", "file", cmd);
             TCLAP::ValueArg<std::string> arg_sample_list("s", "s", "file containing list of samples []", true, "", "file", cmd);
             TCLAP::ValueArg<std::string> arg_fexp("f", "f", "filter expression []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_output_vcf_file("o", "o", "output VCF/VCF.GZ/BCF file [-]", false, "-", "str", cmd);

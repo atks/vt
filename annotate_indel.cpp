@@ -167,8 +167,6 @@ class Igor : Program
             int32_t vtype = vm->classify_variant(odr->hdr, v, variant);
             if (vtype&VT_INDEL)
             {
-                //bcf_print(odr->hdr, v);
-                
                 //annotate indel like variant
                 strm->annotate(odr->hdr, v, variant);
 

@@ -27,8 +27,6 @@ BCFOrderedReader::BCFOrderedReader(std::string vcf_file, std::vector<GenomeInter
 {
     ftype = hts_file_type(vcf_file.c_str());
 
-
-
     if (!strcmp("+", vcf_file.c_str()))
     {
         vcf_file = "-";
