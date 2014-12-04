@@ -73,10 +73,11 @@ class BCFOrderedWriter
 
     /**
      * Initialize output file.
+     * @output_vcf_file
      * @window - the window to keep variants in buffer to check for local disorder, 0 for no buffering
      * @recycle - keep unused records in a pool for reuse
      */
-    BCFOrderedWriter(std::string input_vcf_file, int32_t window=0, bool recycle=true);
+    BCFOrderedWriter(std::string output_vcf_file, int32_t window=0, bool recycle=true);
 
     /**
      * Duplicates a hdr and sets it.

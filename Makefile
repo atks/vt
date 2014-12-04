@@ -12,7 +12,6 @@ SOURCES = program\
 		bcf_ordered_reader\
 		bcf_ordered_writer\
 		bcf_synced_reader\
-		bcf_synced_sreader\
    	    tbx_ordered_reader\
 		view\
 		index\

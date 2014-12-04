@@ -23,44 +23,44 @@
 
 #include "bcf_ordered_reader.h"
 
-BCFOrderedReader::BCFOrderedReader(std::string vcf_file, std::vector<GenomeInterval>& intervals)
+BCFOrderedReader::BCFOrderedReader(std::string file_name, std::vector<GenomeInterval>& intervals)
 {
-    ftype = hts_file_type(vcf_file.c_str());
-
-    if (!strcmp("+", vcf_file.c_str()))
+    if (!strcmp("+", file_name.c_str()))
     {
-        vcf_file = "-";
-        ftype = hts_file_type(vcf_file.c_str());
+        file_name = "-";
     }
+    
+    htsFile* file = hts_open(file_name.c_str(), "r");
+    ftype = file->format;
 
-    if (!(ftype & (FT_VCF|FT_BCF|FT_STDIN)) )
+    if (ftype.format!=vcf || ftype.format!=bcf)
     {
-        fprintf(stderr, "[%s:%d %s] Not a VCF/BCF file: %s\n", __FILE__, __LINE__, __FUNCTION__, vcf_file.c_str());
+        fprintf(stderr, "[%s:%d %s] Not a VCF/BCF file: %s\n", __FILE__, __LINE__, __FUNCTION__, file_name.c_str());
         exit(1);
     }
 
-    this->vcf_file = vcf_file;
+    this->file_name = file_name;
     this->intervals = intervals;
     interval_index = 0;
     index_loaded = false;
 
-    vcf = NULL;
+    file = NULL;
     hdr = NULL;
     idx = NULL;
     tbx = NULL;
     itr = NULL;
 
     s = {0, 0, 0};
-    vcf = bcf_open(vcf_file.c_str(), "r");
-    if (vcf==NULL) exit(1);
-    hdr = bcf_alt_hdr_read(vcf);
+    file = file;
+    if (file==NULL) exit(1);
+    hdr = bcf_alt_hdr_read(file);
     if (!hdr) exit(1);
 
     intervals_present =  intervals.size()!=0;
 
-    if (ftype==FT_BCF_GZ)
+    if (ftype.format==bcf)
     {
-        if ((idx = bcf_index_load(vcf_file.c_str())))
+        if ((idx = bcf_index_load(file_name.c_str())))
         {
             index_loaded = true;
         }
@@ -68,14 +68,14 @@ BCFOrderedReader::BCFOrderedReader(std::string vcf_file, std::vector<GenomeInter
         {
             if (intervals_present)
             {
-                fprintf(stderr, "[E:%s] index cannot be loaded for %s\n", __FUNCTION__, vcf_file.c_str());
+                fprintf(stderr, "[E:%s] index cannot be loaded for %s\n", __FUNCTION__, file_name.c_str());
                 exit(1);
             }
         }
     }
-    else if (ftype==FT_VCF_GZ)
+    else if (ftype.format==vcf && ftype.compression==bgzf)
     {
-        if ((tbx = tbx_index_load(vcf_file.c_str())))
+        if ((tbx = tbx_index_load(file_name.c_str())))
         {
             index_loaded = true;
         }
@@ -83,7 +83,7 @@ BCFOrderedReader::BCFOrderedReader(std::string vcf_file, std::vector<GenomeInter
         {
             if (intervals_present)
             {
-                fprintf(stderr, "[E:%s] index cannot be loaded for %s\n", __FUNCTION__, vcf_file.c_str());
+                fprintf(stderr, "[E:%s] index cannot be loaded for %s\n", __FUNCTION__, file_name.c_str());
                 exit(1);
             }
         }
@@ -93,7 +93,7 @@ BCFOrderedReader::BCFOrderedReader(std::string vcf_file, std::vector<GenomeInter
 
     if (intervals_present && !index_loaded)
     {
-        fprintf(stderr, "[E:%s] index not available for random accessing %s\n", __FUNCTION__, vcf_file.c_str());
+        fprintf(stderr, "[E:%s] index not available for random accessing %s\n", __FUNCTION__, file_name.c_str());
         exit(1);
     }
 };
@@ -112,7 +112,7 @@ bool BCFOrderedReader::jump_to_interval(GenomeInterval& interval)
         intervals.clear();
         intervals.push_back(interval);
         interval_index = 0;
-        if (ftype==FT_BCF_GZ)
+        if (ftype.format==bcf)
         {
             intervals[interval_index++].to_string(&s);
             itr = bcf_itr_querys(idx, hdr, s.s);
@@ -121,7 +121,7 @@ bool BCFOrderedReader::jump_to_interval(GenomeInterval& interval)
                 return true;
             }
         }
-        else if (ftype==FT_VCF_GZ)
+        else if (ftype.format==vcf && ftype.compression==bgzf)
         {
             intervals[interval_index++].to_string(&s);
             itr = tbx_itr_querys(tbx, s.s);
@@ -159,7 +159,7 @@ bool BCFOrderedReader::initialize_next_interval()
 {
     while (interval_index!=intervals.size())
     {
-        if (ftype==FT_BCF_GZ)
+        if (ftype.format==bcf)
         {
             intervals[interval_index++].to_string(&s);
             itr = bcf_itr_querys(idx, hdr, s.s);
@@ -168,7 +168,7 @@ bool BCFOrderedReader::initialize_next_interval()
                 return true;
             }
         }
-        else if (ftype==FT_VCF_GZ)
+        else if (ftype.format==vcf && ftype.compression==bgzf)
         {
             intervals[interval_index++].to_string(&s);
             itr = tbx_itr_querys(tbx, s.s);
@@ -189,11 +189,11 @@ bool BCFOrderedReader::read(bcf1_t *v)
 {
     if (random_access_enabled)
     {
-        if (ftype == FT_BCF_GZ)
+        if (ftype.format==bcf)
         {
             while(true)
             {
-                if (itr && bcf_itr_next(vcf, itr, v)>=0)
+                if (itr && bcf_itr_next(file, itr, v)>=0)
                 {
                     return true;
                 }
@@ -207,7 +207,7 @@ bool BCFOrderedReader::read(bcf1_t *v)
         {
             while(true)
             {
-                if (itr && tbx_itr_next(vcf, tbx, itr, &s)>=0)
+                if (itr && tbx_itr_next(file, tbx, itr, &s)>=0)
                 {
                     vcf_parse1(&s, hdr, v);
                     return true;
@@ -221,7 +221,7 @@ bool BCFOrderedReader::read(bcf1_t *v)
     }
     else
     {
-        if (bcf_read(vcf, hdr, v)==0)
+        if (bcf_read(file, hdr, v)==0)
         {
             return true;
         }
@@ -265,7 +265,7 @@ bcf1_t* BCFOrderedReader::get_bcf1_from_pool()
  */
 void BCFOrderedReader::close()
 {
-    bcf_close(vcf);
+    bcf_close(file);
     if (hdr) bcf_hdr_destroy(hdr);
     hdr = NULL;
 }

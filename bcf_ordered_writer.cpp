@@ -23,36 +23,51 @@
 
 #include "bcf_ordered_writer.h"
 
-BCFOrderedWriter::BCFOrderedWriter(std::string input_vcf_file, int32_t window, bool recycle)
+BCFOrderedWriter::BCFOrderedWriter(std::string output_vcf_file, int32_t window, bool recycle)
 {
-    this->vcf_file = input_vcf_file;
+    //sam, bam, bai, cram, crai, vcf, bcfv1, bcf, csi, gzi, tbi, bed,
+    this->vcf_file = output_vcf_file;
     this->window = window;
     this->recycle = recycle;
     vcf = NULL;
 
     s = {0, 0, 0};
 
-    int32_t ftype = hts_file_type(vcf_file.c_str());
-    if (!strcmp("+", vcf_file.c_str())) ftype = FT_BCF;
-
-    if (!(ftype & (FT_VCF|FT_BCF|FT_STDIN)))
-    {
-        fprintf(stderr, "[%s:%d %s] Not a VCF/BCF file: %s\n", __FILE__,__LINE__,__FUNCTION__, vcf_file.c_str());
-        exit(1);
-    }
-
     kstring_t *mode = &s;
     kputc('w', mode);
+    
     if (!strcmp("+", vcf_file.c_str()))
     {
         kputs("bu", mode);
         vcf_file = "-";
     }
-    if (ftype & FT_BCF) kputc('b', mode);
-    if (ftype & FT_GZ) kputc('z', mode);
+    else if (!strcmp("-", vcf_file.c_str()))
+    {
+        kputs("bu", mode);
+        vcf_file = "-";
+    }
+    else 
+    {
+        size_t len = strlen(output_vcf_file.c_str());
+        const char* ext = output_vcf_file.c_str();
+        ext = (len>4) ? ext + len - 4 : ext;    
+        if (!strcmp(".vcf", ext))
+        {
+            kputc('b', mode);
+        }    
+        else if (!strcmp(".bcf", ext))
+        {
+            kputc('z', mode);
+        }
+        else 
+        {
+            fprintf(stderr, "[%s:%d %s] Not a VCF/BCF file: %s\n", __FILE__,__LINE__,__FUNCTION__, vcf_file.c_str());
+            exit(1);
+        }
+    }
     vcf = bcf_open(vcf_file.c_str(), mode->s);
     if (vcf==NULL) exit(1);
-    
+
     hdr = bcf_hdr_init("w");
     bcf_hdr_append(hdr, "##fileformat=VCFv4.1");
     linked_hdr = false;

@@ -25,6 +25,7 @@
 #define INDEX_H
 
 #include "htslib/vcf.h"
+#include "htslib/hts.h"
 #include "htslib/tbx.h"
 #include "program.h"
 

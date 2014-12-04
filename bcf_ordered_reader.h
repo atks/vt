@@ -34,6 +34,7 @@
 #include <map>
 #include <queue>
 #include "htslib/vcf.h"
+#include "htslib/hts.h"
 #include "htslib/tbx.h"
 #include "hts_utils.h"
 #include "genome_interval.h"
@@ -69,8 +70,8 @@ class BCFOrderedReader
     ///////
     //i/o//
     ///////
-    std::string vcf_file;
-    vcfFile *vcf;
+    std::string file_name;
+    vcfFile *file;
     bcf_hdr_t *hdr;
     hts_idx_t *idx;
     tbx_t *tbx;
@@ -79,7 +80,7 @@ class BCFOrderedReader
     bcf1_t *buffer_v;
 
     //for control
-    int32_t ftype;
+    htsFormat ftype;
     bool intervals_present;
     bool index_loaded;
     bool random_access_enabled;
@@ -98,10 +99,10 @@ class BCFOrderedReader
     /**
      * Initialize files and intervals.
      *
-     * @input_vcf_file     name of the input VCF file
+     * @input_vcf_file_name     name of the input VCF file
      * @intervals          list of intervals, if empty, all records are selected.
      */
-    BCFOrderedReader(std::string input_vcf_file, std::vector<GenomeInterval>& intervals);
+    BCFOrderedReader(std::string input_vcf_file_name, std::vector<GenomeInterval>& intervals);
 
     /**
      * Jump to interval. Returns false if not successful.

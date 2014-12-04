@@ -72,17 +72,18 @@ class Igor : Program
 
     void index()
     {
-        int32_t ftype = hts_file_type(input_vcf_file.c_str());
-        if (!(ftype & (FT_VCF_GZ|FT_BCF_GZ)) )
+        htsFile *file = hts_open(input_vcf_file.c_str(), "r");
+        htsFormat ftype = file->format;
+        if (ftype.compression!=bgzf&&ftype.format!=vcf&&ftype.format!=bcf)
         {
-            fprintf(stderr, "[%s:%d %s] Not a VCF_GZ/BCF file: %s\n", __FILE__, __LINE__, __FUNCTION__, input_vcf_file.c_str());
+            fprintf(stderr, "[%s:%d %s] Not a BGZF VCF/BCF file: %s\n", __FILE__, __LINE__, __FUNCTION__, input_vcf_file.c_str());
             exit(1);
         }
 
         int32_t min_shift;
         output_vcf_index_file = {0,0,0};
         int32_t ret;
-        if (ftype==FT_BCF_GZ)
+        if (ftype.format==bcf)
         {
             kputs(input_vcf_file.c_str(), &output_vcf_index_file);
             kputs(".csi", &output_vcf_index_file);
@@ -90,7 +91,7 @@ class Igor : Program
 
             ret = bcf_index_build(input_vcf_file.c_str(), min_shift);
         }
-        else if (ftype==FT_VCF_GZ)
+        else if (ftype.format==vcf)
         {
             kputs(input_vcf_file.c_str(), &output_vcf_index_file);
             kputs(".tbi", &output_vcf_index_file);

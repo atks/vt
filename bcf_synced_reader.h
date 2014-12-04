@@ -142,13 +142,13 @@ class BCFSyncedReader
     ///////
     //i/o//
     ///////
-    std::vector<std::string> vcf_files; //file names
-    std::vector<vcfFile *> vcfs; //file objects
+    std::vector<std::string> file_names; //file names
+    std::vector<vcfFile *> files; //file objects
     std::vector<bcf_hdr_t *> hdrs; // headers
     std::vector<hts_idx_t *> idxs; // indices
     std::vector<tbx_t *> tbxs; // for tabix
     std::vector<hts_itr_t *> itrs; //iterators
-    std::vector<int32_t> ftypes; //file types
+    std::vector<htsFormat> ftypes; //file types
     int32_t nfiles; //number of files
     int32_t neofs; //number of files read till eof
 

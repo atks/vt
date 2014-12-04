@@ -28,16 +28,16 @@
  *
  * @intervals - if empty, will add the contigs found in the header files
  */
-BCFSyncedReader::BCFSyncedReader(std::vector<std::string>& vcf_files, std::vector<GenomeInterval>& intervals, bool sync_by_pos)
-:vcf_files(vcf_files), intervals(intervals), sync_by_pos(sync_by_pos)
+BCFSyncedReader::BCFSyncedReader(std::vector<std::string>& file_names, std::vector<GenomeInterval>& intervals, bool sync_by_pos)
+:file_names(file_names), intervals(intervals), sync_by_pos(sync_by_pos)
 {
-    nfiles = vcf_files.size();
-    vcfs.resize(nfiles, 0);
+    nfiles = file_names.size();
+    files.resize(nfiles, 0);
     hdrs.resize(nfiles, 0);
     idxs.resize(nfiles, 0);
     tbxs.resize(nfiles, 0);
     itrs.resize(nfiles, 0);
-    ftypes.resize(nfiles, -1);
+    ftypes.resize(nfiles);
 
     current_interval = "";
     current_pos1 = 0;
@@ -46,7 +46,7 @@ BCFSyncedReader::BCFSyncedReader(std::vector<std::string>& vcf_files, std::vecto
     s = {0, 0, 0};
 
     exists_selected_intervals = (intervals.size()!=0);
-    for (uint32_t i=0; i<intervals.size(); ++i)
+    for (size_t i=0; i<intervals.size(); ++i)
     {
         intervals_map[intervals[i].to_string()] = i;
     }
@@ -57,23 +57,23 @@ BCFSyncedReader::BCFSyncedReader(std::vector<std::string>& vcf_files, std::vecto
     //3. adds sequences found in all indexed files, this allows us to iterate through all sequences.
     for (int32_t i = 0; i<nfiles; ++i)
     {
-        ftypes[i] = hts_file_type(vcf_files[i].c_str());
-        vcfs[i] = bcf_open(vcf_files[i].c_str(), "r");
-        if (vcfs[i]==NULL) exit(1);
-        hdrs[i] = bcf_alt_hdr_read(vcfs[i]);
+        files[i] = hts_open(file_names[i].c_str(), "r");
+        if (files[i]==NULL) exit(1);
+        ftypes[i] = files[i]->format;
+        hdrs[i] = bcf_alt_hdr_read(files[i]);
         if (!hdrs[i]) exit(1);
 
         if (i==0)
         {
-            if (!(ftypes[i] & (FT_VCF|FT_BCF|FT_STDIN)))
+            if (ftypes[i].format!=vcf && ftypes[i].format!=bcf)
             {
-                fprintf(stderr, "[E:%s:%d %s] %s not a VCF or BCF file\n", __FILE__, __LINE__, __FUNCTION__, vcf_files[i].c_str());
+                fprintf(stderr, "[E:%s:%d %s] %s not a VCF or BCF file\n", __FILE__, __LINE__, __FUNCTION__, file_names[i].c_str());
                 exit(1);
             }
 
             if (!load_index(i))
             {
-                fprintf(stderr, "[I:%s:%d %s] index cannot be loaded for %s\n", __FILE__, __LINE__, __FUNCTION__, vcf_files[i].c_str());
+                fprintf(stderr, "[I:%s:%d %s] index cannot be loaded for %s\n", __FILE__, __LINE__, __FUNCTION__, file_names[i].c_str());
                 exit(1);
             }
 
@@ -85,15 +85,15 @@ BCFSyncedReader::BCFSyncedReader(std::vector<std::string>& vcf_files, std::vecto
         }
         else
         {
-            if (!(ftypes[i] & (FT_VCF_GZ|FT_BCF_GZ)))
+            if (ftypes[i].format!=vcf && ftypes[i].format!=bcf)
             {
-                fprintf(stderr, "[E:%s:%d %s] %s not a VCF_GZ or BCF file\n", __FILE__, __LINE__, __FUNCTION__, vcf_files[i].c_str());
+                fprintf(stderr, "[E:%s:%d %s] %s not a VCF_GZ or BCF file\n", __FILE__, __LINE__, __FUNCTION__, file_names[i].c_str());
                 exit(1);
             }
 
             if (!load_index(i))
             {
-                fprintf(stderr, "[E:%s:%d %s] index cannot be loaded for %s\n", __FILE__, __LINE__, __FUNCTION__, vcf_files[i].c_str());
+                fprintf(stderr, "[E:%s:%d %s] index cannot be loaded for %s\n", __FILE__, __LINE__, __FUNCTION__, file_names[i].c_str());
                 exit(1);
             }
 
@@ -163,16 +163,16 @@ void BCFSyncedReader::remove_interval(std::string& interval)
  */
 bool BCFSyncedReader::load_index(int32_t i)
 {
-    if (ftypes[i]==FT_BCF_GZ)
+    if (ftypes[i].format==bcf && ftypes[i].compression==bgzf)
     {
-        if (!(idxs[i] = bcf_index_load(vcf_files[i].c_str())))
+        if (!(idxs[i] = bcf_index_load(file_names[i].c_str())))
         {
             return false;
         }
     }
-    else if (ftypes[i]==FT_VCF_GZ)
+    else if (ftypes[i].format==vcf && ftypes[i].compression==bgzf)
     {
-        if (!(tbxs[i] = tbx_index_load(vcf_files[i].c_str())))
+        if (!(tbxs[i] = tbx_index_load(file_names[i].c_str())))
         {
             return false;
         }
@@ -246,7 +246,7 @@ void BCFSyncedReader::close()
 {
     for (int32_t i = 0; i<nfiles; ++i)
     {
-        bcf_close(vcfs[i]);
+        bcf_close(files[i]);
         bcf_hdr_destroy(hdrs[i]);
         bcf_itr_destroy(itrs[i]);
     }
@@ -371,16 +371,15 @@ bool BCFSyncedReader::initialize_next_interval()
 
         for (int32_t i = 0; i<nfiles; ++i)
         {
-            int32_t ftype = hts_file_type(vcf_files[i].c_str());
             hts_itr_destroy(itrs[i]);
             itrs[i] = 0;
             interval.to_string(&s);
 
-            if (ftype==FT_BCF_GZ)
+            if (ftypes[i].format==bcf&&ftypes[i].compression==bgzf)
             {
                 itrs[i] = bcf_itr_querys(idxs[i], hdrs[i], s.s);
             }
-            else if (ftype==FT_VCF_GZ)
+            else if (ftypes[i].format==vcf&&ftypes[i].compression==bgzf)
             {
                 itrs[i] = tbx_itr_querys(tbxs[i], s.s);
             }
@@ -413,11 +412,11 @@ void BCFSyncedReader::fill_buffer(int32_t i)
 
     int32_t pos1 = buffer[i].size()==0 ? 0 : bcf_get_pos1(buffer[i].front());
 
-    if (ftypes[i]==FT_BCF_GZ)
+    if (ftypes[i].format==bcf && ftypes[i].compression==bgzf)
     {
         bcf1_t *v = get_bcf1_from_pool();
         bool populated = false;
-        while (itrs[i] && bcf_itr_next(vcfs[i], itrs[i], v) >= 0)
+        while (itrs[i] && bcf_itr_next(files[i], itrs[i], v) >= 0)
         {
             populated = true;
             bcf_unpack(v, BCF_UN_STR);
@@ -439,9 +438,9 @@ void BCFSyncedReader::fill_buffer(int32_t i)
         if (!populated)
             store_bcf1_into_pool(v);
     }
-    else if (ftypes[i]==FT_VCF_GZ)
+    else if (ftypes[i].format==vcf && ftypes[i].compression==bgzf)
     {
-        while (itrs[i] && tbx_itr_next(vcfs[i], tbxs[i], itrs[i], &s) >= 0)
+        while (itrs[i] && tbx_itr_next(files[i], tbxs[i], itrs[i], &s) >= 0)
         {
             bcf1_t *v = get_bcf1_from_pool();
             vcf_parse(&s, hdrs[i], v);
