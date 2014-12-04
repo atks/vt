@@ -25,47 +25,44 @@
 
 BCFOrderedWriter::BCFOrderedWriter(std::string output_vcf_file_name, int32_t window, bool recycle)
 {
-    std::cerr << "WRITING TO: " << output_vcf_file_name <<"\n";
-    
     this->file_name = output_vcf_file_name;
     this->window = window;
     this->recycle = recycle;
     file = NULL;
 
-    s = {0, 0, 0};
+    kstring_t mode = {0,0,0};
+    kputc('w', &mode);
 
-    kstring_t *mode = &s;
-    kputc('w', mode);
-    
     if (file_name=="+")
-    {
-        kputs("u", mode);
+    { 
+        kputs("u", &mode);
         file_name = "-";
     }
     else if (file_name=="-")
     {
         //do nothing
     }
-    else 
+    else
     {
-        size_t len = strlen(file_name.c_str());
-        const char* ext = file_name.c_str();
-        ext = (len>4) ? ext + len - 4 : ext;    
-        if (!strcmp(".vcf", ext))
+        if (str_ends_with(file_name, ".vcf"))
         {
-            kputc('b', mode);
-        }    
-        else if (!strcmp(".bcf", ext))
-        {
-            kputc('b', mode);
+            //do nothing
         }
-        else 
+        else if (str_ends_with(file_name, ".vcf.gz"))
+        {
+            kputc('z', &mode);
+        }
+        else if (str_ends_with(file_name, ".bcf"))
+        {
+            kputc('b', &mode);
+        }
+        else
         {
             fprintf(stderr, "[%s:%d %s] Not a VCF/BCF file: %s\n", __FILE__,__LINE__,__FUNCTION__, file_name.c_str());
             exit(1);
         }
     }
-    file = bcf_open(file_name.c_str(), mode->s);
+    file = bcf_open(file_name.c_str(), mode.s);
     if (file==NULL)
     {
         fprintf(stderr, "[%s:%d %s] Cannot open VCF/BCF file for writing: %s\n", __FILE__,__LINE__,__FUNCTION__, file_name.c_str());

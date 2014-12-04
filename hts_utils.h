@@ -66,6 +66,15 @@ struct __faidx_t {
  */
 char *faidx_fetch_uc_seq(const faidx_t *fai, const char *c_name, int p_beg_i, int p_end_i, int *len);
 
+/**********
+ *HTS UTILS
+ **********/
+
+/**
+ * Checks file extension for use in writing files.
+ */
+bool str_ends_with(std::string& file_name, const char* ext);
+
 /**************
  *BAM HDR UTILS
  **************/

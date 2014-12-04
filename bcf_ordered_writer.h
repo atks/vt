@@ -33,7 +33,6 @@
 #include <map>
 #include <queue>
 #include <list>
-#include <sstream>
 #include "htslib/vcf.h"
 #include "htslib/vcfutils.h"
 #include "htslib/tbx.h"
@@ -63,10 +62,6 @@ class BCFOrderedWriter
     //buffer for containing records to be written out
     std::list<bcf1_t*> buffer; //most recent records in the front
     std::list<bcf1_t*> pool;
-
-    //shared objects for string manipulation
-    kstring_t s;
-    std::stringstream ss;
 
     int32_t window;
     bool recycle;
