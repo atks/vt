@@ -25,33 +25,27 @@
 
 BCFOrderedReader::BCFOrderedReader(std::string file_name, std::vector<GenomeInterval>& intervals)
 {
-    if (!strcmp("+", file_name.c_str()))
-    {
-        file_name = "-";
-    }
-    
-    htsFile* file = hts_open(file_name.c_str(), "r");
-    ftype = file->format;
-
-    if (ftype.format!=vcf || ftype.format!=bcf)
-    {
-        fprintf(stderr, "[%s:%d %s] Not a VCF/BCF file: %s\n", __FILE__, __LINE__, __FUNCTION__, file_name.c_str());
-        exit(1);
-    }
-
-    this->file_name = file_name;
-    this->intervals = intervals;
-    interval_index = 0;
-    index_loaded = false;
-
+    this->file_name = file_name=="+"? "-" : file_name;
     file = NULL;
     hdr = NULL;
     idx = NULL;
     tbx = NULL;
     itr = NULL;
 
+    this->intervals = intervals;
+    interval_index = 0;
+    index_loaded = false;
+
+    file = hts_open(file_name.c_str(), "r");
+    ftype = file->format;
+
+    if (ftype.format!=vcf && ftype.format!=bcf)
+    {
+        fprintf(stderr, "[%s:%d %s] Not a VCF/BCF file: %s\n", __FILE__, __LINE__, __FUNCTION__, file_name.c_str());
+        exit(1);
+    }
+
     s = {0, 0, 0};
-    file = file;
     if (file==NULL) exit(1);
     hdr = bcf_alt_hdr_read(file);
     if (!hdr) exit(1);

@@ -23,33 +23,33 @@
 
 #include "bcf_ordered_writer.h"
 
-BCFOrderedWriter::BCFOrderedWriter(std::string output_vcf_file, int32_t window, bool recycle)
+BCFOrderedWriter::BCFOrderedWriter(std::string output_vcf_file_name, int32_t window, bool recycle)
 {
-    //sam, bam, bai, cram, crai, vcf, bcfv1, bcf, csi, gzi, tbi, bed,
-    this->vcf_file = output_vcf_file;
+    std::cerr << "WRITING TO: " << output_vcf_file_name <<"\n";
+    
+    this->file_name = output_vcf_file_name;
     this->window = window;
     this->recycle = recycle;
-    vcf = NULL;
+    file = NULL;
 
     s = {0, 0, 0};
 
     kstring_t *mode = &s;
     kputc('w', mode);
     
-    if (!strcmp("+", vcf_file.c_str()))
+    if (file_name=="+")
     {
-        kputs("bu", mode);
-        vcf_file = "-";
+        kputs("u", mode);
+        file_name = "-";
     }
-    else if (!strcmp("-", vcf_file.c_str()))
+    else if (file_name=="-")
     {
-        kputs("bu", mode);
-        vcf_file = "-";
+        //do nothing
     }
     else 
     {
-        size_t len = strlen(output_vcf_file.c_str());
-        const char* ext = output_vcf_file.c_str();
+        size_t len = strlen(file_name.c_str());
+        const char* ext = file_name.c_str();
         ext = (len>4) ? ext + len - 4 : ext;    
         if (!strcmp(".vcf", ext))
         {
@@ -57,19 +57,23 @@ BCFOrderedWriter::BCFOrderedWriter(std::string output_vcf_file, int32_t window, 
         }    
         else if (!strcmp(".bcf", ext))
         {
-            kputc('z', mode);
+            kputc('b', mode);
         }
         else 
         {
-            fprintf(stderr, "[%s:%d %s] Not a VCF/BCF file: %s\n", __FILE__,__LINE__,__FUNCTION__, vcf_file.c_str());
+            fprintf(stderr, "[%s:%d %s] Not a VCF/BCF file: %s\n", __FILE__,__LINE__,__FUNCTION__, file_name.c_str());
             exit(1);
         }
     }
-    vcf = bcf_open(vcf_file.c_str(), mode->s);
-    if (vcf==NULL) exit(1);
+    file = bcf_open(file_name.c_str(), mode->s);
+    if (file==NULL)
+    {
+        fprintf(stderr, "[%s:%d %s] Cannot open VCF/BCF file for writing: %s\n", __FILE__,__LINE__,__FUNCTION__, file_name.c_str());
+        exit(1);
+    }
 
     hdr = bcf_hdr_init("w");
-    bcf_hdr_append(hdr, "##fileformat=VCFv4.1");
+    bcf_hdr_set_version(hdr, "##fileformat=VCFv4.1");
     linked_hdr = false;
 }
 
@@ -104,7 +108,7 @@ void BCFOrderedWriter::link_hdr(bcf_hdr_t *hdr)
  */
 void BCFOrderedWriter::write_hdr()
 {
-    bcf_hdr_write(vcf, hdr);
+    bcf_hdr_write(file, hdr);
 }
 
 /**
@@ -158,7 +162,7 @@ void BCFOrderedWriter::write(bcf1_t *v)
     }
     else
     {
-         bcf_write(vcf, hdr, v);
+         bcf_write(file, hdr, v);
          store_bcf1_into_pool(v);
     }
 }
@@ -208,7 +212,7 @@ void BCFOrderedWriter::flush(bool force)
     {
         while (!buffer.empty())
         {
-            bcf_write(vcf, hdr, buffer.back());
+            bcf_write(file, hdr, buffer.back());
             store_bcf1_into_pool(buffer.back());
             buffer.pop_back();
         }
@@ -223,7 +227,7 @@ void BCFOrderedWriter::flush(bool force)
             {
                 if (bcf_get_pos1(buffer.back())<=cutoff_pos1)
                 {
-                    bcf_write(vcf, hdr, buffer.back());
+                    bcf_write(file, hdr, buffer.back());
                     store_bcf1_into_pool(buffer.back());
                     buffer.pop_back();
                 }
@@ -242,6 +246,6 @@ void BCFOrderedWriter::flush(bool force)
 void BCFOrderedWriter::close()
 {
     flush(true);
-    bcf_close(vcf);
+    bcf_close(file);
     if (!linked_hdr && hdr) bcf_hdr_destroy(hdr);
 }
