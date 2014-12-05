@@ -85,11 +85,6 @@ class BCFOrderedWriter
     void link_hdr(bcf_hdr_t *hdr);
 
     /**
-     * Appends a line of meta information to the header.
-     */
-    void hdr_append_metainfo(const char *line);
-
-    /**
      * Reads next record, hides the random access of different regions from the user.
      */
     void write_hdr();
@@ -108,7 +103,7 @@ class BCFOrderedWriter
     bcf1_t* get_bcf1_from_pool();
 
     /**
-     * Returns record to pool
+     * Returns record to pool.
      */
     void store_bcf1_into_pool(bcf1_t* v);
 

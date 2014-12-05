@@ -114,7 +114,7 @@ class Igor : Program
         ////////////////////////
     }
 
-    void merge_duplicate_variants()
+    void context_filter()
     {
         kstring_t variant = {0, 0, 0};
 
@@ -227,6 +227,6 @@ void context_filter(int argc, char ** argv)
     Igor igor(argc, argv);
     igor.print_options();
     igor.initialize();
-    igor.merge_duplicate_variants();
+    igor.context_filter();
     igor.print_stats();
 };

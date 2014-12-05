@@ -14,6 +14,8 @@ SOURCES = program\
 		bcf_synced_reader\
    	    tbx_ordered_reader\
 		view\
+		sort\
+		validate\
 		index\
         normalize\
 		merge_duplicate_variants\

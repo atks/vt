@@ -311,6 +311,10 @@ int32_t VariantManip::classify_variant(const char* chrom, uint32_t pos1, char** 
             std::string sv_type(allele[i]);
             v.alleles.push_back(Allele(type, 0, 0, 0, 0, 0, 0, sv_type));
         }
+        else if (allele[i][0]=='.')
+        {
+            type = VT_REF;
+        }
         else
         {
             kstring_t REF = {0,0,0};

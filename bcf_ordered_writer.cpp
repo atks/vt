@@ -34,7 +34,7 @@ BCFOrderedWriter::BCFOrderedWriter(std::string output_vcf_file_name, int32_t win
     kputc('w', &mode);
 
     if (file_name=="+")
-    { 
+    {
         kputs("u", &mode);
         file_name = "-";
     }
@@ -173,7 +173,7 @@ void BCFOrderedWriter::flush()
 }
 
 /**
- * Returns record to pool
+ * Returns record to pool.
  */
 void BCFOrderedWriter::store_bcf1_into_pool(bcf1_t* v)
 {

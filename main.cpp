@@ -22,6 +22,7 @@
 */
 
 #include "normalize.h"
+#include "validate.h"
 #include "merge_duplicate_variants.h"
 #include "peek.h"
 #include "construct_probes.h"
@@ -160,6 +161,10 @@ int main(int argc, char ** argv)
     else if (argc>1 && cmd=="normalize")
     {
         print = normalize(argc-1, ++argv);
+    }
+    else if (argc>1 && cmd=="validate")
+    {
+        print = validate(argc-1, ++argv);
     }
     else if (argc>1 && cmd=="config")
     {

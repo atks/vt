@@ -37,8 +37,9 @@ GenomeInterval::GenomeInterval(std::string& seq, int32_t start1, int32_t end1)
  * @interval    string representation of an interval.
  *
  * e.g X:2000-4000   position 2000 to 4000 on chromosome X
+ *     Y:2000        position 2000 on chromosome Y
  *     Y             the entirety of chromosome Y
- */     
+ */
 GenomeInterval::GenomeInterval(std::string interval)
 {
     set(interval);
@@ -76,8 +77,8 @@ void GenomeInterval::set(std::string interval)
             fprintf(stderr, "[%s:%d %s] Invalid genomic interval: %s\n", __FILE__,__LINE__,__FUNCTION__, interval.c_str());
             exit(1);
         }
-        
-        end1 = start1;        
+
+        end1 = start1;
     }
     else if (v.size()==3)
     {
