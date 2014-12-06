@@ -44,18 +44,16 @@ class Igor : Program
     //i/o//
     ///////
     BCFOrderedReader *odr;
-    BCFOrderedWriter *odw;
     bcf1_t *v;
-
-
 
     /////////
     //stats//
     /////////
     uint32_t no_variants;
-
-    uint32_t no_lt;    //# left trimmed
-
+    uint32_t no_unordered;
+    uint32_t no_unordered_chrom;
+    uint32_t no_inconsistent_ref;
+    
     /////////
     //tools//
     /////////
@@ -70,11 +68,12 @@ class Igor : Program
         //////////////////////////
         try
         {
-            std::string desc = "validates variants in a VCF file";
+            std::string desc = "validates a VCF file\n"
+                 "              1. order";
 
             TCLAP::CmdLine cmd(desc, ' ', version);
             VTOutput my; cmd.setOutput(&my);
-            TCLAP::ValueArg<std::string> arg_ref_fasta_file("r", "r", "reference sequence fasta file []", true, "", "str", cmd);
+            TCLAP::ValueArg<std::string> arg_ref_fasta_file("r", "r", "reference sequence fasta file []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_intervals("i", "i", "intervals []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "file", cmd);
             TCLAP::ValueArg<int32_t> arg_window_size("w", "w", "window size for local sorting of variants [10000]", false, 10000, "integer", cmd);
@@ -105,21 +104,19 @@ class Igor : Program
         //////////////////////
         odr = new BCFOrderedReader(input_vcf_file, intervals);
 
-
-
-        odw = new BCFOrderedWriter(output_vcf_file, window_size, false);
-        odw->link_hdr(odr->hdr);
-        odw->write_hdr();
-
-
         ////////////////////////
         //stats initialization//
         ////////////////////////
         no_variants = 0;
+        no_unordered = 0;
+        no_unordered_chrom = 0;
+        no_inconsistent_ref = 0;
+        v = bcf_init1();
 
         ////////////////////////
         //tools initialization//
         ////////////////////////
+        fai = NULL;
         if (ref_fasta_file!="")
         {
             fai = fai_load(ref_fasta_file.c_str());
@@ -133,66 +130,66 @@ class Igor : Program
 
     void validate()
     {
-        uint32_t left_extended = 0;
-        uint32_t left_trimmed = 0;
-        uint32_t right_trimmed = 0;
-
-        
-        v = odw->get_bcf1_from_pool();
-        Variant variant;
+        const char* last_chrom = NULL;
+        int32_t last_rid = -1;
+        int32_t last_pos1 = -1;
 
         while (odr->read(v))
         {
             bcf_unpack(v, BCF_UN_INFO);
 
+            int32_t rid = bcf_get_rid(v);
             const char* chrom = odr->get_seqname(v);
             int32_t pos1 = bcf_get_pos1(v);
 
-            int32_t ref_len;
-            char* ref = faidx_fetch_uc_seq(fai, chrom, pos1-5, pos1+10, &ref_len);
+            if (rid==last_rid)
+            {
+                if (last_pos1>pos1)
+                {
+                    if (print) fprintf(stderr, "[%s:%d %s] UNORDERED: %s: %d after %d\n", __FILE__, __LINE__, __FUNCTION__, chrom, pos1, last_pos1);
+                    ++no_unordered;
+                }
+            }
+            else if (last_rid>rid)
+            {
+                if (print) fprintf(stderr, "[%s:%d %s] UNORDERED CHROM: %s after %s\n", __FILE__, __LINE__, __FUNCTION__, chrom, last_chrom);
+                ++no_unordered_chrom;
+            }
 
-            bcf_print(odr->hdr, v);
+            last_chrom = chrom;
+            last_rid = rid;
+            last_pos1 = pos1;
 
+            if (fai)
+            {
+                const char* chrom = odr->get_seqname(v);
 
+                int32_t ref_len = 0;
+                char** alleles = bcf_get_allele(v);
+                int32_t len = strlen(alleles[0]);
 
-            std::cerr << chrom << ":" << pos1 << ":" << ref << "\n";            
-//            
-//            
-//            std::vector<std::string> alleles;
-//            for (size_t i=0; i<bcf_get_n_allele(v); ++i)
-//            {
-//                
-//                
-//                ru = faidx_fetch_uc_seq(fai, chrom, pos1, pos1+motif_len-1, &ref_len);
-//                
-//                char *s = bcf_get_alt(v, i);
-//                while (*s)
-//                {
-//                    *s = toupper(*s);
-//                    ++s;
-//                }
-//                alleles.push_back(std::string(bcf_get_alt(v, i)));
-//            }
-//            left_extended = left_trimmed = right_trimmed = 0;
-//
-//     
-//
-//               
-//
-//            ++no_variants;
-//
-//            odw->write(v);
-//            v = odw->get_bcf1_from_pool();
+                char* ref = faidx_fetch_uc_seq(fai, chrom, pos1, pos1+len-1, &ref_len);
+
+                if (strcmp(ref, alleles[0]))
+                {
+                    if (print) fprintf(stderr, "[%s:%d %s] INCONSISTENT REF: %s:%d %s!=%s(true) \n", __FILE__, __LINE__, __FUNCTION__, chrom, pos1, alleles[0], ref);
+                    bcf_print_lite(odr->hdr,v);
+                }
+
+                if (ref_len)
+                {
+                    free(ref);
+                }
+            }
+            
+            ++no_variants;
         }
 
-        odw->close();
         odr->close();
     };
 
     void print_options()
     {
-        if (!print) return;
-
         std::clog << "validate v" << version << "\n";
         std::clog << "\n";
         std::clog << "options:     input VCF file        " << input_vcf_file << "\n";
@@ -211,8 +208,10 @@ class Igor : Program
 
         std::clog << "\n";
         std::clog << "stats: biallelic\n";
-        std::clog << "          no. left trimmed                      : " << "\n";
-
+        std::clog << "          no. unordered                     : " << no_unordered << "\n";
+        std::clog << "          no. unordered chrom               : " << no_unordered_chrom << "\n";
+        std::clog << "\n";
+        std::clog << "          no. variants                      : " << no_variants << "\n";
         std::clog << "\n";
     };
 

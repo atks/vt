@@ -124,6 +124,12 @@ void BCFOrderedWriter::write(bcf1_t *v)
                 std::list<bcf1_t*>::iterator i;
                 for (i=buffer.begin(); i!=buffer.end(); ++i)
                 {
+                    
+                    if (bcf_get_pos1(v)==1392976)
+                    {
+                        std::cerr << "\t" << bcf_get_pos1(*i) << "\n";
+                    }    
+                    
                     //equal sign ensures records are kept in original order
                     if (bcf_get_pos1(v)>=bcf_get_pos1(*i))
                     {
@@ -132,14 +138,19 @@ void BCFOrderedWriter::write(bcf1_t *v)
                         return;
                     }
                 }
+                
+                if (bcf_get_pos1(v)==1392976)
+                {
+                    std::cerr << "\t" << "inserted at back" << "\n";
+                } 
 
                 //check order
                 if (i==buffer.end())
                 {
                     int32_t cutoff_pos1 =  std::max(bcf_get_pos1(buffer.front())-window,1);
-                    if (bcf_get_pos1(buffer.back())<cutoff_pos1)
+                    if (bcf_get_pos1(v)<cutoff_pos1)
                     {
-                         std::cerr << "Might not be sorted\n";
+                        fprintf(stderr, "[%s:%d %s] Might not be sorted, position prior to  %s:%d  \n", __FILE__,__LINE__,__FUNCTION__);
                     }
                 }
 
