@@ -118,18 +118,12 @@ void BCFOrderedWriter::write(bcf1_t *v)
     {
         if (!buffer.empty())
         {
-            //same chromosome?
             if (bcf_get_rid(v)==bcf_get_rid(buffer.back()))
             {
-                std::list<bcf1_t*>::iterator i;
+                std::list<bcf1_t*>::iterator i = buffer.begin();
+                
                 for (i=buffer.begin(); i!=buffer.end(); ++i)
-                {
-                    
-//                    if (bcf_get_pos1(v)==1392976)
-//                    {
-//                        std::cerr << "\t" << bcf_get_pos1(*i) << "\n";
-//                    }    
-                    
+                {                    
                     //equal sign ensures records are kept in original order
                     if (bcf_get_pos1(v)>=bcf_get_pos1(*i))
                     {
@@ -139,19 +133,12 @@ void BCFOrderedWriter::write(bcf1_t *v)
                     }
                 }
                 
-//                if (bcf_get_pos1(v)==1392976)
-//                {
-//                    std::cerr << "\t" << "inserted at back" << "\n";
-//                } 
-
-                //check order
                 if (i==buffer.end())
                 {
                     int32_t cutoff_pos1 =  std::max(bcf_get_pos1(buffer.front())-window,1);
                     if (bcf_get_pos1(v)<cutoff_pos1)
                     {
-                    //    fprintf(stderr, "[%s:%d %s] Might not be sorted, position prior to  %s:%d  \n", __FILE__,__LINE__,__FUNCTION__);
-                        fprintf(stderr, "[%s:%d %s] Might not be sorted, position prior to    \n", __FILE__,__LINE__,__FUNCTION__);
+                        fprintf(stderr, "[%s:%d %s] Might not be sorted for window size %d at current record %s:%d < %d (%d [last record] - %d), please increase window size to at least %d.\n", __FILE__,__LINE__,__FUNCTION__, window, bcf_get_chrom(hdr, v), bcf_get_pos1(v), cutoff_pos1, bcf_get_pos1(buffer.front()), window, bcf_get_pos1(buffer.front())-bcf_get_pos1(v)+1);
                     }
                 }
 
