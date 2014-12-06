@@ -53,7 +53,7 @@ class Igor : Program
     uint32_t no_unordered;
     uint32_t no_unordered_chrom;
     uint32_t no_inconsistent_ref;
-    
+
     /////////
     //tools//
     /////////
@@ -168,12 +168,11 @@ class Igor : Program
                 char** alleles = bcf_get_allele(v);
                 int32_t len = strlen(alleles[0]);
 
-                char* ref = faidx_fetch_uc_seq(fai, chrom, pos1, pos1+len-1, &ref_len);
+                char* ref = faidx_fetch_uc_seq(fai, chrom, pos1-1, pos1+len-2, &ref_len);
 
                 if (strcmp(ref, alleles[0]))
                 {
                     if (print) fprintf(stderr, "[%s:%d %s] INCONSISTENT REF: %s:%d %s!=%s(true) \n", __FILE__, __LINE__, __FUNCTION__, chrom, pos1, alleles[0], ref);
-                    bcf_print_lite(odr->hdr,v);
                 }
 
                 if (ref_len)
@@ -181,7 +180,7 @@ class Igor : Program
                     free(ref);
                 }
             }
-            
+
             ++no_variants;
         }
 
