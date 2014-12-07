@@ -76,8 +76,10 @@ class Igor : Program
     /////////
     int32_t no_samples;
     int32_t no_chromosomes;
-    int32_t no_observed_variants;
+    int32_t no_records;
+    int32_t no_reference;
     int32_t no_classified_variants;
+    int32_t no_unclassified_variants;
 
     int32_t **VAR_COUNT;
     int32_t **VAR_TS;
@@ -150,8 +152,10 @@ class Igor : Program
         ////////////////////////
         no_samples = 0;
         no_chromosomes = 0;
-        no_observed_variants = 0;
+        no_records = 0;
+        no_reference = 0;
         no_classified_variants = 0;
+        no_unclassified_variants = 0;
 
         VAR_COUNT = new int32_t*[NO_ALLELE_CATEGORIES];
         VAR_TS = new int32_t*[NO_ALLELE_CATEGORIES];
@@ -243,13 +247,24 @@ class Igor : Program
             {
                 ++no_classified_variants;
             }
+            else if (vtype==0) 
+            {
+                ++no_reference;
+            }
             else
             {
                 std::cerr << "UNCLASSIFIED : ";
                 bcf_print(odr->hdr, v);
+                ++no_unclassified_variants;
             }
-
-            ++no_observed_variants;
+            
+            ++no_records;
+//            
+//            if (vtype==VT_MNP)
+//            {
+//                bcf_print(odr->hdr, v);
+//            }    
+ 
         }
 
         kh_destroy(32, h);
@@ -452,8 +467,11 @@ class Igor : Program
         fprintf(stderr, "\n");
         fprintf(stderr, "       ========= General summary ==========\n");
         fprintf(stderr, "\n");
-        fprintf(stderr, "       no. of observed variants           : %10d\n", no_observed_variants);
-        fprintf(stderr, "       no. of unclassified variants       : %10d\n", no_observed_variants-no_classified_variants);
+        fprintf(stderr, "       no. of reference records                  : %10d\n", no_reference);
+        fprintf(stderr, "       no. of classified variants                : %10d\n", no_classified_variants);
+        fprintf(stderr, "       no. of unclassified variants              : %10d\n", no_unclassified_variants);
+        fprintf(stderr, "\n");
+        fprintf(stderr, "       no. of VCF records                        : %10d\n", no_records);
         fprintf(stderr, "\n");
     };
 
@@ -641,8 +659,8 @@ class Igor : Program
         //fprintf(out, "\\rowcolors{2}{blue!25}{blue!10}\n");
         fprintf(out, "\\begin{tabular}{lcr}\n");
         fprintf(out, "no. of reference& :& %d \\\\ \n", VAR_COUNT[MONOMORPHIC][VT_REF]);
-        fprintf(out, "no. of observed & : & %d \\\\ \n", no_observed_variants);
-        fprintf(out, "no. of unclassified & : & %d \\\\ \n", no_observed_variants-no_classified_variants);
+        fprintf(out, "no. of observed & : & %d \\\\ \n", no_records);
+        fprintf(out, "no. of unclassified & : & %d \\\\ \n", no_records-no_classified_variants);
         fprintf(out, "\\end{tabular}\n");
         fprintf(out, "\\end{table}\n");
 
