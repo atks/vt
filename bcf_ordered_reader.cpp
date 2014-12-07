@@ -37,6 +37,11 @@ BCFOrderedReader::BCFOrderedReader(std::string file_name, std::vector<GenomeInte
     index_loaded = false;
 
     file = hts_open(file_name.c_str(), "r");
+    if (!file)
+    {
+        fprintf(stderr, "[%s:%d %s] Cannot open %s\n", __FILE__, __LINE__, __FUNCTION__, file_name.c_str());
+        exit(1);    
+    }    
     ftype = file->format;
 
     if (ftype.format!=vcf && ftype.format!=bcf)
@@ -53,31 +58,31 @@ BCFOrderedReader::BCFOrderedReader(std::string file_name, std::vector<GenomeInte
     intervals_present =  intervals.size()!=0;
 
     if (ftype.format==bcf)
-    {
-        if (intervals_present)
+    {   
+        if ((idx = bcf_index_load(file_name.c_str())))
         {
-            if ((idx = bcf_index_load(file_name.c_str())))
+            index_loaded = true;
+        }
+        else
+        {    
+            if (intervals_present)
             {
-                index_loaded = true;
-            }
-            else
-            {    
-                fprintf(stderr, "[E:%s] index cannot be loaded for %s\n", __FUNCTION__, file_name.c_str());
+                fprintf(stderr, "[E:%s] index cannot be loaded for %s for random access\n", __FUNCTION__, file_name.c_str());
                 exit(1);
             }
         }
     }
     else if (ftype.format==vcf && ftype.compression==bgzf)
     {
-        if (intervals_present)
+        if ((tbx = tbx_index_load(file_name.c_str())))
         {
-            if ((tbx = tbx_index_load(file_name.c_str())))
+            index_loaded = true;
+        }
+        else
+        {
+            if (intervals_present)
             {
-                index_loaded = true;
-            }
-            else
-            {
-                fprintf(stderr, "[E:%s] index cannot be loaded for %s\n", __FUNCTION__, file_name.c_str());
+                fprintf(stderr, "[E:%s] index cannot be loaded for %s for random access\n", __FUNCTION__, file_name.c_str());
                 exit(1);
             }
         }

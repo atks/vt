@@ -103,7 +103,7 @@ bool str_ends_with(std::string& file_name, const char* ext)
 void bam_hdr_transfer_contigs_to_bcf_hdr(const bam_hdr_t *sh, bcf_hdr_t *vh)
 {
     kstring_t s = {0,0,0};
-    for (uint32_t i=0; i<bam_hdr_get_n_targets(sh); ++i)
+    for (size_t i=0; i<bam_hdr_get_n_targets(sh); ++i)
     {
         s.l = 0;
         ksprintf(&s, "##contig=<ID=%s,length=%d>", bam_hdr_get_target_name(sh)[i], bam_hdr_get_target_len(sh)[i]);
@@ -346,7 +346,6 @@ void bcf_hdr_transfer_contigs(const bcf_hdr_t *hsrc, bcf_hdr_t *hdest)
     const char **names = (const char**) calloc(m,sizeof(const char*));
     int len[m];
     khint_t k;
-
 
     for (k=kh_begin(d); k<kh_end(d); k++)
     {

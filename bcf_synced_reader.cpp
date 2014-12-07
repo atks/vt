@@ -58,7 +58,11 @@ BCFSyncedReader::BCFSyncedReader(std::vector<std::string>& file_names, std::vect
     for (int32_t i = 0; i<nfiles; ++i)
     {
         files[i] = hts_open(file_names[i].c_str(), "r");
-        if (files[i]==NULL) exit(1);
+        if (files[i]==NULL) 
+        {
+            fprintf(stderr, "[%s:%d %s] Cannot open %s\n", __FILE__, __LINE__, __FUNCTION__, file_names[i].c_str());
+            exit(1);    
+        }
         ftypes[i] = files[i]->format;
         hdrs[i] = bcf_alt_hdr_read(files[i]);
         if (!hdrs[i]) exit(1);

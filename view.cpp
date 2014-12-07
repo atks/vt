@@ -126,7 +126,6 @@ class Igor : Program
         {
             odw->link_hdr(odr->hdr);
         }
-        //perform subsetting
         else if (no_subset_samples==0)
         {
             odw->link_hdr(bcf_hdr_subset(odr->hdr, 0, 0, 0));

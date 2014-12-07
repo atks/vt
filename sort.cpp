@@ -36,8 +36,6 @@ class Igor : Program
     std::string input_vcf_file;
     std::string output_vcf_file;
     std::vector<GenomeInterval> intervals;
-    std::vector<std::string> samples;
-    std::string variant;
     uint32_t sort_window_size;
     std::string sort_mode;
     bool print;
@@ -48,22 +46,14 @@ class Igor : Program
     BCFOrderedReader *odr;
     BCFOrderedWriter *odw;
 
-    //////////
-    //filter//
-    //////////
-    std::string fexp;
-    Filter filter;
-    bool filter_exists;
-
     /////////
     //stats//
     /////////
     uint32_t no_variants;
- 
+
     /////////
     //tools//
     /////////
-    VariantManip *vm;
 
     Igor(int argc, char **argv)
     {
@@ -79,12 +69,11 @@ class Igor : Program
             TCLAP::CmdLine cmd(desc, ' ', version);
             VTOutput my;
             cmd.setOutput(&my);
-            TCLAP::ValueArg<std::string> arg_intervals("i", "i", "intervals []", false, "", "str", cmd);
-            TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "file", cmd);
             TCLAP::SwitchArg arg_print("p", "p", "print options and summary []", cmd, false);
             TCLAP::ValueArg<uint32_t> arg_sort_window_size("w", "w", "local sorting window size [0]", false, 0, "int", cmd);
-            TCLAP::ValueArg<std::string> arg_fexp("f", "f", "filter expression []", false, "", "str", cmd);
-            TCLAP::ValueArg<std::string> arg_output_vcf_file("o", "o", "output VCF/VCF.GZ/BCF file [-]", false, "-", "str", cmd);
+            TCLAP::ValueArg<std::string> arg_output_vcf_file("o", "o", "output VCF/VCF.GZ/BCF file [-]\n"
+                 "              under fill sorting mode, this is a prefix"
+                   , false, "-", "str", cmd);
             TCLAP::ValueArg<std::string> arg_sort_mode("m", "m", ""
                                "sorting modes [full]\n"
                  "              local : locally sort within a window.\n"
@@ -97,27 +86,25 @@ class Igor : Program
 
             input_vcf_file = arg_input_vcf_file.getValue();
             output_vcf_file = arg_output_vcf_file.getValue();
-            parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
-            fexp = arg_fexp.getValue();
             sort_mode = arg_sort_mode.getValue();
             print = arg_print.getValue();
             sort_window_size = arg_sort_window_size.getValue();
-            
+
             if (sort_mode=="local")
             {
                 sort_window_size = sort_window_size ? sort_window_size : 1000;
             }
             else if (sort_mode=="chrom")
             {
-                
+
             }
             else if (sort_mode=="full")
             {
-                
+
             }
             else
             {
-                fprintf(stderr, "[%s:%d %s] Sort modecan only be full, local or chrom.\n", __FILE__,__LINE__,__FUNCTION__);
+                fprintf(stderr, "[%s:%d %s] Sort mode can only be full, local or chrom.\n", __FILE__,__LINE__,__FUNCTION__);
             }
         }
         catch (TCLAP::ArgException &e)
@@ -132,64 +119,80 @@ class Igor : Program
         //////////////////////
         //i/o initialization//
         //////////////////////
-        odr = new BCFOrderedReader(input_vcf_file, intervals);
-                
-        /////////////////////////
-        //filter initialization//
-        /////////////////////////
-        filter.parse(fexp.c_str(), false);
-        filter_exists = fexp=="" ? false : true;
-
+        
         ////////////////////////
         //stats initialization//
         ////////////////////////
         no_variants = 0;
-        
+
         ///////////////////////
         //tool initialization//
         ///////////////////////
-        vm = new VariantManip("");
     }
 
     void sort()
     {
         if (sort_mode=="local")
         {
+            intervals.push_back(GenomeInterval("1"));
+            odr = new BCFOrderedReader(input_vcf_file, intervals);
+            
             odw = new BCFOrderedWriter(output_vcf_file, sort_window_size);
             odw->link_hdr(odr->hdr);
             odw->write_hdr();
-            
+
             bcf1_t *v = odw->get_bcf1_from_pool();
             bcf_hdr_t *h = odr->hdr;
-            Variant variant;
             
             while (odr->read(v))
             {
-                if (filter_exists)
-                {
-                    vm->classify_variant(h, v, variant);
-                    if (!filter.apply(h, v, &variant, false))
-                    {
-                        continue;
-                    }
-                }
-    
                 odw->write(v);
                 v = odw->get_bcf1_from_pool();
                 ++no_variants;
-            
+
             }
-            
+
             odw->close();
             odr->close();
         }
         else if (sort_mode=="chrom")
         {
+            odr = new BCFOrderedReader(input_vcf_file, intervals);
             
+            odw = new BCFOrderedWriter(output_vcf_file, sort_window_size);
+            odw->link_hdr(odr->hdr);
+            odw->write_hdr();
+            
+            int32_t nseqs;
+            const char ** seqs = bcf_hdr_seqnames(odr->hdr, &nseqs);
+            bcf1_t *v = bcf_init1();
+            bcf_hdr_t *h = odr->hdr;
+                
+            for (size_t i=0; i<nseqs; ++i)
+            {
+                
+                std::cerr << "reading " << seqs[i] << "\n";
+                
+                std::string interval(seqs[i]);
+                GenomeInterval ginterval(interval);
+                odr->jump_to_interval(ginterval);
+                
+                while (odr->read(v))
+                {
+                    odw->write(v);
+                    ++no_variants;    
+                }
+            }
+            
+            bcf_destroy(v);
+            odw->close();
+            odr->close();            
         }
         else if (sort_mode=="full")
         {
-            
+            //read into buffer 10000 records
+            //write out to temporary files
+            //merge records from temporary files
         }
     };
 
@@ -204,8 +207,6 @@ class Igor : Program
         std::clog << "         [w] sort window size            " << sort_window_size << "\n";
         std::clog << "         [m] sorting mode                " << sort_mode << "\n";
         std::clog << "         [p] print options and stats     " << (print ? "yes" : "no") << "\n";
-        print_str_op("         [f] filter                      ", fexp);
-        print_int_op("         [i] intervals                   ", intervals);
         std::clog << "\n";
     }
 
