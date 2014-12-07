@@ -1,6 +1,6 @@
 /* The MIT License
 
-   Copyright (c) 2013 Adrian Tan <atks@umich.edu>
+   Copyright (c) 2014 Adrian Tan <atks@umich.edu>
 
    Permission is hereby granted, free of charge, to any person obtaining a copy
    of this software and associated documentation files (the "Software"), to deal
@@ -39,11 +39,8 @@ class Igor : Program
     std::vector<std::string> samples;
     std::string variant;
     uint32_t sort_window_size;
-    bool print_header;
-    bool print_header_only;
-    bool print_sites_only;
+    std::string sort_mode;
     bool print;
-    int32_t no_subset_samples;
 
     ///////
     //i/o//
@@ -62,8 +59,7 @@ class Igor : Program
     //stats//
     /////////
     uint32_t no_variants;
-    uint32_t no_samples;
-
+ 
     /////////
     //tools//
     /////////
@@ -78,7 +74,7 @@ class Igor : Program
         //////////////////////////
         try
         {
-            std::string desc = "Views a VCF or BCF or VCF.GZ file.";
+            std::string desc = "Sorts a VCF or BCF or VCF.GZ file.\n";
 
             TCLAP::CmdLine cmd(desc, ' ', version);
             VTOutput my;
@@ -86,26 +82,43 @@ class Igor : Program
             TCLAP::ValueArg<std::string> arg_intervals("i", "i", "intervals []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "file", cmd);
             TCLAP::SwitchArg arg_print("p", "p", "print options and summary []", cmd, false);
-            TCLAP::SwitchArg arg_print_header("h", "h", "omit header, this option is honored only for STDOUT [false]", cmd, false);
-            TCLAP::SwitchArg arg_print_header_only("H", "H", "print header only, this option is honored only for STDOUT [false]", cmd, false);
-            TCLAP::SwitchArg arg_print_sites_only("s", "s", "print site information only without genotypes [false]", cmd, false);
             TCLAP::ValueArg<uint32_t> arg_sort_window_size("w", "w", "local sorting window size [0]", false, 0, "int", cmd);
             TCLAP::ValueArg<std::string> arg_fexp("f", "f", "filter expression []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_output_vcf_file("o", "o", "output VCF/VCF.GZ/BCF file [-]", false, "-", "str", cmd);
+            TCLAP::ValueArg<std::string> arg_sort_mode("m", "m", ""
+                               "sorting modes [full]\n"
+                 "              local : locally sort within a window.\n"
+                 "              chrom : sort chromosomes based on order of contigs in header.\n"
+                 "                      input must be an indexed vcf.gz\n"
+                 "              full  : full sort with no assumptions",
+                                 false, "full", "str", cmd);
             TCLAP::UnlabeledValueArg<std::string> arg_input_vcf_file("<in.vcf>", "input VCF file", true, "","file", cmd);
-
             cmd.parse(argc, argv);
 
             input_vcf_file = arg_input_vcf_file.getValue();
             output_vcf_file = arg_output_vcf_file.getValue();
             parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
-            //read_sample_list(samples, arg_sample_list.getValue());
             fexp = arg_fexp.getValue();
-            print_header = arg_print_header.getValue();
-            print_header_only = arg_print_header_only.getValue();
-            no_subset_samples = arg_print_sites_only.getValue() ? 0 : -1;
+            sort_mode = arg_sort_mode.getValue();
             print = arg_print.getValue();
             sort_window_size = arg_sort_window_size.getValue();
+            
+            if (sort_mode=="local")
+            {
+                sort_window_size = sort_window_size ? sort_window_size : 1000;
+            }
+            else if (sort_mode=="chrom")
+            {
+                
+            }
+            else if (sort_mode=="full")
+            {
+                
+            }
+            else
+            {
+                fprintf(stderr, "[%s:%d %s] Sort modecan only be full, local or chrom.\n", __FILE__,__LINE__,__FUNCTION__);
+            }
         }
         catch (TCLAP::ArgException &e)
         {
@@ -120,17 +133,7 @@ class Igor : Program
         //i/o initialization//
         //////////////////////
         odr = new BCFOrderedReader(input_vcf_file, intervals);
-        odw = new BCFOrderedWriter(output_vcf_file, sort_window_size);
-        if (no_subset_samples==-1)
-        {
-            odw->link_hdr(odr->hdr);
-        }
-        //perform subsetting
-        else if (no_subset_samples==0)
-        {
-            odw->link_hdr(bcf_hdr_subset(odr->hdr, 0, 0, 0));
-        }
-
+                
         /////////////////////////
         //filter initialization//
         /////////////////////////
@@ -141,8 +144,7 @@ class Igor : Program
         //stats initialization//
         ////////////////////////
         no_variants = 0;
-        no_samples = 0;
-
+        
         ///////////////////////
         //tool initialization//
         ///////////////////////
@@ -151,43 +153,44 @@ class Igor : Program
 
     void sort()
     {
-        if (print_header_only && output_vcf_file == "-")
+        if (sort_mode=="local")
         {
+            odw = new BCFOrderedWriter(output_vcf_file, sort_window_size);
+            odw->link_hdr(odr->hdr);
             odw->write_hdr();
-            odr->close();
-            odw->close();
-            return;
-        }
-
-        if (print_header || output_vcf_file != "-") odw->write_hdr();
-
-
-        bcf1_t *v = odw->get_bcf1_from_pool();
-        bcf_hdr_t *h = odr->hdr;
-        Variant variant;
-        while (odr->read(v))
-        {
-            if (filter_exists)
+            
+            bcf1_t *v = odw->get_bcf1_from_pool();
+            bcf_hdr_t *h = odr->hdr;
+            Variant variant;
+            
+            while (odr->read(v))
             {
-                vm->classify_variant(h, v, variant);
-                if (!filter.apply(h, v, &variant, false))
+                if (filter_exists)
                 {
-                    continue;
+                    vm->classify_variant(h, v, variant);
+                    if (!filter.apply(h, v, &variant, false))
+                    {
+                        continue;
+                    }
                 }
+    
+                odw->write(v);
+                v = odw->get_bcf1_from_pool();
+                ++no_variants;
+            
             }
-
-            odw->write(v);
-            v = odw->get_bcf1_from_pool();
-            ++no_variants;
-        
-        
-            //modify ordered writer to handle multipl chromosomes
-        
-        
+            
+            odw->close();
+            odr->close();
         }
-
-        odw->close();
-        odr->close();
+        else if (sort_mode=="chrom")
+        {
+            
+        }
+        else if (sort_mode=="full")
+        {
+            
+        }
     };
 
     void print_options()
@@ -199,9 +202,7 @@ class Igor : Program
         std::clog << "options:     input VCF file              " << input_vcf_file << "\n";
         std::clog << "         [o] output VCF file             " << output_vcf_file << "\n";
         std::clog << "         [w] sort window size            " << sort_window_size << "\n";
-        std::clog << "         [h] print header                " << (print_header ? "yes" : "no") << "\n";
-        std::clog << "         [H] print header only           " << (print_header_only ? "yes" : "no") << "\n";
-        std::clog << "         [s] print site information only " << (print_sites_only ? "yes" : "no") << "\n";
+        std::clog << "         [m] sorting mode                " << sort_mode << "\n";
         std::clog << "         [p] print options and stats     " << (print ? "yes" : "no") << "\n";
         print_str_op("         [f] filter                      ", fexp);
         print_int_op("         [i] intervals                   ", intervals);
@@ -214,7 +215,7 @@ class Igor : Program
 
         std::clog << "\n";
         std::clog << "stats: no. variants  : " << no_variants << "\n";
-        std::clog << "       no. samples   : " << no_samples << "\n";
+        std::clog << "       no. samples   : " <<  "\n";
         std::clog << "\n";
     };
 

@@ -34,10 +34,8 @@ class Igor : Program
     //options//
     ///////////
     std::string input_vcf_file;
-    std::string output_vcf_file;
     std::vector<GenomeInterval> intervals;
     std::string ref_fasta_file;
-    int32_t window_size;
     bool print;
 
     ///////
@@ -76,18 +74,14 @@ class Igor : Program
             TCLAP::ValueArg<std::string> arg_ref_fasta_file("r", "r", "reference sequence fasta file []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_intervals("i", "i", "intervals []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "file", cmd);
-            TCLAP::ValueArg<int32_t> arg_window_size("w", "w", "window size for local sorting of variants [10000]", false, 10000, "integer", cmd);
             TCLAP::SwitchArg arg_quiet("q", "q", "do not print options and summary []", cmd, false);
-            TCLAP::ValueArg<std::string> arg_output_vcf_file("o", "o", "output VCF file [-]", false, "-", "str", cmd);
             TCLAP::UnlabeledValueArg<std::string> arg_input_vcf_file("<in.vcf>", "input VCF file", true, "","file", cmd);
 
             cmd.parse(argc, argv);
 
             input_vcf_file = arg_input_vcf_file.getValue();
-            output_vcf_file = arg_output_vcf_file.getValue();
             parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
             print = !arg_quiet.getValue();
-            window_size = arg_window_size.getValue();
             ref_fasta_file = arg_ref_fasta_file.getValue();
         }
         catch (TCLAP::ArgException &e)
@@ -192,9 +186,7 @@ class Igor : Program
         std::clog << "validate v" << version << "\n";
         std::clog << "\n";
         std::clog << "options:     input VCF file        " << input_vcf_file << "\n";
-        std::clog << "         [o] output VCF file       " << output_vcf_file << "\n";
-        std::clog << "         [w] sorting window size   " << window_size << "\n";
-        std::clog << "         [r] reference FASTA file  " << ref_fasta_file << "\n";
+        print_ref_op("         [r] reference FASTA file  ", ref_fasta_file);
         print_int_op("         [i] intervals             ", intervals);
         std::clog << "\n";
     }
@@ -206,10 +198,14 @@ class Igor : Program
 
 
         std::clog << "\n";
-        std::clog << "stats: biallelic\n";
-        std::clog << "          no. unordered                     : " << no_unordered << "\n";
+        std::clog << "stats:    no. unordered                     : " << no_unordered << "\n";
         std::clog << "          no. unordered chrom               : " << no_unordered_chrom << "\n";
         std::clog << "\n";
+        if (fai)
+        {
+            std::clog << "          no. inconsistent REF              : " << no_inconsistent_ref << "\n";
+            std::clog << "\n";
+        }
         std::clog << "          no. variants                      : " << no_variants << "\n";
         std::clog << "\n";
     };

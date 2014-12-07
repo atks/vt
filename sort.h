@@ -1,6 +1,6 @@
 /* The MIT License
 
-   Copyright (c) 2013 Adrian Tan <atks@umich.edu>
+   Copyright (c) 2014 Adrian Tan <atks@umich.edu>
 
    Permission is hereby granted, free of charge, to any person obtaining a copy
    of this software and associated documentation files (the "Software"), to deal
@@ -32,6 +32,6 @@
 #include "variant_manip.h"
 #include "filter.h"
 
-bool view(int argc, char ** argv);
+bool sort(int argc, char ** argv);
     
 #endif

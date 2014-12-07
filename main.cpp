@@ -62,6 +62,7 @@
 #include "profile_fic_hwe.h"
 #include "cross_compare.h"
 #include "discover2.h"
+#include "sort.h"
 
 void print_time(double t)
 {
@@ -165,6 +166,10 @@ int main(int argc, char ** argv)
     else if (argc>1 && cmd=="validate")
     {
         print = validate(argc-1, ++argv);
+    }
+    else if (argc>1 && cmd=="sort")
+    {
+        print = sort(argc-1, ++argv);
     }
     else if (argc>1 && cmd=="config")
     {
