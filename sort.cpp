@@ -134,7 +134,6 @@ class Igor : Program
     {
         if (sort_mode=="local")
         {
-            intervals.push_back(GenomeInterval("1"));
             odr = new BCFOrderedReader(input_vcf_file, intervals);
             
             odw = new BCFOrderedWriter(output_vcf_file, sort_window_size);
@@ -158,6 +157,11 @@ class Igor : Program
         else if (sort_mode=="chrom")
         {
             odr = new BCFOrderedReader(input_vcf_file, intervals);
+            if (!odr->is_index_loaded())
+            {
+                fprintf(stderr, "[%s:%d %s] Chromosome sort mode requires that %s is an indexed vcf.gz file.\n", __FILE__,__LINE__,__FUNCTION__, input_vcf_file.c_str());
+                exit(1);
+            }
             
             odw = new BCFOrderedWriter(output_vcf_file, sort_window_size);
             odw->link_hdr(odr->hdr);
@@ -170,9 +174,6 @@ class Igor : Program
                 
             for (size_t i=0; i<nseqs; ++i)
             {
-                
-                std::cerr << "reading " << seqs[i] << "\n";
-                
                 std::string interval(seqs[i]);
                 GenomeInterval ginterval(interval);
                 odr->jump_to_interval(ginterval);

@@ -137,6 +137,14 @@ const char* BCFOrderedReader::get_seqname(bcf1_t *v)
 };
 
 /**
+ * Checks if index is loaded.
+ */
+bool BCFOrderedReader::is_index_loaded()
+{
+    return index_loaded;
+}
+
+/**
  * Gets bcf header.
  */
 bcf_hdr_t* BCFOrderedReader::get_hdr()
