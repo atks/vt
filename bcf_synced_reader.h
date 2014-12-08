@@ -127,13 +127,17 @@ class CompareBCFPtr
  * If no intervals are selected by the caller, a union of all sequences are detected
  * from the files.
  *
- *  Non indexed files are NOT supported!
+ * 2) Not all files are indexed.  
+ *  
+ *    When no intervals are specified, indices are not loaded.
+ *    Headers are checked to ensure that the contigs listed.
+ *            
  *
- * Modes of sunchronizing
+ * Modes of synchronizing
  *
  * A) By start position
  * B) By variant
- * C) By overlapping variants (todo: under consideration)
+ *
  */
 class BCFSyncedReader
 {
