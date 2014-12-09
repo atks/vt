@@ -287,11 +287,11 @@ class Igor : Program
         print_boo_op("         [w] write_partition    ", write_partition);
         print_int_op("         [i] intervals          ", intervals);
         std::clog << "\n";
+        fprintf(stderr, "\n");
    }
 
     void print_stats()
     {
-        fprintf(stderr, "\n");
         fprintf(stderr, "    A:  %10d variants\n", stats.a+stats.ab);
         fprintf(stderr, "    B:  %10d variants\n", stats.ab+stats.b);
         fprintf(stderr, "\n");
