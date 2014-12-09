@@ -45,11 +45,13 @@
 
 /**
  * Wrapper class for the bcf object.
+ * Stores the alleles in lexical order.
  */
 class bcfptr
 {
     public:
     int32_t file_index;
+    int32_t rid;
     int32_t pos1;
     bcf_hdr_t *h;
     bcf1_t *v;
@@ -58,14 +60,16 @@ class bcfptr
     bcfptr()
     {
         file_index = -1;
+        rid = -1;
         pos1 = -1;
         v = NULL;
         alleles = {0,0,0};
     };
 
-    bcfptr(int32_t file_index, int32_t pos1, bcf_hdr_t *h, bcf1_t *v, bool sync_by_pos)
+    bcfptr(int32_t file_index, int32_t rid, int32_t pos1, bcf_hdr_t *h, bcf1_t *v, bool sync_by_pos)
     {
         this->file_index = file_index;
+        this->rid = rid;
         this->pos1 = pos1;
         this->h = h;
         this->v = v;
@@ -95,20 +99,25 @@ class CompareBCFPtr
     public:
     bool operator()(bcfptr *a, bcfptr *b)
     {
-        if (a->pos1 == b->pos1)
+        if (a->rid == b->rid)
         {
-            if (a->alleles.l!=0 && b->alleles.l!=0)
+            if (a->pos1 == b->pos1)
             {
-                int32_t d = strcmp(a->alleles.s, b->alleles.s);
-                return d>=0;
+                if (a->alleles.l!=0 && b->alleles.l!=0)
+                {
+                    int32_t d = strcmp(a->alleles.s, b->alleles.s);
+                    return d>=0;
+                }
+                else
+                {
+                    return true;
+                }
             }
-            else
-            {
-                return true;
-            }
+            
+            return a->pos1 >= b->pos1;
         }
-
-        return a->pos1 >= b->pos1;
+        
+        return a->rid >= b->rid;
     }
 };
 
@@ -160,7 +169,7 @@ class BCFSyncedReader
     std::vector<GenomeInterval> intervals;
     std::map<std::string, int32_t> intervals_map;
     uint32_t intervals_index;
-    bool exists_selected_intervals;
+    bool random_access;
 
     //variables for keeping track of status
     std::string current_interval;
@@ -186,6 +195,11 @@ class BCFSyncedReader
      * Initialize files and intervals.
      */
     BCFSyncedReader(std::vector<std::string>& _vcf_files, std::vector<GenomeInterval>& _intervals, bool sync_by_pos=true);
+
+    /**
+     * Compares records based on type of comparison.
+     */
+    int32_t bcfptr_cmp(bcfptr *a, bcfptr *b);
 
     /**
      * Returns list of files that have variants at a certain position.

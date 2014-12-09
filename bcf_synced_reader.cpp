@@ -45,69 +45,73 @@ BCFSyncedReader::BCFSyncedReader(std::vector<std::string>& file_names, std::vect
     buffer.resize(nfiles);
     s = {0, 0, 0};
 
-    exists_selected_intervals = (intervals.size()!=0);
+    random_access = (intervals.size()!=0);
     for (size_t i=0; i<intervals.size(); ++i)
     {
         intervals_map[intervals[i].to_string()] = i;
     }
     intervals_index = 0;
 
-    //1. check file type validity
-    //2. loads indices
-    //3. adds sequences found in all indexed files, this allows us to iterate through all sequences.
-    for (int32_t i = 0; i<nfiles; ++i)
+    for (size_t i = 0; i<nfiles; ++i)
     {
         files[i] = hts_open(file_names[i].c_str(), "r");
-        if (files[i]==NULL) 
+        if (files[i]==NULL)
         {
             fprintf(stderr, "[%s:%d %s] Cannot open %s\n", __FILE__, __LINE__, __FUNCTION__, file_names[i].c_str());
-            exit(1);    
+            exit(1);
         }
         ftypes[i] = files[i]->format;
+
+        //check format
+        if (ftypes[i].format!=vcf && ftypes[i].format!=bcf)
+        {
+            fprintf(stderr, "[E:%s:%d %s] %s not a VCF or BCF file\n", __FILE__, __LINE__, __FUNCTION__, file_names[i].c_str());
+            exit(1);
+        }
+
+        //read header
         hdrs[i] = bcf_alt_hdr_read(files[i]);
-        if (!hdrs[i]) exit(1);
-
-        if (i==0)
+        if (!hdrs[i])
         {
-            if (ftypes[i].format!=vcf && ftypes[i].format!=bcf)
-            {
-                fprintf(stderr, "[E:%s:%d %s] %s not a VCF or BCF file\n", __FILE__, __LINE__, __FUNCTION__, file_names[i].c_str());
-                exit(1);
-            }
-
-            if (!load_index(i))
-            {
-                fprintf(stderr, "[I:%s:%d %s] index cannot be loaded for %s\n", __FILE__, __LINE__, __FUNCTION__, file_names[i].c_str());
-                exit(1);
-            }
-
-            if (!exists_selected_intervals)
-            {
-                //add sequences from file i
-                add_interval(i);
-            }
+            fprintf(stderr, "[E:%s:%d %s] header cannot be read for %s\n", __FILE__, __LINE__, __FUNCTION__, file_names[i].c_str());
+            exit(1);
         }
-        else
+
+        //load index if intervals are specified
+        if (random_access && !load_index(i))
         {
-            if (ftypes[i].format!=vcf && ftypes[i].format!=bcf)
-            {
-                fprintf(stderr, "[E:%s:%d %s] %s not a VCF_GZ or BCF file\n", __FILE__, __LINE__, __FUNCTION__, file_names[i].c_str());
-                exit(1);
-            }
-
-            if (!load_index(i))
-            {
-                fprintf(stderr, "[E:%s:%d %s] index cannot be loaded for %s\n", __FILE__, __LINE__, __FUNCTION__, file_names[i].c_str());
-                exit(1);
-            }
-
-            if (!exists_selected_intervals)
-            {
-                //add sequences from file i
-                add_interval(i);
-            }
+            fprintf(stderr, "[E:%s:%d %s] index cannot be loaded for %s for random access\n", __FILE__, __LINE__, __FUNCTION__, file_names[i].c_str());
+            exit(1);
         }
-    }
+        
+        //check contigs consistency if no random access
+        if (!random_access && i)
+        {
+            int32_t nseqs0;
+            const char ** seqnames0 = bcf_hdr_seqnames(hdrs[i], &nseqs0);    
+        
+            int32_t nseqs;
+            const char ** seqnames = bcf_hdr_seqnames(hdrs[i], &nseqs);    
+        
+            if (nseqs0==0 || nseqs==0 || nseqs0!=nseqs)
+            {
+                fprintf(stderr, "[E:%s:%d %s] contigs in header not consistent with first file for %s\n", __FILE__, __LINE__, __FUNCTION__, file_names[i].c_str());
+                exit(1);
+            }    
+ 
+            for (size_t j=0; j<nseqs; ++j)
+            {
+                if (strcmp(seqnames0[j], seqnames[j]))
+                {
+                    fprintf(stderr, "[E:%s:%d %s] contigs in header not consistent with first file for %s\n", __FILE__, __LINE__, __FUNCTION__, file_names[i].c_str());
+                    exit(1);
+                }    
+            }
+            
+            free(seqnames0);
+            free(seqnames);        
+        }
+    }    
 }
 
 /**
@@ -122,7 +126,7 @@ void BCFSyncedReader::add_interval(int32_t i)
     if (hdrs[i])
     {
         seq_names = bcf_hdr_seqnames(hdrs[i], &nseqs);
-        for (uint32_t j=0; j<nseqs; ++j)
+        for (size_t j=0; j<nseqs; ++j)
         {
             std::string seq(seq_names[j]);
             if (intervals_map.find(seq)==intervals_map.end())
@@ -137,7 +141,7 @@ void BCFSyncedReader::add_interval(int32_t i)
     if (tbxs[i])
     {
         seq_names = tbx_seqnames(tbxs[i], &nseqs);
-        for (uint32_t j=0; j<nseqs; ++j)
+        for (size_t j=0; j<nseqs; ++j)
         {
             std::string seq(seq_names[j]);
             if (intervals_map.find(seq)==intervals_map.end())
@@ -248,7 +252,7 @@ void BCFSyncedReader::print_buffer()
  */
 void BCFSyncedReader::close()
 {
-    for (int32_t i = 0; i<nfiles; ++i)
+    for (size_t i = 0; i<nfiles; ++i)
     {
         bcf_close(files[i]);
         bcf_hdr_destroy(hdrs[i]);
@@ -261,7 +265,7 @@ void BCFSyncedReader::close()
  */
 void BCFSyncedReader::insert_into_pq(int32_t i, bcf1_t *v)
 {
-    pq.push(new bcfptr(i, bcf_get_pos1(v), hdrs[i], v, sync_by_pos));
+    pq.push(new bcfptr(i, bcf_get_rid(v), bcf_get_pos1(v), hdrs[i], v, sync_by_pos));    
 }
 
 /**
@@ -293,22 +297,50 @@ void BCFSyncedReader::store_bcf1_into_pool(bcf1_t* v)
     v = 0;
 }
 
-int32_t bcfptr_cmp(bcfptr *a, bcfptr *b)
+/**
+ * Compares records based on type of comparison.
+ */
+int32_t BCFSyncedReader::bcfptr_cmp(bcfptr *a, bcfptr *b)
 {
-    if (a->pos1 == b->pos1)
-    {
-        if (a->alleles.l!=0 && b->alleles.l!=0)
+    if (random_access)
+    {    
+        if (a->pos1 == b->pos1)
         {
-            int32_t d = strcmp(a->alleles.s, b->alleles.s);
-            return d;
+            if (a->alleles.l!=0 && b->alleles.l!=0)
+            {
+                int32_t d = strcmp(a->alleles.s, b->alleles.s);
+                return d;
+            }
+            else
+            {
+                return 0;
+            }
         }
-        else
-        {
-            return 0;
-        }
+    
+        return a->pos1 >= b->pos1 ? 1 : -1;
     }
-
-    return a->pos1 >= b->pos1 ? 1 : -1;
+    else
+    {
+        if (a->rid == b->rid)
+        {    
+            if (a->pos1 == b->pos1)
+            {
+                if (a->alleles.l!=0 && b->alleles.l!=0)
+                {
+                    int32_t d = strcmp(a->alleles.s, b->alleles.s);
+                    return d;
+                }
+                else
+                {
+                    return 0;
+                }
+            }
+        
+            return a->pos1 >= b->pos1 ? 1 : -1;
+        }
+        
+        return a->rid >= b->rid ? 1 : -1;
+    }
 }
 
 /**
@@ -320,7 +352,7 @@ int32_t bcfptr_cmp(bcfptr *a, bcfptr *b)
 bool BCFSyncedReader::read_next_position(std::vector<bcfptr*>& current_recs)
 {
     //put records in pool
-    for (uint32_t i=0; i<current_recs.size(); ++i)
+    for (size_t i=0; i<current_recs.size(); ++i)
     {
         store_bcf1_into_pool(current_recs[i]->v);
         delete(current_recs[i]);
@@ -329,6 +361,7 @@ bool BCFSyncedReader::read_next_position(std::vector<bcfptr*>& current_recs)
 
     //process records in priority queue or initialize next interval if pq is empty
     //initialize_next_interval tops up the pq
+    //initialize_next_interval will never be invoked until the end for non indexed reading
     if (pq.size()!=0 || initialize_next_interval())
     {
         //dequeue pqueue most recent position and return it
@@ -369,38 +402,55 @@ bool BCFSyncedReader::read_next_position(std::vector<bcfptr*>& current_recs)
  */
 bool BCFSyncedReader::initialize_next_interval()
 {
-    while (intervals_index < intervals.size())
+    if (random_access)
     {
-        GenomeInterval interval = intervals[intervals_index++];
-
-        for (int32_t i = 0; i<nfiles; ++i)
+        while (intervals_index < intervals.size())
         {
-            hts_itr_destroy(itrs[i]);
-            itrs[i] = 0;
-            interval.to_string(&s);
-
-            if (ftypes[i].format==bcf&&ftypes[i].compression==bgzf)
+            GenomeInterval interval = intervals[intervals_index++];
+    
+            for (size_t i=0; i<nfiles; ++i)
             {
-                itrs[i] = bcf_itr_querys(idxs[i], hdrs[i], s.s);
+                hts_itr_destroy(itrs[i]);
+                itrs[i] = 0;
+                interval.to_string(&s);
+                
+                if (ftypes[i].format==bcf)
+                {
+                    itrs[i] = bcf_itr_querys(idxs[i], hdrs[i], s.s);
+                }
+                else if (ftypes[i].format==vcf)
+                {
+                    itrs[i] = tbx_itr_querys(tbxs[i], s.s);
+                }
+    
+                fill_buffer(i);
             }
-            else if (ftypes[i].format==vcf&&ftypes[i].compression==bgzf)
+    
+            //make sure pq is not empty
+            //it is possible for the pq to be empty as iterators may be returned
+            //as the sequence might be a valid sequence stated in the header
+            if (pq.size()!=0)
             {
-                itrs[i] = tbx_itr_querys(tbxs[i], s.s);
+                return true;
             }
-
+        }
+        
+        return false;
+    }
+    else
+    {
+        for (size_t i=0; i<nfiles; ++i)
+        {
             fill_buffer(i);
         }
-
-        //make sure pq is not empty
-        //it is possible for the pq to be empty as iterators may be returned
-        //as the sequence might be a valid sequence stated in the header
+        
         if (pq.size()!=0)
         {
             return true;
         }
+        
+        return false;
     }
-
-    return false;
 }
 
 /**
@@ -410,58 +460,96 @@ bool BCFSyncedReader::initialize_next_interval()
  */
 void BCFSyncedReader::fill_buffer(int32_t i)
 {
-    //not necessary to fill buffer
     if (buffer[i].size()>=2)
         return;
 
-    int32_t pos1 = buffer[i].size()==0 ? 0 : bcf_get_pos1(buffer[i].front());
-
-    if (ftypes[i].format==bcf && ftypes[i].compression==bgzf)
+    if (random_access)
     {
+        int32_t pos1 = buffer[i].size()==0 ? 0 : bcf_get_pos1(buffer[i].front());
+
+        if (ftypes[i].format==bcf)
+        {
+            bcf1_t *v = get_bcf1_from_pool();
+            bool populated = false;
+
+            while (itrs[i] && bcf_itr_next(files[i], itrs[i], v)>=0)
+            {
+                populated = true;
+                bcf_unpack(v, BCF_UN_STR);
+                buffer[i].push_back(v);
+                insert_into_pq(i, v);
+
+                if (pos1==0)
+                {
+                    pos1 = bcf_get_pos1(v);
+                }
+
+                if (bcf_get_pos1(v)!=pos1)
+                {
+                    break;
+                }
+
+                v = get_bcf1_from_pool();
+                populated = false;
+            }
+
+            if (!populated)
+                store_bcf1_into_pool(v);
+        }
+        else if (ftypes[i].format==vcf)
+        {
+            while (itrs[i] && tbx_itr_next(files[i], tbxs[i], itrs[i], &s)>=0)
+            {
+                bcf1_t *v = get_bcf1_from_pool();
+                vcf_parse(&s, hdrs[i], v);
+
+                bcf_unpack(v, BCF_UN_STR);
+                buffer[i].push_back(v);
+                insert_into_pq(i, v);
+
+                if (pos1==0)
+                {
+                    pos1 = bcf_get_pos1(v);
+                }
+                
+                if (bcf_get_pos1(v)!=pos1)
+                {
+                    break;
+                }
+            }
+        }
+    }
+    else
+    {
+        int32_t rid = buffer[i].size()==0 ? -1 : bcf_get_rid(buffer[i].front());
+        int32_t pos1 = buffer[i].size()==0 ? 0 : bcf_get_pos1(buffer[i].front());
+
         bcf1_t *v = get_bcf1_from_pool();
         bool populated = false;
-        while (itrs[i] && bcf_itr_next(files[i], itrs[i], v) >= 0)
+
+        while (bcf_read(files[i], hdrs[i], v)>=0)
         {
             populated = true;
             bcf_unpack(v, BCF_UN_STR);
             buffer[i].push_back(v);
             insert_into_pq(i, v);
 
-            if (pos1==0)
+            if (rid==-1)
             {
+                rid = bcf_get_rid(v);
                 pos1 = bcf_get_pos1(v);
             }
-
-            if (bcf_get_pos1(v)!=pos1)
+                        
+            if (bcf_get_rid(v)!=rid || bcf_get_pos1(v)!=pos1)
             {
                 break;
             }
+            
             v = get_bcf1_from_pool();
             populated = false;
         }
+    
         if (!populated)
             store_bcf1_into_pool(v);
-    }
-    else if (ftypes[i].format==vcf && ftypes[i].compression==bgzf)
-    {
-        while (itrs[i] && tbx_itr_next(files[i], tbxs[i], itrs[i], &s) >= 0)
-        {
-            bcf1_t *v = get_bcf1_from_pool();
-            vcf_parse(&s, hdrs[i], v);
-
-            bcf_unpack(v, BCF_UN_STR);
-            buffer[i].push_back(v);
-            insert_into_pq(i, v);
-
-            if (pos1==0)
-            {
-                pos1 = bcf_get_pos1(v);
-            }
-
-            if (bcf_get_pos1(v)!=pos1)
-            {
-                break;
-            }
-        }
     }
 }

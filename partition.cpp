@@ -172,6 +172,9 @@ class Igor : Program
 
         while(sr->read_next_position(crecs))
         {
+            
+            //bcf_print_lite(crecs[0]->h, crecs[0]->v);
+            
             int32_t vtype = vm->classify_variant(crecs[0]->h, crecs[0]->v, variant);
 
             //check existence
@@ -287,7 +290,6 @@ class Igor : Program
         print_boo_op("         [w] write_partition    ", write_partition);
         print_int_op("         [i] intervals          ", intervals);
         std::clog << "\n";
-        fprintf(stderr, "\n");
    }
 
     void print_stats()
