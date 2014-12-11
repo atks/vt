@@ -31,6 +31,7 @@
 #include "hts_utils.h"
 #include "variant_manip.h"
 #include "filter.h"
+#include "Rmath/Rmath.h"
 
 bool sort(int argc, char ** argv);
 

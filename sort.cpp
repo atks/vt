@@ -219,9 +219,11 @@ class Igor : Program
                 ++no_variants;
             }
 
+            if (bptr)
+            {
+                //sort and write out
+            }
             
-            
-            //write out to temporary files
             //merge records from temporary files
         }
     };
@@ -230,7 +232,7 @@ class Igor : Program
     {
         if (!print) return;
 
-        std::clog << "view v" << version << "\n\n";
+        std::clog << "sort v" << version << "\n\n";
 
         std::clog << "options:     input VCF file              " << input_vcf_file << "\n";
         std::clog << "         [o] output VCF file             " << output_vcf_file << "\n";
@@ -246,7 +248,6 @@ class Igor : Program
 
         std::clog << "\n";
         std::clog << "stats: no. variants  : " << no_variants << "\n";
-        std::clog << "       no. samples   : " <<  "\n";
         std::clog << "\n";
     };
 
