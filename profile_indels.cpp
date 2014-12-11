@@ -83,7 +83,7 @@ class Igor : Program
     //filter//
     //////////
     std::string fexp;
-    std::vector<Filter> filters;
+    std::vector<Filter*> filters;
     std::vector<bool> filter_exists;
     int32_t no_filters;
 
@@ -211,7 +211,7 @@ class Igor : Program
         /////////////////////////
         for (size_t i=0; i<dataset_fexps.size(); ++i)
         {
-            filters.push_back(Filter(dataset_fexps[i]));
+            filters.push_back(new Filter(dataset_fexps[i]));
             filter_exists.push_back(dataset_fexps[i]!="");
         }
         no_filters = filters.size();
@@ -268,7 +268,7 @@ class Igor : Program
 
                 if (filter_exists[index])
                 {
-                    if (!filters[index].apply(h,v,&variant))
+                    if (!filters[index]->apply(current_recs[i]->h,current_recs[i]->v,&variant))
                     {
                         continue;
                     }

@@ -100,7 +100,7 @@ class Igor : Program
             }
             else if (sort_mode=="full")
             {
-
+                fprintf(stderr, "[%s:%d %s] Full sort mode not implemented yet. Apologies!\n", __FILE__,__LINE__,__FUNCTION__);
             }
             else
             {

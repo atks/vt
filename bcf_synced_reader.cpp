@@ -252,7 +252,7 @@ void BCFSyncedReader::print_buffer()
  */
 void BCFSyncedReader::close()
 {
-    for (size_t i = 0; i<nfiles; ++i)
+    for (size_t i=0; i<nfiles; ++i)
     {
         bcf_close(files[i]);
         bcf_hdr_destroy(hdrs[i]);
