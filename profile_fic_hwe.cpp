@@ -44,7 +44,7 @@ class Igor : Program
     const char* AN;
     std::vector<GenomeInterval> intervals;
     std::string interval_list;
-    
+
     ///////
     //i/o//
     ///////
@@ -54,7 +54,7 @@ class Igor : Program
     //general use//
     ///////////////
     int ret, is_missing;
-  	khiter_t k;
+    khiter_t k;
     khash_t(32) *afs;
     khash_t(32) *pass_afs;
 
@@ -147,18 +147,18 @@ class Igor : Program
 
         Variant variant;
         int32_t *ac=NULL, *an=NULL, n_ac=0, n_an=0;
-        
+
         while(odr->read(v))
         {
             bcf_unpack(v, BCF_UN_ALL);
-         
+
             bcf_print(odr->hdr, v);
-            
+
             if (bcf_get_n_allele(v)!=2)
             {
                 continue;
             }
-            
+
             if (filter_exists)
             {
                 int32_t vtype = vm->classify_variant(odr->hdr, v, variant);
@@ -167,16 +167,16 @@ class Igor : Program
                     continue;
                 }
             }
-            
+
             bool pass = (bcf_has_filter(odr->hdr, v, const_cast<char*>("PASS"))==1);
-            
+
             bcf_get_info_int32(odr->hdr, v, AC, &ac, &n_ac);
             bcf_get_info_int32(odr->hdr, v, AN, &an, &n_an);
-            
+
             if (ac[0]>(an[0]>>1)) {ac[0] = an[0]-ac[0];}
-            
+
             if (ac[0]==0) continue;
-            
+
             k = kh_get(32, afs, ac[0]);
             if (k==kh_end(afs))
             {
@@ -186,8 +186,8 @@ class Igor : Program
             else
             {
                 kh_value(afs, k) = kh_value(afs, k) + 1;
-            }    
-            
+            }
+
             if (pass)
             {
                 k = kh_get(32, pass_afs, ac[0]);
@@ -199,9 +199,9 @@ class Igor : Program
                 else
                 {
                     kh_value(pass_afs, k) = kh_value(pass_afs, k) + 1;
-                } 
-            }    
-            
+                }
+            }
+
             ++no_variants;
         }
 
@@ -220,41 +220,41 @@ class Igor : Program
         print_int_op("         [i] intervals              ", intervals);
         std::clog << "\n";
     }
-  
+
     void print_pdf()
     {
         append_cwd(output_dir);
-                        
+
         //create directory
         mkdir(output_dir.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-        
+
         //create data file
-        std::string file_path = output_dir + "/data.txt"; 
+        std::string file_path = output_dir + "/data.txt";
         FILE *out = fopen(file_path.c_str(), "w");
-        
+
         fprintf(out, "mac\tf\tpass\n");
         for (k=kh_begin(afs); k!=kh_end(afs); ++k)
-    	{
-    	    if (kh_exist(afs, k))
-    	    {
-    	        fprintf(out, "%d\t%d\t0\n", k , kh_value(afs, k));
-    	    }
-    	}
-    	
-    	for (k=kh_begin(pass_afs); k!=kh_end(pass_afs); ++k)
-    	{
-    	    if (kh_exist(pass_afs, k))
-    	    {
-    	        fprintf(out, "%d\t%d\t1\n", k , kh_value(pass_afs, k));
-    	    }
-    	}
-        
+        {
+            if (kh_exist(afs, k))
+            {
+                fprintf(out, "%d\t%d\t0\n", k , kh_value(afs, k));
+            }
+        }
+
+        for (k=kh_begin(pass_afs); k!=kh_end(pass_afs); ++k)
+        {
+            if (kh_exist(pass_afs, k))
+            {
+                fprintf(out, "%d\t%d\t1\n", k , kh_value(pass_afs, k));
+            }
+        }
+
         fclose(out);
 
         //create r script
-        file_path = output_dir + "/plot.r"; 
+        file_path = output_dir + "/plot.r";
         out = fopen(file_path.c_str(), "w");
-        
+
         fprintf(out, "setwd(\"%s\")\n", output_dir.c_str());
         fprintf(out, "\n");
         fprintf(out, "data = read.table(\"data.txt\", header=T)\n");
@@ -265,7 +265,7 @@ class Igor : Program
         fprintf(out, "points(data.pass$mac, data.pass$f, pch=20, cex=0.5, col=rgb(0,0,1,0.5))\n");
         fprintf(out, "legend(\"topright\", c(\"pass\", \"all\"), col = c(rgb(0,0,1,0.5), rgb(1,0,0,0.5)), pch = 20)\n");
         fprintf(out, "dev.off()\n");
-        
+
         fclose(out);
 
         //run script
@@ -278,10 +278,10 @@ class Igor : Program
         fprintf(stderr, "Stats \n");
         fprintf(stderr, "     no. of variants  : %d\n", no_variants);
         fprintf(stderr, "\n");
-        
+
         //do a textual histogram print out of afs
-        
-        
+
+
     };
 
     ~Igor()

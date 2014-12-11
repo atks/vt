@@ -33,5 +33,5 @@
 #include "filter.h"
 
 bool sort(int argc, char ** argv);
-    
+
 #endif

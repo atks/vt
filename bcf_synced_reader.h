@@ -113,10 +113,10 @@ class CompareBCFPtr
                     return true;
                 }
             }
-            
+
             return a->pos1 >= b->pos1;
         }
-        
+
         return a->rid >= b->rid;
     }
 };
@@ -136,11 +136,11 @@ class CompareBCFPtr
  * If no intervals are selected by the caller, a union of all sequences are detected
  * from the files.
  *
- * 2) Not all files are indexed.  
- *  
+ * 2) Not all files are indexed.
+ *
  *    When no intervals are specified, indices are not loaded.
  *    Headers are checked to ensure that the contigs listed.
- *            
+ *
  *
  * Modes of synchronizing
  *

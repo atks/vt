@@ -259,7 +259,7 @@ class Igor : Program
 
                 if (filter_exists[index])
                 {
-                    if (!filters[index].apply(h,v,&variant))
+                    if (!filters[index].apply(current_recs[i]->h,current_recs[i]->v,&variant))
                     {
                         continue;
                     }

@@ -125,7 +125,7 @@ class Filter
     bcf_hdr_t *h;
     bcf1_t *v;
     Variant *variant;
-    
+
     /**
      * Constructor.
      */

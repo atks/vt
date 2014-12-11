@@ -113,7 +113,7 @@ class Igor : Program
     std::vector<std::string> dataset_types;
     std::vector<std::string> dataset_fexps;
     std::string cds_bed_file;
-    
+
     ///////
     //i/o//
     ///////
@@ -151,7 +151,7 @@ class Igor : Program
     ////////////////
     VariantManip *vm;
     OrderedRegionOverlapMatcher *orom_gencode_cds;
-    
+
     Igor(int argc, char ** argv)
     {
         //////////////////////////
@@ -213,7 +213,7 @@ class Igor : Program
         dataset_labels.push_back("data");
         dataset_types.push_back("ref");
         dataset_fexps.push_back(fexp);
-        
+
         htsFile *hts = hts_open(ref_data_sets_list.c_str(), "r");
         kstring_t s = {0,0,0};
         std::vector<std::string> vec;
@@ -324,7 +324,7 @@ class Igor : Program
 
                 if (filter_exists[index])
                 {
-                    if (!filters[index].apply(h,v,&variant))
+                    if (!filters[index].apply(current_recs[i]->h,current_recs[i]->v,&variant))
                     {
                         continue;
                     }
@@ -408,7 +408,7 @@ class Igor : Program
                         if (y1>0 || y2>0)
                         {
                             y = 1;
-                        }    
+                        }
                         else if (y1==0 || y2==0)
                         {
                             y = 0;
@@ -424,7 +424,7 @@ class Igor : Program
                         if (x1>0 || x2>0)
                         {
                             xt = 1;
-                        }    
+                        }
                         else if (x1==0 || x2==0)
                         {
                             xt = 0;

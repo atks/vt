@@ -83,35 +83,35 @@ BCFSyncedReader::BCFSyncedReader(std::vector<std::string>& file_names, std::vect
             fprintf(stderr, "[E:%s:%d %s] index cannot be loaded for %s for random access\n", __FILE__, __LINE__, __FUNCTION__, file_names[i].c_str());
             exit(1);
         }
-        
+
         //check contigs consistency if no random access
         if (!random_access && i)
         {
             int32_t nseqs0;
-            const char ** seqnames0 = bcf_hdr_seqnames(hdrs[i], &nseqs0);    
-        
+            const char ** seqnames0 = bcf_hdr_seqnames(hdrs[i], &nseqs0);
+
             int32_t nseqs;
-            const char ** seqnames = bcf_hdr_seqnames(hdrs[i], &nseqs);    
-        
+            const char ** seqnames = bcf_hdr_seqnames(hdrs[i], &nseqs);
+
             if (nseqs0==0 || nseqs==0 || nseqs0!=nseqs)
             {
                 fprintf(stderr, "[E:%s:%d %s] contigs in header not consistent with first file for %s\n", __FILE__, __LINE__, __FUNCTION__, file_names[i].c_str());
                 exit(1);
-            }    
- 
+            }
+
             for (size_t j=0; j<nseqs; ++j)
             {
                 if (strcmp(seqnames0[j], seqnames[j]))
                 {
                     fprintf(stderr, "[E:%s:%d %s] contigs in header not consistent with first file for %s\n", __FILE__, __LINE__, __FUNCTION__, file_names[i].c_str());
                     exit(1);
-                }    
+                }
             }
-            
+
             free(seqnames0);
-            free(seqnames);        
+            free(seqnames);
         }
-    }    
+    }
 }
 
 /**
@@ -265,7 +265,7 @@ void BCFSyncedReader::close()
  */
 void BCFSyncedReader::insert_into_pq(int32_t i, bcf1_t *v)
 {
-    pq.push(new bcfptr(i, bcf_get_rid(v), bcf_get_pos1(v), hdrs[i], v, sync_by_pos));    
+    pq.push(new bcfptr(i, bcf_get_rid(v), bcf_get_pos1(v), hdrs[i], v, sync_by_pos));
 }
 
 /**
@@ -303,7 +303,7 @@ void BCFSyncedReader::store_bcf1_into_pool(bcf1_t* v)
 int32_t BCFSyncedReader::bcfptr_cmp(bcfptr *a, bcfptr *b)
 {
     if (random_access)
-    {    
+    {
         if (a->pos1 == b->pos1)
         {
             if (a->alleles.l!=0 && b->alleles.l!=0)
@@ -316,13 +316,13 @@ int32_t BCFSyncedReader::bcfptr_cmp(bcfptr *a, bcfptr *b)
                 return 0;
             }
         }
-    
+
         return a->pos1 >= b->pos1 ? 1 : -1;
     }
     else
     {
         if (a->rid == b->rid)
-        {    
+        {
             if (a->pos1 == b->pos1)
             {
                 if (a->alleles.l!=0 && b->alleles.l!=0)
@@ -335,10 +335,10 @@ int32_t BCFSyncedReader::bcfptr_cmp(bcfptr *a, bcfptr *b)
                     return 0;
                 }
             }
-        
+
             return a->pos1 >= b->pos1 ? 1 : -1;
         }
-        
+
         return a->rid >= b->rid ? 1 : -1;
     }
 }
@@ -407,13 +407,13 @@ bool BCFSyncedReader::initialize_next_interval()
         while (intervals_index < intervals.size())
         {
             GenomeInterval interval = intervals[intervals_index++];
-    
+
             for (size_t i=0; i<nfiles; ++i)
             {
                 hts_itr_destroy(itrs[i]);
                 itrs[i] = 0;
                 interval.to_string(&s);
-                
+
                 if (ftypes[i].format==bcf)
                 {
                     itrs[i] = bcf_itr_querys(idxs[i], hdrs[i], s.s);
@@ -422,10 +422,10 @@ bool BCFSyncedReader::initialize_next_interval()
                 {
                     itrs[i] = tbx_itr_querys(tbxs[i], s.s);
                 }
-    
+
                 fill_buffer(i);
             }
-    
+
             //make sure pq is not empty
             //it is possible for the pq to be empty as iterators may be returned
             //as the sequence might be a valid sequence stated in the header
@@ -434,7 +434,7 @@ bool BCFSyncedReader::initialize_next_interval()
                 return true;
             }
         }
-        
+
         return false;
     }
     else
@@ -443,12 +443,12 @@ bool BCFSyncedReader::initialize_next_interval()
         {
             fill_buffer(i);
         }
-        
+
         if (pq.size()!=0)
         {
             return true;
         }
-        
+
         return false;
     }
 }
@@ -511,7 +511,7 @@ void BCFSyncedReader::fill_buffer(int32_t i)
                 {
                     pos1 = bcf_get_pos1(v);
                 }
-                
+
                 if (bcf_get_pos1(v)!=pos1)
                 {
                     break;
@@ -539,16 +539,16 @@ void BCFSyncedReader::fill_buffer(int32_t i)
                 rid = bcf_get_rid(v);
                 pos1 = bcf_get_pos1(v);
             }
-                        
+
             if (bcf_get_rid(v)!=rid || bcf_get_pos1(v)!=pos1)
             {
                 break;
             }
-            
+
             v = get_bcf1_from_pool();
             populated = false;
         }
-    
+
         if (!populated)
             store_bcf1_into_pool(v);
     }

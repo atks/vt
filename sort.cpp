@@ -119,7 +119,7 @@ class Igor : Program
         //////////////////////
         //i/o initialization//
         //////////////////////
-        
+
         ////////////////////////
         //stats initialization//
         ////////////////////////
@@ -135,14 +135,14 @@ class Igor : Program
         if (sort_mode=="local")
         {
             odr = new BCFOrderedReader(input_vcf_file, intervals);
-            
+
             odw = new BCFOrderedWriter(output_vcf_file, sort_window_size);
             odw->link_hdr(odr->hdr);
             odw->write_hdr();
 
             bcf1_t *v = odw->get_bcf1_from_pool();
             bcf_hdr_t *h = odr->hdr;
-            
+
             while (odr->read(v))
             {
                 odw->write(v);
@@ -162,36 +162,65 @@ class Igor : Program
                 fprintf(stderr, "[%s:%d %s] Chromosome sort mode requires that %s is an indexed vcf.gz file.\n", __FILE__,__LINE__,__FUNCTION__, input_vcf_file.c_str());
                 exit(1);
             }
-            
+
             odw = new BCFOrderedWriter(output_vcf_file, sort_window_size);
             odw->link_hdr(odr->hdr);
             odw->write_hdr();
-            
+
             int32_t nseqs;
             const char ** seqs = bcf_hdr_seqnames(odr->hdr, &nseqs);
             bcf1_t *v = bcf_init1();
             bcf_hdr_t *h = odr->hdr;
-                
+
             for (size_t i=0; i<nseqs; ++i)
             {
                 std::string interval(seqs[i]);
                 GenomeInterval ginterval(interval);
                 odr->jump_to_interval(ginterval);
-                
+
                 while (odr->read(v))
                 {
                     odw->write(v);
-                    ++no_variants;    
+                    ++no_variants;
                 }
             }
-            
+
             bcf_destroy(v);
             odw->close();
-            odr->close();            
+            odr->close();
         }
         else if (sort_mode=="full")
         {
             //read into buffer 10000 records
+            odr = new BCFOrderedReader(input_vcf_file, intervals);
+            
+            std::vector<bcf1_t*> buffer;
+            
+            for (size_t i=0; i<10000; ++i)
+            {
+                buffer.push_back(bcf_init1());
+            }
+            
+            size_t bptr = 0;
+            
+            bcf1_t *v = buffer[bptr];
+            while (odr->read(v))
+            {
+                if (bptr<10000)
+                {
+                    ++bptr;
+                }
+                else
+                {
+                    //sort and write out
+                }
+                
+                odw->write(v);
+                ++no_variants;
+            }
+
+            
+            
             //write out to temporary files
             //merge records from temporary files
         }

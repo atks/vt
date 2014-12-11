@@ -62,7 +62,7 @@ class Igor : Program
     //general use//
     ///////////////
     std::vector<hwe_t> hwe_pts;
-    
+
     //////////
     //filter//
     //////////
@@ -192,7 +192,7 @@ class Igor : Program
 
             hwe_t h = {hwe_lpval[0], maf, no_alleles, pass};
             hwe_pts.push_back(h);
-            
+
             ++no_variants;
         }
 
@@ -217,7 +217,7 @@ class Igor : Program
     void print_pdf()
     {
         append_cwd(output_dir);
-        
+
         //create directory
         mkdir(output_dir.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
 
@@ -247,42 +247,42 @@ class Igor : Program
         fprintf(out, "\n");
         fprintf(out, "data = read.table(\"data.txt\", header=T)\n");
         fprintf(out, "data$hwe_pval=exp(data$hwe_lpval)\n");
-        
+
         fprintf(out, "plot_hist <- function(data, title, bar_color) {\n");
         fprintf(out, "h = hist(data$hwe_pval, breaks=50, plot=F)\n");
         fprintf(out, "b = barplot(h$counts, log=\"y\", col=bar_color, xlab=\"P-value\", ylab=\"Count\", main=title)\n");
         fprintf(out, "axis(1,c(b[1]-(b[2]-b[1])/2,(b[50]-b[1])/2,b[50]+(b[2]-b[1])/2),c(0,0.5,1.0))\n");
         fprintf(out, "}\n");
-        
+
         fprintf(out, "pdf(\"%s\",7,8)\n", output_pdf_file.c_str());
-        fprintf(out, "\n");    
+        fprintf(out, "\n");
         fprintf(out, "layout(matrix(c(1,2,3,4), 4, 1, byrow = TRUE))\n");
-        fprintf(out, "\n");    
-        fprintf(out, "data.subset = subset(data, pass==1 & no_alleles==2)\n");    
-        fprintf(out, "plot_hist(data.subset,\"Passed Biallelic Indels\", rgb(0,0,1,0.5))\n");    
         fprintf(out, "\n");
-        fprintf(out, "data.subset = subset(data, pass==1 & no_alleles==2 & maf>0.05)\n");    
-        fprintf(out, "plot_hist(data.subset,\"Passed Biallelic Indels (MAF>0.05)\", rgb(0,0,1,0.5))\n");    
-        fprintf(out, "\n");    
+        fprintf(out, "data.subset = subset(data, pass==1 & no_alleles==2)\n");
+        fprintf(out, "plot_hist(data.subset,\"Passed Biallelic Indels\", rgb(0,0,1,0.5))\n");
+        fprintf(out, "\n");
+        fprintf(out, "data.subset = subset(data, pass==1 & no_alleles==2 & maf>0.05)\n");
+        fprintf(out, "plot_hist(data.subset,\"Passed Biallelic Indels (MAF>0.05)\", rgb(0,0,1,0.5))\n");
+        fprintf(out, "\n");
         fprintf(out, "data.subset = subset(data, pass==0 & no_alleles==2)\n");
-        fprintf(out, "plot_hist(data.subset,\"Failed Biallelic Indels\", rgb(1,0,0,0.5))\n");    
-        fprintf(out, "\n");    
-        fprintf(out, "data.subset = subset(data, pass==0 & no_alleles==2 & maf>0.05)\n");    
-        fprintf(out, "plot_hist(data.subset,\"Failed Biallelic Indels (MAF>0.05)\", rgb(1,0,0,0.5))\n");
-        fprintf(out, "\n");    
-        fprintf(out, "layout(matrix(c(1,2,3,4), 4, 1, byrow = TRUE))\n");    
-        fprintf(out, "\n");    
-        fprintf(out, "data.subset = subset(data, pass==1 & no_alleles!=2)\n");
-        fprintf(out, "plot_hist(data.subset,\"Passed Multiallelic Indels\", rgb(0,0,1,0.5))\n");    
-        fprintf(out, "\n");    
-        fprintf(out, "data.subset = subset(data, pass==1 & no_alleles!=2 & maf>0.05)\n");    
-        fprintf(out, "plot_hist(data.subset,\"Passed Multiallelic Indels (Collapsed MAF>0.05)\", rgb(0,0,1,0.5))\n");
-        fprintf(out, "\n");    
-        fprintf(out, "data.subset = subset(data, pass==0 & no_alleles!=2)\n");    
-        fprintf(out, "plot_hist(data.subset,\"Failed Multiallelic Indels\", rgb(1,0,0,0.5))\n");    
+        fprintf(out, "plot_hist(data.subset,\"Failed Biallelic Indels\", rgb(1,0,0,0.5))\n");
         fprintf(out, "\n");
-        fprintf(out, "data.subset = subset(data, pass==0 & no_alleles!=2 & maf>0.05)\n");    
-        fprintf(out, "plot_hist(data.subset,\"Failed Multiallelic Indels (Collapsed MAF>0.05)\", rgb(1,0,0,0.5))\n");    
+        fprintf(out, "data.subset = subset(data, pass==0 & no_alleles==2 & maf>0.05)\n");
+        fprintf(out, "plot_hist(data.subset,\"Failed Biallelic Indels (MAF>0.05)\", rgb(1,0,0,0.5))\n");
+        fprintf(out, "\n");
+        fprintf(out, "layout(matrix(c(1,2,3,4), 4, 1, byrow = TRUE))\n");
+        fprintf(out, "\n");
+        fprintf(out, "data.subset = subset(data, pass==1 & no_alleles!=2)\n");
+        fprintf(out, "plot_hist(data.subset,\"Passed Multiallelic Indels\", rgb(0,0,1,0.5))\n");
+        fprintf(out, "\n");
+        fprintf(out, "data.subset = subset(data, pass==1 & no_alleles!=2 & maf>0.05)\n");
+        fprintf(out, "plot_hist(data.subset,\"Passed Multiallelic Indels (Collapsed MAF>0.05)\", rgb(0,0,1,0.5))\n");
+        fprintf(out, "\n");
+        fprintf(out, "data.subset = subset(data, pass==0 & no_alleles!=2)\n");
+        fprintf(out, "plot_hist(data.subset,\"Failed Multiallelic Indels\", rgb(1,0,0,0.5))\n");
+        fprintf(out, "\n");
+        fprintf(out, "data.subset = subset(data, pass==0 & no_alleles!=2 & maf>0.05)\n");
+        fprintf(out, "plot_hist(data.subset,\"Failed Multiallelic Indels (Collapsed MAF>0.05)\", rgb(1,0,0,0.5))\n");
         fprintf(out, "\n");
         fprintf(out, "dev.off()\n");
 

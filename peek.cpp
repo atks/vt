@@ -247,7 +247,7 @@ class Igor : Program
             {
                 ++no_classified_variants;
             }
-            else if (vtype==0) 
+            else if (vtype==0)
             {
                 ++no_reference;
             }
@@ -257,14 +257,14 @@ class Igor : Program
                 bcf_print(odr->hdr, v);
                 ++no_unclassified_variants;
             }
-            
+
             ++no_records;
-//            
+//
 //            if (vtype==VT_MNP)
 //            {
 //                bcf_print(odr->hdr, v);
-//            }    
- 
+//            }
+
         }
 
         kh_destroy(32, h);
@@ -373,7 +373,7 @@ class Igor : Program
                 if (VAR_COUNT[no_alleles][vtype])
                 {
                     if (no_alleles==4)
-                    {    
+                    {
                         fprintf(stderr, "           >=%d alleles                    : %15d", no_alleles+1, VAR_COUNT[no_alleles][vtype]);
                     }
                     else
@@ -381,8 +381,8 @@ class Igor : Program
                         fprintf(stderr, "           %d alleles                      : %15d", no_alleles+1, VAR_COUNT[no_alleles][vtype]);
                     }
                     if (vtype&(VT_SNP|VT_MNP)) fprintf(stderr, " (%.2f) [%d/%d]", (float)VAR_TS[no_alleles][vtype]/VAR_TV[no_alleles][vtype], VAR_TS[no_alleles][vtype],VAR_TV[no_alleles][vtype]);
-                    if (vtype&VT_INDEL) fprintf(stderr, " (%.2f) [%d/%d]", (float)VAR_INS[no_alleles][vtype]/VAR_DEL[no_alleles][vtype], VAR_INS[no_alleles][vtype], VAR_DEL[no_alleles][vtype]); 
-                    fprintf(stderr, "\n");                                   
+                    if (vtype&VT_INDEL) fprintf(stderr, " (%.2f) [%d/%d]", (float)VAR_INS[no_alleles][vtype]/VAR_DEL[no_alleles][vtype], VAR_INS[no_alleles][vtype], VAR_DEL[no_alleles][vtype]);
+                    fprintf(stderr, "\n");
                 }
             }
             fprintf(stderr, "\n");
@@ -394,7 +394,7 @@ class Igor : Program
         for (int32_t i=0; i<3; ++i)
         {
             int32_t vtype = other_vtypes[i];
-            
+
             if (!VAR_COUNT[POLYMORPHIC][vtype])  continue;
             std::string variant_desc = vtype==VT_BLKSUB ? "block substitutions" : (vtype==VT_NAIVE_CLUMPED ? "clumped variants" : "complex substitutions");
             fprintf(stderr, "       no. of %-21s       : %10d\n", variant_desc.c_str(), VAR_COUNT[POLYMORPHIC][vtype]);
@@ -403,7 +403,7 @@ class Igor : Program
                 if (VAR_COUNT[no_alleles][vtype])
                 {
                     if (no_alleles==4)
-                    {    
+                    {
                         fprintf(stderr, "           >=%d alleles                    : %15d", no_alleles+1, VAR_COUNT[no_alleles][vtype]);
                     }
                     else
@@ -411,9 +411,9 @@ class Igor : Program
                         fprintf(stderr, "           %d alleles                      : %15d", no_alleles+1, VAR_COUNT[no_alleles][vtype]);
                     }
                     fprintf(stderr, " (%.2f) [%d/%d]", (float)VAR_TS[no_alleles][vtype]/VAR_TV[no_alleles][vtype], VAR_TS[no_alleles][vtype],VAR_TV[no_alleles][vtype]);
-                    if (vtype!=VT_BLKSUB) fprintf(stderr, " (%.2f) [%d/%d]", (float)VAR_INS[no_alleles][vtype]/VAR_DEL[no_alleles][vtype], VAR_INS[no_alleles][vtype], VAR_DEL[no_alleles][vtype]); 
-                    fprintf(stderr, "\n"); 
-                }                
+                    if (vtype!=VT_BLKSUB) fprintf(stderr, " (%.2f) [%d/%d]", (float)VAR_INS[no_alleles][vtype]/VAR_DEL[no_alleles][vtype], VAR_INS[no_alleles][vtype], VAR_DEL[no_alleles][vtype]);
+                    fprintf(stderr, "\n");
+                }
             }
             fprintf(stderr, "\n");
         }
