@@ -31,6 +31,7 @@
 #include "variant_manip.h"
 #include "program.h"
 #include "filter.h"
+#include "estimator.h"
 
 #define EST_AF      0
 #define EST_GF      1

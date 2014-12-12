@@ -28,6 +28,7 @@
 #include "program.h"
 #include "bcf_ordered_reader.h"
 #include "bcf_ordered_writer.h"
+#include "bcf_synced_reader.h"
 #include "hts_utils.h"
 #include "variant_manip.h"
 #include "filter.h"

@@ -26,6 +26,20 @@
 namespace
 {
 
+//sort and write out
+int compare (const void * a, const void * b)
+{
+    bcf1_t *u = (bcf1_t*) a;
+    bcf1_t *v = (bcf1_t*) b;
+
+    if (bcf_get_rid(u)==bcf_get_rid(v))
+    {
+        return (bcf_get_pos1(u)-bcf_get_pos1(v));
+    }
+
+    return (bcf_get_rid(u)-bcf_get_rid(v));
+}
+
 class Igor : Program
 {
     public:
@@ -96,11 +110,11 @@ class Igor : Program
             }
             else if (sort_mode=="chrom")
             {
-
+                //do nothing.  A check that the index file is present is made later in sort()
             }
             else if (sort_mode=="full")
             {
-                fprintf(stderr, "[%s:%d %s] Full sort mode not implemented yet. Apologies!\n", __FILE__,__LINE__,__FUNCTION__);
+                //do nothing
             }
             else
             {
@@ -129,6 +143,8 @@ class Igor : Program
         //tool initialization//
         ///////////////////////
     }
+
+
 
     void sort()
     {
@@ -193,16 +209,18 @@ class Igor : Program
         {
             //read into buffer 10000 records
             odr = new BCFOrderedReader(input_vcf_file, intervals);
-            
-            std::vector<bcf1_t*> buffer;
-            
-            for (size_t i=0; i<10000; ++i)
+
+            size_t buffer_size = 10000;
+
+            bcf1_t * buffer[buffer_size];
+            for (size_t i=0; i<buffer_size; ++i)
             {
-                buffer.push_back(bcf_init1());
+                buffer[i] = bcf_init1();
             }
-            
+
             size_t bptr = 0;
-            
+            std::vector<std::string> sorted_file_names;
+
             bcf1_t *v = buffer[bptr];
             while (odr->read(v))
             {
@@ -213,18 +231,78 @@ class Igor : Program
                 else
                 {
                     //sort and write out
+                    qsort (buffer, bptr, sizeof(bcf1_t*), compare);
+
+                    kstring_t s = {0,0,0};
+                    kputs(output_vcf_file.c_str(), &s);
+                    kputs(".", &s);
+                    kputw(sorted_file_names.size()+1, &s);
+                    std::string file_name(s.s);
+                    if (s.m) free(s.s);
+                    sorted_file_names.push_back(file_name);
+
+                    if (sorted_file_names.size()!=1)
+                    {
+                        delete odw;
+                    }
+                    odw = new BCFOrderedWriter(file_name);
+
+                    for (size_t i=0; i<10000; ++i)
+                    {
+                        odw->close();
+                        odw->write(buffer[i]);
+                    }
+
+                    bptr = 0;
                 }
-                
-                odw->write(v);
+
                 ++no_variants;
             }
 
             if (bptr)
             {
                 //sort and write out
+                qsort (buffer, bptr, sizeof(bcf1_t*), compare);
+
+                kstring_t s = {0,0,0};
+                kputs(output_vcf_file.c_str(), &s);
+                kputs(".", &s);
+                kputw(sorted_file_names.size()+1, &s);
+                std::string file_name(s.s);
+                if (s.m) free(s.s);
+                sorted_file_names.push_back(file_name);
+
+                if (sorted_file_names.size()!=1)
+                {
+                    odw->close();
+                    delete odw;
+                }
+                odw = new BCFOrderedWriter(file_name);
+
+                for (size_t i=0; i<10000; ++i)
+                {
+                    odw->write(buffer[i]);
+                }
+
+                bptr = 0;
+            }
+
+            //merge records from temporary files
+            intervals.clear();
+            BCFSyncedReader sr(sorted_file_names, intervals);
+
+            std::vector<bcfptr*> current_recs;
+            odw = new BCFOrderedWriter(output_vcf_file);
+            
+            while(sr.read_next_position(current_recs))
+            {
+                for (size_t i=0; i<current_recs.size(); ++i)
+                {
+                    odw->write(current_recs[i]->v);
+                }
             }
             
-            //merge records from temporary files
+            odw->close();
         }
     };
 
