@@ -33,6 +33,7 @@
 #include "variant_manip.h"
 #include "filter.h"
 #include "Rmath/Rmath.h"
+#include <cstdio>
 
 bool sort(int argc, char ** argv);
 

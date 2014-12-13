@@ -84,15 +84,14 @@ class Igor : Program
             VTOutput my;
             cmd.setOutput(&my);
             TCLAP::SwitchArg arg_print("p", "p", "print options and summary []", cmd, false);
-            TCLAP::ValueArg<uint32_t> arg_sort_window_size("w", "w", "local sorting window size [0]", false, 0, "int", cmd);
-            TCLAP::ValueArg<std::string> arg_output_vcf_file("o", "o", "output VCF/VCF.GZ/BCF file [-]\n"
-                 "              under fill sorting mode, this is a prefix"
+            TCLAP::ValueArg<uint32_t> arg_sort_window_size("w", "w", "local sorting window size, set by default to 1000 under local mode. [0]", false, 0, "int", cmd);
+            TCLAP::ValueArg<std::string> arg_output_vcf_file("o", "o", "output VCF/VCF.GZ/BCF file [-]"
                    , false, "-", "str", cmd);
             TCLAP::ValueArg<std::string> arg_sort_mode("m", "m", ""
-                               "sorting modes [full]\n"
-                 "              local : locally sort within a window.\n"
+                               "sorting modes. [full]\n"
+                 "              local : locally sort within a 1000bp window.  Window size may be set by -w.\n"
                  "              chrom : sort chromosomes based on order of contigs in header.\n"
-                 "                      input must be an indexed vcf.gz\n"
+                 "                      input must be indexed\n"
                  "              full  : full sort with no assumptions",
                                  false, "full", "str", cmd);
             TCLAP::UnlabeledValueArg<std::string> arg_input_vcf_file("<in.vcf>", "input VCF file", true, "","file", cmd);
@@ -228,7 +227,6 @@ class Igor : Program
                 }
                 else
                 {
-                    //std::cerr << "\tempty buffer " << sorted_file_names.size() << " \n";
                     ++bptr;
                     
                     //sort and write out
@@ -269,10 +267,6 @@ class Igor : Program
 
             if (bptr)
             {
-                
-                //std::cerr << "last buffer " << bptr << "\n";
-                
-                //sort and write out
                 qsort (buffer, bptr, sizeof(bcf1_t*), bcf_compare);
                 
                 kstring_t s = {0,0,0};
@@ -309,7 +303,6 @@ class Igor : Program
 
             //merge records from temporary files
             intervals.clear();
-            std::cerr << "reading synced " << sorted_file_names.size() << " " << sorted_file_names[0] << "\n";
             BCFSyncedReader sr(sorted_file_names, intervals);
 
             std::vector<bcfptr*> current_recs;
@@ -320,7 +313,6 @@ class Igor : Program
             int32_t no = 0;
             while(sr.read_next_position(current_recs))
             {
-                //std::cerr << no << "\n";
                 for (size_t i=0; i<current_recs.size(); ++i)
                 {
                     odw->write(current_recs[i]->v);
@@ -330,10 +322,21 @@ class Igor : Program
             }
             
             sr.close();
+            
+            for (size_t i=0; i< sorted_file_names.size(); ++i)
+            {
+                std::remove(sorted_file_names[i].c_str());
+            }
+            
             odr->close();
         
             odw->close();
             delete odw;
+        
+            for (size_t i=0; i<buffer_size; ++i)
+            {
+                bcf_destroy(buffer[i]);
+            }
         }
     };
 

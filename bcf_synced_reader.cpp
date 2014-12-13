@@ -355,7 +355,6 @@ bool BCFSyncedReader::read_next_position(std::vector<bcfptr*>& current_recs)
     for (size_t i=0; i<current_recs.size(); ++i)
     {
         store_bcf1_into_pool(current_recs[i]->v);
-    //    delete(current_recs[i]);
     }
     current_recs.clear();
 
