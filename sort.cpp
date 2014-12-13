@@ -210,7 +210,7 @@ class Igor : Program
             //read into buffer 10000 records
             odr = new BCFOrderedReader(input_vcf_file, intervals);
 
-            size_t buffer_size = 10000;
+            size_t buffer_size = 1000000;
 
             bcf1_t * buffer[buffer_size];
             for (size_t i=0; i<buffer_size; ++i)
@@ -224,38 +224,47 @@ class Igor : Program
             bcf1_t *v = buffer[bptr];
             while (odr->read(v))
             {
-                if (bptr<10000)
+                if (bptr<buffer_size-1)
                 {
                     ++bptr;
                 }
                 else
                 {
+                    std::cerr << "\tempty buffer " << sorted_file_names.size() << " \n";
+                    
                     //sort and write out
                     qsort (buffer, bptr, sizeof(bcf1_t*), compare);
 
                     kstring_t s = {0,0,0};
-                    kputs(output_vcf_file.c_str(), &s);
-                    kputs(".", &s);
+                    if (output_vcf_file!="-")
+                    {
+                        kputs(output_vcf_file.c_str(), &s);
+                        kputs(".", &s);
+                    }
                     kputw(sorted_file_names.size()+1, &s);
+                    kputs(".bcf", &s);
                     std::string file_name(s.s);
                     if (s.m) free(s.s);
                     sorted_file_names.push_back(file_name);
 
                     if (sorted_file_names.size()!=1)
                     {
+                        odw->close();
                         delete odw;
                     }
                     odw = new BCFOrderedWriter(file_name);
-
-                    for (size_t i=0; i<10000; ++i)
+                    odw->link_hdr(odr->hdr);
+                    odw->write_hdr();
+                    
+                    for (size_t i=0; i<buffer_size; ++i)
                     {
-                        odw->close();
                         odw->write(buffer[i]);
                     }
 
                     bptr = 0;
                 }
 
+                v = buffer[bptr];
                 ++no_variants;
             }
 
@@ -265,9 +274,13 @@ class Igor : Program
                 qsort (buffer, bptr, sizeof(bcf1_t*), compare);
 
                 kstring_t s = {0,0,0};
-                kputs(output_vcf_file.c_str(), &s);
-                kputs(".", &s);
+                if (output_vcf_file!="-")
+                {    
+                    kputs(output_vcf_file.c_str(), &s);
+                    kputs(".", &s);
+                }
                 kputw(sorted_file_names.size()+1, &s);
+                kputs(".bcf", &s);
                 std::string file_name(s.s);
                 if (s.m) free(s.s);
                 sorted_file_names.push_back(file_name);
@@ -278,12 +291,17 @@ class Igor : Program
                     delete odw;
                 }
                 odw = new BCFOrderedWriter(file_name);
+                odw->link_hdr(odr->hdr);
+                odw->write_hdr();
 
-                for (size_t i=0; i<10000; ++i)
+                for (size_t i=0; i<buffer_size; ++i)
                 {
                     odw->write(buffer[i]);
                 }
 
+                odw->close();
+                delete odw;
+                
                 bptr = 0;
             }
 
@@ -293,6 +311,8 @@ class Igor : Program
 
             std::vector<bcfptr*> current_recs;
             odw = new BCFOrderedWriter(output_vcf_file);
+            odw->link_hdr(odr->hdr);
+            odw->write_hdr();
             
             while(sr.read_next_position(current_recs))
             {
@@ -303,6 +323,7 @@ class Igor : Program
             }
             
             odw->close();
+            delete odw;
         }
     };
 
