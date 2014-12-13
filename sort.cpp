@@ -27,10 +27,10 @@ namespace
 {
 
 //sort and write out
-int compare (const void * a, const void * b)
+int bcf_compare (const void * a, const void * b)
 {
-    bcf1_t *u = (bcf1_t*) a;
-    bcf1_t *v = (bcf1_t*) b;
+    bcf1_t *u = *(bcf1_t**) a;
+    bcf1_t *v = *(bcf1_t**) b;
 
     if (bcf_get_rid(u)==bcf_get_rid(v))
     {
@@ -144,8 +144,6 @@ class Igor : Program
         ///////////////////////
     }
 
-
-
     void sort()
     {
         if (sort_mode=="local")
@@ -212,7 +210,7 @@ class Igor : Program
 
             size_t buffer_size = 1000000;
 
-            bcf1_t * buffer[buffer_size];
+            bcf1_t *buffer[buffer_size];
             for (size_t i=0; i<buffer_size; ++i)
             {
                 buffer[i] = bcf_init1();
@@ -231,9 +229,10 @@ class Igor : Program
                 else
                 {
                     std::cerr << "\tempty buffer " << sorted_file_names.size() << " \n";
+                    ++bptr;
                     
                     //sort and write out
-                    qsort (buffer, bptr, sizeof(bcf1_t*), compare);
+                    qsort (buffer, bptr, sizeof(bcf1_t*), bcf_compare);
 
                     kstring_t s = {0,0,0};
                     if (output_vcf_file!="-")
@@ -256,7 +255,7 @@ class Igor : Program
                     odw->link_hdr(odr->hdr);
                     odw->write_hdr();
                     
-                    for (size_t i=0; i<buffer_size; ++i)
+                    for (size_t i=0; i<bptr; ++i)
                     {
                         odw->write(buffer[i]);
                     }
@@ -270,9 +269,12 @@ class Igor : Program
 
             if (bptr)
             {
+                
+                std::cerr << "last buffer " << bptr << "\n";
+                
                 //sort and write out
-                qsort (buffer, bptr, sizeof(bcf1_t*), compare);
-
+                qsort (buffer, bptr, sizeof(bcf1_t*), bcf_compare);
+                
                 kstring_t s = {0,0,0};
                 if (output_vcf_file!="-")
                 {    
@@ -294,7 +296,7 @@ class Igor : Program
                 odw->link_hdr(odr->hdr);
                 odw->write_hdr();
 
-                for (size_t i=0; i<buffer_size; ++i)
+                for (size_t i=0; i<bptr; ++i)
                 {
                     odw->write(buffer[i]);
                 }
@@ -307,6 +309,7 @@ class Igor : Program
 
             //merge records from temporary files
             intervals.clear();
+            std::cerr << "reading synced " << sorted_file_names.size() << " " << sorted_file_names[0] << "\n";
             BCFSyncedReader sr(sorted_file_names, intervals);
 
             std::vector<bcfptr*> current_recs;
@@ -314,14 +317,21 @@ class Igor : Program
             odw->link_hdr(odr->hdr);
             odw->write_hdr();
             
+            int32_t no = 0;
             while(sr.read_next_position(current_recs))
             {
+                //std::cerr << no << "\n";
                 for (size_t i=0; i<current_recs.size(); ++i)
                 {
                     odw->write(current_recs[i]->v);
                 }
+                
+                ++no;
             }
             
+            sr.close();
+            odr->close();
+        
             odw->close();
             delete odw;
         }

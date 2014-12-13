@@ -103,7 +103,6 @@ class Igor : Program
 
         if (ret)
         {
-            fprintf(stderr, "[%s:%d %s] Index load fail: %s\n", __FILE__, __LINE__, __FUNCTION__, input_vcf_file.c_str());
             exit(1);
         }
     };

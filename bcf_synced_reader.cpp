@@ -135,7 +135,7 @@ void BCFSyncedReader::add_interval(int32_t i)
                 intervals.push_back(GenomeInterval(seq));
             }
         }
-        if(seq_names) free(seq_names);
+        if (seq_names) free(seq_names);
     }
 
     if (tbxs[i])
@@ -150,7 +150,7 @@ void BCFSyncedReader::add_interval(int32_t i)
                 intervals.push_back(GenomeInterval(seq));
             }
         }
-        if(seq_names) free(seq_names);
+        if (seq_names) free(seq_names);
     }
 }
 
@@ -355,7 +355,7 @@ bool BCFSyncedReader::read_next_position(std::vector<bcfptr*>& current_recs)
     for (size_t i=0; i<current_recs.size(); ++i)
     {
         store_bcf1_into_pool(current_recs[i]->v);
-        delete(current_recs[i]);
+    //    delete(current_recs[i]);
     }
     current_recs.clear();
 

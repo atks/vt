@@ -159,7 +159,7 @@ void BCFOrderedWriter::write(bcf1_t *v)
     else
     {
          bcf_write(file, hdr, v);
-         store_bcf1_into_pool(v);
+//         store_bcf1_into_pool(v);
     }
 }
 
