@@ -228,7 +228,7 @@ class Igor : Program
                 }
                 else
                 {
-                    std::cerr << "\tempty buffer " << sorted_file_names.size() << " \n";
+                    //std::cerr << "\tempty buffer " << sorted_file_names.size() << " \n";
                     ++bptr;
                     
                     //sort and write out
@@ -270,7 +270,7 @@ class Igor : Program
             if (bptr)
             {
                 
-                std::cerr << "last buffer " << bptr << "\n";
+                //std::cerr << "last buffer " << bptr << "\n";
                 
                 //sort and write out
                 qsort (buffer, bptr, sizeof(bcf1_t*), bcf_compare);
