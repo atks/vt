@@ -21,48 +21,48 @@
    THE SOFTWARE.
 */
 
-#include "normalize.h"
-#include "validate.h"
-#include "merge_duplicate_variants.h"
-#include "peek.h"
-#include "construct_probes.h"
-#include "discover.h"
-#include "annotate_variants.h"
+#include "align.h"
 #include "annotate_dbsnp_rsid.h"
-#include "genotype.h"
-#include "genotype2.h"
-#include "merge_candidate_variants.h"
-#include "merge.h"
-#include "concat.h"
-#include "paste.h"
-#include "subset.h"
-#include "partition.h"
-#include "view.h"
-#include "index.h"
-#include "profile_indels.h"
-#include "profile_mendelian.h"
-#include "decompose.h"
+#include "annotate_indel.h"
+#include "annotate_regions.h"
+#include "annotate_variants.h"
+#include "cat.h"
+#include "compute_features.h"
+#include "config.h"
+#include "consolidate_variants.h"
+#include "construct_probes.h"
+#include "cross_compare.h"
 #include "decompose_blocksub.h"
-#include "remove_overlap.h"
+#include "decompose.h"
+#include "discover2.h"
+#include "discover.h"
+#include "estimate.h"
+#include "genotype2.h"
+#include "genotype.h"
+#include "index.h"
+#include "merge_candidate_variants.h"
+#include "merge_duplicate_variants.h"
+#include "merge.h"
+#include "normalize.h"
+#include "partition.h"
+#include "paste.h"
+#include "peek.h"
+#include "profile_afs.h"
+#include "profile_chrom.h"
+#include "profile_fic_hwe.h"
+#include "profile_hwe.h"
+#include "profile_indels.h"
+#include "profile_len.h"
+#include "profile_mendelian.h"
 #include "profile_na12878.h"
 #include "profile_snps.h"
-#include "align.h"
-#include "compute_features.h"
-#include "estimate.h"
-#include "profile_afs.h"
-#include "profile_hwe.h"
-#include "profile_len.h"
-#include "profile_chrom.h"
-#include "annotate_regions.h"
-#include "annotate_indel.h"
-#include "consolidate_variants.h"
-#include "test.h"
-#include "config.h"
-#include "union_variants.h"
-#include "profile_fic_hwe.h"
-#include "cross_compare.h"
-#include "discover2.h"
+#include "remove_overlap.h"
 #include "sort.h"
+#include "subset.h"
+#include "test.h"
+#include "union_variants.h"
+#include "validate.h"
+#include "view.h"
 
 void print_time(double t)
 {
@@ -142,10 +142,10 @@ int main(int argc, char ** argv)
     else if (argc>1 && cmd=="paste")
     {
         print = paste(argc-1, ++argv);
-    }    
-    else if (argc>1 && cmd=="concat")
+    }
+    else if (argc>1 && cmd=="cat")
     {
-        print = concat(argc-1, ++argv);
+        print = cat(argc-1, ++argv);
     }
     else if (argc>1 && cmd=="subset")
     {
@@ -158,7 +158,7 @@ int main(int argc, char ** argv)
     else if (argc>1 && cmd=="decompose_blocksub")
     {
         decompose_blocksub(argc-1, ++argv);
-    }    
+    }
     else if (argc>1 && cmd=="normalize")
     {
         print = normalize(argc-1, ++argv);
@@ -210,7 +210,7 @@ int main(int argc, char ** argv)
     else if (argc>1 && cmd=="discover2")
     {
         discover2(argc-1, ++argv);
-    }    
+    }
     else if (argc>1 && cmd=="merge_candidate_variants")
     {
         merge_candidate_variants(argc-1, ++argv);
@@ -274,7 +274,7 @@ int main(int argc, char ** argv)
     else if (argc>1 && cmd=="profile_len")
     {
         profile_len(argc-1, ++argv);
-    }  
+    }
     else if (argc>1 && cmd=="annotate_indel")
     {
         annotate_indel(argc-1, ++argv);
@@ -286,7 +286,7 @@ int main(int argc, char ** argv)
     else if (argc>1 && cmd=="cross_compare")
     {
         cross_compare(argc-1, ++argv);
-    }    
+    }
     else
     {
         std::clog << "Command not found: " << argv[1] << "\n\n";

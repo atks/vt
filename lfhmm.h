@@ -23,8 +23,8 @@
 #ifndef LFHMM_H
 #define LFHMM_H
 
-#include <iomanip>
 #include "htslib/kstring.h"
+#include <iomanip>
 #include "log_tool.h"
 
 #define MAXLEN 1024

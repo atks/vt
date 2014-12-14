@@ -172,9 +172,9 @@ class Igor : Program
 
         while(sr->read_next_position(crecs))
         {
-            
+
             //bcf_print_lite(crecs[0]->h, crecs[0]->v);
-            
+
             int32_t vtype = vm->classify_variant(crecs[0]->h, crecs[0]->v, variant);
 
             //check existence

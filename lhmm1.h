@@ -24,9 +24,9 @@
 #ifndef LHMM1_H
 #define LHMM1_H
 
-#include "utils.h"
 #include "log_tool.h"
 #include <regex.h>
+#include "utils.h"
 
 class LHMM1
 {

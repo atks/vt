@@ -21,20 +21,20 @@
    THE SOFTWARE.
 */
 
-#ifndef CONCAT_H
-#define CONCAT_H
+#ifndef CAT_H
+#define CAT_H
 
-#include "htslib/vcf.h"
-#include "htslib/kseq.h"
-#include "program.h"
-#include "hts_utils.h"
-#include "bcf_synced_reader.h"
 #include "bcf_ordered_reader.h"
 #include "bcf_ordered_writer.h"
-#include "utils.h"
+#include "bcf_synced_reader.h"
 #include "filter.h"
+#include "htslib/kseq.h"
+#include "htslib/vcf.h"
+#include "hts_utils.h"
+#include "program.h"
+#include "utils.h"
 #include "variant_manip.h"
 
-bool concat(int argc, char ** argv);
+bool cat(int argc, char ** argv);
 
 #endif

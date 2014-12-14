@@ -24,15 +24,15 @@
 #ifndef PASTE_H
 #define PASTE_H
 
-#include "htslib/vcf.h"
-#include "htslib/kseq.h"
-#include "program.h"
-#include "hts_utils.h"
-#include "bcf_synced_reader.h"
 #include "bcf_ordered_writer.h"
-#include "variant_manip.h"
-#include "utils.h"
+#include "bcf_synced_reader.h"
+#include "htslib/kseq.h"
+#include "htslib/vcf.h"
+#include "hts_utils.h"
 #include "log_tool.h"
+#include "program.h"
+#include "utils.h"
+#include "variant_manip.h"
 
 bool paste(int argc, char ** argv);
 

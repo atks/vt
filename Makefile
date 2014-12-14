@@ -5,86 +5,86 @@ CXX = g++
 
 SOURCESONLY = genotyping_record.h
 
-SOURCES = program\
-		hts_utils\
-		utils\
+SOURCES = align\
+		allele\
+		annotate_dbsnp_rsid\
+		annotate_indel\
+		annotate_regions\
+		annotate_variants\
 		bam_ordered_reader\
+		bam_variant_extractor\
 		bcf_ordered_reader\
 		bcf_ordered_writer\
 		bcf_synced_reader\
-   	    tbx_ordered_reader\
-		view\
-		sort\
-		validate\
-		index\
-        normalize\
-		merge_duplicate_variants\
-		variant_manip\
-		log_tool\
-		interval_tree\
-		genome_interval\
+		bed\
+		candidate_motif\
+		cat\
+		chmm\
 		compute_concordance\
 		compute_features\
 		compute_freq\
-		estimate\
-		partition\
-		profile_indels\
-		profile_snps\
-		profile_na12878\
-		discover\
-		merge_candidate_variants\
-		construct_probes\
-		genotype\
-		gencode\
-		annotate_variants\
-		annotate_indel\
-		lhmm\
-		chmm\
-		lfhmm\
-		rfhmm\
-		lhmm1\
-    	ahmm\
-		genotyping_buffer\
-		lhmm_genotyping_record\
-		peek\
-		merge\
-		profile_mendelian\
-		pedigree\
-		concat\
-		decompose\
-		remove_overlap\
-		filter\
-		align\
-		subset\
-		estimator\
-		profile_afs\
-		profile_hwe\
-		profile_len\
-		ordered_region_overlap_matcher\
-		ordered_bcf_overlap_matcher\
-		bed\
-		profile_chrom\
-		annotate_regions\
-		test\
-		str\
-		consolidate_variants\
-		genotype2\
-		paste\
-		annotate_dbsnp_rsid\
 		config\
-		variant\
-		allele\
-		sv_tree\
-		union_variants\
-		profile_fic_hwe\
+		consolidate_variants\
+		construct_probes\
 		context_filter\
 		cross_compare\
-		discover2\
-		bam_variant_extractor\
-		variant_buffer\
+		decompose\
 		decompose_blocksub\
+		discover\
+		discover2\
+		estimate\
+		estimator\
+		filter\
+		gencode\
+		genome_interval\
+		genotype\
+		genotype2\
+		genotyping_buffer\
+		hts_utils\
+		index\
+		interval_tree\
+		lfhmm\
+		lhmm\
+		lhmm1\
+		lhmm_genotyping_record\
+		log_tool\
+		merge\
+		merge_candidate_variants\
+		merge_duplicate_variants\
 		motif_suffix_tree\
-		candidate_motif\
+		ordered_bcf_overlap_matcher\
+		ordered_region_overlap_matcher\
+		partition\
+		paste\
+		pedigree\
+		peek\
+		profile_afs\
+		profile_chrom\
+		profile_fic_hwe\
+		profile_hwe\
+		profile_indels\
+		profile_len\
+		profile_mendelian\
+		profile_na12878\
+		profile_snps\
+		program\
+		remove_overlap\
+		rfhmm\
+		sort\
+		str\
+		subset\
+		sv_tree\
+		test\
+		union_variants\
+		utils\
+		validate\
+		variant\
+		variant_buffer\
+		variant_manip\
+		view\
+   	    tbx_ordered_reader\
+    	ahmm\
+        normalize\
 
 SOURCESONLY = main.cpp
 

@@ -24,11 +24,11 @@
 #ifndef VARIANT_BUFFER_H
 #define VARIANT_BUFFER_H
 
-#include <vector>
-#include <map>
 #include "hts_utils.h"
-#include "variant_manip.h"
+#include <map>
 #include "utils.h"
+#include "variant_manip.h"
+#include <vector>
 
 /**
  * A circular buffer for containing SNPs and Indels.

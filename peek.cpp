@@ -259,12 +259,6 @@ class Igor : Program
             }
 
             ++no_records;
-//
-//            if (vtype==VT_MNP)
-//            {
-//                bcf_print(odr->hdr, v);
-//            }
-
         }
 
         kh_destroy(32, h);

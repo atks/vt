@@ -24,17 +24,17 @@
 #ifndef LOG_TOOL_H
 #define LOG_TOOL_H
 
-#include <cstdlib>
-#include <cstdint>
-#include <cstring>
+#include <assert.h>
 #include <climits>
 #include <cmath>
+#include <cstdint>
+#include <cstdlib>
+#include <cstring>
 #include <float.h>
-#include <vector>
+#include <iostream>
 #include <map>
 #include <queue>
-#include <iostream>
-#include <assert.h>
+#include <vector>
 
 #define LOGZERO -DBL_MAX
 

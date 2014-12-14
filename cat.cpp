@@ -21,7 +21,7 @@
    THE SOFTWARE.
 */
 
-#include "concat.h"
+#include "cat.h"
 
 namespace
 {
@@ -144,7 +144,7 @@ class Igor : Program
         vm = new VariantManip("");
     }
 
-    void concat()
+    void cat()
     {
         odw->write_hdr();
         bcf1_t *v = odw->get_bcf1_from_pool();
@@ -221,13 +221,12 @@ class Igor : Program
 
 }
 
-bool concat(int argc, char ** argv)
+bool cat(int argc, char ** argv)
 {
     Igor igor(argc, argv);
     igor.print_options();
     igor.initialize();
-    igor.concat();
+    igor.cat();
     igor.print_stats();
     return igor.print;
 }
-

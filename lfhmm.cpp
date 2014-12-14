@@ -125,10 +125,10 @@ void LFHMM::initialize_structures()
     model[LFLANK] = NULL;
     model[MOTIF] = NULL;
     model[RFLANK] = NULL;
-    
+
     lflen = 0;
     mlen = 0;
-    
+
     motif_discordance = new int32_t[MAXLEN];
     optimal_path = new int32_t[MAXLEN<<2];
     optimal_path_traced = false;
@@ -148,7 +148,7 @@ void LFHMM::initialize_structures()
     {
         moves[state] = new move[NSTATES];
     }
-    
+
     moves[S][ML]  = &LFHMM::move_S_ML;
     moves[ML][ML] = &LFHMM::move_ML_ML;
 
@@ -294,10 +294,10 @@ void LFHMM::set_model(const char* lflank, const char* motif)
     if (model[LFLANK]) free(model[LFLANK]);
     if (model[MOTIF]) free(model[MOTIF]);
     if (model[RFLANK]) free(model[RFLANK]);
-    
+
     model[LFLANK] = strdup(lflank);
     model[MOTIF] = strdup(motif);
-    
+
     lflen = strlen(model[LFLANK]);
     mlen = strlen(model[MOTIF]);
 }
@@ -754,14 +754,14 @@ void LFHMM::collect_statistics(int32_t src_t, int32_t des_t, int32_t j)
         if (des_u==Z)
         {
             rflank_end[MODEL] = NAN;
-            rflank_end[READ] = j+1;           
+            rflank_end[READ] = j+1;
         }
         else if (des_u==M || des_u==D || des_u==I)
         {
             rflank_start[MODEL] = NAN;
             rflank_start[READ] = NAN;
             rflank_end[MODEL] = INFINITY;
-            rflank_end[READ] = INFINITY;   
+            rflank_end[READ] = INFINITY;
 
 
 //            std::cerr << std::setprecision(1) << std::fixed;
@@ -861,7 +861,7 @@ void LFHMM::clear_statistics()
     rflank_start[READ] = NAN;
     rflank_end[MODEL] = NAN;
     rflank_end[READ] = NAN;
-    
+
 }
 
 /**
@@ -1155,8 +1155,8 @@ void LFHMM::print_alignment(std::string& pad)
     std::cerr << "\n";
     std::cerr << "QUAL+33\tMATCH\tMISMATCH\tPENALTY\n";
     int32_t qual = 'K' - 33;
-    std::cerr << qual << "\t"<< log10_emission_odds('A', 'A', qual) << "\t" 
-                             << log10_emission_odds('A', 'C', qual) << "\t" 
+    std::cerr << qual << "\t"<< log10_emission_odds('A', 'A', qual) << "\t"
+                             << log10_emission_odds('A', 'C', qual) << "\t"
                              << log10_emission_odds('A', 'C', qual, 2) << "\n";
     std::cerr << "\n";
 
@@ -1177,7 +1177,7 @@ void LFHMM::print_alignment(std::string& pad)
     std::cerr << "max j: " << rlen << "\n";
     std::cerr << "mismatch penalty: " << par.mismatch_penalty << "\n";
     std::cerr << "\n";
-    
+
     std::cerr << "model: " << "(" << lflank_start[MODEL] << "~" << lflank_end[MODEL] << ") "
                           << "[" << motif_start[MODEL] << "~" << motif_end[MODEL] << "]\n";
     std::cerr << "read : " << "(" << lflank_start[READ] << "~" << lflank_end[READ] << ") "

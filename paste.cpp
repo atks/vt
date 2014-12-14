@@ -57,11 +57,6 @@ class Igor : Program
     /////////
     //stats//
     /////////
-    uint32_t no_samples;
-    uint32_t no_candidate_snps;
-    uint32_t no_candidate_indels;
-    uint32_t no_candidate_snpindels;
-    uint32_t no_other_variant_types;
 
     /////////
     //tools//
@@ -125,15 +120,10 @@ class Igor : Program
         //general use//
         ///////////////
         variant = {0,0,0};
-        no_samples = sr->nfiles;
-
+        
         ////////////////////////
         //stats initialization//
         ////////////////////////
-        no_candidate_snps = 0;
-        no_candidate_indels = 0;
-        no_candidate_snpindels = 0;
-        no_other_variant_types = 0;
 
         /////////
         //tools//
@@ -148,14 +138,12 @@ class Igor : Program
 
         //add all sample names to output vcf header and yell if there are more than one occurence of a sample
         int32_t no_samples = 0;
-        for (int32_t i=0; i<nfiles; ++i)
+        for (size_t i=0; i<nfiles; ++i)
         {
             for (int32_t j=0; j<bcf_hdr_nsamples(sr->hdrs[i]); ++j)
             {
                 if (bcf_hdr_id2int(odw->hdr, BCF_DT_SAMPLE, bcf_hdr_get_sample_name(sr->hdrs[i], j))==-1)
                 {
-                   // std::cerr << "adding " << bcf_hdr_get_sample_name(sr->hdrs[i], j) << "\n";
-
                     bcf_hdr_add_sample(odw->hdr, bcf_hdr_get_sample_name(sr->hdrs[i], j));
                     ++no_samples;
                 }
@@ -311,7 +299,7 @@ class Igor : Program
     {
         if (!print) return;
 
-        std::clog << "merge v" << version << "\n\n";
+        std::clog << "paste v" << version << "\n\n";
         print_ifiles("options:     input VCF file        ", input_vcf_files);
         std::clog << "         [o] output VCF file       " << output_vcf_file << "\n";
         print_int_op("         [i] intervals             ", intervals);
@@ -323,7 +311,7 @@ class Igor : Program
         if (!print) return;
 
         std::clog << "\n";
-        std::cerr << "stats: Total Number of Candidate SNPs                 " << no_candidate_snps << "\n";
+        std::cerr << "stats: Total number of files pasted            " <<  "\n";
         std::clog << "\n";
     };
 

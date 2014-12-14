@@ -24,15 +24,15 @@
 #ifndef MERGE_CANDIDATE_VARIANTS_H
 #define MERGE_CANDIDATE_VARIANTS_H
 
-#include "htslib/vcf.h"
-#include "htslib/kseq.h"
-#include "program.h"
-#include "hts_utils.h"
-#include "bcf_synced_reader.h"
 #include "bcf_ordered_writer.h"
-#include "variant_manip.h"
-#include "utils.h"
+#include "bcf_synced_reader.h"
+#include "htslib/kseq.h"
+#include "htslib/vcf.h"
+#include "hts_utils.h"
 #include "log_tool.h"
+#include "program.h"
+#include "utils.h"
+#include "variant_manip.h"
 
 void merge_candidate_variants(int argc, char ** argv);
 

@@ -24,14 +24,14 @@
 #ifndef VALIDATE_H
 #define VALIDATE_H
 
-#include "htslib/faidx.h"
-#include "htslib/vcf.h"
-#include "htslib/kseq.h"
-#include "program.h"
-#include "hts_utils.h"
 #include "bcf_ordered_reader.h"
+#include "htslib/faidx.h"
+#include "htslib/kseq.h"
+#include "htslib/vcf.h"
+#include "hts_utils.h"
+#include "program.h"
 #include "variant_manip.h"
 
 bool validate(int argc, char ** argv);
-    
+
 #endif

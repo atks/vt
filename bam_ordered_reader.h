@@ -24,22 +24,21 @@
 #ifndef BAM_ORDERED_READER_H
 #define BAM_ORDERED_READER_H
 
-#include <cstdlib>
-#include <cstdint>
-#include <cstring>
-#include <cmath>
 #include <cfloat>
-#include <vector>
+#include <cmath>
+#include <cstdint>
+#include <cstdlib>
+#include <cstring>
+#include "genome_interval.h"
+#include "htslib/hts.h"
+#include "htslib/sam.h"
+#include "htslib/vcf.h"
+#include "hts_utils.h"
+#include "interval_tree.h"
 #include <list>
 #include <map>
 #include <queue>
-#include "htslib/sam.h"
-#include "htslib/vcf.h"
-#include "htslib/hts.h"
-//#include "htslib/hfile.h"
-#include "hts_utils.h"
-#include "genome_interval.h"
-#include "interval_tree.h"
+#include <vector>
 
 /**
  * A class for reading ordered BAM files.
