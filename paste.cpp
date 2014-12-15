@@ -197,7 +197,7 @@ class Igor : Program
             {
                 if (odrs[i]->read(vs[i]))
                 {
-                    +read_no;
+                    ++read_no;
                 }        
             }
             
@@ -207,6 +207,9 @@ class Igor : Program
             }    
             
             genotype_fields.clear();
+            
+            
+            std::cerr << read_no << "\n";
             
 //            if ( v->n_fmt)
 //            {
