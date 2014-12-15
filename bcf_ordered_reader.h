@@ -122,11 +122,11 @@ class BCFOrderedReader
     */
     bool initialize_next_interval();
 
-    /**
-     * Returns next set of vcf records at a start position.
-     * Note that this function should never be used in conjunction with read(bcf1_t *v)
-     */
-    bool read_next_position(std::vector<bcf1_t *>& vs);
+//    /**
+//     * Returns next set of vcf records at a start position.
+//     * Note that this function should never be used in conjunction with read(bcf1_t *v)
+//     */
+//    bool read_next_position(std::vector<bcf1_t *>& vs);
 
     /**
      * Gets sequence name of a record.

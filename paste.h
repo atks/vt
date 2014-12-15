@@ -24,6 +24,7 @@
 #ifndef PASTE_H
 #define PASTE_H
 
+#include "bcf_ordered_reader.h"
 #include "bcf_ordered_writer.h"
 #include "bcf_synced_reader.h"
 #include "htslib/kseq.h"
