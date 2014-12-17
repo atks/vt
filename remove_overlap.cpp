@@ -21,7 +21,7 @@
    THE SOFTWARE.
 */
 
-#include "merge_duplicate_variants.h"
+#include "remove_overlap.h"
 
 KHASH_MAP_INIT_STR(xdict, bcf1_t*);
 
@@ -45,9 +45,7 @@ class Igor : Program
     ///////
     BCFOrderedReader *odr;
     BCFOrderedWriter *odw;
-
     std::vector<bcf1_t*> pool;
-        
 
     /////////
     //stats//
@@ -106,8 +104,7 @@ class Igor : Program
         bcf_hdr_append(odw->hdr, "##FILTER=<ID=overlap,Description=\"Overlapping variant\">");
         
         odw->write_hdr();
-        
-        
+                
         ////////////////////////
         //stats initialization//
         ////////////////////////

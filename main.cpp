@@ -96,8 +96,9 @@ void help()
     std::clog << "index                     index vcf.gz/bcf files\n";
     std::clog << "normalize                 normalize variants\n";
     std::clog << "mergedups                 merge duplicate variants\n";
-    std::clog << "concat                    concatenate VCF files\n";
+    std::clog << "cat                       concatenate VCF files\n";
     std::clog << "paste                     paste VCF files\n";
+    std::clog << "sort                      sort VCF files\n";
     std::clog << "subset                    subset VCF file to variants polymorphic in a sample\n";
     std::clog << "\n";
     std::clog << "peek                      summary of variants in the vcf file\n";

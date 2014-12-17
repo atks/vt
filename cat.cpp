@@ -152,7 +152,7 @@ class Igor : Program
 
         for (size_t i=0; i<input_vcf_files.size(); ++i)
         {
-            fprintf(stderr, "[L:cat] concatenating %s.\n", input_vcf_files[i].c_str());
+            //fprintf(stderr, "[L:cat] concatenating %s.\n", input_vcf_files[i].c_str());
 
             if (i)
             {
