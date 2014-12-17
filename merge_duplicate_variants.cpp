@@ -23,8 +23,6 @@
 
 #include "merge_duplicate_variants.h"
 
-KHASH_MAP_INIT_STR(xdict, bcf1_t*);
-
 namespace
 {
 
@@ -38,12 +36,11 @@ class Igor : Program
     std::string input_vcf_file;
     std::string output_vcf_file;
     std::vector<GenomeInterval> intervals;
-    bool merge_by_pos;
-
+    
     ///////
     //i/o//
     ///////
-    BCFOrderedReader *odr;
+    BCFSyncedReader *sr;
     BCFOrderedWriter *odw;
 
     std::vector<bcf1_t*> pool;
@@ -76,14 +73,12 @@ class Igor : Program
             TCLAP::ValueArg<std::string> arg_intervals("i", "i", "intervals []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "file", cmd);
             TCLAP::ValueArg<std::string> arg_output_vcf_file("o", "o", "output VCF file [-]", false, "-", "str", cmd);
-            TCLAP::SwitchArg arg_merge_by_position("p", "merge-by-position", "Merge by position [false]", cmd, false);
             TCLAP::UnlabeledValueArg<std::string> arg_input_vcf_file("<in.vcf>", "input VCF file", true, "","file", cmd);
 
             cmd.parse(argc, argv);
 
             input_vcf_file = arg_input_vcf_file.getValue();
             output_vcf_file = arg_output_vcf_file.getValue();
-            merge_by_pos = arg_merge_by_position.getValue();
             parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
         }
         catch (TCLAP::ArgException &e)
@@ -98,9 +93,11 @@ class Igor : Program
         //////////////////////
         //i/o initialization//
         //////////////////////
-        odr = new BCFOrderedReader(input_vcf_file, intervals);
+        std::vector<std::string> input_vcf_files;
+        input_vcf_files.push_back(input_vcf_file);  
+        sr = new BCFSyncedReader(input_vcf_files, intervals, SYNC_BY_VAR);
         odw = new BCFOrderedWriter(output_vcf_file, 0);
-        odw->link_hdr(odr->hdr);
+        odw->link_hdr(sr->hdrs[0]);
         odw->write_hdr();
 
         ////////////////////////
@@ -116,82 +113,16 @@ class Igor : Program
 
     void merge_duplicate_variants()
     {
-        kstring_t variant = {0, 0, 0};
-
-        khash_t(xdict) *m = kh_init(xdict);
-        khiter_t k;
-        int32_t ret;
-        int32_t current_rid = -1;
-        int32_t current_pos1 = -1;
-
-        bcf1_t *v = odw->get_bcf1_from_pool();
-        while (odr->read(v))
+        std::vector<bcfptr*> crecs;
+        while (sr->read_next_position(crecs))
         {
-            int32_t pos1 = bcf_get_pos1(v);
-            int32_t rid = bcf_get_rid(v);
-
-            //clear previous set of variants
-            if (pos1!=current_pos1 || rid!=current_rid)
-            {
-                for (k = kh_begin(m); k != kh_end(m); ++k)
-                {
-                    if (kh_exist(m, k))
-                    {
-                        bcf1_t* vs = kh_value(m, k);
-                        odw->write(vs);
-                        free((char*)kh_key(m, k));
-                    }
-                }
-                kh_clear(xdict, m);
-
-                current_pos1 = pos1;
-                current_rid = rid;
-            }
-
-            if (!merge_by_pos)
-            {
-                bcf_variant2string(odw->hdr, v, &variant);
-            }
-            else
-            {
-                variant.l = 0;
-                kputw(rid, &variant);
-                kputc(':', &variant);
-                kputw(pos1, &variant);
-            }
+            odw->write(crecs[0]->v);
             
-            if (kh_get(xdict, m, variant.s)==kh_end(m))
-            {
-                k = kh_put(xdict, m, variant.s, &ret);
-                if (ret) //does not exist
-                {
-                    variant = {0,0,0}; //disown allocated string
-                }
-                kh_value(m, k) = v;
-
-                ++no_unique_variants;
-                v = odw->get_bcf1_from_pool();
-            }
-            else
-            {
-                //drop
-            }
-
-            ++no_total_variants;
+            ++no_unique_variants;
+            no_total_variants += crecs.size();
         }
 
-        for (k = kh_begin(m); k != kh_end(m); ++k)
-        {
-            if (kh_exist(m, k))
-            {
-                bcf1_t* vs = kh_value(m, k);
-                odw->write(vs);
-                free((char*)kh_key(m, k));
-            }
-        }
-        kh_clear(xdict, m);
-
-        odr->close();
+        sr->close();
         odw->close();
     };
 
@@ -201,12 +132,7 @@ class Igor : Program
 
         std::clog << "options:     input VCF file        " << input_vcf_file << "\n";
         std::clog << "         [o] output VCF file       " << output_vcf_file << "\n";
-        std::clog << "         [p] merge by              " << (merge_by_pos ? "position" : "alleles") << "\n";
-        if (intervals.size()!=0)
-        {
-            std::clog << "         [i] intervals             " << intervals.size() <<  " intervals\n";
-        }
-        std::clog << "\n";
+        print_int_op("         [i] intervals             ", intervals);
     }
 
     void print_stats()

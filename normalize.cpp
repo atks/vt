@@ -47,10 +47,6 @@ class Igor : Program
     BCFOrderedWriter *odw;
     bcf1_t *v;
 
-    kstring_t s;
-    kstring_t new_alleles;
-    kstring_t old_alleles;
-
     /////////
     //stats//
     /////////
@@ -116,16 +112,11 @@ class Igor : Program
         //i/o initialization//
         //////////////////////
         odr = new BCFOrderedReader(input_vcf_file, intervals);
-
         odw = new BCFOrderedWriter(output_vcf_file, window_size, false);
         odw->link_hdr(odr->hdr);
         bcf_hdr_append(odw->hdr, "##INFO=<ID=OLD_VARIANT,Number=1,Type=String,Description=\"Original chr:pos:ref:alt encoding\">\n");
         odw->write_hdr();
-
-        s = {0,0,0};
-        old_alleles = {0,0,0};
-        new_alleles = {0,0,0};
-
+        
         ////////////////////////
         //stats initialization//
         ////////////////////////
@@ -154,6 +145,9 @@ class Igor : Program
         uint32_t left_extended = 0;
         uint32_t left_trimmed = 0;
         uint32_t right_trimmed = 0;
+
+        kstring_t old_alleles = {0,0,0};
+        kstring_t new_alleles = {0,0,0};
 
         int32_t ambiguous_variant_types = (VT_MNP | VT_INDEL | VT_CLUMPED);
 
@@ -193,7 +187,7 @@ class Igor : Program
                     bcf_update_info_string(odw->hdr, v, "OLD_VARIANT", old_alleles.s);
 
                     bcf_set_pos1(v, pos1);
-                    new_alleles.l=0;
+                    new_alleles.l = 0;
                     for (size_t i=0; i<alleles.size(); ++i)
                     {
                         if (i) kputc(',', &new_alleles);

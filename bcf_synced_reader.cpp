@@ -52,8 +52,27 @@ BCFSyncedReader::BCFSyncedReader(std::vector<std::string>& file_names, std::vect
     }
     intervals_index = 0;
 
+    uint32_t no_stdins = 0;
+
     for (size_t i = 0; i<nfiles; ++i)
     {
+        if (file_names[0]=="+")
+        {
+            file_names[0]="-";
+            ++no_stdins;
+        }
+        else if (file_names[0]=="-")
+        {
+            file_names[0]="-";
+            ++no_stdins;
+        }
+            
+        if (no_stdins>1)
+        {
+            fprintf(stderr, "[E:%s:%d %s] BCFSyncedReader does not support reading from more than one STDIN stream\n", __FILE__, __LINE__, __FUNCTION__);
+            exit(1);
+        }
+        
         files[i] = hts_open(file_names[i].c_str(), "r");
         if (files[i]==NULL)
         {

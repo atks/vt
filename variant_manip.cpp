@@ -531,7 +531,7 @@ void VariantManip::right_trim_or_left_extend(std::vector<std::string>& alleles, 
             char *ref = faidx_fetch_uc_seq(fai, chrom, pos1-1, pos1-1, &ref_len);
             if (!ref)
             {
-                fprintf(stderr, "[%s:%d %s] failure to extrac base from fasta file: %s:%d: >\n", __FILE__, __LINE__, __FUNCTION__, chrom, pos1-1);
+                fprintf(stderr, "[%s:%d %s] failure to extract base from fasta file: %s:%d: >\n", __FILE__, __LINE__, __FUNCTION__, chrom, pos1-1);
                 exit(1);
             }
             char base = ref[0];

@@ -158,7 +158,7 @@ void BCFOrderedWriter::write(bcf1_t *v)
     }
     else
     {
-         bcf_write(file, hdr, v);
+        bcf_write(file, hdr, v);
     }
 }
 
@@ -175,6 +175,7 @@ void BCFOrderedWriter::flush()
  */
 void BCFOrderedWriter::store_bcf1_into_pool(bcf1_t* v)
 {
+    bcf_clear(v);
     pool.push_back(v);
 }
 
@@ -187,13 +188,11 @@ bcf1_t* BCFOrderedWriter::get_bcf1_from_pool()
     {
         bcf1_t* v = pool.front();
         pool.pop_front();
-        bcf_clear(v);
         return v;
     }
     else
     {
         bcf1_t *v = bcf_init();
-        bcf_clear(v);
         return v;
     }
 };
@@ -214,7 +213,7 @@ void BCFOrderedWriter::flush(bool force)
     }
     else
     {
-        if (buffer.size()>=2)
+        if (buffer.size()>1)
         {
             int32_t cutoff_pos1 =  std::max(bcf_get_pos1(buffer.front())-window,1);
 

@@ -124,7 +124,7 @@ class Igor : Program
         //perform subsetting
         else if (no_subset_samples==0)
         {
-            odw->link_hdr(bcf_hdr_subset(odr->hdr, 0, 0, 0));
+            odw->set_hdr(bcf_hdr_subset(odr->hdr, 0, 0, 0));
         }
 
         /////////////////////////
@@ -147,26 +147,25 @@ class Igor : Program
     void cat()
     {
         odw->write_hdr();
-        bcf1_t *v = odw->get_bcf1_from_pool();
+        bcf1_t *v = bcf_init();
         Variant variant;
 
-        for (int32_t i=0; i<input_vcf_files.size(); ++i)
+        for (size_t i=0; i<input_vcf_files.size(); ++i)
         {
-            std::cerr << "processing " << input_vcf_files[i] << "\n";
+            fprintf(stderr, "[L:cat] concatenating %s.\n", input_vcf_files[i].c_str());
 
             if (i)
             {
+                delete odr;
                 odr = new BCFOrderedReader(input_vcf_files[i], intervals);
             }
-
-            bcf_hdr_t *h = odr->hdr;
 
             while(odr->read(v))
             {
                 if (filter_exists)
                 {
-                    vm->classify_variant(h, v, variant);
-                    if (!filter.apply(h, v, &variant))
+                    vm->classify_variant(odr->hdr, v, variant);
+                    if (!filter.apply(odr->hdr, v, &variant))
                     {
                         continue;
                     }
@@ -182,7 +181,6 @@ class Igor : Program
                 //bcf_set_chrom(odw->hdr, v, bcf_get_chrom(odr->hdr, v));
                 odw->write(v);
                 ++no_variants;
-                v =  odw->get_bcf1_from_pool();
             }
 
             odr->close();
@@ -195,7 +193,7 @@ class Igor : Program
     {
         if (!print) return;
 
-        std::clog << "concat v" << version << "\n\n";
+        std::clog << "cat v" << version << "\n\n";
         print_ifiles("options:     input VCF file        ", input_vcf_files);
         std::clog << "         [o] output VCF file       " << output_vcf_file << "\n";
         print_str_op("         [f] filter                ", fexp);
