@@ -182,7 +182,10 @@ class Igor : Program
                 //maybe add some additional adhoc fixing for BCF files that do not have a complete header.
             }
             odw->write(v);
-            v = odw->get_bcf1_from_pool();
+            if (sort_window_size)
+            {
+                v = odw->get_bcf1_from_pool();
+            }
             ++no_variants;
         }
 
