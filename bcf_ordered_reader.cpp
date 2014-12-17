@@ -25,7 +25,8 @@
 
 BCFOrderedReader::BCFOrderedReader(std::string file_name, std::vector<GenomeInterval>& intervals)
 {
-    this->file_name = file_name=="+"? "-" : file_name;
+    std::cerr << "check \"" << file_name << "\" " << (file_name=="+")<< "\n";
+    this->file_name = (file_name=="+")? "-" : file_name;
     file = NULL;
     hdr = NULL;
     idx = NULL;
@@ -36,7 +37,7 @@ BCFOrderedReader::BCFOrderedReader(std::string file_name, std::vector<GenomeInte
     interval_index = 0;
     index_loaded = false;
 
-    file = hts_open(file_name.c_str(), "r");
+    file = hts_open(this->file_name.c_str(), "r");
     if (!file)
     {
         fprintf(stderr, "[%s:%d %s] Cannot open %s\n", __FILE__, __LINE__, __FUNCTION__, file_name.c_str());
