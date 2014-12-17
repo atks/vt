@@ -25,7 +25,6 @@
 
 BCFOrderedReader::BCFOrderedReader(std::string file_name, std::vector<GenomeInterval>& intervals)
 {
-    std::cerr << "check \"" << file_name << "\" " << (file_name=="+")<< "\n";
     this->file_name = (file_name=="+")? "-" : file_name;
     file = NULL;
     hdr = NULL;
