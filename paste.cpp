@@ -116,7 +116,7 @@ class Igor : Program
             odrs.push_back(new BCFOrderedReader(input_vcf_files[i], intervals));
         }
         odw = new BCFOrderedWriter(output_vcf_file, 0);
-        odw->link_hdr(odrs[0]->hdr);
+        odw->set_hdr(odrs[0]->hdr);
 
         ///////////////
         //general use//
@@ -125,11 +125,6 @@ class Igor : Program
         ////////////////////////
         //stats initialization//
         ////////////////////////
-
-        for (size_t i=0; i<input_vcf_files.size(); ++i)
-        {
-            odrs.push_back(new BCFOrderedReader(input_vcf_files[i], intervals));
-        }
 
         /////////
         //tools//
@@ -141,8 +136,8 @@ class Igor : Program
         int32_t nfiles = odrs.size();
 
         //add all sample names to output vcf header and warn if there are more than one occurence of a sample
-        int32_t no_samples = 0;
-        for (size_t i=0; i<nfiles; ++i)
+        int32_t no_samples = bcf_hdr_nsamples(odw->hdr);
+        for (size_t i=1; i<nfiles; ++i)
         {
             for (size_t j=0; j<bcf_hdr_nsamples(odrs[i]->hdr); ++j)
             {
@@ -158,6 +153,7 @@ class Igor : Program
             }
         }
         bcf_hdr_add_sample(odw->hdr, NULL);
+
         odw->write_hdr();
 
         std::vector<bcfptr*> current_recs;
@@ -177,6 +173,11 @@ class Igor : Program
 
         std::vector<std::string> genotype_fields;
 
+
+        std::cerr << "no. samples " << no_samples << "\n";
+
+
+
         while(true)
         {
             size_t read_no = 0;
@@ -194,7 +195,11 @@ class Igor : Program
                 break;
             }
             bcf_print(odrs[0]->hdr, vs[0]);
+            std::cerr << "\n";
+            bcf_print(odrs[1]->hdr, vs[1]);
             std::cerr << "  "<< vs[0]->n_fmt << "\n";
+
+            
 
             int32_t g = vs[0]->d.fmt[0].id;
             std::cerr << "format label  "<<(odrs[0]->hdr)->id[BCF_DT_ID][vs[0]->d.fmt[0].id].key << "\n";
@@ -202,16 +207,16 @@ class Igor : Program
             std::cerr << "format label  "<<(odrs[0]->hdr)->id[BCF_DT_ID][vs[0]->d.fmt[2].id].key << "\n";
             std::cerr << "format label  "<<(odrs[0]->hdr)->id[BCF_DT_ID][vs[0]->d.fmt[3].id].key << "\n";
             std::cerr << "format label  "<<(odrs[0]->hdr)->id[BCF_DT_ID][vs[0]->d.fmt[4].id].key << "\n";
+            std::cerr << "\n";
 
-            //figure out genotype fields
+            bcf_copy(nv, vs[0]);
+            //check consistency of FORMAT
             for (size_t i=1; i<nfiles; ++i)
             {
                 if (vs[0]->n_fmt==vs[i]->n_fmt)
                 {
                     for (size_t j=0; j<vs[0]->n_fmt; ++j)
                     {
-                        std::cerr << "i " << i << "\n";
-                        std::cerr << "j " << j << "\n";
                         const char* a = bcf_get_format(odrs[0]->hdr, vs[0], j);
                         const char* b = bcf_get_format(odrs[i]->hdr, vs[i], j);
                         if (strcmp(a,b))
@@ -228,19 +233,88 @@ class Igor : Program
                 }
             }
 
-            //check consistency of FORMAT
 
+            std::cerr << "PRITNINGNEWRECORD\n";
+            bcf_print(odw->hdr, nv);
+            
+//            bcf_unpack(nv, BCF_UN_ALL);
+//            bcf_print(odw->hdr, nv);
 
-            //construct array
+            //for each format, construct array
+            for (size_t i=0; i<vs[0]->n_fmt; ++i)
+            {
+                const char* genotype_field = bcf_get_format(odrs[0]->hdr, vs[0], i);
+
+                if (vs[0]->d.fmt[i].type == BCF_BT_INT8 ||
+                    vs[0]->d.fmt[i].type == BCF_BT_INT16 ||
+                    vs[0]->d.fmt[i].type == BCF_BT_INT32)
+                {
+                    if (strcmp(genotype_field,"GT")==0)
+                    {
+                        int32_t ndst = no_samples * 2;
+
+                        std::cerr << genotype_field << ":" << ndst << "\n";
+                        std::cerr << "no_samples" << ":" << no_samples << "\n";
+                        std::cerr << "size" << ":" << vs[0]->d.fmt[i].size << "\n";
+
+                        int32_t *data = (int32_t *) malloc(ndst);
+                        int32_t *p = data;
+                        int32_t np = ndst;
+
+                        for (size_t j=0; j<nfiles; ++j)
+                        {
+                            int32_t b = bcf_get_genotypes(odrs[j]->hdr, vs[j], &p, &np);
+
+                            std::cerr << "\tb:\t" << b << "\n";
+
+                            std::cerr << "\tbefore p:\t" << p << "\n";
+                            p = p+b;
+                            std::cerr << "\tafter  p:\t" << p << "\n";
+
+                            std::cerr << "\tbefore np:\t" << np << "\n";
+                            np = np-b;
+                            std::cerr << "\tafter np:\t" << np << "\n";
+                        }
+
+                        std::cerr << "\tdata:\t" << data << "\n";
+                        std::cerr << "\tndst:\t" << ndst << "\n";
+                        bcf_update_genotypes(odw->hdr, nv, data, ndst);
+                        
+
+                        exit(1);
+                    }
+                }
+                else if (vs[0]->d.fmt[i].type == BCF_BT_FLOAT)
+                {
+
+                }
+                else if (vs[0]->d.fmt[i].type == BCF_BT_CHAR)
+                {
+
+                }
+            }
+
+            bcf_print(odw->hdr, nv);
+exit(1);
+
+//#define bcf_update_format_int32(hdr,line,key,values,n) bcf_update_format((hdr),(line),(key),(values),(n),BCF_HT_INT)
+//#define bcf_update_format_float(hdr,line,key,values,n) bcf_update_format((hdr),(line),(key),(values),(n),BCF_HT_REAL)
+//#define bcf_update_format_char(hdr,line,key,values,n) bcf_update_format((hdr),(line),(key),(values),(n),BCF_HT_STR)
+//#define bcf_update_genotypes(hdr,line,gts,n) bcf_update_format((hdr),(line),"GT",(gts),(n),BCF_HT_INT)     // See bcf_gt_ macros below
+//int bcf_update_format_string(const bcf_hdr_t *hdr, bcf1_t *line, const char *key, const char **values, int n);
+//int bcf_update_format(const bcf_hdr_t *hdr, bcf1_t *line, const char *key, const void *values, int n, int type);
+
+//    #define bcf_get_format_int32(hdr,line,tag,dst,ndst)  bcf_get_format_values(hdr,line,tag,(void**)(dst),ndst,BCF_HT_INT)
+//    #define bcf_get_format_float(hdr,line,tag,dst,ndst)  bcf_get_format_values(hdr,line,tag,(void**)(dst),ndst,BCF_HT_REAL)
+//    #define bcf_get_format_char(hdr,line,tag,dst,ndst)   bcf_get_format_values(hdr,line,tag,(void**)(dst),ndst,BCF_HT_STR)
+//    #define bcf_get_genotypes(hdr,line,dst,ndst)         bcf_get_format_values(hdr,line,"GT",(void**)(dst),ndst,BCF_HT_INT)
+
 
 
 
            // exit(1);
             //cycle through genotype fields
-            for (size_t i =0; i<nfiles; ++i)
-            {
 
-            }
                 //cycle through samples and construct array
 
                 //update genotype fields
