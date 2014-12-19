@@ -45,11 +45,11 @@ class Igor : Program
     ///////
     std::vector<BCFOrderedReader *> odrs;
     BCFOrderedWriter *odw;
-    
+
     ///////////////
     //general use//
     ///////////////
-    
+
     /////////
     //stats//
     /////////
@@ -74,8 +74,8 @@ class Igor : Program
                  "              Outputs:\n"
                  "              1. INFO fields output will be that of the first file\n"
                  "              2. Genotype fields are the same for corresponding records\n";
-        
-       
+
+
             version = "0.5";
             TCLAP::CmdLine cmd(desc, ' ', version);
             VTOutput my; cmd.setOutput(&my);
@@ -121,10 +121,15 @@ class Igor : Program
         ///////////////
         //general use//
         ///////////////
-        
+
         ////////////////////////
         //stats initialization//
         ////////////////////////
+
+        for (size_t i=0; i<input_vcf_files.size(); ++i)
+        {
+            odrs.push_back(new BCFOrderedReader(input_vcf_files[i], intervals));
+        }
 
         /////////
         //tools//
@@ -152,44 +157,26 @@ class Igor : Program
                 }
             }
         }
-
         bcf_hdr_add_sample(odw->hdr, NULL);
-        
-        if (no_samples)
-        {
-            //to remove
-            bcf_hdr_append(odw->hdr, "##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">");
-            bcf_hdr_append(odw->hdr, "##FORMAT=<ID=PL,Number=G,Type=Integer,Description=\"Normalized, Phred-scaled likelihoods for genotypes\">");
-            bcf_hdr_append(odw->hdr, "##FORMAT=<ID=DP,Number=1,Type=Integer,Description=\"Depth\">");
-            bcf_hdr_append(odw->hdr, "##FORMAT=<ID=AD,Number=3,Type=Integer,Description=\"Allele Depth\">");
-            bcf_hdr_append(odw->hdr, "##FORMAT=<ID=GQ,Number=1,Type=Integer,Description=\"Genotype Quality\">");
-        }
         odw->write_hdr();
 
         std::vector<bcfptr*> current_recs;
-        int32_t *cgt = (int32_t*) malloc(no_samples*2*sizeof(int32_t));
-        int32_t *pls = (int32_t*) malloc(no_samples*3*sizeof(int32_t));
-        int32_t *dps = (int32_t*) malloc(no_samples*sizeof(int32_t));
-        int32_t *ads = (int32_t*) malloc(no_samples*3*sizeof(int32_t));
-        int32_t *gqs = (int32_t*) malloc(no_samples*sizeof(int32_t));
         int ncount =0;
 
         std::vector<bcfptr*> sample2record(no_samples, NULL);
         std::vector<int32_t> sample2index(no_samples, -1);
-    
-    
+
         //construct a set of reusable bcf1_t
         bcf1_t* vs[nfiles];
         bcf1_t *nv = bcf_init();
 
         for (size_t i =0; i<nfiles; ++i)
         {
-            vs[i]= bcf_init();   
+            vs[i]= bcf_init();
         }
-        
-        
+
         std::vector<std::string> genotype_fields;
-                
+
         while(true)
         {
             size_t read_no = 0;
@@ -197,20 +184,69 @@ class Igor : Program
             {
                 if (odrs[i]->read(vs[i]))
                 {
+                    //bcf_unpack(vs[i], BCF_UN_FMT);
                     ++read_no;
-                }        
+                }
             }
-            
+
             if (read_no!=nfiles)
             {
                 break;
-            }    
-            
-            genotype_fields.clear();
-            
-            
-            std::cerr << read_no << "\n";
-            
+            }
+            bcf_print(odrs[0]->hdr, vs[0]);
+            std::cerr << "  "<< vs[0]->n_fmt << "\n";
+
+            int32_t g = vs[0]->d.fmt[0].id;
+            std::cerr << "format label  "<<(odrs[0]->hdr)->id[BCF_DT_ID][vs[0]->d.fmt[0].id].key << "\n";
+            std::cerr << "format label  "<<(odrs[0]->hdr)->id[BCF_DT_ID][vs[0]->d.fmt[1].id].key << "\n";
+            std::cerr << "format label  "<<(odrs[0]->hdr)->id[BCF_DT_ID][vs[0]->d.fmt[2].id].key << "\n";
+            std::cerr << "format label  "<<(odrs[0]->hdr)->id[BCF_DT_ID][vs[0]->d.fmt[3].id].key << "\n";
+            std::cerr << "format label  "<<(odrs[0]->hdr)->id[BCF_DT_ID][vs[0]->d.fmt[4].id].key << "\n";
+
+            //figure out genotype fields
+            for (size_t i=1; i<nfiles; ++i)
+            {
+                if (vs[0]->n_fmt==vs[i]->n_fmt)
+                {
+                    for (size_t j=0; j<vs[0]->n_fmt; ++j)
+                    {
+                        std::cerr << "i " << i << "\n";
+                        std::cerr << "j " << j << "\n";
+                        const char* a = bcf_get_format(odrs[0]->hdr, vs[0], j);
+                        const char* b = bcf_get_format(odrs[i]->hdr, vs[i], j);
+                        if (strcmp(a,b))
+                        {
+                            fprintf(stderr, "[E:%s:%d %s] FORMAT not consistent between files %s %s.\n", __FILE__, __LINE__, __FUNCTION__, input_vcf_files[0].c_str(),  input_vcf_files[i].c_str());
+                            exit(1);
+                        }
+                    }
+                }
+                else
+                {
+                    fprintf(stderr, "[E:%s:%d %s] FORMAT not consistent between files %s %s.\n", __FILE__, __LINE__, __FUNCTION__, input_vcf_files[0].c_str(),  input_vcf_files[i].c_str());
+                    exit(1);
+                }
+            }
+
+            //check consistency of FORMAT
+
+
+            //construct array
+
+
+
+           // exit(1);
+            //cycle through genotype fields
+            for (size_t i =0; i<nfiles; ++i)
+            {
+
+            }
+                //cycle through samples and construct array
+
+                //update genotype fields
+
+            //print
+
 //            if ( v->n_fmt)
 //            {
 //                int gt_i = -1;
@@ -243,24 +279,8 @@ class Igor : Program
 //                    if ( first ) kputc('.', s);
 //                }
 //            }
-            //figure out genotype fields
-            
-            
-            //cycle through genotype fields
-            
-            
-                //cycle through samples and construct array
-                //update genotype fields
-            
-                //set name
-                //set type
-                //set counts
-                
-            
-//                bcf_update_format_int32(odw->hdr,nv,"DP",dps,ngt);                
-            
-                
-                //
+//                bcf_update_format_int32(odw->hdr,nv,"DP",dps,ngt);
+//
 //                bcf_update_genotypes(odw->hdr,nv,cgt,ngt*2);
 //                bcf_update_format_int32(odw->hdr,nv,"PL",pls,ngt*3);
 //            if (no_samples)
@@ -293,7 +313,7 @@ class Igor : Program
 //                    int32_t *dp = NULL;
 //                    int32_t n_dp=0;
 //                    bcf_get_format_int32(h, v, "DP", &dp, &n_dp);
-//                    
+//
 //                    int32_t *ad = NULL;
 //                    int32_t n_ad=0;
 //                    bcf_get_format_int32(h, v, "AD", &ad, &n_ad);
@@ -301,7 +321,7 @@ class Igor : Program
 //                    int32_t *gq = NULL;
 //                    int32_t n_gq=0;
 //                    bcf_get_format_int32(h, v, "GQ", &gq, &n_gq);
-//                    
+//
 //                    for (int32_t j=0; j<bcf_hdr_nsamples(h); ++j)
 //                    {
 //                        int32_t k = bcf_hdr_id2int(odw->hdr, BCF_DT_SAMPLE, bcf_hdr_get_sample_name(odrs[file_index]->hdr, j));
@@ -319,7 +339,7 @@ class Igor : Program
 //                            pls[k*3] = bcf_int32_missing;
 //                            pls[k*3+1] = bcf_int32_vector_end;
 //                        }
-//                        
+//
 //                        if (n_dp)
 //                        {
 //                            dps[k] = dp[j];
@@ -328,7 +348,7 @@ class Igor : Program
 //                        {
 //                            dps[k] = bcf_int32_missing;
 //                        }
-//                        
+//
 //                        if (n_ad)
 //                        {
 //                            ads[k*3] = ad[j*3];
@@ -340,7 +360,7 @@ class Igor : Program
 //                            ads[k*3] = bcf_int32_missing;
 //                            ads[k*3+1] = bcf_int32_vector_end;
 //                        }
-//                        
+//
 //                        if (n_gq)
 //                        {
 //                            gqs[k] = gq[j];
@@ -349,7 +369,7 @@ class Igor : Program
 //                        {
 //                            gqs[k] = bcf_int32_missing;
 //                        }
-//                        
+//
 //                        ++ngt;
 //                    }
 //
@@ -363,7 +383,7 @@ class Igor : Program
 //                bcf_update_format_int32(odw->hdr,nv,"DP",dps,ngt);
 //                bcf_update_format_int32(odw->hdr,nv,"AD",ads,ngt*3);
 //                bcf_update_format_int32(odw->hdr,nv,"GQ",gqs,ngt);
-//                
+//
 //                odw->write(nv);
 //            }
 //            else
@@ -371,8 +391,6 @@ class Igor : Program
 //                odw->write(current_recs[0]->v);
 //            }
         }
-
-        free(cgt);
 
         for (size_t i=0; i<nfiles; ++i)
         {

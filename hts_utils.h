@@ -408,6 +408,10 @@ void bcf_set_id(bcf1_t *v, char* id);
 #define bcf_get_var_type(v) ((v)->d.var_type)
 
 /**
+ * Get ith format name 
+ */
+#define bcf_get_format(h, v, i) (h)->id[BCF_DT_ID][(v->d.fmt)[i].id].key
+/**
  * Get number of samples in bcf record
  */
 #define bcf_get_n_sample(v) ((v)->n_sample)

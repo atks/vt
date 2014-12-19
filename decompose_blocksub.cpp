@@ -116,7 +116,7 @@ class Igor : Program
         no_biallelic_blocksub = 0;
         new_no_variants = 0;
         no_variants = 0;
-                            
+
         ////////////////////////
         //tools initialization//
         ////////////////////////
@@ -133,45 +133,45 @@ class Igor : Program
 
             int32_t n_allele = bcf_get_n_allele(v);
             char** allele = bcf_get_allele(v);
-            
+
             size_t ref_len = strlen(allele[0]);
             if (n_allele==2 && (ref_len!=1) && (ref_len==strlen(allele[1])))
-            {   
+            {
                 int32_t rid = bcf_get_rid(v);
                 int32_t pos1 = bcf_get_pos1(v);
                 char** allele = bcf_get_allele(v);
                 char* ref = strdup(allele[0]);
                 char* alt = strdup(allele[1]);
-                
+
                 old_alleles.l = 0;
                 bcf_variant2string(odw->hdr, v, &old_alleles);
-                
+
                 for (size_t i=0; i<ref_len; ++i)
                 {
                     if (ref[i]!=alt[i])
                     {
                         bcf1_t *nv = odw->get_bcf1_from_pool();
-                        bcf_copy(nv, v);                        
+                        bcf_copy(nv, v);
                         bcf_unpack(nv, BCF_UN_ALL);
-                        
+
                         bcf_set_pos1(nv, pos1+i);
                         new_alleles.l=0;
                         kputc(ref[i], &new_alleles);
                         kputc(',', &new_alleles);
                         kputc(alt[i], &new_alleles);
-                        
+
                         bcf_update_alleles_str(odw->hdr, nv, new_alleles.s);
                         bcf_update_info_string(odw->hdr, nv, "OLD_CLUMPED", old_alleles.s);
                         odw->write(nv);
-                        
+
                         ++new_no_variants;
                         ++no_additional_snps;
                     }
                 }
-                
+
                 free(ref);
                 free(alt);
-                
+
                 ++no_biallelic_blocksub;
             }
             else

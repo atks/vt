@@ -25,6 +25,7 @@
 
 namespace
 {
+
 class OverlapStats
 {
     public:
@@ -88,8 +89,8 @@ class Igor : Program
     /////////
     //stats//
     /////////
-    std::vector<OverlapStats> stats;
-    
+    std::vector<std::vector<OverlapStats> > stats;
+
     ////////////////
     //common tools//
     ////////////////
@@ -117,7 +118,7 @@ class Igor : Program
             TCLAP::ValueArg<std::string> arg_output_pdf_file("y", "y", "output pdf file []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_input_vcf_file_list("L", "L", "file containing list of input VCF files", false, "", "str", cmd);
             TCLAP::UnlabeledMultiArg<std::string> arg_input_vcf_files("<in1.vcf>...", "Multiple VCF files",false, "files", cmd);
-            
+
             cmd.parse(argc, argv);
 
             parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
@@ -152,12 +153,12 @@ class Igor : Program
         //////////////////////
         //i/o initialization//
         //////////////////////
-        sr = new BCFSyncedReader(input_vcf_files, intervals, false);
+        sr = new BCFSyncedReader(input_vcf_files, intervals, SYNC_BY_VAR);
 
         ///////////////////////
         //tool initialization//
         ///////////////////////
-        
+
         ////////////////////////
         //stats initialization//
         ////////////////////////
@@ -195,7 +196,7 @@ class Igor : Program
 
                 if (filter_exists[index])
                 {
-                    if (!filters[index].apply(h,v,&variant))
+                    if (!filters[index].apply(current_recs[i]->h,current_recs[i]->v,&variant))
                     {
                         continue;
                     }
@@ -207,7 +208,7 @@ class Igor : Program
             //annotate
             if (presence[0])
             {
-               
+
 
 
             }
@@ -215,41 +216,41 @@ class Igor : Program
             int32_t ins = variant.alleles[0].ins;
             int32_t del = 1-ins;
 
-            if (presence[0])
-            {
-                ++stats[0].a;
-                stats[0].a_ins += ins;
-                stats[0].a_del += del;
-            }
+//            if (presence[0])
+//            {
+//                ++stats[0].a;
+//                stats[0].a_ins += ins;
+//                stats[0].a_del += del;
+//            }
 
             //update overlap stats
-            for (size_t i=1; i<no_overlap_files; ++i)
-            {
-                if (presence[0] && !presence[i])
-                {
-                    ++stats[i].a;
-                    stats[i].a_ins += ins;
-                    stats[i].a_del += del;
-                }
-                else if (presence[0] && presence[i])
-                {
-                    ++stats[i].ab;
-                    stats[i].ab_ins += ins;
-                    stats[i].ab_del += del;
-                }
-                else if (!presence[0] && presence[i])
-                {
-                    ++stats[i].b;
-                    stats[i].b_ins += ins;
-                    stats[i].b_del += del;
-                }
-                else
-                {
-                    //not in either, do nothing
-                }
-
-                presence[i]=0;
-            }
+//            for (size_t i=1; i<no_overlap_files; ++i)
+//            {
+//                if (presence[0] && !presence[i])
+//                {
+//                    ++stats[i].a;
+//                    stats[i].a_ins += ins;
+//                    stats[i].a_del += del;
+//                }
+//                else if (presence[0] && presence[i])
+//                {
+//                    ++stats[i].ab;
+//                    stats[i].ab_ins += ins;
+//                    stats[i].ab_del += del;
+//                }
+//                else if (!presence[0] && presence[i])
+//                {
+//                    ++stats[i].b;
+//                    stats[i].b_ins += ins;
+//                    stats[i].b_del += del;
+//                }
+//                else
+//                {
+//                    //not in either, do nothing
+//                }
+//
+//                presence[i]=0;
+//            }
 
             presence[0] = 0;
         }
@@ -282,45 +283,45 @@ class Igor : Program
 
         std::string g2s[3] = {"R/R","R/A","A/A"};
 
-        fprintf(out, "\\PassOptionsToPackage{table}{xcolor}\n");
-        fprintf(out, "\\documentclass{beamer}\n");
-        fprintf(out, "\\begin{document}\n");
-        fprintf(out, "\n");
-        fprintf(out, "\\begin{frame}{Data set summary}\n");
-        fprintf(out, "\\resizebox{\\linewidth}{!}{\n");
-        fprintf(out, "\\rowcolors{2}{blue!25}{blue!10}\n");
-        fprintf(out, "\\begin{tabular}{rrrr}\n");
-        fprintf(out, "\\rowcolor{blue!50}\n");
-        fprintf(out, "No. Indels & Ins/Del & Insertions & Deletions \\\\ \n");
-        fprintf(out, "%d & %.1f & %d & %d \\\\ \n", stats[0].a, (float)stats[0].a_ins/(stats[0].a_del), stats[0].a_ins, stats[0].a_del);
-        fprintf(out, "\\end{tabular}}\n");
-        fprintf(out, "\\resizebox{\\linewidth}{!}{\n");
-        fprintf(out, "\\rowcolors{2}{blue!25}{blue!10}\n");
-        fprintf(out, "\\begin{tabular}{rrr}\n");
-        fprintf(out, "\\rowcolor{blue!50}\n");
-        fprintf(out, "Frameshift Indel Proportion (\\%%) & FS & NFS \\\\ \n");
-        //fprintf(out, "%.2f & %d & %d \\\\ \n", (float)fs/(fs+nfs), fs, nfs);
-        fprintf(out, "\\end{tabular}}\n");
-        fprintf(out, "\\end{frame}\n");
-
-        for (size_t i=1; i<dataset_labels.size(); ++i)
-        {
-            fprintf(out, "\n");
-            fprintf(out, "\\begin{frame}{Data set summary}\n");
-            fprintf(out, "\\resizebox{\\linewidth}{!}{\n");
-            fprintf(out, "\\rowcolors{2}{blue!25}{blue!10}\n");
-            fprintf(out, "\\begin{tabular}{rrrrr}\n");
-            fprintf(out, "\\rowcolor{blue!50}\n");
-            fprintf(out, "%s & no. indels & ins/del & ins & del\\\\ \n", dataset_labels[i].c_str());
-            fprintf(out, "A-B & %d & %.1f & %d & %d\\\\ \n",  stats[i].a, (float)stats[i].a_ins/(stats[i].a_del), stats[i].a_ins, stats[i].a_del);
-            fprintf(out, "A\\&B & %d & %.1f & %d & %d\\\\ \n",  stats[i].ab, (float)stats[i].ab_ins/(stats[i].ab_del), stats[i].ab_ins, stats[i].ab_del);
-            fprintf(out, "B-A & %d & %.1f & %d & %d\\\\ \n",  stats[i].b, (float)stats[i].b_ins/(stats[i].b_del), stats[i].b_ins, stats[i].b_del);
-            fprintf(out, " &  &  & &  \\\\ \n");
-            fprintf(out, " Precision & %.2f\\%% &  &  & \\\\ \n", 100*(float)stats[i].ab/(stats[i].a+stats[i].ab));
-            fprintf(out, " Sensitivity & %.2f\\%% &  &  &  \\\\ \n", 100*(float)stats[i].ab/(stats[i].b+stats[i].ab));
-            fprintf(out, "\\end{tabular}}\n");
-            fprintf(out, "\\end{frame}\n");
-        }
+//        fprintf(out, "\\PassOptionsToPackage{table}{xcolor}\n");
+//        fprintf(out, "\\documentclass{beamer}\n");
+//        fprintf(out, "\\begin{document}\n");
+//        fprintf(out, "\n");
+//        fprintf(out, "\\begin{frame}{Data set summary}\n");
+//        fprintf(out, "\\resizebox{\\linewidth}{!}{\n");
+//        fprintf(out, "\\rowcolors{2}{blue!25}{blue!10}\n");
+//        fprintf(out, "\\begin{tabular}{rrrr}\n");
+//        fprintf(out, "\\rowcolor{blue!50}\n");
+//        fprintf(out, "No. Indels & Ins/Del & Insertions & Deletions \\\\ \n");
+//        fprintf(out, "%d & %.1f & %d & %d \\\\ \n", stats[0].a, (float)stats[0].a_ins/(stats[0].a_del), stats[0].a_ins, stats[0].a_del);
+//        fprintf(out, "\\end{tabular}}\n");
+//        fprintf(out, "\\resizebox{\\linewidth}{!}{\n");
+//        fprintf(out, "\\rowcolors{2}{blue!25}{blue!10}\n");
+//        fprintf(out, "\\begin{tabular}{rrr}\n");
+//        fprintf(out, "\\rowcolor{blue!50}\n");
+//        fprintf(out, "Frameshift Indel Proportion (\\%%) & FS & NFS \\\\ \n");
+//        //fprintf(out, "%.2f & %d & %d \\\\ \n", (float)fs/(fs+nfs), fs, nfs);
+//        fprintf(out, "\\end{tabular}}\n");
+//        fprintf(out, "\\end{frame}\n");
+//
+//        for (size_t i=1; i<dataset_labels.size(); ++i)
+//        {
+//            fprintf(out, "\n");
+//            fprintf(out, "\\begin{frame}{Data set summary}\n");
+//            fprintf(out, "\\resizebox{\\linewidth}{!}{\n");
+//            fprintf(out, "\\rowcolors{2}{blue!25}{blue!10}\n");
+//            fprintf(out, "\\begin{tabular}{rrrrr}\n");
+//            fprintf(out, "\\rowcolor{blue!50}\n");
+//            fprintf(out, "%s & no. indels & ins/del & ins & del\\\\ \n", dataset_labels[i].c_str());
+//            fprintf(out, "A-B & %d & %.1f & %d & %d\\\\ \n",  stats[i].a, (float)stats[i].a_ins/(stats[i].a_del), stats[i].a_ins, stats[i].a_del);
+//            fprintf(out, "A\\&B & %d & %.1f & %d & %d\\\\ \n",  stats[i].ab, (float)stats[i].ab_ins/(stats[i].ab_del), stats[i].ab_ins, stats[i].ab_del);
+//            fprintf(out, "B-A & %d & %.1f & %d & %d\\\\ \n",  stats[i].b, (float)stats[i].b_ins/(stats[i].b_del), stats[i].b_ins, stats[i].b_del);
+//            fprintf(out, " &  &  & &  \\\\ \n");
+//            fprintf(out, " Precision & %.2f\\%% &  &  & \\\\ \n", 100*(float)stats[i].ab/(stats[i].a+stats[i].ab));
+//            fprintf(out, " Sensitivity & %.2f\\%% &  &  &  \\\\ \n", 100*(float)stats[i].ab/(stats[i].b+stats[i].ab));
+//            fprintf(out, "\\end{tabular}}\n");
+//            fprintf(out, "\\end{frame}\n");
+//        }
 
         fprintf(out, "\n");
         fprintf(out, "\\end{document}\n");
@@ -340,22 +341,22 @@ class Igor : Program
 
         for (size_t i=1; i<dataset_labels.size(); ++i)
         {
-            fprintf(stderr, "  %s\n", dataset_labels[i].c_str());
-            fprintf(stderr, "    A-B %10d [%.2f]\n", stats[i].a,  (float)stats[i].a_ins/(stats[i].a_del));
-            fprintf(stderr, "    A&B %10d [%.2f]\n", stats[i].ab, (float)stats[i].ab_ins/stats[i].ab_del);
-            fprintf(stderr, "    B-A %10d [%.2f]\n", stats[i].b,  (float)stats[i].b_ins/(stats[i].b_del));
-
-            if (dataset_types[i]=="TP")
-            {
-                fprintf(stderr, "    Precision    %4.1f%%\n", 100*(float)stats[i].ab/(stats[i].a+stats[i].ab));
-                fprintf(stderr, "    Sensitivity  %4.1f%%\n", 100*(float)stats[i].ab/(stats[i].b+stats[i].ab));
-            }
-            else
-            {
-                fprintf(stderr, "    FDR          %4.1f%%\n", 100*(float)stats[i].ab/(stats[i].a+stats[i].ab));
-                fprintf(stderr, "    Type I Error %4.1f%%\n", 100*(float)stats[i].ab/(stats[i].b+stats[i].ab));
-            }
-            fprintf(stderr, "\n");
+//            fprintf(stderr, "  %s\n", dataset_labels[i].c_str());
+//            fprintf(stderr, "    A-B %10d [%.2f]\n", stats[i].a,  (float)stats[i].a_ins/(stats[i].a_del));
+//            fprintf(stderr, "    A&B %10d [%.2f]\n", stats[i].ab, (float)stats[i].ab_ins/stats[i].ab_del);
+//            fprintf(stderr, "    B-A %10d [%.2f]\n", stats[i].b,  (float)stats[i].b_ins/(stats[i].b_del));
+//
+//            if (dataset_types[i]=="TP")
+//            {
+//                fprintf(stderr, "    Precision    %4.1f%%\n", 100*(float)stats[i].ab/(stats[i].a+stats[i].ab));
+//                fprintf(stderr, "    Sensitivity  %4.1f%%\n", 100*(float)stats[i].ab/(stats[i].b+stats[i].ab));
+//            }
+//            else
+//            {
+//                fprintf(stderr, "    FDR          %4.1f%%\n", 100*(float)stats[i].ab/(stats[i].a+stats[i].ab));
+//                fprintf(stderr, "    Type I Error %4.1f%%\n", 100*(float)stats[i].ab/(stats[i].b+stats[i].ab));
+//            }
+//            fprintf(stderr, "\n");
         }
     };
 

@@ -192,7 +192,7 @@ class Igor : Program
 
     void print_options()
     {
-        std::clog << "profile_indels v" << version << "\n\n";
+        std::clog << "annotate_dbsnp_rsid v" << version << "\n\n";
         std::clog << "\n";
         std::clog << "Options:     input VCF file     " << input_vcf_file << "\n";
         std::clog << "         [o] output VCF file    " << output_vcf_file << "\n";
