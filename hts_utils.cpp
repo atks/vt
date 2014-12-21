@@ -567,8 +567,6 @@ int32_t cmpstr(void const *a, void const *b)
  */
 void bcf_variant2string_sorted(bcf_hdr_t *h, bcf1_t *v, kstring_t *var)
 {
-    bcf_print_liten(h,v);
-
     bcf_unpack(v, BCF_UN_STR);
     var->l = 0;
     kputs(bcf_get_chrom(h, v), var);

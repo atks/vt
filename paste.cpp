@@ -199,7 +199,7 @@ class Igor : Program
             bcf_print(odrs[1]->hdr, vs[1]);
             std::cerr << "  "<< vs[0]->n_fmt << "\n";
 
-            
+
 
             int32_t g = vs[0]->d.fmt[0].id;
             std::cerr << "format label  "<<(odrs[0]->hdr)->id[BCF_DT_ID][vs[0]->d.fmt[0].id].key << "\n";
@@ -236,7 +236,7 @@ class Igor : Program
 
             std::cerr << "PRITNINGNEWRECORD\n";
             bcf_print(odw->hdr, nv);
-            
+
 //            bcf_unpack(nv, BCF_UN_ALL);
 //            bcf_print(odw->hdr, nv);
 
@@ -263,7 +263,21 @@ class Igor : Program
 
                         for (size_t j=0; j<nfiles; ++j)
                         {
+//                            int32_t *p = NULL;
+//                            int32_t np = 0;
+
                             int32_t b = bcf_get_genotypes(odrs[j]->hdr, vs[j], &p, &np);
+
+//                            for (size_t k=0; k<np; ++k)
+//                            {
+//                                *data = p[k];
+//                                ++data;
+//                            }
+//
+//                            std::cerr << "\tp :\t" << p << "\n";
+//                            std::cerr << "\tnp:\t" << np << "\n";
+//                            if (np) free(p);
+//                            std::cerr << "\tnp:\tafter freeing\n";
 
                             std::cerr << "\tb:\t" << b << "\n";
 
@@ -279,7 +293,6 @@ class Igor : Program
                         std::cerr << "\tdata:\t" << data << "\n";
                         std::cerr << "\tndst:\t" << ndst << "\n";
                         bcf_update_genotypes(odw->hdr, nv, data, ndst);
-                        
 
                         exit(1);
                     }

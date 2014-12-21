@@ -163,7 +163,6 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
             {
                 if ((right->type&VT_INT))
                 {
-                    //std::cerr << "CAUGHT NE int vs int\n";
                     b = (left->i!=right->i);
                     return;
                 }
@@ -188,7 +187,7 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
             }
             else if ((left->type&VT_STR) && (right->type&VT_STR))
             {
-                b = strcmp(left->tag.s, right->tag.s)==0 ? false : true;
+                b = strcmp(left->s.s, right->s.s)==0 ? false : true;
                 return;
             }
 
@@ -226,7 +225,7 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
             }
             else if ((left->type&VT_STR) && (right->type&VT_STR))
             {
-                b = strcmp(left->tag.s, right->tag.s)<=0 ? true : false;
+                b = strcmp(left->s.s, right->s.s)<=0 ? true : false;
                 return;
             }
 
@@ -263,7 +262,7 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
             }
             else if ((left->type&VT_STR) && (right->type&VT_STR))
             {
-                b = strcmp(left->tag.s, right->tag.s)>=0 ? true : false;
+                b = strcmp(left->s.s, right->s.s)>=0 ? true : false;
                 return;
             }
 
@@ -300,7 +299,7 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
             }
             else if ((left->type&VT_STR) && (right->type&VT_STR))
             {
-                b = strcmp(left->tag.s, right->tag.s)>0 ? true : false;
+                b = strcmp(left->s.s, right->s.s)>0 ? true : false;
                 return;
             }
 
@@ -337,7 +336,7 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
             }
             else if ((left->type&VT_STR) && (right->type&VT_STR))
             {
-                b = strcmp(left->tag.s, right->tag.s)<0 ? true : false;
+                b = strcmp(left->s.s, right->s.s)<0 ? true : false;
                 return;
             }
 
@@ -422,7 +421,9 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
             {
                 type |= VT_STR;
                 //todo: how do you handle a vector of strings?
-                int32_t n = 0;
+                
+                int32_t n = s.m; 
+                
                 if (bcf_get_info_string(h, v, tag.s, &s.s, &n)>0)
                 {
                     s.m = n;
@@ -468,8 +469,8 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
         }
         else if (type==(VT_INFO|VT_STR))
         {
-            int32_t n=0;
-
+            int32_t n=s.m;
+                
             if (bcf_get_info_string(h, v, tag.s, &s.s, &n)>0)
             {
                 s.m=n;
