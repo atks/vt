@@ -86,6 +86,7 @@ class bcfptr
         if (alleles.m)
         {
            free(alleles.s);
+           alleles.m = 0;
         }
     }
 };

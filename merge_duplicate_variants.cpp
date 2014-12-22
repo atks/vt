@@ -120,12 +120,6 @@ class Igor : Program
             
             ++no_unique_variants;
             no_total_variants += crecs.size();
-        
-            if (crecs.size()>1)
-            {
-                bcf_print_lite(crecs[0]->h, crecs[0]->v);
-                std::cerr << "\t" << crecs.size(); 
-            }
         }
 
         sr->close();

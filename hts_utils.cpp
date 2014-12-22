@@ -584,13 +584,13 @@ void bcf_variant2string_sorted(bcf_hdr_t *h, bcf1_t *v, kstring_t *var)
     {
         char** allele = bcf_get_allele(v);
         char** temp = (char**) malloc((bcf_get_n_allele(v)-1)*sizeof(char*));
-        for (int32_t i=1; i<v->n_allele; ++i)
+        for (size_t i=1; i<v->n_allele; ++i)
         {
             temp[i] = allele[i];
         }
         std::qsort(temp, bcf_get_n_allele(v), sizeof(char*), cmpstr);
         kputs(bcf_get_alt(v, 0), var);
-        for (int32_t i=0; i<v->n_allele-1; ++i)
+        for (size_t i=0; i<v->n_allele-1; ++i)
         {
             kputc(',', var);
             kputs(temp[i], var);

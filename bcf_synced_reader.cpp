@@ -277,6 +277,12 @@ void BCFSyncedReader::close()
         bcf_hdr_destroy(hdrs[i]);
         bcf_itr_destroy(itrs[i]);
     }
+    
+    while (pool.size()!=0)
+    {
+        bcf_destroy(pool.front());
+        pool.pop_front();
+    }
 }
 
 /**
@@ -374,6 +380,7 @@ bool BCFSyncedReader::read_next_position(std::vector<bcfptr*>& current_recs)
     for (size_t i=0; i<current_recs.size(); ++i)
     {
         store_bcf1_into_pool(current_recs[i]->v);
+        delete current_recs[i];
     }
     current_recs.clear();
 
