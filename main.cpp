@@ -41,7 +41,6 @@
 #include "genotype.h"
 #include "index.h"
 #include "merge_candidate_variants.h"
-#include "merge_duplicate_variants.h"
 #include "merge.h"
 #include "normalize.h"
 #include "partition.h"
@@ -61,6 +60,7 @@
 #include "subset.h"
 #include "test.h"
 #include "union_variants.h"
+#include "uniq.h"
 #include "validate.h"
 #include "view.h"
 
@@ -95,7 +95,7 @@ void help()
     std::clog << "view                      view vcf/vcf.gz/bcf files\n";
     std::clog << "index                     index vcf.gz/bcf files\n";
     std::clog << "normalize                 normalize variants\n";
-    std::clog << "mergedups                 merge duplicate variants\n";
+    std::clog << "uniq                      drop duplicate variants\n";
     std::clog << "cat                       concatenate VCF files\n";
     std::clog << "paste                     paste VCF files\n";
     std::clog << "sort                      sort VCF files\n";
@@ -176,9 +176,9 @@ int main(int argc, char ** argv)
     {
         config(argc-1, ++argv);
     }
-    else if (argc>1 && cmd=="mergedups")
+    else if (argc>1 && cmd=="uniq")
     {
-        merge_duplicate_variants(argc-1, ++argv);
+        uniq(argc-1, ++argv);
     }
     else if (argc>1 && cmd=="remove_overlap")
     {

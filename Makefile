@@ -50,7 +50,6 @@ SOURCES = align\
 		log_tool\
 		merge\
 		merge_candidate_variants\
-		merge_duplicate_variants\
 		motif_suffix_tree\
 		ordered_bcf_overlap_matcher\
 		ordered_region_overlap_matcher\
@@ -76,6 +75,7 @@ SOURCES = align\
 		sv_tree\
 		test\
 		union_variants\
+		uniq\
 		utils\
 		validate\
 		variant\
