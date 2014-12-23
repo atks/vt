@@ -188,6 +188,7 @@ class Igor : Program
         }
 
         odw->close();
+        sr->close();
     };
 
     void print_options()
