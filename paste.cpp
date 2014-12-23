@@ -173,7 +173,7 @@ class Igor : Program
 
         std::vector<std::string> genotype_fields;
 
-        std::cerr << "no. samples " << no_samples << "\n";
+//        std::cerr << "no. samples " << no_samples << "\n";
         while(true)
         {
             size_t read_no = 0;
@@ -181,6 +181,7 @@ class Igor : Program
             {
                 if (odrs[i]->read(vs[i]))
                 {
+                    bcf_unpack(vs[i], BCF_UN_FMT);
                     ++read_no;
                 }
             }
@@ -190,10 +191,10 @@ class Igor : Program
                 break;
             }
             
-            bcf_print(odrs[0]->hdr, vs[0]);
-            std::cerr << "\n";
-            bcf_print(odrs[1]->hdr, vs[1]);
-            std::cerr << "  " << vs[0]->n_fmt << "\n";
+//            bcf_print(odrs[0]->hdr, vs[0]);
+//            std::cerr << "\n";
+//            bcf_print(odrs[1]->hdr, vs[1]);
+//            std::cerr << "  " << vs[0]->n_fmt << "\n";
 
             bcf_copy(nv, vs[0]);
             int32_t nval_per_sample[vs[0]->n_fmt];
@@ -257,20 +258,20 @@ class Igor : Program
                     int32_t *p = data;
                     int32_t np = no_samples * nval_per_sample[i];
 
-                    std::cerr << "i   " << i << "\n";
-                    std::cerr << "f.n " << vs[0]->d.fmt[i].n << "\n";
-                    std::cerr << "nval_per_sample " << nval_per_sample[i] << "\n";
-                    std::cerr << "np  " << np << "\n";
+//                    std::cerr << "i   " << i << "\n";
+//                    std::cerr << "f.n " << vs[0]->d.fmt[i].n << "\n";
+//                    std::cerr << "nval_per_sample " << nval_per_sample[i] << "\n";
+//                    std::cerr << "np  " << np << "\n";
 
                     for (size_t j=0; j<nfiles; ++j)
                     {
                         int32_t b = bcf_get_format_int32(odrs[j]->hdr, vs[j], genotype_field, &p, &np);
                         p = p+bcf_hdr_nsamples(odrs[j]->hdr)*vs[j]->d.fmt[i].n;
-                        np = np-bcf_hdr_nsamples(odrs[j]->hdr)*size[i];
+                        np = np-bcf_hdr_nsamples(odrs[j]->hdr)*nval_per_sample[i];
                     
                         if (vs[j]->d.fmt[i].n<nval_per_sample[i])
                         {
-                            int32_t steps = bcf_hdr_nsamples(odrs[j]->hdr)*nval_per_sample[i];
+                            int32_t steps = bcf_hdr_nsamples(odrs[j]->hdr)*(nval_per_sample[i] - vs[j]->d.fmt[i].n);
                             while (steps) 
                             {
                                 p[0] = *(p-1);
@@ -293,8 +294,8 @@ class Igor : Program
                 }
             }
 
-            bcf_print(odw->hdr, nv);
-            //odw->write(nv);
+            //bcf_print(odw->hdr, nv);
+            odw->write(nv);
         }
 
         for (size_t i=0; i<nfiles; ++i)
