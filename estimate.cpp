@@ -42,12 +42,12 @@ class Igor : Program
     std::string arg_sample_list;
     bool compute_estimate[NO_EST];
     std::string estimates;
-        
+
     char** samples;
     int32_t *imap;
     int32_t nsamples;
     bool print_sites_only;
-    
+
     ///////
     //i/o//
     ///////
@@ -86,45 +86,60 @@ class Igor : Program
         {
             compute_estimate[i] = false;
         }
-        
+
         std::vector<std::string> v;
         if (estimates_string!="")
             split(v, ",", estimates_string);
-    
+
         for (size_t i=0; i<v.size(); ++i)
         {
             if (v[i]=="AF")
             {
                 compute_estimate[EST_AF] = true;
-            } 
+            }
             else if (v[i]=="HWEAF")
             {
                 compute_estimate[EST_HWEAF] = true;
-            } 
+            }
             else if (v[i]=="MLEAF")
             {
                 compute_estimate[EST_MLEAF] = true;
-            } 
+            }
             else if (v[i]=="HWE")
             {
                 compute_estimate[EST_HWEAF] = true;
                 compute_estimate[EST_MLEAF] = true;
                 compute_estimate[EST_HWE] = true;
-            } 
+            }
             else if (v[i]=="AB")
             {
                 compute_estimate[EST_HWEAF] = true;
                 compute_estimate[EST_AB] = true;
-            } 
+            }
             else if (v[i]=="FIC")
             {
                 compute_estimate[EST_HWEAF] = true;
                 compute_estimate[EST_FIC] = true;
-            } 
+            }
             else
             {
-                
+                fprintf(stderr, "[%s:%d %s] Estimate type not recognized: %s\n", __FILE__, __LINE__, __FUNCTION__, v[i].c_str());
             }
+        }
+
+        size_t no_est = 0;
+        for (size_t i=0; i<NO_EST; ++i)
+        {
+            if (compute_estimate[i])
+            {
+                ++no_est;
+            }
+        }
+
+        if (no_est==0)
+        {
+            fprintf(stderr, "[%s:%d %s] No valid estimate types recognized.\n", __FILE__, __LINE__, __FUNCTION__);
+            exit(1);
         }
     }
 
@@ -159,7 +174,7 @@ class Igor : Program
                   "   AB         GL based Allele Balance.\n"
                   "   FIC        GL based Inbreeding Coefficient\n"
                   "              \n";
-            
+
             TCLAP::CmdLine cmd(desc, ' ', version);
             VTOutput my;
             cmd.setOutput(&my);
@@ -178,9 +193,8 @@ class Igor : Program
             parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
             print_sites_only = arg_print_sites_only.getValue();
             fexp = arg_fexp.getValue();
-            
+
             parse_estimators(compute_estimate, estimates);
-            
         }
         catch (TCLAP::ArgException &e)
         {
@@ -212,43 +226,43 @@ class Igor : Program
             bcf_hdr_append(odw->hdr, "##INFO=<ID=NS,Number=1,Type=Integer,Description=\"Number of Samples With Data\">\n");
             bcf_hdr_append(odw->hdr, "##INFO=<ID=AF,Number=A,Type=Float,Description=\"Alternate Allele Frequency\">\n");
         }
-        
+
         if (compute_estimate[EST_GF])
         {
             bcf_hdr_append(odw->hdr, "##INFO=<ID=GC,Number=G,Type=Integer,Description=\"Genotype Counts\">\n");
             bcf_hdr_append(odw->hdr, "##INFO=<ID=GN,Number=1,Type=Integer,Description=\"Total Number of Genotypes Counts\">\n");
             bcf_hdr_append(odw->hdr, "##INFO=<ID=GF,Number=G,Type=Float,Description=\"Genotype Frequency\">\n");
         }
-        
+
         if (compute_estimate[EST_HWEAF])
         {
             bcf_hdr_append(odw->hdr, "##INFO=<ID=HWEAF,Number=A,Type=Float,Description=\"Genotype likelihood based MLE Allele Frequency assuming HWE\">\n");
             bcf_hdr_append(odw->hdr, "##INFO=<ID=HWEGF,Number=G,Type=Float,Description=\"Genotype likelihood based MLE Genotype Frequency assuming HWE\">\n");
         }
-        
+
         if (compute_estimate[EST_MLEAF])
         {
             bcf_hdr_append(odw->hdr, "##INFO=<ID=MLEAF,Number=A,Type=Float,Description=\"Genotype likelihood based MLE Allele Frequency\">\n");
             bcf_hdr_append(odw->hdr, "##INFO=<ID=MLEGF,Number=G,Type=Float,Description=\"Genotype likelihood based MLE Genotype Frequency\">\n");
         }
-        
+
         if (compute_estimate[EST_HWE])
         {
             bcf_hdr_append(odw->hdr, "##INFO=<ID=HWE_LLR,Number=1,Type=Float,Description=\"Genotype likelihood based Hardy Weinberg ln(Likelihood Ratio)\">\n");
             bcf_hdr_append(odw->hdr, "##INFO=<ID=HWE_LPVAL,Number=1,Type=Float,Description=\"Genotype likelihood based Hardy Weinberg Likelihood Ratio Test Statistic ln(p-value)\">\n");
             bcf_hdr_append(odw->hdr, "##INFO=<ID=HWE_DF,Number=1,Type=Integer,Description=\"Degrees of freedom for Genotype likelihood based Hardy Weinberg Likelihood Ratio Test Statistic\">\n");
         }
-        
+
         if (compute_estimate[EST_FIC])
         {
             bcf_hdr_append(odw->hdr, "##INFO=<ID=FIC,Number=1,Type=Float,Description=\"Genotype likelihood based Inbreeding Coefficient\">\n");
         }
-        
+
         if (compute_estimate[EST_AB])
         {
             bcf_hdr_append(odw->hdr, "##INFO=<ID=AB,Number=1,Type=Float,Description=\"Genotype likelihood based Allele Balance\">\n");
         }
-                
+
         /////////////////////////
         //filter initialization//
         /////////////////////////
@@ -266,7 +280,7 @@ class Igor : Program
             fprintf(stderr, "[%s:%d %s] No samples in VCF file: %s\n", __FILE__, __LINE__, __FUNCTION__, input_vcf_file.c_str());
             exit(1);
         }
-        
+
         ///////////////////////
         //tool initialization//
         ///////////////////////
@@ -303,12 +317,12 @@ class Igor : Program
             bcf_unpack(v, BCF_UN_ALL);
             int32_t ploidy = bcf_get_genotypes(odr->hdr, v, &gts, &n_gts);
             ploidy /= no_samples;
-            
+
             if (!n_gts)
             {
                 continue;
             }
-        
+
             bcf_get_format_int32(odr->hdr, v, "PL", &pls, &n_pls);
             int32_t no_alleles = bcf_get_n_allele(v);
 
@@ -324,9 +338,9 @@ class Igor : Program
             {
                 bcf_set_qual(v, qual);
             }
-            
+
                 int32_t no_genotypes = bcf_an2gn(no_alleles);
-                            
+
             if (compute_estimate[EST_AF])
             {
                 int32_t g[ploidy];
@@ -340,7 +354,6 @@ class Igor : Program
                 int32_t GC[no_genotypes];
                 int32_t GN=0;
                 float GF[no_genotypes];
-            
                 est->compute_af(gts, no_samples, ploidy, no_alleles, AC, AN, AF, GC, GN, GF, NS);
 
                 int32_t* AC_PTR = &AC[1];
@@ -348,17 +361,15 @@ class Igor : Program
                 bcf_update_info_int32(odw->hdr, v, "AN", &AN, 1);
                 float* AF_PTR = &AF[1];
                 bcf_update_info_float(odw->hdr, v, "AF", AF_PTR, no_alleles-1);
-                if (GN)            
+                if (GN)
                 {
                     bcf_update_info_int32(odw->hdr, v, "GC", GC, no_genotypes);
                     bcf_update_info_int32(odw->hdr, v, "GN", &GN, 1);
                     bcf_update_info_float(odw->hdr, v, "GF", GF, no_genotypes);
                 }
                 bcf_update_info_int32(odw->hdr, v, "NS", &NS, 1);
-
             }
-            
- 
+
             float MLE_HWE_AF[no_alleles];
             float MLE_HWE_GF[no_genotypes];
             n = 0;
@@ -411,15 +422,15 @@ class Igor : Program
                 float ab;
                 n = 0;
                 est->compute_gl_ab(pls, no_samples, ploidy,
-                                   dps, MLE_GF, no_alleles, 
+                                   dps, MLE_GF, no_alleles,
                                    ab, n);
-                                   
+
                 if (n)
                 {
                     bcf_update_info_float(odw->hdr, v, "AB", &ab, 1);
                 }
             }
-            
+
             if (print_sites_only)
             {
                 bcf_subset(odw->hdr, v, 0, 0);
@@ -432,13 +443,13 @@ class Igor : Program
         if(n_gts) free(gts);
         if(n_pls) free(pls);
         if(n_dps) free(dps);
-            
+
         odw->close();
     };
 
     void print_options()
     {
-        std::clog << "compute_features v" << version << "\n";
+        std::clog << "estimate v" << version << "\n";
         std::clog << "\n";
         std::clog << "Options:     input VCF File    " << input_vcf_file << "\n";
         print_str_op("         [f] filter            ", fexp);
@@ -470,4 +481,3 @@ void estimate(int argc, char ** argv)
     igor.estimate();
     igor.print_stats();
 }
-
