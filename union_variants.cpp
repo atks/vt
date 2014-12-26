@@ -195,7 +195,7 @@ class Igor : Program
 
     void print_options()
     {
-        std::clog << "union v" << version << "\n\n";
+        std::clog << "union_variants v" << version << "\n\n";
         std::clog << "options: [L] input VCF file list   " << input_vcf_file_list << " (" << input_vcf_files.size() << " files)\n";
         std::clog << "         [o] output VCF file       " << output_vcf_file << "\n";
         print_int_op("         [i] intervals             ", intervals);

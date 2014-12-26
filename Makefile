@@ -26,7 +26,6 @@ SOURCES = align\
 		consolidate_variants\
 		construct_probes\
 		context_filter\
-		cross_compare\
 		decompose\
 		decompose_blocksub\
 		discover\
@@ -83,6 +82,7 @@ SOURCES = align\
 		view\
    	    tbx_ordered_reader\
     	ahmm\
+        xcmp\
         normalize\
 
 SOURCESONLY = main.cpp

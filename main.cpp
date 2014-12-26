@@ -31,7 +31,7 @@
 #include "config.h"
 #include "consolidate_variants.h"
 #include "construct_probes.h"
-#include "cross_compare.h"
+#include "xcmp.h"
 #include "decompose_blocksub.h"
 #include "decompose.h"
 #include "discover2.h"
@@ -224,10 +224,6 @@ int main(int argc, char ** argv)
     {
         genotype2(argc-1, ++argv);
     }
-    else if (argc>1 && cmd=="characterize")
-    {
-        genotype(argc-1, ++argv);
-    }
     else if (argc>1 && cmd=="construct_probes")
     {
         construct_probes(argc-1, ++argv);
@@ -284,9 +280,9 @@ int main(int argc, char ** argv)
     {
         consolidate_variants(argc-1, ++argv);
     }
-    else if (argc>1 && cmd=="cross_compare")
+    else if (argc>1 && cmd=="xcmp")
     {
-        cross_compare(argc-1, ++argv);
+        xcmp(argc-1, ++argv);
     }
     else
     {

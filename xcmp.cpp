@@ -21,7 +21,7 @@
    THE SOFTWARE.
 */
 
-#include "cross_compare.h"
+#include "xcmp.h"
 
 namespace
 {
@@ -110,7 +110,6 @@ class Igor : Program
             version = "0.5";
             TCLAP::CmdLine cmd(desc, ' ', version);
             VTOutput my; cmd.setOutput(&my);
-            TCLAP::ValueArg<std::string> arg_ref_fasta_file("r", "r", "reference sequence fasta file []", true, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_intervals("i", "i", "intervals []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "file", cmd);
             TCLAP::ValueArg<std::string> arg_fexp("f", "f", "filter expression []", false, "VTYPE==INDEL", "str", cmd);
@@ -165,7 +164,7 @@ class Igor : Program
 
     }
 
-    void cross_compare()
+    void xcmp()
     {
         //for combining the alleles
         std::vector<bcfptr*> current_recs;
@@ -369,12 +368,12 @@ class Igor : Program
 
 }
 
-void cross_compare(int argc, char ** argv)
+void xcmp(int argc, char ** argv)
 {
     Igor igor(argc, argv);
     igor.print_options();
     igor.initialize();
-    igor.cross_compare();
+    igor.xcmp();
     igor.print_stats();
     igor.print_pdf();
 }

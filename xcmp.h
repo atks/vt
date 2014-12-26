@@ -21,8 +21,8 @@
    THE SOFTWARE.
 */
 
-#ifndef CROSS_COMPARE_H
-#define CROSS_COMPARE_H
+#ifndef XCMP_H
+#define XCMP_H
 
 #include "htslib/vcf.h"
 #include "htslib/vcfutils.h"
@@ -36,6 +36,6 @@
 #include "program.h"
 #include "ordered_region_overlap_matcher.h"
 
-void cross_compare(int argc, char ** argv);
+void xcmp(int argc, char ** argv);
 
 #endif
