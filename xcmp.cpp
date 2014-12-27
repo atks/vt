@@ -30,7 +30,7 @@ class OverlapStats
 {
     public:
 
-    int32_t a,ab,b,a_ins,ab_ins,b_ins,a_del,ab_del,b_del;
+    int32_t a,ab,b,a_ts,ab_ts,b_ts,a_tv,ab_tv,b_tv,a_ins,ab_ins,b_ins,a_del,ab_del,b_del;
 
     OverlapStats()
     {
@@ -38,6 +38,13 @@ class OverlapStats
         ab = 0;
         b = 0;
 
+        a_ts = 0;
+        a_tv = 0;
+        ab_ts = 0;
+        ab_tv = 0;
+        b_ts = 0;
+        b_tv = 0;
+        
         a_ins = 0;
         a_del = 0;
         ab_ins = 0;
@@ -135,7 +142,20 @@ class Igor : Program
 
     void initialize()
     {
-        dataset_labels.push_back("data");
+        kstring_t s = {0,0,0};
+        
+        for (size_t i=0; i<input_vcf_files.size(); ++i)
+        {
+            s.l = 0;
+            kputs("data", &s);
+            kputw(i, &s);
+            dataset_labels.push_back(std::string(s.s));
+        }
+        
+        if (s.m) free(s.s);
+        
+        
+        
         dataset_types.push_back("ref");
         dataset_fexps.push_back(fexp);
 
@@ -149,6 +169,12 @@ class Igor : Program
         }
         no_filters = filters.size();
 
+        std::vector<OverlapStats> rstats(input_vcf_files.size());
+        for (size_t i=0; i<input_vcf_files.size(); ++i)
+        {
+            stats.push_back(rstats);
+        }
+            
         //////////////////////
         //i/o initialization//
         //////////////////////
@@ -205,59 +231,46 @@ class Igor : Program
             }
 
             //annotate
-            if (presence[0])
+            for (size_t i=0; i<no_overlap_files; ++i)
             {
-
-
-
+                for (size_t j=0; j<no_overlap_files; ++j)
+                {   
+                    if (presence[i] && !presence[j])
+                    {
+                        ++stats[i][j].a;
+                        stats[i][j].a_ts += variant.ts;
+                        stats[i][j].a_tv += variant.tv;
+                        stats[i][j].a_ins += variant.ins;
+                        stats[i][j].a_del += variant.del;
+                    }
+                    else if (presence[i] && presence[j])
+                    {
+                        ++stats[i][j].ab;
+                        stats[i][j].ab_ts += variant.ts;
+                        stats[i][j].ab_tv += variant.tv;
+                        stats[i][j].ab_ins += variant.ins;
+                        stats[i][j].ab_del += variant.del;
+                    }
+                    else if (!presence[i] && presence[j])
+                    {
+                        ++stats[i][j].b;
+                        stats[i][j].b_ts += variant.ts;
+                        stats[i][j].b_tv += variant.tv;
+                        stats[i][j].b_ins += variant.ins;
+                        stats[i][j].b_del += variant.del;
+                    }
+                    else
+                    {
+                        //not in either, do nothing
+                    }
+                }
             }
-
-            int32_t ins = variant.alleles[0].ins;
-            int32_t del = 1-ins;
-
-//            if (presence[0])
-//            {
-//                ++stats[0].a;
-//                stats[0].a_ins += ins;
-//                stats[0].a_del += del;
-//            }
-
-            //update overlap stats
-//            for (size_t i=1; i<no_overlap_files; ++i)
-//            {
-//                if (presence[0] && !presence[i])
-//                {
-//                    ++stats[i].a;
-//                    stats[i].a_ins += ins;
-//                    stats[i].a_del += del;
-//                }
-//                else if (presence[0] && presence[i])
-//                {
-//                    ++stats[i].ab;
-//                    stats[i].ab_ins += ins;
-//                    stats[i].ab_del += del;
-//                }
-//                else if (!presence[0] && presence[i])
-//                {
-//                    ++stats[i].b;
-//                    stats[i].b_ins += ins;
-//                    stats[i].b_del += del;
-//                }
-//                else
-//                {
-//                    //not in either, do nothing
-//                }
-//
-//                presence[i]=0;
-//            }
-
-            presence[0] = 0;
         }
     };
 
     void print_options()
     {
-        std::clog << "cross_compare v" << version << "\n\n";
+        std::clog << "xcmp v" << version << "\n\n";
         std::clog << "\n";
         std::clog << "Options:     input VCF File                 " << "" << "\n";
         print_str_op("         [f] filter                         ", fexp);
@@ -334,29 +347,33 @@ class Igor : Program
 
     void print_stats()
     {
-        fprintf(stderr, "\n");
-        fprintf(stderr, "  %s\n", "data set");
-        fprintf(stderr, "\n");
-
-        for (size_t i=1; i<dataset_labels.size(); ++i)
+        //print column names
+        fprintf(stderr, "\n     ");
+        for (size_t j=0; j<dataset_labels.size(); ++j)
         {
-//            fprintf(stderr, "  %s\n", dataset_labels[i].c_str());
-//            fprintf(stderr, "    A-B %10d [%.2f]\n", stats[i].a,  (float)stats[i].a_ins/(stats[i].a_del));
-//            fprintf(stderr, "    A&B %10d [%.2f]\n", stats[i].ab, (float)stats[i].ab_ins/stats[i].ab_del);
-//            fprintf(stderr, "    B-A %10d [%.2f]\n", stats[i].b,  (float)stats[i].b_ins/(stats[i].b_del));
-//
-//            if (dataset_types[i]=="TP")
+            fprintf(stderr, "    %s", dataset_labels[j].c_str());
+        }
+        fprintf(stderr, "\n");
+        
+        for (size_t i=0; i<dataset_labels.size(); ++i)
+        {
+            fprintf(stderr, "%s", dataset_labels[i].c_str());
+            for (size_t j=0; j<dataset_labels.size(); ++j)
+            {
+                fprintf(stderr, "    %3.2f%%", (float)stats[i][j].ab/(stats[i][j].ab+stats[i][j].b)*100);
+            }
+            fprintf(stderr, "\n");
+            
+//            fprintf(stderr, "     ");
+//            for (size_t j=0; j<dataset_labels.size(); ++j)
 //            {
-//                fprintf(stderr, "    Precision    %4.1f%%\n", 100*(float)stats[i].ab/(stats[i].a+stats[i].ab));
-//                fprintf(stderr, "    Sensitivity  %4.1f%%\n", 100*(float)stats[i].ab/(stats[i].b+stats[i].ab));
-//            }
-//            else
-//            {
-//                fprintf(stderr, "    FDR          %4.1f%%\n", 100*(float)stats[i].ab/(stats[i].a+stats[i].ab));
-//                fprintf(stderr, "    Type I Error %4.1f%%\n", 100*(float)stats[i].ab/(stats[i].b+stats[i].ab));
+//                fprintf(stderr, "   [%.2f]", (float)stats[i][j].ab_ins/(stats[i][j].ab_del));
 //            }
 //            fprintf(stderr, "\n");
+
         }
+
+
     };
 
     ~Igor()

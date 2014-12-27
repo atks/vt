@@ -290,6 +290,11 @@ int32_t VariantManip::classify_variant(const char* chrom, uint32_t pos1, char** 
 int32_t VariantManip::classify_variant(const char* chrom, uint32_t pos1, char** allele, int32_t n_allele, Variant& v, bool trimming)
 {
     int32_t pos0 = pos1-1;
+    v.ts = 0;   
+    v.tv = 0;   
+    v.ins = 0;  
+    v.del = 0;  
+    
     v.clear(); // this sets the type to VT_REF by default.
 
     bool homogeneous_length = true;
@@ -458,7 +463,11 @@ int32_t VariantManip::classify_variant(const char* chrom, uint32_t pos1, char** 
 
             v.type |= type;
             v.alleles.push_back(Allele(type, diff, alen, dlen, 0, mlen, ts, tv));
-
+            v.ts += ts;
+            v.tv += tv;
+            v.ins = dlen>0?1:0;
+            v.del = dlen<0?1:0;            
+            
             if (REF.m) free(REF.s);
             if (ALT.m) free(ALT.s);
         }

@@ -53,7 +53,11 @@ class Variant
     kstring_t motif;    //motif
     int32_t mlen;       //motif length
     int32_t tlen;       //reference tract length
-
+    int32_t ts;         //no. of transitions
+    int32_t tv;         //no. of tranversions (mlen-ts)
+    int32_t ins;        //no. of insertions
+    int32_t del;        //no. of deletions
+        
     std::string emotif;
     std::string eru;
     Region eregion;
