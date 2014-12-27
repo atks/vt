@@ -30,13 +30,14 @@ class OverlapStats
 {
     public:
 
-    int32_t a,ab,b,a_ts,ab_ts,b_ts,a_tv,ab_tv,b_tv,a_ins,ab_ins,b_ins,a_del,ab_del,b_del;
+    int32_t a,ab,b,e,a_ts,ab_ts,b_ts,e_ts,a_tv,ab_tv,b_tv,e_tv,a_ins,ab_ins,b_ins,e_ins,a_del,ab_del,b_del,e_del;
 
     OverlapStats()
     {
         a = 0;
         ab = 0;
         b = 0;
+        e = 0;
 
         a_ts = 0;
         a_tv = 0;
@@ -44,13 +45,17 @@ class OverlapStats
         ab_tv = 0;
         b_ts = 0;
         b_tv = 0;
-        
+        e_ts = 0;
+        e_tv = 0;
+
         a_ins = 0;
         a_del = 0;
         ab_ins = 0;
         ab_del = 0;
         b_ins = 0;
         b_del = 0;
+        e_ins = 0;
+        e_del = 0;
     };
 };
 
@@ -64,7 +69,6 @@ class Igor : Program
     //options//
     ///////////
     std::vector<std::string> input_vcf_files;
-    std::string input_vcf_file_list;
     std::string output_tabulate_dir;
     std::string output_pdf_file;
     std::vector<GenomeInterval> intervals;
@@ -73,8 +77,8 @@ class Igor : Program
     //////////////////////////////////////////////
     //reference file info : to store in an object?
     //////////////////////////////////////////////
+    int32_t no_files;
     std::vector<std::string> dataset_labels;
-    std::vector<std::string> dataset_types;
     std::vector<std::string> dataset_fexps;
     std::string cds_bed_file;
     std::string cplx_bed_file;
@@ -119,10 +123,10 @@ class Igor : Program
             VTOutput my; cmd.setOutput(&my);
             TCLAP::ValueArg<std::string> arg_intervals("i", "i", "intervals []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "file", cmd);
-            TCLAP::ValueArg<std::string> arg_fexp("f", "f", "filter expression []", false, "VTYPE==INDEL", "str", cmd);
+            TCLAP::ValueArg<std::string> arg_fexp("f", "f", "filter expression []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_output_tabulate_dir("x", "x", "output latex directory []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_output_pdf_file("y", "y", "output pdf file []", false, "", "str", cmd);
-            TCLAP::ValueArg<std::string> arg_input_vcf_file_list("L", "L", "file containing list of input VCF files", false, "", "str", cmd);
+            TCLAP::ValueArg<std::string> arg_labels("l", "l", "Comma delimited labels for the files", false, "", "str", cmd);
             TCLAP::UnlabeledMultiArg<std::string> arg_input_vcf_files("<in1.vcf>...", "Multiple VCF files",false, "files", cmd);
 
             cmd.parse(argc, argv);
@@ -131,7 +135,9 @@ class Igor : Program
             parse_filters(dataset_fexps, arg_fexp.getValue());
             output_tabulate_dir = arg_output_tabulate_dir.getValue();
             output_pdf_file = arg_output_pdf_file.getValue();
-            parse_files(input_vcf_files, arg_input_vcf_files.getValue(), arg_input_vcf_file_list.getValue());
+            split(dataset_labels, ",", arg_labels.getValue());
+            split(dataset_fexps, ",", arg_fexp.getValue());
+            input_vcf_files = arg_input_vcf_files.getValue();
         }
         catch (TCLAP::ArgException &e)
         {
@@ -142,39 +148,62 @@ class Igor : Program
 
     void initialize()
     {
-        kstring_t s = {0,0,0};
+        no_files = input_vcf_files.size();
         
-        for (size_t i=0; i<input_vcf_files.size(); ++i)
+        if (dataset_labels.size()==0)
         {
-            s.l = 0;
-            kputs("data", &s);
-            kputw(i, &s);
-            dataset_labels.push_back(std::string(s.s));
+            kstring_t s = {0,0,0};
+
+            for (size_t i=0; i<no_files; ++i)
+            {
+                s.l = 0;
+                kputs("data", &s);
+                kputw(i, &s);
+                dataset_labels.push_back(std::string(s.s));
+            }
+
+            if (s.m) free(s.s);
         }
-        
-        if (s.m) free(s.s);
-        
-        
-        
-        dataset_types.push_back("ref");
-        dataset_fexps.push_back(fexp);
 
         /////////////////////////
         //filter initialization//
         /////////////////////////
-        for (size_t i=0; i<dataset_fexps.size(); ++i)
+        if (dataset_fexps.size()==0)
         {
-            filters.push_back(Filter(dataset_fexps[i]));
-            filter_exists.push_back(dataset_fexps[i]!="");
+            for (size_t i=0; i<no_files; ++i)
+            {
+                filters.push_back(Filter(""));
+                filter_exists.push_back(false);
+            }
         }
-        no_filters = filters.size();
+        else if (dataset_fexps.size()==1)
+        {
+            for (size_t i=0; i<no_files; ++i)
+            {
+                filters.push_back(Filter(dataset_fexps[0]));
+                filter_exists.push_back(dataset_fexps[0]!="");
+            }
+        }
+        else if (dataset_fexps.size()==no_files)
+        {
+            for (size_t i=0; i<no_files; ++i)
+            {
+                filters.push_back(Filter(dataset_fexps[i]));
+                filter_exists.push_back(dataset_fexps[i]!="");
+            }
+        }
+        else
+        {
+            fprintf(stderr, "[%s:%d %s] Number of filter expressions should either be 1 or the same as the number of input vcf files\n", __FILE__,__LINE__,__FUNCTION__);
+            exit(1);
+        }
 
-        std::vector<OverlapStats> rstats(input_vcf_files.size());
-        for (size_t i=0; i<input_vcf_files.size(); ++i)
+        std::vector<OverlapStats> rstats(no_files);
+        for (size_t i=0; i<no_files; ++i)
         {
             stats.push_back(rstats);
         }
-            
+
         //////////////////////
         //i/o initialization//
         //////////////////////
@@ -196,10 +225,8 @@ class Igor : Program
         std::vector<bcfptr*> current_recs;
         std::vector<Interval*> overlaps;
         Variant variant;
-        int32_t no_overlap_files = input_vcf_files.size();
-        std::vector<int32_t> presence(no_overlap_files, 0);
-        stats.resize(no_overlap_files);
-
+        std::vector<int32_t> presence(no_files, 0);
+      
         while(sr->read_next_position(current_recs))
         {
             //check first variant
@@ -211,7 +238,7 @@ class Igor : Program
             int32_t start1 = bcf_get_pos1(v);
             int32_t end1 = bcf_get_end_pos1(v);
 
-            for (size_t i=0; i<no_overlap_files; ++i)
+            for (size_t i=0; i<no_files; ++i)
                 presence[i]=0;
 
             //check existence
@@ -231,10 +258,12 @@ class Igor : Program
             }
 
             //annotate
-            for (size_t i=0; i<no_overlap_files; ++i)
+            for (size_t i=0; i<no_files; ++i)
             {
-                for (size_t j=0; j<no_overlap_files; ++j)
-                {   
+                int32_t counts = 0;
+
+                for (size_t j=0; j<no_files; ++j)
+                {
                     if (presence[i] && !presence[j])
                     {
                         ++stats[i][j].a;
@@ -263,6 +292,17 @@ class Igor : Program
                     {
                         //not in either, do nothing
                     }
+
+                    counts += presence[j];
+                }
+
+                if (counts && presence[i]==counts)
+                {
+                    ++stats[i][i].e;
+                    stats[i][i].e_ts += variant.ts;
+                    stats[i][i].e_tv += variant.tv;
+                    stats[i][i].e_ins += variant.ins;
+                    stats[i][i].e_del += variant.del;
                 }
             }
         }
@@ -347,33 +387,30 @@ class Igor : Program
 
     void print_stats()
     {
-        //print column names
-        fprintf(stderr, "\n     ");
+        //print overlap
+        fprintf(stderr, "\n      ");
         for (size_t j=0; j<dataset_labels.size(); ++j)
         {
-            fprintf(stderr, "    %s", dataset_labels[j].c_str());
+            fprintf(stderr, "    %6s", dataset_labels[j].c_str());
+        }
+        fprintf(stderr, "    %6s", "ex");
+        fprintf(stderr, "    n");
+        fprintf(stderr, "\n");
+
+        for (size_t i=0; i<dataset_labels.size(); ++i)
+        {
+            fprintf(stderr, "%6s", dataset_labels[i].c_str());
+            for (size_t j=0; j<dataset_labels.size(); ++j)
+            {
+                fprintf(stderr, "    %5.1f%%", (float)stats[i][j].ab/(stats[i][j].ab+stats[i][j].b)*100);
+            }
+            fprintf(stderr, "    %5.1f%%", (float)stats[i][i].e/(stats[i][i].ab)*100);
+            fprintf(stderr, "    %d", stats[i][i].ab);
+            fprintf(stderr, "\n");
         }
         fprintf(stderr, "\n");
         
-        for (size_t i=0; i<dataset_labels.size(); ++i)
-        {
-            fprintf(stderr, "%s", dataset_labels[i].c_str());
-            for (size_t j=0; j<dataset_labels.size(); ++j)
-            {
-                fprintf(stderr, "    %3.2f%%", (float)stats[i][j].ab/(stats[i][j].ab+stats[i][j].b)*100);
-            }
-            fprintf(stderr, "\n");
-            
-//            fprintf(stderr, "     ");
-//            for (size_t j=0; j<dataset_labels.size(); ++j)
-//            {
-//                fprintf(stderr, "   [%.2f]", (float)stats[i][j].ab_ins/(stats[i][j].ab_del));
-//            }
-//            fprintf(stderr, "\n");
-
-        }
-
-
+        
     };
 
     ~Igor()
