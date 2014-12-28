@@ -242,6 +242,7 @@ class Igor : Program
                 presence[i]=0;
 
             //check existence
+            int32_t no_filtered = 0;
             for (size_t i=0; i<current_recs.size(); ++i)
             {
                 int32_t index = current_recs[i]->file_index;
@@ -250,11 +251,17 @@ class Igor : Program
                 {
                     if (!filters[index].apply(current_recs[i]->h,current_recs[i]->v,&variant))
                     {
+                        ++no_filtered;
                         continue;
                     }
                 }
 
                 ++presence[index];
+            }
+            
+            if (no_filtered==current_recs.size())
+            {
+                continue;
             }
 
             //annotate
@@ -388,7 +395,7 @@ class Igor : Program
     void print_stats()
     {
         //print overlap
-        fprintf(stderr, "\n      ");
+        fprintf(stderr, "\noverlap");
         for (size_t j=0; j<dataset_labels.size(); ++j)
         {
             fprintf(stderr, "    %6s", dataset_labels[j].c_str());
@@ -399,7 +406,7 @@ class Igor : Program
 
         for (size_t i=0; i<dataset_labels.size(); ++i)
         {
-            fprintf(stderr, "%6s", dataset_labels[i].c_str());
+            fprintf(stderr, "%7s", dataset_labels[i].c_str());
             for (size_t j=0; j<dataset_labels.size(); ++j)
             {
                 fprintf(stderr, "    %5.1f%%", (float)stats[i][j].ab/(stats[i][j].ab+stats[i][j].b)*100);
@@ -410,7 +417,51 @@ class Igor : Program
         }
         fprintf(stderr, "\n");
         
+        //print ts/tv ratios
+        fprintf(stderr, "ts/tv  ");
+        for (size_t j=0; j<dataset_labels.size(); ++j)
+        {
+            fprintf(stderr, "    %6s", dataset_labels[j].c_str());
+        }
+        fprintf(stderr, "    %6s", "ex");
+        fprintf(stderr, "    n");
+        fprintf(stderr, "\n");
+
+        for (size_t i=0; i<dataset_labels.size(); ++i)
+        {
+            fprintf(stderr, "%7s", dataset_labels[i].c_str());
+            for (size_t j=0; j<dataset_labels.size(); ++j)
+            {
+                fprintf(stderr, "    %6.2f", (float)stats[i][j].ab_ts/stats[i][j].ab_tv);
+            }
+            fprintf(stderr, "    %6.2f", (float)stats[i][i].e_ts/(stats[i][i].e_tv));
+            fprintf(stderr, "    %d", stats[i][i].ab);
+            fprintf(stderr, "\n");
+        }
+        fprintf(stderr, "\n");
         
+        //print ins/del ratios
+        fprintf(stderr, "ins/del");
+        for (size_t j=0; j<dataset_labels.size(); ++j)
+        {
+            fprintf(stderr, "    %6s", dataset_labels[j].c_str());
+        }
+        fprintf(stderr, "    %6s", "ex");
+        fprintf(stderr, "    n");
+        fprintf(stderr, "\n");
+
+        for (size_t i=0; i<dataset_labels.size(); ++i)
+        {
+            fprintf(stderr, "%7s", dataset_labels[i].c_str());
+            for (size_t j=0; j<dataset_labels.size(); ++j)
+            {
+                fprintf(stderr, "    %6.2f", (float)stats[i][j].ab_ins/stats[i][j].ab_del);
+            }
+            fprintf(stderr, "    %6.2f", (float)stats[i][i].e_ins/(stats[i][i].e_del));
+            fprintf(stderr, "    %d", stats[i][i].ab);
+            fprintf(stderr, "\n");
+        }
+        fprintf(stderr, "\n");
     };
 
     ~Igor()

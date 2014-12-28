@@ -56,6 +56,7 @@ SOURCES = align\
 		pedigree\
 		peek\
 		profile_afs\
+		profile_chm1\
 		profile_chrom\
 		profile_fic_hwe\
 		profile_hwe\

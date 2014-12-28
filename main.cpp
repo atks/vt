@@ -47,6 +47,7 @@
 #include "paste.h"
 #include "peek.h"
 #include "profile_afs.h"
+#include "profile_chm1.h"
 #include "profile_chrom.h"
 #include "profile_fic_hwe.h"
 #include "profile_hwe.h"
@@ -243,6 +244,10 @@ int main(int argc, char ** argv)
     else if (argc>1 && cmd=="profile_na12878")
     {
         profile_na12878(argc-1, ++argv);
+    }
+    else if (argc>1 && cmd=="profile_chm1")
+    {
+        profile_chm1(argc-1, ++argv);
     }
     else if (argc>1 && cmd=="profile_chrom")
     {
