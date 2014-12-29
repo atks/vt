@@ -102,22 +102,21 @@ class Igor : Program
 
     void initialize()
     {
+        //////////////////////
+        //i/o initialization//
+        //////////////////////
         input_vcf_files.push_back(input_vcf_file);
         input_vcf_files.push_back(dbsnp_vcf_file);
+        sr = new BCFSyncedReader(input_vcf_files, intervals, false);
+        odw = new BCFOrderedWriter(output_vcf_file);
+        odw->link_hdr(sr->hdrs[0]);
+        odw->write_hdr();
 
         /////////////////////////
         //filter initialization//
         /////////////////////////
         filter.parse(fexp.c_str());
         filter_exists = fexp!="";
-
-        //////////////////////
-        //i/o initialization//
-        //////////////////////
-        sr = new BCFSyncedReader(input_vcf_files, intervals, false);
-        odw = new BCFOrderedWriter(output_vcf_file);
-        odw->link_hdr(sr->hdrs[0]);
-        odw->write_hdr();
 
         ///////////////////////
         //tool initialization//
@@ -133,7 +132,6 @@ class Igor : Program
 
     void annotate_dbsnp_rsid()
     {
-        //for combining the alleles
         std::vector<bcfptr*> crecs;
         int32_t presence[2] = {0,0};
         Variant variant;
@@ -171,7 +169,7 @@ class Igor : Program
 
             if (presence[0] && presence[1])
             {
-                bcf_update_id(NULL, v, bcf_get_id(dv));
+                bcf_update_id(odw->hdr, v, bcf_get_id(dv));
 
                 ++no_annotated_variants;
             }

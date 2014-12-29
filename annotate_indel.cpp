@@ -172,8 +172,6 @@ class Igor : Program
 
                 bcf_update_info_string(odw->hdr, v, "VMOTIF", variant.emotif.c_str());
                 bcf_update_info_string(odw->hdr, v, "VRU", variant.eru.c_str());
-//                int32_t region[2] = {variant.eregion.beg1, variant.eregion.end1};
-//                bcf_update_info_int32(odw->hdr, v, "EXACT_ALLELE_REGION", &region, 2);
                 int32_t rl = variant.eregion.end1-variant.eregion.beg1-1;
                 bcf_update_info_int32(odw->hdr, v, "VRL", &rl, 1);
                 int32_t irl = variant.iregion.end1-variant.iregion.beg1-1;
@@ -191,9 +189,6 @@ class Igor : Program
                 }
 
                 ++no_variants_annotated;
-
-                std::cerr << "\t";
-                bcf_print(odr->hdr, v);
             }
 
             odw->write(v);
