@@ -41,6 +41,7 @@ SOURCES = align\
 		hts_utils\
 		index\
 		interval_tree\
+		interval\
 		lfhmm\
 		lhmm\
 		lhmm1\

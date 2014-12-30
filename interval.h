@@ -21,4 +21,22 @@
    THE SOFTWARE.
 */
 
-#include "candidate_motif.h"
+#ifndef INTERVAL_H
+#define INTERVAL_H
+
+class Interval
+{
+    public:
+    int32_t start;
+    int32_t end;
+    
+    /**
+     * Returns true if overlap
+     */
+    bool overlaps_with(int32_t a, int32_t b)
+    {
+        return a<=end && b>=start;
+    };    
+};
+
+#endif

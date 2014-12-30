@@ -60,13 +60,13 @@ void BEDRecord::print()
 std::string BEDRecord::to_string()
 {
     kstring_t s = {0,0,0};
-    
+
     kputs(this->chrom.c_str(), &s);
     kputc(':', &s);
     kputw(this->start1, &s);
     kputc('-', &s);
     kputw(this->end1, &s);
-    
+
     std::string str(s.s);
     if (s.m) free(s.s);
     return str;
