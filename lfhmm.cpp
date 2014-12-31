@@ -861,7 +861,6 @@ void LFHMM::clear_statistics()
     rflank_start[READ] = NAN;
     rflank_end[MODEL] = NAN;
     rflank_end[READ] = NAN;
-
 }
 
 /**
@@ -879,7 +878,6 @@ bool LFHMM::flanks_are_mapped()
 {
     return lflank_end[MODEL]==lflen;
 }
-
 
 /**
  * Compute log10 emission odds based on equal error probability distribution.

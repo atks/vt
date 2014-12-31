@@ -207,7 +207,7 @@ class Igor : Program
 
     void print_options()
     {
-        std::clog << "plot_len v" << version << "\n\n";
+        std::clog << "profile_len v" << version << "\n\n";
         std::clog << "options:     input VCF file         " << input_vcf_file << "\n";
         std::clog << "         [a] AF tag                 " << AF << "\n";
         std::clog << "         [b] AB tag                 " << AB << "\n";
@@ -298,7 +298,7 @@ class Igor : Program
         fprintf(stderr, "     no. of variants  : %d\n", no_variants);
         fprintf(stderr, "\n");
         
-        //do a textual histogram print out of afs
+        //do a textual histogram print out of len spectrum
         
         
     };

@@ -68,7 +68,7 @@ class Igor : Program
         //////////////////////////
         try
         {
-            std::string desc = "Merges duplicate variants by position with the option of considering alleles.  (This just discards the duplicate variant that appears later in the VCF file)";
+            std::string desc = "Performs Context Filter of variants based on STR annotated output.";
 
             TCLAP::CmdLine cmd(desc, ' ', version);
             VTOutput my;
@@ -197,7 +197,7 @@ class Igor : Program
 
     void print_options()
     {
-        std::clog << "mergedups v" << version << "\n\n";
+        std::clog << "context_filter v" << version << "\n\n";
 
         std::clog << "options:     input VCF file        " << input_vcf_file << "\n";
         std::clog << "         [o] output VCF file       " << output_vcf_file << "\n";

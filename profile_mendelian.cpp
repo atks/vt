@@ -250,7 +250,7 @@ class Igor : Program
 
     void print_options()
     {
-        std::clog << "profile_mendelian_errors v" << version << "\n\n";
+        std::clog << "profile_mendelian v" << version << "\n\n";
         std::clog << "options:     input VCF file            " << input_vcf_file << "\n";
         std::clog << "         [p] input PED file            " << input_ped_file << "\n";
         print_str_op("         [x] output tabulate directory ", output_tabulate_dir);
@@ -507,7 +507,6 @@ class Igor : Program
 
         //generate file
         int32_t ret = mkdir(output_tabulate_dir.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-
 
         std::string filepath = output_tabulate_dir + "/tabulate.tex";
         FILE *out = fopen(filepath.c_str(), "w");

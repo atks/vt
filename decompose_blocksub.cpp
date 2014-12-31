@@ -186,7 +186,6 @@ class Igor : Program
 
         odw->close();
         odr->close();
-
     };
 
     void print_options()

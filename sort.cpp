@@ -207,6 +207,7 @@ class Igor : Program
             //read into buffer 10000 records
             odr = new BCFOrderedReader(input_vcf_file, intervals);
 
+            //need to change this to measure the amount of data read.  This can be
             size_t buffer_size = 1000000;
 
             bcf1_t *buffer[buffer_size];

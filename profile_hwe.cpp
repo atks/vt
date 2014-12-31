@@ -204,7 +204,7 @@ class Igor : Program
 
     void print_options()
     {
-        std::clog << "plot_afs v" << version << "\n\n";
+        std::clog << "plot_hwe v" << version << "\n\n";
         std::clog << "options:     input VCF file         " << input_vcf_file << "\n";
         std::clog << "         [h] HWE_LPVAL tag          " << HWE_LPVAL << "\n";
         std::clog << "         [a] AF tag                 " << AF << "\n";
@@ -237,11 +237,6 @@ class Igor : Program
         //create r script
         file_path = output_dir + "/plot.r";
         out = fopen(file_path.c_str(), "w");
-
-//setwd("~/sardinia/sardinia/20140421_sardinia_indel_analysis/plot_hwe")
-//data = read.table("data.txt", header=T)
-//data$hwe_pval = exp(data$hwe_lpval)
-
 
         fprintf(out, "setwd(\"%s\")\n", output_dir.c_str());
         fprintf(out, "\n");
