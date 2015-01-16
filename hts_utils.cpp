@@ -89,7 +89,7 @@ bool str_ends_with(std::string& file_name, const char* ext)
     {
         return true;
     }
-    
+
     return false;
 }
 
@@ -540,7 +540,7 @@ uint32_t bcf_ap2g(uint32_t no_allele, uint32_t no_ploidy)
 {
     uint32_t num = 1;
     uint32_t denum = 1;
-    
+
     uint32_t n = no_ploidy + no_allele - 1;
     uint32_t d = no_allele - 1;
     for (uint32_t i=0; i<no_allele; ++i)
@@ -548,7 +548,7 @@ uint32_t bcf_ap2g(uint32_t no_allele, uint32_t no_ploidy)
         num *= n-i;
         denum *= i+1;
     }
-    
+
     return num/denum;
 }
 
@@ -676,6 +676,22 @@ void bcf_alleles2string_sorted(bcf_hdr_t *h, bcf1_t *v, kstring_t *var)
         }
 
         free(temp);
+    }
+}
+
+/**
+ * Get chromosome name
+ */
+const char* bcf_get_chrom(bcf_hdr_t *h, bcf1_t *v)
+{
+    if (v->rid >= h->n[BCF_DT_CTG])
+    {
+        fprintf(stderr, "[E:%s:%d %s] rid '%d' does not have an associated contig defined in the header.  Try tabix workaround or just add the header.\n", __FILE__, __LINE__, __FUNCTION__, v->rid);
+        exit(1);
+    }
+    else
+    {
+        return h->id[BCF_DT_CTG][v->rid].key;
     }
 }
 

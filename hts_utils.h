@@ -320,7 +320,7 @@ void bcf_print_liten(bcf_hdr_t *h, bcf1_t *v);
 /**
  * Get chromosome name
  */
-#define bcf_get_chrom(h, v) ((h)->id[BCF_DT_CTG][(v)->rid].key)
+const char* bcf_get_chrom(bcf_hdr_t *h, bcf1_t *v);
 
 /**
  * Set chromosome name
@@ -413,7 +413,7 @@ void bcf_set_id(bcf1_t *v, char* id);
 #define bcf_get_var_type(v) ((v)->d.var_type)
 
 /**
- * Get ith format name 
+ * Get ith format name
  */
 #define bcf_get_format(h, v, i) (h)->id[BCF_DT_ID][(v->d.fmt)[i].id].key
 /**
