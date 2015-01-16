@@ -138,7 +138,6 @@ class Igor : Program
             if (n_allele > 2)
             {
                 ++no_multiallelic;
-                int32_t n_genotype = bcf_an2gn(n_allele);
                 no_additional_biallelic += n_allele-1;
 
                 old_alleles.l = 0;
@@ -163,8 +162,9 @@ class Igor : Program
                 bool has_GT = false;
                 bool has_PL = false;
                 bool has_GL = false;
-                int32_t ploidy;
-
+                int32_t ploidy = 0;
+                int32_t n_genotype;
+                
                 int32_t *gts;
                 int32_t *pls;
                 float *gls;
@@ -173,16 +173,17 @@ class Igor : Program
                 {
                     int32_t ret = bcf_get_genotypes(odr->hdr, v, &gt, &n);
                     if (ret>0) has_GT = true;
-                    if (ret>0) gts = (int32_t*) malloc(no_samples*2*sizeof(int32_t));
                     ploidy = n/bcf_hdr_nsamples(odr->hdr);
+                    n_genotype = bcf_ap2g(n_allele, ploidy);
+                    if (ret>0) gts = (int32_t*) malloc(no_samples*ploidy*sizeof(int32_t));
 
                     ret = bcf_get_format_int32(odr->hdr, v, "PL", &pl, &n);
                     if (ret>0) has_PL = true;
-                    if (ret>0) pls = (int32_t*) malloc(no_samples*3*sizeof(int32_t));
+                    if (ret>0) pls = (int32_t*) malloc(no_samples*n_genotype*sizeof(int32_t));
 
                     ret = bcf_get_format_float(odr->hdr, v, "GL", &gl, &n);
-                    if (ret>0) has_GL = true;
-                    if (ret>0) gls = (float*) malloc(no_samples*3*sizeof(float));
+                    if (ret>0) has_GL = true;   
+                    if (ret>0) gls = (float*) malloc(no_samples*n_genotype*sizeof(float));
 
 //                    std::cerr << "return value    : " << ret << "\n";
 //                    std::cerr << "n bytes written : " << n << "\n";
@@ -207,49 +208,29 @@ class Igor : Program
 
                     if (no_samples)
                     {
-//                        std::cerr << "============================\n";
-//                        std::cerr << "ALLLELE " << i << "\n";
-//                        std::cerr << "============================\n";
-
                         //get array genotypes
                         for (size_t j=0; j<no_samples; ++j)
                         {
-
                             if (has_GT)
                             {
-                                int32_t g1 = bcf_gt_allele(gt[j*2]);
-                                int32_t g2 = bcf_gt_allele(gt[j*2+1]);
-
-                                //std::cerr << g1 << "/" << g2 << " ";
-
-                                if (g1<=0)
+                                for (size_t k=0; k<ploidy; ++k)
                                 {
+                                    int32_t g = bcf_gt_allele(gt[j*ploidy+k]);
+                                    
+                                    if (g<=0)
+                                    {
+                                    }
+                                    else if (g!=i)
+                                    {
+                                        g = -1;
+                                    }
+                                    else
+                                    {
+                                        g = 1;
+                                    }
+                                    
+                                    gts[j*ploidy+k] = bcf_gt_unphased(g);                                    
                                 }
-                                else if (g1!=i)
-                                {
-                                    g1 = -1;
-                                }
-                                else
-                                {
-                                    g1 = 1;
-                                }
-                                
-                                
-                                if (g2<=0)
-                                {
-                                }
-                                else if (g2!=i)
-                                {
-                                    g2 = -1;
-                                }
-                                else
-                                {
-                                    g2 = 1;
-                                }
-                                //std::cerr << "=> " << g1 << "/" << g2 << "\n";
-
-                                gts[j*2] = bcf_gt_unphased(g1); 
-                                gts[j*2+1] = bcf_gt_unphased(g2); 
                             }
 
                             if (has_PL)
@@ -262,21 +243,17 @@ class Igor : Program
                                     int32_t plhet = pl[j*n_genotype+bcf_alleles2gt(0,i)];
                                     int32_t plalt = pl[j*n_genotype+bcf_alleles2gt(i,i)];
 
-//                                    for (size_t k=0; k<n_genotype; ++k)
-//                                        std::cerr << pl[j*n_genotype+k] << ",";
-//
-//                                    std::cerr << " => " << plref << "," << plhet <<  "," << plalt << "\n";
-                                
-                                    pls[j*3] = plref;
-                                    pls[j*3+1] = plhet;
-                                    pls[j*3+2] = plalt;
-                                    
+                                    for (size_t k=0; k<n_genotype; ++k)
+                                    {
+                                        pls[j*n_genotype+k] = plref;
+                                    } 
                                 }
                                 else
                                 {
-                                    pls[j*3] = bcf_int32_missing;
-                                    pls[j*3+1] = bcf_int32_missing;
-                                    pls[j*3+2] = bcf_int32_missing;
+                                    for (size_t k=0; k<n_genotype; ++k)
+                                    {
+                                        pls[j*n_genotype+k] = bcf_int32_missing;
+                                    }
                                 }
                             }
 
@@ -284,24 +261,18 @@ class Igor : Program
                             {
                                 if (!bcf_float_is_missing(gl[j*n_genotype]))
                                 {
-                                    float glref = gl[j*n_genotype];
-                                    float glhet = gl[j*n_genotype+bcf_alleles2gt(0,i)];
-                                    float glalt = gl[j*n_genotype+bcf_alleles2gt(i,i)];
+                                    for (size_t k=0; k<n_genotype; ++k)
+                                    {
+                                        gls[j*n_genotype+k] = gl[j*n_genotype+k];
+                                    }    
 
-//                                    for (size_t k=0; k<n_genotype; ++k)
-//                                        std::cerr << gl[j*n_genotype+k] << ",";
-
-                                    //std::cerr << " => " << glref << "," << glhet <<  "," << glalt << "\n";
-                                        
-                                    gls[j*3] = glref;
-                                    gls[j*3+1] = glhet;
-                                    gls[j*3+2] = glalt;
                                 }
                                 else
                                 {
-                                    bcf_float_set_missing(gls[j*3]);
-                                    bcf_float_set_missing(gls[j*3+1]);
-                                    bcf_float_set_missing(gls[j*3+2]);
+                                    for (size_t k=0; k<n_genotype; ++k)
+                                    {
+                                        bcf_float_set_missing(gls[j*n_genotype+k]);
+                                    }  
                                 }
                             }
                         }
@@ -317,14 +288,13 @@ class Igor : Program
                                 if (strcmp(tag,"GT")&&strcmp(tag,"PL")&&strcmp(tag,"GL"))
                                 {
                                     bcf_update_format_int32(odw->hdr, v, tag, 0, 0);
-                                    
                                 }
                             }
                         }    
 
-                        if (has_GT) bcf_update_genotypes(odw->hdr, v, gts, no_samples*2);
-                        if (has_PL) bcf_update_format_int32(odw->hdr, v, "PL", pls, no_samples*3);
-                        if (has_GL) bcf_update_format_float(odw->hdr, v, "GL", gls, no_samples*3);
+                        if (has_GT) bcf_update_genotypes(odw->hdr, v, gts, no_samples*ploidy);
+                        if (has_PL) bcf_update_format_int32(odw->hdr, v, "PL", pls, no_samples*n_genotype);
+                        if (has_GL) bcf_update_format_float(odw->hdr, v, "GL", gls, no_samples*n_genotype);
                     }
 
                     odw->write(v);

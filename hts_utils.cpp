@@ -534,6 +534,25 @@ void bcf_hdr_get_seqs_and_lens(const bcf_hdr_t *h, const char**& seqs, int32_t*&
  **********/
 
 /**
+ * Gets number of genotypes from number of alleles and ploidy.
+ */
+uint32_t bcf_ap2g(uint32_t no_allele, uint32_t no_ploidy)
+{
+    uint32_t num = 1;
+    uint32_t denum = 1;
+    
+    uint32_t n = no_ploidy + no_allele - 1;
+    uint32_t d = no_allele - 1;
+    for (uint32_t i=0; i<no_allele; ++i)
+    {
+        num *= n-i;
+        denum *= i+1;
+    }
+    
+    return num/denum;
+}
+
+/**
  * Gets a string representation of a variant.
  */
 void bcf_variant2string(bcf_hdr_t *h, bcf1_t *v, kstring_t *var)
