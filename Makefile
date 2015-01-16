@@ -69,6 +69,7 @@ SOURCES = align\
 		program\
 		remove_overlap\
 		rfhmm\
+		seq\
 		sort\
 		str\
 		subset\

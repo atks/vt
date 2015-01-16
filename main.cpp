@@ -57,6 +57,7 @@
 #include "profile_na12878.h"
 #include "profile_snps.h"
 #include "remove_overlap.h"
+#include "seq.h"
 #include "sort.h"
 #include "subset.h"
 #include "test.h"
@@ -236,6 +237,10 @@ int main(int argc, char ** argv)
     else if (argc>1 && cmd=="profile_snps")
     {
         profile_snps(argc-1, ++argv);
+    }
+    else if (argc>1 && cmd=="seq")
+    {
+        seq(argc-1, ++argv);
     }
     else if (argc>1 && cmd=="profile_mendelian")
     {
