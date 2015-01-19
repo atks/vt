@@ -35,6 +35,7 @@ class Igor : Program
     ///////////
     std::vector<GenomeInterval> intervals;
     std::string ref_fasta_file;
+    bool print;
 
     ///////
     //i/o//
@@ -65,12 +66,14 @@ class Igor : Program
             VTOutput my; cmd.setOutput(&my);
             TCLAP::ValueArg<std::string> arg_ref_fasta_file("r", "r", "reference sequence fasta file []", true, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_intervals("i", "i", "intervals []", false, "", "str", cmd);
+            TCLAP::SwitchArg arg_quiet("q", "q", "quiet [false]", cmd, false);
             TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "file", cmd);
 
             cmd.parse(argc, argv);
 
             parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
             ref_fasta_file = arg_ref_fasta_file.getValue();
+            print = !arg_quiet.getValue();
         }
         catch (TCLAP::ArgException &e)
         {
@@ -106,30 +109,48 @@ class Igor : Program
 
     void seq()
     {
-        std::clog << "\n";
+        if (print) std::clog << "\n";
         for (size_t i=0; i<intervals.size();++i)
         {
             char* ref = 0;
             int32_t ref_len = 0;
-            ref = faidx_fetch_uc_seq(fai, intervals[i].seq.c_str(), intervals[i].start1-1, intervals[i].end1, &ref_len);
+            ref = faidx_fetch_uc_seq(fai, intervals[i].seq.c_str(), intervals[i].start1-1, intervals[i].end1-1, &ref_len);
 
             if (ref_len!=0)
             {
-                std::clog << "interval " << intervals[i].to_string() << "\n";
-                std::clog << "sequence " << ref << "\n";
-                free(ref);
+                if (!print)
+                {
+                    std::clog << ref << "\n";
+                    free(ref);
+                }
+                else
+                {
+                    std::clog << "interval " << intervals[i].to_string() << "\n";
+                    std::clog << "sequence " << ref << "\n";
+                    free(ref);
+                }
             }
             else
             {
-                std::clog << "interval " << intervals[i].to_string() << "\n";
-                std::clog << "sequence : cannot be read\n";
+                if (!print)
+                {
+                    std::clog << "X" << "\n";
+                }
+                else
+                {
+                    std::clog << "interval " << intervals[i].to_string() << "\n";
+                    std::clog << "sequence : cannot be read\n";
+                }
+                
             }
         }
-        std::clog << "\n";
+        if (print) std::clog << "\n";
     };
 
     void print_options()
     {
+        if (!print) return;
+        
         std::clog << "seq v" << version << "\n";
         std::clog << "\n";
         std::clog << "options: [r] reference FASTA file  " << ref_fasta_file << "\n";
@@ -148,11 +169,12 @@ class Igor : Program
 
 }
 
-void seq(int argc, char ** argv)
+bool seq(int argc, char ** argv)
 {
     Igor igor(argc, argv);
     igor.print_options();
     igor.initialize();
     igor.seq();
     igor.print_stats();
+    return igor.print;
 };

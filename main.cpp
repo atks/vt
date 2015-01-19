@@ -240,7 +240,7 @@ int main(int argc, char ** argv)
     }
     else if (argc>1 && cmd=="seq")
     {
-        seq(argc-1, ++argv);
+        print = seq(argc-1, ++argv);
     }
     else if (argc>1 && cmd=="profile_mendelian")
     {

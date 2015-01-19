@@ -27,6 +27,6 @@
 #include "program.h"
 #include "htslib/faidx.h"
 
-void seq(int argc, char ** argv);
+bool seq(int argc, char ** argv);
     
 #endif
