@@ -56,17 +56,17 @@
 #define VT_SUB      (10|VT_MATH_OP|VT_FLT)
 #define VT_MUL      (11|VT_MATH_OP|VT_FLT)
 #define VT_DIV      (12|VT_MATH_OP|VT_FLT)
-#define VT_BIT_AND  (13|VT_INT|VT_MATH_OP|VT_INT|VT_BOOL)
-#define VT_BIT_OR   (14|VT_INT|VT_MATH_OP|VT_INT|VT_BOOL)
+#define VT_BIT_AND  (13|VT_INT|VT_MATH_OP|VT_BOOL)
+#define VT_BIT_OR   (14|VT_INT|VT_MATH_OP|VT_BOOL)
 
 //unary ops (data getters for vcf)
 #define VT_QUAL          (33|VT_BCF_OP|VT_FLT)
 #define VT_FILTER        (34|VT_BCF_OP|VT_BOOL)
 #define VT_INFO          (35|VT_BCF_OP)
-#define VT_N_ALLELE      (36|VT_INT|VT_BCF_OP|VT_INT)
-#define VT_VARIANT_TYPE  (37|VT_INT|VT_BCF_OP|VT_INT|VT_BOOL)
-#define VT_VARIANT_DLEN  (38|VT_INT|VT_BCF_OP|VT_INT)
-#define VT_VARIANT_LEN   (39|VT_INT|VT_BCF_OP|VT_INT)
+#define VT_N_ALLELE      (36|VT_INT|VT_BCF_OP)
+#define VT_VARIANT_TYPE  (37|VT_INT|VT_BCF_OP|VT_BOOL)
+#define VT_VARIANT_DLEN  (38|VT_INT|VT_BCF_OP)
+#define VT_VARIANT_LEN   (39|VT_INT|VT_BCF_OP)
 
 #define VT_UNKNOWN -1
 
