@@ -348,7 +348,20 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
     {
         value_exists = true;
 
-        if (type==VT_FILTER)
+        if (type==VT_QUAL)
+        {
+            if (bcf_float_is_missing(bcf_get_qual(v)))
+            {
+                f = 0;
+                value_exists = false;
+            }
+            else
+            {
+                f = bcf_get_qual(v);
+                value_exists = true;
+            }
+        }
+        else if (type==VT_FILTER)
         {
             if (bcf_has_filter(h, v, tag.s)!=1)
             {
@@ -771,6 +784,12 @@ std::string Node::type2string(int32_t type)
         s += "BCF_OP";
     }
 
+    if (type==VT_QUAL)
+    {
+        s += (s==""? "" : "|");
+        s += "QUAL";
+    }
+
     if (type==VT_FILTER)
     {
         s += (s==""? "" : "|");
@@ -1082,6 +1101,13 @@ void Filter::parse_literal(const char* exp, int32_t len, Node * node, bool debug
         node->type = VT_FILTER;
         kputsn(exp, len, &node->tag);
         if (debug) std::cerr << "\tis filter_op\n";
+        return;
+    }
+    else if (strncmp(exp, "QUAL", 4)==0)
+    {
+        node->type = VT_QUAL;
+        exp += 4;
+        if (debug) std::cerr << "\tis qual_op\n";
         return;
     }
     else if (strncmp(exp, "FILTER.", 7)==0)
