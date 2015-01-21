@@ -352,7 +352,7 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
         {
             if (bcf_float_is_missing(bcf_get_qual(v)))
             {
-                f = 0;
+                f = -1;
                 value_exists = false;
             }
             else
@@ -1279,6 +1279,9 @@ void Filter::print_filter_help()
     fprintf(stderr, "  Biallelic Indels with embedded SNP        : VTYPE==(SNP|INDEL)&&N_ALLELE==2\n");
     fprintf(stderr, "  Biallelic variants involving insertions   : VTYPE&INDEL&&DLEN>0&&N_ALLELE==2\n");
     fprintf(stderr, "  Biallelic variants involving 1bp variants : LEN==1&&N_ALLELE==2\n");
+    fprintf(stderr, "\n");
+    fprintf(stderr, "  QUAL field\n");
+    fprintf(stderr, "    QUAL\n");
     fprintf(stderr, "\n");
     fprintf(stderr, "  FILTER fields\n");
     fprintf(stderr, "    PASS, FILTER.<tag>\n");
