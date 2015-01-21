@@ -434,9 +434,9 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
             {
                 type |= VT_STR;
                 //todo: how do you handle a vector of strings?
-                
-                int32_t n = s.m; 
-                
+
+                int32_t n = s.m;
+
                 if (bcf_get_info_string(h, v, tag.s, &s.s, &n)>0)
                 {
                     s.m = n;
@@ -483,7 +483,7 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
         else if (type==(VT_INFO|VT_STR))
         {
             int32_t n=s.m;
-                
+
             if (bcf_get_info_string(h, v, tag.s, &s.s, &n)>0)
             {
                 s.m=n;
@@ -544,7 +544,7 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
             return;
         }
 
-        if ((type&8207)==VT_ADD)
+        if ((type&15)==9)
         {
             if ((left->type&VT_INT))
             {
@@ -581,7 +581,7 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
             fprintf(stderr, "[%s:%d %s] evaluation not supported : +\n", __FILE__, __LINE__, __FUNCTION__);
             exit(1);
         }
-        else if ((type&8207)==VT_SUB)
+        else if ((type&15)==10)
         {
             if ((left->type&VT_INT))
             {
@@ -618,7 +618,7 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
             fprintf(stderr, "[%s:%d %s] evaluation not supported : -\n", __FILE__, __LINE__, __FUNCTION__);
             exit(1);
         }
-        else if ((type&8207)==VT_MUL)
+        else if ((type&15)==11)
         {
             if ((left->type&VT_INT))
             {
@@ -655,7 +655,7 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
             fprintf(stderr, "[%s:%d %s] evaluation not supported : *\n", __FILE__, __LINE__, __FUNCTION__);
             exit(1);
         }
-        else if ((type&8207)==VT_DIV)
+        else if ((type&15)==12)
         {
             if (left->type&VT_INT)
             {
@@ -691,7 +691,7 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
             fprintf(stderr, "[%s:%d %s] evaluation not supported : /\n", __FILE__, __LINE__, __FUNCTION__);
             exit(1);
         }
-        else if (type==VT_BIT_AND)
+        else if ((type&15)==13)
         {
             if ((left->type&VT_INT) && (right->type&VT_INT))
             {
@@ -703,7 +703,7 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
             fprintf(stderr, "[%s:%d %s] evaluation not supported for & :  %d %d\n", __FILE__, __LINE__, __FUNCTION__, left->type, right->type);
             exit(1);
         }
-        else if (type==VT_BIT_OR)
+        else if ((type&15)==14)
         {
             if ((left->type&VT_INT) && (right->type&VT_INT))
             {
