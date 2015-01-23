@@ -149,17 +149,14 @@ class Igor : Program
         kstring_t old_alleles = {0,0,0};
         kstring_t new_alleles = {0,0,0};
 
-        int32_t ambiguous_variant_types = (VT_MNP | VT_INDEL | VT_CLUMPED);
-
         v = odw->get_bcf1_from_pool();
         Variant variant;
 
         while (odr->read(v))
         {
             bcf_unpack(v, BCF_UN_INFO);
-            int32_t vtype = vm->classify_variant(odr->hdr, v, variant, false); //false argument to ensure no trimming
-
-            if (vtype & ambiguous_variant_types)
+            
+            if (!vm->is_normalized(v))
             {
                 const char* chrom = odr->get_seqname(v);
                 uint32_t pos1 = bcf_get_pos1(v);

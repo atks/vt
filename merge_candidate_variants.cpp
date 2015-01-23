@@ -229,6 +229,7 @@ Each VCF file is required to have the FORMAT flags E and N and should have exact
         double log10me = log10(0.99);
         double log10half = log10(0.5);
 
+        Variant var;
         std::vector<bcfptr*> current_recs;
         while(sr->read_next_position(current_recs))
         {
@@ -348,7 +349,7 @@ Each VCF file is required to have the FORMAT flags E and N and should have exact
                     {
                         odw->write(nv);
 
-                        int32_t vtype = vm->classify_variant(odw->hdr,nv);
+                        int32_t vtype = vm->classify_variant(odw->hdr, nv, var);
                         if (vtype == VT_SNP)
                         {
                             ++no_candidate_snps;

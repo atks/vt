@@ -35,6 +35,7 @@
 #define NO_VARIANT_CATEGORIES 20
 #define NO_BASIC_VARIANT_CATEGORIES 16
 #define NO_ALLELE_CATEGORIES 8
+#define NO_MOTIF_LEN_CATEGORIES 10
 
 #define VT_NAIVE_CLUMPED   17
 #define VT_BLKSUB          18
@@ -86,6 +87,7 @@ class Igor : Program
     int32_t **VAR_TV;
     int32_t **VAR_INS;
     int32_t **VAR_DEL;
+    int32_t **VAR_MOTIF_LEN;
 
     int32_t no_snp3;
     int32_t no_snp4;
@@ -184,9 +186,8 @@ class Igor : Program
             }
         }
 
-        no_snp3 = 0;
-        no_snp4 = 0;
-
+        VAR_MOTIF_LEN = new int32_t*[NO_MOTIF_LEN_CATEGORIES];
+           
         ////////////////////////
         //tools initialization//
         ////////////////////////
@@ -237,6 +238,15 @@ class Igor : Program
                 VAR_DEL[no_alleles][vtype] += variant.alleles[i].del;
             }
 
+            if (vtype==VT_VNTR)
+            {
+                ++VAR_COUNT[POLYMORPHIC][VT_VNTR];
+                
+                //obtain motif
+              //  VAR_MOTIF_LEN[]
+                
+            }
+            
             if (vtype==VT_SV)
             {
                 ++VAR_COUNT[POLYMORPHIC][VT_SV];
@@ -419,7 +429,7 @@ class Igor : Program
         fprintf(stderr, "           no. of 1bp motifs                   : %10d\n", 0);
  
         fprintf(stderr, "           no. of Minisatellites         : %10d\n", 0);
- 
+        fprintf(stderr, "\n");
         
         fprintf(stderr, "       ======= Structural variants ========\n");
         fprintf(stderr, "\n");
@@ -697,6 +707,7 @@ class Igor : Program
         delete VAR_TV;
         delete VAR_INS;
         delete VAR_DEL;
+        delete VAR_MOTIF_LEN;
 
         delete vm;
         delete sv;

@@ -197,35 +197,46 @@ bool VariantManip::detect_str(const char* chrom, uint32_t pos1, Variant& variant
 /**
  * Checks if a variant is normalized.
  */
-bool is_normalized(char** alleles, int32_t n_allele)
+bool VariantManip::is_normalized(bcf1_t *v)
 {
+    char** alleles = bcf_get_allele(v);
+    int32_t n_allele = bcf_get_n_allele(v);
+
     char first_base;
     char last_base;
-    size_t len;
+    size_t rlen, alen, len;
     bool exists_len_one_allele = false;
     bool first_base_same = true;
     bool last_base_same = true;
 
     if (n_allele==2)
     {
-        //ref
-        len = strlen(alleles[0]);
-        if (len==1) exists_len_one_allele = true;
-        first_base = alleles[0][0];
-        last_base = alleles[0][len-1];
+        rlen = strlen(alleles[0]);
+        alen = strlen(alleles[1]);
 
-        //alt
-        len = strlen(alleles[1]);
-        if (len==1) exists_len_one_allele = true;
-        if (first_base!=alleles[1][0]) first_base_same = false;
-        if (last_base!=alleles[1][len-1]) last_base_same = false;
-
-        if (last_base_same || (!exists_len_one_allele && first_base_same))
+        if (rlen==1&&alen==1)
         {
-            return false;
+            return true;
         }
+        else
+        {
+            //ref
+            if (rlen==1) exists_len_one_allele = true;
+            first_base = alleles[0][0];
+            last_base = alleles[0][rlen-1];
 
-        return true;
+            //alt
+            if (alen==1) exists_len_one_allele = true;
+            if (first_base!=alleles[1][0]) first_base_same = false;
+            if (last_base!=alleles[1][alen-1]) last_base_same = false;
+
+            if (last_base_same || (!exists_len_one_allele && first_base_same))
+            {
+                return false;
+            }
+
+            return true;
+        }
     }
     else
     {
@@ -259,43 +270,20 @@ bool is_normalized(char** alleles, int32_t n_allele)
 /**
  * Classifies variants.
  */
-int32_t VariantManip::classify_variant(bcf_hdr_t *h, bcf1_t *v,  Variant& variant, bool in_situ_left_trimming)
+int32_t VariantManip::classify_variant(bcf_hdr_t *h, bcf1_t *b, Variant& var)
 {
-    bcf_unpack(v, BCF_UN_STR);
-    return classify_variant(bcf_get_chrom(h, v), bcf_get_pos1(v), bcf_get_allele(v), bcf_get_n_allele(v), variant, in_situ_left_trimming);
-}
+    const char* chrom = bcf_get_chrom(h, b);
+    uint32_t pos1 = bcf_get_pos1(b);
+    char** allele = bcf_get_allele(b);
+    int32_t n_allele = bcf_get_n_allele(b);
 
-/**
- * Classifies variants.
- */
-int32_t VariantManip::classify_variant(bcf_hdr_t *h, bcf1_t *v)
-{
-    Variant variant;
-    bcf_unpack(v, BCF_UN_STR);
-    return classify_variant(bcf_get_chrom(h, v), bcf_get_pos1(v), bcf_get_allele(v), bcf_get_n_allele(v), variant);
-}
-
-/**
- * Classifies variants.
- */
-int32_t VariantManip::classify_variant(const char* chrom, uint32_t pos1, char** allele, int32_t n_allele)
-{
-    Variant variant;
-    return classify_variant(chrom, pos1, allele, n_allele, variant);
-}
-
-/**
- * Classifies variants.
- */
-int32_t VariantManip::classify_variant(const char* chrom, uint32_t pos1, char** allele, int32_t n_allele, Variant& v, bool trimming)
-{
     int32_t pos0 = pos1-1;
-    v.ts = 0;   
-    v.tv = 0;   
-    v.ins = 0;  
-    v.del = 0;  
-    
-    v.clear(); // this sets the type to VT_REF by default.
+    var.ts = 0;
+    var.tv = 0;
+    var.ins = 0;
+    var.del = 0;
+
+    var.clear(); // this sets the type to VT_REF by default.
 
     bool homogeneous_length = true;
 
@@ -310,12 +298,41 @@ int32_t VariantManip::classify_variant(const char* chrom, uint32_t pos1, char** 
         //check for tags
         if (allele[i][0]=='<')
         {
-            size_t len = strlen(allele[i])
-            type = VT_SV; 
+            size_t len = strlen(allele[i]);
+            if (len>=5)
+            {
+                if (allele[i][0]=='<' && allele[i][1]=='V' && allele[i][2]=='N' && allele[i][len-1]=='>' )
+                {
+                    for (size_t j=3; j<len-1; ++j)
+                    {
+                        if (allele[i][j]<'0' || allele[i][j]>'9')
+                        {
+                            type = VT_VNTR;
+                        }
+                    }
+                }
+                else if (allele[i][0]=='<' &&
+                         allele[i][1]=='V' && allele[i][2]=='N' && allele[i][3]=='T' && allele[i][4]=='R' &&
+                         allele[i][len-1]=='>' )
+                {
+                     type = VT_VNTR;
+                }
+            }
 
-            v.type |= type;
-            std::string sv_type(allele[i]);
-            v.alleles.push_back(Allele(type, 0, 0, 0, 0, 0, 0, sv_type));
+            if (type==VT_VNTR)
+            {
+                type = VT_VNTR;
+                var.type |= type;
+                var.alleles.push_back(Allele(type));
+            }
+            else
+            {
+                type = VT_SV;
+
+                var.type |= type;
+                std::string sv_type(allele[i]);
+                var.alleles.push_back(Allele(type, sv_type));
+            }
         }
         else if (allele[i][0]=='.')
         {
@@ -341,44 +358,42 @@ int32_t VariantManip::classify_variant(const char* chrom, uint32_t pos1, char** 
             //in general, any unnormalized variant
             int32_t rl = rlen;
             int32_t al = alen;
-            if (trimming)
+            //trim right
+            while (rl!=1 && al!=1)
             {
-                //trim right
-                while (rl!=1 && al!=1)
+                if (ref[rl-1]==alt[al-1])
                 {
-                    if (ref[rl-1]==alt[al-1])
-                    {
-                        --rl;
-                        --al;
-                    }
-                    else
-                    {
-                        break;
-                    }
+                    --rl;
+                    --al;
                 }
-
-                //trim left
-                while (rl !=1 && al!=1)
+                else
                 {
-                    if (ref[0]==alt[0])
-                    {
-                        ++ref;
-                        ++alt;
-                        --rl;
-                        --al;
-                    }
-                    else
-                    {
-                        break;
-                    }
+                    break;
                 }
-
-                kputsn(ref, rl, &REF);
-                kputsn(alt, al, &ALT);
-
-                ref = REF.s;
-                alt = ALT.s;
             }
+
+            //trim left
+            while (rl !=1 && al!=1)
+            {
+                if (ref[0]==alt[0])
+                {
+                    ++ref;
+                    ++alt;
+                    --rl;
+                    --al;
+                }
+                else
+                {
+                    break;
+                }
+            }
+
+            kputsn(ref, rl, &REF);
+            kputsn(alt, al, &ALT);
+
+            ref = REF.s;
+            alt = ALT.s;
+
 
 
             int32_t mlen = std::min(rl, al);
@@ -462,28 +477,34 @@ int32_t VariantManip::classify_variant(const char* chrom, uint32_t pos1, char** 
                 type |= VT_CLUMPED;
             }
 
-            v.type |= type;
-            v.alleles.push_back(Allele(type, diff, alen, dlen, 0, mlen, ts, tv));
-            v.ts += ts;
-            v.tv += tv;
-            v.ins = dlen>0?1:0;
-            v.del = dlen<0?1:0;            
-            
+            if (var.type==VT_VNTR)
+            {
+                //populate motif, motif len etc. etc.
+                //int32_t ret = bcf_get_info_int32()
+            }
+
+            var.type |= type;
+            var.alleles.push_back(Allele(type, diff, alen, dlen, mlen, ts, tv));
+            var.ts += ts;
+            var.tv += tv;
+            var.ins = dlen>0?1:0;
+            var.del = dlen<0?1:0;
+
             if (REF.m) free(REF.s);
             if (ALT.m) free(ALT.s);
         }
     }
 
     //additionally define MNPs by length of all alleles
-    if (!(v.type&VT_SV))
+    if (!(var.type&VT_SV))
     {
         if (homogeneous_length && rlen>1 && n_allele>1)
         {
-            v.type |= VT_MNP;
+            var.type |= VT_MNP;
         }
     }
 
-    return v.type;
+    return var.type;
 }
 
 /**
@@ -508,7 +529,7 @@ void VariantManip::right_trim_or_left_extend(std::vector<std::string>& alleles, 
                     to_right_trim = false;
                     //do not break here!!! you need to check for empty alleles that might exist!!!
                 }
-                
+
                 if (pos1==1 && alleles[i].size()==1)
                 {
                     to_right_trim = false;
@@ -522,7 +543,7 @@ void VariantManip::right_trim_or_left_extend(std::vector<std::string>& alleles, 
                 break;
             }
         }
-        
+
         if (to_right_trim)
         {
             for (size_t i=0; i<alleles.size(); ++i)

@@ -100,27 +100,12 @@ class VariantManip
     /**
      * Classifies variants.
      */
-    int32_t classify_variant(bcf_hdr_t *h, bcf1_t *v, Variant& variant, bool in_situ_left_trimming = true);
-
-    /**
-     * Classifies variants.
-     */
-    int32_t classify_variant(bcf_hdr_t *h, bcf1_t *v);
-
-    /**
-     * Classifies variants.
-     */
-    int32_t classify_variant(const char* chrom, uint32_t pos1, char** allele, int32_t n_allele, Variant& variant, bool in_situ_left_trimming = true);
-
-    /**
-     * Classifies variants.
-     */
-    int32_t classify_variant(const char* chrom, uint32_t pos1, char** allele, int32_t n_allele);
+    int32_t classify_variant(bcf_hdr_t *h, bcf1_t *v, Variant& var);
 
     /**
      * Checks if a variant is normalized.
      */
-    bool is_normalized(char** alleles, int32_t n_allele);
+    bool is_normalized(bcf1_t *v);
 
     /**
      * Right trims or left extend a variant.

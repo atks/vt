@@ -49,14 +49,18 @@ class Variant
     public:
 
     int32_t type;       //aggegrated type from the alleles
-    int32_t rlen;       //reference length
-    kstring_t motif;    //motif
-    int32_t mlen;       //motif length
-    int32_t tlen;       //reference tract length
+    
+    //sum from all the alleles
     int32_t ts;         //no. of transitions
     int32_t tv;         //no. of tranversions (mlen-ts)
     int32_t ins;        //no. of insertions
     int32_t del;        //no. of deletions
+
+    std::string motif;   //motif of VNTR
+    std::string ru;      //reference motif of VNTR
+    int32_t rlen;        //length of repeat unit
+    float rl;            //repeat length of VNTR on the reference in motif counts
+    int32_t rlb;         //repeat length of VNTR on the reference in bases
         
     std::string emotif;
     std::string eru;
@@ -77,26 +81,6 @@ class Variant
      * Destructor.
      */
     ~Variant();
-
-    /**
-     * Classifies variants.
-     */
-    int32_t classify_variant(bcf_hdr_t *h, bcf1_t *v, Variant& variant, bool in_situ_left_trimming = true);
-
-    /**
-     * Classifies variants.
-     */
-    int32_t classify_variant(bcf_hdr_t *h, bcf1_t *v);
-
-    /**
-     * Classifies variants.
-     */
-    int32_t classify_variant(const char* chrom, uint32_t pos1, char** allele, int32_t n_allele, Variant& variant, bool in_situ_left_trimming = true);
-
-    /**
-     * Classifies variants.
-     */
-    int32_t classify_variant(const char* chrom, uint32_t pos1, char** allele, int32_t n_allele);
 
     /**
      * Prints variant information.

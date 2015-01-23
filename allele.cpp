@@ -23,39 +23,55 @@
 
 #include "allele.h"
 
-/**
- * Constructor.
- */
-Allele::Allele(int32_t type, int32_t diff, int32_t alen, int32_t dlen, int32_t tlen, int32_t mlen, int32_t ts, std::string& sv_type)
-{
-    this->type = type;
-    this->diff = diff;
-    this->alen = alen;
-    this->dlen = dlen;
-    this->tlen = tlen;
-    this->mlen = mlen;
-    this->ts = ts;
-    this->tv = mlen-ts;
-    this->ins = dlen>0?1:0;
-    this->del = dlen<0?1:0;
-    this->sv_type = reduce_sv_type(sv_type);
-};
 
 /**
- * Constructor.
+ * Constructor for explicit sequence variant.
  */
-Allele::Allele(int32_t type, int32_t diff, int32_t alen, int32_t dlen, int32_t tlen, int32_t mlen, int32_t ts, int32_t tv)
+Allele::Allele(int32_t type, int32_t diff, int32_t alen, int32_t dlen, int32_t mlen, int32_t ts, int32_t tv)
 {
     this->type = type;
     this->diff = diff;
     this->alen = alen;
     this->dlen = dlen;
-    this->tlen = tlen;
     this->mlen = mlen;
     this->ts = ts;
     this->tv = tv;
     this->ins = dlen>0?1:0;
     this->del = dlen<0?1:0;
+};
+
+/**
+ * Constructor for VNTR.
+ */
+Allele::Allele(int32_t type)
+{
+    this->type = type;
+    this->diff = 0;
+    this->alen = 0;
+    this->dlen = 0;
+    this->mlen = 0;
+    this->ts = 0;
+    this->tv = 0;
+    this->ins = 0;
+    this->del = 0;
+    this->sv_type = "";
+}
+
+/**
+ * Constructor for SV.
+ */
+Allele::Allele(int32_t type, std::string& sv_type)
+{
+    this->type = type;
+    this->diff = 0;
+    this->alen = 0;
+    this->dlen = 0;
+    this->mlen = 0;
+    this->ts = 0;
+    this->tv = 0;
+    this->ins = 0;
+    this->del = 0;
+    this->sv_type = reduce_sv_type(sv_type);
 };
 
 /**
@@ -95,7 +111,7 @@ std::string Allele::reduce_sv_type(std::string& sv_type)
             }
 
             return "<VNTR>";
-        }            
+        }
     }
 
     return sv_type;
@@ -110,7 +126,6 @@ void Allele::clear()
     diff = 0;
     alen = 0;
     dlen = 0;
-    tlen = 0;
     mlen = 0;
     ts = 0;
     tv = 0;
@@ -127,6 +142,5 @@ void Allele::print()
     std::cerr << "\tdiff: " << diff << "\n";
     std::cerr << "\talen: " << alen << "\n";
     std::cerr << "\tdlen: " << dlen << "\n";
-    std::cerr << "\ttlen: " << tlen << "\n";
     std::cerr << "\tsv_type: " << sv_type << "\n";
 };

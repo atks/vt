@@ -51,7 +51,6 @@ class Allele
     int32_t diff;  //number of difference bases when bases are compared
     int32_t alen;  //length(alt)
     int32_t dlen;  //length(alt)-length(ref)
-    int32_t tlen;  //tract length with respect to reference
     int32_t mlen;  //min shared length
     int32_t ts;    //no. of transitions
     int32_t tv;    //no. of tranversions (mlen-ts)
@@ -60,14 +59,19 @@ class Allele
     std::string sv_type; //hierarchical descriptor for the imprecise allele type
 
     /**
-     * Constructor.
+     * Constructor for explict sequence variant.
      */
-    Allele(int32_t type, int32_t diff, int32_t alen, int32_t dlen, int32_t tlen, int32_t mlen, int32_t ts, std::string& sv_type);
+    Allele(int32_t type, int32_t diff, int32_t alen, int32_t dlen, int32_t mlen, int32_t ts, int32_t tv);
 
     /**
-     * Constructor.
+     * Constructor for VNTR.
      */
-    Allele(int32_t type, int32_t diff, int32_t alen, int32_t dlen, int32_t tlen, int32_t mlen, int32_t ts, int32_t tv);
+    Allele(int32_t type);
+
+    /**
+     * Constructor for SV.
+     */
+    Allele(int32_t type, std::string& sv_type);
 
     /**
      * Destructor.
@@ -77,6 +81,7 @@ class Allele
     /**
      * Special dictionary for some reserve types.
      * CN\d+ be CNV
+     * VN\d+ be VNTR
      */
     std::string reduce_sv_type(std::string& sv_type);
 
