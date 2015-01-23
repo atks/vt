@@ -270,12 +270,13 @@ bool VariantManip::is_normalized(bcf1_t *v)
 /**
  * Classifies variants.
  */
-int32_t VariantManip::classify_variant(bcf_hdr_t *h, bcf1_t *b, Variant& var)
+int32_t VariantManip::classify_variant(bcf_hdr_t *h, bcf1_t *v, Variant& var)
 {
-    const char* chrom = bcf_get_chrom(h, b);
-    uint32_t pos1 = bcf_get_pos1(b);
-    char** allele = bcf_get_allele(b);
-    int32_t n_allele = bcf_get_n_allele(b);
+    bcf_unpack(v, BCF_UN_STR);
+    const char* chrom = bcf_get_chrom(h, v);
+    uint32_t pos1 = bcf_get_pos1(v);
+    char** allele = bcf_get_allele(v);
+    int32_t n_allele = bcf_get_n_allele(v);
 
     int32_t pos0 = pos1-1;
     var.ts = 0;
@@ -311,14 +312,32 @@ int32_t VariantManip::classify_variant(bcf_hdr_t *h, bcf1_t *b, Variant& var)
                         }
                     }
                 }
-                else if (allele[i][0]=='<' &&
+                else if (len==6 &&
+                         allele[i][0]=='<' &&
                          allele[i][1]=='V' && allele[i][2]=='N' && allele[i][3]=='T' && allele[i][4]=='R' &&
-                         allele[i][len-1]=='>' )
+                         allele[i][5]=='>' )
+                {
+                     type = VT_VNTR;
+                }
+                else if (allele[i][0]=='<' && allele[i][1]=='S' && allele[i][2]=='T' && allele[i][len-1]=='>' )
+                {
+                    for (size_t j=3; j<len-1; ++j)
+                    {
+                        if (allele[i][j]<'0' || allele[i][j]>'9')
+                        {
+                            type = VT_VNTR;
+                        }
+                    }
+                }
+                else if (len==5 &&
+                         allele[i][0]=='<' &&
+                         allele[i][1]=='S' && allele[i][2]=='T' && allele[i][3]=='R' &&
+                         allele[i][4]=='>' )
                 {
                      type = VT_VNTR;
                 }
             }
-
+                        
             if (type==VT_VNTR)
             {
                 type = VT_VNTR;
@@ -479,8 +498,42 @@ int32_t VariantManip::classify_variant(bcf_hdr_t *h, bcf1_t *b, Variant& var)
 
             if (var.type==VT_VNTR)
             {
+                bcf_unpack(v, BCF_UN_INFO);
+                
                 //populate motif, motif len etc. etc.
-                //int32_t ret = bcf_get_info_int32()
+                char* str;
+                int32_t n;
+                int32_t ret = bcf_get_info_int32(h, v, "MOTIF", &str, &n);
+                if (ret>0) 
+                {
+                    var.motif = std::string(str);
+                    var.mlen = var.motif.size();
+                }
+                ret = bcf_get_info_int32(h, v, "RU", &str, &n);
+                if (ret>0) 
+                {
+                    var.ru = std::string(str);
+                }
+                if (n) free(str);
+                
+                int32_t* no;
+                n = 0;    
+                ret = bcf_get_info_int32(h, v, "RL", &no, &n);
+                if (ret>0) var.rlen = *no;
+                if (n) free(no);
+                    
+                int32_t* fl;
+                n = 0;                                    
+                ret = bcf_get_info_int32(h, v, "REF", &fl, &n);
+                if (ret>0) var.rcn = *fl;
+                if (n) free(fl);    
+                
+//    std::string motif;   //motif of VNTR
+//    std::string ru;      //repeat unit of VNTR
+//    int32_t mlen;        //length of motif
+//    float rcn;           //reference copy number
+//    int32_t rlen;        //reference length of repeat tract in bases
+                    
             }
 
             var.type |= type;

@@ -57,10 +57,10 @@ class Variant
     int32_t del;        //no. of deletions
 
     std::string motif;   //motif of VNTR
-    std::string ru;      //reference motif of VNTR
-    int32_t rlen;        //length of repeat unit
-    float rl;            //repeat length of VNTR on the reference in motif counts
-    int32_t rlb;         //repeat length of VNTR on the reference in bases
+    std::string ru;      //repeat unit of VNTR
+    int32_t mlen;        //length of motif
+    float rcn;           //reference copy number
+    int32_t rlen;        //reference length of repeat tract in bases
         
     std::string emotif;
     std::string eru;
