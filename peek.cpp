@@ -202,7 +202,7 @@ class Igor : Program
         khiter_t k;
         khash_t(32) *h = kh_init(32);
 
-        int32_t vtypes[] = {VT_REF, VT_SNP, VT_MNP, VT_INDEL, VT_SNP|VT_MNP, VT_SNP|VT_INDEL, VT_MNP|VT_INDEL, VT_SNP|VT_MNP|VT_INDEL, VT_CLUMPED, VT_SV};
+        int32_t vtypes[] = {VT_REF, VT_SNP, VT_MNP, VT_INDEL, VT_SNP|VT_MNP, VT_SNP|VT_INDEL, VT_MNP|VT_INDEL, VT_SNP|VT_MNP|VT_INDEL, VT_CLUMPED, VT_VNTR, VT_SV};
 
         Variant variant;
 
@@ -411,6 +411,16 @@ class Igor : Program
             }
             fprintf(stderr, "\n");
         }
+        
+        fprintf(stderr, "       ============== VNTR ===============\n");
+        fprintf(stderr, "\n");
+        fprintf(stderr, "       no. of VNTRs         : %10d\n", 0);
+        
+        fprintf(stderr, "           no. of 1bp motifs                   : %10d\n", 0);
+ 
+        fprintf(stderr, "           no. of Minisatellites         : %10d\n", 0);
+ 
+        
         fprintf(stderr, "       ======= Structural variants ========\n");
         fprintf(stderr, "\n");
         std::vector<SVNode*> s = sv->enumerate_dfs();

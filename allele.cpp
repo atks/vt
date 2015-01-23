@@ -65,7 +65,7 @@ Allele::~Allele() {};
 
 /**
  * Special dictionary for some reserve types.
- * CN\d+ be CNV
+ * CN\d+ be CNV and VN\d+ be VNTR
  */
 std::string Allele::reduce_sv_type(std::string& sv_type)
 {
@@ -84,6 +84,18 @@ std::string Allele::reduce_sv_type(std::string& sv_type)
 
             return "<CNV>";
         }
+        else if (sv_type.at(0)=='<' && sv_type.at(1)=='V' && sv_type.at(2)=='N' && sv_type.at(len-1)=='>' )
+        {
+            for (size_t i=3; i<len-1; ++i)
+            {
+                if (sv_type.at(i)<'0' || sv_type.at(i)>'9')
+                {
+                    return sv_type;
+                }
+            }
+
+            return "<VNTR>";
+        }            
     }
 
     return sv_type;

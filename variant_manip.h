@@ -51,13 +51,6 @@
 //
 //#endif
 
-#define VT_REF      0   //dlen==0 && diff==0
-#define VT_SNP      1   //min(rlen,alen)==1 && diff==1
-#define VT_MNP      2   //min(rlen,alen)==diff
-#define VT_INDEL    4   //diff!=0 && (rlen==1 || alen==1)
-#define VT_CLUMPED  8   //all others
-#define VT_SV       16  //structural variant tags
-
 /**
  * Methods for manipulating variants
  */

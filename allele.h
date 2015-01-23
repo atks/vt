@@ -34,7 +34,8 @@
 #define VT_MNP      2   //min(rlen,alen)==diff  || all allele lengths are the same and greater than 1.
 #define VT_INDEL    4   //diff!=0 && (rlen==1 || alen==1)
 #define VT_CLUMPED  8   //all others sequence explicit
-#define VT_SV       16  //structural variant
+#define VT_VNTR     16  //variable number of tandem repeats
+#define VT_SV       32  //structural variant
 
 /**
  * Allele.

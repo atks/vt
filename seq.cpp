@@ -120,7 +120,7 @@ class Igor : Program
             {
                 if (!print)
                 {
-                    std::clog << ref << "\n";
+                    std::cout << ref;
                     free(ref);
                 }
                 else
@@ -134,7 +134,7 @@ class Igor : Program
             {
                 if (!print)
                 {
-                    std::clog << "X" << "\n";
+                    std::cout << "X";
                 }
                 else
                 {

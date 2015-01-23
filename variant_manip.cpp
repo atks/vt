@@ -310,7 +310,8 @@ int32_t VariantManip::classify_variant(const char* chrom, uint32_t pos1, char** 
         //check for tags
         if (allele[i][0]=='<')
         {
-            type = VT_SV; //support for SVs, might extend to STRs in future which is not really an SV
+            size_t len = strlen(allele[i])
+            type = VT_SV; 
 
             v.type |= type;
             std::string sv_type(allele[i]);
