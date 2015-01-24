@@ -87,6 +87,12 @@ std::string VariantManip::vtype2string(int32_t VTYPE)
         s += "Clumped";
     }
 
+    if (VTYPE & VT_VNTR)
+    {
+        s += (s.size()==0) ? "" : "/";
+        s += "VNTR";
+    }
+
     if (VTYPE & VT_SV)
     {
         s += (s.size()==0) ? "" : "/";
@@ -549,7 +555,7 @@ int32_t VariantManip::classify_variant(bcf_hdr_t *h, bcf1_t *v, Variant& var)
     }
 
     //additionally define MNPs by length of all alleles
-    if (!(var.type&VT_SV))
+    if (!(var.type&VT_VNTR&VT_SV))
     {
         if (homogeneous_length && rlen>1 && n_allele>1)
         {

@@ -23,19 +23,19 @@
 
 #include "peek.h"
 
-#define MONOMORPHIC 0
-#define BIALLELIC 1
-#define TRIALLELIC 2
-#define TETRAALLELIC 3
+#define MONOMORPHIC     0
+#define BIALLELIC       1
+#define TRIALLELIC      2
+#define TETRAALLELIC    3
 #define GE_PENTAALLELIC 4
-#define GE_TRIALLELIC 5
+#define GE_TRIALLELIC   5
 #define GE_TETRAALLELIC 6
-#define POLYMORPHIC 7
+#define POLYMORPHIC     7
 
-#define NO_VARIANT_CATEGORIES 20
+#define NO_VARIANT_CATEGORIES       20
 #define NO_BASIC_VARIANT_CATEGORIES 16
-#define NO_ALLELE_CATEGORIES 8
-#define NO_MOTIF_LEN_CATEGORIES 10
+#define NO_ALLELE_CATEGORIES         8
+#define NO_MOTIF_LEN_CATEGORIES     10
 
 #define VT_NAIVE_CLUMPED   17
 #define VT_BLKSUB          18
@@ -210,7 +210,8 @@ class Igor : Program
         while (odr->read(v))
         {
             int32_t vtype = vm->classify_variant(odr->hdr, v, variant);
-
+            bcf_print(odr->hdr, v);
+            std::cerr << vm->vtype2string(vtype) << "\n";
             if (filter_exists)
             {
                 if (!filter.apply(odr->hdr, v, &variant, false))
