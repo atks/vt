@@ -131,6 +131,18 @@ void VariantManip::vtype2string(int32_t vtype, kstring_t *s)
     {
         if (s->l) kputc(',', s);
         kputs("CLUMPED", s);
+    }    
+    
+    if (vtype & VT_VNTR)
+    {
+        if (s->l) kputc(',', s);
+        kputs("VNTR", s);
+    }    
+    
+    if (vtype & VT_SV)
+    {
+        if (s->l) kputc(',', s);
+        kputs("SV", s);
     }
 }
 
@@ -419,8 +431,6 @@ int32_t VariantManip::classify_variant(bcf_hdr_t *h, bcf1_t *v, Variant& var)
             ref = REF.s;
             alt = ALT.s;
 
-
-
             int32_t mlen = std::min(rl, al);
             int32_t dlen = al-rl;
             int32_t diff = 0;
@@ -502,46 +512,6 @@ int32_t VariantManip::classify_variant(bcf_hdr_t *h, bcf1_t *v, Variant& var)
                 type |= VT_CLUMPED;
             }
 
-            if (var.type==VT_VNTR)
-            {
-                bcf_unpack(v, BCF_UN_INFO);
-                
-                //populate motif, motif len etc. etc.
-                char* str;
-                int32_t n;
-                int32_t ret = bcf_get_info_int32(h, v, "MOTIF", &str, &n);
-                if (ret>0) 
-                {
-                    var.motif = std::string(str);
-                    var.mlen = var.motif.size();
-                }
-                ret = bcf_get_info_int32(h, v, "RU", &str, &n);
-                if (ret>0) 
-                {
-                    var.ru = std::string(str);
-                }
-                if (n) free(str);
-                
-                int32_t* no;
-                n = 0;    
-                ret = bcf_get_info_int32(h, v, "RL", &no, &n);
-                if (ret>0) var.rlen = *no;
-                if (n) free(no);
-                    
-                int32_t* fl;
-                n = 0;                                    
-                ret = bcf_get_info_int32(h, v, "REF", &fl, &n);
-                if (ret>0) var.rcn = *fl;
-                if (n) free(fl);    
-                
-//    std::string motif;   //motif of VNTR
-//    std::string ru;      //repeat unit of VNTR
-//    int32_t mlen;        //length of motif
-//    float rcn;           //reference copy number
-//    int32_t rlen;        //reference length of repeat tract in bases
-                    
-            }
-
             var.type |= type;
             var.alleles.push_back(Allele(type, diff, alen, dlen, mlen, ts, tv));
             var.ts += ts;
@@ -554,8 +524,42 @@ int32_t VariantManip::classify_variant(bcf_hdr_t *h, bcf1_t *v, Variant& var)
         }
     }
 
+    if (var.type==VT_VNTR)
+    {
+        bcf_unpack(v, BCF_UN_INFO);
+        
+        //populate motif, motif len etc. etc.
+        char* str = NULL;
+        int32_t n = 0;
+        int32_t ret = bcf_get_info_string(h, v, "MOTIF", &str, &n);
+        if (ret>0) 
+        {
+            var.motif = std::string(str);
+            var.mlen = var.motif.size();
+        }
+        ret = bcf_get_info_string(h, v, "RU", &str, &n);
+        if (ret>0) 
+        {
+            var.ru = std::string(str);
+            var.mlen = var.ru.size();
+        }
+        if (n) free(str);
+        
+        int32_t* no = NULL;
+        n = 0;    
+        ret = bcf_get_info_int32(h, v, "RL", &no, &n);
+        if (ret>0) var.rlen = *no;
+        if (n) free(no);
+            
+        int32_t* fl = NULL;
+        n = 0;                                    
+        ret = bcf_get_info_int32(h, v, "REF", &fl, &n);
+        if (ret>0) var.rcn = *fl;
+        if (n) free(fl);                        
+    }
+    
     //additionally define MNPs by length of all alleles
-    if (!(var.type&VT_VNTR&VT_SV))
+    if (!(var.type&(VT_VNTR|VT_SV)))
     {
         if (homogeneous_length && rlen>1 && n_allele>1)
         {

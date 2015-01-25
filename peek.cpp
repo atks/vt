@@ -87,7 +87,7 @@ class Igor : Program
     int32_t **VAR_TV;
     int32_t **VAR_INS;
     int32_t **VAR_DEL;
-    int32_t **VAR_MOTIF_LEN;
+    int32_t *VAR_MOTIF_LEN;
 
     int32_t no_snp3;
     int32_t no_snp4;
@@ -186,7 +186,12 @@ class Igor : Program
             }
         }
 
-        VAR_MOTIF_LEN = new int32_t*[NO_MOTIF_LEN_CATEGORIES];
+        VAR_MOTIF_LEN = new int32_t[NO_MOTIF_LEN_CATEGORIES];
+          
+        for (int32_t i=0; i<NO_MOTIF_LEN_CATEGORIES; ++i)
+        {
+            VAR_MOTIF_LEN[i] = 0;
+        }  
            
         ////////////////////////
         //tools initialization//
@@ -210,8 +215,10 @@ class Igor : Program
         while (odr->read(v))
         {
             int32_t vtype = vm->classify_variant(odr->hdr, v, variant);
-            bcf_print(odr->hdr, v);
-            std::cerr << vm->vtype2string(vtype) << "\n";
+            
+//            bcf_print(odr->hdr, v);
+//            std::cerr << vm->vtype2string(vtype) << "\n";
+//            
             if (filter_exists)
             {
                 if (!filter.apply(odr->hdr, v, &variant, false))
@@ -242,10 +249,14 @@ class Igor : Program
             if (vtype==VT_VNTR)
             {
                 ++VAR_COUNT[POLYMORPHIC][VT_VNTR];
-                
-                //obtain motif
-              //  VAR_MOTIF_LEN[]
-                
+                if (variant.mlen<NO_MOTIF_LEN_CATEGORIES)
+                {    
+                    ++VAR_MOTIF_LEN[variant.mlen-1];
+                }
+                else
+                {
+                    ++VAR_MOTIF_LEN[NO_MOTIF_LEN_CATEGORIES-1];
+                }
             }
             
             if (vtype==VT_SV)
@@ -425,11 +436,21 @@ class Igor : Program
         
         fprintf(stderr, "       ============== VNTR ===============\n");
         fprintf(stderr, "\n");
-        fprintf(stderr, "       no. of VNTRs         : %10d\n", 0);
-        
-        fprintf(stderr, "           no. of 1bp motifs                   : %10d\n", 0);
- 
-        fprintf(stderr, "           no. of Minisatellites         : %10d\n", 0);
+        fprintf(stderr, "       no. of VNTRs                       : %10d\n", VAR_COUNT[POLYMORPHIC][VT_VNTR]);
+        for (int32_t i=0; i<NO_MOTIF_LEN_CATEGORIES; ++i)
+        {
+            if (VAR_MOTIF_LEN[i])
+            {
+                if (i<NO_MOTIF_LEN_CATEGORIES-1)
+                {        
+                    fprintf(stderr, "           no. of %d bp motifs                   : %10d\n", i+1, VAR_MOTIF_LEN[i]);
+                }
+                else
+                {
+                    fprintf(stderr, "           no. of >%d bp motifs                   : %10d\n", i+1, VAR_MOTIF_LEN[i]);
+                }
+            }
+        }
         fprintf(stderr, "\n");
         
         fprintf(stderr, "       ======= Structural variants ========\n");
