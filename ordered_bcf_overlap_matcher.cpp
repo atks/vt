@@ -29,7 +29,6 @@
 OrderedBCFOverlapMatcher::OrderedBCFOverlapMatcher(std::string& file, std::vector<GenomeInterval>& intervals)
 {
     odr = new BCFOrderedReader(file, intervals);
-    v = bcf_init();
     no_regions = 0;
     current_interval.seq = "";
 };
@@ -55,6 +54,7 @@ bool OrderedBCFOverlapMatcher::overlaps_with(std::string& chrom, int32_t start1,
         std::cerr << "Jumped to chromosome " << chrom << "\n";
         while (odr->read(v))
         {
+            bcf_unpack(v, BCF_UN_STR);
             if (bcf_get_end_pos1(v)<start1) continue;
             overlaps = overlaps || (bcf_get_pos1(v)<=end1);
             buffer.push_back(v);
@@ -86,14 +86,98 @@ bool OrderedBCFOverlapMatcher::overlaps_with(std::string& chrom, int32_t start1,
             {    
                 while (odr->read(v))
                 {
-                    if (bcf_get_end_pos1(*i)<start1) continue;
-                    overlaps = overlaps || (bcf_get_pos1(*i)<=end1);
+                    bcf_unpack(v, BCF_UN_STR);
+                    if (bcf_get_end_pos1(v)<start1) continue;
+                    overlaps = overlaps || (bcf_get_pos1(v)<=end1);
                     buffer.push_back(v);
                     if (bcf_get_pos1(v)>end1) break;
                     
                     v = bcf_init();
                 }
             }
+        }
+    }
+
+    return overlaps;
+};
+
+/**
+ * Returns true if chrom:start1-end1 overlaps with a region in the file and populates the overlapping variants.
+ */
+bool OrderedBCFOverlapMatcher::overlaps_with(std::string& chrom, int32_t start1, int32_t end1, std::vector<bcf1_t*>& overlap_vars)
+{
+    overlap_vars.clear();
+    bool overlaps = false;
+
+    if (current_interval.seq!=chrom)
+    {
+        std::list<bcf1_t*>::iterator i = buffer.begin();
+        while (i!=buffer.end())
+        {
+            bcf_destroy(*i);
+            i = buffer.erase(i);
+        }
+        
+        current_interval.set(chrom);
+        odr->jump_to_interval(current_interval);
+        std::cerr << "Jumped to chromosome " << chrom << "\n";
+        
+        v = bcf_init();
+        
+        while (odr->read(v))
+        {
+            bcf_unpack(v, BCF_UN_STR);
+            if (bcf_get_end_pos1(v)<start1) continue;
+            overlaps = overlaps || (bcf_get_pos1(v)<=end1);
+            buffer.push_back(v);
+            if (bcf_get_pos1(v)>end1) break;
+                
+            if (overlaps)
+            {
+                overlap_vars.push_back(v);
+            }
+                
+            v = bcf_init();
+        }
+    }
+    else
+    {
+        std::list<bcf1_t*>::iterator i = buffer.begin();
+        while (i!=buffer.end())
+        {
+            if (bcf_get_end_pos1(*i)<start1)
+            {
+                bcf_destroy(*i);
+                i = buffer.erase(i);
+                continue;
+            }
+
+            overlaps = (bcf_get_pos1(*i)<=end1);
+            
+            if (overlaps)
+            {
+                overlap_vars.push_back(v);
+            }            
+            
+            break;
+        }
+        
+        v = bcf_init();
+        
+        while (odr->read(v))
+        {
+            bcf_unpack(v, BCF_UN_STR);
+            if (bcf_get_end_pos1(v)<start1) continue;
+            overlaps = overlaps || (bcf_get_pos1(v)<=end1);
+            buffer.push_back(v);
+            if (bcf_get_pos1(v)>end1) break;
+            
+            if (overlaps)
+            {
+                overlap_vars.push_back(v);
+            }
+            
+            v = bcf_init();
         }
     }
 

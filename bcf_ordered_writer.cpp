@@ -23,11 +23,10 @@
 
 #include "bcf_ordered_writer.h"
 
-BCFOrderedWriter::BCFOrderedWriter(std::string output_vcf_file_name, int32_t window, bool recycle)
+BCFOrderedWriter::BCFOrderedWriter(std::string output_vcf_file_name, int32_t window)
 {
     this->file_name = output_vcf_file_name;
     this->window = window;
-    this->recycle = recycle;
     file = NULL;
 
     kstring_t mode = {0,0,0};
@@ -192,8 +191,7 @@ bcf1_t* BCFOrderedWriter::get_bcf1_from_pool()
     }
     else
     {
-        bcf1_t *v = bcf_init();
-        return v;
+        return bcf_init();
     }
 };
 

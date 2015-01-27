@@ -65,6 +65,7 @@
 #include "uniq.h"
 #include "validate.h"
 #include "view.h"
+#include "vntrize.h"
 
 void print_time(double t)
 {
@@ -166,6 +167,10 @@ int main(int argc, char ** argv)
     {
         print = normalize(argc-1, ++argv);
     }
+    else if (argc>1 && cmd=="vntrize")
+    {
+        print = vntrize(argc-1, ++argv);
+    }    
     else if (argc>1 && cmd=="validate")
     {
         print = validate(argc-1, ++argv);

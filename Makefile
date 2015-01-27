@@ -83,6 +83,7 @@ SOURCES = align\
 		variant_buffer\
 		variant_manip\
 		view\
+		vntrize\
    	    tbx_ordered_reader\
     	ahmm\
         xcmp\

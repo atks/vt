@@ -64,7 +64,6 @@ class BCFOrderedWriter
     std::list<bcf1_t*> pool;
 
     int32_t window;
-    bool recycle;
 
     /**
      * Initialize output file.
@@ -72,7 +71,7 @@ class BCFOrderedWriter
      * @window - the window to keep variants in buffer to check for local disorder, 0 for no buffering
      * @recycle - keep unused records in a pool for reuse
      */
-    BCFOrderedWriter(std::string output_vcf_file_name, int32_t window=0, bool recycle=true);
+    BCFOrderedWriter(std::string output_vcf_file_name, int32_t window=0);
 
     /**
      * Duplicates a hdr and sets it.
@@ -96,7 +95,7 @@ class BCFOrderedWriter
 
     /**
      * Gets record from pool, creates a new record if necessary.
-     * This is exposed so that the programmer may reuse bcf1_ts
+     * This is exposed so that the programmer may reuse bcf1_t
      * from this class and return to it when writing which is
      * essentially stowing it away in a buffer.
      */
