@@ -1170,6 +1170,13 @@ void Filter::parse_literal(const char* exp, int32_t len, Node * node, bool debug
         if (debug) std::cerr << "\tis CLUMPED\n";
         return;
     }
+    else if (strncmp(exp, "VNTR", len)==0)
+    {
+        node->type = VT_INT;
+        node->i = VT_VNTR;
+        if (debug) std::cerr << "\tis VNTR\n";
+        return;
+    }
     else if (strncmp(exp, "SV", len)==0)
     {
         node->type = VT_INT;

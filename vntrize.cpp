@@ -104,7 +104,7 @@ class Igor : Program
         odr = new BCFOrderedReader(input_vcf_file, intervals);
         odw = new BCFOrderedWriter(output_vcf_file, window_size);
         odw->link_hdr(odr->hdr);
-        bcf_hdr_append(odw->hdr, "##INFO=<ID=VNTR_OVERLAP_VARIANT,Number=1,Type=String,Description=\"Original chr:pos:ref:alt variant that overlaps with a VNTR\">\n");
+        bcf_hdr_append(odw->hdr, "##INFO=<ID=VNTR_OVERLAP_VARIANT,Number=.,Type=String,Description=\"Original chr:pos:ref:alt variant that overlaps with a VNTR\">\n");
         odw->write_hdr();
         
         ////////////////////////
@@ -143,28 +143,31 @@ class Igor : Program
 
             if (orom_vntrs->overlaps_with(chrom, start1, end1, overlap_vars))
             {   
-                bcf_print_liten(odw->hdr,v);
-  
-  
-                std::cerr << "\tsize:\t" << overlap_vars.size() << "\n";
-  
                 for (size_t i=0; i<overlap_vars.size(); ++i)
                 {
-                    std::cerr << "\t";
-                    bcf_print(orom_vntrs->odr->hdr, overlap_vars[i]);
+                    if (i) kputc(',', &old_alleles);
+                    bcf_variant2string(orom_vntrs->odr->hdr, overlap_vars[i], &old_alleles);
                 }
   
-  
-  
-//                bcf_variant2string(odw->hdr, v, &old_alleles);
-//                bcf_update_info_string(odw->hdr, v, "VNTR_OVERLAP_VARIANT", old_alleles.s);
-//                bcf_update_info_flag(odr->hdr, v, REGIONS_TAG.c_str(), "", 1);
+                bcf_variant2string(odw->hdr, v, &old_alleles);
+                bcf_update_info_string(odw->hdr, v, "VNTR_OVERLAP_VARIANT", old_alleles.s);
+                bcf_set_pos1(v, bcf_get_pos1(overlap_vars[0]));
+                new_alleles.l = 0;
+                char** allele = bcf_get_allele(overlap_vars[0]);
+                int32_t n_allele = bcf_get_n_allele(overlap_vars[0]);
+                for (size_t i=0; i<n_allele; ++i)
+                {
+                    if (i) kputc(',', &new_alleles);
+                    kputs(allele[i], &new_alleles);
+                }
+                bcf_update_alleles_str(odw->hdr, v, new_alleles.s);
+                
                 ++no_variants_vntrized;
             }
-               
+            overlap_vars.clear();             
             ++no_variants;
-//            odw->write(v);
-//            v = odw->get_bcf1_from_pool();
+            odw->write(v);
+            v = odw->get_bcf1_from_pool();
         }
 
         odw->close();

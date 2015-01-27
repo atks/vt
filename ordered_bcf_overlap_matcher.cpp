@@ -45,13 +45,25 @@ bool OrderedBCFOverlapMatcher::overlaps_with(std::string& chrom, int32_t start1,
 {
     bool overlaps = false;
 
-    //moves to new chromosome
     if (current_interval.seq!=chrom)
     {
-        buffer.clear();
+        std::list<bcf1_t*>::iterator i = buffer.begin();
+        while (i!=buffer.end())
+        {
+            bcf_destroy(*i);
+            i = buffer.erase(i);
+        }
+        
         current_interval.set(chrom);
-        odr->jump_to_interval(current_interval);
+        if (!odr->jump_to_interval(current_interval))
+        {
+            fprintf(stderr, "[E:%s] cannot jump to %s\n", __FUNCTION__, current_interval.to_string().c_str());
+            exit(1);
+        }    
         std::cerr << "Jumped to chromosome " << chrom << "\n";
+        
+        v = bcf_init();
+        
         while (odr->read(v))
         {
             bcf_unpack(v, BCF_UN_STR);
@@ -59,13 +71,12 @@ bool OrderedBCFOverlapMatcher::overlaps_with(std::string& chrom, int32_t start1,
             overlaps = overlaps || (bcf_get_pos1(v)<=end1);
             buffer.push_back(v);
             if (bcf_get_pos1(v)>end1) break;
-            
+                
             v = bcf_init();
         }
     }
     else
     {
-        //scythe preceding bed records
         std::list<bcf1_t*>::iterator i = buffer.begin();
         while (i!=buffer.end())
         {
@@ -77,24 +88,21 @@ bool OrderedBCFOverlapMatcher::overlaps_with(std::string& chrom, int32_t start1,
             }
 
             overlaps = (bcf_get_pos1(*i)<=end1);
+            
             break;
         }
         
-        if (!overlaps)        
+        v = bcf_init();
+        
+        while (odr->read(v))
         {
-            if (buffer.empty())
-            {    
-                while (odr->read(v))
-                {
-                    bcf_unpack(v, BCF_UN_STR);
-                    if (bcf_get_end_pos1(v)<start1) continue;
-                    overlaps = overlaps || (bcf_get_pos1(v)<=end1);
-                    buffer.push_back(v);
-                    if (bcf_get_pos1(v)>end1) break;
-                    
-                    v = bcf_init();
-                }
-            }
+            bcf_unpack(v, BCF_UN_STR);
+            if (bcf_get_end_pos1(v)<start1) continue;
+            overlaps = overlaps || (bcf_get_pos1(v)<=end1);
+            buffer.push_back(v);
+            if (bcf_get_pos1(v)>end1) break;
+            
+            v = bcf_init();
         }
     }
 
@@ -111,6 +119,7 @@ bool OrderedBCFOverlapMatcher::overlaps_with(std::string& chrom, int32_t start1,
 
     if (current_interval.seq!=chrom)
     {
+        //clear records from previous chromosome
         std::list<bcf1_t*>::iterator i = buffer.begin();
         while (i!=buffer.end())
         {
@@ -118,30 +127,49 @@ bool OrderedBCFOverlapMatcher::overlaps_with(std::string& chrom, int32_t start1,
             i = buffer.erase(i);
         }
         
+        //random access next chromosome
         current_interval.set(chrom);
-        odr->jump_to_interval(current_interval);
+        if (!odr->jump_to_interval(current_interval))
+        {
+            fprintf(stderr, "[E:%s] cannot jump to %s\n", __FUNCTION__, current_interval.to_string().c_str());
+            exit(1);
+        }    
         std::cerr << "Jumped to chromosome " << chrom << "\n";
         
-        v = bcf_init();
-        
+        //read new variants
+        v = bcf_init();            
         while (odr->read(v))
         {
             bcf_unpack(v, BCF_UN_STR);
-            if (bcf_get_end_pos1(v)<start1) continue;
-            overlaps = overlaps || (bcf_get_pos1(v)<=end1);
-            buffer.push_back(v);
-            if (bcf_get_pos1(v)>end1) break;
-                
-            if (overlaps)
+            
+            if (bcf_get_end_pos1(v)<start1) 
             {
-                overlap_vars.push_back(v);
+                continue;
             }
-                
+            
+            if (bcf_get_pos1(v)>end1)
+            {
+                buffer.push_back(v);
+                v = NULL;
+                break;
+            }
+            
+            overlaps = true;
+            buffer.push_back(v);
+            overlap_vars.push_back(v);
             v = bcf_init();
+        }
+        
+        if (v)
+        {
+            bcf_destroy(v);
         }
     }
     else
-    {
+    {   
+        bool need_to_read = true;
+        
+        //scythe records that occur prior to chrom:start1-end1
         std::list<bcf1_t*>::iterator i = buffer.begin();
         while (i!=buffer.end())
         {
@@ -152,32 +180,49 @@ bool OrderedBCFOverlapMatcher::overlaps_with(std::string& chrom, int32_t start1,
                 continue;
             }
 
-            overlaps = (bcf_get_pos1(*i)<=end1);
-            
-            if (overlaps)
+            if (bcf_get_pos1(*i)>end1)
             {
-                overlap_vars.push_back(v);
-            }            
-            
-            break;
-        }
-        
-        v = bcf_init();
-        
-        while (odr->read(v))
-        {
-            bcf_unpack(v, BCF_UN_STR);
-            if (bcf_get_end_pos1(v)<start1) continue;
-            overlaps = overlaps || (bcf_get_pos1(v)<=end1);
-            buffer.push_back(v);
-            if (bcf_get_pos1(v)>end1) break;
-            
-            if (overlaps)
-            {
-                overlap_vars.push_back(v);
+                need_to_read = false;
+                break;
             }
             
+            overlaps = true;
+            overlap_vars.push_back(*i);
+            
+            ++i;
+        }
+        
+        //read new variants
+        if (need_to_read)
+        {
             v = bcf_init();
+            
+            while (odr->read(v))
+            {
+                bcf_unpack(v, BCF_UN_STR);
+                
+                if (bcf_get_end_pos1(v)<start1) 
+                {
+                    continue;
+                }
+                
+                if (bcf_get_pos1(v)>end1)
+                {
+                    buffer.push_back(v);
+                    v = NULL;
+                    break;
+                }
+                
+                overlaps = true;
+                buffer.push_back(v);
+                overlap_vars.push_back(v);
+                v = bcf_init();
+            }
+            
+            if (v)
+            {
+                bcf_destroy(v);
+            }
         }
     }
 
