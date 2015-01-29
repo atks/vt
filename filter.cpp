@@ -900,7 +900,6 @@ bool Filter::apply(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug) //recu
     }
     else
     {
-        bcf_print(h,v);
         return false;
     }
 }
