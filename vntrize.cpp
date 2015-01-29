@@ -68,7 +68,7 @@ class Igor : Program
         //////////////////////////
         try
         {
-            std::string desc = "normalizes variants in a VCF file";
+            std::string desc = "updates variants with a VNTR it overlaps with in a VCF file";
 
             TCLAP::CmdLine cmd(desc, ' ', version);
             VTOutput my; cmd.setOutput(&my);

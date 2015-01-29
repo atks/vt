@@ -534,22 +534,102 @@ void bcf_hdr_get_seqs_and_lens(const bcf_hdr_t *h, const char**& seqs, int32_t*&
  **********/
 
 /**
+ * n choose r.
+ */
+uint32_t choose(uint32_t n, uint32_t r)
+{
+    if (r>n)
+    {
+        return 0;
+    }
+    else if (r==n)
+    {
+        return 1;
+    }
+    else
+    {
+        if (r>(n>>1))
+        {
+            r = n-r;
+        }
+
+        uint32_t num = n;
+        uint32_t denum = 1;
+
+        for (uint32_t i=1; i<r; ++i)
+        {
+            num *= n-i;
+            denum *= i+1;
+        }
+
+        return num/denum;
+    }
+}
+
+/**
+ * Maps genotypes via 1-1 correspondence.
+ */
+uint32_t bcf_g2c(uint32_t* g, uint32_t no_ploidy)
+{
+    //assumes sorted
+    if (no_ploidy<=g[no_ploidy-1])
+    {
+        if (no_ploidy==2)
+        {
+            return (((g[1]*(g[1]+1))>>1) + g[0]);
+        }
+        else
+        {
+        }
+    }
+    else
+    {
+
+    }
+
+    return 0;
+}
+
+/**
  * Gets number of genotypes from number of alleles and ploidy.
  */
 uint32_t bcf_ap2g(uint32_t no_allele, uint32_t no_ploidy)
 {
-    uint32_t num = 1;
-    uint32_t denum = 1;
-
-    uint32_t n = no_ploidy + no_allele - 1;
-    uint32_t d = no_allele - 1;
-    for (uint32_t i=0; i<no_allele; ++i)
+    if (no_ploidy<=no_allele)
     {
-        num *= n-i;
-        denum *= i+1;
+        if (no_ploidy==1)
+        {
+            return no_allele;
+        }
+        else if (no_ploidy==2)
+        {
+            return ((no_allele*(no_allele+1))>>1);
+        }
+        else
+        {
+            uint32_t no_genotypes = 0;
+
+            for (uint32_t i=1; i<=no_ploidy; ++i)
+            {
+                no_genotypes += choose(no_allele, i);
+            }
+
+            return no_genotypes;
+        }
+    }
+    else
+    {
+        if (no_allele==1)
+        {
+            return 1;
+        }
+        else
+        {
+            choose(no_ploidy+no_allele-1, no_allele-1);
+        }
     }
 
-    return num/denum;
+    return 0;
 }
 
 /**

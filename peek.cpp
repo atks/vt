@@ -332,7 +332,9 @@ class Igor : Program
             }
         }
 
-        int32_t cplxsub_vtype[] = {VT_SNP|VT_INDEL, VT_MNP|VT_INDEL, VT_SNP|VT_MNP|VT_INDEL, VT_CLUMPED, VT_INDEL|VT_CLUMPED, VT_SNP|VT_INDEL|VT_CLUMPED, VT_MNP|VT_INDEL|VT_CLUMPED, VT_SNP|VT_MNP|VT_INDEL|VT_CLUMPED};
+        int32_t cplxsub_vtype[] = {VT_SNP|VT_INDEL, VT_MNP|VT_INDEL, VT_SNP|VT_MNP|VT_INDEL, 
+                                   VT_CLUMPED, VT_INDEL|VT_CLUMPED, VT_SNP|VT_INDEL|VT_CLUMPED, 
+                                   VT_MNP|VT_INDEL|VT_CLUMPED, VT_SNP|VT_MNP|VT_INDEL|VT_CLUMPED};
         for (size_t i=0; i<(sizeof(cplxsub_vtype)/sizeof(int32_t)); ++i)
         {
             int32_t vtype = cplxsub_vtype[i];

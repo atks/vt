@@ -132,9 +132,9 @@ bool OrderedBCFOverlapMatcher::overlaps_with(std::string& chrom, int32_t start1,
         if (!odr->jump_to_interval(current_interval))
         {
             fprintf(stderr, "[E:%s] cannot jump to %s\n", __FUNCTION__, current_interval.to_string().c_str());
-            exit(1);
+            return false;
         }    
-        std::cerr << "Jumped to chromosome " << chrom << "\n";
+        //std::cerr << "Jumped to chromosome " << chrom << "\n";
         
         //read new variants
         v = bcf_init();            
