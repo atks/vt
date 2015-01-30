@@ -28,6 +28,7 @@
 #include "annotate_variants.h"
 #include "cat.h"
 #include "compute_features.h"
+#include "compute_concordance.h"
 #include "config.h"
 #include "consolidate_variants.h"
 #include "construct_probes.h"
@@ -271,6 +272,10 @@ int main(int argc, char ** argv)
     {
         compute_features(argc-1, ++argv);
     }
+    else if (argc>1 && cmd=="compute_concordance")
+    {
+        compute_concordance(argc-1, ++argv);
+    }    
     else if (argc>1 && cmd=="estimate")
     {
         estimate(argc-1, ++argv);

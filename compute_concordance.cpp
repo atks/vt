@@ -117,7 +117,7 @@ class Igor : Program
     std::string fexp;
     Filter filter;
     bool filter_exists;
-    
+
     /////////
     //stats//
     /////////
@@ -153,52 +153,32 @@ class Igor : Program
         //////////////////////////
         try
         {
-            std::string desc =
-"Compute Concordance.\n\
-Each VCF file is required to have the FORMAT flags E and N and should have exactly one sample.\n\
-e.g. vt profile_snps_variants -o - NA19130.vcf.gz HG00096.vcf.gz\n\n";
+            std::string desc = "Compute Concordance.\n";
 
             version = "0.5";
             TCLAP::CmdLine cmd(desc, ' ', version);
-
-            TCLAP::ValueArg<std::string> arg_intervals("i", "intervals", "Intervals", false, "", "str", cmd);
-            TCLAP::ValueArg<std::string> arg_interval_list("I", "interval-list", "File containing list of intervals", false, "", "file", cmd);
-            TCLAP::ValueArg<std::string> arg_variant_type("v", "variant", "Variant Type ", false, "", "str", cmd);
-            TCLAP::ValueArg<std::string> arg_variant_concordance_txt_file("m", "variant-concordance-txt-file", "Variant concordance text file", false, "", "str", cmd);
-            TCLAP::ValueArg<std::string> arg_sample_concordance_txt_file("s", "sample-concordance-txt-file", "Sample concordance text file", false, "", "str", cmd);
-
-            TCLAP::ValueArg<std::string> arg_filters("f", "filters", "Filter (e.g. AF>0.3) ", false, "", "str", cmd);
-            TCLAP::UnlabeledMultiArg<std::string> arg_input_vcf_files("input-vcf-file", "Input VCF File", true, "str", cmd);
+            VTOutput my;
+            cmd.setOutput(&my);
+            TCLAP::ValueArg<std::string> arg_intervals("i", "i", "Intervals []", false, "", "str", cmd);
+            TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "File containing list of intervals []", false, "", "file", cmd);
+            TCLAP::ValueArg<std::string> arg_variant_concordance_txt_file("m", "m", "Variant concordance text file [m.txt]", false, "m.txt", "str", cmd);
+            TCLAP::ValueArg<std::string> arg_sample_concordance_txt_file("s", "s", "Sample concordance text file [s.txt]", false, "s.txt", "str", cmd);
+            TCLAP::ValueArg<std::string> arg_filters("f", "f", "filter expression", false, "", "str", cmd);
+            TCLAP::UnlabeledMultiArg<std::string> arg_input_vcf_files("<in1.vcf><in2.vcf>", "Input VCF File", true, "str", cmd);
 
             cmd.parse(argc, argv);
 
             if (arg_input_vcf_files.getValue().size()!=2)
             {
-                std::cerr << "Requires 2 VCF files as input\n";
+                fprintf(stderr, "[%s:%d %s] Requires 2 VCF files as input\n", __FILE__, __LINE__, __FUNCTION__);
                 exit(1);
             }
+
             input_vcf_files = arg_input_vcf_files.getValue();
             parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
             filters = arg_filters.getValue();
             variant_concordance_txt_file = arg_variant_concordance_txt_file.getValue();
             sample_concordance_txt_file = arg_sample_concordance_txt_file.getValue();
-
-//            filter=NULL;
-//            if (filters!="")
-//            {
-//                filter = new Filter();
-//                filter->parse(filters);
-//            }
-
-            if (arg_variant_type.getValue()=="snp")
-            {
-                variant_type = VCF_SNP;
-            }
-            else if (arg_variant_type.getValue()=="indel")
-            {
-                variant_type = VCF_INDEL;
-            }
-
         }
         catch (TCLAP::ArgException &e)
         {
@@ -212,14 +192,9 @@ e.g. vt profile_snps_variants -o - NA19130.vcf.gz HG00096.vcf.gz\n\n";
         //////////////////////
         //i/o initialization//
         //////////////////////
-
-
-        //input vcfs
         sr = new BCFSyncedReader(input_vcf_files, intervals);
-
         variant_concordance_txt = hts_open(variant_concordance_txt_file.c_str(), "w");
         sample_concordance_txt = hts_open(sample_concordance_txt_file.c_str(), "w");
-
 
         /////////////////////////
         //filter initialization//
@@ -230,7 +205,6 @@ e.g. vt profile_snps_variants -o - NA19130.vcf.gz HG00096.vcf.gz\n\n";
         ////////////////////////
         //stats initialization//
         ////////////////////////
-
         no_candidate_snps = 0;
         no_candidate_indels = 0;
     }
@@ -250,12 +224,12 @@ e.g. vt profile_snps_variants -o - NA19130.vcf.gz HG00096.vcf.gz\n\n";
         intersect_samples(sr->hdrs[0], sr->hdrs[1], s, a, b);
 
         stats.resize(s.size());
- 
+
         kstring_t *line = &variant_concordance_txt->line;
 
         ConcordanceStats variant_stat;
         kputs("variant\tRR_RR\tRR_RA\tRR_AA\tRR_NA\tRA_RR\tRA_RA\tRA_AA\tRA_NA\tAA_RR\tAA_RA\tAA_AA\tAA_NA\tNA_RR\tNA_RA\tNA_AA\tNA_NA\n", line);
-        //hts_write(variant_concordance_txt);
+       // std::cerr << line.s;
 
         //for combining the alleles
         std::vector<bcfptr*> current_recs;
@@ -278,7 +252,7 @@ e.g. vt profile_snps_variants -o - NA19130.vcf.gz HG00096.vcf.gz\n\n";
                     int32_t d = current_recs[i]->file_index;
                     bcf_hdr_t *h = current_recs[i]->h;
                     bcf1_t *v = current_recs[i]->v;
-                    
+
                     if (bcf_get_n_allele(v)!=2 || (filter_exists && !filter.apply(h,v,&variant)))
                     {
                         continue;
@@ -375,7 +349,7 @@ e.g. vt profile_snps_variants -o - NA19130.vcf.gz HG00096.vcf.gz\n\n";
         /////////////////////////////////////////////
         line = &sample_concordance_txt->line;
         kputs("sample\tRR_RR\tRR_RA\tRR_AA\tRR_NA\tRA_RR\tRA_RA\tRA_AA\tRA_NA\tAA_RR\tAA_RA\tAA_AA\tAA_NA\tNA_RR\tNA_RA\tNA_AA\tNA_NA\n", line);
-        //hts_write(sample_concordance_txt);
+        std::cerr << line->s;
         for (uint32_t i=0; i<s.size(); ++i)
         {
             line->l = 0;
@@ -391,7 +365,7 @@ e.g. vt profile_snps_variants -o - NA19130.vcf.gz HG00096.vcf.gz\n\n";
             }
 
             kputs("\n", line);
-            //hts_write(sample_concordance_txt);
+            std::cerr << line->s;
         }
     };
 
@@ -399,9 +373,14 @@ e.g. vt profile_snps_variants -o - NA19130.vcf.gz HG00096.vcf.gz\n\n";
     {
         std::clog << "compute_concordance v" << version << "\n\n";
 
-        std::clog << "Options:     Input VCF File    " << input_vcf_files.size() << "\n";
-        print_str_op("         [f] filter            ", fexp);
-        print_int_op("         [i] Intervals         ", intervals);
+        std::clog << "Options:     Input VCF File A     " << input_vcf_files[0] << "\n";
+        std::clog << "             Input VCF File B     " << input_vcf_files[1] << "\n";
+        std::clog << "             sample concordance   " << variant_concordance_txt_file << "\n";
+        std::clog << "             variant concordance  " << sample_concordance_txt_file << "\n";
+        
+        print_str_op("         [f] filter               ", fexp);
+        print_int_op("         [i] intervals            ", intervals);
+        std::clog << "\n";
     }
 
     void print_stats()
