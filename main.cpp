@@ -304,6 +304,10 @@ int main(int argc, char ** argv)
     {
         xcmp(argc-1, ++argv);
     }
+    else if (argc>1 && cmd=="test")
+    {
+        test(argc-1, ++argv);
+    }    
     else
     {
         std::clog << "Command not found: " << argv[1] << "\n\n";

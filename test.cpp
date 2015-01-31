@@ -56,9 +56,12 @@ class Igor : Program
     //options//
     ///////////
     std::string method;
-    std::string seq;
+    std::vector<uint32_t> x;
+
 
     bool debug;
+    uint32_t no;
+
 
     Igor(int argc, char **argv)
     {
@@ -74,32 +77,136 @@ class Igor : Program
             std::string version = "0.5";
             TCLAP::CmdLine cmd(desc, ' ', version);
             VTOutput my; cmd.setOutput(&my);
-            TCLAP::ValueArg<std::string> arg_method("m", "method", "alignment Method", true, "", "string");
-            TCLAP::ValueArg<std::string> arg_seq("s", "seq", "sequence", false, "", "string");
-            TCLAP::SwitchArg arg_debug("d", "debug", "Debug", false);
+            TCLAP::UnlabeledMultiArg<uint32_t> arg_x("ap", "#ploidy #alleles", true, "", cmd);
 
-            cmd.add(arg_method);
-            cmd.add(arg_seq);
-            cmd.add(arg_debug);
             cmd.parse(argc, argv);
 
-            method = arg_method.getValue();
-            seq = arg_seq.getValue();
+            x = arg_x.getValue();
         }
         catch (TCLAP::ArgException &e)
         {
             std::cerr << "error: " << e.error() << " for arg " << e.argId() << "\n";
             abort();
         }
+
+        no = 1;
     };
+
+    /**
+     * n choose r.
+     */
+    uint32_t choose(uint32_t n, uint32_t r)
+    {
+        if (r>n)
+        {
+            return 0;
+        }
+        else if (r==n)
+        {
+            return 1;
+        }
+        else if (r==0)
+        {
+            return 1;
+        }
+        else
+        {
+            if (r>(n>>1))
+            {
+                r = n-r;
+            }
+
+            uint32_t num = n;
+            uint32_t denum = 1;
+
+            for (uint32_t i=1; i<r; ++i)
+            {
+                num *= n-i;
+                denum *= i+1;
+            }
+
+            return num/denum;
+        }
+    }
+
+    /**
+     * Gets number of genotypes from number of alleles and ploidy.
+     */
+    uint32_t bcf_ap2g(uint32_t no_allele, uint32_t no_ploidy)
+    {
+        if (no_ploidy<=no_allele)
+        {
+            uint32_t no_genotypes = 0;
+
+            for (uint32_t i=1; i<=no_ploidy; ++i)
+            {
+                uint32_t n = 0;
+
+                if (i<no_ploidy)
+                {
+                    n += choose(no_allele, i)*choose(no_ploidy-1, i-1);
+                }
+                else if (i==no_ploidy)
+                {
+                    n += choose(no_allele, no_ploidy);
+                }
+
+                //std::cerr << i << " " << n << "\n";
+
+                no_genotypes += n;
+            }
+
+            return no_genotypes;
+        }
+        else // alleles less than ploidy
+        {
+            return choose(no_ploidy+no_allele-1, no_allele-1);
+        }
+
+        return 0;
+    }
+
+   /**
+     * Gets number of genotypes from number of alleles and ploidy.
+     */
+    uint32_t bcf_g2i(std::string genotype)
+    {
+        uint32_t allele = genotype.at(genotype.size()-1)-65;
+        
+        if (genotype.size()==1)
+        {
+            return allele;
+        }    
+        else
+        {
+            return bcf_ap2g(allele, genotype.size()) +  bcf_g2i(genotype.substr(0,genotype.size()-1));
+        }
+    }
+
+    void print_genotypes(uint32_t A, uint32_t P, std::string genotype)
+    {
+        if (genotype.size()==P)
+        {
+            std::cerr << no << ") " << genotype << " " << bcf_g2i(genotype) << "\n";
+            ++no;
+        }
+        else
+        {
+            for (uint32_t a=0; a<A; ++a)
+            {
+                std::string s(1,(char)(a+65));
+                s.append(genotype);
+                print_genotypes(a+1, P, s);
+            }
+        }
+    }
 
     void test()
     {
-        if (method == "detect_motifs")
-        {
-            
-            
-        }
+        print_genotypes(x[0], x[1], "");
+        uint32_t g = bcf_ap2g(x[0], x[1]);
+
+        std::cerr << "A: " << x[0] << " P: " << x[1] << " G: " << g << "\n";
     };
 
     void print_stats()
