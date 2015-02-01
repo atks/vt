@@ -268,19 +268,19 @@ int bcf_hdr_subset_samples(const bcf_hdr_t *h, bcf1_t *v, std::vector<int32_t>& 
 #define bcf_an2gn(n) (((n+1)*n)>>1)
 
 /**
- * Maps genotypes via 1-1 correspondence for ploidy of 2.
+ * n choose r.
  */
-#define bcf_2g2c(i,j) (((((j)+1)*(j))>>1)+(i))
-
-/**
- * Maps genotypes via 1-1 correspondence.
- */
-uint32_t bcf_g2c(uint32_t* g, uint32_t n);
+uint32_t choose(uint32_t n, uint32_t r);
 
 /**
  * Gets number of genotypes from number of alleles and ploidy.
  */
 uint32_t bcf_ap2g(uint32_t no_allele, uint32_t no_ploidy);
+
+/**
+ * Gets number of genotypes from number of alleles and ploidy.
+ */
+uint32_t bcf_g2i(std::string genotype);
 
 /**
  * Gets a string representation of a variant.

@@ -546,6 +546,10 @@ uint32_t choose(uint32_t n, uint32_t r)
     {
         return 1;
     }
+    else if (r==0)
+    {
+        return 1;
+    }
     else
     {
         if (r>(n>>1))
@@ -567,24 +571,24 @@ uint32_t choose(uint32_t n, uint32_t r)
 }
 
 /**
- * Maps genotypes via 1-1 correspondence.
+ * Gets number of genotypes from number of alleles and ploidy.
  */
-uint32_t bcf_g2c(uint32_t* g, uint32_t no_ploidy)
+uint32_t bcf_ap2g(uint32_t no_allele, uint32_t no_ploidy)
 {
-    //assumes sorted
-    if (no_ploidy<=g[no_ploidy-1])
+    if (no_ploidy<=no_allele)
     {
-        if (no_ploidy==2)
-        {
-            return (((g[1]*(g[1]+1))>>1) + g[0]);
-        }
-        else
-        {
-        }
-    }
-    else
-    {
+        uint32_t no_genotypes = 0;
 
+        for (uint32_t i=1; i<no_ploidy; ++i)
+        {
+            no_genotypes += choose(no_allele, i)*choose(no_ploidy-1, i-1);
+        }
+
+        return no_genotypes + choose(no_allele, no_ploidy);
+    }
+    else // alleles less than ploidy
+    {
+        return choose(no_ploidy+no_allele-1, no_allele-1);
     }
 
     return 0;
@@ -593,43 +597,18 @@ uint32_t bcf_g2c(uint32_t* g, uint32_t no_ploidy)
 /**
  * Gets number of genotypes from number of alleles and ploidy.
  */
-uint32_t bcf_ap2g(uint32_t no_allele, uint32_t no_ploidy)
+uint32_t bcf_g2i(std::string genotype)
 {
-    if (no_ploidy<=no_allele)
+    uint32_t allele = genotype.at(genotype.size()-1)-65;
+
+    if (genotype.size()==1)
     {
-        if (no_ploidy==1)
-        {
-            return no_allele;
-        }
-        else if (no_ploidy==2)
-        {
-            return ((no_allele*(no_allele+1))>>1);
-        }
-        else
-        {
-            uint32_t no_genotypes = 0;
-
-            for (uint32_t i=1; i<=no_ploidy; ++i)
-            {
-                no_genotypes += choose(no_allele, i);
-            }
-
-            return no_genotypes;
-        }
+        return allele;
     }
     else
     {
-        if (no_allele==1)
-        {
-            return 1;
-        }
-        else
-        {
-            choose(no_ploidy+no_allele-1, no_allele-1);
-        }
+        return bcf_ap2g(allele, genotype.size()) +  bcf_g2i(genotype.substr(0,genotype.size()-1));
     }
-
-    return 0;
 }
 
 /**

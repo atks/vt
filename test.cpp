@@ -151,8 +151,6 @@ class Igor : Program
                     n += choose(no_allele, no_ploidy);
                 }
 
-                //std::cerr << i << " " << n << "\n";
-
                 no_genotypes += n;
             }
 
@@ -166,7 +164,7 @@ class Igor : Program
         return 0;
     }
 
-   /**
+    /**
      * Gets number of genotypes from number of alleles and ploidy.
      */
     uint32_t bcf_g2i(std::string genotype)
