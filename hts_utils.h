@@ -278,6 +278,11 @@ uint32_t choose(uint32_t n, uint32_t r);
 uint32_t bcf_ap2g(uint32_t no_allele, uint32_t no_ploidy);
 
 /**
+ * Gets index from 2 alleles and 2 ploidy.
+ */
+#define bcf_2g2c(i,j) ((i)+((((j)+1)*(j))>>1))
+
+/**
  * Gets number of genotypes from number of alleles and ploidy.
  */
 uint32_t bcf_g2i(std::string genotype);
