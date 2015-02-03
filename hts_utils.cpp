@@ -575,23 +575,50 @@ uint32_t choose(uint32_t n, uint32_t r)
  */
 uint32_t bcf_ap2g(uint32_t no_allele, uint32_t no_ploidy)
 {
-    if (no_ploidy<=no_allele)
+    if (no_ploidy==1)
     {
-        uint32_t no_genotypes = 0;
-
-        for (uint32_t i=1; i<no_ploidy; ++i)
-        {
-            no_genotypes += choose(no_allele, i)*choose(no_ploidy-1, i-1);
-        }
-
-        return no_genotypes + choose(no_allele, no_ploidy);
+        return no_allele;
     }
-    else // alleles less than ploidy
+    else if (no_ploidy==2)
     {
+        return (((no_allele+1)*(no_allele))>>1); ;
+    }
+    else
+    {    
         return choose(no_ploidy+no_allele-1, no_allele-1);
     }
+}
 
-    return 0;
+/**
+ * Gets number of genotypes from number of alleles and ploidy.
+ */
+uint32_t bcf_g2i(int32_t* g, uint32_t n)
+{
+    if (n==1)
+    {
+        return g[0];
+    }
+    if (n==2)
+    {
+        return g[0] + (((g[1]+1)*(g[1]))>>1); 
+    }
+    else
+    {
+        uint32_t index = 0;
+        for (uint32_t i=0; i<n; ++i)
+        {
+            index += bcf_ap2g(g[i], i+1);
+        }        
+        return index;
+    }    
+}
+
+/**
+ * Gets number of genotypes from number of alleles and ploidy.
+ */
+uint32_t bcf_g2i(int32_t g0, int32_t g1)
+{
+    return g0 + (((g1+1)*(g1))>>1); 
 }
 
 /**
@@ -599,16 +626,13 @@ uint32_t bcf_ap2g(uint32_t no_allele, uint32_t no_ploidy)
  */
 uint32_t bcf_g2i(std::string genotype)
 {
-    uint32_t allele = genotype.at(genotype.size()-1)-65;
-
-    if (genotype.size()==1)
+    uint32_t index = 0;
+    for (uint32_t i=0; i<genotype.size(); ++i)
     {
-        return allele;
+        uint32_t allele = genotype.at(i)-65;
+        index += bcf_ap2g(allele, i+1);
     }
-    else
-    {
-        return bcf_ap2g(allele, genotype.size()) +  bcf_g2i(genotype.substr(0,genotype.size()-1));
-    }
+    return index;
 }
 
 /**

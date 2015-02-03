@@ -134,34 +134,7 @@ class Igor : Program
      */
     uint32_t bcf_ap2g(uint32_t no_allele, uint32_t no_ploidy)
     {
-        if (no_ploidy<=no_allele)
-        {
-            uint32_t no_genotypes = 0;
-
-            for (uint32_t i=1; i<=no_ploidy; ++i)
-            {
-                uint32_t n = 0;
-
-                if (i<no_ploidy)
-                {
-                    n += choose(no_allele, i)*choose(no_ploidy-1, i-1);
-                }
-                else if (i==no_ploidy)
-                {
-                    n += choose(no_allele, no_ploidy);
-                }
-
-                no_genotypes += n;
-            }
-
-            return no_genotypes;
-        }
-        else // alleles less than ploidy
-        {
-            return choose(no_ploidy+no_allele-1, no_allele-1);
-        }
-
-        return 0;
+        return choose(no_ploidy+no_allele-1, no_allele-1);
     }
 
     /**
@@ -169,16 +142,13 @@ class Igor : Program
      */
     uint32_t bcf_g2i(std::string genotype)
     {
-        uint32_t allele = genotype.at(genotype.size()-1)-65;
-        
-        if (genotype.size()==1)
+        uint32_t index = 0;
+        for (uint32_t i=0; i<genotype.size(); ++i)
         {
-            return allele;
-        }    
-        else
-        {
-            return bcf_ap2g(allele, genotype.size()) +  bcf_g2i(genotype.substr(0,genotype.size()-1));
+            uint32_t allele = genotype.at(i)-65;
+            index += bcf_ap2g(allele, i+1);
         }
+        return index;
     }
 
     void print_genotypes(uint32_t A, uint32_t P, std::string genotype)
