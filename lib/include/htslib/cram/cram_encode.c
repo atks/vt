@@ -1199,8 +1199,11 @@ static int cram_encode_slice(cram_fd *fd, cram_container *c,
 	for (i = j = 1; i < DS_END; i++) {
 	    if (!s->block[i] || s->block[i] == s->block[0])
 		continue;
-	    if (s->block[i]->uncomp_size == 0)
+	    if (s->block[i]->uncomp_size == 0) {
+		cram_free_block(s->block[i]);
+		s->block[i] = NULL;
 		continue;
+	    }
 	    s->block[j] = s->block[i];
 	    s->hdr->block_content_ids[j-1] = s->block[i]->content_id;
 	    j++;
@@ -1233,11 +1236,10 @@ int cram_encode_container(cram_fd *fd, cram_container *c) {
     nref = fd->refs->nref;
     pthread_mutex_unlock(&fd->ref_lock);
 
-    if (c->refs_used) {
+    if (!fd->no_ref && c->refs_used) {
 	for (i = 0; i < nref; i++) {
-	    if (c->refs_used[i]) {	
+	    if (c->refs_used[i])
 		cram_get_ref(fd, i, 1, 0);
-	    }
 	}
     }
 
@@ -1321,6 +1323,11 @@ int cram_encode_container(cram_fd *fd, cram_container *c) {
 	    s->hdr->ref_seq_span  = last_base - first_base + 1;
 	}
 	s->hdr->num_records = r2;
+    }
+
+    if (c->multi_seq && !fd->no_ref) {
+	if (c->ref_seq_id >= 0)
+	    cram_ref_decr(fd->refs, c->ref_seq_id);
     }
 
     /* Link our bams[] array onto the spare bam list for reuse */
@@ -1657,7 +1664,7 @@ int cram_encode_container(cram_fd *fd, cram_container *c) {
     }
 
     /* Cache references up-front if we have unsorted access patterns */
-    if (c->refs_used) {
+    if (!fd->no_ref && c->refs_used) {
 	for (i = 0; i < fd->refs->nref; i++) {
 	    if (c->refs_used[i])
 		cram_ref_decr(fd->refs, i);
@@ -2793,38 +2800,90 @@ static int process_one_read(cram_fd *fd, cram_container *c,
 
 	if (new == 0) {
 	    cram_record *p = &s->crecs[kh_val(s->pair[sec], k)];
+	    int aleft, aright, sign;
+
+	    aleft = MIN(cr->apos, p->apos);
+	    aright = MAX(cr->aend, p->aend);
+	    if (cr->apos < p->apos) {
+		sign = 1;
+	    } else if (cr->apos > p->apos) {
+		sign = -1;
+	    } else if (cr->flags & BAM_FREAD1) {
+		sign = 1;
+	    } else {
+		sign = -1;
+	    }
 	    
 	    //fprintf(stderr, "paired %"PRId64"\n", kh_val(s->pair[sec], k));
 
-	    // copy from p to cr
+	    // This vs p: tlen, matepos, flags
+	    if (bam_ins_size(b) != sign*(aright-aleft+1))
+		goto detached;
+
+	    if (MAX(bam_mate_pos(b)+1, 0) != p->apos)
+		goto detached;
+
+	    if (((bam_flag(b) & BAM_FMUNMAP) != 0) !=
+		((p->flags & BAM_FUNMAP) != 0))
+		goto detached;
+
+	    if (((bam_flag(b) & BAM_FMREVERSE) != 0) !=
+		((p->flags & BAM_FREVERSE) != 0))
+		goto detached;
+
+
+	    // p vs this: tlen, matepos, flags
+	    if (p->tlen != -sign*(aright-aleft+1))
+		goto detached;
+
+	    if (p->mate_pos != cr->apos)
+		goto detached;
+
+	    if (((p->flags & BAM_FMUNMAP) != 0) !=
+		((p->mate_flags & CRAM_M_UNMAP) != 0))
+		goto detached;
+
+	    if (((p->flags & BAM_FMREVERSE) != 0) !=
+		((p->mate_flags & CRAM_M_REVERSE) != 0))
+		goto detached;
+
+	    // Supplementary reads are just too ill defined
+	    if ((cr->flags & BAM_FSUPPLEMENTARY) ||
+		(p->flags & BAM_FSUPPLEMENTARY))
+		goto detached;
+
+	    /*
+	     * The fields below are unused when encoding this read as it is
+	     * no longer detached.  In theory they may get referred to when
+	     * processing a 3rd or 4th read in this template?, so we set them
+	     * here just to be sure.
+	     *
+	     * They do not need cram_stats_add() calls those as they are
+	     * not emitted.
+	     */
 	    cr->mate_pos = p->apos;
-	    cram_stats_add(c->stats[DS_NP], cr->mate_pos);
-
-	    cr->tlen = cr->aend - p->apos;
-	    cram_stats_add(c->stats[DS_TS], cr->tlen);
-
+	    cr->tlen = sign*(aright-aleft+1);
 	    cr->mate_flags =
-		((p->flags & BAM_FMUNMAP)   == BAM_FMUNMAP)   * CRAM_M_UNMAP +
-		((p->flags & BAM_FMREVERSE) == BAM_FMREVERSE) * CRAM_M_REVERSE;
-	    cram_stats_add(c->stats[DS_MF], cr->mate_flags);
+	    	((p->flags & BAM_FMUNMAP)   == BAM_FMUNMAP)   * CRAM_M_UNMAP +
+	    	((p->flags & BAM_FMREVERSE) == BAM_FMREVERSE) * CRAM_M_REVERSE;
 
-	    // copy from cr to p
+	    // Decrement statistics aggregated earlier
 	    cram_stats_del(c->stats[DS_NP], p->mate_pos);
-	    p->mate_pos = cr->apos;
-	    cram_stats_add(c->stats[DS_NP], p->mate_pos);
-
 	    cram_stats_del(c->stats[DS_MF], p->mate_flags);
-	    p->mate_flags =
-		((cr->flags & BAM_FMUNMAP)   == BAM_FMUNMAP)  * CRAM_M_UNMAP +
-		((cr->flags & BAM_FMREVERSE) == BAM_FMREVERSE)* CRAM_M_REVERSE;
-	    cram_stats_add(c->stats[DS_MF], p->mate_flags);
-
 	    cram_stats_del(c->stats[DS_TS], p->tlen);
-	    p->tlen = p->apos - cr->aend;
-	    cram_stats_add(c->stats[DS_TS], p->tlen);
+	    cram_stats_del(c->stats[DS_NS], p->mate_ref_id);
+
+	    /* Similarly we could correct the p-> values too, but these will no
+	     * longer have any code that refers back to them as the new 'p'
+	     * for this template is our current 'cr'.
+	     */
+	    //p->mate_pos = cr->apos;
+	    //p->mate_flags =
+	    //	((cr->flags & BAM_FMUNMAP)   == BAM_FMUNMAP)  * CRAM_M_UNMAP +
+	    //	((cr->flags & BAM_FMREVERSE) == BAM_FMREVERSE)* CRAM_M_REVERSE;
+	    //p->tlen = p->apos - cr->aend;
 
 	    // Clear detached from cr flags
-	    //cram_stats_del(c->stats[DS_CF], cr->cram_flags);
 	    cr->cram_flags &= ~CRAM_FLAG_DETACHED;
 	    cram_stats_add(c->stats[DS_CF], cr->cram_flags);
 
@@ -2839,6 +2898,7 @@ static int process_one_read(cram_fd *fd, cram_container *c,
 
 	    kh_val(s->pair[sec], k) = rnum;
 	} else {
+	detached:
 	    //fprintf(stderr, "unpaired\n");
 
 	    /* Derive mate flags from this flag */
@@ -2858,6 +2918,7 @@ static int process_one_read(cram_fd *fd, cram_container *c,
 
 	    cr->cram_flags |= CRAM_FLAG_DETACHED;
 	    cram_stats_add(c->stats[DS_CF], cr->cram_flags);
+	    cram_stats_add(c->stats[DS_NS], bam_mate_ref(b));
 	}
     }
 
@@ -2865,7 +2926,6 @@ static int process_one_read(cram_fd *fd, cram_container *c,
     cram_stats_add(c->stats[DS_MQ], cr->mqual);
 
     cr->mate_ref_id = bam_mate_ref(b);
-    cram_stats_add(c->stats[DS_NS], cr->mate_ref_id);
 
     if (!(bam_flag(b) & BAM_FUNMAP)) {
 	if (c->first_base > cr->apos)
@@ -2957,7 +3017,7 @@ int cram_put_bam_seq(cram_fd *fd, bam_seq_t *b) {
 
 	// Have we seen this reference before?
 	if (bam_ref(b) >= 0 && bam_ref(b) != curr_ref && !fd->embed_ref &&
-	    !fd->unsorted) {
+	    !fd->unsorted && multi_seq) {
 	    
 	    if (!c->refs_used) {
 		pthread_mutex_lock(&fd->ref_lock);

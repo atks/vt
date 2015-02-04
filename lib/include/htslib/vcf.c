@@ -64,7 +64,7 @@ int bcf_hdr_add_sample(bcf_hdr_t *h, const char *s)
     while ( !*ss && isspace(*ss) ) ss++;
     if ( !*ss )
     {
-        fprintf(stderr,"[W::%s] Empty sample name: trailing spaces/tabs in the header line?\n", __func__);
+        fprintf(stderr,"[E::%s] Empty sample name: trailing spaces/tabs in the header line?\n", __func__);
         abort();
     }
 
@@ -77,7 +77,10 @@ int bcf_hdr_add_sample(bcf_hdr_t *h, const char *s)
         kh_val(d, k).id = kh_size(d) - 1;
     } else {
         if (hts_verbose >= 2)
-            fprintf(stderr, "[W::%s] Duplicated sample name '%s'. Skipped.\n", __func__, s);
+        {
+            fprintf(stderr, "[E::%s] Duplicated sample name '%s'\n", __func__, s);
+            abort();
+        }
         free(sdup);
         return -1;
     }
@@ -382,7 +385,7 @@ int bcf_hdr_register_hrec(bcf_hdr_t *hdr, bcf_hrec_t *hrec)
 
         kh_val(d, k) = bcf_idinfo_def;
         kh_val(d, k).id = idx;
-        kh_val(d, k).info[0] = i;
+        kh_val(d, k).info[0] = j;
         kh_val(d, k).hrec[0] = hrec;
 
         return 1;

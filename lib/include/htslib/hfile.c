@@ -1,6 +1,6 @@
 /*  hfile.c -- buffered low-level input/output streams.
 
-    Copyright (C) 2013-2014 Genome Research Ltd.
+    Copyright (C) 2013-2015 Genome Research Ltd.
 
     Author: John Marshall <jm18@sanger.ac.uk>
 
@@ -526,7 +526,22 @@ hFILE *hopen(const char *fname, const char *mode)
 {
     if (strncmp(fname, "http://", 7) == 0 ||
         strncmp(fname, "ftp://", 6) == 0) return hopen_net(fname, mode);
+#ifdef HAVE_IRODS
+    else if (strncmp(fname, "irods:", 6) == 0) return hopen_irods(fname, mode);
+#endif
     else if (strncmp(fname, "data:", 5) == 0) return hopen_mem(fname + 5, mode);
     else if (strcmp(fname, "-") == 0) return hopen_fd_stdinout(mode);
     else return hopen_fd(fname, mode);
+}
+
+int hisremote(const char *fname)
+{
+    // FIXME Make a new backend entry to return this
+    if (strncmp(fname, "http://", 7) == 0 ||
+        strncmp(fname, "https://", 8) == 0 ||
+        strncmp(fname, "ftp://", 6) == 0) return 1;
+#ifdef HAVE_IRODS
+    else if (strncmp(fname, "irods:", 6) == 0) return 1;
+#endif
+    else return 0;
 }
