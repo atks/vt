@@ -207,7 +207,7 @@ void bam_get_base_and_qual_and_read_and_qual(bam1_t *s, uint32_t pos, char& base
 /**
  * Prints a bam.
  */
-void bam_print(bam1_t *s);
+void bam_print(bam_hdr_t *h, bam1_t *s);
 
 /**************
  *BCF HDR UTILS

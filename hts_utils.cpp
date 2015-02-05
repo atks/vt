@@ -584,7 +584,7 @@ uint32_t bcf_ap2g(uint32_t no_allele, uint32_t no_ploidy)
         return (((no_allele+1)*(no_allele))>>1); ;
     }
     else
-    {    
+    {
         return choose(no_ploidy+no_allele-1, no_allele-1);
     }
 }
@@ -600,7 +600,7 @@ uint32_t bcf_g2i(int32_t* g, uint32_t n)
     }
     if (n==2)
     {
-        return g[0] + (((g[1]+1)*(g[1]))>>1); 
+        return g[0] + (((g[1]+1)*(g[1]))>>1);
     }
     else
     {
@@ -608,9 +608,9 @@ uint32_t bcf_g2i(int32_t* g, uint32_t n)
         for (uint32_t i=0; i<n; ++i)
         {
             index += bcf_ap2g(g[i], i+1);
-        }        
+        }
         return index;
-    }    
+    }
 }
 
 /**
@@ -618,7 +618,7 @@ uint32_t bcf_g2i(int32_t* g, uint32_t n)
  */
 uint32_t bcf_g2i(int32_t g0, int32_t g1)
 {
-    return g0 + (((g1+1)*(g1))>>1); 
+    return g0 + (((g1+1)*(g1))>>1);
 }
 
 /**

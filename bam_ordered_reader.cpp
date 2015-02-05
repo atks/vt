@@ -24,7 +24,7 @@
 #include "bam_ordered_reader.h"
 
 /**
- * Initialize files and intervals. 
+ * Initialize files and intervals.
  *
  * @input_bam_file     name of the input VCF file
  * @intervals          list of intervals, if empty, all records are selected.
@@ -39,7 +39,7 @@ BAMOrderedReader::BAMOrderedReader(std::string& bam_file, std::vector<GenomeInte
         fprintf(stderr, "[%s:%d %s] Not a BAM/CRAM file: %s\n", __FILE__, __LINE__, __FUNCTION__, bam_file.c_str());
         exit(1);
     }
-        
+
     sam = sam_open(bam_file.c_str(), "r");
     if (sam==NULL) exit(1);
     hdr = sam_hdr_read(sam);
@@ -62,11 +62,30 @@ BAMOrderedReader::BAMOrderedReader(std::string& bam_file, std::vector<GenomeInte
     interval_index = 0;
 
     random_access_enabled = intervals_present && index_loaded;
-    
+
+};
+
+char *samfaipath(const char *fn_ref)
+{
+    char *fn_list = 0;
+    if (fn_ref == 0) return 0;
+    fn_list = (char*) calloc(strlen(fn_ref) + 5, 1);
+    strcat(strcpy(fn_list, fn_ref), ".fai");
+    if (access(fn_list, R_OK) == -1) { // fn_list is unreadable
+        if (access(fn_ref, R_OK) == -1) {
+            fprintf(stderr, "[samfaipath] fail to read file %s.\n", fn_ref);
+        } else {
+            if (fai_build(fn_ref) == -1) {
+                fprintf(stderr, "[samfaipath] fail to build FASTA index.\n");
+                free(fn_list); fn_list = 0;
+            }
+        }
+    }
+    return fn_list;
 };
 
 /**
- * Initialize files, intervals and reference file. 
+ * Initialize files, intervals and reference file.
  *
  * @input_bam_file        name of the input VCF file
  * @intervals             list of intervals, if empty, all records are selected.
@@ -78,17 +97,23 @@ BAMOrderedReader::BAMOrderedReader(std::string& input_bam_file, std::vector<Geno
     int len = strlen(fname);
     if ( !strcasecmp(".bam", fname+len-4) && !strcasecmp("-", fname) && !strcasecmp(".cram", fname+len-5))
     {
-        fprintf(stderr, "[%s:%d %s] Not a BAM/CRAM file: %s\n", __FILE__, __LINE__, __FUNCTION__, bam_file.c_str());
+        fprintf(stderr, "[%s:%d %s] Not a BAM/CRAM file: %s\n", __FILE__, __LINE__, __FUNCTION__, input_bam_file.c_str());
         exit(1);
     }
-        
-    sam = sam_open(bam_file.c_str(), "r");
-    if (sam==NULL) exit(1);
-    hts_set_fai_filename(sam, reference_fasta_file.c_str());
+
+    if (!(sam = sam_open(input_bam_file.c_str(), "r")))
+    {
+        fprintf(stderr, "[%s:%d %s] Cannot open BAM/CRAM file: %s\n", __FILE__, __LINE__, __FUNCTION__, input_bam_file.c_str());
+        exit(1); 
+    }    
+    
+    char* fai = samfaipath(reference_fasta_file.c_str());
+    hts_set_fai_filename(sam, fai);
+
     hdr = sam_hdr_read(sam);
     s = bam_init1();
 
-    idx = bam_index_load(bam_file.c_str());
+    idx = bam_index_load(input_bam_file.c_str());
     if (idx==0)
     {
         //fprintf(stderr, "[%s:%d %s] fail to load index for %s\n", __FILE__, __LINE__, __FUNCTION__, bam_file.c_str());
@@ -105,7 +130,6 @@ BAMOrderedReader::BAMOrderedReader(std::string& input_bam_file, std::vector<Geno
     interval_index = 0;
 
     random_access_enabled = intervals_present && index_loaded;
-    
 };
 
 /**
@@ -122,7 +146,7 @@ bool BAMOrderedReader::jump_to_interval(GenomeInterval& interval)
         intervals.clear();
         intervals.push_back(interval);
         interval_index = 0;
-        
+
         intervals[interval_index++].to_string(&str);
         itr = bam_itr_querys(idx, hdr, str.s);
         if (itr)

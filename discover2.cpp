@@ -130,7 +130,8 @@ class Igor : Program
         //////////////////////
         exclude_flag = 0x0704;
 
-        odr = new BAMOrderedReader(input_bam_file, intervals);
+        odr = new BAMOrderedReader(input_bam_file, intervals, ref_fasta_file);
+        //odr = new BAMOrderedReader(input_bam_file, intervals);
         s = bam_init1();
 
         odw = new BCFOrderedWriter(output_vcf_file, 0);
@@ -249,20 +250,23 @@ class Igor : Program
                 continue;
             }
 
-            bve->process_read(odr->hdr, s);
+            bam_print(odr->hdr, s);
+            
 
-            while(bve->next_variant(v))
-            {
-                odw->write(v);
-            }
+//            bve->process_read(odr->hdr, s);
+//
+//            while(bve->next_variant(v))
+//            {
+//                odw->write(v);
+//            }
 
             ++no_passed_reads;
         }
 
-        while(bve->next_variant(v))
-        {
-            odw->write(v);
-        }
+//        while(bve->next_variant(v))
+//        {
+//            odw->write(v);
+//        }
 
         odw->close();
 
