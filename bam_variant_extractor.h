@@ -63,7 +63,9 @@ class BAMVariantExtractor
 
     VariantBuffer *vb;
     
+    //current chromosomes
     std::string chrom;
+    int32_t tid;
     uint32_t start, end;
     
     uint32_t start_genome_pos0;
@@ -96,8 +98,7 @@ class BAMVariantExtractor
      * Constructor
      * baseq_cutoff - q value cutoff to select candidate SNPs
      */
-    BAMVariantExtractor(int32_t vtype,
-                  size_t evidence_allele_count_cutoff,
+    BAMVariantExtractor(size_t evidence_allele_count_cutoff,
                   double fractional_evidence_allele_count_cutoff,
                   size_t baseq_cutoff,
                   std::string& ref_fasta_file);    

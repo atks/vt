@@ -128,6 +128,11 @@ void bam_hdr_transfer_contigs_to_bcf_hdr(const bam_hdr_t *sh, bcf_hdr_t *vh);
 int32_t bam_get_end_pos1(bam1_t *srec);
 
 /**
+ * Gets the template ID of the read.
+ */
+#define bam_get_tid(s) ((s)->core.tid)
+
+/**
  * Gets the template ID of the paired read.
  */
 #define bam_get_mtid(s) ((s)->core.mtid)

@@ -49,7 +49,6 @@ class Igor : Program
     uint32_t mapq_cutoff;
     uint32_t baseq_cutoff;
 
-    std::string variant_type;
     uint32_t evidence_allele_count_cutoff;
     double fractional_evidence_allele_count_cutoff;
 
@@ -100,7 +99,6 @@ class Igor : Program
             TCLAP::ValueArg<uint32_t> arg_baseq_cutoff("q", "q", "base quality cutoff for bases [13]", false, 13, "int", cmd);
             TCLAP::ValueArg<uint32_t> arg_evidence_allele_count_cutoff("e", "e", "evidence count cutoff for candidate allele [2]", false, 2, "int", cmd);
             TCLAP::ValueArg<double> arg_fractional_evidence_allele_count_cutoff("f", "f", "fractional evidence cutoff for candidate allele [0.1]", false, 0.1, "float", cmd);
-            TCLAP::ValueArg<std::string> arg_variant_type("v", "v", "variant types [snps,mnps,indels]", false, "snps,mnps,indels", "str", cmd);
             TCLAP::ValueArg<std::string> arg_input_bam_file("b", "b", "input BAM file", true, "", "string", cmd);
 
             cmd.parse(argc, argv);
@@ -112,7 +110,6 @@ class Igor : Program
             ref_fasta_file = arg_ref_fasta_file.getValue();
             mapq_cutoff = arg_mapq_cutoff.getValue();
             baseq_cutoff = arg_baseq_cutoff.getValue();
-            variant_type = arg_variant_type.getValue();
             evidence_allele_count_cutoff = arg_evidence_allele_count_cutoff.getValue();
             fractional_evidence_allele_count_cutoff = arg_fractional_evidence_allele_count_cutoff.getValue();
         }
@@ -142,25 +139,6 @@ class Igor : Program
         bcf_hdr_add_sample(odw->hdr, NULL);
         v = NULL;
 
-        std::vector<std::string> variant_types;
-        split(variant_types, ",", variant_type);
-        int32_t vtype = 0;
-        for (size_t i = 0; i<variant_types.size(); ++i)
-        {
-            if (variant_types[i] == "snps")
-            {
-                vtype |= VT_SNP;
-            }
-            else if (variant_types[i] == "indels")
-            {
-                vtype |= VT_INDEL;
-            }
-            else if (variant_types[i] == "all")
-            {
-                vtype = VT_SNP|VT_INDEL;
-            }
-        }
-
         ////////////////////////
         //stats initialization//
         ////////////////////////
@@ -173,13 +151,51 @@ class Igor : Program
         ////////////////////////
         //tools initialization//
         ////////////////////////
-        bve = new BAMVariantExtractor(vtype,
-                                    evidence_allele_count_cutoff,
+        bve = new BAMVariantExtractor(evidence_allele_count_cutoff,
                                     fractional_evidence_allele_count_cutoff,
                                     baseq_cutoff,
                                     ref_fasta_file);
     }
 
+    void bam_print_key_values(bam_hdr_t *h, bam1_t *s)
+    {
+        const char* chrom = bam_get_chrom(h, s);
+        uint32_t pos1 = bam_get_pos1(s);
+        kstring_t seq = {0,0,0};
+        bam_get_seq_string(s, &seq);
+        uint32_t len = bam_get_l_qseq(s);
+        kstring_t qual = {0,0,0};
+        bam_get_qual_string(s, &qual);
+        kstring_t cigar_string = {0,0,0};
+        bam_get_cigar_string(s, &cigar_string);
+        kstring_t cigar_expanded_string = {0,0,0};
+        bam_get_cigar_expanded_string(s, &cigar_expanded_string);
+        uint16_t flag = bam_get_flag(s);
+        uint32_t mapq = bam_get_mapq(s);
+    
+        uint8_t *aux;
+        char* md;
+        (aux=bam_aux_get(s, "MD")) &&  (md = bam_aux2Z(aux));
+        
+        std::cerr << "##################" << "\n";
+        std::cerr << "chrom-pos: " << chrom << "-" << pos1 << "\n";
+        std::cerr << "read     : " << seq.s << "\n";
+        std::cerr << "qual     : " << qual.s << "\n";
+        std::cerr << "cigar_str: " << cigar_string.s << "\n";
+        std::cerr << "cigar    : " << cigar_expanded_string.s << "\n";
+        std::cerr << "len      : " << len << "\n";
+        std::cerr << "mapq     : " << mapq << "\n";
+        std::cerr << "mpos1    : " << bam_get_mpos1(s) << "\n";
+        std::cerr << "mtid     : " << bam_get_mtid(s) << "\n";
+        std::cerr << "md       : " << md << "\n";
+            
+    
+        if (seq.m) free(seq.s);
+        if (qual.m) free(qual.s);
+        if (cigar_string.m) free(cigar_string.s);
+        if (cigar_expanded_string.m) free(cigar_expanded_string.s);
+    }
+    
     void discover()
     {
         odw->write_hdr();
@@ -250,7 +266,7 @@ class Igor : Program
                 continue;
             }
 
-//            bam_print(odr->hdr, s);
+            bam_print_key_values(odr->hdr, s);
             
 
 //            bve->process_read(odr->hdr, s);
@@ -269,6 +285,13 @@ class Igor : Program
 //        }
 
         odw->close();
+        
+        
+//       stats: no. reads              : 2931500
+//       no. overlapping reads  : 1044117
+//       no. low mapq reads     : 42909
+//       no. passed reads       : 2842431
+//       no. exclude flag reads : 46160
 
     };
 
@@ -282,7 +305,6 @@ class Igor : Program
         std::clog << "         [r] reference FASTA File         " << ref_fasta_file << "\n";
         std::clog << "         [m] MAPQ cutoff                  " << mapq_cutoff << "\n";
         std::clog << "         [q] base quality cutoff          " << baseq_cutoff << "\n";
-        std::clog << "         [v] variant type(s)              " << variant_type << "\n";
         std::clog << "         [e] evidence cutoff              " << evidence_allele_count_cutoff << "\n";
         std::clog << "         [f] fractional evidence cutoff   " << fractional_evidence_allele_count_cutoff<< "\n";
         print_int_op("         [i] intervals                    ", intervals);

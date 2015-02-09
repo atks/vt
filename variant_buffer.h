@@ -45,10 +45,11 @@ class VariantBuffer
     size_t buffer_size;
     std::vector<char> R;                      // reference bases
     std::vector<std::vector<char> > X;        // contains read bases that differ from the reference
-    std::vector<std::vector<std::string> > I; // contains inserted bases at the left anchor position including anchor
-    std::vector<std::vector<std::string> > J; // contains inserted bases at the right anchor position including anchor
-    std::vector<std::vector<std::string> > D; // contains deleted bases at the anchor position including anchor
-    std::vector<int32_t> N;                   // number of alternative evidences observed here - sum of R, X, D and I
+    std::vector<std::vector<std::string> > D; // contains deleted bases at the left anchor position
+    std::vector<std::vector<std::string> > I; // contains inserted bases at the left anchor position 
+    std::vector<std::vector<std::string> > J; // contains soft clipped sequence at right anchor
+    std::vector<std::vector<std::string> > K; // contains soft clipped sequence at left anchor
+    std::vector<int32_t> N;                   // number of alternative evidences observed here - sum of R, X, D and I, S
 
     size_t start, end;                        // non empty location in the buffer
     size_t empty_buffer_space;                // remaining buffer space left

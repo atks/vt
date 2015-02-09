@@ -27,8 +27,10 @@ VariantBuffer::VariantBuffer(size_t buffer_size)
 {
     R.resize(buffer_size);
     X.resize(buffer_size);
-    I.resize(buffer_size);
     D.resize(buffer_size);
+    I.resize(buffer_size);
+    J.resize(buffer_size);
+    K.resize(buffer_size);
     N.resize(buffer_size, 0);
 
     start = 0;
@@ -162,8 +164,8 @@ size_t VariantBuffer::get_cur_pos0(size_t genome_pos0)
         {
             std::cerr << "overflow buffer\n" ;
             //should allow for unbuffering here
-
         }
+        
         return (start + (genome_pos0-start_genome_pos0))%buffer_size;
     }
 };

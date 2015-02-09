@@ -67,6 +67,7 @@ SOURCES = align\
 		profile_na12878\
 		profile_snps\
 		program\
+		read\
 		remove_overlap\
 		rfhmm\
 		seq\

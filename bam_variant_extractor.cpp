@@ -27,13 +27,11 @@
  * Constructor
  * baseq_cutoff - q value cutoff to select candidate SNPs
  */
-BAMVariantExtractor::BAMVariantExtractor(int32_t vtype,
-              size_t evidence_allele_count_cutoff,
+BAMVariantExtractor::BAMVariantExtractor(size_t evidence_allele_count_cutoff,
               double fractional_evidence_allele_count_cutoff,
               size_t baseq_cutoff,
               std::string& ref_fasta_file)
-: vtype(vtype),
-  evidence_allele_count_cutoff(evidence_allele_count_cutoff),
+: evidence_allele_count_cutoff(evidence_allele_count_cutoff),
   fractional_evidence_allele_count_cutoff(fractional_evidence_allele_count_cutoff),
   baseq_cutoff(baseq_cutoff)
 {
@@ -52,24 +50,20 @@ void BAMVariantExtractor::process_read(bam_hdr_t *h, bam1_t *s)
 {
     //extract relevant information from sam record
     char* chrom = bam_get_chrom(h, s);
+    int32_t tid = bam_get_tid(s);
     int32_t pos0 = bam_get_pos0(s);
     
-    if (strcmp(this->chrom.c_str(), chrom))
+    //flush variants
+    if (this->tid!=tid)
     {
-        //does not overlap
-        if (true)
-        {
-            flush_variant_buffer();
-        }    
-        
         flush_variant_buffer();
-        
-        
     }
     else
     {
         this->chrom.assign(chrom);
+        this->tid = tid;
         flush_variant_buffer();
+        //reset buffer
     }
 
     int32_t ref_len;
@@ -81,107 +75,7 @@ void BAMVariantExtractor::process_read(bam_hdr_t *h, bam1_t *s)
     size_t genome_pos0 = 0;
     
     const bam1_core_t *c = &s->core;
-    if (c->n_cigar)
-    {
-        size_t last_cigar_op_index = c->n_cigar-1;
-
-        uint32_t *cigar = bam_get_cigar(s);
-        genome_pos0 = 1;
-        int32_t genome_seq_pos0 = 1;
-
-
-        int32_t read_seq_pos0 = 0;
-        std::string ref = "";
-        std::string alt = "";
-
-        for (size_t i=0; i<c->n_cigar; ++i)
-        {
-            int32_t len = bam_cigar_oplen(cigar[i]);
-            char op = bam_cigar_opchr(cigar[i]);
-
-            if (op=='M')
-            {
-                for (size_t j=0; j<len; ++j)
-                {
-                    char x = "=ACMGRSVTWYHKDBN"[bam_seqi(sq, i)];
-                    char r = genome_seq[genome_seq_pos0]; 
-                    if (x!=r)
-                    {    
-                        vb->insertX(genome_seq_pos0, x);
-                    }
-                    
-                    vb->insertR(genome_seq_pos0, r);
-                    
-                    ++read_seq_pos0;
-                    ++genome_seq_pos0;
-                }
-            }
-            else if (op=='D')
-            {
-                if (i && i!=last_cigar_op_index)
-                {
-                    //normalize
-                    ref.clear();
-                    alt.clear();
-                    alt.push_back(genome_seq[genome_pos0-1]);
-                    for (size_t j = 0; j<len; ++j)
-                    {
-                        ref.push_back("=ACMGRSVTWYHKDBN"[bam_seqi(sq, i)]);
-                        ++read_seq_pos0;
-                    }
-                    normalize_biallelic(pos0, ref, alt);
-
-                    vb->insertD(genome_pos0-1, ref, alt);
-                    genome_pos0 += len;
-                }
-                else
-                {
-                    //end deletions - these are kind of bonafide.
-                }
-            }
-            else if (op=='I')
-            {
-                if (i && i!=last_cigar_op_index)
-                {
-                    ref.clear();
-                    alt.clear();
-                    ref.push_back(genome_seq[genome_pos0]);
-                    for (size_t j = 0; j<len; ++j)
-                    {
-                        alt.push_back("=ACMGRSVTWYHKDBN"[bam_seqi(sq, i)]);
-                        ++read_seq_pos0;
-                    }
-                    normalize_biallelic(pos0, ref, alt);
-
-                    vb->insertI(genome_pos0, ref, alt);
-                }
-                else
-                {
-                    //end insertions
-                }
-
-                read_seq_pos0 += len;
-            }
-            else if (op=='S')
-            {
-                if (i && i!=last_cigar_op_index)
-                {
-                    //end deletions - these are kind of bonafide.
-                }
-            }
-            else if (op=='H')
-            {
-                if (i && i!=last_cigar_op_index)
-                {
-                    //end deletions - these are kind of bonafide.
-                }
-            }
-            else 
-            {            
-                //what's this?
-            }
-        }
-    }
+    
 
     flush_variant_buffer();
     if (ref_len>0) free(genome_seq);
