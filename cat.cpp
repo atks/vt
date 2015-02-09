@@ -119,9 +119,6 @@ class Igor : Program
         //i/o initialization//
         //////////////////////
         odr = new BCFOrderedReader(input_vcf_files[0], intervals);
-        
-        std::cerr << "sorting window size: " << sort_window_size << "\n";
-        
         odw = new BCFOrderedWriter(output_vcf_file, sort_window_size);
         if (no_subset_samples==-1)
         {
