@@ -56,7 +56,7 @@ class Igor : Program
     //options//
     ///////////
     std::string method;
-    std::vector<uint32_t> x;
+    std::vector<std::string> x;
 
 
     bool debug;
@@ -77,7 +77,7 @@ class Igor : Program
             std::string version = "0.5";
             TCLAP::CmdLine cmd(desc, ' ', version);
             VTOutput my; cmd.setOutput(&my);
-            TCLAP::UnlabeledMultiArg<uint32_t> arg_x("ap", "#ploidy #alleles", true, "", cmd);
+            TCLAP::UnlabeledMultiArg<std::string> arg_x("ap", "#ploidy #alleles", true, "", cmd);
 
             cmd.parse(argc, argv);
 
@@ -171,10 +171,29 @@ class Igor : Program
 
     void test()
     {
-        print_genotypes(x[0], x[1], "");
-        uint32_t g = bcf_ap2g(x[0], x[1]);
+//        print_genotypes(x[0], x[1], "");
+//        uint32_t g = bcf_ap2g(x[0], x[1]);
+//
+//        std::cerr << "A: " << x[0] << " P: " << x[1] << " G: " << g << "\n";
 
-        std::cerr << "A: " << x[0] << " P: " << x[1] << " G: " << g << "\n";
+        vcfFile *vcf = bcf_open(x[0].c_str(), "rb");
+        bcf_hdr_t *h = bcf_hdr_read(vcf);
+        bcf1_t *v = bcf_init();
+        
+        
+        std::cerr << "writing to " << x[1] << "\n";
+        vcfFile *ovcf = bcf_open(x[1].c_str(), "wu");
+        bcf_hdr_write(ovcf, h);
+        
+        while (bcf_read(vcf, h, v)>=0)
+        {
+            //std::cerr << "test\n";
+            bcf_write(ovcf, h, v);    
+        }
+        
+        bcf_close(ovcf);
+        bcf_close(vcf);
+        
     };
 
     void print_stats()

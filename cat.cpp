@@ -40,6 +40,7 @@ class Igor : Program
     std::string output_vcf_file;
     std::vector<GenomeInterval> intervals;
     std::string interval_list;
+    uint32_t sort_window_size;
     bool print;
     bool print_sites_only;
     int32_t no_subset_samples;
@@ -84,6 +85,7 @@ class Igor : Program
             TCLAP::ValueArg<std::string> arg_output_vcf_file("o", "o", "output VCF file [-]", false, "-", "", cmd);
             TCLAP::ValueArg<std::string> arg_input_vcf_file_list("L", "L", "file containing list of input VCF files", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_fexp("f", "f", "filter expression []", false, "", "str", cmd);
+            TCLAP::ValueArg<uint32_t> arg_sort_window_size("w", "w", "local sorting window size [0]", false, 0, "int", cmd);
             TCLAP::SwitchArg arg_print("p", "p", "print options and summary []", cmd, false);
             TCLAP::SwitchArg arg_print_sites_only("s", "s", "print site information only without genotypes [false]", cmd, false);
             TCLAP::UnlabeledMultiArg<std::string> arg_input_vcf_files("<in1.vcf>...", "Multiple VCF files",false, "files", cmd);
@@ -93,6 +95,7 @@ class Igor : Program
             parse_files(input_vcf_files, arg_input_vcf_files.getValue(), arg_input_vcf_file_list.getValue());
             output_vcf_file = arg_output_vcf_file.getValue();
             fexp = arg_fexp.getValue();
+            sort_window_size = arg_sort_window_size.getValue();
             parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
             no_subset_samples = arg_print_sites_only.getValue() ? 0 : -1;
             print = arg_print.getValue();
@@ -116,12 +119,14 @@ class Igor : Program
         //i/o initialization//
         //////////////////////
         odr = new BCFOrderedReader(input_vcf_files[0], intervals);
-        odw = new BCFOrderedWriter(output_vcf_file, 0);
+        
+        std::cerr << "sorting window size: " << sort_window_size << "\n";
+        
+        odw = new BCFOrderedWriter(output_vcf_file, sort_window_size);
         if (no_subset_samples==-1)
         {
             odw->set_hdr(odr->hdr);
         }
-        //perform subsetting
         else if (no_subset_samples==0)
         {
             odw->set_hdr(bcf_hdr_subset(odr->hdr, 0, 0, 0));
@@ -152,8 +157,6 @@ class Igor : Program
 
         for (size_t i=0; i<input_vcf_files.size(); ++i)
         {
-            //fprintf(stderr, "[L:cat] concatenating %s.\n", input_vcf_files[i].c_str());
-
             if (i)
             {
                 delete odr;
@@ -180,6 +183,10 @@ class Igor : Program
                 //assume the contigs list is the same for all?  Do we have checking for this?
                 //bcf_set_chrom(odw->hdr, v, bcf_get_chrom(odr->hdr, v));
                 odw->write(v);
+                if (sort_window_size)
+                {
+                    v = odw->get_bcf1_from_pool();
+                }    
                 ++no_variants;
             }
 
@@ -196,6 +203,7 @@ class Igor : Program
         std::clog << "cat v" << version << "\n\n";
         print_ifiles("options:     input VCF file        ", input_vcf_files);
         std::clog << "         [o] output VCF file       " << output_vcf_file << "\n";
+        print_num_op("         [w] sortin window size    ", sort_window_size);
         print_str_op("         [f] filter                ", fexp);
         print_int_op("         [i] intervals             ", intervals);
         std::clog << "\n";

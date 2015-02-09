@@ -40,8 +40,12 @@ BAMOrderedReader::BAMOrderedReader(std::string& bam_file, std::vector<GenomeInte
         exit(1);
     }
 
-    sam = sam_open(bam_file.c_str(), "r");
-    if (sam==NULL) exit(1);
+    if (!(sam = sam_open(bam_file.c_str(), "r")))
+    {
+        fprintf(stderr, "[%s:%d %s] Cannot open BAM/CRAM file: %s\n", __FILE__, __LINE__, __FUNCTION__, bam_file.c_str());
+        exit(1); 
+    } 
+    
     hdr = sam_hdr_read(sam);
     s = bam_init1();
 
@@ -116,7 +120,6 @@ BAMOrderedReader::BAMOrderedReader(std::string& input_bam_file, std::vector<Geno
     idx = bam_index_load(input_bam_file.c_str());
     if (idx==0)
     {
-        //fprintf(stderr, "[%s:%d %s] fail to load index for %s\n", __FILE__, __LINE__, __FUNCTION__, bam_file.c_str());
         index_loaded = false;
     }
     else
@@ -148,7 +151,7 @@ bool BAMOrderedReader::jump_to_interval(GenomeInterval& interval)
         interval_index = 0;
 
         intervals[interval_index++].to_string(&str);
-        itr = bam_itr_querys(idx, hdr, str.s);
+        itr = sam_itr_querys(idx, hdr, str.s);
         if (itr)
         {
             return true;
@@ -167,7 +170,7 @@ bool BAMOrderedReader::initialize_next_interval()
     while (interval_index!=intervals.size())
     {
         intervals[interval_index++].to_string(&str);
-        itr = bam_itr_querys(idx, hdr, str.s);
+        itr = sam_itr_querys(idx, hdr, str.s);
 
         if (itr)
         {
@@ -187,7 +190,7 @@ bool BAMOrderedReader::read(bam1_t *s)
     {
         while(true)
         {
-            if (itr && bam_itr_next(sam, itr, s)>=0)
+            if (itr && sam_itr_next(sam, itr, s)>=0)
             {
                 return true;
             }

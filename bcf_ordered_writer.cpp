@@ -61,6 +61,7 @@ BCFOrderedWriter::BCFOrderedWriter(std::string output_vcf_file_name, int32_t win
             exit(1);
         }
     }
+
     file = bcf_open(file_name.c_str(), mode.s);
     if (file==NULL)
     {
@@ -69,7 +70,7 @@ BCFOrderedWriter::BCFOrderedWriter(std::string output_vcf_file_name, int32_t win
     }
 
     hdr = bcf_hdr_init("w");
-    bcf_hdr_set_version(hdr, "##fileformat=VCFv4.1");
+    bcf_hdr_set_version(hdr, "VCFv4.1");
     linked_hdr = false;
 }
 
@@ -154,6 +155,8 @@ void BCFOrderedWriter::write(bcf1_t *v)
         {
             buffer.push_front(v);
         }
+        
+        v = NULL;
     }
     else
     {
@@ -176,6 +179,7 @@ void BCFOrderedWriter::store_bcf1_into_pool(bcf1_t* v)
 {
     bcf_clear(v);
     pool.push_back(v);
+    v = NULL;
 }
 
 /**

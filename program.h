@@ -120,6 +120,11 @@ class Program
     void print_str_op(const char* option_line, std::string str_value);
     
     /**
+     * Print number option, hide if 0.
+     */
+    void print_num_op(const char* option_line, uint32_t num_value);
+    
+    /**
      * Print switch option, hide if not switched on.
      */
     void print_boo_op(const char* option_line, bool value);

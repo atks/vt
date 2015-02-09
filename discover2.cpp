@@ -250,7 +250,7 @@ class Igor : Program
                 continue;
             }
 
-            bam_print(odr->hdr, s);
+//            bam_print(odr->hdr, s);
             
 
 //            bve->process_read(odr->hdr, s);

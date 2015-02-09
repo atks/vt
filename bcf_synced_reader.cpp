@@ -412,6 +412,8 @@ bool BCFSyncedReader::read_next_position(std::vector<bcfptr*>& current_recs)
             }
         }
 
+        std::cerr << "pq size: " << pq.size() << "\n";
+
         return true;
     }
     else //end of contig or eof for all files
