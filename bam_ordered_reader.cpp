@@ -23,52 +23,6 @@
 
 #include "bam_ordered_reader.h"
 
-/**
- * Initialize files and intervals.
- *
- * @input_bam_file     name of the input VCF file
- * @intervals          list of intervals, if empty, all records are selected.
- */
-BAMOrderedReader::BAMOrderedReader(std::string& bam_file, std::vector<GenomeInterval>& intervals)
-:bam_file(bam_file), intervals(intervals), sam(0), hdr(0), idx(0), itr(0)
-{
-    const char* fname = bam_file.c_str();
-    int len = strlen(fname);
-    if ( !strcasecmp(".bam", fname+len-4) && !strcasecmp("-", fname) && !strcasecmp(".cram", fname+len-5))
-    {
-        fprintf(stderr, "[%s:%d %s] Not a BAM/CRAM file: %s\n", __FILE__, __LINE__, __FUNCTION__, bam_file.c_str());
-        exit(1);
-    }
-
-    if (!(sam = sam_open(bam_file.c_str(), "r")))
-    {
-        fprintf(stderr, "[%s:%d %s] Cannot open BAM/CRAM file: %s\n", __FILE__, __LINE__, __FUNCTION__, bam_file.c_str());
-        exit(1); 
-    } 
-    
-    hdr = sam_hdr_read(sam);
-    s = bam_init1();
-
-    idx = bam_index_load(bam_file.c_str());
-    if (idx==0)
-    {
-        //fprintf(stderr, "[%s:%d %s] fail to load index for %s\n", __FILE__, __LINE__, __FUNCTION__, bam_file.c_str());
-        index_loaded = false;
-    }
-    else
-    {
-        index_loaded = true;
-    }
-
-    str = {0,0,0};
-
-    intervals_present =  intervals.size()!=0;
-    interval_index = 0;
-
-    random_access_enabled = intervals_present && index_loaded;
-
-};
-
 char *samfaipath(const char *fn_ref)
 {
     char *fn_list = 0;
@@ -91,38 +45,48 @@ char *samfaipath(const char *fn_ref)
 /**
  * Initialize files, intervals and reference file.
  *
- * @input_bam_file        name of the input VCF file
+ * @file_name        name of the input VCF file
  * @intervals             list of intervals, if empty, all records are selected.
- * @reference_fasta_file  reference FASTA file for CRAM
+ * @ref_fasta_file  reference FASTA file for CRAM
  */
-BAMOrderedReader::BAMOrderedReader(std::string& input_bam_file, std::vector<GenomeInterval>& intervals, std::string& reference_fasta_file)
+BAMOrderedReader::BAMOrderedReader(std::string file_name, std::vector<GenomeInterval>& intervals, std::string ref_fasta_file)
 {
-    const char* fname = bam_file.c_str();
-    int len = strlen(fname);
-    if ( !strcasecmp(".bam", fname+len-4) && !strcasecmp("-", fname) && !strcasecmp(".cram", fname+len-5))
+    this->file_name = (file_name=="+")? "-" : file_name;
+    file = NULL;
+    hdr = NULL;
+    idx = NULL;
+    itr = NULL;
+
+    this->intervals = intervals;
+    interval_index = 0;
+    index_loaded = false;
+
+    file = hts_open(this->file_name.c_str(), "r");
+    if (!file)
     {
-        fprintf(stderr, "[%s:%d %s] Not a BAM/CRAM file: %s\n", __FILE__, __LINE__, __FUNCTION__, input_bam_file.c_str());
+        fprintf(stderr, "[%s:%d %s] Cannot open %s\n", __FILE__, __LINE__, __FUNCTION__, file_name.c_str());
+        exit(1);
+    }
+    ftype = file->format;
+
+    if (ftype.format!=bam && ftype.format!=cram)
+    {
+        fprintf(stderr, "[%s:%d %s] Not a BAM/CRAM file: %s\n", __FILE__, __LINE__, __FUNCTION__, file_name.c_str());
         exit(1);
     }
 
-    if (!(sam = sam_open(input_bam_file.c_str(), "r")))
+    if (ref_fasta_file!="")
     {
-        fprintf(stderr, "[%s:%d %s] Cannot open BAM/CRAM file: %s\n", __FILE__, __LINE__, __FUNCTION__, input_bam_file.c_str());
-        exit(1); 
-    }    
-    
-    char* fai = samfaipath(reference_fasta_file.c_str());
-    hts_set_fai_filename(sam, fai);
+        char* fai = samfaipath(ref_fasta_file.c_str());
+        hts_set_fai_filename(file, fai);
+        free(fai);
+    }
 
-    hdr = sam_hdr_read(sam);
+    hdr = sam_hdr_read(file);
     s = bam_init1();
 
-    idx = bam_index_load(input_bam_file.c_str());
-    if (idx==0)
-    {
-        index_loaded = false;
-    }
-    else
+    idx = sam_index_load(file, file_name.c_str());
+    if (idx)
     {
         index_loaded = true;
     }
@@ -152,6 +116,7 @@ bool BAMOrderedReader::jump_to_interval(GenomeInterval& interval)
 
         intervals[interval_index++].to_string(&str);
         itr = sam_itr_querys(idx, hdr, str.s);
+
         if (itr)
         {
             return true;
@@ -190,7 +155,7 @@ bool BAMOrderedReader::read(bam1_t *s)
     {
         while(true)
         {
-            if (itr && sam_itr_next(sam, itr, s)>=0)
+            if (itr && sam_itr_next(file, itr, s)>=0)
             {
                 return true;
             }
@@ -202,7 +167,7 @@ bool BAMOrderedReader::read(bam1_t *s)
     }
     else
     {
-        if (sam_read1(sam, hdr, s)>=0)
+        if (sam_read1(file, hdr, s)>=0)
         {
             return true;
         }
@@ -220,5 +185,5 @@ bool BAMOrderedReader::read(bam1_t *s)
  */
 void BAMOrderedReader::close()
 {
-    sam_close(sam);
+    sam_close(file);
 }

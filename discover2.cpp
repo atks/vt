@@ -178,7 +178,7 @@ class Igor : Program
         (aux=bam_aux_get(s, "MD")) &&  (md = bam_aux2Z(aux));
         
         std::cerr << "##################" << "\n";
-        std::cerr << "chrom-pos: " << chrom << "-" << pos1 << "\n";
+        std::cerr << "chrom:pos: " << chrom << ":" << pos1 << "\n";
         std::cerr << "read     : " << seq.s << "\n";
         std::cerr << "qual     : " << qual.s << "\n";
         std::cerr << "cigar_str: " << cigar_string.s << "\n";
@@ -268,7 +268,6 @@ class Igor : Program
 
             bam_print_key_values(odr->hdr, s);
             
-
 //            bve->process_read(odr->hdr, s);
 //
 //            while(bve->next_variant(v))

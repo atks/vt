@@ -70,15 +70,15 @@ class BAMOrderedReader
     ///////
     //i/o//
     ///////
-    std::string bam_file;    
-    samFile *sam;
+    std::string file_name;    
+    samFile *file;
     bam_hdr_t *hdr;
     hts_idx_t *idx;
     hts_itr_t *itr; 
     bam1_t *s;
     
     //for control
-    int32_t ftype;
+    htsFormat ftype;
     bool intervals_present;
     bool index_loaded;
     bool random_access_enabled;
@@ -90,23 +90,15 @@ class BAMOrderedReader
     std::vector<GenomeInterval> intervals; 
     uint32_t interval_index;    
     std::map<std::string, IntervalTree*> interval_tree;
-            
-    /**
-     * Initialize files and intervals. 
-     *
-     * @input_bam_file     name of the input VCF file
-     * @intervals          list of intervals, if empty, all records are selected.
-     */
-    BAMOrderedReader(std::string& input_bam_file, std::vector<GenomeInterval>& _intervals);
-    
+             
     /**
      * Initialize files, intervals and reference file. 
      *
-     * @input_bam_file        name of the input VCF file
-     * @intervals             list of intervals, if empty, all records are selected.
-     * @reference_fasta_file  reference FASTA file for CRAM
+     * @file_name        name of the input VCF file
+     * @intervals        list of intervals, if empty, all records are selected.
+     * @ref_fasta_file   reference FASTA file for CRAM
      */
-    BAMOrderedReader(std::string& input_bam_file, std::vector<GenomeInterval>& intervals, std::string& reference_fasta_file);
+    BAMOrderedReader(std::string file_name, std::vector<GenomeInterval>& intervals, std::string ref_fasta_file="");
     
     /**
      * Jump to interval. Returns false if not successful.
