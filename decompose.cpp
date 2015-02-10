@@ -246,7 +246,6 @@ class Igor : Program
 
                 for (size_t i=1; i<n_allele; ++i)
                 {
-                    bcf_clear(v);
                     bcf_set_rid(v, rid);
                     bcf_set_pos1(v, pos1);
                     new_alleles.l=0;
