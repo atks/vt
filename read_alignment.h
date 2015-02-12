@@ -27,7 +27,7 @@
 #include "hts_utils.h"
 #include "utils.h"
 #include "variant_manip.h"
-#include <vector>
+#include "htslib/sam.h"
 
 #define M 0 //match
 #define X 1 //mismath
@@ -35,7 +35,6 @@
 #define D 3 //deletion
 #define J 4 //right overhang soft clip
 #define K 5 //left overhang soft clip
-
 
 /**
  * A feature structure.
@@ -45,9 +44,9 @@ typedef struct
     int32_t type;
     int32_t start1;
     int32_t end1;
+    int32_t len;
        
 } feature_t;
-
 
 /**
  * A read object that allows represents the alignment.
@@ -56,8 +55,9 @@ class ReadAlignment
 {
     public:
 
-    char* seq;
-    char* qual;
+    uint8_t* seq;
+    uint8_t* qual;
+    int32_t l_qseq;
     uint32_t* cigar;
     char* md;
     
@@ -72,12 +72,14 @@ class ReadAlignment
     /**
      * Sets the read object with a new read alignment.
      */
-    void set(char* seq, char* qual, uint32_t* cigar, char* md);
+    void set(bam1_t *s, uint8_t* seq, uint8_t* qual, int32_t l_qseq, uint32_t* cigar, char* md);
        
     /**
      * Gets the next feature.
      */
-    void get_next_feature(feature_t* f);
+    void get_next_feature(feature_t& f);
+    
+    void next_op(feature_t& f);
 
     private:
 };

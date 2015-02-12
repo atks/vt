@@ -200,6 +200,8 @@ class Igor : Program
     {
         odw->write_hdr();
 
+        ReadAlignment ra;
+
         //for tracking overlapping reads
         khash_t(rdict) *reads = kh_init(rdict);
         khiter_t k;
@@ -266,7 +268,22 @@ class Igor : Program
                 continue;
             }
 
-            bam_print_key_values(odr->hdr, s);
+
+bam_print_key_values(odr->hdr, s);
+
+            uint8_t *aux;
+            char* md;
+            (aux=bam_aux_get(s, "MD")) &&  (md = bam_aux2Z(aux));
+            ra.set(s, bam_get_seq(s), bam_get_qual(s), bam_get_l_qseq(s), bam_get_cigar(s), md);
+
+
+            //process read and extract all variants
+            //plugin variants observed in variant buffer
+            //
+
+
+
+            
             
 //            bve->process_read(odr->hdr, s);
 //
