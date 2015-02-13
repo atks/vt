@@ -148,22 +148,22 @@ int32_t bam_get_end_pos1(bam1_t *srec);
 void bam_get_seq_string(bam1_t *s, kstring_t *seq);
 
 /**
- * Gets the base qualities from a bam record
+ * Gets the base qualities from a bam record.
  */
 void bam_get_qual_string(bam1_t *s, kstring_t *qual);
 
 /**
- * Gets the cigar sequence from a bam record
+ * Gets the cigar sequence from a bam record.
  */
 #define bam_get_n_cigar_op(b) ((b)->core.n_cigar)
 
 /**
- * Gets the cigar from a BAM record
+ * Gets the cigar from a BAM record.
  */
 void bam_get_cigar_string(bam1_t *s, kstring_t *cigar);
 
 /**
- * Gets the cigar string from a bam record
+ * Gets the cigar string from a bam record.
  */
 void bam_get_cigar_expanded_string(bam1_t *s, kstring_t *cigar_string);
 
@@ -190,22 +190,27 @@ void bam_get_base_and_qual(bam1_t *srec, uint32_t pos, char& base, char& qual, i
 void bam_get_base_and_qual_and_read_and_qual(bam1_t *s, uint32_t pos, char& base, char& qual, int32_t& rpos, kstring_t* readseq, kstring_t* readqual);
 
 /**
- * Gets flag
+ * Converts base encoding to character.
+ */
+#define bam_base2char(b) ("XACXGXXXTXXXXXXN"[(b)]);
+    
+/**
+ * Gets flag.
  */
 #define bam_get_flag(s) ((s)->core.flag)
 
 /**
- * Get map quality
+ * Get map quality.
  */
 #define bam_get_mapq(s) ((s)->core.qual)
 
 /**
- *Get tid - e.g. chromosome id
+ * Get tid - e.g. chromosome id.
  */
 #define bam_get_tid(s) ((s)->core.tid)
 
 /**
- * Get read length
+ * Get read length.
  */
 #define bam_get_l_qseq(s) ((s)->core.l_qseq)
 

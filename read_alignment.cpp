@@ -116,6 +116,7 @@ void ReadAlignment::set(bam1_t *s, uint8_t* seq, uint8_t* qual, int32_t l_qseq, 
     std::string del = "";
     mdp = md;
     int32_t cpos1 = pos1;
+    int32_t spos0 = 0;
     if (n_cigar_op)
     {
         uint32_t *cigar = bam_get_cigar(s);
@@ -130,18 +131,66 @@ void ReadAlignment::set(bam1_t *s, uint8_t* seq, uint8_t* qual, int32_t l_qseq, 
             {
                 //add to S evidence
                 //do nothing
+                
+                std::string ins = "";
+                float mean_qual = 0;   
+                for (size_t i=0; i<oplen ; ++i)
+                {
+                    ins += bam_base2char(bam_seqi(seq, spos0+i));
+                    mean_qual += qual[spos0+i];
+                }
+                
+                mean_qual /= oplen;
+                
+                if (cpos1==pos1)
+                {
+                    std::cerr << "\t\t\tadding sclip left: " << cpos1 << "\t" << ins << " (" << mean_qual << ")\n";
+                }
+                else
+                {
+                    std::cerr << "\t\t\tadding sclip right: " << cpos1 << "\t" << ins << " (" << mean_qual << ")\n";
+                }
+                
+                spos0 += oplen;
             }
             else if (opchar=='M')
             {
-                while (isdigit(*mdp))
-                {                    
-                    char* end = 0;
-                    int32_t len = std::strtol(mdp, &end, 10);
-                    mdp = end;
-
-                    std::cerr << "\tMatch " << len << "\n";
-                    std::cerr << "\t\t\tadding matches: " << cpos1 << "-" << (cpos1+len-1) << "\n";
+                int32_t lpos1 = cpos1;
+                while (*mdp)
+                {
+                    if (isdigit(*mdp))
+                    {
+                        char* end = 0;
+                        int32_t len = std::strtol(mdp, &end, 10);
+                        mdp = end;
+    
+                        std::cerr << "\tMatch " << len << "\n";
+                        
+                        if (len)
+                        {
+                            std::cerr << "\t\t\tadding matches: " << lpos1 << "-" << (lpos1+len-1) << "\n";
+                            lpos1 += len;
+                        }
+                    }
+                    else if (isalpha(*mdp))
+                    {
+                        std::cerr << "\tMismatch " << *mdp << "\n";
+                        std::cerr << "\t\t\tadding mismatch: " << lpos1 << "\t" << *mdp << "\n";
+                    
+                    
+                        ++lpos1;
+                        ++mdp;
+                    }
+                    else
+                    {
+                        break;
+                    }
                 }
+                
+                //note that only Insertions , matches and mismatches can only occur here.
+                
+                cpos1 += oplen;
+                spos0 += oplen;
             }
             else if (opchar=='D')
             {
@@ -163,13 +212,25 @@ void ReadAlignment::set(bam1_t *s, uint8_t* seq, uint8_t* qual, int32_t l_qseq, 
                     }
 
                     std::cerr << "\t\t\tadding deletion: " << cpos1 << " " << del << "\n";
+                        
+                    cpos1 += oplen;
+                    spos0 += oplen;
                 }
             }
             else if (opchar=='I')
             {
-                //may be handled independently
+                //may be handled independently of future matches
                 std::cerr << "insertion " << opchar << "\n";
 
+                std::string ins = "";
+                for (size_t i=0; i<oplen ; ++i)
+                {
+                    ins += bam_base2char(bam_seqi(seq, spos0+i));
+                }
+
+                std::cerr << "\t\t\tadding insertion: " << cpos1 << " " << ins  << "\n";
+                
+                spos0 += oplen;    
                 //extract sequence from read
 
 
@@ -184,16 +245,11 @@ void ReadAlignment::set(bam1_t *s, uint8_t* seq, uint8_t* qual, int32_t l_qseq, 
         }
     }
 
-
-
-
     //return variants to populate the buffer
     //
     //start-end to fill data
     //actual variants
     //
-
-
 }
 
 /**
