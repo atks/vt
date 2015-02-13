@@ -31,13 +31,13 @@
 #include "variant_manip.h"
 #include "htslib/faidx.h"
 
-class PileupPosition 
+class PileupPosition
 {
     public:
     //reference base
     char R;
     //alternative bases
-    uint32_t X[16];        
+    uint32_t X[16];
     //for deletions and insertions with anchor R
     std::map<std::string, uint32_t> D;
     std::map<std::string, uint32_t> I;
@@ -47,16 +47,21 @@ class PileupPosition
     uint32_t N;
     //occurence of all observations for bases on the ends of reads
     uint32_t E;
-    
+
     //to count evidences
     //SNPs - X[A] / (N+E)
     //INDELs - #indel / N
-    //SCLIPS -   
-    
+    //SCLIPS -
+
     /**
      * Clears pileup position.
      */
     void clear();
+    
+    /**
+     * Prints pileup position.
+     */
+    void print();
 };
 
 /**
@@ -75,19 +80,30 @@ class Pileup
     uint32_t buffer_bits = 10;
     size_t buffer_size;
     std::vector<PileupPosition> P;
-    
+
     std::string chrom;
-    size_t start0, end0; // index of P for the start and end position in 0 base coordinates
-    size_t gstart1;      // genome position at the beginning of the pileup 
+    size_t beg0, end0; // index of P for the start and end position in 0 base coordinates
+
+
+    size_t gbeg0;      // genome position at the beginning of the pileup
+
+    // genome position at the beginning of the pileup
+    //0 when it is empty
+    size_t gbeg1;
 
     bool debug;
-    
+
     faidx_t *fai;
+
+    /**
+     * Overloads subscript operator for accessing pileup positions.
+     */
+    PileupPosition& operator[] (int32_t i);
 
     /**
      * Inserts a stretch of reference bases.
      */
-    void insert_ref(uint32_t gstart1, uint32_t gend1, char* seq, size_t start1, size_t end1);
+    void insert_ref(uint32_t gbeg1, uint32_t gend1, char* seq, size_t start1, size_t end1);
 
     /**
      * Updates an occurence of a SNP.
@@ -98,22 +114,27 @@ class Pileup
      * Updates an occurence of a deletion.
      */
     void insert_del(uint32_t gpos1, char ref, std::string& alt);
-    
+
     /**
      * Updates an occurence of an insertion.
      */
     void insert_ins(uint32_t gpos1, char ref, std::string& alt);
-        
+
     /**
      * Inserts a reference base at pos0 into the buffer.
      */
     void insert_lsclip(uint32_t gpos1, char ref, std::string& alt);
-            
+
     /**
      * Inserts a reference base at pos0 into the buffer.
      */
     void insert_rsclip(uint32_t gpos1, char ref, std::string& alt);
-                
+
+    /**
+     * Returns the size of the pileup.
+     */
+    uint32_t size();
+
     private:
 
     /**
@@ -156,18 +177,18 @@ class Pileup
      * Print buffer contents for debugging purpose
      */
     void printBuffer();
-    
-    
+
+
     /**
      * Checks if a variant is normalized.
      */
     bool is_biallelic_normalized(std::string& ref, std::string& alt);
-                
+
     /**
      * Normalize a biallelic variant.
      */
     void normalize_biallelic(size_t pos0, std::string& ref, std::string& alt);
-        
+
 };
 
 #endif

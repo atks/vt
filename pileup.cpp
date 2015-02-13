@@ -28,7 +28,7 @@
  */
 void PileupPosition::clear()
 {
-    R= 'N';
+    R = 'N';
     X[1] = 0;
     X[2] = 0;
     X[4] = 0;
@@ -42,23 +42,68 @@ void PileupPosition::clear()
     E = 0;
 };
 
+/**
+ * Prints pileup position.
+ */
+void PileupPosition::print()
+{
+    std::cerr << "ref: " << R << "\n";
+    std::cerr << "A: " << X[1] << "\n";
+    std::cerr << "C: " << X[2] << "\n";
+    std::cerr << "G: " << X[4] << "\n";
+    std::cerr << "T: " << X[8] << "\n";
+    std::cerr << "N: " << X[15] << "\n";
+    for (std::map<std::string, uint32_t>::iterator i = D.begin(); i!=D.end(); ++i)
+    {
+        std::cerr << i->first << ": " << i->second << "\n";
+    }
+    for (std::map<std::string, uint32_t>::iterator i = I.begin(); i!=D.end(); ++i)
+    {
+        std::cerr << i->first << ": " << i->second << "\n";
+    }
+    for (std::map<std::string, uint32_t>::iterator i = J.begin(); i!=D.end(); ++i)
+    {
+        std::cerr << i->first << ": " << i->second << "\n";
+    }
+    for (std::map<std::string, uint32_t>::iterator i = K.begin(); i!=D.end(); ++i)
+    {
+        std::cerr << i->first << ": " << i->second << "\n";
+    }
+    std::cerr << "#evidences: " << N << "\n";
+    std::cerr << "#tail evidences: " << E << "\n";
+}
+
+/**
+ * Constructor.
+ * Buffer size must be a power of 2.
+ */
 Pileup::Pileup(size_t buffer_size)
 {
     P.resize(buffer_size);
 
-    start0 = 0;
+    beg0 = 0;
     end0 = 0;
 
-    
-    gstart1 = 0;
+    gbeg0 = 0;
 };
-
 
 /**
  * Inserts a stretch of reference bases.
  */
-void Pileup::insert_ref(uint32_t gstart1, uint32_t gend1, char* seq, size_t start1, size_t end1)
+void Pileup::insert_ref(uint32_t gbeg1, uint32_t gend1, char* seq, size_t start1, size_t end1)
 {
+    //if read is ahead, flush the buffer!
+
+    //check if the range is represented in the buffer, update accordingly.
+    if (gend1 < this->gbeg1)
+    {
+
+    }
+
+    if (gbeg1 > this->gbeg1+diff(end0,beg0))
+    {
+
+    }
 }
 
 /**
@@ -66,6 +111,7 @@ void Pileup::insert_ref(uint32_t gstart1, uint32_t gend1, char* seq, size_t star
  */
 void Pileup::insert_snp(uint32_t gpos1, char ref, char alt)
 {
+
 }
 
 /**
@@ -81,27 +127,44 @@ void Pileup::insert_del(uint32_t gpos1, char ref, std::string& alt)
 void Pileup::insert_ins(uint32_t gpos1, char ref, std::string& alt)
 {
 }
-    
+
 /**
  * Inserts a reference base at pos0 into the buffer.
  */
 void Pileup::insert_lsclip(uint32_t gpos1, char ref, std::string& alt)
 {
 }
-        
+
 /**
  * Inserts a reference base at pos0 into the buffer.
  */
 void Pileup::insert_rsclip(uint32_t gpos1, char ref, std::string& alt)
 {
+    
 }
-        
+
+/**
+ * Overloads subscript operator for accessing pileup positions.
+ */
+PileupPosition& Pileup::operator[] (int32_t i)
+{
+    return P[i];
+}
+
+/**
+ * Returns the difference between 2 buffer positions
+ */
+inline size_t Pileup::diff(size_t i, size_t j)
+{
+    return (i>=j ? i-j : buffer_size-(j-i));
+};
+
 /**
  * Checks if buffer is empty.
  */
-bool Pileup::is_empty()
+inline bool Pileup::is_empty()
 {
-    return start0==end0;
+    return beg0==end0;
 };
 
 /**
@@ -162,12 +225,12 @@ void Pileup::minus(size_t& i)
 };
 
 /**
- * Returns the difference between 2 buffer positions
+ * Returns the size of the pileup.
  */
-size_t Pileup::diff(size_t i, size_t j)
+inline uint32_t Pileup::size()
 {
-    return (i>=j ? i-j : buffer_size-(j-i));
-};
+    return (end0>=beg0 ? end0-beg0 : buffer_size-(beg0-end0));
+}
 
 /**
  * Gets the position in the buffer that corresponds to
@@ -179,17 +242,17 @@ size_t Pileup::get_cur_pos0(size_t gpos1)
     if (is_empty())
     {
         //start_genome_pos0 = genome_pos0;
-        return start0;
+        return beg0;
     }
     else
     {
-        if (gpos1-gstart1>buffer_size)
+        if (gpos1-gbeg0>buffer_size)
         {
             std::cerr << "overflow buffer\n" ;
             //should allow for unbuffering here
         }
 
-        return (start0 + (gpos1-gstart1))%buffer_size;
+        return (beg0 + (gpos1-gbeg0))%buffer_size;
     }
 };
 
@@ -199,11 +262,6 @@ size_t Pileup::get_cur_pos0(size_t gpos1)
 void Pileup::printBuffer()
 {
     std::cout << "PRINT BUFFER" << "\n";
-
-    while (false)
-    {
-        
-    }
 };
 
 /**

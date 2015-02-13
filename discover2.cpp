@@ -153,6 +153,7 @@ class Igor : Program
         ////////////////////////
         //tools initialization//
         ////////////////////////
+        pileup = new Pileup();
     }
 
     void bam_print_key_values(bam_hdr_t *h, bam1_t *s)
@@ -255,6 +256,21 @@ class Igor : Program
         return true;
     }
 
+    /**
+     * Flush pileup.
+     */
+    void flush(uint32_t gpos1)
+    {
+        if (pileup->gbeg1 && gpos1>pileup->gbeg0+pileup->size())
+        {
+            for (size_t i=pileup->beg0; i<=pileup->end0; ++i)
+            {
+                //output variants
+                pileup[i];
+            }
+        }
+    } 
+    
     void process_read(bam1_t *s)
     {
         int32_t pos1 = bam_get_pos1(s);
@@ -269,7 +285,6 @@ class Igor : Program
 
         //iterate cigar
         int32_t n_cigar_op = bam_get_n_cigar_op(s);
-
 
         char* mdp = md;
         int32_t cpos1 = pos1;
@@ -417,8 +432,10 @@ class Igor : Program
         {
             ++no_reads;
 
-            filter_read(s);
-
+            if (!filter_read(s)) 
+            {
+                continue;
+            }
 
             bam_print_key_values(odr->hdr, s);
 
@@ -427,7 +444,7 @@ class Igor : Program
             process_read(s);
 
             //flush variant buffer.
-            flush(s);
+            //flush(s);
 
             ++no_passed_reads;
         }
