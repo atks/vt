@@ -12,7 +12,6 @@ SOURCES = align\
 		annotate_regions\
 		annotate_variants\
 		bam_ordered_reader\
-		bam_variant_extractor\
 		bcf_ordered_reader\
 		bcf_ordered_writer\
 		bcf_synced_reader\
@@ -56,6 +55,7 @@ SOURCES = align\
 		paste\
 		pedigree\
 		peek\
+		pileup\
 		profile_afs\
 		profile_chm1\
 		profile_chrom\
@@ -80,7 +80,6 @@ SOURCES = align\
 		utils\
 		validate\
 		variant\
-		variant_buffer\
 		variant_manip\
 		view\
 		vntrize\

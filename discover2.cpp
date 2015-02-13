@@ -54,6 +54,9 @@ class Igor : Program
 
     uint16_t exclude_flag;
 
+    khash_t(rdict) *reads;
+    khiter_t k;
+        int32_t ret;
     ///////
     //i/o//
     ///////
@@ -75,7 +78,7 @@ class Igor : Program
     /////////
     //tools//
     /////////
-    BAMVariantExtractor *bve;
+    Pileup *pileup;
 
     Igor(int argc, char **argv)
     {
@@ -128,7 +131,6 @@ class Igor : Program
         exclude_flag = 0x0704;
 
         odr = new BAMOrderedReader(input_bam_file, intervals, ref_fasta_file);
-        //odr = new BAMOrderedReader(input_bam_file, intervals);
         s = bam_init1();
 
         odw = new BCFOrderedWriter(output_vcf_file, 0);
@@ -151,10 +153,6 @@ class Igor : Program
         ////////////////////////
         //tools initialization//
         ////////////////////////
-        bve = new BAMVariantExtractor(evidence_allele_count_cutoff,
-                                    fractional_evidence_allele_count_cutoff,
-                                    baseq_cutoff,
-                                    ref_fasta_file);
     }
 
     void bam_print_key_values(bam_hdr_t *h, bam1_t *s)
@@ -172,11 +170,11 @@ class Igor : Program
         bam_get_cigar_expanded_string(s, &cigar_expanded_string);
         uint16_t flag = bam_get_flag(s);
         uint32_t mapq = bam_get_mapq(s);
-    
+
         uint8_t *aux;
         char* md;
         (aux=bam_aux_get(s, "MD")) &&  (md = bam_aux2Z(aux));
-        
+
         std::cerr << "##################" << "\n";
         std::cerr << "chrom:pos: " << chrom << ":" << pos1 << "\n";
         std::cerr << "read     : " << seq.s << "\n";
@@ -188,14 +186,75 @@ class Igor : Program
         std::cerr << "mpos1    : " << bam_get_mpos1(s) << "\n";
         std::cerr << "mtid     : " << bam_get_mtid(s) << "\n";
         std::cerr << "md       : " << md << "\n";
-            
-    
+
+
         if (seq.m) free(seq.s);
         if (qual.m) free(qual.s);
         if (cigar_string.m) free(cigar_string.s);
         if (cigar_expanded_string.m) free(cigar_expanded_string.s);
     }
-    
+
+
+    bool filter_read(bam1_t *s)
+    {
+        //this read is the first of the pair
+        if (bam_get_mpos1(s) && (bam_get_tid(s)==bam_get_mtid(s)))
+        {
+            //first mate
+            if (bam_get_mpos1(s)>bam_get_pos1(s))
+            {
+                //overlapping
+                if (bam_get_mpos1(s)<=(bam_get_pos1(s) + bam_get_l_qseq(s) - 1))
+                {
+                    //add read that has overlapping
+                    //duplicate the record and perform the stitching later
+                    char* qname = strdup(bam_get_qname(s));
+                    k = kh_put(rdict, reads, qname, &ret);
+                    if (!ret)
+                    {
+                        //already present
+                        free(qname);
+                    }
+                    kh_val(reads, k) = {bam_get_pos1(s), bam_get_pos1(s)+bam_get_l_qseq(s)-1};
+                }
+            }
+            else
+            {
+                //check overlap
+                //todo: perform stitching in future
+                if((k = kh_get(rdict, reads, bam_get_qname(s)))!=kh_end(reads))
+                {
+                    if (kh_exist(reads, k))
+                    {
+                        free((char*)kh_key(reads, k));
+                        kh_del(rdict, reads, k);
+                        ++no_overlapping_reads;
+                    }
+                    //continue;
+                }
+            }
+        }
+
+        if(bam_get_flag(s) & exclude_flag)
+        {
+            //1. unmapped
+            //2. secondary alignment
+            //3. not passing QC
+            //4. PCR or optical duplicate
+            ++no_exclude_flag_reads;
+            return false;
+        }
+
+        if (bam_get_mapq(s) < mapq_cutoff)
+        {
+            //filter short aligments and those with too many indels (?)
+            ++no_low_mapq_reads;
+            return false;
+        }
+        
+        return true;
+    }
+
     void process_read(bam1_t *s)
     {
         int32_t pos1 = bam_get_pos1(s);
@@ -203,19 +262,19 @@ class Igor : Program
         uint8_t* qual = bam_get_qual(s);
         int32_t l_qseq = bam_get_l_qseq(s);
         uint32_t* cigar = bam_get_cigar(s);
-        
+
         uint8_t *aux;
         char* md;
         (aux=bam_aux_get(s, "MD")) &&  (md = bam_aux2Z(aux));
-        
+
         //iterate cigar
         int32_t n_cigar_op = bam_get_n_cigar_op(s);
-    
-        
+
+
         char* mdp = md;
         int32_t cpos1 = pos1;
         int32_t spos0 = 0;
-        
+
         if (n_cigar_op)
         {
             uint32_t *cigar = bam_get_cigar(s);
@@ -223,24 +282,24 @@ class Igor : Program
             {
                 int32_t oplen = bam_cigar_oplen(cigar[i]);
                 char opchar = bam_cigar_opchr(cigar[i]);
-    
+
                 std::cerr << oplen << " " << opchar << "\n";
-    
+
                 if (opchar=='S')
                 {
                     //add to S evidence
                     //do nothing
-                    
+
                     std::string ins = "";
-                    float mean_qual = 0;   
+                    float mean_qual = 0;
                     for (size_t i=0; i<oplen ; ++i)
                     {
                         ins += bam_base2char(bam_seqi(seq, spos0+i));
                         mean_qual += qual[spos0+i];
                     }
-                    
+
                     mean_qual /= oplen;
-                    
+
                     if (cpos1==pos1)
                     {
                         std::cerr << "\t\t\tadding sclip left: " << cpos1 << "\t" << ins << " (" << mean_qual << ")\n";
@@ -249,7 +308,7 @@ class Igor : Program
                     {
                         std::cerr << "\t\t\tadding sclip right: " << cpos1 << "\t" << ins << " (" << mean_qual << ")\n";
                     }
-                    
+
                     spos0 += oplen;
                 }
                 else if (opchar=='M')
@@ -262,9 +321,9 @@ class Igor : Program
                             char* end = 0;
                             int32_t len = std::strtol(mdp, &end, 10);
                             mdp = end;
-        
+
                             std::cerr << "\tMatch " << len << "\n";
-                            
+
                             if (len)
                             {
                                 std::cerr << "\t\t\tadding matches: " << lpos1 << "-" << (lpos1+len-1) << "\n";
@@ -275,8 +334,8 @@ class Igor : Program
                         {
                             std::cerr << "\tMismatch " << *mdp << "\n";
                             std::cerr << "\t\t\tadding mismatch: " << lpos1 << "\t" << *mdp << "\n";
-                        
-                        
+
+
                             ++lpos1;
                             ++mdp;
                         }
@@ -285,16 +344,16 @@ class Igor : Program
                             break;
                         }
                     }
-                    
+
                     //note that only Insertions , matches and mismatches can only occur here.
-                    
+
                     cpos1 += oplen;
                     spos0 += oplen;
                 }
                 else if (opchar=='D')
                 {
                     bool is_del = false;
-    
+
                     if (*mdp!='^')
                     {
                         std::cerr << "inconsistent MD and cigar\n";
@@ -309,9 +368,9 @@ class Igor : Program
                             del += *mdp;
                             ++mdp;
                         }
-    
+
                         std::cerr << "\t\t\tadding deletion: " << cpos1 << " " << del << "\n";
-                            
+
                         cpos1 += oplen;
                         spos0 += oplen;
                     }
@@ -320,16 +379,16 @@ class Igor : Program
                 {
                     //may be handled independently of future matches
                     std::cerr << "insertion " << opchar << "\n";
-    
+
                     std::string ins = "";
                     for (size_t i=0; i<oplen ; ++i)
                     {
                         ins += bam_base2char(bam_seqi(seq, spos0+i));
                     }
-    
+
                     std::cerr << "\t\t\tadding insertion: " << cpos1 << " " << ins  << "\n";
-                    
-                    spos0 += oplen;    
+
+                    spos0 += oplen;
                     //extract sequence from read
                     //go back an subtract one evidence from the array for indels.
                 }
@@ -340,87 +399,31 @@ class Igor : Program
             }
         }
     }
-   
+
     void flush(bam1_t *s)
     {
-               
+
     }
-    
+
     void discover()
     {
         odw->write_hdr();
 
         //for tracking overlapping reads
-        khash_t(rdict) *reads = kh_init(rdict);
-        khiter_t k;
-        int32_t ret;
-
-        bcf1_t *v = bcf_init();;
-
+        reads = kh_init(rdict);
+        
+        
         while (odr->read(s))
         {
             ++no_reads;
 
-            //this read is the first of the pair
-            if (bam_get_mpos1(s) && (bam_get_tid(s)==bam_get_mtid(s)))
-            {
-                //first mate
-                if (bam_get_mpos1(s)>bam_get_pos1(s))
-                {
-                    //overlapping
-                    if (bam_get_mpos1(s)<=(bam_get_pos1(s) + bam_get_l_qseq(s) - 1))
-                    {
-                        //add read that has overlapping
-                        //duplicate the record and perform the stitching later
-                        char* qname = strdup(bam_get_qname(s));
-                        k = kh_put(rdict, reads, qname, &ret);
-                        if (!ret)
-                        {
-                            //already present
-                            free(qname);
-                        }
-                        kh_val(reads, k) = {bam_get_pos1(s), bam_get_pos1(s)+bam_get_l_qseq(s)-1};
-                    }
-                }
-                else
-                {
-                    //check overlap
-                    //todo: perform stitching in future
-                    if((k = kh_get(rdict, reads, bam_get_qname(s)))!=kh_end(reads))
-                    {
-                        if (kh_exist(reads, k))
-                        {
-                            free((char*)kh_key(reads, k));
-                            kh_del(rdict, reads, k);
-                            ++no_overlapping_reads;
-                        }
-                        //continue;
-                    }
-                }
-            }
-
-            if(bam_get_flag(s) & exclude_flag)
-            {
-                //1. unmapped
-                //2. secondary alignment
-                //3. not passing QC
-                //4. PCR or optical duplicate
-                ++no_exclude_flag_reads;
-                continue;
-            }
-
-            if (bam_get_mapq(s) < mapq_cutoff)
-            {
-                //filter short aligments and those with too many indels (?)
-                ++no_low_mapq_reads;
-                continue;
-            }
+            filter_read(s);
 
 
             bam_print_key_values(odr->hdr, s);
 
             //process read and extract all variants
-           
+
             process_read(s);
 
             //flush variant buffer.
@@ -429,7 +432,7 @@ class Igor : Program
             ++no_passed_reads;
         }
 
-        odw->close();        
+        odw->close();
     };
 
     void print_options()

@@ -1,6 +1,6 @@
 /* The MIT License
 
-   Copyright (c) 2014 Adrian Tan <atks@umich.edu>
+   Copyright (c) 2015 Adrian Tan <atks@umich.edu>
 
    Permission is hereby granted, free of charge, to any person obtaining a copy
    of this software and associated documentation files (the "Software"), to deal
@@ -21,87 +21,195 @@
    THE SOFTWARE.
 */
 
-#include "bam_variant_extractor.h"
+#include "pileup.h"
 
 /**
- * Constructor
- * baseq_cutoff - q value cutoff to select candidate SNPs
+ * Clears pileup position.
  */
-BAMVariantExtractor::BAMVariantExtractor(size_t evidence_allele_count_cutoff,
-              double fractional_evidence_allele_count_cutoff,
-              size_t baseq_cutoff,
-              std::string& ref_fasta_file)
-: evidence_allele_count_cutoff(evidence_allele_count_cutoff),
-  fractional_evidence_allele_count_cutoff(fractional_evidence_allele_count_cutoff),
-  baseq_cutoff(baseq_cutoff)
+void PileupPosition::clear()
 {
-    bcf1_t* v = bcf_init();
+    R= 'N';
+    X[1] = 0;
+    X[2] = 0;
+    X[4] = 0;
+    X[8] = 0;
+    X[15] = 0;
+    D.clear();
+    I.clear();
+    J.clear();
+    K.clear();
+    N = 0;
+    E = 0;
+};
+
+Pileup::Pileup(size_t buffer_size)
+{
+    P.resize(buffer_size);
+
+    start0 = 0;
+    end0 = 0;
+
     
-    alleles = {0,0,0};
-    read_seq = {0,0,0};
-    qual = {0,0,0};
-    cigar = {0,0,0};
+    gstart1 = 0;
+};
+
+
+/**
+ * Inserts a stretch of reference bases.
+ */
+void Pileup::insert_ref(uint32_t gstart1, uint32_t gend1, char* seq, size_t start1, size_t end1)
+{
+}
+
+/**
+ * Updates an occurence of a SNP.
+ */
+void Pileup::insert_snp(uint32_t gpos1, char ref, char alt)
+{
+}
+
+/**
+ * Updates an occurence of a deletion.
+ */
+void Pileup::insert_del(uint32_t gpos1, char ref, std::string& alt)
+{
+}
+
+/**
+ * Updates an occurence of an insertion.
+ */
+void Pileup::insert_ins(uint32_t gpos1, char ref, std::string& alt)
+{
+}
+    
+/**
+ * Inserts a reference base at pos0 into the buffer.
+ */
+void Pileup::insert_lsclip(uint32_t gpos1, char ref, std::string& alt)
+{
+}
+        
+/**
+ * Inserts a reference base at pos0 into the buffer.
+ */
+void Pileup::insert_rsclip(uint32_t gpos1, char ref, std::string& alt)
+{
+}
+        
+/**
+ * Checks if buffer is empty.
+ */
+bool Pileup::is_empty()
+{
+    return start0==end0;
 };
 
 /**
- * Transfer read into a buffer for processing later
+ *Increments buffer index i by 1.
  */
-void BAMVariantExtractor::process_read(bam_hdr_t *h, bam1_t *s)
+void Pileup::add(size_t& i)
 {
-    //extract relevant information from sam record
-    char* chrom = bam_get_chrom(h, s);
-    int32_t tid = bam_get_tid(s);
-    int32_t pos0 = bam_get_pos0(s);
-    
-    //flush variants
-    if (this->tid!=tid)
+    if (i>=buffer_size)
     {
-        flush_variant_buffer();
+        std::cerr << "Unaccepted buffer index: " << i << " ("  << buffer_size << ")\n";
+        exit(1);
+    }
+
+    size_t temp = (i+1)%buffer_size;
+    i = end0==i ? (end0=temp) : temp;
+};
+
+/**
+ * Increments buffer index i by j.
+ */
+size_t Pileup::add(size_t i, size_t j)
+{
+    if (i>=buffer_size)
+    {
+        std::cerr << "Unaccepted buffer index: " << i << " ("  << buffer_size << ")\n";
+        exit(1);
+    }
+
+    return (i+j)%buffer_size;
+};
+
+/**
+ * Decrements buffer index i by j.
+ */
+size_t Pileup::minus(size_t& i, size_t j)
+{
+    if (i>=buffer_size)
+    {
+        std::cerr << "Unaccepted buffer index: " << i << " ("  << buffer_size << ")\n";
+        exit(1);
+    }
+
+    return (i>=j ? i-j : buffer_size-(j-i));
+};
+
+/**
+ * Decrements buffer index i by 1.
+ */
+void Pileup::minus(size_t& i)
+{
+    if (i>=buffer_size)
+    {
+        std::cerr << "Unaccepted buffer index: " << i << " ("  << buffer_size << ")\n";
+        exit(1);
+    }
+
+    i = (i>=1 ? i-1 : buffer_size-1);
+};
+
+/**
+ * Returns the difference between 2 buffer positions
+ */
+size_t Pileup::diff(size_t i, size_t j)
+{
+    return (i>=j ? i-j : buffer_size-(j-i));
+};
+
+/**
+ * Gets the position in the buffer that corresponds to
+ * the genome position indicated by pos.
+ */
+size_t Pileup::get_cur_pos0(size_t gpos1)
+{
+    //when buffer is empty
+    if (is_empty())
+    {
+        //start_genome_pos0 = genome_pos0;
+        return start0;
     }
     else
     {
-        this->chrom.assign(chrom);
-        this->tid = tid;
-        flush_variant_buffer();
-        //reset buffer
+        if (gpos1-gstart1>buffer_size)
+        {
+            std::cerr << "overflow buffer\n" ;
+            //should allow for unbuffering here
+        }
+
+        return (start0 + (gpos1-gstart1))%buffer_size;
     }
-
-    int32_t ref_len;
-    char* genome_seq = faidx_fetch_seq(fai, chrom, pos0-1, pos0+cigar.l, &ref_len);
-
-    uint8_t* sq = bam_get_seq(s);
-    bam_get_seq_string(s, &read_seq);
-    
-    size_t genome_pos0 = 0;
-    
-    const bam1_core_t *c = &s->core;
-    
-
-    flush_variant_buffer();
-    if (ref_len>0) free(genome_seq);
 };
 
 /**
- * Empty variant buffer records that are completed.
+ * Print buffer contents for debugging purpose
  */
-bool BAMVariantExtractor::flush_variant_buffer()
+void Pileup::printBuffer()
 {
-    return true;
-};
+    std::cout << "PRINT BUFFER" << "\n";
 
-/**
- * Processes buffer to pick up variant
- */
-bool BAMVariantExtractor::next_variant(bcf1_t* v)
-{
-    return true;
+    while (false)
+    {
+        
+    }
 };
-
 
 /**
  * Checks if a variant is normalized.
  */
-bool BAMVariantExtractor::is_biallelic_normalized(std::string& ref, std::string& alt)
+bool Pileup::is_biallelic_normalized(std::string& ref, std::string& alt)
 {
     bool last_base_same = ref.at(ref.size()-1) == alt.at(alt.size()-1);
     bool exists_len_one_allele = ref.size()==1 || alt.size()==1;
@@ -120,7 +228,7 @@ bool BAMVariantExtractor::is_biallelic_normalized(std::string& ref, std::string&
 /**
  * Normalize a biallelic variant.
  */
-void BAMVariantExtractor::normalize_biallelic(size_t pos0, std::string& ref, std::string& alt)
+void Pileup::normalize_biallelic(size_t pos0, std::string& ref, std::string& alt)
 {
     if (!is_biallelic_normalized(ref, alt))
     {
