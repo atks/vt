@@ -1,6 +1,6 @@
 /* The MIT License
 
-   Copyright (c) 2014 Adrian Tan <atks@umich.edu>
+   Copyright (c) 2015 Adrian Tan <atks@umich.edu>
 
    Permission is hereby granted, free of charge, to any person obtaining a copy
    of this software and associated documentation files (the "Software"), to deal
@@ -198,86 +198,24 @@ class Igor : Program
     
     void process_read(bam1_t *s)
     {
+        int32_t pos1 = bam_get_pos1(s);
         uint8_t* seq = bam_get_seq(s);
         uint8_t* qual = bam_get_qual(s);
         int32_t l_qseq = bam_get_l_qseq(s);
         uint32_t* cigar = bam_get_cigar(s);
         
-        kstring_t str = {0,0,0};
-        std::cerr << "*************" << "\n";
-        int32_t pos1 = bam_get_pos1(s);
-        std::cerr << "\tpos1     : " << pos1 << "\n";
-        bam_get_seq_string(s, &str);
-        std::cerr << "\tread     : " << str.s << "\n";
-        bam_get_qual_string(s, &str);
-        std::cerr << "\tqual     : " << str.s << "\n";
-        bam_get_cigar_string(s, &str);
-        std::cerr << "\tcigar_str: " << str.s << "\n";
-        bam_get_cigar_expanded_string(s, &str);
-        std::cerr << "\tcigar    : " << str.s << "\n";
-        std::cerr << "\tlen      : " << l_qseq << "\n";
         uint8_t *aux;
         char* md;
         (aux=bam_aux_get(s, "MD")) &&  (md = bam_aux2Z(aux));
-        std::cerr << "\tmd       : " << md << "\n";
-        if (str.m) free(str.s);
-    
+        
         //iterate cigar
         int32_t n_cigar_op = bam_get_n_cigar_op(s);
     
-        if (n_cigar_op)
-        {
-            uint32_t *cigar = bam_get_cigar(s);
-            for (int32_t i = 0; i < n_cigar_op; ++i)
-            {
-                std::cerr << bam_cigar_oplen(cigar[i]) << " " << bam_cigar_opchr(cigar[i]) << "\n";
-            }
-        }
-    
+        
         char* mdp = md;
-        bool is_del = false;
-        while (*mdp)
-        {
-            //M
-            if (isdigit(*mdp))
-            {
-                char* end = 0;
-                int32_t len = std::strtol(mdp, &end, 10);
-                mdp = end;
-                is_del = false;
-                std::cerr << "Match " << len << "\n";
-            }
-            //reference base
-            else if (isalpha(*mdp))
-            {
-                if (is_del)
-                {
-                    std::cerr << "Deletion " << *mdp << "\n";
-                    ++mdp;
-                }
-                else
-                {
-                    std::cerr << "Mismatch " << *mdp << "\n";
-                    ++mdp;
-                }
-            }
-            //deletion
-            else if (*mdp=='^')
-            {
-                ++mdp;
-                is_del = true;
-            }
-        }
-    
-        std::cerr << "************ " << "\n";
-    
-        bool process_cigar = true;
-        int32_t c_len = 0;
-        int32_t md_len = 0;
-        std::string del = "";
-        mdp = md;
         int32_t cpos1 = pos1;
         int32_t spos0 = 0;
+        
         if (n_cigar_op)
         {
             uint32_t *cigar = bam_get_cigar(s);
@@ -403,11 +341,14 @@ class Igor : Program
         }
     }
    
+    void flush(bam1_t *s)
+    {
+               
+    }
+    
     void discover()
     {
         odw->write_hdr();
-
-        ReadAlignment ra;
 
         //for tracking overlapping reads
         khash_t(rdict) *reads = kh_init(rdict);
@@ -478,41 +419,17 @@ class Igor : Program
 
             bam_print_key_values(odr->hdr, s);
 
+            //process read and extract all variants
+           
             process_read(s);
 
-
-            //process read and extract all variants
-            //plugin variants observed in variant buffer
-            //
-
-
-
-            
-            
-//            bve->process_read(odr->hdr, s);
-//
-//            while(bve->next_variant(v))
-//            {
-//                odw->write(v);
-//            }
+            //flush variant buffer.
+            flush(s);
 
             ++no_passed_reads;
         }
 
-//        while(bve->next_variant(v))
-//        {
-//            odw->write(v);
-//        }
-
-        odw->close();
-        
-        
-//       stats: no. reads              : 2931500
-//       no. overlapping reads  : 1044117
-//       no. low mapq reads     : 42909
-//       no. passed reads       : 2842431
-//       no. exclude flag reads : 46160
-
+        odw->close();        
     };
 
     void print_options()

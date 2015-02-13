@@ -38,7 +38,6 @@
 #include "utils.h"
 #include "allele.h"
 #include "bam_variant_extractor.h"
-#include "read_alignment.h"
 
 void discover2(int argc, char ** argv);
 
