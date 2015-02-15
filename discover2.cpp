@@ -266,7 +266,8 @@ class Igor : Program
             for (size_t i=pileup->beg0; i<=pileup->end0; ++i)
             {
                 //output variants
-                pileup[i];
+                PileupPosition p = (*pileup)[i];
+                p.print();
             }
         }
     } 

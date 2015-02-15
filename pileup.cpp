@@ -146,7 +146,7 @@ void Pileup::insert_rsclip(uint32_t gpos1, char ref, std::string& alt)
 /**
  * Overloads subscript operator for accessing pileup positions.
  */
-PileupPosition& Pileup::operator[] (int32_t i)
+PileupPosition& Pileup::operator[] (const int32_t i)
 {
     return P[i];
 }

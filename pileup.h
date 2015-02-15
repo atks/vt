@@ -53,6 +53,13 @@ class PileupPosition
     //INDELs - #indel / N
     //SCLIPS -
 
+
+    /**
+     * Constructor.
+     * Buffer size must be a power of 2.
+     */
+    PileupPosition(){};
+
     /**
      * Clears pileup position.
      */
@@ -98,7 +105,7 @@ class Pileup
     /**
      * Overloads subscript operator for accessing pileup positions.
      */
-    PileupPosition& operator[] (int32_t i);
+    PileupPosition& operator[] (const int32_t i);
 
     /**
      * Inserts a stretch of reference bases.
