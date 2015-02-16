@@ -78,7 +78,7 @@ class Igor : Program
     /////////
     //tools//
     /////////
-    Pileup *pileup;
+    Pileup pileup;
 
     Igor(int argc, char **argv)
     {
@@ -153,7 +153,7 @@ class Igor : Program
         ////////////////////////
         //tools initialization//
         ////////////////////////
-        pileup = new Pileup();
+        
     }
 
     void bam_print_key_values(bam_hdr_t *h, bam1_t *s)
@@ -261,13 +261,12 @@ class Igor : Program
      */
     void flush(uint32_t gpos1)
     {
-        if (pileup->gbeg1 && gpos1>pileup->gbeg0+pileup->size())
+        if (pileup.gbeg1 && gpos1>pileup.gbeg0+pileup.size())
         {
-            for (size_t i=pileup->beg0; i<=pileup->end0; ++i)
+            for (size_t i=pileup.beg0; i<=pileup.end0; ++i)
             {
                 //output variants
-                PileupPosition p = (*pileup)[i];
-                p.print();
+                pileup[i].print();
             }
         }
     } 
