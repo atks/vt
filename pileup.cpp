@@ -75,72 +75,131 @@ void PileupPosition::print()
 
 /**
  * Constructor.
- * Buffer size must be a power of 2.
  */
-Pileup::Pileup(size_t buffer_size)
+Pileup::Pileup(uint32_t k)
 {
+    //Buffer size must be a power of 2^k.
+    buffer_size = 1 << k;
+    buffer_size_mask = 0xFFFF >> (32-k);
+
     P.resize(buffer_size);
 
     beg0 = 0;
     end0 = 0;
 
-    gbeg0 = 0;
+    gbeg1 = 0;
+    gend1 = 0;
 };
+
+/**
+ * Converts gpos1 to index in P.
+ */
+size_t Pileup::g2i(uint32_t gpos1)
+{
+    return add(beg0, gpos1-gbeg1); 
+}
+
+/**
+ * Checks if the position is present.
+ */
+bool Pileup::position_is_present(int32_t tid, uint32_t gpos1)
+{
+    return (tid==this->tid) && (gpos1>=this->gbeg1) && (gpos1<=this->gend1);
+}
 
 /**
  * Inserts a stretch of reference bases.
  */
-void Pileup::insert_ref(uint32_t gbeg1, uint32_t gend1, char* seq, size_t start1, size_t end1)
+void Pileup::add_ref(uint32_t gpos1, uint32_t spos0, uint32_t len, uint8_t* seq, bool end)
 {
-    //if read is ahead, flush the buffer!
-
-    //check if the range is represented in the buffer, update accordingly.
-    if (gend1 < this->gbeg1)
+    if (is_empty())
     {
-
+        gbeg1 = gpos1;
+        gend1 = gpos1;
     }
-
-    if (gbeg1 > this->gbeg1+diff(end0,beg0))
+    
+    for (uint32_t i=0; i<len; ++i)
     {
+        if (gpos1+i>gend1)
+        {
+           P[g2i(gpos1+i)].R = (bam_base2char(bam_seqi(seq, spos0+len))); 
+           inc();        
+        }
+        
+        ++P[g2i(gpos1+i)].N;
+    }        
 
-    }
 }
 
 /**
  * Updates an occurence of a SNP.
  */
-void Pileup::insert_snp(uint32_t gpos1, char ref, char alt)
+void Pileup::add_snp(uint32_t gpos1, char ref, char alt, bool end)
 {
-
+    if (is_empty())
+    {
+        gbeg1 = gpos1;
+        gend1 = gpos1;
+    }
+    
+    P[g2i(gpos1)].R = ref; 
+    ++P[g2i(gpos1)].X[alt];                 
 }
 
 /**
  * Updates an occurence of a deletion.
  */
-void Pileup::insert_del(uint32_t gpos1, char ref, std::string& alt)
+void Pileup::add_del(uint32_t gpos1, std::string& alt)
 {
+    if (is_empty())
+    {
+        gbeg1 = gpos1;
+        gend1 = gpos1;
+    }
+    
+    ++P[g2i(gpos1)].D[alt];  
 }
 
 /**
  * Updates an occurence of an insertion.
  */
-void Pileup::insert_ins(uint32_t gpos1, char ref, std::string& alt)
+void Pileup::add_ins(uint32_t gpos1, std::string& alt)
 {
-}
-
-/**
- * Inserts a reference base at pos0 into the buffer.
- */
-void Pileup::insert_lsclip(uint32_t gpos1, char ref, std::string& alt)
-{
-}
-
-/**
- * Inserts a reference base at pos0 into the buffer.
- */
-void Pileup::insert_rsclip(uint32_t gpos1, char ref, std::string& alt)
-{
+    if (is_empty())
+    {
+        gbeg1 = gpos1;
+        gend1 = gpos1;
+    }
     
+    ++P[g2i(gpos1)].I[alt];  
+}
+
+/**
+ * Inserts a reference base at pos0 into the buffer.
+ */
+void Pileup::add_lsclip(uint32_t gpos1, std::string& alt)
+{
+    if (is_empty())
+    {
+        gbeg1 = gpos1;
+        gend1 = gpos1;
+    }
+    
+    ++P[g2i(gpos1)].J[alt];  
+}
+
+/**
+ * Inserts a reference base at pos0 into the buffer.
+ */
+void Pileup::add_rsclip(uint32_t gpos1, std::string& alt)
+{
+    if (is_empty())
+    {
+        gbeg1 = gpos1;
+        gend1 = gpos1;
+    }
+    
+    ++P[g2i(gpos1)].K[alt];  
 }
 
 /**
@@ -170,30 +229,18 @@ inline bool Pileup::is_empty()
 /**
  *Increments buffer index i by 1.
  */
-void Pileup::add(size_t& i)
+void Pileup::inc()
 {
-    if (i>=buffer_size)
-    {
-        std::cerr << "Unaccepted buffer index: " << i << " ("  << buffer_size << ")\n";
-        exit(1);
-    }
-
-    size_t temp = (i+1)%buffer_size;
-    i = end0==i ? (end0=temp) : temp;
+    ++gend1;
+    end0 = (end0+1) & buffer_size_mask;
 };
 
 /**
  * Increments buffer index i by j.
  */
-size_t Pileup::add(size_t i, size_t j)
+inline uint32_t Pileup::add(uint32_t i, uint32_t j)
 {
-    if (i>=buffer_size)
-    {
-        std::cerr << "Unaccepted buffer index: " << i << " ("  << buffer_size << ")\n";
-        exit(1);
-    }
-
-    return (i+j)%buffer_size;
+    return (i+j) & buffer_size_mask;
 };
 
 /**
@@ -246,13 +293,13 @@ size_t Pileup::get_cur_pos0(size_t gpos1)
     }
     else
     {
-        if (gpos1-gbeg0>buffer_size)
+        if (gpos1-gbeg1-1>buffer_size)
         {
             std::cerr << "overflow buffer\n" ;
             //should allow for unbuffering here
         }
 
-        return (beg0 + (gpos1-gbeg0))%buffer_size;
+        return (beg0 + (gpos1-gbeg1-1))%buffer_size;
     }
 };
 

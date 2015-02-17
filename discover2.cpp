@@ -261,19 +261,18 @@ class Igor : Program
      */
     void flush(uint32_t gpos1)
     {
-        if (pileup.gbeg1 && gpos1>pileup.gbeg0+pileup.size())
-        {
-            for (size_t i=pileup.beg0; i<=pileup.end0; ++i)
-            {
-                //output variants
-                pileup[i].print();
-            }
-        }
+//        if (pileup.gbeg1 && gpos1>pileup.gbeg0+pileup.size())
+//        {
+//            for (size_t i=pileup.beg0; i<=pileup.end0; ++i)
+//            {
+//                pileup[i].print();
+//            }
+//        }
     } 
     
     void process_read(bam1_t *s)
     {
-        int32_t pos1 = bam_get_pos1(s);
+        uint32_t pos1 = bam_get_pos1(s);
         uint8_t* seq = bam_get_seq(s);
         uint8_t* qual = bam_get_qual(s);
         int32_t l_qseq = bam_get_l_qseq(s);
@@ -284,18 +283,18 @@ class Igor : Program
         (aux=bam_aux_get(s, "MD")) &&  (md = bam_aux2Z(aux));
 
         //iterate cigar
-        int32_t n_cigar_op = bam_get_n_cigar_op(s);
+        uint32_t n_cigar_op = bam_get_n_cigar_op(s);
 
         char* mdp = md;
-        int32_t cpos1 = pos1;
-        int32_t spos0 = 0;
+        uint32_t cpos1 = pos1; //current 1 based genome position
+        uint32_t spos0 = 0;    //current position in read sequence
 
         if (n_cigar_op)
         {
             uint32_t *cigar = bam_get_cigar(s);
-            for (int32_t i = 0; i < n_cigar_op; ++i)
+            for (uint32_t i = 0; i < n_cigar_op; ++i)
             {
-                int32_t oplen = bam_cigar_oplen(cigar[i]);
+                uint32_t oplen = bam_cigar_oplen(cigar[i]);
                 char opchar = bam_cigar_opchr(cigar[i]);
 
                 std::cerr << oplen << " " << opchar << "\n";
@@ -317,21 +316,25 @@ class Igor : Program
 
                     if (cpos1==pos1)
                     {
-                        std::cerr << "\t\t\tadding sclip left: " << cpos1 << "\t" << ins << " (" << mean_qual << ")\n";
+                        std::cerr << "\t\t\tadding LSCLIP: " << cpos1 << "\t" << ins << " (" << mean_qual << ")\n";
+                        pileup.add_lsclip(cpos1, ins);    
                     }
                     else
                     {
-                        std::cerr << "\t\t\tadding sclip right: " << cpos1 << "\t" << ins << " (" << mean_qual << ")\n";
+                        std::cerr << "\t\t\tadding RSCLIP: " << cpos1 << "\t" << ins << " (" << mean_qual << ")\n";
+                        pileup.add_rsclip(cpos1, ins); 
                     }
 
                     spos0 += oplen;
                 }
                 else if (opchar=='M')
                 {
-                    int32_t lpos1 = cpos1;
+                    uint32_t lpos1 = cpos1; // we need this because M contains matches and mismatches
+                    uint32_t sspos0 = spos0; // we need this because M contains matches and mismatches
+                    uint32_t i = 0;
                     while (*mdp)
                     {
-                        if (isdigit(*mdp))
+                        if (isdigit(*mdp)) //matches
                         {
                             char* end = 0;
                             int32_t len = std::strtol(mdp, &end, 10);
@@ -341,26 +344,42 @@ class Igor : Program
 
                             if (len)
                             {
-                                std::cerr << "\t\t\tadding matches: " << lpos1 << "-" << (lpos1+len-1) << "\n";
+                                uint32_t gbeg1 = lpos1;
+                                uint32_t gend1 = lpos1+len-1;
+                                std::cerr << "\t\t\tadding REF: " << gbeg1 << "-" << gend1 << ":";
+                                for (size_t i=sspos0; i<=(sspos0+len-1); ++i)
+                                {
+                                    std::cerr << (bam_base2char(bam_seqi(seq, i)));
+                                }
+                                std::cerr << "\n";
+                                std::cerr << "\t\t\t\t sspos0: " << sspos0  << " " << (sspos0+len-1) << "\n";
+                                
+                                pileup.add_ref(gbeg1, sspos0, len, seq, false);
+                                
                                 lpos1 += len;
+                                sspos0 += len;
                             }
                         }
-                        else if (isalpha(*mdp))
+                        else if (isalpha(*mdp)) //SNPs
                         {
-                            std::cerr << "\tMismatch " << *mdp << "\n";
-                            std::cerr << "\t\t\tadding mismatch: " << lpos1 << "\t" << *mdp << "\n";
-
+                            char ref = *mdp;
+                            char alt = (bam_base2char(bam_seqi(seq, spos0+(lpos1-cpos1))));
+                            std::cerr << "\tMismatch " << ref << "\n";
+                            std::cerr << "\t\t\tadding SNP: " << lpos1 << ":" << ref << "/" << alt << "\n";
+                            pileup.add_snp(lpos1, ref, alt, false);
 
                             ++lpos1;
                             ++mdp;
+                            ++sspos0;
                         }
                         else
                         {
+                            //unexpected MD tag value
                             break;
                         }
                     }
 
-                    //note that only Insertions , matches and mismatches can only occur here.
+                    //note that only insertions, matches and mismatches can only occur here.
 
                     cpos1 += oplen;
                     spos0 += oplen;
@@ -384,28 +403,26 @@ class Igor : Program
                             ++mdp;
                         }
 
-                        std::cerr << "\t\t\tadding deletion: " << cpos1 << " " << del << "\n";
+                        std::cerr << "\t\t\tadding DEL: " << cpos1 << " " << del << "\n";
+                        pileup.add_ins(cpos1, del);
 
                         cpos1 += oplen;
-                        spos0 += oplen;
                     }
                 }
                 else if (opchar=='I')
                 {
+                    //insertions are not present in MD tags
                     //may be handled independently of future matches
-                    std::cerr << "insertion " << opchar << "\n";
-
                     std::string ins = "";
                     for (size_t i=0; i<oplen ; ++i)
                     {
                         ins += bam_base2char(bam_seqi(seq, spos0+i));
                     }
 
-                    std::cerr << "\t\t\tadding insertion: " << cpos1 << " " << ins  << "\n";
-
+                    std::cerr << "\t\t\tadding INS: " << cpos1 << " " << ins  << "\n";
+                    pileup.add_ins(cpos1, ins);
+                    
                     spos0 += oplen;
-                    //extract sequence from read
-                    //go back an subtract one evidence from the array for indels.
                 }
                 else
                 {

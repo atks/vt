@@ -76,66 +76,73 @@ class PileupPosition
  */
 class Pileup
 {
-    public:
-
-    /**
-     * Constructor.
-     * Buffer size must be a power of 2.
-     */
-    Pileup(size_t buffer_size=1024);
-
-    uint32_t buffer_bits = 10;
+    private:
     size_t buffer_size;
+    size_t buffer_size_mask;
     std::vector<PileupPosition> P;
-
+    
     std::string chrom;
-    size_t beg0, end0; // index of P for the start and end position in 0 base coordinates
+    int32_t tid;
+    uint32_t beg0, end0; // index of P for the start and end position in 0 base coordinates
 
-
-    size_t gbeg0;      // genome position at the beginning of the pileup
-
-    // genome position at the beginning of the pileup
-    //0 when it is empty
-    size_t gbeg1;
+    //genome position at the beginning of the pileup
+    uint32_t gbeg1, gend1;
 
     bool debug;
 
     faidx_t *fai;
 
+    public:
+
+    /**
+     * Constructor.
+     */
+    Pileup(uint32_t k=10);
+    
     /**
      * Overloads subscript operator for accessing pileup positions.
      */
     PileupPosition& operator[] (const int32_t i);
 
     /**
+     * Converts gpos1 to index in P.
+     */
+    size_t g2i(uint32_t gpos1);
+
+    /**
+     * Checks if the position is present.
+     */
+    bool position_is_present(int32_t tid, uint32_t gpos1);
+
+    /**
      * Inserts a stretch of reference bases.
      */
-    void insert_ref(uint32_t gbeg1, uint32_t gend1, char* seq, size_t start1, size_t end1);
-
+    void add_ref(uint32_t gpos1, uint32_t spos0, uint32_t len, uint8_t* seq, bool end);
+    
     /**
      * Updates an occurence of a SNP.
      */
-    void insert_snp(uint32_t gpos1, char ref, char alt);
+    void add_snp(uint32_t gpos1, char ref, char alt, bool end);
 
     /**
      * Updates an occurence of a deletion.
      */
-    void insert_del(uint32_t gpos1, char ref, std::string& alt);
+    void add_del(uint32_t gpos1, std::string& alt);
 
     /**
      * Updates an occurence of an insertion.
      */
-    void insert_ins(uint32_t gpos1, char ref, std::string& alt);
+    void add_ins(uint32_t gpos1, std::string& alt);
 
     /**
      * Inserts a reference base at pos0 into the buffer.
      */
-    void insert_lsclip(uint32_t gpos1, char ref, std::string& alt);
+    void add_lsclip(uint32_t gpos1, std::string& alt);
 
     /**
      * Inserts a reference base at pos0 into the buffer.
      */
-    void insert_rsclip(uint32_t gpos1, char ref, std::string& alt);
+    void add_rsclip(uint32_t gpos1, std::string& alt);
 
     /**
      * Returns the size of the pileup.
@@ -150,14 +157,14 @@ class Pileup
     bool is_empty();
 
     /**
-     *Increments buffer index i by 1.
+     *Increments pileup size by 1.
      */
-    void add(size_t& i);
-
+    void inc();
+        
     /**
      * Increments buffer index i by j.
      */
-    size_t add(size_t i, size_t j);
+    uint32_t add(uint32_t i, uint32_t j);
 
     /**
      * Decrements buffer index i by j.
@@ -184,7 +191,6 @@ class Pileup
      * Print buffer contents for debugging purpose
      */
     void printBuffer();
-
 
     /**
      * Checks if a variant is normalized.
