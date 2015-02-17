@@ -195,7 +195,6 @@ class Igor : Program
         if (cigar_expanded_string.m) free(cigar_expanded_string.s);
     }
 
-
     bool filter_read(bam1_t *s)
     {
         //this read is the first of the pair
@@ -257,21 +256,41 @@ class Igor : Program
     }
 
     /**
-     * Flush pileup.
+     * Flush records out before gpos1.
      */
-    void flush(uint32_t gpos1)
+    void flush(bam1_t* s)
     {
-//        if (pileup.gbeg1 && gpos1>pileup.gbeg0+pileup.size())
-//        {
-//            for (size_t i=pileup.beg0; i<=pileup.end0; ++i)
-//            {
-//                pileup[i].print();
-//            }
-//        }
-    } 
+        uint32_t gbeg1 = pileup.get_gbeg1();
+        if (pileup.flushable(bam_get_tid(s), bam_get_pos1(s)))
+        {
+            for (uint32_t i=pileup.begin(); i!=pileup.end(); i=pileup.inc(i,1))
+            {
+                std::cerr << "\t\t\t" << gbeg1++ << "\n";
+                pileup[i].print();
+                pileup[i].clear();
+            }
+        }
+    }
+
+    /**
+     * Flush records out before gpos1.
+     */
+    void flush()
+    {
+        uint32_t gbeg1 = pileup.get_gbeg1();
+        for (uint32_t i=pileup.begin(); i!=pileup.end(); i=pileup.inc(i,1))
+        {
+            std::cerr << "\t\t\t" << gbeg1++ << "\n";
+            pileup[i].print();
+            pileup[i].clear();
+        }
+    }
     
     void process_read(bam1_t *s)
     {
+        bam_print_key_values(odr->hdr, s);
+
+        uint32_t tid = bam_get_tid(s);
         uint32_t pos1 = bam_get_pos1(s);
         uint8_t* seq = bam_get_seq(s);
         uint8_t* qual = bam_get_qual(s);
@@ -288,6 +307,8 @@ class Igor : Program
         char* mdp = md;
         uint32_t cpos1 = pos1; //current 1 based genome position
         uint32_t spos0 = 0;    //current position in read sequence
+
+        flush(s);
 
         if (n_cigar_op)
         {
@@ -432,18 +453,12 @@ class Igor : Program
         }
     }
 
-    void flush(bam1_t *s)
-    {
-
-    }
-
     void discover()
     {
         odw->write_hdr();
 
         //for tracking overlapping reads
         reads = kh_init(rdict);
-        
         
         while (odr->read(s))
         {
@@ -454,17 +469,15 @@ class Igor : Program
                 continue;
             }
 
-            bam_print_key_values(odr->hdr, s);
-
-            //process read and extract all variants
-
+     
             process_read(s);
 
-            //flush variant buffer.
-            //flush(s);
-
             ++no_passed_reads;
+
+            //break;
         }
+
+        //flush();
 
         odw->close();
     };
@@ -483,7 +496,6 @@ class Igor : Program
         std::clog << "         [f] fractional evidence cutoff   " << fractional_evidence_allele_count_cutoff<< "\n";
         print_int_op("         [i] intervals                    ", intervals);
         std::clog << "\n";
-
     }
 
     void print_stats()

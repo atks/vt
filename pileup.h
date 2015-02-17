@@ -77,8 +77,8 @@ class PileupPosition
 class Pileup
 {
     private:
-    size_t buffer_size;
-    size_t buffer_size_mask;
+    uint32_t buffer_size;
+    uint32_t buffer_size_mask;
     std::vector<PileupPosition> P;
     
     std::string chrom;
@@ -105,15 +105,25 @@ class Pileup
     PileupPosition& operator[] (const int32_t i);
 
     /**
-     * Converts gpos1 to index in P.
+     * Check if flushable.
      */
-    size_t g2i(uint32_t gpos1);
+    bool flushable(uint32_t tid, uint32_t gpos1);
 
     /**
-     * Checks if the position is present.
+     * Gets gbeg1.
      */
-    bool position_is_present(int32_t tid, uint32_t gpos1);
+    uint32_t get_gbeg1();
 
+    /**
+     * Gets the index of the first element.
+     */
+    uint32_t begin();
+    
+    /**
+     * Gets the index of the last element.
+     */
+    uint32_t end();
+    
     /**
      * Inserts a stretch of reference bases.
      */
@@ -149,8 +159,6 @@ class Pileup
      */
     uint32_t size();
 
-    private:
-
     /**
      * Checks if buffer is empty
      */
@@ -160,32 +168,28 @@ class Pileup
      *Increments pileup size by 1.
      */
     void inc();
-        
+    
     /**
-     * Increments buffer index i by j.
+     * Increments index i by j cyclically.
      */
-    uint32_t add(uint32_t i, uint32_t j);
+    uint32_t inc(uint32_t i, uint32_t j);
+
+    private:
 
     /**
-     * Decrements buffer index i by j.
+     * Checks if the position is present.
      */
-    size_t minus(size_t& i, size_t j);
-
+    bool position_is_present(int32_t tid, uint32_t gpos1);
+    
     /**
-     * Decrements buffer index i by 1.
+     * Converts gpos1 to index in P.
      */
-    void minus(size_t& i);
+    size_t g2i(uint32_t gpos1);
 
     /**
      * Returns the difference between 2 buffer positions
      */
     size_t diff(size_t i, size_t j);
-
-    /**
-     * Gets the position in the buffer that corresponds to
-     * the genome position indicated by pos.
-     */
-    size_t get_cur_pos0(size_t genome_pos0);
 
     /**
      * Print buffer contents for debugging purpose

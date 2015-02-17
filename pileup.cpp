@@ -47,30 +47,32 @@ void PileupPosition::clear()
  */
 void PileupPosition::print()
 {
-    std::cerr << "ref: " << R << "\n";
-    std::cerr << "A: " << X[1] << "\n";
-    std::cerr << "C: " << X[2] << "\n";
-    std::cerr << "G: " << X[4] << "\n";
-    std::cerr << "T: " << X[8] << "\n";
-    std::cerr << "N: " << X[15] << "\n";
+    std::cerr << "\t\t\t================\n";
+    std::cerr << "\t\t\tref: " << R << "\n";
+    std::cerr << "\t\t\tA: " << X[1] << "\n";
+    std::cerr << "\t\t\tC: " << X[2] << "\n";
+    std::cerr << "\t\t\tG: " << X[4] << "\n";
+    std::cerr << "\t\t\tT: " << X[8] << "\n";
+    std::cerr << "\t\t\tN: " << X[15] << "\n";
     for (std::map<std::string, uint32_t>::iterator i = D.begin(); i!=D.end(); ++i)
     {
-        std::cerr << i->first << ": " << i->second << "\n";
+        std::cerr << "\t\t\t" << i->first << ": " << i->second << "\n";
     }
-    for (std::map<std::string, uint32_t>::iterator i = I.begin(); i!=D.end(); ++i)
+    for (std::map<std::string, uint32_t>::iterator i = I.begin(); i!=I.end(); ++i)
     {
-        std::cerr << i->first << ": " << i->second << "\n";
+        std::cerr << "\t\t\t" << i->first << ": " << i->second << "\n";
     }
-    for (std::map<std::string, uint32_t>::iterator i = J.begin(); i!=D.end(); ++i)
+    for (std::map<std::string, uint32_t>::iterator i = J.begin(); i!=J.end(); ++i)
     {
-        std::cerr << i->first << ": " << i->second << "\n";
+        std::cerr << "\t\t\t" << i->first << ": " << i->second << "\n";
     }
-    for (std::map<std::string, uint32_t>::iterator i = K.begin(); i!=D.end(); ++i)
+    for (std::map<std::string, uint32_t>::iterator i = K.begin(); i!=K.end(); ++i)
     {
-        std::cerr << i->first << ": " << i->second << "\n";
+        std::cerr << "\t\t\t" << i->first << ": " << i->second << "\n";
     }
-    std::cerr << "#evidences: " << N << "\n";
-    std::cerr << "#tail evidences: " << E << "\n";
+    std::cerr << "\t\t\t#evidences: " << N << "\n";
+    std::cerr << "\t\t\t#tail evidences: " << E << "\n";
+    std::cerr << "\t\t\t================\n\n";
 }
 
 /**
@@ -80,31 +82,57 @@ Pileup::Pileup(uint32_t k)
 {
     //Buffer size must be a power of 2^k.
     buffer_size = 1 << k;
-    buffer_size_mask = 0xFFFF >> (32-k);
+    buffer_size_mask = (0xFFFFFFFF >> (32-k));
+
+    //std::cerr << buffer_size << ":" << buffer_size_mask  << "\n";
+
+    
 
     P.resize(buffer_size);
 
-    beg0 = 0;
-    end0 = 0;
+    beg0 = end0 = gbeg1 = gend1 = 0;
 
-    gbeg1 = 0;
-    gend1 = 0;
+    //exit(0);
 };
+
+/**
+ * Check if flushable.
+ */
+bool Pileup::flushable(uint32_t tid, uint32_t gpos1)
+{
+    return (tid!=this->tid || gpos1>gbeg1);
+}
 
 /**
  * Converts gpos1 to index in P.
  */
 size_t Pileup::g2i(uint32_t gpos1)
 {
-    return add(beg0, gpos1-gbeg1); 
+    return (beg0 + (gpos1-gbeg1)) & buffer_size_mask;
 }
 
 /**
- * Checks if the position is present.
+ * Gets gbeg1.
  */
-bool Pileup::position_is_present(int32_t tid, uint32_t gpos1)
+uint32_t Pileup::get_gbeg1()
 {
-    return (tid==this->tid) && (gpos1>=this->gbeg1) && (gpos1<=this->gend1);
+    return gbeg1;
+}
+
+/**
+ * Gets the index of the first element.
+ */
+uint32_t Pileup::begin()
+{
+    return beg0;
+}
+
+/**
+ * Gets the index of the last element.
+ */
+uint32_t Pileup::end()
+{
+    return end0;
 }
 
 /**
@@ -117,18 +145,17 @@ void Pileup::add_ref(uint32_t gpos1, uint32_t spos0, uint32_t len, uint8_t* seq,
         gbeg1 = gpos1;
         gend1 = gpos1;
     }
-    
+
     for (uint32_t i=0; i<len; ++i)
     {
         if (gpos1+i>gend1)
         {
-           P[g2i(gpos1+i)].R = (bam_base2char(bam_seqi(seq, spos0+len))); 
-           inc();        
+           P[g2i(gpos1+i)].R = (bam_base2char(bam_seqi(seq, spos0+i)));
+           inc();
         }
-        
-        ++P[g2i(gpos1+i)].N;
-    }        
 
+        ++P[g2i(gpos1+i)].N;
+    }
 }
 
 /**
@@ -141,9 +168,9 @@ void Pileup::add_snp(uint32_t gpos1, char ref, char alt, bool end)
         gbeg1 = gpos1;
         gend1 = gpos1;
     }
-    
-    P[g2i(gpos1)].R = ref; 
-    ++P[g2i(gpos1)].X[alt];                 
+
+    P[g2i(gpos1)].R = ref;
+    ++P[g2i(gpos1)].X[alt];
 }
 
 /**
@@ -156,8 +183,8 @@ void Pileup::add_del(uint32_t gpos1, std::string& alt)
         gbeg1 = gpos1;
         gend1 = gpos1;
     }
-    
-    ++P[g2i(gpos1)].D[alt];  
+
+    ++P[g2i(gpos1)].D[alt];
 }
 
 /**
@@ -170,8 +197,8 @@ void Pileup::add_ins(uint32_t gpos1, std::string& alt)
         gbeg1 = gpos1;
         gend1 = gpos1;
     }
-    
-    ++P[g2i(gpos1)].I[alt];  
+
+    ++P[g2i(gpos1)].I[alt];
 }
 
 /**
@@ -184,8 +211,8 @@ void Pileup::add_lsclip(uint32_t gpos1, std::string& alt)
         gbeg1 = gpos1;
         gend1 = gpos1;
     }
-    
-    ++P[g2i(gpos1)].J[alt];  
+
+    ++P[g2i(gpos1)].J[alt];
 }
 
 /**
@@ -198,8 +225,8 @@ void Pileup::add_rsclip(uint32_t gpos1, std::string& alt)
         gbeg1 = gpos1;
         gend1 = gpos1;
     }
-    
-    ++P[g2i(gpos1)].K[alt];  
+
+    ++P[g2i(gpos1)].K[alt];
 }
 
 /**
@@ -211,12 +238,12 @@ PileupPosition& Pileup::operator[] (const int32_t i)
 }
 
 /**
- * Returns the difference between 2 buffer positions
+ * Returns the size of the pileup.
  */
-inline size_t Pileup::diff(size_t i, size_t j)
+inline uint32_t Pileup::size()
 {
-    return (i>=j ? i-j : buffer_size-(j-i));
-};
+    return (end0>=beg0 ? end0-beg0 : buffer_size-(beg0-end0));
+}
 
 /**
  * Checks if buffer is empty.
@@ -227,7 +254,15 @@ inline bool Pileup::is_empty()
 };
 
 /**
- *Increments buffer index i by 1.
+ * Returns the difference between 2 buffer positions
+ */
+inline size_t Pileup::diff(size_t i, size_t j)
+{
+    return (i>=j ? i-j : buffer_size-(j-i));
+};
+
+/**
+ * Increments buffer index i by 1.
  */
 void Pileup::inc()
 {
@@ -236,71 +271,11 @@ void Pileup::inc()
 };
 
 /**
- * Increments buffer index i by j.
+ * Increments index i by j cyclically.
  */
-inline uint32_t Pileup::add(uint32_t i, uint32_t j)
+uint32_t Pileup::inc(uint32_t i, uint32_t j)
 {
     return (i+j) & buffer_size_mask;
-};
-
-/**
- * Decrements buffer index i by j.
- */
-size_t Pileup::minus(size_t& i, size_t j)
-{
-    if (i>=buffer_size)
-    {
-        std::cerr << "Unaccepted buffer index: " << i << " ("  << buffer_size << ")\n";
-        exit(1);
-    }
-
-    return (i>=j ? i-j : buffer_size-(j-i));
-};
-
-/**
- * Decrements buffer index i by 1.
- */
-void Pileup::minus(size_t& i)
-{
-    if (i>=buffer_size)
-    {
-        std::cerr << "Unaccepted buffer index: " << i << " ("  << buffer_size << ")\n";
-        exit(1);
-    }
-
-    i = (i>=1 ? i-1 : buffer_size-1);
-};
-
-/**
- * Returns the size of the pileup.
- */
-inline uint32_t Pileup::size()
-{
-    return (end0>=beg0 ? end0-beg0 : buffer_size-(beg0-end0));
-}
-
-/**
- * Gets the position in the buffer that corresponds to
- * the genome position indicated by pos.
- */
-size_t Pileup::get_cur_pos0(size_t gpos1)
-{
-    //when buffer is empty
-    if (is_empty())
-    {
-        //start_genome_pos0 = genome_pos0;
-        return beg0;
-    }
-    else
-    {
-        if (gpos1-gbeg1-1>buffer_size)
-        {
-            std::cerr << "overflow buffer\n" ;
-            //should allow for unbuffering here
-        }
-
-        return (beg0 + (gpos1-gbeg1-1))%buffer_size;
-    }
 };
 
 /**
@@ -309,6 +284,7 @@ size_t Pileup::get_cur_pos0(size_t gpos1)
 void Pileup::printBuffer()
 {
     std::cout << "PRINT BUFFER" << "\n";
+        
 };
 
 /**
