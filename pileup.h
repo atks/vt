@@ -64,7 +64,7 @@ class PileupPosition
      * Clears pileup position.
      */
     void clear();
-    
+
     /**
      * Prints pileup position.
      */
@@ -80,7 +80,7 @@ class Pileup
     uint32_t buffer_size;
     uint32_t buffer_size_mask;
     std::vector<PileupPosition> P;
-    
+
     std::string chrom;
     int32_t tid;
     uint32_t beg0, end0; // index of P for the start and end position in 0 base coordinates
@@ -98,7 +98,7 @@ class Pileup
      * Constructor.
      */
     Pileup(uint32_t k=10);
-    
+
     /**
      * Overloads subscript operator for accessing pileup positions.
      */
@@ -107,7 +107,7 @@ class Pileup
     /**
      * Check if flushable.
      */
-    bool flushable(uint32_t tid, uint32_t gpos1);
+    bool flushable(int32_t tid, uint32_t gpos1);
 
     /**
      * Gets gbeg1.
@@ -115,20 +115,45 @@ class Pileup
     uint32_t get_gbeg1();
 
     /**
+     * Gets gend1.
+     */
+    uint32_t get_gend1();
+    
+    /**
+     * Sets gbeg1.
+     */
+    void set_gbeg1(uint32_t gbeg1);
+
+    /**
+     * Sets gend1.
+     */
+    void set_gend1(uint32_t gend1);
+
+    /**
      * Gets the index of the first element.
      */
     uint32_t begin();
-    
+
     /**
      * Gets the index of the last element.
      */
     uint32_t end();
+
+    /**
+     * Sets beg0.
+     */
+    void set_beg0(uint32_t gbeg0);
+
+    /**
+     * Sets end0.
+     */
+    void set_end0(uint32_t end0);
     
     /**
      * Inserts a stretch of reference bases.
      */
     void add_ref(uint32_t gpos1, uint32_t spos0, uint32_t len, uint8_t* seq, bool end);
-    
+
     /**
      * Updates an occurence of a SNP.
      */
@@ -165,26 +190,36 @@ class Pileup
     bool is_empty();
 
     /**
-     *Increments pileup size by 1.
+     * Increments i by 1 circularly.
      */
-    void inc();
-    
+    uint32_t inc(uint32_t i);
+
+    /**
+     * Increments beg0 by 1.
+     */
+    void inc_beg0();
+
+    /**
+     * Increments end0 by 1.
+     */
+    void inc_end0();
+
     /**
      * Increments index i by j cyclically.
      */
     uint32_t inc(uint32_t i, uint32_t j);
 
-    private:
-
-    /**
-     * Checks if the position is present.
-     */
-    bool position_is_present(int32_t tid, uint32_t gpos1);
-    
     /**
      * Converts gpos1 to index in P.
      */
-    size_t g2i(uint32_t gpos1);
+    uint32_t g2i(uint32_t gpos1);
+
+    /**
+     * Print pileup state.
+     */
+    void print_state();
+        
+    private:
 
     /**
      * Returns the difference between 2 buffer positions
@@ -195,7 +230,7 @@ class Pileup
      * Print buffer contents for debugging purpose
      */
     void printBuffer();
-
+        
     /**
      * Checks if a variant is normalized.
      */

@@ -80,36 +80,75 @@ void PileupPosition::print()
  */
 Pileup::Pileup(uint32_t k)
 {
-    //Buffer size must be a power of 2^k.
+    //Buffer size is a power of 2^k.
     buffer_size = 1 << k;
+    //this provides a cheaper way to do modulo operations for a circular array.
     buffer_size_mask = (0xFFFFFFFF >> (32-k));
 
     //std::cerr << buffer_size << ":" << buffer_size_mask  << "\n";
-
-    
-
     P.resize(buffer_size);
 
-    beg0 = end0 = gbeg1 = gend1 = 0;
+    tid = -1;
+    beg0 = end0 = 0;
+    gbeg1 = gend1 = 0;
+    
+    
+    std::cerr << gbeg1 << "-" << gend1 << "\n";
+    std::cerr << beg0 << "-" << end0 << "\n";
+};
 
-    //exit(0);
+/**
+ * Returns the size of the pileup.
+ */
+uint32_t Pileup::size()
+{
+    return (end0>=beg0 ? end0-beg0 : buffer_size-(beg0-end0));
+}
+
+/**
+ * Checks if buffer is empty.
+ */
+inline bool Pileup::is_empty()
+{
+    return beg0==end0;
 };
 
 /**
  * Check if flushable.
  */
-bool Pileup::flushable(uint32_t tid, uint32_t gpos1)
+bool Pileup::flushable(int32_t tid, uint32_t gpos1)
 {
-    return (tid!=this->tid || gpos1>gbeg1);
+    std::cerr << "flushable " << beg0 << "!=" << end0 << " (" << (beg0!=end0) << ")\n";  
+    std::cerr << "          " << tid << "!=" << this->tid << " (" << (tid!=this->tid) << ")\n";  
+    std::cerr << "          " << gpos1 << ">" << gbeg1 << " (" << (gpos1>gbeg1) << ")\n";   
+            
+    return (beg0!=end0 && (tid!=this->tid || gpos1>gbeg1));
 }
 
 /**
  * Converts gpos1 to index in P.
  */
-size_t Pileup::g2i(uint32_t gpos1)
+uint32_t Pileup::g2i(uint32_t gpos1)
 {
-    return (beg0 + (gpos1-gbeg1)) & buffer_size_mask;
+    if (beg0!=end0)
+    {
+        return (beg0 + (gpos1-gbeg1)) & buffer_size_mask;
+    }
+    else
+    {
+        gbeg1 = gpos1;
+        end0 = inc(beg0);
+        return beg0;
+    }
 }
+
+/**
+ * Increments i by 1 circularly.
+ */
+uint32_t Pileup::inc(uint32_t i)
+{
+    return (i+1) & buffer_size_mask;
+};
 
 /**
  * Gets gbeg1.
@@ -117,6 +156,38 @@ size_t Pileup::g2i(uint32_t gpos1)
 uint32_t Pileup::get_gbeg1()
 {
     return gbeg1;
+}
+
+/**
+ * Gets gend1.
+ */
+uint32_t Pileup::get_gend1()
+{
+    return gbeg1 + diff(end0, beg0);
+}
+
+/**
+ * Sets gbeg1.
+ */
+void Pileup::set_gbeg1(uint32_t gbeg1)
+{
+    this->gbeg1 = gbeg1;
+}
+
+/**
+ * Sets beg0.
+ */
+void Pileup::set_beg0(uint32_t beg0)
+{
+    this->beg0 = beg0;
+}
+
+/**
+ * Sets end0.
+ */
+void Pileup::set_end0(uint32_t end0)
+{
+    this->end0 = end0;
 }
 
 /**
@@ -140,18 +211,48 @@ uint32_t Pileup::end()
  */
 void Pileup::add_ref(uint32_t gpos1, uint32_t spos0, uint32_t len, uint8_t* seq, bool end)
 {
+    std::cerr << "add_ref: " << gpos1 << "-" << spos0 << "-" << len << "-" << "\n";
+    std::cerr << gbeg1 << "-" << gend1 << "\n";
+    std::cerr << beg0 << "-" << end0 << "\n";
+
+    uint32_t i = g2i(gpos1);
+    
+    while (i<end0)
+    {
+        ++P[g2i(i)].N;
+        inc_end0();
+    }
+    
+    while (i<end0)
+    {
+        ++P[g2i(i)].N;
+        inc_end0();
+    }
+    
+    for (uint32_t i=gpos1; i<=gend1; ++i)
+    {
+        ++P[g2i(i)].N;
+    }
+    
     if (is_empty())
     {
-        gbeg1 = gpos1;
-        gend1 = gpos1;
+        std::cerr << "add ref is empty\n";
+        
+        this->gbeg1 = gpos1;
+        this->gend1 = gpos1-1;
     }
+
+    std::cerr << gbeg1 << "-" << gend1 << "\n";
+    std::cerr << beg0 << "-" << end0 << "\n";
 
     for (uint32_t i=0; i<len; ++i)
     {
         if (gpos1+i>gend1)
         {
+           char ref = (bam_base2char(bam_seqi(seq, spos0+i)));
            P[g2i(gpos1+i)].R = (bam_base2char(bam_seqi(seq, spos0+i)));
-           inc();
+           inc_end0();
+           ++gend1;
         }
 
         ++P[g2i(gpos1+i)].N;
@@ -237,21 +338,6 @@ PileupPosition& Pileup::operator[] (const int32_t i)
     return P[i];
 }
 
-/**
- * Returns the size of the pileup.
- */
-inline uint32_t Pileup::size()
-{
-    return (end0>=beg0 ? end0-beg0 : buffer_size-(beg0-end0));
-}
-
-/**
- * Checks if buffer is empty.
- */
-inline bool Pileup::is_empty()
-{
-    return beg0==end0;
-};
 
 /**
  * Returns the difference between 2 buffer positions
@@ -261,12 +347,21 @@ inline size_t Pileup::diff(size_t i, size_t j)
     return (i>=j ? i-j : buffer_size-(j-i));
 };
 
+
+
 /**
- * Increments buffer index i by 1.
+ * Increments beg0 by 1.
  */
-void Pileup::inc()
+void Pileup::inc_beg0()
 {
-    ++gend1;
+    beg0 = (beg0+1) & buffer_size_mask;
+};
+
+/**
+ * Increments end0 by 1.
+ */
+void Pileup::inc_end0()
+{
     end0 = (end0+1) & buffer_size_mask;
 };
 
@@ -284,8 +379,19 @@ uint32_t Pileup::inc(uint32_t i, uint32_t j)
 void Pileup::printBuffer()
 {
     std::cout << "PRINT BUFFER" << "\n";
-        
+
 };
+
+/**
+ * Print pileup state.
+ */
+void Pileup::print_state()
+{
+    std::cerr << "******************" << "\n";
+    std::cerr << "gindex   : " << gbeg1 << "-" << gend1 << " (" << (gend1-gbeg1) << ")\n";
+    std::cerr << "index   : " << beg0 << "-" << end0 << " (" << size() << ")\n";
+    std::cerr << "******************" << "\n";
+}
 
 /**
  * Checks if a variant is normalized.

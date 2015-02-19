@@ -56,7 +56,8 @@ class Igor : Program
 
     khash_t(rdict) *reads;
     khiter_t k;
-        int32_t ret;
+    int32_t ret;
+    
     ///////
     //i/o//
     ///////
@@ -153,7 +154,15 @@ class Igor : Program
         ////////////////////////
         //tools initialization//
         ////////////////////////
-        
+
+    }
+
+    void print_pileup_state()
+    {
+        std::cerr << "******************" << "\n";
+        std::cerr << "gindex   : " << pileup.get_gbeg1() << "-" << pileup.get_gend1() << " (" << (pileup.get_gend1()-pileup.get_gbeg1()) << ")\n";
+        std::cerr << "index   : " << pileup.begin() << "-" << pileup.end() << " (" << pileup.size() << ")\n";
+        std::cerr << "******************" << "\n";
     }
 
     void bam_print_key_values(bam_hdr_t *h, bam1_t *s)
@@ -251,8 +260,16 @@ class Igor : Program
             ++no_low_mapq_reads;
             return false;
         }
-        
+
         return true;
+    }
+
+    /**
+     * Prints out pileupPosition as a VCF entry if it contains a variant.
+     */
+    void print_to_vcf(PileupPosition& p)
+    {
+        
     }
 
     /**
@@ -260,15 +277,23 @@ class Igor : Program
      */
     void flush(bam1_t* s)
     {
-        uint32_t gbeg1 = pileup.get_gbeg1();
-        if (pileup.flushable(bam_get_tid(s), bam_get_pos1(s)))
-        {
-            for (uint32_t i=pileup.begin(); i!=pileup.end(); i=pileup.inc(i,1))
+        uint32_t gpos1 = bam_get_pos1(s);
+        if (pileup.flushable(bam_get_tid(s), gpos1))
+        {   
+            uint32_t gbeg1 = pileup.get_gbeg1();
+            uint32_t i;
+            
+            std::cerr << "flushing loop: " << pileup.begin() << " to " << pileup.g2i(gpos1) << "\n";
+            
+            for (i=pileup.begin(); i!=pileup.g2i(gpos1); i=pileup.inc(i,1))
             {
-                std::cerr << "\t\t\t" << gbeg1++ << "\n";
-                pileup[i].print();
+                //pileup[i].print();
                 pileup[i].clear();
+                ++gbeg1;
             }
+            
+            pileup.set_gbeg1(gbeg1);
+            pileup.set_beg0(i);
         }
     }
 
@@ -278,16 +303,24 @@ class Igor : Program
     void flush()
     {
         uint32_t gbeg1 = pileup.get_gbeg1();
-        for (uint32_t i=pileup.begin(); i!=pileup.end(); i=pileup.inc(i,1))
+        uint32_t i;
+        for (i=pileup.begin(); i!=pileup.end(); i=pileup.inc(i,1))
         {
-            std::cerr << "\t\t\t" << gbeg1++ << "\n";
-            pileup[i].print();
+            //std::cerr << "\t\t\t" << gbeg1++ << "\n";
+            //pileup[i].print();
             pileup[i].clear();
         }
     }
-    
+
+    /**
+     * Processes cigar string and MD tag to minimize access of the reference file.
+     * Aggregates observed read information in pileup data structure.
+     * Outputs to vcf.
+     */
     void process_read(bam1_t *s)
     {
+        flush(s);
+        
         bam_print_key_values(odr->hdr, s);
 
         uint32_t tid = bam_get_tid(s);
@@ -307,8 +340,6 @@ class Igor : Program
         char* mdp = md;
         uint32_t cpos1 = pos1; //current 1 based genome position
         uint32_t spos0 = 0;    //current position in read sequence
-
-        flush(s);
 
         if (n_cigar_op)
         {
@@ -338,12 +369,12 @@ class Igor : Program
                     if (cpos1==pos1)
                     {
                         std::cerr << "\t\t\tadding LSCLIP: " << cpos1 << "\t" << ins << " (" << mean_qual << ")\n";
-                        pileup.add_lsclip(cpos1, ins);    
+                        pileup.add_lsclip(cpos1, ins);
                     }
                     else
                     {
                         std::cerr << "\t\t\tadding RSCLIP: " << cpos1 << "\t" << ins << " (" << mean_qual << ")\n";
-                        pileup.add_rsclip(cpos1, ins); 
+                        pileup.add_rsclip(cpos1, ins);
                     }
 
                     spos0 += oplen;
@@ -374,9 +405,9 @@ class Igor : Program
                                 }
                                 std::cerr << "\n";
                                 std::cerr << "\t\t\t\t sspos0: " << sspos0  << " " << (sspos0+len-1) << "\n";
-                                
+
                                 pileup.add_ref(gbeg1, sspos0, len, seq, false);
-                                
+
                                 lpos1 += len;
                                 sspos0 += len;
                             }
@@ -442,13 +473,15 @@ class Igor : Program
 
                     std::cerr << "\t\t\tadding INS: " << cpos1 << " " << ins  << "\n";
                     pileup.add_ins(cpos1, ins);
-                    
+
                     spos0 += oplen;
                 }
                 else
                 {
                     std::cerr << "never seen before state " << opchar << "\n";
                 }
+            
+                pileup.print_state();
             }
         }
     }
@@ -459,25 +492,24 @@ class Igor : Program
 
         //for tracking overlapping reads
         reads = kh_init(rdict);
-        
+
         while (odr->read(s))
         {
             ++no_reads;
 
-            if (!filter_read(s)) 
+            if (!filter_read(s))
             {
                 continue;
             }
 
-     
             process_read(s);
-
+            print_pileup_state();
             ++no_passed_reads;
 
-            //break;
+            break;
         }
 
-        //flush();
+        flush();
 
         odw->close();
     };
