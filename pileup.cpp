@@ -141,12 +141,12 @@ void Pileup::set_chrom(const char* chrom)
  */
 int32_t Pileup::flushable(int32_t tid, uint32_t gpos1)
 {
-    std::cerr << "flushable " << beg0 << "!=" << end0 << " (" << (beg0!=end0) << ")\n";
-    std::cerr << "          " << tid << "!=" << this->tid << " (" << (tid!=this->tid) << ")\n";
-    std::cerr << "          " << gpos1 << ">" << gbeg1 << " (" << (gpos1>gbeg1) << ")\n";
+//    std::cerr << "flushable " << beg0 << "!=" << end0 << " (" << (beg0!=end0) << ")\n";
+//    std::cerr << "          " << tid << "!=" << this->tid << " (" << (tid!=this->tid) << ")\n";
+//    std::cerr << "          " << gpos1 << ">" << gbeg1 << " (" << (gpos1>gbeg1) << ")\n";
 
     return (beg0!=end0 && (tid!=this->tid || gpos1>gbeg1));
-    
+
     if (beg0==end0)
     {
         return 0;
@@ -159,7 +159,7 @@ int32_t Pileup::flushable(int32_t tid, uint32_t gpos1)
     {
         return 1;
     }
-    
+
     return 0;
 }
 
@@ -246,62 +246,65 @@ uint32_t Pileup::end()
 }
 
 /**
- * Inserts a stretch of reference bases.
+ * Inserts a stretch of reference bases from read.
+ *
+ * requirement: stretch of bases on read is detected to be the same as the reference
+ *              using CIGAR and MD tag.
+ *              pileup is empty
+ *              pileup is filled and partially overlaps with this stretch
+ *
+ * @gpos1 - starting genome position
+ * @spos0 - starting position in the sequence
+ * @len   - length of sequence to be inserted
+ * @seq   - bam encoded sequence
+ * @end   - if the last base is considered the end of a read alignment
  */
-void Pileup::add_ref(uint32_t gpos1, uint32_t spos0, uint32_t len, uint8_t* seq, bool end)
+void Pileup::add_ref(uint32_t gpos1, uint32_t spos0, uint32_t len, uint8_t* seq)
 {
     std::cerr << "add_ref: " << gpos1 << "-" << spos0 << "-" << len << "-" << "\n";
     std::cerr << gbeg1 << "-" << gend1 << "\n";
     std::cerr << beg0 << "-" << end0 << "\n";
 
     uint32_t i = g2i(gpos1);
+    //number of overlapping bases
+    //j<len if pileup needs to increase in size.
+    //j>=len if pileup does not need to increase in size.
+    uint32_t j = diff(end0, i);
 
+    //overlapping positions
     while (i<end0)
     {
-        ++P[g2i(i)].N;
-        inc_end0();
+        ++P[i].N;
+        i = inc(i);
     }
 
-    while (i<end0)
+    //non overlapping positions that needs to be added
+    while (j<len)
     {
-        ++P[g2i(i)].N;
-        inc_end0();
+        P[i].R = (bam_base2char(bam_seqi(seq, spos0+j)));
+        ++P[i].N;
+        i = inc(i);
+        ++j;
     }
+}
 
-    for (uint32_t i=gpos1; i<=gend1; ++i)
-    {
-        ++P[g2i(i)].N;
-    }
-
-    if (is_empty())
-    {
-        std::cerr << "add ref is empty\n";
-
-        this->gbeg1 = gpos1;
-        this->gend1 = gpos1-1;
-    }
-
-    std::cerr << gbeg1 << "-" << gend1 << "\n";
-    std::cerr << beg0 << "-" << end0 << "\n";
-
-    for (uint32_t i=0; i<len; ++i)
-    {
-        if (gpos1+i>gend1)
-        {
-           char ref = (bam_base2char(bam_seqi(seq, spos0+i)));
-           P[g2i(gpos1+i)].R = (bam_base2char(bam_seqi(seq, spos0+i)));
-           inc_end0();
-           ++gend1;
-        }
-
-        ++P[g2i(gpos1+i)].N;
-    }
+/**
+ * Updates the last aligned base in a read.
+ *
+ * @gpos1 - starting genome position
+ */
+void Pileup::update_read_end(uint32_t gpos1)
+{
+    std::cerr << "update_read_end_base: " << gpos1 << "\n";
+    uint32_t i = g2i(gpos1);
+    --P[i].N;
+    ++P[i].E;
 }
 
 /**
  * Updates an occurence of a SNP.
  */
-void Pileup::add_snp(uint32_t gpos1, char ref, char alt, bool end)
+void Pileup::add_snp(uint32_t gpos1, char ref, char alt)
 {
     if (is_empty())
     {
@@ -385,8 +388,6 @@ inline size_t Pileup::diff(size_t i, size_t j)
 {
     return (i>=j ? i-j : buffer_size-(j-i));
 };
-
-
 
 /**
  * Increments beg0 by 1.

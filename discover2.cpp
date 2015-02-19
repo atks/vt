@@ -142,6 +142,9 @@ class Igor : Program
         bcf_hdr_add_sample(odw->hdr, NULL);
         v = NULL;
 
+        //for tracking overlapping reads
+        reads = kh_init(rdict);
+        
         ////////////////////////
         //stats initialization//
         ////////////////////////
@@ -196,7 +199,7 @@ class Igor : Program
         std::cerr << "mpos1    : " << bam_get_mpos1(s) << "\n";
         std::cerr << "mtid     : " << bam_get_mtid(s) << "\n";
         std::cerr << "md       : " << md << "\n";
-
+        std::cerr << "##################" << "\n";
 
         if (seq.m) free(seq.s);
         if (qual.m) free(qual.s);
@@ -413,7 +416,7 @@ class Igor : Program
                                 std::cerr << "\n";
                                 std::cerr << "\t\t\t\t sspos0: " << sspos0  << " " << (sspos0+len-1) << "\n";
 
-                                pileup.add_ref(gbeg1, sspos0, len, seq, false);
+                                pileup.add_ref(gbeg1, sspos0, len, seq);
 
                                 lpos1 += len;
                                 sspos0 += len;
@@ -425,7 +428,7 @@ class Igor : Program
                             char alt = (bam_base2char(bam_seqi(seq, spos0+(lpos1-cpos1))));
                             std::cerr << "\tMismatch " << ref << "\n";
                             std::cerr << "\t\t\tadding SNP: " << lpos1 << ":" << ref << "/" << alt << "\n";
-                            pileup.add_snp(lpos1, ref, alt, false);
+                            pileup.add_snp(lpos1, ref, alt);
 
                             ++lpos1;
                             ++mdp;
@@ -488,17 +491,18 @@ class Igor : Program
                     std::cerr << "never seen before state " << opchar << "\n";
                 }
             
+                pileup.update_read_end(cpos1);
                 pileup.print_state();
             }
+            
+            //update last matching base
+            
         }
     }
 
     void discover()
     {
         odw->write_hdr();
-
-        //for tracking overlapping reads
-        reads = kh_init(rdict);
 
         while (odr->read(s))
         {
@@ -513,7 +517,7 @@ class Igor : Program
             print_pileup_state();
             ++no_passed_reads;
 
-            break;
+            if (no_passed_reads==1) break;
         }
 
         flush();

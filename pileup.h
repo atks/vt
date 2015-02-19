@@ -216,12 +216,12 @@ class Pileup
     /**
      * Inserts a stretch of reference bases.
      */
-    void add_ref(uint32_t gpos1, uint32_t spos0, uint32_t len, uint8_t* seq, bool end);
+    void add_ref(uint32_t gpos1, uint32_t spos0, uint32_t len, uint8_t* seq);
 
     /**
      * Updates an occurence of a SNP.
      */
-    void add_snp(uint32_t gpos1, char ref, char alt, bool end);
+    void add_snp(uint32_t gpos1, char ref, char alt);
 
     /**
      * Updates an occurence of a deletion.
@@ -242,6 +242,13 @@ class Pileup
      * Inserts a reference base at pos0 into the buffer.
      */
     void add_rsclip(uint32_t gpos1, std::string& alt);
+    
+    /**
+     * Updates the last aligned base in a read.
+     *
+     * @gpos1 - starting genome position
+     */
+    void update_read_end(uint32_t gpos1);
 
     /**
      * Returns the size of the pileup.
