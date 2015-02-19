@@ -31,6 +31,9 @@
 #include "variant_manip.h"
 #include "htslib/faidx.h"
 
+/**
+ * Contains sufficient statistic for a position in the pileup.
+ */
 class PileupPosition
 {
     public:
@@ -46,6 +49,10 @@ class PileupPosition
     //occurence of all observations for internal bases
     uint32_t N;
     //occurence of all observations for bases on the ends of reads
+    //this is important as indels have to be contained within a read
+    //so if this is not distinguished, the relative proportion of
+    //the reads containing the indel out of reads that could contain
+    //that indel is will be underestimated.
     uint32_t E;
 
     //to count evidences
@@ -73,6 +80,16 @@ class PileupPosition
 
 /**
  * A pileup for variant discovery.
+ * This only contains the pileup structure with
+ * methods to access and modify the pileup.
+ *
+ * This pileup only works for a single chromosome
+ * the user has to update the pileup and clear it
+ * if the chromosome is changed.
+ *
+ * Transferring the pileup information to a VCF
+ * file is delegated to a class that uses this
+ * structure.
  */
 class Pileup
 {
@@ -81,9 +98,39 @@ class Pileup
     uint32_t buffer_size_mask;
     std::vector<PileupPosition> P;
 
-    std::string chrom;
     int32_t tid;
     uint32_t beg0, end0; // index of P for the start and end position in 0 base coordinates
+
+
+    //  beg0 points to the beginning of the pileup
+    //  end0 points to the position after the end of the pileup
+    //
+    //      end0
+    //       |
+    //       V
+    //  +--+--+--+--+--+--+--+--+--+--+--+--+
+    //  |  |  |  |  |  |  |  |  |  |  |  |  |
+    //  +--+--+--+--+--+--+--+--+--+--+--+--+
+    //       ^
+    //       |
+    //      beg0
+    //
+    //  when beg0==end0, pileup is empty
+    //  gbeg1 - is the coordinate of the genome position that beg0 represents.
+    //
+    //  invariance:  pileup is always continuous
+    //
+    //  how do we check if 
+    //
+
+
+
+
+    //for use if we need to update the reference.
+    std::string chrom;
+
+    //where should we check if a read is from another chromosome?
+
 
     //genome position at the beginning of the pileup
     uint32_t gbeg1, gend1;
@@ -96,6 +143,8 @@ class Pileup
 
     /**
      * Constructor.
+     *
+     * @k - size of pileup is 2^k
      */
     Pileup(uint32_t k=10);
 
@@ -106,9 +155,24 @@ class Pileup
 
     /**
      * Check if flushable.
+     *
+     * returns
+     *    0 - not flushable
+     *    1 - flushable
+     *   -1 - flushable, must update chromosome
      */
-    bool flushable(int32_t tid, uint32_t gpos1);
+    int32_t flushable(int32_t tid, uint32_t gpos1);
 
+    /**
+     * Sets tid.
+     */
+    void set_tid(uint32_t tid);
+
+    /**
+     * Sets chrom.
+     */
+    void set_chrom(const char* chrom);
+    
     /**
      * Gets gbeg1.
      */
@@ -118,7 +182,7 @@ class Pileup
      * Gets gend1.
      */
     uint32_t get_gend1();
-    
+
     /**
      * Sets gbeg1.
      */
@@ -148,7 +212,7 @@ class Pileup
      * Sets end0.
      */
     void set_end0(uint32_t end0);
-    
+
     /**
      * Inserts a stretch of reference bases.
      */
@@ -218,7 +282,7 @@ class Pileup
      * Print pileup state.
      */
     void print_state();
-        
+
     private:
 
     /**
@@ -230,7 +294,7 @@ class Pileup
      * Print buffer contents for debugging purpose
      */
     void printBuffer();
-        
+
     /**
      * Checks if a variant is normalized.
      */

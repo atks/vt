@@ -277,8 +277,10 @@ class Igor : Program
      */
     void flush(bam1_t* s)
     {
+        int32_t tid = bam_get_tid(s);
         uint32_t gpos1 = bam_get_pos1(s);
-        if (pileup.flushable(bam_get_tid(s), gpos1))
+        int32_t ret = 0;
+        if ((ret=pileup.flushable(tid, gpos1)))
         {   
             uint32_t gbeg1 = pileup.get_gbeg1();
             uint32_t i;
@@ -292,6 +294,11 @@ class Igor : Program
                 ++gbeg1;
             }
             
+            if (ret<0)
+            {
+                pileup.set_tid(tid);
+                pileup.set_chrom(bam_get_chrom(odr->hdr, s));
+            }
             pileup.set_gbeg1(gbeg1);
             pileup.set_beg0(i);
         }

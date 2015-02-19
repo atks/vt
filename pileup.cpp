@@ -77,6 +77,8 @@ void PileupPosition::print()
 
 /**
  * Constructor.
+ *
+ * @k - size of pileup is 2^k
  */
 Pileup::Pileup(uint32_t k)
 {
@@ -91,8 +93,7 @@ Pileup::Pileup(uint32_t k)
     tid = -1;
     beg0 = end0 = 0;
     gbeg1 = gend1 = 0;
-    
-    
+
     std::cerr << gbeg1 << "-" << gend1 << "\n";
     std::cerr << beg0 << "-" << end0 << "\n";
 };
@@ -113,20 +114,58 @@ inline bool Pileup::is_empty()
     return beg0==end0;
 };
 
+
+/**
+ * Sets tid.
+ */
+void Pileup::set_tid(uint32_t tid)
+{
+    this->tid = tid;
+}
+
+/**
+ * Sets chrom.
+ */
+void Pileup::set_chrom(const char* chrom)
+{
+    this->chrom.assign(chrom);
+}
+
 /**
  * Check if flushable.
+ *
+ * returns
+ *    0 - not flushable
+ *    1 - flushable
+ *   -1 - flushable, must update chromosome
  */
-bool Pileup::flushable(int32_t tid, uint32_t gpos1)
+int32_t Pileup::flushable(int32_t tid, uint32_t gpos1)
 {
-    std::cerr << "flushable " << beg0 << "!=" << end0 << " (" << (beg0!=end0) << ")\n";  
-    std::cerr << "          " << tid << "!=" << this->tid << " (" << (tid!=this->tid) << ")\n";  
-    std::cerr << "          " << gpos1 << ">" << gbeg1 << " (" << (gpos1>gbeg1) << ")\n";   
-            
+    std::cerr << "flushable " << beg0 << "!=" << end0 << " (" << (beg0!=end0) << ")\n";
+    std::cerr << "          " << tid << "!=" << this->tid << " (" << (tid!=this->tid) << ")\n";
+    std::cerr << "          " << gpos1 << ">" << gbeg1 << " (" << (gpos1>gbeg1) << ")\n";
+
     return (beg0!=end0 && (tid!=this->tid || gpos1>gbeg1));
+    
+    if (beg0==end0)
+    {
+        return 0;
+    }
+    else if (tid!=this->tid)
+    {
+        return -1;
+    }
+    else if (gpos1>gbeg1)
+    {
+        return 1;
+    }
+    
+    return 0;
 }
 
 /**
  * Converts gpos1 to index in P.
+ * should this be responisble for updating values????!?!?!?!?!?!??!?!?!
  */
 uint32_t Pileup::g2i(uint32_t gpos1)
 {
@@ -216,28 +255,28 @@ void Pileup::add_ref(uint32_t gpos1, uint32_t spos0, uint32_t len, uint8_t* seq,
     std::cerr << beg0 << "-" << end0 << "\n";
 
     uint32_t i = g2i(gpos1);
-    
+
     while (i<end0)
     {
         ++P[g2i(i)].N;
         inc_end0();
     }
-    
+
     while (i<end0)
     {
         ++P[g2i(i)].N;
         inc_end0();
     }
-    
+
     for (uint32_t i=gpos1; i<=gend1; ++i)
     {
         ++P[g2i(i)].N;
     }
-    
+
     if (is_empty())
     {
         std::cerr << "add ref is empty\n";
-        
+
         this->gbeg1 = gpos1;
         this->gend1 = gpos1-1;
     }
