@@ -28,7 +28,7 @@
  */
 void PileupPosition::clear()
 {
-    R = 'N';
+    R = 'X';
     X[1] = 0;
     X[2] = 0;
     X[4] = 0;
@@ -46,33 +46,126 @@ void PileupPosition::clear()
  * Prints pileup position.
  */
 void PileupPosition::print()
-{
-    std::cerr << "\t\t\t================\n";
-    std::cerr << "\t\t\tref: " << R << "\n";
-    std::cerr << "\t\t\tA: " << X[1] << "\n";
-    std::cerr << "\t\t\tC: " << X[2] << "\n";
-    std::cerr << "\t\t\tG: " << X[4] << "\n";
-    std::cerr << "\t\t\tT: " << X[8] << "\n";
-    std::cerr << "\t\t\tN: " << X[15] << "\n";
-    for (std::map<std::string, uint32_t>::iterator i = D.begin(); i!=D.end(); ++i)
+{   
+    std::cerr << R << ":";
+    std::cerr << "ACGTN " << X[1] << "|" << X[2] << "|" << X[4] << "|" << X[8] << "|"<< X[15] << "\n";
+    std::cerr << "N :" << N << ":";
+    std::cerr << "E :" << E << "\n:";
+    
+    if (D.size()!=0)
     {
-        std::cerr << "\t\t\t" << i->first << ": " << i->second << "\n";
+        for (std::map<std::string, uint32_t>::iterator i = D.begin(); i!=D.end(); ++i)
+        {
+            std::cerr << i->first << " (" << i->second << ")";
+        }
+        
+        std::cerr << "\n";
     }
-    for (std::map<std::string, uint32_t>::iterator i = I.begin(); i!=I.end(); ++i)
+    if (I.size()!=0)
     {
-        std::cerr << "\t\t\t" << i->first << ": " << i->second << "\n";
+        std::cerr << "INS: ";
+        for (std::map<std::string, uint32_t>::iterator i = I.begin(); i!=I.end(); ++i)
+        {
+            std::cerr << i->first << " (" << i->second << ")";
+        }
+        
+        std::cerr << "\n";
     }
-    for (std::map<std::string, uint32_t>::iterator i = J.begin(); i!=J.end(); ++i)
+    if (J.size()!=0)
     {
-        std::cerr << "\t\t\t" << i->first << ": " << i->second << "\n";
+        std::cerr << "R: ";
+        for (std::map<std::string, uint32_t>::iterator i = J.begin(); i!=J.end(); ++i)
+        {
+            std::cerr << i->first << " (" << i->second << ")";
+        }
+        
+        std::cerr << "\n";
     }
-    for (std::map<std::string, uint32_t>::iterator i = K.begin(); i!=K.end(); ++i)
+    if (K.size()!=0)
     {
-        std::cerr << "\t\t\t" << i->first << ": " << i->second << "\n";
+        std::cerr << "L: ";
+        for (std::map<std::string, uint32_t>::iterator i = K.begin(); i!=K.end(); ++i)
+        {
+            std::cerr << i->first << " (" << i->second << ")";
+        }
+        
+        std::cerr << "\n";
     }
-    std::cerr << "\t\t\t#evidences: " << N << "\n";
-    std::cerr << "\t\t\t#tail evidences: " << E << "\n";
-    std::cerr << "\t\t\t================\n\n";
+}
+
+/**
+ * Prints pileup position.
+ */
+void PileupPosition::print(uint32_t gpos1)
+{   
+    std::cerr << gpos1 << ":" << R << ":" << N << "+" << E << "\n";
+    
+    if (X[1]+X[2]+X[4]+X[8]+X[15])
+    {
+        std::cerr << "\tSNP: ";
+        if (X[1])
+        {
+            std::cerr << X[1] << "A";
+        }    
+        if (X[2])
+        {
+            std::cerr << X[2] << "C";
+        }  
+        if (X[4])
+        {
+            std::cerr << X[4] << "G";
+        }  
+        if (X[8])
+        {
+            std::cerr << X[8] << "T";
+        }
+        if (X[15])
+        {
+            std::cerr << X[15] << "N";
+        } 
+        std::cerr << "\n";
+    }  
+    
+    
+    if (D.size()!=0)
+    {
+        std::cerr << "\tDEL: ";
+        for (std::map<std::string, uint32_t>::iterator i = D.begin(); i!=D.end(); ++i)
+        {
+            std::cerr << i->first << " (" << i->second << ")";
+        }        
+        std::cerr << "\n";
+    }
+    if (I.size()!=0)
+    {
+        std::cerr << "\tINS: ";
+        for (std::map<std::string, uint32_t>::iterator i = I.begin(); i!=I.end(); ++i)
+        {
+            std::cerr << i->first << " (" << i->second << ")";
+        }
+        
+        std::cerr << "\n";
+    }
+    if (J.size()!=0)
+    {
+        std::cerr << "\tRSCLIP: ";
+        for (std::map<std::string, uint32_t>::iterator i = J.begin(); i!=J.end(); ++i)
+        {
+            std::cerr << i->first << " (" << i->second << ")";
+        }
+        
+        std::cerr << "\n";
+    }
+    if (K.size()!=0)
+    {
+        std::cerr << "\tLSCLIP: ";
+        for (std::map<std::string, uint32_t>::iterator i = K.begin(); i!=K.end(); ++i)
+        {
+            std::cerr << i->first << " (" << i->second << ")";
+        }
+        
+        std::cerr << "\n";
+    }
 }
 
 /**
@@ -92,9 +185,9 @@ Pileup::Pileup(uint32_t k)
 
     tid = -1;
     beg0 = end0 = 0;
-    gbeg1 = gend1 = 0;
+    gbeg1 = 0;
 
-    std::cerr << gbeg1 << "-" << gend1 << "\n";
+    std::cerr << gbeg1 << "\n";
     std::cerr << beg0 << "-" << end0 << "\n";
 };
 
@@ -261,19 +354,28 @@ uint32_t Pileup::end()
  */
 void Pileup::add_ref(uint32_t gpos1, uint32_t spos0, uint32_t len, uint8_t* seq)
 {
-    std::cerr << "add_ref: " << gpos1 << "-" << spos0 << "-" << len << "-" << "\n";
-    std::cerr << gbeg1 << "-" << gend1 << "\n";
-    std::cerr << beg0 << "-" << end0 << "\n";
-
+    std::cerr << "add_ref: gpos1=" << gpos1 << ", spos0=" << spos0 << ", len=" << len << "\n";
+    
     uint32_t i = g2i(gpos1);
+    
+    //special fix for leading base for softclips
+    if (P[i].R=='X') 
+    {
+        P[i].R = (bam_base2char(bam_seqi(seq, spos0)));
+    }
+        
     //number of overlapping bases
     //j<len if pileup needs to increase in size.
     //j>=len if pileup does not need to increase in size.
     uint32_t j = diff(end0, i);
 
     //overlapping positions
+    std::cerr << "i=" << i << "\n";
+    std::cerr << "end0=" << end0 << "\n";
+    
     while (i<end0)
     {
+        std::cerr << "i=" << i << "\n";
         ++P[i].N;
         i = inc(i);
     }
@@ -286,6 +388,8 @@ void Pileup::add_ref(uint32_t gpos1, uint32_t spos0, uint32_t len, uint8_t* seq)
         i = inc(i);
         ++j;
     }
+    
+    set_end0(i);
 }
 
 /**
@@ -295,10 +399,32 @@ void Pileup::add_ref(uint32_t gpos1, uint32_t spos0, uint32_t len, uint8_t* seq)
  */
 void Pileup::update_read_end(uint32_t gpos1)
 {
-    std::cerr << "update_read_end_base: " << gpos1 << "\n";
+    std::cerr << "update_read_end_base: gpos1" << gpos1 << "\n";
     uint32_t i = g2i(gpos1);
     --P[i].N;
     ++P[i].E;
+}
+
+/**
+ * Converts base to bam encoding.
+ */
+uint32_t Pileup::base2index(char base)
+{
+    switch(base)
+    {
+        case 'A':
+            return 1;
+        case 'C':
+            return 2;
+        case 'G':
+            return 4;
+        case 'T':
+            return 8;
+        case 'N':
+            return 15;
+        default:
+            return 15;      
+    }
 }
 
 /**
@@ -306,14 +432,11 @@ void Pileup::update_read_end(uint32_t gpos1)
  */
 void Pileup::add_snp(uint32_t gpos1, char ref, char alt)
 {
-    if (is_empty())
-    {
-        gbeg1 = gpos1;
-        gend1 = gpos1;
-    }
-
-    P[g2i(gpos1)].R = ref;
-    ++P[g2i(gpos1)].X[alt];
+    uint32_t i = g2i(gpos1);
+    P[i].R = ref;
+    ++P[i].X[base2index(alt)];
+    ++P[i].N;
+    if (i==end0) inc_end0();
 }
 
 /**
@@ -321,13 +444,8 @@ void Pileup::add_snp(uint32_t gpos1, char ref, char alt)
  */
 void Pileup::add_del(uint32_t gpos1, std::string& alt)
 {
-    if (is_empty())
-    {
-        gbeg1 = gpos1;
-        gend1 = gpos1;
-    }
-
-    ++P[g2i(gpos1)].D[alt];
+    uint32_t i = g2i(gpos1);
+    ++P[i].D[alt];
 }
 
 /**
@@ -335,13 +453,8 @@ void Pileup::add_del(uint32_t gpos1, std::string& alt)
  */
 void Pileup::add_ins(uint32_t gpos1, std::string& alt)
 {
-    if (is_empty())
-    {
-        gbeg1 = gpos1;
-        gend1 = gpos1;
-    }
-
-    ++P[g2i(gpos1)].I[alt];
+    uint32_t i = g2i(gpos1);
+    ++P[i].I[alt];
 }
 
 /**
@@ -349,13 +462,10 @@ void Pileup::add_ins(uint32_t gpos1, std::string& alt)
  */
 void Pileup::add_lsclip(uint32_t gpos1, std::string& alt)
 {
-    if (is_empty())
-    {
-        gbeg1 = gpos1;
-        gend1 = gpos1;
-    }
-
-    ++P[g2i(gpos1)].J[alt];
+    uint32_t i = g2i(gpos1);
+    ++P[i].J[alt];
+    if (i==end0) inc_end0();
+    
 }
 
 /**
@@ -363,13 +473,8 @@ void Pileup::add_lsclip(uint32_t gpos1, std::string& alt)
  */
 void Pileup::add_rsclip(uint32_t gpos1, std::string& alt)
 {
-    if (is_empty())
-    {
-        gbeg1 = gpos1;
-        gend1 = gpos1;
-    }
-
-    ++P[g2i(gpos1)].K[alt];
+    uint32_t i = g2i(gpos1);
+    ++P[i].K[alt];
 }
 
 /**
@@ -419,7 +524,13 @@ uint32_t Pileup::inc(uint32_t i, uint32_t j)
 void Pileup::printBuffer()
 {
     std::cout << "PRINT BUFFER" << "\n";
-
+    std::cerr << "******************" << "\n";
+    std::cerr << "gindex   : " << gbeg1 << "\n";
+    std::cerr << "index   : " << beg0 << "-" << end0 << " (" << size() << ")\n";
+    std::cerr << "******************" << "\n";
+        
+        
+        
 };
 
 /**
@@ -428,9 +539,16 @@ void Pileup::printBuffer()
 void Pileup::print_state()
 {
     std::cerr << "******************" << "\n";
-    std::cerr << "gindex   : " << gbeg1 << "-" << gend1 << " (" << (gend1-gbeg1) << ")\n";
+    std::cerr << "gindex   : " << gbeg1 << "\n";
     std::cerr << "index   : " << beg0 << "-" << end0 << " (" << size() << ")\n";
     std::cerr << "******************" << "\n";
+    uint32_t k = 0;
+    for (uint32_t i=beg0; i!=end0; i=inc(i))
+    {
+        P[i].print(gbeg1+k);
+        ++k;
+    }   
+    std::cerr << "******************" << "\n";       
 }
 
 /**

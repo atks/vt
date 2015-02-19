@@ -354,18 +354,17 @@ class Igor : Program
         if (n_cigar_op)
         {
             uint32_t *cigar = bam_get_cigar(s);
+            
             for (uint32_t i = 0; i < n_cigar_op; ++i)
             {
                 uint32_t oplen = bam_cigar_oplen(cigar[i]);
                 char opchar = bam_cigar_opchr(cigar[i]);
 
-                std::cerr << oplen << " " << opchar << "\n";
+                std::cerr << "CIGAR: " << oplen << " " << opchar << "\n";
 
                 if (opchar=='S')
                 {
                     //add to S evidence
-                    //do nothing
-
                     std::string ins = "";
                     float mean_qual = 0;
                     for (size_t i=0; i<oplen ; ++i)
@@ -373,9 +372,8 @@ class Igor : Program
                         ins += bam_base2char(bam_seqi(seq, spos0+i));
                         mean_qual += qual[spos0+i];
                     }
-
                     mean_qual /= oplen;
-
+                    
                     if (cpos1==pos1)
                     {
                         std::cerr << "\t\t\tadding LSCLIP: " << cpos1 << "\t" << ins << " (" << mean_qual << ")\n";
@@ -384,7 +382,7 @@ class Igor : Program
                     else
                     {
                         std::cerr << "\t\t\tadding RSCLIP: " << cpos1 << "\t" << ins << " (" << mean_qual << ")\n";
-                        pileup.add_rsclip(cpos1, ins);
+                        pileup.add_rsclip(cpos1-1, ins);
                     }
 
                     spos0 += oplen;
@@ -402,7 +400,7 @@ class Igor : Program
                             int32_t len = std::strtol(mdp, &end, 10);
                             mdp = end;
 
-                            std::cerr << "\tMatch " << len << "\n";
+                            std::cerr << "\tMD: Match " << len << "\n";
 
                             if (len)
                             {
@@ -414,8 +412,7 @@ class Igor : Program
                                     std::cerr << (bam_base2char(bam_seqi(seq, i)));
                                 }
                                 std::cerr << "\n";
-                                std::cerr << "\t\t\t\t sspos0: " << sspos0  << " " << (sspos0+len-1) << "\n";
-
+                                
                                 pileup.add_ref(gbeg1, sspos0, len, seq);
 
                                 lpos1 += len;
@@ -426,7 +423,7 @@ class Igor : Program
                         {
                             char ref = *mdp;
                             char alt = (bam_base2char(bam_seqi(seq, spos0+(lpos1-cpos1))));
-                            std::cerr << "\tMismatch " << ref << "\n";
+                            std::cerr << "\tMD: Mismatch " << ref << "\n";
                             std::cerr << "\t\t\tadding SNP: " << lpos1 << ":" << ref << "/" << alt << "\n";
                             pileup.add_snp(lpos1, ref, alt);
 
@@ -491,12 +488,12 @@ class Igor : Program
                     std::cerr << "never seen before state " << opchar << "\n";
                 }
             
-                pileup.update_read_end(cpos1);
+                
                 pileup.print_state();
             }
             
             //update last matching base
-            
+            pileup.update_read_end(cpos1-1);
         }
     }
 

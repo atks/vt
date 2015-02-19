@@ -76,6 +76,11 @@ class PileupPosition
      * Prints pileup position.
      */
     void print();
+    
+    /**
+     * Prints pileup position.
+     */
+    void print(uint32_t gpos1);
 };
 
 /**
@@ -123,17 +128,13 @@ class Pileup
     //  how do we check if 
     //
 
-
-
-
     //for use if we need to update the reference.
     std::string chrom;
 
     //where should we check if a read is from another chromosome?
 
-
     //genome position at the beginning of the pileup
-    uint32_t gbeg1, gend1;
+    uint32_t gbeg1;
 
     bool debug;
 
@@ -167,6 +168,11 @@ class Pileup
      * Sets tid.
      */
     void set_tid(uint32_t tid);
+
+    /**
+     * Converts base to bam encoding.
+     */
+    uint32_t base2index(char base);
 
     /**
      * Sets chrom.
