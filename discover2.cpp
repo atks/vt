@@ -52,12 +52,18 @@ class Igor : Program
     uint32_t evidence_allele_count_cutoff;
     double fractional_evidence_allele_count_cutoff;
 
+
+    std::string chrom; //current chromosome
+    int32_t tid; // current sequence id in bam
+    int32_t rid; // current sequence id in bcf
+    
+    
     uint16_t exclude_flag;
 
     khash_t(rdict) *reads;
     khiter_t k;
     int32_t ret;
-    
+
     ///////
     //i/o//
     ///////
@@ -140,11 +146,11 @@ class Igor : Program
         bcf_hdr_append(odw->hdr, "##FORMAT=<ID=N,Number=1,Type=Integer,Description=\"Total number of reads at a candidate locus with reads that contain evidence of the alternate allele\">");
         bcf_hdr_add_sample(odw->hdr, sample_id.c_str());
         bcf_hdr_add_sample(odw->hdr, NULL);
-        v = NULL;
+        v = bcf_init();
 
         //for tracking overlapping reads
         reads = kh_init(rdict);
-        
+
         ////////////////////////
         //stats initialization//
         ////////////////////////
@@ -154,9 +160,16 @@ class Igor : Program
         no_exclude_flag_reads = 0;
         no_low_mapq_reads = 0;
 
+
         ////////////////////////
         //tools initialization//
         ////////////////////////
+
+
+
+        chrom = ""; 
+        tid = 0;
+        rid = 0; 
 
     }
 
@@ -268,11 +281,184 @@ class Igor : Program
     }
 
     /**
-     * Prints out pileupPosition as a VCF entry if it contains a variant.
+     * Write out pileupPosition as a VCF entry if it contains a variant.
      */
-    void print_to_vcf(PileupPosition& p)
+    void write_to_vcf(uint32_t rid, uint32_t gpos1, PileupPosition& p)
     {
+        bcf_clear(v);
+        bcf_set_n_sample(v, 1);
+        bcf_set_rid(v, rid);
+        bcf_set_pos1(v, gpos1);
+
+        std::cerr << "rid: " << rid << "\n";
+        std::cerr << "gpos1: " << gpos1 << "\n";
+
+        std::string alleles = "";
+        int32_t N = 0;
+        int32_t E = 0;
+
+
+        if (p.X[1])
+        {
+            alleles.clear();
+            alleles.append(1, p.R);
+            alleles.append(1, ',');
+            alleles.append(1, 'A');
+            bcf_update_alleles_str(odw->hdr, v, alleles.c_str());
+            bcf_update_format_int32(odw->hdr, v, "E", &p.X[1], 1);
+            N = p.N+p.E;
+            bcf_update_format_int32(odw->hdr, v, "N", &N, 1);
+            odw->write(v);
+            
+            bcf_print(odw->hdr, v);
+        }
+
+        if (p.X[2])
+        {
+            alleles.clear();
+            alleles.append(1, p.R);
+            alleles.append(1, ',');
+            alleles.append(1, 'C');
+            bcf_update_alleles_str(odw->hdr, v, alleles.c_str());
+            bcf_update_format_int32(odw->hdr, v, "E", &p.X[2], 1);
+            N = p.N+p.E;
+            bcf_update_format_int32(odw->hdr, v, "N", &N, 1);
+            odw->write(v);
+            
+            bcf_print(odw->hdr, v);
+        }
+
+        if (p.X[4])
+        {
+            alleles.clear();
+            alleles.append(1, p.R);
+            alleles.append(1, ',');
+            alleles.append(1, 'G');
+            bcf_update_alleles_str(odw->hdr, v, alleles.c_str());
+            bcf_update_format_int32(odw->hdr, v, "E", &p.X[4], 1);
+            N = p.N+p.E;
+            bcf_update_format_int32(odw->hdr, v, "N", &N, 1);
         
+            bcf_print(odw->hdr, v);
+            
+            odw->write(v);
+            
+        }
+
+        if (p.X[8])
+        {
+            alleles.clear();
+            alleles.append(1, p.R);
+            alleles.append(1, ',');
+            alleles.append(1, 'T');
+            bcf_update_alleles_str(odw->hdr, v, alleles.c_str());
+            bcf_update_format_int32(odw->hdr, v, "E", &p.X[8], 1);
+            N = p.N+p.E;
+            bcf_update_format_int32(odw->hdr, v, "N", &N, 1);
+            odw->write(v);
+            
+            bcf_print(odw->hdr, v);
+        }
+
+        if (p.D.size()!=0)
+        {
+            for (std::map<std::string, uint32_t>::iterator i = p.D.begin(); i!=p.D.end(); ++i)
+            {
+                alleles.append(1, p.R);
+                alleles.append(i->first);
+                alleles.append(1, ',');
+                alleles.append(1, p.R);
+                bcf_update_alleles_str(odw->hdr, v, alleles.c_str());
+                bcf_update_format_int32(odw->hdr, v, "E", &i->second, 1);
+                N = p.N;
+                bcf_update_format_int32(odw->hdr, v, "N", &N, 1);
+                odw->write(v);
+            }
+        }
+        
+        if (p.I.size()!=0)
+        {
+            for (std::map<std::string, uint32_t>::iterator i = p.I.begin(); i!=p.I.end(); ++i)
+            {
+                alleles.append(1, p.R);
+                alleles.append(1, ',');
+                alleles.append(1, p.R);
+                alleles.append(i->first);
+                bcf_update_alleles_str(odw->hdr, v, alleles.c_str());
+                bcf_update_format_int32(odw->hdr, v, "E", &i->second, 1);
+                N = p.N;
+                bcf_update_format_int32(odw->hdr, v, "N", &N, 1);
+                odw->write(v);
+            }
+        }
+        
+        if (p.J.size()!=0)
+        {
+            for (std::map<std::string, uint32_t>::iterator i = p.J.begin(); i!=p.J.end(); ++i)
+            {
+                alleles.append(1, p.R);
+                alleles.append(1, ',');
+                alleles.append("<LSCLIP>");
+                bcf_update_alleles_str(odw->hdr, v, alleles.c_str());
+                bcf_update_format_int32(odw->hdr, v, "E", &i->second, 1);
+                N = p.N;
+                bcf_update_format_int32(odw->hdr, v, "N", &N, 1);
+                odw->write(v);
+                
+                bcf_print(odw->hdr, v);
+            }
+        }
+
+        if (p.K.size()!=0)
+        {
+            for (std::map<std::string, uint32_t>::iterator i = p.K.begin(); i!=p.K.end(); ++i)
+            {
+                alleles.append(1, p.R);
+                alleles.append(1, ',');
+                alleles.append("<RSCLIP>");
+                bcf_update_alleles_str(odw->hdr, v, alleles.c_str());
+                bcf_update_format_int32(odw->hdr, v, "E", &i->second, 1);
+                N = p.N;
+                bcf_update_format_int32(odw->hdr, v, "N", &N, 1);
+                odw->write(v);
+                
+                bcf_print(odw->hdr, v);
+            }
+        }
+    }
+
+
+    /**
+     * Check if flushable.
+     *
+     * returns
+     *    0 - not flushable
+     *    1 - flushable
+     *   -1 - flushable, must update chromosome
+     */
+    int32_t flushable(bam1_t* s)
+    {
+        int32_t tid = bam_get_tid(s);
+        uint32_t gpos1 = bam_get_pos1(s);
+        
+        if (pileup.is_empty())
+        {
+            this->tid = tid;
+            chrom.assign(bam_get_chrom(odr->hdr, s));
+            rid = bcf_hdr_name2id(odw->hdr, chrom.c_str());
+            
+            return 0;
+        }
+        else if (tid!=this->tid)
+        {
+            return -1;
+        }
+        else if (gpos1>pileup.get_gbeg1())
+        {
+            return 1;
+        }
+    
+        return 0;
     }
 
     /**
@@ -280,30 +466,28 @@ class Igor : Program
      */
     void flush(bam1_t* s)
     {
-        int32_t tid = bam_get_tid(s);
-        uint32_t gpos1 = bam_get_pos1(s);
         int32_t ret = 0;
-        if ((ret=pileup.flushable(tid, gpos1)))
-        {   
-            uint32_t gbeg1 = pileup.get_gbeg1();
+        if ((ret=flushable(s)))
+        {
+            uint32_t cpos1 = pileup.get_gbeg1();
+            uint32_t lend0 = (ret==-1 || pileup.get_gend1()<bam_get_pos1(s)) ? pileup.end() : pileup.g2i(bam_get_pos1(s));
             uint32_t i;
-            
-            std::cerr << "flushing loop: " << pileup.begin() << " to " << pileup.g2i(gpos1) << "\n";
-            
-            for (i=pileup.begin(); i!=pileup.g2i(gpos1); i=pileup.inc(i,1))
+            for (i=pileup.begin(); i!=lend0; i=pileup.inc(i,1))
             {
-                //pileup[i].print();
+                write_to_vcf(rid, cpos1, pileup[i]);
                 pileup[i].clear();
-                ++gbeg1;
+                ++cpos1;
             }
-            
-            if (ret<0)
-            {
-                pileup.set_tid(tid);
-                pileup.set_chrom(bam_get_chrom(odr->hdr, s));
-            }
-            pileup.set_gbeg1(gbeg1);
+
+            pileup.set_gbeg1(cpos1);
             pileup.set_beg0(i);
+            
+            if (ret==-1)
+            {
+                tid = bam_get_tid(s);
+                chrom.assign(bam_get_chrom(odr->hdr, s));
+                rid = bcf_hdr_name2id(odw->hdr, chrom.c_str());
+            }
         }
     }
 
@@ -312,14 +496,18 @@ class Igor : Program
      */
     void flush()
     {
-        uint32_t gbeg1 = pileup.get_gbeg1();
+        uint32_t cpos1 = pileup.get_gbeg1();
         uint32_t i;
+
         for (i=pileup.begin(); i!=pileup.end(); i=pileup.inc(i,1))
         {
-            //std::cerr << "\t\t\t" << gbeg1++ << "\n";
-            //pileup[i].print();
+            write_to_vcf(rid, cpos1, pileup[i]);
             pileup[i].clear();
+            ++cpos1;
         }
+
+        pileup.set_gbeg1(cpos1);
+        pileup.set_beg0(i);
     }
 
     /**
@@ -330,7 +518,7 @@ class Igor : Program
     void process_read(bam1_t *s)
     {
         flush(s);
-        
+
         bam_print_key_values(odr->hdr, s);
 
         uint32_t tid = bam_get_tid(s);
@@ -354,7 +542,7 @@ class Igor : Program
         if (n_cigar_op)
         {
             uint32_t *cigar = bam_get_cigar(s);
-            
+
             for (uint32_t i = 0; i < n_cigar_op; ++i)
             {
                 uint32_t oplen = bam_cigar_oplen(cigar[i]);
@@ -373,7 +561,7 @@ class Igor : Program
                         mean_qual += qual[spos0+i];
                     }
                     mean_qual /= oplen;
-                    
+
                     if (cpos1==pos1)
                     {
                         std::cerr << "\t\t\tadding LSCLIP: " << cpos1 << "\t" << ins << " (" << mean_qual << ")\n";
@@ -412,7 +600,7 @@ class Igor : Program
                                     std::cerr << (bam_base2char(bam_seqi(seq, i)));
                                 }
                                 std::cerr << "\n";
-                                
+
                                 pileup.add_ref(gbeg1, sspos0, len, seq);
 
                                 lpos1 += len;
@@ -487,11 +675,11 @@ class Igor : Program
                 {
                     std::cerr << "never seen before state " << opchar << "\n";
                 }
-            
-                
+
+
                 pileup.print_state();
             }
-            
+
             //update last matching base
             pileup.update_read_end(cpos1-1);
         }
@@ -514,7 +702,7 @@ class Igor : Program
             print_pileup_state();
             ++no_passed_reads;
 
-            if (no_passed_reads==1) break;
+            if (no_passed_reads==4) break;
         }
 
         flush();

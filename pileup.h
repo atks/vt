@@ -180,6 +180,11 @@ class Pileup
     void set_chrom(const char* chrom);
     
     /**
+     * Gets chrom.
+     */
+    std::string get_chrom();
+    
+    /**
      * Gets gbeg1.
      */
     uint32_t get_gbeg1();

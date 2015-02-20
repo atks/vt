@@ -202,7 +202,7 @@ uint32_t Pileup::size()
 /**
  * Checks if buffer is empty.
  */
-inline bool Pileup::is_empty()
+bool Pileup::is_empty()
 {
     return beg0==end0;
 };
@@ -222,6 +222,14 @@ void Pileup::set_tid(uint32_t tid)
 void Pileup::set_chrom(const char* chrom)
 {
     this->chrom.assign(chrom);
+}
+
+/**
+ * Gets chrom.
+ */
+std::string Pileup::get_chrom()
+{
+    return chrom;
 }
 
 /**
@@ -370,12 +378,12 @@ void Pileup::add_ref(uint32_t gpos1, uint32_t spos0, uint32_t len, uint8_t* seq)
     uint32_t j = diff(end0, i);
 
     //overlapping positions
-    std::cerr << "i=" << i << "\n";
-    std::cerr << "end0=" << end0 << "\n";
-    
+//    std::cerr << "i=" << i << "\n";
+//    std::cerr << "end0=" << end0 << "\n";
+//    
     while (i<end0)
     {
-        std::cerr << "i=" << i << "\n";
+        //std::cerr << "i=" << i << "\n";
         ++P[i].N;
         i = inc(i);
     }
