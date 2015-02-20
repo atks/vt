@@ -46,19 +46,19 @@ void PileupPosition::clear()
  * Prints pileup position.
  */
 void PileupPosition::print()
-{   
+{
     std::cerr << R << ":";
     std::cerr << "ACGTN " << X[1] << "|" << X[2] << "|" << X[4] << "|" << X[8] << "|"<< X[15] << "\n";
     std::cerr << "N :" << N << ":";
     std::cerr << "E :" << E << "\n:";
-    
+
     if (D.size()!=0)
     {
         for (std::map<std::string, uint32_t>::iterator i = D.begin(); i!=D.end(); ++i)
         {
             std::cerr << i->first << " (" << i->second << ")";
         }
-        
+
         std::cerr << "\n";
     }
     if (I.size()!=0)
@@ -68,7 +68,7 @@ void PileupPosition::print()
         {
             std::cerr << i->first << " (" << i->second << ")";
         }
-        
+
         std::cerr << "\n";
     }
     if (J.size()!=0)
@@ -78,7 +78,7 @@ void PileupPosition::print()
         {
             std::cerr << i->first << " (" << i->second << ")";
         }
-        
+
         std::cerr << "\n";
     }
     if (K.size()!=0)
@@ -88,7 +88,7 @@ void PileupPosition::print()
         {
             std::cerr << i->first << " (" << i->second << ")";
         }
-        
+
         std::cerr << "\n";
     }
 }
@@ -97,24 +97,24 @@ void PileupPosition::print()
  * Prints pileup position.
  */
 void PileupPosition::print(uint32_t gpos1)
-{   
+{
     std::cerr << gpos1 << ":" << R << ":" << N << "+" << E << "\n";
-    
+
     if (X[1]+X[2]+X[4]+X[8]+X[15])
     {
         std::cerr << "\tSNP: ";
         if (X[1])
         {
             std::cerr << X[1] << "A";
-        }    
+        }
         if (X[2])
         {
             std::cerr << X[2] << "C";
-        }  
+        }
         if (X[4])
         {
             std::cerr << X[4] << "G";
-        }  
+        }
         if (X[8])
         {
             std::cerr << X[8] << "T";
@@ -122,18 +122,18 @@ void PileupPosition::print(uint32_t gpos1)
         if (X[15])
         {
             std::cerr << X[15] << "N";
-        } 
+        }
         std::cerr << "\n";
-    }  
-    
-    
+    }
+
+
     if (D.size()!=0)
     {
         std::cerr << "\tDEL: ";
         for (std::map<std::string, uint32_t>::iterator i = D.begin(); i!=D.end(); ++i)
         {
             std::cerr << i->first << " (" << i->second << ")";
-        }        
+        }
         std::cerr << "\n";
     }
     if (I.size()!=0)
@@ -143,7 +143,7 @@ void PileupPosition::print(uint32_t gpos1)
         {
             std::cerr << i->first << " (" << i->second << ")";
         }
-        
+
         std::cerr << "\n";
     }
     if (J.size()!=0)
@@ -153,7 +153,7 @@ void PileupPosition::print(uint32_t gpos1)
         {
             std::cerr << i->first << " (" << i->second << ")";
         }
-        
+
         std::cerr << "\n";
     }
     if (K.size()!=0)
@@ -163,7 +163,7 @@ void PileupPosition::print(uint32_t gpos1)
         {
             std::cerr << i->first << " (" << i->second << ")";
         }
-        
+
         std::cerr << "\n";
     }
 }
@@ -187,8 +187,9 @@ Pileup::Pileup(uint32_t k)
     beg0 = end0 = 0;
     gbeg1 = 0;
 
-    std::cerr << gbeg1 << "\n";
-    std::cerr << beg0 << "-" << end0 << "\n";
+    debug = false;
+//    std::cerr << gbeg1 << "\n";
+//    std::cerr << beg0 << "-" << end0 << "\n";
 };
 
 /**
@@ -230,38 +231,6 @@ void Pileup::set_chrom(const char* chrom)
 std::string Pileup::get_chrom()
 {
     return chrom;
-}
-
-/**
- * Check if flushable.
- *
- * returns
- *    0 - not flushable
- *    1 - flushable
- *   -1 - flushable, must update chromosome
- */
-int32_t Pileup::flushable(int32_t tid, uint32_t gpos1)
-{
-//    std::cerr << "flushable " << beg0 << "!=" << end0 << " (" << (beg0!=end0) << ")\n";
-//    std::cerr << "          " << tid << "!=" << this->tid << " (" << (tid!=this->tid) << ")\n";
-//    std::cerr << "          " << gpos1 << ">" << gbeg1 << " (" << (gpos1>gbeg1) << ")\n";
-
-    return (beg0!=end0 && (tid!=this->tid || gpos1>gbeg1));
-
-    if (beg0==end0)
-    {
-        return 0;
-    }
-    else if (tid!=this->tid)
-    {
-        return -1;
-    }
-    else if (gpos1>gbeg1)
-    {
-        return 1;
-    }
-
-    return 0;
 }
 
 /**
@@ -362,16 +331,16 @@ uint32_t Pileup::end()
  */
 void Pileup::add_ref(uint32_t gpos1, uint32_t spos0, uint32_t len, uint8_t* seq)
 {
-    std::cerr << "add_ref: gpos1=" << gpos1 << ", spos0=" << spos0 << ", len=" << len << "\n";
-    
+    if (debug) std::cerr << "add_ref: gpos1=" << gpos1 << ", spos0=" << spos0 << ", len=" << len << "\n";
+
     uint32_t i = g2i(gpos1);
-    
+
     //special fix for leading base for softclips
-    if (P[i].R=='X') 
+    if (P[i].R=='X')
     {
         P[i].R = (bam_base2char(bam_seqi(seq, spos0)));
     }
-        
+
     //number of overlapping bases
     //j<len if pileup needs to increase in size.
     //j>=len if pileup does not need to increase in size.
@@ -380,7 +349,7 @@ void Pileup::add_ref(uint32_t gpos1, uint32_t spos0, uint32_t len, uint8_t* seq)
     //overlapping positions
 //    std::cerr << "i=" << i << "\n";
 //    std::cerr << "end0=" << end0 << "\n";
-//    
+//
     while (i<end0)
     {
         //std::cerr << "i=" << i << "\n";
@@ -396,7 +365,7 @@ void Pileup::add_ref(uint32_t gpos1, uint32_t spos0, uint32_t len, uint8_t* seq)
         i = inc(i);
         ++j;
     }
-    
+
     set_end0(i);
 }
 
@@ -407,7 +376,7 @@ void Pileup::add_ref(uint32_t gpos1, uint32_t spos0, uint32_t len, uint8_t* seq)
  */
 void Pileup::update_read_end(uint32_t gpos1)
 {
-    std::cerr << "update_read_end_base: gpos1" << gpos1 << "\n";
+    if (debug) std::cerr << "update_read_end_base: gpos1" << gpos1 << "\n";
     uint32_t i = g2i(gpos1);
     --P[i].N;
     ++P[i].E;
@@ -431,7 +400,7 @@ uint32_t Pileup::base2index(char base)
         case 'N':
             return 15;
         default:
-            return 15;      
+            return 15;
     }
 }
 
@@ -473,7 +442,7 @@ void Pileup::add_lsclip(uint32_t gpos1, std::string& alt)
     uint32_t i = g2i(gpos1);
     ++P[i].J[alt];
     if (i==end0) inc_end0();
-    
+
 }
 
 /**
@@ -536,9 +505,6 @@ void Pileup::printBuffer()
     std::cerr << "gindex   : " << gbeg1 << "\n";
     std::cerr << "index   : " << beg0 << "-" << end0 << " (" << size() << ")\n";
     std::cerr << "******************" << "\n";
-        
-        
-        
 };
 
 /**
@@ -555,8 +521,8 @@ void Pileup::print_state()
     {
         P[i].print(gbeg1+k);
         ++k;
-    }   
-    std::cerr << "******************" << "\n";       
+    }
+    std::cerr << "******************" << "\n";
 }
 
 /**

@@ -60,7 +60,7 @@ class PileupPosition
     //INDELs - #indel / N
     //SCLIPS -
 
-
+    
     /**
      * Constructor.
      * Buffer size must be a power of 2.

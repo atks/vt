@@ -168,6 +168,7 @@ class Igor : Program
                 if (strcmp(ref, alleles[0]))
                 {
                     if (print) fprintf(stderr, "[%s:%d %s] INCONSISTENT REF: %s:%d %s!=%s(true) \n", __FILE__, __LINE__, __FUNCTION__, chrom, pos1, alleles[0], ref);
+                    ++no_inconsistent_ref;
                 }
 
                 if (ref_len)
