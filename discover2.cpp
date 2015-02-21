@@ -286,23 +286,16 @@ class Igor : Program
      */
     void write_to_vcf(uint32_t rid, uint32_t gpos1, PileupPosition& p)
     {
-        bcf_clear(v);
-        
-        bcf_update_id(odw->hdr, v, ".");
-        bcf_set_n_sample(v, 1);
-        bcf_set_rid(v, rid);
-        bcf_set_pos1(v, gpos1);
-
-//        std::cerr << "rid: " << rid << "\n";
-//        std::cerr << "gpos1: " << gpos1 << "\n";
-
         std::string alleles = "";
         int32_t N = 0;
         int32_t E = 0;
 
-
         if (p.X[1])
         {
+            bcf_clear(v);
+            bcf_set_rid(v, rid);
+            bcf_set_pos1(v, gpos1);
+            bcf_set_n_sample(v, 1);
             alleles.clear();
             alleles.append(1, p.R);
             alleles.append(1, ',');
@@ -313,15 +306,14 @@ class Igor : Program
             N = p.N+p.E;
             bcf_update_format_int32(odw->hdr, v, "N", &N, 1);
             odw->write(v);
-            
-//            bcf_print(odw->hdr, v);
         }
 
         if (p.X[2])
         {
-//            bcf_clear(v);
-//            bcf_set_rid(v, rid);
-//            bcf_set_pos1(v, gpos1);
+            bcf_clear(v);
+            bcf_set_rid(v, rid);
+            bcf_set_pos1(v, gpos1);
+            bcf_set_n_sample(v, 1);
             v->unpacked = 1;
             alleles.clear();
             alleles.append(1, p.R);
@@ -333,12 +325,14 @@ class Igor : Program
             N = p.N+p.E;
             bcf_update_format_int32(odw->hdr, v, "N", &N, 1);
             odw->write(v);
-            
-//            bcf_print(odw->hdr, v);
         }
-//
+
         if (p.X[4])
         {
+            bcf_clear(v);
+            bcf_set_rid(v, rid);
+            bcf_set_pos1(v, gpos1);
+            bcf_set_n_sample(v, 1);
             alleles.clear();
             alleles.append(1, p.R);
             alleles.append(1, ',');
@@ -348,106 +342,112 @@ class Igor : Program
             bcf_update_format_int32(odw->hdr, v, "E", &E, 1);
             N = p.N+p.E;
             bcf_update_format_int32(odw->hdr, v, "N", &N, 1);
-        
-//            bcf_print(odw->hdr, v);
-            
             odw->write(v);
         }
-//
-//        if (p.X[8])
-//        {
-//            alleles.clear();
-//            alleles.append(1, p.R);
-//            alleles.append(1, ',');
-//            alleles.append(1, 'T');
-//            bcf_update_alleles_str(odw->hdr, v, alleles.c_str());
-//            E = p.X[8];
-//            bcf_update_format_int32(odw->hdr, v, "E", &E, 1);
-//            N = p.N+p.E;
-//            bcf_update_format_int32(odw->hdr, v, "N", &N, 1);
-//            odw->write(v);
-//            
-////            bcf_print(odw->hdr, v);
-//        }
 
-//        if (p.D.size()!=0)
-//        {
-//            for (std::map<std::string, uint32_t>::iterator i = p.D.begin(); i!=p.D.end(); ++i)
-//            {
-//                alleles.clear();
-//                alleles.append(1, p.R);
-//                alleles.append(i->first);
-//                alleles.append(1, ',');
-//                alleles.append(1, p.R);
-//                bcf_update_alleles_str(odw->hdr, v, alleles.c_str());
-//                E = i->second;
-//                bcf_update_format_int32(odw->hdr, v, "E", &E, 1);
-//                N = p.N;
-//                bcf_update_format_int32(odw->hdr, v, "N", &N, 1);
-//                odw->write(v);
-//            }
-//        }
-//        
-//        if (p.I.size()!=0)
-//        {
-//            for (std::map<std::string, uint32_t>::iterator i = p.I.begin(); i!=p.I.end(); ++i)
-//            {
-//                alleles.clear();
-//                alleles.append(1, p.R);
-//                alleles.append(1, ',');
-//                alleles.append(1, p.R);
-//                alleles.append(i->first);
-//                bcf_update_alleles_str(odw->hdr, v, alleles.c_str());
-//                E = i->second;
-//                bcf_update_format_int32(odw->hdr, v, "E", &E, 1);
-//                N = p.N;
-//                bcf_update_format_int32(odw->hdr, v, "N", &N, 1);
-//                odw->write(v);
-//            }
-//        }
-//        
-//        if (p.J.size()!=0)
-//        {
-//            for (std::map<std::string, uint32_t>::iterator i = p.J.begin(); i!=p.J.end(); ++i)
-//            {
-//                bcf_update_format_int32(odw->hdr, v, "E", &i->second, 1);
-//                N = p.N;
-//                bcf_update_format_int32(odw->hdr, v, "N", &N, 1);
-//                alleles.clear();
-//                alleles.append(1, p.R);
-//                alleles.append(1, ',');
-//                alleles.append("<RSCLIP>");
-//                bcf_update_alleles_str(odw->hdr, v, alleles.c_str());
-//                E = i->second;
-//                bcf_update_format_int32(odw->hdr, v, "E", &E, 1);
-//                N = p.N;
-//                bcf_update_format_int32(odw->hdr, v, "N", &N, 1);
-//                
-//                //bcf_print(odw->hdr, v);
-//                odw->write(v);
-//                
-//
-//            }
-//        }
-//
-//        if (p.K.size()!=0)
-//        {
-//            for (std::map<std::string, uint32_t>::iterator i = p.K.begin(); i!=p.K.end(); ++i)
-//            {
-//                alleles.clear();
-//                alleles.append(1, p.R);
-//                alleles.append(1, ',');
-//                alleles.append("<LSCLIP>");
-//                bcf_update_alleles_str(odw->hdr, v, alleles.c_str());
-//                E = i->second;
-//                bcf_update_format_int32(odw->hdr, v, "E", &E, 1);
-//                N = p.N;
-//                bcf_update_format_int32(odw->hdr, v, "N", &N, 1);
-//                odw->write(v);
-//                
-////                bcf_print(odw->hdr, v);
-//            }
-//        }
+        if (p.X[8])
+        {
+            bcf_clear(v);
+            bcf_set_rid(v, rid);
+            bcf_set_pos1(v, gpos1);
+            bcf_set_n_sample(v, 1);
+            alleles.clear();
+            alleles.append(1, p.R);
+            alleles.append(1, ',');
+            alleles.append(1, 'T');
+            bcf_update_alleles_str(odw->hdr, v, alleles.c_str());
+            E = p.X[8];
+            bcf_update_format_int32(odw->hdr, v, "E", &E, 1);
+            N = p.N+p.E;
+            bcf_update_format_int32(odw->hdr, v, "N", &N, 1);
+            odw->write(v);
+        }
+
+        if (p.D.size()!=0)
+        {
+            for (std::map<std::string, uint32_t>::iterator i = p.D.begin(); i!=p.D.end(); ++i)
+            {
+                bcf_clear(v);
+                bcf_set_rid(v, rid);
+                bcf_set_pos1(v, gpos1);
+                bcf_set_n_sample(v, 1);
+                alleles.clear();
+                alleles.append(1, p.R);
+                alleles.append(i->first);
+                alleles.append(1, ',');
+                alleles.append(1, p.R);
+                bcf_update_alleles_str(odw->hdr, v, alleles.c_str());
+                E = i->second;
+                bcf_update_format_int32(odw->hdr, v, "E", &E, 1);
+                N = p.N;
+                bcf_update_format_int32(odw->hdr, v, "N", &N, 1);
+                odw->write(v);
+            }
+        }
+        
+        if (p.I.size()!=0)
+        {
+            for (std::map<std::string, uint32_t>::iterator i = p.I.begin(); i!=p.I.end(); ++i)
+            {
+                bcf_clear(v);
+                bcf_set_rid(v, rid);
+                bcf_set_pos1(v, gpos1);
+                bcf_set_n_sample(v, 1);
+                alleles.clear();
+                alleles.append(1, p.R);
+                alleles.append(1, ',');
+                alleles.append(1, p.R);
+                alleles.append(i->first);
+                bcf_update_alleles_str(odw->hdr, v, alleles.c_str());
+                E = i->second;
+                bcf_update_format_int32(odw->hdr, v, "E", &E, 1);
+                N = p.N;
+                bcf_update_format_int32(odw->hdr, v, "N", &N, 1);
+                odw->write(v);
+            }
+        }
+        
+        if (p.J.size()!=0)
+        {
+            for (std::map<std::string, uint32_t>::iterator i = p.J.begin(); i!=p.J.end(); ++i)
+            {
+                bcf_clear(v);
+                bcf_set_rid(v, rid);
+                bcf_set_pos1(v, gpos1);
+                bcf_set_n_sample(v, 1);
+                alleles.clear();
+                alleles.append(1, p.R);
+                alleles.append(1, ',');
+                alleles.append("<RSCLIP>");
+                bcf_update_alleles_str(odw->hdr, v, alleles.c_str());
+                E = i->second;
+                bcf_update_format_int32(odw->hdr, v, "E", &E, 1);
+                N = p.N;
+                bcf_update_format_int32(odw->hdr, v, "N", &N, 1);
+                odw->write(v);
+            }
+        }
+
+        if (p.K.size()!=0)
+        {
+            for (std::map<std::string, uint32_t>::iterator i = p.K.begin(); i!=p.K.end(); ++i)
+            {
+                bcf_clear(v);
+                bcf_set_rid(v, rid);
+                bcf_set_pos1(v, gpos1);
+                bcf_set_n_sample(v, 1);
+                alleles.clear();
+                alleles.append(1, p.R);
+                alleles.append(1, ',');
+                alleles.append("<LSCLIP>");
+                bcf_update_alleles_str(odw->hdr, v, alleles.c_str());
+                E = i->second;
+                bcf_update_format_int32(odw->hdr, v, "E", &E, 1);
+                N = p.N;
+                bcf_update_format_int32(odw->hdr, v, "N", &N, 1);
+                odw->write(v);
+            }
+        }
     }
 
 
@@ -729,7 +729,7 @@ class Igor : Program
             if (debug) print_pileup_state();
             ++no_passed_reads;
 
-            //if (no_passed_reads==4) break;
+            if (no_passed_reads==100) break;
         }
 
         flush();

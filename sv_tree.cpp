@@ -1,17 +1,13 @@
 /* The MIT License
-
    Copyright (c) 2014 Adrian Tan <atks@umich.edu>
-
    Permission is hereby granted, free of charge, to any person obtaining a copy
    of this software and associated documentation files (the "Software"), to deal
    in the Software without restriction, including without limitation the rights
    to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
    copies of the Software, and to permit persons to whom the Software is
    furnished to do so, subject to the following conditions:
-
    The above copyright notice and this permission notice shall be included in
    all copies or substantial portions of the Software.
-
    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -125,7 +121,7 @@ void SVNode::clear()
 void SVNode::print()
 {
     for (int32_t i=0; i<depth; ++i) std::cerr << "\t";
-        
+
     std::cerr << sv_type2string(type.s) << " (" << count << ")\n";
 
     for (int32_t i=0; i<children.size(); ++i)
@@ -190,7 +186,7 @@ SVTree::SVTree()
     max_depth = 0;
     mixed_sv_count = 0;
     m = kh_init(xdict);
-    
+
     this->add("<TRA>");
     this->add("<DEL>");
     this->add("<INS>");
@@ -204,6 +200,8 @@ SVTree::SVTree()
     this->add("<INS:ME:ALU>");
     this->add("<INS:ME:LINE1>");
     this->add("<INS:ME:SVA>");
+//    this->add("<RSCLIP>");
+//    this->add("<LSCLIP>");
 };
 
 /**
@@ -217,23 +215,23 @@ SVTree::~SVTree()
     }
     root = NULL;
 
-    m = kh_init(xdict);
+   // kh_destroy(xdict, m);
 };
 
 /**
  * Adds a new tag, returns true if successful.
  */
 bool SVTree::add(const char* sv_type)
-{    
+{
     //update hash
     khiter_t k;
     int32_t ret = 0;
+
     if ((k=kh_get(xdict, m, sv_type))==kh_end(m))
     {
-        k = kh_put(xdict, m, sv_type, &ret);
         std::vector<std::string> vec;
         split(vec, "<:>", sv_type);
-        
+
         SVNode* cnode = root;
         for (size_t i=0; i<vec.size(); ++i)
         {
@@ -252,6 +250,13 @@ bool SVTree::add(const char* sv_type)
             {
                 max_depth = i+1>max_depth?i+1:max_depth;
                 SVNode* newnode = new SVNode(vec[i].c_str(), i+1);
+                char* new_sv_type = strdup(sv_type);
+                k = kh_put(xdict, m, new_sv_type, &ret);
+                if (!ret)
+                {
+                    //already present
+                    free(new_sv_type);
+                }
                 kh_value(m, k) = newnode;
                 cnode->children.push_back(newnode);
                 newnode->parent = cnode;
@@ -273,22 +278,22 @@ void SVTree::count(Variant& variant)
     khiter_t k;
     int32_t ret = 0;
     bool mixed_sv = false;
-    
+
     for (size_t i=0; i<variant.alleles.size(); ++i)
     {
         const char* sv_type = variant.alleles[i].sv_type.c_str();
         if ((k=kh_get(xdict, m, sv_type))==kh_end(m))
         {
-           this->add(sv_type);
-           k=kh_get(xdict, m, sv_type);
+            this->add(sv_type);
+            k=kh_get(xdict, m, sv_type);
         }
-        
+
         if (variant.alleles[i].sv_type!=variant.alleles[0].sv_type)
         {
             mixed_sv = true;
         }
     }
-    
+
     if (mixed_sv)
     {
         ++mixed_sv_count;
@@ -302,8 +307,8 @@ void SVTree::count(Variant& variant)
         else
         {
             kh_value(m, k)->increment_mcount();
-        }    
-    }    
+        }
+    }
 };
 
 /**
