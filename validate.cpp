@@ -206,7 +206,7 @@ class Igor : Program
         }
         else
         {
-            std::clog << "reference consistency not checked.\n"; 
+            std::clog << "reference consistency not checked.\n\n"; 
         }
         std::clog << "          no. variants                      : " << no_variants << "\n";
         std::clog << "\n";

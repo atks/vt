@@ -34,6 +34,27 @@
 /**
  * Contains sufficient statistic for a position in the pileup.
  */
+class SoftClipInfo
+{
+    public:
+    uint32_t no;
+    std::vector<float> mean_quals;
+    std::vector<char> strands;
+
+    /**
+     * Constructor.
+     */
+    SoftClipInfo() { clear();};
+    
+    /**
+     * Clears the soft clipped information.
+     */
+    void clear();
+};
+
+/**
+ * Contains sufficient statistic for a position in the pileup.
+ */
 class PileupPosition
 {
     public:
@@ -44,8 +65,8 @@ class PileupPosition
     //for deletions and insertions with anchor R
     std::map<std::string, uint32_t> D;
     std::map<std::string, uint32_t> I;
-    std::map<std::string, uint32_t> J;
-    std::map<std::string, uint32_t> K;
+    std::map<std::string, SoftClipInfo> J;
+    std::map<std::string, SoftClipInfo> K;
     //occurence of all observations for internal bases
     uint32_t N;
     //occurence of all observations for bases on the ends of reads
@@ -247,12 +268,12 @@ class Pileup
     /**
      * Inserts a reference base at pos0 into the buffer.
      */
-    void add_lsclip(uint32_t gpos1, std::string& alt);
+    void add_lsclip(uint32_t gpos1, std::string& alt, float mean_qual, char strand);
 
     /**
      * Inserts a reference base at pos0 into the buffer.
      */
-    void add_rsclip(uint32_t gpos1, std::string& alt);
+    void add_rsclip(uint32_t gpos1, std::string& alt, float mean_qual, char strand);
     
     /**
      * Updates the last aligned base in a read.

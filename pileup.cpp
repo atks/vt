@@ -24,6 +24,16 @@
 #include "pileup.h"
 
 /**
+ * Clears the soft clipped information.
+ */
+void SoftClipInfo::clear()
+{
+    no = 0;
+    mean_quals.clear();
+    strands.clear();
+}
+
+/**
  * Clears pileup position.
  */
 void PileupPosition::clear()
@@ -74,9 +84,9 @@ void PileupPosition::print()
     if (J.size()!=0)
     {
         std::cerr << "R: ";
-        for (std::map<std::string, uint32_t>::iterator i = J.begin(); i!=J.end(); ++i)
+        for (std::map<std::string, SoftClipInfo>::iterator i = J.begin(); i!=J.end(); ++i)
         {
-            std::cerr << i->first << " (" << i->second << ")";
+            std::cerr << i->first << " (" << i->second.no << ")";
         }
 
         std::cerr << "\n";
@@ -84,9 +94,9 @@ void PileupPosition::print()
     if (K.size()!=0)
     {
         std::cerr << "L: ";
-        for (std::map<std::string, uint32_t>::iterator i = K.begin(); i!=K.end(); ++i)
+        for (std::map<std::string, SoftClipInfo>::iterator i = K.begin(); i!=K.end(); ++i)
         {
-            std::cerr << i->first << " (" << i->second << ")";
+            std::cerr << i->first << " (" << i->second.no << ")";
         }
 
         std::cerr << "\n";
@@ -126,7 +136,6 @@ void PileupPosition::print(uint32_t gpos1)
         std::cerr << "\n";
     }
 
-
     if (D.size()!=0)
     {
         std::cerr << "\tDEL: ";
@@ -149,9 +158,9 @@ void PileupPosition::print(uint32_t gpos1)
     if (J.size()!=0)
     {
         std::cerr << "\tRSCLIP: ";
-        for (std::map<std::string, uint32_t>::iterator i = J.begin(); i!=J.end(); ++i)
+        for (std::map<std::string, SoftClipInfo>::iterator i = J.begin(); i!=J.end(); ++i)
         {
-            std::cerr << i->first << " (" << i->second << ")";
+            std::cerr << i->first << " (" << i->second.no << ")";
         }
 
         std::cerr << "\n";
@@ -159,9 +168,9 @@ void PileupPosition::print(uint32_t gpos1)
     if (K.size()!=0)
     {
         std::cerr << "\tLSCLIP: ";
-        for (std::map<std::string, uint32_t>::iterator i = K.begin(); i!=K.end(); ++i)
+        for (std::map<std::string, SoftClipInfo>::iterator i = K.begin(); i!=K.end(); ++i)
         {
-            std::cerr << i->first << " (" << i->second << ")";
+            std::cerr << i->first << " (" << i->second.no << ")";
         }
 
         std::cerr << "\n";
@@ -336,10 +345,10 @@ void Pileup::add_ref(uint32_t gpos1, uint32_t spos0, uint32_t len, uint8_t* seq)
     uint32_t i = g2i(gpos1);
 
     //special fix for leading base for softclips
-    if (P[i].R=='X')
-    {
-        P[i].R = (bam_base2char(bam_seqi(seq, spos0)));
-    }
+//    if (P[i].R=='X')
+//    {
+//        P[i].R = (bam_base2char(bam_seqi(seq, spos0)));
+//    }
 
     //number of overlapping bases
     //j<len if pileup needs to increase in size.
@@ -350,21 +359,32 @@ void Pileup::add_ref(uint32_t gpos1, uint32_t spos0, uint32_t len, uint8_t* seq)
 //    std::cerr << "i=" << i << "\n";
 //    std::cerr << "end0=" << end0 << "\n";
 //
-    while (i<end0)
+    j = 0;
+    while (i<len)
     {
         //std::cerr << "i=" << i << "\n";
-        ++P[i].N;
-        i = inc(i);
-    }
-
-    //non overlapping positions that needs to be added
-    while (j<len)
-    {
         P[i].R = (bam_base2char(bam_seqi(seq, spos0+j)));
         ++P[i].N;
         i = inc(i);
         ++j;
     }
+    
+//    while (i<end0)
+//    {
+//        //std::cerr << "i=" << i << "\n";
+//        P[i].R = (bam_base2char(bam_seqi(seq, spos0+j)));
+//        ++P[i].N;
+//        i = inc(i);
+//    }
+//
+//    //non overlapping positions that needs to be added
+//    while (j<len)
+//    {
+//        P[i].R = (bam_base2char(bam_seqi(seq, spos0+j)));
+//        ++P[i].N;
+//        i = inc(i);
+//        ++j;
+//    }
 
     set_end0(i);
 }
@@ -437,21 +457,26 @@ void Pileup::add_ins(uint32_t gpos1, std::string& alt)
 /**
  * Inserts a reference base at pos0 into the buffer.
  */
-void Pileup::add_lsclip(uint32_t gpos1, std::string& alt)
+void Pileup::add_lsclip(uint32_t gpos1, std::string& alt, float mean_qual, char strand)
 {
     uint32_t i = g2i(gpos1);
-    ++P[i].J[alt];
+    SoftClipInfo& info = P[i].J[alt];
+    ++info.no;
+    info.mean_quals.push_back(strand);
+    info.strands.push_back(strand);    
     if (i==end0) inc_end0();
-
 }
 
 /**
  * Inserts a reference base at pos0 into the buffer.
  */
-void Pileup::add_rsclip(uint32_t gpos1, std::string& alt)
+void Pileup::add_rsclip(uint32_t gpos1, std::string& alt, float mean_qual, char strand)
 {
     uint32_t i = g2i(gpos1);
-    ++P[i].K[alt];
+    SoftClipInfo& info = P[i].K[alt];
+    ++info.no;
+    info.mean_quals.push_back(strand);
+    info.strands.push_back(strand);  
 }
 
 /**

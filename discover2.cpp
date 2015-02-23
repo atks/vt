@@ -143,10 +143,13 @@ class Igor : Program
 
         odw = new BCFOrderedWriter(output_vcf_file, 0);
         bam_hdr_transfer_contigs_to_bcf_hdr(odr->hdr, odw->hdr);
-        bcf_hdr_append(odw->hdr, "##ALT=<ID=RSCLIP,Description=\"Right Soft Clip\">");
-        bcf_hdr_append(odw->hdr, "##ALT=<ID=LSCLIP,Description=\"Left Soft Clip\">");
+        bcf_hdr_append(odw->hdr, "##ALT=<ID=RSC,Description=\"Right Soft Clip\">");
+        bcf_hdr_append(odw->hdr, "##ALT=<ID=LSC,Description=\"Left Soft Clip\">");
+        bcf_hdr_append(odw->hdr, "##INFO=<ID=SEQ,Number=1,Type=String,Description=\"Soft clipped Sequence\">");
         bcf_hdr_append(odw->hdr, "##FORMAT=<ID=E,Number=1,Type=Integer,Description=\"Number of reads containing evidence of the alternate allele\">");
         bcf_hdr_append(odw->hdr, "##FORMAT=<ID=N,Number=1,Type=Integer,Description=\"Total number of reads at a candidate locus with reads that contain evidence of the alternate allele\">");
+        bcf_hdr_append(odw->hdr, "##FORMAT=<ID=MQS,Number=.,Type=Float,Description=\"Mean qualities of soft clipped bases.\">");
+        bcf_hdr_append(odw->hdr, "##FORMAT=<ID=STR,Number=.,Type=String,Description=\"Strands of soft clipped sequences.\">");
         bcf_hdr_add_sample(odw->hdr, sample_id.c_str());
         bcf_hdr_add_sample(odw->hdr, NULL);
        
@@ -167,7 +170,7 @@ class Igor : Program
         ////////////////////////
         //tools initialization//
         ////////////////////////
-        debug = false;
+        debug = true;
         chrom = ""; 
         tid = -1;
         rid = -1; 
@@ -289,6 +292,7 @@ class Igor : Program
         std::string alleles = "";
         int32_t N = 0;
         int32_t E = 0;
+        kstring_t new_alleles = {0,0,0};
 
         if (p.X[1])
         {
@@ -363,6 +367,24 @@ class Igor : Program
             odw->write(v);
         }
 
+        if (p.X[15])
+        {
+            bcf_clear(v);
+            bcf_set_rid(v, rid);
+            bcf_set_pos1(v, gpos1);
+            bcf_set_n_sample(v, 1);
+            alleles.clear();
+            alleles.append(1, p.R);
+            alleles.append(1, ',');
+            alleles.append(1, 'N');
+            bcf_update_alleles_str(odw->hdr, v, alleles.c_str());
+            E = p.X[15];
+            bcf_update_format_int32(odw->hdr, v, "E", &E, 1);
+            N = p.N+p.E;
+            bcf_update_format_int32(odw->hdr, v, "N", &N, 1);
+            odw->write(v);
+        }
+        
         if (p.D.size()!=0)
         {
             for (std::map<std::string, uint32_t>::iterator i = p.D.begin(); i!=p.D.end(); ++i)
@@ -409,45 +431,77 @@ class Igor : Program
         
         if (p.J.size()!=0)
         {
-            for (std::map<std::string, uint32_t>::iterator i = p.J.begin(); i!=p.J.end(); ++i)
-            {
-                bcf_clear(v);
-                bcf_set_rid(v, rid);
-                bcf_set_pos1(v, gpos1);
-                bcf_set_n_sample(v, 1);
-                alleles.clear();
-                alleles.append(1, p.R);
-                alleles.append(1, ',');
-                alleles.append("<RSCLIP>");
-                bcf_update_alleles_str(odw->hdr, v, alleles.c_str());
-                E = i->second;
-                bcf_update_format_int32(odw->hdr, v, "E", &E, 1);
-                N = p.N;
-                bcf_update_format_int32(odw->hdr, v, "N", &N, 1);
-                odw->write(v);
+            if (p.J.size()>0)
+            {    
+                for (std::map<std::string, SoftClipInfo>::iterator i = p.J.begin(); i!=p.J.end(); ++i)
+                {
+                    bcf_clear(v);
+                    bcf_set_rid(v, rid);
+                    bcf_set_pos1(v, gpos1);
+                    bcf_set_n_sample(v, 1);
+                    
+                    new_alleles.l = 0;
+                    kputc(p.R, &new_alleles);
+                    kputc(',', &new_alleles);
+                    kputs("<LSC:", &new_alleles);
+                    kputw(i->first.size(), &new_alleles);
+                    kputc('>', &new_alleles);
+                    bcf_update_alleles_str(odw->hdr, v, new_alleles.s);
+                    
+                    bcf_update_info_string(odw->hdr, v, "SEQ", i->first.c_str());
+                    
+                    SoftClipInfo& info = i->second;
+                    uint32_t no = info.no;
+                    E = no;
+                    bcf_update_format_int32(odw->hdr, v, "E", &E, 1);
+                    N = p.N;
+                    bcf_update_format_int32(odw->hdr, v, "N", &N, 1);
+                    bcf_update_format_float(odw->hdr, v, "MQS", &info.mean_quals[0], no);                
+                    bcf_update_format_char(odw->hdr, v, "STRS", &info.strands[0], no);
+    
+                    odw->write(v);
+                }
             }
         }
 
         if (p.K.size()!=0)
         {
-            for (std::map<std::string, uint32_t>::iterator i = p.K.begin(); i!=p.K.end(); ++i)
+            if (p.K.size()>0)
             {
-                bcf_clear(v);
-                bcf_set_rid(v, rid);
-                bcf_set_pos1(v, gpos1);
-                bcf_set_n_sample(v, 1);
-                alleles.clear();
-                alleles.append(1, p.R);
-                alleles.append(1, ',');
-                alleles.append("<LSCLIP>");
-                bcf_update_alleles_str(odw->hdr, v, alleles.c_str());
-                E = i->second;
-                bcf_update_format_int32(odw->hdr, v, "E", &E, 1);
-                N = p.N;
-                bcf_update_format_int32(odw->hdr, v, "N", &N, 1);
-                odw->write(v);
+                for (std::map<std::string, SoftClipInfo>::iterator i = p.K.begin(); i!=p.K.end(); ++i)
+                {
+                    bcf_clear(v);
+                    bcf_set_rid(v, rid);
+                    bcf_set_pos1(v, gpos1);
+                    bcf_set_n_sample(v, 1);
+                    
+                    new_alleles.l = 0;
+                    kputc(p.R, &new_alleles);
+                    kputc(',', &new_alleles);
+                    kputs("<RSC:", &new_alleles);
+                    kputw(i->first.size(), &new_alleles);
+                    kputc('>', &new_alleles);
+                    bcf_update_alleles_str(odw->hdr, v, new_alleles.s);
+                    
+                    bcf_update_info_string(odw->hdr, v, "SEQ", i->first.c_str());
+                    
+                    SoftClipInfo& info = i->second;
+                    uint32_t no = info.no;
+                    E = no;
+                    bcf_update_format_int32(odw->hdr, v, "E", &E, 1);
+                    N = p.N;
+                    bcf_update_format_int32(odw->hdr, v, "N", &N, 1);
+                    float* mean_quals = info.mean_quals.data();
+                    bcf_update_format_float(odw->hdr, v, "MQS", mean_quals, no);
+                    char* s = info.strands.data();
+                    bcf_update_format_char(odw->hdr, v, "STR", s, no);
+                    
+                    odw->write(v);
+                }
             }
         }
+        
+        if (new_alleles.m) free(new_alleles.s);
     }
 
 
@@ -550,7 +604,8 @@ class Igor : Program
         uint8_t* qual = bam_get_qual(s);
         int32_t l_qseq = bam_get_l_qseq(s);
         uint32_t* cigar = bam_get_cigar(s);
-
+        char strand = bam_is_rev(s) ? '-' : '+';
+        
         uint8_t *aux;
         char* md;
         (aux=bam_aux_get(s, "MD")) &&  (md = bam_aux2Z(aux));
@@ -588,12 +643,12 @@ class Igor : Program
                     if (cpos1==pos1)
                     {
                         if (debug) std::cerr << "\t\t\tadding LSCLIP: " << cpos1 << "\t" << ins << " (" << mean_qual << ")\n";
-                        pileup.add_lsclip(cpos1, ins);
+                        pileup.add_lsclip(cpos1, ins, mean_qual, strand);
                     }
                     else
                     {
                         if (debug) std::cerr << "\t\t\tadding RSCLIP: " << cpos1 << "\t" << ins << " (" << mean_qual << ")\n";
-                        pileup.add_rsclip(cpos1-1, ins);
+                        pileup.add_rsclip(cpos1-1, ins, mean_qual, strand);
                     }
 
                     spos0 += oplen;
@@ -707,6 +762,7 @@ class Igor : Program
                 if (debug) pileup.print_state();
             }
 
+            pileup.print_state();
             //update last matching base
             pileup.update_read_end(cpos1-1);
         }
