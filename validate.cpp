@@ -204,6 +204,10 @@ class Igor : Program
             std::clog << "          no. inconsistent REF              : " << no_inconsistent_ref << "\n";
             std::clog << "\n";
         }
+        else
+        {
+            std::clog << "reference consistency not checked.\n"; 
+        }
         std::clog << "          no. variants                      : " << no_variants << "\n";
         std::clog << "\n";
     };
