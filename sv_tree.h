@@ -71,7 +71,7 @@ class SVNode
      * Increment mcount.
      */
     void increment_mcount();
-    
+
     /**
      * Clear values.
      */
@@ -81,7 +81,7 @@ class SVNode
      * Print values.
      */
     void print();
-    
+
     /**
      *  For translating reserved keywords.
      */
@@ -122,7 +122,7 @@ class SVTree
      * Observes and update the count of a new tag.
      */
     void count(Variant& variant);
-  
+
     /**
      * Enumerates the children in a depth first order.
      */

@@ -167,7 +167,10 @@ class Igor : Program
 
                 if (strcmp(ref, alleles[0]))
                 {
-                    if (print) fprintf(stderr, "[%s:%d %s] INCONSISTENT REF: %s:%d %s!=%s(true) \n", __FILE__, __LINE__, __FUNCTION__, chrom, pos1, alleles[0], ref);
+                    kstring_t var = {0,0,0};
+                    bcf_variant2string(odr->hdr, v, &var);
+                    if (print) fprintf(stderr, "[%s:%d %s] INCONSISTENT REF: %s:%d %s!=%s(truth) for variant %s\n", __FILE__, __LINE__, __FUNCTION__, chrom, pos1, alleles[0], ref, var.s);
+                    if (var.m) free(var.s);
                     ++no_inconsistent_ref;
                 }
 

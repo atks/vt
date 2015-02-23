@@ -66,7 +66,7 @@ class Igor : Program
     bcf1_t *v;
 
     //////////
-    //filter//
+    //filter//
     //////////
     std::string fexp;
     Filter filter;

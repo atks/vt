@@ -84,9 +84,8 @@ class PileupPosition
     
     /**
      * Constructor.
-     * Buffer size must be a power of 2.
      */
-    PileupPosition(){};
+    PileupPosition();
 
     /**
      * Clears pileup position.
@@ -321,8 +320,6 @@ class Pileup
      * Print pileup state.
      */
     void print_state();
-
-    private:
 
     /**
      * Returns the difference between 2 buffer positions

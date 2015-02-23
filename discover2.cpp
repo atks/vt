@@ -457,7 +457,7 @@ class Igor : Program
                     N = p.N;
                     bcf_update_format_int32(odw->hdr, v, "N", &N, 1);
                     bcf_update_format_float(odw->hdr, v, "MQS", &info.mean_quals[0], no);                
-                    bcf_update_format_char(odw->hdr, v, "STRS", &info.strands[0], no);
+                    bcf_update_format_char(odw->hdr, v, "STR", &info.strands[0], no);
     
                     odw->write(v);
                 }
@@ -549,6 +549,9 @@ class Igor : Program
             uint32_t cpos1 = pileup.get_gbeg1();
             uint32_t lend0 = (ret==-1 || pileup.get_gend1()<bam_get_pos1(s)) ? pileup.end() : pileup.g2i(bam_get_pos1(s));
             uint32_t i;
+            
+            std::cerr << "FLUSHING " << cpos1 << " to " << (cpos1 + pileup.diff(lend0, pileup.begin()) -1) << "\n";
+            
             for (i=pileup.begin(); i!=lend0; i=pileup.inc(i,1))
             {
                 write_to_vcf(rid, cpos1, pileup[i]);
@@ -621,6 +624,7 @@ class Igor : Program
         {
             uint32_t *cigar = bam_get_cigar(s);
 
+            pileup.print_state();
             for (uint32_t i = 0; i < n_cigar_op; ++i)
             {
                 uint32_t oplen = bam_cigar_oplen(cigar[i]);
@@ -647,7 +651,7 @@ class Igor : Program
                     }
                     else
                     {
-                        if (debug) std::cerr << "\t\t\tadding RSCLIP: " << cpos1 << "\t" << ins << " (" << mean_qual << ")\n";
+                        if (debug) std::cerr << "\t\t\tadding RSCLIP: " << (cpos1-1) << "\t" << ins << " (" << mean_qual << ")\n";
                         pileup.add_rsclip(cpos1-1, ins, mean_qual, strand);
                     }
 
@@ -759,10 +763,10 @@ class Igor : Program
                 }
 
 
-                if (debug) pileup.print_state();
+                //if (debug) pileup.print_state();
             }
 
-            pileup.print_state();
+            //pileup.print_state();
             //update last matching base
             pileup.update_read_end(cpos1-1);
         }
@@ -785,7 +789,7 @@ class Igor : Program
             if (debug) print_pileup_state();
             ++no_passed_reads;
 
-            if (no_passed_reads==100) break;
+            //if (no_passed_reads==10) break;
         }
 
         flush();

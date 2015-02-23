@@ -320,6 +320,7 @@ int32_t VariantManip::classify_variant(bcf_hdr_t *h, bcf1_t *v, Variant& var)
             size_t len = strlen(allele[i]);
             if (len>=5)
             {
+                //VN/d+
                 if (allele[i][0]=='<' && allele[i][1]=='V' && allele[i][2]=='N' && allele[i][len-1]=='>' )
                 {
                     for (size_t j=3; j<len-1; ++j)
@@ -330,6 +331,7 @@ int32_t VariantManip::classify_variant(bcf_hdr_t *h, bcf1_t *v, Variant& var)
                         }
                     }
                 }
+                //VNTR
                 else if (len==6 &&
                          allele[i][0]=='<' &&
                          allele[i][1]=='V' && allele[i][2]=='N' && allele[i][3]=='T' && allele[i][4]=='R' &&
@@ -337,6 +339,7 @@ int32_t VariantManip::classify_variant(bcf_hdr_t *h, bcf1_t *v, Variant& var)
                 {
                      type = VT_VNTR;
                 }
+                //ST/d+
                 else if (allele[i][0]=='<' && allele[i][1]=='S' && allele[i][2]=='T' && allele[i][len-1]=='>' )
                 {
                     for (size_t j=3; j<len-1; ++j)
@@ -347,6 +350,7 @@ int32_t VariantManip::classify_variant(bcf_hdr_t *h, bcf1_t *v, Variant& var)
                         }
                     }
                 }
+                //STR
                 else if (len==5 &&
                          allele[i][0]=='<' &&
                          allele[i][1]=='S' && allele[i][2]=='T' && allele[i][3]=='R' &&
