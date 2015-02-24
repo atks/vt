@@ -176,6 +176,10 @@ class Igor : Program
         chrom = ""; 
         tid = -1;
         rid = -1; 
+        
+        pileup.set_reference(ref_fasta_file);
+        
+        pileup.set_debug(debug);
 
     }
     
@@ -505,7 +509,6 @@ class Igor : Program
      * returns
      *    0 - not flushable
      *    1 - flushable
-     *   -1 - flushable, must update chromosome
      */
     int32_t flushable(bam1_t* s)
     {
@@ -516,13 +519,11 @@ class Igor : Program
         {
             this->tid = tid;
             chrom.assign(bam_get_chrom(odr->hdr, s));
+            pileup.set_tid(tid);
+            pileup.set_chrom(chrom);
             rid = bcf_hdr_name2id(odw->hdr, chrom.c_str());
             
             return 0;
-        }
-        else if (tid!=this->tid)
-        {
-            return -1;
         }
         else if (gpos1>pileup.get_gbeg1())
         {
@@ -560,7 +561,11 @@ class Igor : Program
             {
                 tid = bam_get_tid(s);
                 chrom.assign(bam_get_chrom(odr->hdr, s));
+                pileup.set_tid(tid);
+                pileup.set_chrom(chrom);
                 rid = bcf_hdr_name2id(odw->hdr, chrom.c_str());
+        
+                
             }
         }
     }

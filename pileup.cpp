@@ -197,16 +197,37 @@ Pileup::Pileup(uint32_t k)
     //this provides a cheaper way to do modulo operations for a circular array.
     buffer_size_mask = (0xFFFFFFFF >> (32-k));
 
-    //std::cerr << buffer_size << ":" << buffer_size_mask  << "\n";
     P.resize(buffer_size);
 
     tid = -1;
     beg0 = end0 = 0;
     gbeg1 = 0;
 
-    debug = false;
-//    std::cerr << gbeg1 << "\n";
-//    std::cerr << beg0 << "-" << end0 << "\n";
+    debug = 0;
+};
+
+/**
+ * Set reference fasta file.
+ */
+void Pileup::set_reference(std::string& ref_fasta_file)
+{
+    if (ref_fasta_file!="")
+    {
+        fai = fai_load(ref_fasta_file.c_str());
+        if (fai==NULL)
+        {
+            fprintf(stderr, "[%s:%d %s] Cannot load genome index: %s\n", __FILE__, __LINE__, __FUNCTION__, ref_fasta_file.c_str());
+            exit(1);
+        }
+    }
+};
+
+/**
+ * Set debug.
+ */
+void Pileup::set_debug(int32_t debug)
+{
+    this->debug = debug;
 };
 
 /**
@@ -237,9 +258,9 @@ void Pileup::set_tid(uint32_t tid)
 /**
  * Sets chrom.
  */
-void Pileup::set_chrom(const char* chrom)
+void Pileup::set_chrom(std::string& chrom)
 {
-    this->chrom.assign(chrom);
+    this->chrom = chrom;
 }
 
 /**
@@ -430,14 +451,26 @@ void Pileup::add_del(uint32_t gpos1, std::string& del)
     
     if (!is_normalized(P[i].R, del))
     {
-        char ref = P[i].R;
-        std::string d = del;
-        std::cerr << "not normalized " << chrom << ":" << gpos1 << ":" << ref  << d << ":" <<  d << "\n";
-        normalize(chrom, gpos1, ref, d);
-        std::cerr << "normalized " << chrom << ":" << gpos1 << ":" << ref  << d << ":" <<  d << "\n";
-    }
+        uint32_t a_gpos1 = gpos1;
+        char a_ref = P[i].R;
+        std::string a_del = del;
+        //std::cerr << "not normalized " << chrom << ":" << a_gpos1 << ":" << a_ref << a_del << ":" <<  a_ref << "\n";
+        normalize(chrom, a_gpos1, a_ref, a_del);
+        //std::cerr << "normalized " << chrom << ":" << a_gpos1 << ":" << a_ref << a_del << ":" <<  a_ref << "\n";
     
-    ++P[i].D[del];
+        if (gpos1<gbeg1)
+        {
+            std::cerr << "Deletion left aligned to beyond the bounds of the pileup " << a_gpos1 << "<" << gbeg1 << "\n";
+        }
+        
+        if (debug) std::cerr << "\t\t\tDeletion left aligned at " << a_gpos1 << ":" << a_del << "\n";
+        uint32_t j = g2i(a_gpos1);
+        ++P[j].D[a_del];
+    }
+    else
+    {
+        ++P[i].D[del];
+    }
     
     //fill up for reference too.
     i = g2i(gpos1+1);
@@ -459,14 +492,26 @@ void Pileup::add_ins(uint32_t gpos1, std::string& ins)
  
     if (!is_normalized(P[i].R, ins))
     {
-        char ref = P[i].R;
-        std::string d = ins;
-        std::cerr << "not normalized " << chrom << ":" << gpos1 << ":" << ref  << d << ":" <<  d << "\n";
-        normalize(chrom, gpos1, ref, d);
-        std::cerr << "normalized " << chrom << ":" << gpos1 << ":" << ref  << d << ":" <<  d << "\n";
-    }
+        uint32_t a_gpos1 = gpos1;
+        char a_ref = P[i].R;
+        std::string a_ins = ins;
+        //std::cerr << "not normalized " << chrom << ":" << a_gpos1 << ":" << a_ref << ":" <<  a_ref << "\n";
+        normalize(chrom, a_gpos1, a_ref, a_ins);
+        //std::cerr << "normalized " << chrom << ":" << a_gpos1 << ":" << a_ref << a_ins << ":" <<  a_ref << "\n";
     
-    ++P[i].I[ins];
+        if (gpos1<gbeg1)
+        {
+            std::cerr << "insertion left aligned to beyond the bounds of the pileup " << a_gpos1 << "<" << gbeg1 << "\n";
+        }   
+        
+        if (debug)  std::cerr << "\t\t\tInsertion left aligned at " << a_gpos1 << ":" << a_ins << "\n";
+        uint32_t j = g2i(a_gpos1);
+        ++P[j].I[a_ins];
+    }
+    else
+    {
+        ++P[i].I[ins];
+    }
 }
 
 /**
@@ -569,7 +614,7 @@ void Pileup::print_state_extent()
  */
 bool Pileup::is_normalized(char ref, std::string& indel)
 {
-    return ref == indel.at(indel.size()-1);
+    return ref != indel.at(indel.size()-1);
 }
 
 /**
@@ -577,6 +622,7 @@ bool Pileup::is_normalized(char ref, std::string& indel)
  */
 void Pileup::normalize(std::string& chrom, uint32_t& pos1, char& ref, std::string& indel)
 {
+    indel.insert(0, 1, ref);
     while (indel.at(indel.size()-1)==ref)
     {
         --pos1;
@@ -593,5 +639,6 @@ void Pileup::normalize(std::string& chrom, uint32_t& pos1, char& ref, std::strin
         ref = base;
         indel.insert(0, 1, base);
         indel.erase(indel.size()-1, 1);
-    }
+    }    
+    indel.erase(0, 1);
 };

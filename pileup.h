@@ -156,7 +156,7 @@ class Pileup
     //genome position at the beginning of the pileup
     uint32_t gbeg1;
 
-    bool debug;
+    int32_t debug;
 
     faidx_t *fai;
 
@@ -168,21 +168,21 @@ class Pileup
      * @k - size of pileup is 2^k
      */
     Pileup(uint32_t k=10);
-
+    
+    /**
+     * Set reference fasta file.
+     */
+    void set_reference(std::string& ref_fasta_file);
+        
+    /**
+     * Set debug.
+     */
+    void set_debug(int32_t debug);
+    
     /**
      * Overloads subscript operator for accessing pileup positions.
      */
     PileupPosition& operator[] (const int32_t i);
-
-    /**
-     * Check if flushable.
-     *
-     * returns
-     *    0 - not flushable
-     *    1 - flushable
-     *   -1 - flushable, must update chromosome
-     */
-    int32_t flushable(int32_t tid, uint32_t gpos1);
 
     /**
      * Sets tid.
@@ -197,7 +197,7 @@ class Pileup
     /**
      * Sets chrom.
      */
-    void set_chrom(const char* chrom);
+    void set_chrom(std::string& chrom);
     
     /**
      * Gets chrom.
