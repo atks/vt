@@ -245,7 +245,17 @@ class Pileup
     void set_end0(uint32_t end0);
 
     /**
-     * Inserts a stretch of reference bases.
+     * Updates a stretch of aligned bases identified by M in the cigar string.
+     */
+    void add_M(uint32_t gpos1, uint32_t spos0, uint32_t len, uint8_t* seq);
+    
+    /**
+     * Updates a stretch of deleted bases identified by D in the cigar string.
+     */
+    void add_D(uint32_t gpos1, uint32_t len);
+        
+    /**
+     * Updates a stretch of reference bases.
      */
     void add_ref(uint32_t gpos1, uint32_t spos0, uint32_t len, uint8_t* seq);
 

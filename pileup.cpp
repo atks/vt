@@ -428,6 +428,21 @@ uint32_t Pileup::base2index(char base)
 }
 
 /**
+ * Inserts a stretch of aligned bases identified by M in the cigar string.
+ */
+void Pileup::add_M(uint32_t gpos1, uint32_t spos0, uint32_t len, uint8_t* seq)
+{
+    
+}
+
+/**
+ * Updates a stretch of deleted bases identified by D in the cigar string.
+ */
+void Pileup::add_D(uint32_t gpos1, uint32_t len)
+{
+}
+
+/**
  * Updates an occurence of a SNP.
  */
 void Pileup::add_snp(uint32_t gpos1, char ref, char alt)
