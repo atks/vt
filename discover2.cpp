@@ -26,11 +26,13 @@
 namespace
 {
 
+/**
+ * For detecting overlapping reads.
+ */
 typedef struct
 {
   int32_t start1, end1;
 } interval_t;
-
 
 KHASH_MAP_INIT_STR(rdict, interval_t)
 
@@ -46,33 +48,31 @@ class Igor : Program
     std::string input_bam_file;
     std::string ref_fasta_file;
     std::string sample_id;
-    uint32_t mapq_cutoff;
-    uint32_t baseq_cutoff;
-
-    uint32_t evidence_allele_count_cutoff;
-    double fractional_evidence_allele_count_cutoff;
-
-
-    std::string chrom; //current chromosome
-    int32_t tid; // current sequence id in bam
-    int32_t rid; // current sequence id in bcf
-
+    bool ignore_md;
     int32_t debug;
     
-    bool use_sequence;
-
-    uint16_t exclude_flag;
-
+    //options for selecting reads   
     khash_t(rdict) *reads;
     khiter_t k;
     int32_t ret;
+    uint32_t mapq_cutoff;
+    uint32_t baseq_cutoff;
+    uint16_t exclude_flag;
+
+    //for choosing variants
+    uint32_t evidence_allele_count_cutoff;
+    double fractional_evidence_allele_count_cutoff;
+
+    //variables for keeping track of chromosome
+    std::string chrom; //current chromosome
+    int32_t tid; // current sequence id in bam
+    int32_t rid; // current sequence id in bcf
 
     ///////
     //i/o//
     ///////
     BAMOrderedReader *odr;
     bam1_t *s;
-
     BCFOrderedWriter *odw;
     bcf1_t *v;
 
@@ -85,6 +85,12 @@ class Igor : Program
     uint32_t no_exclude_flag_reads;
     uint32_t no_low_mapq_reads;
 
+    uint32_t no_snps;
+    uint32_t no_insertions;
+    uint32_t no_deletions;
+    uint32_t no_left_soft_clips;
+    uint32_t no_right_soft_clips;
+    
     /////////
     //tools//
     /////////
@@ -106,7 +112,7 @@ class Igor : Program
             TCLAP::ValueArg<std::string> arg_intervals("i", "i", "intervals []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "file", cmd);
             TCLAP::ValueArg<uint32_t> arg_debug("d", "d", "debug [0]", false, 0, "int", cmd);
-
+            TCLAP::SwitchArg arg_ignore_md("z", "z", "ignore MD tags [0]", cmd, false);
             TCLAP::ValueArg<std::string> arg_output_vcf_file("o", "o", "output VCF file [-]", false, "-", "str", cmd);
             TCLAP::ValueArg<std::string> arg_ref_fasta_file("r", "r", "reference sequence fasta file []", true, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_sample_id("s", "s", "sample ID", true, "", "str", cmd);
@@ -119,6 +125,7 @@ class Igor : Program
             cmd.parse(argc, argv);
 
             debug = arg_debug.getValue();
+            ignore_md = arg_ignore_md.getValue();
             input_bam_file = arg_input_bam_file.getValue();
             parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
             output_vcf_file = arg_output_vcf_file.getValue();
@@ -157,9 +164,6 @@ class Igor : Program
         bcf_hdr_append(odw->hdr, "##FORMAT=<ID=STR,Number=.,Type=String,Description=\"Strands of soft clipped sequences.\">");
         bcf_hdr_add_sample(odw->hdr, sample_id.c_str());
         bcf_hdr_add_sample(odw->hdr, NULL);
-
-
-
         v = bcf_init();
 
         //for tracking overlapping reads
@@ -174,19 +178,29 @@ class Igor : Program
         no_exclude_flag_reads = 0;
         no_low_mapq_reads = 0;
 
+        no_snps = 0;
+        no_insertions = 0;
+        no_deletions = 0;
+        no_left_soft_clips = 0;
+        no_right_soft_clips = 0;
+
+        //////////////////////////////////////
+        //discovery variables initialization//
+        //////////////////////////////////////
+        chrom = "";
+        tid = -1;
+        rid = -1;        
+
         ////////////////////////
         //tools initialization//
         ////////////////////////
-        chrom = "";
-        tid = -1;
-        rid = -1;
-
         pileup.set_reference(ref_fasta_file);
-
         pileup.set_debug(debug);
-
     }
 
+    /**
+     * Print BAM for debugging purposes.
+     */
     void bam_print_key_values(bam_hdr_t *h, bam1_t *s)
     {
         const char* chrom = bam_get_chrom(h, s);
@@ -226,6 +240,9 @@ class Igor : Program
         if (cigar_expanded_string.m) free(cigar_expanded_string.s);
     }
 
+    /**
+     * Filter reads.
+     */
     bool filter_read(bam1_t *s)
     {
         //this read is the first of the pair
@@ -261,6 +278,7 @@ class Igor : Program
                         kh_del(rdict, reads, k);
                         ++no_overlapping_reads;
                     }
+                    //set this on to remove overlapping reads.
                     //continue;
                 }
             }
@@ -312,6 +330,8 @@ class Igor : Program
             N = p.N+p.E;
             bcf_update_format_int32(odw->hdr, v, "N", &N, 1);
             odw->write(v);
+            
+            ++no_snps;            
         }
 
         if (p.X[2])
@@ -331,6 +351,8 @@ class Igor : Program
             N = p.N+p.E;
             bcf_update_format_int32(odw->hdr, v, "N", &N, 1);
             odw->write(v);
+        
+            ++no_snps;
         }
 
         if (p.X[4])
@@ -349,6 +371,8 @@ class Igor : Program
             N = p.N+p.E;
             bcf_update_format_int32(odw->hdr, v, "N", &N, 1);
             odw->write(v);
+        
+            ++no_snps;
         }
 
         if (p.X[8])
@@ -367,6 +391,8 @@ class Igor : Program
             N = p.N+p.E;
             bcf_update_format_int32(odw->hdr, v, "N", &N, 1);
             odw->write(v);
+        
+            ++no_snps;
         }
 
         if (p.X[15])
@@ -385,6 +411,8 @@ class Igor : Program
             N = p.N+p.E;
             bcf_update_format_int32(odw->hdr, v, "N", &N, 1);
             odw->write(v);
+        
+            ++no_snps;
         }
 
         if (p.D.size()!=0)
@@ -406,6 +434,8 @@ class Igor : Program
                 N = p.N;
                 bcf_update_format_int32(odw->hdr, v, "N", &N, 1);
                 odw->write(v);
+            
+                ++no_deletions;
             }
         }
 
@@ -428,42 +458,42 @@ class Igor : Program
                 N = p.N;
                 bcf_update_format_int32(odw->hdr, v, "N", &N, 1);
                 odw->write(v);
+                
+                ++no_insertions;
             }
         }
 
         if (p.J.size()!=0)
         {
-            if (p.J.size()>0)
+            for (std::map<std::string, SoftClipInfo>::iterator i = p.J.begin(); i!=p.J.end(); ++i)
             {
-                for (std::map<std::string, SoftClipInfo>::iterator i = p.J.begin(); i!=p.J.end(); ++i)
-                {
-                    bcf_clear(v);
-                    bcf_set_rid(v, rid);
-                    bcf_set_pos1(v, gpos1);
-                    bcf_set_n_sample(v, 1);
+                bcf_clear(v);
+                bcf_set_rid(v, rid);
+                bcf_set_pos1(v, gpos1);
+                bcf_set_n_sample(v, 1);
 
-                    new_alleles.l = 0;
-                    kputc(p.R, &new_alleles);
-                    kputc(',', &new_alleles);
-                    kputs("<LSC:", &new_alleles);
-                    kputw(i->first.size(), &new_alleles);
-                    kputc('>', &new_alleles);
-                    bcf_update_alleles_str(odw->hdr, v, new_alleles.s);
+                new_alleles.l = 0;
+                kputc(p.R, &new_alleles);
+                kputc(',', &new_alleles);
+                kputs("<LSC:", &new_alleles);
+                kputw(i->first.size(), &new_alleles);
+                kputc('>', &new_alleles);
+                bcf_update_alleles_str(odw->hdr, v, new_alleles.s);
 
-                    bcf_update_info_string(odw->hdr, v, "SEQ", i->first.c_str());
+                bcf_update_info_string(odw->hdr, v, "SEQ", i->first.c_str());
 
-                    SoftClipInfo& info = i->second;
-                    uint32_t no = info.no;
-                    E = no;
-                    bcf_update_format_int32(odw->hdr, v, "E", &E, 1);
-                    N = p.N;
-                    bcf_update_format_int32(odw->hdr, v, "N", &N, 1);
-                    bcf_update_format_float(odw->hdr, v, "MQS", &info.mean_quals[0], no);
-                    bcf_update_format_char(odw->hdr, v, "STR", &info.strands[0], no);
-
-                    odw->write(v);
-                }
-            }
+                SoftClipInfo& info = i->second;
+                uint32_t no = info.no;
+                E = no;
+                bcf_update_format_int32(odw->hdr, v, "E", &E, 1);
+                N = p.N;
+                bcf_update_format_int32(odw->hdr, v, "N", &N, 1);
+                bcf_update_format_float(odw->hdr, v, "MQS", &info.mean_quals[0], no);
+                bcf_update_format_char(odw->hdr, v, "STR", &info.strands[0], no);
+                odw->write(v);
+            
+                ++no_left_soft_clips;
+            }            
         }
 
         if (p.K.size()!=0)
@@ -497,15 +527,15 @@ class Igor : Program
                     bcf_update_format_float(odw->hdr, v, "MQS", mean_quals, no);
                     char* s = info.strands.data();
                     bcf_update_format_char(odw->hdr, v, "STR", s, no);
-
                     odw->write(v);
+                
+                    ++no_left_soft_clips;
                 }
             }
         }
 
         if (new_alleles.m) free(new_alleles.s);
     }
-
 
     /**
      * Check if flushable.
@@ -573,7 +603,7 @@ class Igor : Program
     }
 
     /**
-     * Flush records out before gpos1.
+     * Flush records till pileup is empty.
      */
     void flush()
     {
@@ -587,7 +617,7 @@ class Igor : Program
             ++cpos1;
         }
 
-        pileup.set_gbeg1(cpos1);
+        pileup.set_gbeg1(0);
         pileup.set_beg0(i);
     }
 
@@ -986,10 +1016,12 @@ class Igor : Program
         }
     }
 
+    /**
+     * Discover variants.
+     */
     void discover()
     {
         odw->write_hdr();
-
         while (odr->read(s))
         {
             ++no_reads;
@@ -1005,9 +1037,7 @@ class Igor : Program
 
             //if (no_passed_reads==10) break;
         }
-
         flush();
-
         odw->close();
     };
 
@@ -1030,11 +1060,20 @@ class Igor : Program
     void print_stats()
     {
         std::clog << "\n";
-        std::clog << "stats: no. reads              : " << no_reads << "\n";
-        std::clog << "       no. overlapping reads  : " << no_overlapping_reads << "\n";
-        std::clog << "       no. low mapq reads     : " << no_low_mapq_reads << "\n";
-        std::clog << "       no. passed reads       : " << no_passed_reads << "\n";
-        std::clog << "       no. exclude flag reads : " << no_exclude_flag_reads << "\n";
+        std::clog << "stats: no. reads                    : " << no_reads << "\n";
+        std::clog << "       no. overlapping reads        : " << no_overlapping_reads << "\n";
+        std::clog << "       no. low mapq reads           : " << no_low_mapq_reads << "\n";
+        std::clog << "       no. passed reads             : " << no_passed_reads << "\n";
+        std::clog << "       no. exclude flag reads       : " << no_exclude_flag_reads << "\n";
+        std::clog << "\n";    
+        std::clog << "       no. variants                 : " << (no_snps+no_insertions+no_deletions+no_left_soft_clips+no_right_soft_clips) << "\n";    
+        std::clog << "           no. snps                 : " << no_snps << "\n";        
+        std::clog << "           no. indels               : " << (no_insertions + no_deletions) << "\n";  
+        std::clog << "               no. insertions       : " << no_insertions << "\n"; 
+        std::clog << "               no. deletions        : " << no_deletions << "\n"; 
+        std::clog << "       no. soft clips               : " << (no_left_soft_clips+no_right_soft_clips) << "\n";        
+        std::clog << "               no. left soft clips  : " << no_left_soft_clips << "\n"; 
+        std::clog << "               no. right soft clips : " << no_right_soft_clips << "\n"; 
         std::clog << "\n";
     };
 
