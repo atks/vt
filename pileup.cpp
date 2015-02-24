@@ -550,7 +550,7 @@ PileupPosition& Pileup::operator[] (const int32_t i)
 /**
  * Returns the difference between 2 buffer positions
  */
-inline uint32_t Pileup::diff(uint32_t i, uint32_t j)
+uint32_t Pileup::diff(uint32_t i, uint32_t j)
 {
     return (i>=j ? i-j : buffer_size-(j-i));
 };
