@@ -256,12 +256,15 @@ std::string Pileup::get_chrom()
  */
 uint32_t Pileup::g2i(uint32_t gpos1)
 {
+    //not empty
     if (beg0!=end0)
     {
+        //assumes connectedness!
         return (beg0 + (gpos1-gbeg1)) & buffer_size_mask;
     }
     else
     {
+        //disconnected
         gbeg1 = gpos1;
         end0 = inc(beg0);
         return beg0;
@@ -289,7 +292,14 @@ uint32_t Pileup::get_gbeg1()
  */
 uint32_t Pileup::get_gend1()
 {
-    return gbeg1 + diff(end0, beg0);
+    if (end0==beg0)
+    {
+        return 0;
+    }    
+    else
+    {    
+        return gbeg1 + diff(end0, beg0) -1;
+    }
 }
 
 /**
@@ -356,12 +366,8 @@ void Pileup::add_ref(uint32_t gpos1, uint32_t spos0, uint32_t len, uint8_t* seq)
     {
         P[i].R = (bam_base2char(bam_seqi(seq, spos0+j)));
         ++P[i].N;
+        if (i==end0) inc_end0();
         i = inc(i);
-    }
-
-    if (gpos1+len-1>get_gend1())
-    {
-        set_end0(i);
     }
 }
 
@@ -406,10 +412,11 @@ uint32_t Pileup::base2index(char base)
 void Pileup::add_snp(uint32_t gpos1, char ref, char alt)
 {
     uint32_t i = g2i(gpos1);
+    //std::cerr << "i in adding SNP " << i << " " << end0 << "\n";
     P[i].R = ref;
     ++P[i].X[base2index(alt)];
     ++P[i].N;
-    if (i==end0) inc_end0();
+    if (i==end0) inc_end0(); 
 }
 
 /**
@@ -417,8 +424,20 @@ void Pileup::add_snp(uint32_t gpos1, char ref, char alt)
  */
 void Pileup::add_del(uint32_t gpos1, std::string& alt)
 {
+    //std::cerr << "adding del " << gpos1 << " " << g2i(gpos1) << "\n";
+    
     uint32_t i = g2i(gpos1);
     ++P[i].D[alt];
+    
+    //fill up for reference too.
+    i = g2i(gpos1+1);
+    for (uint32_t j = 0; j<alt.size(); ++j)
+    {
+        //std::cerr << "adding tp ref under del " << alt[j] << "\n";
+        P[i].R = alt[j];
+        if (i==end0) inc_end0();
+        i = inc(i);
+    }
 }
 
 /**
@@ -463,7 +482,6 @@ PileupPosition& Pileup::operator[] (const int32_t i)
     return P[i];
 }
 
-
 /**
  * Returns the difference between 2 buffer positions
  */
@@ -502,7 +520,7 @@ uint32_t Pileup::inc(uint32_t i, uint32_t j)
 void Pileup::print_state()
 {
     std::cerr << "******************" << "\n";
-    std::cerr << "gindex   : " << gbeg1 << "\n";
+    std::cerr << "gindex   : " << gbeg1 << "-" << get_gend1() << "\n";
     std::cerr << "index   : " << beg0 << "-" << end0 << " (" << size() << ")\n";
     std::cerr << "******************" << "\n";
     uint32_t k = 0;
@@ -513,6 +531,18 @@ void Pileup::print_state()
     }
     std::cerr << "******************" << "\n";
 }
+
+/**
+ * Print pileup state extent.
+ */
+void Pileup::print_state_extent()
+{
+    std::cerr << "******************" << "\n";
+    std::cerr << "gindex   : " << gbeg1 << "-" << get_gend1() << "\n";
+    std::cerr << "index   : " << beg0 << "-" << end0 << " (" << size() << ")\n";
+    std::cerr << "******************" << "\n";
+}
+   
 
 /**
  * Checks if a variant is normalized.

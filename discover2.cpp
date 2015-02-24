@@ -643,12 +643,12 @@ class Igor : Program
 
                     if (cpos1==pos1)
                     {
-                        if (debug) std::cerr << "\t\t\tadding LSCLIP: " << cpos1 << "\t" << ins << " (" << mean_qual << ")\n";
+                        if (debug) std::cerr << "\t\t\tadding LSCLIP: " << cpos1 << "\t" << ins << " {" << mean_qual << "}\n";
                         pileup.add_lsclip(cpos1, ins, mean_qual, strand);
                     }
                     else
                     {
-                        if (debug) std::cerr << "\t\t\tadding RSCLIP: " << (cpos1-1) << "\t" << ins << " (" << mean_qual << ")\n";
+                        if (debug) std::cerr << "\t\t\tadding RSCLIP: " << (cpos1-1) << "\t" << ins << " {" << mean_qual << "}\n";
                         pileup.add_rsclip(cpos1-1, ins, mean_qual, strand);
                     }
 
@@ -661,8 +661,9 @@ class Igor : Program
                     uint32_t mlen = oplen;
                     uint32_t i = 0;
                         
-                    if (debug) std::cerr << "md len left : " << md_mlen_left << "\n";    
-                    if (debug) std::cerr << "mdp : " << mdp << "\n";  
+                    if (debug) std::cerr << "\t\tmd len left : " << md_mlen_left << "\n";    
+                    if (debug) std::cerr << "\t\tmlen : " << mlen << "\n";  
+                    if (debug) std::cerr << "\t\tmdp : " << mdp << "\n";  
                     
                     //left over MD matches to handle.
                     if (md_mlen_left)
@@ -686,21 +687,20 @@ class Igor : Program
                         lpos1 += ilen;
                         sspos0 += ilen;
                         
-                        //a snp next
-                        if (md_mlen_left<=mlen)
-                        {
-                            md_mlen_left = 0;
-                            mlen -= ilen;
-                            //go to loop in the next section
-                            
-                        }   
+                        if (md_mlen_left>=mlen)
                         //yet another insertion
-                        else 
                         {
                             md_mlen_left -= ilen; 
                             cpos1 += ilen;
                             spos0 += ilen;
                             continue;
+                        }
+                        //a snp next
+                        else
+                        {
+                            md_mlen_left = 0;
+                            mlen -= ilen;
+                            //go to loop in the next section
                         }
                     }
                        
@@ -823,12 +823,12 @@ class Igor : Program
     
                         if (cpos1==pos1)
                         {
-                            if (debug) std::cerr << "\t\t\tadding LSCLIP: " << cpos1 << "\t" << ins << " (" << mean_qual << ")\n";
+                            if (debug) std::cerr << "\t\t\tadding LSCLIP: " << cpos1 << "\t" << ins << " {" << mean_qual << "}\n";
                             pileup.add_lsclip(cpos1, ins, mean_qual, strand);
                         }
                         else
                         {
-                            if (debug) std::cerr << "\t\t\tadding RSCLIP: " << (cpos1-1) << "\t" << ins << " (" << mean_qual << ")\n";
+                            if (debug) std::cerr << "\t\t\tadding RSCLIP: " << (cpos1-1) << "\t" << ins << " {" << mean_qual << "}\n";
                             pileup.add_rsclip(cpos1-1, ins, mean_qual, strand);
                         }
     
@@ -854,6 +854,8 @@ class Igor : Program
                 {
                     std::cerr << "never seen before state " << opchar << "\n";
                 }
+                
+                //pileup.print_state_extent();
             }
 
             //pileup.print_state();
@@ -876,7 +878,7 @@ class Igor : Program
             }
 
             process_read(s);
-            if (debug) pileup.print_state();
+            if (debug>=3) pileup.print_state();
             ++no_passed_reads;
 
             //if (no_passed_reads==10) break;

@@ -161,7 +161,6 @@ class Igor : Program
 
         if (print_header || output_vcf_file != "-") odw->write_hdr();
 
-
         bcf1_t *v = odw->get_bcf1_from_pool();
         bcf_hdr_t *h = odr->hdr;
         Variant variant;
@@ -175,6 +174,8 @@ class Igor : Program
                     continue;
                 }
             }
+
+//            std::cerr << "working\n";
 
             if (no_subset_samples==0)
             {

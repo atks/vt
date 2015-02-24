@@ -320,6 +320,11 @@ class Pileup
      * Print pileup state.
      */
     void print_state();
+    
+    /**
+     * Print pileup state extent.
+     */
+    void print_state_extent();
 
     /**
      * Returns the difference between 2 buffer positions
