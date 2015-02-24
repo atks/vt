@@ -178,15 +178,7 @@ class Igor : Program
         rid = -1; 
 
     }
-
-    void print_pileup_state()
-    {
-        std::cerr << "******************" << "\n";
-        std::cerr << "gindex   : " << pileup.get_gbeg1() << "-" << pileup.get_gend1() << " (" << (pileup.get_gend1()-pileup.get_gbeg1()) << ")\n";
-        std::cerr << "index   : " << pileup.begin() << "-" << pileup.end() << " (" << pileup.size() << ")\n";
-        std::cerr << "******************" << "\n";
-    }
-
+    
     void bam_print_key_values(bam_hdr_t *h, bam1_t *s)
     {
         const char* chrom = bam_get_chrom(h, s);
@@ -599,9 +591,9 @@ class Igor : Program
      */
     void process_read(bam1_t *s)
     {
-        flush(s);
-
         if (debug>=1) bam_print_key_values(odr->hdr, s);
+            
+        flush(s);
 
         uint32_t tid = bam_get_tid(s);
         uint32_t pos1 = bam_get_pos1(s);
@@ -796,7 +788,7 @@ class Igor : Program
                     {
                         bam_print_key_values(odr->hdr, s);
                         std::cerr << "mdp: " << mdp << "\n";
-                        std::cerr << "inconsistent MD and cigar\n";
+                        std::cerr << "inconsistent MD and cigar, deletion does not occur at the right place.\n";
                         exit(1);
                     }
                     else
@@ -810,7 +802,7 @@ class Igor : Program
                         }
 
                         if (debug) std::cerr << "\t\t\tadding DEL: " << (cpos1-1) << " " << del << "\n";
-                        pileup.add_ins((cpos1-1), del);
+                        pileup.add_del((cpos1-1), del);
 
                         cpos1 += oplen;
                     }
@@ -862,9 +854,6 @@ class Igor : Program
                 {
                     std::cerr << "never seen before state " << opchar << "\n";
                 }
-
-
-                //if (debug) pileup.print_state();
             }
 
             //pileup.print_state();
@@ -887,7 +876,7 @@ class Igor : Program
             }
 
             process_read(s);
-            if (debug) print_pileup_state();
+            if (debug) pileup.print_state();
             ++no_passed_reads;
 
             //if (no_passed_reads==10) break;

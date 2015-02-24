@@ -497,18 +497,6 @@ uint32_t Pileup::inc(uint32_t i, uint32_t j)
 };
 
 /**
- * Print buffer contents for debugging purpose
- */
-void Pileup::printBuffer()
-{
-    std::cout << "PRINT BUFFER" << "\n";
-    std::cerr << "******************" << "\n";
-    std::cerr << "gindex   : " << gbeg1 << "\n";
-    std::cerr << "index   : " << beg0 << "-" << end0 << " (" << size() << ")\n";
-    std::cerr << "******************" << "\n";
-};
-
-/**
  * Print pileup state.
  */
 void Pileup::print_state()

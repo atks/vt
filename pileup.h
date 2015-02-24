@@ -327,11 +327,6 @@ class Pileup
     size_t diff(size_t i, size_t j);
 
     /**
-     * Print buffer contents for debugging purpose
-     */
-    void printBuffer();
-
-    /**
      * Checks if a variant is normalized.
      */
     bool is_biallelic_normalized(std::string& ref, std::string& alt);
