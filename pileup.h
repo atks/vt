@@ -257,12 +257,12 @@ class Pileup
     /**
      * Updates an occurence of a deletion.
      */
-    void add_del(uint32_t gpos1, std::string& alt);
+    void add_del(uint32_t gpos1, std::string& del);
 
     /**
      * Updates an occurence of an insertion.
      */
-    void add_ins(uint32_t gpos1, std::string& alt);
+    void add_ins(uint32_t gpos1, std::string& ins);
 
     /**
      * Inserts a reference base at pos0 into the buffer.
@@ -329,17 +329,17 @@ class Pileup
     /**
      * Returns the difference between 2 buffer positions
      */
-    size_t diff(size_t i, size_t j);
+    uint32_t diff(uint32_t i, uint32_t j);
 
     /**
      * Checks if a variant is normalized.
      */
-    bool is_biallelic_normalized(std::string& ref, std::string& alt);
+    bool is_normalized(char ref, std::string& indel);
 
     /**
      * Normalize a biallelic variant.
      */
-    void normalize_biallelic(size_t pos0, std::string& ref, std::string& alt);
+    void normalize(std::string& chrom, uint32_t& pos1, char& ref, std::string& indel);
 
 };
 

@@ -422,19 +422,29 @@ void Pileup::add_snp(uint32_t gpos1, char ref, char alt)
 /**
  * Updates an occurence of a deletion.
  */
-void Pileup::add_del(uint32_t gpos1, std::string& alt)
+void Pileup::add_del(uint32_t gpos1, std::string& del)
 {
     //std::cerr << "adding del " << gpos1 << " " << g2i(gpos1) << "\n";
     
     uint32_t i = g2i(gpos1);
-    ++P[i].D[alt];
+    
+    if (!is_normalized(P[i].R, del))
+    {
+        char ref = P[i].R;
+        std::string d = del;
+        std::cerr << "not normalized " << chrom << ":" << gpos1 << ":" << ref  << d << ":" <<  d << "\n";
+        normalize(chrom, gpos1, ref, d);
+        std::cerr << "normalized " << chrom << ":" << gpos1 << ":" << ref  << d << ":" <<  d << "\n";
+    }
+    
+    ++P[i].D[del];
     
     //fill up for reference too.
     i = g2i(gpos1+1);
-    for (uint32_t j = 0; j<alt.size(); ++j)
+    for (uint32_t j = 0; j<del.size(); ++j)
     {
-        //std::cerr << "adding tp ref under del " << alt[j] << "\n";
-        P[i].R = alt[j];
+        //std::cerr << "adding to ref under del " << alt[j] << "\n";
+        P[i].R = del[j];
         if (i==end0) inc_end0();
         i = inc(i);
     }
@@ -443,10 +453,20 @@ void Pileup::add_del(uint32_t gpos1, std::string& alt)
 /**
  * Updates an occurence of an insertion.
  */
-void Pileup::add_ins(uint32_t gpos1, std::string& alt)
+void Pileup::add_ins(uint32_t gpos1, std::string& ins)
 {
     uint32_t i = g2i(gpos1);
-    ++P[i].I[alt];
+ 
+    if (!is_normalized(P[i].R, ins))
+    {
+        char ref = P[i].R;
+        std::string d = ins;
+        std::cerr << "not normalized " << chrom << ":" << gpos1 << ":" << ref  << d << ":" <<  d << "\n";
+        normalize(chrom, gpos1, ref, d);
+        std::cerr << "normalized " << chrom << ":" << gpos1 << ":" << ref  << d << ":" <<  d << "\n";
+    }
+    
+    ++P[i].I[ins];
 }
 
 /**
@@ -485,7 +505,7 @@ PileupPosition& Pileup::operator[] (const int32_t i)
 /**
  * Returns the difference between 2 buffer positions
  */
-inline size_t Pileup::diff(size_t i, size_t j)
+inline uint32_t Pileup::diff(uint32_t i, uint32_t j)
 {
     return (i>=j ? i-j : buffer_size-(j-i));
 };
@@ -545,97 +565,33 @@ void Pileup::print_state_extent()
    
 
 /**
- * Checks if a variant is normalized.
+ * Checks if an indel is normalized.
  */
-bool Pileup::is_biallelic_normalized(std::string& ref, std::string& alt)
+bool Pileup::is_normalized(char ref, std::string& indel)
 {
-    bool last_base_same = ref.at(ref.size()-1) == alt.at(alt.size()-1);
-    bool exists_len_one_allele = ref.size()==1 || alt.size()==1;
-    bool first_base_same = ref.at(0) == alt.at(0);
-
-    if (last_base_same || (!exists_len_one_allele && first_base_same))
-    {
-        return false;
-    }
-    else
-    {
-        return true;
-    }
+    return ref == indel.at(indel.size()-1);
 }
 
 /**
  * Normalize a biallelic variant.
  */
-void Pileup::normalize_biallelic(size_t pos0, std::string& ref, std::string& alt)
+void Pileup::normalize(std::string& chrom, uint32_t& pos1, char& ref, std::string& indel)
 {
-    if (!is_biallelic_normalized(ref, alt))
+    while (indel.at(indel.size()-1)==ref)
     {
-        bool to_right_trim = true;
-        bool to_left_extend = false;
-
-        while (to_right_trim || to_left_extend)
+        --pos1;
+        int ref_len = 0;
+        char *refseq = faidx_fetch_uc_seq(fai, chrom.c_str(), pos1-1, pos1-1, &ref_len);
+        if (!refseq)
         {
-            //checks if right trimmable or left extendable
-            if (!ref.empty() && !alt.empty())
-            {
-                if (ref.at(ref.size()-1) == alt.at(alt.size()-1))
-                {
-                    to_right_trim = true;
-                    to_left_extend = false;
-                }
-
-                if (pos0==0 && (ref.size()==1||alt.size()==1))
-                {
-                    to_right_trim = false;
-                    to_left_extend = false;
-                }
-            }
-            else
-            {
-                to_right_trim = false;
-                to_left_extend = true;
-            }
-
-            if (to_right_trim)
-            {
-                ref.erase(ref.size()-1);
-                alt.erase(alt.size()-1);
-            }
-
-            if (to_left_extend)
-            {
-                --pos0;
-                int ref_len = 0;
-                char *refseq = faidx_fetch_uc_seq(fai, chrom.c_str(), pos0, pos0, &ref_len);
-                if (!refseq)
-                {
-                    fprintf(stderr, "[%s:%d %s] failure to extrac base from fasta file: %s:%zu: >\n", __FILE__, __LINE__, __FUNCTION__, chrom.c_str(), pos0);
-                    exit(1);
-                }
-                char base = refseq[0];
-                free(refseq);
-
-                ref.insert(0, 1, base);
-                alt.insert(0, 1, base);
-            }
+            fprintf(stderr, "[%s:%d %s] failure to extrac base from fasta file: %s:%d: >\n", __FILE__, __LINE__, __FUNCTION__, chrom.c_str(), pos1-1);
+            exit(1);
         }
-
-        bool to_left_trim =  true;
-
-        while (to_left_trim)
-        {
-            //checks if left trimmable.
-            if (ref.size()==1 || ref.at(0)!=alt.at(0))
-            {
-                to_left_trim = false;
-            }
-
-            if (to_left_trim)
-            {
-                ref.erase(0, 1);
-                alt.erase(0, 1);
-                ++pos0;
-            }
-        }
+        char base = refseq[0];
+        free(refseq);
+    
+        ref = base;
+        indel.insert(0, 1, base);
+        indel.erase(indel.size()-1, 1);
     }
 };
