@@ -643,7 +643,7 @@ class Igor : Program
         uint8_t *md_aux;
         char* md;
 
-        if ((md_aux=bam_aux_get(s, "MD")) &&  (md = bam_aux2Z(md_aux)))
+        if (!ignore_md && (md_aux=bam_aux_get(s, "MD")) &&  (md = bam_aux2Z(md_aux)))
         {
             //iterate cigar
             uint32_t n_cigar_op = bam_get_n_cigar_op(s);
@@ -934,12 +934,12 @@ class Igor : Program
                         if (cpos1==pos1)
                         {
                             if (debug) std::cerr << "\t\t\tadding LSC: " << cpos1 << "\t" << ins << " {" << mean_qual << "}\n";
-                            pileup.add_lsclip(cpos1, ins, mean_qual, strand);
+                            pileup.add_LSC(cpos1, ins, mean_qual, strand);
                         }
                         else
                         {
                             if (debug) std::cerr << "\t\t\tadding RSC: " << (cpos1-1) << "\t" << ins << " {" << mean_qual << "}\n";
-                            pileup.add_rsclip(cpos1-1, ins, mean_qual, strand);
+                            pileup.add_RSC(cpos1-1, ins, mean_qual, strand);
                         }
 
                         spos0 += oplen;
@@ -982,7 +982,7 @@ class Igor : Program
                             if (cpos1==pos1)
                             {
                                 if (debug) std::cerr << "\t\t\tadding LSCLIP: " << cpos1 << "\t" << ins << " {" << mean_qual << "}\n";
-                                pileup.add_lsclip(cpos1, ins, mean_qual, strand);
+                                pileup.add_LSC(cpos1, ins, mean_qual, strand);
                             }
 
                             spos0 += oplen;
@@ -996,7 +996,7 @@ class Igor : Program
                             }
 
                             if (debug) std::cerr << "\t\t\tadding INS: " << (cpos1-1) << " " << ins  << "\n";
-                            pileup.add_ins((cpos1-1), ins);
+                            pileup.add_I((cpos1-1), ins);
 
                             spos0 += oplen;
                         }
@@ -1053,6 +1053,7 @@ class Igor : Program
         std::clog << "         [q] base quality cutoff          " << baseq_cutoff << "\n";
         std::clog << "         [e] evidence cutoff              " << evidence_allele_count_cutoff << "\n";
         std::clog << "         [f] fractional evidence cutoff   " << fractional_evidence_allele_count_cutoff<< "\n";
+        std::clog << "         [z] ignore MD tags               " << (ignore_md ? "true": "false") << "\n";
         print_int_op("         [i] intervals                    ", intervals);
         std::clog << "\n";
     }

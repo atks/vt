@@ -45,7 +45,7 @@ class SoftClipInfo
      * Constructor.
      */
     SoftClipInfo() { clear();};
-    
+
     /**
      * Clears the soft clipped information.
      */
@@ -81,7 +81,7 @@ class PileupPosition
     //INDELs - #indel / N
     //SCLIPS -
 
-    
+
     /**
      * Constructor.
      */
@@ -96,7 +96,7 @@ class PileupPosition
      * Prints pileup position.
      */
     void print();
-    
+
     /**
      * Prints pileup position.
      */
@@ -145,7 +145,7 @@ class Pileup
     //
     //  invariance:  pileup is always continuous
     //
-    //  how do we check if 
+    //  how do we check if
     //
 
     //for use if we need to update the reference.
@@ -168,21 +168,31 @@ class Pileup
      * @k - size of pileup is 2^k
      */
     Pileup(uint32_t k=10);
-    
-    /**
-     * Set reference fasta file.
-     */
-    void set_reference(std::string& ref_fasta_file);
-        
-    /**
-     * Set debug.
-     */
-    void set_debug(int32_t debug);
-    
+
     /**
      * Overloads subscript operator for accessing pileup positions.
      */
     PileupPosition& operator[] (const int32_t i);
+
+    /**
+     * Returns the size of the pileup.
+     */
+    uint32_t size();
+
+    /**
+     * Checks if buffer is empty
+     */
+    bool is_empty();
+
+    /**
+     * Set reference fasta file.
+     */
+    void set_reference(std::string& ref_fasta_file);
+
+    /**
+     * Set debug.
+     */
+    void set_debug(int32_t debug);
 
     /**
      * Sets tid.
@@ -190,20 +200,25 @@ class Pileup
     void set_tid(uint32_t tid);
 
     /**
-     * Converts base to bam encoding.
+     * Gets tid.
      */
-    uint32_t base2index(char base);
+    uint32_t get_tid();
 
     /**
      * Sets chrom.
      */
     void set_chrom(std::string& chrom);
-    
+
     /**
      * Gets chrom.
      */
     std::string get_chrom();
-    
+
+    /**
+     * Sets gbeg1.
+     */
+    void set_gbeg1(uint32_t gbeg1);
+
     /**
      * Gets gbeg1.
      */
@@ -215,14 +230,14 @@ class Pileup
     uint32_t get_gend1();
 
     /**
-     * Sets gbeg1.
+     * Sets beg0.
      */
-    void set_gbeg1(uint32_t gbeg1);
+    void set_beg0(uint32_t beg0);
 
     /**
-     * Sets gend1.
+     * Sets end0.
      */
-    void set_gend1(uint32_t gend1);
+    void set_end0(uint32_t end0);
 
     /**
      * Gets the index of the first element.
@@ -233,73 +248,6 @@ class Pileup
      * Gets the index of the last element.
      */
     uint32_t end();
-
-    /**
-     * Sets beg0.
-     */
-    void set_beg0(uint32_t gbeg0);
-
-    /**
-     * Sets end0.
-     */
-    void set_end0(uint32_t end0);
-
-    /**
-     * Updates a stretch of aligned bases identified by M in the cigar string.
-     */
-    void add_M(uint32_t gpos1, uint32_t spos0, uint32_t len, uint8_t* seq);
-    
-    /**
-     * Updates a stretch of deleted bases identified by D in the cigar string.
-     */
-    void add_D(uint32_t gpos1, uint32_t len);
-        
-    /**
-     * Updates a stretch of reference bases.
-     */
-    void add_ref(uint32_t gpos1, uint32_t spos0, uint32_t len, uint8_t* seq);
-
-    /**
-     * Updates an occurence of a SNP.
-     */
-    void add_snp(uint32_t gpos1, char ref, char alt);
-
-    /**
-     * Updates an occurence of a deletion.
-     */
-    void add_del(uint32_t gpos1, std::string& del);
-
-    /**
-     * Updates an occurence of an insertion.
-     */
-    void add_ins(uint32_t gpos1, std::string& ins);
-
-    /**
-     * Inserts a reference base at pos0 into the buffer.
-     */
-    void add_lsclip(uint32_t gpos1, std::string& alt, float mean_qual, char strand);
-
-    /**
-     * Inserts a reference base at pos0 into the buffer.
-     */
-    void add_rsclip(uint32_t gpos1, std::string& alt, float mean_qual, char strand);
-    
-    /**
-     * Updates the last aligned base in a read.
-     *
-     * @gpos1 - starting genome position
-     */
-    void update_read_end(uint32_t gpos1);
-
-    /**
-     * Returns the size of the pileup.
-     */
-    uint32_t size();
-
-    /**
-     * Checks if buffer is empty
-     */
-    bool is_empty();
 
     /**
      * Increments i by 1 circularly.
@@ -327,19 +275,71 @@ class Pileup
     uint32_t g2i(uint32_t gpos1);
 
     /**
-     * Print pileup state.
-     */
-    void print_state();
-    
-    /**
-     * Print pileup state extent.
-     */
-    void print_state_extent();
-
-    /**
      * Returns the difference between 2 buffer positions
      */
     uint32_t diff(uint32_t i, uint32_t j);
+
+    /**
+     * Updates a stretch of aligned bases identified by M in the cigar string.
+     */
+    void add_M(uint32_t gpos1, uint32_t spos0, uint32_t len, uint8_t* seq);
+
+    /**
+     * Updates a stretch of deleted bases identified by D in the cigar string.
+     */
+    void add_D(uint32_t gpos1, uint32_t len);
+
+    /**
+     * Updates an occurence of an insertion.
+     */
+    void add_I(uint32_t gpos1, std::string& ins);
+
+    /**
+     * Updates the occurence of a left soft clip.
+     */
+    void add_LSC(uint32_t gpos1, std::string& alt, float mean_qual, char strand);
+
+    /**
+     * Updates the occurence of a right soft clip.
+     */
+    void add_RSC(uint32_t gpos1, std::string& alt, float mean_qual, char strand);
+
+    /**
+     * Updates a stretch of reference bases.
+     */
+    void add_ref(uint32_t gpos1, uint32_t spos0, uint32_t len, uint8_t* seq);
+
+    /**
+     * Updates an occurence of a SNP.
+     */
+    void add_snp(uint32_t gpos1, char ref, char alt);
+
+    /**
+     * Updates an occurence of a deletion.
+     */
+    void add_del(uint32_t gpos1, std::string& del);
+
+    /**
+     * Updates an occurence of an insertion.
+     */
+    void add_ins(uint32_t gpos1, std::string& ins);
+
+    /**
+     * Updates the occurence of a left soft clip.
+     */
+    void add_lsclip(uint32_t gpos1, std::string& alt, float mean_qual, char strand);
+
+    /**
+     * Updates the occurence of a right soft clip.
+     */
+    void add_rsclip(uint32_t gpos1, std::string& alt, float mean_qual, char strand);
+
+    /**
+     * Updates the last aligned base in a read.
+     *
+     * @gpos1 - starting genome position
+     */
+    void update_read_end(uint32_t gpos1);
 
     /**
      * Checks if a variant is normalized.
@@ -350,6 +350,31 @@ class Pileup
      * Normalize a biallelic variant.
      */
     void normalize(std::string& chrom, uint32_t& pos1, char& ref, std::string& indel);
+
+    /**
+     * Converts base to bam encoding.
+     */
+    uint32_t base2index(char base);
+
+    /**
+     * Get a base.
+     */
+    char get_base(std::string& chrom, uint32_t& pos1);
+
+    /**
+     * Get a sequence.
+     */
+    int32_t get_sequence(std::string& chrom, uint32_t pos1, uint32_t len, char* seq);
+
+    /**
+     * Print pileup state.
+     */
+    void print_state();
+
+    /**
+     * Print pileup state extent.
+     */
+    void print_state_extent();
 
 };
 
