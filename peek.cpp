@@ -32,7 +32,7 @@
 #define GE_TETRAALLELIC 6
 #define POLYMORPHIC     7
 
-#define NO_VARIANT_CATEGORIES       20
+#define NO_VARIANT_CATEGORIES       40
 #define NO_BASIC_VARIANT_CATEGORIES 16
 #define NO_ALLELE_CATEGORIES         8
 #define NO_MOTIF_LEN_CATEGORIES     10
@@ -82,13 +82,13 @@ class Igor : Program
     int32_t no_classified_variants;
     int32_t no_unclassified_variants;
 
-    int32_t **VAR_COUNT;
-    int32_t **VAR_TS;
-    int32_t **VAR_TV;
-    int32_t **VAR_INS;
-    int32_t **VAR_DEL;
-    int32_t *VAR_MOTIF_LEN;
-
+    int32_t VAR_COUNT[NO_ALLELE_CATEGORIES][NO_VARIANT_CATEGORIES];
+    int32_t VAR_TS[NO_ALLELE_CATEGORIES][NO_VARIANT_CATEGORIES];
+    int32_t VAR_TV[NO_ALLELE_CATEGORIES][NO_VARIANT_CATEGORIES];
+    int32_t VAR_INS[NO_ALLELE_CATEGORIES][NO_VARIANT_CATEGORIES];
+    int32_t VAR_DEL[NO_ALLELE_CATEGORIES][NO_VARIANT_CATEGORIES];
+    int32_t VAR_MOTIF_LEN[NO_MOTIF_LEN_CATEGORIES];
+ 
     int32_t no_snp3;
     int32_t no_snp4;
 
@@ -159,21 +159,6 @@ class Igor : Program
         no_classified_variants = 0;
         no_unclassified_variants = 0;
 
-        VAR_COUNT = new int32_t*[NO_ALLELE_CATEGORIES];
-        VAR_TS = new int32_t*[NO_ALLELE_CATEGORIES];
-        VAR_TV = new int32_t*[NO_ALLELE_CATEGORIES];
-        VAR_INS = new int32_t*[NO_ALLELE_CATEGORIES];
-        VAR_DEL = new int32_t*[NO_ALLELE_CATEGORIES];
-
-        for (int32_t no_alleles=0; no_alleles<NO_ALLELE_CATEGORIES; ++no_alleles)
-        {
-            VAR_COUNT[no_alleles] = new int32_t[NO_VARIANT_CATEGORIES];
-            VAR_TS[no_alleles] = new int32_t[NO_VARIANT_CATEGORIES];
-            VAR_TV[no_alleles] = new int32_t[NO_VARIANT_CATEGORIES];
-            VAR_INS[no_alleles] = new int32_t[NO_VARIANT_CATEGORIES];
-            VAR_DEL[no_alleles] = new int32_t[NO_VARIANT_CATEGORIES];
-        }
-
         for (int32_t vtype=0; vtype<NO_VARIANT_CATEGORIES; ++vtype)
         {
             for (int32_t no_alleles=0; no_alleles<NO_ALLELE_CATEGORIES; ++no_alleles)
@@ -186,8 +171,6 @@ class Igor : Program
             }
         }
 
-        VAR_MOTIF_LEN = new int32_t[NO_MOTIF_LEN_CATEGORIES];
-          
         for (int32_t i=0; i<NO_MOTIF_LEN_CATEGORIES; ++i)
         {
             VAR_MOTIF_LEN[i] = 0;
@@ -499,7 +482,7 @@ class Igor : Program
 
         if (sv->mixed_sv_count)
         {
-            fprintf(stderr, "            mixed sv                     :  %15d\n", sv->mixed_sv_count);
+            fprintf(stderr, "            mixed sv                      :  %15d\n", sv->mixed_sv_count);
         }
 
         fprintf(stderr, "\n");
@@ -716,22 +699,6 @@ class Igor : Program
     {
         delete odr;
         bcf_destroy(v);
-
-        for (int32_t no_alleles=0; no_alleles<NO_ALLELE_CATEGORIES; ++no_alleles)
-        {
-            delete VAR_COUNT[no_alleles];
-            delete VAR_TS[no_alleles];
-            delete VAR_TV[no_alleles];
-            delete VAR_INS[no_alleles];
-            delete VAR_DEL[no_alleles];
-        }
-
-        delete VAR_COUNT;
-        delete VAR_TS;
-        delete VAR_TV;
-        delete VAR_INS;
-        delete VAR_DEL;
-        delete VAR_MOTIF_LEN;
 
         delete vm;
         delete sv;
