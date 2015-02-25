@@ -53,15 +53,23 @@ class Igor : Program
     
     //options for selecting reads   
     khash_t(rdict) *reads;
-    khiter_t k;
-    int32_t ret;
-    uint32_t mapq_cutoff;
-    uint32_t baseq_cutoff;
-    uint16_t exclude_flag;
 
-    //for choosing variants
-    uint32_t evidence_allele_count_cutoff;
-    double fractional_evidence_allele_count_cutoff;
+    //read filters
+    uint32_t read_mapq_cutoff;
+    uint16_t read_exclude_flag;
+    bool ignore_overlapping_read;
+
+    //snp filters
+    uint32_t snp_baseq_cutoff;
+    uint32_t snp_e_cutoff;
+    double snp_f_cutoff;
+    
+    //indel filters
+    uint32_t indel_e_cutoff;
+    double indel_f_cutoff;
+
+    //soft clip filters
+    float sclip_mq_cutoff;
 
     //variables for keeping track of chromosome
     std::string chrom; //current chromosome
@@ -116,10 +124,14 @@ class Igor : Program
             TCLAP::ValueArg<std::string> arg_output_vcf_file("o", "o", "output VCF file [-]", false, "-", "str", cmd);
             TCLAP::ValueArg<std::string> arg_ref_fasta_file("r", "r", "reference sequence fasta file []", true, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_sample_id("s", "s", "sample ID", true, "", "str", cmd);
-            TCLAP::ValueArg<uint32_t> arg_mapq_cutoff("m", "m", "MAPQ cutoff for alignments [20]", false, 20, "int", cmd);
-            TCLAP::ValueArg<uint32_t> arg_baseq_cutoff("q", "q", "base quality cutoff for bases [13]", false, 13, "int", cmd);
-            TCLAP::ValueArg<uint32_t> arg_evidence_allele_count_cutoff("e", "e", "evidence count cutoff for candidate allele [2]", false, 2, "int", cmd);
-            TCLAP::ValueArg<double> arg_fractional_evidence_allele_count_cutoff("f", "f", "fractional evidence cutoff for candidate allele [0.1]", false, 0.1, "float", cmd);
+            TCLAP::ValueArg<uint32_t> arg_read_mapq_cutoff("m", "m", "MAPQ cutoff for alignments [0]", false, 0, "int", cmd);
+            TCLAP::SwitchArg arg_ignore_overlapping_read("l", "t", "ignore overlapping reads [false]", cmd, false);
+            TCLAP::ValueArg<uint32_t> arg_snp_baseq_cutoff("q", "q", "base quality cutoff for bases [0]", false, 0, "int", cmd);
+            TCLAP::ValueArg<uint32_t> arg_snp_e_cutoff("c", "se", "evidence count cutoff for candidate SNP [1]", false, 1, "int", cmd);
+            TCLAP::ValueArg<double> arg_snp_f_cutoff("f", "sf", "fractional evidence cutoff for candidate SNP [0]", false, 0, "float", cmd);
+            TCLAP::ValueArg<uint32_t> arg_indel_e_cutoff("u", "ie", "evidence count cutoff for candidate Indel [1]", false, 1, "int", cmd);
+            TCLAP::ValueArg<double> arg_indel_f_cutoff("w", "if", "fractional evidence cutoff for candidate Indel [0]", false, 0, "float", cmd);
+            TCLAP::ValueArg<double> arg_sclip_mq_cutoff("y", "scmq", "fractional evidence cutoff for candidate large Indel [0]", false, 0, "float", cmd);
             TCLAP::ValueArg<std::string> arg_input_bam_file("b", "b", "input BAM file", true, "", "string", cmd);
 
             cmd.parse(argc, argv);
@@ -131,10 +143,14 @@ class Igor : Program
             output_vcf_file = arg_output_vcf_file.getValue();
             sample_id = arg_sample_id.getValue();
             ref_fasta_file = arg_ref_fasta_file.getValue();
-            mapq_cutoff = arg_mapq_cutoff.getValue();
-            baseq_cutoff = arg_baseq_cutoff.getValue();
-            evidence_allele_count_cutoff = arg_evidence_allele_count_cutoff.getValue();
-            fractional_evidence_allele_count_cutoff = arg_fractional_evidence_allele_count_cutoff.getValue();
+            read_mapq_cutoff = arg_read_mapq_cutoff.getValue();
+            ignore_overlapping_read = arg_ignore_overlapping_read.getValue();
+            snp_baseq_cutoff = arg_snp_baseq_cutoff.getValue();
+            snp_e_cutoff = arg_snp_e_cutoff.getValue();
+            snp_f_cutoff = arg_snp_f_cutoff.getValue();
+            indel_e_cutoff = arg_indel_e_cutoff.getValue();
+            indel_f_cutoff = arg_indel_f_cutoff.getValue();
+            sclip_mq_cutoff = arg_sclip_mq_cutoff.getValue();
         }
         catch (TCLAP::ArgException &e)
         {
@@ -148,7 +164,13 @@ class Igor : Program
         //////////////////////
         //i/o initialization//
         //////////////////////
-        exclude_flag = 0x0704;
+        
+        //fails the following types
+        //1. unmapped reads
+        //2. secondary reads alignments
+        //3. failed QC filter
+        //4. duplicate
+        read_exclude_flag = 0x0704; 
 
         odr = new BAMOrderedReader(input_bam_file, intervals, ref_fasta_file);
         s = bam_init1();
@@ -245,6 +267,9 @@ class Igor : Program
      */
     bool filter_read(bam1_t *s)
     {
+        khiter_t k;
+        int32_t ret;
+    
         //this read is the first of the pair
         if (bam_get_mpos1(s) && (bam_get_tid(s)==bam_get_mtid(s)))
         {
@@ -269,7 +294,7 @@ class Igor : Program
             else
             {
                 //check overlap
-                //todo: perform stitching in future
+                //todo: perform stitching in future?
                 if((k = kh_get(rdict, reads, bam_get_qname(s)))!=kh_end(reads))
                 {
                     if (kh_exist(reads, k))
@@ -279,12 +304,12 @@ class Igor : Program
                         ++no_overlapping_reads;
                     }
                     //set this on to remove overlapping reads.
-                    //continue;
+                    if (ignore_overlapping_read) return false;
                 }
             }
         }
 
-        if(bam_get_flag(s) & exclude_flag)
+        if(bam_get_flag(s) & read_exclude_flag)
         {
             //1. unmapped
             //2. secondary alignment
@@ -294,7 +319,7 @@ class Igor : Program
             return false;
         }
 
-        if (bam_get_mapq(s) < mapq_cutoff)
+        if (bam_get_mapq(s) < read_mapq_cutoff)
         {
             //filter short aligments and those with too many indels (?)
             ++no_low_mapq_reads;
@@ -309,13 +334,19 @@ class Igor : Program
      */
     void write_to_vcf(uint32_t rid, uint32_t gpos1, PileupPosition& p)
     {
+        if (p.R=='N')
+        {
+            return;
+        }    
+        
+        
         std::string alleles = "";
         int32_t N = 0;
         int32_t E = 0;
         kstring_t new_alleles = {0,0,0};
 
-        if (p.X[1])
-        {
+        if (p.X[1] && p.X[1]>=snp_e_cutoff && (p.X[1]/(float)p.N)>=snp_f_cutoff)
+        {   
             bcf_clear(v);
             bcf_set_rid(v, rid);
             bcf_set_pos1(v, gpos1);
@@ -334,8 +365,8 @@ class Igor : Program
             ++no_snps;            
         }
 
-        if (p.X[2])
-        {
+        if (p.X[2] && p.X[2]>=snp_e_cutoff && (p.X[2]/(float)p.N)>=snp_f_cutoff)
+        {   
             bcf_clear(v);
             bcf_set_rid(v, rid);
             bcf_set_pos1(v, gpos1);
@@ -355,8 +386,8 @@ class Igor : Program
             ++no_snps;
         }
 
-        if (p.X[4])
-        {
+        if (p.X[4] && p.X[4]>=snp_e_cutoff && (p.X[4]/(float)p.N)>=snp_f_cutoff)
+        {   
             bcf_clear(v);
             bcf_set_rid(v, rid);
             bcf_set_pos1(v, gpos1);
@@ -375,7 +406,7 @@ class Igor : Program
             ++no_snps;
         }
 
-        if (p.X[8])
+        if (p.X[8] && p.X[8]>=snp_e_cutoff && (p.X[8]/(float)p.N)>=snp_f_cutoff)
         {
             bcf_clear(v);
             bcf_set_rid(v, rid);
@@ -395,7 +426,7 @@ class Igor : Program
             ++no_snps;
         }
 
-        if (p.X[15])
+        if (p.X[15] && false)
         {
             bcf_clear(v);
             bcf_set_rid(v, rid);
@@ -419,23 +450,27 @@ class Igor : Program
         {
             for (std::map<std::string, uint32_t>::iterator i = p.D.begin(); i!=p.D.end(); ++i)
             {
-                bcf_clear(v);
-                bcf_set_rid(v, rid);
-                bcf_set_pos1(v, gpos1);
-                bcf_set_n_sample(v, 1);
-                alleles.clear();
-                alleles.append(1, p.R);
-                alleles.append(i->first);
-                alleles.append(1, ',');
-                alleles.append(1, p.R);
-                bcf_update_alleles_str(odw->hdr, v, alleles.c_str());
                 E = i->second;
-                bcf_update_format_int32(odw->hdr, v, "E", &E, 1);
                 N = p.N;
-                bcf_update_format_int32(odw->hdr, v, "N", &N, 1);
-                odw->write(v);
-            
-                ++no_deletions;
+                
+                if (E>=indel_e_cutoff && (E/(float)N)>=indel_f_cutoff)
+                {
+                    bcf_clear(v);
+                    bcf_set_rid(v, rid);
+                    bcf_set_pos1(v, gpos1);
+                    bcf_set_n_sample(v, 1);
+                    alleles.clear();
+                    alleles.append(1, p.R);
+                    alleles.append(i->first);
+                    alleles.append(1, ',');
+                    alleles.append(1, p.R);
+                    bcf_update_alleles_str(odw->hdr, v, alleles.c_str());
+                    bcf_update_format_int32(odw->hdr, v, "E", &E, 1);
+                    bcf_update_format_int32(odw->hdr, v, "N", &N, 1);
+                    odw->write(v);
+                
+                    ++no_deletions;
+                }
             }
         }
 
@@ -443,23 +478,27 @@ class Igor : Program
         {
             for (std::map<std::string, uint32_t>::iterator i = p.I.begin(); i!=p.I.end(); ++i)
             {
-                bcf_clear(v);
-                bcf_set_rid(v, rid);
-                bcf_set_pos1(v, gpos1);
-                bcf_set_n_sample(v, 1);
-                alleles.clear();
-                alleles.append(1, p.R);
-                alleles.append(1, ',');
-                alleles.append(1, p.R);
-                alleles.append(i->first);
-                bcf_update_alleles_str(odw->hdr, v, alleles.c_str());
                 E = i->second;
-                bcf_update_format_int32(odw->hdr, v, "E", &E, 1);
                 N = p.N;
-                bcf_update_format_int32(odw->hdr, v, "N", &N, 1);
-                odw->write(v);
                 
-                ++no_insertions;
+                if (E>=indel_e_cutoff && (E/(float)N)>=indel_f_cutoff)
+                {
+                    bcf_clear(v);
+                    bcf_set_rid(v, rid);
+                    bcf_set_pos1(v, gpos1);
+                    bcf_set_n_sample(v, 1);
+                    alleles.clear();
+                    alleles.append(1, p.R);
+                    alleles.append(1, ',');
+                    alleles.append(1, p.R);
+                    alleles.append(i->first);
+                    bcf_update_alleles_str(odw->hdr, v, alleles.c_str());
+                    bcf_update_format_int32(odw->hdr, v, "E", &E, 1);
+                    bcf_update_format_int32(odw->hdr, v, "N", &N, 1);
+                    odw->write(v);
+                    
+                    ++no_insertions;
+                }
             }
         }
 
@@ -681,13 +720,19 @@ class Igor : Program
 
                         if (cpos1==pos1)
                         {
-                            if (debug) std::cerr << "\t\t\tadding LSCLIP: " << cpos1 << "\t" << ins << " {" << mean_qual << "}\n";
-                            pileup.add_lsclip(cpos1, ins, mean_qual, strand);
+                            if (mean_qual>sclip_mq_cutoff)
+                            {
+                                if (debug) std::cerr << "\t\t\tadding LSCLIP: " << cpos1 << "\t" << ins << " {" << mean_qual << "}\n";
+                                pileup.add_lsclip(cpos1, ins, mean_qual, strand);
+                            }
                         }
                         else
                         {
-                            if (debug) std::cerr << "\t\t\tadding RSCLIP: " << (cpos1-1) << "\t" << ins << " {" << mean_qual << "}\n";
-                            pileup.add_rsclip(cpos1-1, ins, mean_qual, strand);
+                            if (mean_qual>sclip_mq_cutoff)
+                            {
+                                if (debug) std::cerr << "\t\t\tadding RSCLIP: " << (cpos1-1) << "\t" << ins << " {" << mean_qual << "}\n";
+                                pileup.add_rsclip(cpos1-1, ins, mean_qual, strand);
+                            }
                         }
 
                         spos0 += oplen;
@@ -858,17 +903,12 @@ class Igor : Program
                             }
                             mean_qual /= oplen;
 
-                            if (cpos1==pos1)
+                            if (mean_qual>sclip_mq_cutoff)
                             {
                                 if (debug) std::cerr << "\t\t\tadding LSCLIP: " << cpos1 << "\t" << ins << " {" << mean_qual << "}\n";
                                 pileup.add_lsclip(cpos1, ins, mean_qual, strand);
                             }
-                            else
-                            {
-                                if (debug) std::cerr << "\t\t\tadding RSCLIP: " << (cpos1-1) << "\t" << ins << " {" << mean_qual << "}\n";
-                                pileup.add_rsclip(cpos1-1, ins, mean_qual, strand);
-                            }
-
+                        
                             spos0 += oplen;
                         }
                         else
@@ -933,13 +973,19 @@ class Igor : Program
 
                         if (cpos1==pos1)
                         {
-                            if (debug) std::cerr << "\t\t\tadding LSC: " << cpos1 << "\t" << ins << " {" << mean_qual << "}\n";
-                            pileup.add_LSC(cpos1, ins, mean_qual, strand);
+                            if (mean_qual>sclip_mq_cutoff)
+                            {
+                                if (debug) std::cerr << "\t\t\tadding LSC: " << cpos1 << "\t" << ins << " {" << mean_qual << "}\n";
+                                pileup.add_LSC(cpos1, ins, mean_qual, strand);
+                            }
                         }
                         else
                         {
-                            if (debug) std::cerr << "\t\t\tadding RSC: " << (cpos1-1) << "\t" << ins << " {" << mean_qual << "}\n";
-                            pileup.add_RSC(cpos1-1, ins, mean_qual, strand);
+                            if (mean_qual>sclip_mq_cutoff)
+                            {
+                                if (debug) std::cerr << "\t\t\tadding RSC: " << (cpos1-1) << "\t" << ins << " {" << mean_qual << "}\n";
+                                pileup.add_RSC(cpos1-1, ins, mean_qual, strand);
+                            }
                         }
 
                         spos0 += oplen;
@@ -978,8 +1024,8 @@ class Igor : Program
                                 mean_qual += qual[spos0+j];
                             }
                             mean_qual /= oplen;
-
-                            if (cpos1==pos1)
+                            
+                            if (mean_qual>sclip_mq_cutoff)
                             {
                                 if (debug) std::cerr << "\t\t\tadding LSCLIP: " << cpos1 << "\t" << ins << " {" << mean_qual << "}\n";
                                 pileup.add_LSC(cpos1, ins, mean_qual, strand);
@@ -1045,16 +1091,21 @@ class Igor : Program
     {
         std::clog << "discover v" << version << "\n\n";
 
-        std::clog << "options: [b] input BAM File               " << input_bam_file << "\n";
-        std::clog << "         [o] output VCF File              " << output_vcf_file << "\n";
-        std::clog << "         [s] sample ID                    " << sample_id << "\n";
-        std::clog << "         [r] reference FASTA File         " << ref_fasta_file << "\n";
-        std::clog << "         [m] MAPQ cutoff                  " << mapq_cutoff << "\n";
-        std::clog << "         [q] base quality cutoff          " << baseq_cutoff << "\n";
-        std::clog << "         [e] evidence cutoff              " << evidence_allele_count_cutoff << "\n";
-        std::clog << "         [f] fractional evidence cutoff   " << fractional_evidence_allele_count_cutoff<< "\n";
-        std::clog << "         [z] ignore MD tags               " << (ignore_md ? "true": "false") << "\n";
-        print_int_op("         [i] intervals                    ", intervals);
+        std::clog << "options: [b] input BAM File                   " << input_bam_file << "\n";
+        std::clog << "         [o] output VCF File                  " << output_vcf_file << "\n";
+        std::clog << "         [s] sample ID                        " << sample_id << "\n";
+        std::clog << "         [r] reference FASTA File             " << ref_fasta_file << "\n";
+        std::clog << "         [m] read mapping quality cutoff      " << read_mapq_cutoff << "\n";
+        std::clog << "         [m] read flag filter                 " << read_exclude_flag << "\n";
+        std::clog << "         [m] ignore overlapping read          " << (ignore_overlapping_read ? "true" : "false") << "\n";
+        std::clog << "         [q] snp base quality cutoff          " << snp_baseq_cutoff << "\n";
+        std::clog << "         [e] snp evidence cutoff              " << snp_e_cutoff << "\n";
+        std::clog << "         [f] snp fractional evidence cutoff   " << snp_f_cutoff << "\n";
+        std::clog << "         [e] indel evidence cutoff            " << indel_e_cutoff << "\n";
+        std::clog << "         [f] indel fractional evidence cutoff " << indel_f_cutoff << "\n";
+        std::clog << "         [f] soft clip mean quality cutoff    " << sclip_mq_cutoff << "\n";
+        std::clog << "         [z] ignore MD tags                   " << (ignore_md ? "true": "false") << "\n";
+        print_int_op("         [i] intervals                        ", intervals);
         std::clog << "\n";
     }
 

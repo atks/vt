@@ -439,7 +439,7 @@ void Pileup::add_M(uint32_t mgpos1, uint32_t spos0, uint32_t len, uint8_t* seq)
     //existing reference
     for (uint32_t k=mgpos1; k<=std::min(mgend1,gend1); ++k)
     {
-        ++P[end0].N;
+        ++P[i].N;
 
         char alt = (bam_base2char(bam_seqi(seq, spos0+j)));
         if (alt!=P[i].R)

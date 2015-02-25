@@ -25,6 +25,7 @@
 #define PARTITION_H
 
 #include "bcf_synced_reader.h"
+#include "bcf_ordered_writer.h"
 #include "filter.h"
 #include "htslib/hfile.h"
 #include "htslib/kseq.h"

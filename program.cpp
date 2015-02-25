@@ -74,7 +74,7 @@ void VTOutput::usage(TCLAP::CmdLineInterface& c)
         {
             TCLAP::ValueArg<std::string> *i = (TCLAP::ValueArg<std::string> *) (*it);
 
-            std::clog  << "-" << i->getFlag()
+            std::clog  << "-" << (i->getFlag()=="" ? i->getName() : i->getFlag())
                        << "  " << i->getDescription() << "\n";
         }
         else if (typeid(**it)==typeid(TCLAP::SwitchArg))
@@ -186,7 +186,6 @@ void Program::parse_intervals(std::vector<GenomeInterval>& intervals, std::strin
         }
     }
 }
-
 
 /**
  * Parse filters. Processes the filter list first followed by the interval string. Duplicates are dropped.

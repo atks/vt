@@ -159,15 +159,23 @@ class Igor : Program
         Variant variant;
         std::vector<int32_t> presence(2, 0);
 
-        htsFile *a;
-        htsFile *ab;
-        htsFile *b;
-        kstring_t vrep = {0,0,0};
+        BCFOrderedWriter *a;
+        BCFOrderedWriter *ab[2];
+        BCFOrderedWriter *b;
         if (write_partition)
         {
-            a = hts_open("a-b.txt", "w");
-            ab = hts_open("a&b.txt", "w");
-            b = hts_open("b-a.txt", "w");
+            a = new BCFOrderedWriter("a-b.bcf");
+            a->link_hdr(sr->hdrs[0]);
+            a->write_hdr();
+            ab[0] = new BCFOrderedWriter("a&b1.bcf");
+            ab[0]->link_hdr(sr->hdrs[0]);
+            ab[0]->write_hdr();
+            ab[1] = new BCFOrderedWriter("a&b2.bcf");
+            ab[1]->link_hdr(sr->hdrs[1]);
+            ab[1]->write_hdr();
+            b = new BCFOrderedWriter("b-a.bcf");
+            b->link_hdr(sr->hdrs[1]);
+            b->write_hdr();
         }
 
         while(sr->read_next_position(crecs))
@@ -202,33 +210,21 @@ class Igor : Program
 
             if (write_partition)
             {
-                bcf_variant2string(crecs[0]->h, crecs[0]->v, &vrep);
-                kputc('\n', &vrep);
-                int32_t ret;
-                std::string partition_file;
                 if (presence[0])
                 {
                     if (presence[1])
                     {
-                        ret = hwrite(ab->fp.hfile, vrep.s, vrep.l);
-                        partition_file = "ab.txt";
+                        ab[crecs[0]->file_index]->write(crecs[0]->v);
+                        ab[crecs[1]->file_index]->write(crecs[1]->v);
                     }
                     else
                     {
-                        ret = hwrite(a->fp.hfile, vrep.s, vrep.l);
-                        partition_file = "a.txt";
+                        a->write(crecs[0]->v);
                     }
                 }
                 else if (presence[1])
                 {
-                    ret = hwrite(b->fp.hfile, vrep.s, vrep.l);
-                    partition_file = "b.txt";
-                }
-
-                if (ret<0)
-                {
-                    fprintf(stderr, "[E:%s] error writing to file %s\n", __FUNCTION__, partition_file.c_str());
-                    exit(1);
+                    b->write(crecs[0]->v);
                 }
             }
 
@@ -238,10 +234,10 @@ class Igor : Program
 
         if (write_partition)
         {
-            hts_close(a);
-            hts_close(ab);
-            hts_close(b);
-            if (vrep.m) free(vrep.s);
+            a->close();
+            ab[0]->close();
+            ab[1]->close();
+            b->close();
         }
     };
 
