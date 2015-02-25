@@ -362,9 +362,9 @@ class Pileup
     char get_base(std::string& chrom, uint32_t& pos1);
 
     /**
-     * Get a sequence.
+     * Get a sequence.  User have to free the char* returned.
      */
-    int32_t get_sequence(std::string& chrom, uint32_t pos1, uint32_t len, char* seq);
+    char* get_sequence(std::string& chrom, uint32_t pos1, uint32_t len);
 
     /**
      * Print pileup state.
@@ -375,7 +375,6 @@ class Pileup
      * Print pileup state extent.
      */
     void print_state_extent();
-
 };
 
 #endif

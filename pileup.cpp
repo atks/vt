@@ -289,14 +289,13 @@ std::string Pileup::get_chrom()
 
 /**
  * Converts gpos1 to index in P.
- * If P is empty, initialize first position as gpos1 and increases the size of P by 1.
+ * If P is empty, initialize first position as gpos1.
  */
 uint32_t Pileup::g2i(uint32_t gpos1)
 {
     if (is_empty())
     {
         gbeg1 = gpos1;
-        end0 = inc(beg0);
         return beg0;
     }
     else
@@ -334,7 +333,7 @@ uint32_t Pileup::get_gbeg1()
  */
 uint32_t Pileup::get_gend1()
 {
-    if (end0==beg0)
+    if (is_empty())
     {
         return 0;
     }
@@ -423,52 +422,60 @@ void Pileup::update_read_end(uint32_t gpos1)
 /**
  * Inserts a stretch of aligned bases identified by M in the cigar string.
  */
-void Pileup::add_M(uint32_t gpos1, uint32_t spos0, uint32_t len, uint8_t* seq)
+void Pileup::add_M(uint32_t mgpos1, uint32_t spos0, uint32_t len, uint8_t* seq)
 {
-    uint32_t i = g2i(gpos1);
+    uint32_t gend1 = get_gend1();
+    uint32_t mgend1 = mgpos1 + len - 1;
+    uint32_t i = g2i(mgpos1);
+    uint32_t j = 0;
 
-    uint32_t cgend1 = get_gend1();
+//    std::cerr << "addM: \n";
+//    std::cerr << " mgpos1: " << mgpos1 << "\n";
+//    std::cerr << "    len: " << len << "\n";
+//    std::cerr << "  gend1: " << gend1 << "\n";
+//    std::cerr << " mgend1: " << mgend1 << "\n";
+//    std::cerr << "      i: " << i << "\n";
 
-    std::cerr << "addM: " << gpos1 << ":" << cgend1 << ":" << len << "\n";
-
-    //get contiguous stretch of reference sequence
-    if (gpos1+len-1>cgend1)
+    //existing reference
+    for (uint32_t k=mgpos1; k<=std::min(mgend1,gend1); ++k)
     {
-        uint32_t alen = len-(cgend1-gpos1);
-        char* seq = NULL;
+        ++P[end0].N;
 
-        std::cerr << "in function: " << chrom << ":" << cgend1+1 << ":" << alen << "\n";
-
-        get_sequence(chrom, cgend1+1, alen, seq);
-
-        std::cerr << "seq: " << seq << "\n";
-
-        uint32_t i = g2i(cgend1+1);
-        for (uint32_t j=0; j<alen; ++j)
+        char alt = (bam_base2char(bam_seqi(seq, spos0+j)));
+        if (alt!=P[i].R)
         {
-            P[i].R = seq[j];
-            if (i==end0) inc_end0();
-            i = inc(i);
+            ++P[i].X[base2index(alt)];
         }
-
-        free(seq);
-    }
-
-
-
-    for (uint32_t j=0; j<len; ++j)
-    {
-        char base = (bam_base2char(bam_seqi(seq, spos0+j)));
-
-        if (P[i].R!=base)
-        {
-            ++P[i].X[base2index(base)];
-
-        }
-
-        ++P[i].N;
 
         i = inc(i);
+        ++j;
+    }
+
+    //nonexisting reference
+    if (mgend1>gend1)
+    {
+        uint32_t alen = len-j;
+        char* ref = get_sequence(chrom, mgpos1+j, alen);
+        uint32_t l = 0;
+
+        for (uint32_t k=mgpos1+j; k<=mgend1; ++k)
+        {
+            P[i].R = ref[l];
+            ++P[i].N;
+
+            char alt = (bam_base2char(bam_seqi(seq, spos0+j)));
+            if (alt!=P[i].R)
+            {
+                ++P[i].X[base2index(alt)];
+            }
+
+            inc_end0();
+            i = inc(i);
+            ++j;
+            ++l;
+        }
+
+        free(ref);
     }
 }
 
@@ -477,6 +484,47 @@ void Pileup::add_M(uint32_t gpos1, uint32_t spos0, uint32_t len, uint8_t* seq)
  */
 void Pileup::add_D(uint32_t gpos1, uint32_t len)
 {
+    //check if the base exists.
+    if (gpos1>get_gend1())
+    {
+        std::cerr << "Anchor base not present for deletion update " << gpos1 << "<" << len << "\n";
+        exit(1);
+    }
+
+    char* ref = get_sequence(chrom, gpos1+1, len);
+    std::string del(ref);
+    free(ref);
+
+    uint32_t i = g2i(gpos1);
+    if (!is_normalized(P[i].R, del))
+    {
+        uint32_t a_gpos1 = gpos1;
+        char a_ref = P[i].R;
+        std::string a_del = del;
+        normalize(chrom, a_gpos1, a_ref, a_del);
+
+        if (gpos1<gbeg1)
+        {
+            std::cerr << "Deletion left aligned to beyond the bounds of the pileup " << a_gpos1 << "<" << gbeg1 << "\n";
+            return;
+        }
+
+        if (debug) std::cerr << "\t\t\tDeletion left aligned at " << a_gpos1 << ":" << a_del << "\n";
+        uint32_t j = g2i(a_gpos1);
+        ++P[j].D[a_del];
+    }
+    else
+    {
+        ++P[i].D[del];
+    }
+
+    i = g2i(gpos1+1);
+    for (uint32_t j = 0; j<del.size(); ++j)
+    {
+        P[i].R = del[j];
+        if (i==end0) inc_end0();
+        i = inc(i);
+    }
 }
 
 /**
@@ -515,7 +563,16 @@ void Pileup::add_I(uint32_t gpos1, std::string& ins)
  */
 void Pileup::add_LSC(uint32_t gpos1, std::string& alt, float mean_qual, char strand)
 {
-
+    uint32_t i = g2i(gpos1);
+    SoftClipInfo& info = P[i].J[alt];
+    ++info.no;
+    info.mean_quals.push_back(mean_qual);
+    info.strands.push_back(strand);
+    if (i==end0)
+    {
+        P[i].R = get_base(chrom, gpos1);
+        inc_end0();
+    }
 }
 
 /**
@@ -524,7 +581,7 @@ void Pileup::add_LSC(uint32_t gpos1, std::string& alt, float mean_qual, char str
 void Pileup::add_RSC(uint32_t gpos1, std::string& alt, float mean_qual, char strand)
 {
     uint32_t i = g2i(gpos1);
-    SoftClipInfo& info = P[i].J[alt];
+    SoftClipInfo& info = P[i].K[alt];
     ++info.no;
     info.mean_quals.push_back(mean_qual);
     info.strands.push_back(strand);
@@ -579,7 +636,6 @@ void Pileup::add_snp(uint32_t gpos1, char ref, char alt)
 void Pileup::add_del(uint32_t gpos1, std::string& del)
 {
     //std::cerr << "adding del " << gpos1 << " " << g2i(gpos1) << "\n";
-
     uint32_t i = g2i(gpos1);
 
     if (!is_normalized(P[i].R, del))
@@ -594,6 +650,7 @@ void Pileup::add_del(uint32_t gpos1, std::string& del)
         if (gpos1<gbeg1)
         {
             std::cerr << "Deletion left aligned to beyond the bounds of the pileup " << a_gpos1 << "<" << gbeg1 << "\n";
+            return;
         }
 
         if (debug) std::cerr << "\t\t\tDeletion left aligned at " << a_gpos1 << ":" << a_del << "\n";
@@ -635,6 +692,7 @@ void Pileup::add_ins(uint32_t gpos1, std::string& ins)
         if (gpos1<gbeg1)
         {
             std::cerr << "insertion left aligned to beyond the bounds of the pileup " << a_gpos1 << "<" << gbeg1 << "\n";
+            return;
         }
 
         if (debug)  std::cerr << "\t\t\tInsertion left aligned at " << a_gpos1 << ":" << a_ins << "\n";
@@ -673,36 +731,6 @@ void Pileup::add_rsclip(uint32_t gpos1, std::string& alt, float mean_qual, char 
 }
 
 /**
- * Print pileup state.
- */
-void Pileup::print_state()
-{
-    std::cerr << "******************" << "\n";
-    std::cerr << "gindex   : " << gbeg1 << "-" << get_gend1() << "\n";
-    std::cerr << "index   : " << beg0 << "-" << end0 << " (" << size() << ")\n";
-    std::cerr << "******************" << "\n";
-    uint32_t k = 0;
-    for (uint32_t i=beg0; i!=end0; i=inc(i))
-    {
-        P[i].print(gbeg1+k);
-        ++k;
-    }
-    std::cerr << "******************" << "\n";
-}
-
-/**
- * Print pileup state extent.
- */
-void Pileup::print_state_extent()
-{
-    std::cerr << "******************" << "\n";
-    std::cerr << "gindex   : " << gbeg1 << "-" << get_gend1() << "\n";
-    std::cerr << "index   : " << beg0 << "-" << end0 << " (" << size() << ")\n";
-    std::cerr << "******************" << "\n";
-}
-
-
-/**
  * Checks if an indel is normalized.
  */
 bool Pileup::is_normalized(char ref, std::string& indel)
@@ -719,16 +747,7 @@ void Pileup::normalize(std::string& chrom, uint32_t& pos1, char& ref, std::strin
     while (indel.at(indel.size()-1)==ref)
     {
         --pos1;
-        int ref_len = 0;
-        char *refseq = faidx_fetch_uc_seq(fai, chrom.c_str(), pos1-1, pos1-1, &ref_len);
-        if (!refseq)
-        {
-            fprintf(stderr, "[%s:%d %s] failure to extrac base from fasta file: %s:%d: >\n", __FILE__, __LINE__, __FUNCTION__, chrom.c_str(), pos1-1);
-            exit(1);
-        }
-        char base = refseq[0];
-        free(refseq);
-
+        char base = get_base(chrom, pos1);
         ref = base;
         indel.insert(0, 1, base);
         indel.erase(indel.size()-1, 1);
@@ -777,20 +796,46 @@ char Pileup::get_base(std::string& chrom, uint32_t& pos1)
 };
 
 /**
- * Get a sequence.
+ * Get a sequence.  User have to free the char* returned.
  */
-int32_t Pileup::get_sequence(std::string& chrom, uint32_t pos1, uint32_t len, char* seq)
+char* Pileup::get_sequence(std::string& chrom, uint32_t pos1, uint32_t len)
 {
     int ref_len = 0;
-    seq = faidx_fetch_uc_seq(fai, chrom.c_str(), pos1-1, pos1-1+len, &ref_len);
-    if (!seq)
+    char* seq = faidx_fetch_uc_seq(fai, chrom.c_str(), pos1-1, pos1+len-2, &ref_len);
+    if (!seq || ref_len!=len)
     {
-        fprintf(stderr, "[%s:%d %s] failure to extrac base from fasta file: %s:%d: >\n", __FILE__, __LINE__, __FUNCTION__, chrom.c_str(), pos1-1);
+        fprintf(stderr, "[%s:%d %s] failure to extract sequence from fasta file: %s:%d: >\n", __FILE__, __LINE__, __FUNCTION__, chrom.c_str(), pos1-1);
         exit(1);
     }
 
-    std::cerr << "in function: " << chrom << ":" << pos1 << ":" << pos1-1+len << "\n";
-   // std::cerr << "seq in function: " << seq << " " << ref_len << "\n";
-
-    return ref_len;
+    return seq;
 };
+
+/**
+ * Print pileup state.
+ */
+void Pileup::print_state()
+{
+    std::cerr << "******************" << "\n";
+    std::cerr << "gindex   : " << gbeg1 << "-" << get_gend1() << "\n";
+    std::cerr << "index   : " << beg0 << "-" << end0 << " (" << size() << ")\n";
+    std::cerr << "******************" << "\n";
+    uint32_t k = 0;
+    for (uint32_t i=beg0; i!=end0; i=inc(i))
+    {
+        P[i].print(gbeg1+k);
+        ++k;
+    }
+    std::cerr << "******************" << "\n";
+}
+
+/**
+ * Print pileup state extent.
+ */
+void Pileup::print_state_extent()
+{
+    std::cerr << "******************" << "\n";
+    std::cerr << "gindex   : " << gbeg1 << "-" << get_gend1() << "\n";
+    std::cerr << "index   : " << beg0 << "-" << end0 << " (" << size() << ")\n";
+    std::cerr << "******************" << "\n";
+}

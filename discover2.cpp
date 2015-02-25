@@ -529,7 +529,7 @@ class Igor : Program
                     bcf_update_format_char(odw->hdr, v, "STR", s, no);
                     odw->write(v);
                 
-                    ++no_left_soft_clips;
+                    ++no_right_soft_clips;
                 }
             }
         }
@@ -892,7 +892,7 @@ class Igor : Program
                         std::cerr << "never seen before state " << opchar << "\n";
                     }
 
-                    //pileup.print_state_extent();
+                    if (debug>=2) pileup.print_state_extent();
                 }
 
                 //pileup.print_state();
@@ -1006,7 +1006,7 @@ class Igor : Program
                         std::cerr << "never seen before state " << opchar << "\n";
                     }
 
-                    //pileup.print_state_extent();
+                    if (debug>=2)  pileup.print_state_extent();
                 }
 
                 //pileup.print_state();
@@ -1035,7 +1035,7 @@ class Igor : Program
             if (debug>=3) pileup.print_state();
             ++no_passed_reads;
 
-            //if (no_passed_reads==10) break;
+            //if (no_passed_reads==1) break;
         }
         flush();
         odw->close();
