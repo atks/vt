@@ -294,7 +294,6 @@ class Igor : Program
             else
             {
                 //check overlap
-                //todo: perform stitching in future?
                 if((k = kh_get(rdict, reads, bam_get_qname(s)))!=kh_end(reads))
                 {
                     if (kh_exist(reads, k))
@@ -585,25 +584,20 @@ class Igor : Program
      */
     int32_t flushable(bam1_t* s)
     {
-        int32_t tid = bam_get_tid(s);
         uint32_t gpos1 = bam_get_pos1(s);
 
-        if (pileup.is_empty())
+        if (pileup.get_tid()!=bam_get_tid(s))
         {
-            this->tid = tid;
-            chrom.assign(bam_get_chrom(odr->hdr, s));
-            pileup.set_tid(tid);
-            pileup.set_chrom(chrom);
-            rid = bcf_hdr_name2id(odw->hdr, chrom.c_str());
-
-            return 0;
+            return -1;
         }
-        else if (gpos1>pileup.get_gbeg1())
+         else if (gpos1>pileup.get_gbeg1())
         {
             return 1;
         }
-
-        return 0;
+        else 
+        {
+            return 0;
+        }
     }
 
     /**
@@ -629,15 +623,17 @@ class Igor : Program
 
             pileup.set_gbeg1(cpos1);
             pileup.set_beg0(i);
-
-            if (ret==-1)
+            
+            //need to change tid
+            if (ret==-1 || pileup.is_empty())
             {
                 tid = bam_get_tid(s);
                 chrom.assign(bam_get_chrom(odr->hdr, s));
+                rid = bcf_hdr_name2id(odw->hdr, chrom.c_str());
                 pileup.set_tid(tid);
                 pileup.set_chrom(chrom);
-                rid = bcf_hdr_name2id(odw->hdr, chrom.c_str());
-            }
+                pileup.set_gbeg1(0);
+            }    
         }
     }
 
@@ -657,7 +653,8 @@ class Igor : Program
         }
 
         pileup.set_gbeg1(0);
-        pileup.set_beg0(i);
+        pileup.set_beg0(0);
+        pileup.set_end0(0);
     }
 
     /**

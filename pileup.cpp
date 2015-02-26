@@ -505,11 +505,11 @@ void Pileup::add_D(uint32_t gpos1, uint32_t len)
 
         if (gpos1<gbeg1)
         {
-            std::cerr << "Deletion left aligned to beyond the bounds of the pileup " << a_gpos1 << "<" << gbeg1 << "\n";
+            std::cerr << "\t\t\t\[add_D] deletion left aligned to beyond the bounds of the pileup " << chrom << ":" << gpos1  << " to " << a_gpos1 << "<" << gbeg1 << "\n";
             return;
         }
 
-        if (debug) std::cerr << "\t\t\tDeletion left aligned at " << a_gpos1 << ":" << a_del << "\n";
+        if (debug) std::cerr << "\t\t\t[add_D] deletion left aligned at " << chrom << ":" << gpos1 << ":" << a_del << "\n";
         uint32_t j = g2i(a_gpos1);
         ++P[j].D[a_del];
     }
@@ -545,7 +545,7 @@ void Pileup::add_I(uint32_t gpos1, std::string& ins)
 
         if (gpos1<gbeg1)
         {
-            std::cerr << "insertion left aligned to beyond the bounds of the pileup " << a_gpos1 << "<" << gbeg1 << "\n";
+            std::cerr << "\t\t\t[add_I] insertion left aligned to beyond the bounds of the pileup "<< chrom << ":" << gpos1  << " to " << a_gpos1 << "<" << gbeg1 << "\n";
         }
 
         if (debug)  std::cerr << "\t\t\tInsertion left aligned at " << a_gpos1 << ":" << a_ins << "\n";
@@ -649,7 +649,7 @@ void Pileup::add_del(uint32_t gpos1, std::string& del)
 
         if (gpos1<gbeg1)
         {
-            std::cerr << "Deletion left aligned to beyond the bounds of the pileup " << a_gpos1 << "<" << gbeg1 << "\n";
+            std::cerr << "Deletion left aligned to beyond the bounds of the pileup " << chrom << ":" << gpos1 << "<" << gbeg1 << "\n";
             return;
         }
 
@@ -691,7 +691,7 @@ void Pileup::add_ins(uint32_t gpos1, std::string& ins)
 
         if (gpos1<gbeg1)
         {
-            std::cerr << "insertion left aligned to beyond the bounds of the pileup " << a_gpos1 << "<" << gbeg1 << "\n";
+            std::cerr << "insertion left aligned to beyond the bounds of the pileup " << chrom << ":" << gpos1 << "<" << gbeg1 << "\n";
             return;
         }
 
