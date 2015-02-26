@@ -165,7 +165,7 @@ class Igor : Program
 
                 char* ref = faidx_fetch_uc_seq(fai, chrom, pos1-1, pos1+len-2, &ref_len);
 
-                if (strcmp(ref, alleles[0]))
+                if (strcasecmp(ref, alleles[0]))
                 {
                     kstring_t var = {0,0,0};
                     bcf_variant2string(odr->hdr, v, &var);

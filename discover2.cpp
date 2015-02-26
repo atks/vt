@@ -131,7 +131,7 @@ class Igor : Program
             TCLAP::ValueArg<double> arg_snp_f_cutoff("f", "sf", "fractional evidence cutoff for candidate SNP [0]", false, 0, "float", cmd);
             TCLAP::ValueArg<uint32_t> arg_indel_e_cutoff("u", "ie", "evidence count cutoff for candidate Indel [1]", false, 1, "int", cmd);
             TCLAP::ValueArg<double> arg_indel_f_cutoff("w", "if", "fractional evidence cutoff for candidate Indel [0]", false, 0, "float", cmd);
-            TCLAP::ValueArg<double> arg_sclip_mq_cutoff("y", "scmq", "fractional evidence cutoff for candidate large Indel [0]", false, 0, "float", cmd);
+            TCLAP::ValueArg<double> arg_sclip_mq_cutoff("y", "scmq", "mean quality of soft clipped bases cutoff [0]", false, 0, "float", cmd);
             TCLAP::ValueArg<std::string> arg_input_bam_file("b", "b", "input BAM file", true, "", "string", cmd);
 
             cmd.parse(argc, argv);
@@ -1093,14 +1093,14 @@ class Igor : Program
         std::clog << "         [s] sample ID                        " << sample_id << "\n";
         std::clog << "         [r] reference FASTA File             " << ref_fasta_file << "\n";
         std::clog << "         [m] read mapping quality cutoff      " << read_mapq_cutoff << "\n";
-        std::clog << "         [m] read flag filter                 " << read_exclude_flag << "\n";
-        std::clog << "         [m] ignore overlapping read          " << (ignore_overlapping_read ? "true" : "false") << "\n";
+        std::clog << "         [x] read flag filter                 " << read_exclude_flag << "\n";
+        std::clog << "         [l] ignore overlapping read          " << (ignore_overlapping_read ? "true" : "false") << "\n";
         std::clog << "         [q] snp base quality cutoff          " << snp_baseq_cutoff << "\n";
-        std::clog << "         [e] snp evidence cutoff              " << snp_e_cutoff << "\n";
+        std::clog << "         [c] snp evidence cutoff              " << snp_e_cutoff << "\n";
         std::clog << "         [f] snp fractional evidence cutoff   " << snp_f_cutoff << "\n";
-        std::clog << "         [e] indel evidence cutoff            " << indel_e_cutoff << "\n";
-        std::clog << "         [f] indel fractional evidence cutoff " << indel_f_cutoff << "\n";
-        std::clog << "         [f] soft clip mean quality cutoff    " << sclip_mq_cutoff << "\n";
+        std::clog << "         [u] indel evidence cutoff            " << indel_e_cutoff << "\n";
+        std::clog << "         [w] indel fractional evidence cutoff " << indel_f_cutoff << "\n";
+        std::clog << "         [y] soft clip mean quality cutoff    " << sclip_mq_cutoff << "\n";
         std::clog << "         [z] ignore MD tags                   " << (ignore_md ? "true": "false") << "\n";
         print_int_op("         [i] intervals                        ", intervals);
         std::clog << "\n";
