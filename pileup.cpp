@@ -493,6 +493,12 @@ void Pileup::add_D(uint32_t gpos1, uint32_t len)
 
     char* ref = get_sequence(chrom, gpos1+1, len);
     std::string del(ref);
+        
+    if (del.find('N')!=std::string::npos)
+    {
+        std::cerr << chrom << ":" << (gpos1+1) << ":" << del << "\n";
+    }        
+        
     free(ref);
 
     uint32_t i = g2i(gpos1);
@@ -508,6 +514,13 @@ void Pileup::add_D(uint32_t gpos1, uint32_t len)
             std::cerr << "\t\t\t\[add_D] deletion left aligned to beyond the bounds of the pileup " << chrom << ":" << gpos1  << " to " << a_gpos1 << "<" << gbeg1 << "\n";
             return;
         }
+
+        if (a_del.find('N')!=std::string::npos)
+        //if (gpos1==4907028)
+        {
+            std::cerr << chrom << ":" << (gpos1+1) << ":" << del << "\n";
+            std::cerr << chrom << ":" << (a_gpos1) << ":" << a_del << "\n";
+        } 
 
         if (debug) std::cerr << "\t\t\t[add_D] deletion left aligned at " << chrom << ":" << gpos1 << ":" << a_del << "\n";
         uint32_t j = g2i(a_gpos1);

@@ -70,6 +70,7 @@ class Igor : Program
 
     //soft clip filters
     float sclip_mq_cutoff;
+    uint32_t sclip_u_cutoff;
 
     //variables for keeping track of chromosome
     std::string chrom; //current chromosome
@@ -132,6 +133,7 @@ class Igor : Program
             TCLAP::ValueArg<uint32_t> arg_indel_e_cutoff("u", "ie", "evidence count cutoff for candidate Indel [1]", false, 1, "int", cmd);
             TCLAP::ValueArg<double> arg_indel_f_cutoff("w", "if", "fractional evidence cutoff for candidate Indel [0]", false, 0, "float", cmd);
             TCLAP::ValueArg<double> arg_sclip_mq_cutoff("y", "scmq", "mean quality of soft clipped bases cutoff [0]", false, 0, "float", cmd);
+            TCLAP::ValueArg<uint32_t> arg_sclip_u_cutoff("p", "wmq", "no. of unique soft clipped bases cutoff [0]", false, 1, "float", cmd);
             TCLAP::ValueArg<std::string> arg_input_bam_file("b", "b", "input BAM file", true, "", "string", cmd);
 
             cmd.parse(argc, argv);
@@ -151,6 +153,7 @@ class Igor : Program
             indel_e_cutoff = arg_indel_e_cutoff.getValue();
             indel_f_cutoff = arg_indel_f_cutoff.getValue();
             sclip_mq_cutoff = arg_sclip_mq_cutoff.getValue();
+            sclip_u_cutoff = arg_sclip_u_cutoff.getValue();
         }
         catch (TCLAP::ArgException &e)
         {
@@ -503,40 +506,43 @@ class Igor : Program
 
         if (p.J.size()!=0)
         {
-            for (std::map<std::string, SoftClipInfo>::iterator i = p.J.begin(); i!=p.J.end(); ++i)
+            if (p.J.size()>=sclip_u_cutoff)
             {
-                bcf_clear(v);
-                bcf_set_rid(v, rid);
-                bcf_set_pos1(v, gpos1);
-                bcf_set_n_sample(v, 1);
-
-                new_alleles.l = 0;
-                kputc(p.R, &new_alleles);
-                kputc(',', &new_alleles);
-                kputs("<LSC:", &new_alleles);
-                kputw(i->first.size(), &new_alleles);
-                kputc('>', &new_alleles);
-                bcf_update_alleles_str(odw->hdr, v, new_alleles.s);
-
-                bcf_update_info_string(odw->hdr, v, "SEQ", i->first.c_str());
-
-                SoftClipInfo& info = i->second;
-                uint32_t no = info.no;
-                E = no;
-                bcf_update_format_int32(odw->hdr, v, "E", &E, 1);
-                N = p.N;
-                bcf_update_format_int32(odw->hdr, v, "N", &N, 1);
-                bcf_update_format_float(odw->hdr, v, "MQS", &info.mean_quals[0], no);
-                bcf_update_format_char(odw->hdr, v, "STR", &info.strands[0], no);
-                odw->write(v);
-            
-                ++no_left_soft_clips;
-            }            
+                for (std::map<std::string, SoftClipInfo>::iterator i = p.J.begin(); i!=p.J.end(); ++i)
+                {
+                    bcf_clear(v);
+                    bcf_set_rid(v, rid);
+                    bcf_set_pos1(v, gpos1);
+                    bcf_set_n_sample(v, 1);
+    
+                    new_alleles.l = 0;
+                    kputc(p.R, &new_alleles);
+                    kputc(',', &new_alleles);
+                    kputs("<LSC:", &new_alleles);
+                    kputw(i->first.size(), &new_alleles);
+                    kputc('>', &new_alleles);
+                    bcf_update_alleles_str(odw->hdr, v, new_alleles.s);
+    
+                    bcf_update_info_string(odw->hdr, v, "SEQ", i->first.c_str());
+    
+                    SoftClipInfo& info = i->second;
+                    uint32_t no = info.no;
+                    E = no;
+                    bcf_update_format_int32(odw->hdr, v, "E", &E, 1);
+                    N = p.N;
+                    bcf_update_format_int32(odw->hdr, v, "N", &N, 1);
+                    bcf_update_format_float(odw->hdr, v, "MQS", &info.mean_quals[0], no);
+                    bcf_update_format_char(odw->hdr, v, "STR", &info.strands[0], no);
+                    odw->write(v);
+                
+                    ++no_left_soft_clips;
+                }            
+            }
         }
 
         if (p.K.size()!=0)
         {
-            if (p.K.size()>0)
+            if (p.K.size()>=sclip_u_cutoff)
             {
                 for (std::map<std::string, SoftClipInfo>::iterator i = p.K.begin(); i!=p.K.end(); ++i)
                 {
@@ -1101,6 +1107,7 @@ class Igor : Program
         std::clog << "         [u] indel evidence cutoff            " << indel_e_cutoff << "\n";
         std::clog << "         [w] indel fractional evidence cutoff " << indel_f_cutoff << "\n";
         std::clog << "         [y] soft clip mean quality cutoff    " << sclip_mq_cutoff << "\n";
+        std::clog << "         [p] soft clip unique events cutoff   " << sclip_u_cutoff << "\n";
         std::clog << "         [z] ignore MD tags                   " << (ignore_md ? "true": "false") << "\n";
         print_int_op("         [i] intervals                        ", intervals);
         std::clog << "\n";
