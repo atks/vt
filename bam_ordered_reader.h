@@ -89,7 +89,6 @@ class BAMOrderedReader
     //list of intervals
     std::vector<GenomeInterval> intervals; 
     uint32_t interval_index;    
-    std::map<std::string, IntervalTree*> interval_tree;
              
     /**
      * Initialize files, intervals and reference file. 

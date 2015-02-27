@@ -22,9 +22,12 @@
 */
 
 #include "align.h"
+#include "tbx_ordered_reader.h"
+#include "bed.h"
 
 namespace
 {
+    
 void print_time(float t)
 {
     if (t<60)
@@ -63,33 +66,10 @@ class Igor : Program
     uint32_t no;
 
 
+  
     Igor(int argc, char **argv)
     {
-        version = "0.5";
-
-        //////////////////////////
-        //options initialization//
-        //////////////////////////
-        try
-        {
-            std::string desc = "vt test  -m detect_motif -s ACTGACT \n";
-
-            std::string version = "0.5";
-            TCLAP::CmdLine cmd(desc, ' ', version);
-            VTOutput my; cmd.setOutput(&my);
-            TCLAP::UnlabeledMultiArg<std::string> arg_x("ap", "#ploidy #alleles", true, "", cmd);
-
-            cmd.parse(argc, argv);
-
-            x = arg_x.getValue();
-        }
-        catch (TCLAP::ArgException &e)
-        {
-            std::cerr << "error: " << e.error() << " for arg " << e.argId() << "\n";
-            abort();
-        }
-
-        no = 1;
+        
     };
 
     /**
@@ -169,8 +149,36 @@ class Igor : Program
         }
     }
 
-    void test()
+    void test(int argc, char ** argv)
     {
+        
+        
+        version = "0.5";
+
+        //////////////////////////
+        //options initialization//
+        //////////////////////////
+        try
+        {
+            std::string desc = "vt test  -m detect_motif -s ACTGACT \n";
+
+            std::string version = "0.5";
+            TCLAP::CmdLine cmd(desc, ' ', version);
+            VTOutput my; cmd.setOutput(&my);
+            TCLAP::UnlabeledMultiArg<std::string> arg_x("ap", "#ploidy #alleles", true, "", cmd);
+
+            cmd.parse(argc, argv);
+
+            x = arg_x.getValue();
+        }
+        catch (TCLAP::ArgException &e)
+        {
+            std::cerr << "error: " << e.error() << " for arg " << e.argId() << "\n";
+            abort();
+        }
+
+        no = 1;
+        
 //        print_genotypes(x[0], x[1], "");
 //        uint32_t g = bcf_ap2g(x[0], x[1]);
 //
@@ -202,6 +210,114 @@ class Igor : Program
 
     };
 
+    /**
+     * Get a sequence.  User have to free the char* returned.
+     */
+    char* get_sequence(std::string& chrom, uint32_t pos1, uint32_t len, faidx_t* fai)
+    {
+        int ref_len = 0;
+        
+        
+        char* seq = faidx_fetch_uc_seq(fai, chrom.c_str(), pos1-1, pos1+len-2, &ref_len);
+        
+        
+        if (!seq || ref_len!=len)
+        {
+            fprintf(stderr, "[%s:%d %s] failure to extract sequence from fasta file: %s:%d: >\n", __FILE__, __LINE__, __FUNCTION__, chrom.c_str(), pos1-1);
+            exit(1);
+        }
+    
+        return seq;
+    };
+
+    /**
+     *  Analyse an mdust file
+     *  Compute how much of genome it is off.
+     */    
+    void analyse_mdust(int argc, char ** argv)
+    {
+        std::string bed_file;
+        std::string ref_fasta_file;
+        faidx_t *fai;
+        
+        try
+        {
+            std::string desc = "analyse_mdust  -m detect_motif -s ACTGACT \n";
+
+            std::string version = "0.5";
+            TCLAP::CmdLine cmd(desc, ' ', version);
+            VTOutput my; cmd.setOutput(&my);
+            TCLAP::ValueArg<std::string> arg_bed_file("b", "b", "BED file", true, "", "string", cmd);
+            TCLAP::ValueArg<std::string> arg_ref_fasta_file("r", "r", "reference FASTA file", true, "", "string", cmd);
+
+            cmd.parse(argc, argv);
+
+            bed_file = arg_bed_file.getValue();
+            ref_fasta_file = arg_ref_fasta_file.getValue();
+        }
+        catch (TCLAP::ArgException &e)
+        {
+            std::cerr << "error: " << e.error() << " for arg " << e.argId() << "\n";
+            abort();
+        }
+
+        TBXOrderedReader todr(bed_file);
+
+        if (ref_fasta_file!="")
+        {
+            fai = fai_load(ref_fasta_file.c_str());
+            if (fai==NULL)
+            {
+                fprintf(stderr, "[%s:%d %s] Cannot load genome index: %s\n", __FILE__, __LINE__, __FUNCTION__, ref_fasta_file.c_str());
+                exit(1);
+            }
+        }
+        
+        kstring_t s = {0,0,0};
+        
+        uint32_t no_non_n = 0;
+        uint32_t no = 0;
+        
+        std::string chrom = "";
+        
+        while (todr.read(&s))
+        {
+            BEDRecord br(&s);
+            //std::cerr << br.chrom << " " << br.end1 << "-" << br.start1 << " (" << (br.end1-br.start1+1)<< ")\n";
+        
+            if (br.chrom!=chrom)
+            {
+                chrom = br.chrom;
+                if (chrom=="GL000207.1")
+                {
+                    break;
+                }
+                std::cerr << chrom << "\n";
+            }    
+        
+            int ref_len = 0;
+            char* seq = faidx_fetch_uc_seq(fai, br.chrom.c_str(), br.start1-1, br.end1-1, &ref_len);
+            //std::cerr << seq << " (" << ref_len <<")\n";
+        
+            for (uint32_t i=0; i<ref_len; ++i)
+            {
+                if (seq[i]!='N')
+                {
+                    ++no_non_n;
+                }   
+                
+                ++no; 
+            }
+        
+            free(seq);
+        }
+
+
+        std::cerr << no_non_n << "/" << no << "\n";
+
+
+    };
+
     ~Igor() {};
 
     private:
@@ -212,6 +328,10 @@ class Igor : Program
 void test(int argc, char ** argv)
 {
     Igor igor(argc, argv);
-    igor.test();
+    
+    igor.analyse_mdust(argc, argv);
+    
+    
+    //igor.test();
 
 };
