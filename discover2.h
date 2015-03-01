@@ -38,6 +38,9 @@
 #include "utils.h"
 #include "allele.h"
 #include "pileup.h"
+#include "RMath/Rmath.h"
+#include "hts_utils.h"
+#include "log_tool.h"
 
 void discover2(int argc, char ** argv);
 

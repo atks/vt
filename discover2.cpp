@@ -63,10 +63,14 @@ class Igor : Program
     uint32_t snp_baseq_cutoff;
     uint32_t snp_e_cutoff;
     double snp_f_cutoff;
+    double snp_desired_type_I_error;
+    double snp_desired_type_II_error;
     
     //indel filters
     uint32_t indel_e_cutoff;
     double indel_f_cutoff;
+    double indel_desired_type_I_error;
+    double indel_desired_type_II_error;
 
     //soft clip filters
     float sclip_mq_cutoff;
@@ -125,17 +129,27 @@ class Igor : Program
             TCLAP::ValueArg<std::string> arg_output_vcf_file("o", "o", "output VCF file [-]", false, "-", "str", cmd);
             TCLAP::ValueArg<std::string> arg_ref_fasta_file("r", "r", "reference sequence fasta file []", true, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_sample_id("s", "s", "sample ID", true, "", "str", cmd);
+            
             TCLAP::ValueArg<uint32_t> arg_read_mapq_cutoff("m", "m", "MAPQ cutoff for alignments [0]", false, 0, "int", cmd);
             TCLAP::SwitchArg arg_ignore_overlapping_read("l", "t", "ignore overlapping reads [false]", cmd, false);
             TCLAP::ValueArg<uint32_t> arg_snp_baseq_cutoff("q", "q", "base quality cutoff for bases [0]", false, 0, "int", cmd);
+            
             TCLAP::ValueArg<uint32_t> arg_snp_e_cutoff("c", "se", "evidence count cutoff for candidate SNP [1]", false, 1, "int", cmd);
             TCLAP::ValueArg<double> arg_snp_f_cutoff("f", "sf", "fractional evidence cutoff for candidate SNP [0]", false, 0, "float", cmd);
+            TCLAP::ValueArg<double> arg_snp_desired_type_I_error("y", "scmq", "desired snp type I error [0.00005]", false, 0, "float", cmd);
+            TCLAP::ValueArg<double> arg_snp_desired_type_II_error("y", "scmq", "desired snp type I error [0.00005]", false, 0, "float", cmd);
+           
             TCLAP::ValueArg<uint32_t> arg_indel_e_cutoff("u", "ie", "evidence count cutoff for candidate Indel [1]", false, 1, "int", cmd);
             TCLAP::ValueArg<double> arg_indel_f_cutoff("w", "if", "fractional evidence cutoff for candidate Indel [0]", false, 0, "float", cmd);
+            TCLAP::ValueArg<double> arg_indel_desired_type_I_error("y", "scmq", "desired snp type I error [0.00005]", false, 0, "float", cmd);
+            TCLAP::ValueArg<double> arg_indel_desired_type_II_error("y", "scmq", "desired snp type I error [0.00005]", false, 0, "float", cmd);
+            
             TCLAP::ValueArg<double> arg_sclip_mq_cutoff("y", "scmq", "mean quality of soft clipped bases cutoff [0]", false, 0, "float", cmd);
             TCLAP::ValueArg<uint32_t> arg_sclip_u_cutoff("p", "wmq", "no. of unique soft clipped bases cutoff [0]", false, 1, "float", cmd);
+            
             TCLAP::ValueArg<std::string> arg_input_bam_file("b", "b", "input BAM file", true, "", "string", cmd);
 
+            
             cmd.parse(argc, argv);
 
             debug = arg_debug.getValue();
@@ -150,8 +164,12 @@ class Igor : Program
             snp_baseq_cutoff = arg_snp_baseq_cutoff.getValue();
             snp_e_cutoff = arg_snp_e_cutoff.getValue();
             snp_f_cutoff = arg_snp_f_cutoff.getValue();
+            snp_desired_type_I_error = arg_snp_desired_type_I_error.getValue();
+            snp_desired_type_II_error = arg_snp_desired_type_II_error.getValue();
             indel_e_cutoff = arg_indel_e_cutoff.getValue();
             indel_f_cutoff = arg_indel_f_cutoff.getValue();
+            indel_desired_type_I_error = arg_indel_desired_type_I_error.getValue();
+            indel_desired_type_II_error = arg_indel_desired_type_II_error.getValue();
             sclip_mq_cutoff = arg_sclip_mq_cutoff.getValue();
             sclip_u_cutoff = arg_sclip_u_cutoff.getValue();
         }
