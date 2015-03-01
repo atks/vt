@@ -170,8 +170,16 @@ class Igor : Program
             
             bool pass = (bcf_has_filter(odr->hdr, v, const_cast<char*>("PASS"))==1);
             
-            bcf_get_info_int32(odr->hdr, v, AC, &ac, &n_ac);
-            bcf_get_info_int32(odr->hdr, v, AN, &an, &n_an);
+            if (bcf_get_info_int32(odr->hdr, v, AC, &ac, &n_ac)<0)
+            {
+                //skip if no AC tag
+                break;
+            }    
+            if (bcf_get_info_int32(odr->hdr, v, AN, &an, &n_an)<0)
+            {
+                //skip if no AC tag
+                break;  
+            }
             
             if (ac[0]>(an[0]>>1)) {ac[0] = an[0]-ac[0];}
             
@@ -204,6 +212,12 @@ class Igor : Program
             
             ++no_variants;
         }
+
+        if (no_variants==0)
+        {
+            fprintf(stderr, "[E:%s] No variants with appropriate information to plot allele frequency spectrum\n", __FUNCTION__);
+            exit(1);
+        }    
 
         if (n_ac) free(ac);
         if (n_an) free(an);
