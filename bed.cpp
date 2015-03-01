@@ -39,6 +39,32 @@ BEDRecord::BEDRecord(kstring_t *s)
 /**
  * Constructor.
  */
+BEDRecord::BEDRecord(char *s)
+{
+    std::vector<std::string> fields;
+    split(fields, "\t", s);
+
+    chrom = fields[0];
+    str2int32(fields[1], start1);
+    str2int32(fields[2], end1);
+};
+
+/**
+ * Constructor.
+ */
+BEDRecord::BEDRecord(std::string& s)
+{
+    std::vector<std::string> fields;
+    split(fields, "\t", s.c_str());
+
+    chrom = fields[0];
+    str2int32(fields[1], start1);
+    str2int32(fields[2], end1);
+};
+
+/**
+ * Constructor.
+ */
 BEDRecord::BEDRecord(std::string& chrom, int32_t start1, int32_t end1)
 {
     this->chrom = chrom;

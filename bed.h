@@ -38,7 +38,17 @@ class BEDRecord : public Interval
      * Constructor.
      */
     BEDRecord(kstring_t *s);
+
+    /**
+     * Constructor.
+     */
+    BEDRecord(char *s);
     
+    /**
+     * Constructor.
+     */
+    BEDRecord(std::string& s);
+
     /**
      * Constructor.
      */
