@@ -187,9 +187,9 @@ class Igor : Program
                 if (!smart)
                 {
 
-std::cerr << "=============================\n";   
-bcf_print(odr->hdr, v);
-std::cerr << "=============================\n";
+//std::cerr << "=============================\n";   
+//bcf_print(odr->hdr, v);
+//std::cerr << "=============================\n";
 
                 ++no_multiallelic;
                 no_additional_biallelic += n_allele-2;
@@ -415,10 +415,10 @@ std::cerr << "=============================\n";
                         alleles[i] = strdup(allele[i]);
                     }
                         
-                    std::cerr << "=============================\n";   
-                    bcf_print(odr->hdr, v);
-                    std::cerr << "=============================\n";
-                    
+//                    std::cerr << "=============================\n";   
+//                    bcf_print(odr->hdr, v);
+//                    std::cerr << "=============================\n";
+//                    
                         
                     for (size_t i=1; i<n_allele; ++i)
                     {
