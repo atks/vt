@@ -689,8 +689,6 @@ class Igor : Program
                 ++no_biallelic;
             }
 
-            break;
-
             ++no_variants;
         }
 
