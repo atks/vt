@@ -21,8 +21,8 @@
    THE SOFTWARE.
 */
 
-#ifndef DIST_H
-#define DIST_H
+#ifndef BINOMIAL_DIST_H
+#define BINOMIAL_DIST_H
 
 #include <assert.h>
 #include <climits>
@@ -36,8 +36,7 @@
 #include <queue>
 #include <vector>
 #include "Rmath/Rmath.h"
-
-#define LOGZERO -DBL_MAX
+#include "binomial_distribution.h"
 
 /**
  * Class implementing log space arithmetic.
@@ -50,6 +49,11 @@ class BinomialDistribution
 
     public:
 
+    /**
+     * Constructor.
+     */
+    BinomialDistribution();
+    
     /**
      * Constructor.
      */

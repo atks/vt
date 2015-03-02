@@ -108,6 +108,8 @@ class Igor : Program
     //tools//
     /////////
     Pileup pileup;
+    BinomialDistribution snp_binom_dist;
+    BinomialDistribution indel_binom_dist;
 
     Igor(int argc, char **argv)
     {
@@ -130,19 +132,19 @@ class Igor : Program
             TCLAP::ValueArg<std::string> arg_ref_fasta_file("r", "r", "reference sequence fasta file []", true, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_sample_id("s", "s", "sample ID", true, "", "str", cmd);
 
-            TCLAP::ValueArg<uint32_t> arg_read_mapq_cutoff("m", "m", "MAPQ cutoff for alignments [0]", false, 0, "int", cmd);
+            TCLAP::ValueArg<uint32_t> arg_read_mapq_cutoff("p", "p", "MAPQ cutoff for alignments [0]", false, 0, "int", cmd);
             TCLAP::SwitchArg arg_ignore_overlapping_read("l", "l", "ignore overlapping reads [false]", cmd, false);
             TCLAP::ValueArg<uint32_t> arg_snp_baseq_cutoff("q", "q", "base quality cutoff for bases [0]", false, 0, "int", cmd);
 
             TCLAP::ValueArg<uint32_t> arg_snp_e_cutoff("e", "e", "snp evidence count cutoff [1]", false, 1, "int", cmd);
             TCLAP::ValueArg<double> arg_snp_f_cutoff("f", "f", "snp fractional evidence cutoff [0]", false, 0, "float", cmd);
-            TCLAP::ValueArg<double> arg_snp_desired_type_I_error("", "k", "snp desired type I error [0.00005]", false, 0, "float", cmd);
-            TCLAP::ValueArg<double> arg_snp_desired_type_II_error("", "l", "snp desired type II error [0.00005]", false, 0, "float", cmd);
+            TCLAP::ValueArg<double> arg_snp_desired_type_I_error("j", "j", "snp desired type I error [0.00005]", false, 0, "float", cmd);
+            TCLAP::ValueArg<double> arg_snp_desired_type_II_error("k", "k", "snp desired type II error [0.00005]", false, 0, "float", cmd);
 
             TCLAP::ValueArg<uint32_t> arg_indel_e_cutoff("u", "ie", "indel count cutoff [1]", false, 1, "int", cmd);
             TCLAP::ValueArg<double> arg_indel_f_cutoff("v", "if", "indel fractional evidence cutoff [0]", false, 0, "float", cmd);
-            TCLAP::ValueArg<double> arg_indel_desired_type_I_error("j", "scmq", "indel desired type I error [0.00005]", false, 0, "float", cmd);
-            TCLAP::ValueArg<double> arg_indel_desired_type_II_error("k", "scmq", "indel desired type II error [0.00005]", false, 0, "float", cmd);
+            TCLAP::ValueArg<double> arg_indel_desired_type_I_error("m", "m", "indel desired type I error [0.00005]", false, 0, "float", cmd);
+            TCLAP::ValueArg<double> arg_indel_desired_type_II_error("n", "n", "indel desired type II error [0.00005]", false, 0, "float", cmd);
 
             TCLAP::ValueArg<double> arg_sclip_mq_cutoff("x", "x", "soft clipped mean quality cutoff [0]", false, 0, "float", cmd);
             TCLAP::ValueArg<uint32_t> arg_sclip_u_cutoff("y", "y", "soft clipped unique sequences cutoff [0]", false, 1, "float", cmd);

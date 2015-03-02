@@ -34,6 +34,7 @@
 #include "bam_ordered_reader.h"
 #include "bcf_ordered_reader.h"
 #include "bcf_ordered_writer.h"
+#include "binomial_distribution.h"
 #include "variant_manip.h"
 #include "utils.h"
 #include "allele.h"

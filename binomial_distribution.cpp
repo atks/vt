@@ -23,12 +23,25 @@
 
 #include <binomial_distribution.h>
 
+
 /**
- * Round a value
+ * Constructor.
+ */
+BinomialDistribution::BinomialDistribution()
+{
+    this-> p = -1;
+};
+
+/**
+ * Constructor.
  */
 BinomialDistribution::BinomialDistribution(double p)
 {
-    this-> p = p;
+    if (this->p!=p)
+    {    
+        this-> p = p;
+        pvalues.clear();
+    }
 };
 
 /**
