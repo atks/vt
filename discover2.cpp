@@ -50,8 +50,8 @@ class Igor : Program
     std::string sample_id;
     bool ignore_md;
     int32_t debug;
-    
-    //options for selecting reads   
+
+    //options for selecting reads
     khash_t(rdict) *reads;
 
     //read filters
@@ -65,7 +65,7 @@ class Igor : Program
     double snp_f_cutoff;
     double snp_desired_type_I_error;
     double snp_desired_type_II_error;
-    
+
     //indel filters
     uint32_t indel_e_cutoff;
     double indel_f_cutoff;
@@ -103,7 +103,7 @@ class Igor : Program
     uint32_t no_deletions;
     uint32_t no_left_soft_clips;
     uint32_t no_right_soft_clips;
-    
+
     /////////
     //tools//
     /////////
@@ -129,27 +129,26 @@ class Igor : Program
             TCLAP::ValueArg<std::string> arg_output_vcf_file("o", "o", "output VCF file [-]", false, "-", "str", cmd);
             TCLAP::ValueArg<std::string> arg_ref_fasta_file("r", "r", "reference sequence fasta file []", true, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_sample_id("s", "s", "sample ID", true, "", "str", cmd);
-            
+
             TCLAP::ValueArg<uint32_t> arg_read_mapq_cutoff("m", "m", "MAPQ cutoff for alignments [0]", false, 0, "int", cmd);
-            TCLAP::SwitchArg arg_ignore_overlapping_read("l", "t", "ignore overlapping reads [false]", cmd, false);
+            TCLAP::SwitchArg arg_ignore_overlapping_read("l", "l", "ignore overlapping reads [false]", cmd, false);
             TCLAP::ValueArg<uint32_t> arg_snp_baseq_cutoff("q", "q", "base quality cutoff for bases [0]", false, 0, "int", cmd);
-            
-            TCLAP::ValueArg<uint32_t> arg_snp_e_cutoff("c", "se", "evidence count cutoff for candidate SNP [1]", false, 1, "int", cmd);
-            TCLAP::ValueArg<double> arg_snp_f_cutoff("f", "sf", "fractional evidence cutoff for candidate SNP [0]", false, 0, "float", cmd);
-            TCLAP::ValueArg<double> arg_snp_desired_type_I_error("y", "scmq", "desired snp type I error [0.00005]", false, 0, "float", cmd);
-            TCLAP::ValueArg<double> arg_snp_desired_type_II_error("y", "scmq", "desired snp type I error [0.00005]", false, 0, "float", cmd);
-           
-            TCLAP::ValueArg<uint32_t> arg_indel_e_cutoff("u", "ie", "evidence count cutoff for candidate Indel [1]", false, 1, "int", cmd);
-            TCLAP::ValueArg<double> arg_indel_f_cutoff("w", "if", "fractional evidence cutoff for candidate Indel [0]", false, 0, "float", cmd);
-            TCLAP::ValueArg<double> arg_indel_desired_type_I_error("y", "scmq", "desired snp type I error [0.00005]", false, 0, "float", cmd);
-            TCLAP::ValueArg<double> arg_indel_desired_type_II_error("y", "scmq", "desired snp type I error [0.00005]", false, 0, "float", cmd);
-            
-            TCLAP::ValueArg<double> arg_sclip_mq_cutoff("y", "scmq", "mean quality of soft clipped bases cutoff [0]", false, 0, "float", cmd);
-            TCLAP::ValueArg<uint32_t> arg_sclip_u_cutoff("p", "wmq", "no. of unique soft clipped bases cutoff [0]", false, 1, "float", cmd);
-            
+
+            TCLAP::ValueArg<uint32_t> arg_snp_e_cutoff("e", "e", "snp evidence count cutoff [1]", false, 1, "int", cmd);
+            TCLAP::ValueArg<double> arg_snp_f_cutoff("f", "f", "snp fractional evidence cutoff [0]", false, 0, "float", cmd);
+            TCLAP::ValueArg<double> arg_snp_desired_type_I_error("", "k", "snp desired type I error [0.00005]", false, 0, "float", cmd);
+            TCLAP::ValueArg<double> arg_snp_desired_type_II_error("", "l", "snp desired type II error [0.00005]", false, 0, "float", cmd);
+
+            TCLAP::ValueArg<uint32_t> arg_indel_e_cutoff("u", "ie", "indel count cutoff [1]", false, 1, "int", cmd);
+            TCLAP::ValueArg<double> arg_indel_f_cutoff("v", "if", "indel fractional evidence cutoff [0]", false, 0, "float", cmd);
+            TCLAP::ValueArg<double> arg_indel_desired_type_I_error("j", "scmq", "indel desired type I error [0.00005]", false, 0, "float", cmd);
+            TCLAP::ValueArg<double> arg_indel_desired_type_II_error("k", "scmq", "indel desired type II error [0.00005]", false, 0, "float", cmd);
+
+            TCLAP::ValueArg<double> arg_sclip_mq_cutoff("x", "x", "soft clipped mean quality cutoff [0]", false, 0, "float", cmd);
+            TCLAP::ValueArg<uint32_t> arg_sclip_u_cutoff("y", "y", "soft clipped unique sequences cutoff [0]", false, 1, "float", cmd);
+
             TCLAP::ValueArg<std::string> arg_input_bam_file("b", "b", "input BAM file", true, "", "string", cmd);
 
-            
             cmd.parse(argc, argv);
 
             debug = arg_debug.getValue();
@@ -185,13 +184,13 @@ class Igor : Program
         //////////////////////
         //i/o initialization//
         //////////////////////
-        
+
         //fails the following types
         //1. unmapped reads
         //2. secondary reads alignments
         //3. failed QC filter
         //4. duplicate
-        read_exclude_flag = 0x0704; 
+        read_exclude_flag = 0x0704;
 
         odr = new BAMOrderedReader(input_bam_file, intervals, ref_fasta_file);
         s = bam_init1();
@@ -232,7 +231,7 @@ class Igor : Program
         //////////////////////////////////////
         chrom = "";
         tid = -1;
-        rid = -1;        
+        rid = -1;
 
         ////////////////////////
         //tools initialization//
@@ -290,7 +289,7 @@ class Igor : Program
     {
         khiter_t k;
         int32_t ret;
-    
+
         //this read is the first of the pair
         if (bam_get_mpos1(s) && (bam_get_tid(s)==bam_get_mtid(s)))
         {
@@ -357,16 +356,16 @@ class Igor : Program
         if (p.R=='N')
         {
             return;
-        }    
-        
-        
+        }
+
+
         std::string alleles = "";
         int32_t N = 0;
         int32_t E = 0;
         kstring_t new_alleles = {0,0,0};
 
         if (p.X[1] && p.X[1]>=snp_e_cutoff && (p.X[1]/(float)p.N)>=snp_f_cutoff)
-        {   
+        {
             bcf_clear(v);
             bcf_set_rid(v, rid);
             bcf_set_pos1(v, gpos1);
@@ -381,12 +380,12 @@ class Igor : Program
             N = p.N+p.E;
             bcf_update_format_int32(odw->hdr, v, "N", &N, 1);
             odw->write(v);
-            
-            ++no_snps;            
+
+            ++no_snps;
         }
 
         if (p.X[2] && p.X[2]>=snp_e_cutoff && (p.X[2]/(float)p.N)>=snp_f_cutoff)
-        {   
+        {
             bcf_clear(v);
             bcf_set_rid(v, rid);
             bcf_set_pos1(v, gpos1);
@@ -402,12 +401,12 @@ class Igor : Program
             N = p.N+p.E;
             bcf_update_format_int32(odw->hdr, v, "N", &N, 1);
             odw->write(v);
-        
+
             ++no_snps;
         }
 
         if (p.X[4] && p.X[4]>=snp_e_cutoff && (p.X[4]/(float)p.N)>=snp_f_cutoff)
-        {   
+        {
             bcf_clear(v);
             bcf_set_rid(v, rid);
             bcf_set_pos1(v, gpos1);
@@ -422,7 +421,7 @@ class Igor : Program
             N = p.N+p.E;
             bcf_update_format_int32(odw->hdr, v, "N", &N, 1);
             odw->write(v);
-        
+
             ++no_snps;
         }
 
@@ -442,7 +441,7 @@ class Igor : Program
             N = p.N+p.E;
             bcf_update_format_int32(odw->hdr, v, "N", &N, 1);
             odw->write(v);
-        
+
             ++no_snps;
         }
 
@@ -462,7 +461,7 @@ class Igor : Program
             N = p.N+p.E;
             bcf_update_format_int32(odw->hdr, v, "N", &N, 1);
             odw->write(v);
-        
+
             ++no_snps;
         }
 
@@ -472,7 +471,7 @@ class Igor : Program
             {
                 E = i->second;
                 N = p.N;
-                
+
                 if (E>=indel_e_cutoff && (E/(float)N)>=indel_f_cutoff)
                 {
                     bcf_clear(v);
@@ -488,7 +487,7 @@ class Igor : Program
                     bcf_update_format_int32(odw->hdr, v, "E", &E, 1);
                     bcf_update_format_int32(odw->hdr, v, "N", &N, 1);
                     odw->write(v);
-                
+
                     ++no_deletions;
                 }
             }
@@ -500,7 +499,7 @@ class Igor : Program
             {
                 E = i->second;
                 N = p.N;
-                
+
                 if (E>=indel_e_cutoff && (E/(float)N)>=indel_f_cutoff)
                 {
                     bcf_clear(v);
@@ -516,7 +515,7 @@ class Igor : Program
                     bcf_update_format_int32(odw->hdr, v, "E", &E, 1);
                     bcf_update_format_int32(odw->hdr, v, "N", &N, 1);
                     odw->write(v);
-                    
+
                     ++no_insertions;
                 }
             }
@@ -532,7 +531,7 @@ class Igor : Program
                     bcf_set_rid(v, rid);
                     bcf_set_pos1(v, gpos1);
                     bcf_set_n_sample(v, 1);
-    
+
                     new_alleles.l = 0;
                     kputc(p.R, &new_alleles);
                     kputc(',', &new_alleles);
@@ -540,9 +539,9 @@ class Igor : Program
                     kputw(i->first.size(), &new_alleles);
                     kputc('>', &new_alleles);
                     bcf_update_alleles_str(odw->hdr, v, new_alleles.s);
-    
+
                     bcf_update_info_string(odw->hdr, v, "SEQ", i->first.c_str());
-    
+
                     SoftClipInfo& info = i->second;
                     uint32_t no = info.no;
                     E = no;
@@ -552,9 +551,9 @@ class Igor : Program
                     bcf_update_format_float(odw->hdr, v, "MQS", &info.mean_quals[0], no);
                     bcf_update_format_char(odw->hdr, v, "STR", &info.strands[0], no);
                     odw->write(v);
-                
+
                     ++no_left_soft_clips;
-                }            
+                }
             }
         }
 
@@ -590,7 +589,7 @@ class Igor : Program
                     char* s = info.strands.data();
                     bcf_update_format_char(odw->hdr, v, "STR", s, no);
                     odw->write(v);
-                
+
                     ++no_right_soft_clips;
                 }
             }
@@ -618,7 +617,7 @@ class Igor : Program
         {
             return 1;
         }
-        else 
+        else
         {
             return 0;
         }
@@ -647,7 +646,7 @@ class Igor : Program
 
             pileup.set_gbeg1(cpos1);
             pileup.set_beg0(i);
-            
+
             //need to change tid
             if (ret==-1 || pileup.is_empty())
             {
@@ -657,7 +656,7 @@ class Igor : Program
                 pileup.set_tid(tid);
                 pileup.set_chrom(chrom);
                 pileup.set_gbeg1(0);
-            }    
+            }
         }
     }
 
@@ -929,7 +928,7 @@ class Igor : Program
                                 if (debug) std::cerr << "\t\t\tadding LSCLIP: " << cpos1 << "\t" << ins << " {" << mean_qual << "}\n";
                                 pileup.add_lsclip(cpos1, ins, mean_qual, strand);
                             }
-                        
+
                             spos0 += oplen;
                         }
                         else
@@ -973,7 +972,7 @@ class Igor : Program
                 uint32_t *cigar = bam_get_cigar(s);
 
                 if (debug>=3) pileup.print_state();
-                
+
                 for (uint32_t i = 0; i < n_cigar_op; ++i)
                 {
                     uint32_t oplen = bam_cigar_oplen(cigar[i]);
@@ -1045,7 +1044,7 @@ class Igor : Program
                                 mean_qual += qual[spos0+j];
                             }
                             mean_qual /= oplen;
-                            
+
                             if (mean_qual>sclip_mq_cutoff)
                             {
                                 if (debug) std::cerr << "\t\t\tadding LSCLIP: " << cpos1 << "\t" << ins << " {" << mean_qual << "}\n";
@@ -1139,15 +1138,15 @@ class Igor : Program
         std::clog << "       no. low mapq reads           : " << no_low_mapq_reads << "\n";
         std::clog << "       no. passed reads             : " << no_passed_reads << "\n";
         std::clog << "       no. exclude flag reads       : " << no_exclude_flag_reads << "\n";
-        std::clog << "\n";    
-        std::clog << "       no. variants                 : " << (no_snps+no_insertions+no_deletions+no_left_soft_clips+no_right_soft_clips) << "\n";    
-        std::clog << "           no. snps                 : " << no_snps << "\n";        
-        std::clog << "           no. indels               : " << (no_insertions + no_deletions) << "\n";  
-        std::clog << "               no. insertions       : " << no_insertions << "\n"; 
-        std::clog << "               no. deletions        : " << no_deletions << "\n"; 
-        std::clog << "       no. soft clips               : " << (no_left_soft_clips+no_right_soft_clips) << "\n";        
-        std::clog << "               no. left soft clips  : " << no_left_soft_clips << "\n"; 
-        std::clog << "               no. right soft clips : " << no_right_soft_clips << "\n"; 
+        std::clog << "\n";
+        std::clog << "       no. variants                 : " << (no_snps+no_insertions+no_deletions+no_left_soft_clips+no_right_soft_clips) << "\n";
+        std::clog << "           no. snps                 : " << no_snps << "\n";
+        std::clog << "           no. indels               : " << (no_insertions + no_deletions) << "\n";
+        std::clog << "               no. insertions       : " << no_insertions << "\n";
+        std::clog << "               no. deletions        : " << no_deletions << "\n";
+        std::clog << "       no. soft clips               : " << (no_left_soft_clips+no_right_soft_clips) << "\n";
+        std::clog << "               no. left soft clips  : " << no_left_soft_clips << "\n";
+        std::clog << "               no. right soft clips : " << no_right_soft_clips << "\n";
         std::clog << "\n";
     };
 

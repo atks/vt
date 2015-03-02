@@ -1,6 +1,6 @@
 /* The MIT License
 
-   Copyright (c) 2014 Adrian Tan <atks@umich.edu>
+   Copyright (c) 2015 Adrian Tan <atks@umich.edu>
 
    Permission is hereby granted, free of charge, to any person obtaining a copy
    of this software and associated documentation files (the "Software"), to deal
@@ -21,27 +21,44 @@
    THE SOFTWARE.
 */
 
-#ifndef DISCOVER2_H
-#define DISCOVER2_H
+#ifndef DIST_H
+#define DIST_H
 
-#include <vector>
+#include <assert.h>
+#include <climits>
+#include <cmath>
+#include <cstdint>
+#include <cstdlib>
+#include <cstring>
+#include <float.h>
+#include <iostream>
 #include <map>
-#include "htslib/vcf.h"
-#include "htslib/kseq.h"
-#include "htslib/faidx.h"
-#include "program.h"
-#include "hts_utils.h"
-#include "bam_ordered_reader.h"
-#include "bcf_ordered_reader.h"
-#include "bcf_ordered_writer.h"
-#include "variant_manip.h"
-#include "utils.h"
-#include "allele.h"
-#include "pileup.h"
+#include <queue>
+#include <vector>
 #include "Rmath/Rmath.h"
-#include "hts_utils.h"
-#include "log_tool.h"
 
-void discover2(int argc, char ** argv);
+#define LOGZERO -DBL_MAX
+
+/**
+ * Class implementing log space arithmetic.
+ */
+class BinomialDistribution
+{
+    private:
+    double p;
+    std::vector<std::vector<double> > pvalues;
+
+    public:
+
+    /**
+     * Constructor.
+     */
+    BinomialDistribution(double p);
+
+    /**
+     * Get P(X<=x).
+     */
+    double fpbinom(uint32_t x, uint32_t n);
+};
 
 #endif

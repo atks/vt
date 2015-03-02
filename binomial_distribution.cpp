@@ -1,6 +1,6 @@
 /* The MIT License
 
-   Copyright (c) 2014 Adrian Tan <atks@umich.edu>
+   Copyright (c) 2015 Adrian Tan <atks@umich.edu>
 
    Permission is hereby granted, free of charge, to any person obtaining a copy
    of this software and associated documentation files (the "Software"), to deal
@@ -21,27 +21,41 @@
    THE SOFTWARE.
 */
 
-#ifndef DISCOVER2_H
-#define DISCOVER2_H
+#include <binomial_distribution.h>
 
-#include <vector>
-#include <map>
-#include "htslib/vcf.h"
-#include "htslib/kseq.h"
-#include "htslib/faidx.h"
-#include "program.h"
-#include "hts_utils.h"
-#include "bam_ordered_reader.h"
-#include "bcf_ordered_reader.h"
-#include "bcf_ordered_writer.h"
-#include "variant_manip.h"
-#include "utils.h"
-#include "allele.h"
-#include "pileup.h"
-#include "Rmath/Rmath.h"
-#include "hts_utils.h"
-#include "log_tool.h"
+/**
+ * Round a value
+ */
+BinomialDistribution::BinomialDistribution(double p)
+{
+    this-> p = p;
+};
 
-void discover2(int argc, char ** argv);
+/**
+ * Get P(X<=x).
+ */
+double BinomialDistribution::fpbinom(uint32_t x, uint32_t n)
+{
+    if (x<=n)
+    {   
+        uint32_t current_size = pvalues.size();
+        if (current_size>n)
+        {    
+            return pvalues[n][x];
+        }
+        else
+        {
+            pvalues.resize(n+1);
+            for (uint32_t i=pvalues.size(); i<=n; ++i)
+            {
+                for (uint32_t j=0; j<=i; ++j)
+                {
+                    //double pbinom(double x, double n, double p, int lower_tail, int log_p)
+                    pvalues[i][j] = pbinom(j, i, p, 1, 0);
+                }
+            }
+        }
+    }
 
-#endif
+    return 0;
+}
