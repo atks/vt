@@ -62,7 +62,7 @@ class BinomialDistribution
     /**
      * Get P(X<=x).
      */
-    double fpbinom(uint32_t x, uint32_t n);
+    double get_pvalue(uint32_t x, uint32_t n);
 };
 
 #endif

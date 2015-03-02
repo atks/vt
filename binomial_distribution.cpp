@@ -47,7 +47,7 @@ BinomialDistribution::BinomialDistribution(double p)
 /**
  * Get P(X<=x).
  */
-double BinomialDistribution::fpbinom(uint32_t x, uint32_t n)
+double BinomialDistribution::get_pvalue(uint32_t x, uint32_t n)
 {
     if (x<=n)
     {   

@@ -590,6 +590,46 @@ uint32_t bcf_ap2g(uint32_t no_allele, uint32_t no_ploidy)
 }
 
 /**
+ * Gets number of genotypes from number of alleles and genotypes.
+ */
+uint32_t bcf_ag2p(uint32_t no_alleles, uint32_t no_genotypes)
+{
+    if (no_alleles==2 && no_genotypes==3)
+    {
+        return 2;
+    }
+    else if (no_alleles==3 && no_genotypes==6)
+    {
+        return 2;
+    }
+    else if (no_alleles==4 && no_genotypes==10)
+    {
+        return 2;
+    }
+    else if (no_alleles == no_genotypes)
+    {
+        return 1;
+    }
+    
+    uint32_t no_ploidy = 1;
+    while (true)
+    {
+        uint32_t k = choose(no_ploidy+no_alleles-1, no_alleles-1);
+    
+        if (k==no_genotypes)
+        {
+            return no_ploidy;
+        }
+        else if (k>no_genotypes)
+        {
+            return 0;
+        }        
+        
+        ++no_ploidy;
+    }
+}
+
+/**
  * Gets number of genotypes from number of alleles and ploidy.
  */
 uint32_t bcf_g2i(int32_t* g, uint32_t n)
