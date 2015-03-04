@@ -121,6 +121,7 @@ class Pileup
     private:
     uint32_t buffer_size;
     uint32_t buffer_size_mask;
+    uint32_t window_size;
     std::vector<PileupPosition> P;
 
     int32_t tid;
@@ -167,7 +168,7 @@ class Pileup
      *
      * @k - size of pileup is 2^k
      */
-    Pileup(uint32_t k=10);
+    Pileup(uint32_t k=10, uint32_t window_size=256);
 
     /**
      * Overloads subscript operator for accessing pileup positions.
@@ -213,6 +214,11 @@ class Pileup
      * Gets chrom.
      */
     std::string get_chrom();
+
+    /**
+     * Gets window_size.
+     */
+    uint32_t get_window_size();
 
     /**
      * Sets gbeg1.
@@ -303,6 +309,13 @@ class Pileup
      * Updates the occurence of a right soft clip.
      */
     void add_RSC(uint32_t gpos1, std::string& alt, float mean_qual, char strand);
+
+    /**
+     * Inserts a stretch of reference padding bases if start of read is ahead of end of pileup.
+     *
+     * @gpos1 - starting genome position of new read
+     */
+    void add_padding(uint32_t gpos1);
 
     /**
      * Updates a stretch of reference bases.

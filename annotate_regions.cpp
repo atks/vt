@@ -49,7 +49,7 @@ class Igor : Program
     ///////
     BCFOrderedReader *odr;
     BCFOrderedWriter *odw;
-    
+
     /////////
     //stats//
     /////////
@@ -79,7 +79,7 @@ class Igor : Program
             TCLAP::ValueArg<std::string> arg_intervals("i", "i", "intervals", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_output_vcf_file("o", "o", "output VCF file [-]", false, "-", "str", cmd);
-            TCLAP::ValueArg<std::string> arg_regions_bed_file("b", "b", "mdust Low Complexity Regions BED file []", false, "", "str", cmd);
+            TCLAP::ValueArg<std::string> arg_regions_bed_file("b", "b", "regions BED file []", true, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_REGIONS_TAG("t", "t", "regions tag []", true, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_REGIONS_TAG_DESC("d", "d", "regions tag description []", true, "", "str", cmd);
             TCLAP::UnlabeledValueArg<std::string> arg_input_vcf_file("<in.vcf>", "input VCF file", true, "","file", cmd);
@@ -92,7 +92,6 @@ class Igor : Program
             regions_bed_file = arg_regions_bed_file.getValue();
             REGIONS_TAG = arg_REGIONS_TAG.getValue();
             REGIONS_TAG_DESC = arg_REGIONS_TAG_DESC.getValue();
-            
         }
         catch (TCLAP::ArgException &e)
         {
@@ -111,15 +110,15 @@ class Igor : Program
         odr = new BCFOrderedReader(input_vcf_file, intervals);
         odw = new BCFOrderedWriter(output_vcf_file);
         odw->link_hdr(odr->hdr);
-        
+
         std::string hrec = "##INFO=<ID=" + REGIONS_TAG + ",Number=0,Type=Flag,Description=\"" + REGIONS_TAG_DESC + "\">";
         bcf_hdr_append(odw->hdr, hrec.c_str());
-                    
+
         ///////////////////////
         //tool initialization//
         ///////////////////////
         orom_regions = new OrderedRegionOverlapMatcher(regions_bed_file);
-        
+
         ////////////////////////
         //stats initialization//
         ////////////////////////
@@ -166,7 +165,7 @@ class Igor : Program
                 bcf_update_info_flag(odr->hdr, v, REGIONS_TAG.c_str(), "", 1);
                 ++no_variants_annotated;
             }
-        
+
             ++no_variants;
             odw->write(v);
             v = odw->get_bcf1_from_pool();

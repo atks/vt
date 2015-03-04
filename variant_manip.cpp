@@ -315,7 +315,7 @@ int32_t VariantManip::classify_variant(bcf_hdr_t *h, bcf1_t *v, Variant& var)
         int32_t type = VT_REF;
 
         //check for tags
-        if (allele[i][0]=='<')
+        if (strchr(allele[i],'<'))
         {
             size_t len = strlen(allele[i]);
             if (len>=5)

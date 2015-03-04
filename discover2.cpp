@@ -134,10 +134,11 @@ class Igor : Program
 
             TCLAP::ValueArg<uint32_t> arg_read_mapq_cutoff("p", "p", "MAPQ cutoff for alignments [0]", false, 0, "int", cmd);
             TCLAP::SwitchArg arg_ignore_overlapping_read("l", "l", "ignore overlapping reads [false]", cmd, false);
-            TCLAP::ValueArg<uint32_t> arg_snp_baseq_cutoff("q", "q", "base quality cutoff for bases [0]", false, 0, "int", cmd);
-
+            TCLAP::ValueArg<uint32_t> arg_read_exclude_flag("a", "a", "read exclude flag [0x0704]", false, 0x0704, "int", cmd);
+            
             TCLAP::ValueArg<uint32_t> arg_snp_e_cutoff("e", "e", "snp evidence count cutoff [1]", false, 1, "int", cmd);
             TCLAP::ValueArg<double> arg_snp_f_cutoff("f", "f", "snp fractional evidence cutoff [0]", false, 0, "float", cmd);
+            TCLAP::ValueArg<uint32_t> arg_snp_baseq_cutoff("q", "q", "base quality cutoff for bases [0]", false, 0, "int", cmd);
             TCLAP::ValueArg<double> arg_snp_desired_type_I_error("j", "j", "snp desired type I error [0.00005]", false, 0, "float", cmd);
             TCLAP::ValueArg<double> arg_snp_desired_type_II_error("k", "k", "snp desired type II error [0.00005]", false, 0, "float", cmd);
 
@@ -162,9 +163,10 @@ class Igor : Program
             ref_fasta_file = arg_ref_fasta_file.getValue();
             read_mapq_cutoff = arg_read_mapq_cutoff.getValue();
             ignore_overlapping_read = arg_ignore_overlapping_read.getValue();
-            snp_baseq_cutoff = arg_snp_baseq_cutoff.getValue();
+            read_exclude_flag = arg_read_exclude_flag.getValue();
             snp_e_cutoff = arg_snp_e_cutoff.getValue();
             snp_f_cutoff = arg_snp_f_cutoff.getValue();
+            snp_baseq_cutoff = arg_snp_baseq_cutoff.getValue();
             snp_desired_type_I_error = arg_snp_desired_type_I_error.getValue();
             snp_desired_type_II_error = arg_snp_desired_type_II_error.getValue();
             indel_e_cutoff = arg_indel_e_cutoff.getValue();
@@ -192,7 +194,7 @@ class Igor : Program
         //2. secondary reads alignments
         //3. failed QC filter
         //4. duplicate
-        read_exclude_flag = 0x0704;
+        //read_exclude_flag = 0x0704;
 
         odr = new BAMOrderedReader(input_bam_file, intervals, ref_fasta_file);
         s = bam_init1();
@@ -355,11 +357,10 @@ class Igor : Program
      */
     void write_to_vcf(uint32_t rid, uint32_t gpos1, PileupPosition& p)
     {
-        if (p.R=='N')
+        if (p.R=='N' || p.R=='X')
         {
             return;
         }
-
 
         std::string alleles = "";
         int32_t N = 0;
@@ -606,16 +607,24 @@ class Igor : Program
      * returns
      *    0 - not flushable
      *    1 - flushable
+     *   -1 - flushable, must update with new sequence
      */
     int32_t flushable(bam1_t* s)
     {
-        uint32_t gpos1 = bam_get_pos1(s);
-
+        //different sequence, flush everything.
         if (pileup.get_tid()!=bam_get_tid(s))
         {
             return -1;
         }
-         else if (gpos1>pileup.get_gbeg1())
+
+        //position is smaller than window size
+        if (pileup.get_window_size()>=bam_get_pos1(s))
+        {
+            return 0;
+        }
+
+        //some leeway for flushing the records
+        if (bam_get_pos1(s)-pileup.get_window_size()>pileup.get_gbeg1())
         {
             return 1;
         }
@@ -633,25 +642,37 @@ class Igor : Program
         int32_t ret = 0;
         if ((ret=flushable(s)))
         {
-            uint32_t cpos1 = pileup.get_gbeg1();
-            uint32_t lend0 = (ret==-1 || pileup.get_gend1()<bam_get_pos1(s)) ? pileup.end() : pileup.g2i(bam_get_pos1(s));
-            uint32_t i;
-
-            if (debug>=3) std::cerr << "FLUSHING " << cpos1 << " to " << (cpos1 + pileup.diff(lend0, pileup.begin()) -1) << "\n";
-
-            for (i=pileup.begin(); i!=lend0; i=pileup.inc(i,1))
+            if (ret==1)
             {
-                write_to_vcf(rid, cpos1, pileup[i]);
-                pileup[i].clear();
-                ++cpos1;
+                if (debug>=3) std::cerr << "FLUSHING " << pileup.get_gbeg1() << " to " << bam_get_pos1(s)-pileup.get_window_size() << "\n";
+
+                uint32_t cpos1 = pileup.get_gbeg1();
+                uint32_t gpos1 = bam_get_pos1(s)-pileup.get_window_size();
+                uint32_t lend0 = pileup.get_gend1()<gpos1 ? pileup.end() : pileup.g2i(gpos1);
+
+                uint32_t i;
+                for (i=pileup.begin(); i!=lend0; i=pileup.inc(i,1))
+                {
+                    write_to_vcf(rid, cpos1, pileup[i]);
+                    pileup[i].clear();
+                    ++cpos1;
+                }
+
+                pileup.set_gbeg1(cpos1);
+                pileup.set_beg0(i);
             }
-
-            pileup.set_gbeg1(cpos1);
-            pileup.set_beg0(i);
-
-            //need to change tid
-            if (ret==-1 || pileup.is_empty())
+            else //ret == -1
             {
+                if (debug>=3) std::cerr << "FLUSHING " << pileup.get_gbeg1() << " to " << pileup.get_gend1() << "\n";
+
+                uint32_t cpos1 = pileup.get_gbeg1();
+                for (uint32_t i=pileup.begin(); i!=pileup.end(); i=pileup.inc(i,1))
+                {
+                    write_to_vcf(rid, cpos1, pileup[i]);
+                    pileup[i].clear();
+                    ++cpos1;
+                }
+
                 tid = bam_get_tid(s);
                 chrom.assign(bam_get_chrom(odr->hdr, s));
                 rid = bcf_hdr_name2id(odw->hdr, chrom.c_str());
@@ -719,6 +740,7 @@ class Igor : Program
             if (n_cigar_op)
             {
                 uint32_t *cigar = bam_get_cigar(s);
+                bool seenM = false;
 
                 if (debug>=3) pileup.print_state();
                 for (uint32_t i = 0; i < n_cigar_op; ++i)
@@ -730,30 +752,33 @@ class Igor : Program
 
                     if (opchar=='S')
                     {
-                        //add to S evidence
-                        std::string ins = "";
-                        float mean_qual = 0;
-                        for (size_t j=0; j<oplen ; ++j)
+                        if (i==n_cigar_op-1 || (i==0 && n_cigar_op>=2 && bam_cigar_opchr(cigar[1])=='M'))
                         {
-                            ins += bam_base2char(bam_seqi(seq, spos0+j));
-                            mean_qual += qual[spos0+j];
-                        }
-                        mean_qual /= oplen;
-
-                        if (cpos1==pos1)
-                        {
-                            if (mean_qual>sclip_mq_cutoff)
+                            //add to S evidence
+                            std::string ins = "";
+                            float mean_qual = 0;
+                            for (size_t j=0; j<oplen ; ++j)
                             {
-                                if (debug) std::cerr << "\t\t\tadding LSCLIP: " << cpos1 << "\t" << ins << " {" << mean_qual << "}\n";
-                                pileup.add_lsclip(cpos1, ins, mean_qual, strand);
+                                ins += bam_base2char(bam_seqi(seq, spos0+j));
+                                mean_qual += qual[spos0+j];
                             }
-                        }
-                        else
-                        {
-                            if (mean_qual>sclip_mq_cutoff)
+                            mean_qual /= oplen;
+
+                            if (cpos1==pos1)
                             {
-                                if (debug) std::cerr << "\t\t\tadding RSCLIP: " << (cpos1-1) << "\t" << ins << " {" << mean_qual << "}\n";
-                                pileup.add_rsclip(cpos1-1, ins, mean_qual, strand);
+                                if (mean_qual>sclip_mq_cutoff)
+                                {
+                                    if (debug) std::cerr << "\t\t\tadding LSCLIP: " << cpos1 << "\t" << ins << " {" << mean_qual << "}\n";
+                                    pileup.add_lsclip(cpos1, ins, mean_qual, strand);
+                                }
+                            }
+                            else
+                            {
+                                if (mean_qual>sclip_mq_cutoff)
+                                {
+                                    if (debug) std::cerr << "\t\t\tadding RSCLIP: " << (cpos1-1) << "\t" << ins << " {" << mean_qual << "}\n";
+                                    pileup.add_rsclip(cpos1-1, ins, mean_qual, strand);
+                                }
                             }
                         }
 
@@ -765,6 +790,7 @@ class Igor : Program
                         uint32_t sspos0 = spos0; // we need this because M contains matches and mismatches
                         uint32_t mlen = oplen;
                         uint32_t i = 0;
+                        seenM = true;
 
                         if (debug) std::cerr << "\t\tmd len left : " << md_mlen_left << "\n";
                         if (debug) std::cerr << "\t\tmlen : " << mlen << "\n";
@@ -913,23 +939,23 @@ class Igor : Program
                     }
                     else if (opchar=='I')
                     {
-                        if (i==0) //Leading I'S
+                        if (!seenM) //Leading I'S
                         {
-                            //add to S evidence
-                            std::string ins = "";
-                            float mean_qual = 0;
-                            for (size_t j=0; j<oplen ; ++j)
-                            {
-                                ins += bam_base2char(bam_seqi(seq, spos0+j));
-                                mean_qual += qual[spos0+j];
-                            }
-                            mean_qual /= oplen;
-
-                            if (mean_qual>sclip_mq_cutoff)
-                            {
-                                if (debug) std::cerr << "\t\t\tadding LSCLIP: " << cpos1 << "\t" << ins << " {" << mean_qual << "}\n";
-                                pileup.add_lsclip(cpos1, ins, mean_qual, strand);
-                            }
+//                            //add to S evidence
+//                            std::string ins = "";
+//                            float mean_qual = 0;
+//                            for (size_t j=0; j<oplen ; ++j)
+//                            {
+//                                ins += bam_base2char(bam_seqi(seq, spos0+j));
+//                                mean_qual += qual[spos0+j];
+//                            }
+//                            mean_qual /= oplen;
+//
+//                            if (mean_qual>sclip_mq_cutoff)
+//                            {
+//                                if (debug) std::cerr << "\t\t\tadding LSCLIP: " << cpos1 << "\t" << ins << " {" << mean_qual << "}\n";
+//                                pileup.add_lsclip(cpos1, ins, mean_qual, strand);
+//                            }
 
                             spos0 += oplen;
                         }
@@ -968,6 +994,7 @@ class Igor : Program
             uint32_t n_cigar_op = bam_get_n_cigar_op(s);
             uint32_t cpos1 = pos1; //current 1 based genome position
             uint32_t spos0 = 0;    //current position in read sequence
+            bool seenM = false;
 
             if (n_cigar_op)
             {
@@ -984,29 +1011,32 @@ class Igor : Program
 
                     if (opchar=='S')
                     {
-                        std::string ins = "";
-                        float mean_qual = 0;
-                        for (size_t j=0; j<oplen ; ++j)
+                        if (i==n_cigar_op-1 || (i==0 && n_cigar_op>=2 && bam_cigar_opchr(cigar[1])=='M'))
                         {
-                            ins += bam_base2char(bam_seqi(seq, spos0+j));
-                            mean_qual += qual[spos0+j];
-                        }
-                        mean_qual /= oplen;
-
-                        if (cpos1==pos1)
-                        {
-                            if (mean_qual>sclip_mq_cutoff)
+                            std::string ins = "";
+                            float mean_qual = 0;
+                            for (size_t j=0; j<oplen ; ++j)
                             {
-                                if (debug) std::cerr << "\t\t\tadding LSC: " << cpos1 << "\t" << ins << " {" << mean_qual << "}\n";
-                                pileup.add_LSC(cpos1, ins, mean_qual, strand);
+                                ins += bam_base2char(bam_seqi(seq, spos0+j));
+                                mean_qual += qual[spos0+j];
                             }
-                        }
-                        else
-                        {
-                            if (mean_qual>sclip_mq_cutoff)
+                            mean_qual /= oplen;
+
+                            if (cpos1==pos1)
                             {
-                                if (debug) std::cerr << "\t\t\tadding RSC: " << (cpos1-1) << "\t" << ins << " {" << mean_qual << "}\n";
-                                pileup.add_RSC(cpos1-1, ins, mean_qual, strand);
+                                if (mean_qual>sclip_mq_cutoff)
+                                {
+                                    if (debug) std::cerr << "\t\t\tadding LSC: " << cpos1 << "\t" << ins << " {" << mean_qual << "}\n";
+                                    pileup.add_LSC(cpos1, ins, mean_qual, strand);
+                                }
+                            }
+                            else
+                            {
+                                if (mean_qual>sclip_mq_cutoff)
+                                {
+                                    if (debug) std::cerr << "\t\t\tadding RSC: " << (cpos1-1) << "\t" << ins << " {" << mean_qual << "}\n";
+                                    pileup.add_RSC(cpos1-1, ins, mean_qual, strand);
+                                }
                             }
                         }
 
@@ -1014,6 +1044,7 @@ class Igor : Program
                     }
                     else if (opchar=='M')
                     {
+                        seenM = true;
                         if (debug) std::cerr << "\t\t\tadding matches: " << cpos1 << "\t" << spos0 << " (" << oplen << ")\n";
                         pileup.add_M(cpos1, spos0, oplen, seq);
 
@@ -1035,23 +1066,23 @@ class Igor : Program
                     }
                     else if (opchar=='I')
                     {
-                        if (i==0) //Leading I'S
+                        if (!seenM) //Leading I'S
                         {
-                            //add to S evidence
-                            std::string ins = "";
-                            float mean_qual = 0;
-                            for (size_t j=0; j<oplen ; ++j)
-                            {
-                                ins += bam_base2char(bam_seqi(seq, spos0+j));
-                                mean_qual += qual[spos0+j];
-                            }
-                            mean_qual /= oplen;
-
-                            if (mean_qual>sclip_mq_cutoff)
-                            {
-                                if (debug) std::cerr << "\t\t\tadding LSCLIP: " << cpos1 << "\t" << ins << " {" << mean_qual << "}\n";
-                                pileup.add_LSC(cpos1, ins, mean_qual, strand);
-                            }
+//                            //add to S evidence
+//                            std::string ins = "";
+//                            float mean_qual = 0;
+//                            for (size_t j=0; j<oplen ; ++j)
+//                            {
+//                                ins += bam_base2char(bam_seqi(seq, spos0+j));
+//                                mean_qual += qual[spos0+j];
+//                            }
+//                            mean_qual /= oplen;
+//
+//                            if (mean_qual>sclip_mq_cutoff)
+//                            {
+//                                if (debug) std::cerr << "\t\t\tadding LSCLIP: " << cpos1 << "\t" << ins << " {" << mean_qual << "}\n";
+//                                pileup.add_LSC(cpos1, ins, mean_qual, strand);
+//                            }
 
                             spos0 += oplen;
                         }
@@ -1107,7 +1138,7 @@ class Igor : Program
         }
         flush();
         odw->close();
-    };
+    }; 
 
     void print_options()
     {
@@ -1118,7 +1149,7 @@ class Igor : Program
         std::clog << "         [s] sample ID                        " << sample_id << "\n";
         std::clog << "         [r] reference FASTA File             " << ref_fasta_file << "\n";
         std::clog << "         [m] read mapping quality cutoff      " << read_mapq_cutoff << "\n";
-        std::clog << "         [x] read flag filter                 " << read_exclude_flag << "\n";
+        std::clog << "         [x] read flag filter                 " << std::showbase << std::hex << read_exclude_flag << std::dec << "\n";
         std::clog << "         [l] ignore overlapping read          " << (ignore_overlapping_read ? "true" : "false") << "\n";
         std::clog << "         [q] snp base quality cutoff          " << snp_baseq_cutoff << "\n";
         std::clog << "         [c] snp evidence cutoff              " << snp_e_cutoff << "\n";
