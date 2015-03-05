@@ -39,6 +39,7 @@ class Igor : Program
     std::string ref_fasta_file;
     int32_t window_size;
     bool print;
+    bool debug;
 
     ///////
     //i/o//
@@ -86,7 +87,8 @@ class Igor : Program
             TCLAP::ValueArg<std::string> arg_intervals("i", "i", "intervals []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "file", cmd);
             TCLAP::ValueArg<int32_t> arg_window_size("w", "w", "window size for local sorting of variants [10000]", false, 10000, "integer", cmd);
-            TCLAP::SwitchArg arg_quiet("q", "q", "do not print options and summary []", cmd, false);
+            TCLAP::SwitchArg arg_quiet("q", "q", "do not print options and summary [false]", cmd, false);
+            TCLAP::SwitchArg arg_debug("d", "d", "debug [false]", cmd, false);
             TCLAP::ValueArg<std::string> arg_output_vcf_file("o", "o", "output VCF file [-]", false, "-", "str", cmd);
             TCLAP::UnlabeledValueArg<std::string> arg_input_vcf_file("<in.vcf>", "input VCF file", true, "","file", cmd);
 
@@ -96,6 +98,7 @@ class Igor : Program
             output_vcf_file = arg_output_vcf_file.getValue();
             parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
             print = !arg_quiet.getValue();
+            debug = arg_debug.getValue();
             window_size = arg_window_size.getValue();
             ref_fasta_file = arg_ref_fasta_file.getValue();
         }
@@ -155,6 +158,8 @@ class Igor : Program
         while (odr->read(v))
         {
             bcf_unpack(v, BCF_UN_INFO);
+            
+            if (debug) bcf_print_liten(odr->hdr, v);
             
             if (!vm->is_normalized(v))
             {

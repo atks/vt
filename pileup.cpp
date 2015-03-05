@@ -504,7 +504,7 @@ void Pileup::add_D(uint32_t gpos1, uint32_t len)
     //check if the base exists.
     if (gpos1>get_gend1())
     {
-        std::cerr << "anchor base not present for deletion update " << gpos1 << ">" << get_gend1() << " gbeg1 : " << get_gbeg1() << "\n";
+        std::cerr << "anchor base not present for deletion update " << chrom << "|" << gpos1 << ">" << get_gend1() << " gbeg1 : " << get_gbeg1() << "\n";
         abort();
     }
 
