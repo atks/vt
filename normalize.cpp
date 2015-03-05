@@ -277,6 +277,8 @@ class Igor : Program
         std::clog << "options:     input VCF file        " << input_vcf_file << "\n";
         std::clog << "         [o] output VCF file       " << output_vcf_file << "\n";
         std::clog << "         [w] sorting window size   " << window_size << "\n";
+        std::clog << "         [q] quiet                 " << (!print ? "true" : "false") << "\n";
+        std::clog << "         [d] debug                 " << (debug ? "true" : "false")  << "\n";
         std::clog << "         [r] reference FASTA file  " << ref_fasta_file << "\n";
         print_int_op("         [i] intervals             ", intervals);
         std::clog << "\n";
