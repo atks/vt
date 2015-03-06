@@ -72,6 +72,18 @@ class Igor : Program
     double indel_desired_type_I_error;
     double indel_desired_type_II_error;
 
+    //deletion filters
+    uint32_t deletion_e_cutoff;
+    double deletion_f_cutoff;
+    double deletion_desired_type_I_error;
+    double deletion_desired_type_II_error;
+
+    //insertion filters
+    uint32_t insertion_e_cutoff;
+    double insertion_f_cutoff;
+    double insertion_desired_type_I_error;
+    double insertion_desired_type_II_error;
+
     //soft clip filters
     float sclip_mq_cutoff;
     uint32_t sclip_u_cutoff;
@@ -135,7 +147,7 @@ class Igor : Program
             TCLAP::ValueArg<uint32_t> arg_read_mapq_cutoff("p", "p", "MAPQ cutoff for alignments [0]", false, 0, "int", cmd);
             TCLAP::SwitchArg arg_ignore_overlapping_read("l", "l", "ignore overlapping reads [false]", cmd, false);
             TCLAP::ValueArg<uint32_t> arg_read_exclude_flag("a", "a", "read exclude flag [0x0704]", false, 0x0704, "int", cmd);
-            
+
             TCLAP::ValueArg<uint32_t> arg_snp_e_cutoff("e", "e", "snp evidence count cutoff [1]", false, 1, "int", cmd);
             TCLAP::ValueArg<double> arg_snp_f_cutoff("f", "f", "snp fractional evidence cutoff [0]", false, 0, "float", cmd);
             TCLAP::ValueArg<uint32_t> arg_snp_baseq_cutoff("q", "q", "base quality cutoff for bases [0]", false, 0, "int", cmd);
@@ -1138,7 +1150,7 @@ class Igor : Program
         }
         flush();
         odw->close();
-    }; 
+    };
 
     void print_options()
     {
