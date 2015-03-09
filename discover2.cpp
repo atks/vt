@@ -153,7 +153,7 @@ class Igor : Program
             TCLAP::ValueArg<std::string> arg_sample_id("s", "s", "sample ID", true, "", "str", cmd);
 
             TCLAP::ValueArg<uint32_t> arg_ploidy("p", "p", "ploidy [2]", false, 2, "int", cmd);
-                        
+
             TCLAP::ValueArg<uint32_t> arg_read_mapq_cutoff("g", "g", "MAPQ cutoff for alignments [0]", false, 0, "int", cmd);
             TCLAP::SwitchArg arg_ignore_overlapping_read("l", "l", "ignore overlapping reads [false]", cmd, false);
             TCLAP::ValueArg<uint32_t> arg_read_exclude_flag("a", "a", "read exclude flag [0x0704]", false, 0x0704, "int", cmd);
@@ -182,6 +182,7 @@ class Igor : Program
             parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
             output_vcf_file = arg_output_vcf_file.getValue();
             sample_id = arg_sample_id.getValue();
+            ploidy = arg_ploidy.getValue();
             ref_fasta_file = arg_ref_fasta_file.getValue();
             read_mapq_cutoff = arg_read_mapq_cutoff.getValue();
             ignore_overlapping_read = arg_ignore_overlapping_read.getValue();
@@ -231,7 +232,7 @@ class Igor : Program
         bcf_hdr_append(odw->hdr, "##FORMAT=<ID=N,Number=1,Type=Integer,Description=\"Total number of reads at a candidate locus with reads that contain evidence of the alternate allele\">");
         bcf_hdr_append(odw->hdr, "##FORMAT=<ID=MQS,Number=.,Type=Float,Description=\"Mean qualities of soft clipped bases.\">");
         bcf_hdr_append(odw->hdr, "##FORMAT=<ID=STR,Number=.,Type=String,Description=\"Strands of soft clipped sequences.\">");
-        
+
         bcf_hdr_add_sample(odw->hdr, sample_id.c_str());
         bcf_hdr_add_sample(odw->hdr, NULL);
         v = bcf_init();
@@ -382,12 +383,7 @@ class Igor : Program
     void write_to_vcf(uint32_t rid, uint32_t gpos1, PileupPosition& p)
     {
         int32_t gts[2] = {0x0002,0x0004};
-        
 
-       
-        
-        
-        
         if (p.R=='N' || p.R=='X')
         {
             return;
@@ -408,8 +404,8 @@ class Igor : Program
             alleles.append(1, p.R);
             alleles.append(1, ',');
             alleles.append(1, 'A');
-            bcf_update_genotypes(odw->hdr, v, &gts, ploidy);
             bcf_update_alleles_str(odw->hdr, v, alleles.c_str());
+            bcf_update_genotypes(odw->hdr, v, &gts, ploidy);
             E = p.X[1];
             bcf_update_format_int32(odw->hdr, v, "E", &E, 1);
             N = p.N+p.E;
@@ -431,6 +427,7 @@ class Igor : Program
             alleles.append(1, ',');
             alleles.append(1, 'C');
             bcf_update_alleles_str(odw->hdr, v, alleles.c_str());
+            bcf_update_genotypes(odw->hdr, v, &gts, ploidy);
             E = p.X[2];
             bcf_update_format_int32(odw->hdr, v, "E", &E, 1);
             N = p.N+p.E;
@@ -451,6 +448,7 @@ class Igor : Program
             alleles.append(1, ',');
             alleles.append(1, 'G');
             bcf_update_alleles_str(odw->hdr, v, alleles.c_str());
+            bcf_update_genotypes(odw->hdr, v, &gts, ploidy);
             E = p.X[4];
             bcf_update_format_int32(odw->hdr, v, "E", &E, 1);
             N = p.N+p.E;
@@ -471,6 +469,7 @@ class Igor : Program
             alleles.append(1, ',');
             alleles.append(1, 'T');
             bcf_update_alleles_str(odw->hdr, v, alleles.c_str());
+            bcf_update_genotypes(odw->hdr, v, &gts, ploidy);
             E = p.X[8];
             bcf_update_format_int32(odw->hdr, v, "E", &E, 1);
             N = p.N+p.E;
@@ -491,6 +490,7 @@ class Igor : Program
             alleles.append(1, ',');
             alleles.append(1, 'N');
             bcf_update_alleles_str(odw->hdr, v, alleles.c_str());
+            bcf_update_genotypes(odw->hdr, v, &gts, ploidy);
             E = p.X[15];
             bcf_update_format_int32(odw->hdr, v, "E", &E, 1);
             N = p.N+p.E;
@@ -519,6 +519,7 @@ class Igor : Program
                     alleles.append(1, ',');
                     alleles.append(1, p.R);
                     bcf_update_alleles_str(odw->hdr, v, alleles.c_str());
+                    bcf_update_genotypes(odw->hdr, v, &gts, ploidy);
                     bcf_update_format_int32(odw->hdr, v, "E", &E, 1);
                     bcf_update_format_int32(odw->hdr, v, "N", &N, 1);
                     odw->write(v);
@@ -547,6 +548,7 @@ class Igor : Program
                     alleles.append(1, p.R);
                     alleles.append(i->first);
                     bcf_update_alleles_str(odw->hdr, v, alleles.c_str());
+                    bcf_update_genotypes(odw->hdr, v, &gts, ploidy);
                     bcf_update_format_int32(odw->hdr, v, "E", &E, 1);
                     bcf_update_format_int32(odw->hdr, v, "N", &N, 1);
                     odw->write(v);
@@ -576,7 +578,8 @@ class Igor : Program
                     bcf_update_alleles_str(odw->hdr, v, new_alleles.s);
 
                     bcf_update_info_string(odw->hdr, v, "SEQ", i->first.c_str());
-
+                    
+                    bcf_update_genotypes(odw->hdr, v, &gts, ploidy);
                     SoftClipInfo& info = i->second;
                     uint32_t no = info.no;
                     E = no;
@@ -613,6 +616,7 @@ class Igor : Program
 
                     bcf_update_info_string(odw->hdr, v, "SEQ", i->first.c_str());
 
+                    bcf_update_genotypes(odw->hdr, v, &gts, ploidy);
                     SoftClipInfo& info = i->second;
                     uint32_t no = info.no;
                     E = no;
@@ -682,6 +686,16 @@ class Igor : Program
                 uint32_t gpos1 = bam_get_pos1(s)-pileup.get_window_size();
                 uint32_t lend0 = pileup.get_gend1()<gpos1 ? pileup.end() : pileup.g2i(gpos1);
 
+//                uint32_t j;
+//                for (j=pileup.end(); j!=pileup.begin(); j=pileup.inc(j,1))
+//                {
+//                    if(!pileup[j].is_cleared())
+//                    {    
+//                        std::cerr << "NOT VALID!!!!\n";
+//                        pileup[j].print();
+//                    }
+//                }
+
                 uint32_t i;
                 for (i=pileup.begin(); i!=lend0; i=pileup.inc(i,1))
                 {
@@ -697,8 +711,20 @@ class Igor : Program
             {
                 if (debug>=3) std::cerr << "FLUSHING " << pileup.get_gbeg1() << " to " << pileup.get_gend1() << "\n";
 
+//                uint32_t j;
+//                pileup.print_state();
+//                for (j=pileup.end(); j!=pileup.begin(); j=pileup.inc(j,1))
+//                {
+//                    if(!pileup[j].is_cleared())
+//                    {    
+//                        std::cerr << "NOT VALID!!!!\n";
+//                        pileup[j].print();
+//                    }
+//                }
+                
                 uint32_t cpos1 = pileup.get_gbeg1();
-                for (uint32_t i=pileup.begin(); i!=pileup.end(); i=pileup.inc(i,1))
+                uint32_t i;
+                for (i=pileup.begin(); i!=pileup.end(); i=pileup.inc(i,1))
                 {
                     write_to_vcf(rid, cpos1, pileup[i]);
                     pileup[i].clear();
@@ -711,6 +737,7 @@ class Igor : Program
                 pileup.set_tid(tid);
                 pileup.set_chrom(chrom);
                 pileup.set_gbeg1(0);
+                pileup.set_beg0(i);
             }
         }
     }
@@ -730,6 +757,9 @@ class Igor : Program
             ++cpos1;
         }
 
+        tid = -1;
+        rid = -1;
+        pileup.set_tid(-1);
         pileup.set_gbeg1(0);
         pileup.set_beg0(0);
         pileup.set_end0(0);
@@ -1167,11 +1197,11 @@ class Igor : Program
             ++no_passed_reads;
 
             //if (no_passed_reads==1) break;
-            
+
             if ((no_reads & 0x0000FFFF) == 0)
             {
                 std::cerr << pileup.get_chrom() << ":" << pileup.get_gbeg1() << "\n";
-            }    
+            }
         }
         flush();
         odw->close();

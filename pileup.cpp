@@ -61,6 +61,25 @@ void PileupPosition::clear()
 };
 
 /**
+ * Returns true if pileup record is cleared.
+ */
+bool PileupPosition::is_cleared()
+{
+    return (R=='X' &&
+    X[1] == 0 &&
+    X[2] == 0 &&
+    X[4] == 0 &&
+    X[8] == 0 &&
+    X[15] == 0 &&
+    D.empty() &&
+    I.empty() &&
+    J.empty() &&
+    K.empty() &&
+    N == 0 &&
+    E == 0);
+};
+
+/**
  * Prints pileup position.
  */
 void PileupPosition::print()
@@ -507,7 +526,7 @@ void Pileup::add_M(uint32_t mgpos1, uint32_t spos0, uint32_t len, uint8_t* seq)
  */
 void Pileup::add_D(uint32_t gpos1, uint32_t len)
 {
-    add_3prime_padding(gpos1); 
+    //add_3prime_padding(gpos1); 
     
     //check if the base exists.
     if (gpos1>get_gend1())
@@ -541,7 +560,7 @@ void Pileup::add_D(uint32_t gpos1, uint32_t len)
             add_5prime_padding(a_gpos1);
         }
        
-        if (debug)  std::cerr << "\t\t\tdeletion left aligned : " << chrom << ":" << gpos1 << ":" << P[i].R << del << "/" << P[i].R  << " => " << chrom << ":" << a_gpos1 << ":" << a_ref << "/" << a_alt << "\n";
+        if (debug>=2)  std::cerr << "\t\t\tdeletion left aligned : " << chrom << ":" << gpos1 << ":" << P[i].R << del << "/" << P[i].R  << " => " << chrom << ":" << a_gpos1 << ":" << a_ref << "/" << a_alt << "\n";
         uint32_t j = g2i(a_gpos1);
         ++P[j].D[a_ref.substr(1)];
     }
@@ -564,7 +583,7 @@ void Pileup::add_D(uint32_t gpos1, uint32_t len)
  */
 void Pileup::add_I(uint32_t gpos1, std::string& ins)
 {
-    add_3prime_padding(gpos1); 
+    //add_3prime_padding(gpos1); 
     
     uint32_t i = g2i(gpos1);
 
@@ -582,7 +601,7 @@ void Pileup::add_I(uint32_t gpos1, std::string& ins)
             add_5prime_padding(a_gpos1);
         }
 
-        if (debug)  std::cerr << "\t\t\tinsertion left aligned : " << chrom << ":" << gpos1 << ":" << P[i].R << "/" << P[i].R << ins << " => " << chrom << ":" << a_gpos1 << ":" << a_ref << "/" << a_alt << "\n";
+        if (debug>=2)  std::cerr << "\t\t\tinsertion left aligned : " << chrom << ":" << gpos1 << ":" << P[i].R << "/" << P[i].R << ins << " => " << chrom << ":" << a_gpos1 << ":" << a_ref << "/" << a_alt << "\n";
         uint32_t j = g2i(a_gpos1);
         ++P[j].I[a_alt.substr(1)];
     }
@@ -616,7 +635,7 @@ void Pileup::add_LSC(uint32_t gpos1, std::string& alt, float mean_qual, char str
  */
 void Pileup::add_RSC(uint32_t gpos1, std::string& alt, float mean_qual, char strand)
 {
-    add_3prime_padding(gpos1); 
+    //add_3prime_padding(gpos1); 
     
     uint32_t i = g2i(gpos1);
     SoftClipInfo& info = P[i].K[alt];
@@ -731,7 +750,7 @@ void Pileup::add_snp(uint32_t gpos1, char ref, char alt)
  */
 void Pileup::add_del(uint32_t gpos1, std::string& del)
 {
-    add_3prime_padding(gpos1); 
+    //add_3prime_padding(gpos1); 
     
     //std::cerr << "adding del " << gpos1 << " " << g2i(gpos1) << "\n";
     uint32_t i = g2i(gpos1);
@@ -750,7 +769,7 @@ void Pileup::add_del(uint32_t gpos1, std::string& del)
             add_5prime_padding(a_gpos1);
         }
 
-        if (debug)  std::cerr << "\t\t\tdeletion left aligned : " << chrom << ":" << gpos1 << ":" << P[i].R << del << "/" << P[i].R << " => " << chrom << ":" << a_gpos1 << ":" << a_ref << "/" << a_alt << "\n";
+        if (debug>=2)  std::cerr << "\t\t\tdeletion left aligned : " << chrom << ":" << gpos1 << ":" << P[i].R << del << "/" << P[i].R << " => " << chrom << ":" << a_gpos1 << ":" << a_ref << "/" << a_alt << "\n";
         uint32_t j = g2i(a_gpos1);
         ++P[j].D[a_ref.substr(1)];
     }
@@ -775,7 +794,7 @@ void Pileup::add_del(uint32_t gpos1, std::string& del)
  */
 void Pileup::add_ins(uint32_t gpos1, std::string& ins)
 {
-    add_3prime_padding(gpos1); 
+    //add_3prime_padding(gpos1); 
     
     uint32_t i = g2i(gpos1);
 
@@ -793,7 +812,7 @@ void Pileup::add_ins(uint32_t gpos1, std::string& ins)
             add_5prime_padding(a_gpos1);
         }
 
-        if (debug)  std::cerr << "\t\t\tinsertion left aligned : " << chrom << ":" << gpos1 << ":" << P[i].R << "/" << P[i].R << ins << " => " << chrom << ":" << a_gpos1 << ":" << a_ref << "/" << a_alt << "\n";
+        if (debug>=2) std::cerr << "\t\t\tinsertion left aligned : " << chrom << ":" << gpos1 << ":" << P[i].R << "/" << P[i].R << ins << " => " << chrom << ":" << a_gpos1 << ":" << a_ref << "/" << a_alt << "\n";
         uint32_t j = g2i(a_gpos1);
         ++P[j].I[a_alt.substr(1)];
     }
@@ -823,7 +842,7 @@ void Pileup::add_lsclip(uint32_t gpos1, std::string& alt, float mean_qual, char 
  */
 void Pileup::add_rsclip(uint32_t gpos1, std::string& alt, float mean_qual, char strand)
 {
-    add_3prime_padding(gpos1); 
+    //add_3prime_padding(gpos1); 
     
     uint32_t i = g2i(gpos1);
     SoftClipInfo& info = P[i].K[alt];
@@ -847,9 +866,9 @@ bool Pileup::is_normalized(char ref, std::string& indel)
  */
 void Pileup::normalize(std::string& chrom, uint32_t& pos1, std::string& ref, std::string& alt)
 {
-    if (ref.find_first_of("Nn", 0) || alt.find_first_of("Nn", 0)) return;
+    if (ref.find_first_of("Nn", 0)!=std::string::npos || alt.find_first_of("Nn", 0)!=std::string::npos) return;
     
-    while (ref.at(ref.size()-1)==alt.at(alt.size()))
+    while (ref.at(ref.size()-1)==alt.at(alt.size()-1))
     {
         --pos1;
         char base = get_base(chrom, pos1);

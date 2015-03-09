@@ -93,6 +93,11 @@ class PileupPosition
     void clear();
 
     /**
+     * Returns true if pileup record is cleared.
+     */
+    bool is_cleared();
+
+    /**
      * Prints pileup position.
      */
     void print();
