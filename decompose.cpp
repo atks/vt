@@ -58,7 +58,7 @@ class Igor : Program
     uint32_t no_biallelic;
     uint32_t no_multiallelic;
     uint32_t no_additional_biallelic;
-
+    
     /////////
     //tools//
     /////////

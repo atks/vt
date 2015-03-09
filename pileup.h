@@ -176,6 +176,11 @@ class Pileup
     PileupPosition& operator[] (const int32_t i);
 
     /**
+     * Returns the maximum size of the pileup.
+     */
+    uint32_t max_size();
+
+    /**
      * Returns the size of the pileup.
      */
     uint32_t size();
@@ -309,13 +314,20 @@ class Pileup
      * Updates the occurence of a right soft clip.
      */
     void add_RSC(uint32_t gpos1, std::string& alt, float mean_qual, char strand);
-
+   
     /**
-     * Inserts a stretch of reference padding bases if start of read is ahead of end of pileup.
+     * Inserts a stretch of reference padding bases at the 5' prime end of the buffer from gpos1 if gpos1 is behind the start of the pileup.
      *
-     * @gpos1 - starting genome position of new read
+     * @gpos1 - 1 based genome position
      */
-    void add_padding(uint32_t gpos1);
+    void add_5prime_padding(uint32_t gpos1);
+    
+    /**
+     * Inserts a stretch of reference padding bases at the 3' prime end of the buffer to gpos1 if gpos1 is ahead of end of pileup.
+     *
+     * @gpos1 - 1 based genome position
+     */
+    void add_3prime_padding(uint32_t gpos1);
 
     /**
      * Updates a stretch of reference bases.

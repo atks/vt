@@ -216,6 +216,14 @@ PileupPosition& Pileup::operator[] (const int32_t i)
 }
 
 /**
+ * Returns the maximum size of the pileup.
+ */
+uint32_t Pileup::max_size()
+{
+    return buffer_size - 1;
+}
+
+/**
  * Returns the size of the pileup.
  */
 uint32_t Pileup::size()
@@ -241,7 +249,7 @@ void Pileup::set_reference(std::string& ref_fasta_file)
         fai = fai_load(ref_fasta_file.c_str());
         if (fai==NULL)
         {
-            fprintf(stderr, "[%s:%d %s] Cannot load genome index: %s\n", __FILE__, __LINE__, __FUNCTION__, ref_fasta_file.c_str());
+            fprintf(stderr, "[%s:%d %s] cannot load genome index: %s\n", __FILE__, __LINE__, __FUNCTION__, ref_fasta_file.c_str());
             exit(1);
         }
     }
@@ -437,7 +445,7 @@ void Pileup::update_read_end(uint32_t gpos1)
  */
 void Pileup::add_M(uint32_t mgpos1, uint32_t spos0, uint32_t len, uint8_t* seq)
 {
-    add_padding(mgpos1); 
+    add_3prime_padding(mgpos1); 
     
     uint32_t gend1 = get_gend1();
     uint32_t mgend1 = mgpos1 + len - 1;
@@ -499,12 +507,12 @@ void Pileup::add_M(uint32_t mgpos1, uint32_t spos0, uint32_t len, uint8_t* seq)
  */
 void Pileup::add_D(uint32_t gpos1, uint32_t len)
 {
-    add_padding(gpos1); 
+    add_3prime_padding(gpos1); 
     
     //check if the base exists.
     if (gpos1>get_gend1())
     {
-        std::cerr << "anchor base not present for deletion update " << chrom << "|" << gpos1 << ">" << get_gend1() << " gbeg1 : " << get_gbeg1() << "\n";
+        std::cerr << "anchor base not present for deletion update " << chrom << ":" << gpos1 << " (gpos1) >" << get_gend1() << " (gend1), gbeg1 = " << get_gbeg1() << "\n";
         abort();
     }
 
@@ -528,8 +536,8 @@ void Pileup::add_D(uint32_t gpos1, uint32_t len)
 
         if (a_gpos1<gbeg1)
         {
-            std::cerr << "\t\t\t\[add_D] deletion left aligned to beyond the bounds of the pileup " << chrom << ":" << gpos1  << " to " << a_gpos1 << "<" << gbeg1 << "\n";
-//            return;
+            fprintf(stderr, "[%s:%d %s] deletion left aligned to beyond the bounds of the pileup: %s:%d<%d\n", __FILE__, __LINE__, __FUNCTION__, chrom.c_str(), gpos1, gbeg1);
+            add_5prime_padding(a_gpos1);
         }
 
        
@@ -556,7 +564,7 @@ void Pileup::add_D(uint32_t gpos1, uint32_t len)
  */
 void Pileup::add_I(uint32_t gpos1, std::string& ins)
 {
-    add_padding(gpos1); 
+    add_3prime_padding(gpos1); 
     
     uint32_t i = g2i(gpos1);
 
@@ -589,7 +597,7 @@ void Pileup::add_I(uint32_t gpos1, std::string& ins)
  */
 void Pileup::add_LSC(uint32_t gpos1, std::string& alt, float mean_qual, char strand)
 {
-    add_padding(gpos1); 
+    add_3prime_padding(gpos1); 
     
     uint32_t i = g2i(gpos1);
     SoftClipInfo& info = P[i].J[alt];
@@ -608,7 +616,7 @@ void Pileup::add_LSC(uint32_t gpos1, std::string& alt, float mean_qual, char str
  */
 void Pileup::add_RSC(uint32_t gpos1, std::string& alt, float mean_qual, char strand)
 {
-    add_padding(gpos1); 
+    add_3prime_padding(gpos1); 
     
     uint32_t i = g2i(gpos1);
     SoftClipInfo& info = P[i].K[alt];
@@ -619,11 +627,40 @@ void Pileup::add_RSC(uint32_t gpos1, std::string& alt, float mean_qual, char str
 }
 
 /**
- * Inserts a stretch of reference padding bases if start of read is ahead of end of pileup.
+ * Inserts a stretch of reference padding bases at the 5' prime end of the buffer from gpos1 if gpos1 is behind the start of the pileup.
  *
- * @gpos1 - starting genome position of new read
+ * @gpos1 - 1 based genome position
  */
-void Pileup::add_padding(uint32_t gpos1)
+void Pileup::add_5prime_padding(uint32_t gpos1)
+{
+    if (is_empty())
+    {
+        return;
+    }    
+    
+    if (gpos1<gbeg1)
+    {
+        if (max_size()-size()<gbeg1-gpos1)
+        {
+            fprintf(stderr, "[%s:%d %s] buffer overflow. requires %d but maximum size is %d\n", __FILE__, __LINE__, __FUNCTION__, size()+gbeg1-gpos1, max_size());
+            abort();
+        }
+        
+        uint32_t o_gbeg1 = gbeg1;
+        
+        beg0 = diff(beg0, gbeg1-gpos1);
+        gbeg1 = gpos1;
+        
+        if (debug) std::cerr << "add_5prime_padding: (" << o_gbeg1 << "," << get_gend1() << ") extended to (" << gbeg1 << "," << get_gend1() << "\n";
+  }
+}
+
+/**
+ * Inserts a stretch of reference padding bases at the 3' prime end of the buffer to gpos1 if gpos1 is ahead of end of pileup.
+ *
+ * @gpos1 - 1 based genome position
+ */
+void Pileup::add_3prime_padding(uint32_t gpos1)
 {
     if (is_empty())
     {
@@ -635,8 +672,8 @@ void Pileup::add_padding(uint32_t gpos1)
     {
         //std::cerr << "adding " << gpos1 << "-" << cgend1 << " " << (gpos1-cgend1-1) << "\n";
         end0 = inc(end0, gpos1-cgend1-1);
-        if (debug) std::cerr << "add_padding: gpos1=" << cgend1 << ", gend1=" << get_gend1() << "\n";
-    } 
+        if (debug) std::cerr << "add_3prime_padding: gpos1=" << cgend1 << ", gend1=" << get_gend1() << "\n";
+    }
 }
  
 /** 
@@ -655,7 +692,7 @@ void Pileup::add_padding(uint32_t gpos1)
  */
 void Pileup::add_ref(uint32_t gpos1, uint32_t spos0, uint32_t len, uint8_t* seq)
 {
-    add_padding(gpos1);   
+    add_3prime_padding(gpos1);   
     
     if (debug) std::cerr << "add_ref: gpos1=" << gpos1 << ", spos0=" << spos0 << ", len=" << len << "\n";
 
@@ -675,7 +712,7 @@ void Pileup::add_ref(uint32_t gpos1, uint32_t spos0, uint32_t len, uint8_t* seq)
  */
 void Pileup::add_snp(uint32_t gpos1, char ref, char alt)
 {
-    add_padding(gpos1); 
+    add_3prime_padding(gpos1); 
     
     uint32_t i = g2i(gpos1);
     //std::cerr << "i in adding SNP " << i << " " << end0 << "\n";
@@ -690,7 +727,7 @@ void Pileup::add_snp(uint32_t gpos1, char ref, char alt)
  */
 void Pileup::add_del(uint32_t gpos1, std::string& del)
 {
-    add_padding(gpos1); 
+    add_3prime_padding(gpos1); 
     
     //std::cerr << "adding del " << gpos1 << " " << g2i(gpos1) << "\n";
     uint32_t i = g2i(gpos1);
@@ -706,8 +743,8 @@ void Pileup::add_del(uint32_t gpos1, std::string& del)
 
         if (a_gpos1<gbeg1)
         {
-            std::cerr << "Deletion left aligned to beyond the bounds of the pileup " << chrom << ":" << a_gpos1 << "<" << gbeg1 << "\n";
-       //     return;
+            fprintf(stderr, "[%s:%d %s] deletion left aligned to beyond the bounds of the pileup: %s:%d<%d\n", __FILE__, __LINE__, __FUNCTION__, chrom.c_str(), gpos1, gbeg1);
+            add_5prime_padding(a_gpos1);
         }
 
         if (debug) std::cerr << "\t\t\tDeletion left aligned at " << a_gpos1 << ":" << a_del << "\n";
@@ -735,7 +772,7 @@ void Pileup::add_del(uint32_t gpos1, std::string& del)
  */
 void Pileup::add_ins(uint32_t gpos1, std::string& ins)
 {
-    add_padding(gpos1); 
+    add_3prime_padding(gpos1); 
     
     uint32_t i = g2i(gpos1);
 
@@ -769,7 +806,7 @@ void Pileup::add_ins(uint32_t gpos1, std::string& ins)
  */
 void Pileup::add_lsclip(uint32_t gpos1, std::string& alt, float mean_qual, char strand)
 {
-    add_padding(gpos1); 
+    add_3prime_padding(gpos1); 
     
     uint32_t i = g2i(gpos1);
     SoftClipInfo& info = P[i].J[alt];
@@ -784,7 +821,7 @@ void Pileup::add_lsclip(uint32_t gpos1, std::string& alt, float mean_qual, char 
  */
 void Pileup::add_rsclip(uint32_t gpos1, std::string& alt, float mean_qual, char strand)
 {
-    add_padding(gpos1); 
+    add_3prime_padding(gpos1); 
     
     uint32_t i = g2i(gpos1);
     SoftClipInfo& info = P[i].K[alt];

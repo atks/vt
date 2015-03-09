@@ -54,6 +54,9 @@ class Igor : Program
     //options for selecting reads
     khash_t(rdict) *reads;
 
+    //sample properties
+    uint32_t ploidy;
+
     //read filters
     uint32_t read_mapq_cutoff;
     uint16_t read_exclude_flag;
@@ -101,6 +104,11 @@ class Igor : Program
     BCFOrderedWriter *odw;
     bcf1_t *v;
 
+    /////////////////////////
+    //useful shared variables
+    /////////////////////////
+    int32_t *gt;
+
     /////////
     //stats//
     /////////
@@ -144,7 +152,9 @@ class Igor : Program
             TCLAP::ValueArg<std::string> arg_ref_fasta_file("r", "r", "reference sequence fasta file []", true, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_sample_id("s", "s", "sample ID", true, "", "str", cmd);
 
-            TCLAP::ValueArg<uint32_t> arg_read_mapq_cutoff("p", "p", "MAPQ cutoff for alignments [0]", false, 0, "int", cmd);
+            TCLAP::ValueArg<uint32_t> arg_ploidy("p", "p", "ploidy [2]", false, 2, "int", cmd);
+                        
+            TCLAP::ValueArg<uint32_t> arg_read_mapq_cutoff("g", "g", "MAPQ cutoff for alignments [0]", false, 0, "int", cmd);
             TCLAP::SwitchArg arg_ignore_overlapping_read("l", "l", "ignore overlapping reads [false]", cmd, false);
             TCLAP::ValueArg<uint32_t> arg_read_exclude_flag("a", "a", "read exclude flag [0x0704]", false, 0x0704, "int", cmd);
 
@@ -216,10 +226,12 @@ class Igor : Program
         bcf_hdr_append(odw->hdr, "##ALT=<ID=RSC,Description=\"Right Soft Clip\">");
         bcf_hdr_append(odw->hdr, "##ALT=<ID=LSC,Description=\"Left Soft Clip\">");
         bcf_hdr_append(odw->hdr, "##INFO=<ID=SEQ,Number=1,Type=String,Description=\"Soft clipped Sequence\">");
+        bcf_hdr_append(odw->hdr, "##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">");
         bcf_hdr_append(odw->hdr, "##FORMAT=<ID=E,Number=1,Type=Integer,Description=\"Number of reads containing evidence of the alternate allele\">");
         bcf_hdr_append(odw->hdr, "##FORMAT=<ID=N,Number=1,Type=Integer,Description=\"Total number of reads at a candidate locus with reads that contain evidence of the alternate allele\">");
         bcf_hdr_append(odw->hdr, "##FORMAT=<ID=MQS,Number=.,Type=Float,Description=\"Mean qualities of soft clipped bases.\">");
         bcf_hdr_append(odw->hdr, "##FORMAT=<ID=STR,Number=.,Type=String,Description=\"Strands of soft clipped sequences.\">");
+        
         bcf_hdr_add_sample(odw->hdr, sample_id.c_str());
         bcf_hdr_add_sample(odw->hdr, NULL);
         v = bcf_init();
@@ -369,6 +381,13 @@ class Igor : Program
      */
     void write_to_vcf(uint32_t rid, uint32_t gpos1, PileupPosition& p)
     {
+        int32_t gts[2] = {0x0002,0x0004};
+        
+
+       
+        
+        
+        
         if (p.R=='N' || p.R=='X')
         {
             return;
@@ -389,6 +408,7 @@ class Igor : Program
             alleles.append(1, p.R);
             alleles.append(1, ',');
             alleles.append(1, 'A');
+            bcf_update_genotypes(odw->hdr, v, &gts, ploidy);
             bcf_update_alleles_str(odw->hdr, v, alleles.c_str());
             E = p.X[1];
             bcf_update_format_int32(odw->hdr, v, "E", &E, 1);
@@ -1160,6 +1180,7 @@ class Igor : Program
         std::clog << "         [o] output VCF File                  " << output_vcf_file << "\n";
         std::clog << "         [s] sample ID                        " << sample_id << "\n";
         std::clog << "         [r] reference FASTA File             " << ref_fasta_file << "\n";
+        std::clog << "         [p] ploidy                           " << ploidy << "\n";
         std::clog << "         [m] read mapping quality cutoff      " << read_mapq_cutoff << "\n";
         std::clog << "         [x] read flag filter                 " << std::showbase << std::hex << read_exclude_flag << std::dec << "\n";
         std::clog << "         [l] ignore overlapping read          " << (ignore_overlapping_read ? "true" : "false") << "\n";
