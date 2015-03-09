@@ -1167,6 +1167,11 @@ class Igor : Program
             ++no_passed_reads;
 
             //if (no_passed_reads==1) break;
+            
+            if ((no_reads & 0x0000FFFF) == 0)
+            {
+                std::cerr << pileup.get_chrom() << ":" << pileup.get_gbeg1() << "\n";
+            }    
         }
         flush();
         odw->close();

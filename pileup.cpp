@@ -530,20 +530,20 @@ void Pileup::add_D(uint32_t gpos1, uint32_t len)
     if (!is_normalized(P[i].R, del))
     {
         uint32_t a_gpos1 = gpos1;
-        char a_ref = P[i].R;
-        std::string a_del = del;
-        normalize(chrom, a_gpos1, a_ref, a_del);
+        std::string a_ref(1, P[i].R);
+        a_ref.append(del);
+        std::string a_alt(1, P[i].R);
+        normalize(chrom, a_gpos1, a_ref, a_alt);
 
         if (a_gpos1<gbeg1)
         {
             fprintf(stderr, "[%s:%d %s] deletion left aligned to beyond the bounds of the pileup: %s:%d<%d\n", __FILE__, __LINE__, __FUNCTION__, chrom.c_str(), gpos1, gbeg1);
             add_5prime_padding(a_gpos1);
         }
-
        
-        if (debug) std::cerr << "\t\t\t[add_D] deletion left aligned at " << chrom << ":" << gpos1 << ":" << a_del << "\n";
+        if (debug)  std::cerr << "\t\t\tdeletion left aligned : " << chrom << ":" << gpos1 << ":" << P[i].R << del << "/" << P[i].R  << " => " << chrom << ":" << a_gpos1 << ":" << a_ref << "/" << a_alt << "\n";
         uint32_t j = g2i(a_gpos1);
-        ++P[j].D[a_del];
+        ++P[j].D[a_ref.substr(1)];
     }
     else
     {
@@ -571,20 +571,20 @@ void Pileup::add_I(uint32_t gpos1, std::string& ins)
     if (!is_normalized(P[i].R, ins))
     {
         uint32_t a_gpos1 = gpos1;
-        char a_ref = P[i].R;
-        std::string a_ins = ins;
-        //std::cerr << "not normalized " << chrom << ":" << a_gpos1 << ":" << a_ref << ":" <<  a_ref << "\n";
-        normalize(chrom, a_gpos1, a_ref, a_ins);
-        //std::cerr << "normalized " << chrom << ":" << a_gpos1 << ":" << a_ref << a_ins << ":" <<  a_ref << "\n";
-
+        std::string a_ref(1, P[i].R);
+        std::string a_alt(1, P[i].R);
+        a_alt.append(ins);
+        normalize(chrom, a_gpos1, a_ref, a_alt);
+        
         if (a_gpos1<gbeg1)
         {
-            std::cerr << "\t\t\t[add_I] insertion left aligned to beyond the bounds of the pileup "<< chrom << ":" << a_gpos1  << " to " << a_gpos1 << "<" << gbeg1 << "\n";
+            fprintf(stderr, "[%s:%d %s] insertion left aligned to beyond the bounds of the pileup: %s:%d<%d\n", __FILE__, __LINE__, __FUNCTION__, chrom.c_str(), a_gpos1, gbeg1);
+            add_5prime_padding(a_gpos1);
         }
 
-        if (debug)  std::cerr << "\t\t\tInsertion left aligned at " << a_gpos1 << ":" << a_ins << "\n";
+        if (debug)  std::cerr << "\t\t\tinsertion left aligned : " << chrom << ":" << gpos1 << ":" << P[i].R << "/" << P[i].R << ins << " => " << chrom << ":" << a_gpos1 << ":" << a_ref << "/" << a_alt << "\n";
         uint32_t j = g2i(a_gpos1);
-        ++P[j].I[a_ins];
+        ++P[j].I[a_alt.substr(1)];
     }
     else
     {
@@ -641,7 +641,11 @@ void Pileup::add_5prime_padding(uint32_t gpos1)
     if (gpos1<gbeg1)
     {
         if (max_size()-size()<gbeg1-gpos1)
-        {
+        {   
+//            std::cerr << "max size: " << max_size() << "\n";
+//            std::cerr << "    size: " <<size() << "\n";
+//            std::cerr << "   gbeg1: " <<gbeg1 << "\n";
+//            std::cerr << "   gpos1: " <<gpos1 << "\n";    
             fprintf(stderr, "[%s:%d %s] buffer overflow. requires %d but maximum size is %d\n", __FILE__, __LINE__, __FUNCTION__, size()+gbeg1-gpos1, max_size());
             abort();
         }
@@ -735,21 +739,20 @@ void Pileup::add_del(uint32_t gpos1, std::string& del)
     if (!is_normalized(P[i].R, del))
     {
         uint32_t a_gpos1 = gpos1;
-        char a_ref = P[i].R;
-        std::string a_del = del;
-        //std::cerr << "not normalized " << chrom << ":" << a_gpos1 << ":" << a_ref << a_del << ":" <<  a_ref << "\n";
-        normalize(chrom, a_gpos1, a_ref, a_del);
-        //std::cerr << "normalized " << chrom << ":" << a_gpos1 << ":" << a_ref << a_del << ":" <<  a_ref << "\n";
-
+        std::string a_ref(1, P[i].R);
+        a_ref.append(del);
+        std::string a_alt(1, P[i].R);
+        normalize(chrom, a_gpos1, a_ref, a_alt);
+        
         if (a_gpos1<gbeg1)
         {
-            fprintf(stderr, "[%s:%d %s] deletion left aligned to beyond the bounds of the pileup: %s:%d<%d\n", __FILE__, __LINE__, __FUNCTION__, chrom.c_str(), gpos1, gbeg1);
+            fprintf(stderr, "[%s:%d %s] deletion left aligned to beyond the bounds of the pileup: %s:%d<%d\n", __FILE__, __LINE__, __FUNCTION__, chrom.c_str(), a_gpos1, gbeg1);
             add_5prime_padding(a_gpos1);
         }
 
-        if (debug) std::cerr << "\t\t\tDeletion left aligned at " << a_gpos1 << ":" << a_del << "\n";
+        if (debug)  std::cerr << "\t\t\tdeletion left aligned : " << chrom << ":" << gpos1 << ":" << P[i].R << del << "/" << P[i].R << " => " << chrom << ":" << a_gpos1 << ":" << a_ref << "/" << a_alt << "\n";
         uint32_t j = g2i(a_gpos1);
-        ++P[j].D[a_del];
+        ++P[j].D[a_ref.substr(1)];
     }
     else
     {
@@ -779,21 +782,20 @@ void Pileup::add_ins(uint32_t gpos1, std::string& ins)
     if (!is_normalized(P[i].R, ins))
     {
         uint32_t a_gpos1 = gpos1;
-        char a_ref = P[i].R;
-        std::string a_ins = ins;
-        //std::cerr << "not normalized " << chrom << ":" << a_gpos1 << ":" << a_ref << ":" <<  a_ref << "\n";
-        normalize(chrom, a_gpos1, a_ref, a_ins);
-        //std::cerr << "normalized " << chrom << ":" << a_gpos1 << ":" << a_ref << a_ins << ":" <<  a_ref << "\n";
-
+        std::string a_ref(1, P[i].R);
+        std::string a_alt(1, P[i].R);
+        a_alt.append(ins);
+        normalize(chrom, a_gpos1, a_ref, a_alt);
+        
         if (a_gpos1<gbeg1)
         {
-            std::cerr << "insertion left aligned to beyond the bounds of the pileup " << chrom << ":" << a_gpos1 << "<" << gbeg1 << "\n";
-            //return;
+            fprintf(stderr, "[%s:%d %s] insertion left aligned to beyond the bounds of the pileup: %s:%d<%d\n", __FILE__, __LINE__, __FUNCTION__, chrom.c_str(), a_gpos1, gbeg1);
+            add_5prime_padding(a_gpos1);
         }
 
-        if (debug)  std::cerr << "\t\t\tInsertion left aligned at " << a_gpos1 << ":" << a_ins << "\n";
+        if (debug)  std::cerr << "\t\t\tinsertion left aligned : " << chrom << ":" << gpos1 << ":" << P[i].R << "/" << P[i].R << ins << " => " << chrom << ":" << a_gpos1 << ":" << a_ref << "/" << a_alt << "\n";
         uint32_t j = g2i(a_gpos1);
-        ++P[j].I[a_ins];
+        ++P[j].I[a_alt.substr(1)];
     }
     else
     {
@@ -840,19 +842,22 @@ bool Pileup::is_normalized(char ref, std::string& indel)
 
 /**
  * Normalize a biallelic variant.
+ * 
+ * If N exists in either of the alleles, the normalization does not proceed.
  */
-void Pileup::normalize(std::string& chrom, uint32_t& pos1, char& ref, std::string& indel)
+void Pileup::normalize(std::string& chrom, uint32_t& pos1, std::string& ref, std::string& alt)
 {
-    indel.insert(0, 1, ref);
-    while (indel.at(indel.size()-1)==ref)
+    if (ref.find_first_of("Nn", 0) || alt.find_first_of("Nn", 0)) return;
+    
+    while (ref.at(ref.size()-1)==alt.at(alt.size()))
     {
         --pos1;
         char base = get_base(chrom, pos1);
-        ref = base;
-        indel.insert(0, 1, base);
-        indel.erase(indel.size()-1, 1);
+        ref.insert(0, 1, base);
+        alt.insert(0, 1, base);
+        ref.erase(ref.size()-1, 1);
+        alt.erase(alt.size()-1, 1);
     }
-    indel.erase(0, 1);
 };
 
 /**

@@ -370,11 +370,13 @@ class Pileup
      * Checks if a variant is normalized.
      */
     bool is_normalized(char ref, std::string& indel);
-
+    
     /**
      * Normalize a biallelic variant.
+     * 
+     * If N exists in either of the alleles, the normalization does not proceed.
      */
-    void normalize(std::string& chrom, uint32_t& pos1, char& ref, std::string& indel);
+    void normalize(std::string& chrom, uint32_t& pos1, std::string& ref, std::string& alt);
 
     /**
      * Converts base to bam encoding.
