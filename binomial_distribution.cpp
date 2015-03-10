@@ -29,7 +29,7 @@
  */
 BinomialDistribution::BinomialDistribution()
 {
-    this-> p = -1;
+    this->p = -1;
 };
 
 /**
@@ -39,13 +39,13 @@ BinomialDistribution::BinomialDistribution(double p)
 {
     if (this->p!=p)
     {    
-        this-> p = p;
+        this->p = p;
         pvalues.clear();
     }
 };
 
 /**
- * Get P(X<=x).
+ * Get P(X<=x) where X~Binomial(0.5, n)
  */
 double BinomialDistribution::get_pvalue(uint32_t x, uint32_t n)
 {

@@ -124,7 +124,7 @@ class Igor : Program
 
             TCLAP::ValueArg<uint32_t> arg_ploidy("p", "p", "ploidy [2]", false, 2, "int", cmd);
 
-            TCLAP::ValueArg<uint32_t> arg_read_mapq_cutoff("g", "g", "MAPQ cutoff for alignments [0]", false, 0, "int", cmd);
+            TCLAP::ValueArg<uint32_t> arg_read_mapq_cutoff("t", "t", "MAPQ cutoff for alignments [0]", false, 0, "int", cmd);
             TCLAP::SwitchArg arg_ignore_overlapping_read("l", "l", "ignore overlapping reads [false]", cmd, false);
             TCLAP::ValueArg<uint32_t> arg_read_exclude_flag("a", "a", "read exclude flag [0x0704]", false, 0x0704, "int", cmd);
 
@@ -139,10 +139,10 @@ class Igor : Program
             TCLAP::ValueArg<float> arg_deletion_desired_type_I_error("m", "m", "deletion desired type I error [0.0]", false, 0, "float", cmd);
             TCLAP::ValueArg<float> arg_deletion_desired_type_II_error("n", "n", "deletion desired type II error [0.0]", false, 0, "float", cmd);
 
-            TCLAP::ValueArg<uint32_t> arg_insertion_e_cutoff("u", "u", "insertion count cutoff [1]", false, 1, "int", cmd);
-            TCLAP::ValueArg<float> arg_insertion_f_cutoff("v", "v", "insertion fractional evidence cutoff [0]", false, 0, "float", cmd);
-            TCLAP::ValueArg<float> arg_insertion_desired_type_I_error("m", "m", "insertion desired type I error [0.0]", false, 0, "float", cmd);
-            TCLAP::ValueArg<float> arg_insertion_desired_type_II_error("n", "n", "insertion desired type II error [0.0]", false, 0, "float", cmd);
+            TCLAP::ValueArg<uint32_t> arg_insertion_e_cutoff("g", "g", "insertion count cutoff [1]", false, 1, "int", cmd);
+            TCLAP::ValueArg<float> arg_insertion_f_cutoff("h", "h", "insertion fractional evidence cutoff [0]", false, 0, "float", cmd);
+            TCLAP::ValueArg<float> arg_insertion_desired_type_I_error("c", "c", "insertion desired type I error [0.0]", false, 0, "float", cmd);
+            TCLAP::ValueArg<float> arg_insertion_desired_type_II_error("w", "w", "insertion desired type II error [0.0]", false, 0, "float", cmd);
 
             TCLAP::ValueArg<float> arg_sclip_mq_cutoff("x", "x", "soft clipped mean quality cutoff [0]", false, 0, "float", cmd);
             TCLAP::ValueArg<uint32_t> arg_sclip_u_cutoff("y", "y", "soft clipped unique sequences cutoff [0]", false, 1, "float", cmd);
@@ -900,7 +900,7 @@ class Igor : Program
                         {
                             if (isalpha(*mdp)) //SNPs
                             {
-                                char ref = *mdp;
+                                char ref = toupper(*mdp);
                                 char alt = (bam_base2char(bam_seqi(seq, spos0+(lpos1-cpos1))));
                                 if (debug) std::cerr << "\tMD: Mismatch " << ref << "\n";
                                 if (debug) std::cerr << "\t\t\tadding SNP: " << lpos1 << ":" << ref << "/" << alt << " [" << (mlen-1)<< "]\n";
@@ -988,7 +988,7 @@ class Igor : Program
                             std::string del = "";
                             while (isalpha(*mdp))
                             {
-                                del += *mdp;
+                                del += toupper(*mdp);
                                 ++mdp;
                             }
 

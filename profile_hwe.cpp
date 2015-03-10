@@ -284,7 +284,7 @@ class Igor : Program
         fclose(out);
 
         std::string cmd = "cd "  + output_dir + "; cat plot.r | R --vanilla > run.log";
-        system(cmd.c_str());
+        int32_t ret = system(cmd.c_str());
     };
 
     void print_stats()
