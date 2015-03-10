@@ -526,23 +526,19 @@ void Pileup::add_M(uint32_t mgpos1, uint32_t spos0, uint32_t len, uint8_t* seq)
  */
 void Pileup::add_D(uint32_t gpos1, uint32_t len)
 {
+    //there should never be a need to perform 3' padding for deletions
     //add_3prime_padding(gpos1); 
     
     //check if the base exists.
     if (gpos1>get_gend1())
     {
+        //change to a ignore, return?
         std::cerr << "anchor base not present for deletion update " << chrom << ":" << gpos1 << " (gpos1) >" << get_gend1() << " (gend1), gbeg1 = " << get_gbeg1() << "\n";
         abort();
     }
 
     char* ref = get_sequence(chrom, gpos1+1, len);
     std::string del(ref);
-        
-    if (del.find('N')!=std::string::npos)
-    {
-        std::cerr << chrom << ":" << (gpos1+1) << ":" << del << "\n";
-    }        
-        
     free(ref);
 
     uint32_t i = g2i(gpos1);
@@ -583,6 +579,7 @@ void Pileup::add_D(uint32_t gpos1, uint32_t len)
  */
 void Pileup::add_I(uint32_t gpos1, std::string& ins)
 {
+    //there should never be a need to perform 3' padding for insertions
     //add_3prime_padding(gpos1); 
     
     uint32_t i = g2i(gpos1);
@@ -635,6 +632,7 @@ void Pileup::add_LSC(uint32_t gpos1, std::string& alt, float mean_qual, char str
  */
 void Pileup::add_RSC(uint32_t gpos1, std::string& alt, float mean_qual, char strand)
 {
+    //there should never be a need to perform 3' padding for right soft clips
     //add_3prime_padding(gpos1); 
     
     uint32_t i = g2i(gpos1);
@@ -738,7 +736,6 @@ void Pileup::add_snp(uint32_t gpos1, char ref, char alt)
     add_3prime_padding(gpos1); 
     
     uint32_t i = g2i(gpos1);
-    //std::cerr << "i in adding SNP " << i << " " << end0 << "\n";
     P[i].R = ref;
     ++P[i].X[base2index(alt)];
     ++P[i].N;
@@ -750,6 +747,7 @@ void Pileup::add_snp(uint32_t gpos1, char ref, char alt)
  */
 void Pileup::add_del(uint32_t gpos1, std::string& del)
 {
+    //there should never be a need to perform 3' padding for deletions
     //add_3prime_padding(gpos1); 
     
     //std::cerr << "adding del " << gpos1 << " " << g2i(gpos1) << "\n";
@@ -794,6 +792,7 @@ void Pileup::add_del(uint32_t gpos1, std::string& del)
  */
 void Pileup::add_ins(uint32_t gpos1, std::string& ins)
 {
+    //there should never be a need to perform 3' padding for insertions
     //add_3prime_padding(gpos1); 
     
     uint32_t i = g2i(gpos1);

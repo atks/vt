@@ -82,6 +82,7 @@ SOURCES = align\
 		validate\
 		variant\
 		variant_manip\
+		variant_filter\
 		view\
 		vntrize\
    	    tbx_ordered_reader\
