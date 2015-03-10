@@ -78,7 +78,7 @@ bool VariantFilter::filter_ins(uint32_t evidence_no, uint32_t read_no)
 /**
  * Sync variables.
  */
-bool VariantFilter::sync()
+void VariantFilter::sync()
 {
     snp_adaptive_cutoff = snp_desired_type_I_error!=0 || snp_desired_type_II_error!=0;
     deletion_adaptive_cutoff = deletion_desired_type_I_error!=0 || deletion_desired_type_II_error!=0;
