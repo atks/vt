@@ -66,13 +66,13 @@ BCFSyncedReader::BCFSyncedReader(std::vector<std::string>& file_names, std::vect
             file_names[0]="-";
             ++no_stdins;
         }
-            
+
         if (no_stdins>1)
         {
             fprintf(stderr, "[E:%s:%d %s] BCFSyncedReader does not support reading from more than one STDIN stream\n", __FILE__, __LINE__, __FUNCTION__);
             exit(1);
         }
-        
+
         files[i] = hts_open(file_names[i].c_str(), "r");
         if (files[i]==NULL)
         {
@@ -277,7 +277,7 @@ void BCFSyncedReader::close()
         bcf_hdr_destroy(hdrs[i]);
         bcf_itr_destroy(itrs[i]);
     }
-    
+
     while (pool.size()!=0)
     {
         bcf_destroy(pool.front());
@@ -412,12 +412,11 @@ bool BCFSyncedReader::read_next_position(std::vector<bcfptr*>& current_recs)
             }
         }
 
-        //std::cerr << "pq size: " << pq.size() << "\n";
-
         return true;
     }
-    else //end of contig or eof for all files
+    else
     {
+        //end of contig or eof for all files
         return false;
     }
 }
@@ -503,6 +502,17 @@ void BCFSyncedReader::fill_buffer(int32_t i)
             {
                 populated = true;
                 bcf_unpack(v, BCF_UN_STR);
+                
+                //check to ensure order
+                if (!buffer[i].empty())
+                {
+                    if (!bcf_is_in_order(buffer[i].back(), v))
+                    {
+                        fprintf(stderr, "[E:%s:%d %s] VCF file not in order: %s\n", __FILE__, __LINE__, __FUNCTION__, file_names[i].c_str());
+                        exit(1);
+                    }
+                }
+                
                 buffer[i].push_back(v);
                 insert_into_pq(i, v);
 
@@ -531,6 +541,17 @@ void BCFSyncedReader::fill_buffer(int32_t i)
                 vcf_parse(&s, hdrs[i], v);
 
                 bcf_unpack(v, BCF_UN_STR);
+                
+                //check to ensure order
+                if (!buffer[i].empty())
+                {
+                    if (!bcf_is_in_order(buffer[i].back(), v))
+                    {
+                        fprintf(stderr, "[E:%s:%d %s] VCF file not in order: %s\n", __FILE__, __LINE__, __FUNCTION__, file_names[i].c_str());
+                        exit(1);
+                    }
+                }
+                
                 buffer[i].push_back(v);
                 insert_into_pq(i, v);
 
@@ -558,6 +579,17 @@ void BCFSyncedReader::fill_buffer(int32_t i)
         {
             populated = true;
             bcf_unpack(v, BCF_UN_STR);
+            
+            //check to ensure order
+            if (!buffer[i].empty())
+            {
+                if (!bcf_is_in_order(buffer[i].back(), v))
+                {
+                    fprintf(stderr, "[E:%s:%d %s] VCF file not in order: %s\n", __FILE__, __LINE__, __FUNCTION__, file_names[i].c_str());
+                    exit(1);
+                }
+            }
+            
             buffer[i].push_back(v);
             insert_into_pq(i, v);
 

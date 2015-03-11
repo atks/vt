@@ -705,6 +705,19 @@ int32_t cmpstr(void const *a, void const *b)
 }
 
 /**
+ * Returns true if a is before b, false otherwise.
+ */
+bool bcf_is_in_order(bcf1_t *a, bcf1_t *b)
+{
+    if (bcf_get_rid(a)==bcf_get_rid(b))
+    {
+        return bcf_get_pos0(a)<=bcf_get_pos0(b);
+    }
+
+    return bcf_get_rid(a)<bcf_get_rid(b);
+}
+
+/**
  * Gets a sorted string representation of a variant.
  */
 void bcf_variant2string_sorted(bcf_hdr_t *h, bcf1_t *v, kstring_t *var)

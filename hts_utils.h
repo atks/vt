@@ -303,6 +303,11 @@ uint32_t bcf_ag2p(uint32_t no_alleles, uint32_t no_genotypes);
 uint32_t bcf_g2i(std::string genotype);
 
 /**
+ * Returns true if a is before b, false otherwise.
+ */
+bool bcf_is_in_order(bcf1_t *a, bcf1_t *b);
+
+/**
  * Gets a string representation of a variant.
  */
 void bcf_variant2string(bcf_hdr_t *h, bcf1_t *v, kstring_t *var);

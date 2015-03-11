@@ -318,7 +318,7 @@ class Igor : Program
             {
                 presence[i]=0;
             }
-            
+
             //check existence
             for (size_t i=0; i<current_recs.size(); ++i)
             {
