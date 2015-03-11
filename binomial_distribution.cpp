@@ -35,38 +35,54 @@ BinomialDistribution::BinomialDistribution()
 /**
  * Constructor.
  */
-BinomialDistribution::BinomialDistribution(double p)
+BinomialDistribution::BinomialDistribution(float p)
+{
+    set_p(p);
+};
+
+/**
+ * Sets p.
+ */
+void BinomialDistribution::set_p(float p)
 {
     if (this->p!=p)
-    {    
+    {
         this->p = p;
         pvalues.clear();
     }
-};
+}
 
 /**
  * Get P(X<=x) where X~Binomial(0.5, n)
  */
-double BinomialDistribution::get_pvalue(uint32_t x, uint32_t n)
+float BinomialDistribution::get_pvalue(uint32_t x, uint32_t n)
 {
     if (x<=n)
-    {   
+    {
         uint32_t current_size = pvalues.size();
         if (current_size>n)
-        {    
+        {
             return pvalues[n][x];
         }
         else
         {
             pvalues.resize(n+1);
-            for (uint32_t i=pvalues.size(); i<=n; ++i)
+            for (uint32_t i=current_size; i<=n; ++i)
             {
                 for (uint32_t j=0; j<=i; ++j)
                 {
+                    //std::cerr << "x=" << j << " n=" << i << " p=" << p << " = " << pbinom(j, i, p, 1, 0) << "\n";
+                    
                     //double pbinom(double x, double n, double p, int lower_tail, int log_p)
-                    pvalues[i][j] = pbinom(j, i, p, 1, 0);
+                    pvalues[i].push_back(pbinom(j, i, p, 1, 0));
+                    
+                    //double dbinom(double x, double n, double p, int give_log)
+                    pvalues[i].push_back(dbinom(j, i, p, 1));
+                    
                 }
             }
+
+            return pvalues[n][x];
         }
     }
 

@@ -44,8 +44,8 @@
 class BinomialDistribution
 {
     private:
-    double p;
-    std::vector<std::vector<double> > pvalues;
+    float p;
+    std::vector<std::vector<float> > pvalues;
 
     public:
 
@@ -53,16 +53,21 @@ class BinomialDistribution
      * Constructor.
      */
     BinomialDistribution();
-    
+
     /**
      * Constructor.
      */
-    BinomialDistribution(double p);
+    BinomialDistribution(float p);
+
+    /**
+     * Sets p.
+     */
+    void set_p(float p);
 
     /**
      * Get P(X<=x).
      */
-    double get_pvalue(uint32_t x, uint32_t n);
+    float get_pvalue(uint32_t x, uint32_t n);
 };
 
 #endif

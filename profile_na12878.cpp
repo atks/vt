@@ -315,8 +315,10 @@ class Igor : Program
             int32_t vtype = vm->classify_variant(h, v, variant);
 
             for (size_t i=0; i<no_overlap_files; ++i)
+            {
                 presence[i]=0;
-
+            }
+            
             //check existence
             for (size_t i=0; i<current_recs.size(); ++i)
             {

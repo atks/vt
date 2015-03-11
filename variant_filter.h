@@ -36,7 +36,15 @@
 class VariantFilter
 {
     BinomialDistribution snp_binom_dist;
-    BinomialDistribution indel_binom_dist;
+    BinomialDistribution deletion_binom_dist;
+    BinomialDistribution insertion_binom_dist;
+
+    BinomialDistribution non_snp_binom_dist;
+    BinomialDistribution non_deletion_binom_dist;
+    BinomialDistribution non_insertion_binom_dist;
+
+    //general cutoffs
+    float lr_cutoff;
 
     //snp filters
     uint32_t snp_baseq_cutoff;
@@ -66,6 +74,9 @@ class VariantFilter
 
     public:
 
+    /**
+     * Constructor.
+     */
     VariantFilter();
 
     /**
@@ -82,17 +93,24 @@ class VariantFilter
      * Filters an insertion.
      */
     bool filter_ins(uint32_t evidence_no, uint32_t read_no);
-    
+
     /**
      * Sync variables.
      */
     void sync();
+
+    /**
+     * Setters for general filters.
+     */
+    void set_lr_cutoff(float lr_cutoff);
+
+    float get_lr_cutoff();
     
     /**
      * Setters for SNP filters.
      */
     void set_snp_baseq_cutoff(uint32_t snp_baseq_cutoff);
-    
+
     void set_snp_e_cutoff(uint32_t snp_e_cutoff);
 
     void set_snp_f_cutoff(float snp_f_cutoff);
