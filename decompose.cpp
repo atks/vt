@@ -453,16 +453,15 @@ class Igor : Program
                                     int32_t var_len = bcf_hdr_id2length(hdr,BCF_HL_FMT,id);
                                     int32_t type = fmt[j].type;
 
-                                    //std::cerr << tag << ":" << id << ":" << "NOVAR: " << var_len << "\n";
-
                                     if (var_len==BCF_VL_G)
                                     {   
-                                        if (type&(BCF_BT_INT8|BCF_BT_INT16|BCF_BT_INT32))
+                                        if (type==BCF_BT_INT8||type==BCF_BT_INT16||type==BCF_BT_INT32)
                                         {
                                             int32_t n = 0;
                                             int32_t* g = 0;
                                             int32_t ret = bcf_get_format_int32(odr->hdr, v, tag, &g, &n);
                                             int32_t n_genotype = n/no_samples;
+                                            
                                             int32_t ploidy = bcf_ag2p(n_allele, n_genotype);
                                             int32_t n_genotype2 = bcf_ap2g(2, ploidy);
                                             int32_t* gs = (int32_t*) malloc(no_samples*n_genotype2*sizeof(int32_t));
@@ -494,7 +493,7 @@ class Igor : Program
                                             bcf_update_format_int32(odw->hdr, nv, tag, gs, no_samples*n_genotype2);
                                             free(gs);
                                         }    
-                                        else if (type&BCF_BT_FLOAT)
+                                        else if (type==BCF_BT_FLOAT)
                                         {
                                             int32_t n = 0;
                                             int32_t* g = 0;
@@ -534,7 +533,7 @@ class Igor : Program
                                     }
                                     else if (var_len == BCF_VL_A)
                                     {
-                                        if (type&(BCF_BT_INT8|BCF_BT_INT16|BCF_BT_INT32))
+                                        if (type==BCF_BT_INT8||type==BCF_BT_INT16||type==BCF_BT_INT32)
                                         {
                                             int32_t n = 0;
                                             int32_t* a = 0;
@@ -559,7 +558,7 @@ class Igor : Program
                                             bcf_update_format_int32(odw->hdr, nv, tag, as, no_samples);
                                             free(as);
                                         }    
-                                        else if (type&BCF_BT_FLOAT)
+                                        else if (type==BCF_BT_FLOAT)
                                         {
                                             int32_t n = 0;
                                             int32_t* a = 0;
@@ -582,13 +581,13 @@ class Igor : Program
                                             bcf_update_format_float(odw->hdr, nv, tag, as, no_samples);
                                             free(as);
                                         }
-                                        else if (type&BCF_BT_CHAR)
+                                        else if (type==BCF_BT_CHAR)
                                         {
                                         }
                                     }
                                     else if (var_len == BCF_VL_R)
                                     {
-                                        if (type&(BCF_BT_INT8|BCF_BT_INT16|BCF_BT_INT32))
+                                        if (type==BCF_BT_INT8||type==BCF_BT_INT16||type==BCF_BT_INT32)
                                         {
                                             int32_t n = 0;
                                             int32_t* a = 0;
@@ -615,7 +614,7 @@ class Igor : Program
                                             bcf_update_format_int32(odw->hdr, nv, tag, as, no_samples*2);
                                             free(as);
                                         }    
-                                        else if (type&BCF_BT_FLOAT)
+                                        else if (type==BCF_BT_FLOAT)
                                         {
                                             int32_t n = 0;
                                             int32_t* a = 0;
@@ -640,7 +639,7 @@ class Igor : Program
                                             bcf_update_format_float(odw->hdr, nv, tag, as, no_samples*2);
                                             free(as);
                                         }
-                                        else if (type&BCF_BT_CHAR)
+                                        else if (type==BCF_BT_CHAR)
                                         {
                                         }
                                     }
@@ -675,12 +674,12 @@ class Igor : Program
                                         }
                                         else
                                         {
-                                            
+                                            //leave it there...
                                         }
                                     }
                                     else if (var_len == BCF_VL_VAR)
                                     {
-
+                                        //leave it there
                                     }
                                 }
                             }
