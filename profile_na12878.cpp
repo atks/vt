@@ -231,7 +231,7 @@ class Igor : Program
             std::string line(s.s);
             split(vec, " ", line);
 
-            if (vec[1] == "TP" || vec[1] == "FP")
+            if (vec[1] == "Truth" || vec[1] == "False")
             {
                 dataset_labels.push_back(vec[0]);
                 dataset_types.push_back(vec[1]);

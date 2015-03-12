@@ -500,7 +500,7 @@ class Igor : Program
 
         if (p.X[8])
         {
-            if (vf.filter_snp(p.X[1], p.N+p.E))
+            if (vf.filter_snp(p.X[8], p.N+p.E))
             {
                 bcf_clear(v);
                 bcf_set_rid(v, rid);
