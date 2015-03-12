@@ -198,16 +198,20 @@ class Igor : Program
 //# This file contains information on how to process reference data sets.
 //#
 //# dataset - name of data set, this label will be printed.
-//# type    - True Positives (TP) and False Positives (FP)
+//# type    - Truth set (Truth) and False set (False)
 //#           overlap percentages labeled as (Precision, Sensitivity) and (False Discovery Rate, Type I Error) respectively
-//#         - annotation
+//#         - cds_annotation
 //#           file is used for GENCODE annotation of frame shift and non frame shift Indels
 //# filter  - filter applied to variants for this particular data set
 //# path    - path of indexed BCF file
-//#dataset              type         filter    path
-//broad.kb              TP           PASS      /net/fantasia/home/atks/dev/vt/bundle/public/grch37/broad.kb.241365variants.genotypes.bcf
-//illumina.platinum     TP           PASS      /net/fantasia/home/atks/dev/vt/bundle/public/grch37/NA12878.illumina.platinum.5284448variants.genotypes.bcf
-//gencode.v19           annotation   .         /net/fantasia/home/atks/dev/vt/bundle/public/grch37/gencode.v19.annotation.gtf.gz
+//# 
+//# Please do not change order of data set.  profile_na12878 assumes this order.
+//#
+//#dataset            type             filter                                                                path
+//broad.kb            Mixed            PASS&&VTYPE==SNP&&N_ALLELE==2                                         /net/fantasia/home/atks/dev/vt/bundle/public/grch37/NA12878.broad.kb.snps.indels.complex.genotypes.bcf
+//illumina.platinum   Truth            PASS&&VTYPE==SNP&&N_ALLELE==2                                         /net/fantasia/home/atks/dev/vt/bundle/public/grch37/NA12878.illumina.platinum.snps.indels.complex.genotypes.bcf
+//broad.kb.fp         False            PASS&&VTYPE==SNP&&N_ALLELE==2&&INFO.TruthStatus=='FALSE_POSITIVE'     /net/fantasia/home/atks/dev/vt/bundle/public/grch37/NA12878.broad.kb.snps.indels.complex.genotypes.bcf
+//gencode.v19         cds_annotation   .                                                                     /net/fantasia/home/atks/dev/vt/bundle/public/grch37/gencode.v19.cds.bed.gz
 
         input_vcf_files.push_back(input_vcf_file);
         dataset_labels.push_back("data");
@@ -231,7 +235,7 @@ class Igor : Program
             std::string line(s.s);
             split(vec, " ", line);
 
-            if (vec[1] == "Truth" || vec[1] == "False")
+            if (vec[1] == "Truth" || vec[1] == "False" || vec[1] == "Mixed")
             {
                 dataset_labels.push_back(vec[0]);
                 dataset_types.push_back(vec[1]);
@@ -590,8 +594,7 @@ class Igor : Program
         fprintf(stderr, "  FNR %5.2f (FN/(TN+FN))\n", (float)kbstats.fn/(kbstats.fn+kbstats.tn)*100);
         fprintf(stderr, "\n");
 
-
-        for (int32_t i=1; i<dataset_labels.size(); ++i)
+        for (int32_t i=2; i<dataset_labels.size(); ++i)
         {
             fprintf(stderr, "  %s\n", dataset_labels[i].c_str());
             fprintf(stderr, "                   ts/tv  ins/del\n");
@@ -599,51 +602,52 @@ class Igor : Program
             fprintf(stderr, "    A&B %10d [%.2f] [%.2f]\n", stats[i].ab, (float)stats[i].ab_ts/stats[i].ab_tv, (float)stats[i].ab_ins/stats[i].ab_del);
             fprintf(stderr, "    B-A %10d [%.2f] [%.2f]\n", stats[i].b,  (float)stats[i].b_ts/stats[i].b_tv, (float)stats[i].b_ins/stats[i].b_del);
 
-            if (dataset_types[i]=="TP")
+            if (dataset_types[i]=="Truth")
             {
-                fprintf(stderr, "    Precision    %4.1f%%\n", 100*(float)stats[i].ab/(stats[i].a+stats[i].ab));
                 fprintf(stderr, "    Sensitivity  %4.1f%%\n", 100*(float)stats[i].ab/(stats[i].b+stats[i].ab));
             }
             else
             {
-                fprintf(stderr, "    FDR          %4.1f%%\n", 100*(float)stats[i].ab/(stats[i].a+stats[i].ab));
                 fprintf(stderr, "    Type I Error %4.1f%%\n", 100*(float)stats[i].ab/(stats[i].b+stats[i].ab));
             }
             fprintf(stderr, "\n");
         }
 
-        for (int32_t i=1; i<dataset_labels.size(); ++i)
+        for (int32_t i=2; i<dataset_labels.size(); ++i)
         {
-            int32_t (&geno)[4][4] = concordance[i].geno;
-            int32_t total = 0;
-            int32_t concordance = 0;
-            for (int32_t i=0; i<3; ++i)
+            if (dataset_types[i]=="Truth")
             {
-                for (int32_t j=0; j<3; ++j)
+                int32_t (&geno)[4][4] = concordance[i].geno;
+                int32_t total = 0;
+                int32_t concordance = 0;
+                for (int32_t i=0; i<3; ++i)
                 {
-                    total += geno[i][j];
-                    if (i==j)
+                    for (int32_t j=0; j<3; ++j)
                     {
-                        concordance += geno[i][j];
+                        total += geno[i][j];
+                        if (i==j)
+                        {
+                            concordance += geno[i][j];
+                        }
                     }
                 }
+    
+                int32_t discordance = total-concordance;
+    
+                fprintf(stderr, "  %s\n", dataset_labels[i].c_str());
+                fprintf(stderr, "                R/R       R/A       A/A       ./.\n");
+                fprintf(stderr, "    R/R    %8d  %8d  %8d  %8d\n", geno[0][0], geno[0][1], geno[0][2], geno[0][3]);
+                fprintf(stderr, "    R/A    %8d  %8d  %8d  %8d\n", geno[1][0], geno[1][1], geno[1][2], geno[1][3]);
+                fprintf(stderr, "    A/A    %8d  %8d  %8d  %8d\n", geno[2][0], geno[2][1], geno[2][2], geno[2][3]);
+                fprintf(stderr, "    ./.    %8d  %8d  %8d  %8d\n", geno[3][0], geno[3][1], geno[3][2], geno[3][3]);
+                fprintf(stderr, "\n");
+    
+                fprintf(stderr, "    Total genotype pairs :  %8d\n", total);
+                fprintf(stderr, "    Concordance          :  %8.2f%% (%d)\n", (float)concordance/total*100, concordance);
+                fprintf(stderr, "    Discordance          :  %8.2f%% (%d)\n", (float)discordance/total*100, discordance);
+    
+                fprintf(stderr, "\n");
             }
-
-            int32_t discordance = total-concordance;
-
-            fprintf(stderr, "  %s\n", dataset_labels[i].c_str());
-            fprintf(stderr, "                R/R       R/A       A/A       ./.\n");
-            fprintf(stderr, "    R/R    %8d  %8d  %8d  %8d\n", geno[0][0], geno[0][1], geno[0][2], geno[0][3]);
-            fprintf(stderr, "    R/A    %8d  %8d  %8d  %8d\n", geno[1][0], geno[1][1], geno[1][2], geno[1][3]);
-            fprintf(stderr, "    A/A    %8d  %8d  %8d  %8d\n", geno[2][0], geno[2][1], geno[2][2], geno[2][3]);
-            fprintf(stderr, "    ./.    %8d  %8d  %8d  %8d\n", geno[3][0], geno[3][1], geno[3][2], geno[3][3]);
-            fprintf(stderr, "\n");
-
-            fprintf(stderr, "    Total genotype pairs :  %8d\n", total);
-            fprintf(stderr, "    Concordance          :  %8.2f%% (%d)\n", (float)concordance/total*100, concordance);
-            fprintf(stderr, "    Discordance          :  %8.2f%% (%d)\n", (float)discordance/total*100, discordance);
-
-            fprintf(stderr, "\n");
         }
     };
 
