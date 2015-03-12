@@ -595,7 +595,7 @@ class Igor : Program
                     E = i->second;
                     N = p.E;
 
-                    if (vf.filter_del(E, N))
+                    if (vf.filter_ins(E, N))
                     {
                         bcf_clear(v);
                         bcf_set_rid(v, rid);
@@ -620,7 +620,7 @@ class Igor : Program
 
         if (p.J.size()!=0)
         {
-            if (p.J.size()>=vf.get_sclip_u_cutoff())
+            if (false && p.J.size()>=vf.get_sclip_u_cutoff())
             {
                 for (std::map<std::string, SoftClipInfo>::iterator i = p.J.begin(); i!=p.J.end(); ++i)
                 {
@@ -657,7 +657,7 @@ class Igor : Program
 
         if (p.K.size()!=0)
         {
-            if (p.K.size()>=vf.get_sclip_u_cutoff())
+            if (false && p.K.size()>=vf.get_sclip_u_cutoff())
             {
                 for (std::map<std::string, SoftClipInfo>::iterator i = p.K.begin(); i!=p.K.end(); ++i)
                 {
@@ -983,7 +983,7 @@ class Igor : Program
                                         uint32_t gbeg1 = lpos1;
                                         uint32_t gend1 = lpos1+ilen-1;
 
-                                        std::cerr << "\t\t\tadding REF: " << gbeg1 << "-" << gend1 << ":";
+                                        //std::cerr << "\t\t\tadding REF: " << gbeg1 << "-" << gend1 << ":";
                                         for (size_t i=sspos0; i<=(sspos0+ilen-1); ++i)
                                         {
                                             std::cerr << (bam_base2char(bam_seqi(seq, i)));
@@ -1304,10 +1304,10 @@ class Igor : Program
         std::clog << "       no. exclude flag reads       : " << no_exclude_flag_reads << "\n";
         std::clog << "\n";
         std::clog << "       no. variants                 : " << (no_snps+no_insertions+no_deletions+no_left_soft_clips+no_right_soft_clips) << "\n";
-        std::clog << "           no. snps (ts/tv)         : " << no_snps << " (" << (float)no_ts/no_tv << ")\n";
+        std::clog << "           no. snps (ts/tv)         : " << no_snps << " (" << std::fixed << std::setprecision(2) << (float)no_ts/no_tv << ")\n";
         std::clog << "               no. transitions      : " << no_ts << "\n";
         std::clog << "               no. transversions    : " << no_tv << "\n";
-        std::clog << "           no. indels (ins/del)     : " << (no_insertions + no_deletions) << " (" << (float)no_insertions/no_deletions << ")\n";
+        std::clog << "           no. indels (ins/del)     : " << (no_insertions + no_deletions) << std::fixed << std::setprecision(2) << " (" << (float)no_insertions/no_deletions << ")\n";
         std::clog << "               no. insertions       : " << no_insertions << "\n";
         std::clog << "               no. deletions        : " << no_deletions << "\n";
         std::clog << "       no. soft clips               : " << (no_left_soft_clips+no_right_soft_clips) << "\n";

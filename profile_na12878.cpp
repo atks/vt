@@ -215,6 +215,12 @@ class Igor : Program
         dataset_fexps.push_back(fexp);
 
         htsFile *hts = hts_open(ref_data_sets_list.c_str(), "r");
+        if (!hts)
+        {
+            fprintf(stderr, "[E:%s:%d %s] Reference file cannot be opened %s\n", __FILE__, __LINE__, __FUNCTION__, ref_data_sets_list.c_str());
+            exit(1);
+        }
+        
         kstring_t s = {0,0,0};
         std::vector<std::string> vec;
         while (hts_getline(hts, '\n', &s)>=0)
@@ -238,7 +244,7 @@ class Igor : Program
             }
             else
             {
-                std::cerr << "Reference data set type: \"" << vec[1] << "\" not recognised\n";
+                fprintf(stderr, "[E:%s:%d %s] Reference data set type %s not recognized\n", __FILE__, __LINE__, __FUNCTION__, vec[1].c_str());
                 exit(1);
             }
         }
