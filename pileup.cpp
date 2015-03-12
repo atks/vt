@@ -736,14 +736,10 @@ void Pileup::add_del(uint32_t gpos1, std::string& del)
         if (debug>=2)  std::cerr << "\t\t\tdeletion left aligned : " << chrom << ":" << gpos1 << ":" << P[i].R << del << "/" << P[i].R << " => " << chrom << ":" << a_gpos1 << ":" << a_ref << "/" << a_alt << "\n";
         uint32_t j = g2i(a_gpos1);
         ++P[j].D[a_ref.substr(1)];
-        --P[j].N;
-        ++P[j].E;
     }
     else
     {
         ++P[i].D[del];
-        --P[i].N;
-        ++P[i].E;
     }
 
     //fill up for reference too.
@@ -784,14 +780,10 @@ void Pileup::add_ins(uint32_t gpos1, std::string& ins)
         if (debug>=2) std::cerr << "\t\t\tinsertion left aligned : " << chrom << ":" << gpos1 << ":" << P[i].R << "/" << P[i].R << ins << " => " << chrom << ":" << a_gpos1 << ":" << a_ref << "/" << a_alt << "\n";
         uint32_t j = g2i(a_gpos1);
         ++P[j].I[a_alt.substr(1)];
-        --P[j].N;
-        ++P[j].E;
     }
     else
     {
         ++P[i].I[ins];
-        --P[i].N;
-        ++P[i].E;
     }
 }
 

@@ -560,7 +560,7 @@ class Igor : Program
                 if (del.find_first_of("Nn")==std::string::npos)
                 {
                     E = i->second;
-                    N = p.E;
+                    N = p.N;
 
                     if (vf.filter_del(E, N))
                     {
@@ -593,7 +593,7 @@ class Igor : Program
                 if (ins.find_first_of("Nn")==std::string::npos)
                 {
                     E = i->second;
-                    N = p.E;
+                    N = p.N;
 
                     if (vf.filter_ins(E, N))
                     {

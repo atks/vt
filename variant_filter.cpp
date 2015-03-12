@@ -45,8 +45,8 @@ bool VariantFilter::filter_snp(uint32_t evidence_no, uint32_t read_no)
 {
     if (snp_adaptive_cutoff)
     {
-        //return evidence_no>=2 && snp_binom_dist.get_pvalue(evidence_no, read_no)>=snp_desired_type_II_error;
-        return snp_binom_dist.get_pvalue(evidence_no, read_no)-non_snp_binom_dist.get_pvalue(evidence_no, read_no)>=lr_cutoff;
+        return evidence_no>=2 && snp_binom_dist.get_pvalue(evidence_no, read_no)>=snp_desired_type_II_error;
+        //return snp_binom_dist.get_pvalue(evidence_no, read_no)-non_snp_binom_dist.get_pvalue(evidence_no, read_no)>=lr_cutoff;
     }
     else
     {
@@ -63,8 +63,8 @@ bool VariantFilter::filter_del(uint32_t evidence_no, uint32_t read_no)
 {
     if (deletion_adaptive_cutoff)
     {
-        //return evidence_no>=2 && deletion_binom_dist.get_pvalue(evidence_no, read_no)>=deletion_desired_type_II_error;
-        return deletion_binom_dist.get_pvalue(evidence_no, read_no)-non_deletion_binom_dist.get_pvalue(evidence_no, read_no)>=lr_cutoff;
+        return evidence_no>=2 && deletion_binom_dist.get_pvalue(evidence_no, read_no)>=deletion_desired_type_II_error;
+        //return deletion_binom_dist.get_pvalue(evidence_no, read_no)-non_deletion_binom_dist.get_pvalue(evidence_no, read_no)>=lr_cutoff;
     }
     else
     {
@@ -79,8 +79,8 @@ bool VariantFilter::filter_ins(uint32_t evidence_no, uint32_t read_no)
 {
     if (insertion_adaptive_cutoff)
     {
-        //return evidence_no>=2 && insertion_binom_dist.get_pvalue(evidence_no, read_no)>=insertion_desired_type_II_error;
-        return insertion_binom_dist.get_pvalue(evidence_no, read_no)-non_insertion_binom_dist.get_pvalue(evidence_no, read_no)>=lr_cutoff;    
+        return evidence_no>=2 && insertion_binom_dist.get_pvalue(evidence_no, read_no)>=insertion_desired_type_II_error;
+        //return insertion_binom_dist.get_pvalue(evidence_no, read_no)-non_insertion_binom_dist.get_pvalue(evidence_no, read_no)>=lr_cutoff;    
     }
     else
     {

@@ -77,7 +77,7 @@ float BinomialDistribution::get_pvalue(uint32_t x, uint32_t n)
                     pvalues[i].push_back(pbinom(j, i, p, 1, 0));
                     
                     //double dbinom(double x, double n, double p, int give_log)
-                    pvalues[i].push_back(dbinom(j, i, p, 1));
+                    //pvalues[i].push_back(dbinom(j, i, p, 1));
                     
                 }
             }
