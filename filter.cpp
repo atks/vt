@@ -1251,7 +1251,7 @@ void Filter::parse_literal(const char* exp, int32_t len, Node * node, bool debug
         {
             kstring_t s = {0,0,0};
             kputsn(exp, len, &s);
-            fprintf(stderr, "[E:%s] %s is not recognized\n", __FUNCTION__, s.s);
+            fprintf(stderr, "[E:%s] %s is not recognized. If it is a string, you should place it in single inverted commas.\n", __FUNCTION__, s.s);
             print_filter_help();
             exit(1);
         }

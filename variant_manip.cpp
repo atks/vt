@@ -219,7 +219,9 @@ bool VariantManip::is_normalized(bcf1_t *v)
 {
     char** alleles = bcf_get_allele(v);
     int32_t n_allele = bcf_get_n_allele(v);
-
+        
+    if (n_allele==1) return true;
+        
     char first_base;
     char last_base;
     size_t rlen, alen, len;
@@ -581,6 +583,9 @@ void VariantManip::right_trim_or_left_extend(std::vector<std::string>& alleles, 
 {
     bool to_right_trim = true;
     bool to_left_extend = false;
+
+    if (alleles.size()==1)
+        return;
 
     while (to_right_trim || to_left_extend)
     {

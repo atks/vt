@@ -181,7 +181,7 @@ class Igor : Program
 
                 vm->right_trim_or_left_extend(alleles, pos1, chrom, left_extended, right_trimmed);
                 vm->left_trim(alleles, pos1, left_trimmed);
-
+    
                 if (left_trimmed || left_extended || right_trimmed)
                 {
                     old_alleles.l = 0;
