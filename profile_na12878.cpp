@@ -23,6 +23,11 @@
 
 #include "profile_na12878.h"
 
+#define REF   0
+#define MIXED 1
+#define TRUE  2
+#define FALSE 3
+
 namespace
 {
 
@@ -110,10 +115,10 @@ class Igor : Program
     ///////////////////////
     std::string ref_data_sets_list;
     std::vector<std::string> dataset_labels;
-    std::vector<std::string> dataset_types;
+    std::vector<int32_t> dataset_types;
     std::vector<std::string> dataset_fexps;
     std::string cds_bed_file;
-
+    
     ///////
     //i/o//
     ///////
@@ -131,7 +136,7 @@ class Igor : Program
     /////////
     //stats//
     /////////
-    BroadKBStats kbstats;
+    std::vector<BroadKBStats> kbstats;
     std::vector<OverlapStats> stats;
     std::vector<ConcordanceStats> concordance;
     int32_t no_variants;
@@ -215,7 +220,7 @@ class Igor : Program
 
         input_vcf_files.push_back(input_vcf_file);
         dataset_labels.push_back("data");
-        dataset_types.push_back("ref");
+        dataset_types.push_back(REF);
         dataset_fexps.push_back(fexp);
 
         htsFile *hts = hts_open(ref_data_sets_list.c_str(), "r");
@@ -238,7 +243,18 @@ class Igor : Program
             if (vec[1] == "Truth" || vec[1] == "False" || vec[1] == "Mixed")
             {
                 dataset_labels.push_back(vec[0]);
-                dataset_types.push_back(vec[1]);
+                if (vec[1]=="Truth")
+                {    
+                    dataset_types.push_back(TRUE);
+                }
+                else if (vec[1]=="False")
+                {
+                    dataset_types.push_back(FALSE);
+                }
+                else if (vec[1]=="Mixed")
+                {
+                    dataset_types.push_back(MIXED);
+                }
                 dataset_fexps.push_back(vec[2]);
                 input_vcf_files.push_back(vec[3]);
             }
@@ -254,7 +270,7 @@ class Igor : Program
         }
         hts_close(hts);
         if (s.m) free(s.s);
-
+        
         /////////////////////////
         //filter initialization//
         /////////////////////////
@@ -295,6 +311,7 @@ class Igor : Program
         int32_t no_overlap_files = input_vcf_files.size();
         std::vector<int32_t> presence(no_overlap_files, 0);
         std::vector<bcfptr*> presence_bcfptr(no_overlap_files, NULL);
+        kbstats.resize(no_overlap_files);
         stats.resize(no_overlap_files);
         concordance.resize(no_overlap_files);
 
@@ -395,10 +412,8 @@ class Igor : Program
             //update overlap stats
             for (size_t i=1; i<no_overlap_files; ++i)
             {
-                //******************
-                //for BROAD KB stats
-                //******************
-                if (i==1)
+                //for BROAD KB stats type of data set
+                if (dataset_types[i]==MIXED)
                 {
                     int32_t y1 = -1;
                     int32_t y2 = -1;
@@ -408,7 +423,7 @@ class Igor : Program
                     char* dst = NULL;
                     int32_t ndst = 0;
 
-                    if (presence[1])
+                    if (presence[i])
                     {
                         bcf_unpack(presence_bcfptr[i]->v, BCF_UN_IND);
                         k0 = bcf_get_genotypes(presence_bcfptr[1]->h, presence_bcfptr[1]->v, &gts, &n);
@@ -451,110 +466,112 @@ class Igor : Program
                         if (xt==0) ++no_negative_variants;
                     }
 
-                    if (presence[0] && presence[1])
+                    if (presence[0] && presence[i])
                     {
                         if (strcmp(dst, "TRUE_POSITIVE")==0)
                         {
                             if (xt>0 && y>0)
                             {
-                                ++kbstats.tp;
+                                ++kbstats[i].tp;
                             }
                             else if (xt>0 && y==0)
                             {
-                                ++kbstats.fp;
+                                ++kbstats[i].fp;
                             }
                             else if (xt==0 && y>0)
                             {
-                                ++kbstats.fn;
+                                ++kbstats[i].fn;
                             }
                         }
                         else if (strcmp(dst, "FALSE_POSITIVE")==0)
                         {
                             if (xt>0)
                             {
-                                ++kbstats.fp;
+                                ++kbstats[i].fp;
                             }
                             else if (xt==0)
                             {
-                                ++kbstats.tn;
+                                ++kbstats[i].tn;
                             }
                         }
 
                     }
-                    else if (presence[0] && !presence[1])
+                    else if (presence[0] && !presence[i])
                     {
-                        //++kbstats.fp; potentially false positive BUT knowledge base is curated manually.
+                        //++kbstats[i].fp; potentially false positive BUT knowledge base is curated manually.
                     }
-                    else if (!presence[0] && presence[1])
+                    else if (!presence[0] && presence[i])
                     {
                         if (strcmp(dst, "TRUE_POSITIVE")==0)
                         {
                             if (y>0)
                             {
-                                ++kbstats.fn;
+                                ++kbstats[i].fn;
                             }
                             else if (y==0)
                             {
-                                ++kbstats.tn;
+                                ++kbstats[i].tn;
                             }
                         }
                         else if (strcmp(dst, "FALSE_POSITIVE")==0)
                         {
-                            ++kbstats.tn;
+                            ++kbstats[i].tn;
                         }
                     }
                     else
                     {
-                        //++kbstats.tn; potentially true negative BUT knowledge base is curated manually.
+                        //++kbstats[i].tn; potentially true negative BUT knowledge base is curated manually.
                     }
 
                     if (ndst) free(dst);
                 }
-
-                if (presence[0] && !presence[i])
-                {
-                    ++stats[i].a;
-                    stats[i].a_ts += ts;
-                    stats[i].a_tv += tv;
-                    stats[i].a_ins += ins;
-                    stats[i].a_del += del;
-                }
-                else if (presence[0] && presence[i])
-                {
-                    ++stats[i].ab;
-                    stats[i].ab_ts += ts;
-                    stats[i].ab_tv += tv;
-                    stats[i].ab_ins += ins;
-                    stats[i].ab_del += del;
-
-                    bcf_unpack(presence_bcfptr[i]->v, BCF_UN_IND);
-                    int k = bcf_get_genotypes(presence_bcfptr[i]->h, presence_bcfptr[i]->v, &gts, &n);
-
-                    int32_t y1 = bcf_gt_allele(gts[na12878_index[i]*2]);
-                    int32_t y2 = bcf_gt_allele(gts[na12878_index[i]*2+1]);
-                    int32_t y = y1+y2;
-                    if (y<0)
-                    {
-                        y = 3;
-                    }
-
-                    ++concordance[i].geno[x][y];
-                }
-                else if (!presence[0] && presence[i])
-                {
-                    ++stats[i].b;
-                    stats[i].b_ts += ts;
-                    stats[i].b_tv += tv;
-                    stats[i].b_ins += ins;
-                    stats[i].b_del += del;
-                }
                 else
-                {
-                    //not in either, do nothing
+                {    
+                    if (presence[0] && !presence[i])
+                    {
+                        ++stats[i].a;
+                        stats[i].a_ts += ts;
+                        stats[i].a_tv += tv;
+                        stats[i].a_ins += ins;
+                        stats[i].a_del += del;
+                    }
+                    else if (presence[0] && presence[i])
+                    {
+                        ++stats[i].ab;
+                        stats[i].ab_ts += ts;
+                        stats[i].ab_tv += tv;
+                        stats[i].ab_ins += ins;
+                        stats[i].ab_del += del;
+    
+                        bcf_unpack(presence_bcfptr[i]->v, BCF_UN_IND);
+                        int k = bcf_get_genotypes(presence_bcfptr[i]->h, presence_bcfptr[i]->v, &gts, &n);
+    
+                        int32_t y1 = bcf_gt_allele(gts[na12878_index[i]*2]);
+                        int32_t y2 = bcf_gt_allele(gts[na12878_index[i]*2+1]);
+                        int32_t y = y1+y2;
+                        if (y<0)
+                        {
+                            y = 3;
+                        }
+    
+                        ++concordance[i].geno[x][y];
+                    }
+                    else if (!presence[0] && presence[i])
+                    {
+                        ++stats[i].b;
+                        stats[i].b_ts += ts;
+                        stats[i].b_tv += tv;
+                        stats[i].b_ins += ins;
+                        stats[i].b_del += del;
+                    }
+                    else
+                    {
+                        //not in either, do nothing
+                    }
+    
+                    presence[i]=0;
+                    presence_bcfptr[i]=NULL;
                 }
-
-                presence[i]=0;
-                presence_bcfptr[i]=NULL;
             }
 
             presence[0] = 0;
@@ -581,41 +598,53 @@ class Igor : Program
         fprintf(stderr, "       FS/NFS : %10.2f (%d/%d)\n", (float)fs/(fs+nfs), fs, nfs);
         fprintf(stderr, "\n");
 
-        fprintf(stderr, "  Broad KB\n");
-        fprintf(stderr, "    TP  %10d \n", kbstats.tp);
-        fprintf(stderr, "    FP  %10d \n", kbstats.fp);
-        fprintf(stderr, "    TN  %10d \n", kbstats.tn);
-        fprintf(stderr, "    FN  %10d \n", kbstats.fn);
-        fprintf(stderr, "    P   %10d \n", kbstats.tp+kbstats.fp);
-        fprintf(stderr, "    N   %10d \n", kbstats.tn+kbstats.fn);
-        fprintf(stderr, "    +   %10d \n", no_positive_variants);
-        fprintf(stderr, "    -   %10d \n", no_negative_variants);
-        fprintf(stderr, "  TDR %5.2f (TP/(TP+FP))\n", (float)kbstats.tp/(kbstats.tp+kbstats.fp)*100);
-        fprintf(stderr, "  FNR %5.2f (FN/(TN+FN))\n", (float)kbstats.fn/(kbstats.fn+kbstats.tn)*100);
-        fprintf(stderr, "\n");
-
-        for (int32_t i=2; i<dataset_labels.size(); ++i)
+        //FDR/FNR
+        for (int32_t i=1; i<dataset_labels.size(); ++i)
         {
-            fprintf(stderr, "  %s\n", dataset_labels[i].c_str());
-            fprintf(stderr, "                   ts/tv  ins/del\n");
-            fprintf(stderr, "    A-B %10d [%.2f] [%.2f]\n", stats[i].a,  (float)stats[i].a_ts/stats[i].a_tv, (float)stats[i].a_ins/stats[i].a_del);
-            fprintf(stderr, "    A&B %10d [%.2f] [%.2f]\n", stats[i].ab, (float)stats[i].ab_ts/stats[i].ab_tv, (float)stats[i].ab_ins/stats[i].ab_del);
-            fprintf(stderr, "    B-A %10d [%.2f] [%.2f]\n", stats[i].b,  (float)stats[i].b_ts/stats[i].b_tv, (float)stats[i].b_ins/stats[i].b_del);
-
-            if (dataset_types[i]=="Truth")
+            if (dataset_types[i]==MIXED)
             {
-                fprintf(stderr, "    Sensitivity  %4.1f%%\n", 100*(float)stats[i].ab/(stats[i].b+stats[i].ab));
+                fprintf(stderr, "  %s\n", dataset_labels[i].c_str());
+                fprintf(stderr, "    TP  %10d \n", kbstats[i].tp);
+                fprintf(stderr, "    FP  %10d \n", kbstats[i].fp);
+                fprintf(stderr, "    TN  %10d \n", kbstats[i].tn);
+                fprintf(stderr, "    FN  %10d \n", kbstats[i].fn);
+                fprintf(stderr, "    P   %10d \n", kbstats[i].tp+kbstats[i].fp);
+                fprintf(stderr, "    N   %10d \n", kbstats[i].tn+kbstats[i].fn);
+                fprintf(stderr, "    +   %10d \n", no_positive_variants);
+                fprintf(stderr, "    -   %10d \n", no_negative_variants);
+                fprintf(stderr, "  TDR %5.2f (TP/(TP+FP))\n", (float)kbstats[i].tp/(kbstats[i].tp+kbstats[i].fp)*100);
+                fprintf(stderr, "  FNR %5.2f (FN/(TN+FN))\n", (float)kbstats[i].fn/(kbstats[i].fn+kbstats[i].tn)*100);
+                fprintf(stderr, "\n");
             }
-            else
+        }
+        
+        //overlaps
+        for (int32_t i=1; i<dataset_labels.size(); ++i)
+        {
+            if (dataset_types[i]==TRUE||dataset_types[i]==FALSE)
             {
-                fprintf(stderr, "    Type I Error %4.1f%%\n", 100*(float)stats[i].ab/(stats[i].b+stats[i].ab));
+                fprintf(stderr, "  %s\n", dataset_labels[i].c_str());
+                fprintf(stderr, "                   ts/tv  ins/del\n");
+                fprintf(stderr, "    A-B %10d [%.2f] [%.2f]\n", stats[i].a,  (float)stats[i].a_ts/stats[i].a_tv, (float)stats[i].a_ins/stats[i].a_del);
+                fprintf(stderr, "    A&B %10d [%.2f] [%.2f]\n", stats[i].ab, (float)stats[i].ab_ts/stats[i].ab_tv, (float)stats[i].ab_ins/stats[i].ab_del);
+                fprintf(stderr, "    B-A %10d [%.2f] [%.2f]\n", stats[i].b,  (float)stats[i].b_ts/stats[i].b_tv, (float)stats[i].b_ins/stats[i].b_del);
+    
+                if (dataset_types[i]==TRUE)
+                {
+                    fprintf(stderr, "     Sensitivity  %4.1f%%\n", 100*(float)stats[i].ab/(stats[i].b+stats[i].ab));
+                }
+                else if (dataset_types[i]==FALSE)
+                {
+                    fprintf(stderr, "     Type I Error %4.1f%%\n", 100*(float)stats[i].ab/(stats[i].b+stats[i].ab));
+                }
+                fprintf(stderr, "\n");
             }
-            fprintf(stderr, "\n");
         }
 
-        for (int32_t i=2; i<dataset_labels.size(); ++i)
+        //concordance
+        for (int32_t i=1; i<dataset_labels.size(); ++i)
         {
-            if (dataset_types[i]=="Truth")
+            if (dataset_types[i]==TRUE)
             {
                 int32_t (&geno)[4][4] = concordance[i].geno;
                 int32_t total = 0;

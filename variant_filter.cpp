@@ -36,6 +36,8 @@ VariantFilter::VariantFilter()
     snp_adaptive_cutoff = false;
     deletion_adaptive_cutoff = false;
     insertion_adaptive_cutoff = false;
+    
+    lr_cutoff = -1;
 }
 
 /**
@@ -46,7 +48,9 @@ bool VariantFilter::filter_snp(uint32_t evidence_no, uint32_t read_no)
     if (snp_adaptive_cutoff)
     {
         return evidence_no>=2 && snp_binom_dist.get_pvalue(evidence_no, read_no)>=snp_desired_type_II_error;
-        //return snp_binom_dist.get_pvalue(evidence_no, read_no)-non_snp_binom_dist.get_pvalue(evidence_no, read_no)>=lr_cutoff;
+        //float lr = snp_binom_dist.get_pvalue(evidence_no, read_no)-non_snp_binom_dist.get_pvalue(evidence_no, read_no);
+        //if (lr>0) std::cerr << "SNP: " << lr << "\n";
+        //return lr >=lr_cutoff;
     }
     else
     {
@@ -64,7 +68,9 @@ bool VariantFilter::filter_del(uint32_t evidence_no, uint32_t read_no)
     if (deletion_adaptive_cutoff)
     {
         return evidence_no>=2 && deletion_binom_dist.get_pvalue(evidence_no, read_no)>=deletion_desired_type_II_error;
-        //return deletion_binom_dist.get_pvalue(evidence_no, read_no)-non_deletion_binom_dist.get_pvalue(evidence_no, read_no)>=lr_cutoff;
+        //float lr = deletion_binom_dist.get_pvalue(evidence_no, read_no)-non_deletion_binom_dist.get_pvalue(evidence_no, read_no);
+        //if (lr>0) std::cerr << "DEL: " << lr << "\n";
+        //return lr>=lr_cutoff;
     }
     else
     {
@@ -80,7 +86,9 @@ bool VariantFilter::filter_ins(uint32_t evidence_no, uint32_t read_no)
     if (insertion_adaptive_cutoff)
     {
         return evidence_no>=2 && insertion_binom_dist.get_pvalue(evidence_no, read_no)>=insertion_desired_type_II_error;
-        //return insertion_binom_dist.get_pvalue(evidence_no, read_no)-non_insertion_binom_dist.get_pvalue(evidence_no, read_no)>=lr_cutoff;    
+        //float lr = insertion_binom_dist.get_pvalue(evidence_no, read_no)-non_insertion_binom_dist.get_pvalue(evidence_no, read_no); 
+        //if (lr>0) std::cerr << "INS: " << lr << "\n";
+        //return lr>=lr_cutoff;    
     }
     else
     {
@@ -96,6 +104,13 @@ void VariantFilter::sync()
     snp_adaptive_cutoff = snp_desired_type_I_error!=0 || snp_desired_type_II_error!=0;
     deletion_adaptive_cutoff = deletion_desired_type_I_error!=0 || deletion_desired_type_II_error!=0;
     insertion_adaptive_cutoff = insertion_desired_type_I_error!=0 || insertion_desired_type_II_error!=0;
+    
+    if (lr_cutoff!=-1)
+    {
+        snp_adaptive_cutoff = true;
+        deletion_adaptive_cutoff = true;
+        insertion_adaptive_cutoff = true;
+    }
 }
 
 /**
@@ -180,13 +195,11 @@ void VariantFilter::set_deletion_f_cutoff(float deletion_f_cutoff)
 void VariantFilter::set_deletion_desired_type_I_error(float deletion_desired_type_I_error)
 {
     this->deletion_desired_type_I_error = deletion_desired_type_I_error;
-    deletion_adaptive_cutoff = deletion_desired_type_I_error==0;
 }
 
 void VariantFilter::set_deletion_desired_type_II_error(float deletion_desired_type_II_error)
 {
     this->deletion_desired_type_II_error = deletion_desired_type_II_error;
-    deletion_adaptive_cutoff = deletion_desired_type_II_error==0;
 }
 
 uint32_t VariantFilter::get_deletion_e_cutoff()

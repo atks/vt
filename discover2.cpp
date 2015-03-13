@@ -126,7 +126,7 @@ class Igor : Program
 
             TCLAP::ValueArg<uint32_t> arg_ploidy("p", "p", "ploidy [2]", false, 2, "int", cmd);
 
-            TCLAP::ValueArg<uint32_t> arg_read_mapq_cutoff("t", "t", "MAPQ cutoff for alignments [0]", false, 0, "int", cmd);
+            TCLAP::ValueArg<uint32_t> arg_read_mapq_cutoff("t", "t", "MAPQ cutoff for alignments [0]", false, 20, "int", cmd);
             TCLAP::SwitchArg arg_ignore_overlapping_read("l", "l", "ignore overlapping reads [false]", cmd, false);
             TCLAP::ValueArg<uint32_t> arg_read_exclude_flag("a", "a", "read exclude flag [0x0704]", false, 0x0704, "int", cmd);
 
@@ -134,7 +134,7 @@ class Igor : Program
 
             TCLAP::ValueArg<uint32_t> arg_snp_e_cutoff("e", "e", "snp evidence count cutoff [1]", false, 1, "int", cmd);
             TCLAP::ValueArg<float> arg_snp_f_cutoff("f", "f", "snp fractional evidence cutoff [0]", false, 0, "float", cmd);
-            TCLAP::ValueArg<uint32_t> arg_snp_baseq_cutoff("q", "q", "base quality cutoff for bases [0]", false, 0, "int", cmd);
+            TCLAP::ValueArg<uint32_t> arg_snp_baseq_cutoff("q", "q", "base quality cutoff for bases [0]", false, 13, "int", cmd);
             TCLAP::ValueArg<float> arg_snp_desired_type_I_error("j", "j", "snp desired type I error [0.0]", false, 0, "float", cmd);
             TCLAP::ValueArg<float> arg_snp_desired_type_II_error("k", "k", "snp desired type II error [0.0]", false, 0, "float", cmd);
 
@@ -282,9 +282,9 @@ class Igor : Program
         uint32_t mapq = bam_get_mapq(s);
 
         uint8_t *aux;
-        char* md;
+        char* md = NULL;
         (aux=bam_aux_get(s, "MD")) &&  (md = bam_aux2Z(aux));
-
+            
         std::cerr << "##################" << "\n";
         std::cerr << "chrom:pos: " << chrom << ":" << pos1 << "\n";
         std::cerr << "read     : " << seq.s << "\n";
@@ -295,7 +295,7 @@ class Igor : Program
         std::cerr << "mapq     : " << mapq << "\n";
         std::cerr << "mpos1    : " << bam_get_mpos1(s) << "\n";
         std::cerr << "mtid     : " << bam_get_mtid(s) << "\n";
-        std::cerr << "md       : " << md << "\n";
+        std::cerr << "md       : " << (aux?md:"") << "\n";
         std::cerr << "##################" << "\n";
 
         if (seq.m) free(seq.s);
@@ -383,7 +383,7 @@ class Igor : Program
         }
 
         if (p.X[1]+p.X[2]+p.X[4]+p.X[8]+p.X[15]>p.E+p.N ||
-           p.D.size()+p.I.size()>p.E)
+           p.D.size()+p.I.size()>p.N)
         {
             std::cerr << "*******************\n";
             std::cerr << "Evidence count ISSUES\n";
@@ -959,8 +959,10 @@ class Igor : Program
                                 char alt = (bam_base2char(bam_seqi(seq, spos0+(lpos1-cpos1))));
                                 if (debug) std::cerr << "\tMD: Mismatch " << ref << "\n";
                                 if (debug) std::cerr << "\t\t\tadding SNP: " << lpos1 << ":" << ref << "/" << alt << " [" << (mlen-1)<< "]\n";
-                                pileup.add_snp(lpos1, ref, alt);
-
+//                                if (qual[sspos0]>vf.get_snp_baseq_cutoff())
+//                                {     
+                                    pileup.add_snp(lpos1, ref, alt, qual[sspos0], vf.get_snp_baseq_cutoff());
+//                                }
                                 ++lpos1;
                                 ++mdp;
                                 ++sspos0;
@@ -1055,7 +1057,8 @@ class Igor : Program
                     }
                     else if (opchar=='I')
                     {
-                        if (!seenM) //Leading I'S
+                        //leading Is
+                        if (!seenM) 
                         {
 //                            //add to S evidence
 //                            std::string ins = "";
@@ -1075,6 +1078,12 @@ class Igor : Program
 
                             spos0 += oplen;
                         }
+                        //trailing Is
+                        else if (i==n_cigar_op-1 || (i+2==n_cigar_op && bam_cigar_opchr(cigar[n_cigar_op-1])=='S'))
+                        {
+                            //bam_print_key_values(odr->hdr, s);
+                            spos0 += oplen;
+                        } 
                         else
                         {
                             //insertions are not present in MD tags
@@ -1157,7 +1166,7 @@ class Igor : Program
                     {
                         seenM = true;
                         if (debug) std::cerr << "\t\t\tadding matches: " << cpos1 << "\t" << spos0 << " (" << oplen << ")\n";
-                        pileup.add_M(cpos1, spos0, oplen, seq);
+                        pileup.add_M(cpos1, spos0, oplen, seq, qual, vf.get_snp_baseq_cutoff());
 
                         cpos1 += oplen;
                         spos0 += oplen;
@@ -1177,7 +1186,8 @@ class Igor : Program
                     }
                     else if (opchar=='I')
                     {
-                        if (!seenM) //Leading I'S
+                        //leading Is
+                        if (!seenM)
                         {
 //                            //add to S evidence
 //                            std::string ins = "";
@@ -1197,6 +1207,12 @@ class Igor : Program
 
                             spos0 += oplen;
                         }
+                        //trailing Is
+                        else if (i==n_cigar_op-1 || (i+2==n_cigar_op && bam_cigar_opchr(cigar[n_cigar_op-1])=='S'))
+                        {
+                            //bam_print_key_values(odr->hdr, s);
+                            spos0 += oplen;
+                        }    
                         else
                         {
                             std::string ins = "";

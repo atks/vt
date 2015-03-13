@@ -413,6 +413,11 @@ void Pileup::update_read_end(uint32_t gpos1)
 {
     if (debug) std::cerr << "update_read_end_base: gpos1" << gpos1 << "\n";
     uint32_t i = g2i(gpos1);
+    if (P[i].N==0)
+    {
+        std::cerr << "OOPSs...\n"; 
+    }   
+    
     --P[i].N;
     ++P[i].E;
 }
@@ -420,7 +425,7 @@ void Pileup::update_read_end(uint32_t gpos1)
 /**
  * Inserts a stretch of aligned bases identified by M in the cigar string.
  */
-void Pileup::add_M(uint32_t mgpos1, uint32_t spos0, uint32_t len, uint8_t* seq)
+void Pileup::add_M(uint32_t mgpos1, uint32_t spos0, uint32_t len, uint8_t* seq, uint8_t* qual, uint32_t snp_baseq_cutoff)
 {
     add_3prime_padding(mgpos1);
 
@@ -442,7 +447,7 @@ void Pileup::add_M(uint32_t mgpos1, uint32_t spos0, uint32_t len, uint8_t* seq)
         ++P[i].N;
 
         char alt = (bam_base2char(bam_seqi(seq, spos0+j)));
-        if (alt!=P[i].R)
+        if (alt!=P[i].R && qual[spos0+j]>snp_baseq_cutoff)
         {
             ++P[i].X[base2index(alt)];
         }
@@ -517,14 +522,10 @@ void Pileup::add_D(uint32_t gpos1, uint32_t len)
         if (debug>=2)  std::cerr << "\t\t\tdeletion left aligned : " << chrom << ":" << gpos1 << ":" << P[i].R << del << "/" << P[i].R  << " => " << chrom << ":" << a_gpos1 << ":" << a_ref << "/" << a_alt << "\n";
         uint32_t j = g2i(a_gpos1);
         ++P[j].D[a_ref.substr(1)];
-        --P[j].N;
-        ++P[j].E;
     }
     else
     {
         ++P[i].D[del];
-        --P[i].N;
-        ++P[i].E;
     }
 
     i = g2i(gpos1+1);
@@ -563,14 +564,10 @@ void Pileup::add_I(uint32_t gpos1, std::string& ins)
         if (debug>=2)  std::cerr << "\t\t\tinsertion left aligned : " << chrom << ":" << gpos1 << ":" << P[i].R << "/" << P[i].R << ins << " => " << chrom << ":" << a_gpos1 << ":" << a_ref << "/" << a_alt << "\n";
         uint32_t j = g2i(a_gpos1);
         ++P[j].I[a_alt.substr(1)];
-        --P[j].N;
-        ++P[j].E;
     }
     else
     {
         ++P[i].I[ins];
-        --P[i].N;
-        ++P[i].E;
     }
 }
 
@@ -697,13 +694,16 @@ void Pileup::add_ref(uint32_t gpos1, uint32_t spos0, uint32_t len, uint8_t* seq)
 /**
  * Updates an occurence of a SNP.
  */
-void Pileup::add_snp(uint32_t gpos1, char ref, char alt)
+void Pileup::add_snp(uint32_t gpos1, char ref, char alt, uint8_t qual, uint32_t baseq_cutoff)
 {
     add_3prime_padding(gpos1);
 
     uint32_t i = g2i(gpos1);
     P[i].R = ref;
-    ++P[i].X[base2index(alt)];
+    if (qual>baseq_cutoff)
+    {    
+        ++P[i].X[base2index(alt)];
+    }
     ++P[i].N;
     if (i==end0) inc_end0();
 }

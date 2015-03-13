@@ -298,7 +298,7 @@ class Pileup
     /**
      * Updates a stretch of aligned bases identified by M in the cigar string.
      */
-    void add_M(uint32_t gpos1, uint32_t spos0, uint32_t len, uint8_t* seq);
+    void add_M(uint32_t gpos1, uint32_t spos0, uint32_t len, uint8_t* seq, uint8_t* qual, uint32_t snp_baseq_cutoff);
 
     /**
      * Updates a stretch of deleted bases identified by D in the cigar string.
@@ -342,7 +342,7 @@ class Pileup
     /**
      * Updates an occurence of a SNP.
      */
-    void add_snp(uint32_t gpos1, char ref, char alt);
+    void add_snp(uint32_t gpos1, char ref, char alt, uint8_t qual, uint32_t baseq_cutoff);
 
     /**
      * Updates an occurence of a deletion.
