@@ -71,8 +71,6 @@ float BinomialDistribution::get_pvalue(uint32_t x, uint32_t n)
             {
                 for (uint32_t j=0; j<=i; ++j)
                 {
-                    //std::cerr << "x=" << j << " n=" << i << " p=" << p << " = " << pbinom(j, i, p, 1, 0) << "\n";
-                    
                     //double pbinom(double x, double n, double p, int lower_tail, int log_p)
                     pvalues[i].push_back(pbinom(j, i, p, 1, 0));
                     

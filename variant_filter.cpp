@@ -25,9 +25,9 @@
 
 VariantFilter::VariantFilter()
 {
-    snp_binom_dist.set_p(0.5);
-    deletion_binom_dist.set_p(0.5);
-    insertion_binom_dist.set_p(0.5);
+    snp_binom_dist.set_p(0.5-reference_bias);
+    deletion_binom_dist.set_p(0.5-reference_bias);
+    insertion_binom_dist.set_p(0.5-reference_bias);
 
     non_snp_binom_dist.set_p(0.003);
     non_deletion_binom_dist.set_p(0.00023);
@@ -111,6 +111,22 @@ void VariantFilter::sync()
         deletion_adaptive_cutoff = true;
         insertion_adaptive_cutoff = true;
     }
+}
+
+/**
+ * Setters for reference bias.
+ */
+void VariantFilter::set_reference_bias(float reference_bias)
+{
+    this->reference_bias = reference_bias;
+    snp_binom_dist.set_p(0.5-reference_bias);
+    deletion_binom_dist.set_p(0.5-reference_bias);
+    insertion_binom_dist.set_p(0.5-reference_bias);
+}
+
+float VariantFilter::get_reference_bias()
+{
+    return this->reference_bias;
 }
 
 /**

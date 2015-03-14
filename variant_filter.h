@@ -43,6 +43,9 @@ class VariantFilter
     BinomialDistribution non_deletion_binom_dist;
     BinomialDistribution non_insertion_binom_dist;
 
+    //bia
+    float reference_bias;
+
     //general cutoffs
     float lr_cutoff;
 
@@ -99,6 +102,13 @@ class VariantFilter
      */
     void sync();
 
+    /**
+     * Setters for reference bias.
+     */
+    void set_reference_bias(float reference_bias);
+
+    float get_reference_bias();
+    
     /**
      * Setters for general filters.
      */

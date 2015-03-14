@@ -126,15 +126,16 @@ class Igor : Program
 
             TCLAP::ValueArg<uint32_t> arg_ploidy("p", "p", "ploidy [2]", false, 2, "int", cmd);
 
-            TCLAP::ValueArg<uint32_t> arg_read_mapq_cutoff("t", "t", "MAPQ cutoff for alignments [0]", false, 20, "int", cmd);
+            TCLAP::ValueArg<uint32_t> arg_read_mapq_cutoff("t", "t", "MAPQ cutoff for alignments [0]", false, 0, "int", cmd);
             TCLAP::SwitchArg arg_ignore_overlapping_read("l", "l", "ignore overlapping reads [false]", cmd, false);
             TCLAP::ValueArg<uint32_t> arg_read_exclude_flag("a", "a", "read exclude flag [0x0704]", false, 0x0704, "int", cmd);
 
+            TCLAP::ValueArg<float> arg_reference_bias("B", "B", "reference bias [0]", false, 0, "float", cmd);
             TCLAP::ValueArg<float> arg_lr_cutoff("C", "C", "likelihood ratio cutoff [0]", false, 0, "float", cmd);
 
+            TCLAP::ValueArg<uint32_t> arg_snp_baseq_cutoff("q", "q", "base quality cutoff for bases [0]", false, 0, "int", cmd);
             TCLAP::ValueArg<uint32_t> arg_snp_e_cutoff("e", "e", "snp evidence count cutoff [1]", false, 1, "int", cmd);
             TCLAP::ValueArg<float> arg_snp_f_cutoff("f", "f", "snp fractional evidence cutoff [0]", false, 0, "float", cmd);
-            TCLAP::ValueArg<uint32_t> arg_snp_baseq_cutoff("q", "q", "base quality cutoff for bases [0]", false, 13, "int", cmd);
             TCLAP::ValueArg<float> arg_snp_desired_type_I_error("j", "j", "snp desired type I error [0.0]", false, 0, "float", cmd);
             TCLAP::ValueArg<float> arg_snp_desired_type_II_error("k", "k", "snp desired type II error [0.0]", false, 0, "float", cmd);
 
@@ -167,6 +168,7 @@ class Igor : Program
             ignore_overlapping_read = arg_ignore_overlapping_read.getValue();
             read_exclude_flag = arg_read_exclude_flag.getValue();
 
+            vf.set_reference_bias(arg_reference_bias.getValue());
             vf.set_lr_cutoff(arg_lr_cutoff.getValue());
 
             vf.set_snp_baseq_cutoff(arg_snp_baseq_cutoff.getValue());
@@ -1284,6 +1286,9 @@ class Igor : Program
         std::clog << "         [p] ploidy                              " << ploidy << "\n";
         std::clog << "         [z] ignore MD tags                      " << (ignore_md ? "true": "false") << "\n";
         print_int_op("         [i] intervals                           ", intervals);
+        std::clog << "\n";
+        std::clog << "         [B] reference bias                      " << vf.get_reference_bias() << "\n";
+        std::clog << "         [C] likelihood ratio cuto ff            " << vf.get_lr_cutoff() << "\n";
         std::clog << "\n";
         std::clog << "         [t] read mapping quality cutoff         " << read_mapq_cutoff << "\n";
         std::clog << "         [l] ignore overlapping read             " << (ignore_overlapping_read ? "true" : "false") << "\n";
