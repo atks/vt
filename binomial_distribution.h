@@ -48,7 +48,6 @@ class BinomialDistribution
     std::vector<std::vector<float> > pvalues;
 
     public:
-
     /**
      * Constructor.
      */
@@ -68,6 +67,11 @@ class BinomialDistribution
      * Get P(X<=x).
      */
     float get_pvalue(uint32_t x, uint32_t n);
+    
+    /**
+     * Get pvalues size.
+     */
+    uint32_t get_pvalue_size();
 };
 
 #endif

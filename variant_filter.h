@@ -103,6 +103,11 @@ class VariantFilter
     void sync();
 
     /**
+     * Get the higher N observed so far.
+     */
+    uint32_t get_highest_n();
+    
+    /**
      * Setters for reference bias.
      */
     void set_reference_bias(float reference_bias);

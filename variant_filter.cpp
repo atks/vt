@@ -114,6 +114,14 @@ void VariantFilter::sync()
 }
 
 /**
+ * Get the higher N observed so far.
+ */
+uint32_t VariantFilter::get_highest_n()
+{
+    return snp_binom_dist.get_pvalue_size();
+}
+
+/**
  * Setters for reference bias.
  */
 void VariantFilter::set_reference_bias(float reference_bias)

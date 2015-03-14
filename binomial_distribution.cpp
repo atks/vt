@@ -57,6 +57,8 @@ void BinomialDistribution::set_p(float p)
  */
 float BinomialDistribution::get_pvalue(uint32_t x, uint32_t n)
 {
+    return pbinom(x, n, p, 1, 0);
+    
     if (x<=n)
     {
         uint32_t current_size = pvalues.size();
@@ -86,3 +88,11 @@ float BinomialDistribution::get_pvalue(uint32_t x, uint32_t n)
 
     return 0;
 }
+
+/**
+ * Get pvalues size.
+ */
+uint32_t BinomialDistribution::get_pvalue_size()
+{
+    return pvalues.size();
+};

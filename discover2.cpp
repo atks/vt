@@ -308,46 +308,51 @@ class Igor : Program
 
     /**
      * Filter reads.
+     *
+     * Returns true if read is failed.     
      */
     bool filter_read(bam1_t *s)
     {
         khiter_t k;
         int32_t ret;
 
-        //this read is the first of the pair
-        if (bam_get_mpos1(s) && (bam_get_tid(s)==bam_get_mtid(s)))
-        {
-            //first mate
-            if (bam_get_mpos1(s)>bam_get_pos1(s))
+        if (ignore_overlapping_read)
+        {    
+            //this read is part of a mate pair on the same contig
+            if (bam_get_mpos1(s) && (bam_get_tid(s)==bam_get_mtid(s)))
             {
-                //overlapping
-                if (bam_get_mpos1(s)<=(bam_get_pos1(s) + bam_get_l_qseq(s) - 1))
+                //first mate
+                if (bam_get_mpos1(s)>bam_get_pos1(s))
                 {
-                    //add read that has overlapping
-                    //duplicate the record and perform the stitching later
-                    char* qname = strdup(bam_get_qname(s));
-                    k = kh_put(rdict, reads, qname, &ret);
-                    if (!ret)
+                    //overlapping
+                    if (bam_get_mpos1(s)<=(bam_get_pos1(s) + bam_get_l_qseq(s) - 1))
                     {
-                        //already present
-                        free(qname);
+                        //add read that has overlapping
+                        //duplicate the record and perform the stitching later
+                        char* qname = strdup(bam_get_qname(s));
+                        k = kh_put(rdict, reads, qname, &ret);
+                        if (!ret)
+                        {
+                            //already present
+                            free(qname);
+                        }
+                        kh_val(reads, k) = {bam_get_pos1(s), bam_get_pos1(s)+bam_get_l_qseq(s)-1};
                     }
-                    kh_val(reads, k) = {bam_get_pos1(s), bam_get_pos1(s)+bam_get_l_qseq(s)-1};
                 }
-            }
-            else
-            {
-                //check overlap
-                if((k = kh_get(rdict, reads, bam_get_qname(s)))!=kh_end(reads))
+                else
                 {
-                    if (kh_exist(reads, k))
+                    //check overlap
+                    if((k = kh_get(rdict, reads, bam_get_qname(s)))!=kh_end(reads))
                     {
-                        free((char*)kh_key(reads, k));
-                        kh_del(rdict, reads, k);
-                        ++no_overlapping_reads;
+                        if (kh_exist(reads, k))
+                        {
+                            free((char*)kh_key(reads, k));
+                            kh_del(rdict, reads, k);
+                            ++no_overlapping_reads;
+                        }
+                        //set this on to remove overlapping reads.
+                        return false;
                     }
-                    //set this on to remove overlapping reads.
-                    if (ignore_overlapping_read) return false;
                 }
             }
         }
@@ -368,6 +373,24 @@ class Igor : Program
             ++no_low_mapq_reads;
             return false;
         }
+
+        //check to see that hash should be cleared when encountering new contig.
+        //some bams may not be properly formed and contain orphaned sequences that
+        //can retained in the hash
+        if (bam_get_tid(s)!=tid)
+        {
+            for (k = kh_begin(reads); k != kh_end(reads); ++k)
+            {
+        		if (kh_exist(reads, k)) 
+        		{ 
+        		    free((char*)kh_key(reads, k));
+                    kh_del(rdict, reads, k);
+        		}
+            }
+            
+            //tid is not updated here, it is handled by flush()            
+            //kh_destroy(rdict, h);
+        }    
 
         return true;
     }
@@ -1267,7 +1290,10 @@ class Igor : Program
 
             if ((no_reads & 0x0000FFFF) == 0)
             {
-                std::cerr << pileup.get_chrom() << ":" << pileup.get_gbeg1() << "\n";
+                std::cerr << pileup.get_chrom() << ":" << pileup.get_gbeg1() << "";
+                std::cerr << " hash size: " << kh_size(reads) << "";
+                std::cerr << " highest n: " << vf.get_highest_n() << "";
+                std::cerr << "\n";
             }
         }
         flush();
@@ -1337,7 +1363,18 @@ class Igor : Program
         std::clog << "\n";
     };
 
-    ~Igor() {};
+    ~Igor() 
+    {
+        //clear hash of reads
+        for (khiter_t k = kh_begin(reads); k != kh_end(reads); ++k)
+        {
+    		if (kh_exist(reads, k)) 
+    		{ 
+    		    free((char*)kh_key(reads, k));
+                kh_del(rdict, reads, k);
+    		}
+        }       
+    };
 
     private:
 };
