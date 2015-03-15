@@ -88,6 +88,10 @@ class Igor : Program
     uint32_t no_passed_reads;
     uint32_t no_exclude_flag_reads;
     uint32_t no_low_mapq_reads;
+    uint32_t no_unaligned_cigars;
+    uint32_t no_malformed_del_cigars;
+    uint32_t no_malformed_ins_cigars;
+    uint32_t no_salvageable_ins_cigars;
 
     uint32_t no_snps;
     uint32_t no_ts;
@@ -241,6 +245,10 @@ class Igor : Program
         no_passed_reads = 0;
         no_exclude_flag_reads = 0;
         no_low_mapq_reads = 0;
+        no_unaligned_cigars = 0;
+        no_malformed_del_cigars = 0;
+        no_malformed_ins_cigars = 0;
+        no_salvageable_ins_cigars = 0;
 
         no_snps = 0;
         no_ts = 0;
@@ -286,7 +294,7 @@ class Igor : Program
         uint8_t *aux;
         char* md = NULL;
         (aux=bam_aux_get(s, "MD")) &&  (md = bam_aux2Z(aux));
-            
+
         std::cerr << "##################" << "\n";
         std::cerr << "chrom:pos: " << chrom << ":" << pos1 << "\n";
         std::cerr << "read     : " << seq.s << "\n";
@@ -309,7 +317,7 @@ class Igor : Program
     /**
      * Filter reads.
      *
-     * Returns true if read is failed.     
+     * Returns true if read is failed.
      */
     bool filter_read(bam1_t *s)
     {
@@ -317,7 +325,7 @@ class Igor : Program
         int32_t ret;
 
         if (ignore_overlapping_read)
-        {    
+        {
             //this read is part of a mate pair on the same contig
             if (bam_get_mpos1(s) && (bam_get_tid(s)==bam_get_mtid(s)))
             {
@@ -356,6 +364,7 @@ class Igor : Program
                 }
             }
         }
+        //should we join them up?
 
         if(bam_get_flag(s) & read_exclude_flag)
         {
@@ -374,6 +383,92 @@ class Igor : Program
             return false;
         }
 
+        //*****************************************************************
+        //should we have an assertion on the correctness of the bam record?
+        //Is, Ds not sandwiched in M
+        //leading and trailing Is - convert to S
+        //no Ms!!!!!
+        //*****************************************************************
+        int32_t n_cigar_op = bam_get_n_cigar_op(s);
+        if (n_cigar_op)
+        {
+            uint32_t *cigar = bam_get_cigar(s);
+            bool seenM = false;
+            int32_t last_opchr = '^';
+
+            for (int32_t i = 0; i < n_cigar_op; ++i)
+            {
+                int32_t opchr = bam_cigar_opchr(cigar[i]);
+                int32_t oplen = bam_cigar_oplen(cigar[i]);
+                if (opchr=='S')
+                {
+                    if (i!=0 && i!=n_cigar_op-1)
+                    {
+                        std::cerr << "S issue\n";
+                        bam_print_key_values(odr->hdr, s);
+                        //++malformed_cigar;
+                    }
+                }
+                else if (opchr=='M')
+                {
+                    seenM = true;
+                }
+                else if (opchr=='D')
+                {
+                    if (last_opchr!='M' || (i<=n_cigar_op && bam_cigar_opchr(cigar[i+1])!='M'))
+                    {
+                        std::cerr << "D issue\n";
+                        ++no_malformed_del_cigars;
+                        bam_print_key_values(odr->hdr, s);
+                    }
+                }
+                else if (opchr=='I')
+                {
+                    if (last_opchr!='M' || (i<n_cigar_op && bam_cigar_opchr(cigar[i+1])!='M'))
+                    {
+                        if (last_opchr!='M')
+                        {
+                            if (last_opchr!='^' && last_opchr!='S')
+                            {
+                                std::cerr << "leading I issue\n";
+                                bam_print_key_values(odr->hdr, s);
+                                ++no_malformed_ins_cigars;
+                            }
+                            else
+                            {
+                                ++no_salvageable_ins_cigars;
+                            }
+                        }
+                        else if (i==n_cigar_op-1)
+                        {
+
+                            ++no_salvageable_ins_cigars;
+                        }
+                        else if (i==n_cigar_op-2 && (bam_cigar_opchr(cigar[i+1])=='S'))
+                        {
+                            ++no_salvageable_ins_cigars;
+                        }
+                        else
+                        {
+                            std::cerr << "trailing I issue\n";
+                            bam_print_key_values(odr->hdr, s);
+                            ++no_malformed_ins_cigars;
+                        }
+
+                    }
+                }
+
+                last_opchr = opchr;
+            }
+
+            if (!seenM)
+            {
+                std::cerr << "NO! M issue\n";
+                bam_print_key_values(odr->hdr, s);
+                ++no_unaligned_cigars;
+            }
+        }
+
         //check to see that hash should be cleared when encountering new contig.
         //some bams may not be properly formed and contain orphaned sequences that
         //can retained in the hash
@@ -381,16 +476,16 @@ class Igor : Program
         {
             for (k = kh_begin(reads); k != kh_end(reads); ++k)
             {
-        		if (kh_exist(reads, k)) 
-        		{ 
+        		if (kh_exist(reads, k))
+        		{
         		    free((char*)kh_key(reads, k));
                     kh_del(rdict, reads, k);
         		}
             }
-            
-            //tid is not updated here, it is handled by flush()            
+
+            //tid is not updated here, it is handled by flush()
             //kh_destroy(rdict, h);
-        }    
+        }
 
         return true;
     }
@@ -412,8 +507,11 @@ class Igor : Program
         {
             std::cerr << "*******************\n";
             std::cerr << "Evidence count ISSUES\n";
-            std::cerr << "#alts : " << (p.X[1]+p.X[2]+p.X[4]+p.X[8]+p.X[15]+p.D.size()+p.I.size()) << "\n";
-            std::cerr << "#reads: " << (p.E+p.N) << "\n";
+            std::cerr << "#snp alts : " << (p.X[1]+p.X[2]+p.X[4]+p.X[8]+p.X[15]) << "\n";
+            std::cerr << "#del alts : " << p.D.size() << "\n";
+            std::cerr << "#ins alts : " << p.I.size() << "\n";
+            std::cerr << "#reads (N): " << p.N << "\n";
+            std::cerr << "#reads (E): " << p.E << "\n";
             p.print(gpos1);
             std::cerr << "*******************\n";
         }
@@ -916,7 +1014,7 @@ class Igor : Program
                                 if (debug) std::cerr << "\t\t\tadding LSCLIP: " << cpos1 << "\t" << ins << " {" << mean_qual << "}\n";
                                 pileup.add_lsclip(cpos1, ins, mean_qual, strand);
                             }
-                            else
+                            else if (seenM)
                             {
                                 if (debug) std::cerr << "\t\t\tadding RSCLIP: " << (cpos1-1) << "\t" << ins << " {" << mean_qual << "}\n";
                                 pileup.add_rsclip(cpos1-1, ins, mean_qual, strand);
@@ -985,7 +1083,7 @@ class Igor : Program
                                 if (debug) std::cerr << "\tMD: Mismatch " << ref << "\n";
                                 if (debug) std::cerr << "\t\t\tadding SNP: " << lpos1 << ":" << ref << "/" << alt << " [" << (mlen-1)<< "]\n";
 //                                if (qual[sspos0]>vf.get_snp_baseq_cutoff())
-//                                {     
+//                                {
                                     pileup.add_snp(lpos1, ref, alt, qual[sspos0], vf.get_snp_baseq_cutoff());
 //                                }
                                 ++lpos1;
@@ -1083,7 +1181,7 @@ class Igor : Program
                     else if (opchar=='I')
                     {
                         //leading Is
-                        if (!seenM) 
+                        if (!seenM)
                         {
 //                            //add to S evidence
 //                            std::string ins = "";
@@ -1108,7 +1206,7 @@ class Igor : Program
                         {
                             //bam_print_key_values(odr->hdr, s);
                             spos0 += oplen;
-                        } 
+                        }
                         else
                         {
                             //insertions are not present in MD tags
@@ -1120,7 +1218,7 @@ class Igor : Program
                             }
 
                             if (debug) std::cerr << "\t\t\tadding INS: " << (cpos1-1) << " " << ins  << "\n";
-                            pileup.add_ins((cpos1-1), ins);
+                            pileup.add_ins((cpos1-1), ins, pos1);
 
                             spos0 += oplen;
                         }
@@ -1135,7 +1233,10 @@ class Igor : Program
 
                 //pileup.print_state();
                 //update last matching base
-                pileup.update_read_end(cpos1-1);
+                if (seenM)
+                {
+                    pileup.update_read_end(cpos1-1);
+                }
             }
         }
         else
@@ -1237,7 +1338,7 @@ class Igor : Program
                         {
                             //bam_print_key_values(odr->hdr, s);
                             spos0 += oplen;
-                        }    
+                        }
                         else
                         {
                             std::string ins = "";
@@ -1247,7 +1348,7 @@ class Igor : Program
                             }
 
                             if (debug) std::cerr << "\t\t\tadding INS: " << (cpos1-1) << " " << ins  << "\n";
-                            pileup.add_I((cpos1-1), ins);
+                            pileup.add_I((cpos1-1), ins, pos1);
 
                             spos0 += oplen;
                         }
@@ -1262,7 +1363,10 @@ class Igor : Program
 
                 //pileup.print_state();
                 //update last matching base
-                pileup.update_read_end(cpos1-1);
+                if (seenM)
+                {
+                    pileup.update_read_end(cpos1-1);
+                }
             }
         }
     }
@@ -1290,10 +1394,7 @@ class Igor : Program
 
             if ((no_reads & 0x0000FFFF) == 0)
             {
-                std::cerr << pileup.get_chrom() << ":" << pileup.get_gbeg1() << "";
-                std::cerr << " hash size: " << kh_size(reads) << "";
-                std::cerr << " highest n: " << vf.get_highest_n() << "";
-                std::cerr << "\n";
+                std::cerr << pileup.get_chrom() << ":" << pileup.get_gbeg1() << "\n";
             }
         }
         flush();
@@ -1350,6 +1451,11 @@ class Igor : Program
         std::clog << "       no. passed reads             : " << no_passed_reads << "\n";
         std::clog << "       no. exclude flag reads       : " << no_exclude_flag_reads << "\n";
         std::clog << "\n";
+        std::clog << "       no. unaligned cigars         : " << no_unaligned_cigars << "\n";
+        std::clog << "       no. malformed del cigars     : " << no_malformed_del_cigars << "\n";
+        std::clog << "       no. malformed ins cigars     : " << no_malformed_ins_cigars << "\n";
+        std::clog << "       no. salvageable ins cigars   : " << no_salvageable_ins_cigars << "\n";
+        std::clog << "\n";
         std::clog << "       no. variants                 : " << (no_snps+no_insertions+no_deletions+no_left_soft_clips+no_right_soft_clips) << "\n";
         std::clog << "           no. snps (ts/tv)         : " << no_snps << " (" << std::fixed << std::setprecision(2) << (float)no_ts/no_tv << ")\n";
         std::clog << "               no. transitions      : " << no_ts << "\n";
@@ -1363,17 +1469,17 @@ class Igor : Program
         std::clog << "\n";
     };
 
-    ~Igor() 
+    ~Igor()
     {
         //clear hash of reads
         for (khiter_t k = kh_begin(reads); k != kh_end(reads); ++k)
         {
-    		if (kh_exist(reads, k)) 
-    		{ 
+    		if (kh_exist(reads, k))
+    		{
     		    free((char*)kh_key(reads, k));
                 kh_del(rdict, reads, k);
     		}
-        }       
+        }
     };
 
     private:

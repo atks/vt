@@ -123,7 +123,7 @@ class PileupPosition
  */
 class Pileup
 {
-    private:
+    public:
     uint32_t buffer_size;
     uint32_t buffer_size_mask;
     uint32_t window_size;
@@ -308,7 +308,7 @@ class Pileup
     /**
      * Updates an occurence of an insertion.
      */
-    void add_I(uint32_t gpos1, std::string& ins);
+    void add_I(uint32_t gpos1, std::string& ins, uint32_t rpos1);
 
     /**
      * Updates the occurence of a left soft clip.
@@ -352,7 +352,7 @@ class Pileup
     /**
      * Updates an occurence of an insertion.
      */
-    void add_ins(uint32_t gpos1, std::string& ins);
+    void add_ins(uint32_t gpos1, std::string& ins, uint32_t rpos1);
 
     /**
      * Updates the occurence of a left soft clip.

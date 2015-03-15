@@ -415,11 +415,14 @@ void Pileup::update_read_end(uint32_t gpos1)
     uint32_t i = g2i(gpos1);
     if (P[i].N==0)
     {
+        std::cerr << "update_read_end_base: gpos1" << gpos1 << "\n";
         std::cerr << "OOPSs...\n"; 
     }   
-    
-    --P[i].N;
-    ++P[i].E;
+    else
+    {    
+        --P[i].N;
+        ++P[i].E;
+    }
 }
 
 /**
@@ -540,7 +543,7 @@ void Pileup::add_D(uint32_t gpos1, uint32_t len)
 /**
  * Updates an occurence of an insertion.
  */
-void Pileup::add_I(uint32_t gpos1, std::string& ins)
+void Pileup::add_I(uint32_t gpos1, std::string& ins, uint32_t rpos1)
 {
     //there should never be a need to perform 3' padding for insertions
     //add_3prime_padding(gpos1);
@@ -564,6 +567,12 @@ void Pileup::add_I(uint32_t gpos1, std::string& ins)
         if (debug>=2)  std::cerr << "\t\t\tinsertion left aligned : " << chrom << ":" << gpos1 << ":" << P[i].R << "/" << P[i].R << ins << " => " << chrom << ":" << a_gpos1 << ":" << a_ref << "/" << a_alt << "\n";
         uint32_t j = g2i(a_gpos1);
         ++P[j].I[a_alt.substr(1)];
+        
+        //for insertions shifted beyond the edge of a read alignment 
+        if (a_gpos1 < rpos1)
+        {
+            ++P[j].N;
+        }
     }
     else
     {
@@ -756,7 +765,7 @@ void Pileup::add_del(uint32_t gpos1, std::string& del)
 /**
  * Updates an occurence of an insertion.
  */
-void Pileup::add_ins(uint32_t gpos1, std::string& ins)
+void Pileup::add_ins(uint32_t gpos1, std::string& ins, uint32_t rpos1)
 {
     //there should never be a need to perform 3' padding for insertions
     //add_3prime_padding(gpos1);
@@ -780,6 +789,12 @@ void Pileup::add_ins(uint32_t gpos1, std::string& ins)
         if (debug>=2) std::cerr << "\t\t\tinsertion left aligned : " << chrom << ":" << gpos1 << ":" << P[i].R << "/" << P[i].R << ins << " => " << chrom << ":" << a_gpos1 << ":" << a_ref << "/" << a_alt << "\n";
         uint32_t j = g2i(a_gpos1);
         ++P[j].I[a_alt.substr(1)];
+    
+        //for insertions shifted beyond the edge of a read alignment 
+        if (a_gpos1 < rpos1)
+        {
+            ++P[j].N;
+        }
     }
     else
     {
