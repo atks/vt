@@ -121,9 +121,9 @@ void BCFOrderedWriter::write(bcf1_t *v)
             if (bcf_get_rid(v)==bcf_get_rid(buffer.back()))
             {
                 std::list<bcf1_t*>::iterator i = buffer.begin();
-                
+
                 for (i=buffer.begin(); i!=buffer.end(); ++i)
-                {                    
+                {
                     //equal sign ensures records are kept in original order
                     if (bcf_get_pos1(v)>=bcf_get_pos1(*i))
                     {
@@ -132,7 +132,7 @@ void BCFOrderedWriter::write(bcf1_t *v)
                         return;
                     }
                 }
-                
+
                 if (i==buffer.end())
                 {
                     int32_t cutoff_pos1 =  std::max(bcf_get_pos1(buffer.front())-window,1);
@@ -155,7 +155,7 @@ void BCFOrderedWriter::write(bcf1_t *v)
         {
             buffer.push_front(v);
         }
-        
+
         v = NULL;
     }
     else

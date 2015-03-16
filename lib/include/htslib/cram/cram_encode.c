@@ -1304,7 +1304,8 @@ int cram_encode_container(cram_fd *fd, cram_container *c) {
 		}
 	    }
 
-	    process_one_read(fd, c, s, cr, b, r2);
+	    if (process_one_read(fd, c, s, cr, b, r2) != 0)
+		return -1;
 
 	    if (first_base > cr->apos)
 		first_base = cr->apos;
@@ -2034,25 +2035,34 @@ static char *cram_encode_aux(cram_fd *fd, bam_seq_t *b, cram_container *c,
 	uint32_t i32;
 	int r;
 
+	// RG:Z
 	if (aux[0] == 'R' && aux[1] == 'G' && aux[2] == 'Z') {
 	    rg = &aux[3];
 	    while (*aux++);
 	    continue;
 	}
+
+	// MD:Z
 	if (aux[0] == 'M' && aux[1] == 'D' && aux[2] == 'Z') {
-	    while (*aux++);
-	    continue;
-	}
-	if (aux[0] == 'N' && aux[1] == 'M') {
-	    switch(aux[2]) {
-	    case 'A': case 'C': case 'c': aux+=4; break;
-	    case 'S': case 's':           aux+=5; break;
-	    case 'I': case 'i': case 'f': aux+=7; break;
-	    default:
-		fprintf(stderr, "Unhandled type code for NM tag\n");
-		return NULL;
+	    if (cr->len && !fd->no_ref && !(cr->flags & BAM_FUNMAP)) {
+		while (*aux++);
+		continue;
 	    }
-	    continue;
+	}
+
+	// NM:i
+	if (aux[0] == 'N' && aux[1] == 'M') {
+	    if (cr->len && !fd->no_ref && !(cr->flags & BAM_FUNMAP)) {
+		switch(aux[2]) {
+		case 'A': case 'C': case 'c': aux+=4; break;
+		case 'S': case 's':           aux+=5; break;
+		case 'I': case 'i': case 'f': aux+=7; break;
+		default:
+		    fprintf(stderr, "Unhandled type code for NM tag\n");
+		    return NULL;
+		}
+		continue;
+	    }
 	}
 
 	BLOCK_APPEND(td_b, aux, 3);
@@ -2437,6 +2447,7 @@ static int process_one_read(cram_fd *fd, cram_container *c,
     // FIXME: multi-ref containers
 
     ref = c->ref;
+    cr->flags       = bam_flag(b);
     cr->len         = bam_seq_len(b); cram_stats_add(c->stats[DS_RL], cr->len);
 
     //fprintf(stderr, "%s => %d\n", rg ? rg : "\"\"", cr->rg);
@@ -2469,7 +2480,6 @@ static int process_one_read(cram_fd *fd, cram_container *c,
 
     
     cr->ref_id      = bam_ref(b);  cram_stats_add(c->stats[DS_RI], cr->ref_id);
-    cr->flags       = bam_flag(b);
     if (bam_cigar_len(b) == 0)
 	cr->flags |= BAM_FUNMAP;
     cram_stats_add(c->stats[DS_BF], fd->cram_flag_swap[cr->flags & 0xfff]);
@@ -2612,6 +2622,11 @@ static int process_one_read(cram_fd *fd, cram_container *c,
 		    char *sp = &seq[spos];
 		    char *rp = &ref[apos];
 		    char *qp = &qual[spos];
+		    if (end > cr->len) {
+			fprintf(stderr, "CIGAR and query sequence are of "
+				"different length\n");
+			return -1;
+		    }
 		    for (l = 0; l < end; l++) {
 			if (rp[l] != sp[l]) {
 			    if (!sp[l])
@@ -2732,6 +2747,11 @@ static int process_one_read(cram_fd *fd, cram_container *c,
 		break;
 	    }
 	}
+	if (cr->len && spos != cr->len) {
+	    fprintf(stderr, "CIGAR and query sequence are of different "
+		    "length\n");
+	    return -1;
+	}
 	fake_qual = spos;
 	cr->aend = MIN(apos, c->ref_end);
 	cram_stats_add(c->stats[DS_FN], cr->nfeature);
@@ -2744,6 +2764,7 @@ static int process_one_read(cram_fd *fd, cram_container *c,
 	cr->aend = cr->apos;
 	for (i = 0; i < cr->len; i++)
 	    cram_stats_add(c->stats[DS_BA], seq[i]);
+	fake_qual = 0;
     }
 
     /*

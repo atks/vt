@@ -53,6 +53,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 #include <zlib.h>
 #ifdef HAVE_LIBBZ2
 #include <bzlib.h>
@@ -1707,6 +1708,47 @@ static refs_t *refs_load_fai(refs_t *r_orig, char *fn, int is_err) {
 }
 
 /*
+ * Verifies that the CRAM @SQ lines and .fai files match.
+ */
+static void sanitise_SQ_lines(cram_fd *fd) {
+    int i;
+
+    if (!fd->header)
+	return;
+
+    if (!fd->refs || !fd->refs->h_meta)
+	return;
+
+    for (i = 0; i < fd->header->nref; i++) {
+	char *name = fd->header->ref[i].name;
+	khint_t k = kh_get(refs, fd->refs->h_meta, name);
+	ref_entry *r;
+
+	// We may have @SQ lines which have no known .fai, but do not
+	// in themselves pose a problem because they are unused in the file.
+	if (k == kh_end(fd->refs->h_meta))
+	    continue;
+
+	if (!(r = (ref_entry *)kh_val(fd->refs->h_meta, k)))
+	    continue;
+
+	if (r->length != fd->header->ref[i].len) {
+	    assert(strcmp(r->name, fd->header->ref[i].name) == 0);
+
+	    // Should we also check MD5sums here to ensure the correct
+	    // reference was given?
+	    fprintf(stderr, "WARNING: Header @SQ length mismatch for "
+		    "ref %s, %d vs %d\n",
+		    r->name, fd->header->ref[i].len, (int)r->length);
+
+	    // Fixing the parsed @SQ header will make MD:Z: strings work
+	    // and also stop it producing N for the sequence.
+	    fd->header->ref[i].len = r->length;
+	}
+    }
+}
+
+/*
  * Indexes references by the order they appear in a BAM file. This may not
  * necessarily be the same order they appear in the fasta reference file.
  *
@@ -1747,6 +1789,9 @@ int refs2id(refs_t *r, SAM_hdr *h) {
 static int refs_from_header(refs_t *r, cram_fd *fd, SAM_hdr *h) {
     int i, j;
 
+    if (!r)
+	return -1;
+
     if (!h || h->nref == 0)
 	return 0;
 
@@ -1771,7 +1816,7 @@ static int refs_from_header(refs_t *r, cram_fd *fd, SAM_hdr *h) {
 	if (!(r->ref_id[j] = calloc(1, sizeof(ref_entry))))
 	    return -1;
 
-	if (!h->ref[j].name)
+	if (!h->ref[i].name)
 	    return -1;
 
 	r->ref_id[j]->name = string_dup(r->pool, h->ref[i].name);
@@ -2003,6 +2048,8 @@ static int cram_populate_ref(cram_fd *fd, int id, ref_entry *r) {
 	}
 	if (!(refs = refs_load_fai(fd->refs, fn, 0)))
 	    return -1;
+	sanitise_SQ_lines(fd);
+
 	fd->refs = refs;
 	if (fd->refs->fp) {
 	    if (bgzf_close(fd->refs->fp) != 0)
@@ -2472,6 +2519,7 @@ int cram_load_reference(cram_fd *fd, char *fn) {
 	fd->refs = refs_load_fai(fd->refs, fn,
 				 !(fd->embed_ref && fd->mode == 'r'));
 	fn = fd->refs ? fd->refs->fn : NULL;
+	sanitise_SQ_lines(fd);
     }
     fd->ref_fn = fn;
 

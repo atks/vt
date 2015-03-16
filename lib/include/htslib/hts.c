@@ -37,6 +37,7 @@ DEALINGS IN THE SOFTWARE.  */
 #include "cram/cram.h"
 #include "htslib/hfile.h"
 #include "version.h"
+#include "hts_internal.h"
 
 #include "htslib/kseq.h"
 #define KS_BGZF 1
@@ -578,7 +579,8 @@ int hts_set_fai_filename(htsFile *fp, const char *fn_aux)
     else fp->fn_aux = NULL;
 
     if (fp->format.format == cram)
-        cram_set_option(fp->fp.cram, CRAM_OPT_REFERENCE, fp->fn_aux);
+        if (cram_set_option(fp->fp.cram, CRAM_OPT_REFERENCE, fp->fn_aux))
+            return -1;
 
     return 0;
 }
