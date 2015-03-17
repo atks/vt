@@ -16,7 +16,6 @@ SOURCES = align\
 		bcf_ordered_writer\
 		bcf_synced_reader\
 		bed\
-		binomial_distribution\
 		candidate_motif\
 		cat\
 		chmm\

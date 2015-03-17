@@ -612,8 +612,10 @@ class Igor : Program
                 fprintf(stderr, "    N   %10d \n", kbstats[i].tn+kbstats[i].fn);
                 fprintf(stderr, "    +   %10d \n", no_positive_variants);
                 fprintf(stderr, "    -   %10d \n", no_negative_variants);
-                fprintf(stderr, "  TDR %5.2f (TP/(TP+FP))\n", (float)kbstats[i].tp/(kbstats[i].tp+kbstats[i].fp)*100);
-                fprintf(stderr, "  FNR %5.2f (FN/(TN+FN))\n", (float)kbstats[i].fn/(kbstats[i].fn+kbstats[i].tn)*100);
+                fprintf(stderr, "  Sensitivity   %5.2f (TP/(TP+FN))\n", (float)kbstats[i].tp/(kbstats[i].tp+kbstats[i].fn)*100);
+                fprintf(stderr, "  Specificity   %5.2f (TN/(TN+FP))\n", (float)kbstats[i].tn/(kbstats[i].tn+kbstats[i].fp)*100);
+                fprintf(stderr, "  Type I Error  %5.2f (FP/(TN+FP))\n", (float)kbstats[i].fp/(kbstats[i].tn+kbstats[i].fp)*100);
+                fprintf(stderr, "  Type II Error %5.2f (FN/(TP+FN))\n", (float)kbstats[i].fn/(kbstats[i].tp+kbstats[i].fn)*100);
                 fprintf(stderr, "\n");
             }
         }

@@ -48,7 +48,7 @@ bool VariantFilter::filter_snp(uint32_t evidence_no, uint32_t read_no)
     if (snp_adaptive_cutoff)
     {
         return evidence_no>=2 && pbinom(evidence_no, read_no, snp_p, 1, 0)>=snp_desired_type_II_error;
-        //float lr = dbinom(evidence_no, read_no, snp_p)-dbinom(evidence_no, read_no, snp_e);
+        //float lr = dbinom(evidence_no, read_no, snp_p, 1, 0)-dbinom(evidence_no, read_no, snp_e, 1, 0);
         //if (lr>0) std::cerr << "SNP: " << lr << "\n";
         //return lr>=lr_cutoff;
     }
@@ -68,7 +68,7 @@ bool VariantFilter::filter_del(uint32_t evidence_no, uint32_t read_no)
     if (deletion_adaptive_cutoff)
     {
         return evidence_no>=2 && pbinom(evidence_no, read_no, del_p, 1, 0)>=deletion_desired_type_II_error;
-        //float lr = dbinom(evidence_no, read_no, del_p)-dbinom(evidence_no, read_no, del_e);
+        //float lr = dbinom(evidence_no, read_no, del_p, 1, 0)-dbinom(evidence_no, read_no, del_e, 1, 0);
         //if (lr>0) std::cerr << "DEL: " << lr << "\n";
         //return lr>=lr_cutoff;
     }
@@ -86,7 +86,7 @@ bool VariantFilter::filter_ins(uint32_t evidence_no, uint32_t read_no)
     if (insertion_adaptive_cutoff)
     {
         return evidence_no>=2 && pbinom(evidence_no, read_no, ins_p, 1, 0)>=insertion_desired_type_II_error;
-        //float lr = dbinom(evidence_no, read_no, ins_p)-dbinom(evidence_no, read_no, ins_e); 
+        //float lr = dbinom(evidence_no, read_no, ins_p, 1, 0)-dbinom(evidence_no, read_no, ins_e, 1, 0); 
         //if (lr>0) std::cerr << "INS: " << lr << "\n";
         //return lr>=lr_cutoff;    
     }
