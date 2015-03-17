@@ -28,20 +28,19 @@
 #include <map>
 #include "Rmath/Rmath.h"
 #include "hts_utils.h"
-#include "binomial_distribution.h"
 
 /**
  * Class for filtering variants in discover
  */
 class VariantFilter
 {
-    BinomialDistribution snp_binom_dist;
-    BinomialDistribution deletion_binom_dist;
-    BinomialDistribution insertion_binom_dist;
+    float snp_p;
+    float del_p;
+    float ins_p;
 
-    BinomialDistribution non_snp_binom_dist;
-    BinomialDistribution non_deletion_binom_dist;
-    BinomialDistribution non_insertion_binom_dist;
+    float snp_e;
+    float del_e;
+    float ins_e;
 
     //bia
     float reference_bias;
@@ -103,24 +102,19 @@ class VariantFilter
     void sync();
 
     /**
-     * Get the higher N observed so far.
-     */
-    uint32_t get_highest_n();
-    
-    /**
      * Setters for reference bias.
      */
     void set_reference_bias(float reference_bias);
 
     float get_reference_bias();
-    
+
     /**
      * Setters for general filters.
      */
     void set_lr_cutoff(float lr_cutoff);
 
     float get_lr_cutoff();
-    
+
     /**
      * Setters for SNP filters.
      */

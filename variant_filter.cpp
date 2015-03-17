@@ -25,13 +25,13 @@
 
 VariantFilter::VariantFilter()
 {
-    snp_binom_dist.set_p(0.5-reference_bias);
-    deletion_binom_dist.set_p(0.5-reference_bias);
-    insertion_binom_dist.set_p(0.5-reference_bias);
+    snp_p = 0.5-reference_bias;
+    del_p = 0.5-reference_bias;
+    ins_p = 0.5-reference_bias;
 
-    non_snp_binom_dist.set_p(0.003);
-    non_deletion_binom_dist.set_p(0.00023);
-    non_insertion_binom_dist.set_p(0.00017);
+    snp_e = 0.003;
+    del_e = 0.00023;
+    ins_e = 0.00017;
 
     snp_adaptive_cutoff = false;
     deletion_adaptive_cutoff = false;
@@ -47,10 +47,10 @@ bool VariantFilter::filter_snp(uint32_t evidence_no, uint32_t read_no)
 {
     if (snp_adaptive_cutoff)
     {
-        return evidence_no>=2 && snp_binom_dist.get_pvalue(evidence_no, read_no)>=snp_desired_type_II_error;
-        //float lr = snp_binom_dist.get_pvalue(evidence_no, read_no)-non_snp_binom_dist.get_pvalue(evidence_no, read_no);
+        return evidence_no>=2 && pbinom(evidence_no, read_no, snp_p, 1, 0)>=snp_desired_type_II_error;
+        //float lr = dbinom(evidence_no, read_no, snp_p)-dbinom(evidence_no, read_no, snp_e);
         //if (lr>0) std::cerr << "SNP: " << lr << "\n";
-        //return lr >=lr_cutoff;
+        //return lr>=lr_cutoff;
     }
     else
     {
@@ -61,14 +61,14 @@ bool VariantFilter::filter_snp(uint32_t evidence_no, uint32_t read_no)
 /**
  * Filters a deletion.
  *
- *  Returns true if variant is to be discarded.
+ * Returns true if variant is to be discarded.
  */
 bool VariantFilter::filter_del(uint32_t evidence_no, uint32_t read_no)
 {
     if (deletion_adaptive_cutoff)
     {
-        return evidence_no>=2 && deletion_binom_dist.get_pvalue(evidence_no, read_no)>=deletion_desired_type_II_error;
-        //float lr = deletion_binom_dist.get_pvalue(evidence_no, read_no)-non_deletion_binom_dist.get_pvalue(evidence_no, read_no);
+        return evidence_no>=2 && pbinom(evidence_no, read_no, del_p, 1, 0)>=deletion_desired_type_II_error;
+        //float lr = dbinom(evidence_no, read_no, del_p)-dbinom(evidence_no, read_no, del_e);
         //if (lr>0) std::cerr << "DEL: " << lr << "\n";
         //return lr>=lr_cutoff;
     }
@@ -85,8 +85,8 @@ bool VariantFilter::filter_ins(uint32_t evidence_no, uint32_t read_no)
 {
     if (insertion_adaptive_cutoff)
     {
-        return evidence_no>=2 && insertion_binom_dist.get_pvalue(evidence_no, read_no)>=insertion_desired_type_II_error;
-        //float lr = insertion_binom_dist.get_pvalue(evidence_no, read_no)-non_insertion_binom_dist.get_pvalue(evidence_no, read_no); 
+        return evidence_no>=2 && pbinom(evidence_no, read_no, ins_p, 1, 0)>=insertion_desired_type_II_error;
+        //float lr = dbinom(evidence_no, read_no, ins_p)-dbinom(evidence_no, read_no, ins_e); 
         //if (lr>0) std::cerr << "INS: " << lr << "\n";
         //return lr>=lr_cutoff;    
     }
@@ -114,22 +114,14 @@ void VariantFilter::sync()
 }
 
 /**
- * Get the higher N observed so far.
- */
-uint32_t VariantFilter::get_highest_n()
-{
-    return snp_binom_dist.get_pvalue_size();
-}
-
-/**
  * Setters for reference bias.
  */
 void VariantFilter::set_reference_bias(float reference_bias)
 {
     this->reference_bias = reference_bias;
-    snp_binom_dist.set_p(0.5-reference_bias);
-    deletion_binom_dist.set_p(0.5-reference_bias);
-    insertion_binom_dist.set_p(0.5-reference_bias);
+    snp_p = 0.5-reference_bias;
+    del_p = 0.5-reference_bias;
+    ins_p = 0.5-reference_bias;
 }
 
 float VariantFilter::get_reference_bias()
@@ -262,13 +254,11 @@ void VariantFilter::set_insertion_f_cutoff(float insertion_f_cutoff)
 void VariantFilter::set_insertion_desired_type_I_error(float insertion_desired_type_I_error)
 {
     this->insertion_desired_type_I_error = insertion_desired_type_I_error;
-    insertion_adaptive_cutoff = insertion_desired_type_I_error==0;
 }
 
 void VariantFilter::set_insertion_desired_type_II_error(float insertion_desired_type_II_error)
 {
     this->insertion_desired_type_II_error = insertion_desired_type_II_error;
-    insertion_adaptive_cutoff = insertion_desired_type_II_error==0;
 }
 
 uint32_t VariantFilter::get_insertion_e_cutoff()
