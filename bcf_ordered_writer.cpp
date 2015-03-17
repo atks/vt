@@ -34,7 +34,7 @@ BCFOrderedWriter::BCFOrderedWriter(std::string output_vcf_file_name, int32_t win
 
     if (file_name=="+")
     {
-        kputs("u", &mode);
+        kputs("bu", &mode);
         file_name = "-";
     }
     else if (file_name=="-")
@@ -70,7 +70,7 @@ BCFOrderedWriter::BCFOrderedWriter(std::string output_vcf_file_name, int32_t win
     }
 
     hdr = bcf_hdr_init("w");
-    bcf_hdr_set_version(hdr, "VCFv4.1");
+    bcf_hdr_set_version(hdr, "VCFv4.2");
     linked_hdr = false;
 }
 
