@@ -38,7 +38,7 @@ class Igor : Program
     std::vector<GenomeInterval> intervals;
     std::string ref_fasta_file;
     bool smart;
-    
+
     ///////
     //i/o//
     ///////
@@ -58,7 +58,7 @@ class Igor : Program
     uint32_t no_biallelic;
     uint32_t no_multiallelic;
     uint32_t no_additional_biallelic;
-    
+
     /////////
     //tools//
     /////////
@@ -180,26 +180,26 @@ class Igor : Program
         {
             bcf_unpack(v, BCF_UN_FMT);
 
-//            std::cerr << "=============================\n";   
-//            bcf_print(odr->hdr, v);
-//            std::cerr << "=============================\n";
+            std::cerr << "=============================\n";
+            bcf_print(odr->hdr, v);
+            std::cerr << "=============================\n";
 
             int32_t n_allele = bcf_get_n_allele(v);
 
             if (n_allele > 2)
             {
                 if (!smart)
-                {    
+                {
                     ++no_multiallelic;
                     no_additional_biallelic += n_allele-2;
-    
+
                     old_alleles.l = 0;
                     bcf_variant2string(odw->hdr, v, &old_alleles);
-    
+
                     int32_t rid = bcf_get_rid(v);
                     int32_t pos1 = bcf_get_pos1(v);
                     char** allele = bcf_get_allele(v);
-        
+
                     int32_t *gt = NULL;
                     int32_t *pl = NULL;
                     float *gl = NULL;
@@ -212,12 +212,12 @@ class Igor : Program
                     int32_t ploidy = 0;
                     int32_t n_genotype;
                     int32_t n_genotype2;
-    
+
                     int32_t *gts = NULL;
                     int32_t *pls = NULL;
                     float *gls = NULL;
                     int32_t *dps = NULL;
-        
+
                     if (no_samples)
                     {
                         int32_t n = 0;
@@ -227,7 +227,7 @@ class Igor : Program
                         n_genotype = bcf_ap2g(n_allele, ploidy);
                         n_genotype2 = bcf_ap2g(2, ploidy);
                         if (ret>0) gts = (int32_t*) malloc(no_samples*n_genotype2*sizeof(int32_t));
-    
+
                         n=0;
                         ret = bcf_get_format_int32(odr->hdr, v, "PL", &pl, &n);
                         if (ret>0)
@@ -235,7 +235,7 @@ class Igor : Program
                             has_PL = true;
                             pls = (int32_t*) malloc(no_samples*n_genotype2*sizeof(int32_t));
                         }
-    
+
                         n=0;
                         ret = bcf_get_format_float(odr->hdr, v, "GL", &gl, &n);
                         if (ret>0)
@@ -243,7 +243,7 @@ class Igor : Program
                             has_GL = true;
                             gls = (float*) malloc(no_samples*n_genotype2*sizeof(float));
                         }
-    
+
                         n=0;
                         ret = bcf_get_format_int32(odr->hdr, v, "DP", &dp, &n);
                         if (ret>0)
@@ -252,11 +252,11 @@ class Igor : Program
                             dps = (int32_t*) malloc(no_samples*sizeof(int32_t));
                         }
                     }
-                    
-//                    std::cerr << "*****************************\n";   
+
+//                    std::cerr << "*****************************\n";
 //                    bcf_print(odw->hdr, v);
 //                    std::cerr << "*****************************\n";
-    
+
                     for (size_t i=1; i<n_allele; ++i)
                     {
                         //bcf_clear(v);
@@ -265,10 +265,10 @@ class Igor : Program
                         kputs(allele[0], &new_alleles);
                         kputc(',', &new_alleles);
                         kputs(allele[i], &new_alleles);
-                        
-                        bcf_update_info_string(odw->hdr, nv, "OLD_MULTIALLELIC", old_alleles.s);    
+
+                        bcf_update_info_string(odw->hdr, nv, "OLD_MULTIALLELIC", old_alleles.s);
                         bcf_update_alleles_str(odw->hdr, nv, new_alleles.s);
-                        
+
                         if (no_samples)
                         {
                             //get array genotypes
@@ -278,25 +278,25 @@ class Igor : Program
                                 {
                                     for (size_t k=0; k<ploidy; ++k)
                                     {
-                                        int32_t _a = gt[j*ploidy+k]; 
+                                        int32_t _a = gt[j*ploidy+k];
                                         if (_a<0)
                                         {
                                             gts[j*ploidy+k] = _a;
                                         }
-                                        else 
-                                        {    
+                                        else
+                                        {
                                             int32_t a = bcf_gt_allele(_a);
-                                            
+
                                             if (a)
                                             {
                                                 a = a==i ? 1 : -1;
                                             }
-                                            
+
                                             gts[j*ploidy+k] =  ((a+1)<<1) | bcf_gt_is_phased(_a);
-                                        } 
+                                        }
                                     }
                                 }
-    
+
                                 if (has_PL)
                                 {
                                     pls[j*n_genotype2] = pl[j*n_genotype];
@@ -307,7 +307,7 @@ class Igor : Program
                                         pls[j*n_genotype2+k] = pl[j*n_genotype+index];
                                     }
                                 }
-    
+
                                 if (has_GL)
                                 {
                                     gls[j*n_genotype2] = gl[j*n_genotype];
@@ -316,15 +316,15 @@ class Igor : Program
                                     {
                                         index += choose(ploidy-(k-1)+i-1,i-1);
                                         gls[j*n_genotype2+k] = gl[j*n_genotype+index];
-                                    }                                    
+                                    }
                                 }
-    
+
                                 if (has_DP)
                                 {
                                     dps[j] = dp[j];
                                 }
                             }
-    
+
                             //remove other format values except for GT, PL, GL and DP
                             if (i==1)
                             {
@@ -332,20 +332,20 @@ class Igor : Program
                                 for (size_t j = 0; j < v->n_fmt; ++j)
                                 {
                                     const char* tag = odw->hdr->id[BCF_DT_ID][fmt[j].id].key;
-    
+
                                     if (strcmp(tag,"GT")&&strcmp(tag,"PL")&&strcmp(tag,"GL")&&strcmp(tag,"DP"))
                                     {
                                         bcf_update_format_int32(odw->hdr, nv, tag, 0, 0);
                                     }
                                 }
                             }
-    
+
                             if (has_GT) bcf_update_genotypes(odw->hdr, nv, gts, no_samples*ploidy);
                             if (has_PL) bcf_update_format_int32(odw->hdr, nv, "PL", pls, no_samples*n_genotype2);
                             if (has_GL) bcf_update_format_float(odw->hdr, nv, "GL", gls, no_samples*n_genotype2);
                             if (has_DP) bcf_update_format_int32(odw->hdr, nv, "DP", dps, no_samples);
                         }
-    
+
                         //remove other format values except for GT, PL, GL and DP
                         bcf_fmt_t *fmt = v->d.fmt;
                         for (size_t j = 0; j < v->n_fmt; ++j)
@@ -357,17 +357,17 @@ class Igor : Program
                                 bcf_update_format_int32(odw->hdr, nv, tag, 0, 0);
                             }
                         }
-                        
+
                         odw->write(nv);
                         bcf_destroy(nv);
                     }
-    
+
                     if (has_GT) {free(gt); free(gts);}
                     if (has_PL) {free(pl); free(pls);}
                     if (has_GL) {free(gl); free(gls);}
                     if (has_DP) {free(dp); free(dps);}
                 }
-                else
+                else //smart decomposition
                 {
                     ++no_multiallelic;
                     no_additional_biallelic += n_allele-2;
@@ -385,11 +385,15 @@ class Igor : Program
                     {
                         alleles[i] = strdup(allele[i]);
                     }
-                        
-//                    std::cerr << "=============================\n";   
+
+//                    std::cerr << "=============================\n";
 //                    bcf_print(odr->hdr, v);
 //                    std::cerr << "=============================\n";
-//                    
+//
+                    //////////////////////
+                    //split up INFO fields
+                    //////////////////////
+
                     for (size_t i=1; i<n_allele; ++i)
                     {
                         bcf1_t *nv = bcf_dup(v);
@@ -399,6 +403,176 @@ class Igor : Program
                         kputs(allele[0], &new_alleles);
                         kputc(',', &new_alleles);
                         kputs(allele[i], &new_alleles);
+
+                        //////////////////////
+                        //split up INFO fields
+                        //////////////////////
+                        if (nv->n_info)
+                        {
+                            bcf_hdr_t* hdr = odr->hdr;
+                            bcf_info_t *info = v->d.info;
+
+                            for (uint32_t j = 0; j < (int32_t)v->n_info; ++j)
+                            {
+                                int32_t key = info[j].key;
+
+                                if (key<0)
+                                {
+                                    fprintf(stderr, "[E::%s] invalid BCF, the INFO key key=%d not present in the header.\n", __func__, key);
+                                    abort();
+                                }
+
+                                const char* tag = hdr->id[BCF_DT_ID][key].key;
+                                int32_t var_len = bcf_hdr_id2length(hdr,BCF_HL_INFO,key);
+                                int32_t type = info[j].type;
+
+                                //std::cerr << tag << " present\n";
+
+
+                                if (var_len==BCF_VL_G)
+                                {
+                                    if (type==BCF_BT_INT8||type==BCF_BT_INT16||type==BCF_BT_INT32)
+                                    {
+                                        int32_t n = 0;
+                                        int32_t* g = 0;
+                                        int32_t ret = bcf_get_info_int32(odr->hdr, v, tag, &g, &n);
+                                        int32_t n_genotype = n;
+
+                                        int32_t ploidy = bcf_ag2p(n_allele, n_genotype);
+                                        int32_t n_genotype2 = bcf_ap2g(2, ploidy);
+                                        int32_t* gs = (int32_t*) malloc(n_genotype2*sizeof(int32_t));
+
+                                        gs[0] = g[0];
+                                        uint32_t index = 0;
+                                        for (uint32_t k = 1; k<n_genotype2; ++k)
+                                        {
+                                            index += choose(ploidy-(k-1)+i-1,i-1);
+                                            gs[k] = g[index];
+                                        }
+
+
+                                        bcf_update_info_int32(odw->hdr, nv, tag, gs, no_samples*n_genotype2);
+                                        free(gs);
+                                    }
+                                    else if (type==BCF_BT_FLOAT)
+                                    {
+                                        int32_t n = 0;
+                                        int32_t* g = 0;
+                                        int32_t ret = bcf_get_info_float(odr->hdr, v, tag, &g, &n);
+                                        int32_t n_genotype = n;
+
+                                        int32_t ploidy = bcf_ag2p(n_allele, n_genotype);
+                                        int32_t n_genotype2 = bcf_ap2g(2, ploidy);
+                                        int32_t* gs = (int32_t*) malloc(n_genotype2*sizeof(int32_t));
+
+                                        gs[0] = g[0];
+                                        uint32_t index = 0;
+                                        for (uint32_t k = 1; k<n_genotype2; ++k)
+                                        {
+                                            index += choose(ploidy-(k-1)+i-1,i-1);
+                                            gs[k] = g[index];
+                                        }
+
+                                        bcf_update_info_float(odw->hdr, nv, tag, gs, n_genotype2);
+                                        free(gs);
+                                    }
+                                    else if (type==BCF_BT_CHAR)
+                                    {
+                                    }
+                                }
+                                else if (var_len == BCF_VL_A)
+                                {
+                                    if (type==BCF_BT_INT8||type==BCF_BT_INT16||type==BCF_BT_INT32)
+                                    {
+                                        int32_t n = 0;
+                                        int32_t* a = 0;
+                                        int32_t ret = bcf_get_info_int32(odr->hdr, v, tag, &a, &n);
+                                        if (ret)
+                                        {
+                                            int32_t as = a[i-1];
+                                            bcf_update_info_int32(odw->hdr, nv, tag, &as, 1);
+                                        }
+                                        
+                                    }
+                                    else if (type==BCF_BT_FLOAT)
+                                    {
+                                        int32_t n = 0;
+                                        int32_t* a = 0;
+                                        int32_t ret = bcf_get_info_float(odr->hdr, v, tag, &a, &n);
+                                        if (ret)
+                                        {
+                                            float as = a[i-1];
+                                            bcf_update_info_float(odw->hdr, nv, tag, &as, 1);
+                                        }
+                                    }
+                                    else if (type==BCF_BT_CHAR)
+                                    {
+                                        int32_t n = 0;
+                                        char** a = 0;
+                                        int32_t ret = bcf_get_info_float(odr->hdr, v, tag, &a, &n);
+                                        
+                                        for (uint32_t j=0; j<n; ++j)
+                                        {
+                                            std::cerr << "\t\tTETST:" << a[i-1] << "\n";
+                                        }
+                                        
+                                        if (ret)
+                                        {
+                                            
+                                            bcf_update_info_string(odw->hdr, nv, tag, &a[i-1]);
+                                            
+                                            for (uint32_t j=0; j<n; ++j)
+                                            {
+                                                free(a[j]);
+                                            }
+                                            free(a);
+                                        }
+                                    }
+                                }
+                                else if (var_len == BCF_VL_R)
+                                {
+                                    if (type==BCF_BT_INT8||type==BCF_BT_INT16||type==BCF_BT_INT32)
+                                    {
+                                        int32_t n = 0;
+                                        int32_t* a = 0;
+                                        int32_t ret = bcf_get_info_int32(odr->hdr, v, tag, &a, &n);
+                                        if (ret)
+                                        {
+                                            int32_t* as = (int32_t*) malloc(sizeof(int32_t)*2);
+                                            as[0] = a[0];
+                                            as[1] = a[i];
+                                            bcf_update_info_int32(odw->hdr, nv, tag, as, 2);
+                                            free(as);
+                                        }                                    
+                                    }
+                                    else if (type==BCF_BT_FLOAT)
+                                    {
+                                        int32_t n = 0;
+                                        int32_t* a = 0;
+                                        int32_t ret = bcf_get_info_float(odr->hdr, v, tag, &a, &n);
+                                        if (ret)
+                                        {
+                                            float* as = (float*) malloc(sizeof(float)*2);
+                                            as[0] = a[0];
+                                            as[1] = a[i];
+                                            bcf_update_info_float(odw->hdr, nv, tag, as, 2);
+                                            free(as);
+                                        }
+                                    }
+                                    else if (type==BCF_BT_CHAR)
+                                    {
+                                    }
+                                }
+                                else if (var_len == BCF_VL_FIXED)
+                                {
+                                    //leave it there
+                                }
+                                else if (var_len == BCF_VL_VAR)
+                                {
+                                    //leave it there
+                                }
+                            }
+                        }
 
                         if (no_samples)
                         {
@@ -422,18 +596,18 @@ class Igor : Program
                                     int32_t type = fmt[j].type;
 
                                     if (var_len==BCF_VL_G)
-                                    {   
+                                    {
                                         if (type==BCF_BT_INT8||type==BCF_BT_INT16||type==BCF_BT_INT32)
                                         {
                                             int32_t n = 0;
                                             int32_t* g = 0;
                                             int32_t ret = bcf_get_format_int32(odr->hdr, v, tag, &g, &n);
                                             int32_t n_genotype = n/no_samples;
-                                            
+
                                             int32_t ploidy = bcf_ag2p(n_allele, n_genotype);
                                             int32_t n_genotype2 = bcf_ap2g(2, ploidy);
                                             int32_t* gs = (int32_t*) malloc(no_samples*n_genotype2*sizeof(int32_t));
-                                            
+
                                             //get array genotypes
                                             for (uint32_t j=0; j<no_samples; ++j)
                                             {
@@ -445,10 +619,10 @@ class Igor : Program
                                                     gs[j*n_genotype2+k] = g[j*n_genotype+index];
                                                 }
                                             }
-                                            
+
                                             bcf_update_format_int32(odw->hdr, nv, tag, gs, no_samples*n_genotype2);
                                             free(gs);
-                                        }    
+                                        }
                                         else if (type==BCF_BT_FLOAT)
                                         {
                                             int32_t n = 0;
@@ -458,7 +632,7 @@ class Igor : Program
                                             int32_t ploidy = bcf_ag2p(n_allele, n_genotype);
                                             int32_t n_genotype2 = bcf_ap2g(2, ploidy);
                                             int32_t* gs = (int32_t*) malloc(no_samples*n_genotype2*sizeof(int32_t));
-                                            
+
                                             for (uint32_t j=0; j<no_samples; ++j)
                                             {
                                                 gs[j*n_genotype2] = g[j*n_genotype];
@@ -469,13 +643,13 @@ class Igor : Program
                                                     gs[j*n_genotype2+k] = g[j*n_genotype+index];
                                                 }
                                             }
-                                            
+
                                             bcf_update_format_float(odw->hdr, nv, tag, gs, no_samples*n_genotype2);
                                             free(gs);
                                         }
                                         else if (type==BCF_BT_CHAR)
                                         {
-                                        }   
+                                        }
                                     }
                                     else if (var_len == BCF_VL_A)
                                     {
@@ -485,7 +659,7 @@ class Igor : Program
                                             int32_t* a = 0;
                                             int32_t ret = bcf_get_format_int32(odr->hdr, v, tag, &a, &n);
                                             int32_t* as = (int32_t*) malloc(no_samples*sizeof(int32_t));
-                                            
+
                                             if (ret!=(n_allele-1)*no_samples)
                                             {
                                                 for (uint32_t j=0; j<no_samples; ++j)
@@ -494,7 +668,7 @@ class Igor : Program
                                                 }
                                             }
                                             else
-                                            {         
+                                            {
                                                 for (uint32_t j=0; j<no_samples; ++j)
                                                 {
                                                     if (a[j*(n_allele-1)+(i-1)]==bcf_int32_missing ||
@@ -510,14 +684,14 @@ class Igor : Program
                                             }
                                             bcf_update_format_int32(odw->hdr, nv, tag, as, no_samples);
                                             free(as);
-                                        }    
+                                        }
                                         else if (type==BCF_BT_FLOAT)
                                         {
                                             int32_t n = 0;
                                             int32_t* a = 0;
                                             int32_t ret = bcf_get_format_float(odr->hdr, v, tag, &a, &n);
                                             float* as = (float*) malloc(no_samples*sizeof(float));
-                                            
+
                                             if (ret!=(n_allele-1)*no_samples)
                                             {
                                                 for (uint32_t j=0; j<no_samples; ++j)
@@ -528,7 +702,7 @@ class Igor : Program
                                             else
                                             {
                                                 for (uint32_t j=0; j<no_samples; ++j)
-                                                {   
+                                                {
                                                     if (bcf_float_is_missing(a[j*(n_allele-1)+(i-1)]) ||
                                                         bcf_float_is_vector_end(a[j*(n_allele-1)+(i-1)]))
                                                     {
@@ -540,7 +714,7 @@ class Igor : Program
                                                     }
                                                 }
                                             }
-                                            
+
                                             bcf_update_format_float(odw->hdr, nv, tag, as, no_samples);
                                             free(as);
                                         }
@@ -556,7 +730,7 @@ class Igor : Program
                                             int32_t* a = 0;
                                             int32_t ret = bcf_get_format_int32(odr->hdr, v, tag, &a, &n);
                                             int32_t* as = (int32_t*) malloc(no_samples*sizeof(int32_t)*2);
-                                            
+
                                             if (ret!=n_allele*no_samples)
                                             {
                                                 for (uint32_t j=0; j<no_samples; ++j)
@@ -573,17 +747,17 @@ class Igor : Program
                                                     as[j*2+1] = a[j*n_allele+i];
                                                 }
                                             }
-                                            
+
                                             bcf_update_format_int32(odw->hdr, nv, tag, as, no_samples*2);
                                             free(as);
-                                        }    
+                                        }
                                         else if (type==BCF_BT_FLOAT)
                                         {
                                             int32_t n = 0;
                                             int32_t* a = 0;
                                             int32_t ret = bcf_get_format_float(odr->hdr, v, tag, &a, &n);
                                             float* as = (float*) malloc(no_samples*sizeof(float));
-                                            
+
                                             if (ret!=n_allele*no_samples)
                                             {
                                                 for (uint32_t j=0; j<no_samples; ++j)
@@ -597,10 +771,10 @@ class Igor : Program
                                                 for (uint32_t j=0; j<no_samples; ++j)
                                                 {
                                                     as[j*2] = a[j*n_allele];
-                                                    as[j*2+1] = a[j*n_allele+i];                                            
+                                                    as[j*2+1] = a[j*n_allele+i];
                                                 }
                                             }
-                                            
+
                                             bcf_update_format_float(odw->hdr, nv, tag, as, no_samples*2);
                                             free(as);
                                         }
@@ -623,25 +797,25 @@ class Igor : Program
                                             int32_t* gts = (int32_t*) malloc(no_samples*n_genotype2*sizeof(int32_t));
 
                                             for (uint32_t j=0; j<no_samples; ++j)
-                                            {   
+                                            {
                                                 for (size_t k=0; k<ploidy; ++k)
                                                 {
-                                                    int32_t a = gt[j*ploidy+k]; 
+                                                    int32_t a = gt[j*ploidy+k];
                                                     if (a<0)
                                                     {
                                                         gts[j*ploidy+k] = a;
                                                     }
-                                                    else 
-                                                    {    
+                                                    else
+                                                    {
                                                         int32_t na = bcf_gt_allele(a);
-                                                        
+
                                                         if (na)
                                                         {
                                                             na = na==i ? 1 : -1;
                                                         }
-                                                        
+
                                                         gts[j*ploidy+k] =  ((na+1)<<1) | bcf_gt_is_phased(a);
-                                                    }                                                     
+                                                    }
                                                 }
                                             }
 
@@ -664,7 +838,7 @@ class Igor : Program
 
                         bcf_update_info_string(odw->hdr, nv, "OLD_MULTIALLELIC", old_alleles.s);
                         bcf_update_alleles_str(odw->hdr, nv, new_alleles.s);
-                                               
+
                         odw->write(nv);
                         bcf_destroy(nv);
                     }

@@ -30,8 +30,9 @@ class OverlapStats
 {
     public:
 
-    uint32_t a,ab,b,a_ins,ab_ins,b_ins,a_del,ab_del,b_del,a_ts,ab_ts,b_ts,a_tv,ab_tv,b_tv;
-
+    uint32_t a,ab,b,a_ins,ab_ins,b_ins,a_del,ab_del,b_del;
+    uint32_t a_ts,ab_ts,b_ts,a_tv,ab_tv,b_tv;
+        
     OverlapStats()
     {
         a = 0;

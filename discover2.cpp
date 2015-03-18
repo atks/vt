@@ -135,7 +135,7 @@ class Igor : Program
             TCLAP::ValueArg<uint32_t> arg_read_exclude_flag("a", "a", "read exclude flag [0x0704]", false, 0x0704, "int", cmd);
 
             TCLAP::ValueArg<float> arg_reference_bias("B", "B", "reference bias [0]", false, 0, "float", cmd);
-            TCLAP::ValueArg<float> arg_lr_cutoff("C", "C", "likelihood ratio cutoff [0]", false, 0, "float", cmd);
+            TCLAP::ValueArg<float> arg_lr_cutoff("C", "C", "likelihood ratio cutoff [0]", false, -1, "float", cmd);
 
             TCLAP::ValueArg<uint32_t> arg_snp_baseq_cutoff("q", "q", "base quality cutoff for bases [0]", false, 0, "int", cmd);
             TCLAP::ValueArg<uint32_t> arg_snp_e_cutoff("e", "e", "snp evidence count cutoff [1]", false, 1, "int", cmd);
@@ -1405,40 +1405,40 @@ class Igor : Program
     {
         std::clog << "discover v" << version << "\n\n";
 
-        std::clog << "options: [b] input BAM File                      " << input_bam_file << "\n";
+        std::clog << "options: [b] input BAM File                       " << input_bam_file << "\n";
 
-        std::clog << "         [o] output VCF File                     " << output_vcf_file << "\n";
-        std::clog << "         [s] sample ID                           " << sample_id << "\n";
-        std::clog << "         [r] reference FASTA File                " << ref_fasta_file << "\n";
-        std::clog << "         [p] ploidy                              " << ploidy << "\n";
-        std::clog << "         [z] ignore MD tags                      " << (ignore_md ? "true": "false") << "\n";
-        print_int_op("         [i] intervals                           ", intervals);
+        std::clog << "         [o] output VCF File                      " << output_vcf_file << "\n";
+        std::clog << "         [s] sample ID                            " << sample_id << "\n";
+        std::clog << "         [r] reference FASTA File                 " << ref_fasta_file << "\n";
+        std::clog << "         [p] ploidy                               " << ploidy << "\n";
+        std::clog << "         [z] ignore MD tags                       " << (ignore_md ? "true": "false") << "\n";
+        print_int_op("         [i] intervals                            ", intervals);
         std::clog << "\n";
-        std::clog << "         [B] reference bias                      " << vf.get_reference_bias() << "\n";
-        std::clog << "         [C] likelihood ratio cuto ff            " << vf.get_lr_cutoff() << "\n";
+        std::clog << "         [B] reference bias                       " << vf.get_reference_bias() << "\n";
+        std::clog << "         [C] likelihood ratio cutoff              " << vf.get_lr_cutoff() << "\n";
         std::clog << "\n";
-        std::clog << "         [t] read mapping quality cutoff         " << read_mapq_cutoff << "\n";
-        std::clog << "         [l] ignore overlapping read             " << (ignore_overlapping_read ? "true" : "false") << "\n";
-        std::clog << "         [a] read flag filter                    " << std::showbase << std::hex << read_exclude_flag << std::dec << "\n";
+        std::clog << "         [t] read mapping quality cutoff          " << read_mapq_cutoff << "\n";
+        std::clog << "         [l] ignore overlapping read              " << (ignore_overlapping_read ? "true" : "false") << "\n";
+        std::clog << "         [a] read flag filter                     " << std::showbase << std::hex << read_exclude_flag << std::dec << "\n";
         std::clog << "\n";
-        std::clog << "         [q] snp base quality cutoff             " << vf.get_snp_baseq_cutoff() << "\n";
-        std::clog << "         [e] snp evidence cutoff                 " << vf.get_snp_e_cutoff() << "\n";
-        std::clog << "         [f] snp fractional evidence cutoff      " << vf.get_snp_f_cutoff() << "\n";
-        std::clog << "         [j] snp desired_type_I_error            " << vf.get_snp_desired_type_I_error() << "\n";
-        std::clog << "         [k] snp desired_type_II_error           " << vf.get_snp_desired_type_II_error() << "\n";
+        std::clog << "         [q] snp base quality cutoff              " << vf.get_snp_baseq_cutoff() << "\n";
+        std::clog << "         [e] snp evidence cutoff                  " << vf.get_snp_e_cutoff() << "\n";
+        std::clog << "         [f] snp fractional evidence cutoff       " << vf.get_snp_f_cutoff() << "\n";
+        std::clog << "         [j] snp desired_type_I_error             " << vf.get_snp_desired_type_I_error() << "\n";
+        std::clog << "         [k] snp desired_type_II_error            " << vf.get_snp_desired_type_II_error() << "\n";
         std::clog << "\n";
-        std::clog << "         [u] deletion evidence cutoff            " << vf.get_deletion_e_cutoff() << "\n";
-        std::clog << "         [v] deletion fractional evidence cutoff " << vf.get_deletion_f_cutoff() << "\n";
-        std::clog << "         [m] deletion desired_type_I_error       " << vf.get_deletion_desired_type_I_error() << "\n";
-        std::clog << "         [n] deletion desired_type_II_error      " << vf.get_deletion_desired_type_II_error() << "\n";
+        std::clog << "         [u] deletion evidence cutoff             " << vf.get_deletion_e_cutoff() << "\n";
+        std::clog << "         [v] deletion fractional evidence cutoff  " << vf.get_deletion_f_cutoff() << "\n";
+        std::clog << "         [m] deletion desired_type_I_error        " << vf.get_deletion_desired_type_I_error() << "\n";
+        std::clog << "         [n] deletion desired_type_II_error       " << vf.get_deletion_desired_type_II_error() << "\n";
         std::clog << "\n";
         std::clog << "         [g] insertion evidence cutoff            " << vf.get_insertion_e_cutoff() << "\n";
         std::clog << "         [h] insertion fractional evidence cutoff " << vf.get_insertion_f_cutoff() << "\n";
         std::clog << "         [c] insertion desired_type_I_error       " << vf.get_insertion_desired_type_I_error() << "\n";
         std::clog << "         [w] insertion desired_type_II_error      " << vf.get_insertion_desired_type_II_error() << "\n";
         std::clog << "\n";
-        std::clog << "         [x] soft clip mean quality cutoff       " << vf.get_sclip_mq_cutoff() << "\n";
-        std::clog << "         [y] soft clip unique events cutoff      " << vf.get_sclip_u_cutoff() << "\n";
+        std::clog << "         [x] soft clip mean quality cutoff        " << vf.get_sclip_mq_cutoff() << "\n";
+        std::clog << "         [y] soft clip unique events cutoff       " << vf.get_sclip_u_cutoff() << "\n";
         std::clog << "\n";
     }
 
