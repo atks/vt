@@ -178,11 +178,10 @@ class Igor : Program
 
         while (odr->read(v))
         {
-            bcf_unpack(v, BCF_UN_FMT);
-
-            std::cerr << "=============================\n";
-            bcf_print(odr->hdr, v);
-            std::cerr << "=============================\n";
+            
+//            std::cerr << "=============================\n";
+//            bcf_print(odr->hdr, v);
+//            std::cerr << "=============================\n";
 
             int32_t n_allele = bcf_get_n_allele(v);
 
@@ -220,6 +219,8 @@ class Igor : Program
 
                     if (no_samples)
                     {
+                        bcf_unpack(v, BCF_UN_FMT);
+                        
                         int32_t n = 0;
                         int32_t ret = bcf_get_genotypes(odr->hdr, v, &gt, &n);
                         if (ret>0) has_GT = true;
@@ -409,10 +410,12 @@ class Igor : Program
                         //////////////////////
                         if (nv->n_info)
                         {
+                            bcf_unpack(v, BCF_UN_INFO);
+                            
                             bcf_hdr_t* hdr = odr->hdr;
                             bcf_info_t *info = v->d.info;
 
-                            for (uint32_t j = 0; j < (int32_t)v->n_info; ++j)
+                            for (uint32_t j = 0; j < v->n_info; ++j)
                             {
                                 int32_t key = info[j].key;
 
@@ -436,45 +439,50 @@ class Igor : Program
                                         int32_t n = 0;
                                         int32_t* g = 0;
                                         int32_t ret = bcf_get_info_int32(odr->hdr, v, tag, &g, &n);
-                                        int32_t n_genotype = n;
 
-                                        int32_t ploidy = bcf_ag2p(n_allele, n_genotype);
-                                        int32_t n_genotype2 = bcf_ap2g(2, ploidy);
-                                        int32_t* gs = (int32_t*) malloc(n_genotype2*sizeof(int32_t));
-
-                                        gs[0] = g[0];
-                                        uint32_t index = 0;
-                                        for (uint32_t k = 1; k<n_genotype2; ++k)
-                                        {
-                                            index += choose(ploidy-(k-1)+i-1,i-1);
-                                            gs[k] = g[index];
+                                        if (ret>0)
+                                        {        
+                                            int32_t n_genotype = n;
+                                            int32_t ploidy = bcf_ag2p(n_allele, n_genotype);
+                                            int32_t n_genotype2 = bcf_ap2g(2, ploidy);
+                                            int32_t* gs = (int32_t*) malloc(n_genotype2*sizeof(int32_t));
+    
+                                            gs[0] = g[0];
+                                            uint32_t index = 0;
+                                            for (uint32_t k = 1; k<n_genotype2; ++k)
+                                            {
+                                                index += choose(ploidy-(k-1)+i-1,i-1);
+                                                gs[k] = g[index];
+                                            }
+    
+                                            bcf_update_info_int32(odw->hdr, nv, tag, gs, no_samples*n_genotype2);
+                                            free(gs);
                                         }
-
-
-                                        bcf_update_info_int32(odw->hdr, nv, tag, gs, no_samples*n_genotype2);
-                                        free(gs);
                                     }
                                     else if (type==BCF_BT_FLOAT)
                                     {
                                         int32_t n = 0;
                                         int32_t* g = 0;
                                         int32_t ret = bcf_get_info_float(odr->hdr, v, tag, &g, &n);
-                                        int32_t n_genotype = n;
-
-                                        int32_t ploidy = bcf_ag2p(n_allele, n_genotype);
-                                        int32_t n_genotype2 = bcf_ap2g(2, ploidy);
-                                        int32_t* gs = (int32_t*) malloc(n_genotype2*sizeof(int32_t));
-
-                                        gs[0] = g[0];
-                                        uint32_t index = 0;
-                                        for (uint32_t k = 1; k<n_genotype2; ++k)
-                                        {
-                                            index += choose(ploidy-(k-1)+i-1,i-1);
-                                            gs[k] = g[index];
+                                        
+                                        if (ret>0)
+                                        { 
+                                            int32_t n_genotype = n;
+                                            int32_t ploidy = bcf_ag2p(n_allele, n_genotype);
+                                            int32_t n_genotype2 = bcf_ap2g(2, ploidy);
+                                            int32_t* gs = (int32_t*) malloc(n_genotype2*sizeof(int32_t));
+    
+                                            gs[0] = g[0];
+                                            uint32_t index = 0;
+                                            for (uint32_t k = 1; k<n_genotype2; ++k)
+                                            {
+                                                index += choose(ploidy-(k-1)+i-1,i-1);
+                                                gs[k] = g[index];
+                                            }
+    
+                                            bcf_update_info_float(odw->hdr, nv, tag, gs, n_genotype2);
+                                            free(gs);
                                         }
-
-                                        bcf_update_info_float(odw->hdr, nv, tag, gs, n_genotype2);
-                                        free(gs);
                                     }
                                     else if (type==BCF_BT_CHAR)
                                     {
@@ -487,19 +495,18 @@ class Igor : Program
                                         int32_t n = 0;
                                         int32_t* a = 0;
                                         int32_t ret = bcf_get_info_int32(odr->hdr, v, tag, &a, &n);
-                                        if (ret)
+                                        if (ret>0)
                                         {
                                             int32_t as = a[i-1];
                                             bcf_update_info_int32(odw->hdr, nv, tag, &as, 1);
-                                        }
-                                        
+                                        }                                        
                                     }
                                     else if (type==BCF_BT_FLOAT)
                                     {
                                         int32_t n = 0;
                                         int32_t* a = 0;
                                         int32_t ret = bcf_get_info_float(odr->hdr, v, tag, &a, &n);
-                                        if (ret)
+                                        if (ret>0)
                                         {
                                             float as = a[i-1];
                                             bcf_update_info_float(odw->hdr, nv, tag, &as, 1);
@@ -508,23 +515,43 @@ class Igor : Program
                                     else if (type==BCF_BT_CHAR)
                                     {
                                         int32_t n = 0;
-                                        char** a = 0;
-                                        int32_t ret = bcf_get_info_float(odr->hdr, v, tag, &a, &n);
+                                        char* a = 0;
+                                        int32_t ret = bcf_get_info_string(odr->hdr, v, tag, &a, &n);
                                         
-                                        for (uint32_t j=0; j<n; ++j)
+                                        if (ret>0)
                                         {
-                                            std::cerr << "\t\tTETST:" << a[i-1] << "\n";
-                                        }
-                                        
-                                        if (ret)
-                                        {
-                                            
-                                            bcf_update_info_string(odw->hdr, nv, tag, &a[i-1]);
-                                            
-                                            for (uint32_t j=0; j<n; ++j)
+                                            char* b = a;
+                                            char* c = a;
+                                            int32_t e = 0; 
+                                            while (*b)
                                             {
-                                                free(a[j]);
+                                                if (*b==',')
+                                                {
+                                                    *b = 0;
+                                                    ++e;
+                                                    
+                                                    if (e==i)
+                                                    {
+                                                        bcf_update_info_string(odw->hdr, nv, tag, c);
+                                                        break;
+                                                    }
+                                                    
+                                                    c = b+1;
+                                                } 
+                                                else if (*(b+1)==0)
+                                                {
+                                                    bcf_update_info_string(odw->hdr, nv, tag, c);
+                                                    break;
+                                                }   
+                                                
+                                                ++b;
                                             }
+                                            
+                                            if (e>i)
+                                            {
+                                                bcf_update_info_string(odw->hdr, nv, tag, NULL);
+                                            }
+
                                             free(a);
                                         }
                                     }
@@ -550,7 +577,7 @@ class Igor : Program
                                         int32_t n = 0;
                                         int32_t* a = 0;
                                         int32_t ret = bcf_get_info_float(odr->hdr, v, tag, &a, &n);
-                                        if (ret)
+                                        if (ret>0)
                                         {
                                             float* as = (float*) malloc(sizeof(float)*2);
                                             as[0] = a[0];
@@ -576,6 +603,8 @@ class Igor : Program
 
                         if (no_samples)
                         {
+                            bcf_unpack(v, BCF_UN_FMT);
+                            
                             if (nv->n_fmt)
                             {
                                 bcf_hdr_t* hdr = odr->hdr;
