@@ -105,7 +105,7 @@ class Igor : Program
         odr = new BCFOrderedReader(input_vcf_file, intervals);
 
         odw = new BCFOrderedWriter(output_vcf_file);
-        odw->set_hdr(odr->hdr);
+        odw->link_hdr(odr->hdr);
         bcf_hdr_append(odw->hdr, "##INFO=<ID=OLD_MULTIALLELIC,Number=1,Type=String,Description=\"Original chr:pos:ref:alt encoding\">\n");
         odw->write_hdr();
 
@@ -164,13 +164,6 @@ class Igor : Program
         }
     }
 
-//    /**
-//     * Extracts and updare
-//     */
-//    void vcf_extract_and_update_format_g(bcf1_t* v, int32_t id, int32_t, ith_allele, int32_t)
-//    {
-//    }
-
     void decompose()
     {
         v = bcf_init();
@@ -178,7 +171,6 @@ class Igor : Program
 
         while (odr->read(v))
         {
-            
 //            std::cerr << "=============================\n";
 //            bcf_print(odr->hdr, v);
 //            std::cerr << "=============================\n";
@@ -891,7 +883,7 @@ class Igor : Program
         std::clog << "decompose v" << version << "\n";
         std::clog << "\n";
         std::clog << "options:     input VCF file        " << input_vcf_file << "\n";
-        std::clog << "         [s] smart decomposition   " << smart << "\n";
+        std::clog << "         [s] smart decomposition   " << (smart ? "true" : "false") << "\n";
         std::clog << "         [o] output VCF file       " << output_vcf_file << "\n";
         print_int_op("         [i] intervals             ", intervals);
         std::clog << "\n";
