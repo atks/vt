@@ -138,7 +138,7 @@ class Igor : Program
 
     void print_options()
     {
-        std::clog << "annotate_str v" << version << "\n";
+        std::clog << "annotate_indel v" << version << "\n";
         std::clog << "\n";
         std::clog << "options:     input VCF file(s)     " << input_vcf_file << "\n";
         std::clog << "         [o] output VCF file       " << output_vcf_file << "\n";

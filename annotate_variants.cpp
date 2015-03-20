@@ -40,10 +40,10 @@ class Igor : Program
     std::string output_vcf_file;
     std::vector<GenomeInterval> intervals;
     std::string interval_list;
-    std::string mdust_bed_file;
-    std::string gencode_cds_bed_file;
-    bool annotate_low_complexity_regions;
-    bool annotate_coding;
+    std::string lc_bed_file;
+    std::string cds_bed_file;
+    bool annotate_lc;
+    bool annotate_cds;
 
     ///////
     //i/o//
@@ -67,8 +67,8 @@ class Igor : Program
     //common tools//
     ////////////////
     VariantManip *vm;
-    OrderedRegionOverlapMatcher *orom_lcplx;
-    OrderedRegionOverlapMatcher *orom_gencode_cds;
+    OrderedRegionOverlapMatcher *orom_lc;
+    OrderedRegionOverlapMatcher *orom_cds;
 
     Igor(int argc, char **argv)
     {
@@ -88,8 +88,8 @@ class Igor : Program
             TCLAP::ValueArg<std::string> arg_output_vcf_file("o", "o", "output VCF file [-]", false, "-", "str", cmd);
             TCLAP::ValueArg<std::string> arg_fexp("f", "f", "filter expression []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_ref_fasta_file("r", "r", "reference sequence fasta file []", true, "", "str", cmd);
-            TCLAP::ValueArg<std::string> arg_mdust_bed_file("m", "m", "mdust Low Complexity Regions BED file []", false, "", "str", cmd);
-            TCLAP::ValueArg<std::string> arg_gencode_cds_bed_file("g", "g", "GENCODE Coding Regions BED file []", false, "", "str", cmd);
+            TCLAP::ValueArg<std::string> arg_lc_bed_file("m", "m", "low complexity regions BED file []", false, "", "file", cmd);
+            TCLAP::ValueArg<std::string> arg_cds_bed_file("g", "g", "coding regions BED file []", false, "", "str", cmd);
             TCLAP::UnlabeledValueArg<std::string> arg_input_vcf_file("<in.vcf>", "input VCF file", true, "","file", cmd);
 
             cmd.parse(argc, argv);
@@ -100,10 +100,10 @@ class Igor : Program
             parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
             fexp = arg_fexp.getValue();
             ref_fasta_file   = arg_ref_fasta_file.getValue();
-            mdust_bed_file = arg_mdust_bed_file.getValue();
-            annotate_low_complexity_regions = mdust_bed_file != "" ? true : false;
-            gencode_cds_bed_file = arg_gencode_cds_bed_file.getValue();
-            annotate_coding = gencode_cds_bed_file != "" ? true : false;
+            lc_bed_file = arg_lc_bed_file.getValue();
+            annotate_lc = lc_bed_file != "" ? true : false;
+            cds_bed_file = arg_cds_bed_file.getValue();
+            annotate_cds = cds_bed_file != "" ? true : false;
         }
         catch (TCLAP::ArgException &e)
         {
@@ -122,9 +122,9 @@ class Igor : Program
         odr = new BCFOrderedReader(input_vcf_file, intervals);
         odw = new BCFOrderedWriter(output_vcf_file);
         odw->link_hdr(odr->hdr);
-        bcf_hdr_append(odw->hdr, "##INFO=<ID=VT,Number=1,Type=String,Description=\"Variant Type - SNP, MNP, INDEL, CLUMPED\">");
-        bcf_hdr_append(odw->hdr, "##INFO=<ID=RU,Number=1,Type=String,Description=\"Repeat unit in a STR or Homopolymer\">");
-        bcf_hdr_append(odw->hdr, "##INFO=<ID=RL,Number=1,Type=Integer,Description=\"Repeat Length\">");
+        bcf_hdr_append(odw->hdr, "##INFO=<ID=VT,Number=1,Type=String,Description=\"Variant Type - SNP, MNP, INDEL, CLUMPED.\">");
+        bcf_hdr_append(odw->hdr, "##INFO=<ID=RU,Number=1,Type=String,Description=\"Repeat unit in a STR or Homopolymer.\">");
+        bcf_hdr_append(odw->hdr, "##INFO=<ID=RL,Number=1,Type=Integer,Description=\"Repeat Length.\">");
 
         /////////////////////////
         //filter initialization//
@@ -137,17 +137,17 @@ class Igor : Program
         ///////////////////////
         vm = new VariantManip(ref_fasta_file);
 
-        if (annotate_low_complexity_regions)
+        if (annotate_lc)
         {
-            bcf_hdr_append(odw->hdr, "##INFO=<ID=LOW_COMPLEXITY,Number=0,Type=Flag,Description=\"INDEL is in low complexity region\">");
-            orom_lcplx = new OrderedRegionOverlapMatcher(mdust_bed_file);
+            bcf_hdr_append(odw->hdr, "##INFO=<ID=LC,Number=0,Type=Flag,Description=\"Low complexity region.\">");
+            orom_lc = new OrderedRegionOverlapMatcher(lc_bed_file);
         }
 
-        if (annotate_coding)
+        if (annotate_cds)
         {
-            bcf_hdr_append(odw->hdr, "##INFO=<ID=GENCODE_FS,Number=0,Type=Flag,Description=\"Frameshift INDEL\">");
-            bcf_hdr_append(odw->hdr, "##INFO=<ID=GENCODE_NFS,Number=0,Type=Flag,Description=\"Non Frameshift INDEL\">");
-            orom_gencode_cds = new OrderedRegionOverlapMatcher(gencode_cds_bed_file);
+            bcf_hdr_append(odw->hdr, "##INFO=<ID=FS,Number=0,Type=Flag,Description=\"Frameshift Indel.\">");
+            bcf_hdr_append(odw->hdr, "##INFO=<ID=NFS,Number=0,Type=Flag,Description=\"Non Frameshift Indel.\">");
+            orom_cds = new OrderedRegionOverlapMatcher(cds_bed_file);
         }
 
         ////////////////////////
@@ -160,12 +160,12 @@ class Igor : Program
     {
         std::clog << "annotate_variants v" << version << "\n";
         std::clog << "\n";
-        std::clog << "options:     input VCF file(s)     " << input_vcf_file << "\n";
-        std::clog << "         [o] output VCF file       " << output_vcf_file << "\n";
-        print_str_op("         [m] mdust bed file        ", mdust_bed_file);
-        print_str_op("         [g] gencode cds bed file  ", gencode_cds_bed_file);
-        print_ref_op("         [r] ref FASTA file        ", ref_fasta_file);
-        print_int_op("         [i] intervals             ", intervals);
+        std::clog << "options:     input VCF file(s)        " << input_vcf_file << "\n";
+        std::clog << "         [o] output VCF file          " << output_vcf_file << "\n";
+        print_str_op("         [m] low complexity BED file  ", lc_bed_file);
+        print_str_op("         [g] coding sequence BED file ", cds_bed_file);
+        print_ref_op("         [r] ref FASTA file           ", ref_fasta_file);
+        print_int_op("         [i] intervals                ", intervals);
         std::clog << "\n";
     }
 
@@ -207,11 +207,11 @@ class Igor : Program
             int32_t start1 = bcf_get_pos1(v);
             int32_t end1 = bcf_get_end_pos1(v);
 
-            if (annotate_low_complexity_regions)
+            if (annotate_lc)
             {
-                if (orom_lcplx->overlaps_with(chrom, start1, end1))
+                if (orom_lc->overlaps_with(chrom, start1, end1))
                 {
-                    bcf_update_info_flag(odr->hdr, v, "LOW_COMPLEXITY", "", 1);
+                    bcf_update_info_flag(odr->hdr, v, "LC", "", 1);
                 }
             }
 
@@ -222,18 +222,18 @@ class Igor : Program
             }
             else if (vtype&VT_INDEL)
             {
-                if (annotate_coding)
+                if (annotate_cds)
                 {
                     bool overlap = false;
-                    if ((overlap = orom_gencode_cds->overlaps_with(chrom, start1, end1)))
+                    if ((overlap = orom_cds->overlaps_with(chrom, start1, end1)))
                     {
                         if (abs(variant.alleles[0].dlen)%3!=0)
                         {
-                            bcf_update_info_flag(odr->hdr, v, "GENCODE_FS", "", 1);
+                            bcf_update_info_flag(odr->hdr, v, "FS", "", 1);
                         }
                         else
                         {
-                            bcf_update_info_flag(odr->hdr, v, "GENCODE_NFS", "", 1);
+                            bcf_update_info_flag(odr->hdr, v, "NFS", "", 1);
                         }
 
                     }
