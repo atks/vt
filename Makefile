@@ -1,5 +1,4 @@
 OPTFLAG = -O3
-#OPTFLAG = -O3 -ggdb
 INCLUDES = -I./lib/include/ -I. -I./lib/include/htslib -I./lib/include/Rmath 
 CFLAGS = -pipe -std=c++0x $(OPTFLAG) $(INCLUDES) -D__STDC_LIMIT_MACROS
 CXX = g++

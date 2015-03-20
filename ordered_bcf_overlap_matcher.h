@@ -25,11 +25,9 @@
 #define ORDERED_BCF_OVERLAP_MATCHER_H
 
 #include "bcf_ordered_reader.h"
-#include "bed.h"
 #include "htslib/kseq.h"
 #include "htslib/vcf.h"
 #include "hts_utils.h"
-#include "interval_tree.h"
 #include <list>
 #include "program.h"
 
