@@ -1,5 +1,5 @@
 OPTFLAG = -O3
-INCLUDES = -I./lib/include/ -I. -I./lib/include/htslib -I./lib/include/Rmath 
+INCLUDES = -I./lib -I. -I./lib/htslib -I./lib/Rmath 
 CFLAGS = -pipe -std=c++0x $(OPTFLAG) $(INCLUDES) -D__STDC_LIMIT_MACROS
 CXX = g++
 
@@ -94,16 +94,16 @@ SOURCESONLY = main.cpp
 TARGET = vt
 TOOLSRC = $(SOURCES:=.cpp) $(SOURCESONLY)
 TOOLOBJ = $(TOOLSRC:.cpp=.o)
-LIBHTS = lib/include/htslib/libhts.a
-LIBRMATH = lib/include/Rmath/libRmath.a
+LIBHTS = lib/htslib/libhts.a
+LIBRMATH = lib/Rmath/libRmath.a
 
 all : ${LIBHTS} $(TARGET)
 
 ${LIBHTS} :
-	cd lib/include/htslib; $(MAKE) libhts.a || exit 1; cd ..
+	cd lib/htslib; $(MAKE) libhts.a || exit 1; cd ..
 
 ${LIBRMATH} :
-	cd lib/include/Rmath; $(MAKE) libRmath.a || exit 1; cd ..
+	cd lib/Rmath; $(MAKE) libRmath.a || exit 1; cd ..
 	
 $(TARGET) : ${LIBHTS} ${LIBRMATH} $(TOOLOBJ)
 	$(CXX) $(CFLAGS) -o $@ $(TOOLOBJ) $(LIBHTS) $(LIBRMATH) -lz -lpthread
@@ -114,8 +114,8 @@ $(TOOLOBJ): $(HEADERSONLY)
 	$(CXX) $(CFLAGS) -o $@ -c $*.cpp
 
 clean :
-	cd lib/include/htslib; $(MAKE) clean
-	cd lib/include/Rmath; $(MAKE) clean
+	cd lib/htslib; $(MAKE) clean
+	cd lib/Rmath; $(MAKE) clean
 	-rm -rf $(TARGET) $(TOOLOBJ)
 
 cleanvt :
