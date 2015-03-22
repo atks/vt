@@ -529,6 +529,65 @@ void bcf_hdr_get_seqs_and_lens(const bcf_hdr_t *h, const char**& seqs, int32_t*&
     *n = m;
 }
 
+/**
+ *  bcf_get_format_*() - same as bcf_get_info*() above
+ *
+ *  The function bcf_get_format_string() is a higher-level (slower) variant of bcf_get_format_char().
+ *  see the description of bcf_update_format_string() and bcf_update_format_char() above.
+ *  Unlike other bcf_get_format__*() functions, bcf_get_format_string() allocates two arrays:
+ *  a single block of \0-terminated strings collapsed into a single array and an array of pointers
+ *  to these strings. Both arrays must be cleaned by the user.
+ *
+ *  Returns negative value on error or the number of written values on success.
+ *
+ *  Example:
+ *      int ndst = 0; char **dst = NULL;
+ *      if ( bcf_get_format_string(hdr, line, "XX", &dst, &ndst) > 0 )
+ *          for (i=0; i<bcf_hdr_nsamples(hdr); i++) printf("%s\n", dst[i]);
+ *      free(dst[0]); free(dst);
+ *
+ *  Example:
+ *      int ngt, *gt_arr = NULL, ngt_arr = 0;
+ *      ngt = bcf_get_genotypes(hdr, line, &gt_arr, &ngt_arr);
+ */
+int32_t bcf_get_format_string_ro(const bcf_hdr_t *hdr, bcf1_t *line, const char *tag, char ***dst, int *ndst)
+{
+    int i,tag_id = bcf_hdr_id2int(hdr, BCF_DT_ID, tag);
+    if ( !bcf_hdr_idinfo_exists(hdr,BCF_HL_FMT,tag_id) ) return -1;    // no such FORMAT field in the header
+    if ( bcf_hdr_id2type(hdr,BCF_HL_FMT,tag_id)!=BCF_HT_STR ) return -2;     // expected different type
+
+    if ( !(line->unpacked & BCF_UN_FMT) ) bcf_unpack(line, BCF_UN_FMT);
+
+    for (i=0; i<line->n_fmt; i++)
+        if ( line->d.fmt[i].id==tag_id ) break;
+    if ( i==line->n_fmt ) return -3;                               // the tag is not present in this record
+    bcf_fmt_t *fmt = &line->d.fmt[i];
+
+    int nsmpl = bcf_hdr_nsamples(hdr);
+    if ( !*dst )
+    {
+        *dst = (char**) malloc(sizeof(char*)*nsmpl);
+        if ( !*dst ) return -4;     // could not alloc
+        (*dst)[0] = NULL;
+    }
+    int n = (fmt->n+1)*nsmpl;
+    if ( *ndst < n )
+    {
+        (*dst)[0] = (char*) realloc((*dst)[0], n);
+        if ( !(*dst)[0] ) return -4;    // could not alloc
+        *ndst = n;
+    }
+    for (i=0; i<nsmpl; i++)
+    {
+        uint8_t *src = fmt->p + i*fmt->n;
+        uint8_t *tmp = (uint8_t*)(*dst)[0] + i*(fmt->n+1);
+        memcpy(tmp,src,fmt->n);
+        tmp[fmt->n] = 0;
+        (*dst)[i] = (char*) tmp;
+    }
+    return n;
+}
+
 /**********
  *BCF UTILS
  **********/

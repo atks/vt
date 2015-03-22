@@ -421,9 +421,6 @@ class Igor : Program
                                 int32_t var_len = bcf_hdr_id2length(hdr,BCF_HL_INFO,key);
                                 int32_t type = info[j].type;
 
-                                //std::cerr << tag << " present\n";
-
-
                                 if (var_len==BCF_VL_G)
                                 {
                                     if (type==BCF_BT_INT8||type==BCF_BT_INT16||type==BCF_BT_INT32)

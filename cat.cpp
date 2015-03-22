@@ -129,6 +129,33 @@ class Igor : Program
             odw->set_hdr(bcf_hdr_subset(odr->hdr, 0, 0, 0));
         }
 
+        //merge headers if many files
+        if (false && input_vcf_files.size()>1)
+        {
+            bcf_hdr_t* h0 = odw->hdr;
+            //inspect headers in second file and above, insert missing headers
+            for (uint32_t i=1; i<input_vcf_files.size(); ++i)
+            {
+                //#define BCF_HL_FLT  0 // header line
+                //#define BCF_HL_INFO 1
+                //#define BCF_HL_FMT  2
+                //#define BCF_HL_CTG  3
+                //#define BCF_HL_STR  4 // structured header line TAG=<A=..,B=..>
+                //#define BCF_HL_GEN  5 // generic header line
+                
+                vcfFile* file = bcf_open(input_vcf_files[i].c_str(), "r");
+                if (!file)
+                {
+                    fprintf(stderr, "[%s:%d %s] Cannot open %s\n", __FILE__, __LINE__, __FUNCTION__, input_vcf_files[i].c_str());
+                    exit(1);
+                }
+                bcf_hdr_t* hi = bcf_hdr_read(file);
+                
+                //bcf_hdr_transfer(bcf_hdr_t* src, bcf_hdr_t* dst)
+                //bcf_hdr_sort(bcf_hdr_t* h)?
+            }
+        }
+
         /////////////////////////
         //filter initialization//
         /////////////////////////
@@ -183,7 +210,7 @@ class Igor : Program
                 if (sort_window_size)
                 {
                     v = odw->get_bcf1_from_pool();
-                }    
+                }
                 ++no_variants;
             }
 
