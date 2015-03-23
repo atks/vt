@@ -8,7 +8,7 @@ SOURCESONLY = genotyping_record.h
 SOURCES = align\
 		allele\
 		annotate_dbsnp_rsid\
-		annotate_indel\
+		annotate_indels\
 		annotate_regions\
 		annotate_variants\
 		bam_ordered_reader\

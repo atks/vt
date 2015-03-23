@@ -1372,7 +1372,7 @@ class Igor : Program
     }
 
     /**
-     * Discover variants.
+     * Genotype variants.
      */
     void genotype()
     {

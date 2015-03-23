@@ -21,8 +21,8 @@
    THE SOFTWARE.
 */
 
-#ifndef ANNOTATE_STR_H
-#define ANNOTATE_STR_H
+#ifndef ANNOTATE_INDELS_H
+#define ANNOTATE_INDELS_H
 
 #include "htslib/kstring.h"
 #include "bcf_ordered_reader.h"
@@ -33,6 +33,6 @@
 #include "program.h"
 #include "str.h"
 
-void annotate_indel(int argc, char ** argv);
+void annotate_indels(int argc, char ** argv);
 
 #endif

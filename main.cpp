@@ -23,7 +23,7 @@
 
 #include "align.h"
 #include "annotate_dbsnp_rsid.h"
-#include "annotate_indel.h"
+#include "annotate_indels.h"
 #include "annotate_regions.h"
 #include "annotate_variants.h"
 #include "cat.h"
@@ -292,9 +292,9 @@ int main(int argc, char ** argv)
     {
         profile_len(argc-1, ++argv);
     }
-    else if (argc>1 && cmd=="annotate_indel")
+    else if (argc>1 && cmd=="annotate_indels")
     {
-        annotate_indel(argc-1, ++argv);
+        annotate_indels(argc-1, ++argv);
     }
     else if (argc>1 && cmd=="consolidate_variants")
     {
