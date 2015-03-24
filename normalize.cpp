@@ -52,6 +52,7 @@ class Igor : Program
     //stats//
     /////////
     uint32_t no_variants;
+    uint32_t no_refs;
 
     uint32_t no_lt;    //# left trimmed
     uint32_t no_rt;    //# right trimmed
@@ -124,6 +125,7 @@ class Igor : Program
         //stats initialization//
         ////////////////////////
         no_variants = 0;
+        no_refs = 0;
 
         no_lt = 0;
         no_rt = 0;
@@ -160,6 +162,8 @@ class Igor : Program
             bcf_unpack(v, BCF_UN_INFO);
             
             if (debug) bcf_print_liten(odr->hdr, v);
+
+            int32_t type = vm->classify_variant(odw->hdr, v, variant);
             
             if (!vm->is_normalized(v))
             {
@@ -258,8 +262,15 @@ class Igor : Program
                 }
             }
 
-            ++no_variants;
-
+            if (type==VT_REF)
+            {
+                ++no_refs;
+            }
+            else
+            {
+                ++no_variants;
+            }
+            
             odw->write(v);
             v = odw->get_bcf1_from_pool();
         }
@@ -313,6 +324,7 @@ class Igor : Program
         std::clog << "\n";
         std::clog << "       total no. variants normalized            : " << no_normalized << "\n";
         std::clog << "       total no. variants observed              : " << no_variants << "\n";
+        std::clog << "       total no. reference observed             : " << no_refs << "\n";
         std::clog << "\n";
     };
 

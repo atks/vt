@@ -30,7 +30,6 @@ struct len_t
     int32_t dlen;
     float maf;
     int32_t no_alleles;
-    int32_t pass;
     float ab;
     int32_t coding;
 };
@@ -51,10 +50,10 @@ class Igor : Program
     const char* AB;
     const char* GENCODE_NFS;
     const char* GENCODE_FS;
-    
+
     std::vector<GenomeInterval> intervals;
     std::string interval_list;
-    
+
     ///////
     //i/o//
     ///////
@@ -143,27 +142,28 @@ class Igor : Program
         //tools//
         /////////
         vm = new VariantManip();
-    }
+    } 
 
     void profile_len()
     {
         bcf1_t *v = bcf_init1();
 
         Variant variant;
-        float *af=NULL, *ab=NULL;
-        int32_t n_af=0, n_ab=0;
-        
+        float *af = (float*) malloc(sizeof(float));
+        float *ab = (float*) malloc(sizeof(float));
+        int32_t n_af=1, n_ab=1;
+
         while(odr->read(v))
         {
             bcf_unpack(v, BCF_UN_ALL);
-            
+
             if (bcf_get_n_allele(v)!=2)
             {
                 continue;
             }
 
             vm->classify_variant(odr->hdr, v, variant);
-            
+
             if (filter_exists)
             {
                 if (!filter.apply(odr->hdr, v, &variant))
@@ -171,38 +171,48 @@ class Igor : Program
                     continue;
                 }
             }
-            
-            int32_t dlen = variant.alleles[0].dlen;
-            bcf_get_info_float(odr->hdr, v, AF, &af, &n_af);
-            int32_t no_alleles = bcf_get_n_allele(v);
-            int32_t pass = bcf_has_filter(odr->hdr, v, const_cast<char*>("PASS"));
-            bcf_get_info_float(odr->hdr, v, AB, &ab, &n_ab);
-            int32_t fs = bcf_get_info_flag(odr->hdr,v, const_cast<char*>("GENCODE_FS"), 0, 0);
-            int32_t nfs = bcf_get_info_flag(odr->hdr,v, const_cast<char*>("GENCODE_NFS"), 0, 0);
-            int32_t coding = fs==1 ? 1 : (nfs==1 ? 2 : -1);
-            float maf = 0;
-            if (no_alleles==2)
-            {
-                maf = af[0]>0.5? 1-af[0]: af[0];
-            }
-            else
-            {
-                for (size_t i=0; i<n_af; ++i)
-                {
-                    maf += af[i];
-                }
 
-                maf = maf>0.5? 1-maf: maf;
+            int32_t dlen = variant.alleles[0].dlen;
+            float maf = -1;
+            if (bcf_get_info_float(odr->hdr, v, AF, &af, &n_af)>0)
+            {
+                if (n_af==1) 
+                {
+                    maf = af[0]>0.5? 1-af[0]: af[0];
+                }
+                else
+                {
+                    maf = 0;
+                    for (size_t i=0; i<n_af; ++i)
+                    {
+                        maf += af[i];
+                    }
+
+                    maf = maf>0.5? 1-maf: maf;
+                }
             }
-            
-            len_t h = {dlen, maf, no_alleles, pass, ab[0], coding};
+
+            int32_t no_alleles = bcf_get_n_allele(v);
+
+            if (bcf_get_info_float(odr->hdr, v, AB, &ab, &n_ab)<0)
+            {
+                ab[0] = -1;
+            }
+
+
+            int32_t fs = bcf_get_info_flag(odr->hdr,v, "FS", 0, 0);
+            int32_t nfs = bcf_get_info_flag(odr->hdr,v, const_cast<char*>("NFS"), 0, 0);
+            int32_t coding = fs==1 ? 1 : (nfs==1 ? 2 : -1);
+
+
+            len_t h = {dlen, maf, no_alleles, ab[0], coding};
             len_pts.push_back(h);
-            
+
             ++no_variants;
         }
 
-        if (n_af) free(af);
-        if (n_ab) free(ab);
+        if (af) free(af);
+        if (ab) free(ab);
     };
 
     void print_options()
@@ -216,31 +226,31 @@ class Igor : Program
         print_int_op("         [i] intervals              ", intervals);
         std::clog << "\n";
     }
-  
+
     void print_pdf()
     {
         append_cwd(output_dir);
-                        
+
         //create directory
         mkdir(output_dir.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-        
+
         //create data file
-        std::string file_path = output_dir + "/data.txt"; 
-        
-        
+        std::string file_path = output_dir + "/data.txt";
+
+
         FILE *out = fopen(file_path.c_str(), "w");
         fprintf(out, "dlen\tmaf\tno_alleles\tpass\tab\tcoding\n");
         for (size_t i=0; i<len_pts.size(); ++i)
         {
-            fprintf(out, "%d\t%f\t%d\t%d\t%f\t%d\n", len_pts[i].dlen, len_pts[i].maf, len_pts[i].no_alleles, 
-                                                     len_pts[i].pass, len_pts[i].ab, len_pts[i].coding);
+            fprintf(out, "%d\t%f\t%d\t%d\t%f\t%d\n", len_pts[i].dlen, len_pts[i].maf, len_pts[i].no_alleles,
+                                                  1, len_pts[i].ab, len_pts[i].coding);
         }
         fclose(out);
 
         //create r script
-        file_path = output_dir + "/plot.r"; 
+        file_path = output_dir + "/plot.r";
         out = fopen(file_path.c_str(), "w");
-        
+
         fprintf(out, "setwd(\"%s\")\n", output_dir.c_str());
         fprintf(out, "\n");
         fprintf(out, "data = read.table(\"data.txt\", header=T)\n");
@@ -253,7 +263,7 @@ class Igor : Program
         fprintf(out, "\n");
         fprintf(out, "data.subset = subset(data, abs(dlen)<=10 & pass!=1 & no_alleles==2)\n");
         fprintf(out, "hist(data.subset$dlen, breaks=seq(-10,10,1),col=rgb(1,0,0,0.5), xlab=\"length\", main=\"Failed Indel Length Distribution\")\n");
-        fprintf(out, "\n");        
+        fprintf(out, "\n");
         fprintf(out, "layout(matrix(c(1,2), 2, 1, byrow = TRUE))\n");
         fprintf(out, "\n");
         fprintf(out, "data.subset = subset(data, abs(dlen)<=10 & pass==1 & no_alleles==2 & coding>0)\n");
@@ -284,12 +294,12 @@ class Igor : Program
         fprintf(out, "abline(h=0.5, col=\"grey\")\n");
         fprintf(out, "\n");
         fprintf(out, "dev.off()\n");
-               
+
         fclose(out);
 
         //run script
         std::string cmd = "cd "  + output_dir + "; cat plot.r | R --vanilla > run.log";
-        int32_t ret = system(cmd.c_str());
+        //int32_t ret = system(cmd.c_str());
     };
 
     void print_stats()
@@ -297,10 +307,16 @@ class Igor : Program
         fprintf(stderr, "Stats \n");
         fprintf(stderr, "     no. of variants  : %d\n", no_variants);
         fprintf(stderr, "\n");
-        
+
         //do a textual histogram print out of len spectrum
-        
-        
+        fprintf(stderr, "dlen\tmaf\tno_alleles\tpass\tab\tcoding\n");
+        for (size_t i=0; i<len_pts.size(); ++i)
+        {
+            fprintf(stderr, "%d\t%f\t%d\t%d\t%f\t%d\n", len_pts[i].dlen, len_pts[i].maf, len_pts[i].no_alleles,
+                                                  1, len_pts[i].ab, len_pts[i].coding);
+        }
+        fclose(stderr);
+
     };
 
     ~Igor()

@@ -214,6 +214,7 @@ bool VariantManip::detect_str(const char* chrom, uint32_t pos1, Variant& variant
 
 /**
  * Checks if a variant is normalized.
+ *  Ignores if entry is not a variant.
  */
 bool VariantManip::is_normalized(bcf1_t *v)
 {
@@ -240,6 +241,15 @@ bool VariantManip::is_normalized(bcf1_t *v)
         }
         else
         {
+            //check if variant is reference.
+            if (rlen==alen)
+            {
+                if (strcmp(alleles[0], alleles[1])==0)
+                {
+                    return true;
+                }    
+            }    
+            
             //ref
             if (rlen==1) exists_len_one_allele = true;
             first_base = alleles[0][0];
@@ -260,6 +270,7 @@ bool VariantManip::is_normalized(bcf1_t *v)
     }
     else
     {
+        bool same = true;
         for (size_t i=0; i<n_allele; ++i)
         {
             if (i)
@@ -268,6 +279,8 @@ bool VariantManip::is_normalized(bcf1_t *v)
                 if (len==1) exists_len_one_allele = true;
                 if (first_base!=alleles[i][0]) first_base_same = false;
                 if (last_base!=alleles[i][len-1]) last_base_same = false;
+            
+                same = same && strcmp(alleles[i],alleles[0])==0;
             }
             else
             {
@@ -277,6 +290,12 @@ bool VariantManip::is_normalized(bcf1_t *v)
                 last_base = alleles[0][len-1];
             }
         }
+
+        //reference entry
+        if (same)
+        {
+            return true;
+        }    
 
         if (last_base_same || (!exists_len_one_allele && first_base_same))
         {
@@ -377,7 +396,7 @@ int32_t VariantManip::classify_variant(bcf_hdr_t *h, bcf1_t *v, Variant& var)
                 var.alleles.push_back(Allele(type, sv_type));
             }
         }
-        else if (allele[i][0]=='.')
+        else if (allele[i][0]=='.' || strcmp(allele[i],allele[0])==0)
         {
             type = VT_REF;
         }
@@ -565,7 +584,7 @@ int32_t VariantManip::classify_variant(bcf_hdr_t *h, bcf1_t *v, Variant& var)
     }
     
     //additionally define MNPs by length of all alleles
-    if (!(var.type&(VT_VNTR|VT_SV)))
+    if (!(var.type&(VT_VNTR|VT_SV)) && var.type!=VT_REF)
     {
         if (homogeneous_length && rlen>1 && n_allele>1)
         {

@@ -317,6 +317,55 @@ class Igor : Program
 
 
     };
+    
+    
+    /**
+     *  Analyse an mdust file
+     *  Compute how much of genome it is off.
+     */    
+    void analyse_str(int argc, char ** argv)
+    {
+        std::string bed_file;
+        std::string ref_fasta_file;
+        faidx_t *fai;
+        
+        try
+        {
+            std::string desc = "analyse_mdust  -m detect_motif -s ACTGACT \n";
+
+            std::string version = "0.5";
+            TCLAP::CmdLine cmd(desc, ' ', version);
+            VTOutput my; cmd.setOutput(&my);
+            TCLAP::ValueArg<std::string> arg_ref("v", "v", "reference", true, "", "string", cmd);
+            TCLAP::ValueArg<std::string> arg_alt("a", "a", "alternative", true, "", "string", cmd);
+            TCLAP::ValueArg<std::string> arg_ref_fasta_file("r", "r", "reference FASTA file", true, "", "string", cmd);
+
+            cmd.parse(argc, argv);
+
+            ref_fasta_file = arg_ref_fasta_file.getValue();
+        }
+        catch (TCLAP::ArgException &e)
+        {
+            std::cerr << "error: " << e.error() << " for arg " << e.argId() << "\n";
+            abort();
+        }
+
+        TBXOrderedReader todr(bed_file);
+
+        if (ref_fasta_file!="")
+        {
+            fai = fai_load(ref_fasta_file.c_str());
+            if (fai==NULL)
+            {
+                fprintf(stderr, "[%s:%d %s] Cannot load genome index: %s\n", __FILE__, __LINE__, __FUNCTION__, ref_fasta_file.c_str());
+                exit(1);
+            }
+        }
+        
+        
+
+
+    };
 
     ~Igor() {};
 
