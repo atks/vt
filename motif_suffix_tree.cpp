@@ -31,6 +31,12 @@
 #define shift6(m) ((0x000000FF&(m)<<24) & (0xFFFFFF00&(m)>>8))
 #define shift7(m) ((0x0000000F&(m)<<28) & (0xFFFFFFF0&(m)>>4))
 
+#define A 1
+#define C 2
+#define G 4
+#define T 8
+#define N 15
+
 /**
  * Constructor.
  */

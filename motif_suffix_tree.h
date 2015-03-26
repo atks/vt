@@ -46,18 +46,20 @@
 #define shift6(m) ((0x000000FF&(m)<<24) & (0xFFFFFF00&(m)>>8))
 #define shift7(m) ((0x0000000F&(m)<<28) & (0xFFFFFFF0&(m)>>4))
 
-uint32_t canonical(uint32_t motif)
-{
-    uint32_t cmotif = motif;
-    uint32_t smotif = motif;
-    for (uint32_t i=1; i<7; ++i)        
-    {
-        smotif = shift1(smotif);    
-        cmotif = smotif<cmotif ? smotif : cmotif;
-    }
-    
-    return cmotif;
-}
+#define seqi(s, i) ((s)[(i)>>1] >> ((~(i)&1)<<2) & 0xf)
+
+//uint32_t canonical(uint32_t motif)
+//{
+//    uint32_t cmotif = motif;
+//    uint32_t smotif = motif;
+//    for (uint32_t i=1; i<7; ++i)
+//    {
+//        smotif = shift1(smotif);
+//        cmotif = smotif<cmotif ? smotif : cmotif;
+//    }
+//
+//    return cmotif;
+//}
 
 /**
  * Motif Suffix Tree for selecting candidate motifs.
@@ -66,7 +68,7 @@ class MotifSuffixTree
 {
     public:
     uint64_t* tree;
-            
+
     /**
      * Constructor.
      */
@@ -96,23 +98,29 @@ class MotifSuffixTree
      * Gets candidate motifs up to max_motif_len.
      */
     void get_candidate_motifs(std::vector<CandidateMotif>& candidate_motifs);
-    
+
     /**
      * Get canonical representation.
      */
     uint32_t canonical(uint32_t motif);
-        
+
     private:
-        
+
     /**
      * Adds a suffix of sequence from start to end.
      */
     void add_suffix(char* sequence, int32_t start, int32_t end);
-    
+
     /**
      * Converts base to index.
      */
     int32_t base2index(char base);
 };
+
+#undef A
+#undef C
+#undef G
+#undef T
+#undef N
 
 #endif
