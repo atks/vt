@@ -390,7 +390,6 @@ int32_t VariantManip::classify_variant(bcf_hdr_t *h, bcf1_t *v, Variant& var)
             else
             {
                 type = VT_SV;
-
                 var.type |= type;
                 std::string sv_type(allele[i]);
                 var.alleles.push_back(Allele(type, sv_type));

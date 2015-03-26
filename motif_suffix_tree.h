@@ -32,45 +32,32 @@
 #include <queue>
 #include "candidate_motif.h"
 
-#define A 0
-#define C 1
-#define G 2
-#define T 3
+#define A 1
+#define C 2
+#define G 4
+#define T 8
+#define N 15
 
-/**
- * A node for the Motif Suffix Tree.
- */
-class MotifSuffixTreeNode
+#define shift1(m) ((0x0FFFFFFF&(m)<<4) & (0xF0000000&(m)>>28))
+#define shift2(m) ((0x00FFFFFF&(m)<<8) & (0xFF000000&(m)>>24))
+#define shift3(m) ((0x000FFFFF&(m)<<12) & (0xFFF00000&(m)>>20))
+#define shift4(m) ((0x0000FFFF&(m)<<16) & (0xFFFF0000&(m)>>16))
+#define shift5(m) ((0x00000FFF&(m)<<20) & (0xFFFFF000&(m)>>12))
+#define shift6(m) ((0x000000FF&(m)<<24) & (0xFFFFFF00&(m)>>8))
+#define shift7(m) ((0x0000000F&(m)<<28) & (0xFFFFFFF0&(m)>>4))
+
+uint32_t canonical(uint32_t motif)
 {
-    public:
-    MotifSuffixTreeNode* parent;
-    MotifSuffixTreeNode* children[4];
-    int32_t n_children[4];
-    std::string suffix;
-    int32_t count;
-
-    /**
-     * Constructs a MotifSuffixTreeNode.
-     */
-    MotifSuffixTreeNode();
-
-    /**
-     * Constructs a MotifSuffixTreeNode and initialize it with a parent and suffix.
-     */
-    MotifSuffixTreeNode(MotifSuffixTreeNode* parent, std::string& suffix);
-
-    /**
-     * Clear the suffix tree node.
-     */
-    void clear();
-
-    /**
-     * Constructs an MotifSuffixTreeNode.
-     */
-    ~MotifSuffixTreeNode();
-
-    private:
-};
+    uint32_t cmotif = motif;
+    uint32_t smotif = motif;
+    for (uint32_t i=1; i<7; ++i)        
+    {
+        smotif = shift1(smotif);    
+        cmotif = smotif<cmotif ? smotif : cmotif;
+    }
+    
+    return cmotif;
+}
 
 /**
  * Motif Suffix Tree for selecting candidate motifs.
@@ -78,7 +65,7 @@ class MotifSuffixTreeNode
 class MotifSuffixTree
 {
     public:
-    MotifSuffixTreeNode* root;
+    uint64_t* tree;
             
     /**
      * Constructor.
@@ -109,6 +96,11 @@ class MotifSuffixTree
      * Gets candidate motifs up to max_motif_len.
      */
     void get_candidate_motifs(std::vector<CandidateMotif>& candidate_motifs);
+    
+    /**
+     * Get canonical representation.
+     */
+    uint32_t canonical(uint32_t motif);
         
     private:
         
@@ -122,10 +114,5 @@ class MotifSuffixTree
      */
     int32_t base2index(char base);
 };
-
-#undef A
-#undef C
-#undef G
-#undef T
 
 #endif

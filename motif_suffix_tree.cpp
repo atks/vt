@@ -23,80 +23,27 @@
 
 #include "motif_suffix_tree.h"
 
-#define A 0
-#define C 1
-#define G 2
-#define T 3
-#define N 4
-
-/**
- * Constructs a MotifSuffixTreeNode.
- */
-MotifSuffixTreeNode::MotifSuffixTreeNode()
-{
-    parent = NULL;
-    for (size_t b = A; b<=T; ++b)
-    {
-        children[b] = NULL;
-    }
-    this->suffix = "";
-    count = 0;
-};
-
-/**
- * Constructs a MotifSuffixTreeNode and initialize it with a parent and a suffix.
- */
-MotifSuffixTreeNode::MotifSuffixTreeNode(MotifSuffixTreeNode* parent, std::string& suffix)
-{
-    parent = parent;
-    for (size_t b = A; b<=T; ++b)
-    {
-        children[b] = NULL;
-    }
-    this->suffix = suffix;
-    count = 0;
-};
-
-
-/**
- * Clear the suffix tree node.
- */
-void MotifSuffixTreeNode::clear()
-{
-    for (size_t b = A; b<=T; ++b)
-    {
-        if (children[b])
-        {
-            children[b]->clear();
-        }
-    }
-    count = 0;
-};
-
-/**
- * Constructs an MotifSuffixTreeNode.
- */
-MotifSuffixTreeNode::~MotifSuffixTreeNode()
-{
-    for (size_t b = A; A<=T; ++b)
-    {
-        if (children[b])
-        {
-            delete children[b];
-        }
-
-        children[b] = NULL;
-    }
-
-    parent = NULL;
-};
+#define shift1(m) ((0x0FFFFFFF&(m)<<4) & (0xF0000000&(m)>>28))
+#define shift2(m) ((0x00FFFFFF&(m)<<8) & (0xFF000000&(m)>>24))
+#define shift3(m) ((0x000FFFFF&(m)<<12) & (0xFFF00000&(m)>>20))
+#define shift4(m) ((0x0000FFFF&(m)<<16) & (0xFFFF0000&(m)>>16))
+#define shift5(m) ((0x00000FFF&(m)<<20) & (0xFFFFF000&(m)>>12))
+#define shift6(m) ((0x000000FF&(m)<<24) & (0xFFFFFF00&(m)>>8))
+#define shift7(m) ((0x0000000F&(m)<<28) & (0xFFFFFFF0&(m)>>4))
 
 /**
  * Constructor.
  */
 MotifSuffixTree::MotifSuffixTree()
 {
-    root = new MotifSuffixTreeNode();
+    uint32_t size = 1<<16;
+    tree = (uint64_t *) malloc(sizeof(uint64_t)*size);
+
+    uint64_t value = 0;
+    for (uint32_t i=0; i<size; ++i)
+    {
+        tree[i] = ((uint64_t)canonical(i))<<32;
+    }
 };
 
 /**
@@ -104,8 +51,7 @@ MotifSuffixTree::MotifSuffixTree()
  */
 MotifSuffixTree::~MotifSuffixTree()
 {
-    if (root) delete root;
-    root = NULL;
+    if (tree) delete tree;        
 };
 
 /**
@@ -113,7 +59,11 @@ MotifSuffixTree::~MotifSuffixTree()
  */
 void MotifSuffixTree::set_sequence(char* sequence)
 {
-    set_sequence(sequence, strlen(sequence));
+    //translate sequence to binary form
+    uint32_t len = strlen(sequence);
+    
+    
+    
 };
 
 /**
@@ -121,13 +71,7 @@ void MotifSuffixTree::set_sequence(char* sequence)
  */
 void MotifSuffixTree::set_sequence(char* sequence, int32_t max_motif_len)
 {
-    size_t len = strlen(sequence);
 
-    //i is starting
-    for (size_t i=0; i<len; ++i)
-    {
-        add_suffix(sequence, i, i+max_motif_len-1);
-    }
 };
 
 /**
@@ -135,47 +79,32 @@ void MotifSuffixTree::set_sequence(char* sequence, int32_t max_motif_len)
  */
 void MotifSuffixTree::get_candidate_motifs(std::vector<CandidateMotif>& candidate_motifs)
 {
-    //travel through tree
-    std::list<MotifSuffixTreeNode*> nodes;
-    nodes.push_back(root);
 
-    std::priority_queue<CandidateMotif, std::vector<CandidateMotif>, CompareCandidateMotif> pq;
-
-    while (nodes.size()!=0)
-    {
-        MotifSuffixTreeNode* node = nodes.front();
-        for (size_t i=A; i<=T; ++i)
-        {
-            if (node->children[i]->count)
-            {
-                
-            }
-        }
-        nodes.pop_front();
-    }
 };
+
+/**
+ * Get canonical representation.
+ */
+uint32_t MotifSuffixTree::canonical(uint32_t motif)
+{
+    uint32_t cmotif = motif;
+    uint32_t smotif = motif;
+    for (uint32_t i=1; i<7; ++i)        
+    {
+        smotif = shift1(smotif);    
+        cmotif = smotif<cmotif ? smotif : cmotif;
+    }
+    
+    return cmotif;
+}
+
 
 /**
  * Adds a suffix of sequence from start to end.
  */
 void MotifSuffixTree::add_suffix(char* sequence, int32_t start, int32_t end)
 {
-    MotifSuffixTreeNode* node = root;
 
-    for (size_t i = start; i<=end; ++i)
-    {
-        int32_t base = base2index(sequence[i]);
-
-        if (base==N) break;
-
-        if (node->children[base]==NULL)
-        {
-            node->children[base] = new MotifSuffixTreeNode(node, node->suffix.append(1,base));
-        }
-
-        node = node->children[base];
-        ++node->count;
-    }
 };
 
 /**
