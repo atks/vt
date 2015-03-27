@@ -103,8 +103,8 @@ BCFSyncedReader::BCFSyncedReader(std::vector<std::string>& file_names, std::vect
             exit(1);
         }
 
-        //check contigs consistency if no random access
-        if (!random_access && i)
+        //check contigs consistency
+        if (i)
         {
             int32_t nseqs0;
             const char ** seqnames0 = bcf_hdr_seqnames(hdrs[i], &nseqs0);

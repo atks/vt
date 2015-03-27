@@ -131,10 +131,10 @@ class Igor : Program
         if (input_vcf_files.size()>1)
         {
             uint32_t no_samples = bcf_hdr_get_n_sample(odw->hdr);
-            
+
             //inspect headers in second file and above, insert missing headers
             for (uint32_t i=1; i<input_vcf_files.size(); ++i)
-            {   
+            {
                 vcfFile* file = bcf_open(input_vcf_files[i].c_str(), "r");
                 if (!file)
                 {
@@ -142,28 +142,28 @@ class Igor : Program
                     exit(1);
                 }
                 bcf_hdr_t* h = bcf_hdr_read(file);
-                
+
                 //check samples consistency
                 if (no_subset_samples==-1)
                 {
                     if (no_samples!=bcf_hdr_get_n_sample(h))
-                    {   
+                    {
                         fprintf(stderr, "[%s:%d %s] Different number of samples%s\n", __FILE__, __LINE__, __FUNCTION__, input_vcf_files[i].c_str());
                         exit(1);
-                    }   
-                    
+                    }
+
                     for (uint32_t j=0; j<no_samples; ++j)
                     {
                         if (strcmp(bcf_hdr_get_sample_name(odw->hdr, j), bcf_hdr_get_sample_name(h, j)))
                         {
                             fprintf(stderr, "[%s:%d %s] Different samples %s\n", __FILE__, __LINE__, __FUNCTION__, input_vcf_files[i].c_str());
-                            exit(1); 
+                            exit(1);
                         }
-                    } 
+                    }
                 }
-                
+
                 bcf_hdr_combine(odw->hdr, h);
-                    
+
                 bcf_close(file);
                 bcf_hdr_destroy(h);
             }
