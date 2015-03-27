@@ -99,12 +99,6 @@ class Igor : Program
             parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
             no_subset_samples = arg_print_sites_only.getValue() ? 0 : -1;
             print = arg_print.getValue();
-
-            if (input_vcf_files.size()==0)
-            {
-                fprintf(stderr, "[E:%s:%d %s] no input vcf files.\n", __FILE__, __LINE__, __FUNCTION__);
-                exit(1);
-            }
         }
         catch (TCLAP::ArgException &e)
         {
@@ -118,6 +112,11 @@ class Igor : Program
         //////////////////////
         //i/o initialization//
         //////////////////////
+        if (input_vcf_files.size()==0)
+        {
+            fprintf(stderr, "[E:%s:%d %s] no input vcf files.\n", __FILE__, __LINE__, __FUNCTION__);
+            exit(1);
+        }
         odr = new BCFOrderedReader(input_vcf_files[0], intervals);
         odw = new BCFOrderedWriter(output_vcf_file, sort_window_size);
         if (no_subset_samples==-1)
@@ -129,30 +128,44 @@ class Igor : Program
             odw->set_hdr(bcf_hdr_subset(odr->hdr, 0, 0, 0));
         }
 
-        //merge headers if many files
         if (false && input_vcf_files.size()>1)
         {
-            bcf_hdr_t* h0 = odw->hdr;
+            uint32_t no_samples = bcf_hdr_get_n_sample(odw->hdr);
+            
             //inspect headers in second file and above, insert missing headers
             for (uint32_t i=1; i<input_vcf_files.size(); ++i)
-            {
-                //#define BCF_HL_FLT  0 // header line
-                //#define BCF_HL_INFO 1
-                //#define BCF_HL_FMT  2
-                //#define BCF_HL_CTG  3
-                //#define BCF_HL_STR  4 // structured header line TAG=<A=..,B=..>
-                //#define BCF_HL_GEN  5 // generic header line
-                
+            {   
                 vcfFile* file = bcf_open(input_vcf_files[i].c_str(), "r");
                 if (!file)
                 {
                     fprintf(stderr, "[%s:%d %s] Cannot open %s\n", __FILE__, __LINE__, __FUNCTION__, input_vcf_files[i].c_str());
                     exit(1);
                 }
-                bcf_hdr_t* hi = bcf_hdr_read(file);
+                bcf_hdr_t* h = bcf_hdr_read(file);
                 
-                //bcf_hdr_transfer(bcf_hdr_t* src, bcf_hdr_t* dst)
-                //bcf_hdr_sort(bcf_hdr_t* h)?
+                //check samples consistency
+                if (no_subset_samples==-1)
+                {
+                    if (no_samples!=bcf_hdr_get_n_sample(h))
+                    {   
+                        fprintf(stderr, "[%s:%d %s] Different number of samples%s\n", __FILE__, __LINE__, __FUNCTION__, input_vcf_files[i].c_str());
+                        exit(1);
+                    }   
+                    
+                    for (uint32_t j=0; j<no_samples; ++j)
+                    {
+                        if (strcmp(bcf_hdr_get_sample_name(odw->hdr, j), bcf_hdr_get_sample_name(h, j)))
+                        {
+                            fprintf(stderr, "[%s:%d %s] Different samples %s\n", __FILE__, __LINE__, __FUNCTION__, input_vcf_files[i].c_str());
+                            exit(1); 
+                        }
+                    } 
+                }
+                
+                bcf_hdr_combine(odw->hdr, h);
+                    
+                bcf_close(file);
+                bcf_hdr_destroy(h);
             }
         }
 
@@ -201,11 +214,9 @@ class Igor : Program
                 if (no_subset_samples==0)
                 {
                     bcf_subset(odw->hdr, v, 0, 0);
-                    //maybe add some additional adhoc fixing for BCF files that do not have a complete header.
                 }
 
-                //assume the contigs list is the same for all?  Do we have checking for this?
-                //bcf_set_chrom(odw->hdr, v, bcf_get_chrom(odr->hdr, v));
+                bcf_translate(odw->hdr, odr->hdr, v);
                 odw->write(v);
                 if (sort_window_size)
                 {

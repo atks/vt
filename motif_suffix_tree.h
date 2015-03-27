@@ -48,19 +48,6 @@
 
 #define seqi(s, i) ((s)[(i)>>1] >> ((~(i)&1)<<2) & 0xf)
 
-//uint32_t canonical(uint32_t motif)
-//{
-//    uint32_t cmotif = motif;
-//    uint32_t smotif = motif;
-//    for (uint32_t i=1; i<7; ++i)
-//    {
-//        smotif = shift1(smotif);
-//        cmotif = smotif<cmotif ? smotif : cmotif;
-//    }
-//
-//    return cmotif;
-//}
-
 /**
  * Motif Suffix Tree for selecting candidate motifs.
  */
