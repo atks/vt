@@ -75,7 +75,7 @@ class Igor : Program
         //////////////////////////
         try
         {
-            std::string desc = "Concatenate VCF files.  Assumes individuals are in the same order and files share the same header.";
+            std::string desc = "Concatenate VCF files. Individuals must be in the same order.";
 
             version = "0.5";
             TCLAP::CmdLine cmd(desc, ' ', version);
@@ -128,7 +128,7 @@ class Igor : Program
             odw->set_hdr(bcf_hdr_subset(odr->hdr, 0, 0, 0));
         }
 
-        if (false && input_vcf_files.size()>1)
+        if (input_vcf_files.size()>1)
         {
             uint32_t no_samples = bcf_hdr_get_n_sample(odw->hdr);
             
@@ -238,8 +238,9 @@ class Igor : Program
         std::clog << "cat v" << version << "\n\n";
         print_ifiles("options:     input VCF file        ", input_vcf_files);
         std::clog << "         [o] output VCF file       " << output_vcf_file << "\n";
-        print_num_op("         [w] sortin window size    ", sort_window_size);
+        print_num_op("         [w] sorting window size   ", sort_window_size);
         print_str_op("         [f] filter                ", fexp);
+        std::clog << "         [s] print sites only      " << (no_subset_samples==-1?"no":"yes") << "\n";
         print_int_op("         [i] intervals             ", intervals);
         std::clog << "\n";
     }
