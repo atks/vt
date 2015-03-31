@@ -452,7 +452,7 @@ class Igor : Program
                                     else if (type==BCF_BT_FLOAT)
                                     {
                                         int32_t n = 0;
-                                        int32_t* g = 0;
+                                        float* g = 0;
                                         int32_t ret = bcf_get_info_float(odr->hdr, v, tag, &g, &n);
                                         
                                         if (ret>0)
@@ -477,6 +477,7 @@ class Igor : Program
                                     }
                                     else if (type==BCF_BT_CHAR)
                                     {
+                                        //not necessary
                                     }
                                 }
                                 else if (var_len == BCF_VL_A)
@@ -569,7 +570,7 @@ class Igor : Program
                                     else if (type==BCF_BT_FLOAT)
                                     {
                                         int32_t n = 0;
-                                        int32_t* a = 0;
+                                        float* a = 0;
                                         int32_t ret = bcf_get_info_float(odr->hdr, v, tag, &a, &n);
                                         if (ret>0)
                                         {
@@ -583,6 +584,47 @@ class Igor : Program
                                     }
                                     else if (type==BCF_BT_CHAR)
                                     {
+                                        int32_t n = 0;
+                                        char* a = 0;
+                                        int32_t ret = bcf_get_info_string(odr->hdr, v, tag, &a, &n);
+                                        
+                                        if (ret>0)
+                                        {
+                                            char* b = a;
+                                            char* c = a;
+                                            int32_t e = 0; 
+                                            while (*b)
+                                            {
+                                                if (*b==',')
+                                                {
+                                                    *b = 0;
+                                                    ++e;
+                                                    
+                                                    if (e==i)
+                                                    {
+                                                        bcf_update_info_string(odw->hdr, nv, tag, c);
+                                                        break;
+                                                    }
+                                                    
+                                                    c = b+1;
+                                                } 
+                                                //last occurrence
+                                                else if (*(b+1)==0)
+                                                {
+                                                    bcf_update_info_string(odw->hdr, nv, tag, c);
+                                                    break;
+                                                }   
+                                                
+                                                ++b;
+                                            }
+                                            
+                                            if (e>i)
+                                            {
+                                                bcf_update_info_string(odw->hdr, nv, tag, NULL);
+                                            }
+
+                                            free(a);
+                                        }
                                     }
                                 }
                                 else if (var_len == BCF_VL_FIXED)
@@ -675,6 +717,7 @@ class Igor : Program
                                         }
                                         else if (type==BCF_BT_CHAR)
                                         {
+                                            //to be implemented
                                         }
                                     }
                                     else if (var_len == BCF_VL_A)
@@ -715,7 +758,7 @@ class Igor : Program
                                         else if (type==BCF_BT_FLOAT)
                                         {
                                             int32_t n = 0;
-                                            int32_t* a = 0;
+                                            float* a = 0;
                                             int32_t ret = bcf_get_format_float(odr->hdr, v, tag, &a, &n);
                                             float* as = (float*) malloc(no_samples*sizeof(float));
 
@@ -748,6 +791,7 @@ class Igor : Program
                                         }
                                         else if (type==BCF_BT_CHAR)
                                         {
+                                            //to be implemented
                                         }
                                     }
                                     else if (var_len == BCF_VL_R)
@@ -783,7 +827,7 @@ class Igor : Program
                                         else if (type==BCF_BT_FLOAT)
                                         {
                                             int32_t n = 0;
-                                            int32_t* a = 0;
+                                            float* a = 0;
                                             int32_t ret = bcf_get_format_float(odr->hdr, v, tag, &a, &n);
                                             float* as = (float*) malloc(no_samples*sizeof(float));
 
@@ -806,9 +850,11 @@ class Igor : Program
 
                                             bcf_update_format_float(odw->hdr, nv, tag, as, no_samples*2);
                                             free(as);
+                                            free(a);
                                         }
                                         else if (type==BCF_BT_CHAR)
                                         {
+                                            //to be implemented
                                         }
                                     }
                                     else if (var_len == BCF_VL_FIXED)
