@@ -23,14 +23,6 @@
 
 #include "motif_suffix_tree.h"
 
-#define shift1(m) ((0x0FFFFFFF&(m)<<4) & (0xF0000000&(m)>>28))
-#define shift2(m) ((0x00FFFFFF&(m)<<8) & (0xFF000000&(m)>>24))
-#define shift3(m) ((0x000FFFFF&(m)<<12) & (0xFFF00000&(m)>>20))
-#define shift4(m) ((0x0000FFFF&(m)<<16) & (0xFFFF0000&(m)>>16))
-#define shift5(m) ((0x00000FFF&(m)<<20) & (0xFFFFF000&(m)>>12))
-#define shift6(m) ((0x000000FF&(m)<<24) & (0xFFFFFF00&(m)>>8))
-#define shift7(m) ((0x0000000F&(m)<<28) & (0xFFFFFFF0&(m)>>4))
-
 #define A 1
 #define C 2
 #define G 4
@@ -43,13 +35,23 @@
 MotifSuffixTree::MotifSuffixTree()
 {
     uint32_t size = 1<<16;
+
+    std::cerr << "size : " << size << "\n";
+
+
     tree = (uint64_t *) malloc(sizeof(uint64_t)*size);
 
     uint64_t value = 0;
+    //you only want to loop through multiples of 2
     for (uint32_t i=0; i<size; ++i)
     {
-        tree[i] = ((uint64_t)canonical(i))<<32;
+        uint32_t c = canonical(i);
+        tree[i] = ((uint64_t) c)<<32;
+        std::cerr << i << ":" << c << ":" << tree[i] << "\n";
+        if (i==1) exit(1);
     }
+
+
 };
 
 /**
@@ -57,7 +59,7 @@ MotifSuffixTree::MotifSuffixTree()
  */
 MotifSuffixTree::~MotifSuffixTree()
 {
-    if (tree) delete tree;        
+    if (tree) delete tree;
 };
 
 /**
@@ -67,9 +69,9 @@ void MotifSuffixTree::set_sequence(char* sequence)
 {
     //translate sequence to binary form
     uint32_t len = strlen(sequence);
-    
-    
-    
+
+
+
 };
 
 /**
@@ -95,15 +97,20 @@ uint32_t MotifSuffixTree::canonical(uint32_t motif)
 {
     uint32_t cmotif = motif;
     uint32_t smotif = motif;
-    for (uint32_t i=1; i<7; ++i)        
+    std::cerr << "\t" << 0 << ") " << smotif << " - ";
+    print(smotif);
+    std::cerr << "\n";
+    for (uint32_t i=1; i<8; ++i)
     {
-        smotif = shift1(smotif);    
+        smotif = shift1(smotif);
+        std::cerr << "\t" << i << ") " << smotif << " - ";
+        print(smotif);
+        std::cerr << "\n";
         cmotif = smotif<cmotif ? smotif : cmotif;
     }
-    
+
     return cmotif;
 }
-
 
 /**
  * Adds a suffix of sequence from start to end.
@@ -136,6 +143,30 @@ int32_t MotifSuffixTree::base2index(char base)
             return N;
     }
 };
+
+/**
+ * Print sequence.
+ */
+void MotifSuffixTree::print(uint32_t seq)
+{
+    uint8_t *seq_ptr = (uint8_t*) &seq;
+
+    std::cerr << index2base(seq_ptr[0] & 0xF);
+    std::cerr << index2base(seq_ptr[0] >> 4 & 0xF);
+    std::cerr << index2base(seq_ptr[1] & 0xF);
+    std::cerr << index2base(seq_ptr[1] >> 4 & 0xF);
+    std::cerr << index2base(seq_ptr[2] & 0xF);
+    std::cerr << index2base(seq_ptr[2] >> 4 & 0xF);
+    std::cerr << index2base(seq_ptr[3] & 0xF);
+    std::cerr << index2base(seq_ptr[3] >> 4 & 0xF);
+
+//    for (uint32_t i=0; i<8; ++i)
+//    {
+//        //seqi(s, i) ((s)[(i)>>1] >> ((~(i)&1)<<2) & 0xf)
+//        std::cerr << "(" << seqi(seq_ptr, i) << ")" ;
+//        std::cerr << index2base(seqi(seq_ptr, i));
+//    }
+}
 
 #undef A
 #undef C

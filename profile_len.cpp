@@ -204,7 +204,6 @@ class Igor : Program
             int32_t nfs = bcf_get_info_flag(odr->hdr,v, const_cast<char*>("NFS"), 0, 0);
             int32_t coding = fs==1 ? 1 : (nfs==1 ? 2 : -1);
 
-
             len_t h = {dlen, maf, no_alleles, ab[0], coding};
             len_pts.push_back(h);
 

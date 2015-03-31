@@ -31,6 +31,7 @@
 #include <iostream>
 #include <queue>
 #include "candidate_motif.h"
+//#include <arpa/net.h>
 
 #define A 1
 #define C 2
@@ -38,15 +39,17 @@
 #define T 8
 #define N 15
 
-#define shift1(m) ((0x0FFFFFFF&(m)<<4) & (0xF0000000&(m)>>28))
-#define shift2(m) ((0x00FFFFFF&(m)<<8) & (0xFF000000&(m)>>24))
-#define shift3(m) ((0x000FFFFF&(m)<<12) & (0xFFF00000&(m)>>20))
-#define shift4(m) ((0x0000FFFF&(m)<<16) & (0xFFFF0000&(m)>>16))
-#define shift5(m) ((0x00000FFF&(m)<<20) & (0xFFFFF000&(m)>>12))
-#define shift6(m) ((0x000000FF&(m)<<24) & (0xFFFFFF00&(m)>>8))
-#define shift7(m) ((0x0000000F&(m)<<28) & (0xFFFFFFF0&(m)>>4))
+#define shift1(m) (((0x0FFFFFFF&(m))<<4) | ((0xF0000000&(m))>>28))
+#define shift2(m) ((0x00FFFFFF&(m)<<8) | (0xFF000000&(m)>>24))
+#define shift3(m) ((0x000FFFFF&(m)<<12) | (0xFFF00000&(m)>>20))
+#define shift4(m) ((0x0000FFFF&(m)<<16) | (0xFFFF0000&(m)>>16))
+#define shift5(m) ((0x00000FFF&(m)<<20) | (0xFFFFF000&(m)>>12))
+#define shift6(m) ((0x000000FF&(m)<<24) | (0xFFFFFF00&(m)>>8))
+#define shift7(m) ((0x0000000F&(m)<<28) | (0xFFFFFFF0&(m)>>4))
 
 #define seqi(s, i) ((s)[(i)>>1] >> ((~(i)&1)<<2) & 0xf)
+
+#define index2base(i) ("OACXGXXXTXXXXXXN"[(i)])
 
 /**
  * Motif Suffix Tree for selecting candidate motifs.
@@ -102,6 +105,12 @@ class MotifSuffixTree
      * Converts base to index.
      */
     int32_t base2index(char base);
+
+    /**
+     * Print sequence.
+     */
+    void print(uint32_t seq);
+
 };
 
 #undef A
