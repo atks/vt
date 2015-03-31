@@ -212,7 +212,7 @@ class Igor : Program
                     if (no_samples)
                     {
                         bcf_unpack(v, BCF_UN_FMT);
-                        
+
                         int32_t n = 0;
                         int32_t ret = bcf_get_genotypes(odr->hdr, v, &gt, &n);
                         if (ret>0) has_GT = true;
@@ -383,10 +383,6 @@ class Igor : Program
 //                    bcf_print(odr->hdr, v);
 //                    std::cerr << "=============================\n";
 //
-                    //////////////////////
-                    //split up INFO fields
-                    //////////////////////
-
                     for (size_t i=1; i<n_allele; ++i)
                     {
                         bcf1_t *nv = bcf_dup(v);
@@ -403,7 +399,7 @@ class Igor : Program
                         if (nv->n_info)
                         {
                             bcf_unpack(v, BCF_UN_INFO);
-                            
+
                             bcf_hdr_t* hdr = odr->hdr;
                             bcf_info_t *info = v->d.info;
 
@@ -430,12 +426,12 @@ class Igor : Program
                                         int32_t ret = bcf_get_info_int32(odr->hdr, v, tag, &g, &n);
 
                                         if (ret>0)
-                                        {        
+                                        {
                                             int32_t n_genotype = n;
                                             int32_t ploidy = bcf_ag2p(n_allele, n_genotype);
                                             int32_t n_genotype2 = bcf_ap2g(2, ploidy);
                                             int32_t* gs = (int32_t*) malloc(n_genotype2*sizeof(int32_t));
-    
+
                                             gs[0] = g[0];
                                             uint32_t index = 0;
                                             for (uint32_t k = 1; k<n_genotype2; ++k)
@@ -443,7 +439,7 @@ class Igor : Program
                                                 index += choose(ploidy-(k-1)+i-1,i-1);
                                                 gs[k] = g[index];
                                             }
-    
+
                                             bcf_update_info_int32(odw->hdr, nv, tag, gs, no_samples*n_genotype2);
                                             free(gs);
                                             free(g);
@@ -454,14 +450,14 @@ class Igor : Program
                                         int32_t n = 0;
                                         float* g = 0;
                                         int32_t ret = bcf_get_info_float(odr->hdr, v, tag, &g, &n);
-                                        
+
                                         if (ret>0)
-                                        { 
+                                        {
                                             int32_t n_genotype = n;
                                             int32_t ploidy = bcf_ag2p(n_allele, n_genotype);
                                             int32_t n_genotype2 = bcf_ap2g(2, ploidy);
                                             float* gs = (float*) malloc(n_genotype2*sizeof(float));
-    
+
                                             gs[0] = g[0];
                                             uint32_t index = 0;
                                             for (uint32_t k = 1; k<n_genotype2; ++k)
@@ -469,7 +465,7 @@ class Igor : Program
                                                 index += choose(ploidy-(k-1)+i-1,i-1);
                                                 gs[k] = g[index];
                                             }
-    
+
                                             bcf_update_info_float(odw->hdr, nv, tag, gs, n_genotype2);
                                             free(gs);
                                             free(g);
@@ -492,7 +488,7 @@ class Igor : Program
                                             int32_t as = a[i-1];
                                             bcf_update_info_int32(odw->hdr, nv, tag, &as, 1);
                                         }
-                                        free(a);                                        
+                                        free(a);
                                     }
                                     else if (type==BCF_BT_FLOAT)
                                     {
@@ -511,36 +507,36 @@ class Igor : Program
                                         int32_t n = 0;
                                         char* a = 0;
                                         int32_t ret = bcf_get_info_string(odr->hdr, v, tag, &a, &n);
-                                        
+
                                         if (ret>0)
                                         {
                                             char* b = a;
                                             char* c = a;
-                                            int32_t e = 0; 
+                                            int32_t e = 0;
                                             while (*b)
                                             {
                                                 if (*b==',')
                                                 {
                                                     *b = 0;
                                                     ++e;
-                                                    
+
                                                     if (e==i)
                                                     {
                                                         bcf_update_info_string(odw->hdr, nv, tag, c);
                                                         break;
                                                     }
-                                                    
+
                                                     c = b+1;
-                                                } 
+                                                }
                                                 else if (*(b+1)==0)
                                                 {
                                                     bcf_update_info_string(odw->hdr, nv, tag, c);
                                                     break;
-                                                }   
-                                                
+                                                }
+
                                                 ++b;
                                             }
-                                            
+
                                             if (e>i)
                                             {
                                                 bcf_update_info_string(odw->hdr, nv, tag, NULL);
@@ -565,7 +561,7 @@ class Igor : Program
                                             bcf_update_info_int32(odw->hdr, nv, tag, as, 2);
                                             free(as);
                                             free(a);
-                                        }                                    
+                                        }
                                     }
                                     else if (type==BCF_BT_FLOAT)
                                     {
@@ -587,37 +583,37 @@ class Igor : Program
                                         int32_t n = 0;
                                         char* a = 0;
                                         int32_t ret = bcf_get_info_string(odr->hdr, v, tag, &a, &n);
-                                        
+
                                         if (ret>0)
                                         {
                                             char* b = a;
                                             char* c = a;
-                                            int32_t e = 0; 
+                                            int32_t e = 0;
                                             while (*b)
                                             {
                                                 if (*b==',')
                                                 {
                                                     *b = 0;
                                                     ++e;
-                                                    
+
                                                     if (e==i)
                                                     {
                                                         bcf_update_info_string(odw->hdr, nv, tag, c);
                                                         break;
                                                     }
-                                                    
+
                                                     c = b+1;
-                                                } 
+                                                }
                                                 //last occurrence
                                                 else if (*(b+1)==0)
                                                 {
                                                     bcf_update_info_string(odw->hdr, nv, tag, c);
                                                     break;
-                                                }   
-                                                
+                                                }
+
                                                 ++b;
                                             }
-                                            
+
                                             if (e>i)
                                             {
                                                 bcf_update_info_string(odw->hdr, nv, tag, NULL);
@@ -638,10 +634,13 @@ class Igor : Program
                             }
                         }
 
+                        ////////////////////////
+                        //split up FORMAT fields
+                        ////////////////////////
                         if (no_samples)
                         {
                             bcf_unpack(v, BCF_UN_FMT);
-                            
+
                             if (nv->n_fmt)
                             {
                                 bcf_hdr_t* hdr = odr->hdr;
@@ -937,7 +936,7 @@ class Igor : Program
         std::clog << "decompose v" << version << "\n";
         std::clog << "\n";
         std::clog << "options:     input VCF file        " << input_vcf_file << "\n";
-        std::clog << "         [s] smart decomposition   " << (smart ? "true" : "false") << "\n";
+        std::clog << "         [s] smart decomposition   " << (smart ? "true" : "false") << " (experimental)\n";
         std::clog << "         [o] output VCF file       " << output_vcf_file << "\n";
         print_int_op("         [i] intervals             ", intervals);
         std::clog << "\n";
