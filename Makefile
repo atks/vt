@@ -39,6 +39,7 @@ SOURCES = align\
 		genotype3\
 		genotyping_buffer\
 		hts_utils\
+		hfilter\
 		index\
 		interval_tree\
 		interval\

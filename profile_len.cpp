@@ -142,7 +142,7 @@ class Igor : Program
         //tools//
         /////////
         vm = new VariantManip();
-    } 
+    }
 
     void profile_len()
     {
@@ -156,6 +156,8 @@ class Igor : Program
         while(odr->read(v))
         {
             bcf_unpack(v, BCF_UN_ALL);
+
+            bcf_print_liten(odr->hdr, v);
 
             if (bcf_get_n_allele(v)!=2)
             {
@@ -176,7 +178,7 @@ class Igor : Program
             float maf = -1;
             if (bcf_get_info_float(odr->hdr, v, AF, &af, &n_af)>0)
             {
-                if (n_af==1) 
+                if (n_af==1)
                 {
                     maf = af[0]>0.5? 1-af[0]: af[0];
                 }
