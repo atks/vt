@@ -42,13 +42,8 @@
 #include "bcf_ordered_writer.h"
 #include "hts_utils.h"
 #include "utils.h"
-#include "interval_tree.h"
-#include "variant_manip.h"
 #include "program.h"
 #include "variant_manip.h"
-#include "log_tool.h"
-#include "gencode.h"
-#include "ordered_region_overlap_matcher.h"
 #include "filter.h"
 
 void hfilter(int argc, char ** argv);

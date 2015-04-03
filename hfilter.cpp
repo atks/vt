@@ -41,8 +41,9 @@ class Igor : Program
     std::vector<GenomeInterval> intervals;
     std::string interval_list;
     std::string regions_bed_file;
-    std::string REGIONS_TAG;
-    std::string REGIONS_TAG_DESC;
+    std::string filter_tag;
+    std::string filter_tag_desc;
+    bool clear_filter;
 
     ///////
     //i/o//
@@ -56,19 +57,17 @@ class Igor : Program
     std::string fexp;
     Filter filter;
     bool filter_exists;
-    
+
     /////////
     //stats//
     /////////
-    int32_t no_variants_annotated;
+    int32_t no_variants_filtered;
     int32_t no_variants;
 
     ////////////////
     //common tools//
     ////////////////
     VariantManip *vm;
-    OrderedRegionOverlapMatcher *orom_regions;
-    OrderedRegionOverlapMatcher *orom_gencode_cds;
 
     Igor(int argc, char **argv)
     {
@@ -86,9 +85,10 @@ class Igor : Program
             TCLAP::ValueArg<std::string> arg_intervals("i", "i", "intervals", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_output_vcf_file("o", "o", "output VCF file [-]", false, "-", "str", cmd);
-            TCLAP::ValueArg<std::string> arg_regions_bed_file("b", "b", "regions BED file []", true, "", "str", cmd);
-            TCLAP::ValueArg<std::string> arg_REGIONS_TAG("t", "t", "regions tag []", true, "", "str", cmd);
-            TCLAP::ValueArg<std::string> arg_REGIONS_TAG_DESC("d", "d", "regions tag description []", true, "", "str", cmd);
+            TCLAP::ValueArg<std::string> arg_filter_tag("t", "t", "filter tag []", true, "", "str", cmd);
+            TCLAP::ValueArg<std::string> arg_filter_tag_desc("d", "d", "filter tag description []", true, "", "str", cmd);
+            TCLAP::ValueArg<std::string> arg_fexp("f", "f", "filter expression []", true, "", "str", cmd);
+            TCLAP::SwitchArg arg_clear_filter("x", "x", "clear filter [false]", cmd, false);
             TCLAP::UnlabeledValueArg<std::string> arg_input_vcf_file("<in.vcf>", "input VCF file", true, "","file", cmd);
 
             cmd.parse(argc, argv);
@@ -96,9 +96,10 @@ class Igor : Program
             input_vcf_file = arg_input_vcf_file.getValue();
             output_vcf_file = arg_output_vcf_file.getValue();
             parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
-            regions_bed_file = arg_regions_bed_file.getValue();
-            REGIONS_TAG = arg_REGIONS_TAG.getValue();
-            REGIONS_TAG_DESC = arg_REGIONS_TAG_DESC.getValue();
+            fexp = arg_fexp.getValue();
+            clear_filter = arg_clear_filter.getValue();
+            filter_tag = arg_filter_tag.getValue();
+            filter_tag_desc = arg_filter_tag_desc.getValue();
         }
         catch (TCLAP::ArgException &e)
         {
@@ -118,7 +119,7 @@ class Igor : Program
         odw = new BCFOrderedWriter(output_vcf_file);
         odw->link_hdr(odr->hdr);
 
-        std::string hrec = "##INFO=<ID=" + REGIONS_TAG + ",Number=0,Type=Flag,Description=\"" + REGIONS_TAG_DESC + "\">";
+        std::string hrec = "##FILTER=<ID=" + filter_tag + ",Description=\"" + filter_tag_desc + "\">";
         bcf_hdr_append(odw->hdr, hrec.c_str());
 
         /////////////////////////
@@ -126,28 +127,28 @@ class Igor : Program
         /////////////////////////
         filter.parse(fexp.c_str(), false);
         filter_exists = fexp=="" ? false : true;
-            
+
         ///////////////////////
         //tool initialization//
         ///////////////////////
-        orom_regions = new OrderedRegionOverlapMatcher(regions_bed_file);
+        vm = new VariantManip();
 
         ////////////////////////
         //stats initialization//
         ////////////////////////
-        no_variants_annotated = 0;
+        no_variants_filtered = 0;
         no_variants = 0;
     }
 
     void print_options()
     {
-        std::clog << "annotate_regions v" << version << "\n";
+        std::clog << "hfilter v" << version << "\n";
         std::clog << "\n";
         std::clog << "options:     input VCF file(s)     " << input_vcf_file << "\n";
         std::clog << "         [o] output VCF file       " << output_vcf_file << "\n";
-        print_str_op("         [m] regions bed file      ", regions_bed_file);
-        print_str_op("         [m] regions bed file      ", regions_bed_file);
-        print_str_op("         [m] regions bed file      ", regions_bed_file);
+        print_str_op("         [f] filter expression     ", fexp);
+        print_str_op("         [t] filter tag            ", filter_tag);
+        print_str_op("         [d] filter description    ", filter_tag_desc);
         print_int_op("         [i] intervals             ", intervals);
         std::clog << "\n";
     }
@@ -155,7 +156,7 @@ class Igor : Program
     void print_stats()
     {
         std::clog << "\n";
-        std::cerr << "stats: no. of variants annotated     " << no_variants_annotated << "\n";
+        std::cerr << "stats: no. of variants filtered     " << no_variants_filtered << "\n";
         std::cerr << "       total no. of variants         " << no_variants << "\n";std::clog << "\n";
     }
 
@@ -165,32 +166,25 @@ class Igor : Program
 
         bcf1_t *v = odw->get_bcf1_from_pool();
         bcf_hdr_t *h = odr->hdr;
-        std::vector<Interval*> overlaps;
         Variant variant;
-        kstring_t s = {0,0,0};
+        int32_t filter_id = bcf_hdr_id2int(h, BCF_DT_ID, filter_tag.c_str());
         while (odr->read(v))
         {
-            if (filter_exists)
+            vm->classify_variant(h, v, variant);
+            if (filter.apply(h, v, &variant, false))
             {
-                vm->classify_variant(h, v, variant);
-                if (!filter.apply(h, v, &variant, false))
+                if (clear_filter)
                 {
-                    continue;
+                    bcf_update_filter(h, v, &filter_id, 1);
+                } 
+                else
+                {
+                    bcf_add_filter(h, v, filter_id);
                 }
+                
+                ++no_variants_filtered;
             }
             
-            bcf_unpack(v, BCF_UN_STR);
-            int32_t vtype = vm->classify_variant(odr->hdr, v, variant);
-            std::string chrom = bcf_get_chrom(odr->hdr,v);
-            int32_t start1 = bcf_get_pos1(v);
-            int32_t end1 = bcf_get_end_pos1(v);
-
-            if (orom_regions->overlaps_with(chrom, start1, end1))
-            {
-                bcf_update_info_flag(odr->hdr, v, REGIONS_TAG.c_str(), "", 1);
-                ++no_variants_annotated;
-            }
-
             ++no_variants;
             odw->write(v);
             v = odw->get_bcf1_from_pool();

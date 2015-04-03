@@ -372,6 +372,13 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
                 b = true;
             }
         }
+        else if (type==VT_N_FILTER)
+        {
+            i = bcf_get_n_filter(v);
+            f = i;
+            b = true; 
+            value_exists = true;
+        }
         else if (type==VT_INFO) //figure out type
         {
             if (!bcf_hdr_idinfo_exists(h, BCF_HL_INFO, bcf_hdr_id2int(h, BCF_DT_ID, tag.s)))
@@ -796,6 +803,12 @@ std::string Node::type2string(int32_t type)
         s += "FILTER";
     }
 
+    if (type==VT_N_FILTER)
+    {
+        s += (s==""? "" : "|");
+        s += "FILTER";
+    }
+
     if (type==VT_INFO)
     {
         s += (s==""? "" : "|");
@@ -1115,6 +1128,12 @@ void Filter::parse_literal(const char* exp, int32_t len, Node * node, bool debug
         exp += 7;
         kputsn(exp, len-7, &node->tag);
         if (debug) std::cerr << "\tis filter_op\n";
+        return;
+    }
+    else if (strncmp(exp, "N_FILTER", len)==0)
+    {
+        node->type = VT_N_FILTER;
+        if (debug) std::cerr << "\tis n_filter_op\n";
         return;
     }
     else if (strncmp(exp, "INFO.", 5)==0)
