@@ -35,7 +35,7 @@ STRMotif::STRMotif(std::string& ref_fasta_file)
         fprintf(stderr, "[%s:%d %s] Cannot load genome index: %s\n", __FILE__, __LINE__, __FUNCTION__, ref_fasta_file.c_str());
         exit(1);
     }
-    mst = new MotifSuffixTree();
+    mt = new MotifTree();
     rfhmm = new RFHMM();
     lfhmm = new LFHMM();
 
@@ -300,8 +300,8 @@ void STRMotif::pick_candidate_motifs(bcf_hdr_t* h, bcf1_t* v, std::vector<Candid
     std::cerr << "             " << seq << "\n";
     
     //detect motif
-    mst->set_sequence(seq);
-    mst->get_candidate_motifs(candidate_motifs);
+    mt->set_sequence(seq);
+    mt->get_candidate_motifs(candidate_motifs);
     
     
     

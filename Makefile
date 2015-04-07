@@ -50,7 +50,6 @@ SOURCES = align\
 		log_tool\
 		merge\
 		merge_candidate_variants\
-		motif_suffix_tree\
 		motif_tree\
 		ordered_bcf_overlap_matcher\
 		ordered_region_overlap_matcher\

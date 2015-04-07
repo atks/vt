@@ -41,7 +41,7 @@
 #include "lfhmm.h"
 #include "variant_manip.h"
 #include "program.h"
-#include "motif_suffix_tree.h"
+#include "motif_tree.h"
 
 KHASH_MAP_INIT_STR(mdict, int32_t);
 
@@ -80,7 +80,7 @@ class STRMotif
     ///////
     VariantManip *vm;
     faidx_t* fai;
-    MotifSuffixTree* mst;
+    MotifTree* mt;
     RFHMM* rfhmm;
     LFHMM* lfhmm;
 
