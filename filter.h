@@ -69,6 +69,8 @@
 #define VT_VARIANT_LEN   (39|VT_INT|VT_BCF_OP)
 #define VT_N_FILTER      (40|VT_INT|VT_BCF_OP)
 
+//problems will arise once you pass 63.
+
 #define VT_UNKNOWN -1
 
 /**

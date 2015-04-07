@@ -100,7 +100,6 @@ class Igor : Program
             input_vcf_file = arg_input_vcf_file.getValue();
             output_vcf_file = arg_output_vcf_file.getValue();
             parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
-            //read_sample_list(samples, arg_sample_list.getValue());
             fexp = arg_fexp.getValue();
             print_header = arg_print_header.getValue();
             print_header_only = arg_print_header_only.getValue();

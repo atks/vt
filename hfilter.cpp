@@ -157,7 +157,7 @@ class Igor : Program
     {
         std::clog << "\n";
         std::cerr << "stats: no. of variants filtered     " << no_variants_filtered << "\n";
-        std::cerr << "       total no. of variants         " << no_variants << "\n";std::clog << "\n";
+        std::cerr << "       total no. of variants        " << no_variants << "\n";std::clog << "\n";
     }
 
     void hfilter()
