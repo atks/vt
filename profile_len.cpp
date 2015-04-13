@@ -157,7 +157,7 @@ class Igor : Program
         {
             bcf_unpack(v, BCF_UN_ALL);
 
-            bcf_print_liten(odr->hdr, v);
+            //bcf_print_liten(odr->hdr, v);
 
             if (bcf_get_n_allele(v)!=2)
             {

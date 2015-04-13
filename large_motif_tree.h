@@ -21,8 +21,8 @@
    THE SOFTWARE.
 */
 
-#ifndef MOTIF_TREE_H
-#define MOTIF_TREE_H
+#ifndef LARGE_MOTIF_TREE_H
+#define LARGE_MOTIF_TREE_H
 
 #include <cstdint>
 #include <cstring>
@@ -74,7 +74,7 @@ typedef struct
  *  
  *
  */
-class MotifTree
+class LargeMotifTree
 {
     public:
     node* tree;
@@ -82,12 +82,12 @@ class MotifTree
     /**
      * Constructor.
      */
-    MotifTree();
+    LargeMotifTree();
 
     /**
      * Destructor.
      */
-    ~MotifTree();
+    ~LargeMotifTree();
 
     /**
      * Clear the suffix tree.

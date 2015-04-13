@@ -40,6 +40,7 @@ SOURCES = align\
 		genotyping_buffer\
 		hts_utils\
 		hfilter\
+		large_motif_tree\
 		index\
 		interval_tree\
 		interval\

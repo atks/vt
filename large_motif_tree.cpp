@@ -21,7 +21,7 @@
    THE SOFTWARE.
 */
 
-#include "motif_tree.h"
+#include "large_motif_tree.h"
 
 #define A 1
 #define C 2
@@ -36,7 +36,7 @@
 /**
  * Constructor.
  */
-MotifTree::MotifTree()
+LargeMotifTree::LargeMotifTree()
 {
     uint32_t size = (1<<2) + (1<<4) + (1<<6) + (1<<8) + (1<<10) + (1<<12) + (1<<14) + (1<<16);
 
@@ -98,7 +98,7 @@ MotifTree::MotifTree()
 /**
  * Destructor.
  */
-MotifTree::~MotifTree()
+LargeMotifTree::~LargeMotifTree()
 {
     if (tree) delete tree;
 };
@@ -106,7 +106,7 @@ MotifTree::~MotifTree()
 /**
  * Construct suffix tree based on sequence.
  */
-void MotifTree::set_sequence(char* sequence)
+void LargeMotifTree::set_sequence(char* sequence)
 {
     //translate sequence to binary form
     uint32_t len = strlen(sequence);
@@ -118,7 +118,7 @@ void MotifTree::set_sequence(char* sequence)
 /**
  * Construct suffix tree based on sequence up to max_motif_len.
  */
-void MotifTree::set_sequence(char* sequence, int32_t max_motif_len)
+void LargeMotifTree::set_sequence(char* sequence, int32_t max_motif_len)
 {
 
 };
@@ -126,7 +126,7 @@ void MotifTree::set_sequence(char* sequence, int32_t max_motif_len)
 /**
  * Gets candidate motifs up to max_motif_len.
  */
-void MotifTree::get_candidate_motifs(std::vector<CandidateMotif>& candidate_motifs)
+void LargeMotifTree::get_candidate_motifs(std::vector<CandidateMotif>& candidate_motifs)
 {
 
 };
@@ -134,7 +134,7 @@ void MotifTree::get_candidate_motifs(std::vector<CandidateMotif>& candidate_moti
 /**
  * Get canonical representation.
  */
-uint32_t MotifTree::canonical(uint32_t motif)
+uint32_t LargeMotifTree::canonical(uint32_t motif)
 {
     uint32_t cmotif = motif;
     uint32_t smotif = motif;
@@ -156,7 +156,7 @@ uint32_t MotifTree::canonical(uint32_t motif)
 /**
  * Adds a suffix of sequence from start to end.
  */
-void MotifTree::add_suffix(char* sequence, int32_t start, int32_t end)
+void LargeMotifTree::add_suffix(char* sequence, int32_t start, int32_t end)
 {
 
 };
@@ -164,7 +164,7 @@ void MotifTree::add_suffix(char* sequence, int32_t start, int32_t end)
 /**
  * Converts base to index.
  */
-int32_t MotifTree::base2index(char base)
+int32_t LargeMotifTree::base2index(char base)
 {
     switch (base)
     {
@@ -188,7 +188,7 @@ int32_t MotifTree::base2index(char base)
 /**
  * Print sequence.
  */
-void MotifTree::print(uint32_t seq)
+void LargeMotifTree::print(uint32_t seq)
 {
     uint8_t *seq_ptr = (uint8_t*) &seq;
 
