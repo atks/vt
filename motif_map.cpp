@@ -1,6 +1,6 @@
 /* The MIT License
 
-   Copyright (c) 2014 Adrian Tan <atks@umich.edu>
+   Copyright (c) 2015 Adrian Tan <atks@umich.edu>
 
    Permission is hereby granted, free of charge, to any person obtaining a copy
    of this software and associated documentation files (the "Software"), to deal
@@ -32,68 +32,22 @@
 /**
  * Constructor.
  */
-MotifMap::MotifMap()
+MotifMap::MotifMap(uint32_t size)
 {
-    uint32_t size = (1<<2) + (1<<4) + (1<<6) + (1<<8) + (1<<10) + (1<<12) + (1<<14) + (1<<16);
-
-    //len_count = (uint32_t *) malloc(sizeof(uint32_t)*9);
-
-    len_count.resize(8,0);
-    for (uint32_t i=1; i<8; ++i)
+    if (size>8)
+    {
+        fprintf(stderr, "[%s:%d %s] size > 8  not supported : %d\n", __FILE__, __LINE__, __FUNCTION__, size);
+        exit(1);
+    }    
+    
+    uint32_t max_size = 0;
+    len_count.resize(size,0);
+    for (uint32_t i=1; i<size; ++i)
     {
         len_count[i] = len_count[i-1] + (1<<(2*i));
         std::cerr << "\t1<< " << (2*i) << " : " << (1<<(2*i)) << " " << len_count[i] << "\n";
+        max_size += (1<<(2*i));
     }
-
-    std::cerr << "size : " << size << "\n";
-    std::cerr << "\t1<<2 : " << (1<<2) << "\n";
-    std::cerr << "\t1<<4 : " << (1<<4) << "\n";
-    std::cerr << "\t1<<6 : " << (1<<6) << "\n";
-    std::cerr << "\t1<<8 : " << (1<<8) << "\n";
-    std::cerr << "\t1<<10 : " << (1<<10) << "\n";
-    std::cerr << "\t1<<12 : " << (1<<12) << "\n";
-    std::cerr << "\t1<<14 : " << (1<<14) << "\n";
-    std::cerr << "\t1<<16 : " << (1<<16) << "\n";
-    std::cerr << "\tmax int16_t : " << 0xFFFF << "\n";
-
-   
-    uint64_t value = 0;
-    //you only want to loop through multiples of 2
-//    for (uint32_t i=0; i<size; ++i)
-//    {
-//        uint32_t c = canonical(i);
-//        tree[i] = ((uint64_t) c)<<32;
-//        std::cerr << i << ":" << c << ":" << tree[i] << "\n";
-//        if (i==1) exit(1);
-//    }
-
-    //enumerate size
-
-    //map index to sequence
-
-
-    //map sequence to index - 4 based
-
-    uint32_t next_len_index;
-    uint32_t clen = 1;
-    uint32_t seq = 0;
-
-exit(1);
-
-    for (uint32_t i=0; i<size; ++i)
-    {
-        //node tnode = tree[i];
-        if (i==next_len_index)
-        {
-            ++clen;
-        }
-
-        //for the len - extract base
-        uint32_t c = canonical(seq);
-
-
-    }
-
 };
 
 /**
@@ -101,26 +55,6 @@ exit(1);
  */
 MotifMap::~MotifMap()
 {
-};
-
-/**
- * Construct suffix tree based on sequence.
- */
-void MotifMap::set_sequence(char* sequence)
-{
-    //translate sequence to binary form
-    uint32_t len = strlen(sequence);
-
-
-
-};
-
-/**
- * Construct suffix tree based on sequence up to max_motif_len.
- */
-void MotifMap::set_sequence(char* sequence, int32_t max_motif_len)
-{
-
 };
 
 /**
@@ -145,50 +79,18 @@ uint32_t MotifMap::canonical(uint32_t motif)
 /**
  * Converts index to sequence.
  */
-uint32_t MotifMap::index2sequence(uint32_t index)
+uint32_t MotifMap::index2seq(uint32_t index)
 {
     return 0;
 }
 
 /**
- * Gets index of child.
+ * Converts index to sequence.
  */
-uint32_t MotifMap::get_first_child(uint32_t index)
+uint32_t MotifMap::seq2index(uint32_t index)
 {
     return 0;
 }
-
-/**
- * Adds a suffix of sequence from start to end.
- */
-void MotifMap::add_suffix(char* sequence, int32_t start, int32_t end)
-{
-
-};
-
-/**
- * Converts base to index.
- */
-int32_t MotifMap::base2index(char base)
-{
-    switch (base)
-    {
-        case 'A':
-            return A;
-            break;
-        case 'C':
-            return C;
-            break;
-        case 'G':
-            return G;
-            break;
-        case 'T':
-            return T;
-            break;
-        default:
-            return N;
-    }
-};
 
 #undef A
 #undef C

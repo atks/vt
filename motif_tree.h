@@ -31,6 +31,7 @@
 #include <iostream>
 #include <queue>
 #include "candidate_motif.h"
+#include "motif_map.h"
 
 /**
  * Macros for accessing node.
@@ -80,11 +81,12 @@ class MotifTree
     public:
     std::vector<uint32_t> len_count;    
     node* tree;
+    MotifMap *mm;
 
     /**
      * Constructor.
      */
-    MotifTree();
+    MotifTree(uint32_t size);
 
     /**
      * Destructor.

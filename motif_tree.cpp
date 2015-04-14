@@ -32,18 +32,12 @@
 /**
  * Constructor.
  */
-MotifTree::MotifTree()
-{
-    uint32_t size = (1<<2) + (1<<4) + (1<<6) + (1<<8) + (1<<10) + (1<<12) + (1<<14) + (1<<16);
+MotifTree::MotifTree(uint32_t size)
+{   
+    mm = new MotifMap(size); 
 
-    //len_count = (uint32_t *) malloc(sizeof(uint32_t)*9);
 
-    len_count.resize(8,0);
-    for (uint32_t i=1; i<8; ++i)
-    {
-        len_count[i] = len_count[i-1] + (1<<(2*i));
-        std::cerr << "\t1<< " << (2*i) << " : " << (1<<(2*i)) << " " << len_count[i] << "\n";
-    }
+    exit(1);
 
     std::cerr << "size : " << size << "\n";
     std::cerr << "\t1<<2 : " << (1<<2) << "\n";
@@ -103,7 +97,8 @@ exit(1);
  */
 MotifTree::~MotifTree()
 {
-    if (tree) delete tree;
+    if (tree) delete tree; 
+    if (mm) delete mm;
 };
 
 /**
