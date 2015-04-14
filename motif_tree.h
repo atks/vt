@@ -46,7 +46,8 @@ typedef struct
 {
     uint32_t cindex;
     uint16_t count;
-    uint32_t seq;
+    uint16_t len;
+    uint32_t seq; //up length 16 since 2 bits encode 1 base
     
 } node;
 
@@ -77,6 +78,7 @@ typedef struct
 class MotifTree
 {
     public:
+    std::vector<uint32_t> len_count;    
     node* tree;
 
     /**
@@ -127,7 +129,7 @@ class MotifTree
     /**
      * Gets index of child.
      */
-    uint32_t get_child(uint32_t index);
+    uint32_t get_first_child(uint32_t index);
     
 
     private:

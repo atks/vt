@@ -52,6 +52,7 @@ SOURCES = align\
 		merge\
 		merge_candidate_variants\
 		motif_tree\
+		motif_map\
 		ordered_bcf_overlap_matcher\
 		ordered_region_overlap_matcher\
 		partition\

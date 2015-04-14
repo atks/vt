@@ -21,8 +21,8 @@
    THE SOFTWARE.
 */
 
-#ifndef LARGE_MOTIF_TREE_H
-#define LARGE_MOTIF_TREE_H
+#ifndef MOTIF_MAP_H
+#define MOTIF_MAP_H
 
 #include <cstdint>
 #include <cstring>
@@ -30,7 +30,7 @@
 #include <list>
 #include <iostream>
 #include <queue>
-#include "candidate_motif.h"
+#include "motif_map.h"
 
 /**
  * Macros for accessing node.
@@ -46,22 +46,11 @@ typedef struct
 {
     uint32_t cindex;
     uint16_t count;
-    uint32_t seq;
+    uint16_t len;
+    uint32_t seq; //up length 16 since 2 bits encode 1 base
     
 } node;
 
-#define shift1(m) (((0x0FFFFFFF&(m))<<4) | ((0xF0000000&(m))>>28))
-#define shift2(m) ((0x00FFFFFF&(m)<<8) | (0xFF000000&(m)>>24))
-#define shift3(m) ((0x000FFFFF&(m)<<12) | (0xFFF00000&(m)>>20))
-#define shift4(m) ((0x0000FFFF&(m)<<16) | (0xFFFF0000&(m)>>16))
-#define shift5(m) ((0x00000FFF&(m)<<20) | (0xFFFFF000&(m)>>12))
-#define shift6(m) ((0x000000FF&(m)<<24) | (0xFFFFFF00&(m)>>8))
-#define shift7(m) ((0x0000000F&(m)<<28) | (0xFFFFFFF0&(m)>>4))
-
-#define seqi(s, i) ((s)[(i)>>1] >> ((~(i)&1)<<2) & 0xF)
-
-#define index2base(i) ("ACGT"[(i)])
-
 /**
  * Motif Suffix Tree for selecting candidate motifs.
  *
@@ -74,37 +63,20 @@ typedef struct
  *  
  *
  */
-class LargeMotifTreeNode
-{
-    
-};
-
-/**
- * Motif Suffix Tree for selecting candidate motifs.
- *
- * Each node is represented by int64_t
- *
- * the first 20 bits indexes to the cannonical form
- * the next 12 bits gives the count
- * the last 32 bits provides the sequence represented by 2 bits per base
- * the 
- *  
- *
- */
-class LargeMotifTree
+class MotifMap
 {
     public:
-    node* tree;
+    std::vector<uint32_t> len_count;    
 
     /**
      * Constructor.
      */
-    LargeMotifTree();
+    MotifMap(uint32_t size);
 
     /**
      * Destructor.
      */
-    ~LargeMotifTree();
+    ~MotifMap();
 
     /**
      * Clear the suffix tree.
@@ -120,11 +92,6 @@ class LargeMotifTree
      * Construct suffix tree based on sequence up to max_motif_len.
      */
     void set_sequence(char* sequence, int32_t max_motif_len);
-
-    /**
-     * Gets candidate motifs up to max_motif_len.
-     */
-    void get_candidate_motifs(std::vector<CandidateMotif>& candidate_motifs);
 
     /**
      * Get canonical representation.
@@ -144,7 +111,7 @@ class LargeMotifTree
     /**
      * Gets index of child.
      */
-    uint32_t get_child(uint32_t index);
+    uint32_t get_first_child(uint32_t index);
     
 
     private:

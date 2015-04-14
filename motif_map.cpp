@@ -21,7 +21,7 @@
    THE SOFTWARE.
 */
 
-#include "motif_tree.h"
+#include "motif_map.h"
 
 #define A 1
 #define C 2
@@ -32,7 +32,7 @@
 /**
  * Constructor.
  */
-MotifTree::MotifTree()
+MotifMap::MotifMap()
 {
     uint32_t size = (1<<2) + (1<<4) + (1<<6) + (1<<8) + (1<<10) + (1<<12) + (1<<14) + (1<<16);
 
@@ -56,9 +56,7 @@ MotifTree::MotifTree()
     std::cerr << "\t1<<16 : " << (1<<16) << "\n";
     std::cerr << "\tmax int16_t : " << 0xFFFF << "\n";
 
-    tree = (node *) malloc(sizeof(node)*size);
-
-
+   
     uint64_t value = 0;
     //you only want to loop through multiples of 2
 //    for (uint32_t i=0; i<size; ++i)
@@ -101,15 +99,14 @@ exit(1);
 /**
  * Destructor.
  */
-MotifTree::~MotifTree()
+MotifMap::~MotifMap()
 {
-    if (tree) delete tree;
 };
 
 /**
  * Construct suffix tree based on sequence.
  */
-void MotifTree::set_sequence(char* sequence)
+void MotifMap::set_sequence(char* sequence)
 {
     //translate sequence to binary form
     uint32_t len = strlen(sequence);
@@ -121,15 +118,7 @@ void MotifTree::set_sequence(char* sequence)
 /**
  * Construct suffix tree based on sequence up to max_motif_len.
  */
-void MotifTree::set_sequence(char* sequence, int32_t max_motif_len)
-{
-
-};
-
-/**
- * Gets candidate motifs up to max_motif_len.
- */
-void MotifTree::get_candidate_motifs(std::vector<CandidateMotif>& candidate_motifs)
+void MotifMap::set_sequence(char* sequence, int32_t max_motif_len)
 {
 
 };
@@ -137,18 +126,15 @@ void MotifTree::get_candidate_motifs(std::vector<CandidateMotif>& candidate_moti
 /**
  * Get canonical representation.
  */
-uint32_t MotifTree::canonical(uint32_t motif)
+uint32_t MotifMap::canonical(uint32_t motif)
 {
     uint32_t cmotif = motif;
     uint32_t smotif = motif;
     std::cerr << "\t" << 0 << ") " << smotif << " - ";
-    print(smotif);
     std::cerr << "\n";
     for (uint32_t i=1; i<8; ++i)
     {
-        smotif = shift1(smotif);
         std::cerr << "\t" << i << ") " << smotif << " - ";
-        print(smotif);
         std::cerr << "\n";
         cmotif = smotif<cmotif ? smotif : cmotif;
     }
@@ -159,15 +145,7 @@ uint32_t MotifTree::canonical(uint32_t motif)
 /**
  * Converts index to sequence.
  */
-uint32_t MotifTree::index2sequence(uint32_t index)
-{
-    return 0;
-}
-
-/**
- * Converts sequence to index.
- */
-uint32_t sequence2index(uint32_t index)
+uint32_t MotifMap::index2sequence(uint32_t index)
 {
     return 0;
 }
@@ -175,7 +153,7 @@ uint32_t sequence2index(uint32_t index)
 /**
  * Gets index of child.
  */
-uint32_t MotifTree::get_first_child(uint32_t index)
+uint32_t MotifMap::get_first_child(uint32_t index)
 {
     return 0;
 }
@@ -183,7 +161,7 @@ uint32_t MotifTree::get_first_child(uint32_t index)
 /**
  * Adds a suffix of sequence from start to end.
  */
-void MotifTree::add_suffix(char* sequence, int32_t start, int32_t end)
+void MotifMap::add_suffix(char* sequence, int32_t start, int32_t end)
 {
 
 };
@@ -191,7 +169,7 @@ void MotifTree::add_suffix(char* sequence, int32_t start, int32_t end)
 /**
  * Converts base to index.
  */
-int32_t MotifTree::base2index(char base)
+int32_t MotifMap::base2index(char base)
 {
     switch (base)
     {
@@ -211,30 +189,6 @@ int32_t MotifTree::base2index(char base)
             return N;
     }
 };
-
-/**
- * Print sequence.
- */
-void MotifTree::print(uint32_t seq)
-{
-    uint8_t *seq_ptr = (uint8_t*) &seq;
-
-    std::cerr << index2base(seq_ptr[0] & 0xF);
-    std::cerr << index2base(seq_ptr[0] >> 4 & 0xF);
-    std::cerr << index2base(seq_ptr[1] & 0xF);
-    std::cerr << index2base(seq_ptr[1] >> 4 & 0xF);
-    std::cerr << index2base(seq_ptr[2] & 0xF);
-    std::cerr << index2base(seq_ptr[2] >> 4 & 0xF);
-    std::cerr << index2base(seq_ptr[3] & 0xF);
-    std::cerr << index2base(seq_ptr[3] >> 4 & 0xF);
-
-//    for (uint32_t i=0; i<8; ++i)
-//    {
-//        //seqi(s, i) ((s)[(i)>>1] >> ((~(i)&1)<<2) & 0xf)
-//        std::cerr << "(" << seqi(seq_ptr, i) << ")" ;
-//        std::cerr << index2base(seqi(seq_ptr, i));
-//    }
-}
 
 #undef A
 #undef C
