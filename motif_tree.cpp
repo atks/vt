@@ -1,6 +1,6 @@
 /* The MIT License
 
-   Copyright (c) 2014 Adrian Tan <atks@umich.edu>
+   Copyright (c) 2015 Adrian Tan <atks@umich.edu>
 
    Permission is hereby granted, free of charge, to any person obtaining a copy
    of this software and associated documentation files (the "Software"), to deal
@@ -39,7 +39,7 @@ MotifTree::MotifTree(uint32_t size)
 
     exit(1);
 
-    std::cerr << "size : " << size << "\n";
+    std::cerr << "\tsize : " << size << "\n";
     std::cerr << "\t1<<2 : " << (1<<2) << "\n";
     std::cerr << "\t1<<4 : " << (1<<4) << "\n";
     std::cerr << "\t1<<6 : " << (1<<6) << "\n";

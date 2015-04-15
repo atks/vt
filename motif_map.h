@@ -27,7 +27,10 @@
 #include <cstdint>
 #include <vector>
 #include <iostream>
-#include "motif_map.h"
+
+#define get_seqi(s, i) (((s)>>((15-(i))<<1)) & 3)
+//make sure s is blanked out first.
+#define set_seqi(s, i, b) (((b)<<((15-(i))<<1)) | s)
 
 /**
  * Motif Map for the mapping functions to and from index.
@@ -38,11 +41,12 @@ class MotifMap
 {
     public:
     std::vector<uint32_t> len_count;
+    uint32_t max_len;    
 
     /**
      * Constructor.
      */
-    MotifMap(uint32_t size);
+    MotifMap(uint32_t max_len);
 
     /**
      * Destructor.
@@ -62,15 +66,15 @@ class MotifMap
     /**
      * Converts sequence to index.
      */
-    uint32_t seq2index(uint32_t index);
+    uint32_t seq2index(uint32_t seq, uint32_t len);
+    
+    /**
+     * Prints sequence.
+     */
+    void print_seq(uint32_t seq, uint32_t len);
+    
 
     private:
 };
-
-#undef A
-#undef C
-#undef G
-#undef T
-#undef N
 
 #endif
