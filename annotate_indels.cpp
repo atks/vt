@@ -163,10 +163,10 @@ class Igor : Program
 
         while (odr->read(v))
         {
-//            bcf_unpack(v, BCF_UN_STR);
-//            int32_t vtype = vm->classify_variant(odr->hdr, v, variant);
-//            if (vtype&VT_INDEL)
-//            {
+            bcf_unpack(v, BCF_UN_STR);
+            int32_t vtype = vm->classify_variant(odr->hdr, v, variant);
+            if (vtype&VT_INDEL || vtype&VT_VNTR)
+            {
 //                //annotate indel like variant
 //                strm->annotate(odr->hdr, v, variant);
 //
@@ -188,11 +188,11 @@ class Igor : Program
 //                    if (len) free(seq);
 //                }
 //
-//                ++no_variants_annotated;
-//            }
-//
-//            odw->write(v);
-//            v = odw->get_bcf1_from_pool();
+                ++no_variants_annotated;
+            }
+
+            odw->write(v);
+            v = odw->get_bcf1_from_pool();
         }
 
         odw->close();

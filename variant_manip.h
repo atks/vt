@@ -42,15 +42,6 @@
 #include "variant.h"
 #include "allele.h"
 
-//int BitCount(unsigned int u)
-//{
-//     unsigned int uCount;
-//
-//#ifndef countbit32
-//#define countbit32(x) (y = u - ((u >> 1) & 033333333333) - ((u >> 2) & 011111111111); ((y + (y >> 3)) & 030707070707) % 63);
-//
-//#endif
-
 /**
  * Methods for manipulating variants
  */

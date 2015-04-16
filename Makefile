@@ -75,7 +75,6 @@ SOURCES = align\
 		rfhmm\
 		seq\
 		sort\
-		str\
 		subset\
 		sv_tree\
 		test\
@@ -87,6 +86,7 @@ SOURCES = align\
 		variant_manip\
 		variant_filter\
 		view\
+		vntr\
 		vntrize\
    	    tbx_ordered_reader\
     	ahmm\

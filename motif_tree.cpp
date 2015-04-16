@@ -36,7 +36,6 @@ MotifTree::MotifTree(uint32_t max_len)
     mm = new MotifMap(max_len); 
 
     tree = (node *) malloc(sizeof(node)*mm->max_index+1);
-
         
     //perform mapping.
     for (uint32_t len=1; len<=max_len; ++len)
@@ -46,13 +45,13 @@ MotifTree::MotifTree(uint32_t max_len)
             uint32_t seq = mm->index2seq(index);
             tree[index] = {mm->seq2index(seq, len), 0, len, seq};
 
-            if (index>1349515 && index<1349520)
+            if (index>1349515)
             {   
 //                uint32_t seq = mm->index2seq(index);
 //                tree[index] = {mm->seq2index(seq, len), 0, len, seq};
-                std::cerr << "idx: " << index << "\n";
-                print_node(&tree[index]);
-                std::cerr << "mlen: " << max_len << "\n";
+//                std::cerr << "idx: " << index << "\n";
+//                print_node(&tree[index]);
+//                std::cerr << "mlen: " << max_len << "\n";
 
 //               if (index==24517) exit(1);
             }

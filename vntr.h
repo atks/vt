@@ -21,8 +21,8 @@
    THE SOFTWARE.
 */
 
-#ifndef STR_H
-#define STR_H
+#ifndef VNTR_H
+#define VNTR_H
 
 #include <cstdlib>
 #include <cstdint>
@@ -47,7 +47,7 @@ KHASH_MAP_INIT_STR(mdict, int32_t);
 
 /**
  * Class for determining basic traits of an indel
- * motifs, flanks and STR type statistics.
+ * motifs, flanks and VNTR type statistics.
  * RU,RL,LFLANK,RFLANK,LFLANKPOS,RFLANKPOS,MOTIF_CONCORDANCE,MOTIF_CONCORDANCE
  */
 class STRMotif

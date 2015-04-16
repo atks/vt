@@ -21,7 +21,7 @@
    THE SOFTWARE.
 */
 
-#include "str.h"
+#include "vntr.h"
 
 /**
  * Constructor.
