@@ -38,10 +38,10 @@ MotifMap::MotifMap(uint32_t max_len)
         fprintf(stderr, "[%s:%d %s] max_len > 16  not supported : %d\n", __FILE__, __LINE__, __FUNCTION__, max_len);
         exit(1);
     }
-
+    
     this->max_len = max_len;
 
-    uint32_t max_index = 0;
+    max_index = 0;
     len_count.resize(max_len+1,0);
     std::cerr << "\tmax_len: " << max_len << "\n";
 
@@ -52,22 +52,30 @@ MotifMap::MotifMap(uint32_t max_len)
         max_index += (1<<(2*i));
     }
 
-    std::cerr << "\tmax index: " << (max_index-1) << "\n\n";
+    --max_index;
 
-    //perform mapping.
-    for (uint32_t len=1; len<=max_len; ++len)
-    {
-        std::cerr << "\tlen: " << len << "\n";
-        uint32_t max_index = len_count[len-1] + (1<<(2*len));
+    std::cerr << "\tmax index: " << max_index << "\n\n";
 
-        for (uint32_t index=len_count[len-1]; index<max_index; ++index)
-        {
-            std::cerr << "\t" << index << "\n";
-            index2seq(index);
-        }
-
-        if (len==3) exit(1);    
-    }
+//    //perform mapping.
+//    for (uint32_t len=1; len<=max_len; ++len)
+//    {
+//        std::cerr << "\tlen: " << len << "\n";
+//        uint32_t max_index = len_count[len-1] + (1<<(2*len));
+//
+//        for (uint32_t index=len_count[len-1]; index<max_index; ++index)
+//        {
+//            std::cerr << "\tindex: " << index << "\n";
+//            uint32_t seq = index2seq(index);
+//            std::cerr << "\tseq: ";
+//            print_seq(seq, len);
+//            uint32_t rindex = seq2index(seq, len);
+//            std::cerr << "\trindex: " << rindex << "\n\n";
+//                
+//            canonical(seq,len);    
+//        }
+//
+//        if (len==3) exit(1);    
+//    }
 }
 
 /**
@@ -80,20 +88,30 @@ MotifMap::~MotifMap()
 /**
  * Get canonical representation.
  */
-uint32_t MotifMap::canonical(uint32_t motif)
+uint32_t MotifMap::canonical(uint32_t seq, uint32_t len)
 {
-    uint32_t cmotif = motif;
-    uint32_t smotif = motif;
-    std::cerr << "\t" << 0 << ") " << smotif << " - ";
-    std::cerr << "\n";
-    for (uint32_t i=1; i<max_len; ++i)
+    if (len==1)
     {
-        std::cerr << "\t" << i << ") " << smotif << " - ";
-        std::cerr << "\n";
-        cmotif = smotif<cmotif ? smotif : cmotif;
+        return seq;
+    }    
+    
+    uint32_t cseq = seq;
+    uint32_t sseq = seq;
+    std::cerr << "\t\t\tcseq: " << seq2str(cseq,len) << " (" << cseq << ")\n";
+    std::cerr << "\t\t\tsseq: " << seq2str(sseq,len) << " (" << sseq << ")\n\n";
+    for (uint32_t i=1; i<len; ++i)
+    {
+        sseq = shift(sseq,len);
+        
+        if (sseq<cseq)
+        {
+            cseq = sseq;
+        }    
+        std::cerr << "\t\t\tcseq: " << seq2str(cseq,len) << " (" << cseq << ")\n";
+        std::cerr << "\t\t\tsseq: " << seq2str(sseq,len) << " (" << sseq << ")\n\n";
     }
 
-    return cmotif;
+    return cseq;
 }
 
 /**
@@ -101,12 +119,15 @@ uint32_t MotifMap::canonical(uint32_t motif)
  */
 uint32_t MotifMap::index2seq(uint32_t index)
 {
+//    std::cerr << "in index2seq\n ";
+    
     uint32_t s = 0;
-    for (uint32_t len=1; len<max_len; ++len)
+    for (uint32_t len=1; len<=max_len; ++len)
     {
+//        std::cerr << len << " " << len_count[len] << "\n";
         if (index<len_count[len])
         {
-            //std::cerr << "len: " << (len) << "\n";
+//            std::cerr << "len: " << (len) << "\n";
             index -= len_count[len-1];
             for (int32_t i=len; i>0; --i)
             {
@@ -115,18 +136,17 @@ uint32_t MotifMap::index2seq(uint32_t index)
 //                std::cerr << "\ti: " << i << "\n";
 //                std::cerr << "\ts: " << s << "\n";
 //                std::cerr << "\tj: " << (i-1) << "\n";
-//                std::cerr << "\tbase: " << "ACGT"[j] << "\n";
-                
+//                std::cerr << "\tbase: " << "ACGT"[j] << "\n";                
                 s = set_seqi(s,(len-i),j);
             }
-            std::cerr << "seq : ";
-            print_seq(s, len);
+//            std::cerr << "seq : ";
+//            print_seq(s, len);
 
-            return 0;
+            return s;
         }
     }
 
-    return 0;
+    return s;
 }
 
 /**
@@ -134,26 +154,25 @@ uint32_t MotifMap::index2seq(uint32_t index)
  */
 uint32_t MotifMap::seq2index(uint32_t seq, uint32_t len)
 {
-//    for (uint32_t len=1; len<max_len; ++len)
-//    {
-//        if (index<len_count[len])
-//        {
-//            //std::cerr << "len: " << (len) << "\n";
-//            index -= len_count[len-1];
-//            for (int32_t i=len; i>0; --i)
-//            {
-//                uint32_t j = ((index >> ((i-1)<<1)) & 3);
-////                std::cerr << "s: " << j << " ";
-////                std::cerr << "j: " << j << " ";
-//                std::cerr << "ACGT"[j] << ""; 
-//            }
-//            std::cerr << "\n";
-//
-//            return 0;
-//        }
-//    }
+    uint32_t index = len_count[len-1];
+//    std::cerr  << "\t\tbase: " << index << "\n";
+    
+    if (len==1)
+    {
+        return seq;
+    }    
+  
+    uint32_t cseq = seq;  
+    for (uint32_t i=0; i<len; ++i)
+    {
+//        std::cerr << "\t\tlen-i: " << len-i << "\n";
+//        std::cerr << "\t\tget_seqi: " << get_seqi(seq,i) << "\n";
+//        std::cerr << "\t\tshift: " << ((len-i-1)<<1) << "\n";
+//        std::cerr << "\t\tadd: " << ((get_seqi(seq,i)) << ((len-i)<<1) ) << "\n";
+        index += get_seqi(seq,i) << ((len-i-1)<<1) ;
+    }
 
-    return 0;
+    return index;
 }
 
 /**
@@ -168,6 +187,21 @@ void MotifMap::print_seq(uint32_t seq, uint32_t len)
     std::cerr << "\n";
 };
 
+
+
+/**
+ * Converts sequence to string.
+ */
+std::string MotifMap::seq2str(uint32_t seq, uint32_t len)
+{
+    std::string s;
+    for (int32_t i=0; i<len; ++i)
+    {
+        s.append(1,"ACGT"[get_seqi(seq, i)]);
+    }
+
+    return s;
+};
 
 #undef A
 #undef C

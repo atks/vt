@@ -42,15 +42,14 @@
 #define G 2
 #define T 3
 
-
 /**
  * struct for encoding a node.
  */
 typedef struct 
 {
     uint32_t cindex; //index of the cannonical form
-    uint16_t count;  //count of occurence of this motif
-    uint16_t len;    //length of the motif
+    uint32_t count;  //count of occurence of this motif
+    uint32_t len;    //length of the motif
     uint32_t seq;    //sequence encoded in 2 bits per base, this allows for a maximum length of 16 bases
     
 } node;
@@ -72,14 +71,13 @@ typedef struct
 class MotifTree
 {
     public:
-    std::vector<uint32_t> len_count;    
     node* tree;
     MotifMap *mm;
 
     /**
      * Constructor.
      */
-    MotifTree(uint32_t size);
+    MotifTree(uint32_t max_len);
 
     /**
      * Destructor.
@@ -105,21 +103,6 @@ class MotifTree
      * Gets candidate motifs up to max_motif_len.
      */
     void get_candidate_motifs(std::vector<CandidateMotif>& candidate_motifs);
-
-    /**
-     * Get canonical representation.
-     */
-    uint32_t canonical(uint32_t motif);
-        
-    /**
-     * Converts index to sequence.
-     */
-    uint32_t index2sequence(uint32_t index);
-
-    /**
-     * Converts sequence to index.
-     */
-    uint32_t sequence2index(uint32_t index);
     
     /**
      * Gets index of child.
@@ -140,9 +123,9 @@ class MotifTree
     int32_t base2index(char base);
 
     /**
-     * Print sequence.
+     * Print node.
      */
-    void print(uint32_t seq);
+    void print_node(node* n);
 
 };
 

@@ -163,36 +163,36 @@ class Igor : Program
 
         while (odr->read(v))
         {
-            bcf_unpack(v, BCF_UN_STR);
-            int32_t vtype = vm->classify_variant(odr->hdr, v, variant);
-            if (vtype&VT_INDEL)
-            {
-                //annotate indel like variant
-                strm->annotate(odr->hdr, v, variant);
-
-                bcf_update_info_string(odw->hdr, v, "VMOTIF", variant.emotif.c_str());
-                bcf_update_info_string(odw->hdr, v, "VRU", variant.eru.c_str());
-                int32_t rl = variant.eregion.end1-variant.eregion.beg1-1;
-                bcf_update_info_int32(odw->hdr, v, "VRL", &rl, 1);
-                int32_t irl = variant.iregion.end1-variant.iregion.beg1-1;
-                bcf_update_info_int32(odw->hdr, v, "IRL", &irl, 1);
-
-                if (irl!=rl)
-                {
-                    int32_t irg[2] = {variant.iregion.beg1, variant.iregion.end1};
-                    bcf_update_info_int32(odw->hdr, v, "IRG", &irg, 2);
-                    int32_t len = 0;
-                    const char* chrom = bcf_get_chrom(odr->hdr, v);
-                    char* seq = faidx_fetch_seq(fai, chrom, irg[0]-1, irg[1]-1, &len);
-                    bcf_update_info_string(odw->hdr, v, "ISQ", seq);
-                    if (len) free(seq);
-                }
-
-                ++no_variants_annotated;
-            }
-
-            odw->write(v);
-            v = odw->get_bcf1_from_pool();
+//            bcf_unpack(v, BCF_UN_STR);
+//            int32_t vtype = vm->classify_variant(odr->hdr, v, variant);
+//            if (vtype&VT_INDEL)
+//            {
+//                //annotate indel like variant
+//                strm->annotate(odr->hdr, v, variant);
+//
+//                bcf_update_info_string(odw->hdr, v, "VMOTIF", variant.emotif.c_str());
+//                bcf_update_info_string(odw->hdr, v, "VRU", variant.eru.c_str());
+//                int32_t rl = variant.eregion.end1-variant.eregion.beg1-1;
+//                bcf_update_info_int32(odw->hdr, v, "VRL", &rl, 1);
+//                int32_t irl = variant.iregion.end1-variant.iregion.beg1-1;
+//                bcf_update_info_int32(odw->hdr, v, "IRL", &irl, 1);
+//
+//                if (irl!=rl)
+//                {
+//                    int32_t irg[2] = {variant.iregion.beg1, variant.iregion.end1};
+//                    bcf_update_info_int32(odw->hdr, v, "IRG", &irg, 2);
+//                    int32_t len = 0;
+//                    const char* chrom = bcf_get_chrom(odr->hdr, v);
+//                    char* seq = faidx_fetch_seq(fai, chrom, irg[0]-1, irg[1]-1, &len);
+//                    bcf_update_info_string(odw->hdr, v, "ISQ", seq);
+//                    if (len) free(seq);
+//                }
+//
+//                ++no_variants_annotated;
+//            }
+//
+//            odw->write(v);
+//            v = odw->get_bcf1_from_pool();
         }
 
         odw->close();

@@ -35,7 +35,7 @@ STRMotif::STRMotif(std::string& ref_fasta_file)
         fprintf(stderr, "[%s:%d %s] Cannot load genome index: %s\n", __FILE__, __LINE__, __FUNCTION__, ref_fasta_file.c_str());
         exit(1);
     }
-    mt = new MotifTree(8);
+    mt = new MotifTree(10);
     rfhmm = new RFHMM();
     lfhmm = new LFHMM();
 

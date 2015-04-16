@@ -31,6 +31,9 @@
 #define get_seqi(s, i) (((s)>>((15-(i))<<1)) & 3)
 //make sure s is blanked out first.
 #define set_seqi(s, i, b) (((b)<<((15-(i))<<1)) | s)
+//shift a sequence s of length l
+#define shift(s,l)  ((((s) >> 30) << ((16-(l))<<1)) | ((s) << 2))
+
 
 /**
  * Motif Map for the mapping functions to and from index.
@@ -41,8 +44,9 @@ class MotifMap
 {
     public:
     std::vector<uint32_t> len_count;
-    uint32_t max_len;    
-
+    uint32_t max_len;  
+    uint32_t max_index;    
+    
     /**
      * Constructor.
      */
@@ -56,7 +60,7 @@ class MotifMap
     /**
      * Get canonical representation.
      */
-    uint32_t canonical(uint32_t motif);
+    uint32_t canonical(uint32_t motif, uint32_t len);
 
     /**
      * Converts index to sequence.
@@ -73,6 +77,10 @@ class MotifMap
      */
     void print_seq(uint32_t seq, uint32_t len);
     
+    /**
+     * Converts sequence to string.
+     */
+    std::string seq2str(uint32_t seq, uint32_t len);
 
     private:
 };
