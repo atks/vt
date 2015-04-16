@@ -50,7 +50,7 @@ KHASH_MAP_INIT_STR(mdict, int32_t);
  * motifs, flanks and VNTR type statistics.
  * RU,RL,LFLANK,RFLANK,LFLANKPOS,RFLANKPOS,MOTIF_CONCORDANCE,MOTIF_CONCORDANCE
  */
-class STRMotif
+class VNTRAnnotator
 {
     public:
 //bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_RU,Number=1,Type=String,Description=\"Repeat unit in a STR or Homopolymer\">");
@@ -72,7 +72,8 @@ class STRMotif
     int32_t* motif_concordance;
     float* motif_completeness;
     float concordance;
-
+    std::vector<CandidateMotif> candidate_motifs;
+    
     int32_t max_len;
 
     ///////
@@ -93,7 +94,7 @@ class STRMotif
     /**
      * Constructor.
      */
-    STRMotif(std::string& ref_fasta_file);
+    VNTRAnnotator(std::string& ref_fasta_file);
 
     /**
      * Constructor.
@@ -103,7 +104,7 @@ class STRMotif
     /**
      * Destructor.
      */
-    ~STRMotif();
+    ~VNTRAnnotator();
 
     /**
      * Annotates STR characteristics.

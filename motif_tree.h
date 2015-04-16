@@ -73,6 +73,7 @@ class MotifTree
     public:
     node* tree;
     MotifMap *mm;
+    uint32_t max_len;
 
     /**
      * Constructor.
@@ -92,30 +93,35 @@ class MotifTree
     /**
      * Construct suffix tree based on sequence.
      */
-    void set_sequence(char* sequence);
+    void set_sequence(char* seq);
+    
+    /**
+     * Gets subsequence from a C string.
+     */
+    uint32_t get_sub_seq(char* seq, uint32_t len, uint32_t spos0, uint32_t& s);
 
+    /**
+     * Inserts prefix s into tree.
+     */
+    void insert_prefix(uint32_t s, uint32_t len);
+    
     /**
      * Construct suffix tree based on sequence up to max_motif_len.
      */
-    void set_sequence(char* sequence, int32_t max_motif_len);
+    void set_sequence(char* seq, int32_t len);
 
     /**
      * Gets candidate motifs up to max_motif_len.
      */
-    void get_candidate_motifs(std::vector<CandidateMotif>& candidate_motifs);
+    void detect_candidate_motifs(std::vector<CandidateMotif>& candidate_motifs, char* seq, uint32_t max_motif_len);
     
     /**
-     * Gets index of child.
+     * Gets index of first child.
      */
-    uint32_t get_first_child(uint32_t index);
+    uint32_t get_first_child(uint32_t seq, uint32_t len);
     
 
     private:
-
-    /**
-     * Adds a suffix of sequence from start to end.
-     */
-    void add_suffix(char* sequence, int32_t start, int32_t end);
 
     /**
      * Converts base to index.
@@ -126,6 +132,16 @@ class MotifTree
      * Print node.
      */
     void print_node(node* n);
+    
+    /**
+     * Print tree.
+     */
+    void print_tree();
+     
+    /**
+     * Print tree.
+     */
+    void print_tree(node* n);
 
 };
 

@@ -29,8 +29,7 @@
 #include <iostream>
 
 #define get_seqi(s, i) (((s)>>((15-(i))<<1)) & 3)
-//make sure s is blanked out first.
-#define set_seqi(s, i, b) (((b)<<((15-(i))<<1)) | s)
+#define set_seqi(s, i, b) (((b)<<((15-(i))<<1)) | (s&~(((3)<<((15-(i))<<1)))))
 //shift a sequence s of length l
 #define shift(s,l)  ((((s) >> 30) << ((16-(l))<<1)) | ((s) << 2))
 

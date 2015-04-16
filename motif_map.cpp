@@ -97,8 +97,8 @@ uint32_t MotifMap::canonical(uint32_t seq, uint32_t len)
     
     uint32_t cseq = seq;
     uint32_t sseq = seq;
-    std::cerr << "\t\t\tcseq: " << seq2str(cseq,len) << " (" << cseq << ")\n";
-    std::cerr << "\t\t\tsseq: " << seq2str(sseq,len) << " (" << sseq << ")\n\n";
+//    std::cerr << "\t\t\tcseq: " << seq2str(cseq,len) << " (" << cseq << ")\n";
+//    std::cerr << "\t\t\tsseq: " << seq2str(sseq,len) << " (" << sseq << ")\n\n";
     for (uint32_t i=1; i<len; ++i)
     {
         sseq = shift(sseq,len);
@@ -107,8 +107,8 @@ uint32_t MotifMap::canonical(uint32_t seq, uint32_t len)
         {
             cseq = sseq;
         }    
-        std::cerr << "\t\t\tcseq: " << seq2str(cseq,len) << " (" << cseq << ")\n";
-        std::cerr << "\t\t\tsseq: " << seq2str(sseq,len) << " (" << sseq << ")\n\n";
+//        std::cerr << "\t\t\tcseq: " << seq2str(cseq,len) << " (" << cseq << ")\n";
+//        std::cerr << "\t\t\tsseq: " << seq2str(sseq,len) << " (" << sseq << ")\n\n";
     }
 
     return cseq;
@@ -157,10 +157,10 @@ uint32_t MotifMap::seq2index(uint32_t seq, uint32_t len)
     uint32_t index = len_count[len-1];
 //    std::cerr  << "\t\tbase: " << index << "\n";
     
-    if (len==1)
-    {
-        return seq;
-    }    
+//    if (len==1)
+//    {
+//        return seq;
+//    }    
   
     uint32_t cseq = seq;  
     for (uint32_t i=0; i<len; ++i)

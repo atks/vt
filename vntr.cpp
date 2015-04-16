@@ -26,7 +26,7 @@
 /**
  * Constructor.
  */
-STRMotif::STRMotif(std::string& ref_fasta_file)
+VNTRAnnotator::VNTRAnnotator(std::string& ref_fasta_file)
 {
     vm = new VariantManip(ref_fasta_file.c_str());
     fai = fai_load(ref_fasta_file.c_str());
@@ -49,7 +49,7 @@ STRMotif::STRMotif(std::string& ref_fasta_file)
 /**
  * Constructor.
  */
-void STRMotif::initialize_factors(int32_t max_len)
+void VNTRAnnotator::initialize_factors(int32_t max_len)
 {
     if (factors)
     {
@@ -81,7 +81,7 @@ void STRMotif::initialize_factors(int32_t max_len)
 /**
  * Destructor.
  */
-STRMotif::~STRMotif()
+VNTRAnnotator::~VNTRAnnotator()
 {
     delete vm;
     fai_destroy(fai);
@@ -98,12 +98,28 @@ STRMotif::~STRMotif()
     }
 }
 
-/**
+/**detect_candidate_motifs();
  * Annotates STR characteristics.
  * RU,RL,LFLANK,RFLANK,LFLANKPOS,RFLANKPOS,MOTIF_CONCORDANCE,MOTIF_CONCORDANCE
  */
-void STRMotif::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant)
+void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant)
 {
+    if (variant.type==VT_VNTR)
+    {
+        //since VNTR, just pick up reference and detect.
+        
+        mt->detect_candidate_motifs(candidate_motifs, bcf_get_ref(v), 6);
+        
+        
+        
+        
+        return;
+    }
+    else
+    {
+        return;
+    }
+    
     int32_t no_candidate_motifs;
 
     if (bcf_get_n_allele(v)>1)
@@ -240,7 +256,7 @@ void STRMotif::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant)
  * Pick candidate motifs.
  * candidate_motifs contain motifs and a measure of confidence
  */
-void STRMotif::pick_candidate_motifs(bcf_hdr_t* h, bcf1_t* v, std::vector<CandidateMotif>& candidate_motifs)
+void VNTRAnnotator::pick_candidate_motifs(bcf_hdr_t* h, bcf1_t* v, std::vector<CandidateMotif>& candidate_motifs)
 {
     const char* chrom = bcf_get_chrom(h, v);
     
@@ -301,7 +317,7 @@ void STRMotif::pick_candidate_motifs(bcf_hdr_t* h, bcf1_t* v, std::vector<Candid
     
     //detect motif
     mt->set_sequence(seq);
-    mt->get_candidate_motifs(candidate_motifs);
+  //  mt->detect_candidate_motifs(candidate_motifs, 6);
     
     
     
@@ -350,7 +366,7 @@ void STRMotif::pick_candidate_motifs(bcf_hdr_t* h, bcf1_t* v, std::vector<Candid
 /**
  * This is a quick scan for a motif that is exactly repeated.
  */
-std::string STRMotif::scan_exact_motif(std::string& sequence)
+std::string VNTRAnnotator::scan_exact_motif(std::string& sequence)
 {
     size_t i = 0;
     size_t len = sequence.size();
@@ -408,7 +424,7 @@ std::string STRMotif::scan_exact_motif(std::string& sequence)
 /**
  * Pick shortest consensus motif.
  */
-std::string STRMotif::pick_consensus_motif(std::string& ref)
+std::string VNTRAnnotator::pick_consensus_motif(std::string& ref)
 {
    return "";
 }
@@ -416,7 +432,7 @@ std::string STRMotif::pick_consensus_motif(std::string& ref)
 /**
  * Suggests a set of repeat motif candidates in a set of alleles.
  */
-char** STRMotif::suggest_motifs(char** alleles, int32_t n_allele, int32_t &no_candidate_motifs)
+char** VNTRAnnotator::suggest_motifs(char** alleles, int32_t n_allele, int32_t &no_candidate_motifs)
 {
     char *motif;
 
@@ -480,7 +496,7 @@ char** STRMotif::suggest_motifs(char** alleles, int32_t n_allele, int32_t &no_ca
 /**
  * Trim alleles.
  */
-void STRMotif::trim(int32_t& pos1, std::string& ref, std::string& alt)
+void VNTRAnnotator::trim(int32_t& pos1, std::string& ref, std::string& alt)
 {
     while (true)
     {
@@ -512,7 +528,7 @@ void STRMotif::trim(int32_t& pos1, std::string& ref, std::string& alt)
 /**
  * Left align alleles.
  */
-void STRMotif::left_align(const char* chrom, int32_t& pos1, std::string& ref, std::string& alt)
+void VNTRAnnotator::left_align(const char* chrom, int32_t& pos1, std::string& ref, std::string& alt)
 {
     int32_t seq_len;
     char* seq;
@@ -539,7 +555,7 @@ void STRMotif::left_align(const char* chrom, int32_t& pos1, std::string& ref, st
 /**
  * Right align alleles.
  */
-void STRMotif::right_align(const char* chrom, int32_t& pos1, std::string& ref, std::string& alt)
+void VNTRAnnotator::right_align(const char* chrom, int32_t& pos1, std::string& ref, std::string& alt)
 {
     int32_t seq_len;
     char* seq;
@@ -566,7 +582,7 @@ void STRMotif::right_align(const char* chrom, int32_t& pos1, std::string& ref, s
 /**
  * Detect allele lower bound extent.
  */
-void STRMotif::detect_lower_bound_allele_extent(const char* chrom, int32_t& pos1, std::vector<std::string>& alleles, int32_t& start1, int32_t& end1)
+void VNTRAnnotator::detect_lower_bound_allele_extent(const char* chrom, int32_t& pos1, std::vector<std::string>& alleles, int32_t& start1, int32_t& end1)
 {
     if (alleles.size()==2)
     {
@@ -585,7 +601,7 @@ void STRMotif::detect_lower_bound_allele_extent(const char* chrom, int32_t& pos1
  * Detect candidate flanks given a motif fit.
  * Update model atttributes.
  */
-void STRMotif::search_flanks(const char* chrom, int32_t start1, char* motif)
+void VNTRAnnotator::search_flanks(const char* chrom, int32_t start1, char* motif)
 {
     //given chromosome position and motif
     //attempt to
@@ -632,7 +648,7 @@ void STRMotif::search_flanks(const char* chrom, int32_t start1, char* motif)
 /**
  * Extracts the shortest repeat unit in a sequence.
  */
-char* STRMotif::get_shortest_repeat_motif(char* allele, int32_t len)
+char* VNTRAnnotator::get_shortest_repeat_motif(char* allele, int32_t len)
 {
     std::cerr << "get shortest repeatmotif " << allele << " : " << len << "\n";
 
@@ -680,7 +696,7 @@ char* STRMotif::get_shortest_repeat_motif(char* allele, int32_t len)
 /**
  * Gets motif of a repeat unit.
  */
-std::string STRMotif::get_motif(std::string& ru)
+std::string VNTRAnnotator::get_motif(std::string& ru)
 {
     std::string motif = "";
     for (size_t i=0; i<ru.size(); ++i)
@@ -696,7 +712,7 @@ std::string STRMotif::get_motif(std::string& ru)
 /**
  * Reverse complement a sequence.
  */
-std::string STRMotif::reverse_complement(std::string& seq)
+std::string VNTRAnnotator::reverse_complement(std::string& seq)
 {
     std::string rc = "";
 
@@ -727,7 +743,7 @@ std::string STRMotif::reverse_complement(std::string& seq)
 /**
  * Shifts a sequence to the right by i bases.
  */
-std::string STRMotif::shift_phase(std::string& seq, size_t i)
+std::string VNTRAnnotator::shift_phase(std::string& seq, size_t i)
 {
     i = i<seq.size() ? i : i%seq.size();
     std::string shifted = seq.substr(i, seq.size()-i);

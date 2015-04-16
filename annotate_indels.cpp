@@ -56,7 +56,7 @@ class Igor : Program
     //common tools//
     ////////////////
     VariantManip* vm;
-    STRMotif* strm;
+    VNTRAnnotator* va;
     faidx_t* fai;
 
     Igor(int argc, char **argv)
@@ -103,8 +103,8 @@ class Igor : Program
         odr = new BCFOrderedReader(input_vcf_file, intervals);
         odw = new BCFOrderedWriter(output_vcf_file);
         odw->link_hdr(odr->hdr);
-        bcf_hdr_append(odw->hdr, "##INFO=<ID=VMOTIF,Number=1,Type=String,Description=\"Canonical Motif in an STR or Homopolymer\">");
-        bcf_hdr_append(odw->hdr, "##INFO=<ID=VRU,Number=1,Type=String,Description=\"Repeat unit in a STR or Homopolymer\">");
+        bcf_hdr_append(odw->hdr, "##INFO=<ID=VMOTIF,Number=1,Type=String,Description=\"Canonical Motif in an VNTR or Homopolymer\">");
+        bcf_hdr_append(odw->hdr, "##INFO=<ID=VRU,Number=1,Type=String,Description=\"Repeat unit in a VNTR or Homopolymer\">");
         bcf_hdr_append(odw->hdr, "##INFO=<ID=VRL,Number=1,Type=Integer,Description=\"Repeat Length\">");
         bcf_hdr_append(odw->hdr, "##INFO=<ID=IRL,Number=1,Type=Integer,Description=\"Inexact Repeat Length\">");
         bcf_hdr_append(odw->hdr, "##INFO=<ID=IRG,Number=2,Type=Integer,Description=\"Region of the motif.\">");
@@ -118,10 +118,8 @@ class Igor : Program
 //        bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_MOTIF_COMPLETENESS,Number=1,Type=Integer,Description=\"Descriptive Discordance for each reference repeat unit.\">");
 //        bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_STR_CONCORDANCE,Number=1,Type=Float,Description=\"Overall discordance of RUs.\">");
 //
-//
 //        bcf_hdr_append(odw->hdr, "##INFO=<ID=RL,Number=1,Type=Integer,Description=\"Motif.\">");
 //        bcf_hdr_append(odw->hdr, "##INFO=<ID=EXACT_ALLELE_REGION,Number=2,Type=Integer,Description=\"Region of the motif.\">");
-//
 
         ////////////////////////
         //stats initialization//
@@ -132,7 +130,7 @@ class Igor : Program
         //tools initialization//
         ////////////////////////
         vm = new VariantManip(ref_fasta_file);
-        strm = new STRMotif(ref_fasta_file);
+        va = new VNTRAnnotator(ref_fasta_file);
         fai = fai_load(ref_fasta_file.c_str());
     }
 
@@ -167,16 +165,16 @@ class Igor : Program
             int32_t vtype = vm->classify_variant(odr->hdr, v, variant);
             if (vtype&VT_INDEL || vtype&VT_VNTR)
             {
-//                //annotate indel like variant
-//                strm->annotate(odr->hdr, v, variant);
-//
-//                bcf_update_info_string(odw->hdr, v, "VMOTIF", variant.emotif.c_str());
-//                bcf_update_info_string(odw->hdr, v, "VRU", variant.eru.c_str());
+                //annotate indel like variant
+                va->annotate(odr->hdr, v, variant);
+
+                bcf_update_info_string(odw->hdr, v, "VMOTIF", variant.emotif.c_str());
+                bcf_update_info_string(odw->hdr, v, "VRU", variant.eru.c_str());
 //                int32_t rl = variant.eregion.end1-variant.eregion.beg1-1;
 //                bcf_update_info_int32(odw->hdr, v, "VRL", &rl, 1);
 //                int32_t irl = variant.iregion.end1-variant.iregion.beg1-1;
 //                bcf_update_info_int32(odw->hdr, v, "IRL", &irl, 1);
-//
+
 //                if (irl!=rl)
 //                {
 //                    int32_t irg[2] = {variant.iregion.beg1, variant.iregion.end1};
