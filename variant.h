@@ -63,6 +63,7 @@ class Variant
     int32_t rlen;        //reference length of repeat tract in bases
         
     std::string emotif;
+    float escore;
     std::string eru;
     Region eregion;
 

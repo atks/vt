@@ -39,6 +39,7 @@
 #include "bcf_ordered_writer.h"
 #include "rfhmm.h"
 #include "lfhmm.h"
+#include "ahmm.h"
 #include "variant_manip.h"
 #include "program.h"
 #include "motif_tree.h"
@@ -73,9 +74,12 @@ class VNTRAnnotator
     float* motif_completeness;
     float concordance;
     std::vector<CandidateMotif> candidate_motifs;
-    
+    bool debug;
     int32_t max_len;
-
+    
+    AHMM* ahmm;
+    std::string qual;
+        
     ///////
     //tools
     ///////
@@ -94,7 +98,7 @@ class VNTRAnnotator
     /**
      * Constructor.
      */
-    VNTRAnnotator(std::string& ref_fasta_file);
+    VNTRAnnotator(std::string& ref_fasta_file, bool debug=false);
 
     /**
      * Constructor.

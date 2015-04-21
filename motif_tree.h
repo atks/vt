@@ -27,10 +27,9 @@
 #include <cstdint>
 #include <cstring>
 #include <vector>
-#include <list>
 #include <iostream>
 #include <queue>
-#include "candidate_motif.h"
+#include <map>
 #include "motif_map.h"
 
 /**
@@ -47,6 +46,7 @@
  */
 typedef struct 
 {
+    uint32_t index; //index
     uint32_t cindex; //index of the cannonical form
     uint32_t count;  //count of occurence of this motif
     uint32_t len;    //length of the motif
@@ -57,6 +57,43 @@ typedef struct
 #define index2base(i) ("ACGT"[(i)])
 
 /**
+ * Candidate Motif.
+ */
+class CandidateMotif
+{
+    public:
+    std::string motif;
+    float score;
+    uint32_t len;
+    
+    CandidateMotif(std::string motif, float score, uint32_t len)
+    {
+        this->motif = motif;
+        this->score = score;
+        this->len = len;
+    }
+};
+
+/**
+ * Comparator for Candidate Motif for use in priority_queue.
+ */
+class CompareCandidateMotif
+{
+    public:
+    bool operator()(CandidateMotif& a, CandidateMotif& b)
+    {
+        if (a.score!=b.score)
+        {    
+            return a.score < b.score;
+        }
+        else
+        {
+            return a.len > b.len;
+        }
+    }
+};
+
+/**
  * Motif Suffix Tree for selecting candidate motifs.
  *
  * Each node is represented by int64_t
@@ -64,8 +101,6 @@ typedef struct
  * the first 20 bits indexes to the cannonical form
  * the next 12 bits gives the count
  * the last 32 bits provides the sequence represented by 2 bits per base
- * the 
- *  
  *
  */
 class MotifTree
@@ -74,11 +109,16 @@ class MotifTree
     node* tree;
     MotifMap *mm;
     uint32_t max_len;
-
+    std::map<uint32_t, uint32_t> cm;          // 
+    std::vector<uint32_t> lc;                 // for counting the number of motifs of length x.
+    std::priority_queue<CandidateMotif, std::vector<CandidateMotif>, CompareCandidateMotif > pcm;
+    uint32_t cmax_len; //candidate maximum length
+    bool debug;
+        
     /**
      * Constructor.
      */
-    MotifTree(uint32_t max_len);
+    MotifTree(uint32_t max_len, bool debug=false);
 
     /**
      * Destructor.
@@ -89,11 +129,6 @@ class MotifTree
      * Clear the suffix tree.
      */
     void clear();
-
-    /**
-     * Construct suffix tree based on sequence.
-     */
-    void set_sequence(char* seq);
     
     /**
      * Gets subsequence from a C string.
@@ -103,7 +138,17 @@ class MotifTree
     /**
      * Inserts prefix s into tree.
      */
-    void insert_prefix(uint32_t s, uint32_t len);
+    void insert_prefix(uint32_t s, uint32_t len);  
+  
+    /**
+     * Consolidate motif counts.
+     */
+    void consolidate_motif_counts();    
+    
+    /**
+     * Consolidate motif counts.
+     */
+    void consolidate_motif_counts(node* n);
     
     /**
      * Construct suffix tree based on sequence up to max_motif_len.

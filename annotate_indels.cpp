@@ -40,6 +40,7 @@ class Igor : Program
     std::string output_vcf_file;
     std::vector<GenomeInterval> intervals;
     std::string interval_list;
+    bool debug;
 
     ///////
     //i/o//
@@ -76,6 +77,7 @@ class Igor : Program
             TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_output_vcf_file("o", "o", "output VCF file [-]", false, "-", "str", cmd);
             TCLAP::ValueArg<std::string> arg_ref_fasta_file("r", "r", "reference sequence fasta file []", true, "", "str", cmd);
+            TCLAP::SwitchArg arg_debug("d", "d", "debug [false]", cmd, false);
             TCLAP::UnlabeledValueArg<std::string> arg_input_vcf_file("<in.vcf>", "input VCF file", true, "","file", cmd);
 
             cmd.parse(argc, argv);
@@ -84,6 +86,7 @@ class Igor : Program
             output_vcf_file = arg_output_vcf_file.getValue();
             parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
             parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
+            debug = arg_debug.getValue();
             ref_fasta_file = arg_ref_fasta_file.getValue();
         }
         catch (TCLAP::ArgException &e)
@@ -103,7 +106,8 @@ class Igor : Program
         odr = new BCFOrderedReader(input_vcf_file, intervals);
         odw = new BCFOrderedWriter(output_vcf_file);
         odw->link_hdr(odr->hdr);
-        bcf_hdr_append(odw->hdr, "##INFO=<ID=VMOTIF,Number=1,Type=String,Description=\"Canonical Motif in an VNTR or Homopolymer\">");
+        bcf_hdr_append(odw->hdr, "##INFO=<ID=VMOTIF,Number=.,Type=String,Description=\"Canonical Motif in an VNTR or Homopolymer\">");
+        bcf_hdr_append(odw->hdr, "##INFO=<ID=VSCORE,Number=.,Type=Float,Description=\"Score of repeat unit\">");
         bcf_hdr_append(odw->hdr, "##INFO=<ID=VRU,Number=1,Type=String,Description=\"Repeat unit in a VNTR or Homopolymer\">");
         bcf_hdr_append(odw->hdr, "##INFO=<ID=VRL,Number=1,Type=Integer,Description=\"Repeat Length\">");
         bcf_hdr_append(odw->hdr, "##INFO=<ID=IRL,Number=1,Type=Integer,Description=\"Inexact Repeat Length\">");
@@ -130,13 +134,13 @@ class Igor : Program
         //tools initialization//
         ////////////////////////
         vm = new VariantManip(ref_fasta_file);
-        va = new VNTRAnnotator(ref_fasta_file);
+        va = new VNTRAnnotator(ref_fasta_file, debug);
         fai = fai_load(ref_fasta_file.c_str());
     }
 
     void print_options()
     {
-        std::clog << "annotate_indel v" << version << "\n";
+        std::clog << "annotate_indels v" << version << "\n";
         std::clog << "\n";
         std::clog << "options:     input VCF file(s)     " << input_vcf_file << "\n";
         std::clog << "         [o] output VCF file       " << output_vcf_file << "\n";
@@ -165,11 +169,15 @@ class Igor : Program
             int32_t vtype = vm->classify_variant(odr->hdr, v, variant);
             if (vtype&VT_INDEL || vtype&VT_VNTR)
             {
+               //bcf_print_liten(odr->hdr, v);
                 //annotate indel like variant
                 va->annotate(odr->hdr, v, variant);
 
+//                std::cerr << "CEHCK: " << variant.emotif << "\n";
+
                 bcf_update_info_string(odw->hdr, v, "VMOTIF", variant.emotif.c_str());
-                bcf_update_info_string(odw->hdr, v, "VRU", variant.eru.c_str());
+                bcf_update_info_float(odw->hdr, v, "VSCORE", &variant.escore, 1);
+//                bcf_update_info_string(odw->hdr, v, "VRU", variant.eru.c_str());
 //                int32_t rl = variant.eregion.end1-variant.eregion.beg1-1;
 //                bcf_update_info_int32(odw->hdr, v, "VRL", &rl, 1);
 //                int32_t irl = variant.iregion.end1-variant.iregion.beg1-1;
@@ -185,9 +193,14 @@ class Igor : Program
 //                    bcf_update_info_string(odw->hdr, v, "ISQ", seq);
 //                    if (len) free(seq);
 //                }
-//
+
                 ++no_variants_annotated;
             }
+
+//            if ((no_variants_annotated & 0x00000FFF) == 0)
+//            {
+//                bcf_print_liten(odr->hdr, v);
+//            }
 
             odw->write(v);
             v = odw->get_bcf1_from_pool();

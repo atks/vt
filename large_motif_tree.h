@@ -30,7 +30,6 @@
 #include <list>
 #include <iostream>
 #include <queue>
-#include "candidate_motif.h"
 
 /**
  * Macros for accessing node.

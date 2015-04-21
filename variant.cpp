@@ -36,10 +36,7 @@ Variant::Variant()
 /**
  * Destructor.
  */
-Variant::~Variant()
-{
-    motif.clear();
-}
+Variant::~Variant() {}
 
 /**
  * Returns true if variant contains an allele that is potentially frame shifting.

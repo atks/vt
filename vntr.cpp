@@ -26,7 +26,7 @@
 /**
  * Constructor.
  */
-VNTRAnnotator::VNTRAnnotator(std::string& ref_fasta_file)
+VNTRAnnotator::VNTRAnnotator(std::string& ref_fasta_file, bool debug)
 {
     vm = new VariantManip(ref_fasta_file.c_str());
     fai = fai_load(ref_fasta_file.c_str());
@@ -35,7 +35,7 @@ VNTRAnnotator::VNTRAnnotator(std::string& ref_fasta_file)
         fprintf(stderr, "[%s:%d %s] Cannot load genome index: %s\n", __FILE__, __LINE__, __FUNCTION__, ref_fasta_file.c_str());
         exit(1);
     }
-    mt = new MotifTree(10);
+    mt = new MotifTree(10, debug);
     rfhmm = new RFHMM();
     lfhmm = new LFHMM();
 
@@ -44,6 +44,15 @@ VNTRAnnotator::VNTRAnnotator(std::string& ref_fasta_file)
     //update factors
     factors = NULL;
     initialize_factors(32);
+    
+    this->debug = debug;
+    
+    ahmm = new AHMM();
+    for (int32_t i=0; i<250; ++i)
+    {
+        qual += 'K';
+    }
+     
 };
 
 /**
@@ -106,9 +115,71 @@ void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant)
 {
     if (variant.type==VT_VNTR)
     {
+        
+        if (debug) std::cerr << "ANNOTATING VNTR \n";
+        
         //since VNTR, just pick up reference and detect.
         
         mt->detect_candidate_motifs(candidate_motifs, bcf_get_ref(v), 6);
+        
+
+        if (debug) std::cerr << "pcm size : " << mt->pcm.size() << "\n";
+        if (debug) std::cerr << "*********************************************\n";
+
+        
+
+        bool first = true;
+        float cp = 0;
+        uint32_t clen = 0;
+        while (!mt->pcm.empty())
+        {    
+            CandidateMotif cm = mt->pcm.top();
+            
+            if (first)
+            {
+                variant.emotif = cm.motif;
+                variant.escore = cm.score;
+                cp = cm.score;
+                clen = cm.len;
+                first = false;
+                if (debug) std::cerr << "selected: " << mt->pcm.top().motif << " " << mt->pcm.top().score << "\n";
+                
+                
+                //if score are not perfect, use AHMM
+                ahmm->set_model(cm.motif.c_str());
+                ahmm->align(bcf_get_ref(v), qual.c_str());
+                ahmm->print_alignment();
+            }
+            else
+            {
+                if (cp-cm.score<((float)1/cm.len)*cp || cm.score>0.5)
+                {
+                    variant.emotif = variant.emotif + "," + cm.motif;
+                    variant.escore = cm.score;
+
+            
+                    //if score are not perfect, use AHMM
+                    ahmm->set_model(cm.motif.c_str());
+                    ahmm->align(bcf_get_ref(v), qual.c_str());
+                    ahmm->print_alignment();
+
+
+                    cp = cm.score;
+                    clen = cm.len;
+                    if (debug) std::cerr << "selected: " << mt->pcm.top().motif << " " << mt->pcm.top().score << "\n";
+                }
+                else
+                {
+                    if (debug) std::cerr << "not selected: " << mt->pcm.top().motif << " " << mt->pcm.top().score << "\n";
+            
+                }    
+            }
+            
+            mt->pcm.pop();
+        }
+        
+
+        
         
         
         
@@ -316,7 +387,7 @@ void VNTRAnnotator::pick_candidate_motifs(bcf_hdr_t* h, bcf1_t* v, std::vector<C
     std::cerr << "             " << seq << "\n";
     
     //detect motif
-    mt->set_sequence(seq);
+    //mt->set_sequence(seq);
   //  mt->detect_candidate_motifs(candidate_motifs, 6);
     
     

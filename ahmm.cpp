@@ -400,6 +400,30 @@ int32_t AHMM::get_rflank_read_epos1()
 };
 
 /**
+ * Get motif concordance.
+ */
+float AHMM::get_motif_concordance()
+{
+    return motif_concordance;
+};
+
+/**
+ * Get exact motif count.
+ */
+uint32_t AHMM::get_exact_motif_count()
+{
+    return exact_motif_count;
+};
+
+/**
+ * Get motif count.
+ */
+uint32_t AHMM::get_motif_count()
+{
+    return motif_count;
+};
+
+/**
  * Computes the score associated with the move from A to B
  * Updates the max_score and associated max_track.
  *
@@ -979,8 +1003,8 @@ void AHMM::print_alignment(std::string& pad)
         std::cerr << "path not traced\n";
     }
 
-    std::cerr << "\n";
-    print_T();
+//    std::cerr << "\n";
+//    print_T();
     std::cerr << "\n";
     std::cerr << "QUAL+33\tMATCH\tMISMATCH\tPENALTY\n";
     int32_t qual = 'K' - 33;

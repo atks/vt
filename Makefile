@@ -16,7 +16,6 @@ SOURCES = align\
 		bcf_ordered_writer\
 		bcf_synced_reader\
 		bed\
-		candidate_motif\
 		cat\
 		chmm\
 		compute_concordance\
@@ -40,7 +39,6 @@ SOURCES = align\
 		genotyping_buffer\
 		hts_utils\
 		hfilter\
-		large_motif_tree\
 		index\
 		interval_tree\
 		interval\

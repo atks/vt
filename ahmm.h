@@ -269,6 +269,21 @@ class AHMM
     int32_t get_rflank_read_epos1();
     
     /**
+     * Get motif concordance.
+     */
+    float get_motif_concordance();
+    
+    /**
+     * Get exact motif count.
+     */
+    uint32_t get_exact_motif_count();
+    
+    /**
+     * Get motif count.
+     */
+    uint32_t get_motif_count();
+    
+    /**
      * Computes the score associated with the move from A to B
      * Updates the max_score and associated max_track.
      *

@@ -96,19 +96,10 @@ uint32_t MotifMap::canonical(uint32_t seq, uint32_t len)
     }    
     
     uint32_t cseq = seq;
-    uint32_t sseq = seq;
-//    std::cerr << "\t\t\tcseq: " << seq2str(cseq,len) << " (" << cseq << ")\n";
-//    std::cerr << "\t\t\tsseq: " << seq2str(sseq,len) << " (" << sseq << ")\n\n";
     for (uint32_t i=1; i<len; ++i)
     {
-        sseq = shift(sseq,len);
-        
-        if (sseq<cseq)
-        {
-            cseq = sseq;
-        }    
-//        std::cerr << "\t\t\tcseq: " << seq2str(cseq,len) << " (" << cseq << ")\n";
-//        std::cerr << "\t\t\tsseq: " << seq2str(sseq,len) << " (" << sseq << ")\n\n";
+        seq = shift(seq,len);
+        cseq = seq<cseq ? seq : cseq;
     }
 
     return cseq;
@@ -119,28 +110,17 @@ uint32_t MotifMap::canonical(uint32_t seq, uint32_t len)
  */
 uint32_t MotifMap::index2seq(uint32_t index)
 {
-//    std::cerr << "in index2seq\n ";
-    
     uint32_t s = 0;
     for (uint32_t len=1; len<=max_len; ++len)
     {
-//        std::cerr << len << " " << len_count[len] << "\n";
         if (index<len_count[len])
         {
-//            std::cerr << "len: " << (len) << "\n";
             index -= len_count[len-1];
             for (int32_t i=len; i>0; --i)
             {
                 uint32_t j = ((index >> ((i-1)<<1)) & 3);
-//                std::cerr << "\tindex: " << index << "\n";
-//                std::cerr << "\ti: " << i << "\n";
-//                std::cerr << "\ts: " << s << "\n";
-//                std::cerr << "\tj: " << (i-1) << "\n";
-//                std::cerr << "\tbase: " << "ACGT"[j] << "\n";                
                 s = set_seqi(s,(len-i),j);
             }
-//            std::cerr << "seq : ";
-//            print_seq(s, len);
 
             return s;
         }
@@ -155,20 +135,8 @@ uint32_t MotifMap::index2seq(uint32_t index)
 uint32_t MotifMap::seq2index(uint32_t seq, uint32_t len)
 {
     uint32_t index = len_count[len-1];
-//    std::cerr  << "\t\tbase: " << index << "\n";
-    
-//    if (len==1)
-//    {
-//        return seq;
-//    }    
-  
-    uint32_t cseq = seq;  
     for (uint32_t i=0; i<len; ++i)
     {
-//        std::cerr << "\t\tlen-i: " << len-i << "\n";
-//        std::cerr << "\t\tget_seqi: " << get_seqi(seq,i) << "\n";
-//        std::cerr << "\t\tshift: " << ((len-i-1)<<1) << "\n";
-//        std::cerr << "\t\tadd: " << ((get_seqi(seq,i)) << ((len-i)<<1) ) << "\n";
         index += get_seqi(seq,i) << ((len-i-1)<<1) ;
     }
 
