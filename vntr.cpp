@@ -115,19 +115,15 @@ void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant)
 {
     if (variant.type==VT_VNTR)
     {
-        
-        if (debug) std::cerr << "ANNOTATING VNTR \n";
+        if (debug) std::cerr << "ANNOTATING VNTR/STR \n";
         
         //since VNTR, just pick up reference and detect.
-        
         mt->detect_candidate_motifs(candidate_motifs, bcf_get_ref(v), 6);
         
-
         if (debug) std::cerr << "pcm size : " << mt->pcm.size() << "\n";
         if (debug) std::cerr << "*********************************************\n";
 
-        
-
+        //choose candidate motif
         bool first = true;
         float cp = 0;
         uint32_t clen = 0;
@@ -142,13 +138,21 @@ void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant)
                 cp = cm.score;
                 clen = cm.len;
                 first = false;
-                if (debug) std::cerr << "selected: " << mt->pcm.top().motif << " " << mt->pcm.top().score << "\n";
-                
                 
                 //if score are not perfect, use AHMM
                 ahmm->set_model(cm.motif.c_str());
                 ahmm->align(bcf_get_ref(v), qual.c_str());
-                ahmm->print_alignment();
+                //ahmm->print_alignment();
+                
+                if (debug) 
+                {
+                    printf("    selected: %10s %.2f %.2f %.2f (%d/%d)\n", mt->pcm.top().motif.c_str(),
+                                                                    mt->pcm.top().score,
+                                                                    ahmm->get_motif_concordance(),
+                                                                    (float)ahmm->get_exact_motif_count()/ahmm->get_motif_count(),
+                                                                    ahmm->get_exact_motif_count(),
+                                                                    ahmm->get_motif_count());
+                }
             }
             else
             {
@@ -156,103 +160,133 @@ void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant)
                 {
                     variant.emotif = variant.emotif + "," + cm.motif;
                     variant.escore = cm.score;
-
             
                     //if score are not perfect, use AHMM
                     ahmm->set_model(cm.motif.c_str());
                     ahmm->align(bcf_get_ref(v), qual.c_str());
-                    ahmm->print_alignment();
-
+                    //ahmm->print_alignment();
 
                     cp = cm.score;
                     clen = cm.len;
-                    if (debug) std::cerr << "selected: " << mt->pcm.top().motif << " " << mt->pcm.top().score << "\n";
+                    
+                    if (debug) 
+                    {
+                        printf("    selected: %10s %.2f %.2f %.2f (%d/%d)\n", mt->pcm.top().motif.c_str(),
+                                                                        mt->pcm.top().score,
+                                                                        ahmm->get_motif_concordance(),
+                                                                        (float)ahmm->get_exact_motif_count()/ahmm->get_motif_count(),
+                                                                        ahmm->get_exact_motif_count(),
+                                                                        ahmm->get_motif_count());
+                    }
+                
+                    
                 }
                 else
                 {
-                    if (debug) std::cerr << "not selected: " << mt->pcm.top().motif << " " << mt->pcm.top().score << "\n";
-            
+                    if (debug) 
+                    {
+                        printf("not selected: %10s %.2f \n", mt->pcm.top().motif.c_str(),
+                                                                        mt->pcm.top().score);
+                    }            
                 }    
             }
             
             mt->pcm.pop();
         }
         
-
-        
-        
-        
-        
-        
         return;
     }
-    else
+    else if (variant.type&VT_INDEL)
     {
-        return;
-    }
-    
-    int32_t no_candidate_motifs;
-
-    if (bcf_get_n_allele(v)>1)
-    {
-        const char* chrom = bcf_get_chrom(h, v);
-        int32_t pos1 = bcf_get_pos1(v);
-
-        std::vector<CandidateMotif> candidate_motifs;
-        pick_candidate_motifs(h, v, candidate_motifs);
-
+        if (debug) std::cerr << "============================================\n";
+        if (debug) std::cerr << "ANNOTATING INDEL\n";
+            
+        
+        ReferenceRegion region = extract_regions(h, v);
+        
+        mt->detect_candidate_motifs(candidate_motifs, const_cast<char*>(region.ref.c_str()), 6);
+        
+        if (!mt->pcm.empty())
+        {    
+            CandidateMotif cm = mt->pcm.top();
+            
+            variant.emotif = cm.motif;
+            variant.escore = cm.score;
+            variant.pos1 = region.beg1;
+            variant.ref = region.ref;
+        }
+        
+        
+        if (debug) std::cerr << "============================================\n";
         return; 
-        std::string eru = candidate_motifs[0].motif;
-        std::string emotif = get_motif(eru);
-       
-        std::cerr << "exact motif : " << emotif << "\n";
-        std::cerr << "exact ru    : " << eru << "\n";
-
-        variant.eru = eru;
-        variant.emotif = emotif;
-
-        ///////////////
-        //INEXACT STRs
-        //////////////
-
-        bool debug = false;
-
-//        std::cerr << "\t";
-//        bcf_print(h, v);
-
-        if (debug)
-        {
-            std::cerr << "//////////////////////\n";
-            std::cerr << "//FUZZY LEFT ALIGNMENT\n";
-            std::cerr << "//////////////////////\n";
-        }
-
-        int32_t lflank_len, rflank_len, lref_len, rref_len;
-        char* lflank, *ru, *rflank, *lrefseq, *rrefseq;
-        int32_t ru_len;
-        std::string qual(2048, 'K');
-
-        int32_t flank_len = 10;
-        int32_t check_len = 100;
-
-        //left flank
-        lflank = faidx_fetch_seq(fai, chrom, pos1-flank_len, pos1-1, &lflank_len);
-        lrefseq = faidx_fetch_seq(fai, chrom, pos1-flank_len, pos1+check_len, &lref_len);
-
-        int32_t penalty = emotif.size()>6? 5 : emotif.size();
-        penalty = 10;
-        //std::cerr << "PENALTY : " << penalty << "\n";
-
-        if (pos1==164284)
-        {
-            //std::cerr << "MOTIF AND LFLANK  " << emotif << " " << lflank << "\n";
-        }
-        lfhmm->set_model(lflank, eru.c_str());
-        lfhmm->set_mismatch_penalty(penalty);
-        lfhmm->set_delta(0.0000000001);
-        lfhmm->initialize_T();
-        lfhmm->align(lrefseq, qual.c_str());
-        if (debug) lfhmm->print_alignment();
+        
+        
+//        int32_t no_candidate_motifs;
+//
+//
+//        const char* chrom = bcf_get_chrom(h, v);
+//
+//
+//
+//        int32_t pos1 = bcf_get_pos1(v);
+//
+//
+//
+//
+//        std::vector<CandidateMotif> candidate_motifs;
+//        pick_candidate_motifs(h, v, candidate_motifs);
+//
+//        std::string eru = candidate_motifs[0].motif;
+//        std::string emotif = get_motif(eru);
+//       
+//        std::cerr << "exact motif : " << emotif << "\n";
+//        std::cerr << "exact ru    : " << eru << "\n";
+//
+//        variant.eru = eru;
+//        variant.emotif = emotif;
+//
+//        ///////////////
+//        //INEXACT STRs
+//        //////////////
+//
+//        bool debug = false;
+//
+////        std::cerr << "\t";
+////        bcf_print(h, v);
+//
+//        if (debug)
+//        {
+//            std::cerr << "//////////////////////\n";
+//            std::cerr << "//FUZZY LEFT ALIGNMENT\n";
+//            std::cerr << "//////////////////////\n";
+//        }
+//
+//        int32_t lflank_len, rflank_len, lref_len, rref_len;
+//        char* lflank, *ru, *rflank, *lrefseq, *rrefseq;
+//        int32_t ru_len;
+//        std::string qual(2048, 'K');
+//
+//        int32_t flank_len = 10;
+//        int32_t check_len = 100;
+//
+//        //left flank
+//        lflank = faidx_fetch_seq(fai, chrom, pos1-flank_len, pos1-1, &lflank_len);
+//        lrefseq = faidx_fetch_seq(fai, chrom, pos1-flank_len, pos1+check_len, &lref_len);
+//
+//        int32_t penalty = emotif.size()>6? 5 : emotif.size();
+//        penalty = 10;
+//        //std::cerr << "PENALTY : " << penalty << "\n";
+//
+//        if (pos1==164284)
+//        {
+//            //std::cerr << "MOTIF AND LFLANK  " << emotif << " " << lflank << "\n";
+//        }
+//        lfhmm->set_model(lflank, eru.c_str());
+//        lfhmm->set_mismatch_penalty(penalty);
+//        lfhmm->set_delta(0.0000000001);
+//        lfhmm->initialize_T();
+//        lfhmm->align(lrefseq, qual.c_str());
+//        if (debug) lfhmm->print_alignment();
 
 //    std::cerr << "model: " << "(" << lflank_start[MODEL] << "~" << lflank_end[MODEL] << ") "
 //                          << "[" << motif_start[MODEL] << "~" << motif_end[MODEL] << "]\n";
@@ -263,64 +297,125 @@ void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant)
 //        int32_t lflank_start[2], lflank_end[2], motif_start[2], motif_end[2], rflank_start[2], rflank_end[2];
 //        int32_t motif_count, exact_motif_count, motif_m, motif_xid;
 
-
-        if (debug) std::cerr << "\n#################################\n\n";
-
-        if (debug)
-        {
-            std::cerr << "///////////////////////\n";
-            std::cerr << "//FUZZY RIGHT ALIGNMENT\n";
-            std::cerr << "///////////////////////\n";
-        }
-
-
-        int32_t motif_end1 = pos1+lfhmm->get_motif_read_epos1()-flank_len;
-
-        if (pos1==164284)
-        {
-//            rfhmm->set_debug(true);
-        }
+//
+//        if (debug) std::cerr << "\n#################################\n\n";
+//
+//        if (debug)
+//        {
+//            std::cerr << "///////////////////////\n";
+//            std::cerr << "//FUZZY RIGHT ALIGNMENT\n";
+//            std::cerr << "///////////////////////\n";
+//        }
+//
+//
+//        int32_t motif_end1 = pos1+lfhmm->get_motif_read_epos1()-flank_len;
+//
+//        if (pos1==164284)
+//        {
+////            rfhmm->set_debug(true);
+//        }
 
         //right flank
-        rflank = faidx_fetch_seq(fai, chrom, motif_end1, motif_end1+flank_len-1, &rflank_len);
-        rrefseq = faidx_fetch_seq(fai, chrom, motif_end1-check_len, motif_end1+flank_len-1, &rref_len);
-        if (pos1==164284)
-        {
-        //    std::cerr << "MOTIF AND RFLANK  " << emotif << " " << rflank << "\n";
-        }
-        //std::cerr << "MOTIF AND RFLANK  " << emotif << " " << rflank << "\n";
+//        rflank = faidx_fetch_seq(fai, chrom, motif_end1, motif_end1+flank_len-1, &rflank_len);
+//        rrefseq = faidx_fetch_seq(fai, chrom, motif_end1-check_len, motif_end1+flank_len-1, &rref_len);
+//        if (pos1==164284)
+//        {
+//        //    std::cerr << "MOTIF AND RFLANK  " << emotif << " " << rflank << "\n";
+//        }
+//        //std::cerr << "MOTIF AND RFLANK  " << emotif << " " << rflank << "\n";
+//
+//        rfhmm->set_model(eru.c_str(), rflank);
+//        rfhmm->set_mismatch_penalty(penalty);
+//        rfhmm->set_delta(0.0000000001);
+//        rfhmm->initialize_T();
+//        rfhmm->align(rrefseq, qual.c_str());
+//        if (debug) rfhmm->print_alignment();
+//
+//        if (debug)
+//        {
+//            std::cerr << "pos1 " << pos1 << "\n";
+//            std::cerr << "motif end1 " << motif_end1 << "\n";
+//            std::cerr << "read spos1 " << rfhmm->get_motif_read_spos1() << "\n";
+//            std::cerr << "read epos1 " << rfhmm->get_motif_read_epos1() << "\n";
+//        }
+//
+//        int32_t motif_beg1 = motif_end1-check_len + rfhmm->get_motif_read_spos1();
+//
+//        variant.iregion.beg1 = motif_beg1;
+//        variant.iregion.end1 = motif_end1;
+//        if (pos1==164284)
+//        {
+//         //   exit(1);
+//        }
+//
+//        if (lflank_len) free(lflank);
+//        if (lref_len) free(lrefseq);
+//        if (rflank_len) free(rflank);
+//        if (rref_len) free(rrefseq);
 
-        rfhmm->set_model(eru.c_str(), rflank);
-        rfhmm->set_mismatch_penalty(penalty);
-        rfhmm->set_delta(0.0000000001);
-        rfhmm->initialize_T();
-        rfhmm->align(rrefseq, qual.c_str());
-        if (debug) rfhmm->print_alignment();
+    }
+}
+
+/**
+ * Extract region to for motif discovery.
+ */
+ReferenceRegion VNTRAnnotator::extract_regions(bcf_hdr_t* h, bcf1_t* v)
+{
+    const char* chrom = bcf_get_chrom(h, v);
+    
+    int32_t min_beg1 = bcf_get_pos1(v);
+    int32_t max_end1 = min_beg1;
+    
+    //merge candidate search region
+    for (size_t i=1; i<bcf_get_n_allele(v); ++i)
+    {
+        std::string ref(bcf_get_alt(v, 0));
+        std::string alt(bcf_get_alt(v, i));
+        int32_t pos1 = bcf_get_pos1(v);
+      
+        trim(pos1, ref, alt);
 
         if (debug)
         {
-            std::cerr << "pos1 " << pos1 << "\n";
-            std::cerr << "motif end1 " << motif_end1 << "\n";
-            std::cerr << "read spos1 " << rfhmm->get_motif_read_spos1() << "\n";
-            std::cerr << "read epos1 " << rfhmm->get_motif_read_epos1() << "\n";
+            std::cerr << "indel fragment : " << (ref.size()<alt.size()? alt : ref) << "\n";
+            std::cerr << "               : " << ref << ":" << alt << "\n";
         }
+        
+        int32_t end1 = pos1 + ref.size() - 1;
+        right_align(chrom, end1, ref, alt);
 
-        int32_t motif_beg1 = motif_end1-check_len + rfhmm->get_motif_read_spos1();
+        int32_t beg1 = end1 - ref.size() + 1;
+        left_align(chrom, beg1, ref, alt);
+            
+        min_beg1 = beg1<min_beg1 ? beg1 : min_beg1;
+        max_end1 = end1>max_end1 ? end1 : max_end1;
+                
+        int32_t seq_len;
+        char* seq = faidx_fetch_seq(fai, chrom, min_beg1-1, max_end1-1, &seq_len);        
 
-        variant.iregion.beg1 = motif_beg1;
-        variant.iregion.end1 = motif_end1;
-        if (pos1==164284)
+        if (debug)
         {
-         //   exit(1);
+            std::cerr << "EXACT REGION " << min_beg1 << "-" << max_end1 << " (" << max_end1-min_beg1+1 <<") " << "\n";
+            std::cerr << "             " << seq << "\n";
         }
-
-
-        if (lflank_len) free(lflank);
-        if (lref_len) free(lrefseq);
-        if (rflank_len) free(rflank);
-        if (rref_len) free(rrefseq);
-
+        
+        if (seq_len) free(seq);    
     }
+
+    int32_t seq_len;
+    char* seq = faidx_fetch_seq(fai, chrom, min_beg1-1, max_end1-1, &seq_len);
+    
+    if (debug)
+    {
+        std::cerr << "FINAL EXACT REGION " << min_beg1 << "-" << max_end1 << " (" << max_end1-min_beg1+1 <<") " << "\n";
+        std::cerr << "                   " << seq << "\n";
+    }
+    
+    ReferenceRegion region = ReferenceRegion(min_beg1, max_end1, seq);
+    
+    if (seq_len) free(seq);
+    
+    return region;    
 }
 
 /**

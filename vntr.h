@@ -46,6 +46,21 @@
 
 KHASH_MAP_INIT_STR(mdict, int32_t);
 
+class ReferenceRegion
+{
+    public:
+    uint32_t beg1;
+    uint32_t end1;
+    std::string ref;
+        
+    ReferenceRegion(uint32_t beg1, uint32_t end1, char* ref)
+    {
+        this->beg1 = beg1;
+        this->end1 = end1;
+        this->ref.assign(ref);
+    };    
+};
+
 /**
  * Class for determining basic traits of an indel
  * motifs, flanks and VNTR type statistics.
@@ -146,6 +161,11 @@ class VNTRAnnotator
      * Trim alleles.
      */
     void trim(int32_t& pos1, std::string& ref, std::string& alt);
+
+    /**
+     * Extract region to for motif discovery.
+     */
+    ReferenceRegion extract_regions(bcf_hdr_t* h, bcf1_t* v);
 
     /**
      * Left align alleles.

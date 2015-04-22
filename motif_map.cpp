@@ -43,18 +43,18 @@ MotifMap::MotifMap(uint32_t max_len)
 
     max_index = 0;
     len_count.resize(max_len+1,0);
-    std::cerr << "\tmax_len: " << max_len << "\n";
+    //std::cerr << "\tmax_len: " << max_len << "\n";
 
     for (uint32_t i=1; i<=max_len; ++i)
     {
         len_count[i] = len_count[i-1] + (1<<(2*i));
-        std::cerr << "\t" << i << " : " << (1<<(2*i)) << " " << len_count[i] << "\n";
+        //std::cerr << "\t" << i << " : " << (1<<(2*i)) << " " << len_count[i] << "\n";
         max_index += (1<<(2*i));
     }
 
     --max_index;
 
-    std::cerr << "\tmax index: " << max_index << "\n\n";
+    //std::cerr << "\tmax index: " << max_index << "\n\n";
 
 //    //perform mapping.
 //    for (uint32_t len=1; len<=max_len; ++len)

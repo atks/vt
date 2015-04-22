@@ -64,6 +64,10 @@ class Variant
         
     std::string emotif;
     float escore;
+    
+    uint32_t pos1;
+    std::string ref;
+  
     std::string eru;
     Region eregion;
 

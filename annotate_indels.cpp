@@ -59,6 +59,8 @@ class Igor : Program
     VariantManip* vm;
     VNTRAnnotator* va;
     faidx_t* fai;
+   
+   
 
     Igor(int argc, char **argv)
     {
@@ -113,6 +115,7 @@ class Igor : Program
         bcf_hdr_append(odw->hdr, "##INFO=<ID=IRL,Number=1,Type=Integer,Description=\"Inexact Repeat Length\">");
         bcf_hdr_append(odw->hdr, "##INFO=<ID=IRG,Number=2,Type=Integer,Description=\"Region of the motif.\">");
         bcf_hdr_append(odw->hdr, "##INFO=<ID=ISQ,Number=1,Type=String,Description=\"Inexact STR Sequence\">");
+        bcf_hdr_append(odw->hdr, "##INFO=<ID=OLD_VARIANT,Number=1,Type=String,Description=\"Original chr:pos:ref:alt encoding\">\n");
 
 //        bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_LFLANK,Number=1,Type=String,Description=\"Right Flank Sequence\">");
 //        bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_RFLANK,Number=1,Type=String,Description=\"Left Flank Sequence\">");
@@ -162,14 +165,15 @@ class Igor : Program
 
         bcf1_t *v = odw->get_bcf1_from_pool();
         Variant variant;
-
+        kstring_t old_alleles = {0,0,0};
+        
         while (odr->read(v))
         {
             bcf_unpack(v, BCF_UN_STR);
             int32_t vtype = vm->classify_variant(odr->hdr, v, variant);
             if (vtype&VT_INDEL || vtype&VT_VNTR)
             {
-               //bcf_print_liten(odr->hdr, v);
+//                bcf_print(odr->hdr, v);
                 //annotate indel like variant
                 va->annotate(odr->hdr, v, variant);
 
@@ -177,6 +181,17 @@ class Igor : Program
 
                 bcf_update_info_string(odw->hdr, v, "VMOTIF", variant.emotif.c_str());
                 bcf_update_info_float(odw->hdr, v, "VSCORE", &variant.escore, 1);
+
+                old_alleles.l = 0;
+                bcf_variant2string(odw->hdr, v, &old_alleles);
+                bcf_update_info_string(odw->hdr, v, "OLD_VARIANT", old_alleles.s);
+
+                //update alleles
+                bcf_set_pos1(v, variant.pos1);
+                std::string new_alleles = variant.ref;
+                new_alleles += ",<VNTR>";
+                bcf_update_alleles_str(odw->hdr, v, new_alleles.c_str());
+
 //                bcf_update_info_string(odw->hdr, v, "VRU", variant.eru.c_str());
 //                int32_t rl = variant.eregion.end1-variant.eregion.beg1-1;
 //                bcf_update_info_int32(odw->hdr, v, "VRL", &rl, 1);
