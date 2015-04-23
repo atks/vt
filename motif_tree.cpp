@@ -50,6 +50,11 @@ MotifTree::MotifTree(uint32_t max_len, bool debug)
         {
             uint32_t seq = mm->index2seq(index);
             tree[index] = {index, mm->seq2index(mm->canonical(seq, len), len), 0, len, seq};
+
+            uint32_t c = mm->canonical(seq, len);
+            //bool a = mm->is_aperiodic(c, len);
+            //std::cerr << " " << mm->seq2str(c, len) << " " << mm->is_aperiodic(c, len) << "\n";
+
         }
     }
 };
@@ -111,12 +116,12 @@ void MotifTree::set_sequence(char* seq, int32_t len)
 {
     cmax_len = (len >> 1) < max_len ? (len >> 1) : max_len;
 
-    if (debug) 
+    if (debug)
     {
         std::cerr << "len : " << len << "\n";
         std::cerr << "cmax_len : " << cmax_len << "\n";
     }
-    
+
     uint32_t s = 0;
     for (uint32_t i=0; i<len; ++i)
     {
@@ -195,9 +200,9 @@ void MotifTree::detect_candidate_motifs(std::vector<CandidateMotif>& candidate_m
 {
     if (debug)
     {
-    	std::cerr << "============================================\n";
-    	std::cerr << "detecting motifs for an str\n";
-    	std::cerr << "seq: " << seq << "\n";
+        std::cerr << "============================================\n";
+        std::cerr << "detecting motifs for an str\n";
+        std::cerr << "seq: " << seq << "\n";
     }
 
     std::string s(seq);
@@ -229,13 +234,16 @@ void MotifTree::detect_candidate_motifs(std::vector<CandidateMotif>& candidate_m
     {
         if (debug) std::cerr << mm->seq2str(mm->index2seq(i->first), tree[i->first].len) << " : " << i->second << " (" <<  (float)i->second/(lc[tree[i->first].len]) <<  ") " << lc[tree[i->first].len] <<"\n";
 
-        float p = (float)i->second/(lc[tree[i->first].len]);
 
-        if (p>0.2)
+        if (mm->is_aperiodic(mm->index2seq(i->first), tree[i->first].len))
         {
-            pcm.push(CandidateMotif(mm->seq2str(mm->index2seq(i->first), tree[i->first].len), p, tree[i->first].len));
-        }
+            float p = (float)i->second/(lc[tree[i->first].len]);
 
+            if (p>0.2)
+            {
+                pcm.push(CandidateMotif(mm->seq2str(mm->index2seq(i->first), tree[i->first].len), p, tree[i->first].len));
+            }
+        }
     }
 
 

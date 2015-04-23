@@ -139,9 +139,19 @@ void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::str
                 clen = cm.len;
                 first = false;
                 
+                if (cm.score<0.95 && cm.motif.size()==1)
+                {
+                    mt->pcm.pop();
+                    cm = mt->pcm.top();
+                    variant.emotif = cm.motif;
+                    variant.escore = cm.score;
+                    
+                    
+                }
+                
                 //if score are not perfect, use AHMM
-                ahmm->set_model(cm.motif.c_str());
-                ahmm->align(bcf_get_ref(v), qual.c_str());
+//                ahmm->set_model(cm.motif.c_str());
+//                ahmm->align(bcf_get_ref(v), qual.c_str());
                 //ahmm->print_alignment();
                 
                 if (debug) 
@@ -154,7 +164,7 @@ void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::str
                                                                     ahmm->get_motif_count());
                 }
             }
-            else
+            else if (0)
             {
                 if (cp-cm.score<((float)1/cm.len)*cp || cm.score>0.5)
                 {

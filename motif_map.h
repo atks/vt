@@ -62,6 +62,11 @@ class MotifMap
     uint32_t canonical(uint32_t motif, uint32_t len);
 
     /**
+     * Checks if a string is aperiodic.
+     */
+    bool is_aperiodic(uint32_t motif, uint32_t len);
+
+    /**
      * Converts index to sequence.
      */
     uint32_t index2seq(uint32_t index);

@@ -106,6 +106,41 @@ uint32_t MotifMap::canonical(uint32_t seq, uint32_t len)
 }
 
 /**
+ * Checks if a string is aperiodic.
+ */
+bool MotifMap::is_aperiodic(uint32_t motif, uint32_t len)
+{
+//    std::cerr << "\tchecking: " << seq2str(motif,len) << "\n";
+    
+    //for prime factors of len
+    for (uint32_t i=1; i<=(len>>1); ++i)
+    {
+        
+//        std::cerr << "\t\ti: " << i << "\n";
+        
+        if (len%i==0)
+        {
+            uint32_t n = 0;
+//            std::cerr << "\t\t\tsubunit: " << seq2str(motif,i) << "\n";
+            for (uint32_t j=0; j<len/i; ++j)
+            {
+                for (uint32_t k=0; k<i; ++k)    
+                { 
+                    n = set_seqi(n, i*j+k, get_seqi(motif, k));
+                }
+            }
+            
+//            std::cerr << "\t\t\t\t" << seq2str(n,len) << "\n";
+            if (n==motif) return false;    
+        }    
+    }
+    
+//    if (len==4) exit(1);
+    
+    return true;
+}
+
+/**
  * Converts index to sequence.
  */
 uint32_t MotifMap::index2seq(uint32_t index)
