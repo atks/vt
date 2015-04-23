@@ -21,7 +21,7 @@
    THE SOFTWARE.
 */
 
-#include "vntr.h"
+#include "vntr_annotator.h"
 
 /**
  * Constructor.
@@ -111,7 +111,7 @@ VNTRAnnotator::~VNTRAnnotator()
  * Annotates STR characteristics.
  * RU,RL,LFLANK,RFLANK,LFLANKPOS,RFLANKPOS,MOTIF_CONCORDANCE,MOTIF_CONCORDANCE
  */
-void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant)
+void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::string mode)
 {
     if (variant.type==VT_VNTR)
     {
@@ -198,29 +198,38 @@ void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant)
     }
     else if (variant.type&VT_INDEL)
     {
-        if (debug) std::cerr << "============================================\n";
-        if (debug) std::cerr << "ANNOTATING INDEL\n";
+        if (mode=="e")
+        {
+        
+            if (debug) std::cerr << "============================================\n";
+            if (debug) std::cerr << "ANNOTATING INDEL\n";
+                
             
-        
-        ReferenceRegion region = extract_regions(h, v);
-        
-        mt->detect_candidate_motifs(candidate_motifs, const_cast<char*>(region.ref.c_str()), 6);
-        
-        if (!mt->pcm.empty())
-        {    
-            CandidateMotif cm = mt->pcm.top();
+            ReferenceRegion region = extract_regions(h, v);
             
-            variant.emotif = cm.motif;
-            variant.escore = cm.score;
-            variant.pos1 = region.beg1;
-            variant.ref = region.ref;
+            mt->detect_candidate_motifs(candidate_motifs, const_cast<char*>(region.ref.c_str()), 6);
+            
+            if (!mt->pcm.empty())
+            {    
+                CandidateMotif cm = mt->pcm.top();
+                
+                variant.emotif = cm.motif;
+                variant.escore = cm.score;
+                variant.pos1 = region.beg1;
+                variant.ref = region.ref;
+            }
+            
+            
+            if (debug) std::cerr << "============================================\n";
+            return; 
+            
         }
-        
-        
-        if (debug) std::cerr << "============================================\n";
-        return; 
-        
-        
+        else if (mode=="f")     
+        {
+        }
+        else if (mode=="x")     
+        {
+        }       
 //        int32_t no_candidate_motifs;
 //
 //

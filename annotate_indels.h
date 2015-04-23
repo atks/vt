@@ -31,7 +31,7 @@
 #include "lfhmm.h"
 #include "variant_manip.h"
 #include "program.h"
-#include "vntr.h"
+#include "vntr_annotator.h"
 
 void annotate_indels(int argc, char ** argv);
 

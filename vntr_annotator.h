@@ -21,8 +21,8 @@
    THE SOFTWARE.
 */
 
-#ifndef VNTR_H
-#define VNTR_H
+#ifndef VNTR_ANNOTATOR_H
+#define VNTR_ANNOTATOR_H
 
 #include <cstdlib>
 #include <cstdint>
@@ -129,7 +129,7 @@ class VNTRAnnotator
      * Annotates STR characteristics.
      * RU,RL,LFLANK,RFLANK,LFLANKPOS,RFLANKPOS,MOTIF_CONCORDANCE,MOTIF_CONCORDANCE
      */
-    void annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant);
+    void annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::string mode);
 
     /**
      * Pick shortest motif.
