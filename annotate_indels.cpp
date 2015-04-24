@@ -195,16 +195,16 @@ class Igor : Program
                     bcf_update_info_string(odw->hdr, v, "VMOTIF", variant.emotif.c_str());
                     bcf_update_info_float(odw->hdr, v, "VSCORE", &variant.escore, 1);
 
-                    //annotate old alleles
-                    old_alleles.l = 0;
-                    bcf_variant2string(odw->hdr, v, &old_alleles);
-                    bcf_update_info_string(odw->hdr, v, "OLD_VARIANT", old_alleles.s);
-    
-                    //update alleles
-                    bcf_set_pos1(v, variant.pos1);
-                    std::string new_alleles = variant.ref;
-                    new_alleles += ",<VNTR>";
-                    bcf_update_alleles_str(odw->hdr, v, new_alleles.c_str());
+//                    //annotate old alleles
+//                    old_alleles.l = 0;
+//                    bcf_variant2string(odw->hdr, v, &old_alleles);
+//                    bcf_update_info_string(odw->hdr, v, "OLD_VARIANT", old_alleles.s);
+//    
+//                    //update alleles
+//                    bcf_set_pos1(v, variant.pos1);
+//                    std::string new_alleles = variant.ref;
+//                    new_alleles += ",<VNTR>";
+//                    bcf_update_alleles_str(odw->hdr, v, new_alleles.c_str());
                 }
                 else if (mode=="f")
                 {

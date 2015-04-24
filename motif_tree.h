@@ -42,6 +42,15 @@
 #define T 3
 
 /**
+ * struct for storing sequence content.
+ */
+typedef struct 
+{
+    uint32_t base[4]; //counts of bases
+    uint32_t n; //total number of bases   
+} scontent;
+
+/**
  * struct for encoding a node.
  */
 typedef struct 
@@ -65,12 +74,14 @@ class CandidateMotif
     std::string motif;
     float score;
     uint32_t len;
+    float fit;
     
-    CandidateMotif(std::string motif, float score, uint32_t len)
+    CandidateMotif(std::string motif, float score, uint32_t len, float fit)
     {
         this->motif = motif;
         this->score = score;
         this->len = len;
+        this->fit = fit;
     }
 };
 
@@ -154,7 +165,22 @@ class MotifTree
      * Construct suffix tree based on sequence up to max_motif_len.
      */
     void set_sequence(char* seq, int32_t len);
-
+    
+    /**
+     * Shifts a string.
+     */
+    std::string shift_str(std::string& seq, uint32_t i);
+    
+    /**
+     * Checks if two copies of a motif exists in a seq.
+     */
+    bool exist_two_copies(std::string& seq, std::string& motif);
+    
+    /**
+     * Compute fit of expected content of nucleotides.
+     */
+    float compute_fit(uint32_t index, scontent* sc);
+        
     /**
      * Gets candidate motifs up to max_motif_len.
      */

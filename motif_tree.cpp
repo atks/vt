@@ -194,6 +194,83 @@ void MotifTree::consolidate_motif_counts(node* n)
 }
 
 /**
+ * Shifts a string.
+ */
+std::string MotifTree::shift_str(std::string& seq, uint32_t i)
+{
+    std::string sseq = seq;
+    if (i)
+    {
+        sseq = seq.substr(i) + seq.substr(0,i);
+    }    
+    
+    return sseq;
+}
+
+/**
+ * Checks if two copies of a motif exists in a seq.
+ */
+bool MotifTree::exist_two_copies(std::string& seq, std::string& motif)
+{
+//    std::cerr << "\te2m: " << motif <<"\n";
+    //all slides of motif
+    for (uint32_t i=0; i<motif.size(); ++i)
+    {
+        std::string ru = shift_str(motif, i);
+        
+//        std::cerr << "\t\tru: " << ru <<"\n";
+        const char* s = seq.c_str();
+//        std::cerr << "\t\t\ts1: " << s << "\n"; 
+        if ((s = strstr(s, ru.c_str())))
+        {
+            s += ru.size();
+//            std::cerr << "\t\t\ts2: " << s << "\n"; 
+            
+            if ((s = strstr(s, ru.c_str())))
+            {
+                return true;
+            }
+        }
+    }
+    
+    return false;
+}
+
+/**
+ * Compute fit of expected content of nucleotides.
+ */
+float MotifTree::compute_fit(uint32_t index, scontent* sc)
+{
+    uint32_t e[] = {0,0,0,0};
+    node* n = &tree[index];
+    
+//    std::cerr << "compute fit: " << mm->seq2str(n->seq, n->len) << "\n";
+    
+    //compute expected fit
+    for (uint32_t i=0; i<n->len; ++i)
+    {
+        ++e[get_seqi(n->seq, i)];
+    }
+    
+//    std::cerr << e[0]ß << " " << e[1] << " " << e[2] << " " << e[3] << "\n";
+    
+    float fit = 0;
+    float t = 0;
+    
+//    std::cerr << "n " << sc->n << " (" << sc->base[A] << "," << sc->base[C] << "," << sc->base[G] << "," << sc->base[T] << ")\n";
+    
+    for (uint32_t i=0; i<4; ++i)
+    {
+        t = (float)sc->base[i]/sc->n - (float)e[i]/n->len;
+        fit += t*t;
+    }
+    
+//    std::cerr << "compute fit " << fit << "\n";
+    
+    return fit;
+}
+
+/**
  * Gets candidate motifs up to max_motif_len.
  */
 void MotifTree::detect_candidate_motifs(std::vector<CandidateMotif>& candidate_motifs, char* seq, uint32_t max_motif_len)
@@ -224,28 +301,55 @@ void MotifTree::detect_candidate_motifs(std::vector<CandidateMotif>& candidate_m
 
 //    print_tree();
 
+    //gather distribution
+    scontent sc;
+    sc.base[A] = tree[A].count;
+    sc.base[C] = tree[C].count;
+    sc.base[G] = tree[G].count;
+    sc.base[T] = tree[T].count;
+    sc.n = sc.base[A] + sc.base[C] + sc.base[G] + sc.base[T];
+    
     //count occurrences
     consolidate_motif_counts();
 
     if (debug)
         std::cerr << "candidate motifs: " << cm.size() << "\n";
 
+    float sthreshold = std::min(0.80, (s.size()-1.0)/s.size());
+
     for (std::map<uint32_t, uint32_t>::iterator i = cm.begin(); i!=cm.end(); ++i)
     {
-        if (debug) std::cerr << mm->seq2str(mm->index2seq(i->first), tree[i->first].len) << " : " << i->second << " (" <<  (float)i->second/(lc[tree[i->first].len]) <<  ") " << lc[tree[i->first].len] <<"\n";
-
-
         if (mm->is_aperiodic(mm->index2seq(i->first), tree[i->first].len))
         {
+        
             float p = (float)i->second/(lc[tree[i->first].len]);
-
-            if (p>0.2)
+            float f = compute_fit(i->first, &sc);
+            p -= f;
+             
+            if ((tree[i->first].len==1 && p+f>sthreshold) || (tree[i->first].len>1 && p>0.2))
             {
-                pcm.push(CandidateMotif(mm->seq2str(mm->index2seq(i->first), tree[i->first].len), p, tree[i->first].len));
+                if (debug) std::cerr << mm->seq2str(mm->index2seq(i->first), tree[i->first].len) << " : " << i->second << " (" <<  (float)i->second/(lc[tree[i->first].len]) <<  ") " << lc[tree[i->first].len] <<"\n";
+                
+                std::string motif = mm->seq2str(mm->index2seq(i->first), tree[i->first].len);
+                if (exist_two_copies(s, motif))
+                {
+                    pcm.push(CandidateMotif(motif, p, tree[i->first].len, f));
+                }
             }
         }
     }
 
+    //if no pickups
+    if (pcm.size()==0)
+    {
+        std::map<uint32_t, uint32_t>::iterator i = cm.begin();
+        
+        float p = (float)i->second/(lc[tree[i->first].len]);
+        float f = compute_fit(i->first, &sc);
+        p -= f;
+        pcm.push(CandidateMotif(mm->seq2str(mm->index2seq(i->first), tree[i->first].len), p, tree[i->first].len, f));
+            
+    }    
 
     //populate candidate_motifs
 //

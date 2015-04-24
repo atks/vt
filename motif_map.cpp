@@ -110,6 +110,7 @@ uint32_t MotifMap::canonical(uint32_t seq, uint32_t len)
  */
 bool MotifMap::is_aperiodic(uint32_t motif, uint32_t len)
 {
+    
 //    std::cerr << "\tchecking: " << seq2str(motif,len) << "\n";
     
     //for prime factors of len
@@ -138,6 +139,7 @@ bool MotifMap::is_aperiodic(uint32_t motif, uint32_t len)
 //    if (len==4) exit(1);
     
     return true;
+    
 }
 
 /**

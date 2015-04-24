@@ -139,41 +139,32 @@ void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::str
                 clen = cm.len;
                 first = false;
                 
-                if (cm.score<0.95 && cm.motif.size()==1)
-                {
-                    mt->pcm.pop();
-                    cm = mt->pcm.top();
-                    variant.emotif = cm.motif;
-                    variant.escore = cm.score;
-                    
-                    
-                }
-                
                 //if score are not perfect, use AHMM
-//                ahmm->set_model(cm.motif.c_str());
-//                ahmm->align(bcf_get_ref(v), qual.c_str());
+                ahmm->set_model(cm.motif.c_str());
+                if (debug) ahmm->align(bcf_get_ref(v), qual.c_str());
                 //ahmm->print_alignment();
                 
                 if (debug) 
                 {
-                    printf("    selected: %10s %.2f %.2f %.2f (%d/%d)\n", mt->pcm.top().motif.c_str(),
+                    printf("    selected: %10s %.2f %.2f %.2f %.2f (%d/%d)\n", mt->pcm.top().motif.c_str(),
                                                                     mt->pcm.top().score,
+                                                                    mt->pcm.top().fit,
                                                                     ahmm->get_motif_concordance(),
                                                                     (float)ahmm->get_exact_motif_count()/ahmm->get_motif_count(),
                                                                     ahmm->get_exact_motif_count(),
                                                                     ahmm->get_motif_count());
                 }
             }
-            else if (0)
+            else
             {
-                if (cp-cm.score<((float)1/cm.len)*cp || cm.score>0.5)
+                if (cp-cm.score<((float)1/cm.len)*cp || cm.score>0.2)
                 {
-                    variant.emotif = variant.emotif + "," + cm.motif;
-                    variant.escore = cm.score;
+//                    variant.emotif = variant.emotif + "," + cm.motif;
+//                    variant.escore = cm.score;
             
                     //if score are not perfect, use AHMM
-                    ahmm->set_model(cm.motif.c_str());
-                    ahmm->align(bcf_get_ref(v), qual.c_str());
+                    ahmm->set_model(cm.motif.c_str()); 
+                    if (debug) ahmm->align(bcf_get_ref(v), qual.c_str());
                     //ahmm->print_alignment();
 
                     cp = cm.score;
@@ -181,8 +172,9 @@ void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::str
                     
                     if (debug) 
                     {
-                        printf("    selected: %10s %.2f %.2f %.2f (%d/%d)\n", mt->pcm.top().motif.c_str(),
+                        printf("    selected: %10s %.2f %.2f %.2f %.2f (%d/%d)\n", mt->pcm.top().motif.c_str(),
                                                                         mt->pcm.top().score,
+                                                                        mt->pcm.top().fit,
                                                                         ahmm->get_motif_concordance(),
                                                                         (float)ahmm->get_exact_motif_count()/ahmm->get_motif_count(),
                                                                         ahmm->get_exact_motif_count(),
@@ -201,7 +193,7 @@ void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::str
                 }    
             }
             
-            mt->pcm.pop();
+            if (!mt->pcm.empty()) mt->pcm.pop();
         }
         
         return;
