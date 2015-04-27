@@ -44,15 +44,15 @@ VNTRAnnotator::VNTRAnnotator(std::string& ref_fasta_file, bool debug)
     //update factors
     factors = NULL;
     initialize_factors(32);
-    
+
     this->debug = debug;
-    
+
     ahmm = new AHMM();
-    for (int32_t i=0; i<250; ++i)
+    for (int32_t i=0; i<256; ++i)
     {
         qual += 'K';
     }
-     
+
 };
 
 /**
@@ -107,48 +107,78 @@ VNTRAnnotator::~VNTRAnnotator()
     }
 }
 
-/**detect_candidate_motifs();
- * Annotates STR characteristics.
+/**
+ * Chooses a phase of the motif that is appropriate for the alignment
+ */
+std::string VNTRAnnotator::choose_repeat_unit(std::string& ref, std::string& motif)
+{
+    for (uint32_t i=0; i<motif.size(); ++i)
+    {
+        std::string smotif = mt->shift_str(motif, i);
+        if (ref.compare(0, smotif.size(), smotif)==0)
+        {
+            return smotif;
+        }
+    }
+
+    return motif;
+}
+
+/**-
+ * Annotates VNTR characteristics.
+ * Annotates STRs/VNTRs and Indels
  * RU,RL,LFLANK,RFLANK,LFLANKPOS,RFLANKPOS,MOTIF_CONCORDANCE,MOTIF_CONCORDANCE
  */
 void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::string mode)
 {
+    //search for motif based on reference sequence
+    //annotates motif and score
     if (variant.type==VT_VNTR)
     {
         if (debug) std::cerr << "ANNOTATING VNTR/STR \n";
-        
+
         //since VNTR, just pick up reference and detect.
         mt->detect_candidate_motifs(candidate_motifs, bcf_get_ref(v), 6);
-        
+
         if (debug) std::cerr << "pcm size : " << mt->pcm.size() << "\n";
         if (debug) std::cerr << "*********************************************\n";
 
         //choose candidate motif
         bool first = true;
         float cp = 0;
+        float mscore = 0;
         uint32_t clen = 0;
+        std::string ref(bcf_get_ref(v));
+        if (ref.size()>256) ref = ref.substr(0,256);
+
+        uint32_t no = 0;
+        
         while (!mt->pcm.empty())
-        {    
+        {
             CandidateMotif cm = mt->pcm.top();
-            
+
             if (first)
             {
+                std::string ru = choose_repeat_unit(ref, cm.motif);                
+                ahmm->set_model(ru.c_str());
+                ahmm->align(ref.c_str(), qual.c_str());
+
                 variant.emotif = cm.motif;
-                variant.escore = cm.score;
+                variant.escore = ahmm->get_motif_concordance();;
+                variant.ru = ru;
+                
                 cp = cm.score;
                 clen = cm.len;
                 first = false;
-                
-                //if score are not perfect, use AHMM
-                ahmm->set_model(cm.motif.c_str());
-                if (debug) ahmm->align(bcf_get_ref(v), qual.c_str());
-                //ahmm->print_alignment();
-                
-                if (debug) 
+                mscore = ahmm->get_motif_concordance();
+
+                if (debug)
                 {
-                    printf("    selected: %10s %.2f %.2f %.2f %.2f (%d/%d)\n", mt->pcm.top().motif.c_str(),
-                                                                    mt->pcm.top().score,
-                                                                    mt->pcm.top().fit,
+                    ahmm->print_alignment();
+
+                    printf("    selected: %10s %.2f %.2f %.2f %.2f (%d/%d)\n", cm.motif.c_str(),
+                                                                    cm.score,
+                                                                    cm.fit,
                                                                     ahmm->get_motif_concordance(),
                                                                     (float)ahmm->get_exact_motif_count()/ahmm->get_motif_count(),
                                                                     ahmm->get_exact_motif_count(),
@@ -157,21 +187,27 @@ void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::str
             }
             else
             {
-                if (cp-cm.score<((float)1/cm.len)*cp || cm.score>0.2)
+                if (no<3 && (cp-cm.score<((float)1/cm.len)*cp || cm.score>0.4))
                 {
-//                    variant.emotif = variant.emotif + "," + cm.motif;
-//                    variant.escore = cm.score;
-            
                     //if score are not perfect, use AHMM
-                    ahmm->set_model(cm.motif.c_str()); 
-                    if (debug) ahmm->align(bcf_get_ref(v), qual.c_str());
-                    //ahmm->print_alignment();
-
+                    std::string ru = choose_repeat_unit(ref, cm.motif);
+                    ahmm->set_model(ru.c_str());
+                    ahmm->align(ref.c_str(), qual.c_str());
+                    
                     cp = cm.score;
                     clen = cm.len;
-                    
-                    if (debug) 
+
+                    if (ahmm->get_motif_concordance()>mscore)
                     {
+                        variant.emotif = cm.motif;
+                        variant.escore = ahmm->get_motif_concordance();
+                        variant.ru = ru;
+                    }
+
+                    if (debug)
+                    {
+                        ahmm->print_alignment();
+                        
                         printf("    selected: %10s %.2f %.2f %.2f %.2f (%d/%d)\n", mt->pcm.top().motif.c_str(),
                                                                         mt->pcm.top().score,
                                                                         mt->pcm.top().fit,
@@ -180,58 +216,67 @@ void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::str
                                                                         ahmm->get_exact_motif_count(),
                                                                         ahmm->get_motif_count());
                     }
-                
-                    
                 }
                 else
                 {
-                    if (debug) 
+                    if (debug)
                     {
                         printf("not selected: %10s %.2f \n", mt->pcm.top().motif.c_str(),
                                                                         mt->pcm.top().score);
-                    }            
-                }    
+                    }
+                }
             }
-            
+
             if (!mt->pcm.empty()) mt->pcm.pop();
+
+            ++no;
         }
-        
+
         return;
     }
+    //1. selects candidate region by exact left and right alignment
+    //2. detects motif
+    //3. detects left anf right flank
     else if (variant.type&VT_INDEL)
     {
         if (mode=="e")
         {
-        
+
             if (debug) std::cerr << "============================================\n";
             if (debug) std::cerr << "ANNOTATING INDEL\n";
-                
-            
-            ReferenceRegion region = extract_regions(h, v);
-            
+
+
+            ReferenceRegion region = extract_regions_by_exact_alignment(h, v);
+
             mt->detect_candidate_motifs(candidate_motifs, const_cast<char*>(region.ref.c_str()), 6);
-            
+
             if (!mt->pcm.empty())
-            {    
+            {
                 CandidateMotif cm = mt->pcm.top();
-                
+
                 variant.emotif = cm.motif;
                 variant.escore = cm.score;
                 variant.pos1 = region.beg1;
                 variant.ref = region.ref;
             }
-            
-            
+
+
             if (debug) std::cerr << "============================================\n";
-            return; 
-            
+            return;
+
         }
-        else if (mode=="f")     
+        //1. selects candidate region by fuzzy left and right alignment
+        //2. detects motif
+        //3. detects left anf right flank
+        else if (mode=="f")
         {
         }
-        else if (mode=="x")     
+        //1. selects candidate region by fuzzy left and right alignment
+        //2. detects motif
+        //3. detects left anf right flank
+        else if (mode=="x")
         {
-        }       
+        }
 //        int32_t no_candidate_motifs;
 //
 //
@@ -249,7 +294,7 @@ void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::str
 //
 //        std::string eru = candidate_motifs[0].motif;
 //        std::string emotif = get_motif(eru);
-//       
+//
 //        std::cerr << "exact motif : " << emotif << "\n";
 //        std::cerr << "exact ru    : " << eru << "\n";
 //
@@ -368,22 +413,24 @@ void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::str
 }
 
 /**
- * Extract region to for motif discovery.
+ * Extract reference sequence region for motif discovery.
  */
-ReferenceRegion VNTRAnnotator::extract_regions(bcf_hdr_t* h, bcf1_t* v)
+ReferenceRegion VNTRAnnotator::extract_regions_by_exact_alignment(bcf_hdr_t* h, bcf1_t* v)
 {
     const char* chrom = bcf_get_chrom(h, v);
-    
+
     int32_t min_beg1 = bcf_get_pos1(v);
     int32_t max_end1 = min_beg1;
-    
+
     //merge candidate search region
     for (size_t i=1; i<bcf_get_n_allele(v); ++i)
     {
         std::string ref(bcf_get_alt(v, 0));
         std::string alt(bcf_get_alt(v, i));
         int32_t pos1 = bcf_get_pos1(v);
-      
+
+
+        //why do this??
         trim(pos1, ref, alt);
 
         if (debug)
@@ -391,42 +438,42 @@ ReferenceRegion VNTRAnnotator::extract_regions(bcf_hdr_t* h, bcf1_t* v)
             std::cerr << "indel fragment : " << (ref.size()<alt.size()? alt : ref) << "\n";
             std::cerr << "               : " << ref << ":" << alt << "\n";
         }
-        
+
         int32_t end1 = pos1 + ref.size() - 1;
         right_align(chrom, end1, ref, alt);
 
         int32_t beg1 = end1 - ref.size() + 1;
         left_align(chrom, beg1, ref, alt);
-            
+
         min_beg1 = beg1<min_beg1 ? beg1 : min_beg1;
         max_end1 = end1>max_end1 ? end1 : max_end1;
-                
+
         int32_t seq_len;
-        char* seq = faidx_fetch_seq(fai, chrom, min_beg1-1, max_end1-1, &seq_len);        
+        char* seq = faidx_fetch_seq(fai, chrom, min_beg1-1, max_end1-1, &seq_len);
 
         if (debug)
         {
             std::cerr << "EXACT REGION " << min_beg1 << "-" << max_end1 << " (" << max_end1-min_beg1+1 <<") " << "\n";
             std::cerr << "             " << seq << "\n";
         }
-        
-        if (seq_len) free(seq);    
+
+        if (seq_len) free(seq);
     }
 
     int32_t seq_len;
     char* seq = faidx_fetch_seq(fai, chrom, min_beg1-1, max_end1-1, &seq_len);
-    
+
     if (debug)
     {
         std::cerr << "FINAL EXACT REGION " << min_beg1 << "-" << max_end1 << " (" << max_end1-min_beg1+1 <<") " << "\n";
         std::cerr << "                   " << seq << "\n";
     }
-    
+
     ReferenceRegion region = ReferenceRegion(min_beg1, max_end1, seq);
-    
+
     if (seq_len) free(seq);
-    
-    return region;    
+
+    return region;
 }
 
 /**
@@ -436,25 +483,25 @@ ReferenceRegion VNTRAnnotator::extract_regions(bcf_hdr_t* h, bcf1_t* v)
 void VNTRAnnotator::pick_candidate_motifs(bcf_hdr_t* h, bcf1_t* v, std::vector<CandidateMotif>& candidate_motifs)
 {
     const char* chrom = bcf_get_chrom(h, v);
-    
+
     bcf_print(h,v);
-    
+
     int32_t min_beg1 = bcf_get_pos1(v);
     int32_t max_end1 = min_beg1;
-    
+
     //merge candidate search region
     for (size_t i=1; i<bcf_get_n_allele(v); ++i)
     {
         std::string ref(bcf_get_alt(v, 0));
         std::string alt(bcf_get_alt(v, i));
         int32_t pos1 = bcf_get_pos1(v);
-    
+
         /////////////////////////////////////////
         //EXACT STRs in inserted/deleted sequence
         /////////////////////////////////////////
 //        std::cerr << "before trimming : " << pos1 << " " << ref << "\n";
 //        std::cerr << "                : " << pos1 << " " << alt << "\n";
-        
+
         trim(pos1, ref, alt);
 //        std::cerr << "after trimming : " << pos1 << " " << ref << "\n";
 //        std::cerr << "               : " << pos1 << " " << alt << "\n";
@@ -462,45 +509,45 @@ void VNTRAnnotator::pick_candidate_motifs(bcf_hdr_t* h, bcf1_t* v, std::vector<C
         std::cerr << "indel fragment : " << (ref.size()<alt.size()? alt : ref) << "\n";
         std::cerr << "               : " << ref << ":" << alt << "\n";
 
-        
+
         int32_t end1 = pos1 + ref.size() - 1;
         right_align(chrom, end1, ref, alt);
 //        std::cerr << "after right alignment : " << end1 << " " << ref << "\n";
 //        std::cerr << "                      : " << end1 << " " << alt << "\n";
-        
+
         //do this later as you want to pefrom the alignment shortly.
         int32_t beg1 = end1 - ref.size() + 1;
         left_align(chrom, beg1, ref, alt);
 //        std::cerr << "after left alignment : " << beg1 << " " << ref << "\n";
 //        std::cerr << "                     : " << beg1 << " " << alt << "\n";
-            
+
         min_beg1 = beg1<min_beg1 ? beg1 : min_beg1;
         max_end1 = end1>max_end1 ? end1 : max_end1;
-                
+
         int32_t seq_len;
         char* seq;
-        seq = faidx_fetch_seq(fai, chrom, min_beg1-1, max_end1-1, &seq_len);        
+        seq = faidx_fetch_seq(fai, chrom, min_beg1-1, max_end1-1, &seq_len);
         std::cerr << "EXACT REGION " << min_beg1 << "-" << max_end1 << " (" << max_end1-min_beg1+1 <<") " << "\n";
         std::cerr << "             " << seq << "\n";
-        if (seq_len) free(seq);    
+        if (seq_len) free(seq);
     }
 
     int32_t seq_len;
     char* seq;
     seq = faidx_fetch_seq(fai, chrom, min_beg1-1, max_end1-1, &seq_len);
-    
+
     std::cerr << "EXACT REGION " << min_beg1 << "-" << max_end1 << " (" << max_end1-min_beg1+1 <<") " << "\n";
     std::cerr << "             " << seq << "\n";
-    
+
     //detect motif
     //mt->set_sequence(seq);
   //  mt->detect_candidate_motifs(candidate_motifs, 6);
-    
-    
-    
+
+
+
     std::string sequence(seq);
-    
-    
+
+
     int32_t bases[4] = {0,0,0,0};
     for (size_t i=0; i<sequence.size(); ++i)
     {
@@ -521,23 +568,23 @@ void VNTRAnnotator::pick_candidate_motifs(bcf_hdr_t* h, bcf1_t* v, std::vector<C
             ++bases[3];
         }
     }
-    
+
     std::cerr << "             A " << ((float)bases[0]/sequence.size()) << "\n";
     std::cerr << "             C " << ((float)bases[1]/sequence.size()) << "\n";
     std::cerr << "             G " << ((float)bases[2]/sequence.size()) << "\n";
     std::cerr << "             T " << ((float)bases[3]/sequence.size()) << "\n";
-    
+
     if (seq_len>2)
     {
         sequence = sequence.substr(1, sequence.size()-2);
     }
-    
+
     if (seq_len) free(seq);
-    
-    
+
+
 
     scan_exact_motif(sequence);
-    
+
 }
 
 /**

@@ -121,8 +121,8 @@ class Igor : Program
         odw->link_hdr(odr->hdr);
         bcf_hdr_append(odw->hdr, "##INFO=<ID=VMOTIF,Number=.,Type=String,Description=\"Canonical Motif in an VNTR or Homopolymer\">");
         bcf_hdr_append(odw->hdr, "##INFO=<ID=VSCORE,Number=.,Type=Float,Description=\"Score of repeat unit\">");
-        
         bcf_hdr_append(odw->hdr, "##INFO=<ID=VRU,Number=1,Type=String,Description=\"Repeat unit in a VNTR or Homopolymer\">");
+        
         bcf_hdr_append(odw->hdr, "##INFO=<ID=VRL,Number=1,Type=Integer,Description=\"Repeat Length\">");
         bcf_hdr_append(odw->hdr, "##INFO=<ID=IRL,Number=1,Type=Integer,Description=\"Inexact Repeat Length\">");
         bcf_hdr_append(odw->hdr, "##INFO=<ID=IRG,Number=2,Type=Integer,Description=\"Region of the motif.\">");
@@ -194,6 +194,7 @@ class Igor : Program
                     //update tags for variant description
                     bcf_update_info_string(odw->hdr, v, "VMOTIF", variant.emotif.c_str());
                     bcf_update_info_float(odw->hdr, v, "VSCORE", &variant.escore, 1);
+                    bcf_update_info_string(odw->hdr, v, "VRU", variant.ru.c_str());
 
 //                    //annotate old alleles
 //                    old_alleles.l = 0;

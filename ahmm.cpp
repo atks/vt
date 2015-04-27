@@ -178,12 +178,12 @@ void AHMM::initialize_T()
         }
     }
 
-    T[S][M] = 0;
-
+    T[S][M] = log10(((1-delta))/((1-eta)*(1-eta)));
     T[M][M] = log10(((1-2*delta-tau))/((1-eta)*(1-eta)));
     T[D][M] = log10(((1-epsilon-tau))/((1-eta)*(1-eta)));
     T[I][M] = T[D][M];
 
+    T[S][D] = log10(delta/(1-eta));
     T[M][D] = log10(delta/(1-eta));
     T[D][D] = log10(epsilon/(1-eta));;
 
@@ -624,13 +624,13 @@ void AHMM::trace_path()
             optimal_probe_len = i;
         }
 
-        if (V[I][c]>=optimal_score)
-        {
-            optimal_score = V[I][c];
-            optimal_track = U[I][c];
-            optimal_state = I;
-            optimal_probe_len = i;
-        }
+//        if (V[I][c]>=optimal_score)
+//        {
+//            optimal_score = V[I][c];
+//            optimal_track = U[I][c];
+//            optimal_state = I;
+//            optimal_probe_len = i;
+//        }
     }
 
     //trace path
@@ -1170,6 +1170,7 @@ void AHMM::print(int32_t *v, size_t plen, size_t rlen)
  */
 void AHMM::print_T()
 {
+    std::cerr << "\t";
     for (size_t j=S; j<=Z; ++j)
     {
         std::cerr << std::setw(8) << std::setprecision(2) << std::fixed << state2string(j);
@@ -1178,6 +1179,7 @@ void AHMM::print_T()
 
     for (size_t i=S; i<=Z; ++i)
     {
+        std::cerr << "\t";
         for (size_t j=S; j<=Z; ++j)
         {
             if (j)
@@ -1191,6 +1193,7 @@ void AHMM::print_T()
         }
         std::cerr << "\n";
     }
+    std::cerr << "\n";
 };
 
 /**

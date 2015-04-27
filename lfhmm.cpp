@@ -763,7 +763,6 @@ void LFHMM::collect_statistics(int32_t src_t, int32_t des_t, int32_t j)
             rflank_end[MODEL] = INFINITY;
             rflank_end[READ] = INFINITY;
 
-
 //            std::cerr << std::setprecision(1) << std::fixed;
 //            std::cerr << std::setw(8) << std::setprecision(2) << std::fixed  << ((float)rflank_start[MODEL]) << " " <<  ((float)rflank_end[MODEL]) << "\n";
 

@@ -126,6 +126,11 @@ class VNTRAnnotator
     ~VNTRAnnotator();
 
     /**
+     * Chooses a phase of the motif that is appropriate for the alignment
+     */
+    std::string choose_repeat_unit(std::string& ref, std::string& motif);
+
+    /**
      * Annotates STR characteristics.
      * RU,RL,LFLANK,RFLANK,LFLANKPOS,RFLANKPOS,MOTIF_CONCORDANCE,MOTIF_CONCORDANCE
      */
@@ -165,7 +170,7 @@ class VNTRAnnotator
     /**
      * Extract region to for motif discovery.
      */
-    ReferenceRegion extract_regions(bcf_hdr_t* h, bcf1_t* v);
+    ReferenceRegion extract_regions_by_exact_alignment(bcf_hdr_t* h, bcf1_t* v);
 
     /**
      * Left align alleles.
