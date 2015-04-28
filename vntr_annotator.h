@@ -181,7 +181,22 @@ class VNTRAnnotator
      * Right align alleles.
      */
     void right_align(const char* chrom, int32_t& pos1, std::string& ref, std::string& alt);
+    
+    /**
+     * Extract reference sequence region for motif discovery in a fuzzy fashion.
+     */
+    ReferenceRegion extract_regions_by_fuzzy_alignment(bcf_hdr_t* h, bcf1_t* v);
+        
+    /**
+     * Fuzzy left align alleles.
+     */
+    uint32_t fuzzy_left_align(const char* chrom, int32_t pos1, std::string ref, std::string alt, uint32_t penalty);
 
+    /**
+     * Fuzzy right align alleles.
+     */
+    uint32_t fuzzy_right_align(const char* chrom, int32_t pos1, std::string ref, std::string alt, uint32_t penalty);
+                
     /**
      * Detect allele lower bound extent.
      */
