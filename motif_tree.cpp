@@ -321,20 +321,17 @@ void MotifTree::detect_candidate_motifs(std::vector<CandidateMotif>& candidate_m
     {
         if (mm->is_aperiodic(mm->index2seq(i->first), tree[i->first].len))
         {
-        
             float p = (float)i->second/(lc[tree[i->first].len]);
             float f = compute_fit(i->first, &sc);
-            p -= f;
+            //p -= f;
              
-            if ((tree[i->first].len==1 && p+f>sthreshold) || (tree[i->first].len>1 && p>0.2))
+            //if ((tree[i->first].len==1 && p+f>sthreshold) || (tree[i->first].len>1 && p>0.2))
+            //if ((tree[i->first].len==1) || (tree[i->first].len>1))
+            
+            std::string motif = mm->seq2str(mm->index2seq(i->first), tree[i->first].len);
+            if (exist_two_copies(s, motif))
             {
-                if (debug) std::cerr << mm->seq2str(mm->index2seq(i->first), tree[i->first].len) << " : " << i->second << " (" <<  (float)i->second/(lc[tree[i->first].len]) <<  ") " << lc[tree[i->first].len] <<"\n";
-                
-                std::string motif = mm->seq2str(mm->index2seq(i->first), tree[i->first].len);
-                if (exist_two_copies(s, motif))
-                {
-                    pcm.push(CandidateMotif(motif, p, tree[i->first].len, f));
-                }
+                pcm.push(CandidateMotif(motif, p, tree[i->first].len, f));
             }
         }
     }

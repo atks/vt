@@ -152,21 +152,21 @@ void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::str
         if (ref.size()>256) ref = ref.substr(0,256);
 
         uint32_t no = 0;
-        
+
         while (!mt->pcm.empty())
         {
             CandidateMotif cm = mt->pcm.top();
 
             if (first)
             {
-                std::string ru = choose_repeat_unit(ref, cm.motif);                
+                std::string ru = choose_repeat_unit(ref, cm.motif);
                 ahmm->set_model(ru.c_str());
                 ahmm->align(ref.c_str(), qual.c_str());
 
                 variant.emotif = cm.motif;
                 variant.escore = ahmm->get_motif_concordance();;
                 variant.ru = ru;
-                
+
                 cp = cm.score;
                 clen = cm.len;
                 first = false;
@@ -193,7 +193,7 @@ void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::str
                     std::string ru = choose_repeat_unit(ref, cm.motif);
                     ahmm->set_model(ru.c_str());
                     ahmm->align(ref.c_str(), qual.c_str());
-                    
+
                     cp = cm.score;
                     clen = cm.len;
 
@@ -207,7 +207,7 @@ void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::str
                     if (debug)
                     {
                         ahmm->print_alignment();
-                        
+
                         printf("    selected: %10s %.2f %.2f %.2f %.2f (%d/%d)\n", mt->pcm.top().motif.c_str(),
                                                                         mt->pcm.top().score,
                                                                         mt->pcm.top().fit,
@@ -234,17 +234,15 @@ void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::str
 
         return;
     }
-    //1. selects candidate region by exact left and right alignment
-    //2. detects motif
-    //3. detects left anf right flank
     else if (variant.type&VT_INDEL)
     {
+        //1. selects candidate region by exact left and right alignment
+        //2. detects motif
+        //3. detects left and right flank
         if (mode=="e")
         {
-
             if (debug) std::cerr << "============================================\n";
             if (debug) std::cerr << "ANNOTATING INDEL EXACTLY\n";
-
 
             ReferenceRegion region = extract_regions_by_exact_alignment(h, v);
 
@@ -262,36 +260,46 @@ void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::str
 
             if (debug) std::cerr << "============================================\n";
             return;
-
         }
         //1. selects candidate region by fuzzy left and right alignment
         //2. detects motif
-        //3. detects left anf right flank
+        //3. detects left and right flank
         else if (mode=="f")
         {
             if (debug) std::cerr << "============================================\n";
             if (debug) std::cerr << "ANNOTATING INDEL FUZZILY\n";
 
-
             ReferenceRegion region = extract_regions_by_fuzzy_alignment(h, v);
 
-            mt->detect_candidate_motifs(candidate_motifs, const_cast<char*>(region.ref.c_str()), 6);
+            mt->detect_candidate_motifs(candidate_motifs, const_cast<char*>(region.ref.c_str()), 10);
 
             if (!mt->pcm.empty())
             {
                 CandidateMotif cm = mt->pcm.top();
-
                 variant.emotif = cm.motif;
                 variant.escore = cm.score;
                 variant.pos1 = region.beg1;
                 variant.ref = region.ref;
+
+                if (debug)
+                {
+                    uint32_t n =0;
+                    while(!mt->pcm.empty())
+                    {
+                        CandidateMotif cm = mt->pcm.top();
+                        std::cerr << cm.motif << " " << cm.score << "\n";
+
+                        mt->pcm.pop();
+                        if (n==10)
+                            break;
+
+                        ++n;
+                    }
+                }
             }
 
             if (debug) std::cerr << "============================================\n";
             return;
-            
-            
-            
         }
         //1. selects candidate region by fuzzy left and right alignment
         //2. detects motif
@@ -841,7 +849,6 @@ ReferenceRegion VNTRAnnotator::extract_regions_by_fuzzy_alignment(bcf_hdr_t* h, 
         std::string alt(bcf_get_alt(v, i));
         int32_t pos1 = bcf_get_pos1(v);
 
-        //why do this??
         trim(pos1, ref, alt);
 
         if (debug)
@@ -850,18 +857,11 @@ ReferenceRegion VNTRAnnotator::extract_regions_by_fuzzy_alignment(bcf_hdr_t* h, 
             std::cerr << "               : " << ref << ":" << alt << "\n";
         }
 
-        int32_t end1 = pos1 + ref.size() - 1;
-        fuzzy_right_align(chrom, end1, ref, alt, 3);
-
-        int32_t beg1 = end1 - ref.size() + 1;
-        fuzzy_left_align(chrom, beg1, ref, alt, 3);
-
-        min_beg1 = beg1<min_beg1 ? beg1 : min_beg1;
-        max_end1 = end1>max_end1 ? end1 : max_end1;
+        min_beg1 = fuzzy_left_align(chrom, pos1, ref, alt, 3);
+        max_end1 = fuzzy_right_align(chrom, pos1 + ref.size() - 1, ref, alt, 3);
 
         int32_t seq_len;
         char* seq = faidx_fetch_seq(fai, chrom, min_beg1-1, max_end1-1, &seq_len);
-
         if (debug)
         {
             std::cerr << "FUZZY REGION " << min_beg1 << "-" << max_end1 << " (" << max_end1-min_beg1+1 <<") " << "\n";
@@ -888,12 +888,16 @@ ReferenceRegion VNTRAnnotator::extract_regions_by_fuzzy_alignment(bcf_hdr_t* h, 
 }
 
 /**
- * Fuzzy left align alleles.
+ * Fuzzy left align alleles allowing for mismatches and indels defined by penalty.
  */
 uint32_t VNTRAnnotator::fuzzy_left_align(const char* chrom, int32_t pos1, std::string ref, std::string alt, uint32_t penalty)
 {
-    std::cerr << "left alignment: " << chrom << ":" << pos1 << ":" << ref << ":" << alt << " (" <<  penalty << ")\n";
-        
+    if (ref==alt)
+    {
+        return pos1;
+    }
+
+    //std::cerr << "fuzzy left alignment: " << chrom << ":" << pos1 << ":" << ref << ":" << alt << " (" <<  penalty << ")\n";
     int32_t seq_len;
     char* seq;
     while (ref.at(ref.size()-1)==alt.at(alt.size()-1) && pos1>1)
@@ -914,13 +918,13 @@ uint32_t VNTRAnnotator::fuzzy_left_align(const char* chrom, int32_t pos1, std::s
             exit(1);
         }
     }
-    
+
     if (penalty)
     {
-        uint32_t pos1_sub = 0;
-        uint32_t pos1_del = 0;
-        uint32_t pos1_ins = 0;
-        
+        uint32_t pos1_sub = pos1;
+        uint32_t pos1_del = pos1;
+        uint32_t pos1_ins = pos1;
+
         //substitution
         seq = faidx_fetch_seq(fai, chrom, pos1-2, pos1-2, &seq_len);
         if (seq_len)
@@ -931,6 +935,7 @@ uint32_t VNTRAnnotator::fuzzy_left_align(const char* chrom, int32_t pos1, std::s
             new_alt.erase(new_alt.size()-1,1);
             new_ref.insert(0, 1, seq[0]);
             new_alt.insert(0, 1, seq[0]);
+//            std::cerr << "\tsub: " << chrom << ":" << pos1-1 << ":" << new_ref << ":" << new_alt << " (" <<  penalty-1 << ")\n";
             pos1_sub = fuzzy_left_align(chrom, pos1-1, new_ref, new_alt, penalty-1);
         }
         else
@@ -938,45 +943,45 @@ uint32_t VNTRAnnotator::fuzzy_left_align(const char* chrom, int32_t pos1, std::s
             fprintf(stderr, "[%s:%d %s] Cannot read from sequence file\n", __FILE__,__LINE__,__FUNCTION__);
             exit(1);
         }
-        
-        //deletion    
+
+        //deletion
         if (ref.size()>1)
-        {    
+        {
             std::string new_ref = ref;
             new_ref.erase(new_ref.size()-1,1);
+//            std::cerr << "\tdel: " << chrom << ":" << pos1 << ":" << new_ref << ":" << alt << " (" <<  penalty-1 << ")\n";
             pos1_del = fuzzy_left_align(chrom, pos1, new_ref, alt, penalty-1);
         }
-        
+
         //insertion
         if (alt.size()>1)
-        {    
+        {
             std::string new_alt = alt;
-            new_alt.erase(new_alt.size()-1,1);           
+            new_alt.erase(new_alt.size()-1,1);
+//            std::cerr << "\tins: " << chrom << ":" << pos1 << ":" << ref << ":" << new_alt << " (" <<  penalty-1 << ")\n";
             pos1_ins = fuzzy_left_align(chrom, pos1, ref, new_alt, penalty-1);
         }
-        
+
         pos1 = std::min(pos1_sub, std::min(pos1_del, pos1_ins));
     }
-    
-    std::cerr << "\tpos1: " << pos1 << "\n";
-    
+
     return pos1;
 }
 
 /**
- * Fuzzy right align alleles.
+ * Fuzzy right align alleles allowing for mismatches and indels defined by penalty.
  */
 uint32_t VNTRAnnotator::fuzzy_right_align(const char* chrom, int32_t pos1, std::string ref, std::string alt, uint32_t penalty)
 {
+    if (ref==alt)
+    {
+        return pos1;
+    }
+
     int32_t seq_len;
     char* seq;
-    while (penalty)
+    while (ref.at(0)==alt.at(0))
     {
-        if (ref.at(0)!=alt.at(0))
-        {
-            --penalty;
-        }
-        
         seq = faidx_fetch_seq(fai, chrom, pos1, pos1, &seq_len);
         if (seq_len)
         {
@@ -991,45 +996,57 @@ uint32_t VNTRAnnotator::fuzzy_right_align(const char* chrom, int32_t pos1, std::
         {
             fprintf(stderr, "[%s:%d %s] Cannot read from sequence file\n", __FILE__,__LINE__,__FUNCTION__);
             exit(1);
-        }        
+        }
     }
-    
+
     if (penalty)
     {
-        uint32_t pos1_sub = 0;
-        uint32_t pos1_del = 0;
-        uint32_t pos1_ins = 0;
-        
+        uint32_t pos1_sub = pos1;
+        uint32_t pos1_del = pos1;
+        uint32_t pos1_ins = pos1;
+
         //substitution
-        std::string new_ref = ref;
-        std::string new_alt = alt;
-        new_ref.erase(new_ref.size()-1,1);
-        new_alt.erase(new_alt.size()-1,1);
-        new_ref.insert(0, 1, seq[0]);
-        new_alt.insert(0, 1, seq[0]);
-        pos1_sub = fuzzy_left_align(chrom, pos1-1, new_ref, new_alt, penalty-1);
-    
-        //deletion    
-        if (ref.size()>1)
-        {    
+        seq = faidx_fetch_seq(fai, chrom, pos1, pos1, &seq_len);
+        if (seq_len)
+        {
             std::string new_ref = ref;
-            new_ref.erase(new_ref.size()-1,1);
-            pos1_del = fuzzy_left_align(chrom, pos1, new_ref, alt, penalty-1);
+            std::string new_alt = alt;
+            new_ref.erase(0,1);
+            new_alt.erase(0,1);
+            new_ref.push_back(seq[0]);
+            new_alt.push_back(seq[0]);
+            //std::cerr << "\tsub: " << chrom << ":" << pos1+1 << ":" << new_ref << ":" << new_alt << " (" <<  penalty-1 << ")\n";
+            pos1_sub = fuzzy_right_align(chrom, pos1+1, new_ref, new_alt, penalty-1);
         }
-        
+        else
+        {
+            fprintf(stderr, "[%s:%d %s] Cannot read from sequence file\n", __FILE__,__LINE__,__FUNCTION__);
+            exit(1);
+        }
+
+        //deletion
+        if (ref.size()>1)
+        {
+            std::string new_ref = ref;
+            new_ref.erase(0,1);
+            //std::cerr << "\tdel: " << chrom << ":" << pos1 << ":" << new_ref << ":" << alt << " (" <<  penalty-1 << ")\n";
+            pos1_del = fuzzy_right_align(chrom, pos1, new_ref, alt, penalty-1);
+        }
+
         //insertion
         if (alt.size()>1)
-        {    
+        {
             std::string new_alt = alt;
-            new_alt.erase(new_alt.size()-1,1);           
-            pos1_ins = fuzzy_left_align(chrom, pos1, ref, new_alt, penalty-1);
+            new_alt.erase(0,1);
+            //std::cerr << "\tins: " << chrom << ":" << pos1 << ":" << ref << ":" << new_alt << " (" <<  penalty-1 << ")\n";
+            pos1_ins = fuzzy_right_align(chrom, pos1, ref, new_alt, penalty-1);
         }
-        
-        pos1 = std::min(pos1_sub, std::min(pos1_del, pos1_ins));
+
+        pos1 = std::max(pos1_sub, std::max(pos1_del, pos1_ins));
     }
-    
+
     return pos1;
-    
+
 }
 
 /**
@@ -1043,7 +1060,6 @@ void VNTRAnnotator::detect_lower_bound_allele_extent(const char* chrom, int32_t&
         std::string alt = alleles[1];
 
         trim(pos1, ref, alt);
-
     }
     else
     {
