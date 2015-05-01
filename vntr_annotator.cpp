@@ -35,7 +35,7 @@ VNTRAnnotator::VNTRAnnotator(std::string& ref_fasta_file, bool debug)
         fprintf(stderr, "[%s:%d %s] Cannot load genome index: %s\n", __FILE__, __LINE__, __FUNCTION__, ref_fasta_file.c_str());
         exit(1);
     }
-    mt = new MotifTree(10, debug);
+    mt = new MotifTree(12, debug);
     rfhmm = new RFHMM();
     lfhmm = new LFHMM();
 
@@ -123,6 +123,117 @@ std::string VNTRAnnotator::choose_repeat_unit(std::string& ref, std::string& mot
 
     return motif;
 }
+//
+///**
+// * Chooses a phase of the motif that is appropriate for the alignment
+// */
+//VNTR VNTRAnnotator::detect_candidate_motifs(bcf_hdr_t* h, bcf1_t* v, MotifTree& mt)
+//{
+//    
+//
+//}
+
+/**
+ * Chooses a phase of the motif that is appropriate for the alignment
+ */
+VNTR VNTRAnnotator::choose_best_motif(bcf_hdr_t* h, bcf1_t* v, MotifTree* mt)
+{
+    if (debug) std::cerr << "pcm size : " << mt->pcm.size() << "\n";
+    if (debug) std::cerr << "*********************************************\n";
+
+    //choose candidate motif
+    bool first = true;
+    float cp = 0;
+    float mscore = 0;
+    uint32_t clen = 0;
+    std::string ref(bcf_get_ref(v));
+    if (ref.size()>256) ref = ref.substr(0,256);
+
+    uint32_t no = 0;
+
+    VNTR vntr;
+
+    while (!mt->pcm.empty())
+    {
+        CandidateMotif cm = mt->pcm.top();
+
+        if (first)
+        {
+            std::string ru = choose_repeat_unit(ref, cm.motif);
+            ahmm->set_model(ru.c_str());
+            ahmm->align(ref.c_str(), qual.c_str());
+
+            vntr.motif = cm.motif;
+            vntr.motif_score = ahmm->get_motif_concordance();;
+            vntr.ru = ru;
+
+            cp = cm.score;
+            clen = cm.len;
+            first = false;
+            mscore = ahmm->get_motif_concordance();
+
+            if (debug)
+            {
+                ahmm->print_alignment();
+
+                printf("    selected: %10s %.2f %.2f %.2f %.2f (%d/%d)\n", cm.motif.c_str(),
+                                                                cm.score,
+                                                                cm.fit,
+                                                                ahmm->get_motif_concordance(),
+                                                                (float)ahmm->get_exact_motif_count()/ahmm->get_motif_count(),
+                                                                ahmm->get_exact_motif_count(),
+                                                                ahmm->get_motif_count());
+            }
+        }
+        else
+        {
+            if (no<3 && (cp-cm.score<((float)1/cm.len)*cp || cm.score>0.4))
+            {
+                //if score are not perfect, use AHMM
+                std::string ru = choose_repeat_unit(ref, cm.motif);
+                ahmm->set_model(ru.c_str());
+                ahmm->align(ref.c_str(), qual.c_str());
+
+                cp = cm.score;
+                clen = cm.len;
+
+                if (ahmm->get_motif_concordance()>mscore)
+                {
+                    vntr.motif = cm.motif;
+                    vntr.motif_score = ahmm->get_motif_concordance();;
+                    vntr.ru = ru;
+                }
+
+                if (debug)
+                {
+                    ahmm->print_alignment();
+
+                    printf("    selected: %10s %.2f %.2f %.2f %.2f (%d/%d)\n", mt->pcm.top().motif.c_str(),
+                                                                    mt->pcm.top().score,
+                                                                    mt->pcm.top().fit,
+                                                                    ahmm->get_motif_concordance(),
+                                                                    (float)ahmm->get_exact_motif_count()/ahmm->get_motif_count(),
+                                                                    ahmm->get_exact_motif_count(),
+                                                                    ahmm->get_motif_count());
+                }
+            }
+            else
+            {
+                if (debug)
+                {
+                    printf("not selected: %10s %.2f \n", mt->pcm.top().motif.c_str(),
+                                                                    mt->pcm.top().score);
+                }
+            }
+        }
+
+        if (!mt->pcm.empty()) mt->pcm.pop();
+
+        ++no;
+    }
+    
+    return vntr;
+}
 
 /**
  * Annotates VNTR characteristics.
@@ -131,14 +242,23 @@ std::string VNTRAnnotator::choose_repeat_unit(std::string& ref, std::string& mot
  */
 void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::string mode)
 {
-    //search for motif based on reference sequence
-    //annotates motif and score
     if (variant.type==VT_VNTR)
     {
         if (debug) std::cerr << "ANNOTATING VNTR/STR \n";
 
+            
+
+        //1. detect candidate motifs from a reference seqeuence
+        
+        //2. for each candidate motif
+        //      compute best flank and decide
+
+        //3. choose best fit
+        
+        
+        
         //since VNTR, just pick up reference and detect.
-        mt->detect_candidate_motifs(candidate_motifs, bcf_get_ref(v), 6);
+        mt->detect_candidate_motifs(bcf_get_ref(v), 6);
 
         if (debug) std::cerr << "pcm size : " << mt->pcm.size() << "\n";
         if (debug) std::cerr << "*********************************************\n";
@@ -246,7 +366,7 @@ void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::str
 
             ReferenceRegion region = extract_regions_by_exact_alignment(h, v);
 
-            mt->detect_candidate_motifs(candidate_motifs, const_cast<char*>(region.ref.c_str()), 6);
+            mt->detect_candidate_motifs(region.ref);
 
             if (!mt->pcm.empty())
             {
@@ -271,7 +391,7 @@ void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::str
 
             ReferenceRegion region = extract_regions_by_fuzzy_alignment(h, v);
 
-            mt->detect_candidate_motifs(candidate_motifs, const_cast<char*>(region.ref.c_str()), 10);
+            mt->detect_candidate_motifs(region.ref);
 
             if (!mt->pcm.empty())
             {
@@ -306,8 +426,55 @@ void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::str
         //3. detects left anf right flank
         else if (mode=="x")
         {
+            //treat homopolymers as a special case
+            if (is_homopolymer(h,v))
+            {
+            }
+            //all other subject to 
+            else
+            {
+            }
         }
-//        int32_t no_candidate_motifs;
+
+    }
+}
+
+/**
+ * Checks if a variant is a homopolymer.
+ */
+bool VNTRAnnotator::is_homopolymer(bcf_hdr_t* h, bcf1_t* v)
+{
+    bool is_homopolymer = false;
+    uint32_t ref_len = strlen(bcf_get_ref(v));
+    for (size_t i=1; i<bcf_get_n_allele(v); ++i)
+    {
+        std::string ref(bcf_get_alt(v, 0));
+        std::string alt(bcf_get_alt(v, i));
+        int32_t pos1 = bcf_get_pos1(v);
+    }   
+    
+    return is_homopolymer;
+}
+
+/**
+ * Infer flanks  motif discovery.
+ *
+ * returns
+ * a. motif concordance
+ * b. purity concordance
+ * c. left flank
+ * d. right flank
+ */
+void VNTRAnnotator::infer_flanks(bcf_hdr_t* h, bcf1_t* v, std::string& motif)
+{
+    //fit into flanks
+    
+    //left alignment
+    
+    //right alignment
+    
+    
+    //        int32_t no_candidate_motifs;
 //
 //
 //        const char* chrom = bcf_get_chrom(h, v);
@@ -439,7 +606,7 @@ void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::str
 //        if (rflank_len) free(rflank);
 //        if (rref_len) free(rrefseq);
 
-    }
+
 }
 
 /**
@@ -572,10 +739,7 @@ void VNTRAnnotator::pick_candidate_motifs(bcf_hdr_t* h, bcf1_t* v, std::vector<C
     //mt->set_sequence(seq);
   //  mt->detect_candidate_motifs(candidate_motifs, 6);
 
-
-
     std::string sequence(seq);
-
 
     int32_t bases[4] = {0,0,0,0};
     for (size_t i=0; i<sequence.size(); ++i)
@@ -679,7 +843,11 @@ std::string VNTRAnnotator::scan_exact_motif(std::string& sequence)
  */
 std::string VNTRAnnotator::pick_consensus_motif(std::string& ref)
 {
-   return "";
+    //maybe not necessary later
+    
+    
+    
+    return "";
 }
 
 /**

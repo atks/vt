@@ -180,11 +180,16 @@ class MotifTree
      * Compute fit of expected content of nucleotides.
      */
     float compute_fit(uint32_t index, scontent* sc);
+
+    /**
+     * Gets candidate motifs up to max_motif_len.
+     */
+    void detect_candidate_motifs(std::string& seq);
         
     /**
      * Gets candidate motifs up to max_motif_len.
      */
-    void detect_candidate_motifs(std::vector<CandidateMotif>& candidate_motifs, char* seq, uint32_t max_motif_len);
+    void detect_candidate_motifs(char* seq, uint32_t max_motif_len);
     
     /**
      * Gets index of first child.

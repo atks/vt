@@ -28,6 +28,7 @@
 #include "htslib/kstring.h"
 #include "htslib/vcf.h"
 #include "allele.h"
+#include "vntr.h"
 #include "hts_utils.h"
 
 #ifndef VARIANT_H

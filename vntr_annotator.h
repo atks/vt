@@ -43,6 +43,7 @@
 #include "variant_manip.h"
 #include "program.h"
 #include "motif_tree.h"
+#include "vntr.h"
 
 KHASH_MAP_INIT_STR(mdict, int32_t);
 
@@ -129,7 +130,12 @@ class VNTRAnnotator
      * Chooses a phase of the motif that is appropriate for the alignment
      */
     std::string choose_repeat_unit(std::string& ref, std::string& motif);
-
+    
+    /**
+     * Chooses a phase of the motif that is appropriate for the alignment
+     */
+    VNTR choose_best_motif(bcf_hdr_t* h, bcf1_t* v, MotifTree* mt);
+        
     /**
      * Annotates STR characteristics.
      * RU,RL,LFLANK,RFLANK,LFLANKPOS,RFLANKPOS,MOTIF_CONCORDANCE,MOTIF_CONCORDANCE
@@ -157,6 +163,18 @@ class VNTRAnnotator
      */
     std::string pick_consensus_motif(std::string& sequence);
 
+    
+    /**
+     * Infer flanks  motif discovery.
+     *
+     * returns
+     * a. motif concordance
+     * b. purity concordance
+     * c. left flank
+     * d. right flank
+     */
+    void infer_flanks(bcf_hdr_t* h, bcf1_t* v, std::string& motif);
+
     /**
      * Suggests a set of repeat motif candidates in a set of alleles.
      */
@@ -166,7 +184,12 @@ class VNTRAnnotator
      * Trim alleles.
      */
     void trim(int32_t& pos1, std::string& ref, std::string& alt);
-
+    
+    /**
+     * Checks if a variant is a homopolymer.
+     */
+    bool is_homopolymer(bcf_hdr_t* h, bcf1_t* v);
+        
     /**
      * Extract region to for motif discovery.
      */

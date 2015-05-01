@@ -273,7 +273,15 @@ float MotifTree::compute_fit(uint32_t index, scontent* sc)
 /**
  * Gets candidate motifs up to max_motif_len.
  */
-void MotifTree::detect_candidate_motifs(std::vector<CandidateMotif>& candidate_motifs, char* seq, uint32_t max_motif_len)
+void MotifTree::detect_candidate_motifs(std::string& seq)
+{
+    detect_candidate_motifs(const_cast<char*>(seq.c_str()), seq.size());
+}
+
+/**
+ * Gets candidate motifs up to max_motif_len.
+ */
+void MotifTree::detect_candidate_motifs(char* seq, uint32_t max_motif_len)
 {
     if (debug)
     {
@@ -326,12 +334,13 @@ void MotifTree::detect_candidate_motifs(std::vector<CandidateMotif>& candidate_m
             //p -= f;
              
             //if ((tree[i->first].len==1 && p+f>sthreshold) || (tree[i->first].len>1 && p>0.2))
-            //if ((tree[i->first].len==1) || (tree[i->first].len>1))
-            
-            std::string motif = mm->seq2str(mm->index2seq(i->first), tree[i->first].len);
-            if (exist_two_copies(s, motif))
+            if ((tree[i->first].len==1 && p>0.7) || (tree[i->first].len>1))
             {
-                pcm.push(CandidateMotif(motif, p, tree[i->first].len, f));
+                std::string motif = mm->seq2str(mm->index2seq(i->first), tree[i->first].len);
+                if (exist_two_copies(s, motif))
+                {
+                    pcm.push(CandidateMotif(motif, p, tree[i->first].len, f));
+                }
             }
         }
     }

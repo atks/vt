@@ -84,6 +84,7 @@ SOURCES = align\
 		variant_manip\
 		variant_filter\
 		view\
+		vntr\
 		vntr_annotator\
 		vntrize\
    	    tbx_ordered_reader\

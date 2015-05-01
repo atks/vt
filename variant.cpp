@@ -44,7 +44,7 @@ Variant::~Variant() {};
 bool Variant::exists_frame_shift()
 {
     for (size_t i=0; i<alleles.size(); ++i)
-    {
+    { 
         if (abs(alleles[i].dlen)%3!=0)
         {
             return true;
