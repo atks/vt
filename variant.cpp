@@ -29,7 +29,6 @@
 Variant::Variant()
 {
     type = VT_REF;
-    motif.clear();
     alleles.clear();
 }
 
@@ -60,8 +59,8 @@ bool Variant::exists_frame_shift()
 void Variant::print()
 {
     std::cerr << "type : " << vtype2string(type) << "\n";
-    std::cerr << "motif: " << motif << "\n";
-    std::cerr << "rlen : " << rlen << "\n";
+    std::cerr << "motif: " << vntr.motif << "\n";
+    std::cerr << "rlen : " << vntr.motif.size() << "\n";
     for (int32_t i=0; i<alleles.size(); ++i)
     {
         std::cerr << "\tallele: " << i << "\n";
@@ -118,7 +117,6 @@ std::string Variant::vtype2string(int32_t VTYPE)
 void Variant::clear()
 {
     type = VT_REF;
-    motif = "";
-    rlen = 0;
+    vntr.clear();
     alleles.clear();
 };

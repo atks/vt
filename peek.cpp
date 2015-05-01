@@ -232,9 +232,9 @@ class Igor : Program
             if (vtype==VT_VNTR)
             {
                 ++VAR_COUNT[POLYMORPHIC][VT_VNTR];
-                if (variant.mlen<NO_MOTIF_LEN_CATEGORIES)
+                if (variant.vntr.motif.size()<NO_MOTIF_LEN_CATEGORIES)
                 {    
-                    ++VAR_MOTIF_LEN[variant.mlen-1];
+                    ++VAR_MOTIF_LEN[variant.vntr.motif.size()-1];
                 }
                 else
                 {

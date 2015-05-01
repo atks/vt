@@ -35,11 +35,9 @@ VNTRAnnotator::VNTRAnnotator(std::string& ref_fasta_file, bool debug)
         fprintf(stderr, "[%s:%d %s] Cannot load genome index: %s\n", __FILE__, __LINE__, __FUNCTION__, ref_fasta_file.c_str());
         exit(1);
     }
-    mt = new MotifTree(12, debug);
+    mt = new MotifTree(10, debug);
     rfhmm = new RFHMM();
     lfhmm = new LFHMM();
-
-    motifs = kh_init(mdict);
 
     //update factors
     factors = NULL;
@@ -54,6 +52,227 @@ VNTRAnnotator::VNTRAnnotator(std::string& ref_fasta_file, bool debug)
     }
 
 };
+
+/**
+ * Destructor.
+ */
+VNTRAnnotator::~VNTRAnnotator()
+{
+    delete vm;
+    fai_destroy(fai);
+    delete rfhmm;
+    delete lfhmm;
+
+    if (factors)
+    {
+        for (size_t i=1; i<=max_len; ++i)
+        {
+            free(factors[i]);
+        }
+        free(factors);
+    }
+}
+
+/**
+ * Annotates VNTR characteristics.
+ * RU,RL,LFLANK,RFLANK,LFLANKPOS,RFLANKPOS,MOTIF_CONCORDANCE,MOTIF_CONCORDANCE
+ */
+void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::string mode)
+{
+    if (variant.type==VT_VNTR)
+    {
+        if (debug) std::cerr << "ANNOTATING VNTR/STR \n";
+
+        //1. detect candidate motifs from a reference seqeuence
+        mt->detect_candidate_motifs(bcf_get_ref(v), 6);
+
+        //2. for each candidate motif
+        //      compute best flank and decide
+
+        //3. choose best fit
+
+        //since VNTR, just pick up reference and detect.
+        
+
+        if (debug) std::cerr << "pcm size : " << mt->pcm.size() << "\n";
+        if (debug) std::cerr << "*********************************************\n";
+
+        //choose candidate motif
+        bool first = true;
+        float cp = 0;
+        float mscore = 0;
+        uint32_t clen = 0;
+        std::string ref(bcf_get_ref(v));
+        if (ref.size()>256) ref = ref.substr(0,256);
+
+        uint32_t no = 0;
+
+        while (!mt->pcm.empty())
+        {
+            CandidateMotif cm = mt->pcm.top();
+
+            if (first)
+            {
+                std::string ru = choose_repeat_unit(ref, cm.motif);
+                ahmm->set_model(ru.c_str());
+                ahmm->align(ref.c_str(), qual.c_str());
+
+                variant.vntr.motif = cm.motif;
+                variant.vntr.motif_score = ahmm->get_motif_concordance();;
+                variant.vntr.ru = ru;
+
+                cp = cm.score;
+                clen = cm.len;
+                first = false;
+                mscore = ahmm->get_motif_concordance();
+
+                if (debug)
+                {
+                    ahmm->print_alignment();
+
+                    printf("    selected: %10s %.2f %.2f %.2f %.2f (%d/%d)\n", cm.motif.c_str(),
+                                                                    cm.score,
+                                                                    cm.fit,
+                                                                    ahmm->get_motif_concordance(),
+                                                                    (float)ahmm->get_exact_motif_count()/ahmm->get_motif_count(),
+                                                                    ahmm->get_exact_motif_count(),
+                                                                    ahmm->get_motif_count());
+                }
+            }
+            else
+            {
+                if (no<3 && (cp-cm.score<((float)1/cm.len)*cp || cm.score>0.4))
+                {
+                    //if score are not perfect, use AHMM
+                    std::string ru = choose_repeat_unit(ref, cm.motif);
+                    ahmm->set_model(ru.c_str());
+                    ahmm->align(ref.c_str(), qual.c_str());
+
+                    cp = cm.score;
+                    clen = cm.len;
+
+                    if (ahmm->get_motif_concordance()>mscore)
+                    {
+                        variant.vntr.motif = cm.motif;
+                        variant.vntr.motif_score = ahmm->get_motif_concordance();
+                        variant.vntr.ru = ru;
+                    }
+
+                    if (debug)
+                    {
+                        ahmm->print_alignment();
+
+                        printf("    selected: %10s %.2f %.2f %.2f %.2f (%d/%d)\n", mt->pcm.top().motif.c_str(),
+                                                                        mt->pcm.top().score,
+                                                                        mt->pcm.top().fit,
+                                                                        ahmm->get_motif_concordance(),
+                                                                        (float)ahmm->get_exact_motif_count()/ahmm->get_motif_count(),
+                                                                        ahmm->get_exact_motif_count(),
+                                                                        ahmm->get_motif_count());
+                    }
+                }
+                else
+                {
+                    if (debug)
+                    {
+                        printf("not selected: %10s %.2f \n", mt->pcm.top().motif.c_str(),
+                                                                        mt->pcm.top().score);
+                    }
+                }
+            }
+
+            if (!mt->pcm.empty()) mt->pcm.pop();
+
+            ++no;
+        }
+
+        return;
+    }
+    else if (variant.type&VT_INDEL)
+    {
+        //1. selects candidate region by exact left and right alignment
+        //2. detects motif
+        //3. detects left and right flank
+        if (mode=="e")
+        {
+            if (debug) std::cerr << "============================================\n";
+            if (debug) std::cerr << "ANNOTATING INDEL EXACTLY\n";
+
+            ReferenceRegion region = extract_regions_by_exact_alignment(h, v);
+
+            mt->detect_candidate_motifs(region.ref);
+
+            if (!mt->pcm.empty())
+            {
+                CandidateMotif cm = mt->pcm.top();
+
+                variant.vntr.motif = cm.motif;
+                variant.vntr.motif_score = cm.score;
+                variant.vntr.pos1 = region.beg1;
+                variant.vntr.ref = region.ref;
+            }
+
+            if (debug) std::cerr << "============================================\n";
+            return;
+        }
+        //1. selects candidate region by fuzzy left and right alignment
+        //2. detects motif
+        //3. detects left and right flank
+        else if (mode=="f")
+        {
+            if (debug) std::cerr << "============================================\n";
+            if (debug) std::cerr << "ANNOTATING INDEL FUZZILY\n";
+
+            ReferenceRegion region = extract_regions_by_fuzzy_alignment(h, v);
+
+            mt->detect_candidate_motifs(region.ref);
+
+            if (!mt->pcm.empty())
+            {
+                CandidateMotif cm = mt->pcm.top();
+                variant.vntr.motif = cm.motif;
+                variant.vntr.motif_score = cm.score;
+                variant.vntr.pos1 = region.beg1;
+                variant.vntr.ref = region.ref;
+
+                if (debug)
+                {
+                    uint32_t n =0;
+                    while(!mt->pcm.empty())
+                    {
+                        CandidateMotif cm = mt->pcm.top();
+                        std::cerr << cm.motif << " " << cm.score << "\n";
+
+                        mt->pcm.pop();
+                        if (n==10)
+                            break;
+
+                        ++n;
+                    }
+                }
+            }
+
+            if (debug) std::cerr << "============================================\n";
+            return;
+        }
+        //1. selects candidate region by fuzzy left and right alignment
+        //2. detects motif
+        //3. detects left anf right flank
+        else if (mode=="x")
+        {
+            //treat homopolymers as a special case
+            if (is_homopolymer(h,v))
+            {
+            }
+            //all other subject to
+            else
+            {
+            }
+        }
+
+    }
+}
+
 
 /**
  * Constructor.
@@ -87,25 +306,6 @@ void VNTRAnnotator::initialize_factors(int32_t max_len)
     }
 };
 
-/**
- * Destructor.
- */
-VNTRAnnotator::~VNTRAnnotator()
-{
-    delete vm;
-    fai_destroy(fai);
-    delete rfhmm;
-    delete lfhmm;
-
-    if (factors)
-    {
-        for (size_t i=1; i<=max_len; ++i)
-        {
-            free(factors[i]);
-        }
-        free(factors);
-    }
-}
 
 /**
  * Chooses a phase of the motif that is appropriate for the alignment
@@ -129,7 +329,7 @@ std::string VNTRAnnotator::choose_repeat_unit(std::string& ref, std::string& mot
 // */
 //VNTR VNTRAnnotator::detect_candidate_motifs(bcf_hdr_t* h, bcf1_t* v, MotifTree& mt)
 //{
-//    
+//
 //
 //}
 
@@ -231,212 +431,8 @@ VNTR VNTRAnnotator::choose_best_motif(bcf_hdr_t* h, bcf1_t* v, MotifTree* mt)
 
         ++no;
     }
-    
+
     return vntr;
-}
-
-/**
- * Annotates VNTR characteristics.
- * Annotates STRs/VNTRs and Indels
- * RU,RL,LFLANK,RFLANK,LFLANKPOS,RFLANKPOS,MOTIF_CONCORDANCE,MOTIF_CONCORDANCE
- */
-void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::string mode)
-{
-    if (variant.type==VT_VNTR)
-    {
-        if (debug) std::cerr << "ANNOTATING VNTR/STR \n";
-
-            
-
-        //1. detect candidate motifs from a reference seqeuence
-        
-        //2. for each candidate motif
-        //      compute best flank and decide
-
-        //3. choose best fit
-        
-        
-        
-        //since VNTR, just pick up reference and detect.
-        mt->detect_candidate_motifs(bcf_get_ref(v), 6);
-
-        if (debug) std::cerr << "pcm size : " << mt->pcm.size() << "\n";
-        if (debug) std::cerr << "*********************************************\n";
-
-        //choose candidate motif
-        bool first = true;
-        float cp = 0;
-        float mscore = 0;
-        uint32_t clen = 0;
-        std::string ref(bcf_get_ref(v));
-        if (ref.size()>256) ref = ref.substr(0,256);
-
-        uint32_t no = 0;
-
-        while (!mt->pcm.empty())
-        {
-            CandidateMotif cm = mt->pcm.top();
-
-            if (first)
-            {
-                std::string ru = choose_repeat_unit(ref, cm.motif);
-                ahmm->set_model(ru.c_str());
-                ahmm->align(ref.c_str(), qual.c_str());
-
-                variant.emotif = cm.motif;
-                variant.escore = ahmm->get_motif_concordance();;
-                variant.ru = ru;
-
-                cp = cm.score;
-                clen = cm.len;
-                first = false;
-                mscore = ahmm->get_motif_concordance();
-
-                if (debug)
-                {
-                    ahmm->print_alignment();
-
-                    printf("    selected: %10s %.2f %.2f %.2f %.2f (%d/%d)\n", cm.motif.c_str(),
-                                                                    cm.score,
-                                                                    cm.fit,
-                                                                    ahmm->get_motif_concordance(),
-                                                                    (float)ahmm->get_exact_motif_count()/ahmm->get_motif_count(),
-                                                                    ahmm->get_exact_motif_count(),
-                                                                    ahmm->get_motif_count());
-                }
-            }
-            else
-            {
-                if (no<3 && (cp-cm.score<((float)1/cm.len)*cp || cm.score>0.4))
-                {
-                    //if score are not perfect, use AHMM
-                    std::string ru = choose_repeat_unit(ref, cm.motif);
-                    ahmm->set_model(ru.c_str());
-                    ahmm->align(ref.c_str(), qual.c_str());
-
-                    cp = cm.score;
-                    clen = cm.len;
-
-                    if (ahmm->get_motif_concordance()>mscore)
-                    {
-                        variant.emotif = cm.motif;
-                        variant.escore = ahmm->get_motif_concordance();
-                        variant.ru = ru;
-                    }
-
-                    if (debug)
-                    {
-                        ahmm->print_alignment();
-
-                        printf("    selected: %10s %.2f %.2f %.2f %.2f (%d/%d)\n", mt->pcm.top().motif.c_str(),
-                                                                        mt->pcm.top().score,
-                                                                        mt->pcm.top().fit,
-                                                                        ahmm->get_motif_concordance(),
-                                                                        (float)ahmm->get_exact_motif_count()/ahmm->get_motif_count(),
-                                                                        ahmm->get_exact_motif_count(),
-                                                                        ahmm->get_motif_count());
-                    }
-                }
-                else
-                {
-                    if (debug)
-                    {
-                        printf("not selected: %10s %.2f \n", mt->pcm.top().motif.c_str(),
-                                                                        mt->pcm.top().score);
-                    }
-                }
-            }
-
-            if (!mt->pcm.empty()) mt->pcm.pop();
-
-            ++no;
-        }
-
-        return;
-    }
-    else if (variant.type&VT_INDEL)
-    {
-        //1. selects candidate region by exact left and right alignment
-        //2. detects motif
-        //3. detects left and right flank
-        if (mode=="e")
-        {
-            if (debug) std::cerr << "============================================\n";
-            if (debug) std::cerr << "ANNOTATING INDEL EXACTLY\n";
-
-            ReferenceRegion region = extract_regions_by_exact_alignment(h, v);
-
-            mt->detect_candidate_motifs(region.ref);
-
-            if (!mt->pcm.empty())
-            {
-                CandidateMotif cm = mt->pcm.top();
-
-                variant.emotif = cm.motif;
-                variant.escore = cm.score;
-                variant.pos1 = region.beg1;
-                variant.ref = region.ref;
-            }
-
-            if (debug) std::cerr << "============================================\n";
-            return;
-        }
-        //1. selects candidate region by fuzzy left and right alignment
-        //2. detects motif
-        //3. detects left and right flank
-        else if (mode=="f")
-        {
-            if (debug) std::cerr << "============================================\n";
-            if (debug) std::cerr << "ANNOTATING INDEL FUZZILY\n";
-
-            ReferenceRegion region = extract_regions_by_fuzzy_alignment(h, v);
-
-            mt->detect_candidate_motifs(region.ref);
-
-            if (!mt->pcm.empty())
-            {
-                CandidateMotif cm = mt->pcm.top();
-                variant.emotif = cm.motif;
-                variant.escore = cm.score;
-                variant.pos1 = region.beg1;
-                variant.ref = region.ref;
-
-                if (debug)
-                {
-                    uint32_t n =0;
-                    while(!mt->pcm.empty())
-                    {
-                        CandidateMotif cm = mt->pcm.top();
-                        std::cerr << cm.motif << " " << cm.score << "\n";
-
-                        mt->pcm.pop();
-                        if (n==10)
-                            break;
-
-                        ++n;
-                    }
-                }
-            }
-
-            if (debug) std::cerr << "============================================\n";
-            return;
-        }
-        //1. selects candidate region by fuzzy left and right alignment
-        //2. detects motif
-        //3. detects left anf right flank
-        else if (mode=="x")
-        {
-            //treat homopolymers as a special case
-            if (is_homopolymer(h,v))
-            {
-            }
-            //all other subject to 
-            else
-            {
-            }
-        }
-
-    }
 }
 
 /**
@@ -451,8 +447,8 @@ bool VNTRAnnotator::is_homopolymer(bcf_hdr_t* h, bcf1_t* v)
         std::string ref(bcf_get_alt(v, 0));
         std::string alt(bcf_get_alt(v, i));
         int32_t pos1 = bcf_get_pos1(v);
-    }   
-    
+    }
+
     return is_homopolymer;
 }
 
@@ -468,12 +464,12 @@ bool VNTRAnnotator::is_homopolymer(bcf_hdr_t* h, bcf1_t* v)
 void VNTRAnnotator::infer_flanks(bcf_hdr_t* h, bcf1_t* v, std::string& motif)
 {
     //fit into flanks
-    
+
     //left alignment
-    
+
     //right alignment
-    
-    
+
+
     //        int32_t no_candidate_motifs;
 //
 //
@@ -844,74 +840,10 @@ std::string VNTRAnnotator::scan_exact_motif(std::string& sequence)
 std::string VNTRAnnotator::pick_consensus_motif(std::string& ref)
 {
     //maybe not necessary later
-    
-    
-    
+
+
+
     return "";
-}
-
-/**
- * Suggests a set of repeat motif candidates in a set of alleles.
- */
-char** VNTRAnnotator::suggest_motifs(char** alleles, int32_t n_allele, int32_t &no_candidate_motifs)
-{
-    char *motif;
-
-    //grab all candidate alleles
-    for (size_t i=1; i<n_allele; ++i)
-    {
-        char* ref = alleles[0];
-        int32_t ref_len = strlen(ref);
-        char *alt = alleles[i];
-        int32_t alt_len = strlen(alleles[i]);
-
-        int32_t dlen = alt_len-ref_len;
-
-        //extract fragment
-        if (dlen>0)
-        {
-            motif = &alt[alt_len-dlen];
-        }
-        else
-        {
-            motif = &ref[ref_len+dlen];
-        }
-
-        int32_t len = abs(dlen);
-
-        std::cerr << dlen << " " << len << " "  << alleles[0] << " " << alleles[i] << "\n";
-
-        char* m = get_shortest_repeat_motif(motif, len);
-
-        int32_t ret;
-        khiter_t k;
-        if (kh_get(mdict, motifs, m)==kh_end(motifs))
-        {
-            k = kh_put(mdict, motifs, m, &ret);
-            kh_value(motifs, k) = 1;
-        }
-        else
-        {
-            kh_value(motifs, k) += 1;
-        }
-    }
-
-    no_candidate_motifs = kh_size(motifs);
-
-    char** candidate_motifs = (char**) malloc(no_candidate_motifs*sizeof(char*));
-
-    khiter_t k;
-    int32_t i = 0;
-    for (k=kh_begin(motifs); k!=kh_end(motifs); ++k)
-    {
-        if (kh_exist(motifs, k))
-        {
-            candidate_motifs[i] = (char*) kh_key(motifs, k);
-        }
-    }
-    kh_clear(mdict, motifs);
-
-    return candidate_motifs;
 }
 
 /**

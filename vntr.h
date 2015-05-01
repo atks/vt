@@ -37,6 +37,9 @@
 class VNTR
 {
     public:
+    std::string chrom;        //chromosome
+    uint32_t pos1;            //1 based position
+    std::string ref;          //reference sequence containing repeat tract
     std::string motif;        //motif      
     uint32_t len;             //length of motif    
     std::string ru;           //repeat unit                    
@@ -50,7 +53,11 @@ class VNTR
     /**
      * Constructor.
      */
-    VNTR();    
+    VNTR();   
+    
+    /**
+     * Clear object.
+     */
+    void clear();    
 };
-
 #endif

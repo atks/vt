@@ -27,3 +27,22 @@
  * Constructor.
  */
 VNTR::VNTR(){};
+    
+/**
+ * Clear object.
+ */
+void VNTR::clear()
+{
+    chrom.clear();
+    pos1 = 0;           
+    ref.clear();         
+    motif.clear();       
+    len = 0;            
+    ru.clear();          
+    lflank.clear();      
+    rflank.clear();      
+    motif_score = 0;       
+    motif_concordance = 0; 
+    no_exact_ru = 0;              
+    total_no_ru = 0;       
+}

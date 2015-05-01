@@ -108,8 +108,6 @@ class VNTRAnnotator
     //factors[n][index], for determining what sub repeat units to examine
     int32_t** factors;
 
-    khash_t(mdict) *motifs;
-    std::priority_queue<CandidateMotif, std::vector<CandidateMotif>, CompareCandidateMotif> pq;
     
     /**
      * Constructor.
@@ -117,14 +115,24 @@ class VNTRAnnotator
     VNTRAnnotator(std::string& ref_fasta_file, bool debug=false);
 
     /**
+     * Destructor.
+     */
+    ~VNTRAnnotator();
+    
+    /**
+     * Annotates VNTR characteristics.
+     * RU,RL,LFLANK,RFLANK,LFLANKPOS,RFLANKPOS,MOTIF_CONCORDANCE,MOTIF_CONCORDANCE
+     */
+    void annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::string mode);
+        
+
+
+    /**
      * Constructor.
      */
     void initialize_factors(int32_t max_len);
 
-    /**
-     * Destructor.
-     */
-    ~VNTRAnnotator();
+
 
     /**
      * Chooses a phase of the motif that is appropriate for the alignment
@@ -136,11 +144,7 @@ class VNTRAnnotator
      */
     VNTR choose_best_motif(bcf_hdr_t* h, bcf1_t* v, MotifTree* mt);
         
-    /**
-     * Annotates STR characteristics.
-     * RU,RL,LFLANK,RFLANK,LFLANKPOS,RFLANKPOS,MOTIF_CONCORDANCE,MOTIF_CONCORDANCE
-     */
-    void annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::string mode);
+
 
     /**
      * Pick shortest motif.

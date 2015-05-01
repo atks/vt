@@ -57,24 +57,25 @@ class Variant
     int32_t ins;        //no. of insertions
     int32_t del;        //no. of deletions
 
-    std::string motif;   //motif of VNTR
-    std::string ru;      //repeat unit of VNTR
-    int32_t mlen;        //length of motif
-    float rcn;           //reference copy number
-    int32_t rlen;        //reference length of repeat tract in bases
-        
-    std::string emotif;
-    float escore;
-    
-    uint32_t pos1;
-    std::string ref;
-  
-    std::string eru;
-    Region eregion;
-
-    std::string imotif;
-    std::string iru;
-    Region iregion;
+    VNTR vntr;
+//    std::string motif;   //motif of VNTR
+//    std::string ru;      //repeat unit of VNTR
+//    int32_t mlen;        //length of motif
+//    float rcn;           //reference copy number
+//    int32_t rlen;        //reference length of repeat tract in bases
+//        
+//    std::string emotif;
+//    float escore;
+//    
+//    uint32_t pos1;
+//    std::string ref;
+//  
+//    std::string eru;
+//    Region eregion;
+//
+//    std::string imotif;
+//    std::string iru;
+//    Region iregion;
 
     std::vector<Allele> alleles;
 

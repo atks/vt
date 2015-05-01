@@ -192,9 +192,9 @@ class Igor : Program
                 if (mode=="e")
                 {
                     //update tags for variant description
-                    bcf_update_info_string(odw->hdr, v, "VMOTIF", variant.emotif.c_str());
-                    bcf_update_info_float(odw->hdr, v, "VSCORE", &variant.escore, 1);
-                    bcf_update_info_string(odw->hdr, v, "VRU", variant.ru.c_str());
+                    bcf_update_info_string(odw->hdr, v, "VMOTIF", variant.vntr.motif.c_str());
+                    bcf_update_info_float(odw->hdr, v, "VSCORE", &variant.vntr.motif_score, 1);
+                    bcf_update_info_string(odw->hdr, v, "VRU", variant.vntr.ru.c_str());
 
 //                    //annotate old alleles
 //                    old_alleles.l = 0;
@@ -210,8 +210,8 @@ class Igor : Program
                 else if (mode=="f")
                 {
                     //update tags for variant description
-                    bcf_update_info_string(odw->hdr, v, "VMOTIF", variant.emotif.c_str());
-                    bcf_update_info_float(odw->hdr, v, "VSCORE", &variant.escore, 1);
+                    bcf_update_info_string(odw->hdr, v, "VMOTIF", variant.vntr.motif.c_str());
+                    bcf_update_info_float(odw->hdr, v, "VSCORE", &variant.vntr.motif_score, 1);
 
                     //annotate old alleles
                     old_alleles.l = 0;
@@ -219,8 +219,8 @@ class Igor : Program
                     bcf_update_info_string(odw->hdr, v, "OLD_VARIANT", old_alleles.s);
     
                     //update alleles
-                    bcf_set_pos1(v, variant.pos1);
-                    std::string new_alleles = variant.ref;
+                    bcf_set_pos1(v, variant.vntr.pos1);
+                    std::string new_alleles = variant.vntr.ref;
                     new_alleles += ",<VNTR>";
                     bcf_update_alleles_str(odw->hdr, v, new_alleles.c_str());
                 }
