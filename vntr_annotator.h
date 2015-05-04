@@ -53,13 +53,13 @@ class ReferenceRegion
     uint32_t beg1;
     uint32_t end1;
     std::string ref;
-        
+
     ReferenceRegion(uint32_t beg1, uint32_t end1, char* ref)
     {
         this->beg1 = beg1;
         this->end1 = end1;
         this->ref.assign(ref);
-    };    
+    };
 };
 
 /**
@@ -79,6 +79,9 @@ class VNTRAnnotator
 //bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_MOTIF_DISCORDANCE,Number=1,Type=String,Description=\"Descriptive Discordance for each reference repeat unit.\">");
 //bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_STR_CONCORDANCE,Number=1,Type=Float,Description=\"Overall discordance of RUs.\">");
 
+
+    uint32_t max_mlen; //maximum length for motif search in the fast tree.
+
     //model
     char* motif;
     int32_t motif_len;
@@ -92,10 +95,10 @@ class VNTRAnnotator
     std::vector<CandidateMotif> candidate_motifs;
     bool debug;
     int32_t max_len;
-    
+
     AHMM* ahmm;
     std::string qual;
-        
+
     ///////
     //tools
     ///////
@@ -108,7 +111,7 @@ class VNTRAnnotator
     //factors[n][index], for determining what sub repeat units to examine
     int32_t** factors;
 
-    
+
     /**
      * Constructor.
      */
@@ -118,33 +121,28 @@ class VNTRAnnotator
      * Destructor.
      */
     ~VNTRAnnotator();
-    
+
     /**
      * Annotates VNTR characteristics.
      * RU,RL,LFLANK,RFLANK,LFLANKPOS,RFLANKPOS,MOTIF_CONCORDANCE,MOTIF_CONCORDANCE
      */
     void annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::string mode);
-        
 
-
-    /**
-     * Constructor.
-     */
-    void initialize_factors(int32_t max_len);
-
-
+//    /**
+//     *
+//     * Constructor.
+//     */
+//    void initialize_factors(int32_t max_len);
 
     /**
      * Chooses a phase of the motif that is appropriate for the alignment
      */
     std::string choose_repeat_unit(std::string& ref, std::string& motif);
-    
+
     /**
      * Chooses a phase of the motif that is appropriate for the alignment
      */
     VNTR choose_best_motif(bcf_hdr_t* h, bcf1_t* v, MotifTree* mt);
-        
-
 
     /**
      * Pick shortest motif.
@@ -160,14 +158,13 @@ class VNTRAnnotator
      * Pick candidate motifs.
      * candidate_motifs contain motifs and a measure of confidence
      */
-    void pick_candidate_motifs(bcf_hdr_t* h, bcf1_t* v, std::vector<CandidateMotif>& candidate_motifs);
+    void pick_candidate_motifs(bcf_hdr_t* h, bcf1_t* v);
 
     /**
      * Pick shortest consensus motif.
      */
     std::string pick_consensus_motif(std::string& sequence);
 
-    
     /**
      * Infer flanks  motif discovery.
      *
@@ -188,12 +185,12 @@ class VNTRAnnotator
      * Trim alleles.
      */
     void trim(int32_t& pos1, std::string& ref, std::string& alt);
-    
+
     /**
      * Checks if a variant is a homopolymer.
      */
     bool is_homopolymer(bcf_hdr_t* h, bcf1_t* v);
-        
+
     /**
      * Extract region to for motif discovery.
      */
@@ -208,12 +205,12 @@ class VNTRAnnotator
      * Right align alleles.
      */
     void right_align(const char* chrom, int32_t& pos1, std::string& ref, std::string& alt);
-    
+
     /**
      * Extract reference sequence region for motif discovery in a fuzzy fashion.
      */
     ReferenceRegion extract_regions_by_fuzzy_alignment(bcf_hdr_t* h, bcf1_t* v);
-        
+
     /**
      * Fuzzy left align alleles.
      */
@@ -223,7 +220,7 @@ class VNTRAnnotator
      * Fuzzy right align alleles.
      */
     uint32_t fuzzy_right_align(const char* chrom, int32_t pos1, std::string ref, std::string alt, uint32_t penalty);
-                
+
     /**
      * Detect allele lower bound extent.
      */

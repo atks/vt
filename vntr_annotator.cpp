@@ -35,22 +35,22 @@ VNTRAnnotator::VNTRAnnotator(std::string& ref_fasta_file, bool debug)
         fprintf(stderr, "[%s:%d %s] Cannot load genome index: %s\n", __FILE__, __LINE__, __FUNCTION__, ref_fasta_file.c_str());
         exit(1);
     }
-    mt = new MotifTree(10, debug);
-    rfhmm = new RFHMM();
-    lfhmm = new LFHMM();
+    
+    max_len = 10;
+    mt = new MotifTree(max_mlen, debug);
 
-    //update factors
-    factors = NULL;
-    initialize_factors(32);
+
+//    //update factors
+//    factors = NULL;
+//    initialize_factors(32);
 
     this->debug = debug;
 
-    ahmm = new AHMM();
-    for (int32_t i=0; i<256; ++i)
-    {
-        qual += 'K';
-    }
+    qual.assign(256, 'K');
 
+    ahmm = new AHMM();
+    rfhmm = new RFHMM();
+    lfhmm = new LFHMM();
 };
 
 /**
@@ -84,8 +84,11 @@ void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::str
         if (debug) std::cerr << "ANNOTATING VNTR/STR \n";
 
         //1. detect candidate motifs from a reference seqeuence
-        mt->detect_candidate_motifs(bcf_get_ref(v), 6);
+        pick_candidate_motifs(h, v);
 
+        //2. choose the best candidate motif
+        choose_best_motif(h, v, mt);
+        
         //2. for each candidate motif
         //      compute best flank and decide
 
@@ -242,7 +245,6 @@ void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::str
                     {
                         CandidateMotif cm = mt->pcm.top();
                         std::cerr << cm.motif << " " << cm.score << "\n";
-
                         mt->pcm.pop();
                         if (n==10)
                             break;
@@ -273,38 +275,45 @@ void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::str
     }
 }
 
-
 /**
- * Constructor.
+ * Pick candidate motifs in different modes.
  */
-void VNTRAnnotator::initialize_factors(int32_t max_len)
+void VNTRAnnotator::pick_candidate_motifs(bcf_hdr_t* h, bcf1_t* v)
 {
-    if (factors)
-    {
-        for (size_t i=1; i<=this->max_len; ++i)
-        {
-            delete factors[i];
-        }
-        free(factors);
-    }
+    mt->detect_candidate_motifs(bcf_get_ref(v), strlen(bcf_get_ref(v)));
+}
 
-    this->max_len = max_len;
-
-    factors = new int32_t*[max_len+1];
-    for (size_t i=1; i<=max_len; ++i)
-    {
-        factors[i] = new int32_t[max_len];
-        int32_t count = 0;
-
-        for (size_t j=1; j<=i; ++j)
-        {
-            if ((i%j)==0)
-            {
-                factors[i][count++] = j;
-            }
-        }
-    }
-};
+///**
+// * Constructor.
+// */
+//void VNTRAnnotator::initialize_factors(int32_t max_len)
+//{
+//    if (factors)
+//    {
+//        for (size_t i=1; i<=this->max_len; ++i)
+//        {
+//            delete factors[i];
+//        }
+//        free(factors);
+//    }
+//
+//    this->max_len = max_len;
+//
+//    factors = new int32_t*[max_len+1];
+//    for (size_t i=1; i<=max_len; ++i)
+//    {
+//        factors[i] = new int32_t[max_len];
+//        int32_t count = 0;
+//
+//        for (size_t j=1; j<=i; ++j)
+//        {
+//            if ((i%j)==0)
+//            {
+//                factors[i][count++] = j;
+//            }
+//        }
+//    }
+//};
 
 
 /**
@@ -672,109 +681,109 @@ ReferenceRegion VNTRAnnotator::extract_regions_by_exact_alignment(bcf_hdr_t* h, 
  * Pick candidate motifs.
  * candidate_motifs contain motifs and a measure of confidence
  */
-void VNTRAnnotator::pick_candidate_motifs(bcf_hdr_t* h, bcf1_t* v, std::vector<CandidateMotif>& candidate_motifs)
-{
-    const char* chrom = bcf_get_chrom(h, v);
-
-    bcf_print(h,v);
-
-    int32_t min_beg1 = bcf_get_pos1(v);
-    int32_t max_end1 = min_beg1;
-
-    //merge candidate search region
-    for (size_t i=1; i<bcf_get_n_allele(v); ++i)
-    {
-        std::string ref(bcf_get_alt(v, 0));
-        std::string alt(bcf_get_alt(v, i));
-        int32_t pos1 = bcf_get_pos1(v);
-
-        /////////////////////////////////////////
-        //EXACT STRs in inserted/deleted sequence
-        /////////////////////////////////////////
-//        std::cerr << "before trimming : " << pos1 << " " << ref << "\n";
-//        std::cerr << "                : " << pos1 << " " << alt << "\n";
-
-        trim(pos1, ref, alt);
-//        std::cerr << "after trimming : " << pos1 << " " << ref << "\n";
-//        std::cerr << "               : " << pos1 << " " << alt << "\n";
-
-        std::cerr << "indel fragment : " << (ref.size()<alt.size()? alt : ref) << "\n";
-        std::cerr << "               : " << ref << ":" << alt << "\n";
-
-
-        int32_t end1 = pos1 + ref.size() - 1;
-        right_align(chrom, end1, ref, alt);
-//        std::cerr << "after right alignment : " << end1 << " " << ref << "\n";
-//        std::cerr << "                      : " << end1 << " " << alt << "\n";
-
-        //do this later as you want to pefrom the alignment shortly.
-        int32_t beg1 = end1 - ref.size() + 1;
-        left_align(chrom, beg1, ref, alt);
-//        std::cerr << "after left alignment : " << beg1 << " " << ref << "\n";
-//        std::cerr << "                     : " << beg1 << " " << alt << "\n";
-
-        min_beg1 = beg1<min_beg1 ? beg1 : min_beg1;
-        max_end1 = end1>max_end1 ? end1 : max_end1;
-
-        int32_t seq_len;
-        char* seq;
-        seq = faidx_fetch_seq(fai, chrom, min_beg1-1, max_end1-1, &seq_len);
-        std::cerr << "EXACT REGION " << min_beg1 << "-" << max_end1 << " (" << max_end1-min_beg1+1 <<") " << "\n";
-        std::cerr << "             " << seq << "\n";
-        if (seq_len) free(seq);
-    }
-
-    int32_t seq_len;
-    char* seq;
-    seq = faidx_fetch_seq(fai, chrom, min_beg1-1, max_end1-1, &seq_len);
-
-    std::cerr << "EXACT REGION " << min_beg1 << "-" << max_end1 << " (" << max_end1-min_beg1+1 <<") " << "\n";
-    std::cerr << "             " << seq << "\n";
-
-    //detect motif
-    //mt->set_sequence(seq);
-  //  mt->detect_candidate_motifs(candidate_motifs, 6);
-
-    std::string sequence(seq);
-
-    int32_t bases[4] = {0,0,0,0};
-    for (size_t i=0; i<sequence.size(); ++i)
-    {
-        if (seq[i]=='A')
-        {
-            ++bases[0];
-        }
-        else if (seq[i]=='C')
-        {
-            ++bases[1];
-        }
-        else if (seq[i]=='G')
-        {
-            ++bases[2];
-        }
-        else if (seq[i]=='T')
-        {
-            ++bases[3];
-        }
-    }
-
-    std::cerr << "             A " << ((float)bases[0]/sequence.size()) << "\n";
-    std::cerr << "             C " << ((float)bases[1]/sequence.size()) << "\n";
-    std::cerr << "             G " << ((float)bases[2]/sequence.size()) << "\n";
-    std::cerr << "             T " << ((float)bases[3]/sequence.size()) << "\n";
-
-    if (seq_len>2)
-    {
-        sequence = sequence.substr(1, sequence.size()-2);
-    }
-
-    if (seq_len) free(seq);
-
-
-
-    scan_exact_motif(sequence);
-
-}
+//void VNTRAnnotator::pick_candidate_motifs(bcf_hdr_t* h, bcf1_t* v, std::vector<CandidateMotif>& candidate_motifs)
+//{
+//    const char* chrom = bcf_get_chrom(h, v);
+//
+//    bcf_print(h,v);
+//
+//    int32_t min_beg1 = bcf_get_pos1(v);
+//    int32_t max_end1 = min_beg1;
+//
+//    //merge candidate search region
+//    for (size_t i=1; i<bcf_get_n_allele(v); ++i)
+//    {
+//        std::string ref(bcf_get_alt(v, 0));
+//        std::string alt(bcf_get_alt(v, i));
+//        int32_t pos1 = bcf_get_pos1(v);
+//
+//        /////////////////////////////////////////
+//        //EXACT STRs in inserted/deleted sequence
+//        /////////////////////////////////////////
+////        std::cerr << "before trimming : " << pos1 << " " << ref << "\n";
+////        std::cerr << "                : " << pos1 << " " << alt << "\n";
+//
+//        trim(pos1, ref, alt);
+////        std::cerr << "after trimming : " << pos1 << " " << ref << "\n";
+////        std::cerr << "               : " << pos1 << " " << alt << "\n";
+//
+//        std::cerr << "indel fragment : " << (ref.size()<alt.size()? alt : ref) << "\n";
+//        std::cerr << "               : " << ref << ":" << alt << "\n";
+//
+//
+//        int32_t end1 = pos1 + ref.size() - 1;
+//        right_align(chrom, end1, ref, alt);
+////        std::cerr << "after right alignment : " << end1 << " " << ref << "\n";
+////        std::cerr << "                      : " << end1 << " " << alt << "\n";
+//
+//        //do this later as you want to pefrom the alignment shortly.
+//        int32_t beg1 = end1 - ref.size() + 1;
+//        left_align(chrom, beg1, ref, alt);
+////        std::cerr << "after left alignment : " << beg1 << " " << ref << "\n";
+////        std::cerr << "                     : " << beg1 << " " << alt << "\n";
+//
+//        min_beg1 = beg1<min_beg1 ? beg1 : min_beg1;
+//        max_end1 = end1>max_end1 ? end1 : max_end1;
+//
+//        int32_t seq_len;
+//        char* seq;
+//        seq = faidx_fetch_seq(fai, chrom, min_beg1-1, max_end1-1, &seq_len);
+//        std::cerr << "EXACT REGION " << min_beg1 << "-" << max_end1 << " (" << max_end1-min_beg1+1 <<") " << "\n";
+//        std::cerr << "             " << seq << "\n";
+//        if (seq_len) free(seq);
+//    }
+//
+//    int32_t seq_len;
+//    char* seq;
+//    seq = faidx_fetch_seq(fai, chrom, min_beg1-1, max_end1-1, &seq_len);
+//
+//    std::cerr << "EXACT REGION " << min_beg1 << "-" << max_end1 << " (" << max_end1-min_beg1+1 <<") " << "\n";
+//    std::cerr << "             " << seq << "\n";
+//
+//    //detect motif
+//    //mt->set_sequence(seq);
+//  //  mt->detect_candidate_motifs(candidate_motifs, 6);
+//
+//    std::string sequence(seq);
+//
+//    int32_t bases[4] = {0,0,0,0};
+//    for (size_t i=0; i<sequence.size(); ++i)
+//    {
+//        if (seq[i]=='A')
+//        {
+//            ++bases[0];
+//        }
+//        else if (seq[i]=='C')
+//        {
+//            ++bases[1];
+//        }
+//        else if (seq[i]=='G')
+//        {
+//            ++bases[2];
+//        }
+//        else if (seq[i]=='T')
+//        {
+//            ++bases[3];
+//        }
+//    }
+//
+//    std::cerr << "             A " << ((float)bases[0]/sequence.size()) << "\n";
+//    std::cerr << "             C " << ((float)bases[1]/sequence.size()) << "\n";
+//    std::cerr << "             G " << ((float)bases[2]/sequence.size()) << "\n";
+//    std::cerr << "             T " << ((float)bases[3]/sequence.size()) << "\n";
+//
+//    if (seq_len>2)
+//    {
+//        sequence = sequence.substr(1, sequence.size()-2);
+//    }
+//
+//    if (seq_len) free(seq);
+//
+//
+//
+//    scan_exact_motif(sequence);
+//
+//}
 
 /**
  * This is a quick scan for a motif that is exactly repeated.

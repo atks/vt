@@ -110,10 +110,11 @@ uint32_t MotifTree::get_sub_seq(char* seq, uint32_t len, uint32_t spos0, uint32_
 }
 
 /**
- * Construct suffix tree based on sequence up to max_motif_len.
+ * Construct suffix tree based on sequence of length len.
  */
-void MotifTree::set_sequence(char* seq, int32_t len)
+void MotifTree::set_sequence(char* seq, uint32_t len)
 {
+    //computes the relevant maximum possible length of motif to check
     cmax_len = (len >> 1) < max_len ? (len >> 1) : max_len;
 
     if (debug)
@@ -279,9 +280,9 @@ void MotifTree::detect_candidate_motifs(std::string& seq)
 }
 
 /**
- * Gets candidate motifs up to max_motif_len.
+ * Detects candidate motifs from seq of length len.
  */
-void MotifTree::detect_candidate_motifs(char* seq, uint32_t max_motif_len)
+void MotifTree::detect_candidate_motifs(char* seq, uint32_t len)
 {
     if (debug)
     {

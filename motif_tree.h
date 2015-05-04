@@ -164,7 +164,7 @@ class MotifTree
     /**
      * Construct suffix tree based on sequence up to max_motif_len.
      */
-    void set_sequence(char* seq, int32_t len);
+    void set_sequence(char* seq, uint32_t len);
     
     /**
      * Shifts a string.
@@ -182,14 +182,14 @@ class MotifTree
     float compute_fit(uint32_t index, scontent* sc);
 
     /**
-     * Gets candidate motifs up to max_motif_len.
+     * Detects candidate motifs from seq of length len.
      */
     void detect_candidate_motifs(std::string& seq);
         
     /**
-     * Gets candidate motifs up to max_motif_len.
+     * Detects candidate motifs from seq of length len.
      */
-    void detect_candidate_motifs(char* seq, uint32_t max_motif_len);
+    void detect_candidate_motifs(char* seq, uint32_t len);
     
     /**
      * Gets index of first child.
