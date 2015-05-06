@@ -45,6 +45,11 @@
 #include "motif_tree.h"
 #include "vntr.h"
 
+#define REFERENCE     0
+#define ALLELE_EXACT  1
+#define ALLELE_FUZZY  2
+
+
 KHASH_MAP_INIT_STR(mdict, int32_t);
 
 class ReferenceRegion
@@ -128,42 +133,16 @@ class VNTRAnnotator
      */
     void annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::string mode);
 
-//    /**
-//     *
-//     * Constructor.
-//     */
-//    void initialize_factors(int32_t max_len);
-
-    /**
-     * Chooses a phase of the motif that is appropriate for the alignment
-     */
-    std::string choose_repeat_unit(std::string& ref, std::string& motif);
-
-    /**
-     * Chooses a phase of the motif that is appropriate for the alignment
-     */
-    VNTR choose_best_motif(bcf_hdr_t* h, bcf1_t* v, MotifTree* mt);
-
-    /**
-     * Pick shortest motif.
-     */
-    std::string pick_motif(std::string& sequence);
-
-    /**
-     * This is a quick scan for a motif that is exactly repeated.
-     */
-    std::string scan_exact_motif(std::string& sequence);
-
     /**
      * Pick candidate motifs.
      * candidate_motifs contain motifs and a measure of confidence
      */
-    void pick_candidate_motifs(bcf_hdr_t* h, bcf1_t* v);
-
+    void pick_candidate_motifs(bcf_hdr_t* h, bcf1_t* v, uint32_t mode);
+    
     /**
-     * Pick shortest consensus motif.
+     * Chooses a phase of the motif that is appropriate for the alignment
      */
-    std::string pick_consensus_motif(std::string& sequence);
+    VNTR choose_best_motif(bcf_hdr_t* h, bcf1_t* v, MotifTree* mt, uint32_t mode);
 
     /**
      * Infer flanks  motif discovery.
@@ -175,11 +154,32 @@ class VNTRAnnotator
      * d. right flank
      */
     void infer_flanks(bcf_hdr_t* h, bcf1_t* v, std::string& motif);
+        
+    /**
+     * Pick shortest motif.
+     */
+    std::string pick_motif(std::string& sequence);
 
     /**
-     * Suggests a set of repeat motif candidates in a set of alleles.
+     * This is a quick scan for a motif that is exactly repeated.
      */
-    char** suggest_motifs(char** alleles, int32_t n_allele, int32_t &no_candidate_motifs);
+    std::string scan_exact_motif(std::string& sequence);
+
+    /**
+     * Pick shortest consensus motif.
+     */
+    std::string pick_consensus_motif(std::string& sequence);
+
+//    /**
+//     *
+//     * Constructor.
+//     */
+//    void initialize_factors(int32_t max_len);
+
+    /**
+     * Chooses a phase of the motif that is appropriate for the alignment
+     */
+    std::string choose_repeat_unit(std::string& ref, std::string& motif);
 
     /**
      * Trim alleles.

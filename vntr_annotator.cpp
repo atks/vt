@@ -35,8 +35,8 @@ VNTRAnnotator::VNTRAnnotator(std::string& ref_fasta_file, bool debug)
         fprintf(stderr, "[%s:%d %s] Cannot load genome index: %s\n", __FILE__, __LINE__, __FUNCTION__, ref_fasta_file.c_str());
         exit(1);
     }
-    
-    max_len = 10;
+
+    max_mlen = 10;
     mt = new MotifTree(max_mlen, debug);
 
 
@@ -84,110 +84,10 @@ void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::str
         if (debug) std::cerr << "ANNOTATING VNTR/STR \n";
 
         //1. detect candidate motifs from a reference seqeuence
-        pick_candidate_motifs(h, v);
+        pick_candidate_motifs(h, v, REFERENCE);
 
         //2. choose the best candidate motif
-        choose_best_motif(h, v, mt);
-        
-        //2. for each candidate motif
-        //      compute best flank and decide
-
-        //3. choose best fit
-
-        //since VNTR, just pick up reference and detect.
-        
-
-        if (debug) std::cerr << "pcm size : " << mt->pcm.size() << "\n";
-        if (debug) std::cerr << "*********************************************\n";
-
-        //choose candidate motif
-        bool first = true;
-        float cp = 0;
-        float mscore = 0;
-        uint32_t clen = 0;
-        std::string ref(bcf_get_ref(v));
-        if (ref.size()>256) ref = ref.substr(0,256);
-
-        uint32_t no = 0;
-
-        while (!mt->pcm.empty())
-        {
-            CandidateMotif cm = mt->pcm.top();
-
-            if (first)
-            {
-                std::string ru = choose_repeat_unit(ref, cm.motif);
-                ahmm->set_model(ru.c_str());
-                ahmm->align(ref.c_str(), qual.c_str());
-
-                variant.vntr.motif = cm.motif;
-                variant.vntr.motif_score = ahmm->get_motif_concordance();;
-                variant.vntr.ru = ru;
-
-                cp = cm.score;
-                clen = cm.len;
-                first = false;
-                mscore = ahmm->get_motif_concordance();
-
-                if (debug)
-                {
-                    ahmm->print_alignment();
-
-                    printf("    selected: %10s %.2f %.2f %.2f %.2f (%d/%d)\n", cm.motif.c_str(),
-                                                                    cm.score,
-                                                                    cm.fit,
-                                                                    ahmm->get_motif_concordance(),
-                                                                    (float)ahmm->get_exact_motif_count()/ahmm->get_motif_count(),
-                                                                    ahmm->get_exact_motif_count(),
-                                                                    ahmm->get_motif_count());
-                }
-            }
-            else
-            {
-                if (no<3 && (cp-cm.score<((float)1/cm.len)*cp || cm.score>0.4))
-                {
-                    //if score are not perfect, use AHMM
-                    std::string ru = choose_repeat_unit(ref, cm.motif);
-                    ahmm->set_model(ru.c_str());
-                    ahmm->align(ref.c_str(), qual.c_str());
-
-                    cp = cm.score;
-                    clen = cm.len;
-
-                    if (ahmm->get_motif_concordance()>mscore)
-                    {
-                        variant.vntr.motif = cm.motif;
-                        variant.vntr.motif_score = ahmm->get_motif_concordance();
-                        variant.vntr.ru = ru;
-                    }
-
-                    if (debug)
-                    {
-                        ahmm->print_alignment();
-
-                        printf("    selected: %10s %.2f %.2f %.2f %.2f (%d/%d)\n", mt->pcm.top().motif.c_str(),
-                                                                        mt->pcm.top().score,
-                                                                        mt->pcm.top().fit,
-                                                                        ahmm->get_motif_concordance(),
-                                                                        (float)ahmm->get_exact_motif_count()/ahmm->get_motif_count(),
-                                                                        ahmm->get_exact_motif_count(),
-                                                                        ahmm->get_motif_count());
-                    }
-                }
-                else
-                {
-                    if (debug)
-                    {
-                        printf("not selected: %10s %.2f \n", mt->pcm.top().motif.c_str(),
-                                                                        mt->pcm.top().score);
-                    }
-                }
-            }
-
-            if (!mt->pcm.empty()) mt->pcm.pop();
-
-            ++no;
-        }
+        choose_best_motif(h, v, mt, REFERENCE);
 
         return;
     }
@@ -198,22 +98,12 @@ void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::str
         //3. detects left and right flank
         if (mode=="e")
         {
-            if (debug) std::cerr << "============================================\n";
-            if (debug) std::cerr << "ANNOTATING INDEL EXACTLY\n";
 
-            ReferenceRegion region = extract_regions_by_exact_alignment(h, v);
+            //1. detect candidate motifs from a reference seqeuence
+            pick_candidate_motifs(h, v, REFERENCE);
 
-            mt->detect_candidate_motifs(region.ref);
+            //2. choose the best candidate motif
 
-            if (!mt->pcm.empty())
-            {
-                CandidateMotif cm = mt->pcm.top();
-
-                variant.vntr.motif = cm.motif;
-                variant.vntr.motif_score = cm.score;
-                variant.vntr.pos1 = region.beg1;
-                variant.vntr.ref = region.ref;
-            }
 
             if (debug) std::cerr << "============================================\n";
             return;
@@ -254,7 +144,7 @@ void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::str
                 }
             }
 
-            if (debug) std::cerr << "============================================\n";
+
             return;
         }
         //1. selects candidate region by fuzzy left and right alignment
@@ -277,10 +167,247 @@ void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::str
 
 /**
  * Pick candidate motifs in different modes.
+ * Invokes motif tree and the candidate motifs are stored in a
+ * heap within the motif tree.
  */
-void VNTRAnnotator::pick_candidate_motifs(bcf_hdr_t* h, bcf1_t* v)
+void VNTRAnnotator::pick_candidate_motifs(bcf_hdr_t* h, bcf1_t* v, uint32_t mode)
 {
-    mt->detect_candidate_motifs(bcf_get_ref(v), strlen(bcf_get_ref(v)));
+    if (mode==REFERENCE)
+    {
+        mt->detect_candidate_motifs(bcf_get_ref(v), strlen(bcf_get_ref(v)));
+    }
+    else if (mode==ALLELE_EXACT)
+    {
+        ReferenceRegion region = extract_regions_by_exact_alignment(h, v);
+        mt->detect_candidate_motifs(region.ref);
+    }
+    else if (mode==ALLELE_FUZZY)
+    {
+        ReferenceRegion region = extract_regions_by_fuzzy_alignment(h, v);
+        mt->detect_candidate_motifs(region.ref);
+    }
+}
+
+/**
+ * Chooses a phase of the motif that is appropriate for the alignment
+ *
+ */
+VNTR VNTRAnnotator::choose_best_motif(bcf_hdr_t* h, bcf1_t* v, MotifTree* mt, uint32_t mode)
+{
+    if (debug) std::cerr << "pcm size : " << mt->pcm.size() << "\n";
+    if (debug) std::cerr << "*********************************************\n";
+
+    if (debug) std::cerr << "============================================\n";
+
+    if (mode==REFERENCE)
+    {
+        //choose candidate motif
+        bool first = true;
+        float cp = 0;
+        float mscore = 0;
+        uint32_t clen = 0;
+        std::string ref(bcf_get_ref(v));
+        if (ref.size()>256) ref = ref.substr(0,256);
+
+        uint32_t no = 0;
+
+        VNTR vntr;
+
+        while (!mt->pcm.empty())
+        {
+            CandidateMotif cm = mt->pcm.top();
+
+            if (first)
+            {
+                std::string ru = choose_repeat_unit(ref, cm.motif);
+                ahmm->set_model(ru.c_str());
+                ahmm->align(ref.c_str(), qual.c_str());
+
+                vntr.motif = cm.motif;
+                vntr.motif_score = ahmm->get_motif_concordance();;
+                vntr.ru = ru;
+
+                cp = cm.score;
+                clen = cm.len;
+                first = false;
+                mscore = ahmm->get_motif_concordance();
+
+                if (debug)
+                {
+                    //ahmm->print_alignment();
+
+                    printf("    selected: %10s %.2f %.2f %.2f %.2f (%d/%d)\n", cm.motif.c_str(),
+                                                                    cm.score,
+                                                                    cm.fit,
+                                                                    ahmm->get_motif_concordance(),
+                                                                    (float)ahmm->get_exact_motif_count()/ahmm->get_motif_count(),
+                                                                    ahmm->get_exact_motif_count(),
+                                                                    ahmm->get_motif_count());
+                }
+            }
+            else
+            {
+                if (no<3 && (cp-cm.score<((float)1/cm.len)*cp || cm.score>0.4))
+                {
+                    //if score are not perfect, use AHMM
+                    std::string ru = choose_repeat_unit(ref, cm.motif);
+                    ahmm->set_model(ru.c_str());
+                    ahmm->align(ref.c_str(), qual.c_str());
+
+                    cp = cm.score;
+                    clen = cm.len;
+
+                    if (ahmm->get_motif_concordance()>mscore)
+                    {
+                        vntr.motif = cm.motif;
+                        vntr.motif_score = ahmm->get_motif_concordance();;
+                        vntr.ru = ru;
+                    }
+
+                    if (debug)
+                    {
+                        //ahmm->print_alignment();
+
+                        printf("    selected: %10s %.2f %.2f %.2f %.2f (%d/%d)\n", mt->pcm.top().motif.c_str(),
+                                                                        mt->pcm.top().score,
+                                                                        mt->pcm.top().fit,
+                                                                        ahmm->get_motif_concordance(),
+                                                                        (float)ahmm->get_exact_motif_count()/ahmm->get_motif_count(),
+                                                                        ahmm->get_exact_motif_count(),
+                                                                        ahmm->get_motif_count());
+                    }
+                }
+                else
+                {
+                    if (debug)
+                    {
+                        printf("not selected: %10s %.2f \n", mt->pcm.top().motif.c_str(),
+                                                                        mt->pcm.top().score);
+                    }
+                }
+            }
+
+            if (!mt->pcm.empty()) mt->pcm.pop();
+
+            ++no;
+        }
+
+        return vntr;
+    }
+    else if (mode==ALLELE_EXACT)
+    {
+        if (debug) std::cerr << "ANNOTATING INDEL EXACTLY\n";
+
+        VNTR vntr;
+
+        if (!mt->pcm.empty())
+        {
+            CandidateMotif cm = mt->pcm.top();
+
+            vntr.motif = cm.motif;
+            vntr.motif_score = cm.score;
+        }
+    }
+    else if (mode==ALLELE_FUZZY)
+    {
+        //choose candidate motif
+        bool first = true;
+        float cp = 0;
+        float mscore = 0;
+        uint32_t clen = 0;
+        std::string ref(bcf_get_ref(v));
+        if (ref.size()>256) ref = ref.substr(0,256);
+
+        uint32_t no = 0;
+
+        VNTR vntr;
+
+        while (!mt->pcm.empty())
+        {
+            CandidateMotif cm = mt->pcm.top();
+
+            if (first)
+            {
+                std::string ru = choose_repeat_unit(ref, cm.motif);
+                ahmm->set_model(ru.c_str());
+                ahmm->align(ref.c_str(), qual.c_str());
+
+                vntr.motif = cm.motif;
+                vntr.motif_score = ahmm->get_motif_concordance();;
+                vntr.ru = ru;
+
+                cp = cm.score;
+                clen = cm.len;
+                first = false;
+                mscore = ahmm->get_motif_concordance();
+
+                if (debug)
+                {
+                    ahmm->print_alignment();
+
+                    printf("    selected: %10s %.2f %.2f %.2f %.2f (%d/%d)\n", cm.motif.c_str(),
+                                                                    cm.score,
+                                                                    cm.fit,
+                                                                    ahmm->get_motif_concordance(),
+                                                                    (float)ahmm->get_exact_motif_count()/ahmm->get_motif_count(),
+                                                                    ahmm->get_exact_motif_count(),
+                                                                    ahmm->get_motif_count());
+                }
+            }
+            else
+            {
+                if (no<3 && (cp-cm.score<((float)1/cm.len)*cp || cm.score>0.4))
+                {
+                    //if score are not perfect, use AHMM
+                    std::string ru = choose_repeat_unit(ref, cm.motif);
+                    ahmm->set_model(ru.c_str());
+                    ahmm->align(ref.c_str(), qual.c_str());
+
+                    cp = cm.score;
+                    clen = cm.len;
+
+                    if (ahmm->get_motif_concordance()>mscore)
+                    {
+                        vntr.motif = cm.motif;
+                        vntr.motif_score = ahmm->get_motif_concordance();;
+                        vntr.ru = ru;
+                    }
+
+                    if (debug)
+                    {
+                        ahmm->print_alignment();
+
+                        printf("    selected: %10s %.2f %.2f %.2f %.2f (%d/%d)\n", mt->pcm.top().motif.c_str(),
+                                                                        mt->pcm.top().score,
+                                                                        mt->pcm.top().fit,
+                                                                        ahmm->get_motif_concordance(),
+                                                                        (float)ahmm->get_exact_motif_count()/ahmm->get_motif_count(),
+                                                                        ahmm->get_exact_motif_count(),
+                                                                        ahmm->get_motif_count());
+                    }
+                }
+                else
+                {
+                    if (debug)
+                    {
+                        printf("not selected: %10s %.2f \n", mt->pcm.top().motif.c_str(),
+                                                                        mt->pcm.top().score);
+                    }
+                }
+            }
+
+            if (!mt->pcm.empty()) mt->pcm.pop();
+
+            ++no;
+        }
+
+        return vntr;
+    }
+
+    if (debug) std::cerr << "============================================\n";
+
+    VNTR vntr;
+    return vntr;
 }
 
 ///**
@@ -315,7 +442,6 @@ void VNTRAnnotator::pick_candidate_motifs(bcf_hdr_t* h, bcf1_t* v)
 //    }
 //};
 
-
 /**
  * Chooses a phase of the motif that is appropriate for the alignment
  */
@@ -331,117 +457,6 @@ std::string VNTRAnnotator::choose_repeat_unit(std::string& ref, std::string& mot
     }
 
     return motif;
-}
-//
-///**
-// * Chooses a phase of the motif that is appropriate for the alignment
-// */
-//VNTR VNTRAnnotator::detect_candidate_motifs(bcf_hdr_t* h, bcf1_t* v, MotifTree& mt)
-//{
-//
-//
-//}
-
-/**
- * Chooses a phase of the motif that is appropriate for the alignment
- */
-VNTR VNTRAnnotator::choose_best_motif(bcf_hdr_t* h, bcf1_t* v, MotifTree* mt)
-{
-    if (debug) std::cerr << "pcm size : " << mt->pcm.size() << "\n";
-    if (debug) std::cerr << "*********************************************\n";
-
-    //choose candidate motif
-    bool first = true;
-    float cp = 0;
-    float mscore = 0;
-    uint32_t clen = 0;
-    std::string ref(bcf_get_ref(v));
-    if (ref.size()>256) ref = ref.substr(0,256);
-
-    uint32_t no = 0;
-
-    VNTR vntr;
-
-    while (!mt->pcm.empty())
-    {
-        CandidateMotif cm = mt->pcm.top();
-
-        if (first)
-        {
-            std::string ru = choose_repeat_unit(ref, cm.motif);
-            ahmm->set_model(ru.c_str());
-            ahmm->align(ref.c_str(), qual.c_str());
-
-            vntr.motif = cm.motif;
-            vntr.motif_score = ahmm->get_motif_concordance();;
-            vntr.ru = ru;
-
-            cp = cm.score;
-            clen = cm.len;
-            first = false;
-            mscore = ahmm->get_motif_concordance();
-
-            if (debug)
-            {
-                ahmm->print_alignment();
-
-                printf("    selected: %10s %.2f %.2f %.2f %.2f (%d/%d)\n", cm.motif.c_str(),
-                                                                cm.score,
-                                                                cm.fit,
-                                                                ahmm->get_motif_concordance(),
-                                                                (float)ahmm->get_exact_motif_count()/ahmm->get_motif_count(),
-                                                                ahmm->get_exact_motif_count(),
-                                                                ahmm->get_motif_count());
-            }
-        }
-        else
-        {
-            if (no<3 && (cp-cm.score<((float)1/cm.len)*cp || cm.score>0.4))
-            {
-                //if score are not perfect, use AHMM
-                std::string ru = choose_repeat_unit(ref, cm.motif);
-                ahmm->set_model(ru.c_str());
-                ahmm->align(ref.c_str(), qual.c_str());
-
-                cp = cm.score;
-                clen = cm.len;
-
-                if (ahmm->get_motif_concordance()>mscore)
-                {
-                    vntr.motif = cm.motif;
-                    vntr.motif_score = ahmm->get_motif_concordance();;
-                    vntr.ru = ru;
-                }
-
-                if (debug)
-                {
-                    ahmm->print_alignment();
-
-                    printf("    selected: %10s %.2f %.2f %.2f %.2f (%d/%d)\n", mt->pcm.top().motif.c_str(),
-                                                                    mt->pcm.top().score,
-                                                                    mt->pcm.top().fit,
-                                                                    ahmm->get_motif_concordance(),
-                                                                    (float)ahmm->get_exact_motif_count()/ahmm->get_motif_count(),
-                                                                    ahmm->get_exact_motif_count(),
-                                                                    ahmm->get_motif_count());
-                }
-            }
-            else
-            {
-                if (debug)
-                {
-                    printf("not selected: %10s %.2f \n", mt->pcm.top().motif.c_str(),
-                                                                    mt->pcm.top().score);
-                }
-            }
-        }
-
-        if (!mt->pcm.empty()) mt->pcm.pop();
-
-        ++no;
-    }
-
-    return vntr;
 }
 
 /**

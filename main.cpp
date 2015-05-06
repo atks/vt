@@ -44,6 +44,7 @@
 #include "index.h"
 #include "merge_candidate_variants.h"
 #include "merge.h"
+#include "multi_partition.h"
 #include "normalize.h"
 #include "partition.h"
 #include "paste.h"
@@ -200,6 +201,10 @@ int main(int argc, char ** argv)
     else if (argc>1 && cmd=="partition")
     {
         partition(argc-1, ++argv);
+    }
+    else if (argc>1 && cmd=="multi_partition")
+    {
+        multi_partition(argc-1, ++argv);
     }
     else if (argc>1 && cmd=="annotate_variants")
     {
