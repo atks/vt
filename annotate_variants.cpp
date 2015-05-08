@@ -180,7 +180,7 @@ class Igor : Program
     {
         odw->write_hdr();
 
-        bcf1_t *v = odw->get_bcf1_from_pool();
+        bcf1_t *v = bcf_init1();
         std::vector<Interval*> overlaps;
         Variant variant;
         kstring_t s = {0,0,0};
@@ -242,7 +242,6 @@ class Igor : Program
 
             ++no_variants_annotated;
             odw->write(v);
-            v = odw->get_bcf1_from_pool();
         }
 
         odw->close();
