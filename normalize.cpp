@@ -118,7 +118,7 @@ class Igor : Program
         odr = new BCFOrderedReader(input_vcf_file, intervals);
         odw = new BCFOrderedWriter(output_vcf_file, window_size);
         odw->link_hdr(odr->hdr);
-        bcf_hdr_append(odw->hdr, "##INFO=<ID=OLD_VARIANT,Number=1,Type=String,Description=\"Original chr:pos:ref:alt encoding\">\n");
+        bcf_hdr_append(odw->hdr, "##INFO=<ID=OLD_VARIANT,Number=.,Type=String,Description=\"Original chr:pos:ref:alt encoding\">\n");
         odw->write_hdr();
         
         ////////////////////////

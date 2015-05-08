@@ -116,6 +116,36 @@ class Igor : Program
         std::vector<bcfptr*> crecs;
         while (sr->read_next_position(crecs))
         {
+            if (crecs.size()>1)
+            {
+                //check if the first variant has OLD_VARIANT
+                //proceed to merge the others.
+                char* dst = 0;
+                int32_t ndst = 0;    
+                std::map<std::string, uint32_t> ov_map;
+                std::string old_vars;
+                for (uint32_t i=0; i<crecs.size(); ++i)
+                {
+                    if(bcf_get_info_string(sr->hdrs[0], crecs[i]->v, "OLD_VARIANT", &dst, &ndst)>0)
+                    {
+                        std::string old_var(dst);
+                        if (ov_map.find(dst)==ov_map.end())
+                        {
+                            ov_map[old_var] = 1;
+                            if (old_vars!="") old_vars.append(1, ',');
+                            old_vars.append(old_var);
+                        }
+                    }
+                }
+                if (dst!=0) free(dst);
+                
+                //update OLD_VARIANT in the first record.
+                if (old_vars != "")
+                {
+                    bcf_update_info_string(sr->hdrs[0], crecs[0]->v, "OLD_VARIANT", old_vars.c_str());
+                }   
+            }
+            
             odw->write(crecs[0]->v);
             
             ++no_unique_variants;
