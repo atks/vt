@@ -100,7 +100,7 @@ void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::str
         {
 
             //1. detect candidate motifs from a reference seqeuence
-            pick_candidate_motifs(h, v, REFERENCE);
+            pick_candidate_motifs(h, v, ALLELE_EXACT);
 
             //2. choose the best candidate motif
 
@@ -116,17 +116,18 @@ void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::str
             if (debug) std::cerr << "============================================\n";
             if (debug) std::cerr << "ANNOTATING INDEL FUZZILY\n";
 
-            ReferenceRegion region = extract_regions_by_fuzzy_alignment(h, v);
 
-            mt->detect_candidate_motifs(region.ref);
+            pick_candidate_motifs(h, v, ALLELE_FUZZY);
+            
+            
 
             if (!mt->pcm.empty())
             {
                 CandidateMotif cm = mt->pcm.top();
                 variant.vntr.motif = cm.motif;
                 variant.vntr.motif_score = cm.score;
-                variant.vntr.pos1 = region.beg1;
-                variant.vntr.ref = region.ref;
+//                variant.vntr.pos1 = region.beg1;
+//                variant.vntr.ref = region.ref;
 
                 if (debug)
                 {
