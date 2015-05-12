@@ -119,7 +119,7 @@ void NeedlemanWunsch::trace_path()
     while (i>0 || j>0)
     {
         trace.push_back(matrix.at(k));
-        switch (matrix.at(k))
+        switch ((int32_t) matrix.at(k))
         {
             case CIGAR_X:
             case CIGAR_M:

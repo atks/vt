@@ -179,7 +179,7 @@ class Igor : Program
                 Triple nextChunk(pos_ref, pos_alt, 0, 0);
                 while (pos_ref <= nw.len_ref || pos_alt <= nw.len_read)
                 {
-                    switch (nw.trace.at(k++))
+                    switch ((int32_t)nw.trace.at(k++))
                     {
                         case NeedlemanWunsch::CIGAR_M:
                             if (hasError)
