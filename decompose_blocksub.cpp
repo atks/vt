@@ -22,9 +22,24 @@
 */
 
 #include "decompose_blocksub.h"
+#include "needle.h"
 
 namespace
 {
+
+struct Triple
+{
+    int pos_ref;
+    int pos_alt;
+    int len_ref;
+    int len_alt;
+
+    Triple() : pos_ref(0), pos_alt(0), len_ref(0), len_alt(0)
+    {}
+
+    Triple(int pos_ref, int pos_alt, int len_ref, int len_alt) : pos_ref(pos_ref), pos_alt(pos_alt), len_ref(len_ref), len_alt(len_alt)
+    {}
+};
 
 class Igor : Program
 {
@@ -33,6 +48,7 @@ class Igor : Program
     ///////////
     //options//
     ///////////
+    bool aggressive_mode;
     std::string input_vcf_file;
     std::string output_vcf_file;
     std::vector<GenomeInterval> intervals;
@@ -78,12 +94,14 @@ class Igor : Program
             TCLAP::ValueArg<std::string> arg_intervals("i", "i", "intervals []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "file", cmd);
             TCLAP::ValueArg<std::string> arg_output_vcf_file("o", "o", "output VCF file [-]", false, "-", "str", cmd);
+            TCLAP::SwitchArg arg_aggressive("a", "a", "enable aggressive/alignment mode", cmd, false);
             TCLAP::UnlabeledValueArg<std::string> arg_input_vcf_file("<in.vcf>", "input VCF file", true, "","file", cmd);
 
             cmd.parse(argc, argv);
 
             input_vcf_file = arg_input_vcf_file.getValue();
             output_vcf_file = arg_output_vcf_file.getValue();
+            aggressive_mode = arg_aggressive.getValue();
             parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
         }
         catch (TCLAP::ArgException &e)
@@ -135,7 +153,102 @@ class Igor : Program
             char** allele = bcf_get_allele(v);
 
             size_t ref_len = strlen(allele[0]);
-            if (n_allele==2 && (ref_len!=1) && (ref_len==strlen(allele[1])))
+            size_t alt_len = strlen(allele[1]);
+            if (aggressive_mode && (ref_len!=alt_len) && (ref_len!=1) && (alt_len!=1))
+            {
+                // Use alignment for decomposition of substitutions where REF
+                // and ALT have different lengths and the variant is not an
+                // insertion or deletion.
+
+                // Perform alignment of REF[1:] and ALT[1:]
+                NeedlemanWunsch nw(true);
+                nw.align(allele[0] + 1, allele[1] + 1);
+                nw.trace_path();
+                // Force-align first characters
+                if (allele[0][0] == allele[1][0])
+                    nw.trace.insert(nw.trace.begin(), NeedlemanWunsch::CIGAR_M);
+                else
+                    nw.trace.insert(nw.trace.begin(), NeedlemanWunsch::CIGAR_X);
+                nw.read--;
+                nw.ref--;
+
+                // Break apart alignment
+                std::vector<Triple> chunks;
+                bool hasError = false;
+                int pos_ref = 0, pos_alt = 0, k = 0;
+                Triple nextChunk(pos_ref, pos_alt, 0, 0);
+                while (pos_ref <= nw.len_ref || pos_alt <= nw.len_read)
+                {
+                    switch (nw.trace.at(k++))
+                    {
+                        case NeedlemanWunsch::CIGAR_M:
+                            if (hasError)
+                                chunks.push_back(nextChunk);
+                            nextChunk = Triple(pos_ref++, pos_alt++, 1, 1);
+                            hasError = false;
+                            break;
+                        case NeedlemanWunsch::CIGAR_X:
+                            if (hasError)
+                                chunks.push_back(nextChunk);
+                            nextChunk = Triple(pos_ref++, pos_alt++, 1, 1);
+                            hasError = true;
+                            break;
+                        case NeedlemanWunsch::CIGAR_D:
+                            nextChunk.len_ref++;
+                            pos_ref++;
+                            hasError = true;
+                            break;
+                        case NeedlemanWunsch::CIGAR_I:
+                            nextChunk.len_alt++;
+                            pos_alt++;
+                            hasError = true;
+                            break;
+                    }
+                }
+                if (hasError)
+                    chunks.push_back(nextChunk);
+
+                // Build new BCF records.
+                int32_t rid = bcf_get_rid(v);
+                int32_t pos1 = bcf_get_pos1(v);
+                char** allele = bcf_get_allele(v);
+
+                char* ref = strdup(allele[0]);
+                char* alt = strdup(allele[1]);
+
+                old_alleles.l = 0;
+                bcf_variant2string(odw->hdr, v, &old_alleles);
+
+                for (size_t i=0; i<chunks.size(); ++i)
+                {
+                    bcf1_t *nv = odw->get_bcf1_from_pool();
+                    bcf_copy(nv, v);
+                    bcf_unpack(nv, BCF_UN_ALL);
+
+                    bcf_set_pos1(nv, pos1+chunks[i].pos_ref);
+                    new_alleles.l=0;
+                    for (int j=chunks[i].pos_ref; j<chunks[i].pos_ref+chunks[i].len_ref; ++j)
+                        kputc(ref[j], &new_alleles);
+                    kputc(',', &new_alleles);
+                    for (int j=chunks[i].pos_alt; j<chunks[i].pos_alt+chunks[i].len_alt; ++j)
+                        kputc(alt[j], &new_alleles);
+
+                    bcf_update_alleles_str(odw->hdr, nv, new_alleles.s);
+                    bcf_update_info_string(odw->hdr, nv, "OLD_CLUMPED", old_alleles.s);
+                    odw->write(nv);
+
+                    kputc('\0', &new_alleles);
+
+                    ++new_no_variants;
+                    ++no_additional_snps;
+                }
+
+                free(ref);
+                free(alt);
+
+                ++no_biallelic_blocksub;
+            }
+            else if (n_allele==2 && (ref_len!=1) && (ref_len==strlen(allele[1])))
             {
                 int32_t rid = bcf_get_rid(v);
                 int32_t pos1 = bcf_get_pos1(v);
@@ -195,6 +308,7 @@ class Igor : Program
         std::clog << "options:     input VCF file        " << input_vcf_file << "\n";
         std::clog << "         [o] output VCF file       " << output_vcf_file << "\n";
         print_int_op("         [i] intervals             ", intervals);
+        print_boo_op("         [a] align/aggressive mode ", aggressive_mode);
         std::clog << "\n";
     }
 

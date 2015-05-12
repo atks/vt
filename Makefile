@@ -52,6 +52,7 @@ SOURCES = align\
 		motif_tree\
 		motif_map\
 		multi_partition\
+		needle\
 		ordered_bcf_overlap_matcher\
 		ordered_region_overlap_matcher\
 		partition\
