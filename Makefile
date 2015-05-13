@@ -118,6 +118,8 @@ $(TOOLOBJ): $(HEADERSONLY)
 .cpp.o :
 	$(CXX) $(CFLAGS) -o $@ -c $*.cpp
 
+.PHONY: clean cleanvt test
+
 clean :
 	cd lib/htslib; $(MAKE) clean
 	cd lib/Rmath; $(MAKE) clean
@@ -125,3 +127,8 @@ clean :
 
 cleanvt :
 	-rm -rf $(TARGET) $(TOOLOBJ)    
+
+test:
+	for x in ./test/*/_run.sh; do \
+		$${x}; \
+	done

@@ -1,0 +1,11 @@
+language: cpp
+
+compiler:
+    - gcc
+    - clang
+
+cache:
+    apt: true
+
+script:
+    make && make test
