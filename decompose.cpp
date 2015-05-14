@@ -73,7 +73,7 @@ class Igor : Program
         //////////////////////////
         try
         {
-            std::string desc = "decomposes multialleic variants into biallelic in a VCF file.";
+            std::string desc = "decomposes multiallelic variants into biallelic in a VCF file.";
 
             TCLAP::CmdLine cmd(desc, ' ', version);
             VTOutput my; cmd.setOutput(&my);
