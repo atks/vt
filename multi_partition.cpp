@@ -40,24 +40,24 @@ class OverlapStats
 
     /**
      * Constructor.
-     */    
+     */
     OverlapStats(uint32_t no_datasets=2)
     {
         resize(no_datasets);
     };
-    
+
     /**
      * Resize for no_datasets.
-     */    
+     */
     void resize(uint32_t no_datasets)
     {
         this->no_datasets = no_datasets;
         resize();
     };
-    
+
     /**
      * Resize for no_datasets.
-     */    
+     */
     void resize()
     {
         no.resize(no_datasets, 0);
@@ -66,7 +66,7 @@ class OverlapStats
         tv.resize((1 << no_datasets), 0);
         ins.resize((1 << no_datasets), 0);
         del.resize((1 << no_datasets), 0);
-    };    
+    };
 };
 
 class Igor : Program
@@ -82,7 +82,6 @@ class Igor : Program
     std::vector<std::string> input_vcf_files;
     std::vector<GenomeInterval> intervals;
     std::string interval_list;
-    bool write_partition;
 
     ///////
     //i/o//
@@ -121,14 +120,12 @@ class Igor : Program
             TCLAP::ValueArg<std::string> arg_intervals("i", "i", "intervals []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "file", cmd);
             TCLAP::ValueArg<std::string> arg_fexp("f", "f", "filter", false, "", "str", cmd);
-            //TCLAP::SwitchArg arg_write_partition("w", "w", "write partitioned variants to file", cmd, false);
             TCLAP::UnlabeledMultiArg<std::string> arg_input_vcf_files("<in1.vcf><in2.vcf>...", "multiple input VCF files for comparison", true, "files", cmd);
 
             cmd.parse(argc, argv);
 
             fexp = arg_fexp.getValue();
             parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
-           // write_partition = arg_write_partition.getValue();
             input_vcf_files = arg_input_vcf_files.getValue();
 
             if (input_vcf_files.size()<2)
@@ -173,24 +170,8 @@ class Igor : Program
         //for combining the alleles
         std::vector<bcfptr*> crecs;
         Variant variant;
-        
+
         std::vector<BCFOrderedWriter *> out;
-        
-//        if (write_partition)
-//        {
-//            a = new BCFOrderedWriter("a-b.bcf");
-//            a->link_hdr(sr->hdrs[0]);
-//            a->write_hdr();
-//            ab[0] = new BCFOrderedWriter("a&b1.bcf");
-//            ab[0]->link_hdr(sr->hdrs[0]);
-//            ab[0]->write_hdr();
-//            ab[1] = new BCFOrderedWriter("a&b2.bcf");
-//            ab[1]->link_hdr(sr->hdrs[1]);
-//            ab[1]->write_hdr();
-//            b = new BCFOrderedWriter("b-a.bcf");
-//            b->link_hdr(sr->hdrs[1]);
-//            b->write_hdr();
-//        }
 
         while(sr->read_next_position(crecs))
         {
@@ -225,38 +206,7 @@ class Igor : Program
             stats.ts[presence] += ts;
             stats.tv[presence] += tv;
             stats.ins[presence] += ins;
-            stats.del[presence] += del;  
-
-//            if (write_partition)
-//            {
-//                if (presence[0])
-//                {
-//                    if (presence[1])
-//                    {
-//                        ab[crecs[0]->file_index]->write(crecs[0]->v);
-//                        ab[crecs[1]->file_index]->write(crecs[1]->v);
-//                    }
-//                    else
-//                    {
-//                        a->write(crecs[0]->v);
-//                    }
-//                }
-//                else if (presence[1])
-//                {
-//                    b->write(crecs[0]->v);
-//                }
-//            }
-//
-//            presence[0] = 0;
-//            presence[1] = 0;
-        }
-
-        if (write_partition)
-        {
-//            a->close();
-//            ab[0]->close();
-//            ab[1]->close();
-//            b->close();
+            stats.del[presence] += del;
         }
     };
 
@@ -269,10 +219,9 @@ class Igor : Program
         for (uint32_t i=1; i<input_vcf_files.size(); ++i)
         {
             std::clog << "             input VCF file " << c << "   " << input_vcf_files[i] << "\n";
-            ++c;    
+            ++c;
         }
         print_str_op("         [f] filter             ", fexp);
-        print_boo_op("         [w] write_partition    ", write_partition);
         print_int_op("         [i] intervals          ", intervals);
         std::clog << "\n";
    }
@@ -289,21 +238,22 @@ class Igor : Program
             {
                 if (j&k) no+=stats.no[j];
             }
-               
+
             fprintf(stderr, "    %c:  %10d variants\n", c, no);
-            ++c;    
-        }       
+            ++c;
+        }
         fprintf(stderr, "\n");
-        
+
         //print partitions
         fprintf(stderr, "    %s         no  [ts/tv] [ins/del]\n", std::string(stats.no_datasets,' ').c_str());
+        uint32_t unique_total = 0;
         for (uint32_t i=1; i<stats.no.size(); ++i)
         {
             std::string partition;
             for (uint32_t j=1; j<=stats.no_datasets; ++j)
             {
-                if (i&(1<<(j-1))) 
-                {    
+                if (i&(1<<(j-1)))
+                {
                     partition.append(1, 'A'+(j-1));
                 }
                 else
@@ -311,10 +261,14 @@ class Igor : Program
                     partition.append(1, '-');
                 }
             }
-            
+
+            unique_total += stats.no[i];
             fprintf(stderr, "    %s %10d  [%.2f]  [%.2f]\n", partition.c_str(), stats.no[i], (float)stats.ts[i]/stats.tv[i], (float)stats.ins[i]/stats.del[i]);
-        }       
-        fprintf(stderr, "\n");        
+        }
+        fprintf(stderr, "\n");
+        fprintf(stderr, "    Unique variants     : %10d\n", unique_total);
+        fprintf(stderr, "    Overall concordance : %10.2f%% (#intersection/#union)\n", (float) stats.no[stats.no.size()-1]/unique_total*100);
+        fprintf(stderr, "\n");
     };
 
     ~Igor()

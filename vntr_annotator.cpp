@@ -119,8 +119,6 @@ void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::str
 
             pick_candidate_motifs(h, v, ALLELE_FUZZY);
             
-            
-
             if (!mt->pcm.empty())
             {
                 CandidateMotif cm = mt->pcm.top();

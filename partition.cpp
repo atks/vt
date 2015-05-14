@@ -99,7 +99,7 @@ class Igor : Program
         //////////////////////////
         try
         {
-            std::string desc = "partition variants. check the overlap of variants between 2 data sets.\n";
+            std::string desc = "partition variants from two data sets.\n";
 
             version = "0.5";
             TCLAP::CmdLine cmd(desc, ' ', version);
