@@ -517,7 +517,7 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
         else if (type==VT_VARIANT_TYPE)
         {
             if (debug)
-                std::cerr << "\tVTYPE "   <<  variant->vtype2string(variant->type) <<  " \n";
+                std::cerr << "\tVTYPE "   <<  Variant::vtype2string(variant->type) <<  " \n";
             i = variant->type;
             b = i;
         }

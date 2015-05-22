@@ -88,7 +88,7 @@ class Igor : Program
     int32_t VAR_INS[NO_ALLELE_CATEGORIES][NO_VARIANT_CATEGORIES];
     int32_t VAR_DEL[NO_ALLELE_CATEGORIES][NO_VARIANT_CATEGORIES];
     int32_t VAR_MOTIF_LEN[NO_MOTIF_LEN_CATEGORIES];
- 
+
     int32_t no_snp3;
     int32_t no_snp4;
 
@@ -174,8 +174,8 @@ class Igor : Program
         for (int32_t i=0; i<NO_MOTIF_LEN_CATEGORIES; ++i)
         {
             VAR_MOTIF_LEN[i] = 0;
-        }  
-           
+        }
+
         ////////////////////////
         //tools initialization//
         ////////////////////////
@@ -198,10 +198,9 @@ class Igor : Program
         while (odr->read(v))
         {
             int32_t vtype = vm->classify_variant(odr->hdr, v, variant);
-            
+
 //            bcf_print(odr->hdr, v);
-//            std::cerr << vm->vtype2string(vtype) << "\n";
-//            
+
             if (filter_exists)
             {
                 if (!filter.apply(odr->hdr, v, &variant, false))
@@ -233,7 +232,7 @@ class Igor : Program
             {
                 ++VAR_COUNT[POLYMORPHIC][VT_VNTR];
                 if (variant.vntr.motif.size()<NO_MOTIF_LEN_CATEGORIES)
-                {    
+                {
                     ++VAR_MOTIF_LEN[variant.vntr.motif.size()-1];
                 }
                 else
@@ -241,7 +240,7 @@ class Igor : Program
                     ++VAR_MOTIF_LEN[NO_MOTIF_LEN_CATEGORIES-1];
                 }
             }
-            
+
             if (vtype==VT_SV)
             {
                 ++VAR_COUNT[POLYMORPHIC][VT_SV];
@@ -315,8 +314,8 @@ class Igor : Program
             }
         }
 
-        int32_t cplxsub_vtype[] = {VT_SNP|VT_INDEL, VT_MNP|VT_INDEL, VT_SNP|VT_MNP|VT_INDEL, 
-                                   VT_CLUMPED, VT_INDEL|VT_CLUMPED, VT_SNP|VT_INDEL|VT_CLUMPED, 
+        int32_t cplxsub_vtype[] = {VT_SNP|VT_INDEL, VT_MNP|VT_INDEL, VT_SNP|VT_MNP|VT_INDEL,
+                                   VT_CLUMPED, VT_INDEL|VT_CLUMPED, VT_SNP|VT_INDEL|VT_CLUMPED,
                                    VT_MNP|VT_INDEL|VT_CLUMPED, VT_SNP|VT_MNP|VT_INDEL|VT_CLUMPED};
         for (size_t i=0; i<(sizeof(cplxsub_vtype)/sizeof(int32_t)); ++i)
         {
@@ -368,7 +367,7 @@ class Igor : Program
         {
             int32_t vtype = vtypes[i];
             if (!VAR_COUNT[POLYMORPHIC][vtype]) continue;
-            fprintf(stderr, "       no. of %-21s       : %10d\n", vm->vtype2string(vtype).c_str(), VAR_COUNT[POLYMORPHIC][vtype]);
+            fprintf(stderr, "       no. of %-21s       : %10d\n", Variant::vtype2string(vtype).c_str(), VAR_COUNT[POLYMORPHIC][vtype]);
             for (int32_t no_alleles=1; no_alleles<=4; ++no_alleles)
             {
                 if (VAR_COUNT[no_alleles][vtype])
@@ -418,7 +417,7 @@ class Igor : Program
             }
             fprintf(stderr, "\n");
         }
-        
+
         fprintf(stderr, "       ============== VNTR ===============\n");
         fprintf(stderr, "\n");
         fprintf(stderr, "       no. of VNTRs                       : %10d\n", VAR_COUNT[POLYMORPHIC][VT_VNTR]);
@@ -427,7 +426,7 @@ class Igor : Program
             if (VAR_MOTIF_LEN[i])
             {
                 if (i<NO_MOTIF_LEN_CATEGORIES-1)
-                {        
+                {
                     fprintf(stderr, "           no. of %d bp motifs                   : %10d\n", i+1, VAR_MOTIF_LEN[i]);
                 }
                 else
@@ -437,7 +436,7 @@ class Igor : Program
             }
         }
         fprintf(stderr, "\n");
-        
+
         fprintf(stderr, "       ======= Structural variants ========\n");
         fprintf(stderr, "\n");
         std::vector<SVNode*> s = sv->enumerate_dfs();

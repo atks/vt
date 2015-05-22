@@ -138,7 +138,6 @@ class Igor : Program
         //tool initialization//
         ///////////////////////
         vm = new VariantManip("");
-
     }
 
     void subset()
@@ -158,7 +157,6 @@ class Igor : Program
             bool printed = false;
 
             ++no_variants;
-
             
             if (filter_exists && !filter.apply(h,v,&variant))
             {

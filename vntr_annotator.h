@@ -49,7 +49,6 @@
 #define ALLELE_EXACT  1
 #define ALLELE_FUZZY  2
 
-
 KHASH_MAP_INIT_STR(mdict, int32_t);
 
 class ReferenceRegion
@@ -83,7 +82,6 @@ class VNTRAnnotator
 //bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_RFLANKPOS,Number=2,Type=Integer,Description=\"Positions of right flank\">");
 //bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_MOTIF_DISCORDANCE,Number=1,Type=String,Description=\"Descriptive Discordance for each reference repeat unit.\">");
 //bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_STR_CONCORDANCE,Number=1,Type=Float,Description=\"Overall discordance of RUs.\">");
-
 
     uint32_t max_mlen; //maximum length for motif search in the fast tree.
 

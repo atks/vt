@@ -197,10 +197,10 @@ class Igor : Program
                 }
             }
 
-            vm->vtype2string(vtype, &s);
-            if (s.l)
+            std::string str = Variant::vtype2string(vtype);
+            if (str.size()!=0)
             {
-                bcf_update_info_string(odr->hdr, v, "VT", s.s);
+                bcf_update_info_string(odr->hdr, v, "VT", str.c_str());
             }
 
             std::string chrom = bcf_get_chrom(odr->hdr,v);

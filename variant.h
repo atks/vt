@@ -34,14 +34,6 @@
 #ifndef VARIANT_H
 #define VARIANT_H
 
-class Region
-{
-    public:
-
-    int32_t beg1;
-    int32_t end1;
-};
-
 /**
  * Variant.
  */
@@ -50,34 +42,18 @@ class Variant
     public:
 
     int32_t type;       //aggegrated type from the alleles
-    
+
+    //contains alleles
+    std::vector<Allele> alleles;
+
     //sum from all the alleles
     int32_t ts;         //no. of transitions
     int32_t tv;         //no. of tranversions (mlen-ts)
     int32_t ins;        //no. of insertions
     int32_t del;        //no. of deletions
 
+    //describes a repeat region
     VNTR vntr;
-//    std::string motif;   //motif of VNTR
-//    std::string ru;      //repeat unit of VNTR
-//    int32_t mlen;        //length of motif
-//    float rcn;           //reference copy number
-//    int32_t rlen;        //reference length of repeat tract in bases
-//        
-//    std::string emotif;
-//    float escore;
-//    
-//    uint32_t pos1;
-//    std::string ref;
-//  
-//    std::string eru;
-//    Region eregion;
-//
-//    std::string imotif;
-//    std::string iru;
-//    Region iregion;
-
-    std::vector<Allele> alleles;
 
     /**
      * Constructor.
@@ -90,24 +66,19 @@ class Variant
     ~Variant();
 
     /**
+     * Clears variant information.
+     */
+    void clear();
+
+    /**
      * Prints variant information.
      */
     void print();
 
     /**
-     * Returns true if variant contains an allele that is potentially frame shifting.
-     */
-    bool exists_frame_shift();
-
-    /**
      * Converts VTYPE to string.
      */
-    std::string vtype2string(int32_t VTYPE);
-
-    /**
-     * Clears variant information.
-     */
-    void clear();
+    static std::string vtype2string(int32_t VTYPE);
 };
 
 #endif

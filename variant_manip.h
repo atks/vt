@@ -74,16 +74,6 @@ class VariantManip
     bool detect_str(const char* chrom, uint32_t pos1, Variant& variant);
 
     /**
-     * Converts VTYPE to string.
-     */
-    std::string vtype2string(int32_t VTYPE);
-
-    /**
-     * Converts VTYPE to string.
-     */
-    void vtype2string(int32_t vtype, kstring_t *s);
-
-    /**
      * Inspects variants.
      */
     int32_t inspect(char** allele, int32_t n_allele);

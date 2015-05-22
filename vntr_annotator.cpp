@@ -76,6 +76,7 @@ VNTRAnnotator::~VNTRAnnotator()
 /**
  * Annotates VNTR characteristics.
  * RU,RL,LFLANK,RFLANK,LFLANKPOS,RFLANKPOS,MOTIF_CONCORDANCE,MOTIF_CONCORDANCE
+ * mode will correspond to level of advanced method.
  */
 void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::string mode)
 {
@@ -116,7 +117,6 @@ void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::str
             if (debug) std::cerr << "============================================\n";
             if (debug) std::cerr << "ANNOTATING INDEL FUZZILY\n";
 
-
             pick_candidate_motifs(h, v, ALLELE_FUZZY);
             
             if (!mt->pcm.empty())
@@ -142,7 +142,6 @@ void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::str
                     }
                 }
             }
-
 
             return;
         }
@@ -233,7 +232,7 @@ VNTR VNTRAnnotator::choose_best_motif(bcf_hdr_t* h, bcf1_t* v, MotifTree* mt, ui
 
                 if (debug)
                 {
-                    //ahmm->print_alignment();
+                    ahmm->print_alignment();
 
                     printf("    selected: %10s %.2f %.2f %.2f %.2f (%d/%d)\n", cm.motif.c_str(),
                                                                     cm.score,

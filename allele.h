@@ -80,8 +80,7 @@ class Allele
 
     /**
      * Special dictionary for some reserve types.
-     * CN\d+ be CNV
-     * VN\d+ be VNTR
+     * CN\d+ be CNV and VN\d+ be VNTR
      */
     std::string reduce_sv_type(std::string& sv_type);
 

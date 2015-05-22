@@ -171,6 +171,46 @@ class Igor : Program
         std::clog << "\n";
     }
 
+    void update_vntr_info(bcf_hdr_t* h, bcf1_t *v, Variant& variant)
+    {
+        if (variant.vntr.motif!="") 
+            bcf_update_info_string(odw->hdr, v, "VMOTIF", variant.vntr.motif.c_str());
+        if (variant.vntr.motif_score>=0) 
+            bcf_update_info_float(odw->hdr, v, "VSCORE", &variant.vntr.motif_score, 1);
+        if (variant.vntr.ru!="") 
+            bcf_update_info_string(odw->hdr, v, "VRU", variant.vntr.ru.c_str());
+        
+        
+        
+//        bcf_update_info_string(odw->hdr, v, "VRU", variant.eru.c_str());
+//        int32_t rl = variant.eregion.end1-variant.eregion.beg1-1;
+//        bcf_update_info_int32(odw->hdr, v, "VRL", &rl, 1);
+//        int32_t irl = variant.iregion.end1-variant.iregion.beg1-1;
+//        bcf_update_info_int32(odw->hdr, v, "IRL", &irl, 1);
+//
+//        if (irl!=rl)
+//        {
+//            int32_t irg[2] = {variant.iregion.beg1, variant.iregion.end1};
+//            bcf_update_info_int32(odw->hdr, v, "IRG", &irg, 2);
+//            int32_t len = 0;
+//            const char* chrom = bcf_get_chrom(odr->hdr, v);
+//            char* seq = faidx_fetch_seq(fai, chrom, irg[0]-1, irg[1]-1, &len);
+//            bcf_update_info_string(odw->hdr, v, "ISQ", seq);
+//            if (len) free(seq);
+//        }
+//
+//                //annotate old alleles
+//        old_alleles.l = 0;
+//        bcf_variant2string(odw->hdr, v, &old_alleles);
+//        bcf_update_info_string(odw->hdr, v, "OLD_VARIANT", old_alleles.s);
+//
+//        //update alleles
+//        bcf_set_pos1(v, variant.vntr.pos1);
+//        std::string new_alleles = variant.vntr.ref;
+//        new_alleles += ",<VNTR>";
+//        bcf_update_alleles_str(odw->hdr, v, new_alleles.c_str());
+    }
+
     void annotate_indels()
     {
         odw->write_hdr();
@@ -188,63 +228,8 @@ class Igor : Program
 //                bcf_print(odr->hdr, v);
                 //annotate indel like variant
                 va->annotate(odr->hdr, v, variant, mode);
-
-                if (mode=="e")
-                {
-                    //update tags for variant description
-                    bcf_update_info_string(odw->hdr, v, "VMOTIF", variant.vntr.motif.c_str());
-                    bcf_update_info_float(odw->hdr, v, "VSCORE", &variant.vntr.motif_score, 1);
-                    bcf_update_info_string(odw->hdr, v, "VRU", variant.vntr.ru.c_str());
-
-//                    //annotate old alleles
-//                    old_alleles.l = 0;
-//                    bcf_variant2string(odw->hdr, v, &old_alleles);
-//                    bcf_update_info_string(odw->hdr, v, "OLD_VARIANT", old_alleles.s);
-//    
-//                    //update alleles
-//                    bcf_set_pos1(v, variant.pos1);
-//                    std::string new_alleles = variant.ref;
-//                    new_alleles += ",<VNTR>";
-//                    bcf_update_alleles_str(odw->hdr, v, new_alleles.c_str());
-                }
-                else if (mode=="f")
-                {
-                    //update tags for variant description
-                    bcf_update_info_string(odw->hdr, v, "VMOTIF", variant.vntr.motif.c_str());
-                    bcf_update_info_float(odw->hdr, v, "VSCORE", &variant.vntr.motif_score, 1);
-
-                    //annotate old alleles
-                    old_alleles.l = 0;
-                    bcf_variant2string(odw->hdr, v, &old_alleles);
-                    bcf_update_info_string(odw->hdr, v, "OLD_VARIANT", old_alleles.s);
-    
-                    //update alleles
-                    bcf_set_pos1(v, variant.vntr.pos1);
-                    std::string new_alleles = variant.vntr.ref;
-                    new_alleles += ",<VNTR>";
-                    bcf_update_alleles_str(odw->hdr, v, new_alleles.c_str());
-                }
-                else if (mode=="x")
-                {
-                    
-                }    
-//                bcf_update_info_string(odw->hdr, v, "VRU", variant.eru.c_str());
-//                int32_t rl = variant.eregion.end1-variant.eregion.beg1-1;
-//                bcf_update_info_int32(odw->hdr, v, "VRL", &rl, 1);
-//                int32_t irl = variant.iregion.end1-variant.iregion.beg1-1;
-//                bcf_update_info_int32(odw->hdr, v, "IRL", &irl, 1);
-
-//                if (irl!=rl)
-//                {
-//                    int32_t irg[2] = {variant.iregion.beg1, variant.iregion.end1};
-//                    bcf_update_info_int32(odw->hdr, v, "IRG", &irg, 2);
-//                    int32_t len = 0;
-//                    const char* chrom = bcf_get_chrom(odr->hdr, v);
-//                    char* seq = faidx_fetch_seq(fai, chrom, irg[0]-1, irg[1]-1, &len);
-//                    bcf_update_info_string(odw->hdr, v, "ISQ", seq);
-//                    if (len) free(seq);
-//                }
-
+                update_vntr_info(odr->hdr, v, variant);
+   
                 ++no_variants_annotated;
             }
 

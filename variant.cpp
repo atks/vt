@@ -38,20 +38,14 @@ Variant::Variant()
 Variant::~Variant() {};
 
 /**
- * Returns true if variant contains an allele that is potentially frame shifting.
+ * Clears variant information.
  */
-bool Variant::exists_frame_shift()
+void Variant::clear()
 {
-    for (size_t i=0; i<alleles.size(); ++i)
-    { 
-        if (abs(alleles[i].dlen)%3!=0)
-        {
-            return true;
-        }
-    }
-
-    return false;
-}
+    type = VT_REF;
+    alleles.clear();
+    vntr.clear();
+};
 
 /**
  * Prints variant information.
@@ -61,6 +55,7 @@ void Variant::print()
     std::cerr << "type : " << vtype2string(type) << "\n";
     std::cerr << "motif: " << vntr.motif << "\n";
     std::cerr << "rlen : " << vntr.motif.size() << "\n";
+
     for (int32_t i=0; i<alleles.size(); ++i)
     {
         std::cerr << "\tallele: " << i << "\n";
@@ -108,15 +103,17 @@ std::string Variant::vtype2string(int32_t VTYPE)
         s += "CLUMPED";
     }
 
+    if (VTYPE & VT_VNTR)
+    {
+        s += (s.size()==0) ? "" : "/";
+        s += "VNTR";
+    }
+
+    if (VTYPE & VT_SV)
+    {
+        s += (s.size()==0) ? "" : "/";
+        s += "SV";
+    }
+
     return s;
 }
-
-/**
- * Clears variant information.
- */
-void Variant::clear()
-{
-    type = VT_REF;
-    vntr.clear();
-    alleles.clear();
-};
