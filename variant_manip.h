@@ -64,21 +64,6 @@ class VariantManip
     VariantManip();
 
     /**
-     * Detects near by STRs.
-     */
-    bool detect_str(bcf_hdr_t *h, bcf1_t *v, Variant& variant);
-
-    /**
-     * Detects near by STRs.
-     */
-    bool detect_str(const char* chrom, uint32_t pos1, Variant& variant);
-
-    /**
-     * Inspects variants.
-     */
-    int32_t inspect(char** allele, int32_t n_allele);
-
-    /**
      * Classifies variants.
      */
     int32_t classify_variant(bcf_hdr_t *h, bcf1_t *v, Variant& var);

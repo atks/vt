@@ -51,72 +51,6 @@ VariantManip::VariantManip()
 }
 
 /**
- * Detects near by STRs.
- */
-bool VariantManip::detect_str(bcf_hdr_t *h, bcf1_t *v, Variant& variant)
-{
-    return detect_str(bcf_get_chrom(h, v), bcf_get_pos1(v), variant);
-}
-
-/**
-// * Detects near by STRs.
- */
-bool VariantManip::detect_str(const char* chrom, uint32_t pos1, Variant& variant)
-{
-    int32_t ref_len;
-    //STR related
-    char* ru = 0;
-    ru = faidx_fetch_uc_seq(fai, chrom, pos1, pos1, &ref_len);
-
-    int32_t tract_len = 1;
-    int32_t motif_len = 1;
-
-    std::string motif = "";
-    int32_t tlen = 0;
-
-    while (1)
-    {
-        char* next_ru = 0;
-        next_ru = faidx_fetch_uc_seq(fai, chrom, pos1+tract_len*motif_len, pos1+(tract_len)*motif_len, &ref_len);
-
-        //motif repeated
-        if (strcmp(ru, next_ru)==0)
-        {
-            //extend tract length
-            ++tract_len;
-        }
-        else //try longer motif
-        {
-            if (tract_len>1)
-            {
-                motif = std::string(ru);
-                tlen = tract_len;
-                free(next_ru);
-                break;
-            }
-
-            //not STR
-            if (motif_len>10)
-            {
-                free(next_ru);
-                break;
-            }
-
-            free(ru);
-            ++motif_len;
-            tract_len=1;
-            ru = faidx_fetch_uc_seq(fai, chrom, pos1, pos1+motif_len-1, &ref_len);
-        }
-
-        free(next_ru);
-    }
-
-    free(ru);
-
-    return true;
-}
-
-/**
  * Checks if a variant is normalized.
  *  Ignores if entry is not a variant.
  */
@@ -454,36 +388,7 @@ int32_t VariantManip::classify_variant(bcf_hdr_t *h, bcf1_t *v, Variant& var)
 
     if (var.type==VT_VNTR)
     {
-        bcf_unpack(v, BCF_UN_INFO);
-        
-        //populate motif, motif len etc. etc.
-//        char* str = NULL;
-//        int32_t n = 0;
-//        int32_t ret = bcf_get_info_string(h, v, "MOTIF", &str, &n);
-//        if (ret>0) 
-//        {
-//            var.motif = std::string(str);
-//            var.mlen = var.motif.size();
-//        }
-//        ret = bcf_get_info_string(h, v, "RU", &str, &n);
-//        if (ret>0) 
-//        {
-//            var.ru = std::string(str);
-//            var.mlen = var.ru.size();
-//        }
-//        if (n) free(str);
-//        
-//        int32_t* no = NULL;
-//        n = 0;    
-//        ret = bcf_get_info_int32(h, v, "RL", &no, &n);
-//        if (ret>0) var.rlen = *no;
-//        if (n) free(no);
-//            
-//        int32_t* fl = NULL;
-//        n = 0;                                    
-//        ret = bcf_get_info_int32(h, v, "REF", &fl, &n);
-//        if (ret>0) var.rcn = *fl;
-//        if (n) free(fl);                        
+        //do nothing                     
     }
     
     //additionally define MNPs by length of all alleles
