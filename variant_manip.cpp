@@ -462,6 +462,7 @@ void VariantManip::right_trim_or_left_extend(std::vector<std::string>& alleles, 
             if (!ref)
             {
                 fprintf(stderr, "[%s:%d %s] failure to extract base from fasta file: %s:%d\n", __FILE__, __LINE__, __FUNCTION__, chrom, pos1-1);
+                fprintf(stderr, "FAQ: http://genome.sph.umich.edu/wiki/Vt#1._vt_cannot_retrieve_sequences_from_my_reference_sequence_file\n");
                 exit(1);
             }
             char base = ref[0];
