@@ -114,7 +114,6 @@ class VNTRAnnotator
     //factors[n][index], for determining what sub repeat units to examine
     int32_t** factors;
 
-
     /**
      * Constructor.
      */
@@ -167,12 +166,6 @@ class VNTRAnnotator
      * Pick shortest consensus motif.
      */
     std::string pick_consensus_motif(std::string& sequence);
-
-//    /**
-//     *
-//     * Constructor.
-//     */
-//    void initialize_factors(int32_t max_len);
 
     /**
      * Chooses a phase of the motif that is appropriate for the alignment
