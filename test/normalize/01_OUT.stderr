@@ -1,0 +1,34 @@
+normalize v0.5
+
+options:     input VCF file <stripped>
+         [o] output VCF file <stripped>
+         [w] sorting window size   10000
+         [q] quiet                 false
+         [d] debug                 false
+         [r] reference FASTA file <stripped>
+
+
+stats: biallelic
+          no. left trimmed                      : 0
+          no. right trimmed                     : 0
+          no. left and right trimmed            : 0
+          no. right trimmed and left aligned    : 0
+          no. left aligned                      : 80
+
+       total no. biallelic normalized           : 80
+
+       multiallelic
+          no. left trimmed                      : 0
+          no. right trimmed                     : 0
+          no. left and right trimmed            : 0
+          no. right trimmed and left aligned    : 0
+          no. left aligned                      : 0
+
+       total no. multiallelic normalized        : 0
+
+       total no. variants normalized            : 80
+       total no. variants observed              : 194
+       total no. reference observed             : 0
+
+Time elapsed <stripped>
+
