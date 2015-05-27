@@ -22,18 +22,18 @@ echo "-------------------------------" >&2
 # ---------------------------------------------------------------------------
 
 set -x
-mkdir -p ${TMPDIR}/01
+#mkdir -p ${TMPDIR}/01
 
 # call program
 ${VT} \
     decompose_blocksub \
     ${DIR}/01_IN_even_length.vcf \
-    >${TMPDIR}/01/01_OUT_even_length.vcf \
-    2> >(strip_stderr > ${TMPDIR}/01/01_OUT_even_length.stderr)
+    >${TMPDIR}/01_OUT_even_length.vcf \
+    2> >(strip_stderr > ${TMPDIR}/01_OUT_even_length.stderr)
 
 # compare results
-diff ${DIR}/01_OUT_even_length.vcf ${TMPDIR}/01/01_OUT_even_length.vcf
-diff ${DIR}/01_OUT_even_length.stderr ${TMPDIR}/01/01_OUT_even_length.stderr
+diff ${DIR}/01_OUT_even_length.vcf ${TMPDIR}/01_OUT_even_length.vcf
+diff ${DIR}/01_OUT_even_length.stderr ${TMPDIR}/01_OUT_even_length.stderr
 
 set +x
 
@@ -42,17 +42,17 @@ set +x
 # ---------------------------------------------------------------------------
 
 set -x
-mkdir -p ${TMPDIR}/02
+#mkdir -p ${TMPDIR}/02
 
 # call program
 ${VT} \
     decompose_blocksub -a \
     ${DIR}/02_IN_uneven_length.vcf \
-    >${TMPDIR}/02/02_OUT_uneven_length.vcf \
-    2> >(strip_stderr > ${TMPDIR}/02/02_OUT_uneven_length.stderr) \
+    >${TMPDIR}/02_OUT_uneven_length.vcf \
+    2> >(strip_stderr > ${TMPDIR}/02_OUT_uneven_length.stderr) \
 
 # compare results
-diff ${DIR}/02_OUT_uneven_length.vcf ${TMPDIR}/02/02_OUT_uneven_length.vcf
-diff ${DIR}/02_OUT_uneven_length.stderr ${TMPDIR}/02/02_OUT_uneven_length.stderr
+diff ${DIR}/02_OUT_uneven_length.vcf ${TMPDIR}/02_OUT_uneven_length.vcf
+diff ${DIR}/02_OUT_uneven_length.stderr ${TMPDIR}/02_OUT_uneven_length.stderr
 
 set +x

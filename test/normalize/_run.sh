@@ -31,11 +31,11 @@ ${VT} \
     normalize \
     ${DIR}/01_IN.vcf \
     -r ${REF} \
-    >${TMPDIR}/01/01_OUT.vcf \
-    2> >(strip_stderr > ${TMPDIR}/01/01_OUT.stderr)
+    >${TMPDIR}/01_OUT.vcf \
+    2> >(strip_stderr > ${TMPDIR}/01_OUT.stderr)
 
 # compare results
-diff ${DIR}/01_OUT.vcf ${TMPDIR}/01/01_OUT.vcf
-diff ${DIR}/01_OUT.stderr ${TMPDIR}/01/01_OUT.stderr
+diff ${DIR}/01_OUT.vcf ${TMPDIR}/01_OUT.vcf
+diff ${DIR}/01_OUT.stderr ${TMPDIR}/01_OUT.stderr
 
 set +x
