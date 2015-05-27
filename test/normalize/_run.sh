@@ -8,35 +8,36 @@ DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
 VT=${DIR}/../../vt
 # put path to vt binary into handy variable
 REF=${DIR}/../ref/20.fa.gz
+STRIP_VAR=${DIR}/../common/strip_var
 # immediately quit on errors
 set -e
 
 # create temporary directory and ensure cleanup on termination
-#export TMPDIR=$(mktemp -d)
 export TMPDIR=${DIR}/tmp
 mkdir -p ${TMPDIR}
 trap "set -x; rm -rf ${TMPDIR}" EXIT KILL TERM INT HUP
 
+echo "----------------------" >&2
 echo "Tests for vt normalize" >&2
 echo "----------------------" >&2
-
 
 # ---------------------------------------------------------------------------
 # Test 01: normalization of indels from Mills et al. chromosome 20
 # ---------------------------------------------------------------------------
 
+# call program
+
 set -x
 
-# call program
 ${VT} \
     normalize \
     ${DIR}/01_IN.vcf \
     -r ${REF} \
-    >${TMPDIR}/01_OUT.vcf \
-    2> >(strip_stderr > ${TMPDIR}/01_OUT.stderr)
+    -o ${TMPDIR}/01_OUT.vcf \
+    2>&1 | ${STRIP_VAR} > ${TMPDIR}/01_OUT.stderr
 
 # compare results
 diff ${DIR}/01_OUT.vcf ${TMPDIR}/01_OUT.vcf
 diff ${DIR}/01_OUT.stderr ${TMPDIR}/01_OUT.stderr
-
+   
 set +x
