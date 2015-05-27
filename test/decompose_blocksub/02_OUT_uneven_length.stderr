@@ -1,0 +1,15 @@
+decompose_blocksub v0.5
+
+options:     input VCF file <stripped>
+         [o] output VCF file <stripped>
+         [a] align/aggressive mode true
+
+
+stats: no. variants                       : 1
+       no. biallelic block substitutions  : 1
+
+       no. additional SNPs                : 2
+       no. variants after decomposition   : 2
+
+Time elapsed <stripped>
+
