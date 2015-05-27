@@ -10,7 +10,9 @@ VT=${DIR}/../../vt
 set -e
 
 # create temporary directory and ensure cleanup on termination
-export TMPDIR=$(mktemp -d)
+#export TMPDIR=$(mktemp -d)
+export TMPDIR=${DIR}/tmp
+mkdir -p ${TMPDIR}
 trap "set -x; rm -rf ${TMPDIR}" EXIT KILL TERM INT HUP
 
 echo "Tests for vt decompose_blocksub" >&2

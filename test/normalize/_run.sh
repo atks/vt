@@ -12,7 +12,9 @@ REF=${DIR}/../ref/20.fa.gz
 set -e
 
 # create temporary directory and ensure cleanup on termination
-export TMPDIR=$(mktemp -d)
+#export TMPDIR=$(mktemp -d)
+export TMPDIR=${DIR}/tmp
+mkdir -p ${TMPDIR}
 trap "set -x; rm -rf ${TMPDIR}" EXIT KILL TERM INT HUP
 
 echo "Tests for vt normalize" >&2
@@ -24,7 +26,6 @@ echo "----------------------" >&2
 # ---------------------------------------------------------------------------
 
 set -x
-mkdir -p ${TMPDIR}/01
 
 # call program
 ${VT} \
