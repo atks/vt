@@ -22,6 +22,7 @@
 */
 
 #include "align.h"
+#include "annotate_1000g.h"
 #include "annotate_dbsnp_rsid.h"
 #include "annotate_indels.h"
 #include "annotate_regions.h"
@@ -301,6 +302,10 @@ int main(int argc, char ** argv)
     else if (argc>1 && cmd=="annotate_indels")
     {
         annotate_indels(argc-1, ++argv);
+    }
+    else if (argc>1 && cmd=="annotate_1000g")
+    {
+        annotate_1000g(argc-1, ++argv);
     }
     else if (argc>1 && cmd=="consolidate_variants")
     {

@@ -7,6 +7,7 @@ SOURCESONLY = genotyping_record.h
 
 SOURCES = align\
 		allele\
+		annotate_1000g\
 		annotate_dbsnp_rsid\
 		annotate_indels\
 		annotate_regions\

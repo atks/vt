@@ -92,7 +92,7 @@ class Igor : Program
             TCLAP::ValueArg<std::string> arg_fexp("f", "f", "filter expression []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_output_tabulate_dir("x", "x", "output latex directory [tabulate_mendelian]", false, "tabulate_mendelian", "str", cmd);
             TCLAP::ValueArg<std::string> arg_output_pdf_file("y", "y", "output pdf file [mendelian.pdf]", false, "mendelian.pdf", "str", cmd);
-            TCLAP::ValueArg<int32_t> arg_min_depth("d", "d", "minimum depth", false, 5, "str", cmd);
+            TCLAP::ValueArg<int32_t> arg_min_depth("d", "d", "minimum depth", false, 0, "str", cmd);
             TCLAP::ValueArg<float> arg_min_gq("q", "q", "minimum genotype quality", false, 2, "str", cmd);
             TCLAP::UnlabeledValueArg<std::string> arg_input_vcf_file("<in.vcf>", "input VCF file", true, "","file", cmd);
 
@@ -196,6 +196,7 @@ class Igor : Program
         int32_t mendel_homalt_err = 0;
 
         int32_t *gts = NULL;
+        int32_t *dps = NULL;
         int32_t n = 0;
 
         while(odr->read(v))
@@ -219,6 +220,8 @@ class Igor : Program
             }
 
             int k = bcf_get_genotypes(h, v, &gts, &n);
+            int r = bcf_get_format_int32(h, v, "DP", &dps, &n);
+
             bool variant_used = false;
 
             for (int32_t i =0; i< trios.size(); ++i)
@@ -226,14 +229,19 @@ class Igor : Program
                 int32_t j = trios[i].father_index;
                 int32_t f1 = bcf_gt_allele(gts[(j<<1)]);
                 int32_t f2 = bcf_gt_allele(gts[(j<<1)+1]);
-
+                int32_t min_dp = dps[j];
+                
                 j = trios[i].mother_index;
                 int32_t m1 = bcf_gt_allele(gts[(j<<1)]);
                 int32_t m2 = bcf_gt_allele(gts[(j<<1)+1]);
+                min_dp = dps[j]<min_dp ? dps[j] : min_dp;
 
                 j = trios[i].child_index;
                 int32_t c1 = bcf_gt_allele(gts[(j<<1)]);
                 int32_t c2 = bcf_gt_allele(gts[(j<<1)+1]);
+                min_dp = dps[j]<min_dp ? dps[j] : min_dp;
+
+                if (min_dp<min_depth) continue;
 
                 if (!(f1<0 || f2<0 || m1<0 || m2<0 || c1<0 || c2<0))
                 {
@@ -245,6 +253,7 @@ class Igor : Program
         }
 
         free(gts);
+        if (dps) free(dps);
         odr->close();
     };
 
@@ -253,6 +262,7 @@ class Igor : Program
         std::clog << "profile_mendelian v" << version << "\n\n";
         std::clog << "options:     input VCF file            " << input_vcf_file << "\n";
         std::clog << "         [p] input PED file            " << input_ped_file << "\n";
+        std::clog << "         [d] minimum depth             " << min_depth << "\n";
         print_str_op("         [x] output tabulate directory ", output_tabulate_dir);
         print_str_op("         [y] output pdf file           ", output_pdf_file);
         print_int_op("         [i] intervals                 ", intervals);

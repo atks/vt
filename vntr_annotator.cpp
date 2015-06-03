@@ -99,7 +99,6 @@ void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::str
         //3. detects left and right flank
         if (mode=="e")
         {
-
             //1. detect candidate motifs from a reference seqeuence
             pick_candidate_motifs(h, v, ALLELE_EXACT);
 
