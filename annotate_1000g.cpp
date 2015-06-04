@@ -36,7 +36,7 @@ class Igor : Program
     //options//
     ///////////
     std::string input_vcf_file;
-    std::string dbsnp_vcf_file;
+    std::string l000g_vcf_file;
     std::vector<std::string> input_vcf_files;
     std::string output_vcf_file;
     std::vector<GenomeInterval> intervals;
@@ -73,7 +73,7 @@ class Igor : Program
         //////////////////////////
         try
         {
-            std::string desc = "annotates variants with rsid from dbSNP";
+            std::string desc = "annotates variants that are present in 1000 Genomes variant set";
 
             version = "0.5";
             TCLAP::CmdLine cmd(desc, ' ', version);
@@ -81,7 +81,7 @@ class Igor : Program
             TCLAP::ValueArg<std::string> arg_intervals("i", "i", "intervals []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "file", cmd);
             TCLAP::ValueArg<std::string> arg_fexp("f", "f", "filter expression []", false, "", "str", cmd);
-            TCLAP::ValueArg<std::string> arg_dbsnp_vcf_file("d", "d", "1000G VCF file []", true, "", "file", cmd);
+            TCLAP::ValueArg<std::string> arg_1000g_vcf_file("d", "d", "1000G data set VCF file []", true, "", "file", cmd);
             TCLAP::ValueArg<std::string> arg_output_vcf_file("o", "o", "output VCF file [-]", false, "-", "file", cmd);
             TCLAP::UnlabeledValueArg<std::string> arg_input_vcf_file("<in.vcf>", "input VCF file", true, "","file", cmd);
 
@@ -89,7 +89,7 @@ class Igor : Program
 
             parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
             fexp = arg_fexp.getValue();
-            dbsnp_vcf_file = arg_dbsnp_vcf_file.getValue();
+            l000g_vcf_file = arg_1000g_vcf_file.getValue();
             input_vcf_file = arg_input_vcf_file.getValue();
             output_vcf_file = arg_output_vcf_file.getValue();
         }
@@ -106,7 +106,7 @@ class Igor : Program
         //i/o initialization//
         //////////////////////
         input_vcf_files.push_back(input_vcf_file);
-        input_vcf_files.push_back(dbsnp_vcf_file);
+        input_vcf_files.push_back(l000g_vcf_file);
         sr = new BCFSyncedReader(input_vcf_files, intervals, false);
         odw = new BCFOrderedWriter(output_vcf_file);
         odw->link_hdr(sr->hdrs[0]);
@@ -197,7 +197,7 @@ class Igor : Program
         std::clog << "Options:     input VCF file     " << input_vcf_file << "\n";
         std::clog << "         [o] output VCF file    " << output_vcf_file << "\n";
         print_str_op("         [f] filter             ", fexp);
-        std::clog << "         [d] 1000G vcf file     " << dbsnp_vcf_file << "\n";
+        std::clog << "         [d] 1000G VCF file     " << l000g_vcf_file << "\n";
         print_int_op("         [i] intervals          ", intervals);
         std::clog << "\n";
    }
