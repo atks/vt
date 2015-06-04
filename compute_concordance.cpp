@@ -100,8 +100,6 @@ class Igor : Program
     std::string variant_concordance_txt_file;
     std::string sample_concordance_txt_file;
 
-    int32_t variant_type;
-
     ///////
     //i/o//
     ///////
@@ -125,6 +123,11 @@ class Igor : Program
     uint32_t no_candidate_snps;
     uint32_t no_candidate_indels;
 
+    /////////
+    //tools//
+    /////////
+    VariantManip *vm;
+    
     void intersect_samples(bcf_hdr_t* h1, bcf_hdr_t *h2, std::vector<std::string>& s, std::vector<int32_t>& a, std::vector<int32_t>& b)
     {
         vdict_t *d2 = (vdict_t*)h2->dict[BCF_DT_SAMPLE];
@@ -207,6 +210,11 @@ class Igor : Program
         ////////////////////////
         no_candidate_snps = 0;
         no_candidate_indels = 0;
+        
+        ///////////////////////
+        //tool initialization//
+        ///////////////////////
+        vm = new VariantManip("");
     }
 
     void compute_concordance()
@@ -229,118 +237,98 @@ class Igor : Program
 
         ConcordanceStats variant_stat;
         kputs("variant\tRR_RR\tRR_RA\tRR_AA\tRR_NA\tRA_RR\tRA_RA\tRA_AA\tRA_NA\tAA_RR\tAA_RA\tAA_AA\tAA_NA\tNA_RR\tNA_RA\tNA_AA\tNA_NA\n", line);
-       // std::cerr << line.s;
+        //std::cerr << line.s;
 
         //for combining the alleles
         std::vector<bcfptr*> current_recs;
         std::map<std::string, bcfptr*> variants;
-        std::stringstream ss;
-
+        
         Variant variant;
 
         while(sr->read_next_position(current_recs))
         {
-            if (current_recs.size()>=2)
+            if (current_recs.size()==2 && current_recs[0]->file_index!=current_recs[1]->file_index)
             {
-                variants.clear();
-                bool printed = false;
-
-                for (uint32_t i=0; i<current_recs.size(); ++i)
+                if (bcf_get_n_allele(v)!=2)
                 {
-                    ss.str("");
-
-                    int32_t d = current_recs[i]->file_index;
-                    bcf_hdr_t *h = current_recs[i]->h;
-                    bcf1_t *v = current_recs[i]->v;
-
-                    if (bcf_get_n_allele(v)!=2 || (filter_exists && !filter.apply(h,v,&variant)))
-                    {
+                    continue;
+                }
+                
+                if (filter_exists)
+                {     
+                    vm->classify_variant(current_recs[0]->h, current_recs[0]->v, variant);
+                    if (!filter.apply(current_recs[0]->h, current_recs[0]->v, &variant))
+                    {    
                         continue;
                     }
+                }
 
-                    ss << bcf_get_alt(v, 0) << ":" << bcf_get_alt(v, 1);
+                bcf1_t *v1 = current_recs[0]->v;
+                bcf_hdr_t *h1 = sr->hdrs[0];
+                bcf_fmt_t* f1 = bcf_get_fmt(h1, v1, "GT");
 
-                    if (d==0)
+                bcf1_t *v2 = current_recs[1]->v;
+                bcf_hdr_t *h2 = sr->hdrs[1];
+                bcf_fmt_t* f2 = bcf_get_fmt(h2, v2, "GT");
+
+                for (size_t i=0; i<s.size(); ++i)
+                {
+                    int8_t *x1 = (int8_t*)(f1->p + a[i] * f1->size);
+                    int8_t *x2 = (int8_t*)(f2->p + b[i] * f2->size);
+
+                    int32_t g1 = 0;
+                    int32_t g2 = 0;
+                    int32_t l = 0;
+
+                    for (l = 0; l < f1->n && x1[l]!=INT8_MIN; ++l)
                     {
-                        printed = true;
-                        variants[ss.str()] = current_recs[i];
-                    }
-                    else //d==1
-                    {
-                        printed = true;
-                        if (variants.find(ss.str())!=variants.end())
+                        if (x1[l] == 0)
                         {
-                            variant_stat.reset();
-
-                            bcf1_t *v1 = variants[ss.str()]->v;
-                            bcf_hdr_t *h1 = sr->hdrs[0];
-                            bcf_fmt_t* f1 = bcf_get_fmt(h1, v1, "GT");
-
-                            bcf1_t *v2 = v;
-                            bcf_hdr_t *h2 = sr->hdrs[1];
-                            bcf_fmt_t* f2 = bcf_get_fmt(h2, v2, "GT");
-
-                            for (size_t i=0; i<s.size(); ++i)
-                            {
-                                int8_t *x1 = (int8_t*)(f1->p + a[i] * f1->size);
-                                int8_t *x2 = (int8_t*)(f2->p + b[i] * f2->size);
-
-                                int32_t g1 = 0;
-                                int32_t g2 = 0;
-                                int32_t l = 0;
-
-                                for (l = 0; l < f1->n && x1[l]!=INT8_MIN; ++l)
-                                {
-                                    if (x1[l] == 0)
-                                    {
-                                        g1 = 3;
-                                        break;
-                                    }
-                                    else if (x1[l]>>1)
-                                    {
-                                        g1 += (x1[l]>>1) - 1;
-                                    }
-                                }
-
-                                for (l = 0; l < f2->n && x1[l]!=INT8_MIN; ++l)
-                                {
-                                    if (x2[l] == 0)
-                                    {
-                                        g2 = 3;
-                                        break;
-                                    }
-                                    else if (x2[l]>>1)
-                                    {
-                                        g2 += (x2[l]>>1) - 1;
-                                    }
-                                }
-
-                                ++stats[i].concordance[g1][g2];
-                                ++variant_stat.concordance[g1][g2];
-                            }
-
-                            line->l = 0;
-                            kputs(sr->get_current_sequence().c_str(), line);
-                            kputc(':', line);
-                            kputw(sr->get_current_pos1(), line);
-                            kputc(':', line);
-                            kputs(ss.str().c_str(), line);
-                            kputc('\t', line);
-
-                            for (uint32_t j=0; j<4; ++j)
-                            {
-                                for (uint32_t k=0; k<4; ++k)
-                                {
-                                    kputw(variant_stat.concordance[j][k], line);
-                                    kputs("\t", line);
-
-                                }
-                            }
-
-                            kputs("\n", line);
+                            g1 = 3;
+                            break;
+                        }
+                        else if (x1[l]>>1)
+                        {
+                            g1 += (x1[l]>>1) - 1;
                         }
                     }
+
+                    for (l = 0; l < f2->n && x1[l]!=INT8_MIN; ++l)
+                    {
+                        if (x2[l] == 0)
+                        {
+                            g2 = 3;
+                            break;
+                        }
+                        else if (x2[l]>>1)
+                        {
+                            g2 += (x2[l]>>1) - 1;
+                        }
+                    }
+
+                    ++stats[i].concordance[g1][g2];
+                    ++variant_stat.concordance[g1][g2];
                 }
+
+//                line->l = 0;
+//                kputs(sr->get_current_sequence().c_str(), line);
+//                kputc(':', line);
+//                kputw(sr->get_current_pos1(), line);
+//                kputc(':', line);
+//                kputs(ss.str().c_str(), line);
+//                kputc('\t', line);
+//
+//                for (uint32_t j=0; j<4; ++j)
+//                {
+//                    for (uint32_t k=0; k<4; ++k)
+//                    {
+//                        kputw(variant_stat.concordance[j][k], line);
+//                        kputs("\t", line);
+//
+//                    }
+//                }
+//
+//                kputs("\n", line);
             }
         }
 
@@ -367,6 +355,9 @@ class Igor : Program
             kputs("\n", line);
             std::cerr << line->s;
         }
+      
+        hts_close(variant_concordance_txt);
+        hts_close(sample_concordance_txt);
     };
 
     void print_options()
@@ -391,8 +382,6 @@ class Igor : Program
 
     ~Igor()
     {
-        hts_close(variant_concordance_txt);
-        hts_close(sample_concordance_txt);
     };
 
     private:

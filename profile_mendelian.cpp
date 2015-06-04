@@ -66,6 +66,7 @@ class Igor : Program
     /////////
     uint32_t no_trios;
     uint32_t no_variants;
+    uint32_t no_failed_min_depth;
     int32_t trio_genotypes[3][3][3];
 
     /////////
@@ -148,6 +149,7 @@ class Igor : Program
         ////////////////////////
         no_trios = 0;
         no_variants = 0;
+        no_failed_min_depth = 0;
 
         for (int32_t i=0; i<3; ++i)
         {
@@ -198,6 +200,7 @@ class Igor : Program
         int32_t *gts = NULL;
         int32_t *dps = NULL;
         int32_t n = 0;
+        int32_t n_dp = 0;
 
         while(odr->read(v))
         {
@@ -220,7 +223,7 @@ class Igor : Program
             }
 
             int k = bcf_get_genotypes(h, v, &gts, &n);
-            int r = bcf_get_format_int32(h, v, "DP", &dps, &n);
+            int r = bcf_get_format_int32(h, v, "DP", &dps, &n_dp);
 
             bool variant_used = false;
 
@@ -230,7 +233,7 @@ class Igor : Program
                 int32_t f1 = bcf_gt_allele(gts[(j<<1)]);
                 int32_t f2 = bcf_gt_allele(gts[(j<<1)+1]);
                 int32_t min_dp = dps[j];
-                
+
                 j = trios[i].mother_index;
                 int32_t m1 = bcf_gt_allele(gts[(j<<1)]);
                 int32_t m2 = bcf_gt_allele(gts[(j<<1)+1]);
@@ -241,8 +244,12 @@ class Igor : Program
                 int32_t c2 = bcf_gt_allele(gts[(j<<1)+1]);
                 min_dp = dps[j]<min_dp ? dps[j] : min_dp;
 
-                if (min_dp<min_depth) continue;
-
+                if (min_dp<min_depth) 
+                {
+                    ++no_failed_min_depth;
+                    continue;
+                }
+                
                 if (!(f1<0 || f2<0 || m1<0 || m2<0 || c1<0 || c2<0))
                 {
                     ++trio_genotypes[f1+f2][m1+m2][c1+c2];
@@ -263,6 +270,7 @@ class Igor : Program
         std::clog << "options:     input VCF file            " << input_vcf_file << "\n";
         std::clog << "         [p] input PED file            " << input_ped_file << "\n";
         std::clog << "         [d] minimum depth             " << min_depth << "\n";
+        print_str_op("         [f] filter                    ", fexp);
         print_str_op("         [x] output tabulate directory ", output_tabulate_dir);
         print_str_op("         [y] output pdf file           ", output_pdf_file);
         print_int_op("         [i] intervals                 ", intervals);
@@ -682,6 +690,8 @@ class Igor : Program
         fprintf(stderr, "\n");
         fprintf(stderr, "     no. of trios     : %d\n", no_trios);
         fprintf(stderr, "     no. of variants  : %d\n", no_variants);
+        fprintf(stderr, "\n");
+        fprintf(stderr, "     no. of trio-sites that fail min depth  : %d\n", no_failed_min_depth);
         fprintf(stderr, "\n");
     };
 

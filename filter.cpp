@@ -144,6 +144,7 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
                 if (debug)
                     std::cerr << "\tVT_EQ "   <<  left->s.s << "&" << right->s.s    <<  " \n";
                 b = strcmp(left->s.s, right->s.s)==0 ? true : false;
+                //b = strncmp(left->s.s, right->s.s, std::min(strlen(left->s.s),strlen(right->s.s)))==0 ? true : false;
                 return;
             }
 //             else if ((left->type&VT_STR) && (right->type&VT_STR))
