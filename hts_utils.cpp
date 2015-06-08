@@ -441,6 +441,7 @@ void bcf_print_lite_sorted(bcf_hdr_t *h, bcf1_t *v)
  * allow for an alternative header file to be read in.
  *
  * this searches for the alternative header saved as <filename>.hdr
+ * If the VCF files is BCF, any alternative header is ignored.
  */
 bcf_hdr_t *bcf_alt_hdr_read(htsFile *fp)
 {
@@ -451,7 +452,8 @@ bcf_hdr_t *bcf_alt_hdr_read(htsFile *fp)
     kputs(fp->fn, &alt_hdr_fn);
     kputs(".hdr", &alt_hdr_fn);
     FILE *file = fopen(alt_hdr_fn.s, "r");
-    if (!file)
+    
+    if (fp->format.format ==bcf || !file)
     {
         h = bcf_hdr_read(fp);
     }

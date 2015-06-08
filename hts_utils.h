@@ -254,6 +254,7 @@ int32_t bcf_hdr_get_n_sample(bcf_hdr_t *h);
  * allow for an alternative header file to be read in.
  *
  * this searches for the alternative header saved as <filename>.hdr
+ * If the VCF files is BCF, any alternative header is ignored.
  */
 bcf_hdr_t *bcf_alt_hdr_read(htsFile *fp);
 

@@ -66,11 +66,12 @@ class Igor : Program
         try
         {
             std::string desc = "Pastes VCF files like the unix paste functions.\n"
+                 "              This is used after the per sample genotyping step in vt.\n"
                  "              Input requirements and assumptions:\n"
                  "              1. Same variants are represented in the same order for each file (required)\n"
                  "              2. Genotype fields are the same for corresponding records (required)\n"
                  "              3. Sample names are different in all the files (warning will be given if not)\n"
-                 "              4. Headers are the same for all the files (assumption, not checked, will fail if output is BCF)\n"
+                 "              4. Headers (not including the samples) are the same for all the files (unchecked assumption, will fail if output is BCF)\n"
                  "              Outputs:\n"
                  "              1. INFO fields output will be that of the first file\n"
                  "              2. Genotype fields are the same for corresponding records\n";

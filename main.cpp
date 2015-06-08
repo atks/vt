@@ -102,6 +102,7 @@ void help()
     std::clog << "view                      view vcf/vcf.gz/bcf files\n";
     std::clog << "index                     index vcf.gz/bcf files\n";
     std::clog << "normalize                 normalize variants\n";
+    std::clog << "decompose                 decompose variants\n";
     std::clog << "uniq                      drop duplicate variants\n";
     std::clog << "cat                       concatenate VCF files\n";
     std::clog << "paste                     paste VCF files\n";
@@ -110,7 +111,10 @@ void help()
     std::clog << "\n";
     std::clog << "peek                      summary of variants in the vcf file\n";
     std::clog << "partition                 partition variants\n";
+    std::clog << "multi_partition           partition variants from multiple VCF files\n";
     std::clog << "annotate_variants         annotate variants\n";
+    std::clog << "annotate_db_rsid          annotate variants with dbSNP rsid\n";
+    std::clog << "annotate_1000g            annotate variants with 1000 Genomes variants\n";
     std::clog << "annotate_regions          annotate regions\n";
     std::clog << "compute_concordance       compute genotype concordance between 2 call sets\n";
     std::clog << "compute_features          compute genotype likelihood based statistics\n";
