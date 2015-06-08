@@ -249,11 +249,6 @@ int32_t* bcf_hdr_seqlen(const bcf_hdr_t *hdr, int32_t *nseq);
 int32_t bcf_hdr_get_n_sample(bcf_hdr_t *h);
 
 /**
- * Checks if a info header exists.
- */
-bool bcf_hdr_info_exists(bcf_hdr_t *h, const char* key);
-
-/**
  * Reads header of a VCF file and returns the bcf header object.
  * This wraps around vcf_hdr_read from the original htslib to
  * allow for an alternative header file to be read in.
@@ -267,6 +262,12 @@ bcf_hdr_t *bcf_alt_hdr_read(htsFile *fp);
  * @imap - indices the subsetted samples
  */
 int bcf_hdr_subset_samples(const bcf_hdr_t *h, bcf1_t *v, std::vector<int32_t>& imap);
+
+/**
+ * Help function for adding a header with a backup tag name.
+ * Returns the tag that was inserted or already present.
+ */
+std::string bcf_hdr_append_info_with_backup_naming(bcf_hdr_t *h, std::string tag1, std::string tag2, std::string number, std::string type, std::string description);
 
 /**********
  *BCF UTILS

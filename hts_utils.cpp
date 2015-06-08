@@ -482,51 +482,32 @@ int32_t bcf_hdr_get_n_sample(bcf_hdr_t *h)
 }
 
 /**
- * Checks if a info header exists.
+ * Help function for adding a header with a backup tag name.
+ * Returns the tag that was inserted or already present.
  */
-bool bcf_hdr_info_exists(bcf_hdr_t *h, const char* key)
+std::string bcf_hdr_append_info_with_backup_naming(bcf_hdr_t *h, std::string tag1, std::string tag2, std::string number, std::string type, std::string description) 
 {
-    int id = bcf_hdr_id2int(h, BCF_DT_ID, key);
-    if (bcf_hdr_idinfo_exists(h,BCF_HL_INFO,id))
+    if (bcf_hdr_id2int(h,  BCF_DT_ID, tag1.c_str())==-1) 
     {
-        return true;
+        std::string meta_hdr = "##INFO=<ID=" + tag1 + 
+                                 ",Number=" + number +
+                                 ",Type=" + type + 
+                                 ",Description=\"" + description + "\">";
+                                 
+        bcf_hdr_append(h, meta_hdr.c_str());
     }
-
-    return false;
-}
-
-/**
- * Gets sequence names and lengths
- */
-void bcf_hdr_get_seqs_and_lens(const bcf_hdr_t *h, const char**& seqs, int32_t*& lens, int *n)
-{
-    vdict_t *d = (vdict_t*)h->dict[BCF_DT_CTG];
-    int tid, m = kh_size(d);
-    seqs = (const char**) calloc(m,sizeof(const char*));
-    lens = (int32_t*) calloc(m,sizeof(int32_t));
-    khint_t k;
-    for (k=kh_begin(d); k<kh_end(d); k++)
+    else if (tag2 != "")
     {
-        if ( !kh_exist(d,k) ) continue;
-        tid = kh_val(d,k).id;
-        assert( tid<m );
-        seqs[tid] = kh_key(d,k);
-
-        lens[tid] = 0;
-        bcf_hrec_t *hrec = kh_val(d, k).hrec[0];
-        for (int i=0; i<hrec->nkeys; ++i)
-        {
-            if (!strcmp(hrec->keys[i],"length"))
-            {
-                lens[tid] = atoi(hrec->vals[i]);
-            }
-        }
-        assert(lens[tid]);
+        std::string meta_hdr = "##INFO=<ID=" + tag2 + 
+                                 ",Number=" + number +
+                                 ",Type=" + type + 
+                                 ",Description=\"" + description + "\">";
+                                 
+        bcf_hdr_append(h, meta_hdr.c_str());
+        return tag2;
     }
-    // sanity check: there should be no gaps
-    for (tid=0; tid<m; tid++)
-        assert(seqs[tid]);
-    *n = m;
+    
+    return tag1;    
 }
 
 /**
