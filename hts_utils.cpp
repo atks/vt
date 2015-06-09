@@ -452,7 +452,7 @@ bcf_hdr_t *bcf_alt_hdr_read(htsFile *fp)
     kputs(fp->fn, &alt_hdr_fn);
     kputs(".hdr", &alt_hdr_fn);
     FILE *file = fopen(alt_hdr_fn.s, "r");
-    
+
     if (fp->format.format ==bcf || !file)
     {
         h = bcf_hdr_read(fp);
@@ -485,31 +485,57 @@ int32_t bcf_hdr_get_n_sample(bcf_hdr_t *h)
 
 /**
  * Help function for adding a header with a backup tag name.
- * Returns the tag that was inserted or already present.
+ * If the <tag> is already present, a new tag is attempted
+ * in the format <tag>_1 to <tag>_9.  If <tag>_9 failed,
+ * the function will not add any new tag and will return
+ * an empty string.
+ *
+ * Returns the tag that was inserted or updated.
  */
-std::string bcf_hdr_append_info_with_backup_naming(bcf_hdr_t *h, std::string tag1, std::string tag2, std::string number, std::string type, std::string description) 
+std::string bcf_hdr_append_info_with_backup_naming(bcf_hdr_t *h, std::string tag, std::string number, std::string type, std::string description, bool rename)
 {
-    if (bcf_hdr_id2int(h,  BCF_DT_ID, tag1.c_str())==-1) 
+    if (bcf_hdr_id2int(h,  BCF_DT_ID, tag.c_str())==-1)
     {
-        std::string meta_hdr = "##INFO=<ID=" + tag1 + 
+        std::string meta_hdr = "##INFO=<ID=" + tag +
                                  ",Number=" + number +
-                                 ",Type=" + type + 
+                                 ",Type=" + type +
                                  ",Description=\"" + description + "\">";
-                                 
+
         bcf_hdr_append(h, meta_hdr.c_str());
     }
-    else if (tag2 != "")
+    else
     {
-        std::string meta_hdr = "##INFO=<ID=" + tag2 + 
+        if (rename)
+        {
+            std::string new_tag = "";
+            for (uint32_t i=0; i<=9; ++i)
+            {
+                char c = 49+i;
+                new_tag = tag +  "_" + c;
+                if (bcf_hdr_id2int(h,  BCF_DT_ID, new_tag.c_str())==-1)
+                {
+                    std::string meta_hdr = "##INFO=<ID=" + new_tag +
                                  ",Number=" + number +
-                                 ",Type=" + type + 
+                                 ",Type=" + type +
                                  ",Description=\"" + description + "\">";
-                                 
-        bcf_hdr_append(h, meta_hdr.c_str());
-        return tag2;
+
+                    bcf_hdr_append(h, meta_hdr.c_str());
+
+                    break;
+                }
+
+                new_tag = "";
+            }
+
+            return new_tag;
+        }
+        else
+        {
+            return tag;
+        }
     }
-    
-    return tag1;    
+
+    return tag;
 }
 
 /**
@@ -532,6 +558,8 @@ std::string bcf_hdr_append_info_with_backup_naming(bcf_hdr_t *h, std::string tag
  *  Example:
  *      int ngt, *gt_arr = NULL, ngt_arr = 0;
  *      ngt = bcf_get_genotypes(hdr, line, &gt_arr, &ngt_arr);
+ *
+ *  todo: modify to allow direct reading, instead of copying to char*
  */
 int32_t bcf_get_format_string_ro(const bcf_hdr_t *hdr, bcf1_t *line, const char *tag, char ***dst, int *ndst)
 {
@@ -652,12 +680,12 @@ uint32_t bcf_ag2p(uint32_t no_alleles, uint32_t no_genotypes)
     {
         return 1;
     }
-    
+
     uint32_t no_ploidy = 1;
     while (true)
     {
         uint32_t k = choose(no_ploidy+no_alleles-1, no_alleles-1);
-    
+
         if (k==no_genotypes)
         {
             return no_ploidy;
@@ -665,8 +693,8 @@ uint32_t bcf_ag2p(uint32_t no_alleles, uint32_t no_genotypes)
         else if (k>no_genotypes)
         {
             return 0;
-        }        
-        
+        }
+
         ++no_ploidy;
     }
 }

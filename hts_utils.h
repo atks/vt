@@ -266,9 +266,14 @@ int bcf_hdr_subset_samples(const bcf_hdr_t *h, bcf1_t *v, std::vector<int32_t>& 
 
 /**
  * Help function for adding a header with a backup tag name.
- * Returns the tag that was inserted or already present.
+ * If the <tag> is already present, a new tag is attempted
+ * in the format <tag>_1 to <tag>_9.  If <tag>_9 failed,
+ * the function will not add any new tag and will return
+ * an empty string.
+ *
+ * Returns the tag that was inserted or updated.
  */
-std::string bcf_hdr_append_info_with_backup_naming(bcf_hdr_t *h, std::string tag1, std::string tag2, std::string number, std::string type, std::string description);
+std::string bcf_hdr_append_info_with_backup_naming(bcf_hdr_t *h, std::string tag, std::string number, std::string type, std::string description, bool rename);
 
 /**********
  *BCF UTILS

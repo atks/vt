@@ -47,7 +47,12 @@ class Igor : Program
     std::string mode;
     bool override_tag;
     uint32_t alignment_penalty;
-    
+
+    std::string MOTIF;
+    std::string SCORE;        
+    std::string RU;
+    std::string RL;
+            
     bool debug;
 
     ///////
@@ -117,12 +122,15 @@ class Igor : Program
 
     void initialize()
     {
+        ///////////
+        //options//
+        ///////////
         if (mode!="e" && mode!="f" && mode!="x")
         {
             fprintf(stderr, "[%s:%d %s] Not a valid mode of annotation: %s\n", __FILE__,__LINE__,__FUNCTION__, mode.c_str());
             exit(1);
         }   
-        
+       
         //////////////////////
         //i/o initialization//
         //////////////////////
@@ -130,19 +138,11 @@ class Igor : Program
         odw = new BCFOrderedWriter(output_vcf_file);
         odw->link_hdr(odr->hdr);
         
-        
-  
-        bcf_hdr_append_info_with_backup_naming(odw->hdr, "MOTIF", "VMOTIF", ".", "String", "Canonical Motif in an VNTR or Homopolymer");
-        
-        
-        
-        bcf_hdr_append(odw->hdr, "##INFO=<ID=VSCORE,Number=.,Type=Float,Description=\"Score of repeat unit\">");
-        bcf_hdr_append(odw->hdr, "##INFO=<ID=VRU,Number=1,Type=String,Description=\"Repeat unit in a VNTR or Homopolymer\">");
-        
-        bcf_hdr_append(odw->hdr, "##INFO=<ID=VRL,Number=1,Type=Integer,Description=\"Repeat Length\">");
-        bcf_hdr_append(odw->hdr, "##INFO=<ID=IRL,Number=1,Type=Integer,Description=\"Inexact Repeat Length\">");
-        bcf_hdr_append(odw->hdr, "##INFO=<ID=IRG,Number=2,Type=Integer,Description=\"Region of the motif.\">");
-        bcf_hdr_append(odw->hdr, "##INFO=<ID=ISQ,Number=1,Type=String,Description=\"Inexact STR Sequence\">");
+        MOTIF = bcf_hdr_append_info_with_backup_naming(odw->hdr, "MOTIF", "1", "String", "Canonical Motif in an VNTR or Homopolymer", true);
+        SCORE = bcf_hdr_append_info_with_backup_naming(odw->hdr, "SCORE", "1", "Float", "Score of repeat unit", true);
+        RU = bcf_hdr_append_info_with_backup_naming(odw->hdr, "RU", "1", "String", "Repeat unit in a VNTR or Homopolymer", true);
+        RL = bcf_hdr_append_info_with_backup_naming(odw->hdr, "RL", "1", "Float", "Repeat Unit Length", true);
+
         bcf_hdr_append(odw->hdr, "##INFO=<ID=OLD_VARIANT,Number=1,Type=String,Description=\"Original chr:pos:ref:alt encoding\">\n");
 
 //        bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_LFLANK,Number=1,Type=String,Description=\"Right Flank Sequence\">");
@@ -152,9 +152,6 @@ class Igor : Program
 //        bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_MOTIF_DISCORDANCE,Number=1,Type=Integer,Description=\"Descriptive Discordance for each reference repeat unit.\">");
 //        bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_MOTIF_COMPLETENESS,Number=1,Type=Integer,Description=\"Descriptive Discordance for each reference repeat unit.\">");
 //        bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_STR_CONCORDANCE,Number=1,Type=Float,Description=\"Overall discordance of RUs.\">");
-//
-//        bcf_hdr_append(odw->hdr, "##INFO=<ID=RL,Number=1,Type=Integer,Description=\"Motif.\">");
-//        bcf_hdr_append(odw->hdr, "##INFO=<ID=EXACT_ALLELE_REGION,Number=2,Type=Integer,Description=\"Region of the motif.\">");
 
         ////////////////////////
         //stats initialization//
@@ -191,18 +188,22 @@ class Igor : Program
     {
         if (variant.vntr.motif!="") 
         {
-              
-                 
-            bcf_update_info_string(odw->hdr, v, "VMOTIF", variant.vntr.motif.c_str());
+            bcf_update_info_string(odw->hdr, v, MOTIF.c_str(), variant.vntr.motif.c_str());
+        }
+        
+        std::cerr << "RU: " << variant.vntr.ru << "\n";
+        
+        if (variant.vntr.ru!="") 
+        {
+            std::cerr << "RU: " << variant.vntr.ru << "\n";
+                
+            bcf_update_info_string(odw->hdr, v, RU.c_str(), variant.vntr.ru.c_str());
         }
         if (variant.vntr.motif_score>=0) 
         {    
-            bcf_update_info_float(odw->hdr, v, "VSCORE", &variant.vntr.motif_score, 1);
+            bcf_update_info_float(odw->hdr, v, SCORE.c_str(), &variant.vntr.motif_score, 1);
         }
-        if (variant.vntr.ru!="") 
-        {    
-            bcf_update_info_string(odw->hdr, v, "VRU", variant.vntr.ru.c_str());
-        }
+
         
 //        bcf_update_info_string(odw->hdr, v, "VRU", variant.eru.c_str());
 //        int32_t rl = variant.eregion.end1-variant.eregion.beg1-1;

@@ -67,7 +67,6 @@ bool str2int32(std::string& s, int32_t& i);
  */
 bool str2uint32(std::string& s, uint32_t& i);
 
-
 /**
  * Appends cuurent working directoy to a path.
  * Returns true if successful.
