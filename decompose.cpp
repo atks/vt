@@ -44,8 +44,7 @@ class Igor : Program
     ///////
     BCFOrderedReader *odr;
     BCFOrderedWriter *odw;
-    //bcf1_t *v;
-
+    
     kstring_t s;
     kstring_t new_alleles;
     kstring_t old_alleles;
@@ -106,7 +105,8 @@ class Igor : Program
 
         odw = new BCFOrderedWriter(output_vcf_file);
         odw->link_hdr(odr->hdr);
-        bcf_hdr_append(odw->hdr, "##INFO=<ID=OLD_MULTIALLELIC,Number=1,Type=String,Description=\"Original chr:pos:ref:alt encoding\">\n");
+        bcf_hdr_append_info_with_backup_naming(odw->hdr, "OLD_MULTIALLELIC", "1", "String", "Original chr:pos:ref:alt encoding", false);
+//        bcf_hdr_append(odw->hdr, "##INFO=<ID=,Number=1,Type=String,Description=\"Original chr:pos:ref:alt encoding\">\n");
         odw->write_hdr();
 
         s = {0,0,0};
@@ -166,18 +166,14 @@ class Igor : Program
 
     void decompose()
     {
-        bcf1_t* v = odw->get_bcf1_from_pool();
-        //bcf1_t* v = bcf_init();
-        //bcf_clear(v);
+        bcf1_t* v = bcf_init();
         Variant variant;
-
-        std::cerr << "HERE????\n";
 
         while (odr->read(v))
         {
-            std::cerr << "=============================\n";
-            bcf_print(odr->hdr, v);
-            std::cerr << "=============================\n";
+//            std::cerr << "=============================\n";
+//            bcf_print(odr->hdr, v);
+//            std::cerr << "=============================\n";
 
             int32_t n_allele = bcf_get_n_allele(v);
 
