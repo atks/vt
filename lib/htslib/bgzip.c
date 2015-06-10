@@ -22,6 +22,8 @@
    THE SOFTWARE.
 */
 
+#include <config.h>
+
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -30,7 +32,6 @@
 #include <errno.h>
 #include <stdarg.h>
 #include <getopt.h>
-#include <sys/select.h>
 #include <sys/stat.h>
 #include "htslib/bgzf.h"
 #include "htslib/hts.h"

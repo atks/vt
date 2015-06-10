@@ -120,22 +120,26 @@ int main(int argc, char *argv[])
     char modew[8];
     int r = 0, exit_code = 0;
     hts_opt *in_opts = NULL, *out_opts = NULL, *last = NULL;
+    int nreads = 0;
+    int benchmark = 0;
 
-    while ((c = getopt(argc, argv, "IbDCSl:t:i:o:")) >= 0) {
+    while ((c = getopt(argc, argv, "IbDCSl:t:i:o:N:B")) >= 0) {
         switch (c) {
         case 'S': flag |= 1; break;
         case 'b': flag |= 2; break;
         case 'D': flag |= 4; break;
         case 'C': flag |= 8; break;
+        case 'B': benchmark = 1; break;
         case 'l': clevel = atoi(optarg); flag |= 2; break;
         case 't': fn_ref = optarg; break;
         case 'I': ignore_sam_err = 1; break;
         case 'i': if (add_option(&in_opts,  optarg)) return 1; break;
         case 'o': if (add_option(&out_opts, optarg)) return 1; break;
+        case 'N': nreads = atoi(optarg);
         }
     }
     if (argc == optind) {
-        fprintf(stderr, "Usage: samview [-bSCSI] [-l level] [-o option=value] <in.bam>|<in.sam>|<in.cram> [region]\n");
+        fprintf(stderr, "Usage: samview [-bSCSIB] [-N num_reads] [-l level] [-o option=value] <in.bam>|<in.sam>|<in.cram> [region]\n");
         return 1;
     }
     strcpy(moder, "r");
@@ -190,7 +194,8 @@ int main(int argc, char *argv[])
         if (hts_set_opt(out, out_opts->opt,  out_opts->val) != 0)
             return EXIT_FAILURE;
 
-    sam_hdr_write(out, h);
+    if (!benchmark)
+        sam_hdr_write(out, h);
     if (optind + 1 < argc && !(flag&1)) { // BAM input and has a region
         int i;
         hts_idx_t *idx;
@@ -205,21 +210,25 @@ int main(int argc, char *argv[])
                 continue;
             }
             while ((r = sam_itr_next(in, iter, b)) >= 0) {
-                if (sam_write1(out, h, b) < 0) {
+                if (!benchmark && sam_write1(out, h, b) < 0) {
                     fprintf(stderr, "Error writing output.\n");
                     exit_code = 1;
                     break;
                 }
+                if (nreads && --nreads == 0)
+                    break;
             }
             hts_itr_destroy(iter);
         }
         hts_idx_destroy(idx);
     } else while ((r = sam_read1(in, h, b)) >= 0) {
-        if (sam_write1(out, h, b) < 0) {
+        if (!benchmark && sam_write1(out, h, b) < 0) {
             fprintf(stderr, "Error writing output.\n");
             exit_code = 1;
             break;
         }
+        if (nreads && --nreads == 0)
+            break;
     }
 
     if (r < -1) {

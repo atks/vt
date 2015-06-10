@@ -58,11 +58,13 @@ class ReferenceRegion
     uint32_t end1;
     std::string ref;
 
-    ReferenceRegion(uint32_t beg1, uint32_t end1, char* ref)
+    ReferenceRegion() {};
+
+    ReferenceRegion(uint32_t beg1, char* ref)
     {
         this->beg1 = beg1;
-        this->end1 = end1;
         this->ref.assign(ref);
+        this->end1 = beg1 + this->ref.size() - 1;
     };
 };
 
@@ -129,6 +131,15 @@ class VNTRAnnotator
      * RU,RL,LFLANK,RFLANK,LFLANKPOS,RFLANKPOS,MOTIF_CONCORDANCE,MOTIF_CONCORDANCE
      */
     void annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::string mode);
+    
+    /**
+     * Pick candidate region.
+     * 
+     * @mode - REFERENCE     use refence field
+     *       - ALLELE_EXACT  by exact alignment
+     *       - ALLELE_FUZZY  by fuzzy alignment
+     */
+    ReferenceRegion pick_candidate_region(bcf_hdr_t* h, bcf1_t* v, uint32_t mode);
 
     /**
      * Pick candidate motifs.

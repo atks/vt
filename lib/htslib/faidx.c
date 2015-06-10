@@ -23,11 +23,13 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.  */
 
+#include <config.h>
+
 #include <ctype.h>
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include <stdint.h>
+#include <inttypes.h>
 
 #include "htslib/bgzf.h"
 #include "htslib/faidx.h"
@@ -54,18 +56,26 @@ struct __faidx_t {
 
 static inline void fai_insert_index(faidx_t *idx, const char *name, int len, int line_len, int line_blen, uint64_t offset)
 {
-    khint_t k;
-    int ret;
-    faidx1_t t;
+    char *name_key = strdup(name);
+    int absent;
+    khint_t k = kh_put(s, idx->hash, name_key, &absent);
+    faidx1_t *v = &kh_value(idx->hash, k);
+
+    if (! absent) {
+        fprintf(stderr, "[fai_build_core] ignoring duplicate sequence \"%s\" at byte offset %"PRIu64"\n", name, offset);
+        free(name_key);
+        return;
+    }
+
     if (idx->n == idx->m) {
         idx->m = idx->m? idx->m<<1 : 16;
         idx->name = (char**)realloc(idx->name, sizeof(char*) * idx->m);
     }
-    idx->name[idx->n] = strdup(name);
-    k = kh_put(s, idx->hash, idx->name[idx->n], &ret);
-    t.len = len; t.line_len = line_len; t.line_blen = line_blen; t.offset = offset;
-    kh_value(idx->hash, k) = t;
-    ++idx->n;
+    idx->name[idx->n++] = name_key;
+    v->len = len;
+    v->line_len = line_len;
+    v->line_blen = line_blen;
+    v->offset = offset;
 }
 
 faidx_t *fai_build_core(BGZF *bgzf)
@@ -89,6 +99,7 @@ faidx_t *fai_build_core(BGZF *bgzf)
                 offset = bgzf_utell(bgzf);
                 continue;
             } else if ((state == 0 && len < 0) || state == 2) continue;
+            else if (state == 0) { state = 2; continue; }
         }
         if (c == '>') { // fasta header
             if (len >= 0)

@@ -28,9 +28,7 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifdef HAVE_CONFIG_H
-#include "io_lib_config.h"
-#endif
+#include <config.h>
 
 #include <stdio.h>
 #include <errno.h>
@@ -915,7 +913,8 @@ static int cram_encode_slice_read(cram_fd *fd,
 				      (char *)&cr->mqual, 1);
     } else {
 	char *seq = (char *)BLOCK_DATA(s->seqs_blk) + cr->seq;
-	r |= h->codecs[DS_BA]->encode(s, h->codecs[DS_BA], seq, cr->len);
+	if (cr->len)
+	    r |= h->codecs[DS_BA]->encode(s, h->codecs[DS_BA], seq, cr->len);
     }
 
     return r ? -1 : 0;
@@ -2450,7 +2449,7 @@ static int process_one_read(cram_fd *fd, cram_container *c,
 
     ref = c->ref;
     cr->flags       = bam_flag(b);
-    cr->len         = bam_seq_len(b); cram_stats_add(c->stats[DS_RL], cr->len);
+    cr->len         = bam_seq_len(b);
 
     //fprintf(stderr, "%s => %d\n", rg ? rg : "\"\"", cr->rg);
 
@@ -2482,8 +2481,6 @@ static int process_one_read(cram_fd *fd, cram_container *c,
 
     
     cr->ref_id      = bam_ref(b);  cram_stats_add(c->stats[DS_RI], cr->ref_id);
-    if (bam_cigar_len(b) == 0)
-	cr->flags |= BAM_FUNMAP;
     cram_stats_add(c->stats[DS_BF], fd->cram_flag_swap[cr->flags & 0xfff]);
 
     // Non reference based encoding means storing the bases verbatim as features, which in
@@ -2492,6 +2489,9 @@ static int process_one_read(cram_fd *fd, cram_container *c,
 	cr->cram_flags = CRAM_FLAG_PRESERVE_QUAL_SCORES;
     else
 	cr->cram_flags = 0;
+
+    if (cr->len <= 0 && CRAM_MAJOR_VERS(fd->version) >= 3)
+	cr->cram_flags |= CRAM_FLAG_NO_SEQ;
     //cram_stats_add(c->stats[DS_CF], cr->cram_flags);
 
     c->num_bases   += cr->len;
@@ -2777,7 +2777,7 @@ static int process_one_read(cram_fd *fd, cram_container *c,
     if (cr->cram_flags & CRAM_FLAG_PRESERVE_QUAL_SCORES) {
 	/* Special case of seq "*" */
 	if (cr->len == 0) {
-	    cram_stats_add(c->stats[DS_RL], cr->len = fake_qual);
+	    cr->len = fake_qual;
 	    BLOCK_GROW(s->qual_blk, cr->len);
 	    cp = (char *)BLOCK_END(s->qual_blk);
 	    memset(cp, 255, cr->len);
@@ -2791,11 +2791,11 @@ static int process_one_read(cram_fd *fd, cram_container *c,
 	}
 	BLOCK_SIZE(s->qual_blk) += cr->len;
     } else {
-	if (cr->len == 0) {
+	if (cr->len == 0)
 	    cr->len = fake_qual >= 0 ? fake_qual : cr->aend - cr->apos + 1;
-	    cram_stats_add(c->stats[DS_RL], cr->len);
-	}
     }
+
+    cram_stats_add(c->stats[DS_RL], cr->len);
 
     /* Now we know apos and aend both, update mate-pair information */
     {

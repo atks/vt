@@ -48,9 +48,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * binary search to find the first range which overlaps any given coordinate.
  */
 
-#ifdef HAVE_CONFIG_H
-#include "io_lib_config.h"
-#endif
+#include <config.h>
 
 #include <stdio.h>
 #include <errno.h>
@@ -382,10 +380,10 @@ cram_index *cram_index_query(cram_fd *fd, int refid, int pos,
     while (i > 0 && from->e[i-1].end >= pos)
 	i--;
 
-    /* Special case for matching a start pos */
-    if (i+1 < from->nslice &&
-	from->e[i+1].start == pos &&
-	from->e[i+1].refid == refid)
+    /* We may be one bin before the optimum, so check */
+    while (i+1 < from->nslice &&
+	   (from->e[i].refid < refid ||
+	    from->e[i].end < pos))
 	i++;
 
     e = &from->e[i];

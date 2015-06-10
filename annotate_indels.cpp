@@ -191,14 +191,11 @@ class Igor : Program
             bcf_update_info_string(odw->hdr, v, MOTIF.c_str(), variant.vntr.motif.c_str());
         }
         
-        std::cerr << "RU: " << variant.vntr.ru << "\n";
-        
         if (variant.vntr.ru!="") 
         {
-            std::cerr << "RU: " << variant.vntr.ru << "\n";
-                
             bcf_update_info_string(odw->hdr, v, RU.c_str(), variant.vntr.ru.c_str());
         }
+        
         if (variant.vntr.motif_score>=0) 
         {    
             bcf_update_info_float(odw->hdr, v, SCORE.c_str(), &variant.vntr.motif_score, 1);

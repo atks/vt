@@ -99,6 +99,9 @@ void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::str
         //3. detects left and right flank
         if (mode=="e")
         {
+            if (debug) std::cerr << "============================================\n";
+            if (debug) std::cerr << "ANNOTATING INDEL EXACTLY\n";
+              
             //1. detect candidate motifs from a reference seqeuence
             pick_candidate_motifs(h, v, ALLELE_EXACT);
 
@@ -116,8 +119,10 @@ void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::str
             if (debug) std::cerr << "============================================\n";
             if (debug) std::cerr << "ANNOTATING INDEL FUZZILY\n";
 
+            //1. detect candidate motifs from a reference seqeuence
             pick_candidate_motifs(h, v, ALLELE_FUZZY);
             
+            //2. choose the best candidate motif
             if (!mt->pcm.empty())
             {
                 CandidateMotif cm = mt->pcm.top();
@@ -160,6 +165,32 @@ void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::str
         }
 
     }
+}
+
+/**
+ * Pick candidate region.
+ * 
+ * @mode - REFERENCE     use refence field
+ *       - ALLELE_EXACT  by exact alignment
+ *       - ALLELE_FUZZY  by fuzzy alignment
+ */
+ReferenceRegion VNTRAnnotator::pick_candidate_region(bcf_hdr_t* h, bcf1_t* v, uint32_t mode)
+{
+    if (mode==REFERENCE)
+    {
+        ReferenceRegion region(bcf_get_pos1(v), bcf_get_ref(v));
+        return region;
+    }
+    else if (mode==ALLELE_EXACT)
+    {
+        return extract_regions_by_exact_alignment(h, v);
+    }
+    else if (mode==ALLELE_FUZZY)
+    {
+        return extract_regions_by_fuzzy_alignment(h, v);
+    }
+    
+    return ReferenceRegion();
 }
 
 /**
@@ -682,7 +713,7 @@ ReferenceRegion VNTRAnnotator::extract_regions_by_exact_alignment(bcf_hdr_t* h, 
         std::cerr << "                   " << seq << "\n";
     }
 
-    ReferenceRegion region = ReferenceRegion(min_beg1, max_end1, seq);
+    ReferenceRegion region = ReferenceRegion(min_beg1, seq);
 
     if (seq_len) free(seq);
 
@@ -1001,7 +1032,7 @@ ReferenceRegion VNTRAnnotator::extract_regions_by_fuzzy_alignment(bcf_hdr_t* h, 
         std::cerr << "                   " << seq << "\n";
     }
 
-    ReferenceRegion region = ReferenceRegion(min_beg1, max_end1, seq);
+    ReferenceRegion region = ReferenceRegion(min_beg1, seq);
 
     if (seq_len) free(seq);
 

@@ -44,7 +44,7 @@ class Igor : Program
     ///////
     BCFOrderedReader *odr;
     BCFOrderedWriter *odw;
-    bcf1_t *v;
+    //bcf1_t *v;
 
     kstring_t s;
     kstring_t new_alleles;
@@ -166,14 +166,18 @@ class Igor : Program
 
     void decompose()
     {
-        v = bcf_init();
+        bcf1_t* v = odw->get_bcf1_from_pool();
+        //bcf1_t* v = bcf_init();
+        //bcf_clear(v);
         Variant variant;
+
+        std::cerr << "HERE????\n";
 
         while (odr->read(v))
         {
-//            std::cerr << "=============================\n";
-//            bcf_print(odr->hdr, v);
-//            std::cerr << "=============================\n";
+            std::cerr << "=============================\n";
+            bcf_print(odr->hdr, v);
+            std::cerr << "=============================\n";
 
             int32_t n_allele = bcf_get_n_allele(v);
 

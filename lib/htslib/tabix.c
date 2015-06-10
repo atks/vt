@@ -23,6 +23,8 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.  */
 
+#include <config.h>
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -298,8 +300,8 @@ int reheader_file(const char *fname, const char *header, int ftype, tbx_conf_t *
         // Output the new header
         FILE *hdr  = fopen(header,"r");
         if ( !hdr ) error("%s: %s", header,strerror(errno));
-        int page_size = getpagesize();
-        char *buf = valloc(page_size);
+        const size_t page_size = 32768;
+        char *buf = malloc(page_size);
         BGZF *bgzf_out = bgzf_dopen(fileno(stdout), "w");
         ssize_t nread;
         while ( (nread=fread(buf,1,page_size-1,hdr))>0 )
@@ -326,6 +328,7 @@ int reheader_file(const char *fname, const char *header, int ftype, tbx_conf_t *
         }
         if (bgzf_close(bgzf_out) < 0) error("Error: %d\n",bgzf_out->errcode);
         if (bgzf_close(fp) < 0) error("Error: %d\n",fp->errcode);
+        free(buf);
     }
     else
         error("todo: reheader BCF, BAM\n");  // BCF is difficult, records contain pointers to the header.
@@ -390,6 +393,7 @@ int main(int argc, char *argv[])
         {0,0,0,0}
     };
 
+    char *tmp;
     while ((c = getopt_long(argc, argv, "hH?0b:c:e:fm:p:s:S:lr:CR:T:", loptions,NULL)) >= 0)
     {
         switch (c)
@@ -402,11 +406,20 @@ int main(int argc, char *argv[])
             case 'H': args.header_only = 1; break;
             case 'l': list_chroms = 1; break;
             case '0': conf.preset |= TBX_UCSC; break;
-            case 'b': conf.bc = atoi(optarg); break;
-            case 'e': conf.ec = atoi(optarg); break;
+            case 'b':
+                conf.bc = strtol(optarg,&tmp,10);
+                if ( *tmp ) error("Could not parse argument: -b %s\n", optarg);
+                break;
+            case 'e':
+                conf.ec = strtol(optarg,&tmp,10);
+                if ( *tmp ) error("Could not parse argument: -e %s\n", optarg);
+                break;
             case 'c': conf.meta_char = *optarg; break;
             case 'f': is_force = 1; break;
-            case 'm': min_shift = atoi(optarg); break;
+            case 'm':
+                min_shift = strtol(optarg,&tmp,10);
+                if ( *tmp ) error("Could not parse argument: -m %s\n", optarg);
+                break;
             case 'p':
                       if (strcmp(optarg, "gff") == 0) conf_ptr = &tbx_conf_gff;
                       else if (strcmp(optarg, "bed") == 0) conf_ptr = &tbx_conf_bed;
@@ -416,8 +429,14 @@ int main(int argc, char *argv[])
                       else if (strcmp(optarg, "bam") == 0) ;    // same as bcf
                       else error("The preset string not recognised: '%s'\n", optarg);
                       break;
-            case 's': conf.sc = atoi(optarg); break;
-            case 'S': conf.line_skip = atoi(optarg); break;
+            case 's':
+                conf.sc = strtol(optarg,&tmp,10);
+                if ( *tmp ) error("Could not parse argument: -s %s\n", optarg);
+                break;
+            case 'S':
+                conf.line_skip = strtol(optarg,&tmp,10);
+                if ( *tmp ) error("Could not parse argument: -S %s\n", optarg);
+                break;
             default: return usage();
         }
     }

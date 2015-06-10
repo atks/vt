@@ -50,6 +50,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "cram/thread_pool.h"
 #include "cram/string_alloc.h"
+#include "cram/mFILE.h"
 #include "htslib/khash.h"
 
 #ifdef __cplusplus
@@ -105,7 +106,8 @@ enum cram_encoding {
     E_BETA               = 6,
     E_SUBEXP             = 7,
     E_GOLOMB_RICE        = 8,
-    E_GAMMA              = 9
+    E_GAMMA              = 9,
+    E_NUM_CODECS         = 10, /* Number of codecs, not a real one. */
 };
 
 enum cram_external_type {
@@ -585,6 +587,7 @@ typedef struct ref_entry {
     int line_length;
     int64_t count;	   // for shared references so we know to dealloc seq
     char *seq;
+    mFILE *mf;
 } ref_entry;
 
 KHASH_MAP_INIT_STR(refs, ref_entry*)
@@ -801,6 +804,7 @@ enum cram_fields {
 #define CRAM_FLAG_PRESERVE_QUAL_SCORES (1<<0)
 #define CRAM_FLAG_DETACHED             (1<<1)
 #define CRAM_FLAG_MATE_DOWNSTREAM      (1<<2)
+#define CRAM_FLAG_NO_SEQ               (1<<3)
 
 #ifdef __cplusplus
 }

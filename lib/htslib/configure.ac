@@ -27,6 +27,7 @@ AC_INIT([HTSlib], m4_esyscmd_s([make print-version]),
         [samtools-help@lists.sourceforge.net], [], [http://www.htslib.org/])
 AC_PREREQ(2.63)  dnl This version introduced 4-argument AC_CHECK_HEADER
 AC_CONFIG_SRCDIR(hts.c)
+AC_CONFIG_HEADERS(config.h)
 
 dnl Copyright notice to be copied into the generated configure script
 AC_COPYRIGHT([Portions copyright (C) 2015 Genome Research Ltd.
@@ -46,6 +47,9 @@ AC_ARG_WITH([irods],
      *)   irods=enabled; IRODS_HOME=$withval ;;
    esac],
   [irods=disabled])
+
+dnl FIXME This pulls in dozens of standard header checks
+AC_FUNC_MMAP
 
 save_LIBS=$LIBS
 zlib_devel=ok
@@ -83,6 +87,7 @@ such that the library is present as DIR/lib/core/obj/libRodsAPI.* and headers
 are present under DIR/lib/api/include and so on.])],
     [-lgssapi_krb5 -lpthread])
   LDFLAGS=$save_LDFLAGS
+  AC_DEFINE([HAVE_IRODS], 1, [Define to 1 if iRODS file access is enabled.])
 else
   define_IRODS_HOME='IRODS_HOME ?= /disabled'
 fi

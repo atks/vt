@@ -35,6 +35,8 @@
  * Author: James Bonfield, Wellcome Trust Sanger Institute. 2014
  */
 
+#include <config.h>
+
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -722,6 +724,10 @@ unsigned char *rans_compress(unsigned char *in, unsigned int in_size,
 
 unsigned char *rans_uncompress(unsigned char *in, unsigned int in_size,
 			       unsigned int *out_size) {
+    /* Both rans_uncompress functions need to be able to read at least 9
+       bytes. */
+    if (in_size < 9)
+        return NULL;
     return in[0]
 	? rans_uncompress_O1(in, in_size, out_size)
 	: rans_uncompress_O0(in, in_size, out_size);
