@@ -105,8 +105,8 @@ class Igor : Program
 
         odw = new BCFOrderedWriter(output_vcf_file);
         odw->link_hdr(odr->hdr);
-        bcf_hdr_append_info_with_backup_naming(odw->hdr, "OLD_MULTIALLELIC", "1", "String", "Original chr:pos:ref:alt encoding", false);
-//        bcf_hdr_append(odw->hdr, "##INFO=<ID=,Number=1,Type=String,Description=\"Original chr:pos:ref:alt encoding\">\n");
+        //bcf_hdr_append_info_with_backup_naming(odw->hdr, "OLD_MULTIALLELIC", "1", "String", "Original chr:pos:ref:alt encoding", false);
+        bcf_hdr_append(odw->hdr, "##INFO=<ID=,Number=1,Type=String,Description=\"Original chr:pos:ref:alt encoding\">\n");
         odw->write_hdr();
 
         s = {0,0,0};
