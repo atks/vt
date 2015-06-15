@@ -228,7 +228,6 @@ class Igor : Program
 //        std::string new_alleles = variant.vntr.ref;
 //        new_alleles += ",<VNTR>";
 //        bcf_update_alleles_str(odw->hdr, v, new_alleles.c_str());
-
     }
 
     void annotate_indels()
@@ -248,6 +247,8 @@ class Igor : Program
 //                bcf_print(odr->hdr, v);
                 //annotate indel like variant
                 va->annotate(odr->hdr, v, variant, mode);
+    
+    
                 update_vntr_info(odr->hdr, v, variant);
    
                 ++no_variants_annotated;

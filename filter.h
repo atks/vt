@@ -173,9 +173,9 @@ class Filter
     bool is_unary_op(const char* exp, int32_t len, bool debug=false);
 
     /**
-     * Checks if exp is a binary op.
+     * Checks is expression is bracketed.
      */
-    bool is_binary_op(const char* exp, int32_t len, bool debug);
+    bool is_bracketed_expression(const char* exp, int32_t len, bool debug);
 
     /**
      * Parse literals.

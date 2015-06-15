@@ -1010,8 +1010,6 @@ void Filter::parse(const char* exp, int32_t len, Node *node, bool debug)
     }
 }
 
-
-
 /**
  * Checks if exp is a unary op.
  */
@@ -1022,8 +1020,11 @@ bool Filter::is_unary_op(const char* exp, int32_t len, bool debug)
     //NOT operator
     if (exp[0]=='~')
     {
-        if (debug) std::cerr << "\tis unary op\n";
-        return true;
+        if (is_literal(exp+1, len-1, debug)||is_bracketed_expression(exp+1, len-1, debug))
+        {
+            if (debug) std::cerr << "\tis unary op\n";
+            return true;
+        }
     }
 
     if (debug) std::cerr << "\tis not unary op\n";
@@ -1031,44 +1032,51 @@ bool Filter::is_unary_op(const char* exp, int32_t len, bool debug)
 }
 
 /**
- * Checks if exp is a binary op.
+ * Checks is expression is bracketed.
  */
-bool Filter::is_binary_op(const char* exp, int32_t len, bool debug)
+bool Filter::is_bracketed_expression(const char* exp, int32_t len, bool debug)
 {
-    const char* p = exp; //points to end of first part
-    const char* q = exp; //points to start of second part
-    const char* r = exp; //for iteration
-
-    int32_t type = INT_MAX;
-
-    while(r-exp!=len)
+    if (*exp=='(' && exp[len-1]==')')
     {
-        //bypasses bracketed expressions
-        fwd_to_closing_bracket(r, len);
-
-        int32_t oplen = -1;
-        int32_t ctype = peek_op(r, len, oplen, debug);
-
-        if(ctype!=-1)
+        int32_t opened_brackets = 1;
+        bool nested = true;
+        int32_t j=1;
+        while(j<len-1)
         {
-            if (debug) std::cerr<< "\ttype : " << ctype << " \n";
-
-            //this implements order of operations
-            if (ctype<type)
+            if(exp[j]=='(')
             {
-                if (debug) std::cerr<< "\tupdating type\n";
-                type = ctype;
-                p = r-1;
-                q = r+oplen;
+               if (opened_brackets<0)
+               {
+                    kstring_t s = {0,0,0};
+                    kputsn(exp, len, &s);
+                    fprintf(stderr, "[%s:%d %s] brackets not correct %s\n", __FILE__, __LINE__, __FUNCTION__, s.s);
+                    if (s.m) free(s.s);
+                    exit(1);
+               }
+
+               ++opened_brackets;
+            }
+            else if (exp[j]==')')
+            {
+               if (opened_brackets<=0)
+               {
+                    kstring_t s = {0,0,0};
+                    kputsn(exp, len, &s);
+                    fprintf(stderr, "[%s:%d %s] brackets not correct %s\n", __FILE__, __LINE__, __FUNCTION__, s.s);
+                    if (s.m) free(s.s);
+                    exit(1);
+               }
+
+               --opened_brackets;
             }
 
-            r += oplen-1;
+            ++j;
         }
-
-        ++r;
+        
+        return opened_brackets==1;
     }
-
-    return true;
+    
+    return false;
 }
 
 /**
