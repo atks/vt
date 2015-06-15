@@ -145,7 +145,7 @@ class Igor : Program
 
         if (annotate_cds)
         {
-            bcf_hdr_append(odw->hdr, "##INFO=<ID=FS,Number=0,Type=Flag,Description=\"Frameshift Indel.\">");
+            bcf_hdr_append(odw->hdr, "##INFO=<ID=FS1,Number=0,Type=Flag,Description=\"Frameshift Indel.\">");
             bcf_hdr_append(odw->hdr, "##INFO=<ID=NFS,Number=0,Type=Flag,Description=\"Non Frameshift Indel.\">");
             orom_cds = new OrderedRegionOverlapMatcher(cds_bed_file);
         }
@@ -229,7 +229,7 @@ class Igor : Program
                     {
                         if (abs(variant.alleles[0].dlen)%3!=0)
                         {
-                            bcf_update_info_flag(odr->hdr, v, "FS", "", 1);
+                            bcf_update_info_flag(odr->hdr, v, "FS1", "", 1);
                         }
                         else
                         {

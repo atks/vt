@@ -201,7 +201,6 @@ class Igor : Program
             bcf_update_info_float(odw->hdr, v, SCORE.c_str(), &variant.vntr.motif_score, 1);
         }
 
-        
 //        bcf_update_info_string(odw->hdr, v, "VRU", variant.eru.c_str());
 //        int32_t rl = variant.eregion.end1-variant.eregion.beg1-1;
 //        bcf_update_info_int32(odw->hdr, v, "VRL", &rl, 1);

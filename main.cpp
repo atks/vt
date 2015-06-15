@@ -36,8 +36,9 @@
 #include "xcmp.h"
 #include "decompose_blocksub.h"
 #include "decompose.h"
-#include "discover2.h"
+#include "decompose2.h"
 #include "discover.h"
+#include "discover2.h"
 #include "estimate.h"
 #include "genotype2.h"
 #include "genotype.h"
@@ -167,6 +168,10 @@ int main(int argc, char ** argv)
     {
         decompose(argc-1, ++argv);
     }
+    else if (argc>1 && cmd=="decompose2")
+    {
+        decompose2(argc-1, ++argv);
+    }    
     else if (argc>1 && cmd=="decompose_blocksub")
     {
         decompose_blocksub(argc-1, ++argv);

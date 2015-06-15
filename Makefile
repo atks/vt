@@ -26,6 +26,7 @@ SOURCES = align\
 		construct_probes\
 		context_filter\
 		decompose\
+		decompose2\
 		decompose_blocksub\
 		discover\
 		discover2\

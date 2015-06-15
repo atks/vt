@@ -43,6 +43,7 @@ class Igor : Program
     std::string interval_list;
     int32_t min_depth;
     float_t min_gq;
+    bool ignore_non_variants;
 
     ///////
     //i/o//
@@ -95,6 +96,7 @@ class Igor : Program
             TCLAP::ValueArg<std::string> arg_output_pdf_file("y", "y", "output pdf file [mendelian.pdf]", false, "mendelian.pdf", "str", cmd);
             TCLAP::ValueArg<int32_t> arg_min_depth("d", "d", "minimum depth", false, 0, "str", cmd);
             TCLAP::ValueArg<float> arg_min_gq("q", "q", "minimum genotype quality", false, 2, "str", cmd);
+            TCLAP::SwitchArg arg_ignore_non_variants("n", "n", "ignore non variants", cmd, false);
             TCLAP::UnlabeledValueArg<std::string> arg_input_vcf_file("<in.vcf>", "input VCF file", true, "","file", cmd);
 
             cmd.parse(argc, argv);
@@ -106,6 +108,7 @@ class Igor : Program
             output_pdf_file = arg_output_pdf_file.getValue();
             min_depth = arg_min_depth.getValue();
             min_gq = arg_min_gq.getValue();
+            ignore_non_variants = arg_ignore_non_variants.getValue();
             parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
         }
         catch (TCLAP::ArgException &e)
@@ -197,11 +200,12 @@ class Igor : Program
         int32_t missing = 0;
         int32_t mendel_homalt_err = 0;
 
+        int32_t nsample = bcf_hdr_get_n_sample(h);
         int32_t *gts = NULL;
-        int32_t *dps = NULL;
+        int32_t *dps = (int32_t *) malloc(nsample*sizeof(int32_t));
         int32_t n = 0;
-        int32_t n_dp = 0;
-
+        int32_t n_dp = nsample;
+        
         while(odr->read(v))
         {
             bcf_unpack(v, BCF_UN_IND);
@@ -225,6 +229,19 @@ class Igor : Program
             int k = bcf_get_genotypes(h, v, &gts, &n);
             int r = bcf_get_format_int32(h, v, "DP", &dps, &n_dp);
 
+            if (r==-1)
+            {
+                r = bcf_get_format_int32(h, v, "NR", &dps, &n_dp);
+                
+                if (r==-1)
+                {
+                    for (uint32_t i=0; i<nsample; ++i)
+                    {
+                        dps[i] = min_depth;
+                    }
+                } 
+            }
+            
             bool variant_used = false;
 
             for (int32_t i =0; i< trios.size(); ++i)
@@ -252,8 +269,11 @@ class Igor : Program
                 
                 if (!(f1<0 || f2<0 || m1<0 || m2<0 || c1<0 || c2<0))
                 {
-                    ++trio_genotypes[f1+f2][m1+m2][c1+c2];
-                    variant_used = true;
+                    if (!ignore_non_variants || (f1+f2+m1+m2+c1+c2!=0))
+                    {
+                        ++trio_genotypes[f1+f2][m1+m2][c1+c2];
+                        variant_used = true;
+                    }
                 }
             }
             if (variant_used) ++no_variants;
