@@ -1,5 +1,5 @@
 OPTFLAG = -O3
-INCLUDES = -I./lib -I. -I./lib/htslib -I./lib/Rmath 
+INCLUDES = -I./lib -I. -I./lib/htslib -I./lib/Rmath -I./lib/pcre2/src 
 CFLAGS = -pipe -std=c++0x $(OPTFLAG) $(INCLUDES) -D__STDC_LIMIT_MACROS
 CXX = g++
 
@@ -103,17 +103,21 @@ TOOLSRC = $(SOURCES:=.cpp) $(SOURCESONLY)
 TOOLOBJ = $(TOOLSRC:.cpp=.o)
 LIBHTS = lib/htslib/libhts.a
 LIBRMATH = lib/Rmath/libRmath.a
+LIBPCRE2 = lib/pcre2/src/libpcre2.a
 
-all : ${LIBHTS} $(TARGET)
+all : $(TARGET)
 
 ${LIBHTS} :
-	cd lib/htslib; $(MAKE) libhts.a || exit 1; cd ..
+	cd lib/htslib; $(MAKE) libhts.a || exit 1; 
 
 ${LIBRMATH} :
-	cd lib/Rmath; $(MAKE) libRmath.a || exit 1; cd ..
+	cd lib/Rmath; $(MAKE) libRmath.a || exit 1; 
+
+${LIBPCRE2} :
+	cd lib/pcre2/src; $(MAKE) libpcre2.a || exit 1; 
 	
-$(TARGET) : ${LIBHTS} ${LIBRMATH} $(TOOLOBJ)
-	$(CXX) $(CFLAGS) -o $@ $(TOOLOBJ) $(LIBHTS) $(LIBRMATH) -lz -lpthread
+$(TARGET) : ${LIBHTS} ${LIBRMATH} ${LIBPCRE2} $(TOOLOBJ)
+	$(CXX) $(CFLAGS) -o $@ $(TOOLOBJ) $(LIBHTS) $(LIBRMATH) ${LIBPCRE2} -lz -lpthread
 
 $(TOOLOBJ): $(HEADERSONLY)
 
@@ -125,6 +129,7 @@ $(TOOLOBJ): $(HEADERSONLY)
 clean :
 	cd lib/htslib; $(MAKE) clean
 	cd lib/Rmath; $(MAKE) clean
+	cd lib/pcre2/src; $(MAKE) clean
 	-rm -rf $(TARGET) $(TOOLOBJ)
 
 cleanvt :

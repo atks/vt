@@ -24,6 +24,7 @@
 #include "align.h"
 #include "tbx_ordered_reader.h"
 #include "bed.h"
+#include "pcre2.h"
 
 namespace
 {
@@ -367,6 +368,114 @@ class Igor : Program
 
     };
 
+
+   /**
+     *  Analyse an mdust file
+     *  Compute how much of genome it is off.
+     */    
+    void test_pcre2(int argc, char ** argv)
+    {
+        std::string regex;
+        std::string text;
+        faidx_t *fai;
+        
+        try
+        {
+            std::string desc = "analyse_mdust  -m detect_motif -s ACTGACT \n";
+
+            std::string version = "0.5";
+            TCLAP::CmdLine cmd(desc, ' ', version);
+            VTOutput my; cmd.setOutput(&my);
+            TCLAP::ValueArg<std::string> arg_regex("r", "r", "regular expression", true, "", "string", cmd);
+            TCLAP::ValueArg<std::string> arg_text("t", "t", "text", true, "", "string", cmd);
+
+            cmd.parse(argc, argv);
+
+            regex = arg_regex.getValue();
+            text = arg_text.getValue();
+        }
+        catch (TCLAP::ArgException &e)
+        {
+            std::cerr << "error: " << e.error() << " for arg " << e.argId() << "\n";
+            abort();
+        }
+
+        printf("regex = %s\n", regex.c_str());
+        printf("text  = %s\n", text.c_str());
+        
+        pcre2_code *re;
+        PCRE2_SPTR pattern;     /* PCRE2_SPTR is a pointer to unsigned code units of */
+        PCRE2_SPTR subject;     /* the appropriate width (8, 16, or 32 bits). */
+        PCRE2_SPTR name_table;
+        
+        int crlf_is_newline;
+        int errornumber;
+        int find_all;
+        int i;
+        int namecount;
+        int name_entry_size;
+        int rc;
+        int utf8;
+        
+        uint32_t option_bits;
+        uint32_t newline;
+        
+        PCRE2_SIZE erroroffset;
+        PCRE2_SIZE *ovector;
+        
+        size_t subject_length;
+        pcre2_match_data *match_data;
+
+        pattern = (PCRE2_SPTR)regex.c_str();
+        subject = (PCRE2_SPTR)text.c_str();
+        subject_length = strlen((char *)subject);
+
+        re = pcre2_compile(
+        pattern,               /* the pattern */
+        PCRE2_ZERO_TERMINATED, /* indicates pattern is zero-terminated */
+        0,                     /* default options */
+        &errornumber,          /* for error number */
+        &erroroffset,          /* for error offset */
+        NULL);  
+        
+        if (re == NULL)
+        {
+        PCRE2_UCHAR buffer[256];
+        pcre2_get_error_message(errornumber, buffer, sizeof(buffer));
+        printf("PCRE2 compilation failed at offset %d: %s\n", (int)erroroffset,
+        buffer);
+        
+        }
+                
+        match_data = pcre2_match_data_create_from_pattern(re, NULL);
+        
+        rc = pcre2_match(
+          re,                   /* the compiled pattern */
+          subject,              /* the subject string */
+          subject_length,       /* the length of the subject */
+          0,                    /* start at offset 0 in the subject */
+          0,                    /* default options */
+          match_data,           /* block for storing the result */
+          NULL);                /* use default match context */
+      
+      
+      if (rc < 0)
+      {
+          switch(rc)
+            {
+            case PCRE2_ERROR_NOMATCH: printf("No match\n"); break;
+            /*
+            Handle other special cases if you like
+            */
+            default: printf("Matching error %d\n", rc); break;
+            }
+          pcre2_match_data_free(match_data);   /* Release memory used for the match */
+          pcre2_code_free(re);                 /* data and the compiled pattern. */
+      }
+          
+    };
+    
+
     ~Igor() {};
 
     private:
@@ -378,7 +487,11 @@ void test(int argc, char ** argv)
 {
     Igor igor(argc, argv);
     
-    igor.analyse_mdust(argc, argv);
+    //igor.analyse_mdust(argc, argv);
+    
+    igor.test_pcre2(argc, argv);
+    
+    
     
     
     //igor.test();
