@@ -1101,6 +1101,12 @@ bool Filter::is_bracketed_expression(const char* exp, int32_t len, bool debug)
  */
 bool Filter::is_literal(const char* exp, int32_t len, bool debug)
 {
+    //checks if string literal
+    if (exp==strchr(exp,'\'') && exp+len-1==strchr(exp+1,'\''))
+    {
+        return true;
+    }
+    
     const char* q = exp;
     while (q-exp<len)
     {
