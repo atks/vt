@@ -27,6 +27,7 @@
 #include "htslib/vcf.h"
 #include "htslib/kstring.h"
 #include "variant_manip.h"
+#include "pregex.h"
 
 //TYPES
 #define VT_LOGIC_OP  2048
@@ -51,13 +52,14 @@
 #define VT_LE       (6|VT_MATH_CMP|VT_BOOL)
 #define VT_GT       (7|VT_MATH_CMP|VT_BOOL)
 #define VT_GE       (8|VT_MATH_CMP|VT_BOOL)
+#define VT_MATCH    (9|VT_MATH_CMP|VT_BOOL)
 
-#define VT_ADD      (9|VT_MATH_OP|VT_FLT)
-#define VT_SUB      (10|VT_MATH_OP|VT_FLT)
-#define VT_MUL      (11|VT_MATH_OP|VT_FLT)
-#define VT_DIV      (12|VT_MATH_OP|VT_FLT)
-#define VT_BIT_AND  (13|VT_INT|VT_MATH_OP|VT_BOOL)
-#define VT_BIT_OR   (14|VT_INT|VT_MATH_OP|VT_BOOL)
+#define VT_ADD      (10|VT_MATH_OP|VT_FLT)
+#define VT_SUB      (11|VT_MATH_OP|VT_FLT)
+#define VT_MUL      (12|VT_MATH_OP|VT_FLT)
+#define VT_DIV      (13|VT_MATH_OP|VT_FLT)
+#define VT_BIT_AND  (14|VT_INT|VT_MATH_OP|VT_BOOL)
+#define VT_BIT_OR   (15|VT_INT|VT_MATH_OP|VT_BOOL)
 
 //unary ops (data getters for vcf)
 #define VT_QUAL          (33|VT_BCF_OP|VT_FLT)
@@ -93,6 +95,9 @@ class Node
     bool b;        // boolean value
     int32_t i;     // integer value
     float f;       // float value
+
+    PERLregex pregex;
+    bool regex_set;
 
     /**
      * Constructor.

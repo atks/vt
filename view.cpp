@@ -166,15 +166,13 @@ class Igor : Program
         while (odr->read(v))
         {
             if (filter_exists)
-            {
+            {   
                 vm->classify_variant(h, v, variant);
                 if (!filter.apply(h, v, &variant, false))
                 {
                     continue;
                 }
             }
-
-//            std::cerr << "working\n";
 
             if (no_subset_samples==0)
             {

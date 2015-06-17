@@ -33,6 +33,7 @@ Node::Node()
     right = NULL;
     tag = {0,0,0};
     s = {0,0,0};
+    regex_set = false;
 };
 
 /**
@@ -45,6 +46,7 @@ Node::Node(int32_t type)
     right = NULL;
     tag = {0,0,0};
     s = {0,0,0};
+    regex_set = false;
     this->type = type;
 };
 
@@ -144,16 +146,31 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
                 if (debug)
                     std::cerr << "\tVT_EQ "   <<  left->s.s << "&" << right->s.s    <<  " \n";
                 b = strcmp(left->s.s, right->s.s)==0 ? true : false;
-                //b = strncmp(left->s.s, right->s.s, std::min(strlen(left->s.s),strlen(right->s.s)))==0 ? true : false;
                 return;
             }
-//             else if ((left->type&VT_STR) && (right->type&VT_STR))
-//            {
-//                value = strcmp(left->tag.s, right->tag.s)==0 ? false : true;
-//                return;
-//            }
-//
+
             fprintf(stderr, "[%s:%d %s] evaluation not supported : == %s %s\n", __FILE__, __LINE__, __FUNCTION__, type2string(left->type).c_str(), type2string(right->type).c_str());
+            exit(1);
+        }
+        else if (type==VT_MATCH)
+        {
+            if ((left->type&VT_STR) && (right->type&VT_STR))
+            {
+                if (debug)
+                    std::cerr << "\tVT_MATCH "   <<  left->s.s << "&" << right->s.s    <<  " \n";
+
+                if (!regex_set) 
+                {
+                    pregex.set(right->s.s);
+                    regex_set = true;
+                }
+                
+                b = pregex.match(left->s.s);
+                
+                return;
+            }
+
+            fprintf(stderr, "[%s:%d %s] evaluation not supported : =~ %s %s\n", __FILE__, __LINE__, __FUNCTION__, type2string(left->type).c_str(), type2string(right->type).c_str());
             exit(1);
         }
         else if (type==VT_NE)
@@ -377,7 +394,7 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
         {
             i = bcf_get_n_filter(v);
             f = i;
-            b = true; 
+            b = true;
             value_exists = true;
         }
         else if (type==VT_INFO) //figure out type
@@ -1072,10 +1089,10 @@ bool Filter::is_bracketed_expression(const char* exp, int32_t len, bool debug)
 
             ++j;
         }
-        
+
         return opened_brackets==1;
     }
-    
+
     return false;
 }
 
@@ -1328,7 +1345,7 @@ void Filter::print_filter_help()
     fprintf(stderr, "  Passed Common biallelic SNPs or rare indels : (PASS&&VTYPE==SNP&&N_ALLELE==2&&INFO.AF>0.005)||(VTYPE&INDEL&&INFO.AF<=0.005)\n");
     fprintf(stderr, "\n");
     fprintf(stderr, "  Operations\n");
-    fprintf(stderr, "    ==,~,&&,||,&,|,+,-,*,/\n");
+    fprintf(stderr, "    ==,!=,=~,~,&&,||,&,|,+,-,*,/\n");
     fprintf(stderr, "\n");
     fprintf(stderr, "  Failed rare variants : ~PASS&&(INFO.AC/INFO.AN<0.005)\n");
     fprintf(stderr, "\n");
@@ -1492,6 +1509,12 @@ int32_t Filter::peek_op(const char* &r, int32_t len, int32_t &oplen, bool debug)
         if (debug) std::cerr << "\tis == operator\n";
         oplen = 2;
         return VT_EQ;
+    }
+    else if (*s=='=' && (s+1-r<len) && *(s+1)=='~')
+    {
+        if (debug) std::cerr << "\tis =~ operator\n";
+        oplen = 2;
+        return VT_MATCH;
     }
     else if (*s=='>' && (s+1-r<len) && *(s+1)=='=')
     {
