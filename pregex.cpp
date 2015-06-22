@@ -73,7 +73,8 @@ void PERLregex::set(char* regex)
     {
         PCRE2_UCHAR buffer[256];
         pcre2_get_error_message(errornumber, buffer, sizeof(buffer));
-        printf("PCRE2 compilation failed at offset %d: %s\n", (int) erroroffset, buffer);
+        fprintf(stderr, "[E:%s] Regular expression compilation failed : %s at position %d\n", __FUNCTION__, buffer, (int) erroroffset);
+        exit(1);
     }
 
     match_data = pcre2_match_data_create_from_pattern(re, NULL);

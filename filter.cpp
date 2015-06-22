@@ -1012,7 +1012,7 @@ void Filter::parse(const char* exp, int32_t len, Node *node, bool debug)
         {
             kstring_t s = {0,0,0};
             kputsn(exp, len, &s);
-            fprintf(stderr, "[%s:%d %s] binary operator not found in \"%s\". Valid operators are  ==,!=,&&,||,&,|,+,-,*,/\n", __FILE__, __LINE__, __FUNCTION__, s.s);
+            fprintf(stderr, "[%s:%d %s] binary operator not found in \"%s\". Valid operators are  ==,!=,=~,&&,||,&,|,+,-,*,/\n", __FILE__, __LINE__, __FUNCTION__, s.s);
             if (s.m) free(s.s);
             exit(1);
         }
@@ -1350,8 +1350,14 @@ void Filter::print_filter_help()
     fprintf(stderr, "  Passed Common biallelic SNPs only           : PASS&&VTYPE==SNP&&N_ALLELE==2&&INFO.AF>0.005\n");
     fprintf(stderr, "  Passed Common biallelic SNPs or rare indels : (PASS&&VTYPE==SNP&&N_ALLELE==2&&INFO.AF>0.005)||(VTYPE&INDEL&&INFO.AF<=0.005)\n");
     fprintf(stderr, "\n");
+    fprintf(stderr, "  Regular expressions for string fields using pcre2\n");
+    fprintf(stderr, "\n");
+    fprintf(stderr, "  Passed variants in intergenic regions or UTR : PASS&&INFO.ANNO=~'Intergenic|UTR'\n");
+    fprintf(stderr, "  Passed variants in intergenic regions or UTR : PASS&&INFO.ANNO=~'(?i)Intergenic|UTR'\n");
+    fprintf(stderr, "  ignoring case\n");
+    fprintf(stderr, "\n");
     fprintf(stderr, "  Operations\n");
-    fprintf(stderr, "    ==,!=,=~,~,&&,||,&,|,+,-,*,/\n");
+    fprintf(stderr, "     ==,!=,=~,~,&&,||,&,|,+,-,*,/\n");
     fprintf(stderr, "\n");
     fprintf(stderr, "  Failed rare variants : ~PASS&&(INFO.AC/INFO.AN<0.005)\n");
     fprintf(stderr, "\n");
