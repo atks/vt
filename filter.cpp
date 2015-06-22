@@ -173,6 +173,27 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
             fprintf(stderr, "[%s:%d %s] evaluation not supported : =~ %s %s\n", __FILE__, __LINE__, __FUNCTION__, type2string(left->type).c_str(), type2string(right->type).c_str());
             exit(1);
         }
+        else if (type==VT_NO_MATCH)
+        {
+            if ((left->type&VT_STR) && (right->type&VT_STR))
+            {
+                if (debug)
+                    std::cerr << "\tVT_NO_MATCH "   <<  left->s.s << "&" << right->s.s    <<  " \n";
+
+                if (!regex_set) 
+                {
+                    pregex.set(right->s.s);
+                    regex_set = true;
+                }
+                
+                b = !pregex.match(left->s.s);
+                
+                return;
+            }
+
+            fprintf(stderr, "[%s:%d %s] evaluation not supported : ~~ %s %s\n", __FILE__, __LINE__, __FUNCTION__, type2string(left->type).c_str(), type2string(right->type).c_str());
+            exit(1);
+        }
         else if (type==VT_NE)
         {
             //fprintf(stderr, "[%s:%d %s] check: %s %s: !=\n", __FILE__, __LINE__, __FUNCTION__, type2string(left->type).c_str(), type2string(right->type).c_str());
@@ -1012,7 +1033,7 @@ void Filter::parse(const char* exp, int32_t len, Node *node, bool debug)
         {
             kstring_t s = {0,0,0};
             kputsn(exp, len, &s);
-            fprintf(stderr, "[%s:%d %s] binary operator not found in \"%s\". Valid operators are  ==,!=,=~,&&,||,&,|,+,-,*,/\n", __FILE__, __LINE__, __FUNCTION__, s.s);
+            fprintf(stderr, "[%s:%d %s] binary operator not found in \"%s\". Valid operators are  ==,!=,=~,~~,&&,||,&,|,+,-,*,/\n", __FILE__, __LINE__, __FUNCTION__, s.s);
             if (s.m) free(s.s);
             exit(1);
         }
@@ -1357,7 +1378,7 @@ void Filter::print_filter_help()
     fprintf(stderr, "  ignoring case\n");
     fprintf(stderr, "\n");
     fprintf(stderr, "  Operations\n");
-    fprintf(stderr, "     ==,!=,=~,~,&&,||,&,|,+,-,*,/\n");
+    fprintf(stderr, "     ==,!=,=~,~~,~,&&,||,&,|,+,-,*,/\n");
     fprintf(stderr, "\n");
     fprintf(stderr, "  Failed rare variants : ~PASS&&(INFO.AC/INFO.AN<0.005)\n");
     fprintf(stderr, "\n");
@@ -1527,6 +1548,12 @@ int32_t Filter::peek_op(const char* &r, int32_t len, int32_t &oplen, bool debug)
         if (debug) std::cerr << "\tis =~ operator\n";
         oplen = 2;
         return VT_MATCH;
+    }
+    else if (*s=='~' && (s+1-r<len) && *(s+1)=='~')
+    {
+        if (debug) std::cerr << "\tis ~~ operator\n";
+        oplen = 2;
+        return VT_NO_MATCH;
     }
     else if (*s=='>' && (s+1-r<len) && *(s+1)=='=')
     {
