@@ -34,6 +34,7 @@
 #include <vector>
 #include <map>
 #include <queue>
+#include <sys/stat.h>
 #include "htslib/kstring.h"
 #include "htslib/khash.h"
 #include "htslib/hts.h"
