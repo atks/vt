@@ -245,7 +245,6 @@ class Igor : Program
             if (vtype&VT_INDEL || vtype&VT_VNTR)
             {
 //                bcf_print(odr->hdr, v);
-                //annotate indel like variant
                 va->annotate(odr->hdr, v, variant, mode);
     
     

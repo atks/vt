@@ -54,7 +54,6 @@ MotifTree::MotifTree(uint32_t max_len, bool debug)
             uint32_t c = mm->canonical(seq, len);
             //bool a = mm->is_aperiodic(c, len);
             //std::cerr << " " << mm->seq2str(c, len) << " " << mm->is_aperiodic(c, len) << "\n";
-
         }
     }
 };
@@ -70,8 +69,6 @@ MotifTree::~MotifTree()
 
 /**
  * Gets subsequence from a string at the spos0 position of length cmax_len.
- *
- *
  */
 uint32_t MotifTree::get_sub_seq(char* seq, uint32_t len, uint32_t spos0, uint32_t& s)
 {
