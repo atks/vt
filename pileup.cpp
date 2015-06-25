@@ -416,10 +416,10 @@ void Pileup::update_read_end(uint32_t gpos1)
     if (P[i].N==0)
     {
         std::cerr << "update_read_end_base: gpos1" << gpos1 << "\n";
-        std::cerr << "OOPSs...\n"; 
-    }   
+        std::cerr << "OOPSs...\n";
+    }
     else
-    {    
+    {
         --P[i].N;
         ++P[i].E;
     }
@@ -567,8 +567,8 @@ void Pileup::add_I(uint32_t gpos1, std::string& ins, uint32_t rpos1)
         if (debug>=2)  std::cerr << "\t\t\tinsertion left aligned : " << chrom << ":" << gpos1 << ":" << P[i].R << "/" << P[i].R << ins << " => " << chrom << ":" << a_gpos1 << ":" << a_ref << "/" << a_alt << "\n";
         uint32_t j = g2i(a_gpos1);
         ++P[j].I[a_alt.substr(1)];
-        
-        //for insertions shifted beyond the edge of a read alignment 
+
+        //for insertions shifted beyond the edge of a read alignment
         if (a_gpos1 < rpos1)
         {
             ++P[j].N;
@@ -710,7 +710,7 @@ void Pileup::add_snp(uint32_t gpos1, char ref, char alt, uint8_t qual, uint32_t 
     uint32_t i = g2i(gpos1);
     P[i].R = ref;
     if (qual>baseq_cutoff)
-    {    
+    {
         ++P[i].X[base2index(alt)];
     }
     ++P[i].N;
@@ -789,8 +789,8 @@ void Pileup::add_ins(uint32_t gpos1, std::string& ins, uint32_t rpos1)
         if (debug>=2) std::cerr << "\t\t\tinsertion left aligned : " << chrom << ":" << gpos1 << ":" << P[i].R << "/" << P[i].R << ins << " => " << chrom << ":" << a_gpos1 << ":" << a_ref << "/" << a_alt << "\n";
         uint32_t j = g2i(a_gpos1);
         ++P[j].I[a_alt.substr(1)];
-    
-        //for insertions shifted beyond the edge of a read alignment 
+
+        //for insertions shifted beyond the edge of a read alignment
         if (a_gpos1 < rpos1)
         {
             ++P[j].N;

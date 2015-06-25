@@ -121,16 +121,16 @@ void Estimator::compute_af(int32_t *gts, int32_t no_samples, int32_t ploidy,
             for (size_t i=0; i<ploidy; ++i)
             {
                 gt_indiv[i] = bcf_gt_allele(gts[offset+i]);
-                
+
                 if (gt_indiv[i]>=0)
                 {
                     ++AC[gt_indiv[i]];
                     ++AN;
                 }
             }
-            
+
             if (last_AN<AN) ++NS;
-            
+
             if (ploidy==2 && gt_indiv[0]>=0 && gt_indiv[1]>=0)
             {
                 if (gt_indiv[1]<gt_indiv[0])
@@ -139,7 +139,7 @@ void Estimator::compute_af(int32_t *gts, int32_t no_samples, int32_t ploidy,
                     gt_indiv[1] = gt_indiv[0] - gt_indiv[1];
                     gt_indiv[0] -= gt_indiv[1];
                 }
-                
+
                 ++GC[bcf_alleles2gt(gt_indiv[0],gt_indiv[1])];
                 ++GN;
             }
@@ -735,10 +735,10 @@ void Estimator::compute_gl_ab(int32_t *pls, int32_t no_samples, int32_t ploidy,
                               float& ab, int32_t& n)
 {
     n = 0;
-    
+
     if (ploidy!=2) return;
 
-    if (no_alleles==2) 
+    if (no_alleles==2)
     {
         float num = 0, denum = 0;
         for (size_t k=0; k<no_samples; ++k)
@@ -753,13 +753,13 @@ void Estimator::compute_gl_ab(int32_t *pls, int32_t no_samples, int32_t ploidy,
                              ( lt->pl2prob(pls[offset])*GF[0]
                               +lt->pl2prob(pls[offset+1])*GF[1]
                               +lt->pl2prob(pls[offset+2])*GF[2]);
-    
+
                 num += phet*nref;
                 denum += phet*dps[k];
-                ++n;           
+                ++n;
             }
         }
-    
+
         ab = (0.05+num)/(0.10+denum);
     }
     else
@@ -773,7 +773,7 @@ void Estimator::compute_gl_ab(int32_t *pls, int32_t no_samples, int32_t ploidy,
             {
                 float prob_data, p_ref;
                 int32_t gt_index = 0;
-                    
+
                 for (size_t j=1; j<no_alleles; ++j)
                 {
                     size_t het_index = bcf_alleles2gt(0,j);
@@ -781,7 +781,7 @@ void Estimator::compute_gl_ab(int32_t *pls, int32_t no_samples, int32_t ploidy,
                     float nrefnum = pls[offset+homalt_index]-pls[offset];
                     float nrefdenum = pls[offset]+pls[offset+homalt_index]-2*pls[offset+het_index] +6*dps[k];
                     float nref = 0.5*dps[k]*(1+(nrefdenum?nrefnum/nrefdenum:0));
-                
+
                     float n = lt->pl2prob(pls[offset+het_index])*GF[het_index] ;
                     float d = (lt->pl2prob(pls[offset])*GF[0]
                                +n
@@ -790,11 +790,11 @@ void Estimator::compute_gl_ab(int32_t *pls, int32_t no_samples, int32_t ploidy,
                     num += phet*nref;
                     denum += phet*dps[k];
                 }
-                
-                ++n;           
+
+                ++n;
             }
         }
-        
+
         ab = (0.05+num)/(0.10+denum);
     }
 };
@@ -829,7 +829,7 @@ void Estimator::compute_qual(int32_t *pls, int32_t no_samples, int32_t ploidy,
                 ++n;
 
                 qual += lt->log10((1-lt->pl2prob(pls[offset])/(lt->pl2prob(pls[offset])+lt->pl2prob(pls[offset+1])+lt->pl2prob(pls[offset+2]))));
-    
+
             }
 
             if (!n) return;
@@ -839,7 +839,7 @@ void Estimator::compute_qual(int32_t *pls, int32_t no_samples, int32_t ploidy,
         else
         {
             //works only for ploidy of 2
-            
+
             int32_t no_genotypes = bcf_an2gn(no_alleles);
 
             float gq = 0;

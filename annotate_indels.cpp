@@ -218,7 +218,7 @@ class Igor : Program
 //            if (len) free(seq);
 //        }
 //
-//                //annotate old alleles
+//        //annotate old alleles
 //        old_alleles.l = 0;
 //        bcf_variant2string(odw->hdr, v, &old_alleles);
 //        bcf_update_info_string(odw->hdr, v, "OLD_VARIANT", old_alleles.s);
@@ -246,8 +246,6 @@ class Igor : Program
             {
 //                bcf_print(odr->hdr, v);
                 va->annotate(odr->hdr, v, variant, mode);
-    
-    
                 update_vntr_info(odr->hdr, v, variant);
    
                 ++no_variants_annotated;

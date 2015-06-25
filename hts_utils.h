@@ -194,7 +194,7 @@ void bam_get_base_and_qual_and_read_and_qual(bam1_t *s, uint32_t pos, char& base
  * Converts base encoding to character.
  */
 #define bam_base2char(b) ("XACXGXXXTXXXXXXN"[(b)])
-    
+
 /**
  * Gets flag.
  */

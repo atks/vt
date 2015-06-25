@@ -86,7 +86,7 @@ void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::str
 
         //1. pick candidate region
         ReferenceRegion region = pick_candidate_region(h, v, REFERENCE);
-            
+
         //2. detect candidate motifs from a reference seqeuence
         pick_candidate_motifs(region, REFERENCE);
 
@@ -104,11 +104,10 @@ void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::str
         {
             if (debug) std::cerr << "============================================\n";
             if (debug) std::cerr << "ANNOTATING INDEL EXACTLY\n";
-            if (debug) std::cerr << "============================================\n";
-            
+
             //1. pick candidate region
             ReferenceRegion region = pick_candidate_region(h, v, ALLELE_EXACT);
-              
+
             //2. detect candidate motifs from a reference sequence
             pick_candidate_motifs(region, ALLELE_EXACT);
 
@@ -128,13 +127,13 @@ void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::str
 
             //1. pick candidate region
             ReferenceRegion region = pick_candidate_region(h, v, ALLELE_FUZZY);
-            
+
             //2. detect candidate motifs from a reference sequence
             pick_candidate_motifs(region, ALLELE_FUZZY);
-            
+
             //3. choose the best candidate motif
             choose_best_motif(h, v, mt, ALLELE_FUZZY);
-          
+
             return;
         }
         //1. selects candidate region by fuzzy left and right alignment
@@ -157,7 +156,7 @@ void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::str
 
 /**
  * Pick candidate region.
- * 
+ *
  * @mode - REFERENCE     use refence field
  *       - ALLELE_EXACT  by exact alignment
  *       - ALLELE_FUZZY  by fuzzy alignment
@@ -177,7 +176,7 @@ ReferenceRegion VNTRAnnotator::pick_candidate_region(bcf_hdr_t* h, bcf1_t* v, ui
     {
         return extract_regions_by_fuzzy_alignment(h, v);
     }
-    
+
     return ReferenceRegion();
 }
 
@@ -188,6 +187,12 @@ ReferenceRegion VNTRAnnotator::pick_candidate_region(bcf_hdr_t* h, bcf1_t* v, ui
  */
 void VNTRAnnotator::pick_candidate_motifs(ReferenceRegion& region, uint32_t mode)
 {
+    if (debug)
+    {
+        if (debug) std::cerr << "********************************************\n";
+        std::cerr << "PICK CANDIDATE MOTIFS\n\n";
+    }
+
     mt->detect_candidate_motifs(region.ref);
 }
 
@@ -197,10 +202,13 @@ void VNTRAnnotator::pick_candidate_motifs(ReferenceRegion& region, uint32_t mode
  */
 VNTR VNTRAnnotator::choose_best_motif(bcf_hdr_t* h, bcf1_t* v, MotifTree* mt, uint32_t mode)
 {
-    if (debug) std::cerr << "pcm size : " << mt->pcm.size() << "\n";
-    if (debug) std::cerr << "********************************************\n";
+    if (debug)
+    {
+        if (debug) std::cerr << "********************************************\n";
+        std::cerr << "PICK BEST MOTIF\n\n";
+    }
 
-    if (debug) std::cerr << "============================================\n";
+    if (debug) std::cerr << "pcm size : " << mt->pcm.size() << "\n";
 
     if (mode==REFERENCE)
     {
@@ -239,13 +247,14 @@ VNTR VNTRAnnotator::choose_best_motif(bcf_hdr_t* h, bcf1_t* v, MotifTree* mt, ui
                 {
                     ahmm->print_alignment();
 
-                    printf("    selected: %10s %.2f %.2f %.2f %.2f (%d/%d)\n", cm.motif.c_str(),
-                                                                    cm.score,
-                                                                    cm.fit,
-                                                                    ahmm->get_motif_concordance(),
-                                                                    (float)ahmm->get_exact_motif_count()/ahmm->get_motif_count(),
-                                                                    ahmm->get_exact_motif_count(),
-                                                                    ahmm->get_motif_count());
+                    printf("    selected: %10s %.2f %.2f %.2f %.2f (%d/%d)\n",
+                            cm.motif.c_str(),
+                            cm.score,
+                            cm.fit,
+                            ahmm->get_motif_concordance(),
+                            (float)ahmm->get_exact_motif_count()/ahmm->get_motif_count(),
+                            ahmm->get_exact_motif_count(),
+                            ahmm->get_motif_count());
                 }
             }
             else
@@ -313,7 +322,7 @@ VNTR VNTRAnnotator::choose_best_motif(bcf_hdr_t* h, bcf1_t* v, MotifTree* mt, ui
     }
     else if (mode==ALLELE_FUZZY)
     {
-        
+
 //          if (!mt->pcm.empty())
 //            {
 //                CandidateMotif cm = mt->pcm.top();
@@ -337,7 +346,7 @@ VNTR VNTRAnnotator::choose_best_motif(bcf_hdr_t* h, bcf1_t* v, MotifTree* mt, ui
 //                    }
 //                }
 //            }
-        
+
         //choose candidate motif
         bool first = true;
         float cp = 0;
@@ -662,6 +671,12 @@ void VNTRAnnotator::infer_flanks(bcf_hdr_t* h, bcf1_t* v, std::string& motif)
  */
 ReferenceRegion VNTRAnnotator::extract_regions_by_exact_alignment(bcf_hdr_t* h, bcf1_t* v)
 {
+    if (debug)
+    {
+        if (debug) std::cerr << "********************************************\n";
+        std::cerr << "EXTRACTIING REGION BY EXACT ALIGNMENT\n\n";
+    }
+
     const char* chrom = bcf_get_chrom(h, v);
 
     int32_t min_beg1 = bcf_get_pos1(v);
@@ -679,8 +694,7 @@ ReferenceRegion VNTRAnnotator::extract_regions_by_exact_alignment(bcf_hdr_t* h, 
 
         if (debug)
         {
-            std::cerr << "indel fragment : " << (ref.size()<alt.size()? alt : ref) << "\n";
-            std::cerr << "               : " << ref << ":" << alt << "\n";
+           bcf_print_liten(h, v);
         }
 
         int32_t end1 = pos1 + ref.size() - 1;
@@ -989,6 +1003,12 @@ void VNTRAnnotator::right_align(const char* chrom, int32_t& pos1, std::string& r
  */
 ReferenceRegion VNTRAnnotator::extract_regions_by_fuzzy_alignment(bcf_hdr_t* h, bcf1_t* v)
 {
+    if (debug)
+    {
+        if (debug) std::cerr << "********************************************\n";
+        std::cerr << "EXTRACTIING REGION BY FUZZY ALIGNMENT\n\n";
+    }
+
     const char* chrom = bcf_get_chrom(h, v);
 
     int32_t min_beg1 = bcf_get_pos1(v);

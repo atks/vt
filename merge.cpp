@@ -167,7 +167,7 @@ class Igor : Program
             }
         }
         bcf_hdr_add_sample(odw->hdr, NULL);
-        
+
         if (no_samples)
         {
             bcf_hdr_append(odw->hdr, "##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">");
@@ -221,7 +221,7 @@ class Igor : Program
                     int32_t *dp = NULL;
                     int32_t n_dp=0;
                     bcf_get_format_int32(h, v, "DP", &dp, &n_dp);
-                    
+
                     int32_t *ad = NULL;
                     int32_t n_ad=0;
                     bcf_get_format_int32(h, v, "AD", &ad, &n_ad);
@@ -229,7 +229,7 @@ class Igor : Program
                     int32_t *gq = NULL;
                     int32_t n_gq=0;
                     bcf_get_format_int32(h, v, "GQ", &gq, &n_gq);
-                    
+
                     for (int32_t j=0; j<bcf_hdr_nsamples(h); ++j)
                     {
                         int32_t k = bcf_hdr_id2int(odw->hdr, BCF_DT_SAMPLE, bcf_hdr_get_sample_name(sr->hdrs[file_index], j));
@@ -247,7 +247,7 @@ class Igor : Program
                             pls[k*3] = bcf_int32_missing;
                             pls[k*3+1] = bcf_int32_vector_end;
                         }
-                        
+
                         if (n_dp)
                         {
                             dps[k] = dp[j];
@@ -256,7 +256,7 @@ class Igor : Program
                         {
                             dps[k] = bcf_int32_missing;
                         }
-                        
+
                         if (n_ad)
                         {
                             ads[k*3] = ad[j*3];
@@ -268,7 +268,7 @@ class Igor : Program
                             ads[k*3] = bcf_int32_missing;
                             ads[k*3+1] = bcf_int32_vector_end;
                         }
-                        
+
                         if (n_gq)
                         {
                             gqs[k] = gq[j];
@@ -277,7 +277,7 @@ class Igor : Program
                         {
                             gqs[k] = bcf_int32_missing;
                         }
-                        
+
                         ++ngt;
                     }
 
@@ -291,7 +291,7 @@ class Igor : Program
                 bcf_update_format_int32(odw->hdr,nv,"DP",dps,ngt);
                 bcf_update_format_int32(odw->hdr,nv,"AD",ads,ngt*3);
                 bcf_update_format_int32(odw->hdr,nv,"GQ",gqs,ngt);
-                
+
                 odw->write(nv);
             }
             else

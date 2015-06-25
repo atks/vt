@@ -205,7 +205,7 @@ class Igor : Program
         int32_t *dps = (int32_t *) malloc(nsample*sizeof(int32_t));
         int32_t n = 0;
         int32_t n_dp = nsample;
-        
+
         while(odr->read(v))
         {
             bcf_unpack(v, BCF_UN_IND);
@@ -232,16 +232,16 @@ class Igor : Program
             if (r==-1)
             {
                 r = bcf_get_format_int32(h, v, "NR", &dps, &n_dp);
-                
+
                 if (r==-1)
                 {
                     for (uint32_t i=0; i<nsample; ++i)
                     {
                         dps[i] = min_depth;
                     }
-                } 
+                }
             }
-            
+
             bool variant_used = false;
 
             for (int32_t i =0; i< trios.size(); ++i)
@@ -261,12 +261,12 @@ class Igor : Program
                 int32_t c2 = bcf_gt_allele(gts[(j<<1)+1]);
                 min_dp = dps[j]<min_dp ? dps[j] : min_dp;
 
-                if (min_dp<min_depth) 
+                if (min_dp<min_depth)
                 {
                     ++no_failed_min_depth;
                     continue;
                 }
-                
+
                 if (!(f1<0 || f2<0 || m1<0 || m2<0 || c1<0 || c2<0))
                 {
                     if (!ignore_non_variants || (f1+f2+m1+m2+c1+c2!=0))

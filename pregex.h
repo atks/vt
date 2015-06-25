@@ -31,6 +31,7 @@
 
 /**
  * Class for PERL regular expressions.
+ * Wrapper for pcre2.
  */
 class PERLregex
 {
@@ -41,14 +42,14 @@ class PERLregex
     PCRE2_SPTR subject;     /* the appropriate width (8, 16, or 32 bits). */
     PCRE2_SPTR name_table;
 
-    int crlf_is_newline;
-    int errornumber;
-    int find_all;
-    int i;
-    int namecount;
-    int name_entry_size;
-    int rc;
-    int utf8;
+    int32_t crlf_is_newline;
+    int32_t errornumber;
+    int32_t find_all;
+    int32_t i;
+    int32_t namecount;
+    int32_t name_entry_size;
+    int32_t rc;
+    int32_t utf8;
 
     uint32_t option_bits;
     uint32_t newline;

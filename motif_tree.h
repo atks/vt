@@ -44,23 +44,23 @@
 /**
  * struct for storing sequence content.
  */
-typedef struct 
+typedef struct
 {
     uint32_t base[4]; //counts of bases
-    uint32_t n; //total number of bases   
+    uint32_t n; //total number of bases
 } scontent;
 
 /**
  * struct for encoding a node.
  */
-typedef struct 
+typedef struct
 {
     uint32_t index; //index
     uint32_t cindex; //index of the cannonical form
     uint32_t count;  //count of occurence of this motif
     uint32_t len;    //length of the motif
     uint32_t seq;    //sequence encoded in 2 bits per base, this allows for a maximum length of 16 bases
-    
+
 } node;
 
 #define index2base(i) ("ACGT"[(i)])
@@ -75,7 +75,7 @@ class CandidateMotif
     float score;
     uint32_t len;
     float fit;
-    
+
     CandidateMotif(std::string motif, float score, uint32_t len, float fit)
     {
         this->motif = motif;
@@ -94,7 +94,7 @@ class CompareCandidateMotif
     bool operator()(CandidateMotif& a, CandidateMotif& b)
     {
         if (a.score!=b.score)
-        {    
+        {
             return a.score < b.score;
         }
         else
@@ -120,12 +120,12 @@ class MotifTree
     node* tree;
     MotifMap *mm;
     uint32_t max_len;
-    std::map<uint32_t, uint32_t> cm;          // 
+    std::map<uint32_t, uint32_t> cm;          //
     std::vector<uint32_t> lc;                 // for counting the number of motifs of length x.
     std::priority_queue<CandidateMotif, std::vector<CandidateMotif>, CompareCandidateMotif > pcm;
     uint32_t cmax_len; //candidate maximum length
     bool debug;
-        
+
     /**
      * Constructor.
      */
@@ -140,7 +140,7 @@ class MotifTree
      * Clear the suffix tree.
      */
     void clear();
-    
+
     /**
      * Gets subsequence from a C string.
      */
@@ -149,33 +149,33 @@ class MotifTree
     /**
      * Inserts prefix s into tree.
      */
-    void insert_prefix(uint32_t s, uint32_t len);  
-  
+    void insert_prefix(uint32_t s, uint32_t len);
+
     /**
      * Consolidate motif counts.
      */
-    void consolidate_motif_counts();    
-    
+    void consolidate_motif_counts();
+
     /**
      * Consolidate motif counts.
      */
     void consolidate_motif_counts(node* n);
-    
+
     /**
      * Construct suffix tree based on sequence up to max_motif_len.
      */
     void set_sequence(char* seq, uint32_t len);
-    
+
     /**
      * Shifts a string.
      */
     std::string shift_str(std::string& seq, uint32_t i);
-    
+
     /**
      * Checks if two copies of a motif exists in a seq.
      */
     bool exist_two_copies(std::string& seq, std::string& motif);
-    
+
     /**
      * Compute fit of expected content of nucleotides.
      */
@@ -185,17 +185,17 @@ class MotifTree
      * Detects candidate motifs from seq of length len.
      */
     void detect_candidate_motifs(std::string& seq);
-        
+
     /**
      * Detects candidate motifs from seq of length len.
      */
     void detect_candidate_motifs(char* seq, uint32_t len);
-    
+
     /**
      * Gets index of first child.
      */
     uint32_t get_first_child(uint32_t seq, uint32_t len);
-    
+
 
     private:
 
@@ -208,12 +208,12 @@ class MotifTree
      * Print node.
      */
     void print_node(node* n);
-    
+
     /**
      * Print tree.
      */
     void print_tree();
-     
+
     /**
      * Print tree.
      */

@@ -283,7 +283,6 @@ void MotifTree::detect_candidate_motifs(char* seq, uint32_t len)
 {
     if (debug)
     {
-        std::cerr << "============================================\n";
         std::cerr << "detecting motifs for an str\n";
         std::cerr << "seq: " << seq << "\n";
     }
@@ -337,6 +336,7 @@ void MotifTree::detect_candidate_motifs(char* seq, uint32_t len)
                 std::string motif = mm->seq2str(mm->index2seq(i->first), tree[i->first].len);
                 if (exist_two_copies(s, motif))
                 {
+                    if (debug) std::cerr << motif << " : " << p << " " << tree[i->first].len << " " << f << "\n";
                     pcm.push(CandidateMotif(motif, p, tree[i->first].len, f));
                 }
             }
@@ -351,14 +351,11 @@ void MotifTree::detect_candidate_motifs(char* seq, uint32_t len)
         float p = (float)i->second/(lc[tree[i->first].len]);
         float f = compute_fit(i->first, &sc);
         p -= f;
+        if (debug) std::cerr << mm->seq2str(mm->index2seq(i->first), tree[i->first].len) << " : " << p << " " << tree[i->first].len << " " << f << "\n";
         pcm.push(CandidateMotif(mm->seq2str(mm->index2seq(i->first), tree[i->first].len), p, tree[i->first].len, f));
             
     }    
 
-    //populate candidate_motifs
-//
-    if (debug) std::cerr << "============================================\n";
-//
 //    print_tree();
 };
 

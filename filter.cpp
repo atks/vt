@@ -159,14 +159,14 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
                 if (debug)
                     std::cerr << "\tVT_MATCH "   <<  left->s.s << "&" << right->s.s    <<  " \n";
 
-                if (!regex_set) 
+                if (!regex_set)
                 {
                     pregex.set(right->s.s);
                     regex_set = true;
                 }
-                
+
                 b = pregex.match(left->s.s);
-                
+
                 return;
             }
 
@@ -180,14 +180,14 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
                 if (debug)
                     std::cerr << "\tVT_NO_MATCH "   <<  left->s.s << "&" << right->s.s    <<  " \n";
 
-                if (!regex_set) 
+                if (!regex_set)
                 {
                     pregex.set(right->s.s);
                     regex_set = true;
                 }
-                
+
                 b = !pregex.match(left->s.s);
-                
+
                 return;
             }
 
@@ -1127,7 +1127,7 @@ bool Filter::is_literal(const char* exp, int32_t len, bool debug)
     {
         return true;
     }
-    
+
     const char* q = exp;
     while (q-exp<len)
     {

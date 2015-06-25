@@ -66,7 +66,7 @@ class Estimator
     {
         this->lt = lt;
     };
-    
+
     /**
      * Computes allele frequencies using hard calls.
      *
@@ -83,9 +83,9 @@ class Estimator
      * @NS         - number of samples with data
      */
     void compute_af(int32_t *gts, int32_t no_samples, int32_t ploidy,
-                    int32_t no_alleles, int32_t *AC, int32_t& AN, float *AF, 
+                    int32_t no_alleles, int32_t *AC, int32_t& AN, float *AF,
                     int32_t *GC,  int32_t& GN, float *GF, int32_t& NS);
-                
+
     /**
      * Computes allele frequencies using EM algorithm from genotype likelihoods
      * under assumption of Hardy-Weinberg Equilibrium.

@@ -73,7 +73,7 @@ void PERLregex::set(char* regex)
     {
         PCRE2_UCHAR buffer[256];
         pcre2_get_error_message(errornumber, buffer, sizeof(buffer));
-        fprintf(stderr, "[E:%s] Regular expression compilation failed : %s at position %d\n", __FUNCTION__, buffer, (int) erroroffset);
+        fprintf(stderr, "[E:%s] Regular expression compilation failed : %s at position %d\n", __FUNCTION__, buffer, (int32_t) erroroffset);
         exit(1);
     }
 
@@ -85,7 +85,7 @@ void PERLregex::set(char* regex)
  */
 bool PERLregex::match(std::string& text)
 {
-    return match(const_cast<char*>(text.c_str()));    
+    return match(const_cast<char*>(text.c_str()));
 };
 
 /**

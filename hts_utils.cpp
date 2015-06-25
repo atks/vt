@@ -451,14 +451,14 @@ bcf_hdr_t *bcf_alt_hdr_read(htsFile *fp)
     kstring_t alt_hdr_fn = {0, 0, 0};
     kputs(fp->fn, &alt_hdr_fn);
     kputs(".hdr", &alt_hdr_fn);
-    
+
     FILE *file = NULL;
     struct stat st;
     if (stat(alt_hdr_fn.s, &st)==0 && st.st_size)
     {
-        file = fopen(alt_hdr_fn.s, "r");    
-    }    
-    
+        file = fopen(alt_hdr_fn.s, "r");
+    }
+
     if (fp->format.format ==bcf || !file)
     {
         h = bcf_hdr_read(fp);
