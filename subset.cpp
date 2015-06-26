@@ -201,6 +201,10 @@ class Igor : Program
                     odw->write(v);        
                     ++no_subset_variants;
                 }
+                
+                //check if the alleles used are a subset of the report alleles in shared data
+                //reduce observed alleles 
+                
             }
         }
 

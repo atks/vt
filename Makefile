@@ -24,7 +24,6 @@ SOURCES = align\
 		config\
 		consolidate_variants\
 		construct_probes\
-		context_filter\
 		decompose\
 		decompose2\
 		decompose_blocksub\
