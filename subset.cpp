@@ -42,7 +42,7 @@ class Igor : Program
     std::string arg_sample_list;
     char** samples;
     int32_t *imap;
-    int32_t nsamples;    
+    int32_t nsamples;
 
     ///////
     //i/o//
@@ -64,7 +64,7 @@ class Igor : Program
     int32_t no_subset_samples;
     int32_t no_variants;
     int32_t no_subset_variants;
-    
+
     /////////
     //tools//
     /////////
@@ -113,13 +113,13 @@ class Igor : Program
         //////////////////////
         odr = new BCFOrderedReader(input_vcf_file, intervals);
         odw = new BCFOrderedWriter(output_vcf_file);
-        
-        imap = (int32_t*) malloc(sizeof(int32_t)*nsamples);            
+
+        imap = (int32_t*) malloc(sizeof(int32_t)*nsamples);
         odw->link_hdr(bcf_hdr_subset(odr->hdr, nsamples, samples, imap));
-      
+
         bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_AC,Number=A,Type=Integer,Description=\"Allele count in genotypes, for each ALT allele, in the same order as listed\">\n");
         bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_AN,Number=1,Type=Integer,Description=\"Total number of alleles in called genotypes\">\n");
-      
+
         /////////////////////////
         //filter initialization//
         /////////////////////////
@@ -133,7 +133,7 @@ class Igor : Program
         no_subset_samples = bcf_hdr_nsamples(odw->hdr);
         no_variants = 0;
         no_subset_variants = 0;
-    
+
         ///////////////////////
         //tool initialization//
         ///////////////////////
@@ -148,16 +148,16 @@ class Igor : Program
 
         int32_t *gts = NULL;
         int32_t n = 0;
-        
-        odw->write_hdr();    
-            
+
+        odw->write_hdr();
+
         while(odr->read(v))
         {
             variant.clear();
             bool printed = false;
 
             ++no_variants;
-            
+
             if (filter_exists && !filter.apply(h,v,&variant))
             {
                 vm->classify_variant(h, v, variant);
@@ -167,24 +167,24 @@ class Igor : Program
             if (no_subset_samples)
             {
                 bcf_subset(odw->hdr, v, nsamples, imap);
-                
+
                 //update AC
                 bcf_unpack(v, BCF_UN_ALL);
-                int32_t ploidy = bcf_get_genotypes(odw->hdr, v, &gts, &n)/no_subset_samples;        
-                int32_t n_allele = bcf_get_n_allele(v); 
-                
+                int32_t ploidy = bcf_get_genotypes(odw->hdr, v, &gts, &n)/no_subset_samples;
+                int32_t n_allele = bcf_get_n_allele(v);
+
                 int32_t g[ploidy];
                 for (int32_t i=0; i<ploidy; ++i) g[i]=0;
                 int32_t AC[n_allele];
                 for (int32_t i=0; i<n_allele; ++i) AC[i]=0;
                 int32_t AN=0;
-                
+
                 for (int32_t i=0; i<no_subset_samples; ++i)
                 {
                     for (int32_t j=0; j<ploidy; ++j)
-                    {   
+                    {
                         g[j] = bcf_gt_allele(gts[i*ploidy+j]);
-                        
+
                         if (g[j]>=0)
                         {
                             ++AC[g[j]];
@@ -192,19 +192,19 @@ class Igor : Program
                         }
                     }
                 }
-                    
+
                 if (AC[0]<AN)
-                {   
+                {
                     int32_t* AC_PTR = &AC[1];
-                    bcf_update_info_int32(odw->hdr,v,"VT_AC",AC_PTR,n_allele-1); 
-                    bcf_update_info_int32(odw->hdr,v,"VT_AN",&AN,1);  
-                    odw->write(v);        
+                    bcf_update_info_int32(odw->hdr,v,"VT_AC",AC_PTR,n_allele-1);
+                    bcf_update_info_int32(odw->hdr,v,"VT_AN",&AN,1);
+                    odw->write(v);
                     ++no_subset_variants;
                 }
-                
+
                 //check if the alleles used are a subset of the report alleles in shared data
-                //reduce observed alleles 
-                
+                //reduce observed alleles
+
             }
         }
 

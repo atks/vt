@@ -25,6 +25,7 @@
 
 namespace
 {
+    
 void print_time(float t)
 {
     if (t<60)
@@ -165,7 +166,7 @@ class Igor : Program
             hmm.set_tau(tau);
             hmm.set_eta(eta);
             hmm.set_mismatch_penalty(mismatch_penalty);
-            hmm.initialize_T();   
+            hmm.initialize_T();
             clock_t t0 = clock();
             hmm.align(y.c_str(), qual.c_str());
             hmm.print_alignment();
@@ -188,7 +189,7 @@ class Igor : Program
             hmm.set_epsilon(epsilon);
             hmm.set_tau(tau);
             hmm.set_eta(eta);
-            hmm.initialize_T();    
+            hmm.initialize_T();
             hmm.set_mismatch_penalty(mismatch_penalty);
             hmm.align(y.c_str(), qual.c_str());
             hmm.print_alignment();
@@ -210,7 +211,7 @@ class Igor : Program
             hmm.set_tau(tau);
             hmm.set_eta(eta);
             hmm.set_mismatch_penalty(mismatch_penalty);
-            hmm.initialize_T();   
+            hmm.initialize_T();
             hmm.align(y.c_str(), qual.c_str());
             hmm.print_alignment();
             clock_t t1 = clock();
@@ -231,7 +232,7 @@ class Igor : Program
             hmm.set_tau(tau);
             hmm.set_eta(eta);
             hmm.set_mismatch_penalty(mismatch_penalty);
-            hmm.initialize_T();   
+            hmm.initialize_T();
             hmm.align(y.c_str(), qual.c_str());
             hmm.print_alignment();
             clock_t t1 = clock();

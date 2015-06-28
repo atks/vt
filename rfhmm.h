@@ -33,7 +33,7 @@
 //model states
 #define S       0
 #define Y       1
-#define M       2 
+#define M       2
 #define D       3
 #define I       4
 #define MR      5
@@ -77,14 +77,14 @@
 
 class RFHMMParameters
 {
-    public: 
-        
+    public:
+
     float delta;
     float epsilon;
     float tau;
     float eta;
     float mismatch_penalty;
-    
+
     RFHMMParameters()
     {
         delta = 0.01;
@@ -139,7 +139,7 @@ class RFHMM
 
     typedef int32_t (RFHMM::*move) (int32_t t, int32_t j);
     move **moves;
-    
+
     bool debug;
 
     /**
@@ -161,17 +161,17 @@ class RFHMM
      * Initializes object, helper function for constructor.
      */
     void initialize();
-   
+
     /**
      * Initializes objects for constructor.
      */
     void initialize_structures();
-        
+
     /**
      * Initialize transition matrix based on parameters.
      */
     void initialize_T();
-    
+
     /**
      * Initializes U and V.
      */
@@ -181,27 +181,27 @@ class RFHMM
      * Sets a model.
      */
     void set_model(const char* motif, const char* lflank);
- 
+
     /**
      * Sets delta.
      */
     void set_delta(float delta);
-    
+
     /**
      * Sets epsilon.
      */
     void set_epsilon(float epsilon);
-    
+
     /**
      * Sets tau.
      */
     void set_tau(float tau);
-    
+
     /**
      * Sets eta.
      */
     void set_eta(float eta);
-    
+
     /**
      * Sets mismatch penalty.
      */
@@ -221,7 +221,7 @@ class RFHMM
      * Get left flank end position for model.
      */
     int32_t get_lflank_model_epos1();
-    
+
     /**
      * Get motif start position for model.
      */
@@ -261,7 +261,7 @@ class RFHMM
      * Get motif end position for read.
      */
     int32_t get_motif_read_epos1();
-    
+
     /**
      * Get right flank start position for read.
      */
@@ -271,7 +271,7 @@ class RFHMM
      * Get right flank end position for read.
      */
     int32_t get_rflank_read_epos1();
-        
+
     /**
      * Computes the score associated with the move from A to B
      * Updates the max_score and associated max_track.
@@ -283,7 +283,7 @@ class RFHMM
      * @m      - base match required (MATCH, MODEL_ONLY, READ_ONLY)
      */
     void proc_comp(int32_t A, int32_t B, int32_t i, int32_t j, int32_t match_type);
-   
+
     /**
      * Align and compute genotype likelihood.
      */
@@ -451,7 +451,7 @@ class RFHMM
                 return make_track(M,MOTIF,track_get_c(t),p+1);
             }
         }
-        
+
         return NULL_TRACK;
     }
 
@@ -469,7 +469,7 @@ class RFHMM
                 return make_track(D,MOTIF,track_get_c(t),p+1);
             }
         }
-    
+
         return NULL_TRACK;
     }
 
@@ -487,7 +487,7 @@ class RFHMM
                 return make_track(I,MOTIF,track_get_c(t),p+1);
             }
         }
-        
+
         return NULL_TRACK;
     }
 
@@ -500,14 +500,14 @@ class RFHMM
 
         return NULL_TRACK;
     }
-    
+
     int32_t move_Y_D(int32_t t, int32_t j)
     {
         if (j<rlen)
         {
             return make_track(Y,MOTIF,1,1);
         }
-    
+
         return NULL_TRACK;
     }
 
@@ -543,7 +543,7 @@ class RFHMM
                 return make_track(D,MOTIF,track_get_c(t),p+1);
             }
         }
-    
+
         return NULL_TRACK;
     }
 
@@ -575,7 +575,7 @@ class RFHMM
         {
             return track_set_u(t,M);
         }
-    
+
         return NULL_TRACK;
     }
 
@@ -585,7 +585,7 @@ class RFHMM
         {
             return track_set_u(t,I);
         }
-    
+
         return NULL_TRACK;
     }
 
@@ -601,7 +601,7 @@ class RFHMM
 
         return NULL_TRACK;
     }
-    
+
     int32_t move_Y_MR(int32_t t, int32_t j)
     {
         if (j<rlen)
@@ -615,7 +615,7 @@ class RFHMM
                 return NULL_TRACK;
             }
         }
-    
+
         return NULL_TRACK;
     }
 
@@ -636,7 +636,7 @@ class RFHMM
         {
             return make_track(D,RFLANK,0,1);
         }
-    
+
         return NULL_TRACK;
     }
 
@@ -647,7 +647,7 @@ class RFHMM
         {
             return make_track(I,RFLANK,0,1);
         }
-    
+
         return NULL_TRACK;
     }
 
@@ -658,7 +658,7 @@ class RFHMM
         {
             return make_track(MR,RFLANK,0,p+1);
         }
-    
+
         return NULL_TRACK;
     }
 };

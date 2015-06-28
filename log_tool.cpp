@@ -72,7 +72,7 @@ double LogTool::pl2log10_varp(uint32_t pl)
         }
     }
 
-    return LOG10_VARP[pl];     
+    return LOG10_VARP[pl];
 }
 
 /**

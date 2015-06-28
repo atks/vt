@@ -49,10 +49,10 @@ class Igor : Program
     uint32_t alignment_penalty;
 
     std::string MOTIF;
-    std::string SCORE;        
+    std::string SCORE;
     std::string RU;
     std::string RL;
-            
+
     bool debug;
 
     ///////
@@ -72,7 +72,7 @@ class Igor : Program
     VariantManip* vm;
     VNTRAnnotator* va;
     faidx_t* fai;
-   
+
     Igor(int argc, char **argv)
     {
         version = "0.5";
@@ -82,7 +82,7 @@ class Igor : Program
         //////////////////////////
         try
         {
-            std::string desc = "annotates indels with STR type information - repeat tract length, repeat motif, flank information";
+            std::string desc = "annotates indels with VNTR information - repeat tract length, repeat motif, flank information";
 
             TCLAP::CmdLine cmd(desc, ' ', version);
             VTOutput my; cmd.setOutput(&my);
@@ -95,11 +95,11 @@ class Igor : Program
                  "              f : determine by fuzzy alignment.\n"
                  "              x : using HMMs",
                  false, "", "str", cmd);
-            TCLAP::ValueArg<uint32_t> arg_alignment_penalty("p", "p", "alignment penalty [0]\n", false, 0, "int", cmd);     
+            TCLAP::ValueArg<uint32_t> arg_alignment_penalty("p", "p", "alignment penalty [0]\n", false, 0, "int", cmd);
             TCLAP::SwitchArg arg_debug("d", "d", "debug [false]", cmd, false);
             TCLAP::UnlabeledValueArg<std::string> arg_input_vcf_file("<in.vcf>", "input VCF file", true, "","file", cmd);
             TCLAP::SwitchArg arg_override_tag("x", "x", "override tags [false]", cmd, false);
-            
+
             cmd.parse(argc, argv);
 
             input_vcf_file = arg_input_vcf_file.getValue();
@@ -129,15 +129,15 @@ class Igor : Program
         {
             fprintf(stderr, "[%s:%d %s] Not a valid mode of annotation: %s\n", __FILE__,__LINE__,__FUNCTION__, mode.c_str());
             exit(1);
-        }   
-       
+        }
+
         //////////////////////
         //i/o initialization//
         //////////////////////
         odr = new BCFOrderedReader(input_vcf_file, intervals);
         odw = new BCFOrderedWriter(output_vcf_file);
         odw->link_hdr(odr->hdr);
-        
+
         MOTIF = bcf_hdr_append_info_with_backup_naming(odw->hdr, "MOTIF", "1", "String", "Canonical Motif in an VNTR or Homopolymer", true);
         SCORE = bcf_hdr_append_info_with_backup_naming(odw->hdr, "SCORE", "1", "Float", "Score of repeat unit", true);
         RU = bcf_hdr_append_info_with_backup_naming(odw->hdr, "RU", "1", "String", "Repeat unit in a VNTR or Homopolymer", true);
@@ -186,18 +186,18 @@ class Igor : Program
 
     void update_vntr_info(bcf_hdr_t* h, bcf1_t *v, Variant& variant)
     {
-        if (variant.vntr.motif!="") 
+        if (variant.vntr.motif!="")
         {
             bcf_update_info_string(odw->hdr, v, MOTIF.c_str(), variant.vntr.motif.c_str());
         }
-        
-        if (variant.vntr.ru!="") 
+
+        if (variant.vntr.ru!="")
         {
             bcf_update_info_string(odw->hdr, v, RU.c_str(), variant.vntr.ru.c_str());
         }
-        
-        if (variant.vntr.motif_score>=0) 
-        {    
+
+        if (variant.vntr.motif_score>=0)
+        {
             bcf_update_info_float(odw->hdr, v, SCORE.c_str(), &variant.vntr.motif_score, 1);
         }
 
@@ -237,7 +237,7 @@ class Igor : Program
         bcf1_t *v = odw->get_bcf1_from_pool();
         Variant variant;
         kstring_t old_alleles = {0,0,0};
-        
+
         while (odr->read(v))
         {
             bcf_unpack(v, BCF_UN_STR);
@@ -247,7 +247,7 @@ class Igor : Program
 //                bcf_print(odr->hdr, v);
                 va->annotate(odr->hdr, v, variant, mode);
                 update_vntr_info(odr->hdr, v, variant);
-   
+
                 ++no_variants_annotated;
             }
 

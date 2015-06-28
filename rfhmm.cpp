@@ -697,7 +697,7 @@ void RFHMM::trace_path()
 
         collect_statistics(src_t, des_t, j);
         if (debug) std::cerr << track2string(src_t) << " (" << i << "," << j << ") => " << track2string(des_t) << " :  " << track2string(last_t) << "\n";
-        
+
         if (track_get_u(src_t)==TBD)
         {
             exit(1);
@@ -788,7 +788,7 @@ void RFHMM::collect_statistics(int32_t src_t, int32_t des_t, int32_t j)
             }
 
             ++motif_discordance[motif_count];
-            
+
         }
         else if (des_u==I)
         {
@@ -803,7 +803,7 @@ void RFHMM::collect_statistics(int32_t src_t, int32_t des_t, int32_t j)
             lflank_end[MODEL] = track_get_p(des_t);
             lflank_end[READ] = j;
         }
-        
+
     }
     else if (src_u==Y)
     {
@@ -812,9 +812,9 @@ void RFHMM::collect_statistics(int32_t src_t, int32_t des_t, int32_t j)
             lflank_start[MODEL] = track_get_p(des_t);
             lflank_start[READ] = j+1;
         }
-        
+
     }
-    
+
     if (des_u==M)
     {
         if (track_get_base(des_t)!=read[j-1])
@@ -849,7 +849,7 @@ void RFHMM::clear_statistics()
     motif_count = NAN;
     exact_motif_count = NAN;
     motif_m = NAN;
-    motif_xid = NAN; 
+    motif_xid = NAN;
     motif_concordance = NAN;
     maxLogOdds = NAN;
 }

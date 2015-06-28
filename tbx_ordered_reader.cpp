@@ -26,7 +26,7 @@
 /**
  * Initialize files and intervals.
  *
- * @hts              name of the input file
+ * @hts_file   name of the input file
  */
 TBXOrderedReader::TBXOrderedReader(std::string& hts_file)
 {
@@ -53,8 +53,8 @@ TBXOrderedReader::TBXOrderedReader(std::string& hts_file)
 /**
  * Initialize files and intervals.
  *
- * @hts              name of the input file
- * @intervals        list of intervals, if empty, all records are selected.
+ * @hts_file   -  name of the input file
+ * @intervals  -  list of intervals, if empty, all records are selected.
  */
 TBXOrderedReader::TBXOrderedReader(std::string& hts_file, std::vector<GenomeInterval>& intervals)
 {

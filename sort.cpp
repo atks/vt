@@ -229,7 +229,7 @@ class Igor : Program
                 else
                 {
                     ++bptr;
-                    
+
                     //sort and write out
                     qsort (buffer, bptr, sizeof(bcf1_t*), bcf_compare);
 
@@ -253,7 +253,7 @@ class Igor : Program
                     odw = new BCFOrderedWriter(file_name);
                     odw->link_hdr(odr->hdr);
                     odw->write_hdr();
-                    
+
                     for (size_t i=0; i<bptr; ++i)
                     {
                         odw->write(buffer[i]);
@@ -269,10 +269,10 @@ class Igor : Program
             if (bptr)
             {
                 qsort (buffer, bptr, sizeof(bcf1_t*), bcf_compare);
-                
+
                 kstring_t s = {0,0,0};
                 if (output_vcf_file!="-")
-                {    
+                {
                     kputs(output_vcf_file.c_str(), &s);
                     kputs(".", &s);
                 }
@@ -298,7 +298,7 @@ class Igor : Program
 
                 odw->close();
                 delete odw;
-                
+
                 bptr = 0;
             }
 
@@ -310,7 +310,7 @@ class Igor : Program
             odw = new BCFOrderedWriter(output_vcf_file);
             odw->link_hdr(odr->hdr);
             odw->write_hdr();
-            
+
             int32_t no = 0;
             while(sr.read_next_position(current_recs))
             {
@@ -318,22 +318,22 @@ class Igor : Program
                 {
                     odw->write(current_recs[i]->v);
                 }
-                
+
                 ++no;
             }
-            
+
             sr.close();
-            
+
             for (size_t i=0; i< sorted_file_names.size(); ++i)
             {
                 std::remove(sorted_file_names[i].c_str());
             }
-            
+
             odr->close();
-        
+
             odw->close();
             delete odw;
-        
+
             for (size_t i=0; i<buffer_size; ++i)
             {
                 bcf_destroy(buffer[i]);

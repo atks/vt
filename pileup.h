@@ -319,14 +319,14 @@ class Pileup
      * Updates the occurence of a right soft clip.
      */
     void add_RSC(uint32_t gpos1, std::string& alt, float mean_qual, char strand);
-   
+
     /**
      * Inserts a stretch of reference padding bases at the 5' prime end of the buffer from gpos1 if gpos1 is behind the start of the pileup.
      *
      * @gpos1 - 1 based genome position
      */
     void add_5prime_padding(uint32_t gpos1);
-    
+
     /**
      * Inserts a stretch of reference padding bases at the 3' prime end of the buffer to gpos1 if gpos1 is ahead of end of pileup.
      *
@@ -375,10 +375,10 @@ class Pileup
      * Checks if a variant is normalized.
      */
     bool is_normalized(char ref, std::string& indel);
-    
+
     /**
      * Normalize a biallelic variant.
-     * 
+     *
      * If N exists in either of the alleles, the normalization does not proceed.
      */
     void normalize(std::string& chrom, uint32_t& pos1, std::string& ref, std::string& alt);
