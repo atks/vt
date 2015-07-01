@@ -208,7 +208,7 @@ VNTR VNTRAnnotator::choose_best_motif(bcf_hdr_t* h, bcf1_t* v, MotifTree* mt, ui
         std::cerr << "PICK BEST MOTIF\n\n";
     }
 
-    if (debug) std::cerr << "pcm size : " << mt->pcm.size() << "\n";
+   // if (debug) std::cerr << "pcm size : " << mt->pcm.size() << "\n";
 
     if (mode==REFERENCE)
     {
@@ -247,7 +247,7 @@ VNTR VNTRAnnotator::choose_best_motif(bcf_hdr_t* h, bcf1_t* v, MotifTree* mt, ui
                 {
                     ahmm->print_alignment();
 
-                    printf("    selected: %10s %.2f %.2f %.2f %.2f (%d/%d)\n",
+                    printf("selected: %10s %.2f %.2f %.2f %.2f (%d/%d)\n",
                             cm.motif.c_str(),
                             cm.score,
                             cm.fit,
@@ -280,7 +280,7 @@ VNTR VNTRAnnotator::choose_best_motif(bcf_hdr_t* h, bcf1_t* v, MotifTree* mt, ui
                     {
                         //ahmm->print_alignment();
 
-                        printf("    selected: %10s %.2f %.2f %.2f %.2f (%d/%d)\n", mt->pcm.top().motif.c_str(),
+                        printf("selected: %10s %.2f %.2f %.2f %.2f (%d/%d)\n", mt->pcm.top().motif.c_str(),
                                                                         mt->pcm.top().score,
                                                                         mt->pcm.top().fit,
                                                                         ahmm->get_motif_concordance(),
@@ -308,8 +308,6 @@ VNTR VNTRAnnotator::choose_best_motif(bcf_hdr_t* h, bcf1_t* v, MotifTree* mt, ui
     }
     else if (mode==ALLELE_EXACT)
     {
-        if (debug) std::cerr << "ANNOTATING INDEL EXACTLY\n";
-
         VNTR vntr;
 
         if (!mt->pcm.empty())
@@ -319,6 +317,18 @@ VNTR VNTRAnnotator::choose_best_motif(bcf_hdr_t* h, bcf1_t* v, MotifTree* mt, ui
             vntr.motif = cm.motif;
             vntr.motif_score = cm.score;
         }
+        
+        if (debug)
+        {
+            printf("selected: %10s %.2f %.2f %.2f %.2f (%d/%d)\n", mt->pcm.top().motif.c_str(),
+                                                            mt->pcm.top().score,
+                                                            mt->pcm.top().fit,
+                                                            ahmm->get_motif_concordance(),
+                                                            (float)ahmm->get_exact_motif_count()/ahmm->get_motif_count(),
+                                                            ahmm->get_exact_motif_count(),
+                                                            ahmm->get_motif_count());
+        }
+        
     }
     else if (mode==ALLELE_FUZZY)
     {
@@ -441,8 +451,7 @@ VNTR VNTRAnnotator::choose_best_motif(bcf_hdr_t* h, bcf1_t* v, MotifTree* mt, ui
         return vntr;
     }
 
-    if (debug) std::cerr << "============================================\n";
-
+   
     VNTR vntr;
     return vntr;
 }

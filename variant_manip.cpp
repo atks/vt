@@ -82,7 +82,7 @@ bool VariantManip::is_normalized(bcf1_t *v)
             //check if variant is reference.
             if (rlen==alen)
             {
-                if (strcmp(alleles[0], alleles[1])==0)
+                if (strcasecmp(alleles[0], alleles[1])==0)
                 {
                     return true;
                 }    
@@ -90,13 +90,13 @@ bool VariantManip::is_normalized(bcf1_t *v)
             
             //ref
             if (rlen==1) exists_len_one_allele = true;
-            first_base = alleles[0][0];
-            last_base = alleles[0][rlen-1];
+            first_base = toupper(alleles[0][0]);
+            last_base = toupper(alleles[0][rlen-1]);
 
             //alt
             if (alen==1) exists_len_one_allele = true;
-            if (first_base!=alleles[1][0]) first_base_same = false;
-            if (last_base!=alleles[1][alen-1]) last_base_same = false;
+            if (first_base!=toupper(alleles[1][0])) first_base_same = false;
+            if (last_base!=toupper(alleles[1][alen-1])) last_base_same = false;
 
             if (last_base_same || (!exists_len_one_allele && first_base_same))
             {
@@ -115,17 +115,17 @@ bool VariantManip::is_normalized(bcf1_t *v)
             {
                 len = strlen(alleles[i]);
                 if (len==1) exists_len_one_allele = true;
-                if (first_base!=alleles[i][0]) first_base_same = false;
-                if (last_base!=alleles[i][len-1]) last_base_same = false;
+                if (first_base!=toupper(alleles[i][0])) first_base_same = false;
+                if (last_base!=toupper(alleles[i][len-1])) last_base_same = false;
             
-                same = same && strcmp(alleles[i],alleles[0])==0;
+                same = same && strcasecmp(alleles[i],alleles[0])==0;
             }
             else
             {
                 len = strlen(alleles[0]);
                 if (len==1) exists_len_one_allele = true;
-                first_base = alleles[0][0];
-                last_base = alleles[0][len-1];
+                first_base = toupper(alleles[0][0]);
+                last_base = toupper(alleles[0][len-1]);
             }
         }
 
