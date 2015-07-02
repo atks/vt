@@ -51,6 +51,35 @@ VariantManip::VariantManip()
 }
 
 /**
+ * Checks if the REF sequence of a VCF entry is consistent.
+ */
+bool VariantManip::is_ref_consistent(bcf_hdr_t *h, bcf1_t *v)
+{
+    const char* chrom = bcf_get_chrom(h, v);
+    uint32_t pos0 = bcf_get_pos0(v);
+    char* vcf_ref = bcf_get_ref(v);
+    uint32_t rlen = strlen(vcf_ref);
+        
+    int32_t ref_len = 0;    
+    char *ref = faidx_fetch_uc_seq(fai, chrom, pos0, pos0+rlen-1, &ref_len);
+    if (!ref)
+    {
+        fprintf(stderr, "[%s:%d %s] failure to extract base from fasta file: %s:%d-%d\n", __FILE__, __LINE__, __FUNCTION__, chrom, pos0, pos0+rlen-1);
+        fprintf(stderr, "FAQ: http://genome.sph.umich.edu/wiki/Vt#1._vt_cannot_retrieve_sequences_from_my_reference_sequence_file\n");
+        exit(1);
+    }
+    bool is_consistent = strcasecmp(vcf_ref, ref)==0;
+
+    if (!is_consistent)
+    {
+        fprintf(stderr, "[%s:%d %s] Variant is not consistent: %s:%d-%d - %s(REF) vs %s(FASTA)\n", __FILE__, __LINE__, __FUNCTION__, chrom, pos0, pos0+rlen-1, vcf_ref, ref);
+    }
+    free(ref);
+    
+    return is_consistent;        
+}
+
+/**
  * Checks if a variant is normalized.
  *  Ignores if entry is not a variant.
  */

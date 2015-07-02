@@ -38,6 +38,7 @@ class Igor : Program
     std::vector<GenomeInterval> intervals;
     std::string ref_fasta_file;
     int32_t window_size;
+    bool strict;
     bool print;
     bool debug;
 
@@ -88,6 +89,7 @@ class Igor : Program
             TCLAP::ValueArg<std::string> arg_intervals("i", "i", "intervals []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "file", cmd);
             TCLAP::ValueArg<int32_t> arg_window_size("w", "w", "window size for local sorting of variants [10000]", false, 10000, "integer", cmd);
+            TCLAP::SwitchArg arg_strict("n", "n", "do not fail when REF is inconsistent with reference sequence for non SNPs [false]", cmd, true);
             TCLAP::SwitchArg arg_quiet("q", "q", "do not print options and summary [false]", cmd, false);
             TCLAP::SwitchArg arg_debug("d", "d", "debug [false]", cmd, false);
             TCLAP::ValueArg<std::string> arg_output_vcf_file("o", "o", "output VCF file [-]", false, "-", "str", cmd);
@@ -99,6 +101,7 @@ class Igor : Program
             output_vcf_file = arg_output_vcf_file.getValue();
             parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
             print = !arg_quiet.getValue();
+            strict = arg_strict.getValue();
             debug = arg_debug.getValue();
             window_size = arg_window_size.getValue();
             ref_fasta_file = arg_ref_fasta_file.getValue();
@@ -156,7 +159,9 @@ class Igor : Program
 
         v = odw->get_bcf1_from_pool();
         Variant variant;
-
+        
+        bcf_hdr_t *h = odr->hdr;
+        
         while (odr->read(v))
         {
             bcf_unpack(v, BCF_UN_INFO);
@@ -164,6 +169,12 @@ class Igor : Program
             if (debug) bcf_print_liten(odr->hdr, v);
 
             int32_t type = vm->classify_variant(odw->hdr, v, variant);
+            
+            if (type!=VT_SNP && !vm->is_ref_consistent(h,v))
+            {  
+                fprintf(stderr, "[%s:%d %s] Normalization might be incorrect due to inconsistent reference sequences\n", __FILE__, __LINE__, __FUNCTION__);
+                if (strict) exit(1);
+            }
             
             if (!vm->is_normalized(v))
             {
@@ -285,13 +296,14 @@ class Igor : Program
 
         std::clog << "normalize v" << version << "\n";
         std::clog << "\n";
-        std::clog << "options:     input VCF file        " << input_vcf_file << "\n";
-        std::clog << "         [o] output VCF file       " << output_vcf_file << "\n";
-        std::clog << "         [w] sorting window size   " << window_size << "\n";
-        std::clog << "         [q] quiet                 " << (!print ? "true" : "false") << "\n";
-        std::clog << "         [d] debug                 " << (debug ? "true" : "false")  << "\n";
-        std::clog << "         [r] reference FASTA file  " << ref_fasta_file << "\n";
-        print_int_op("         [i] intervals             ", intervals);
+        std::clog << "options:     input VCF file                                  " << input_vcf_file << "\n";
+        std::clog << "         [o] output VCF file                                 " << output_vcf_file << "\n";
+        std::clog << "         [w] sorting window size                             " << window_size << "\n";
+        std::clog << "         [n] no fail on reference inconsistency for non SNPs " << (!strict ? "true" : "false") << "\n";
+        std::clog << "         [q] quiet                                           " << (!print ? "true" : "false") << "\n";
+        std::clog << "         [d] debug                                           " << (debug ? "true" : "false")  << "\n";
+        std::clog << "         [r] reference FASTA file                            " << ref_fasta_file << "\n";
+        print_int_op("         [i] intervals                                       ", intervals);
         std::clog << "\n";
     }
 

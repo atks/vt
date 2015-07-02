@@ -69,6 +69,11 @@ class VariantManip
     int32_t classify_variant(bcf_hdr_t *h, bcf1_t *v, Variant& var);
 
     /**
+     * Checks if the REF sequence of a VCF entry is consistent.
+     */
+    bool is_ref_consistent(bcf_hdr_t *h, bcf1_t *v);
+
+    /**
      * Checks if a variant is normalized.
      */
     bool is_normalized(bcf1_t *v);
