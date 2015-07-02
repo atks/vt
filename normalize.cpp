@@ -173,8 +173,15 @@ class Igor : Program
             bool is_ref_consistent = false;
             if (type!=VT_SNP && !(is_ref_consistent = vm->is_ref_consistent(h,v)))
             {  
-                fprintf(stderr, "[%s:%d %s] Normalization not performed due to inconsistent reference sequences\n", __FILE__, __LINE__, __FUNCTION__);
-                if (strict) exit(1);
+                if (strict)
+                {
+                    fprintf(stderr, "[%s:%d %s] Normalization not performed due to inconsistent reference sequences. (use -n option to relax this)\n", __FILE__, __LINE__, __FUNCTION__);
+                    exit(1);
+                }
+                else
+                {
+                    fprintf(stderr, "[%s:%d %s] Normalization skipped due to inconsistent reference sequences\n", __FILE__, __LINE__, __FUNCTION__);
+                }
             }
             
             if (is_ref_consistent && !vm->is_normalized(v))
