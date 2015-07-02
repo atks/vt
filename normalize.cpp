@@ -170,13 +170,14 @@ class Igor : Program
 
             int32_t type = vm->classify_variant(odw->hdr, v, variant);
             
-            if (type!=VT_SNP && !vm->is_ref_consistent(h,v))
+            bool is_ref_consistent = false;
+            if (type!=VT_SNP && !(is_ref_consistent = vm->is_ref_consistent(h,v)))
             {  
-                fprintf(stderr, "[%s:%d %s] Normalization might be incorrect due to inconsistent reference sequences\n", __FILE__, __LINE__, __FUNCTION__);
+                fprintf(stderr, "[%s:%d %s] Normalization not performed due to inconsistent reference sequences\n", __FILE__, __LINE__, __FUNCTION__);
                 if (strict) exit(1);
             }
             
-            if (!vm->is_normalized(v))
+            if (is_ref_consistent && !vm->is_normalized(v))
             {
                 const char* chrom = odr->get_seqname(v);
                 uint32_t pos1 = bcf_get_pos1(v);
