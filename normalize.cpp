@@ -123,7 +123,7 @@ class Igor : Program
         odw->link_hdr(odr->hdr);
         bcf_hdr_append(odw->hdr, "##INFO=<ID=OLD_VARIANT,Number=.,Type=String,Description=\"Original chr:pos:ref:alt encoding\">\n");
         odw->write_hdr();
-        
+
         ////////////////////////
         //stats initialization//
         ////////////////////////
@@ -159,20 +159,20 @@ class Igor : Program
 
         v = odw->get_bcf1_from_pool();
         Variant variant;
-        
+
         bcf_hdr_t *h = odr->hdr;
-        
+
         while (odr->read(v))
         {
             bcf_unpack(v, BCF_UN_INFO);
-            
+
             if (debug) bcf_print_liten(odr->hdr, v);
 
             int32_t type = vm->classify_variant(odw->hdr, v, variant);
-            
+
             bool is_ref_consistent = false;
             if (type!=VT_SNP && !(is_ref_consistent = vm->is_ref_consistent(h,v)))
-            {  
+            {
                 if (strict)
                 {
                     fprintf(stderr, "[%s:%d %s] Normalization not performed due to inconsistent reference sequences. (use -n option to relax this)\n", __FILE__, __LINE__, __FUNCTION__);
@@ -183,7 +183,7 @@ class Igor : Program
                     fprintf(stderr, "[%s:%d %s] Normalization skipped due to inconsistent reference sequences\n", __FILE__, __LINE__, __FUNCTION__);
                 }
             }
-            
+
             if (is_ref_consistent && !vm->is_normalized(v))
             {
                 const char* chrom = odr->get_seqname(v);
@@ -204,7 +204,7 @@ class Igor : Program
 
                 vm->right_trim_or_left_extend(alleles, pos1, chrom, left_extended, right_trimmed);
                 vm->left_trim(alleles, pos1, left_trimmed);
-    
+
                 if (left_trimmed || left_extended || right_trimmed)
                 {
                     old_alleles.l = 0;
@@ -289,7 +289,7 @@ class Igor : Program
             {
                 ++no_variants;
             }
-            
+
             odw->write(v);
             v = odw->get_bcf1_from_pool();
         }

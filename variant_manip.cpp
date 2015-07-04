@@ -59,8 +59,8 @@ bool VariantManip::is_ref_consistent(bcf_hdr_t *h, bcf1_t *v)
     uint32_t pos0 = bcf_get_pos0(v);
     char* vcf_ref = bcf_get_ref(v);
     uint32_t rlen = strlen(vcf_ref);
-        
-    int32_t ref_len = 0;    
+
+    int32_t ref_len = 0;
     char *ref = faidx_fetch_uc_seq(fai, chrom, pos0, pos0+rlen-1, &ref_len);
     if (!ref)
     {
@@ -75,8 +75,8 @@ bool VariantManip::is_ref_consistent(bcf_hdr_t *h, bcf1_t *v)
         fprintf(stderr, "[%s:%d %s] Variant is not consistent: %s:%d-%d - %s(REF) vs %s(FASTA)\n", __FILE__, __LINE__, __FUNCTION__, chrom, pos0, pos0+rlen-1, vcf_ref, ref);
     }
     free(ref);
-    
-    return is_consistent;        
+
+    return is_consistent;
 }
 
 /**
@@ -87,9 +87,9 @@ bool VariantManip::is_normalized(bcf1_t *v)
 {
     char** alleles = bcf_get_allele(v);
     int32_t n_allele = bcf_get_n_allele(v);
-        
+
     if (n_allele==1) return true;
-        
+
     char first_base;
     char last_base;
     size_t rlen, alen, len;
@@ -114,9 +114,9 @@ bool VariantManip::is_normalized(bcf1_t *v)
                 if (strcasecmp(alleles[0], alleles[1])==0)
                 {
                     return true;
-                }    
-            }    
-            
+                }
+            }
+
             //ref
             if (rlen==1) exists_len_one_allele = true;
             first_base = toupper(alleles[0][0]);
@@ -146,7 +146,7 @@ bool VariantManip::is_normalized(bcf1_t *v)
                 if (len==1) exists_len_one_allele = true;
                 if (first_base!=toupper(alleles[i][0])) first_base_same = false;
                 if (last_base!=toupper(alleles[i][len-1])) last_base_same = false;
-            
+
                 same = same && strcasecmp(alleles[i],alleles[0])==0;
             }
             else
@@ -162,7 +162,7 @@ bool VariantManip::is_normalized(bcf1_t *v)
         if (same)
         {
             return true;
-        }    
+        }
 
         if (last_base_same || (!exists_len_one_allele && first_base_same))
         {
@@ -247,7 +247,7 @@ int32_t VariantManip::classify_variant(bcf_hdr_t *h, bcf1_t *v, Variant& var)
                      type = VT_VNTR;
                 }
             }
-                        
+
             if (type==VT_VNTR)
             {
                 type = VT_VNTR;
@@ -417,9 +417,9 @@ int32_t VariantManip::classify_variant(bcf_hdr_t *h, bcf1_t *v, Variant& var)
 
     if (var.type==VT_VNTR)
     {
-        //do nothing                     
+        //do nothing
     }
-    
+
     //additionally define MNPs by length of all alleles
     if (!(var.type&(VT_VNTR|VT_SV)) && var.type!=VT_REF)
     {
