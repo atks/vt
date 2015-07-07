@@ -363,6 +363,7 @@ class Igor : Program
 
         int32_t vtypes[] = {VT_SNP, VT_MNP, VT_INDEL, 3, 5, 6, 7, 8, 9, 10, 11 ,12 , 13, 14, 15, 0};
 
+        int32_t total_no_micro_variants = 0;
         for (int32_t i=0; i<16; ++i)
         {
             int32_t vtype = vtypes[i];
@@ -370,6 +371,7 @@ class Igor : Program
             fprintf(stderr, "       no. of %-21s       : %10d\n", Variant::vtype2string(vtype).c_str(), VAR_COUNT[POLYMORPHIC][vtype]);
             for (int32_t no_alleles=1; no_alleles<=4; ++no_alleles)
             {
+                total_no_micro_variants += VAR_COUNT[no_alleles][vtype];
                 if (VAR_COUNT[no_alleles][vtype])
                 {
                     if (no_alleles==4)
@@ -387,6 +389,8 @@ class Igor : Program
             }
             fprintf(stderr, "\n");
         }
+        fprintf(stderr, "       no. of micro variants: %d\n", total_no_micro_variants);
+        fprintf(stderr, "\n");
         fprintf(stderr, "       ++++++ Other useful categories +++++\n");
         fprintf(stderr, "\n");
         int32_t other_vtypes[3] = {VT_NAIVE_CLUMPED, VT_BLKSUB, VT_CPLXSUB};
