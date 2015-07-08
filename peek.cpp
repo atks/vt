@@ -389,7 +389,7 @@ class Igor : Program
             }
             fprintf(stderr, "\n");
         }
-        fprintf(stderr, "       no. of micro variants: %d\n", total_no_micro_variants);
+        fprintf(stderr, "       no. of micro variants              : %10d\n", total_no_micro_variants);
         fprintf(stderr, "\n");
         fprintf(stderr, "       ++++++ Other useful categories +++++\n");
         fprintf(stderr, "\n");
