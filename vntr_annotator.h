@@ -45,9 +45,15 @@
 #include "motif_tree.h"
 #include "vntr.h"
 
-#define REFERENCE     0
+//forms of alignment
+#define REFERENCE                   0
+#define EXACT_LEFT_RIGHT_ALIGNMENT  1
+#define FUZZY_LEFT_RIGHT_ALIGNMENT  2
+
 #define ALLELE_EXACT  1
 #define ALLELE_FUZZY  2
+
+#define CLIP_ENDS 0
 
 /**
  * Class for determining basic traits of an indel
@@ -165,6 +171,11 @@ class VNTRAnnotator
      */
     std::string pick_consensus_motif(std::string& sequence);
 
+    /**
+     * Detect repeat region.
+     */
+    void detect_repeat_region(bcf_hdr_t* h, bcf1_t *v, VNTR& vntr, uint32_t mode);
+        
     /**
      * Chooses a phase of the motif that is appropriate for the alignment
      */

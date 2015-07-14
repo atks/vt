@@ -86,12 +86,10 @@ VNTRAnnotator::~VNTRAnnotator()
 void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::string mode)
 {
     VNTR& vntr = variant.vntr;
-    
+
     if (variant.type==VT_VNTR)
     {
         if (debug) std::cerr << "ANNOTATING VNTR/STR \n";
-
-        
 
         //1. pick candidate region
         pick_candidate_region(h, v, vntr, REFERENCE);
@@ -106,17 +104,13 @@ void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::str
     else if (variant.type&VT_INDEL)
     {
         //EXACT MODE
-        //1. selects candidate region by exact left and right alignment
-        //2. detects motif
-        //3. detects left and right flank
         if (mode=="e")
         {
             if (debug) std::cerr << "============================================\n";
             if (debug) std::cerr << "ANNOTATING INDEL EXACTLY\n";
 
-            RepeatRegion region;
-            //1. pick candidate region
-            pick_candidate_region(h, v, vntr, ALLELE_EXACT);
+            //1. pick candidate region using exact left and right alignment
+            pick_candidate_region(h, v, vntr, EXACT_LEFT_RIGHT_ALIGNMENT);
 
             //2. detect candidate motifs from a reference sequence
             pick_candidate_motifs(h, v, vntr, ALLELE_EXACT);
@@ -125,36 +119,18 @@ void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::str
             choose_best_motif(h, v, mt, vntr, ALLELE_EXACT);
 
             //4. evaluate reference length
-            //detect_repeat_region(h, v, vntr);
-
+            detect_repeat_region(h, v, vntr, CLIP_ENDS);
 
             //4. update VCF record
             vntr.print();
             bcf_update_info_string(h, v, MOTIF.c_str(), vntr.motif.c_str());
             bcf_update_info_string(h, v, RU.c_str(), vntr.ru.c_str());
-           // bcf_update_info_float(h, v, RL.c_str(), vntr.rl, 1);
-
+            bcf_update_info_float(h, v, RL.c_str(), &vntr.rl, 1);
+            // bcf_update_info_float(h, v, RL.c_str(), vntr.rl, 1);
 
             if (debug) std::cerr << "============================================\n";
 
-
-
-
-
-
-
-
             return;
-
-
-
-
-
-
-
-
-
-
 
         }
         //FUZZY DETECTION
@@ -209,7 +185,7 @@ void VNTRAnnotator::pick_candidate_region(bcf_hdr_t* h, bcf1_t* v, VNTR& vntr, u
     {
         vntr.repeat_region.initialize(bcf_get_pos1(v), bcf_get_ref(v));
     }
-    else if (mode==ALLELE_EXACT)
+    else if (mode==EXACT_LEFT_RIGHT_ALIGNMENT)
     {
         extract_regions_by_exact_alignment(h, v, vntr);
     }
@@ -514,6 +490,40 @@ void VNTRAnnotator::choose_best_motif(bcf_hdr_t* h, bcf1_t* v, MotifTree* mt, VN
 //};
 
 /**
+ * Detect repeat region.
+ */
+void VNTRAnnotator::detect_repeat_region(bcf_hdr_t* h, bcf1_t *v, VNTR& vntr, uint32_t mode)
+{
+    if (mode==CLIP_ENDS)
+    {
+        if (debug)
+        {
+            std::cerr << "********************************************\n";
+            std::cerr << "CLIP ENDS\n";
+            std:: cerr << "\n";
+        }
+
+        RepeatRegion& region = vntr.repeat_region;
+
+        if (region.ref.size()>2)
+        {
+            region.ref = region.ref.substr(1, region.ref.size()-2);
+            region.beg1++;
+        }
+
+        vntr.ru = choose_repeat_unit(region.ref, vntr.motif);
+        vntr.rl = (float)region.ref.size()/vntr.ru.size();
+
+        if (debug)
+        {
+            std::cerr << "repeat region: " << region.ref << "\n";
+            std::cerr << "ru:            " << vntr.ru  <<"\n";
+            std::cerr << "rl:            " << vntr.rl  <<"\n";
+        }
+    }
+};
+
+/**
  * Chooses a phase of the motif that is appropriate for the alignment
  */
 std::string VNTRAnnotator::choose_repeat_unit(std::string& ref, std::string& motif)
@@ -708,7 +718,7 @@ void VNTRAnnotator::extract_regions_by_exact_alignment(bcf_hdr_t* h, bcf1_t* v, 
     if (debug)
     {
         if (debug) std::cerr << "********************************************\n";
-        std::cerr << "EXTRACTIING REGION BY EXACT ALIGNMENT\n\n";
+        std::cerr << "EXTRACTIING REGION BY EXACT LEFT AND RIGHT ALIGNMENT\n\n";
     }
 
     const char* chrom = bcf_get_chrom(h, v);

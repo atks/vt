@@ -42,6 +42,7 @@ class VNTR
     std::string motif;          //motif      
     uint32_t len;               //length of motif    
     std::string ru;             //repeat unit                    
+    float rl;                   //number of repeat units on repeat tract                   
     std::string lflank;         //left flank                         
     std::string rflank;         //right flank   
     float motif_score;          //motif score from motif tree    
