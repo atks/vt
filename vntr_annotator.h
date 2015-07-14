@@ -51,39 +51,6 @@
 
 KHASH_MAP_INIT_STR(mdict, int32_t);
 
-class ReferenceRegion
-{
-    public:
-    uint32_t beg1;
-    uint32_t end1;
-    std::string ref;
-
-    /**
-     * Constructor.
-     */
-    ReferenceRegion() {};
-
-    /**
-     * Constructor.
-     */
-    ReferenceRegion(uint32_t beg1, char* ref)
-    {
-        this->beg1 = beg1;
-        this->ref.assign(ref);
-        this->end1 = beg1 + this->ref.size() - 1;
-    };
-    
-    /**
-     * Initialize ReferenceRegion.
-     */
-    void initialize(uint32_t beg1, char* ref)
-    {
-        this->beg1 = beg1;
-        this->ref.assign(ref);
-        this->end1 = beg1 + this->ref.size() - 1;
-    };    
-};
-
 /**
  * Class for determining basic traits of an indel
  * motifs, flanks and VNTR type statistics.
@@ -119,6 +86,12 @@ class VNTRAnnotator
 
     AHMM* ahmm;
     std::string qual;
+        
+    std::string MOTIF;
+    std::string RU;
+    std::string RL;
+    std::string SCORE;
+            
 
     ///////
     //tools
@@ -135,7 +108,7 @@ class VNTRAnnotator
     /**
      * Constructor.
      */
-    VNTRAnnotator(std::string& ref_fasta_file, bool debug=false);
+    VNTRAnnotator(std::string& ref_fasta_file, std::string MOTIF, std::string RU, std::string RL, std::string SCORE, bool debug=false);
 
     /**
      * Destructor.
@@ -155,18 +128,18 @@ class VNTRAnnotator
      *       - ALLELE_EXACT  by exact alignment
      *       - ALLELE_FUZZY  by fuzzy alignment
      */
-    void pick_candidate_region(bcf_hdr_t* h, bcf1_t* v, ReferenceRegion& region, uint32_t mode);
+    void pick_candidate_region(bcf_hdr_t* h, bcf1_t* v, Variant& variant, uint32_t mode);
 
     /**
      * Pick candidate motifs.
      * candidate_motifs contain motifs and a measure of confidence
      */
-    void pick_candidate_motifs(ReferenceRegion& region, uint32_t mode);
+    void pick_candidate_motifs(Variant& variant, uint32_t mode);
     
     /**
      * Chooses a phase of the motif that is appropriate for the alignment
      */
-    VNTR choose_best_motif(bcf_hdr_t* h, bcf1_t* v, MotifTree* mt, uint32_t mode);
+    VNTR choose_best_motif(bcf_hdr_t* h, bcf1_t* v, MotifTree* mt, Variant& variant, uint32_t mode);
 
     /**
      * Infer flanks  motif discovery.
@@ -212,7 +185,7 @@ class VNTRAnnotator
     /**
      * Extract region to for motif discovery.
      */
-    void extract_regions_by_exact_alignment(bcf_hdr_t* h, bcf1_t* v, ReferenceRegion& region);
+    void extract_regions_by_exact_alignment(bcf_hdr_t* h, bcf1_t* v, Variant& variant);
 
     /**
      * Left align alleles.
@@ -227,7 +200,7 @@ class VNTRAnnotator
     /**
      * Extract reference sequence region for motif discovery in a fuzzy fashion.
      */
-    void extract_regions_by_fuzzy_alignment(bcf_hdr_t* h, bcf1_t* v, ReferenceRegion& region);
+    void extract_regions_by_fuzzy_alignment(bcf_hdr_t* h, bcf1_t* v, Variant& variant);
 
     /**
      * Fuzzy left align alleles allowing for mismatches and indels defined by penalty.
@@ -255,11 +228,7 @@ class VNTRAnnotator
      */
     uint32_t fuzzy_right_align(const char* chrom, int32_t pos1, std::string ref, std::string alt, uint32_t penalty);
     
-    /**
-     * Extract reference sequence region for motif discovery in a fuzzy fashion.
-     */
-    ReferenceRegion extract_regions_by_fuzzy_alignment(bcf_hdr_t* h, bcf1_t* v, uint32_t p);
-        
+     
     /**
      * Detect allele lower bound extent.
      */

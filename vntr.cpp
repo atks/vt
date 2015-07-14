@@ -35,7 +35,6 @@ void VNTR::clear()
 {
     chrom.clear();
     pos1 = 0;           
-    ref.clear();         
     motif.clear();       
     len = 0;            
     ru.clear();          

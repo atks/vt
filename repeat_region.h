@@ -1,6 +1,6 @@
 /* The MIT License
 
-   Copyright (c) 2015 Adrian Tan <atks@umich.edu>
+   Copyright (c) 2014 Adrian Tan <atks@umich.edu>
 
    Permission is hereby granted, free of charge, to any person obtaining a copy
    of this software and associated documentation files (the "Software"), to deal
@@ -21,44 +21,52 @@
    THE SOFTWARE.
 */
 
-#ifndef VNTR_H
-#define VNTR_H
+#ifndef REPEAT_REGION_H
+#define REPEAT_REGION_H
 
 #include <cstdlib>
 #include <cstdint>
-#include <string>
+#include <cstring>
 #include <cmath>
-#include <cfloat>
-#include <vector>
-#include "repeat_region.h"
+#include <queue>
+#include <list>
+#include "hts_utils.h"
 
-/**
- * Class for representing a VNTR.
- */
-class VNTR
+#define REFERENCE     0
+#define ALLELE_EXACT  1
+#define ALLELE_FUZZY  2
+
+class RepeatRegion
 {
     public:
-    std::string chrom;        //chromosome
-    uint32_t pos1;            //1 based position
-    RepeatRegion repeat_region;
-    std::string motif;        //motif      
-    uint32_t len;             //length of motif    
-    std::string ru;           //repeat unit                    
-    std::string lflank;       //left flank                         
-    std::string rflank;       //right flank   
-    float motif_score;        //motif score from motif tree    
-    float motif_concordance;  //motif concordance from hmm     
-    float no_exact_ru;        //number exact repeat units from hmm                 
-    float total_no_ru;        //total no of repeat units from hmm                                       
-    
+    uint32_t beg1;
+    uint32_t end1;
+    std::string ref;
+
     /**
      * Constructor.
      */
-    VNTR();   
-    
+    RepeatRegion() {};
+
     /**
-     * Clear object.
+     * Constructor.
      */
-    void clear();    
+    RepeatRegion(uint32_t beg1, char* ref)
+    {
+        this->beg1 = beg1;
+        this->ref.assign(ref);
+        this->end1 = beg1 + this->ref.size() - 1;
+    };
+
+    /**
+     * Initialize ReferenceRegion.
+     */
+    void initialize(uint32_t beg1, char* ref)
+    {
+        this->beg1 = beg1;
+        this->ref.assign(ref);
+        this->end1 = beg1 + this->ref.size() - 1;
+    };
 };
+
 #endif

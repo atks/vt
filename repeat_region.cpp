@@ -1,6 +1,6 @@
 /* The MIT License
 
-   Copyright (c) 2015 Adrian Tan <atks@umich.edu>
+   Copyright (c) 2014 Adrian Tan <atks@umich.edu>
 
    Permission is hereby granted, free of charge, to any person obtaining a copy
    of this software and associated documentation files (the "Software"), to deal
@@ -21,44 +21,4 @@
    THE SOFTWARE.
 */
 
-#ifndef VNTR_H
-#define VNTR_H
-
-#include <cstdlib>
-#include <cstdint>
-#include <string>
-#include <cmath>
-#include <cfloat>
-#include <vector>
 #include "repeat_region.h"
-
-/**
- * Class for representing a VNTR.
- */
-class VNTR
-{
-    public:
-    std::string chrom;        //chromosome
-    uint32_t pos1;            //1 based position
-    RepeatRegion repeat_region;
-    std::string motif;        //motif      
-    uint32_t len;             //length of motif    
-    std::string ru;           //repeat unit                    
-    std::string lflank;       //left flank                         
-    std::string rflank;       //right flank   
-    float motif_score;        //motif score from motif tree    
-    float motif_concordance;  //motif concordance from hmm     
-    float no_exact_ru;        //number exact repeat units from hmm                 
-    float total_no_ru;        //total no of repeat units from hmm                                       
-    
-    /**
-     * Constructor.
-     */
-    VNTR();   
-    
-    /**
-     * Clear object.
-     */
-    void clear();    
-};
-#endif
