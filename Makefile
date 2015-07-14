@@ -74,7 +74,7 @@ SOURCES = align\
 		profile_snps\
 		program\
 		remove_overlap\
-		repeat_region\
+		repeat_tract\
 		rfhmm\
 		seq\
 		sort\

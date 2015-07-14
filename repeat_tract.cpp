@@ -21,37 +21,37 @@
    THE SOFTWARE.
 */
 
-#include "repeat_region.h"
+#include "repeat_tract.h"
 
 /**
  * Constructor.
  */
-RepeatRegion::RepeatRegion() {};
+RepeatTract::RepeatTract() {};
 
 /**
  * Constructor.
  */
-RepeatRegion::RepeatRegion(uint32_t beg1, char* ref)
+RepeatTract::RepeatTract(uint32_t pos1, char* ref)
 {
-    initialize(beg1, ref);
+    initialize(pos1, ref);
 };
 
 /**
- * Initialize RepeatRegion.
+ * Initialize RepeatTract.
  */
-void RepeatRegion::initialize(uint32_t beg1, char* ref)
+void RepeatTract::initialize(uint32_t pos1, char* ref)
 {
-    this->beg1 = beg1;
+    this->pos1 = pos1;
     this->ref.assign(ref);
-    this->end1 = beg1 + this->ref.size() - 1;
+    this->end1 = pos1 + this->ref.size() - 1;
 };
 
 /**
- * Clears RepeatRegion.
+ * Clears RepeatTract.
  */
-void RepeatRegion::clear()
+void RepeatTract::clear()
 {
-    this->beg1 = 0;
+    this->pos1 = 0;
     this->end1 = 0;
     this->ref.clear();
 };

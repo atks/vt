@@ -26,34 +26,34 @@
 #include <iostream>
 #include <vector>
 
-#ifndef REPEAT_REGION_H
-#define REPEAT_REGION_H
+#ifndef REPEAT_TRACT_H
+#define REPEAT_TRACT_H
 
 /**
  * Represents the repeat tract of VNTR
  */
-class RepeatRegion
+class RepeatTract
 {
     public:
-    uint32_t beg1;
+    uint32_t pos1;
     uint32_t end1;
     std::string ref;
 
     /**
      * Constructor.
      */
-    RepeatRegion();
+    RepeatTract();
 
     /**
      * Constructor.
      */
-    RepeatRegion(uint32_t beg1, char* ref);
+    RepeatTract(uint32_t pos1, char* ref);
 
     /**
      * Initialize RepeatRegion.
      */
-    void initialize(uint32_t beg1, char* ref);
-    
+    void initialize(uint32_t pos1, char* ref);
+
     /**
      * Clears RepeatRegion.
      */

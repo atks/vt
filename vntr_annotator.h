@@ -94,6 +94,8 @@ class VNTRAnnotator
     std::string MOTIF;
     std::string RU;
     std::string RL;
+    std::string REF;
+    std::string REFPOS;
     std::string SCORE;
             
 
@@ -112,7 +114,7 @@ class VNTRAnnotator
     /**
      * Constructor.
      */
-    VNTRAnnotator(std::string& ref_fasta_file, std::string MOTIF, std::string RU, std::string RL, std::string SCORE, bool debug=false);
+    VNTRAnnotator(std::string& ref_fasta_file, std::string MOTIF, std::string RU, std::string RL, std::string REF, std::string REFPOS, std::string SCORE, bool debug=false);
 
     /**
      * Destructor.

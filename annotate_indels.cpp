@@ -49,10 +49,12 @@ class Igor : Program
     uint32_t alignment_penalty;
 
     std::string MOTIF;
-    std::string SCORE;
     std::string RU;
     std::string RL;
-
+    std::string REF;
+    std::string REFPOS;
+    std::string SCORE;
+        
     bool debug;
 
     ///////
@@ -138,9 +140,11 @@ class Igor : Program
         odw = new BCFOrderedWriter(output_vcf_file);
         odw->link_hdr(odr->hdr);
 
-        MOTIF = bcf_hdr_append_info_with_backup_naming(odw->hdr, "MOTIF", "1", "String", "Canonical Motif in an VNTR or Homopolymer", true);
-        RU = bcf_hdr_append_info_with_backup_naming(odw->hdr, "RU", "1", "String", "Repeat unit in a VNTR or Homopolymer", true);
-        RL = bcf_hdr_append_info_with_backup_naming(odw->hdr, "RL", "1", "Float", "Repeat Unit Length", true);
+        MOTIF = bcf_hdr_append_info_with_backup_naming(odw->hdr, "MOTIF", "1", "String", "Canonical motif in an VNTR or homopolymer", true);
+        RU = bcf_hdr_append_info_with_backup_naming(odw->hdr, "RU", "1", "String", "Repeat unit in a VNTR or homopolymer", true);
+        RL = bcf_hdr_append_info_with_backup_naming(odw->hdr, "RL", "1", "Float", "Repeat unit length", true);
+        REF = bcf_hdr_append_info_with_backup_naming(odw->hdr, "REF", "1", "String", "Repeat tract on the reference sequence", true);
+        REFPOS = bcf_hdr_append_info_with_backup_naming(odw->hdr, "REFPOS", "1", "Integer", "Start position of repeat tract", true);
         SCORE = bcf_hdr_append_info_with_backup_naming(odw->hdr, "SCORE", "1", "Float", "Score of repeat unit", true);
         
         bcf_hdr_append(odw->hdr, "##INFO=<ID=OLD_VARIANT,Number=1,Type=String,Description=\"Original chr:pos:ref:alt encoding\">\n");
@@ -162,7 +166,7 @@ class Igor : Program
         //tools initialization//
         ////////////////////////
         vm = new VariantManip(ref_fasta_file);
-        va = new VNTRAnnotator(ref_fasta_file, MOTIF, RU, RL, SCORE, debug);
+        va = new VNTRAnnotator(ref_fasta_file, MOTIF, RU, RL, REF, REFPOS, SCORE, debug);
         fai = fai_load(ref_fasta_file.c_str());
     }
 
@@ -186,20 +190,20 @@ class Igor : Program
 
     void update_vntr_info(bcf_hdr_t* h, bcf1_t *v, Variant& variant)
     {
-        if (variant.vntr.motif!="")
-        {
-            bcf_update_info_string(odw->hdr, v, MOTIF.c_str(), variant.vntr.motif.c_str());
-        }
-
-        if (variant.vntr.ru!="")
-        {
-            bcf_update_info_string(odw->hdr, v, RU.c_str(), variant.vntr.ru.c_str());
-        }
-
-        if (variant.vntr.motif_score>=0)
-        {
-            bcf_update_info_float(odw->hdr, v, SCORE.c_str(), &variant.vntr.motif_score, 1);
-        }
+//        if (variant.vntr.motif!="")
+//        {
+//            bcf_update_info_string(odw->hdr, v, MOTIF.c_str(), variant.vntr.motif.c_str());
+//        }
+//
+//        if (variant.vntr.ru!="")
+//        {
+//            bcf_update_info_string(odw->hdr, v, RU.c_str(), variant.vntr.ru.c_str());
+//        }
+//
+//        if (variant.vntr.motif_score>=0)
+//        {
+//            bcf_update_info_float(odw->hdr, v, SCORE.c_str(), &variant.vntr.motif_score, 1);
+//        }
 
 //        bcf_update_info_string(odw->hdr, v, "VRU", variant.eru.c_str());
 //        int32_t rl = variant.eregion.end1-variant.eregion.beg1-1;

@@ -30,7 +30,7 @@
 #include <cmath>
 #include <cfloat>
 #include <vector>
-#include "repeat_region.h"
+#include "repeat_tract.h"
 
 /**
  * Class for representing a VNTR.
@@ -38,7 +38,7 @@
 class VNTR
 {
     public:
-    RepeatRegion repeat_region; //repeat tract
+    RepeatTract repeat_tract;   //repeat tract
     std::string motif;          //motif      
     uint32_t len;               //length of motif    
     std::string ru;             //repeat unit                    

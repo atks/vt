@@ -33,7 +33,7 @@ VNTR::VNTR(){};
  */
 void VNTR::clear()
 {
-    repeat_region.clear();           
+    repeat_tract.clear();           
     motif.clear();       
     len = 0;            
     ru.clear();          

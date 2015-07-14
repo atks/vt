@@ -26,7 +26,7 @@
 /**
  * Constructor.
  */
-VNTRAnnotator::VNTRAnnotator(std::string& ref_fasta_file, std::string MOTIF, std::string RU, std::string RL, std::string SCORE, bool debug)
+VNTRAnnotator::VNTRAnnotator(std::string& ref_fasta_file, std::string MOTIF, std::string RU, std::string RL, std::string REF, std::string REFPOS, std::string SCORE, bool debug)
 {
     vm = new VariantManip(ref_fasta_file.c_str());
     fai = fai_load(ref_fasta_file.c_str());
@@ -121,11 +121,14 @@ void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::str
             //4. evaluate reference length
             detect_repeat_region(h, v, vntr, CLIP_ENDS);
 
-            //4. update VCF record
+            //5. update VCF record
             vntr.print();
             bcf_update_info_string(h, v, MOTIF.c_str(), vntr.motif.c_str());
             bcf_update_info_string(h, v, RU.c_str(), vntr.ru.c_str());
             bcf_update_info_float(h, v, RL.c_str(), &vntr.rl, 1);
+            bcf_update_info_string(h, v, REF.c_str(), vntr.repeat_tract.ref.c_str());
+            bcf_update_info_int32(h, v, REFPOS.c_str(), &vntr.repeat_tract.pos1, 1);
+            
             // bcf_update_info_float(h, v, RL.c_str(), vntr.rl, 1);
 
             if (debug) std::cerr << "============================================\n";
@@ -142,7 +145,7 @@ void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::str
             if (debug) std::cerr << "============================================\n";
             if (debug) std::cerr << "ANNOTATING INDEL FUZZILY\n";
 
-            RepeatRegion region;
+            RepeatTract region;
             //1. pick candidate region
             pick_candidate_region(h, v, vntr, ALLELE_FUZZY);
 
@@ -183,7 +186,7 @@ void VNTRAnnotator::pick_candidate_region(bcf_hdr_t* h, bcf1_t* v, VNTR& vntr, u
 {
     if (mode==REFERENCE)
     {
-        vntr.repeat_region.initialize(bcf_get_pos1(v), bcf_get_ref(v));
+        vntr.repeat_tract.initialize(bcf_get_pos1(v), bcf_get_ref(v));
     }
     else if (mode==EXACT_LEFT_RIGHT_ALIGNMENT)
     {
@@ -208,7 +211,7 @@ void VNTRAnnotator::pick_candidate_motifs(bcf_hdr_t* h, bcf1_t* v, VNTR& vntr, u
         std::cerr << "PICK CANDIDATE MOTIFS\n\n";
     }
 
-    mt->detect_candidate_motifs(vntr.repeat_region.ref);
+    mt->detect_candidate_motifs(vntr.repeat_tract.ref);
 }
 
 /**
@@ -503,22 +506,22 @@ void VNTRAnnotator::detect_repeat_region(bcf_hdr_t* h, bcf1_t *v, VNTR& vntr, ui
             std:: cerr << "\n";
         }
 
-        RepeatRegion& region = vntr.repeat_region;
+        RepeatTract& tract = vntr.repeat_tract;
 
-        if (region.ref.size()>2)
+        if (tract.ref.size()>2)
         {
-            region.ref = region.ref.substr(1, region.ref.size()-2);
-            region.beg1++;
+            tract.ref = tract.ref.substr(1, tract.ref.size()-2);
+            tract.pos1++;
         }
 
-        vntr.ru = choose_repeat_unit(region.ref, vntr.motif);
-        vntr.rl = (float)region.ref.size()/vntr.ru.size();
+        vntr.ru = choose_repeat_unit(tract.ref, vntr.motif);
+        vntr.rl = (float)tract.ref.size()/vntr.ru.size();
 
         if (debug)
         {
-            std::cerr << "repeat region: " << region.ref << "\n";
-            std::cerr << "ru:            " << vntr.ru  <<"\n";
-            std::cerr << "rl:            " << vntr.rl  <<"\n";
+            std::cerr << "repeat tract: " << tract.ref << "\n";
+            std::cerr << "ru:           " << vntr.ru  <<"\n";
+            std::cerr << "rl:           " << vntr.rl  <<"\n";
         }
     }
 };
@@ -771,7 +774,7 @@ void VNTRAnnotator::extract_regions_by_exact_alignment(bcf_hdr_t* h, bcf1_t* v, 
         std::cerr << "                   " << seq << "\n";
     }
 
-    vntr.repeat_region.initialize(min_beg1, seq);
+    vntr.repeat_tract.initialize(min_beg1, seq);
 
     if (seq_len) free(seq);
 }
@@ -1094,7 +1097,7 @@ void VNTRAnnotator::extract_regions_by_fuzzy_alignment(bcf_hdr_t* h, bcf1_t* v, 
         std::cerr << "                   " << seq << "\n";
     }
 
-    vntr.repeat_region.initialize(min_beg1, seq);
+    vntr.repeat_tract.initialize(min_beg1, seq);
 
     if (seq_len) free(seq);
 }
