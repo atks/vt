@@ -574,7 +574,7 @@ void AHMM::align(const char* read, const char* qual)
     }
 
     trace_path();
-    
+
     exact_motif_count = motif_count;
     motif_concordance = 0;
     for (int32_t k=1; k<=motif_count; ++k)
@@ -590,7 +590,7 @@ void AHMM::align(const char* read, const char* qual)
         }
     }
     motif_concordance /= motif_count;
-    
+
 };
 
 /**

@@ -58,14 +58,30 @@ class ReferenceRegion
     uint32_t end1;
     std::string ref;
 
+    /**
+     * Constructor.
+     */
     ReferenceRegion() {};
 
+    /**
+     * Constructor.
+     */
     ReferenceRegion(uint32_t beg1, char* ref)
     {
         this->beg1 = beg1;
         this->ref.assign(ref);
         this->end1 = beg1 + this->ref.size() - 1;
     };
+    
+    /**
+     * Initialize ReferenceRegion.
+     */
+    void initialize(uint32_t beg1, char* ref)
+    {
+        this->beg1 = beg1;
+        this->ref.assign(ref);
+        this->end1 = beg1 + this->ref.size() - 1;
+    };    
 };
 
 /**
@@ -139,7 +155,7 @@ class VNTRAnnotator
      *       - ALLELE_EXACT  by exact alignment
      *       - ALLELE_FUZZY  by fuzzy alignment
      */
-    ReferenceRegion pick_candidate_region(bcf_hdr_t* h, bcf1_t* v, uint32_t mode);
+    void pick_candidate_region(bcf_hdr_t* h, bcf1_t* v, ReferenceRegion& region, uint32_t mode);
 
     /**
      * Pick candidate motifs.
@@ -196,7 +212,7 @@ class VNTRAnnotator
     /**
      * Extract region to for motif discovery.
      */
-    ReferenceRegion extract_regions_by_exact_alignment(bcf_hdr_t* h, bcf1_t* v);
+    void extract_regions_by_exact_alignment(bcf_hdr_t* h, bcf1_t* v, ReferenceRegion& region);
 
     /**
      * Left align alleles.
@@ -211,18 +227,39 @@ class VNTRAnnotator
     /**
      * Extract reference sequence region for motif discovery in a fuzzy fashion.
      */
-    ReferenceRegion extract_regions_by_fuzzy_alignment(bcf_hdr_t* h, bcf1_t* v);
+    void extract_regions_by_fuzzy_alignment(bcf_hdr_t* h, bcf1_t* v, ReferenceRegion& region);
 
     /**
-     * Fuzzy left align alleles.
+     * Fuzzy left align alleles allowing for mismatches and indels defined by penalty.
+     *
+     * @chrom   - chromosome
+     * @pos1    - 1 based position
+     * @ref     - reference sequence
+     * @alt     - alternative sequence
+     * @penalty - mismatch/indels allowed
+     *
+     * Returns left aligned position.
      */
     uint32_t fuzzy_left_align(const char* chrom, int32_t pos1, std::string ref, std::string alt, uint32_t penalty);
 
     /**
-     * Fuzzy right align alleles.
+     * Fuzzy right align alleles allowing for mismatches and indels defined by penalty.
+     *
+     * @chrom   - chromosome
+     * @pos1    - 1 based position
+     * @ref     - reference sequence
+     * @alt     - alternative sequence
+     * @penalty - mismatch/indels allowed
+     *
+     * Returns right aligned position.
      */
     uint32_t fuzzy_right_align(const char* chrom, int32_t pos1, std::string ref, std::string alt, uint32_t penalty);
-
+    
+    /**
+     * Extract reference sequence region for motif discovery in a fuzzy fashion.
+     */
+    ReferenceRegion extract_regions_by_fuzzy_alignment(bcf_hdr_t* h, bcf1_t* v, uint32_t p);
+        
     /**
      * Detect allele lower bound extent.
      */

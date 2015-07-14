@@ -84,8 +84,9 @@ void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::str
     {
         if (debug) std::cerr << "ANNOTATING VNTR/STR \n";
 
+        ReferenceRegion region;
         //1. pick candidate region
-        ReferenceRegion region = pick_candidate_region(h, v, REFERENCE);
+        pick_candidate_region(h, v, region, REFERENCE);
 
         //2. detect candidate motifs from a reference seqeuence
         pick_candidate_motifs(region, REFERENCE);
@@ -97,6 +98,7 @@ void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::str
     }
     else if (variant.type&VT_INDEL)
     {
+        //EXACT MODE
         //1. selects candidate region by exact left and right alignment
         //2. detects motif
         //3. detects left and right flank
@@ -105,8 +107,9 @@ void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::str
             if (debug) std::cerr << "============================================\n";
             if (debug) std::cerr << "ANNOTATING INDEL EXACTLY\n";
 
+            ReferenceRegion region;
             //1. pick candidate region
-            ReferenceRegion region = pick_candidate_region(h, v, ALLELE_EXACT);
+            pick_candidate_region(h, v, region, ALLELE_EXACT);
 
             //2. detect candidate motifs from a reference sequence
             pick_candidate_motifs(region, ALLELE_EXACT);
@@ -115,8 +118,28 @@ void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::str
             choose_best_motif(h, v, mt, ALLELE_EXACT);
 
             if (debug) std::cerr << "============================================\n";
+        
+        
+        
+        
+        
+        
+        
+        
             return;
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
         }
+        //FUZZY DETECTION
         //1. selects candidate region by fuzzy left and right alignment
         //2. detects motif
         //3. detects left and right flank
@@ -125,8 +148,9 @@ void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::str
             if (debug) std::cerr << "============================================\n";
             if (debug) std::cerr << "ANNOTATING INDEL FUZZILY\n";
 
+            ReferenceRegion region;
             //1. pick candidate region
-            ReferenceRegion region = pick_candidate_region(h, v, ALLELE_FUZZY);
+            pick_candidate_region(h, v, region, ALLELE_FUZZY);
 
             //2. detect candidate motifs from a reference sequence
             pick_candidate_motifs(region, ALLELE_FUZZY);
@@ -161,23 +185,20 @@ void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::str
  *       - ALLELE_EXACT  by exact alignment
  *       - ALLELE_FUZZY  by fuzzy alignment
  */
-ReferenceRegion VNTRAnnotator::pick_candidate_region(bcf_hdr_t* h, bcf1_t* v, uint32_t mode)
+void VNTRAnnotator::pick_candidate_region(bcf_hdr_t* h, bcf1_t* v, ReferenceRegion& region, uint32_t mode)
 {
     if (mode==REFERENCE)
     {
-        ReferenceRegion region(bcf_get_pos1(v), bcf_get_ref(v));
-        return region;
+        region.initialize(bcf_get_pos1(v), bcf_get_ref(v));
     }
     else if (mode==ALLELE_EXACT)
     {
-        return extract_regions_by_exact_alignment(h, v);
+        extract_regions_by_exact_alignment(h, v, region);
     }
     else if (mode==ALLELE_FUZZY)
     {
-        return extract_regions_by_fuzzy_alignment(h, v);
+        extract_regions_by_fuzzy_alignment(h, v, region);
     }
-
-    return ReferenceRegion();
 }
 
 /**
@@ -317,7 +338,7 @@ VNTR VNTRAnnotator::choose_best_motif(bcf_hdr_t* h, bcf1_t* v, MotifTree* mt, ui
             vntr.motif = cm.motif;
             vntr.motif_score = cm.score;
         }
-        
+
         if (debug)
         {
             printf("selected: %10s %.2f %.2f %.2f %.2f (%d/%d)\n", mt->pcm.top().motif.c_str(),
@@ -328,7 +349,7 @@ VNTR VNTRAnnotator::choose_best_motif(bcf_hdr_t* h, bcf1_t* v, MotifTree* mt, ui
                                                             ahmm->get_exact_motif_count(),
                                                             ahmm->get_motif_count());
         }
-        
+
     }
     else if (mode==ALLELE_FUZZY)
     {
@@ -451,7 +472,7 @@ VNTR VNTRAnnotator::choose_best_motif(bcf_hdr_t* h, bcf1_t* v, MotifTree* mt, ui
         return vntr;
     }
 
-   
+
     VNTR vntr;
     return vntr;
 }
@@ -678,7 +699,7 @@ void VNTRAnnotator::infer_flanks(bcf_hdr_t* h, bcf1_t* v, std::string& motif)
 /**
  * Extract reference sequence region for motif discovery.
  */
-ReferenceRegion VNTRAnnotator::extract_regions_by_exact_alignment(bcf_hdr_t* h, bcf1_t* v)
+void VNTRAnnotator::extract_regions_by_exact_alignment(bcf_hdr_t* h, bcf1_t* v, ReferenceRegion& region)
 {
     if (debug)
     {
@@ -736,11 +757,9 @@ ReferenceRegion VNTRAnnotator::extract_regions_by_exact_alignment(bcf_hdr_t* h, 
         std::cerr << "                   " << seq << "\n";
     }
 
-    ReferenceRegion region = ReferenceRegion(min_beg1, seq);
+    region.initialize(min_beg1, seq);
 
     if (seq_len) free(seq);
-
-    return region;
 }
 
 /**
@@ -1010,7 +1029,7 @@ void VNTRAnnotator::right_align(const char* chrom, int32_t& pos1, std::string& r
 /**
  * Extract reference sequence region for motif discovery in a fuzzy fashion.
  */
-ReferenceRegion VNTRAnnotator::extract_regions_by_fuzzy_alignment(bcf_hdr_t* h, bcf1_t* v)
+void VNTRAnnotator::extract_regions_by_fuzzy_alignment(bcf_hdr_t* h, bcf1_t* v, ReferenceRegion& region)
 {
     if (debug)
     {
@@ -1061,15 +1080,186 @@ ReferenceRegion VNTRAnnotator::extract_regions_by_fuzzy_alignment(bcf_hdr_t* h, 
         std::cerr << "                   " << seq << "\n";
     }
 
-    ReferenceRegion region = ReferenceRegion(min_beg1, seq);
+    region.initialize(min_beg1, seq);
 
     if (seq_len) free(seq);
-
-    return region;
 }
+
+
+///**
+// * Fuzzy left align alleles allowing for mismatches and indels defined by penalty.
+// */
+//uint32_t VNTRAnnotator::fuzzy_left_align(const char* chrom, int32_t pos1, std::string ref, std::string alt, uint32_t penalty)
+//{
+//    if (ref==alt)
+//    {
+//        return pos1;
+//    }
+//
+//    //std::cerr << "fuzzy left alignment: " << chrom << ":" << pos1 << ":" << ref << ":" << alt << " (" <<  penalty << ")\n";
+//    int32_t seq_len;
+//    char* seq;
+//    while (ref.at(ref.size()-1)==alt.at(alt.size()-1) && pos1>1)
+//    {
+//        seq = faidx_fetch_seq(fai, chrom, pos1-2, pos1-2, &seq_len);
+//        if (seq_len)
+//        {
+//            ref.erase(ref.size()-1,1);
+//            alt.erase(alt.size()-1,1);
+//            ref.insert(0, 1, seq[0]);
+//            alt.insert(0, 1, seq[0]);
+//            free(seq);
+//            --pos1;
+//        }
+//        else
+//        {
+//            fprintf(stderr, "[%s:%d %s] Cannot read from sequence file\n", __FILE__,__LINE__,__FUNCTION__);
+//            exit(1);
+//        }
+//    }
+//
+//    if (penalty)
+//    {
+//        uint32_t pos1_sub = pos1;
+//        uint32_t pos1_del = pos1;
+//        uint32_t pos1_ins = pos1;
+//
+//        //substitution
+//        seq = faidx_fetch_seq(fai, chrom, pos1-2, pos1-2, &seq_len);
+//        if (seq_len)
+//        {
+//            std::string new_ref = ref;
+//            std::string new_alt = alt;
+//            new_ref.erase(new_ref.size()-1,1);
+//            new_alt.erase(new_alt.size()-1,1);
+//            new_ref.insert(0, 1, seq[0]);
+//            new_alt.insert(0, 1, seq[0]);
+////            std::cerr << "\tsub: " << chrom << ":" << pos1-1 << ":" << new_ref << ":" << new_alt << " (" <<  penalty-1 << ")\n";
+//            pos1_sub = fuzzy_left_align(chrom, pos1-1, new_ref, new_alt, penalty-1);
+//        }
+//        else
+//        {
+//            fprintf(stderr, "[%s:%d %s] Cannot read from sequence file\n", __FILE__,__LINE__,__FUNCTION__);
+//            exit(1);
+//        }
+//
+//        //deletion
+//        if (ref.size()>1)
+//        {
+//            std::string new_ref = ref;
+//            new_ref.erase(new_ref.size()-1,1);
+////            std::cerr << "\tdel: " << chrom << ":" << pos1 << ":" << new_ref << ":" << alt << " (" <<  penalty-1 << ")\n";
+//            pos1_del = fuzzy_left_align(chrom, pos1, new_ref, alt, penalty-1);
+//        }
+//
+//        //insertion
+//        if (alt.size()>1)
+//        {
+//            std::string new_alt = alt;
+//            new_alt.erase(new_alt.size()-1,1);
+////            std::cerr << "\tins: " << chrom << ":" << pos1 << ":" << ref << ":" << new_alt << " (" <<  penalty-1 << ")\n";
+//            pos1_ins = fuzzy_left_align(chrom, pos1, ref, new_alt, penalty-1);
+//        }
+//
+//        pos1 = std::min(pos1_sub, std::min(pos1_del, pos1_ins));
+//    }
+//
+//    return pos1;
+//}
+
+///**
+// * Fuzzy right align alleles allowing for mismatches and indels defined by penalty.
+// */
+//uint32_t VNTRAnnotator::fuzzy_right_align(const char* chrom, int32_t pos1, std::string ref, std::string alt, uint32_t penalty)
+//{
+//    if (ref==alt)
+//    {
+//        return pos1;
+//    }
+//
+//    int32_t seq_len;
+//    char* seq;
+//    while (ref.at(0)==alt.at(0))
+//    {
+//        seq = faidx_fetch_seq(fai, chrom, pos1, pos1, &seq_len);
+//        if (seq_len)
+//        {
+//            ref.erase(0,1);
+//            alt.erase(0,1);
+//            ref.push_back(seq[0]);
+//            alt.push_back(seq[0]);
+//            free(seq);
+//            ++pos1;
+//        }
+//        else
+//        {
+//            fprintf(stderr, "[%s:%d %s] Cannot read from sequence file\n", __FILE__,__LINE__,__FUNCTION__);
+//            exit(1);
+//        }
+//    }
+//
+//    if (penalty)
+//    {
+//        uint32_t pos1_sub = pos1;
+//        uint32_t pos1_del = pos1;
+//        uint32_t pos1_ins = pos1;
+//
+//        //substitution
+//        seq = faidx_fetch_seq(fai, chrom, pos1, pos1, &seq_len);
+//        if (seq_len)
+//        {
+//            std::string new_ref = ref;
+//            std::string new_alt = alt;
+//            new_ref.erase(0,1);
+//            new_alt.erase(0,1);
+//            new_ref.push_back(seq[0]);
+//            new_alt.push_back(seq[0]);
+//            //std::cerr << "\tsub: " << chrom << ":" << pos1+1 << ":" << new_ref << ":" << new_alt << " (" <<  penalty-1 << ")\n";
+//            pos1_sub = fuzzy_right_align(chrom, pos1+1, new_ref, new_alt, penalty-1);
+//        }
+//        else
+//        {
+//            fprintf(stderr, "[%s:%d %s] Cannot read from sequence file\n", __FILE__,__LINE__,__FUNCTION__);
+//            exit(1);
+//        }
+//
+//        //deletion
+//        if (ref.size()>1)
+//        {
+//            std::string new_ref = ref;
+//            new_ref.erase(0,1);
+//            //std::cerr << "\tdel: " << chrom << ":" << pos1 << ":" << new_ref << ":" << alt << " (" <<  penalty-1 << ")\n";
+//            pos1_del = fuzzy_right_align(chrom, pos1, new_ref, alt, penalty-1);
+//        }
+//
+//        //insertion
+//        if (alt.size()>1)
+//        {
+//            std::string new_alt = alt;
+//            new_alt.erase(0,1);
+//            //std::cerr << "\tins: " << chrom << ":" << pos1 << ":" << ref << ":" << new_alt << " (" <<  penalty-1 << ")\n";
+//            pos1_ins = fuzzy_right_align(chrom, pos1, ref, new_alt, penalty-1);
+//        }
+//
+//        pos1 = std::max(pos1_sub, std::max(pos1_del, pos1_ins));
+//    }
+//
+//    return pos1;
+//
+//}
+
+
 
 /**
  * Fuzzy left align alleles allowing for mismatches and indels defined by penalty.
+ *
+ * @chrom   - chromosome
+ * @pos1    - 1 based position
+ * @ref     - reference sequence
+ * @alt     - alternative sequence
+ * @penalty - mismatch/indels allowed
+ *
+ * Returns left aligned position.
  */
 uint32_t VNTRAnnotator::fuzzy_left_align(const char* chrom, int32_t pos1, std::string ref, std::string alt, uint32_t penalty)
 {
@@ -1151,6 +1341,14 @@ uint32_t VNTRAnnotator::fuzzy_left_align(const char* chrom, int32_t pos1, std::s
 
 /**
  * Fuzzy right align alleles allowing for mismatches and indels defined by penalty.
+ *
+ * @chrom   - chromosome
+ * @pos1    - 1 based position
+ * @ref     - reference sequence
+ * @alt     - alternative sequence
+ * @penalty - mismatch/indels allowed
+ *
+ * Returns right aligned position.
  */
 uint32_t VNTRAnnotator::fuzzy_right_align(const char* chrom, int32_t pos1, std::string ref, std::string alt, uint32_t penalty)
 {

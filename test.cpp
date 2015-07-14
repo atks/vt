@@ -319,8 +319,7 @@ class Igor : Program
 
 
     };
-    
-    
+        
     /**
      *  Analyse an mdust file
      *  Compute how much of genome it is off.
@@ -499,11 +498,7 @@ void test(int argc, char ** argv)
     
     //igor.analyse_mdust(argc, argv);
     
-    igor.test_pcre2(argc, argv);
-    
-    
-    
+    //igor.test_pcre2(argc, argv);
     
     //igor.test();
-
 };
