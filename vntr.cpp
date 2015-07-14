@@ -33,8 +33,7 @@ VNTR::VNTR(){};
  */
 void VNTR::clear()
 {
-    chrom.clear();
-    pos1 = 0;           
+    repeat_region.clear();           
     motif.clear();       
     len = 0;            
     ru.clear();          
@@ -45,3 +44,11 @@ void VNTR::clear()
     no_exact_ru = 0;              
     total_no_ru = 0;       
 }
+
+/**
+ * Print object.
+ */
+void VNTR::print()
+{
+    
+};  

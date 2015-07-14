@@ -85,20 +85,23 @@ VNTRAnnotator::~VNTRAnnotator()
  */
 void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::string mode)
 {
+    VNTR& vntr = variant.vntr;
+    
     if (variant.type==VT_VNTR)
     {
         if (debug) std::cerr << "ANNOTATING VNTR/STR \n";
 
+        
+
         //1. pick candidate region
-        pick_candidate_region(h, v, variant, REFERENCE);
+        pick_candidate_region(h, v, vntr, REFERENCE);
 
         //2. detect candidate motifs from a reference seqeuence
-        pick_candidate_motifs(variant, REFERENCE);
+        pick_candidate_motifs(h, v, vntr, REFERENCE);
 
         //3. choose the best candidate motif
-        choose_best_motif(h, v, mt, variant, REFERENCE);
+        choose_best_motif(h, v, mt, vntr, REFERENCE);
 
-        return;
     }
     else if (variant.type&VT_INDEL)
     {
@@ -113,21 +116,20 @@ void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::str
 
             RepeatRegion region;
             //1. pick candidate region
-            pick_candidate_region(h, v, variant, ALLELE_EXACT);
+            pick_candidate_region(h, v, vntr, ALLELE_EXACT);
 
             //2. detect candidate motifs from a reference sequence
-            pick_candidate_motifs(variant, ALLELE_EXACT);
+            pick_candidate_motifs(h, v, vntr, ALLELE_EXACT);
 
             //3. choose the best candidate motif
-            choose_best_motif(h, v, mt, variant, ALLELE_EXACT);
+            choose_best_motif(h, v, mt, vntr, ALLELE_EXACT);
 
             //4. evaluate reference length
-            //detect_repeat_region(h, v, variant);
+            //detect_repeat_region(h, v, vntr);
 
 
             //4. update VCF record
-            variant.print();
-            VNTR& vntr = variant.vntr;
+            vntr.print();
             bcf_update_info_string(h, v, MOTIF.c_str(), vntr.motif.c_str());
             bcf_update_info_string(h, v, RU.c_str(), vntr.ru.c_str());
            // bcf_update_info_float(h, v, RL.c_str(), vntr.rl, 1);
@@ -166,13 +168,13 @@ void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::str
 
             RepeatRegion region;
             //1. pick candidate region
-            pick_candidate_region(h, v, variant, ALLELE_FUZZY);
+            pick_candidate_region(h, v, vntr, ALLELE_FUZZY);
 
             //2. detect candidate motifs from a reference sequence
-            pick_candidate_motifs(variant, ALLELE_FUZZY);
+            pick_candidate_motifs(h, v, vntr, ALLELE_FUZZY);
 
             //3. choose the best candidate motif
-            choose_best_motif(h, v, mt, variant, ALLELE_FUZZY);
+            choose_best_motif(h, v, mt, vntr, ALLELE_FUZZY);
 
             return;
         }
@@ -201,19 +203,19 @@ void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::str
  *       - ALLELE_EXACT  by exact alignment
  *       - ALLELE_FUZZY  by fuzzy alignment
  */
-void VNTRAnnotator::pick_candidate_region(bcf_hdr_t* h, bcf1_t* v, Variant& variant, uint32_t mode)
+void VNTRAnnotator::pick_candidate_region(bcf_hdr_t* h, bcf1_t* v, VNTR& vntr, uint32_t mode)
 {
     if (mode==REFERENCE)
     {
-        variant.vntr.repeat_region.initialize(bcf_get_pos1(v), bcf_get_ref(v));
+        vntr.repeat_region.initialize(bcf_get_pos1(v), bcf_get_ref(v));
     }
     else if (mode==ALLELE_EXACT)
     {
-        extract_regions_by_exact_alignment(h, v, variant);
+        extract_regions_by_exact_alignment(h, v, vntr);
     }
     else if (mode==ALLELE_FUZZY)
     {
-        extract_regions_by_fuzzy_alignment(h, v, variant);
+        extract_regions_by_fuzzy_alignment(h, v, vntr);
     }
 }
 
@@ -222,7 +224,7 @@ void VNTRAnnotator::pick_candidate_region(bcf_hdr_t* h, bcf1_t* v, Variant& vari
  * Invokes motif tree and the candidate motifs are stored in a
  * heap within the motif tree.
  */
-void VNTRAnnotator::pick_candidate_motifs(Variant& variant, uint32_t mode)
+void VNTRAnnotator::pick_candidate_motifs(bcf_hdr_t* h, bcf1_t* v, VNTR& vntr, uint32_t mode)
 {
     if (debug)
     {
@@ -230,14 +232,14 @@ void VNTRAnnotator::pick_candidate_motifs(Variant& variant, uint32_t mode)
         std::cerr << "PICK CANDIDATE MOTIFS\n\n";
     }
 
-    mt->detect_candidate_motifs(variant.vntr.repeat_region.ref);
+    mt->detect_candidate_motifs(vntr.repeat_region.ref);
 }
 
 /**
  * Chooses a phase of the motif that is appropriate for the alignment
  *
  */
-VNTR VNTRAnnotator::choose_best_motif(bcf_hdr_t* h, bcf1_t* v, MotifTree* mt, Variant& variant, uint32_t mode)
+void VNTRAnnotator::choose_best_motif(bcf_hdr_t* h, bcf1_t* v, MotifTree* mt, VNTR& vntr, uint32_t mode)
 {
     if (debug)
     {
@@ -258,8 +260,6 @@ VNTR VNTRAnnotator::choose_best_motif(bcf_hdr_t* h, bcf1_t* v, MotifTree* mt, Va
         if (ref.size()>256) ref = ref.substr(0,256);
 
         uint32_t no = 0;
-
-        VNTR vntr;
 
         while (!mt->pcm.empty())
         {
@@ -340,14 +340,10 @@ VNTR VNTRAnnotator::choose_best_motif(bcf_hdr_t* h, bcf1_t* v, MotifTree* mt, Va
 
             ++no;
         }
-
-        return vntr;
     }
     else if (mode==ALLELE_EXACT)
     {
-        VNTR& vntr = variant.vntr;
-
-        if (!mt->pcm.empty())
+         if (!mt->pcm.empty())
         {
             CandidateMotif cm = mt->pcm.top();
 
@@ -373,10 +369,10 @@ VNTR VNTRAnnotator::choose_best_motif(bcf_hdr_t* h, bcf1_t* v, MotifTree* mt, Va
 //          if (!mt->pcm.empty())
 //            {
 //                CandidateMotif cm = mt->pcm.top();
-//                variant.vntr.motif = cm.motif;
-//                variant.vntr.motif_score = cm.score;
-////                variant.vntr.pos1 = region.beg1;
-////                variant.vntr.ref = region.ref;
+//                vntr.motif = cm.motif;
+//                vntr.motif_score = cm.score;
+////                vntr.pos1 = region.beg1;
+////                vntr.ref = region.ref;
 //
 //                if (debug)
 //                {
@@ -403,8 +399,6 @@ VNTR VNTRAnnotator::choose_best_motif(bcf_hdr_t* h, bcf1_t* v, MotifTree* mt, Va
         if (ref.size()>256) ref = ref.substr(0,256);
 
         uint32_t no = 0;
-
-        VNTR vntr;
 
         while (!mt->pcm.empty())
         {
@@ -484,13 +478,7 @@ VNTR VNTRAnnotator::choose_best_motif(bcf_hdr_t* h, bcf1_t* v, MotifTree* mt, Va
 
             ++no;
         }
-
-        return vntr;
     }
-
-
-    VNTR vntr;
-    return vntr;
 }
 
 ///**
@@ -543,7 +531,7 @@ std::string VNTRAnnotator::choose_repeat_unit(std::string& ref, std::string& mot
 }
 
 /**
- * Checks if a variant is a homopolymer.
+ * Checks if a vntr is a homopolymer.
  */
 bool VNTRAnnotator::is_homopolymer(bcf_hdr_t* h, bcf1_t* v)
 {
@@ -598,8 +586,8 @@ void VNTRAnnotator::infer_flanks(bcf_hdr_t* h, bcf1_t* v, std::string& motif)
 //        std::cerr << "exact motif : " << emotif << "\n";
 //        std::cerr << "exact ru    : " << eru << "\n";
 //
-//        variant.eru = eru;
-//        variant.emotif = emotif;
+//        vntr.eru = eru;
+//        vntr.emotif = emotif;
 //
 //        ///////////////
 //        //INEXACT STRs
@@ -697,8 +685,8 @@ void VNTRAnnotator::infer_flanks(bcf_hdr_t* h, bcf1_t* v, std::string& motif)
 //
 //        int32_t motif_beg1 = motif_end1-check_len + rfhmm->get_motif_read_spos1();
 //
-//        variant.iregion.beg1 = motif_beg1;
-//        variant.iregion.end1 = motif_end1;
+//        vntr.iregion.beg1 = motif_beg1;
+//        vntr.iregion.end1 = motif_end1;
 //        if (pos1==164284)
 //        {
 //         //   exit(1);
@@ -715,7 +703,7 @@ void VNTRAnnotator::infer_flanks(bcf_hdr_t* h, bcf1_t* v, std::string& motif)
 /**
  * Extract reference sequence region for motif discovery.
  */
-void VNTRAnnotator::extract_regions_by_exact_alignment(bcf_hdr_t* h, bcf1_t* v, Variant& variant)
+void VNTRAnnotator::extract_regions_by_exact_alignment(bcf_hdr_t* h, bcf1_t* v, VNTR& vntr)
 {
     if (debug)
     {
@@ -773,7 +761,7 @@ void VNTRAnnotator::extract_regions_by_exact_alignment(bcf_hdr_t* h, bcf1_t* v, 
         std::cerr << "                   " << seq << "\n";
     }
 
-    variant.vntr.repeat_region.initialize(min_beg1, seq);
+    vntr.repeat_region.initialize(min_beg1, seq);
 
     if (seq_len) free(seq);
 }
@@ -1045,7 +1033,7 @@ void VNTRAnnotator::right_align(const char* chrom, int32_t& pos1, std::string& r
 /**
  * Extract reference sequence region for motif discovery in a fuzzy fashion.
  */
-void VNTRAnnotator::extract_regions_by_fuzzy_alignment(bcf_hdr_t* h, bcf1_t* v, Variant& variant)
+void VNTRAnnotator::extract_regions_by_fuzzy_alignment(bcf_hdr_t* h, bcf1_t* v, VNTR& vntr)
 {
     if (debug)
     {
@@ -1096,7 +1084,7 @@ void VNTRAnnotator::extract_regions_by_fuzzy_alignment(bcf_hdr_t* h, bcf1_t* v, 
         std::cerr << "                   " << seq << "\n";
     }
 
-    variant.vntr.repeat_region.initialize(min_beg1, seq);
+    vntr.repeat_region.initialize(min_beg1, seq);
 
     if (seq_len) free(seq);
 }

@@ -1,6 +1,6 @@
 /* The MIT License
 
-   Copyright (c) 2014 Adrian Tan <atks@umich.edu>
+   Copyright (c) 2015 Adrian Tan <atks@umich.edu>
 
    Permission is hereby granted, free of charge, to any person obtaining a copy
    of this software and associated documentation files (the "Software"), to deal
@@ -21,21 +21,17 @@
    THE SOFTWARE.
 */
 
+#include <cstdint>
+#include <cstring>
+#include <iostream>
+#include <vector>
+
 #ifndef REPEAT_REGION_H
 #define REPEAT_REGION_H
 
-#include <cstdlib>
-#include <cstdint>
-#include <cstring>
-#include <cmath>
-#include <queue>
-#include <list>
-#include "hts_utils.h"
-
-#define REFERENCE     0
-#define ALLELE_EXACT  1
-#define ALLELE_FUZZY  2
-
+/**
+ * Represents the repeat tract of VNTR
+ */
 class RepeatRegion
 {
     public:
@@ -46,27 +42,22 @@ class RepeatRegion
     /**
      * Constructor.
      */
-    RepeatRegion() {};
+    RepeatRegion();
 
     /**
      * Constructor.
      */
-    RepeatRegion(uint32_t beg1, char* ref)
-    {
-        this->beg1 = beg1;
-        this->ref.assign(ref);
-        this->end1 = beg1 + this->ref.size() - 1;
-    };
+    RepeatRegion(uint32_t beg1, char* ref);
 
     /**
-     * Initialize ReferenceRegion.
+     * Initialize RepeatRegion.
      */
-    void initialize(uint32_t beg1, char* ref)
-    {
-        this->beg1 = beg1;
-        this->ref.assign(ref);
-        this->end1 = beg1 + this->ref.size() - 1;
-    };
+    void initialize(uint32_t beg1, char* ref);
+    
+    /**
+     * Clears RepeatRegion.
+     */
+    void clear();
 };
 
 #endif

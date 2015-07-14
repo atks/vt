@@ -49,8 +49,6 @@
 #define ALLELE_EXACT  1
 #define ALLELE_FUZZY  2
 
-KHASH_MAP_INIT_STR(mdict, int32_t);
-
 /**
  * Class for determining basic traits of an indel
  * motifs, flanks and VNTR type statistics.
@@ -128,18 +126,18 @@ class VNTRAnnotator
      *       - ALLELE_EXACT  by exact alignment
      *       - ALLELE_FUZZY  by fuzzy alignment
      */
-    void pick_candidate_region(bcf_hdr_t* h, bcf1_t* v, Variant& variant, uint32_t mode);
+    void pick_candidate_region(bcf_hdr_t* h, bcf1_t* v, VNTR& vntr, uint32_t mode);
 
     /**
      * Pick candidate motifs.
      * candidate_motifs contain motifs and a measure of confidence
      */
-    void pick_candidate_motifs(Variant& variant, uint32_t mode);
+    void pick_candidate_motifs(bcf_hdr_t* h, bcf1_t* v, VNTR& vntr, uint32_t mode);
     
     /**
      * Chooses a phase of the motif that is appropriate for the alignment
      */
-    VNTR choose_best_motif(bcf_hdr_t* h, bcf1_t* v, MotifTree* mt, Variant& variant, uint32_t mode);
+    void choose_best_motif(bcf_hdr_t* h, bcf1_t* v, MotifTree* mt, VNTR& vntr, uint32_t mode);
 
     /**
      * Infer flanks  motif discovery.
@@ -178,14 +176,14 @@ class VNTRAnnotator
     void trim(int32_t& pos1, std::string& ref, std::string& alt);
 
     /**
-     * Checks if a variant is a homopolymer.
+     * Checks if a vntr is a homopolymer.
      */
     bool is_homopolymer(bcf_hdr_t* h, bcf1_t* v);
 
     /**
      * Extract region to for motif discovery.
      */
-    void extract_regions_by_exact_alignment(bcf_hdr_t* h, bcf1_t* v, Variant& variant);
+    void extract_regions_by_exact_alignment(bcf_hdr_t* h, bcf1_t* v, VNTR& vntr);
 
     /**
      * Left align alleles.
@@ -200,7 +198,7 @@ class VNTRAnnotator
     /**
      * Extract reference sequence region for motif discovery in a fuzzy fashion.
      */
-    void extract_regions_by_fuzzy_alignment(bcf_hdr_t* h, bcf1_t* v, Variant& variant);
+    void extract_regions_by_fuzzy_alignment(bcf_hdr_t* h, bcf1_t* v, VNTR& vntr);
 
     /**
      * Fuzzy left align alleles allowing for mismatches and indels defined by penalty.
@@ -260,7 +258,7 @@ class VNTRAnnotator
     std::string shift_phase(std::string& seq, size_t i);
 
     /**
-     * Prints variant information.
+     * Prints vntr information.
      */
     void print();
 };

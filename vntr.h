@@ -38,18 +38,16 @@
 class VNTR
 {
     public:
-    std::string chrom;        //chromosome
-    uint32_t pos1;            //1 based position
-    RepeatRegion repeat_region;
-    std::string motif;        //motif      
-    uint32_t len;             //length of motif    
-    std::string ru;           //repeat unit                    
-    std::string lflank;       //left flank                         
-    std::string rflank;       //right flank   
-    float motif_score;        //motif score from motif tree    
-    float motif_concordance;  //motif concordance from hmm     
-    float no_exact_ru;        //number exact repeat units from hmm                 
-    float total_no_ru;        //total no of repeat units from hmm                                       
+    RepeatRegion repeat_region; //repeat tract
+    std::string motif;          //motif      
+    uint32_t len;               //length of motif    
+    std::string ru;             //repeat unit                    
+    std::string lflank;         //left flank                         
+    std::string rflank;         //right flank   
+    float motif_score;          //motif score from motif tree    
+    float motif_concordance;    //motif concordance from hmm     
+    float no_exact_ru;          //number exact repeat units from hmm                 
+    float total_no_ru;          //total no of repeat units from hmm                                       
     
     /**
      * Constructor.
@@ -59,6 +57,11 @@ class VNTR
     /**
      * Clear object.
      */
-    void clear();    
+    void clear(); 
+    
+    /**
+     * Print object.
+     */
+    void print();    
 };
 #endif

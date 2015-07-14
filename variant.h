@@ -52,7 +52,7 @@ class Variant
     int32_t ins;        //no. of insertions
     int32_t del;        //no. of deletions
 
-    //describes a repeat region
+    //describes VNTR
     VNTR vntr;
 
     /**

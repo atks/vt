@@ -1,6 +1,6 @@
 /* The MIT License
 
-   Copyright (c) 2014 Adrian Tan <atks@umich.edu>
+   Copyright (c) 2015 Adrian Tan <atks@umich.edu>
 
    Permission is hereby granted, free of charge, to any person obtaining a copy
    of this software and associated documentation files (the "Software"), to deal
@@ -22,3 +22,36 @@
 */
 
 #include "repeat_region.h"
+
+/**
+ * Constructor.
+ */
+RepeatRegion::RepeatRegion() {};
+
+/**
+ * Constructor.
+ */
+RepeatRegion::RepeatRegion(uint32_t beg1, char* ref)
+{
+    initialize(beg1, ref);
+};
+
+/**
+ * Initialize RepeatRegion.
+ */
+void RepeatRegion::initialize(uint32_t beg1, char* ref)
+{
+    this->beg1 = beg1;
+    this->ref.assign(ref);
+    this->end1 = beg1 + this->ref.size() - 1;
+};
+
+/**
+ * Clears RepeatRegion.
+ */
+void RepeatRegion::clear()
+{
+    this->beg1 = 0;
+    this->end1 = 0;
+    this->ref.clear();
+};
