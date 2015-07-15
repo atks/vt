@@ -37,7 +37,7 @@ class RepeatTract
     public:
     uint32_t pos1;
     uint32_t end1;
-    std::string ref;
+    std::string seq;
 
     /**
      * Constructor.
@@ -47,12 +47,12 @@ class RepeatTract
     /**
      * Constructor.
      */
-    RepeatTract(uint32_t pos1, char* ref);
+    RepeatTract(uint32_t pos1, char* seq);
 
     /**
      * Initialize RepeatRegion.
      */
-    void initialize(uint32_t pos1, char* ref);
+    void initialize(uint32_t pos1, char* seq);
 
     /**
      * Clears RepeatRegion.

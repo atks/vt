@@ -31,19 +31,19 @@ RepeatTract::RepeatTract() {};
 /**
  * Constructor.
  */
-RepeatTract::RepeatTract(uint32_t pos1, char* ref)
+RepeatTract::RepeatTract(uint32_t pos1, char* seq)
 {
-    initialize(pos1, ref);
+    initialize(pos1, seq);
 };
 
 /**
  * Initialize RepeatTract.
  */
-void RepeatTract::initialize(uint32_t pos1, char* ref)
+void RepeatTract::initialize(uint32_t pos1, char* seq)
 {
     this->pos1 = pos1;
-    this->ref.assign(ref);
-    this->end1 = pos1 + this->ref.size() - 1;
+    this->seq.assign(seq);
+    this->end1 = pos1 + this->seq.size() - 1;
 };
 
 /**
@@ -53,5 +53,5 @@ void RepeatTract::clear()
 {
     this->pos1 = 0;
     this->end1 = 0;
-    this->ref.clear();
+    this->seq.clear();
 };

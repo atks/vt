@@ -38,7 +38,8 @@ void VNTR::clear()
     len = 0;            
     ru.clear();          
     lflank.clear();      
-    rflank.clear();      
+    rflank.clear();  
+    rl = 0;    
     motif_score = 0;       
     motif_concordance = 0; 
     no_exact_ru = 0;              
@@ -50,5 +51,12 @@ void VNTR::clear()
  */
 void VNTR::print()
 {
-    
+    std::cerr << "++++++++++++++++++++++++++++\n";
+    std::cerr << "VNTR Summary\n";
+    std::cerr << "repeat_tract : " << repeat_tract.seq << "\n";
+    std::cerr << "pos1         : " << repeat_tract.pos1 << "\n";
+    std::cerr << "motif        : " << motif << "\n";
+    std::cerr << "ru           : " << ru << "\n";
+    std::cerr << "rl           : " << rl << "\n";            
+    std::cerr << "++++++++++++++++++++++++++++\n";    
 };  

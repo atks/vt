@@ -43,6 +43,8 @@ VNTRAnnotator::VNTRAnnotator(std::string& ref_fasta_file, std::string MOTIF, std
     this->MOTIF = MOTIF;
     this->RU = RU;
     this->RL = RL;
+    this->REF = REF;
+    this->REFPOS = REFPOS;
     this->SCORE = SCORE;
 
 //    //update factors
@@ -122,28 +124,24 @@ void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::str
             detect_repeat_region(h, v, vntr, CLIP_ENDS);
 
             //5. update VCF record
-            vntr.print();
             bcf_update_info_string(h, v, MOTIF.c_str(), vntr.motif.c_str());
             bcf_update_info_string(h, v, RU.c_str(), vntr.ru.c_str());
             bcf_update_info_float(h, v, RL.c_str(), &vntr.rl, 1);
-            bcf_update_info_string(h, v, REF.c_str(), vntr.repeat_tract.ref.c_str());
+            bcf_update_info_string(h, v, REF.c_str(), vntr.repeat_tract.seq.c_str());
             bcf_update_info_int32(h, v, REFPOS.c_str(), &vntr.repeat_tract.pos1, 1);
             
-            // bcf_update_info_float(h, v, RL.c_str(), vntr.rl, 1);
-
             if (debug) std::cerr << "============================================\n";
-
             return;
-
         }
         //FUZZY DETECTION
-        //1. selects candidate region by fuzzy left and right alignment
-        //2. detects motif
-        //3. detects left and right flank
         else if (mode=="f")
         {
             if (debug) std::cerr << "============================================\n";
             if (debug) std::cerr << "ANNOTATING INDEL FUZZILY\n";
+
+            //1. selects candidate region by fuzzy left and right alignment
+            //2. detects motif
+            //3. detects left and right flank
 
             RepeatTract region;
             //1. pick candidate region
@@ -211,7 +209,7 @@ void VNTRAnnotator::pick_candidate_motifs(bcf_hdr_t* h, bcf1_t* v, VNTR& vntr, u
         std::cerr << "PICK CANDIDATE MOTIFS\n\n";
     }
 
-    mt->detect_candidate_motifs(vntr.repeat_tract.ref);
+    mt->detect_candidate_motifs(vntr.repeat_tract.seq);
 }
 
 /**
@@ -508,20 +506,18 @@ void VNTRAnnotator::detect_repeat_region(bcf_hdr_t* h, bcf1_t *v, VNTR& vntr, ui
 
         RepeatTract& tract = vntr.repeat_tract;
 
-        if (tract.ref.size()>2)
+        if (tract.seq.size()>2)
         {
-            tract.ref = tract.ref.substr(1, tract.ref.size()-2);
+            tract.seq = tract.seq.substr(1, tract.seq.size()-2);
             tract.pos1++;
         }
 
-        vntr.ru = choose_repeat_unit(tract.ref, vntr.motif);
-        vntr.rl = (float)tract.ref.size()/vntr.ru.size();
-
+        vntr.ru = choose_repeat_unit(tract.seq, vntr.motif);
+        vntr.rl = (float)tract.seq.size()/vntr.ru.size();
+        
         if (debug)
         {
-            std::cerr << "repeat tract: " << tract.ref << "\n";
-            std::cerr << "ru:           " << vntr.ru  <<"\n";
-            std::cerr << "rl:           " << vntr.rl  <<"\n";
+            vntr.print();
         }
     }
 };
