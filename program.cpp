@@ -188,7 +188,7 @@ void Program::parse_intervals(std::vector<GenomeInterval>& intervals, std::strin
 }
 
 /**
- * Parse filters. Processes the filter list first followed by the interval string. Duplicates are dropped.
+ * Parse filters. Processes the filter list.
  *
  * @filters       - filters stored in this vector
  * @filter_string - comma delimited filters in a string
@@ -196,15 +196,21 @@ void Program::parse_intervals(std::vector<GenomeInterval>& intervals, std::strin
 void Program::parse_filters(std::vector<std::string>& filters, std::string filter_string)
 {
     filters.clear();
-
-    std::vector<std::string> v;
     if (filter_string!="")
-        split(v, ",", filter_string);
+        split(filters, ",", filter_string);
+}
 
-    for (size_t i=0; i<v.size(); ++i)
-    {
-        filters.push_back(v[i]);
-    }
+/**
+ * Parse a list of strings delimited by commas.
+ *
+ * @strings        - list of strings
+ * @string_list    - comma delimited strings
+ */
+void Program::parse_string_list(std::vector<std::string>& strings, std::string string_list)
+{
+    strings.clear();
+    if (string_list!="")
+        split(strings, ",", string_list);
 }
 
 /**

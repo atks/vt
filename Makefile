@@ -76,6 +76,7 @@ SOURCES = align\
 		remove_overlap\
 		repeat_tract\
 		rfhmm\
+		rminfo\
 		seq\
 		sort\
 		subset\

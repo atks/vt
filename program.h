@@ -36,7 +36,7 @@
 
 class VTOutput : public TCLAP::StdOutput
 {
-	public:
+    public:
 
     void failure(TCLAP::CmdLineInterface& c, TCLAP::ArgException& e);
 
@@ -69,23 +69,31 @@ class Program
      */
     void parse_files(std::vector<std::string>& files, const std::vector<std::string>& arg_files, std::string file_list);
 
-	/**
+    /**
      * Parse intervals. Processes the interval list first followed by the interval string. Duplicates are dropped.
      *
      * @intervals       - intervals stored in this vector
      * @interval_list   - file containing intervals
      * @interval_string - comma delimited intervals in a string
      */
-	void parse_intervals(std::vector<GenomeInterval>& intervals, std::string interval_list, std::string interval_string);
-    
+    void parse_intervals(std::vector<GenomeInterval>& intervals, std::string interval_list, std::string interval_string);
+
     /**
-     * Parse filters. Processes the filter list first followed by the interval string. Duplicates are dropped.
+     * Parse filters. Processes the filter list.
      *
      * @filters       - filters stored in this vector
      * @filter_string - comma delimited filters in a string
      */
     void parse_filters(std::vector<std::string>& filters, std::string filter_string);
-    
+
+    /**
+     * Parse a list of strings delimited by commas.
+     *
+     * @strings        - list of strings
+     * @string_list    - comma delimited strings
+     */
+    void parse_string_list(std::vector<std::string>& strings, std::string string_list);
+
     /**
      * Parse samples. Processes the sample list. Duplicates are dropped.
      *
@@ -109,26 +117,26 @@ class Program
      */
     void print_stats(){};
 
- 	/**
+    /**
      * Print reference FASTA file option.
      */
     void print_ref_op(const char* option_line, std::string ref_fasta_file);
-    
+
     /**
      * Print string option, hide if not present.
      */
     void print_str_op(const char* option_line, std::string str_value);
-    
+
     /**
      * Print number option, hide if 0.
      */
     void print_num_op(const char* option_line, uint32_t num_value);
-    
+
     /**
      * Print switch option, hide if not switched on.
      */
     void print_boo_op(const char* option_line, bool value);
-    
+
     /**
      * Print intervals option.
      */

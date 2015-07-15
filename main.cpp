@@ -62,6 +62,7 @@
 #include "profile_na12878.h"
 #include "profile_snps.h"
 #include "remove_overlap.h"
+#include "rminfo.h";
 #include "seq.h"
 #include "sort.h"
 #include "subset.h"
@@ -187,6 +188,10 @@ int main(int argc, char ** argv)
     else if (argc>1 && cmd=="validate")
     {
         print = validate(argc-1, ++argv);
+    }
+    else if (argc>1 && cmd=="rminfo")
+    {
+        print = rminfo(argc-1, ++argv);
     }
     else if (argc>1 && cmd=="sort")
     {
