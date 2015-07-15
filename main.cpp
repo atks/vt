@@ -62,7 +62,7 @@
 #include "profile_na12878.h"
 #include "profile_snps.h"
 #include "remove_overlap.h"
-#include "rminfo.h";
+#include "rminfo.h"
 #include "seq.h"
 #include "sort.h"
 #include "subset.h"
