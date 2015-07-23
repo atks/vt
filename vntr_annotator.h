@@ -46,9 +46,13 @@
 #include "vntr.h"
 
 //forms of alignment
-#define REFERENCE                   0
-#define EXACT_LEFT_RIGHT_ALIGNMENT  1
-#define FUZZY_LEFT_RIGHT_ALIGNMENT  2
+#define REFERENCE                                0
+#define EXACT_LEFT_RIGHT_ALIGNMENT               1
+#define FUZZY_LEFT_RIGHT_ALIGNMENT               2
+#define FUZZY_LEFT_RIGHT_ALIGNMENT_WITH_PENALTY  3
+
+//forms of choosing a motif
+#define PICK_BEST_MOTIF             0
 
 #define ALLELE_EXACT  1
 #define ALLELE_FUZZY  2
@@ -140,7 +144,7 @@ class VNTRAnnotator
      * Pick candidate motifs.
      * candidate_motifs contain motifs and a measure of confidence
      */
-    void pick_candidate_motifs(bcf_hdr_t* h, bcf1_t* v, VNTR& vntr, uint32_t mode);
+    void pick_candidate_motifs(bcf_hdr_t* h, bcf1_t* v, VNTR& vntr);
     
     /**
      * Chooses a phase of the motif that is appropriate for the alignment

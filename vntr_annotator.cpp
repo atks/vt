@@ -97,7 +97,7 @@ void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::str
         pick_candidate_region(h, v, vntr, REFERENCE);
 
         //2. detect candidate motifs from a reference seqeuence
-        pick_candidate_motifs(h, v, vntr, REFERENCE);
+        pick_candidate_motifs(h, v, vntr);
 
         //3. choose the best candidate motif
         choose_best_motif(h, v, mt, vntr, REFERENCE);
@@ -115,10 +115,10 @@ void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::str
             pick_candidate_region(h, v, vntr, EXACT_LEFT_RIGHT_ALIGNMENT);
 
             //2. detect candidate motifs from a reference sequence
-            pick_candidate_motifs(h, v, vntr, ALLELE_EXACT);
+            pick_candidate_motifs(h, v, vntr);
 
             //3. choose the best candidate motif
-            choose_best_motif(h, v, mt, vntr, ALLELE_EXACT);
+            choose_best_motif(h, v, mt, vntr, PICK_BEST_MOTIF);
 
             //4. evaluate reference length
             detect_repeat_region(h, v, vntr, CLIP_ENDS);
@@ -129,7 +129,7 @@ void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::str
             bcf_update_info_float(h, v, RL.c_str(), &vntr.rl, 1);
             bcf_update_info_string(h, v, REF.c_str(), vntr.repeat_tract.seq.c_str());
             bcf_update_info_int32(h, v, REFPOS.c_str(), &vntr.repeat_tract.pos1, 1);
-            
+
             if (debug) std::cerr << "============================================\n";
             return;
         }
@@ -140,25 +140,50 @@ void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::str
             if (debug) std::cerr << "ANNOTATING INDEL FUZZILY\n";
 
             //1. selects candidate region by fuzzy left and right alignment
-            //2. detects motif
-            //3. detects left and right flank
-
-            RepeatTract region;
-            //1. pick candidate region
             pick_candidate_region(h, v, vntr, ALLELE_FUZZY);
 
-            //2. detect candidate motifs from a reference sequence
-            pick_candidate_motifs(h, v, vntr, ALLELE_FUZZY);
+            //2. detect candidate motifs from candidate region
+            pick_candidate_motifs(h, v, vntr);
 
             //3. choose the best candidate motif
-            choose_best_motif(h, v, mt, vntr, ALLELE_FUZZY);
+            choose_best_motif(h, v, mt, vntr, PICK_BEST_MOTIF);
 
+            //5. update VCF record
+            bcf_update_info_string(h, v, MOTIF.c_str(), vntr.motif.c_str());
+            bcf_update_info_string(h, v, RU.c_str(), vntr.ru.c_str());
+            bcf_update_info_float(h, v, RL.c_str(), &vntr.rl, 1);
+            bcf_update_info_string(h, v, REF.c_str(), vntr.repeat_tract.seq.c_str());
+            bcf_update_info_int32(h, v, REFPOS.c_str(), &vntr.repeat_tract.pos1, 1);
+
+            if (debug) std::cerr << "============================================\n";
             return;
         }
-        //1. selects candidate region by fuzzy left and right alignment
-        //2. detects motif
-        //3. detects left anf right flank
-        else if (mode=="x")
+        else if (mode=="pf")        
+        {
+            if (debug) std::cerr << "============================================\n";
+            if (debug) std::cerr << "ANNOTATING INDEL FUZZILY WITH PENALTY\n";
+
+            //1. selects candidate region by fuzzy left and right alignment
+            pick_candidate_region(h, v, vntr, ALLELE_FUZZY);
+
+            //2. detect candidate motifs from candidate region
+            pick_candidate_motifs(h, v, vntr);
+
+            //3. choose the best candidate motif
+            choose_best_motif(h, v, mt, vntr, PICK_BEST_MOTIF);
+
+            //5. update VCF record
+            bcf_update_info_string(h, v, MOTIF.c_str(), vntr.motif.c_str());
+            bcf_update_info_string(h, v, RU.c_str(), vntr.ru.c_str());
+            bcf_update_info_float(h, v, RL.c_str(), &vntr.rl, 1);
+            bcf_update_info_string(h, v, REF.c_str(), vntr.repeat_tract.seq.c_str());
+            bcf_update_info_int32(h, v, REFPOS.c_str(), &vntr.repeat_tract.pos1, 1);
+
+            if (debug) std::cerr << "============================================\n";
+            return;
+        
+        }
+        else if (mode=="fp")
         {
             //treat homopolymers as a special case
             if (is_homopolymer(h,v))
@@ -169,7 +194,6 @@ void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::str
             {
             }
         }
-
     }
 }
 
@@ -190,7 +214,7 @@ void VNTRAnnotator::pick_candidate_region(bcf_hdr_t* h, bcf1_t* v, VNTR& vntr, u
     {
         extract_regions_by_exact_alignment(h, v, vntr);
     }
-    else if (mode==ALLELE_FUZZY)
+    else if (mode==FUZZY_LEFT_RIGHT_ALIGNMENT)
     {
         extract_regions_by_fuzzy_alignment(h, v, vntr);
     }
@@ -201,11 +225,11 @@ void VNTRAnnotator::pick_candidate_region(bcf_hdr_t* h, bcf1_t* v, VNTR& vntr, u
  * Invokes motif tree and the candidate motifs are stored in a
  * heap within the motif tree.
  */
-void VNTRAnnotator::pick_candidate_motifs(bcf_hdr_t* h, bcf1_t* v, VNTR& vntr, uint32_t mode)
+void VNTRAnnotator::pick_candidate_motifs(bcf_hdr_t* h, bcf1_t* v, VNTR& vntr)
 {
     if (debug)
     {
-        if (debug) std::cerr << "********************************************\n";
+        std::cerr << "********************************************\n";
         std::cerr << "PICK CANDIDATE MOTIFS\n\n";
     }
 
@@ -220,13 +244,34 @@ void VNTRAnnotator::choose_best_motif(bcf_hdr_t* h, bcf1_t* v, MotifTree* mt, VN
 {
     if (debug)
     {
-        if (debug) std::cerr << "********************************************\n";
+        std::cerr << "********************************************\n";
         std::cerr << "PICK BEST MOTIF\n\n";
     }
 
-   // if (debug) std::cerr << "pcm size : " << mt->pcm.size() << "\n";
+    // if (debug) std::cerr << "pcm size : " << mt->pcm.size() << "\n";
+    if (mode==PICK_BEST_MOTIF)
+    {
+        if (!mt->pcm.empty())
+        {
+            CandidateMotif cm = mt->pcm.top();
 
-    if (mode==REFERENCE)
+            vntr.motif = cm.motif;
+            vntr.motif_score = cm.score;
+        }
+
+        if (debug)
+        {
+            printf("selected: %10s %.2f %.2f %.2f %.2f (%d/%d)\n", mt->pcm.top().motif.c_str(),
+                                                            mt->pcm.top().score,
+                                                            mt->pcm.top().fit,
+                                                            ahmm->get_motif_concordance(),
+                                                            (float)ahmm->get_exact_motif_count()/ahmm->get_motif_count(),
+                                                            ahmm->get_exact_motif_count(),
+                                                            ahmm->get_motif_count());
+        }
+
+    }
+    else if (mode==10)
     {
         //choose candidate motif
         bool first = true;
@@ -318,55 +363,8 @@ void VNTRAnnotator::choose_best_motif(bcf_hdr_t* h, bcf1_t* v, MotifTree* mt, VN
             ++no;
         }
     }
-    else if (mode==ALLELE_EXACT)
-    {
-         if (!mt->pcm.empty())
-        {
-            CandidateMotif cm = mt->pcm.top();
-
-            vntr.motif = cm.motif;
-            vntr.motif_score = cm.score;
-        }
-
-        if (debug)
-        {
-            printf("selected: %10s %.2f %.2f %.2f %.2f (%d/%d)\n", mt->pcm.top().motif.c_str(),
-                                                            mt->pcm.top().score,
-                                                            mt->pcm.top().fit,
-                                                            ahmm->get_motif_concordance(),
-                                                            (float)ahmm->get_exact_motif_count()/ahmm->get_motif_count(),
-                                                            ahmm->get_exact_motif_count(),
-                                                            ahmm->get_motif_count());
-        }
-
-    }
     else if (mode==ALLELE_FUZZY)
     {
-
-//          if (!mt->pcm.empty())
-//            {
-//                CandidateMotif cm = mt->pcm.top();
-//                vntr.motif = cm.motif;
-//                vntr.motif_score = cm.score;
-////                vntr.pos1 = region.beg1;
-////                vntr.ref = region.ref;
-//
-//                if (debug)
-//                {
-//                    uint32_t n =0;
-//                    while(!mt->pcm.empty())
-//                    {
-//                        CandidateMotif cm = mt->pcm.top();
-//                        std::cerr << cm.motif << " " << cm.score << "\n";
-//                        mt->pcm.pop();
-//                        if (n==10)
-//                            break;
-//
-//                        ++n;
-//                    }
-//                }
-//            }
-
         //choose candidate motif
         bool first = true;
         float cp = 0;
@@ -495,6 +493,7 @@ void VNTRAnnotator::choose_best_motif(bcf_hdr_t* h, bcf1_t* v, MotifTree* mt, VN
  */
 void VNTRAnnotator::detect_repeat_region(bcf_hdr_t* h, bcf1_t *v, VNTR& vntr, uint32_t mode)
 {
+    //simple single base pair clipping of ends
     if (mode==CLIP_ENDS)
     {
         if (debug)
@@ -514,7 +513,7 @@ void VNTRAnnotator::detect_repeat_region(bcf_hdr_t* h, bcf1_t *v, VNTR& vntr, ui
 
         vntr.ru = choose_repeat_unit(tract.seq, vntr.motif);
         vntr.rl = (float)tract.seq.size()/vntr.ru.size();
-        
+
         if (debug)
         {
             vntr.print();
