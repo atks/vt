@@ -47,6 +47,7 @@ class Igor : Program
     std::string mode;
     bool override_tag;
     uint32_t alignment_penalty;
+    bool add_vntr_record;
 
     std::string MOTIF;
     std::string RU;
@@ -54,7 +55,8 @@ class Igor : Program
     std::string REF;
     std::string REFPOS;
     std::string SCORE;
-        
+    std::string TR;
+
     bool debug;
 
     ///////
@@ -95,12 +97,15 @@ class Igor : Program
             TCLAP::ValueArg<std::string> arg_mode("m", "m", "mode [x]\n"
                  "              e : determine by exact alignment.\n"
                  "              f : determine by fuzzy alignment.\n"
-                 "              x : using HMMs",
+                 "              p : determine by penalized fuzzy alignment.\n"
+                 "              h : using HMMs"
+                 "              x : integrated models",
                  false, "", "str", cmd);
             TCLAP::ValueArg<uint32_t> arg_alignment_penalty("p", "p", "alignment penalty [0]\n", false, 0, "int", cmd);
             TCLAP::SwitchArg arg_debug("d", "d", "debug [false]", cmd, false);
             TCLAP::UnlabeledValueArg<std::string> arg_input_vcf_file("<in.vcf>", "input VCF file", true, "","file", cmd);
             TCLAP::SwitchArg arg_override_tag("x", "x", "override tags [false]", cmd, false);
+            TCLAP::SwitchArg arg_add_vntr_record("v", "v", "add vntr record [false]", cmd, true);
 
             cmd.parse(argc, argv);
 
@@ -127,7 +132,7 @@ class Igor : Program
         ///////////
         //options//
         ///////////
-        if (mode!="e" && mode!="f" && mode!="x")
+        if (mode!="e" && mode!="f" && mode!="p" && mode!="x")
         {
             fprintf(stderr, "[%s:%d %s] Not a valid mode of annotation: %s\n", __FILE__,__LINE__,__FUNCTION__, mode.c_str());
             exit(1);
@@ -137,7 +142,7 @@ class Igor : Program
         //i/o initialization//
         //////////////////////
         odr = new BCFOrderedReader(input_vcf_file, intervals);
-        odw = new BCFOrderedWriter(output_vcf_file);
+        odw = new BCFOrderedWriter(output_vcf_file, 10000);
         odw->link_hdr(odr->hdr);
 
         MOTIF = bcf_hdr_append_info_with_backup_naming(odw->hdr, "MOTIF", "1", "String", "Canonical motif in an VNTR or homopolymer", true);
@@ -146,7 +151,8 @@ class Igor : Program
         REF = bcf_hdr_append_info_with_backup_naming(odw->hdr, "REF", "1", "String", "Repeat tract on the reference sequence", true);
         REFPOS = bcf_hdr_append_info_with_backup_naming(odw->hdr, "REFPOS", "1", "Integer", "Start position of repeat tract", true);
         SCORE = bcf_hdr_append_info_with_backup_naming(odw->hdr, "SCORE", "1", "Float", "Score of repeat unit", true);
-        
+        TR = bcf_hdr_append_info_with_backup_naming(odw->hdr, "TR", "1", "String", "Tandem repeat representation", true);
+
         bcf_hdr_append(odw->hdr, "##INFO=<ID=OLD_VARIANT,Number=1,Type=String,Description=\"Original chr:pos:ref:alt encoding\">\n");
 
 //        bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_LFLANK,Number=1,Type=String,Description=\"Right Flank Sequence\">");
@@ -166,7 +172,7 @@ class Igor : Program
         //tools initialization//
         ////////////////////////
         vm = new VariantManip(ref_fasta_file);
-        va = new VNTRAnnotator(ref_fasta_file, MOTIF, RU, RL, REF, REFPOS, SCORE, debug);
+        va = new VNTRAnnotator(ref_fasta_file, MOTIF, RU, RL, REF, REFPOS, SCORE, TR, debug);
         fai = fai_load(ref_fasta_file.c_str());
     }
 
@@ -176,7 +182,16 @@ class Igor : Program
         std::clog << "\n";
         std::clog << "options:     input VCF file(s)     " << input_vcf_file << "\n";
         std::clog << "         [o] output VCF file       " << output_vcf_file << "\n";
+        std::clog << "         [m] mode                  " << mode << "\n";
+        print_boo_op("         [d] debug                 ", debug);
         print_ref_op("         [r] ref FASTA file        ", ref_fasta_file);
+        
+        std::clog << "         [m] mode    dfsdasdad     " << mode << "\n";
+        
+        
+        print_boo_op("         [x] override tag          ", override_tag);        
+        print_boo_op("         [v] add vntr record       ", add_vntr_record);        
+        
         print_int_op("         [i] intervals             ", intervals);
         std::clog << "\n";
     }
@@ -188,50 +203,20 @@ class Igor : Program
         std::clog << "\n";
     }
 
-    void update_vntr_info(bcf_hdr_t* h, bcf1_t *v, Variant& variant)
+    void insert_vntr_record(bcf_hdr_t* h, bcf1_t *v, Variant& variant)
     {
-//        if (variant.vntr.motif!="")
-//        {
-//            bcf_update_info_string(odw->hdr, v, MOTIF.c_str(), variant.vntr.motif.c_str());
-//        }
-//
-//        if (variant.vntr.ru!="")
-//        {
-//            bcf_update_info_string(odw->hdr, v, RU.c_str(), variant.vntr.ru.c_str());
-//        }
-//
-//        if (variant.vntr.motif_score>=0)
-//        {
-//            bcf_update_info_float(odw->hdr, v, SCORE.c_str(), &variant.vntr.motif_score, 1);
-//        }
-
-//        bcf_update_info_string(odw->hdr, v, "VRU", variant.eru.c_str());
-//        int32_t rl = variant.eregion.end1-variant.eregion.beg1-1;
-//        bcf_update_info_int32(odw->hdr, v, "VRL", &rl, 1);
-//        int32_t irl = variant.iregion.end1-variant.iregion.beg1-1;
-//        bcf_update_info_int32(odw->hdr, v, "IRL", &irl, 1);
-//
-//        if (irl!=rl)
-//        {
-//            int32_t irg[2] = {variant.iregion.beg1, variant.iregion.end1};
-//            bcf_update_info_int32(odw->hdr, v, "IRG", &irg, 2);
-//            int32_t len = 0;
-//            const char* chrom = bcf_get_chrom(odr->hdr, v);
-//            char* seq = faidx_fetch_seq(fai, chrom, irg[0]-1, irg[1]-1, &len);
-//            bcf_update_info_string(odw->hdr, v, "ISQ", seq);
-//            if (len) free(seq);
-//        }
-//
-//        //annotate old alleles
-//        old_alleles.l = 0;
-//        bcf_variant2string(odw->hdr, v, &old_alleles);
-//        bcf_update_info_string(odw->hdr, v, "OLD_VARIANT", old_alleles.s);
-//
-//        //update alleles
-//        bcf_set_pos1(v, variant.vntr.pos1);
-//        std::string new_alleles = variant.vntr.ref;
-//        new_alleles += ",<VNTR>";
-//        bcf_update_alleles_str(odw->hdr, v, new_alleles.c_str());
+//        bcf_update_info_string(h, v, MOTIF.c_str(), vntr.motif.c_str());
+//        bcf_update_info_string(h, v, RU.c_str(), vntr.ru.c_str());
+//        bcf_update_info_float(h, v, RL.c_str(), &vntr.rl, 1);
+//        bcf_update_info_string(h, v, REF.c_str(), vntr.repeat_tract.seq.c_str());
+//        bcf_update_info_int32(h, v, REFPOS.c_str(), &vntr.repeat_tract.pos1, 1);
+//        kstring_t new_alleles = {0,0,0};
+//        kputs(vntr.repeat_tract.seq.c_str(), &new_alleles);
+//        kputc(',', &new_alleles);
+//        kputs("<VNTR>", &new_alleles);
+//        bcf_update_alleles_str(h, v, new_alleles.s);
+//        bcf_set_pos1(v, vntr.repeat_tract.pos1);
+//        if (new_alleles.m) free(new_alleles.s);
     }
 
     void annotate_indels()
@@ -250,13 +235,23 @@ class Igor : Program
             {
 //                bcf_print(odr->hdr, v);
                 va->annotate(odr->hdr, v, variant, mode);
-                update_vntr_info(odr->hdr, v, variant);
+                odw->write(v);
+                v = odw->get_bcf1_from_pool();
+
+                if (add_vntr_record)
+                {
+                    insert_vntr_record(odr->hdr, v, variant);
+                    odw->write(v);
+                    v = odw->get_bcf1_from_pool();
+                }
 
                 ++no_variants_annotated;
             }
-
-            odw->write(v);
-            v = odw->get_bcf1_from_pool();
+            else
+            {
+                odw->write(v);
+                v = odw->get_bcf1_from_pool();
+            }
         }
 
         odw->close();

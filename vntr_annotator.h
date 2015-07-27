@@ -58,6 +58,7 @@
 #define ALLELE_FUZZY  2
 
 #define CLIP_ENDS 0
+#define CLIP_1L2R 1
 
 /**
  * Class for determining basic traits of an indel
@@ -94,14 +95,14 @@ class VNTRAnnotator
 
     AHMM* ahmm;
     std::string qual;
-        
+
     std::string MOTIF;
     std::string RU;
     std::string RL;
     std::string REF;
     std::string REFPOS;
     std::string SCORE;
-            
+    std::string TR;
 
     ///////
     //tools
@@ -118,7 +119,7 @@ class VNTRAnnotator
     /**
      * Constructor.
      */
-    VNTRAnnotator(std::string& ref_fasta_file, std::string MOTIF, std::string RU, std::string RL, std::string REF, std::string REFPOS, std::string SCORE, bool debug=false);
+    VNTRAnnotator(std::string& ref_fasta_file, std::string MOTIF, std::string RU, std::string RL, std::string REF, std::string REFPOS, std::string SCORE,  std::string TR, bool debug=false);
 
     /**
      * Destructor.
@@ -130,10 +131,10 @@ class VNTRAnnotator
      * RU,RL,LFLANK,RFLANK,LFLANKPOS,RFLANKPOS,MOTIF_CONCORDANCE,MOTIF_CONCORDANCE
      */
     void annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::string mode);
-    
+
     /**
      * Pick candidate region.
-     * 
+     *
      * @mode - REFERENCE     use refence field
      *       - ALLELE_EXACT  by exact alignment
      *       - ALLELE_FUZZY  by fuzzy alignment
@@ -145,7 +146,7 @@ class VNTRAnnotator
      * candidate_motifs contain motifs and a measure of confidence
      */
     void pick_candidate_motifs(bcf_hdr_t* h, bcf1_t* v, VNTR& vntr);
-    
+
     /**
      * Chooses a phase of the motif that is appropriate for the alignment
      */
@@ -161,7 +162,7 @@ class VNTRAnnotator
      * d. right flank
      */
     void infer_flanks(bcf_hdr_t* h, bcf1_t* v, std::string& motif);
-        
+
     /**
      * Pick shortest motif.
      */
@@ -173,15 +174,10 @@ class VNTRAnnotator
     std::string scan_exact_motif(std::string& sequence);
 
     /**
-     * Pick shortest consensus motif.
-     */
-    std::string pick_consensus_motif(std::string& sequence);
-
-    /**
      * Detect repeat region.
      */
     void detect_repeat_region(bcf_hdr_t* h, bcf1_t *v, VNTR& vntr, uint32_t mode);
-        
+
     /**
      * Chooses a phase of the motif that is appropriate for the alignment
      */
@@ -242,8 +238,38 @@ class VNTRAnnotator
      * Returns right aligned position.
      */
     uint32_t fuzzy_right_align(const char* chrom, int32_t pos1, std::string ref, std::string alt, uint32_t penalty);
-    
-     
+
+    /**
+     * Extract reference sequence region for motif discovery in a fuzzy fashion.
+     */
+    void extract_regions_by_fuzzy_alignment_with_penalty(bcf_hdr_t* h, bcf1_t* v, VNTR& vntr);
+
+    /**
+     * Fuzzy left align alleles allowing for mismatches and indels defined by penalty.
+     *
+     * @chrom   - chromosome
+     * @pos1    - 1 based position
+     * @ref     - reference sequence
+     * @alt     - alternative sequence
+     * @penalty - mismatch/indels allowed
+     *
+     * Returns left aligned position.
+     */
+    uint32_t fuzzy_left_align_with_penalty(const char* chrom, int32_t pos1, std::string ref, std::string alt, uint32_t penalty);
+
+    /**
+     * Fuzzy right align alleles allowing for mismatches and indels defined by penalty.
+     *
+     * @chrom   - chromosome
+     * @pos1    - 1 based position
+     * @ref     - reference sequence
+     * @alt     - alternative sequence
+     * @penalty - mismatch/indels allowed
+     *
+     * Returns right aligned position.
+     */
+    uint32_t fuzzy_right_align_with_penalty(const char* chrom, int32_t pos1, std::string ref, std::string alt, uint32_t penalty);
+
     /**
      * Detect allele lower bound extent.
      */

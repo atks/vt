@@ -255,6 +255,10 @@ void Program::print_boo_op(const char* option_line, bool value)
     {
         std::clog << option_line << "true" << "\n";
     }
+    else
+    {
+        std::clog << option_line << "false" << "\n";
+    }
 }
 
 /**

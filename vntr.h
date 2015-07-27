@@ -39,30 +39,35 @@ class VNTR
 {
     public:
     RepeatTract repeat_tract;   //repeat tract
-    std::string motif;          //motif      
-    uint32_t len;               //length of motif    
-    std::string ru;             //repeat unit                    
-    float rl;                   //number of repeat units on repeat tract                   
-    std::string lflank;         //left flank                         
-    std::string rflank;         //right flank   
-    float motif_score;          //motif score from motif tree    
-    float motif_concordance;    //motif concordance from hmm     
-    float no_exact_ru;          //number exact repeat units from hmm                 
-    float total_no_ru;          //total no of repeat units from hmm                                       
-    
+    std::string motif;          //motif
+    uint32_t len;               //length of motif
+    std::string ru;             //repeat unit
+    float rl;                   //number of repeat units on repeat tract
+    std::string lflank;         //left flank
+    std::string rflank;         //right flank
+    float motif_score;          //motif score from motif tree
+    float motif_concordance;    //motif concordance from hmm
+    float no_exact_ru;          //number exact repeat units from hmm
+    float total_no_ru;          //total no of repeat units from hmm
+
     /**
      * Constructor.
      */
-    VNTR();   
-    
+    VNTR();
+
     /**
      * Clear object.
      */
-    void clear(); 
-    
+    void clear();
+
+    /**
+     * Convert to string.
+     */
+    void to_string(std::string& var);
+
     /**
      * Print object.
      */
-    void print();    
+    void print();
 };
 #endif

@@ -47,6 +47,17 @@ void VNTR::clear()
 }
 
 /**
+ * Convert to string.
+ */
+void VNTR::to_string(std::string& var)
+{
+    var.clear();
+    var.append(repeat_tract.seq.c_str());
+    var.append(1, ':');
+    var.append("<VNTR>");    
+}
+    
+/**
  * Print object.
  */
 void VNTR::print()

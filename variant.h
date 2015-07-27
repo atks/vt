@@ -41,7 +41,8 @@ class Variant
 {
     public:
 
-    int32_t type;       //aggegrated type from the alleles
+    //aggegrated type from the alleles
+    int32_t type;       
 
     //contains alleles
     std::vector<Allele> alleles;
