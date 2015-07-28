@@ -85,6 +85,10 @@ void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::str
 {
     VNTR& vntr = variant.vntr;
 
+    //update chromosome and position
+    variant.rid = bcf_get_rid(v);
+    variant.pos1 = bcf_get_pos1(v); 
+
     if (variant.type==VT_VNTR)
     {
         if (debug) std::cerr << "ANNOTATING VNTR/STR \n";
@@ -123,8 +127,8 @@ void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::str
             bcf_update_info_string(h, v, MOTIF.c_str(), vntr.motif.c_str());
             bcf_update_info_string(h, v, RU.c_str(), vntr.ru.c_str());
             bcf_update_info_float(h, v, RL.c_str(), &vntr.rl, 1);
-            bcf_update_info_string(h, v, REF.c_str(), vntr.repeat_tract.seq.c_str());
-            bcf_update_info_int32(h, v, REFPOS.c_str(), &vntr.repeat_tract.pos1, 1);
+            bcf_update_info_string(h, v, REF.c_str(), vntr.repeat_tract.c_str());
+            bcf_update_info_int32(h, v, REFPOS.c_str(), &vntr.rbeg1, 1);
                 
             if (debug) std::cerr << "============================================\n";
             return;
@@ -151,8 +155,8 @@ void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::str
             bcf_update_info_string(h, v, MOTIF.c_str(), vntr.motif.c_str());
             bcf_update_info_string(h, v, RU.c_str(), vntr.ru.c_str());
             bcf_update_info_float(h, v, RL.c_str(), &vntr.rl, 1);
-            bcf_update_info_string(h, v, REF.c_str(), vntr.repeat_tract.seq.c_str());
-            bcf_update_info_int32(h, v, REFPOS.c_str(), &vntr.repeat_tract.pos1, 1);
+            bcf_update_info_string(h, v, REF.c_str(), vntr.repeat_tract.c_str());
+            bcf_update_info_int32(h, v, REFPOS.c_str(), &vntr.rbeg1, 1);
                 
             if (debug) std::cerr << "============================================\n";
             return;
@@ -178,8 +182,8 @@ void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::str
             bcf_update_info_string(h, v, MOTIF.c_str(), vntr.motif.c_str());
             bcf_update_info_string(h, v, RU.c_str(), vntr.ru.c_str());
             bcf_update_info_float(h, v, RL.c_str(), &vntr.rl, 1);
-            bcf_update_info_string(h, v, REF.c_str(), vntr.repeat_tract.seq.c_str());
-            bcf_update_info_int32(h, v, REFPOS.c_str(), &vntr.repeat_tract.pos1, 1);
+            bcf_update_info_string(h, v, REF.c_str(), vntr.repeat_tract.c_str());
+            bcf_update_info_int32(h, v, REFPOS.c_str(), &vntr.rbeg1, 1);
             
             if (debug) std::cerr << "============================================\n";
             return;
@@ -206,8 +210,8 @@ void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::str
             bcf_update_info_string(h, v, MOTIF.c_str(), vntr.motif.c_str());
             bcf_update_info_string(h, v, RU.c_str(), vntr.ru.c_str());
             bcf_update_info_float(h, v, RL.c_str(), &vntr.rl, 1);
-            bcf_update_info_string(h, v, REF.c_str(), vntr.repeat_tract.seq.c_str());
-            bcf_update_info_int32(h, v, REFPOS.c_str(), &vntr.repeat_tract.pos1, 1);
+            bcf_update_info_string(h, v, REF.c_str(), vntr.repeat_tract.c_str());
+            bcf_update_info_int32(h, v, REFPOS.c_str(), &vntr.rbeg1, 1);
             
             if (debug) std::cerr << "============================================\n";
             return;
@@ -234,8 +238,8 @@ void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::str
             bcf_update_info_string(h, v, MOTIF.c_str(), vntr.motif.c_str());
             bcf_update_info_string(h, v, RU.c_str(), vntr.ru.c_str());
             bcf_update_info_float(h, v, RL.c_str(), &vntr.rl, 1);
-            bcf_update_info_string(h, v, REF.c_str(), vntr.repeat_tract.seq.c_str());
-            bcf_update_info_int32(h, v, REFPOS.c_str(), &vntr.repeat_tract.pos1, 1);
+            bcf_update_info_string(h, v, REF.c_str(), vntr.repeat_tract.c_str());
+            bcf_update_info_int32(h, v, REFPOS.c_str(), &vntr.rbeg1, 1);
             
             if (debug) std::cerr << "============================================\n";
             return;
@@ -255,7 +259,8 @@ void VNTRAnnotator::pick_candidate_region(bcf_hdr_t* h, bcf1_t* v, VNTR& vntr, u
 {
     if (mode==REFERENCE)
     {
-        vntr.repeat_tract.initialize(bcf_get_pos1(v), bcf_get_ref(v));
+        vntr.repeat_tract.assign(bcf_get_ref(v));
+        vntr.rbeg1 = bcf_get_pos1(v);
     }
     else if (mode==EXACT_LEFT_RIGHT_ALIGNMENT)
     {
@@ -284,7 +289,7 @@ void VNTRAnnotator::pick_candidate_motifs(bcf_hdr_t* h, bcf1_t* v, VNTR& vntr)
         std::cerr << "PICK CANDIDATE MOTIFS\n\n";
     }
 
-    mt->detect_candidate_motifs(vntr.repeat_tract.seq);
+    mt->detect_candidate_motifs(vntr.repeat_tract);
 }
 
 /**
@@ -520,16 +525,14 @@ void VNTRAnnotator::detect_repeat_region(bcf_hdr_t* h, bcf1_t *v, VNTR& vntr, ui
             std:: cerr << "\n";
         }
 
-        RepeatTract& tract = vntr.repeat_tract;
-
-        if (tract.seq.size()>2)
+        if (vntr.repeat_tract.size()>2)
         {
-            tract.seq = tract.seq.substr(1, tract.seq.size()-2);
-            tract.pos1++;
+            vntr.repeat_tract = vntr.repeat_tract.substr(1, vntr.repeat_tract.size()-2);
+            ++vntr.rbeg1;
         }
 
-        vntr.ru = choose_repeat_unit(tract.seq, vntr.motif);
-        vntr.rl = (float)tract.seq.size()/vntr.ru.size();
+        vntr.ru = choose_repeat_unit(vntr.repeat_tract, vntr.motif);
+        vntr.rl = (float)vntr.repeat_tract.size()/vntr.ru.size();
 
         if (debug)
         {
@@ -546,16 +549,14 @@ void VNTRAnnotator::detect_repeat_region(bcf_hdr_t* h, bcf1_t *v, VNTR& vntr, ui
             std:: cerr << "\n";
         }
 
-        RepeatTract& tract = vntr.repeat_tract;
-
-        if (tract.seq.size()>3)
+        if (vntr.repeat_tract.size()>3)
         {
-            tract.seq = tract.seq.substr(1, tract.seq.size()-3);
-            tract.pos1++;
+            vntr.repeat_tract = vntr.repeat_tract.substr(1, vntr.repeat_tract.size()-3);
+            ++vntr.rbeg1;
         }
 
-        vntr.ru = choose_repeat_unit(tract.seq, vntr.motif);
-        vntr.rl = (float)tract.seq.size()/vntr.ru.size();
+        vntr.ru = choose_repeat_unit(vntr.repeat_tract, vntr.motif);
+        vntr.rl = (float)vntr.repeat_tract.size()/vntr.ru.size();
 
         if (debug)
         {
@@ -1009,7 +1010,8 @@ void VNTRAnnotator::extract_regions_by_exact_alignment(bcf_hdr_t* h, bcf1_t* v, 
         std::cerr << "                   " << seq << "\n";
     }
 
-    vntr.repeat_tract.initialize(min_beg1, seq);
+    vntr.repeat_tract = seq;
+    vntr.rbeg1 = min_beg1;
 
     if (seq_len) free(seq);
 }
@@ -1122,7 +1124,8 @@ void VNTRAnnotator::extract_regions_by_fuzzy_alignment(bcf_hdr_t* h, bcf1_t* v, 
         std::cerr << "                   " << seq << "\n";
     }
 
-    vntr.repeat_tract.initialize(min_beg1, seq);
+    vntr.repeat_tract = seq;
+    vntr.rbeg1 = min_beg1;
 
     if (seq_len) free(seq);
 }
@@ -1359,7 +1362,8 @@ void VNTRAnnotator::extract_regions_by_fuzzy_alignment_with_penalty(bcf_hdr_t* h
         std::cerr << "                   " << seq << "\n";
     }
 
-    vntr.repeat_tract.initialize(min_beg1, seq);
+    vntr.repeat_tract = seq;
+    vntr.rbeg1 = min_beg1;
 
     if (seq_len) free(seq);
 }

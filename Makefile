@@ -75,7 +75,6 @@ SOURCES = align\
 		profile_snps\
 		program\
 		remove_overlap\
-		repeat_tract\
 		rfhmm\
 		rminfo\
 		seq\

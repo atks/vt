@@ -27,36 +27,40 @@
  * Constructor.
  */
 VNTR::VNTR(){};
-    
+
 /**
  * Clear object.
  */
 void VNTR::clear()
 {
-    repeat_tract.clear();           
-    motif.clear();       
-    len = 0;            
-    ru.clear();          
-    lflank.clear();      
-    rflank.clear();  
-    rl = 0;    
-    motif_score = 0;       
-    motif_concordance = 0; 
-    no_exact_ru = 0;              
-    total_no_ru = 0;       
+    repeat_tract.clear();
+    rbeg1 = 0;
+    rend1 = 0;
+    lflank.clear();
+    rflank.clear();
+
+    motif.clear();
+    ru.clear();
+    mlen = 0;
+
+    motif_score = 0;
+    motif_concordance = 0;
+    rl = 0;
+    no_exact_ru = 0;
+    total_no_ru = 0;
 }
 
 /**
- * Convert to string.
+ * Get VNTR representation in string format.
  */
-void VNTR::to_string(std::string& var)
+void VNTR::get_vntr_allele_string(std::string& var)
 {
     var.clear();
-    var.append(repeat_tract.seq.c_str());
+    var.append(repeat_tract.c_str());
     var.append(1, ':');
-    var.append("<VNTR>");    
+    var.append("<VNTR>");
 }
-    
+
 /**
  * Print object.
  */
@@ -64,10 +68,10 @@ void VNTR::print()
 {
     std::cerr << "++++++++++++++++++++++++++++\n";
     std::cerr << "VNTR Summary\n";
-    std::cerr << "repeat_tract : " << repeat_tract.seq << "\n";
-    std::cerr << "pos1         : " << repeat_tract.pos1 << "\n";
+    std::cerr << "repeat_tract : " << repeat_tract << "\n";
+    std::cerr << "pos1         : " << rbeg1 << "\n";
     std::cerr << "motif        : " << motif << "\n";
     std::cerr << "ru           : " << ru << "\n";
-    std::cerr << "rl           : " << rl << "\n";            
-    std::cerr << "++++++++++++++++++++++++++++\n";    
-};  
+    std::cerr << "rl           : " << rl << "\n";
+    std::cerr << "++++++++++++++++++++++++++++\n";
+};

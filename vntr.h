@@ -30,7 +30,7 @@
 #include <cmath>
 #include <cfloat>
 #include <vector>
-#include "repeat_tract.h"
+#include <iostream>
 
 /**
  * Class for representing a VNTR.
@@ -38,15 +38,23 @@
 class VNTR
 {
     public:
-    RepeatTract repeat_tract;   //repeat tract
-    std::string motif;          //motif
-    uint32_t len;               //length of motif
-    std::string ru;             //repeat unit
-    float rl;                   //number of repeat units on repeat tract
+
+    //repeat tract
+    std::string repeat_tract;   //repeat tract
+    uint32_t rbeg1;             //beginning of repeat tract
+    uint32_t rend1;             //end of repeat tract
     std::string lflank;         //left flank
     std::string rflank;         //right flank
+
+   //motif
+    std::string motif;          //motif
+    std::string ru;             //repeat unit on the reference
+    uint32_t mlen;              //length of motif
+
+    //statistics for repeat unit
     float motif_score;          //motif score from motif tree
     float motif_concordance;    //motif concordance from hmm
+    float rl;                   //number of repeat units on repeat tract
     float no_exact_ru;          //number exact repeat units from hmm
     float total_no_ru;          //total no of repeat units from hmm
 
@@ -61,9 +69,9 @@ class VNTR
     void clear();
 
     /**
-     * Convert to string.
+     * Get VNTR representation in string format.
      */
-    void to_string(std::string& var);
+    void get_vntr_allele_string(std::string& var);
 
     /**
      * Print object.

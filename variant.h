@@ -44,6 +44,10 @@ class Variant
     //aggegrated type from the alleles
     int32_t type;       
 
+    std::string chrom;
+    uint32_t rid;
+    uint32_t pos1;
+
     //contains alleles
     std::vector<Allele> alleles;
 

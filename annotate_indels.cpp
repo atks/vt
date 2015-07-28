@@ -57,6 +57,11 @@ class Igor : Program
     std::string SCORE;
     std::string TR;
 
+    //helper variables for populating additional VNTR records
+    uint32_t no_samples;
+    int32_t* gts;
+       
+
     bool debug;
 
     ///////
@@ -105,7 +110,7 @@ class Igor : Program
             TCLAP::SwitchArg arg_debug("d", "d", "debug [false]", cmd, false);
             TCLAP::UnlabeledValueArg<std::string> arg_input_vcf_file("<in.vcf>", "input VCF file", true, "","file", cmd);
             TCLAP::SwitchArg arg_override_tag("x", "x", "override tags [false]", cmd, false);
-            TCLAP::SwitchArg arg_add_vntr_record("v", "v", "add vntr record [false]", cmd, true);
+            TCLAP::SwitchArg arg_add_vntr_record("v", "v", "add vntr record [false]", cmd, false);
 
             cmd.parse(argc, argv);
 
@@ -115,6 +120,7 @@ class Igor : Program
             parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
             mode = arg_mode.getValue();
             override_tag = arg_override_tag.getValue();
+            add_vntr_record = arg_add_vntr_record.getValue();
             debug = arg_debug.getValue();
             ref_fasta_file = arg_ref_fasta_file.getValue();
         }
@@ -138,6 +144,7 @@ class Igor : Program
             exit(1);
         }
 
+        
         //////////////////////
         //i/o initialization//
         //////////////////////
@@ -162,6 +169,23 @@ class Igor : Program
 //        bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_MOTIF_DISCORDANCE,Number=1,Type=Integer,Description=\"Descriptive Discordance for each reference repeat unit.\">");
 //        bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_MOTIF_COMPLETENESS,Number=1,Type=Integer,Description=\"Descriptive Discordance for each reference repeat unit.\">");
 //        bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_STR_CONCORDANCE,Number=1,Type=Float,Description=\"Overall discordance of RUs.\">");
+
+
+        //helper variable initialization for adding additional vntr records
+        if (add_vntr_record)
+        {   
+            no_samples = bcf_hdr_nsamples(odw->hdr);
+            gts = (int32_t*) malloc(no_samples*sizeof(int32_t));
+            for (uint32_t i=0; i<no_samples; ++i)
+            {
+                gts[i] = 0;
+            }
+        }
+        else
+        {
+            no_samples = 0;
+            gts = NULL;
+        }
 
         ////////////////////////
         //stats initialization//
@@ -202,18 +226,27 @@ class Igor : Program
     void insert_vntr_record(bcf_hdr_t* h, bcf1_t *v, Variant& variant)
     {
         VNTR& vntr = variant.vntr;
-        bcf_update_info_string(h, v, MOTIF.c_str(), vntr.motif.c_str());
-        bcf_update_info_string(h, v, RU.c_str(), vntr.ru.c_str());
-        bcf_update_info_float(h, v, RL.c_str(), &vntr.rl, 1);
-        bcf_update_info_string(h, v, REF.c_str(), vntr.repeat_tract.seq.c_str());
-        bcf_update_info_int32(h, v, REFPOS.c_str(), &vntr.repeat_tract.pos1, 1);
+        
+        //shared fields
+        bcf_set_rid(v, variant.rid);
         kstring_t new_alleles = {0,0,0};
-        kputs(vntr.repeat_tract.seq.c_str(), &new_alleles);
+        kputs(vntr.repeat_tract.c_str(), &new_alleles);
         kputc(',', &new_alleles);
         kputs("<VNTR>", &new_alleles);
         bcf_update_alleles_str(h, v, new_alleles.s);
-        bcf_set_pos1(v, vntr.repeat_tract.pos1);
+        bcf_set_pos1(v, vntr.rbeg1);
         if (new_alleles.m) free(new_alleles.s);
+                    
+        bcf_update_info_string(h, v, MOTIF.c_str(), vntr.motif.c_str());
+        bcf_update_info_string(h, v, RU.c_str(), vntr.ru.c_str());
+        bcf_update_info_float(h, v, RL.c_str(), &vntr.rl, 1);
+        bcf_update_info_string(h, v, REF.c_str(), vntr.repeat_tract.c_str());
+        bcf_update_info_int32(h, v, REFPOS.c_str(), &vntr.rbeg1, 1);
+
+        //individual fields - just set GT
+        bcf_update_genotypes(h, v, gts, no_samples);
+        
+
     }
 
     void annotate_indels()
@@ -235,9 +268,12 @@ class Igor : Program
                 odw->write(v);
                 v = odw->get_bcf1_from_pool();
 
+
+                std::cerr << "value of v" << add_vntr_record << "\n";
+
                 if (add_vntr_record)
                 {
-                    
+                    std::cerr << "printing vntr record\n";
                     insert_vntr_record(odr->hdr, v, variant);
                     odw->write(v);
                     v = odw->get_bcf1_from_pool();
