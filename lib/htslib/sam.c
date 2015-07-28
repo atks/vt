@@ -113,7 +113,9 @@ bam_hdr_t *bam_hdr_read(BGZF *fp)
     bam_hdr_t *h;
     char buf[4];
     int magic_len, has_EOF;
-    int32_t i = 1, name_len;
+    int32_t i, name_len, num_names = 0;
+    size_t bufsize;
+    ssize_t bytes;
     // check EOF
     has_EOF = bgzf_check_EOF(fp);
     if (has_EOF < 0) {
@@ -127,26 +129,88 @@ bam_hdr_t *bam_hdr_read(BGZF *fp)
         return 0;
     }
     h = bam_hdr_init();
+    if (!h) goto nomem;
+
     // read plain text and the number of reference sequences
-    bgzf_read(fp, &h->l_text, 4);
+    bytes = bgzf_read(fp, &h->l_text, 4);
+    if (bytes != 4) goto read_err;
     if (fp->is_be) ed_swap_4p(&h->l_text);
-    h->text = (char*)malloc(h->l_text + 1);
+
+    bufsize = ((size_t) h->l_text) + 1;
+    if (bufsize < h->l_text) goto nomem; // so large that adding 1 overflowed
+    h->text = (char*)malloc(bufsize);
+    if (!h->text) goto nomem;
     h->text[h->l_text] = 0; // make sure it is NULL terminated
-    bgzf_read(fp, h->text, h->l_text);
-    bgzf_read(fp, &h->n_targets, 4);
+    bytes = bgzf_read(fp, h->text, h->l_text);
+    if (bytes != h->l_text) goto read_err;
+
+    bytes = bgzf_read(fp, &h->n_targets, 4);
+    if (bytes != 4) goto read_err;
     if (fp->is_be) ed_swap_4p(&h->n_targets);
+
+    if (h->n_targets < 0) goto invalid;
+
     // read reference sequence names and lengths
     h->target_name = (char**)calloc(h->n_targets, sizeof(char*));
+    if (!h->target_name) goto nomem;
     h->target_len = (uint32_t*)calloc(h->n_targets, sizeof(uint32_t));
+    if (!h->target_len) goto nomem;
+
     for (i = 0; i != h->n_targets; ++i) {
-        bgzf_read(fp, &name_len, 4);
+        bytes = bgzf_read(fp, &name_len, 4);
+        if (bytes != 4) goto read_err;
         if (fp->is_be) ed_swap_4p(&name_len);
-        h->target_name[i] = (char*)calloc(name_len, 1);
-        bgzf_read(fp, h->target_name[i], name_len);
-        bgzf_read(fp, &h->target_len[i], 4);
+        if (name_len <= 0) goto invalid;
+
+        h->target_name[i] = (char*)malloc(name_len);
+        if (!h->target_name[i]) goto nomem;
+        num_names++;
+
+        bytes = bgzf_read(fp, h->target_name[i], name_len);
+        if (bytes != name_len) goto read_err;
+
+        if (h->target_name[i][name_len - 1] != '\0') {
+            /* Fix missing NUL-termination.  Is this being too nice?
+               We could alternatively bail out with an error. */
+            char *new_name;
+            if (name_len == INT32_MAX) goto invalid;
+            new_name = realloc(h->target_name[i], name_len + 1);
+            if (new_name == NULL) goto nomem;
+            h->target_name[i] = new_name;
+            h->target_name[i][name_len] = '\0';
+        }
+
+        bytes = bgzf_read(fp, &h->target_len[i], 4);
+        if (bytes != 4) goto read_err;
         if (fp->is_be) ed_swap_4p(&h->target_len[i]);
     }
     return h;
+
+ nomem:
+    if (hts_verbose >= 1) fprintf(stderr, "[E::%s] out of memory\n", __func__);
+    goto clean;
+
+ read_err:
+    if (hts_verbose >= 1) {
+        if (bytes < 0) {
+            fprintf(stderr, "[E::%s] error reading BGZF stream\n", __func__);
+        } else {
+            fprintf(stderr, "[E::%s] truncated bam header\n", __func__);
+        }
+    }
+    goto clean;
+
+ invalid:
+    if (hts_verbose >= 1) {
+        fprintf(stderr, "[E::%s] invalid BAM binary header\n", __func__);
+    }
+
+ clean:
+    if (h != NULL) {
+        h->n_targets = num_names; // ensure we free only allocated target_names
+        bam_hdr_destroy(h);
+    }
+    return NULL;
 }
 
 int bam_hdr_write(BGZF *fp, const bam_hdr_t *h)
@@ -398,6 +462,7 @@ static hts_idx_t *bam_index(BGZF *fp, int min_shift)
     hts_idx_t *idx;
     bam_hdr_t *h;
     h = bam_hdr_read(fp);
+    if (h == NULL) return NULL;
     if (min_shift > 0) {
         int64_t max_len = 0, s;
         for (i = 0; i < h->n_targets; ++i)
@@ -1238,6 +1303,67 @@ int sam_open_mode(char *mode, const char *fn, const char *format)
     else return -1;
 
     return 0;
+}
+
+// A version of sam_open_mode that can handle ,key=value options.
+// The format string is allocated and returned, to be freed by the caller.
+// Prefix should be "r" or "w",
+char *sam_open_mode_opts(const char *fn,
+                         const char *mode,
+                         const char *format)
+{
+    char *mode_opts = malloc((format ? strlen(format) : 1) +
+                             (mode   ? strlen(mode)   : 1) + 12);
+    char *opts, *cp;
+    int format_len;
+
+    if (!mode_opts)
+        return NULL;
+
+    strcpy(mode_opts, mode ? mode : "r");
+    cp = mode_opts + strlen(mode_opts);
+
+    if (format == NULL) {
+        // Try to pick a format based on the filename extension
+        const char *ext = fn? strrchr(fn, '.') : NULL;
+        if (ext == NULL || strchr(ext, '/')) {
+            free(mode_opts);
+            return NULL;
+        }
+        return sam_open_mode(cp, fn, ext+1)
+            ? (free(mode_opts), NULL)
+            : mode_opts;
+    }
+
+    if ((opts = strchr(format, ','))) {
+        format_len = opts-format;
+    } else {
+        opts="";
+        format_len = strlen(format);
+    }
+
+    if (strncmp(format, "bam", format_len) == 0) {
+        *cp++ = 'b';
+    } else if (strncmp(format, "cram", format_len) == 0) {
+        *cp++ = 'c';
+    } else if (strncmp(format, "cram2", format_len) == 0) {
+        *cp++ = 'c';
+        strcpy(cp, ",VERSION=2.1");
+        cp += 12;
+    } else if (strncmp(format, "cram3", format_len) == 0) {
+        *cp++ = 'c';
+        strcpy(cp, ",VERSION=3.0");
+        cp += 12;
+    } else if (strncmp(format, "sam", format_len) == 0) {
+        ; // format mode=""
+    } else {
+        free(mode_opts);
+        return NULL;
+    }
+
+    strcpy(cp, opts);
+
+    return mode_opts;
 }
 
 #define STRNCMP(a,b,n) (strncasecmp((a),(b),(n)) || strlen(a)!=(n))

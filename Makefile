@@ -54,6 +54,7 @@ SOURCES = align\
 		motif_map\
 		multi_partition\
 		needle\
+		normalize\
 		ordered_bcf_overlap_matcher\
 		ordered_region_overlap_matcher\
 		partition\
@@ -96,7 +97,6 @@ SOURCES = align\
    	    tbx_ordered_reader\
     	ahmm\
         xcmp\
-        normalize\
 
 SOURCESONLY = main.cpp
 

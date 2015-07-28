@@ -185,10 +185,6 @@ class Igor : Program
         std::clog << "         [m] mode                  " << mode << "\n";
         print_boo_op("         [d] debug                 ", debug);
         print_ref_op("         [r] ref FASTA file        ", ref_fasta_file);
-        
-        std::clog << "         [m] mode    dfsdasdad     " << mode << "\n";
-        
-        
         print_boo_op("         [x] override tag          ", override_tag);        
         print_boo_op("         [v] add vntr record       ", add_vntr_record);        
         
@@ -205,18 +201,19 @@ class Igor : Program
 
     void insert_vntr_record(bcf_hdr_t* h, bcf1_t *v, Variant& variant)
     {
-//        bcf_update_info_string(h, v, MOTIF.c_str(), vntr.motif.c_str());
-//        bcf_update_info_string(h, v, RU.c_str(), vntr.ru.c_str());
-//        bcf_update_info_float(h, v, RL.c_str(), &vntr.rl, 1);
-//        bcf_update_info_string(h, v, REF.c_str(), vntr.repeat_tract.seq.c_str());
-//        bcf_update_info_int32(h, v, REFPOS.c_str(), &vntr.repeat_tract.pos1, 1);
-//        kstring_t new_alleles = {0,0,0};
-//        kputs(vntr.repeat_tract.seq.c_str(), &new_alleles);
-//        kputc(',', &new_alleles);
-//        kputs("<VNTR>", &new_alleles);
-//        bcf_update_alleles_str(h, v, new_alleles.s);
-//        bcf_set_pos1(v, vntr.repeat_tract.pos1);
-//        if (new_alleles.m) free(new_alleles.s);
+        VNTR& vntr = variant.vntr;
+        bcf_update_info_string(h, v, MOTIF.c_str(), vntr.motif.c_str());
+        bcf_update_info_string(h, v, RU.c_str(), vntr.ru.c_str());
+        bcf_update_info_float(h, v, RL.c_str(), &vntr.rl, 1);
+        bcf_update_info_string(h, v, REF.c_str(), vntr.repeat_tract.seq.c_str());
+        bcf_update_info_int32(h, v, REFPOS.c_str(), &vntr.repeat_tract.pos1, 1);
+        kstring_t new_alleles = {0,0,0};
+        kputs(vntr.repeat_tract.seq.c_str(), &new_alleles);
+        kputc(',', &new_alleles);
+        kputs("<VNTR>", &new_alleles);
+        bcf_update_alleles_str(h, v, new_alleles.s);
+        bcf_set_pos1(v, vntr.repeat_tract.pos1);
+        if (new_alleles.m) free(new_alleles.s);
     }
 
     void annotate_indels()
@@ -240,6 +237,7 @@ class Igor : Program
 
                 if (add_vntr_record)
                 {
+                    
                     insert_vntr_record(odr->hdr, v, variant);
                     odw->write(v);
                     v = odw->get_bcf1_from_pool();
