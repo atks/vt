@@ -87,7 +87,7 @@ void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::str
 
     //update chromosome and position
     variant.rid = bcf_get_rid(v);
-    variant.pos1 = bcf_get_pos1(v); 
+    variant.pos1 = bcf_get_pos1(v);
 
     if (variant.type==VT_VNTR)
     {
@@ -121,15 +121,8 @@ void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::str
             choose_best_motif(h, v, mt, vntr, PICK_BEST_MOTIF);
 
             //4. evaluate reference length
-            detect_repeat_region(h, v, vntr, CLIP_ENDS);
+            detect_repeat_region(h, v, variant, CLIP_ENDS);
 
-            //5. update VCF record
-            bcf_update_info_string(h, v, MOTIF.c_str(), vntr.motif.c_str());
-            bcf_update_info_string(h, v, RU.c_str(), vntr.ru.c_str());
-            bcf_update_info_float(h, v, RL.c_str(), &vntr.rl, 1);
-            bcf_update_info_string(h, v, REF.c_str(), vntr.repeat_tract.c_str());
-            bcf_update_info_int32(h, v, REFPOS.c_str(), &vntr.rbeg1, 1);
-                
             if (debug) std::cerr << "============================================\n";
             return;
         }
@@ -149,19 +142,12 @@ void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::str
             choose_best_motif(h, v, mt, vntr, PICK_BEST_MOTIF);
 
             //4. evaluate reference length
-            detect_repeat_region(h, v, vntr, CLIP_ENDS);
-            
-            //5. update VCF record
-            bcf_update_info_string(h, v, MOTIF.c_str(), vntr.motif.c_str());
-            bcf_update_info_string(h, v, RU.c_str(), vntr.ru.c_str());
-            bcf_update_info_float(h, v, RL.c_str(), &vntr.rl, 1);
-            bcf_update_info_string(h, v, REF.c_str(), vntr.repeat_tract.c_str());
-            bcf_update_info_int32(h, v, REFPOS.c_str(), &vntr.rbeg1, 1);
-                
+            detect_repeat_region(h, v, variant, CLIP_ENDS);
+
             if (debug) std::cerr << "============================================\n";
             return;
         }
-        else if (mode=="p")        
+        else if (mode=="p")
         {
             if (debug) std::cerr << "============================================\n";
             if (debug) std::cerr << "ANNOTATING INDEL FUZZILY WITH PENALTY\n";
@@ -176,20 +162,12 @@ void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::str
             choose_best_motif(h, v, mt, vntr, PICK_BEST_MOTIF);
 
             //4. evaluate reference length
-            detect_repeat_region(h, v, vntr, CLIP_1L2R);
+            detect_repeat_region(h, v, variant, CLIP_1L2R);
 
-            //5. update VCF record
-            bcf_update_info_string(h, v, MOTIF.c_str(), vntr.motif.c_str());
-            bcf_update_info_string(h, v, RU.c_str(), vntr.ru.c_str());
-            bcf_update_info_float(h, v, RL.c_str(), &vntr.rl, 1);
-            bcf_update_info_string(h, v, REF.c_str(), vntr.repeat_tract.c_str());
-            bcf_update_info_int32(h, v, REFPOS.c_str(), &vntr.rbeg1, 1);
-            
             if (debug) std::cerr << "============================================\n";
             return;
-        
         }
-        else if (mode=="h")        
+        else if (mode=="h")
         {
             if (debug) std::cerr << "============================================\n";
             if (debug) std::cerr << "ANNOTATING INDEL USING raHMMs\n";
@@ -204,20 +182,13 @@ void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::str
             choose_best_motif(h, v, mt, vntr, PICK_BEST_MOTIF);
 
             //4. evaluate reference length
-            detect_repeat_region(h, v, vntr, CLIP_1L2R);
+            detect_repeat_region(h, v, variant, CLIP_1L2R);
 
-            //5. update VCF record
-            bcf_update_info_string(h, v, MOTIF.c_str(), vntr.motif.c_str());
-            bcf_update_info_string(h, v, RU.c_str(), vntr.ru.c_str());
-            bcf_update_info_float(h, v, RL.c_str(), &vntr.rl, 1);
-            bcf_update_info_string(h, v, REF.c_str(), vntr.repeat_tract.c_str());
-            bcf_update_info_int32(h, v, REFPOS.c_str(), &vntr.rbeg1, 1);
-            
             if (debug) std::cerr << "============================================\n";
             return;
-        
+
         }
-        else if (mode=="x")        
+        else if (mode=="x")
         {
             if (debug) std::cerr << "============================================\n";
             if (debug) std::cerr << "Integrated Methods\n";
@@ -232,18 +203,10 @@ void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::str
             choose_best_motif(h, v, mt, vntr, PICK_BEST_MOTIF);
 
             //4. evaluate reference length
-            detect_repeat_region(h, v, vntr, CLIP_1L2R);
+            detect_repeat_region(h, v, variant, CLIP_1L2R);
 
-            //5. update VCF record
-            bcf_update_info_string(h, v, MOTIF.c_str(), vntr.motif.c_str());
-            bcf_update_info_string(h, v, RU.c_str(), vntr.ru.c_str());
-            bcf_update_info_float(h, v, RL.c_str(), &vntr.rl, 1);
-            bcf_update_info_string(h, v, REF.c_str(), vntr.repeat_tract.c_str());
-            bcf_update_info_int32(h, v, REFPOS.c_str(), &vntr.rbeg1, 1);
-            
             if (debug) std::cerr << "============================================\n";
             return;
-        
         }
     }
 }
@@ -513,8 +476,10 @@ void VNTRAnnotator::choose_best_motif(bcf_hdr_t* h, bcf1_t* v, MotifTree* mt, VN
 /**
  * Detect repeat region.
  */
-void VNTRAnnotator::detect_repeat_region(bcf_hdr_t* h, bcf1_t *v, VNTR& vntr, uint32_t mode)
+void VNTRAnnotator::detect_repeat_region(bcf_hdr_t* h, bcf1_t *v, Variant& variant, uint32_t mode)
 {
+    VNTR& vntr = variant.vntr;
+    
     //simple single base pair clipping of ends
     if (mode==CLIP_ENDS)
     {
@@ -563,6 +528,13 @@ void VNTRAnnotator::detect_repeat_region(bcf_hdr_t* h, bcf1_t *v, VNTR& vntr, ui
             vntr.print();
         }
     }
+    
+    //fill in flanks
+    const char* chrom = variant.chrom.c_str();
+    uint32_t pos1 = vntr.rbeg1;
+    int32_t len = 0;
+    faidx_fetch_seq(fai, chrom, pos1-10, pos1-1, &len);
+    
 };
 
 /**
@@ -1409,7 +1381,7 @@ uint32_t VNTRAnnotator::fuzzy_left_align_with_penalty(const char* chrom, int32_t
             exit(1);
         }
     }
-    
+
     if (shift>1 && penalty)
     {
         uint32_t pos1_sub = pos1;

@@ -67,6 +67,21 @@ void Variant::print()
 };
 
 /**
+ * Gets a string representation of the underlying VNTR.
+ */
+void Variant::get_vntr_string(kstring_t* s)
+{
+    s->l = 0;
+    kputs(chrom.c_str(), s);
+    kputc(':', s);
+    kputw(vntr.rbeg1, s);
+    kputc(':', s);
+    kputs(vntr.repeat_tract.c_str(), s);
+    kputc(':', s);
+    kputs("<VNTR>", s);
+};
+
+/**
  * Converts VTYPE to string.
  */
 std::string Variant::vtype2string(int32_t VTYPE)

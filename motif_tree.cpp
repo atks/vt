@@ -326,18 +326,24 @@ void MotifTree::detect_candidate_motifs(char* seq, uint32_t len)
     {
         if (mm->is_aperiodic(mm->index2seq(i->first), tree[i->first].len))
         {
+            //p - purity proportion
             float p = (float)i->second/(lc[tree[i->first].len]);
+            //f - fit based on content
             float f = compute_fit(i->first, &sc);
             //p -= f;
              
             //if ((tree[i->first].len==1 && p+f>sthreshold) || (tree[i->first].len>1 && p>0.2))
-            if ((tree[i->first].len==1 && p>0.7) || (tree[i->first].len>1))
+            if (len<10 || (tree[i->first].len==1 && p>0.6) || (tree[i->first].len>1))
             {
                 std::string motif = mm->seq2str(mm->index2seq(i->first), tree[i->first].len);
                 if (exist_two_copies(s, motif))
                 {
                     if (debug) std::cerr << motif << " : " << p << " " << tree[i->first].len << " " << f << "\n";
                     pcm.push(CandidateMotif(motif, p, tree[i->first].len, f));
+                }
+                else
+                {
+                    if (debug) std::cerr << motif << " : " << p << " " << tree[i->first].len << " " << f << " (< 2 copies)\n";
                 }
             }
         }

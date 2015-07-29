@@ -60,7 +60,8 @@ class Igor : Program
     //helper variables for populating additional VNTR records
     uint32_t no_samples;
     int32_t* gts;
-       
+    
+    kstring_t s;   
 
     bool debug;
 
@@ -160,7 +161,7 @@ class Igor : Program
         SCORE = bcf_hdr_append_info_with_backup_naming(odw->hdr, "SCORE", "1", "Float", "Score of repeat unit", true);
         TR = bcf_hdr_append_info_with_backup_naming(odw->hdr, "TR", "1", "String", "Tandem repeat representation", true);
 
-        bcf_hdr_append(odw->hdr, "##INFO=<ID=OLD_VARIANT,Number=1,Type=String,Description=\"Original chr:pos:ref:alt encoding\">\n");
+//        bcf_hdr_append(odw->hdr, "##INFO=<ID=OLD_VARIANT,Number=1,Type=String,Description=\"Original chr:pos:ref:alt encoding\">\n");
 
 //        bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_LFLANK,Number=1,Type=String,Description=\"Right Flank Sequence\">");
 //        bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_RFLANK,Number=1,Type=String,Description=\"Left Flank Sequence\">");
@@ -186,6 +187,8 @@ class Igor : Program
             no_samples = 0;
             gts = NULL;
         }
+
+        s = {0,0,0};
 
         ////////////////////////
         //stats initialization//
@@ -229,24 +232,24 @@ class Igor : Program
         
         //shared fields
         bcf_set_rid(v, variant.rid);
-        kstring_t new_alleles = {0,0,0};
-        kputs(vntr.repeat_tract.c_str(), &new_alleles);
-        kputc(',', &new_alleles);
-        kputs("<VNTR>", &new_alleles);
-        bcf_update_alleles_str(h, v, new_alleles.s);
         bcf_set_pos1(v, vntr.rbeg1);
-        if (new_alleles.m) free(new_alleles.s);
-                    
+        s.l = 0;
+        kputs(vntr.repeat_tract.c_str(), &s);
+        kputc(',', &s);
+        kputs("<VNTR>", &s);
+        bcf_update_alleles_str(h, v, s.s);
         bcf_update_info_string(h, v, MOTIF.c_str(), vntr.motif.c_str());
         bcf_update_info_string(h, v, RU.c_str(), vntr.ru.c_str());
         bcf_update_info_float(h, v, RL.c_str(), &vntr.rl, 1);
-        bcf_update_info_string(h, v, REF.c_str(), vntr.repeat_tract.c_str());
-        bcf_update_info_int32(h, v, REFPOS.c_str(), &vntr.rbeg1, 1);
-
+        
         //individual fields - just set GT
         bcf_update_genotypes(h, v, gts, no_samples);
-        
+    }
 
+    void update_indel_record(bcf_hdr_t* h, bcf1_t *v, Variant& variant)
+    {
+        variant.get_vntr_string(&s);
+        bcf_update_info_string(h, v, "TR", s.s);
     }
 
     void annotate_indels()
@@ -254,6 +257,7 @@ class Igor : Program
         odw->write_hdr();
 
         bcf1_t *v = odw->get_bcf1_from_pool();
+        bcf_hdr_t *h = odw->hdr;
         Variant variant;
         kstring_t old_alleles = {0,0,0};
 
@@ -265,15 +269,15 @@ class Igor : Program
             {
 //                bcf_print(odr->hdr, v);
                 va->annotate(odr->hdr, v, variant, mode);
+                
+                //add a filter to indicate VNTR fitness.
+                
+                update_indel_record(h, v, variant);
                 odw->write(v);
                 v = odw->get_bcf1_from_pool();
 
-
-                std::cerr << "value of v" << add_vntr_record << "\n";
-
                 if (add_vntr_record)
                 {
-                    std::cerr << "printing vntr record\n";
                     insert_vntr_record(odr->hdr, v, variant);
                     odw->write(v);
                     v = odw->get_bcf1_from_pool();

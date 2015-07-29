@@ -179,11 +179,12 @@ bool VariantManip::is_normalized(bcf1_t *v)
 int32_t VariantManip::classify_variant(bcf_hdr_t *h, bcf1_t *v, Variant& var)
 {
     bcf_unpack(v, BCF_UN_STR);
-    const char* chrom = bcf_get_chrom(h, v);
-    uint32_t pos1 = bcf_get_pos1(v);
+    var.chrom.assign(bcf_get_chrom(h, v));
+    var.pos1 = bcf_get_pos1(v);
     char** allele = bcf_get_allele(v);
     int32_t n_allele = bcf_get_n_allele(v);
 
+    uint32_t pos1 = var.pos1;
     int32_t pos0 = pos1-1;
     var.ts = 0;
     var.tv = 0;

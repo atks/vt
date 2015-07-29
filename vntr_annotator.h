@@ -113,6 +113,9 @@ class VNTRAnnotator
     RFHMM* rfhmm;
     LFHMM* lfhmm;
 
+    //for retrieving sequences
+    int8_t* seq;
+
     //factors[n][index], for determining what sub repeat units to examine
     int32_t** factors;
 
@@ -176,7 +179,7 @@ class VNTRAnnotator
     /**
      * Detect repeat region.
      */
-    void detect_repeat_region(bcf_hdr_t* h, bcf1_t *v, VNTR& vntr, uint32_t mode);
+    void detect_repeat_region(bcf_hdr_t* h, bcf1_t *v, Variant& variant, uint32_t mode);
 
     /**
      * Chooses a phase of the motif that is appropriate for the alignment

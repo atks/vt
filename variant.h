@@ -44,6 +44,7 @@ class Variant
     //aggegrated type from the alleles
     int32_t type;       
 
+    //location information
     std::string chrom;
     uint32_t rid;
     uint32_t pos1;
@@ -79,6 +80,11 @@ class Variant
      * Prints variant information.
      */
     void print();
+
+    /**
+     * Gets a string representation of the underlying VNTR.
+     */
+    void get_vntr_string(kstring_t* s);
 
     /**
      * Converts VTYPE to string.

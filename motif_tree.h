@@ -112,7 +112,6 @@ class CompareCandidateMotif
  * the first 20 bits indexes to the cannonical form
  * the next 12 bits gives the count
  * the last 32 bits provides the sequence represented by 2 bits per base
- *
  */
 class MotifTree
 {
@@ -121,7 +120,7 @@ class MotifTree
     MotifMap *mm;
     uint32_t max_len;
     std::map<uint32_t, uint32_t> cm;
-    std::vector<uint32_t> lc;                 // for counting the number of motifs of length x.
+    std::vector<uint32_t> lc;   // for counting the number of motifs of length x.
     std::priority_queue<CandidateMotif, std::vector<CandidateMotif>, CompareCandidateMotif > pcm;
     uint32_t cmax_len; //candidate maximum length
     bool debug;
