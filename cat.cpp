@@ -162,7 +162,7 @@ class Igor : Program
                     }
                 }
 
-                bcf_hdr_combine(odw->hdr, h);
+                bcf_hdr_merge(odw->hdr, h);
 
                 bcf_close(file);
                 bcf_hdr_destroy(h);
