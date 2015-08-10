@@ -79,6 +79,7 @@ SOURCES = align\
 		repeat_tract_detector\
 		rfhmm\
 		rminfo\
+		rpartition\
 		seq\
 		sort\
 		subset\
