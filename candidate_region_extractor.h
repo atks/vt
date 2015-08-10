@@ -1,6 +1,6 @@
 /* The MIT License
 
-   Copyright (c) 2014 Adrian Tan <atks@umich.edu>
+   Copyright (c) 2015 Adrian Tan <atks@umich.edu>
 
    Permission is hereby granted, free of charge, to any person obtaining a copy
    of this software and associated documentation files (the "Software"), to deal
@@ -21,8 +21,8 @@
    THE SOFTWARE.
 */
 
-#ifndef VNTR_ANNOTATOR_H
-#define VNTR_ANNOTATOR_H
+#ifndef CANDIDATE_REGION_EXTRACTOR_H
+#define CANDIDATE_REGION_EXTRACTOR_H
 
 #include <cstdlib>
 #include <cstdint>
@@ -65,17 +65,9 @@
  * motifs, flanks and VNTR type statistics.
  * RU,RL,LFLANK,RFLANK,LFLANKPOS,RFLANKPOS,MOTIF_CONCORDANCE,MOTIF_CONCORDANCE
  */
-class VNTRAnnotator
+class CandidateRegionExtractor
 {
     public:
-//##INFO=<ID=VT_RU,Number=1,Type=String,Description=\"Repeat unit in a STR or Homopolymer\">");
-//##INFO=<ID=VT_RL,Number=1,Type=Integer,Description=\"Repeat Length\">");
-//##INFO=<ID=VT_LFLANK,Number=1,Type=String,Description=\"Right Flank Sequence\">");
-//##INFO=<ID=VT_RFLANK,Number=1,Type=String,Description=\"Left Flank Sequence\">");
-//##INFO=<ID=VT_LFLANKPOS,Number=2,Type=Integer,Description=\"Positions of left flank\">");
-//##INFO=<ID=VT_RFLANKPOS,Number=2,Type=Integer,Description=\"Positions of right flank\">");
-//##INFO=<ID=VT_MOTIF_DISCORDANCE,Number=1,Type=String,Description=\"Descriptive Discordance for each reference repeat unit.\">");
-//##INFO=<ID=VT_STR_CONCORDANCE,Number=1,Type=Float,Description=\"Overall discordance of RUs.\">");
 
     uint32_t max_mlen; //maximum length for motif search in the fast tree.
 
@@ -96,14 +88,6 @@ class VNTRAnnotator
     AHMM* ahmm;
     std::string qual;
 
-    std::string MOTIF;
-    std::string RU;
-    std::string RL;
-    std::string REF;
-    std::string REFPOS;
-    std::string SCORE;
-    std::string TR;
-
     ///////
     //tools
     ///////
@@ -122,12 +106,12 @@ class VNTRAnnotator
     /**
      * Constructor.
      */
-    VNTRAnnotator(std::string& ref_fasta_file, std::string MOTIF, std::string RU, std::string RL, std::string REF, std::string REFPOS, std::string SCORE,  std::string TR, bool debug=false);
+    CandidateRegionExtractor(std::string& ref_fasta_file, bool debug=false);
 
     /**
      * Destructor.
      */
-    ~VNTRAnnotator();
+    ~CandidateRegionExtractor();
 
     /**
      * Annotates VNTR characteristics.
@@ -143,28 +127,6 @@ class VNTRAnnotator
      *       - ALLELE_FUZZY  by fuzzy alignment
      */
     void pick_candidate_region(bcf_hdr_t* h, bcf1_t* v, VNTR& vntr, uint32_t mode);
-
-    /**
-     * Pick candidate motifs.
-     * candidate_motifs contain motifs and a measure of confidence
-     */
-    void pick_candidate_motifs(bcf_hdr_t* h, bcf1_t* v, VNTR& vntr);
-
-    /**
-     * Chooses a phase of the motif that is appropriate for the alignment
-     */
-    void choose_best_motif(bcf_hdr_t* h, bcf1_t* v, MotifTree* mt, VNTR& vntr, uint32_t mode);
-
-    /**
-     * Infer flanks  motif discovery.
-     *
-     * returns
-     * a. motif concordance
-     * b. purity concordance
-     * c. left flank
-     * d. right flank
-     */
-    void infer_flanks(bcf_hdr_t* h, bcf1_t* v, std::string& motif);
 
     /**
      * Pick shortest motif.
@@ -197,34 +159,81 @@ class VNTRAnnotator
     bool is_homopolymer(bcf_hdr_t* h, bcf1_t* v);
 
     /**
-     * Detect allele lower bound extent.
+     * Extract region to for motif discovery.
      */
-    void detect_lower_bound_allele_extent(const char* chrom, int32_t& pos1, std::vector<std::string>& alleles, int32_t& start1, int32_t& end1);
+    void extract_regions_by_exact_alignment(bcf_hdr_t* h, bcf1_t* v, VNTR& vntr);
 
     /**
-     * Detect candidate flanks given a motif fit.
+     * Left align alleles.
      */
-    void search_flanks(const char* chrom, int32_t start1, char* motif);
+    void left_align(const char* chrom, int32_t& pos1, std::string& ref, std::string& alt);
 
     /**
-     * Extracts the shortest repeat unit in a sequence.
+     * Right align alleles.
      */
-    char* get_shortest_repeat_motif(char* allele, int32_t len);
+    void right_align(const char* chrom, int32_t& pos1, std::string& ref, std::string& alt);
 
     /**
-     * Gets motif of a repeat unit.
+     * Extract reference sequence region for motif discovery in a fuzzy fashion.
      */
-    std::string get_motif(std::string& ru);
+    void extract_regions_by_fuzzy_alignment(bcf_hdr_t* h, bcf1_t* v, VNTR& vntr);
 
     /**
-     * Reverse complement a sequence.
+     * Fuzzy left align alleles allowing for mismatches and indels defined by penalty.
+     *
+     * @chrom   - chromosome
+     * @pos1    - 1 based position
+     * @ref     - reference sequence
+     * @alt     - alternative sequence
+     * @penalty - mismatch/indels allowed
+     *
+     * Returns left aligned position.
      */
-    std::string reverse_complement(std::string& seq);
+    uint32_t fuzzy_left_align(const char* chrom, int32_t pos1, std::string ref, std::string alt, uint32_t penalty);
 
     /**
-     * Shifts a sequence to the right by i bases.
+     * Fuzzy right align alleles allowing for mismatches and indels defined by penalty.
+     *
+     * @chrom   - chromosome
+     * @pos1    - 1 based position
+     * @ref     - reference sequence
+     * @alt     - alternative sequence
+     * @penalty - mismatch/indels allowed
+     *
+     * Returns right aligned position.
      */
-    std::string shift_phase(std::string& seq, size_t i);
+    uint32_t fuzzy_right_align(const char* chrom, int32_t pos1, std::string ref, std::string alt, uint32_t penalty);
+
+    /**
+     * Extract reference sequence region for motif discovery in a fuzzy fashion.
+     */
+    void extract_regions_by_fuzzy_alignment_with_penalty(bcf_hdr_t* h, bcf1_t* v, VNTR& vntr);
+
+    /**
+     * Fuzzy left align alleles allowing for mismatches and indels defined by penalty.
+     *
+     * @chrom   - chromosome
+     * @pos1    - 1 based position
+     * @ref     - reference sequence
+     * @alt     - alternative sequence
+     * @penalty - mismatch/indels allowed
+     *
+     * Returns left aligned position.
+     */
+    uint32_t fuzzy_left_align_with_penalty(const char* chrom, int32_t pos1, std::string ref, std::string alt, uint32_t penalty);
+
+    /**
+     * Fuzzy right align alleles allowing for mismatches and indels defined by penalty.
+     *
+     * @chrom   - chromosome
+     * @pos1    - 1 based position
+     * @ref     - reference sequence
+     * @alt     - alternative sequence
+     * @penalty - mismatch/indels allowed
+     *
+     * Returns right aligned position.
+     */
+    uint32_t fuzzy_right_align_with_penalty(const char* chrom, int32_t pos1, std::string ref, std::string alt, uint32_t penalty);
 
     /**
      * Prints vntr information.

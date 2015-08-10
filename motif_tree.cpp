@@ -210,19 +210,15 @@ std::string MotifTree::shift_str(std::string& seq, uint32_t i)
  */
 bool MotifTree::exist_two_copies(std::string& seq, std::string& motif)
 {
-//    std::cerr << "\te2m: " << motif <<"\n";
-    //all slides of motif
+    //all phases of motif
     for (uint32_t i=0; i<motif.size(); ++i)
     {
         std::string ru = shift_str(motif, i);
-        
-//        std::cerr << "\t\tru: " << ru <<"\n";
         const char* s = seq.c_str();
-//        std::cerr << "\t\t\ts1: " << s << "\n"; 
+
         if ((s = strstr(s, ru.c_str())))
         {
             s += ru.size();
-//            std::cerr << "\t\t\ts2: " << s << "\n"; 
             
             if ((s = strstr(s, ru.c_str())))
             {
@@ -250,7 +246,7 @@ float MotifTree::compute_fit(uint32_t index, scontent* sc)
         ++e[get_seqi(n->seq, i)];
     }
     
-//    std::cerr << e[0]ß << " " << e[1] << " " << e[2] << " " << e[3] << "\n";
+//    std::cerr << e[0] << " " << e[1] << " " << e[2] << " " << e[3] << "\n";
     
     float fit = 0;
     float t = 0;

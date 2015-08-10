@@ -271,13 +271,17 @@ class Igor : Program
                 va->annotate(odr->hdr, v, variant, mode);
                 
                 //add a filter to indicate VNTR fitness.
-                
                 update_indel_record(h, v, variant);
                 odw->write(v);
                 v = odw->get_bcf1_from_pool();
 
                 if (add_vntr_record)
                 {
+                    //check if the record exists before ...
+                    //should be done with a little buffer?
+                    //done with hash?
+                    //10% overlap as observed
+                    
                     insert_vntr_record(odr->hdr, v, variant);
                     odw->write(v);
                     v = odw->get_bcf1_from_pool();
