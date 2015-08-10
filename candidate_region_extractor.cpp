@@ -37,6 +37,9 @@ CandidateRegionExtractor::CandidateRegionExtractor(std::string& ref_fasta_file, 
     }
 
     max_mlen = 10;
+    
+   
+    
     mt = new MotifTree(max_mlen, debug);
 };
 

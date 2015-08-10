@@ -29,12 +29,17 @@
 VNTRAnnotator::VNTRAnnotator(std::string& ref_fasta_file, std::string MOTIF, std::string RU, std::string RL, std::string REF, std::string REFPOS, std::string SCORE, std::string TR, bool debug)
 {
     vm = new VariantManip(ref_fasta_file.c_str());
+
+
+
     fai = fai_load(ref_fasta_file.c_str());
     if (fai==NULL)
     {
         fprintf(stderr, "[%s:%d %s] Cannot load genome index: %s\n", __FILE__, __LINE__, __FUNCTION__, ref_fasta_file.c_str());
         exit(1);
     }
+
+    cre = new CandidateRegionExtractor(ref_fasta_file, debug);
 
     max_mlen = 10;
     mt = new MotifTree(max_mlen, debug);
@@ -50,6 +55,8 @@ VNTRAnnotator::VNTRAnnotator(std::string& ref_fasta_file, std::string MOTIF, std
 
     this->debug = debug;
     qual.assign(256, 'K');
+
+
 
     ahmm = new AHMM();
     rfhmm = new RFHMM();
@@ -227,15 +234,15 @@ void VNTRAnnotator::pick_candidate_region(bcf_hdr_t* h, bcf1_t* v, VNTR& vntr, u
     }
     else if (mode==EXACT_LEFT_RIGHT_ALIGNMENT)
     {
-//        extract_regions_by_exact_alignment(h, v, vntr);
+        cre->extract_regions_by_exact_alignment(h, v, vntr);
     }
     else if (mode==FUZZY_LEFT_RIGHT_ALIGNMENT)
     {
-//        extract_regions_by_fuzzy_alignment(h, v, vntr);
+        cre->extract_regions_by_fuzzy_alignment(h, v, vntr);
     }
     else if (mode==FUZZY_LEFT_RIGHT_ALIGNMENT_WITH_PENALTY)
     {
-//        extract_regions_by_fuzzy_alignment_with_penalty(h, v, vntr);
+        cre->extract_regions_by_fuzzy_alignment_with_penalty(h, v, vntr);
     }
 }
 

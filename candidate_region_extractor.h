@@ -235,10 +235,6 @@ class CandidateRegionExtractor
      */
     uint32_t fuzzy_right_align_with_penalty(const char* chrom, int32_t pos1, std::string ref, std::string alt, uint32_t penalty);
 
-    /**
-     * Prints vntr information.
-     */
-    void print();
 };
 
 #endif
