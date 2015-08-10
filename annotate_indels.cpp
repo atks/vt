@@ -171,7 +171,6 @@ class Igor : Program
 //        bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_MOTIF_COMPLETENESS,Number=1,Type=Integer,Description=\"Descriptive Discordance for each reference repeat unit.\">");
 //        bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_STR_CONCORDANCE,Number=1,Type=Float,Description=\"Overall discordance of RUs.\">");
 
-
         //helper variable initialization for adding additional vntr records
         if (add_vntr_record)
         {   
@@ -199,7 +198,7 @@ class Igor : Program
         //tools initialization//
         ////////////////////////
         vm = new VariantManip(ref_fasta_file);
-        va = new VNTRAnnotator(ref_fasta_file, MOTIF, RU, RL, REF, REFPOS, SCORE, TR, debug);
+        va = new VNTRAnnotator(ref_fasta_file, debug);
         fai = fai_load(ref_fasta_file.c_str());
     }
 

@@ -46,6 +46,13 @@
 #include "vntr.h"
 #include "candidate_region_extractor.h"
 
+//definition of STRs
+#define LAI_2003_STR     0
+#define KELKAR_2008_STR  1
+#define FONDON_2012_STR  2
+#define ANANDA_2013_STR  3
+#define WILLEMS_2014_STR 4
+
 //forms of alignment
 #define REFERENCE                                0
 #define EXACT_LEFT_RIGHT_ALIGNMENT               1
@@ -112,8 +119,6 @@ class VNTRAnnotator
     faidx_t* fai;
     CandidateRegionExtractor* cre;
     MotifTree* mt;
-    RFHMM* rfhmm;
-    LFHMM* lfhmm;
 
     //for retrieving sequences
     int8_t* seq;
@@ -124,7 +129,7 @@ class VNTRAnnotator
     /**
      * Constructor.
      */
-    VNTRAnnotator(std::string& ref_fasta_file, std::string MOTIF, std::string RU, std::string RL, std::string REF, std::string REFPOS, std::string SCORE,  std::string TR, bool debug=false);
+    VNTRAnnotator(std::string& ref_fasta_file, bool debug=false);
 
     /**
      * Destructor.
@@ -133,18 +138,14 @@ class VNTRAnnotator
 
     /**
      * Annotates VNTR characteristics.
-     * RU,RL,LFLANK,RFLANK,LFLANKPOS,RFLANKPOS,MOTIF_CONCORDANCE,MOTIF_CONCORDANCE
+     * @mode
+     *   e - determine by exact alignment
+     *   f - determine by fuzzy alignment
+     *   p - determine by penalized fuzzy alignment
+     *   h - using HMMs     
+     *   x - integrated models     
      */
     void annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::string mode);
-
-    /**
-     * Pick candidate region.
-     *
-     * @mode - REFERENCE     use refence field
-     *       - ALLELE_EXACT  by exact alignment
-     *       - ALLELE_FUZZY  by fuzzy alignment
-     */
-    void pick_candidate_region(bcf_hdr_t* h, bcf1_t* v, VNTR& vntr, uint32_t mode);
 
     /**
      * Pick candidate motifs.
@@ -156,17 +157,6 @@ class VNTRAnnotator
      * Chooses a phase of the motif that is appropriate for the alignment
      */
     void choose_best_motif(bcf_hdr_t* h, bcf1_t* v, MotifTree* mt, VNTR& vntr, uint32_t mode);
-
-    /**
-     * Infer flanks  motif discovery.
-     *
-     * returns
-     * a. motif concordance
-     * b. purity concordance
-     * c. left flank
-     * d. right flank
-     */
-    void infer_flanks(bcf_hdr_t* h, bcf1_t* v, std::string& motif);
 
     /**
      * Pick shortest motif.
@@ -204,11 +194,6 @@ class VNTRAnnotator
     void detect_lower_bound_allele_extent(const char* chrom, int32_t& pos1, std::vector<std::string>& alleles, int32_t& start1, int32_t& end1);
 
     /**
-     * Detect candidate flanks given a motif fit.
-     */
-    void search_flanks(const char* chrom, int32_t start1, char* motif);
-
-    /**
      * Extracts the shortest repeat unit in a sequence.
      */
     char* get_shortest_repeat_motif(char* allele, int32_t len);
@@ -232,6 +217,12 @@ class VNTRAnnotator
      * Prints vntr information.
      */
     void print();
+
+    /**
+     * Returns true if is to be classified as an STR
+     */
+    bool is_str(Variant& variant, int32_t mode);
+
 };
 
 #endif

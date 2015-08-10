@@ -87,19 +87,12 @@ void RepeatTractDetector::infer_flanks(bcf_hdr_t* h, bcf1_t* v, std::string& mot
 
     //right alignment
 
-
-    //        int32_t no_candidate_motifs;
-//
+//        int32_t no_candidate_motifs;
 //
 //        const char* chrom = bcf_get_chrom(h, v);
 //
-//
-//
 //        int32_t pos1 = bcf_get_pos1(v);
-//
-//
-//
-//
+
 //        std::vector<CandidateMotif> candidate_motifs;
 //        pick_candidate_motifs(h, v, candidate_motifs);
 //
