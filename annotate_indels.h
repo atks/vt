@@ -32,6 +32,7 @@
 #include "variant_manip.h"
 #include "program.h"
 #include "vntr_annotator.h"
+#include "filter.h"
 
 void annotate_indels(int argc, char ** argv);
 

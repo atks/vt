@@ -63,6 +63,7 @@
 #include "profile_snps.h"
 #include "remove_overlap.h"
 #include "rminfo.h"
+#include "rpartition.h"
 #include "seq.h"
 #include "sort.h"
 #include "subset.h"
@@ -216,6 +217,10 @@ int main(int argc, char ** argv)
     else if (argc>1 && cmd=="partition")
     {
         partition(argc-1, ++argv);
+    }
+    else if (argc>1 && cmd=="rpartition")
+    {
+        rpartition(argc-1, ++argv);
     }
     else if (argc>1 && cmd=="multi_partition")
     {

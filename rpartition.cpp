@@ -66,6 +66,7 @@ class Igor : Program
     std::string fexp;
     Filter filter;
     bool filter_exists;
+    float rfrac;
 
     /////////
     //stats//
@@ -92,12 +93,14 @@ class Igor : Program
             TCLAP::ValueArg<std::string> arg_intervals("i", "i", "intervals []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "file", cmd);
             TCLAP::ValueArg<std::string> arg_fexp("f", "f", "filter", false, "", "str", cmd);
+            TCLAP::ValueArg<float> arg_rfrac("r", "r", "reciprocal overlap ", false, 0.9, "float", cmd);
             TCLAP::SwitchArg arg_write_partition("w", "w", "write partitioned variants to file", cmd, false);
             TCLAP::UnlabeledMultiArg<std::string> arg_input_vcf_files("<in1.vcf><in2.vcf>", "2 input VCF files for comparison", true, "files", cmd);
 
             cmd.parse(argc, argv);
 
             fexp = arg_fexp.getValue();
+            rfrac = arg_rfrac.getValue();
             parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
             write_partition = arg_write_partition.getValue();
             input_vcf_files = arg_input_vcf_files.getValue();

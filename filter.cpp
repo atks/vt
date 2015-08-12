@@ -590,7 +590,7 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
             return;
         }
 
-        if ((type&15)==9) //ADD
+        if ((type&15)==11) //ADD
         {
             if ((left->type&VT_INT))
             {
@@ -627,7 +627,7 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
             fprintf(stderr, "[%s:%d %s] evaluation not supported : +\n", __FILE__, __LINE__, __FUNCTION__);
             exit(1);
         }
-        else if ((type&15)==10) //SUB
+        else if ((type&15)==12) //SUB
         {
             if ((left->type&VT_INT))
             {
@@ -664,7 +664,7 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
             fprintf(stderr, "[%s:%d %s] evaluation not supported : -\n", __FILE__, __LINE__, __FUNCTION__);
             exit(1);
         }
-        else if ((type&15)==11) //MUL
+        else if ((type&15)==13) //MUL
         {
             if ((left->type&VT_INT))
             {
@@ -701,7 +701,7 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
             fprintf(stderr, "[%s:%d %s] evaluation not supported : *\n", __FILE__, __LINE__, __FUNCTION__);
             exit(1);
         }
-        else if ((type&15)==12) //DIV
+        else if ((type&15)==14) //DIV
         {
             if (left->type&VT_INT)
             {
@@ -737,7 +737,7 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
             fprintf(stderr, "[%s:%d %s] evaluation not supported : /\n", __FILE__, __LINE__, __FUNCTION__);
             exit(1);
         }
-        else if ((type&15)==13) //BIT AND
+        else if ((type&15)==15) //BIT AND
         {
             if ((left->type&VT_INT) && (right->type&VT_INT))
             {
@@ -749,7 +749,7 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
             fprintf(stderr, "[%s:%d %s] evaluation not supported for & :  %d %d\n", __FILE__, __LINE__, __FUNCTION__, left->type, right->type);
             exit(1);
         }
-        else if ((type&15)==14) //BIT OR
+        else if ((type&15)==16) //BIT OR
         {
             if ((left->type&VT_INT) && (right->type&VT_INT))
             {
