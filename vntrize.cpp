@@ -40,6 +40,13 @@ class Igor : Program
     int32_t window_size;
     bool print;
 
+    //////////
+    //filter//
+    //////////
+    std::string fexp;
+    Filter filter;
+    bool filter_exists;
+    
     ///////
     //i/o//
     ///////
@@ -76,6 +83,7 @@ class Igor : Program
             TCLAP::ValueArg<std::string> arg_intervals("i", "i", "intervals []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "file", cmd);
             TCLAP::ValueArg<int32_t> arg_window_size("w", "w", "window size for local sorting of variants [10000]", false, 10000, "integer", cmd);
+            TCLAP::ValueArg<std::string> arg_fexp("f", "f", "filter expression []", false, "", "str", cmd);
             TCLAP::SwitchArg arg_quiet("q", "q", "do not print options and summary []", cmd, false);
             TCLAP::ValueArg<std::string> arg_output_vcf_file("o", "o", "output VCF file [-]", false, "-", "str", cmd);
             TCLAP::UnlabeledValueArg<std::string> arg_input_vcf_file("<in.vcf>", "input VCF file", true, "","file", cmd);
@@ -85,6 +93,7 @@ class Igor : Program
             input_vcf_file = arg_input_vcf_file.getValue();
             output_vcf_file = arg_output_vcf_file.getValue();
             parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
+            fexp = arg_fexp.getValue();
             print = !arg_quiet.getValue();
             window_size = arg_window_size.getValue();
             ref_vntr_vcf_file = arg_ref_vntr_vcf_file.getValue();
@@ -107,6 +116,12 @@ class Igor : Program
         bcf_hdr_append(odw->hdr, "##INFO=<ID=VNTR_OVERLAP_VARIANT,Number=.,Type=String,Description=\"Original chr:pos:ref:alt variant that overlaps with a VNTR\">\n");
         odw->write_hdr();
         
+        /////////////////////////
+        //filter initialization//
+        /////////////////////////
+        filter.parse(fexp.c_str(), false);
+        filter_exists = fexp=="" ? false : true;
+            
         ////////////////////////
         //stats initialization//
         ////////////////////////
@@ -129,12 +144,22 @@ class Igor : Program
         kstring_t new_alleles = {0,0,0};
 
         v = odw->get_bcf1_from_pool();
+        bcf_hdr_t* h = odr->hdr;
         Variant variant;
 
         std::vector<bcf1_t *> overlap_vars;
 
         while (odr->read(v))
         {
+            if (filter_exists)
+            {   
+                vm->classify_variant(h, v, variant);
+                if (!filter.apply(h, v, &variant, false))
+                {
+                    continue;
+                }
+            }
+            
             bcf_unpack(v, BCF_UN_INFO);
             
             std::string chrom = bcf_get_chrom(odr->hdr,v);

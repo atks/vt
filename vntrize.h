@@ -32,6 +32,7 @@
 #include "bcf_ordered_writer.h"
 #include "ordered_bcf_overlap_matcher.h"
 #include "variant_manip.h"
+#include "filter.h"
 
 bool vntrize(int argc, char ** argv);
     
