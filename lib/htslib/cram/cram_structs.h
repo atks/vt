@@ -269,7 +269,7 @@ struct cram_map;
 #define CRAM_MAP(a,b) (((a)*3+(b))&(CRAM_MAP_HASH-1))
 
 /* Compression header block */
-typedef struct {
+typedef struct cram_block_compression_hdr {
     int32_t ref_seq_id;
     int32_t ref_seq_start;
     int32_t ref_seq_span;
@@ -588,6 +588,7 @@ typedef struct ref_entry {
     int64_t count;	   // for shared references so we know to dealloc seq
     char *seq;
     mFILE *mf;
+    int is_md5;            // Reference comes from a raw seq found by MD5
 } ref_entry;
 
 KHASH_MAP_INIT_STR(refs, ref_entry*)

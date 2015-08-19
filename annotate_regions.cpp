@@ -43,7 +43,9 @@ class Igor : Program
     std::string regions_bed_file;
     std::string REGIONS_TAG;
     std::string REGIONS_TAG_DESC;
-
+    uint32_t left_window; 
+    uint32_t right_window;
+    
     ///////
     //i/o//
     ///////
@@ -82,6 +84,8 @@ class Igor : Program
             TCLAP::ValueArg<std::string> arg_regions_bed_file("b", "b", "regions BED file []", true, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_REGIONS_TAG("t", "t", "regions tag []", true, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_REGIONS_TAG_DESC("d", "d", "regions tag description []", true, "", "str", cmd);
+            TCLAP::ValueArg<uint32_t> arg_left_window("l", "l", "left window size for overlap []", false, 0, "int", cmd);
+            TCLAP::ValueArg<uint32_t> arg_right_window("r", "r", "right window size for overlap []", false, 0, "int", cmd);
             TCLAP::UnlabeledValueArg<std::string> arg_input_vcf_file("<in.vcf>", "input VCF file", true, "","file", cmd);
 
             cmd.parse(argc, argv);
@@ -90,6 +94,8 @@ class Igor : Program
             output_vcf_file = arg_output_vcf_file.getValue();
             parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
             regions_bed_file = arg_regions_bed_file.getValue();
+            left_window = arg_left_window.getValue();
+            right_window = arg_right_window.getValue();
             REGIONS_TAG = arg_REGIONS_TAG.getValue();
             REGIONS_TAG_DESC = arg_REGIONS_TAG_DESC.getValue();
         }
@@ -133,6 +139,8 @@ class Igor : Program
         std::clog << "options:     input VCF file(s)     " << input_vcf_file << "\n";
         std::clog << "         [o] output VCF file       " << output_vcf_file << "\n";
         print_str_op("         [m] regions bed file      ", regions_bed_file);
+        print_num_op("         [l] left window           ", left_window);
+        print_num_op("         [r] right window          ", right_window);
         print_int_op("         [i] intervals             ", intervals);
         std::clog << "\n";
     }
@@ -160,7 +168,7 @@ class Igor : Program
             int32_t start1 = bcf_get_pos1(v);
             int32_t end1 = bcf_get_end_pos1(v);
 
-            if (orom_regions->overlaps_with(chrom, start1, end1))
+            if (orom_regions->overlaps_with(chrom, start1-left_window, end1+right_window))
             {
                 bcf_update_info_flag(odr->hdr, v, REGIONS_TAG.c_str(), "", 1);
                 ++no_variants_annotated;

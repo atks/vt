@@ -459,8 +459,9 @@ void VNTRAnnotator::detect_repeat_region(bcf_hdr_t* h, bcf1_t *v, Variant& varia
         }
 
         vntr.ru = choose_repeat_unit(vntr.repeat_tract, vntr.motif);
-        vntr.rl = (float)vntr.repeat_tract.size()/vntr.ru.size();
-
+//        vntr.rl = (float)vntr.repeat_tract.size()/vntr.ru.size();
+        vntr.rl = (float)vntr.repeat_tract.size();
+        
         if (debug)
         {
             vntr.print();

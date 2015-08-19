@@ -127,6 +127,7 @@ class Igor : Program
                 ret += bcf_update_info(h, v, info_tags[i].c_str(), NULL, 0, 0);
             }
 
+            //todo: this is not correct, ret only returns non 0 upon an error.  
             if (!ret) ++no_variants_with_removed_info;
 
             ++no_variants;
