@@ -131,7 +131,7 @@ class Igor : Program
             TCLAP::ValueArg<uint32_t> arg_ploidy("p", "p", "ploidy [2]", false, 2, "int", cmd);
 
             //Reads
-            TCLAP::ValueArg<uint32_t> arg_read_mapq_cutoff("t", "t", "MAPQ cutoff for alignments [20]", false, 20, "int", cmd);
+            TCLAP::ValueArg<uint32_t> arg_read_mapq_cutoff("t", "t", "MAPQ cutoff for alignments (>) [20]", false, 20, "int", cmd);
             TCLAP::SwitchArg arg_ignore_overlapping_read("l", "l", "ignore overlapping reads [false]", cmd, false);
             TCLAP::ValueArg<uint32_t> arg_read_exclude_flag("a", "a", "read exclude flag [0x0704]", false, 0x0704, "int", cmd);
 

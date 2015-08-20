@@ -69,9 +69,9 @@ BAMOrderedReader::BAMOrderedReader(std::string file_name, std::vector<GenomeInte
     }
     ftype = file->format;
 
-    if (ftype.format!=bam && ftype.format!=cram)
+    if (ftype.format!=sam && ftype.format!=bam && ftype.format!=cram)
     {
-        fprintf(stderr, "[%s:%d %s] Not a BAM/CRAM file: %s\n", __FILE__, __LINE__, __FUNCTION__, file_name.c_str());
+        fprintf(stderr, "[%s:%d %s] Not a SAM/BAM/CRAM file: %s\n", __FILE__, __LINE__, __FUNCTION__, file_name.c_str());
         exit(1);
     }
 
