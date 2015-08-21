@@ -40,11 +40,18 @@ class Igor : Program
     std::string output_vcf_file;
     std::vector<GenomeInterval> intervals;
     std::string interval_list;
-    //modes of annotation
+    //methods of detection 
     //1. e: exact alignment, motif tree - VMOTIF, VSCORE
     //2. f: fuzzy alignment, motif tree - VMOTIF, VSCORE
     //3. x: fuzzy alignment, motif tree, robust detection of flanks - VMOTIF, VSCORE, LFLANK, RFLANK
-    std::string mode;
+    std::string method;
+    //modes of annotation
+    //1. a: update ALLELES fields; update INFO fields; RL, MOTIF, RU, FLANKS, OLD_VARIANT
+    //2. i: update INFO fields; RL, MOTIF, RU, FLANKS, OLD_VARIANT
+    //3. n: insert new record and update OLD_VARIANT
+    //      a. NEW RECORD: update ALLELES fields; update INFO fields; RL, MOTIF, RU, FLANKS, OLD_VARIANT
+    //      b. update INFO fields; VNTR
+    std::string annotation_mode;
     bool override_tag;
     uint32_t alignment_penalty;
     bool add_vntr_record;
@@ -107,14 +114,21 @@ class Igor : Program
             TCLAP::ValueArg<std::string> arg_intervals("i", "i", "intervals", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_output_vcf_file("o", "o", "output VCF file [-]", false, "-", "str", cmd);
-            TCLAP::ValueArg<std::string> arg_ref_fasta_file("r", "r", "reference sequence fasta file []", true, "", "str", cmd);
-            TCLAP::ValueArg<std::string> arg_mode("m", "m", "mode [x]\n"
+            TCLAP::ValueArg<std::string> arg_ref_fasta_file("r", "r", "reference sequence fasta file [e]", true, "e", "str", cmd);
+            TCLAP::ValueArg<std::string> arg_method("m", "m", "mode [x]\n"
                  "              e : determine by exact alignment.\n"
                  "              f : determine by fuzzy alignment.\n"
                  "              p : determine by penalized fuzzy alignment.\n"
                  "              h : using HMMs"
                  "              x : integrated models",
-                 false, "", "str", cmd);
+                 false, "e", "str", cmd);
+            TCLAP::ValueArg<std::string> arg_annotation_mode("a", "a", "mode [x]\n"
+                 "              e : determine by exact alignment.\n"
+                 "              f : determine by fuzzy alignment.\n"
+                 "              p : determine by penalized fuzzy alignment.\n"
+                 "              h : using HMMs"
+                 "              x : integrated models",
+                 false, "e", "str", cmd);
             TCLAP::ValueArg<uint32_t> arg_alignment_penalty("p", "p", "alignment penalty [0]\n", false, 0, "int", cmd);
             TCLAP::SwitchArg arg_debug("d", "d", "debug [false]", cmd, false);
             TCLAP::UnlabeledValueArg<std::string> arg_input_vcf_file("<in.vcf>", "input VCF file", true, "","file", cmd);
@@ -128,7 +142,8 @@ class Igor : Program
             output_vcf_file = arg_output_vcf_file.getValue();
             parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
             parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
-            mode = arg_mode.getValue();
+            method = arg_method.getValue();
+            annotation_mode = arg_annotation_mode.getValue();
             override_tag = arg_override_tag.getValue();
             add_vntr_record = arg_add_vntr_record.getValue();
             fexp = arg_fexp.getValue();
@@ -149,12 +164,18 @@ class Igor : Program
         ///////////
         //options//
         ///////////
-        if (mode!="e" && mode!="f" && mode!="p" && mode!="x")
+        if (method!="e" && method!="f" && method!="p" && method!="x")
         {
-            fprintf(stderr, "[%s:%d %s] Not a valid mode of annotation: %s\n", __FILE__,__LINE__,__FUNCTION__, mode.c_str());
+            fprintf(stderr, "[%s:%d %s] Not a valid mode of annotation: %s\n", __FILE__,__LINE__,__FUNCTION__, method.c_str());
             exit(1);
         }
 
+        if (annotation_mode!="e" && annotation_mode!="f" && annotation_mode!="p" && annotation_mode!="x")
+        {
+            fprintf(stderr, "[%s:%d %s] Not a valid mode of annotation: %s\n", __FILE__,__LINE__,__FUNCTION__, annotation_mode.c_str());
+            exit(1);
+        }
+        
         /////////////////////////
         //filter initialization//
         /////////////////////////
@@ -223,7 +244,8 @@ class Igor : Program
         std::clog << "\n";
         std::clog << "options:     input VCF file(s)     " << input_vcf_file << "\n";
         std::clog << "         [o] output VCF file       " << output_vcf_file << "\n";
-        std::clog << "         [m] mode                  " << mode << "\n";
+        std::clog << "         [m] method                " << method << "\n";
+        std::clog << "         [a] annotation_mode       " << annotation_mode << "\n";
         print_boo_op("         [d] debug                 ", debug);
         print_ref_op("         [r] ref FASTA file        ", ref_fasta_file);
         print_boo_op("         [x] override tag          ", override_tag);        
@@ -304,7 +326,7 @@ class Igor : Program
             if (vtype&VT_INDEL || vtype&VT_VNTR)
             {
 //                bcf_print(odr->hdr, v);
-                va->annotate(odr->hdr, v, variant, mode);
+                va->annotate(odr->hdr, v, variant, method);
                 
                 //add a filter to indicate VNTR fitness.
                 update_indel_record(h, v, variant);

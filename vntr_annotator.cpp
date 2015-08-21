@@ -103,7 +103,7 @@ void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::str
             if (debug) std::cerr << "ANNOTATING INDEL EXACTLY\n";
 
             //1. pick candidate region using exact left and right alignment
-             cre->extract_regions_by_exact_alignment(h, v, vntr);
+            cre->extract_regions_by_exact_alignment(h, v, vntr);
 
             //2. detect candidate motifs from a reference sequence
             pick_candidate_motifs(h, v, vntr);
@@ -461,7 +461,7 @@ void VNTRAnnotator::detect_repeat_region(bcf_hdr_t* h, bcf1_t *v, Variant& varia
         vntr.ru = choose_repeat_unit(vntr.repeat_tract, vntr.motif);
 //        vntr.rl = (float)vntr.repeat_tract.size()/vntr.ru.size();
         vntr.rl = (float)vntr.repeat_tract.size();
-        
+
         if (debug)
         {
             vntr.print();
@@ -754,46 +754,55 @@ bool VNTRAnnotator::is_str(Variant& variant, int32_t mode)
 {
     uint32_t mlen = variant.vntr.mlen;
     uint32_t rlen = variant.vntr.rend1 - variant.vntr.rbeg1 + 1;
-    
+
     if (mode==WILLEMS_2014_STR)
-    {    
-        return ((mlen==2 && rlen>=11) ||
+    {
+        return ((mlen==1 && rlen>=6) ||
+                (mlen==2 && rlen>=11) ||
                 (mlen==3 && rlen>=14) ||
                 (mlen==4 && rlen>=14) ||
                 (mlen==5 && rlen>=16) ||
-                (mlen==6 && rlen>=17));
+                (mlen==6 && rlen>=17) ||
+                (mlen>=7 && rlen>=mlen*2));
     }
     else if (mode==ANANDA_2013_STR)
-    {    
-        return ((mlen==2 && rlen>=4) ||
+    {
+        return ((mlen==1 && rlen>=2) ||
+                (mlen==2 && rlen>=4) ||
                 (mlen==3 && rlen>=6) ||
                 (mlen==4 && rlen>=8) ||
                 (mlen==5 && rlen>=10) ||
-                (mlen==6 && rlen>=12));
+                (mlen==6 && rlen>=12) ||
+                (mlen>=7 && rlen>=mlen*2));
     }
     else if (mode==FONDON_2012_STR)
-    {    
-        return ((mlen==2 && rlen>=13) ||
+    {
+        return ((mlen==1 && rlen>=6) ||
+                (mlen==2 && rlen>=13) ||
                 (mlen==3 && rlen>=20) ||
                 (mlen==4 && rlen>=23) ||
                 (mlen==5 && rlen>=27) ||
                 (mlen==6 && rlen>=27));
     }
     else if (mode==KELKAR_2008_STR)
-    {    
-        return ((mlen==2 && rlen>=10) ||
+    {
+        return ((mlen==1 && rlen>=6) ||
+                (mlen==2 && rlen>=10) ||
                 (mlen==3 && rlen>=6) ||
                 (mlen==4 && rlen>=8) ||
                 (mlen==5 && rlen>=10) ||
-                (mlen==6 && rlen>=12));
+                (mlen==6 && rlen>=12) ||
+                (mlen>=7 && rlen>=mlen*2));
     }
     else if (mode==LAI_2003_STR)
-    {    
-        return ((mlen==2 && rlen>=8) ||
+    {
+        return ((mlen==1 && rlen>=6) ||
+                (mlen==2 && rlen>=8) ||
                 (mlen==3 && rlen>=12) ||
                 (mlen==4 && rlen>=16) ||
                 (mlen==5 && rlen>=20) ||
-                (mlen==6 && rlen>=24));
+                (mlen==6 && rlen>=24) ||
+                (mlen>=7 && rlen>=mlen*2));
     }
     else
     {

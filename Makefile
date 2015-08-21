@@ -76,6 +76,7 @@ SOURCES = align\
 		profile_na12878\
 		profile_snps\
 		program\
+		reference_sequence\
 		remove_overlap\
 		repeat_tract_detector\
 		rfhmm\
