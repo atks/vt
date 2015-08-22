@@ -21,21 +21,20 @@
    THE SOFTWARE.
 */
 
-#ifndef REFERENCE_SEQUENCE_H
-#define REFERENCE_SEQUENCE_H
+#ifndef CIRCULAR_BUFFER_H
+#define CIRCULAR_BUFFER_H
 
 #include <map>
 #include <vector>
 #include "utils.h"
 #include "hts_utils.h"
 #include "variant_manip.h"
-#include "htslib/faidx.h"
 
 /**
  * A Reference Sequence object wrapping htslib's faidx.
  * This allows for buffered reading of seqeunces.
  */
-class ReferenceSequence
+class CircularBuffer
 {
     public:
     uint32_t buffer_size;
@@ -68,8 +67,6 @@ class ReferenceSequence
     //  how do we check if
     //
 
-    //for use if we need to update the reference.
-    std::string chrom;
 
     //where should we check if a read is from another chromosome?
 
@@ -82,9 +79,6 @@ class ReferenceSequence
 
     public:
 
-//interface this
-//faidx_fetch_seq(fai, chrom, pos1-10, pos1-1, &len);
-    
     /**
      * Get a base.
      */
@@ -102,7 +96,7 @@ class ReferenceSequence
      *
      * @k - size of pileup is 2^k
      */
-    ReferenceSequence(uint32_t k=10, uint32_t window_size=256);
+    CircularBuffer(uint32_t k=10, uint32_t window_size=256);
 
     /**
      * Overloads subscript operator for accessing pileup positions.
@@ -159,7 +153,61 @@ class ReferenceSequence
      */
     uint32_t get_window_size();
 
-   
+    /**
+     * Sets gbeg1.
+     */
+    void set_gbeg1(uint32_t gbeg1);
+
+    /**
+     * Gets gbeg1.
+     */
+    uint32_t get_gbeg1();
+
+    /**
+     * Gets gend1.
+     */
+    uint32_t get_gend1();
+
+    /**
+     * Sets beg0.
+     */
+    void set_beg0(uint32_t beg0);
+
+    /**
+     * Sets end0.
+     */
+    void set_end0(uint32_t end0);
+
+    /**
+     * Gets the index of the first element.
+     */
+    uint32_t begin();
+
+    /**
+     * Gets the index of the last element.
+     */
+    uint32_t end();
+
+    /**
+     * Increments i by 1 circularly.
+     */
+    uint32_t inc(uint32_t i);
+
+    /**
+     * Increments beg0 by 1.
+     */
+    void inc_beg0();
+
+    /**
+     * Increments end0 by 1.
+     */
+    void inc_end0();
+
+    /**
+     * Increments index i by j cyclically.
+     */
+    uint32_t inc(uint32_t i, uint32_t j);
+
     /**
      * Converts gpos1 to index in P.
      */

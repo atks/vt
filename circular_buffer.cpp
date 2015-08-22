@@ -21,14 +21,14 @@
    THE SOFTWARE.
 */
 
-#include "reference_sequence.h"
+#include "circular_buffer.h"
 
 /**
  * Constructor.
  *
  * @k - size of pileup is 2^k
  */
-ReferenceSequence::ReferenceSequence(uint32_t k, uint32_t window_size)
+CircularBuffer::CircularBuffer(uint32_t k, uint32_t window_size)
 {
     //Buffer size is a power of 2^k.
     buffer_size = 1 << k;
@@ -48,7 +48,7 @@ ReferenceSequence::ReferenceSequence(uint32_t k, uint32_t window_size)
 /**
  * Overloads subscript operator for accessing pileup positions.
  */
-char& ReferenceSequence::operator[] (const int32_t i)
+char& CircularBuffer::operator[] (const int32_t i)
 {
     return P[i];
 }
@@ -56,7 +56,7 @@ char& ReferenceSequence::operator[] (const int32_t i)
 /**
  * Returns the maximum size of the pileup.
  */
-uint32_t ReferenceSequence::max_size()
+uint32_t CircularBuffer::max_size()
 {
     return buffer_size - 1;
 }
@@ -64,7 +64,7 @@ uint32_t ReferenceSequence::max_size()
 /**
  * Returns the size of the pileup.
  */
-uint32_t ReferenceSequence::size()
+uint32_t CircularBuffer::size()
 {
     return (end0>=beg0 ? end0-beg0 : buffer_size-(beg0-end0));
 }
@@ -72,7 +72,7 @@ uint32_t ReferenceSequence::size()
 /**
  * Checks if buffer is empty.
  */
-bool ReferenceSequence::is_empty()
+bool CircularBuffer::is_empty()
 {
     return beg0==end0;
 };
@@ -80,7 +80,7 @@ bool ReferenceSequence::is_empty()
 /**
  * Set reference fasta file.
  */
-void ReferenceSequence::set_reference(std::string& ref_fasta_file)
+void CircularBuffer::set_reference(std::string& ref_fasta_file)
 {
     if (ref_fasta_file!="")
     {
@@ -96,7 +96,7 @@ void ReferenceSequence::set_reference(std::string& ref_fasta_file)
 /**
  * Set debug.
  */
-void ReferenceSequence::set_debug(int32_t debug)
+void CircularBuffer::set_debug(int32_t debug)
 {
     this->debug = debug;
 };
@@ -104,7 +104,7 @@ void ReferenceSequence::set_debug(int32_t debug)
 /**
  * Sets tid.
  */
-void ReferenceSequence::set_tid(uint32_t tid)
+void CircularBuffer::set_tid(uint32_t tid)
 {
     this->tid = tid;
 }
@@ -112,7 +112,7 @@ void ReferenceSequence::set_tid(uint32_t tid)
 /**
  * Gets tid.
  */
-uint32_t ReferenceSequence::get_tid()
+uint32_t CircularBuffer::get_tid()
 {
     return this->tid;
 }
@@ -120,7 +120,7 @@ uint32_t ReferenceSequence::get_tid()
 /**
  * Sets chrom.
  */
-void ReferenceSequence::set_chrom(std::string& chrom)
+void CircularBuffer::set_chrom(std::string& chrom)
 {
     this->chrom = chrom;
 }
@@ -128,7 +128,7 @@ void ReferenceSequence::set_chrom(std::string& chrom)
 /**
  * Gets chrom.
  */
-std::string ReferenceSequence::get_chrom()
+std::string CircularBuffer::get_chrom()
 {
     return chrom;
 }
@@ -136,7 +136,7 @@ std::string ReferenceSequence::get_chrom()
 /**
  * Gets window_size.
  */
-uint32_t ReferenceSequence::get_window_size()
+uint32_t CircularBuffer::get_window_size()
 {
     return window_size;
 }
@@ -145,7 +145,7 @@ uint32_t ReferenceSequence::get_window_size()
  * Converts gpos1 to index in P.
  * If P is empty, initialize first position as gpos1.
  */
-uint32_t ReferenceSequence::g2i(uint32_t gpos1)
+uint32_t CircularBuffer::g2i(uint32_t gpos1)
 {
     if (is_empty())
     {
@@ -164,9 +164,112 @@ uint32_t ReferenceSequence::g2i(uint32_t gpos1)
 }
 
 /**
- * Fetch a base.
+ * Increments i by 1 circularly.
  */
-char ReferenceSequence::fetch_base(std::string& chrom, uint32_t& pos1)
+uint32_t CircularBuffer::inc(uint32_t i)
+{
+    return (i+1) & buffer_size_mask;
+};
+
+/**
+ * Sets gbeg1.
+ */
+void CircularBuffer::set_gbeg1(uint32_t gbeg1)
+{
+    this->gbeg1 = gbeg1;
+}
+
+/**
+ * Gets gbeg1.
+ */
+uint32_t CircularBuffer::get_gbeg1()
+{
+    return gbeg1;
+}
+
+/**
+ * Gets gend1.
+ */
+uint32_t CircularBuffer::get_gend1()
+{
+    if (is_empty())
+    {
+        return 0;
+    }
+    else
+    {
+        return gbeg1 + diff(end0, beg0) - 1;
+    }
+}
+
+/**
+ * Sets beg0.
+ */
+void CircularBuffer::set_beg0(uint32_t beg0)
+{
+    this->beg0 = beg0;
+}
+
+/**
+ * Sets end0.
+ */
+void CircularBuffer::set_end0(uint32_t end0)
+{
+    this->end0 = end0;
+}
+
+/**
+ * Gets the index of the first element.
+ */
+uint32_t CircularBuffer::begin()
+{
+    return beg0;
+}
+
+/**
+ * Gets the index of the last element.
+ */
+uint32_t CircularBuffer::end()
+{
+    return end0;
+}
+
+/**
+ * Returns the difference between 2 buffer positions
+ */
+uint32_t CircularBuffer::diff(uint32_t i, uint32_t j)
+{
+    return (i>=j ? i-j : buffer_size-(j-i));
+};
+
+/**
+ * Increments beg0 by 1.
+ */
+void CircularBuffer::inc_beg0()
+{
+    beg0 = (beg0+1) & buffer_size_mask;
+};
+
+/**
+ * Increments end0 by 1.
+ */
+void CircularBuffer::inc_end0()
+{
+    end0 = (end0+1) & buffer_size_mask;
+};
+
+/**
+ * Increments index i by j cyclically.
+ */
+uint32_t CircularBuffer::inc(uint32_t i, uint32_t j)
+{
+    return (i+j) & buffer_size_mask;
+};
+
+/**
+ * Get a base.
+ */
+char CircularBuffer::fetch_base(std::string& chrom, uint32_t& pos1)
 {
     int ref_len = 0;
     char *refseq = faidx_fetch_uc_seq(fai, chrom.c_str(), pos1-1, pos1-1, &ref_len);
@@ -184,7 +287,7 @@ char ReferenceSequence::fetch_base(std::string& chrom, uint32_t& pos1)
 ///**
 // * Get a sequence.  User have to free the char* returned.
 // */
-//char* ReferenceSequence::get_sequence(std::string& chrom, uint32_t pos1, uint32_t len)
+//char* CircularBuffer::get_sequence(std::string& chrom, uint32_t pos1, uint32_t len)
 //{
 //    int ref_len = 0;
 //    char* seq = faidx_fetch_uc_seq(fai, chrom.c_str(), pos1-1, pos1+len-2, &ref_len);
@@ -196,3 +299,32 @@ char ReferenceSequence::fetch_base(std::string& chrom, uint32_t& pos1)
 //
 //    return seq;
 //};
+
+/**
+ * Print pileup state.
+ */
+void CircularBuffer::print_state()
+{
+    std::cerr << "******************" << "\n";
+    std::cerr << "gindex   : " << gbeg1 << "-" << get_gend1() << "\n";
+    std::cerr << "index   : " << beg0 << "-" << end0 << " (" << size() << ")\n";
+    std::cerr << "******************" << "\n";
+    uint32_t k = 0;
+    for (uint32_t i=beg0; i!=end0; i=inc(i))
+    {
+        //P[i].print(gbeg1+k);
+        ++k;
+    }
+    std::cerr << "******************" << "\n";
+}
+
+/**
+ * Print pileup state extent.
+ */
+void CircularBuffer::print_state_extent()
+{
+    std::cerr << "******************" << "\n";
+    std::cerr << "gindex   : " << gbeg1 << "-" << get_gend1() << "\n";
+    std::cerr << "index   : " << beg0 << "-" << end0 << " (" << size() << ")\n";
+    std::cerr << "******************" << "\n";
+}

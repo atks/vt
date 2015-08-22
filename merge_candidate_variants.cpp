@@ -134,7 +134,7 @@ Each VCF file is required to have the FORMAT flags E and N and should have exact
             TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_output_vcf_file("o", "o", "output VCF file [-]", false, "-", "", cmd);
             TCLAP::ValueArg<std::string> arg_input_vcf_file_list("L", "L", "file containing list of input VCF files", true, "", "str", cmd);
-            TCLAP::ValueArg<float> arg_lr_cutoff("c", "c", "variant likelihood cutoff [2]", false, 2, "float", cmd);
+            TCLAP::ValueArg<float> arg_lr_cutoff("c", "c", "variant likelihood cutoff [2]", false, -FLT_MAX, "float", cmd);
 
             cmd.parse(argc, argv);
 
@@ -186,7 +186,7 @@ Each VCF file is required to have the FORMAT flags E and N and should have exact
         bcf_hdr_append(odw->hdr, "##INFO=<ID=ESUM,Number=1,Type=Integer,Description=\"Total evidence read count\">");
         bcf_hdr_append(odw->hdr, "##INFO=<ID=NSUM,Number=1,Type=Integer,Description=\"Total read count\">");
         bcf_hdr_append(odw->hdr, "##INFO=<ID=AF,Number=A,Type=Float,Description=\"Allele Frequency\">");
-        bcf_hdr_append(odw->hdr, "##INFO=<ID=LR,Number=1,Type=String,Description=\"Likelihood Ratio Statistic\">");
+        bcf_hdr_append(odw->hdr, "##INFO=<ID=LR,Number=1,Type=Float,Description=\"Likelihood Ratio Statistic\">");
         odw->write_hdr();
 
         ///////////////
@@ -209,6 +209,144 @@ Each VCF file is required to have the FORMAT flags E and N and should have exact
         lt = new LogTool();
         vm = new VariantManip();
     }
+
+    void merge_candidate_variants2()
+    {
+        int32_t *E = (int32_t*) malloc(1*sizeof(int32_t));
+        int32_t *N = (int32_t*) malloc(1*sizeof(int32_t));
+        int32_t no_E = 1, no_N = 1;
+
+        double log10e = log10(0.01);
+        double log10me = log10(0.99);
+        double log10half = log10(0.5);
+
+        uint32_t nfiles = sr->get_nfiles();
+        int32_t e[nfiles];
+        int32_t n[nfiles];
+        int32_t esum = 0;
+        int32_t nsum = 0;
+        kstring_t sample_names = {0,0,0};
+        float af = 0;
+        uint32_t no = 0;
+        
+        //obtain sample names
+        char* index2sample[nfiles];
+        for (uint32_t i=0; i<nfiles; ++i)
+        {
+            index2sample[i] = bcf_hdr_get_sample_name(sr->hdrs[i], 0);
+        }
+
+        bcf1_t* nv = bcf_init();
+        Variant var;
+        std::vector<bcfptr*> current_recs;
+        while(sr->read_next_position(current_recs))
+        {
+            //aggregate statistics
+            no = 0;
+            esum = 0;
+            nsum = 0;
+            sample_names.l = 0;
+            af = 0;
+            for (uint32_t i=0; i<current_recs.size(); ++i)
+            {
+                int32_t file_index = current_recs[i]->file_index;
+                bcf1_t *v = current_recs[i]->v;
+                bcf_hdr_t *h = current_recs[i]->h;
+
+                if (bcf_get_format_int32(h, v, "E", &E, &no_E) < 0 ||
+                    bcf_get_format_int32(h, v, "N", &N, &no_N) < 0)
+                {
+                    fprintf(stderr, "[E:%s:%d %s] cannot get format values E or N from %s\n", __FILE__, __LINE__, __FUNCTION__, sr->file_names[i].c_str());
+                    exit(1);
+                }
+                
+                if (i==0)
+                {
+                    //update variant information
+                    bcf_clear(nv);
+                    bcf_set_chrom(odw->hdr, nv, bcf_get_chrom(h, v));
+                    bcf_set_pos1(nv, bcf_get_pos1(v));
+                    bcf_update_alleles(odw->hdr, nv, const_cast<const char**>(bcf_get_allele(v)), bcf_get_n_allele(v));
+
+                }
+                
+                e[i] = E[0];
+                n[i] = N[0];
+                esum += E[0];
+                nsum += N[0];
+                if (i) kputc(',', &sample_names);
+                kputs(index2sample[file_index], &sample_names);
+                af += ((double)E[0])/((double)N[0]);
+                ++no;          
+            }
+
+            //output statistics
+            af /= nfiles;
+
+            //compute lrt
+            float num = 0;
+            float log10numhomref, log10numhet, log10numhomalt;
+            float denum = 0;
+            float log10phomref = log10((1-af)*(1-af));
+            float log10phet = log10(2*af*(1-af));
+            float log10phomalt = log10(af*af);
+
+            for (int32_t i=0; i<no; ++i)
+            {
+                //std::cerr <<"LR " << i << " " << e[i] << " " << n[i] <<"\n";
+                //std::cerr << lt->log10choose(n[i], e[i]) << "\n";
+                //does this still happen?
+                if (e[i]>n[i])
+                {
+                //    std::cerr << "E>N\n";
+                    e[i] = n[i];
+                }
+
+                log10numhomref = log10phomref + lt->log10choose(n[i], e[i]) + (n[i]-e[i])*log10me + e[i]*log10e;
+                log10numhet = log10phet + lt->log10choose(n[i], e[i]) + log10half*n[i];
+                log10numhomalt = log10phomalt + lt->log10choose(n[i], e[i]) + (n[i]-e[i])*log10e + e[i]*log10me;
+                num += lt->log10sum(log10numhomref, lt->log10sum(log10numhet, log10numhomalt));
+                denum += lt->log10choose(n[i], e[i]) + (n[i]-e[i])*log10me + e[i]*log10e;
+            }
+            float lr = num-denum;
+
+            if (lr>lr_cutoff)
+            {
+                bcf_update_info_string(odw->hdr, nv, "SAMPLES", sample_names.s);
+                bcf_update_info_int32(odw->hdr, nv, "NSAMPLES", &no, 1);
+                bcf_update_info_int32(odw->hdr, nv, "E", &e, no);
+                bcf_update_info_int32(odw->hdr, nv, "N", &n, no);
+                bcf_update_info_int32(odw->hdr, nv, "ESUM", &esum, 1);
+                bcf_update_info_int32(odw->hdr, nv, "NSUM", &nsum, 1);
+                bcf_update_info_float(odw->hdr, nv, "AF", &af, 1);
+                bcf_update_info_float(odw->hdr, nv, "LR", &lr, 1);
+
+                odw->write(nv);
+
+                int32_t vtype = vm->classify_variant(odw->hdr, nv, var);
+                if (vtype == VT_SNP)
+                {
+                    ++no_candidate_snps;
+                }
+                else if (vtype == VT_INDEL)
+                {
+                    ++no_candidate_indels;
+                }
+                else if (vtype == (VT_SNP|VT_INDEL))
+                {
+                    ++no_candidate_snpindels;
+                }
+                else
+                {
+                    ++no_other_variant_types;
+                }
+            }
+        }
+
+        sr->close();
+        odw->close();
+    };
+
 
     KHASH_MAP_INIT_STR(xdict, Evidence*);
 
@@ -345,6 +483,8 @@ Each VCF file is required to have the FORMAT flags E and N and should have exact
 
                     bcf_update_info_float(odw->hdr, nv, "LR", &lr, 1);
 
+                        if (lr<0) bcf_print(odw->hdr, nv);
+
                     if (lr>lr_cutoff)
                     {
                         odw->write(nv);
@@ -369,7 +509,7 @@ Each VCF file is required to have the FORMAT flags E and N and should have exact
                     }
                     else
                     {
-                        odw->store_bcf1_into_pool(nv);
+                        bcf_destroy(nv);
                     }
                     delete kh_value(m, k);
                     free((char*)kh_key(m, k));
@@ -386,9 +526,10 @@ Each VCF file is required to have the FORMAT flags E and N and should have exact
     void print_options()
     {
         std::clog << "merge_candidate_variants v" << version << "\n\n";
-        std::clog << "options: [L] input VCF file list   " << input_vcf_file_list << " (" << input_vcf_files.size() << " files)\n";
-        std::clog << "         [o] output VCF file       " << output_vcf_file << "\n";
-        print_int_op("         [i] intervals             ", intervals);
+        std::clog << "options: [L] input VCF file list     " << input_vcf_file_list << " (" << input_vcf_files.size() << " files)\n";
+        std::clog << "         [o] output VCF file         " << output_vcf_file << "\n";
+        std::clog << "         [l] likelihood ratio cutoff " << lr_cutoff << "\n";
+        print_int_op("         [i] intervals               ", intervals);
         std::clog << "\n";
     }
 
@@ -415,7 +556,7 @@ void merge_candidate_variants(int argc, char ** argv)
     Igor igor(argc, argv);
     igor.print_options();
     igor.initialize();
-    igor.merge_candidate_variants();
+    igor.merge_candidate_variants2();
     igor.print_stats();
 }
 
