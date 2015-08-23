@@ -75,12 +75,15 @@ class PileupPosition
     //the reads containing the indel out of reads that could contain
     //that indel is will be underestimated.
     uint32_t E;
+    //base 'R' or 'A'
+    std::vector<uint32_t> B;
+    //base qualities
+    std::vector<uint32_t> Q;
 
     //to count evidences
     //SNPs - X[A] / (N+E)
     //INDELs - #indel / N
     //SCLIPS -
-
 
     /**
      * Constructor.

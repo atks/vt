@@ -106,6 +106,7 @@ class Igor : Program
     /////////
     Pileup pileup;
     VariantFilter vf;
+    LogTool lt;
 
     Igor(int argc, char **argv)
     {
@@ -235,6 +236,7 @@ class Igor : Program
         bcf_hdr_append(odw->hdr, "##FORMAT=<ID=N,Number=1,Type=Integer,Description=\"Total number of reads at a candidate locus with reads that contain evidence of the alternate allele\">");
         bcf_hdr_append(odw->hdr, "##FORMAT=<ID=MQS,Number=.,Type=Float,Description=\"Mean qualities of soft clipped bases.\">");
         bcf_hdr_append(odw->hdr, "##FORMAT=<ID=STR,Number=.,Type=String,Description=\"Strands of soft clipped sequences.\">");
+        bcf_hdr_append(odw->hdr, "##FORMAT=<ID=LLR,Number=1,Type=String,Description=\"Log likelihood ratio: log10 [P(Non variant)/P(Variant)].\">");
 
         bcf_hdr_add_sample(odw->hdr, sample_id.c_str());
         bcf_hdr_add_sample(odw->hdr, NULL);
@@ -496,6 +498,37 @@ class Igor : Program
         return true;
     }
 
+    /**
+     * Compute GLFSingle single variant likelihood ratio P(Non Variant)/P(Variant)
+     */
+    double compute_glfsingle_llr(std::vector<char>& alleles, std::vector<uint32_t>& quals)
+    {
+        double pRR = 1;
+        double pRA = 1;
+        double pAA = 1;
+        double p;
+        double theta = 0.001;
+        
+        for (uint32_t i=0; i<quals.size(); ++i)
+        {
+            p = lt.pl2prob(quals[i]);
+            if (alleles[i]=='R')
+            {
+                pRR *= 1-p;
+                pRA *= 0.5;
+                pAA *= p;                
+            }    
+            else
+            {
+                pRR *= p;
+                pRA *= 0.5;
+                pAA *= 1-p;                                
+            }
+        }
+        
+        return log10(pRR/((1-theta)*pRR+0.33*theta+pRA+0.67*theta*pAA));
+    }
+    
     /**
      * Write out pileupPosition as a VCF entry if it contains a variant.
      */

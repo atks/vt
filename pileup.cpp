@@ -58,6 +58,8 @@ void PileupPosition::clear()
     K.clear();
     N = 0;
     E = 0;
+    B.clear();
+    Q.clear();
 };
 
 /**
@@ -76,7 +78,9 @@ bool PileupPosition::is_cleared()
     J.empty() &&
     K.empty() &&
     N == 0 &&
-    E == 0);
+    E == 0 &&
+    B.empty()&&
+    Q.empty());
 };
 
 /**

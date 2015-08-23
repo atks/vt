@@ -210,173 +210,137 @@ Each VCF file is required to have the FORMAT flags E and N and should have exact
         vm = new VariantManip();
     }
 
-    KHASH_MAP_INIT_STR(xdict, Evidence*);
-
-    void merge_candidate_variants()
+    void merge_candidate_variants2()
     {
-        khash_t(xdict) *m = kh_init(xdict);
-
         int32_t *E = (int32_t*) malloc(1*sizeof(int32_t));
         int32_t *N = (int32_t*) malloc(1*sizeof(int32_t));
-        int32_t n = 1;
-        int32_t nE, nN;
-        int32_t ret;
-
-        khiter_t k;
-        int32_t nfiles = sr->get_nfiles();
+        int32_t no_E = 1, no_N = 1;
 
         double log10e = log10(0.01);
         double log10me = log10(0.99);
         double log10half = log10(0.5);
 
+        uint32_t nfiles = sr->get_nfiles();
+        int32_t e[nfiles];
+        int32_t n[nfiles];
+        int32_t esum = 0;
+        int32_t nsum = 0;
+        kstring_t sample_names = {0,0,0};
+        float af = 0;
+        uint32_t no = 0;
+        
+        //obtain sample names
+        char* index2sample[nfiles];
+        for (uint32_t i=0; i<nfiles; ++i)
+        {
+            index2sample[i] = bcf_hdr_get_sample_name(sr->hdrs[i], 0);
+        }
+
+        bcf1_t* nv = bcf_init();
         Variant var;
         std::vector<bcfptr*> current_recs;
         while(sr->read_next_position(current_recs))
         {
+            //aggregate statistics
+            no = 0;
+            esum = 0;
+            nsum = 0;
+            sample_names.l = 0;
+            af = 0;
             for (uint32_t i=0; i<current_recs.size(); ++i)
             {
                 int32_t file_index = current_recs[i]->file_index;
                 bcf1_t *v = current_recs[i]->v;
                 bcf_hdr_t *h = current_recs[i]->h;
 
-//                std::cerr << current_recs[i].pos1 << "  : ";
-//                bcf_print(h,v);
-
-                nE = bcf_get_format_int32(h, v, "E", &E, &n);
-                nN = bcf_get_format_int32(h, v, "N", &N, &n);
-
-                if (nE==1 && nN==1)
+                if (bcf_get_format_int32(h, v, "E", &E, &no_E) < 0 ||
+                    bcf_get_format_int32(h, v, "N", &N, &no_N) < 0)
                 {
-                    //populate hash
-                    bcf_variant2string(h, v, &variant);
-                    //std::cerr << variant.s << "\n";
-                    if ((k=kh_get(xdict, m, variant.s))==kh_end(m))
-                    {
-                        k = kh_put(xdict, m, variant.s, &ret);
-                        if (ret) //does not exist
-                        {
-                            variant = {0,0,0}; //disown allocated char*
-                            kh_value(m, k) = new Evidence(nfiles);
-                        }
-                        else
-                        {
-                            kh_value(m, k)->clear();
-                        }
-
-                        //update variant information
-                        bcf1_t* nv = odw->get_bcf1_from_pool();
-                        bcf_set_chrom(odw->hdr, nv, bcf_get_chrom(h, v));
-                        bcf_set_pos1(nv, bcf_get_pos1(v));
-                        bcf_update_alleles(odw->hdr, nv, const_cast<const char**>(bcf_get_allele(v)), bcf_get_n_allele(v));
-                        kh_value(m, k)->v = nv;
-                    }
-
-
-                    uint32_t i = kh_value(m, k)->i;
-                    if (i) kputc(',', &kh_value(m, k)->samples);
-                    kputs(bcf_hdr_get_sample_name(h, 0), &kh_value(m, k)->samples);
-
-                    if (E[0]>N[0])
-                    {
-                        kstring_t s = {0,0,0};
-
-                        //std::cerr << bcf_hdr_get_sample_name(h, 0) << "\n";
-                        //bcf_print(h, v);
-                    }
-
-                    kh_value(m, k)->e[i] = E[0];
-                    kh_value(m, k)->n[i] = N[0];
-                    kh_value(m, k)->esum += E[0];
-                    kh_value(m, k)->nsum += N[0];
-                    kh_value(m, k)->af += ((double)E[0])/((double)N[0]);
-                    ++kh_value(m, k)->i;
+                    fprintf(stderr, "[E:%s:%d %s] cannot get format values E or N from %s\n", __FILE__, __LINE__, __FUNCTION__, sr->file_names[i].c_str());
+                    exit(1);
                 }
+                
+                if (i==0)
+                {
+                    //update variant information
+                    bcf_clear(nv);
+                    bcf_set_chrom(odw->hdr, nv, bcf_get_chrom(h, v));
+                    bcf_set_pos1(nv, bcf_get_pos1(v));
+                    bcf_update_alleles(odw->hdr, nv, const_cast<const char**>(bcf_get_allele(v)), bcf_get_n_allele(v));
+
+                }
+                
+                e[i] = E[0];
+                n[i] = N[0];
+                esum += E[0];
+                nsum += N[0];
+                if (i) kputc(',', &sample_names);
+                kputs(index2sample[file_index], &sample_names);
+                af += ((double)E[0])/((double)N[0]);
+                ++no;          
             }
 
-            //clear hash, print out aggregated records
-            for (k = kh_begin(m); k != kh_end(m); ++k)
+            //output statistics
+            af /= nfiles;
+
+            //compute lrt
+            float num = 0;
+            float log10numhomref, log10numhet, log10numhomalt;
+            float denum = 0;
+            float log10phomref = log10((1-af)*(1-af));
+            float log10phet = log10(2*af*(1-af));
+            float log10phomalt = log10(af*af);
+
+            for (int32_t i=0; i<no; ++i)
             {
-                if (kh_exist(m, k))
+                //std::cerr <<"LR " << i << " " << e[i] << " " << n[i] <<"\n";
+                //std::cerr << lt->log10choose(n[i], e[i]) << "\n";
+                //does this still happen?
+                if (e[i]>n[i])
                 {
-                    bcf1_t *nv = kh_value(m, k)->v;
-                    int32_t nobs = kh_value(m, k)->i;
-                    float af = kh_value(m, k)->af/no_samples;
+                //    std::cerr << "E>N\n";
+                    e[i] = n[i];
+                }
 
-                    //compute lrt
-                    double num = 0;
-                    double log10numhomref, log10numhet, log10numhomalt;
-                    double denum = 0;
-                    uint32_t* e = kh_value(m, k)->e;
-                    uint32_t* n = kh_value(m, k)->n;
-                    double log10phomref = log10((1-af)*(1-af));
-                    double log10phet = log10(2*af*(1-af));
-                    double log10phomalt = log10(af*af);
+                log10numhomref = log10phomref + lt->log10choose(n[i], e[i]) + (n[i]-e[i])*log10me + e[i]*log10e;
+                log10numhet = log10phet + lt->log10choose(n[i], e[i]) + log10half*n[i];
+                log10numhomalt = log10phomalt + lt->log10choose(n[i], e[i]) + (n[i]-e[i])*log10e + e[i]*log10me;
+                num += lt->log10sum(log10numhomref, lt->log10sum(log10numhet, log10numhomalt));
+                denum += lt->log10choose(n[i], e[i]) + (n[i]-e[i])*log10me + e[i]*log10e;
+            }
+            float lr = num-denum;
 
-                    //std::cerr <<"AF " << af <<  " " << log10phomref << " " << log10phet <<  " " << log10phomalt << "\n";
+            if (lr>lr_cutoff)
+            {
+                bcf_update_info_string(odw->hdr, nv, "SAMPLES", sample_names.s);
+                bcf_update_info_int32(odw->hdr, nv, "NSAMPLES", &no, 1);
+                bcf_update_info_int32(odw->hdr, nv, "E", &e, no);
+                bcf_update_info_int32(odw->hdr, nv, "N", &n, no);
+                bcf_update_info_int32(odw->hdr, nv, "ESUM", &esum, 1);
+                bcf_update_info_int32(odw->hdr, nv, "NSUM", &nsum, 1);
+                bcf_update_info_float(odw->hdr, nv, "AF", &af, 1);
+                bcf_update_info_float(odw->hdr, nv, "LR", &lr, 1);
 
-                    for (int32_t i=0; i<nobs; ++i)
-                    {
-                        //std::cerr <<"LR " << i << " " << e[i] << " " << n[i] <<"\n";
-                        //std::cerr << lt->log10choose(n[i], e[i]) << "\n";
-                        //does this still happen?
-                        if (e[i]>n[i])
-                        {
-                            std::cerr << "E>N\n";
-                            e[i] = n[i];
-                        }
+                odw->write(nv);
 
-                        log10numhomref = log10phomref + lt->log10choose(n[i], e[i]) + (n[i]-e[i])*log10me + e[i]*log10e;
-                        log10numhet = log10phet + lt->log10choose(n[i], e[i]) + log10half*n[i];
-                        log10numhomalt = log10phomalt + lt->log10choose(n[i], e[i]) + (n[i]-e[i])*log10e + e[i]*log10me;
-                        num += lt->log10sum(log10numhomref, lt->log10sum(log10numhet, log10numhomalt));
-                        denum += lt->log10choose(n[i], e[i]) + (n[i]-e[i])*log10me + e[i]*log10e;
-                    }
-
-                    bcf_update_info_string(odw->hdr, nv, "SAMPLES", kh_value(m, k)->samples.s);
-                    bcf_update_info_int32(odw->hdr, nv, "NSAMPLES", &kh_value(m, k)->i, 1);
-                    bcf_update_info_int32(odw->hdr, nv, "E", kh_value(m, k)->e, kh_value(m, k)->i);
-                    bcf_update_info_int32(odw->hdr, nv, "N", kh_value(m, k)->n, kh_value(m, k)->i);
-                    bcf_update_info_int32(odw->hdr, nv, "ESUM", &kh_value(m, k)->esum, 1);
-                    bcf_update_info_int32(odw->hdr, nv, "NSUM", &kh_value(m, k)->nsum, 1);
-
-                    bcf_update_info_float(odw->hdr, nv, "AF", &af, 1);
-
-                    float lr = num-denum;
-
-                    bcf_update_info_float(odw->hdr, nv, "LR", &lr, 1);
-
-                    if (lr>lr_cutoff)
-                    {
-                        odw->write(nv);
-
-                        int32_t vtype = vm->classify_variant(odw->hdr, nv, var);
-                        if (vtype == VT_SNP)
-                        {
-                            ++no_candidate_snps;
-                        }
-                        else if (vtype == VT_INDEL)
-                        {
-                            ++no_candidate_indels;
-                        }
-                        else if (vtype == (VT_SNP|VT_INDEL))
-                        {
-                            ++no_candidate_snpindels;
-                        }
-                        else
-                        {
-                            ++no_other_variant_types;
-                        }
-                    }
-                    else
-                    {
-                        odw->store_bcf1_into_pool(nv);
-                    }
-                    delete kh_value(m, k);
-                    free((char*)kh_key(m, k));
-
+                int32_t vtype = vm->classify_variant(odw->hdr, nv, var);
+                if (vtype == VT_SNP)
+                {
+                    ++no_candidate_snps;
+                }
+                else if (vtype == VT_INDEL)
+                {
+                    ++no_candidate_indels;
+                }
+                else if (vtype == (VT_SNP|VT_INDEL))
+                {
+                    ++no_candidate_snpindels;
+                }
+                else
+                {
+                    ++no_other_variant_types;
                 }
             }
-            kh_clear(xdict, m);
         }
 
         sr->close();
@@ -415,7 +379,7 @@ void merge_candidate_variants2(int argc, char ** argv)
     Igor igor(argc, argv);
     igor.print_options();
     igor.initialize();
-    igor.merge_candidate_variants();
+    igor.merge_candidate_variants2();
     igor.print_stats();
 }
 
