@@ -231,13 +231,13 @@ class Igor : Program
         bcf_hdr_append(odw->hdr, "##ALT=<ID=RSC,Description=\"Right Soft Clip\">");
         bcf_hdr_append(odw->hdr, "##ALT=<ID=LSC,Description=\"Left Soft Clip\">");
         bcf_hdr_append(odw->hdr, "##INFO=<ID=SEQ,Number=1,Type=String,Description=\"Soft clipped Sequence\">");
+        bcf_hdr_append(odw->hdr, "##INFO=<ID=LLR,Number=1,Type=Float,Description=\"Log likelihood ratio: log10 [P(Non variant)/P(Variant)].\">");
         bcf_hdr_append(odw->hdr, "##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">");
         bcf_hdr_append(odw->hdr, "##FORMAT=<ID=E,Number=1,Type=Integer,Description=\"Number of reads containing evidence of the alternate allele\">");
         bcf_hdr_append(odw->hdr, "##FORMAT=<ID=N,Number=1,Type=Integer,Description=\"Total number of reads at a candidate locus with reads that contain evidence of the alternate allele\">");
         bcf_hdr_append(odw->hdr, "##FORMAT=<ID=MQS,Number=.,Type=Float,Description=\"Mean qualities of soft clipped bases.\">");
         bcf_hdr_append(odw->hdr, "##FORMAT=<ID=STR,Number=.,Type=String,Description=\"Strands of soft clipped sequences.\">");
-        bcf_hdr_append(odw->hdr, "##FORMAT=<ID=LLR,Number=1,Type=String,Description=\"Log likelihood ratio: log10 [P(Non variant)/P(Variant)].\">");
-
+        
         bcf_hdr_add_sample(odw->hdr, sample_id.c_str());
         bcf_hdr_add_sample(odw->hdr, NULL);
         v = bcf_init();
@@ -501,7 +501,7 @@ class Igor : Program
     /**
      * Compute GLFSingle single variant likelihood ratio P(Non Variant)/P(Variant)
      */
-    double compute_glfsingle_llr(std::vector<char>& alleles, std::vector<uint32_t>& quals)
+    double compute_glfsingle_llr(std::vector<uint32_t>& REF_Q, std::vector<uint32_t>& ALT_Q)
     {
         double pRR = 1;
         double pRA = 1;
@@ -509,21 +509,20 @@ class Igor : Program
         double p;
         double theta = 0.001;
         
-        for (uint32_t i=0; i<quals.size(); ++i)
+        for (uint32_t i=0; i<REF_Q.size(); ++i)
         {
-            p = lt.pl2prob(quals[i]);
-            if (alleles[i]=='R')
-            {
-                pRR *= 1-p;
-                pRA *= 0.5;
-                pAA *= p;                
-            }    
-            else
-            {
-                pRR *= p;
-                pRA *= 0.5;
-                pAA *= 1-p;                                
-            }
+            p = lt.pl2prob(REF_Q[i]);
+            pRR *= 1-p;
+            pRA *= 0.5;
+            pAA *= p; 
+        }
+        
+        for (uint32_t i=0; i<ALT_Q.size(); ++i)
+        {
+            p = lt.pl2prob(ALT_Q[i]);
+            pRR *= p;
+            pRA *= 0.5;
+            pAA *= 1-p;                                
         }
         
         return log10(pRR/((1-theta)*pRR+0.33*theta+pRA+0.67*theta*pAA));
@@ -558,11 +557,14 @@ class Igor : Program
         std::string alleles = "";
         int32_t N = 0;
         int32_t E = 0;
+        float LLR = 0;
         kstring_t new_alleles = {0,0,0};
+
+        p.F = 0;
 
         if (p.X[1])
         {
-            if (vf.filter_snp(p.X[1], p.N+p.E))
+            if (vf.filter_snp(p.X[1], p.N+p.E-p.F))
             {
                 bcf_clear(v);
                 bcf_set_rid(v, rid);
@@ -578,6 +580,8 @@ class Igor : Program
                 bcf_update_format_int32(odw->hdr, v, "E", &E, 1);
                 N = p.N+p.E;
                 bcf_update_format_int32(odw->hdr, v, "N", &N, 1);
+                LLR = (float) compute_glfsingle_llr(p.REF_Q, p.ALT_Q);
+                bcf_update_info_float(odw->hdr, v, "LLR", &LLR, 1);
                 odw->write(v);
 
                 ++no_snps;
@@ -595,7 +599,7 @@ class Igor : Program
 
         if (p.X[2])
         {
-            if (vf.filter_snp(p.X[2], p.N+p.E))
+            if (vf.filter_snp(p.X[2], p.N+p.E-p.F))
             {
                 bcf_clear(v);
                 bcf_set_rid(v, rid);
@@ -612,6 +616,8 @@ class Igor : Program
                 bcf_update_format_int32(odw->hdr, v, "E", &E, 1);
                 N = p.N+p.E;
                 bcf_update_format_int32(odw->hdr, v, "N", &N, 1);
+                LLR = (float) compute_glfsingle_llr(p.REF_Q, p.ALT_Q);
+                bcf_update_info_float(odw->hdr, v, "LLR", &LLR, 1);
                 odw->write(v);
 
                 ++no_snps;
@@ -629,7 +635,7 @@ class Igor : Program
 
         if (p.X[4])
         {
-            if (vf.filter_snp(p.X[4], p.N+p.E))
+            if (vf.filter_snp(p.X[4], p.N+p.E-p.F))
             {
                 bcf_clear(v);
                 bcf_set_rid(v, rid);
@@ -645,6 +651,8 @@ class Igor : Program
                 bcf_update_format_int32(odw->hdr, v, "E", &E, 1);
                 N = p.N+p.E;
                 bcf_update_format_int32(odw->hdr, v, "N", &N, 1);
+                LLR = (float) compute_glfsingle_llr(p.REF_Q, p.ALT_Q);
+                bcf_update_info_float(odw->hdr, v, "LLR", &LLR, 1);
                 odw->write(v);
 
                 ++no_snps;
@@ -662,7 +670,7 @@ class Igor : Program
 
         if (p.X[8])
         {
-            if (vf.filter_snp(p.X[8], p.N+p.E))
+            if (vf.filter_snp(p.X[8], p.N+p.E-p.F))
             {
                 bcf_clear(v);
                 bcf_set_rid(v, rid);
@@ -678,6 +686,8 @@ class Igor : Program
                 bcf_update_format_int32(odw->hdr, v, "E", &E, 1);
                 N = p.N+p.E;
                 bcf_update_format_int32(odw->hdr, v, "N", &N, 1);
+                LLR = (float) compute_glfsingle_llr(p.REF_Q, p.ALT_Q);
+                bcf_update_info_float(odw->hdr, v, "LLR", &LLR, 1);
                 odw->write(v);
 
                 ++no_snps;

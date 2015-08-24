@@ -69,16 +69,18 @@ class PileupPosition
     std::map<std::string, SoftClipInfo> K;
     //occurence of all observations for internal bases
     uint32_t N;
+    //number of bases that fail quality cutoff
+    uint32_t F;
     //occurence of all observations for bases on the ends of reads
     //this is important as indels have to be contained within a read
     //so if this is not distinguished, the relative proportion of
     //the reads containing the indel out of reads that could contain
     //that indel is will be underestimated.
     uint32_t E;
-    //base 'R' or 'A'
-    std::vector<uint32_t> B;
-    //base qualities
-    std::vector<uint32_t> Q;
+    //base qualities for reference allele
+    std::vector<uint32_t> REF_Q;
+    //base qualities for alternative allele
+    std::vector<uint32_t> ALT_Q;
 
     //to count evidences
     //SNPs - X[A] / (N+E)

@@ -57,9 +57,10 @@ void PileupPosition::clear()
     J.clear();
     K.clear();
     N = 0;
+    F = 0;
     E = 0;
-    B.clear();
-    Q.clear();
+    REF_Q.clear();
+    ALT_Q.clear();
 };
 
 /**
@@ -78,9 +79,10 @@ bool PileupPosition::is_cleared()
     J.empty() &&
     K.empty() &&
     N == 0 &&
+    F == 0 &&
     E == 0 &&
-    B.empty()&&
-    Q.empty());
+    REF_Q.empty()&&
+    ALT_Q.empty());
 };
 
 /**
@@ -453,10 +455,24 @@ void Pileup::add_M(uint32_t mgpos1, uint32_t spos0, uint32_t len, uint8_t* seq, 
     {
         ++P[i].N;
 
-        char alt = (bam_base2char(bam_seqi(seq, spos0+j)));
-        if (alt!=P[i].R && qual[spos0+j]>snp_baseq_cutoff)
+        uint8_t q = qual[spos0+j];
+        if (q>snp_baseq_cutoff)
         {
-            ++P[i].X[base2index(alt)];
+            char alt = (bam_base2char(bam_seqi(seq, spos0+j)));
+
+            if (alt!=P[i].R)
+            {
+                ++P[i].X[base2index(alt)];
+                P[i].ALT_Q.push_back(q);
+            }
+            else
+            {
+                P[i].REF_Q.push_back(q);
+            }
+        }
+        else
+        {
+            ++P[i].F;
         }
 
         i = inc(i);
@@ -475,10 +491,24 @@ void Pileup::add_M(uint32_t mgpos1, uint32_t spos0, uint32_t len, uint8_t* seq, 
             P[i].R = ref[l];
             ++P[i].N;
 
-            char alt = (bam_base2char(bam_seqi(seq, spos0+j)));
-            if (alt!=P[i].R)
+            uint8_t q = qual[spos0+j];
+            if (q>snp_baseq_cutoff)
             {
-                ++P[i].X[base2index(alt)];
+                char alt = (bam_base2char(bam_seqi(seq, spos0+j)));
+
+                if (alt!=P[i].R)
+                {
+                    ++P[i].X[base2index(alt)];
+                    P[i].ALT_Q.push_back(q);
+                }
+                else
+                {
+                    P[i].REF_Q.push_back(q);
+                }
+            }
+            else
+            {
+                ++P[i].F;
             }
 
             inc_end0();
@@ -713,11 +743,26 @@ void Pileup::add_snp(uint32_t gpos1, char ref, char alt, uint8_t qual, uint32_t 
 
     uint32_t i = g2i(gpos1);
     P[i].R = ref;
+
+    ++P[i].N;
+
     if (qual>baseq_cutoff)
     {
-        ++P[i].X[base2index(alt)];
+        if (alt!=P[i].R)
+        {
+            ++P[i].X[base2index(alt)];
+            P[i].ALT_Q.push_back(qual);
+        }
+        else
+        {
+            P[i].REF_Q.push_back(qual);
+        }
     }
-    ++P[i].N;
+    else
+    {
+        ++P[i].F;
+    }
+
     if (i==end0) inc_end0();
 }
 
