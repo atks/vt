@@ -186,7 +186,7 @@ Each VCF file is required to have the FORMAT flags E and N and should have exact
         bcf_hdr_append(odw->hdr, "##INFO=<ID=ESUM,Number=1,Type=Integer,Description=\"Total evidence read count\">");
         bcf_hdr_append(odw->hdr, "##INFO=<ID=NSUM,Number=1,Type=Integer,Description=\"Total read count\">");
         bcf_hdr_append(odw->hdr, "##INFO=<ID=AF,Number=A,Type=Float,Description=\"Allele Frequency\">");
-        bcf_hdr_append(odw->hdr, "##INFO=<ID=LR,Number=1,Type=String,Description=\"Likelihood Ratio Statistic\">");
+        //bcf_hdr_append(odw->hdr, "##INFO=<ID=LR,Number=1,Type=String,Description=\"Likelihood Ratio Statistic\">");
         odw->write_hdr();
 
         ///////////////
@@ -215,6 +215,9 @@ Each VCF file is required to have the FORMAT flags E and N and should have exact
         int32_t *E = (int32_t*) malloc(1*sizeof(int32_t));
         int32_t *N = (int32_t*) malloc(1*sizeof(int32_t));
         int32_t no_E = 1, no_N = 1;
+
+        float *LLR = (float*) malloc(1*sizeof(float));
+        int32_t no_LLR = 1;
 
         double log10e = log10(0.01);
         double log10me = log10(0.99);
@@ -247,11 +250,30 @@ Each VCF file is required to have the FORMAT flags E and N and should have exact
             nsum = 0;
             sample_names.l = 0;
             af = 0;
+            bool max_lr_gt_30 = false;
+            float max_qual = 0;
+            int32_t vtype;
+            
             for (uint32_t i=0; i<current_recs.size(); ++i)
             {
                 int32_t file_index = current_recs[i]->file_index;
                 bcf1_t *v = current_recs[i]->v;
                 bcf_hdr_t *h = current_recs[i]->h;
+
+                if (i==0)
+                {
+                    //update variant information
+                    bcf_clear(nv);
+                    bcf_set_chrom(odw->hdr, nv, bcf_get_chrom(h, v));
+                    bcf_set_pos1(nv, bcf_get_pos1(v));
+                    bcf_update_alleles(odw->hdr, nv, const_cast<const char**>(bcf_get_allele(v)), bcf_get_n_allele(v));
+                    vtype = vm->classify_variant(odw->hdr, nv, var);
+                    if (vtype == VT_INDEL)
+                    {
+                        max_lr_gt_30 = true;
+                    }
+                }
+               // bcf_print(h,v);
 
                 if (bcf_get_format_int32(h, v, "E", &E, &no_E) < 0 ||
                     bcf_get_format_int32(h, v, "N", &N, &no_N) < 0)
@@ -260,16 +282,27 @@ Each VCF file is required to have the FORMAT flags E and N and should have exact
                     exit(1);
                 }
                 
-                if (i==0)
+                if (vtype==VT_SNP)
                 {
-                    //update variant information
-                    bcf_clear(nv);
-                    bcf_set_chrom(odw->hdr, nv, bcf_get_chrom(h, v));
-                    bcf_set_pos1(nv, bcf_get_pos1(v));
-                    bcf_update_alleles(odw->hdr, nv, const_cast<const char**>(bcf_get_allele(v)), bcf_get_n_allele(v));
-
-                }
-                
+                    if (bcf_get_info_float(h, v, "LLR", &LLR, &no_LLR) < 0)
+                    {
+                        fprintf(stderr, "[E:%s:%d %s] cannot get INFO LLR from %s\n", __FILE__, __LINE__, __FUNCTION__, sr->file_names[i].c_str());
+                        exit(1);
+                    }
+                    
+                    float qual = -10*LLR[0];
+                    
+                    if (qual > 30)
+                    {
+                        max_lr_gt_30 = true;
+                        
+                        if (max_qual<qual)
+                        {
+                            max_qual = qual;
+                        }
+                    }    
+                }                
+                                
                 e[i] = E[0];
                 n[i] = N[0];
                 esum += E[0];
@@ -281,36 +314,37 @@ Each VCF file is required to have the FORMAT flags E and N and should have exact
             }
 
             //output statistics
-            af /= nfiles;
+//           af /= nfiles;
 
             //compute lrt
-            float num = 0;
-            float log10numhomref, log10numhet, log10numhomalt;
-            float denum = 0;
-            float log10phomref = log10((1-af)*(1-af));
-            float log10phet = log10(2*af*(1-af));
-            float log10phomalt = log10(af*af);
+//            float num = 0;
+//            float log10numhomref, log10numhet, log10numhomalt;
+//            float denum = 0;
+//            float log10phomref = log10((1-af)*(1-af));
+//            float log10phet = log10(2*af*(1-af));
+//            float log10phomalt = log10(af*af);
+//
+//            for (int32_t i=0; i<no; ++i)
+//            {
+//                //std::cerr <<"LR " << i << " " << e[i] << " " << n[i] <<"\n";
+//                //std::cerr << lt->log10choose(n[i], e[i]) << "\n";
+//                //does this still happen?
+//                if (e[i]>n[i])
+//                {
+//                //    std::cerr << "E>N\n";
+//                    e[i] = n[i];
+//                }
+//
+//                log10numhomref = log10phomref + lt->log10choose(n[i], e[i]) + (n[i]-e[i])*log10me + e[i]*log10e;
+//                log10numhet = log10phet + lt->log10choose(n[i], e[i]) + log10half*n[i];
+//                log10numhomalt = log10phomalt + lt->log10choose(n[i], e[i]) + (n[i]-e[i])*log10e + e[i]*log10me;
+//                num += lt->log10sum(log10numhomref, lt->log10sum(log10numhet, log10numhomalt));
+//                denum += lt->log10choose(n[i], e[i]) + (n[i]-e[i])*log10me + e[i]*log10e;
+//            }
+//            float lr = num-denum;
 
-            for (int32_t i=0; i<no; ++i)
-            {
-                //std::cerr <<"LR " << i << " " << e[i] << " " << n[i] <<"\n";
-                //std::cerr << lt->log10choose(n[i], e[i]) << "\n";
-                //does this still happen?
-                if (e[i]>n[i])
-                {
-                //    std::cerr << "E>N\n";
-                    e[i] = n[i];
-                }
-
-                log10numhomref = log10phomref + lt->log10choose(n[i], e[i]) + (n[i]-e[i])*log10me + e[i]*log10e;
-                log10numhet = log10phet + lt->log10choose(n[i], e[i]) + log10half*n[i];
-                log10numhomalt = log10phomalt + lt->log10choose(n[i], e[i]) + (n[i]-e[i])*log10e + e[i]*log10me;
-                num += lt->log10sum(log10numhomref, lt->log10sum(log10numhet, log10numhomalt));
-                denum += lt->log10choose(n[i], e[i]) + (n[i]-e[i])*log10me + e[i]*log10e;
-            }
-            float lr = num-denum;
-
-            if (lr>lr_cutoff)
+//            if (lr>lr_cutoff)
+            if (max_lr_gt_30 || vtype&VT_INDEL)
             {
                 bcf_update_info_string(odw->hdr, nv, "SAMPLES", sample_names.s);
                 bcf_update_info_int32(odw->hdr, nv, "NSAMPLES", &no, 1);
@@ -319,8 +353,13 @@ Each VCF file is required to have the FORMAT flags E and N and should have exact
                 bcf_update_info_int32(odw->hdr, nv, "ESUM", &esum, 1);
                 bcf_update_info_int32(odw->hdr, nv, "NSUM", &nsum, 1);
                 bcf_update_info_float(odw->hdr, nv, "AF", &af, 1);
-                bcf_update_info_float(odw->hdr, nv, "LR", &lr, 1);
-
+                
+                if (vtype == VT_SNP)
+                {
+                   // std::cerr << max_qual << "\n";
+                    bcf_set_qual(nv, max_qual);
+                }
+                
                 odw->write(nv);
 
                 int32_t vtype = vm->classify_variant(odw->hdr, nv, var);
