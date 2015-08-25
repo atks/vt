@@ -37,7 +37,6 @@ SOURCES = align\
 		genome_interval\
 		genotype\
 		genotype2\
-		genotype3\
 		genotyping_buffer\
 		hts_utils\
 		hfilter\

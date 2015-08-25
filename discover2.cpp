@@ -525,7 +525,7 @@ class Igor : Program
             pAA *= 1-p;                                
         }
         
-        return log10(pRR/((1-theta)*pRR+0.33*theta+pRA+0.67*theta*pAA));
+        return log10(pRR/((1-theta)*pRR+0.33*theta*pRA+0.67*theta*pAA));
     }
     
     /**
