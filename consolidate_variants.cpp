@@ -47,14 +47,14 @@ class Igor : Program
     BCFOrderedWriter *odw;
 
     std::vector<bcf1_t*> pool;
-        
+
 
     /////////
     //stats//
     /////////
     int32_t no_total_variants;
-    int32_t no_nonoverlap_variants; 
-    int32_t no_overlap_variants; 
+    int32_t no_nonoverlap_variants;
+    int32_t no_overlap_variants;
 
     /////////
     //tools//
@@ -107,13 +107,13 @@ class Igor : Program
         bcf_hdr_append(odw->hdr, "##FILTER=<ID=olap,Description=\"Overlapping Alleles\">");
         bcf_hdr_append(odw->hdr, "##FILTER=<ID=snpstr,Description=\"SNP in STR\">");
         bcf_hdr_append(odw->hdr, "##FILTER=<ID=badmotif,Description=\"Poorly defined motif\">");
-        
+
 
         ////////////////////////
         //stats initialization//
         ////////////////////////
         no_total_variants = 0;
-        no_nonoverlap_variants = 0; 
+        no_nonoverlap_variants = 0;
         no_overlap_variants = 0;
 
         ////////////////////////
@@ -129,9 +129,9 @@ class Igor : Program
         int32_t cpos1 = -1;
         int32_t cepos1 = -1;
         bcf1_t* cv = NULL;
-        
+
         bcf1_t *v = odw->get_bcf1_from_pool();
-        
+
         while (odr->read(v))
         {
             bcf_unpack(v, BCF_UN_STR);
@@ -139,29 +139,29 @@ class Igor : Program
             int32_t pos1 = bcf_get_pos1(v);
             int32_t epos1 = bcf_get_end_pos1(v);
 
-            //does this overlap            
+            //does this overlap
             if (crid==rid && cepos1>=pos1 && cpos1<=epos1)
             {
                 //update overlap range
                 cpos1 = std::min(cpos1, pos1);
                 cepos1 = std::max(cepos1, epos1);
-                
+
                 if (cv)
                 {
                     ++no_overlap_variants;
                     cv = NULL;
-                }    
-                
-                ++no_overlap_variants;       
+                }
+
+                ++no_overlap_variants;
             }
             else
             {
                 crid = rid;
                 cpos1 = pos1;
                 cepos1 = epos1;
-                
+
                 if (cv)
-                {    
+                {
                     odw->write(cv);
                     ++no_nonoverlap_variants;
                 }
@@ -171,14 +171,14 @@ class Igor : Program
 
             ++no_total_variants;
         }
-        
+
         //the last non overlapping variant
         if (cv)
-        {    
+        {
             odw->write(cv);
             ++no_nonoverlap_variants;
         }
-        
+
         odr->close();
         odw->close();
     };

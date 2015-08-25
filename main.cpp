@@ -261,6 +261,10 @@ int main(int argc, char ** argv)
     }
     else if (argc>1 && cmd=="genotype")
     {
+        genotype(argc-1, ++argv);
+    }
+    else if (argc>1 && cmd=="genotype2")
+    {
         genotype2(argc-1, ++argv);
     }
     else if (argc>1 && cmd=="construct_probes")
