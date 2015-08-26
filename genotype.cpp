@@ -17,7 +17,7 @@
    THE SOFTWARE.
 */
 
-#include "genotype2.h"
+#include "genotype.h"
 
 namespace
 {

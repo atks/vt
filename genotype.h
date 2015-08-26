@@ -33,7 +33,8 @@
 #include "bcf_ordered_reader.h"
 #include "bcf_ordered_writer.h"
 #include "variant_manip.h"
-#include "genotyping_buffer.h"
+#include "log_tool.h"
+#include "lhmm1.h"
 
 void genotype(int argc, char ** argv);
 
