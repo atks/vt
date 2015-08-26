@@ -278,6 +278,10 @@ void Program::print_int_op(const char* option_line, std::vector<GenomeInterval>&
         {
             std::clog << " and " << (intervals.size()-5) <<  " other intervals\n";
         }
+        else
+        {
+            std::clog << "\n";
+        }
     }
 }
 

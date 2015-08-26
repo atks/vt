@@ -34,6 +34,7 @@
 #include "hts_utils.h"
 #include "htslib/sam.h"
 #include "htslib/vcf.h"
+#include "htslib/kseq.h"
 
 void genotype2(int argc, char ** argv);
 

@@ -117,7 +117,7 @@ class Igor : Program
         //////////////////////////
         try
         {
-            std::string desc = "Discovers variants from reads in a BAM/CRAM file.";
+            std::string desc = "Discovers variants from reads in a SAM/BAM/CRAM file.";
 
             TCLAP::CmdLine cmd(desc, ' ', version);
             VTOutput my; cmd.setOutput(&my);
@@ -1455,7 +1455,6 @@ class Igor : Program
         std::clog << "discover v" << version << "\n\n";
 
         std::clog << "options: [b] input BAM File                       " << input_bam_file << "\n";
-
         std::clog << "         [o] output VCF File                      " << output_vcf_file << "\n";
         std::clog << "         [s] sample ID                            " << sample_id << "\n";
         std::clog << "         [r] reference FASTA File                 " << ref_fasta_file << "\n";

@@ -26,6 +26,16 @@
 namespace
 {
 
+/**
+ * For detecting overlapping reads.
+ */
+typedef struct
+{
+  int32_t start1, end1;
+} interval_t;
+
+KHASH_MAP_INIT_STR(rdict, interval_t)
+
 class Igor : Program
 {
     public:
@@ -41,30 +51,47 @@ class Igor : Program
     std::string output_vcf_file;
     std::string ref_fasta_file;
     std::string mode;
-    bool debug;
+    bool ignore_md;
+    int32_t debug;
+
+    //variables for keeping track of chromosome
+    std::string chrom; //current chromosome
+    int32_t tid; // current sequence id in bam
+    int32_t rid; // current sequence id in bcf
+
+    //read filters
+    uint32_t read_mapq_cutoff;
+    uint16_t read_exclude_flag;
+    bool ignore_overlapping_read;
 
     ///////
     //i/o//
     ///////
     BAMOrderedReader *odr;
-    bam1_t *s;
-
     BCFOrderedWriter *odw;
-    bcf1_t *v;
-    
+
     std::vector<GenomeInterval> intervals;
+
+    //options for selecting reads
+    khash_t(rdict) *reads;
 
     /////////
     //stats//
     /////////
+    uint32_t no_reads;
+    uint32_t no_overlapping_reads;
+    uint32_t no_passed_reads;
+    uint32_t no_exclude_flag_reads;
+    uint32_t no_low_mapq_reads;
+    uint32_t no_unaligned_cigars;
+    uint32_t no_malformed_del_cigars;
+    uint32_t no_malformed_ins_cigars;
+    uint32_t no_salvageable_ins_cigars;
+
     uint32_t no_snps_genotyped;
     uint32_t no_indels_genotyped;
-    uint32_t noDelRefToAlt;
-    uint32_t noDelAltToRef;
-    uint32_t noInsRefToAlt;
-    uint32_t noInsAltToRef;
-    uint32_t readExtendedNo;
-
+    uint32_t no_vntrs_genotyped;
+    
     /////////
     //tools//
     /////////
@@ -82,6 +109,12 @@ class Igor : Program
             version = "0.5";
             TCLAP::CmdLine cmd(desc, ' ', version);
             VTOutput my; cmd.setOutput(&my);
+            //Reads
+            TCLAP::ValueArg<uint32_t> arg_read_mapq_cutoff("t", "t", "MAPQ cutoff for alignments (>) [20]", false, 20, "int", cmd);
+            TCLAP::SwitchArg arg_ignore_overlapping_read("l", "l", "ignore overlapping reads [false]", cmd, false);
+            TCLAP::ValueArg<uint32_t> arg_read_exclude_flag("a", "a", "read exclude flag [0x0704]", false, 0x0704, "int", cmd);
+
+            
             TCLAP::ValueArg<std::string> arg_intervals("i", "i", "intervals []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "file", cmd);
             TCLAP::ValueArg<std::string> arg_input_sam_file("b", "b", "input SAM/BAM/CRAM file []", true, "", "string", cmd);
@@ -93,12 +126,13 @@ class Igor : Program
                  "              s : iterate by sites for sparse genotyping.\n"
                  "                 (e.g. 100 variants scattered over the genome).",
                  false, "d", "str", cmd);
-            TCLAP::ValueArg<std::string> arg_ref_fasta_file("r", "r", "reference FASTA file []", false, "/net/fantasia/home/atks/ref/genome/human.g1k.v37.fa", "string", cmd);
-            TCLAP::SwitchArg arg_debug("d", "d", "debug alignments", cmd, false);
+            TCLAP::ValueArg<std::string> arg_ref_fasta_file("r", "r", "reference FASTA file []", true, "", "string", cmd);
+            TCLAP::ValueArg<uint32_t> arg_debug("d", "d", "debug [0]", false, 0, "int", cmd);
             TCLAP::UnlabeledValueArg<std::string> arg_input_vcf_file("<in.vcf>", "input VCF file", true, "","file", cmd);
 
             cmd.parse(argc, argv);
 
+            mode = arg_mode.getValue();
             input_vcf_file = arg_input_vcf_file.getValue();
             input_sam_file = arg_input_sam_file.getValue();
             output_vcf_file = arg_output_vcf_file.getValue();
@@ -106,6 +140,11 @@ class Igor : Program
             parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
             ref_fasta_file = arg_ref_fasta_file.getValue();
             debug = arg_debug.getValue();
+            
+            read_mapq_cutoff = arg_read_mapq_cutoff.getValue();
+            ignore_overlapping_read = arg_ignore_overlapping_read.getValue();
+            read_exclude_flag = arg_read_exclude_flag.getValue();
+            
         }
         catch (TCLAP::ArgException &e)
         {
@@ -116,6 +155,14 @@ class Igor : Program
         //////////////////////
         //i/o initialization//
         //////////////////////
+
+        //fails the following types
+        //1. unmapped reads
+        //2. secondary reads alignments
+        //3. failed QC filter
+        //4. duplicate
+        //read_exclude_flag = 0x0704;
+        
         //input sam
         odr = new BAMOrderedReader(input_sam_file, intervals);
 
@@ -125,16 +172,17 @@ class Igor : Program
         //output vcf
         odw = new BCFOrderedWriter(output_vcf_file);
         bcf_hdr_add_sample(odw->hdr, strdup(sample_id.c_str()));
-        
+
         bcf_hdr_add_sample(odw->hdr, NULL);
-        
-        bcf_hdr_append(odw->hdr, "##FORMAT=<ID=PL,Number=G,Type=Integer,Description=\"Normalized, Phred-scaled likelihoods for genotypes\">");
+
         //NONREF
         bcf_hdr_append(odw->hdr, "##FORMAT=<ID=BQ,Number=.,Type=Integer,Description=\"Phred-scaled Base Qualities\">");
         bcf_hdr_append(odw->hdr, "##FORMAT=<ID=ALLELE,Number=.,Type=String,Description=\"Alleles - R or A\">");
-        bcf_hdr_append(odw->hdr, "##FORMAT=<ID=CYCLE,Number=.,Type=Integer,Description=\"Cycle of Base\">");
+        bcf_hdr_append(odw->hdr, "##FORMAT=<ID=CYCLE,Number=.,Type=Integer,Description=\"Cycle of base\">");
         bcf_hdr_append(odw->hdr, "##FORMAT=<ID=STRAND,Number=.,Type=String,Description=\"Strand of allele\">");
-        
+        bcf_hdr_append(odw->hdr, "##FORMAT=<ID=NM,Number=.,Type=Integer,Description=\"Number of mismatches per read\">");
+
+
         //REF
         bcf_hdr_append(odw->hdr, "##FORMAT=<ID=BQSUM,Number=1,Type=Integer,Description=\"Sum of Base Qualities\">");
         bcf_hdr_append(odw->hdr, "##FORMAT=<ID=DP,Number=1,Type=Integer,Description=\"Depth\">");
@@ -144,51 +192,342 @@ class Igor : Program
         ////////////////////////
         //stats initialization//
         ////////////////////////
+        no_reads = 0;
+        no_overlapping_reads = 0;
+        no_passed_reads = 0;
+        no_exclude_flag_reads = 0;
+        no_low_mapq_reads = 0;
+        no_unaligned_cigars = 0;
+        no_malformed_del_cigars = 0;
+        no_malformed_ins_cigars = 0;
+        no_salvageable_ins_cigars = 0;
+        
         no_snps_genotyped = 0;
-        readExtendedNo = 0;
+        no_indels_genotyped = 0;
+        no_vntrs_genotyped = 0;
 
+
+        //for tracking overlapping reads
+        reads = kh_init(rdict);
+
+        //////////////////////////////////////
+        //discovery variables initialization//
+        //////////////////////////////////////
+        chrom = "";
+        tid = -1;
+        rid = -1;
+
+        ////////////////////////
+        //tools initialization//
+        ////////////////////////
         vm = new VariantManip(ref_fasta_file);
 
     };
 
-    void print_options()
+    /**
+     * Filter reads.
+     *
+     * Returns true if read is failed.
+     */
+    bool filter_read(bam1_t *s)
     {
-        std::clog << "genotype2 v" << version << "\n\n";
+        khiter_t k;
+        int32_t ret;
 
-        std::clog << "Options: Input VCF File   " << input_vcf_file << "\n";
-        std::clog << "         Input BAM File   " << input_sam_file << "\n";
-        std::clog << "         Output VCF File  " << output_vcf_file << "\n";
-        std::clog << "         Sample ID        " << sample_id << "\n\n";
+        if (ignore_overlapping_read)
+        {
+            //this read is part of a mate pair on the same contig
+            if (bam_get_mpos1(s) && (bam_get_tid(s)==bam_get_mtid(s)))
+            {
+                //first mate
+                if (bam_get_mpos1(s)>bam_get_pos1(s))
+                {
+                    //overlapping
+                    if (bam_get_mpos1(s)<=(bam_get_pos1(s) + bam_get_l_qseq(s) - 1))
+                    {
+                        //add read that has overlapping
+                        //duplicate the record and perform the stitching later
+                        char* qname = strdup(bam_get_qname(s));
+                        k = kh_put(rdict, reads, qname, &ret);
+                        if (!ret)
+                        {
+                            //already present
+                            free(qname);
+                        }
+                        kh_val(reads, k) = {bam_get_pos1(s), bam_get_pos1(s)+bam_get_l_qseq(s)-1};
+                    }
+                }
+                else
+                {
+                    //check overlap
+                    if((k = kh_get(rdict, reads, bam_get_qname(s)))!=kh_end(reads))
+                    {
+                        if (kh_exist(reads, k))
+                        {
+                            free((char*)kh_key(reads, k));
+                            kh_del(rdict, reads, k);
+                            ++no_overlapping_reads;
+                        }
+                        //set this on to remove overlapping reads.
+                        return false;
+                    }
+                }
+            }
+        }
+
+        if(bam_get_flag(s) & read_exclude_flag)
+        {
+            //1. unmapped
+            //2. secondary alignment
+            //3. not passing QC
+            //4. PCR or optical duplicate
+            ++no_exclude_flag_reads;
+            return false;
+        }
+
+        if (bam_get_mapq(s) < read_mapq_cutoff)
+        {
+            //filter short aligments and those with too many indels (?)
+            ++no_low_mapq_reads;
+            return false;
+        }
+
+        //*****************************************************************
+        //should we have an assertion on the correctness of the bam record?
+        //Is, Ds not sandwiched in M
+        //leading and trailing Is - convert to S
+        //no Ms!!!!!
+        //*****************************************************************
+        int32_t n_cigar_op = bam_get_n_cigar_op(s);
+        if (n_cigar_op)
+        {
+            uint32_t *cigar = bam_get_cigar(s);
+            bool seenM = false;
+            int32_t last_opchr = '^';
+
+            for (int32_t i = 0; i < n_cigar_op; ++i)
+            {
+                int32_t opchr = bam_cigar_opchr(cigar[i]);
+                int32_t oplen = bam_cigar_oplen(cigar[i]);
+                if (opchr=='S')
+                {
+                    if (i!=0 && i!=n_cigar_op-1)
+                    {
+                        std::cerr << "S issue\n";
+                        bam_print_key_values(odr->hdr, s);
+                        //++malformed_cigar;
+                    }
+                }
+                else if (opchr=='M')
+                {
+                    seenM = true;
+                }
+                else if (opchr=='D')
+                {
+                    if (last_opchr!='M' || (i<=n_cigar_op && bam_cigar_opchr(cigar[i+1])!='M'))
+                    {
+                        std::cerr << "D issue\n";
+                        ++no_malformed_del_cigars;
+                        bam_print_key_values(odr->hdr, s);
+                    }
+                }
+                else if (opchr=='I')
+                {
+                    if (last_opchr!='M' || (i<n_cigar_op && bam_cigar_opchr(cigar[i+1])!='M'))
+                    {
+                        if (last_opchr!='M')
+                        {
+                            if (last_opchr!='^' && last_opchr!='S')
+                            {
+                                std::cerr << "leading I issue\n";
+                                bam_print_key_values(odr->hdr, s);
+                                ++no_malformed_ins_cigars;
+                            }
+                            else
+                            {
+                                ++no_salvageable_ins_cigars;
+                            }
+                        }
+                        else if (i==n_cigar_op-1)
+                        {
+
+                            ++no_salvageable_ins_cigars;
+                        }
+                        else if (i==n_cigar_op-2 && (bam_cigar_opchr(cigar[i+1])=='S'))
+                        {
+                            ++no_salvageable_ins_cigars;
+                        }
+                        else
+                        {
+                            std::cerr << "trailing I issue\n";
+                            bam_print_key_values(odr->hdr, s);
+                            ++no_malformed_ins_cigars;
+                        }
+
+                    }
+                }
+
+                last_opchr = opchr;
+            }
+
+            if (!seenM)
+            {
+                std::cerr << "NO! M issue\n";
+                bam_print_key_values(odr->hdr, s);
+                ++no_unaligned_cigars;
+            }
+        }
+
+        //check to see that hash should be cleared when encountering new contig.
+        //some bams may not be properly formed and contain orphaned sequences that
+        //can be retained in the hash
+        if (bam_get_tid(s)!=tid)
+        {
+            for (k = kh_begin(reads); k != kh_end(reads); ++k)
+            {
+                if (kh_exist(reads, k))
+                {
+                    free((char*)kh_key(reads, k));
+                    kh_del(rdict, reads, k);
+                }
+            }
+
+            //tid is not updated here, it is handled by flush()
+            //kh_destroy(rdict, h);
+        }
+
+        return true;
     }
-
-    void print_stats()
-    {
-        std::clog << "Stats: SNPs genotyped     " << no_snps_genotyped << "\n";
-        std::clog << "       Indels genotyped   " << no_indels_genotyped << "\n\n";
-        std::clog << "       VNTRs genotyped   " << no_indels_genotyped << "\n\n";
-    }
-
-    ~Igor()
-    {
-
-    };
 
     void genotype2()
     {
         if (mode=="d")
         {
             //iterate sam
+            odw->write_hdr();
+            bam1_t * s = bam_init1();
+            while (odr->read(s))
+            {
+                ++no_reads;
+
+                if (!filter_read(s))
+                {
+                    continue;
+                }
+
+//                process_read(s);
+//                if (debug>=3) pileup.print_state();
+                ++no_passed_reads;
+
+                
+
+                if ((no_reads & 0x0000FFFF) == 0)
+                {
+                   // std::cerr << chrom << ":" << pileup.get_gbeg1() << "\n";
+                }
             
-                //check against VCF
-               
+            }
+            
+            
+            odw->close();
+            
         }
         else if (mode=="s")
         {
             //iterate VCF file
                 //random access per site
-            
+
         }
     }
+
+    /**
+     * Print BAM for debugging purposes.
+     */
+    void bam_print_key_values(bam_hdr_t *h, bam1_t *s)
+    {
+        const char* chrom = bam_get_chrom(h, s);
+        uint32_t pos1 = bam_get_pos1(s);
+        kstring_t seq = {0,0,0};
+        bam_get_seq_string(s, &seq);
+        uint32_t len = bam_get_l_qseq(s);
+        kstring_t qual = {0,0,0};
+        bam_get_qual_string(s, &qual);
+        kstring_t cigar_string = {0,0,0};
+        bam_get_cigar_string(s, &cigar_string);
+        kstring_t cigar_expanded_string = {0,0,0};
+        bam_get_cigar_expanded_string(s, &cigar_expanded_string);
+        uint16_t flag = bam_get_flag(s);
+        uint32_t mapq = bam_get_mapq(s);
+
+        uint8_t *aux;
+        char* md = NULL;
+        (aux=bam_aux_get(s, "MD")) &&  (md = bam_aux2Z(aux));
+
+        std::cerr << "##################" << "\n";
+        std::cerr << "chrom:pos: " << chrom << ":" << pos1 << "\n";
+        std::cerr << "read     : " << seq.s << "\n";
+        std::cerr << "qual     : " << qual.s << "\n";
+        std::cerr << "cigar_str: " << cigar_string.s << "\n";
+        std::cerr << "cigar    : " << cigar_expanded_string.s << "\n";
+        std::cerr << "len      : " << len << "\n";
+        std::cerr << "mapq     : " << mapq << "\n";
+        std::cerr << "mpos1    : " << bam_get_mpos1(s) << "\n";
+        std::cerr << "mtid     : " << bam_get_mtid(s) << "\n";
+        std::cerr << "md       : " << (aux?md:"") << "\n";
+        std::cerr << "##################" << "\n";
+
+        if (seq.m) free(seq.s);
+        if (qual.m) free(qual.s);
+        if (cigar_string.m) free(cigar_string.s);
+        if (cigar_expanded_string.m) free(cigar_expanded_string.s);
+    }
+    void print_options()
+    {
+        std::clog << "genotype2 v" << version << "\n\n";
+
+        std::clog << "options:     input VCF File                       " << input_vcf_file << "\n";
+        std::clog << "         [b] input BAM File                       " << input_sam_file << "\n";
+        std::clog << "         [o] output VCF File                      " << output_vcf_file << "\n";
+        std::clog << "         [s] sample ID                            " << sample_id << "\n";
+        std::clog << "         [r] reference FASTA File                 " << ref_fasta_file << "\n";
+        std::clog << "         [z] ignore MD tags                       " << (ignore_md ? "true": "false") << "\n";
+        std::clog << "         [m] mode of genotyping                   " << mode << "\n";
+        print_int_op("         [i] intervals                            ", intervals);
+        std::clog << "\n";
+        std::clog << "         [t] read mapping quality cutoff          " << read_mapq_cutoff << "\n";
+        std::clog << "         [l] ignore overlapping read              " << (ignore_overlapping_read ? "true" : "false") << "\n";
+        std::clog << "         [a] read flag filter                     " << std::showbase << std::hex << read_exclude_flag << std::dec << "\n";
+        std::clog << "\n";
+    }
+
+    void print_stats()
+    {
+        std::clog << "genotype2 v" << version << "\n\n";   
+
+
+        
+        std::clog << "\n";
+        std::clog << "stats: no. reads                    : " << no_reads << "\n";
+        std::clog << "       no. overlapping reads        : " << no_overlapping_reads << "\n";
+        std::clog << "       no. low mapq reads           : " << no_low_mapq_reads << "\n";
+        std::clog << "       no. passed reads             : " << no_passed_reads << "\n";
+        std::clog << "       no. exclude flag reads       : " << no_exclude_flag_reads << "\n";
+        std::clog << "\n";
+        std::clog << "       no. unaligned cigars         : " << no_unaligned_cigars << "\n";
+        std::clog << "       no. malformed del cigars     : " << no_malformed_del_cigars << "\n";
+        std::clog << "       no. malformed ins cigars     : " << no_malformed_ins_cigars << "\n";
+        std::clog << "       no. salvageable ins cigars   : " << no_salvageable_ins_cigars << "\n";
+        std::clog << "\n";
+        std::clog << "       no. SNPs genotyped           : " << no_snps_genotyped<< "\n";
+        std::clog << "           Indels genotyped         : " << no_indels_genotyped << "\n";
+        std::clog << "           VNTRs genotyped          : " << no_vntrs_genotyped << "\n";
+        std::clog << "\n";
+    }
+
+    ~Igor()
+    {
+
+    };
 
     private:
 };
