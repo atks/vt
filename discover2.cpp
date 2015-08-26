@@ -127,7 +127,7 @@ class Igor : Program
             TCLAP::SwitchArg arg_ignore_md("z", "z", "ignore MD tags [0]", cmd, false);
             TCLAP::ValueArg<std::string> arg_output_vcf_file("o", "o", "output VCF file [-]", false, "-", "str", cmd);
             TCLAP::ValueArg<std::string> arg_ref_fasta_file("r", "r", "reference sequence fasta file []", true, "", "str", cmd);
-            TCLAP::ValueArg<std::string> arg_sample_id("s", "s", "sample ID", true, "", "str", cmd);
+            TCLAP::ValueArg<std::string> arg_sample_id("s", "s", "sample ID []", true, "", "str", cmd);
 
             TCLAP::ValueArg<uint32_t> arg_ploidy("p", "p", "ploidy [2]", false, 2, "int", cmd);
 
@@ -163,7 +163,7 @@ class Igor : Program
             TCLAP::ValueArg<float> arg_sclip_mq_cutoff("x", "x", "soft clipped mean quality cutoff [0]", false, 0, "float", cmd);
             TCLAP::ValueArg<uint32_t> arg_sclip_u_cutoff("y", "y", "soft clipped unique sequences cutoff [0]", false, 1, "float", cmd);
 
-            TCLAP::ValueArg<std::string> arg_input_bam_file("b", "b", "input BAM/CRAM file", true, "", "string", cmd);
+            TCLAP::ValueArg<std::string> arg_input_bam_file("b", "b", "input SAM/BAM/CRAM file []", true, "", "string", cmd);
 
             cmd.parse(argc, argv);
 

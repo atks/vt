@@ -24,21 +24,16 @@
 #ifndef GENOTYPE2_H
 #define GENOTYPE2_H
 
-#include <regex.h>
 #include "utils.h"
-#include "lhmm1.h"
-#include "construct_probes.h"
+#include "program.h"
 #include "variant_manip.h"
 #include "bcf_ordered_reader.h"
-#include "genome_interval.h"
+#include "bam_ordered_reader.h"
 #include "bcf_ordered_writer.h"
+#include "genome_interval.h"
 #include "hts_utils.h"
 #include "htslib/sam.h"
 #include "htslib/vcf.h"
-#include "htslib/vcfutils.h"
-#include "hts_utils.h"
-#include "htslib/kstring.h"
-#include "htslib/kseq.h"
 
 void genotype2(int argc, char ** argv);
 

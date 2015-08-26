@@ -46,23 +46,19 @@ class Igor : Program
     ///////
     //i/o//
     ///////
-    BCFOrderedReader *odr;
+    BAMOrderedReader *odr;
+    bam1_t *s;
+
+    BCFOrderedWriter *odw;
     bcf1_t *v;
-
-    BCFOrderedWriter* odw;
-
-    samFile *isam;
-    bam_hdr_t *isam_hdr;
-    hts_idx_t *isam_idx;
-    bam1_t *srec;
-
-    std::vector<GenomeInterval> intervals;
     
+    std::vector<GenomeInterval> intervals;
+
     /////////
     //stats//
     /////////
     uint32_t no_snps_genotyped;
-	uint32_t no_indels_genotyped;
+    uint32_t no_indels_genotyped;
     uint32_t noDelRefToAlt;
     uint32_t noDelAltToRef;
     uint32_t noInsRefToAlt;
@@ -72,86 +68,79 @@ class Igor : Program
     /////////
     //tools//
     /////////
-    LogTool lt;
-    LHMM1 lhmm_ref, lhmm_alt;
     VariantManip *vm;
-    
+
     Igor(int argc, char ** argv)
     {
         //////////////////////////
         //options initialization//
         //////////////////////////
-    	try
-    	{
-    		std::string desc = "Genotypes SNPs, Indels, VNTRs for each sample.\n";
-    		    
-       		version = "0.5";
-    		TCLAP::CmdLine cmd(desc, ' ', version);
-    		VTOutput my; cmd.setOutput(&my);
+        try
+        {
+            std::string desc = "Genotypes SNPs, Indels, VNTRs for each sample.\n";
+
+            version = "0.5";
+            TCLAP::CmdLine cmd(desc, ' ', version);
+            VTOutput my; cmd.setOutput(&my);
             TCLAP::ValueArg<std::string> arg_intervals("i", "i", "intervals []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "file", cmd);
-            TCLAP::ValueArg<std::string> arg_input_sam_file("b", "b", "input SAM/BAM/CRAM file", true, "", "string", cmd);
-          	TCLAP::ValueArg<std::string> arg_output_vcf_file("o", "o", "output VCF file", false, "-", "string", cmd);
-    		TCLAP::ValueArg<std::string> arg_sample_id("s", "s", "sample ID", true, "", "string", cmd);
-    		TCLAP::ValueArg<std::string> arg_mode("m", "m", "mode [x]\n"
+            TCLAP::ValueArg<std::string> arg_input_sam_file("b", "b", "input SAM/BAM/CRAM file []", true, "", "string", cmd);
+            TCLAP::ValueArg<std::string> arg_output_vcf_file("o", "o", "output VCF file", false, "-", "string", cmd);
+            TCLAP::ValueArg<std::string> arg_sample_id("s", "s", "sample ID []", true, "", "string", cmd);
+            TCLAP::ValueArg<std::string> arg_mode("m", "m", "mode [d]\n"
                  "              d : iterate by read for dense genotyping.\n"
-                 "                 (e.g. 50m variants close to one annother).\n"
+                 "                 (e.g. 50m variants close to one another).\n"
                  "              s : iterate by sites for sparse genotyping.\n"
-                 "                 (e.g. 100 variants scattered over the genome).\n",
+                 "                 (e.g. 100 variants scattered over the genome).",
                  false, "d", "str", cmd);
-    		TCLAP::ValueArg<std::string> arg_ref_fasta_file("r", "r", "reference FASTA file", false, "/net/fantasia/home/atks/ref/genome/human.g1k.v37.fa", "string", cmd);
-    		TCLAP::SwitchArg arg_debug("d", "d", "debug alignments", cmd, false);
+            TCLAP::ValueArg<std::string> arg_ref_fasta_file("r", "r", "reference FASTA file []", false, "/net/fantasia/home/atks/ref/genome/human.g1k.v37.fa", "string", cmd);
+            TCLAP::SwitchArg arg_debug("d", "d", "debug alignments", cmd, false);
             TCLAP::UnlabeledValueArg<std::string> arg_input_vcf_file("<in.vcf>", "input VCF file", true, "","file", cmd);
 
-    		cmd.parse(argc, argv);
+            cmd.parse(argc, argv);
 
             input_vcf_file = arg_input_vcf_file.getValue();
             input_sam_file = arg_input_sam_file.getValue();
-    		output_vcf_file = arg_output_vcf_file.getValue();
-    		sample_id = arg_sample_id.getValue();
-    		parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
+            output_vcf_file = arg_output_vcf_file.getValue();
+            sample_id = arg_sample_id.getValue();
+            parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
             ref_fasta_file = arg_ref_fasta_file.getValue();
-    		debug = arg_debug.getValue();
-    	}
-    	catch (TCLAP::ArgException &e)
-    	{
-    		std::cerr << "error: " << e.error() << " for arg " << e.argId() << "\n";
-    		abort();
-    	}
+            debug = arg_debug.getValue();
+        }
+        catch (TCLAP::ArgException &e)
+        {
+            std::cerr << "error: " << e.error() << " for arg " << e.argId() << "\n";
+            abort();
+        }
 
         //////////////////////
         //i/o initialization//
         //////////////////////
-        //input vcf
-        odr = new BCFOrderedReader(input_vcf_file, intervals);
-        
         //input sam
+        odr = new BAMOrderedReader(input_sam_file, intervals);
 
+        //input sam
+        //odr = new BAMOrderedReader(input_sam_file, intervals);
 
         //output vcf
         odw = new BCFOrderedWriter(output_vcf_file);
-        odw->set_hdr(odr->hdr);        
-        bcf_hdr_remove(odw->hdr, BCF_HL_INFO, "SAMPLES");
-        bcf_hdr_remove(odw->hdr, BCF_HL_INFO, "NSAMPLES");
-        bcf_hdr_remove(odw->hdr, BCF_HL_INFO, "E");
-        bcf_hdr_remove(odw->hdr, BCF_HL_INFO, "N");
-        bcf_hdr_remove(odw->hdr, BCF_HL_INFO, "ESUM");
-        bcf_hdr_remove(odw->hdr, BCF_HL_INFO, "NSUM");
-        bcf_hdr_remove(odw->hdr, BCF_HL_INFO, "AF");
-        bcf_hdr_remove(odw->hdr, BCF_HL_INFO, "LR");
-        bcf_hdr_remove(odw->hdr, BCF_HL_INFO, "REFPROBE");
-        bcf_hdr_remove(odw->hdr, BCF_HL_INFO, "ALTPROBE");
-        bcf_hdr_remove(odw->hdr, BCF_HL_INFO, "PLEN");
         bcf_hdr_add_sample(odw->hdr, strdup(sample_id.c_str()));
+        
         bcf_hdr_add_sample(odw->hdr, NULL);
-        bcf_hdr_append(odw->hdr, "##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">");
+        
         bcf_hdr_append(odw->hdr, "##FORMAT=<ID=PL,Number=G,Type=Integer,Description=\"Normalized, Phred-scaled likelihoods for genotypes\">");
+        //NONREF
+        bcf_hdr_append(odw->hdr, "##FORMAT=<ID=BQ,Number=.,Type=Integer,Description=\"Phred-scaled Base Qualities\">");
+        bcf_hdr_append(odw->hdr, "##FORMAT=<ID=ALLELE,Number=.,Type=String,Description=\"Alleles - R or A\">");
+        bcf_hdr_append(odw->hdr, "##FORMAT=<ID=CYCLE,Number=.,Type=Integer,Description=\"Cycle of Base\">");
+        bcf_hdr_append(odw->hdr, "##FORMAT=<ID=STRAND,Number=.,Type=String,Description=\"Strand of allele\">");
+        
+        //REF
+        bcf_hdr_append(odw->hdr, "##FORMAT=<ID=BQSUM,Number=1,Type=Integer,Description=\"Sum of Base Qualities\">");
         bcf_hdr_append(odw->hdr, "##FORMAT=<ID=DP,Number=1,Type=Integer,Description=\"Depth\">");
-        bcf_hdr_append(odw->hdr, "##FORMAT=<ID=AD,Number=3,Type=Integer,Description=\"Allele Depth\">");
-        bcf_hdr_append(odw->hdr, "##FORMAT=<ID=GQ,Number=1,Type=Integer,Description=\"Genotype Quality\">");
-        
+
         odw->write_hdr();
-        
+
         ////////////////////////
         //stats initialization//
         ////////////////////////
@@ -162,34 +151,46 @@ class Igor : Program
 
     };
 
- 	void print_options()
+    void print_options()
     {
         std::clog << "genotype2 v" << version << "\n\n";
 
-	    std::clog << "Options: Input VCF File   " << input_vcf_file << "\n";
-	    std::clog << "         Input BAM File   " << input_sam_file << "\n";
-	    std::clog << "         Output VCF File  " << output_vcf_file << "\n";
-	    std::clog << "         Sample ID        " << sample_id << "\n\n";
+        std::clog << "Options: Input VCF File   " << input_vcf_file << "\n";
+        std::clog << "         Input BAM File   " << input_sam_file << "\n";
+        std::clog << "         Output VCF File  " << output_vcf_file << "\n";
+        std::clog << "         Sample ID        " << sample_id << "\n\n";
     }
 
     void print_stats()
     {
-	    std::clog << "Stats: SNPs genotyped     " << no_snps_genotyped << "\n";
-	    std::clog << "       Indels genotyped   " << no_indels_genotyped << "\n\n";
+        std::clog << "Stats: SNPs genotyped     " << no_snps_genotyped << "\n";
+        std::clog << "       Indels genotyped   " << no_indels_genotyped << "\n\n";
         std::clog << "       VNTRs genotyped   " << no_indels_genotyped << "\n\n";
     }
 
- 	~Igor()
+    ~Igor()
     {
 
     };
 
     void genotype2()
     {
-        
+        if (mode=="d")
+        {
+            //iterate sam
+            
+                //check against VCF
+               
+        }
+        else if (mode=="s")
+        {
+            //iterate VCF file
+                //random access per site
+            
+        }
     }
 
-    private:   
+    private:
 };
 
 }

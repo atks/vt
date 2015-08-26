@@ -2176,7 +2176,7 @@ static int cram_populate_ref(cram_fd *fd, int id, ref_entry *r) {
     char *ref_path = getenv("REF_PATH");
     SAM_hdr_type *ty;
     SAM_hdr_tag *tag;
-    char path[PATH_MAX], path_tmp[PATH_MAX], cache[PATH_MAX], *path2;
+    char path[PATH_MAX], path_tmp[PATH_MAX], cache[PATH_MAX];
     char *local_cache = getenv("REF_CACHE");
     mFILE *mf;
     int local_path = 0;
@@ -2218,6 +2218,8 @@ static int cram_populate_ref(cram_fd *fd, int id, ref_entry *r) {
 	local_path = 1;
     }
 
+#ifndef HAVE_MMAP
+    char *path2;
     /* Search local files in REF_PATH; we can open them and return as above */
     if (!local_path && (path2 = find_path(tag->str+3, ref_path))) {
 	strncpy(path, path2, PATH_MAX);
@@ -2225,6 +2227,7 @@ static int cram_populate_ref(cram_fd *fd, int id, ref_entry *r) {
 	if (is_file(path)) // incase it's too long
 	    local_path = 1;
     }
+#endif
 
     /* Found via REF_CACHE or local REF_PATH file */
     if (local_path) {
@@ -4396,8 +4399,10 @@ int cram_set_option(cram_fd *fd, enum hts_fmt_option opt, ...) {
 int cram_set_voption(cram_fd *fd, enum hts_fmt_option opt, va_list args) {
     refs_t *refs;
 
-    if (!fd)
+    if (!fd) {
+	errno = EBADF;
 	return -1;
+    }
 
     switch (opt) {
     case CRAM_OPT_DECODE_MD:
@@ -4477,6 +4482,7 @@ int cram_set_voption(cram_fd *fd, enum hts_fmt_option opt, va_list args) {
 	      (major == 3 &&  minor == 0))) {
 	    fprintf(stderr, "Unknown version string; "
 		    "use 1.0, 2.0, 2.1 or 3.0\n");
+	    errno = EINVAL;
 	    return -1;
 	}
 	fd->version = major*256 + minor;
@@ -4532,6 +4538,7 @@ int cram_set_voption(cram_fd *fd, enum hts_fmt_option opt, va_list args) {
 
     default:
 	fprintf(stderr, "Unknown CRAM option code %d\n", opt);
+	errno = EINVAL;
 	return -1;
     }
 

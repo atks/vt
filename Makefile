@@ -13,6 +13,7 @@ SOURCES = align\
 		annotate_regions\
 		annotate_variants\
 		bam_ordered_reader\
+		bcf_genotyping_buffered_reader\
 		bcf_ordered_reader\
 		bcf_ordered_writer\
 		bcf_synced_reader\
@@ -37,7 +38,6 @@ SOURCES = align\
 		genome_interval\
 		genotype\
 		genotype2\
-		genotyping_buffer\
 		hts_utils\
 		hfilter\
 		index\

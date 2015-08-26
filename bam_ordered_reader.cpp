@@ -83,6 +83,7 @@ BAMOrderedReader::BAMOrderedReader(std::string file_name, std::vector<GenomeInte
     }
 
     hdr = sam_hdr_read(file);
+    
     s = bam_init1();
 
     idx = sam_index_load(file, file_name.c_str());
