@@ -31,24 +31,34 @@
 #include <list>
 #include "program.h"
 #include "genotyping_record.h"
+#include "bcf_ordered_reader.h"
 
 /**
- * Maintains read information and allows for additional reads
- * till VCF record can be printed out.
+ * Wrapper for BCFOrderedReader.
  *
- * This class is to be inherited and 
+ * VCF records are wrapped in GenotyingRecord and are 
+ * maintained in a buffer.
+ *
  */
 class BCFGenotypingBufferedReader
 {
     public:
     
+    BCFOrderedReader *odr;
+    std::list<GenotypingRecord> buffer;
+
     uint32_t bref, vref;
     uint32_t bstart, bend, vpos;
 
     /**
-     * Print out all the records.
+     * Constructor.
      */
-    BCFGenotypingBufferedReader(){}
+    BCFGenotypingBufferedReader(std::string filename, std::vector<GenomeInterval>& intervals);
+
+    /**
+     * Flush all the records.
+     */
+    void flush(); 
 
 //    /**
 //     * Print out all the records.

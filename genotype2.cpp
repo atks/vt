@@ -399,12 +399,34 @@ class Igor : Program
         return true;
     }
 
+    /**
+     * Processes read cigars to extract site sufficient statistics.
+     * 
+     */
+    void process_read(bam1_t *s)
+    {
+        if (debug>=1) bam_print_key_values(odr->hdr, s);
+
+       // flush(s);
+
+        uint32_t tid = bam_get_tid(s);
+        uint32_t pos1 = bam_get_pos1(s);
+        uint8_t* seq = bam_get_seq(s);
+        uint8_t* qual = bam_get_qual(s);
+        int32_t l_qseq = bam_get_l_qseq(s);
+        uint32_t* cigar = bam_get_cigar(s);
+        char strand = bam_is_rev(s) ? '-' : '+';
+
+        
+    }
+    
     void genotype2()
     {
         if (mode=="d")
         {
             //iterate sam
             odw->write_hdr();
+            bam_hdr_t *h = odr->hdr;
             bam1_t * s = bam_init1();
             while (odr->read(s))
             {
@@ -415,7 +437,7 @@ class Igor : Program
                     continue;
                 }
 
-//                process_read(s);
+                process_read(s);
 //                if (debug>=3) pileup.print_state();
                 ++no_passed_reads;
 
@@ -423,7 +445,7 @@ class Igor : Program
 
                 if ((no_reads & 0x0000FFFF) == 0)
                 {
-                   // std::cerr << chrom << ":" << pileup.get_gbeg1() << "\n";
+                    std::cerr << bam_get_chrom(h,s) << ":" << bam_get_pos1(s) << "\n";
                 }
             
             }
@@ -519,8 +541,8 @@ class Igor : Program
         std::clog << "       no. salvageable ins cigars   : " << no_salvageable_ins_cigars << "\n";
         std::clog << "\n";
         std::clog << "       no. SNPs genotyped           : " << no_snps_genotyped<< "\n";
-        std::clog << "           Indels genotyped         : " << no_indels_genotyped << "\n";
-        std::clog << "           VNTRs genotyped          : " << no_vntrs_genotyped << "\n";
+        std::clog << "       no. Indels genotyped         : " << no_indels_genotyped << "\n";
+        std::clog << "       no. VNTRs genotyped          : " << no_vntrs_genotyped << "\n";
         std::clog << "\n";
     }
 

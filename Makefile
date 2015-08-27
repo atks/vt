@@ -3,7 +3,7 @@ INCLUDES = -I./lib -I. -I./lib/htslib -I./lib/Rmath -I./lib/pcre2
 CFLAGS = -pipe -std=c++0x $(OPTFLAG) $(INCLUDES) -D__STDC_LIMIT_MACROS
 CXX = g++
 
-SOURCESONLY = genotyping_record.h
+SOURCESONLY =
 
 SOURCES = align\
 		allele\
@@ -38,6 +38,7 @@ SOURCES = align\
 		genome_interval\
 		genotype\
 		genotype2\
+		genotyping_record\
 		hts_utils\
 		hfilter\
 		index\
