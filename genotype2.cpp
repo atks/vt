@@ -417,6 +417,10 @@ class Igor : Program
         uint32_t* cigar = bam_get_cigar(s);
         char strand = bam_is_rev(s) ? '-' : '+';
 
+        //1. iterate through VCFs from BCFGenotypingBufferedReader
+        //   a. check for overlaps
+        //   b. update according to VCF type
+        //   
         
     }
     

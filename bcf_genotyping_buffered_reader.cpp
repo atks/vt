@@ -22,3 +22,11 @@
 */
 
 #include "bcf_genotyping_buffered_reader.h"
+
+/**
+ * Constructor.
+ */
+BCFGenotypingBufferedReader::BCFGenotypingBufferedReader(std::string filename, std::vector<GenomeInterval>& intervals)
+{
+    odr = new BCFOrderedReader(filename, intervals);
+}

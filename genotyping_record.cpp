@@ -17,71 +17,9 @@
    THE SOFTWARE.
 */
 
-#ifndef GENOTYPING_RECORD_H
-#define GENOTYPING_RECORD_H
-
-#include "htslib/vcf.h"
-#include "htslib/faidx.h"
-#include "bcf_ordered_writer.h"
+#include "genotyping_record.h"
 
 /**
- * A generic record that holds information for genotyping a 
- * variant across multiple samples. 
- *
- * Maintains read information and allows for additional reads
- * till VCF record can be printed out.
+ * Destructor.
  */
-class GenotypingRecord
-{
-    public:
-    bcf_hdr_t *h;
-    bcf1_t *v;
-    faidx_t *fai;
-    std::string error_msg;
-        
-    /**
-     * Constructor.
-     * @fai - fai index.
-     */
-    GenotypingRecord(faidx_t *fai=NULL){};
-
-    /**
-     * Constructor.
-     * @h - header of the candidate vcf record.
-     * @v - candidate VCF record.
-     * @fai - fai index.
-     */
-    GenotypingRecord(bcf_hdr_t *h, bcf1_t *v, faidx_t *fai=NULL){};
-
-    /**
-     * Destructor.
-     */
-    virtual ~GenotypingRecord(){};
-
-    /**
-     * Initializes a candidate variant for genotyping.
-     */
-    virtual bool initialize(bcf_hdr_t *h, bcf1_t *v, faidx_t *fai=NULL)=0;
-
-    /**
-     * Initializes a candidate VCF record. Returns false if failure.
-     */
-    virtual bool set(bcf1_t *v)=0;
-
-    /**
-     * Genotypes a read and add to body of evidence.
-     */
-    virtual void genotype(bam1_t *s)=0;
-
-    /**
-     * Prints record.
-     */
-    virtual void print(BCFOrderedWriter *odw)=0;
-
-    /**
-     * Clears this record.
-     */
-    virtual void clear()=0;
-};
-
-#endif
+GenotypingRecord::~GenotypingRecord() {};

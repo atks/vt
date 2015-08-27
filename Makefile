@@ -47,7 +47,6 @@ SOURCES = align\
 		lfhmm\
 		lhmm\
 		lhmm1\
-		lhmm_genotyping_record\
 		log_tool\
 		merge\
 		merge_candidate_variants\
