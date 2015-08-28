@@ -92,7 +92,7 @@ class Igor : Program
     uint32_t no_snps_genotyped;
     uint32_t no_indels_genotyped;
     uint32_t no_vntrs_genotyped;
-    
+
     /////////
     //tools//
     /////////
@@ -115,7 +115,7 @@ class Igor : Program
             TCLAP::SwitchArg arg_ignore_overlapping_read("l", "l", "ignore overlapping reads [false]", cmd, false);
             TCLAP::ValueArg<uint32_t> arg_read_exclude_flag("a", "a", "read exclude flag [0x0704]", false, 0x0704, "int", cmd);
 
-            
+
             TCLAP::ValueArg<std::string> arg_intervals("i", "i", "intervals []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "file", cmd);
             TCLAP::ValueArg<std::string> arg_input_sam_file("b", "b", "input SAM/BAM/CRAM file []", true, "", "string", cmd);
@@ -141,11 +141,11 @@ class Igor : Program
             parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
             ref_fasta_file = arg_ref_fasta_file.getValue();
             debug = arg_debug.getValue();
-            
+
             read_mapq_cutoff = arg_read_mapq_cutoff.getValue();
             ignore_overlapping_read = arg_ignore_overlapping_read.getValue();
             read_exclude_flag = arg_read_exclude_flag.getValue();
-            
+
         }
         catch (TCLAP::ArgException &e)
         {
@@ -163,7 +163,7 @@ class Igor : Program
         //3. failed QC filter
         //4. duplicate
         //read_exclude_flag = 0x0704;
-        
+
         //input sam
         odr = new BAMOrderedReader(input_sam_file, intervals);
 
@@ -173,7 +173,6 @@ class Igor : Program
         //output vcf
         odw = new BCFOrderedWriter(output_vcf_file);
         bcf_hdr_add_sample(odw->hdr, strdup(sample_id.c_str()));
-
         bcf_hdr_add_sample(odw->hdr, NULL);
 
         //NONREF
@@ -188,7 +187,9 @@ class Igor : Program
         bcf_hdr_append(odw->hdr, "##FORMAT=<ID=BQSUM,Number=1,Type=Integer,Description=\"Sum of Base Qualities\">");
         bcf_hdr_append(odw->hdr, "##FORMAT=<ID=DP,Number=1,Type=Integer,Description=\"Depth\">");
 
+        
         odw->write_hdr();
+       
 
         ////////////////////////
         //stats initialization//
@@ -202,7 +203,7 @@ class Igor : Program
         no_malformed_del_cigars = 0;
         no_malformed_ins_cigars = 0;
         no_salvageable_ins_cigars = 0;
-        
+
         no_snps_genotyped = 0;
         no_indels_genotyped = 0;
         no_vntrs_genotyped = 0;
@@ -211,12 +212,12 @@ class Igor : Program
         //for tracking overlapping reads
         reads = kh_init(rdict);
 
-        //////////////////////////////////////
-        //discovery variables initialization//
-        //////////////////////////////////////
-        chrom = "";
-        tid = -1;
-        rid = -1;
+//        //////////////////////////////////////
+//        //discovery variables initialization//
+//        //////////////////////////////////////
+//        chrom = "";
+//        tid = -1;
+//        rid = -1;
 
         ////////////////////////
         //tools initialization//
@@ -399,7 +400,7 @@ class Igor : Program
 
         return true;
     }
-   
+
     void genotype2()
     {
         if (mode=="d")
@@ -426,9 +427,9 @@ class Igor : Program
                     std::cerr << bam_get_chrom(h,s) << ":" << bam_get_pos1(s) << "\n";
                 }
             }
-            
+
             gbr->flush(odw, h, s, true);
-            odw->close();           
+            odw->close();
         }
         else if (mode=="s")
         {
@@ -436,6 +437,8 @@ class Igor : Program
                 //random access per site
 
         }
+        
+        
     }
 
     /**
@@ -479,7 +482,7 @@ class Igor : Program
         if (cigar_string.m) free(cigar_string.s);
         if (cigar_expanded_string.m) free(cigar_expanded_string.s);
     }
-    
+
     void print_options()
     {
         std::clog << "genotype2 v" << version << "\n\n";
@@ -501,10 +504,8 @@ class Igor : Program
 
     void print_stats()
     {
-        std::clog << "genotype2 v" << version << "\n\n";   
+        std::clog << "genotype2 v" << version << "\n\n";
 
-
-        
         std::clog << "\n";
         std::clog << "stats: no. reads                    : " << no_reads << "\n";
         std::clog << "       no. overlapping reads        : " << no_overlapping_reads << "\n";

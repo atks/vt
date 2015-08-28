@@ -33,6 +33,7 @@
 #include "genotyping_record.h"
 #include "bcf_ordered_reader.h"
 #include "variant.h"
+#include "variant_manip.h"
 
 /**
  * Wrapper for BCFOrderedReader.
@@ -55,9 +56,14 @@ class BCFGenotypingBufferedReader
     //////////////////
     std::list<GenotypingRecord*> buffer;
     std::string chrom;
-    int32_t rid;
-    int32_t start, end;
 
+    Variant variant;
+
+    /////////
+    //tools//
+    /////////
+    VariantManip *vm;
+    
     /**
      * Constructor.
      */
@@ -78,76 +84,11 @@ class BCFGenotypingBufferedReader
      */
     void flush(BCFOrderedWriter* odw, bam_hdr_t *h, bam1_t *s, bool flush_all=false);
 
-//    /**
-//     * Print out all the records.
-//     */
-//    void flush()
-//    {
-//        std::list<GenotypingRecord*>::iterator i = buffer.begin();
-//        while (i!=buffer.end())
-//        {
-//            GenotypingRecord* vx = *i;
-//
-//            vx->print(odw);
-//
-//            vx->clear();
-//            pool.push_front(vx);
-//            i = buffer.erase(i);
-//        }
-//    }
-//
-//    /**
-//     * Adds pileup records till the first record after epos1.
-//     */
-//    bool add_rec(int32_t epos1)
-//    {
-//        //add records only if the new record overlaps with read
-//        if (buffer.size()!=0)
-//        {
-//            bcf1_t *v = buffer.back()->v;
-//            int32_t vpos1 = bcf_get_pos1(v);
-//
-//            if (vpos1>epos1)
-//            {
-//                return false;
-//            }
-//        }
-//
-//        bool added_record = false;
-//        bcf1_t *v = odw->get_bcf1_from_pool();
-//        while (odr->read(v))
-//        {
-//            GenotypingRecord *p = NULL;
-//            if (pool.size()!=0)
-//            {
-//                p = pool.front();
-//                pool.pop_front();
-//            }
-//            else
-//            {
-//               // p = new GenotypingRecord(odr->hdr, v);
-//            }
-//
-//            p->clear();
-//
-//            buffer.push_back(p);
-//            added_record = true;
-//
-//            if ((bcf_get_pos1(p->v))>epos1)
-//                break;
-//        }
-//
-//        return added_record;
-//    }
-//
-//    int32_t read_is_before_first_vcf_record(bam1_t *s)
-//    {
-//        bcf1_t *v = (*(buffer.begin()))->v;
-//        int32_t vpos1 = bcf_get_pos1(v);
-//        int32_t epos1 = bam_get_end_pos1(s);
-//
-//        return (epos1+100000)<vpos1 ? vpos1 : 0;
-//    }
+    /**
+     * Genotype variant and print to odw.
+     */
+    void genotype_and_print(BCFOrderedWriter* odw, GenotypingRecord* g);
+    
 };
 
 #endif

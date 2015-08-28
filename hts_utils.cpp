@@ -117,6 +117,30 @@ void bam_hdr_transfer_contigs_to_bcf_hdr(const bam_hdr_t *sh, bcf_hdr_t *vh)
  **********/
 
 /**
+ * Gets the end position of the last mapped base in the read.
+ */
+int32_t bam_get_end_pos1(bam1_t *s)
+{
+    int32_t end_pos1 = bam_get_pos1(s);
+    int32_t n_cigar_op = bam_get_n_cigar_op(s);
+    if (n_cigar_op)
+    {
+        uint32_t *cigar = bam_get_cigar(s);
+        for (int32_t i = 0; i < n_cigar_op; ++i)
+        {
+            int32_t opchr = bam_cigar_opchr(cigar[i]);
+            
+            if (opchr=='M' || opchr=='D' || opchr=='N' || opchr=='=' || opchr=='X')
+            {
+                end_pos1 += bam_cigar_oplen(cigar[i]);
+            }
+        }
+    }
+    
+    return end_pos1-1;
+}
+
+/**
  * Gets the read sequence from a bam record
  */
 void bam_get_seq_string(bam1_t *s, kstring_t *seq)

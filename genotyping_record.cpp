@@ -23,15 +23,40 @@
  * Constructor.
  * @v - VCF record.
  */
-GenotypingRecord::GenotypingRecord(bcf1_t *v)
+GenotypingRecord::GenotypingRecord(bcf1_t *v, int32_t vtype)
 {
+    clear();
     this->v = v;
+    rid = bcf_get_rid(v);
+    pos1 = bcf_get_pos1(v);
+    end1 = bcf_get_end_pos1(v);
+    this->vtype = vtype;
+}
+
+/**
+ * Clears this record.
+ */
+void GenotypingRecord::clear()
+{
+    v =NULL;
+    vtype = -1;
+    
+    no_nonref = 0;
+    
+    base_qualities.clear();
+    strands.clear();
+    alleles.clear();
+    cycles.clear();
+    no_mismatches.clear();
+    
+    uint32_t depth_fwd = 0;
+    depth_rev = 0;
+    base_qualities_sum = 0; 
 }
 
 /**
  * Destructor.
  */
 GenotypingRecord::~GenotypingRecord()
-{
-    
+{   
 }
