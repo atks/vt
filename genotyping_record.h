@@ -34,39 +34,29 @@
 class GenotypingRecord
 {
     public:
-    bcf_hdr_t *h;
     bcf1_t *v;
-    faidx_t *fai;
-    std::string error_msg;
+    
+    int32_t vtype;
+    
+    std::vector<uint32_t> base_qualities;
+    std::vector<char> strands;
+    std::vector<uint32_t> alleles;
+    std::vector<uint32_t> cycles;
+    std::vector<uint32_t> no_mismatches;
+    
+    uint32_t depth_fwd, depth_rev;    
+    uint32_t base_qualities_sum;  
         
     /**
      * Constructor.
-     * @fai - fai index.
+     * @v - VCF record.
      */
-    GenotypingRecord(faidx_t *fai=NULL);
-
-    /**
-     * Constructor.
-     * @h - header of the candidate vcf record.
-     * @v - candidate VCF record.
-     * @fai - fai index.
-     */
-    GenotypingRecord(bcf_hdr_t *h, bcf1_t *v, faidx_t *fai=NULL);
+    GenotypingRecord(bcf1_t *v);
 
     /**
      * Destructor.
      */
     ~GenotypingRecord();
-
-    /**
-     * Initializes a candidate variant for genotyping.
-     */
-    bool initialize(bcf_hdr_t *h, bcf1_t *v, faidx_t *fai=NULL);
-
-    /**
-     * Initializes a candidate VCF record. Returns false if failure.
-     */
-    bool set(bcf1_t *v);
 
     /**
      * Genotypes a read and add to body of evidence.

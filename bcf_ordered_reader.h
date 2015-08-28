@@ -33,6 +33,7 @@
 #include <list>
 #include <map>
 #include <queue>
+#include "bcf_ordered_reader.h"
 #include "htslib/vcf.h"
 #include "htslib/hts.h"
 #include "htslib/tbx.h"

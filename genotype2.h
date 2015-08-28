@@ -27,7 +27,7 @@
 #include "utils.h"
 #include "program.h"
 #include "variant_manip.h"
-#include "bcf_ordered_reader.h"
+#include "bcf_genotyping_buffered_reader.h"
 #include "bam_ordered_reader.h"
 #include "bcf_ordered_writer.h"
 #include "genome_interval.h"

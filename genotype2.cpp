@@ -68,6 +68,7 @@ class Igor : Program
     //i/o//
     ///////
     BAMOrderedReader *odr;
+    BCFGenotypingBufferedReader *gbr;
     BCFOrderedWriter *odw;
 
     std::vector<GenomeInterval> intervals;
@@ -166,8 +167,8 @@ class Igor : Program
         //input sam
         odr = new BAMOrderedReader(input_sam_file, intervals);
 
-        //input sam
-        //odr = new BAMOrderedReader(input_sam_file, intervals);
+        //input vcf
+        gbr = new BCFGenotypingBufferedReader(input_vcf_file, intervals);
 
         //output vcf
         odw = new BCFOrderedWriter(output_vcf_file);
@@ -398,32 +399,7 @@ class Igor : Program
 
         return true;
     }
-
-    /**
-     * Processes read cigars to extract site sufficient statistics.
-     * 
-     */
-    void process_read(bam1_t *s)
-    {
-        if (debug>=1) bam_print_key_values(odr->hdr, s);
-
-       // flush(s);
-
-        uint32_t tid = bam_get_tid(s);
-        uint32_t pos1 = bam_get_pos1(s);
-        uint8_t* seq = bam_get_seq(s);
-        uint8_t* qual = bam_get_qual(s);
-        int32_t l_qseq = bam_get_l_qseq(s);
-        uint32_t* cigar = bam_get_cigar(s);
-        char strand = bam_is_rev(s) ? '-' : '+';
-
-        //1. iterate through VCFs from BCFGenotypingBufferedReader
-        //   a. check for overlaps
-        //   b. update according to VCF type
-        //   
-        
-    }
-    
+   
     void genotype2()
     {
         if (mode=="d")
@@ -441,22 +417,18 @@ class Igor : Program
                     continue;
                 }
 
-                process_read(s);
-//                if (debug>=3) pileup.print_state();
+                gbr->flush(odw, h, s);
+                gbr->process_read(h, s);
+
                 ++no_passed_reads;
-
-                
-
                 if ((no_reads & 0x0000FFFF) == 0)
                 {
                     std::cerr << bam_get_chrom(h,s) << ":" << bam_get_pos1(s) << "\n";
                 }
-            
             }
             
-            
-            odw->close();
-            
+            gbr->flush(odw, h, s, true);
+            odw->close();           
         }
         else if (mode=="s")
         {
@@ -507,6 +479,7 @@ class Igor : Program
         if (cigar_string.m) free(cigar_string.s);
         if (cigar_expanded_string.m) free(cigar_expanded_string.s);
     }
+    
     void print_options()
     {
         std::clog << "genotype2 v" << version << "\n\n";
@@ -552,7 +525,6 @@ class Igor : Program
 
     ~Igor()
     {
-
     };
 
     private:

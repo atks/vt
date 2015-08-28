@@ -23,7 +23,7 @@
 
 #ifndef BCF_GENOTYPING_BUFFERED_READER_H
 #define BCF_GENOTYPING_BUFFERED_READER_H
-   
+
 #include <string>
 #include "htslib/kseq.h"
 #include "htslib/vcf.h"
@@ -32,23 +32,31 @@
 #include "program.h"
 #include "genotyping_record.h"
 #include "bcf_ordered_reader.h"
+#include "variant.h"
 
 /**
  * Wrapper for BCFOrderedReader.
  *
- * VCF records are wrapped in GenotyingRecord and are 
+ * VCF records are wrapped in GenotyingRecord and are
  * maintained in a buffer.
  *
  */
 class BCFGenotypingBufferedReader
 {
     public:
-    
-    BCFOrderedReader *odr;
-    std::list<GenotypingRecord> buffer;
 
-    uint32_t bref, vref;
-    uint32_t bstart, bend, vpos;
+    ///////
+    //i/o//
+    ///////
+    BCFOrderedReader* odr;
+
+    //////////////////
+    //buffer related//
+    //////////////////
+    std::list<GenotypingRecord*> buffer;
+    std::string chrom;
+    int32_t rid;
+    int32_t start, end;
 
     /**
      * Constructor.
@@ -56,9 +64,19 @@ class BCFGenotypingBufferedReader
     BCFGenotypingBufferedReader(std::string filename, std::vector<GenomeInterval>& intervals);
 
     /**
-     * Flush all the records.
+     * Collects sufficient statistics from read for variants to be genotyped.
      */
-    void flush(); 
+    void process_read(bam_hdr_t *h, bam1_t *s);
+    
+    /**
+     * Collects sufficient statistics from read for variants to be genotyped.
+     */
+    void collect_sufficient_statistics(GenotypingRecord *g, bam1_t *s);
+
+    /**
+     * Flush records.
+     */
+    void flush(BCFOrderedWriter* odw, bam_hdr_t *h, bam1_t *s, bool flush_all=false);
 
 //    /**
 //     * Print out all the records.
@@ -131,51 +149,5 @@ class BCFGenotypingBufferedReader
 //        return (epos1+100000)<vpos1 ? vpos1 : 0;
 //    }
 };
-
-
-
-//class OrderedBCFOverlapMatcher
-//{
-//    public:
-//
-//    ///////////
-//    //options//
-//    ///////////
-//    std::string input_file;   
-//    
-//    ///////
-//    //i/o//
-//    ///////
-//    BCFOrderedReader *odr;    
-//    
-//    bcf1_t *v;
-//    
-//    GenomeInterval current_interval;
-//    std::list<bcf1_t*> buffer;
-//    bool end_of_file;
-//    int32_t no_regions;
-//    
-//    /**
-//     * Constructor.
-//     */
-//    OrderedBCFOverlapMatcher(std::string& file, std::vector<GenomeInterval>& intervals);
-//
-//    /**
-//     * Destructor.
-//     */
-//    ~OrderedBCFOverlapMatcher();
-//    
-//    /**
-//     * Returns true if chrom:start1-end1 overlaps with a region in the file.
-//     */
-//    bool overlaps_with(std::string& chrom, int32_t start1, int32_t end1);
-//        
-//    /**
-//     * Returns true if chrom:start1-end1 overlaps with a region in the file and populates the overlapping variants.
-//     */
-//    bool overlaps_with(std::string& chrom, int32_t start1, int32_t end1, std::vector<bcf1_t*>& overlap_vars);
-//            
-//    private:
-//};
 
 #endif

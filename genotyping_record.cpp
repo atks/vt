@@ -20,6 +20,18 @@
 #include "genotyping_record.h"
 
 /**
+ * Constructor.
+ * @v - VCF record.
+ */
+GenotypingRecord::GenotypingRecord(bcf1_t *v)
+{
+    this->v = v;
+}
+
+/**
  * Destructor.
  */
-GenotypingRecord::~GenotypingRecord() {};
+GenotypingRecord::~GenotypingRecord()
+{
+    
+}
