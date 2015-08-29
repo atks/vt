@@ -43,13 +43,14 @@ void GenotypingRecord::clear()
     
     no_nonref = 0;
     
-    base_qualities.clear();
+    quals.clear();
     strands.clear();
     alleles.clear();
     cycles.clear();
     no_mismatches.clear();
     
-    uint32_t depth_fwd = 0;
+    depth = 0;
+    depth_fwd = 0;
     depth_rev = 0;
     base_qualities_sum = 0; 
 }
@@ -59,4 +60,5 @@ void GenotypingRecord::clear()
  */
 GenotypingRecord::~GenotypingRecord()
 {   
+    if (v) bcf_destroy(v);
 }

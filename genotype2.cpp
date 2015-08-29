@@ -176,18 +176,21 @@ class Igor : Program
         bcf_hdr_add_sample(odw->hdr, strdup(sample_id.c_str()));
         bcf_hdr_add_sample(odw->hdr, NULL);
 
+        //COMMON        
+        bcf_hdr_append(odw->hdr, "##FORMAT=<ID=DP,Number=1,Type=Integer,Description=\"Depth\">");
+
         //NONREF
         bcf_hdr_append(odw->hdr, "##FORMAT=<ID=BQ,Number=.,Type=Integer,Description=\"Phred-scaled Base Qualities\">");
-        bcf_hdr_append(odw->hdr, "##FORMAT=<ID=ALLELE,Number=.,Type=String,Description=\"Alleles - R or A\">");
-        bcf_hdr_append(odw->hdr, "##FORMAT=<ID=CYCLE,Number=.,Type=Integer,Description=\"Cycle of base\">");
-        bcf_hdr_append(odw->hdr, "##FORMAT=<ID=STRAND,Number=.,Type=String,Description=\"Strand of allele\">");
+        bcf_hdr_append(odw->hdr, "##FORMAT=<ID=AL,Number=1,Type=String,Description=\"Alleles - R or A\">");
+        bcf_hdr_append(odw->hdr, "##FORMAT=<ID=CY,Number=.,Type=Integer,Description=\"Cycle of base\">");
+        bcf_hdr_append(odw->hdr, "##FORMAT=<ID=ST,Number=1,Type=String,Description=\"Strand of allele\">");
         bcf_hdr_append(odw->hdr, "##FORMAT=<ID=NM,Number=.,Type=Integer,Description=\"Number of mismatches per read\">");
 
 
         //REF
         bcf_hdr_append(odw->hdr, "##FORMAT=<ID=BQSUM,Number=1,Type=Integer,Description=\"Sum of Base Qualities\">");
-        bcf_hdr_append(odw->hdr, "##FORMAT=<ID=DP,Number=1,Type=Integer,Description=\"Depth\">");
-
+        bcf_hdr_append(odw->hdr, "##FORMAT=<ID=DPF,Number=1,Type=Integer,Description=\"Depth of forward reference alleles\">");
+        bcf_hdr_append(odw->hdr, "##FORMAT=<ID=DPR,Number=1,Type=Integer,Description=\"Depth of reverse reference alleles\">");
         
         odw->write_hdr();
        

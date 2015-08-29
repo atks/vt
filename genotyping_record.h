@@ -40,17 +40,17 @@ class GenotypingRecord
     int32_t end1;
         
     int32_t vtype;
-    uint32_t no_nonref;
     
     //for records that observe at least one alternate observation
-    std::vector<uint32_t> base_qualities;
-    std::vector<char> strands;
-    std::vector<uint32_t> alleles;
+    std::vector<uint32_t> quals;
+    std::string strands;
+    std::string alleles;
     std::vector<uint32_t> cycles;
     std::vector<uint32_t> no_mismatches;
     
     //for records that only have reference observation
-    uint32_t depth_fwd, depth_rev;    
+    uint32_t no_nonref;
+    uint32_t depth, depth_fwd, depth_rev;    
     uint32_t base_qualities_sum;  
         
     /**
@@ -58,16 +58,6 @@ class GenotypingRecord
      * @v - VCF record.
      */
     GenotypingRecord(bcf1_t *v, int32_t vtype);
-
-    /**
-     * Genotypes a read and add to body of evidence.
-     */
-    void genotype(bam1_t *s);
-
-    /**
-     * Prints record.
-     */
-    void print(BCFOrderedWriter *odw);
 
     /**
      * Clears this record.
