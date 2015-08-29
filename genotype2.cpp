@@ -172,6 +172,7 @@ class Igor : Program
 
         //output vcf
         odw = new BCFOrderedWriter(output_vcf_file);
+        bcf_hdr_transfer_contigs(gbr->odr->hdr, odw->hdr);
         bcf_hdr_add_sample(odw->hdr, strdup(sample_id.c_str()));
         bcf_hdr_add_sample(odw->hdr, NULL);
 
@@ -406,7 +407,6 @@ class Igor : Program
         if (mode=="d")
         {
             //iterate sam
-            odw->write_hdr();
             bam_hdr_t *h = odr->hdr;
             bam1_t * s = bam_init1();
             while (odr->read(s))
@@ -424,9 +424,14 @@ class Igor : Program
                 ++no_passed_reads;
                 if ((no_reads & 0x0000FFFF) == 0)
                 {
+                    
                     std::cerr << bam_get_chrom(h,s) << ":" << bam_get_pos1(s) << "\n";
                 }
             }
+
+            no_snps_genotyped = gbr->no_snps_genotyped;
+            no_indels_genotyped = gbr->no_indels_genotyped;
+            no_vntrs_genotyped = gbr->no_vntrs_genotyped;
 
             gbr->flush(odw, h, s, true);
             odw->close();
@@ -437,8 +442,6 @@ class Igor : Program
                 //random access per site
 
         }
-        
-        
     }
 
     /**

@@ -60,6 +60,13 @@ class BCFGenotypingBufferedReader
     Variant variant;
 
     /////////
+    //stats//
+    /////////
+    uint32_t no_snps_genotyped;
+    uint32_t no_indels_genotyped;
+    uint32_t no_vntrs_genotyped;
+    
+    /////////
     //tools//
     /////////
     VariantManip *vm;
@@ -89,6 +96,7 @@ class BCFGenotypingBufferedReader
      */
     void genotype_and_print(BCFOrderedWriter* odw, GenotypingRecord* g);
     
+
 };
 
 #endif

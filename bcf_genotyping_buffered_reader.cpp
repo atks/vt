@@ -33,7 +33,16 @@ BCFGenotypingBufferedReader::BCFGenotypingBufferedReader(std::string filename, s
     /////////////////////
 
     odr = new BCFOrderedReader(filename, intervals);
-    
+ 
+ 
+    ////////////////////////
+    //stats initialization//
+    ////////////////////////
+    no_snps_genotyped = 0;
+    no_indels_genotyped = 0;
+    no_vntrs_genotyped = 0;
+
+ 
     ////////////////////////
     //tools initialization//
     ////////////////////////
@@ -48,6 +57,8 @@ BCFGenotypingBufferedReader::BCFGenotypingBufferedReader(std::string filename, s
  */
 void BCFGenotypingBufferedReader::process_read(bam_hdr_t *h, bam1_t *s)
 {
+    std::cerr << "size : " << buffer.size() << "\n";
+    
     uint32_t tid = bam_get_tid(s);
     uint32_t pos1 = bam_get_pos1(s);
     uint32_t end1 = bam_get_end_pos1(s);
@@ -82,8 +93,10 @@ void BCFGenotypingBufferedReader::process_read(bam_hdr_t *h, bam1_t *s)
     bcf1_t *v = bcf_init();
     while (odr->read(v))
     {    
+        //std::cerr << "\tgot read " << "\n";
         int32_t vtype = vm->classify_variant(odr->hdr, v, variant);
         g = new GenotypingRecord(v, vtype);
+        buffer.push_back(g);
         
         if (tid!=g->rid || end1<g->pos1)
         {
@@ -138,7 +151,7 @@ void BCFGenotypingBufferedReader::collect_sufficient_statistics(GenotypingRecord
                 }
             }
             
-        //    return end_pos1-1;
+        //return end_pos1-1;
         
     
         
@@ -187,7 +200,6 @@ void BCFGenotypingBufferedReader::flush(BCFOrderedWriter* odw, bam_hdr_t *h, bam
         {
             g = buffer.front();
             
-            std::cerr << " " << buffer.size() << "\n";
             if (tid==g->rid)
             {
                 if (bam_get_end_pos1(s)<g->pos1)
@@ -221,9 +233,12 @@ void BCFGenotypingBufferedReader::genotype_and_print(BCFOrderedWriter* odw, Geno
     if (g->vtype==VT_SNP)
     {
         bcf1_t *v = bcf_init();
+        bcf_clear(v);
+        bcf_set_n_sample(v, 1);
         
        
         bcf_set_rid(v, bcf_get_rid(g->v));
+        bcf_set_pos1(v, bcf_get_pos1(g->v));
         
         kstring_t new_alleles = {0,0,0};    
         char** alleles = bcf_get_allele(g->v);
@@ -236,14 +251,20 @@ void BCFGenotypingBufferedReader::genotype_and_print(BCFOrderedWriter* odw, Geno
         
         if (new_alleles.l) free(new_alleles.s);
         
-        odw->write(g->v);
+       // bcf_print(odr->hdr, v);
+        
+        
+        odw->write(v);
+        bcf_destroy(v);
+        
+        ++no_snps_genotyped;
     }   
     else if (g->vtype==VT_INDEL) 
     {
-        
+        ++no_indels_genotyped;
     }
     else if (g->vtype==VT_VNTR) 
     {
-        
+        ++no_vntrs_genotyped;
     }
 }
