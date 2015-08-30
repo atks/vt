@@ -176,7 +176,7 @@ class Igor : Program
         bcf_hdr_add_sample(odw->hdr, strdup(sample_id.c_str()));
         bcf_hdr_add_sample(odw->hdr, NULL);
 
-        //COMMON        
+        //COMMON
         bcf_hdr_append(odw->hdr, "##FORMAT=<ID=DP,Number=1,Type=Integer,Description=\"Depth\">");
 
         //NONREF
@@ -191,9 +191,9 @@ class Igor : Program
         bcf_hdr_append(odw->hdr, "##FORMAT=<ID=BQSUM,Number=1,Type=Integer,Description=\"Sum of Base Qualities\">");
         bcf_hdr_append(odw->hdr, "##FORMAT=<ID=DPF,Number=1,Type=Integer,Description=\"Depth of forward reference alleles\">");
         bcf_hdr_append(odw->hdr, "##FORMAT=<ID=DPR,Number=1,Type=Integer,Description=\"Depth of reverse reference alleles\">");
-        
+
         odw->write_hdr();
-       
+
 
         ////////////////////////
         //stats initialization//
@@ -216,12 +216,12 @@ class Igor : Program
         //for tracking overlapping reads
         reads = kh_init(rdict);
 
-//        //////////////////////////////////////
-//        //discovery variables initialization//
-//        //////////////////////////////////////
-//        chrom = "";
-//        tid = -1;
-//        rid = -1;
+        //////////////////////////////////////
+        //discovery variables initialization//
+        //////////////////////////////////////
+        chrom = "";
+        tid = -1;
+        rid = -1;
 
         ////////////////////////
         //tools initialization//
@@ -369,7 +369,6 @@ class Igor : Program
                             bam_print_key_values(odr->hdr, s);
                             ++no_malformed_ins_cigars;
                         }
-
                     }
                 }
 
@@ -398,8 +397,7 @@ class Igor : Program
                 }
             }
 
-            //tid is not updated here, it is handled by flush()
-            //kh_destroy(rdict, h);
+            tid = bam_get_tid(s);
         }
 
         return true;
@@ -427,8 +425,8 @@ class Igor : Program
                 ++no_passed_reads;
                 if ((no_reads & 0x0000FFFF) == 0)
                 {
-                    
-                    std::cerr << bam_get_chrom(h,s) << ":" << bam_get_pos1(s) << "\n";
+                    std::cerr << bam_get_chrom(h,s) << ":" << bam_get_pos1(s) << " ("  << gbr->buffer.size() << ")\n";
+//                    std::cerr << bam_get_chrom(h,s) << ":" << bam_get_pos1(s) << " ("  << kh_size(reads)<< ")\n";
                 }
             }
 
@@ -532,6 +530,7 @@ class Igor : Program
 
     ~Igor()
     {
+        kh_destroy(rdict, reads);
     };
 
     private:
