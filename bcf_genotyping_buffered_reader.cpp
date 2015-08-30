@@ -132,148 +132,291 @@ void BCFGenotypingBufferedReader::collect_sufficient_statistics(GenotypingRecord
 {
     if (g->vtype==VT_SNP)
     {
-        
-        char strand = bam_is_rev(s) ? 'R' : 'F';
-        char allele = 'R';
-        uint32_t qual = 30; 
-        uint32_t cycle = 10; 
-        uint8_t *nm_aux;
-        int32_t no_mismatches = 0;
-        ((nm_aux=bam_aux_get(s, "NM")) &&  (no_mismatches = bam_aux2i(nm_aux)));
-        
-        int32_t n_cigar_op = bam_get_n_cigar_op(s);
-        int32_t no_mismatches1 = 0;
-        if (n_cigar_op)
-        {
-            int32_t vpos1 = g->pos1;
-            int32_t cpos1 = bam_get_pos1(s);
-            int32_t rpos1 = 0;
+        if (bcf_get_n_allele(g->v)==2)
+        {        
+            char strand = bam_is_rev(s) ? 'R' : 'F';
+            char allele = 'R';
+            uint32_t qual = 30; 
+            uint32_t cycle = 10; 
+            uint8_t *nm_aux;
+            int32_t no_mismatches = 0;
+            ((nm_aux=bam_aux_get(s, "NM")) &&  (no_mismatches = bam_aux2i(nm_aux)));
             
-            uint32_t *cigar = bam_get_cigar(s);
-            for (int32_t i = 0; i < n_cigar_op; ++i)
-            {
-                int32_t opchr = bam_cigar_opchr(cigar[i]);
-                int32_t oplen = bam_cigar_oplen(cigar[i]);
-                
-                if (opchr=='M')
-                {
-                    if (vpos1>=cpos1 && vpos1<=cpos1+oplen)
-                    {
-                        uint8_t* bseq = bam_get_seq(s);
-                        uint8_t* bqual = bam_get_qual(s);
-                        int32_t l_qseq = bam_get_l_qseq(s);
-        
-                        rpos1 += vpos1-cpos1;
-                        
-//                        std::cerr << bcf_get_allele(g->v)[0][0]  << " vs " << bam_base2char(bam_seqi(bseq, rpos1)) << "\n";
-                        
-                        allele = bam_base2char(bam_seqi(bseq, rpos1)) == bcf_get_allele(g->v)[0][0] ? 'R' : 'A';
-                        qual = bqual[rpos1];
-                       // std::cerr << "read length " << bam_get_l_qseq(s) << " " << rpos1 << "\n";
-                        cycle = strand == 'F' ? rpos1 : (bam_get_l_qseq(s) - rpos1);
-                    
-                     //   break;   
-                    }
-                    
-                    cpos1 += oplen;
-                    rpos1 += oplen;
-                }
-                else if (opchr=='D' || opchr=='N')
-                {
-                    cpos1 += oplen;
-                }
-                else if (opchr=='I')
-                {
-                    ++no_mismatches1;
-                    rpos1 += oplen;
-                }
-                else if (opchr=='S')
-                {
-                    rpos1 += oplen;
-                }
-            }
-        }
-        
-        uint8_t *md_aux;
-        char* md = 0;
-        ((md_aux=bam_aux_get(s, "MD")) &&  (md = bam_aux2Z(md_aux)));        
-        char* mdp = md;
-        bool indel = false;
-        while (*mdp)
-        {
-            if (isdigit(*mdp))
-            {
-                indel = false;
-            }
-            else if (*mdp=='N')
-            {
-                //ignore
-            } 
-            else if (*mdp=='^')
-            {
-                ++no_mismatches1;
-                indel = true;
-            }    
-            else //alphabet
-            {
-                if (!indel) ++no_mismatches1;
-            }
-            
-            
-            ++mdp;
-        }
-        
-        if (false&&  no_mismatches != no_mismatches1 )
-        {
+            int32_t n_cigar_op = bam_get_n_cigar_op(s);
+            int32_t no_mismatches1 = 0;
             if (n_cigar_op)
             {
+                int32_t vpos1 = g->pos1;
+                int32_t cpos1 = bam_get_pos1(s);
+                int32_t rpos1 = 0;
+                
                 uint32_t *cigar = bam_get_cigar(s);
                 for (int32_t i = 0; i < n_cigar_op; ++i)
                 {
                     int32_t opchr = bam_cigar_opchr(cigar[i]);
                     int32_t oplen = bam_cigar_oplen(cigar[i]);
                     
-                    std::cerr << oplen << ((char)opchr);
-                }
-                std::cerr << "\t";
-            }
-        
+                    if (opchr=='M')
+                    {
+                        if (vpos1>=cpos1 && vpos1<=cpos1+oplen)
+                        {
+                            uint8_t* bseq = bam_get_seq(s);
+                            uint8_t* bqual = bam_get_qual(s);
+                            int32_t l_qseq = bam_get_l_qseq(s);
             
-            std::cerr << md << " NM=" << no_mismatches << " NMfromMD=" << no_mismatches1 << "\n";
+                            rpos1 += vpos1-cpos1;
+                            
+    //                        std::cerr << bcf_get_allele(g->v)[0][0]  << " vs " << bam_base2char(bam_seqi(bseq, rpos1)) << "\n";
+                            
+                            allele = bam_base2char(bam_seqi(bseq, rpos1)) == bcf_get_allele(g->v)[0][0] ? 'R' : 'A';
+                            qual = bqual[rpos1];
+                           // std::cerr << "read length " << bam_get_l_qseq(s) << " " << rpos1 << "\n";
+                            cycle = strand == 'F' ? rpos1 : (bam_get_l_qseq(s) - rpos1);
+                        
+                         //   break;   
+                        }
+                        
+                        cpos1 += oplen;
+                        rpos1 += oplen;
+                    }
+                    else if (opchr=='D' || opchr=='N')
+                    {
+                        cpos1 += oplen;
+                    }
+                    else if (opchr=='I')
+                    {
+                        ++no_mismatches1;
+                        rpos1 += oplen;
+                    }
+                    else if (opchr=='S')
+                    {
+                        rpos1 += oplen;
+                    }
+                }
+            }
+            
+            uint8_t *md_aux;
+            char* md = 0;
+            ((md_aux=bam_aux_get(s, "MD")) &&  (md = bam_aux2Z(md_aux)));        
+            char* mdp = md;
+            bool indel = false;
+            while (*mdp)
+            {
+                if (isdigit(*mdp))
+                {
+                    indel = false;
+                }
+                else if (*mdp=='N')
+                {
+                    //ignore
+                } 
+                else if (*mdp=='^')
+                {
+                    ++no_mismatches1;
+                    indel = true;
+                }    
+                else //alphabet
+                {
+                    if (!indel) ++no_mismatches1;
+                }
+                
+                
+                ++mdp;
+            }
+            
+            if (false&&  no_mismatches != no_mismatches1 )
+            {
+                if (n_cigar_op)
+                {
+                    uint32_t *cigar = bam_get_cigar(s);
+                    for (int32_t i = 0; i < n_cigar_op; ++i)
+                    {
+                        int32_t opchr = bam_cigar_opchr(cigar[i]);
+                        int32_t oplen = bam_cigar_oplen(cigar[i]);
+                        
+                        std::cerr << oplen << ((char)opchr);
+                    }
+                    std::cerr << "\t";
+                }
+            
+                
+                std::cerr << md << " NM=" << no_mismatches << " NMfromMD=" << no_mismatches1 << "\n";
+            }
+            
+            no_mismatches = no_mismatches1;
+            
+            if (allele=='A') 
+            {
+                ++g->no_nonref;
+            }
+            
+            if (strand=='F') 
+            {
+                ++g->depth_fwd;
+            }
+            else
+            {
+                ++g->depth_rev;
+            }
+            
+            g->base_qualities_sum += qual;
+    
+            ++g->depth;
+            g->quals.push_back(qual);
+            g->cycles.push_back(cycle);
+            g->alleles.append(1, allele);
+            g->strands.append(1, strand);
+            g->no_mismatches.push_back(no_mismatches);
         }
-        
-        no_mismatches = no_mismatches1;
-        
-        if (allele=='A') 
+        else //multiallelic
         {
-            ++g->no_nonref;
         }
-        
-        if (strand=='F') 
-        {
-            ++g->depth_fwd;
-        }
-        else
-        {
-            ++g->depth_rev;
-        }
-        
-        g->base_qualities_sum += qual;
-
-        ++g->depth;
-        g->quals.push_back(qual);
-        g->cycles.push_back(cycle);
-        g->alleles.append(1, allele);
-        g->strands.append(1, strand);
-        g->no_mismatches.push_back(no_mismatches);
     }
     else if (g->vtype==VT_INDEL)
     {
+        if (bcf_get_n_allele(g->v)==2)
+        {        
+            char strand = bam_is_rev(s) ? 'R' : 'F';
+            char allele = 'R';
+            uint32_t qual = 30; 
+            uint32_t cycle = 10; 
+            int32_t no_mismatches = 0;
+            
+            //left align CIGAR first.            
+            
+            int32_t n_cigar_op = bam_get_n_cigar_op(s);
 
+            if (n_cigar_op)
+            {
+                int32_t vpos1 = g->pos1;
+                int32_t cpos1 = bam_get_pos1(s);
+                int32_t rpos1 = 0;
+                
+                uint32_t *cigar = bam_get_cigar(s);
+                for (int32_t i = 0; i < n_cigar_op; ++i)
+                {
+                    int32_t opchr = bam_cigar_opchr(cigar[i]);
+                    int32_t oplen = bam_cigar_oplen(cigar[i]);
+                    
+                    if (opchr=='M')
+                    {
+                        if (vpos1>=cpos1 && vpos1<=cpos1+oplen)
+                        {
+                            uint8_t* bseq = bam_get_seq(s);
+                            uint8_t* bqual = bam_get_qual(s);
+                            int32_t l_qseq = bam_get_l_qseq(s);
+            
+                            rpos1 += vpos1-cpos1;
+                            
+    //                        std::cerr << bcf_get_allele(g->v)[0][0]  << " vs " << bam_base2char(bam_seqi(bseq, rpos1)) << "\n";
+                            
+                            allele = bam_base2char(bam_seqi(bseq, rpos1)) == bcf_get_allele(g->v)[0][0] ? 'R' : 'A';
+                            qual = bqual[rpos1];
+                           // std::cerr << "read length " << bam_get_l_qseq(s) << " " << rpos1 << "\n";
+                            cycle = strand == 'F' ? rpos1 : (bam_get_l_qseq(s) - rpos1);
+                        
+                         //   break;   
+                        }
+                        
+                        cpos1 += oplen;
+                        rpos1 += oplen;
+                    }
+                    else if (opchr=='D' || opchr=='N')
+                    {
+                        cpos1 += oplen;
+                    }
+                    else if (opchr=='I')
+                    {
+                        ++no_mismatches;
+                        rpos1 += oplen;
+                    }
+                    else if (opchr=='S')
+                    {
+                        rpos1 += oplen;
+                    }
+                }
+            }
+            
+            uint8_t *md_aux;
+            char* md = 0;
+            ((md_aux=bam_aux_get(s, "MD")) &&  (md = bam_aux2Z(md_aux)));        
+            char* mdp = md;
+            bool indel = false;
+            while (*mdp)
+            {
+                if (isdigit(*mdp))
+                {
+                    indel = false;
+                }
+                else if (*mdp=='N')
+                {
+                    //ignore
+                } 
+                else if (*mdp=='^')
+                {
+                    ++no_mismatches;
+                    indel = true;
+                }    
+                else //alphabet
+                {
+                    if (!indel) ++no_mismatches;
+                }
+                
+                
+                ++mdp;
+            }
+            
+            if (false)
+            {
+                if (n_cigar_op)
+                {
+                    uint32_t *cigar = bam_get_cigar(s);
+                    for (int32_t i = 0; i < n_cigar_op; ++i)
+                    {
+                        int32_t opchr = bam_cigar_opchr(cigar[i]);
+                        int32_t oplen = bam_cigar_oplen(cigar[i]);
+                        
+                        std::cerr << oplen << ((char)opchr);
+                    }
+                    std::cerr << "\t";
+                }
+            
+                
+                std::cerr << md << " NM=" << no_mismatches << "\n";
+            }
+
+            
+            if (allele=='A') 
+            {
+                ++g->no_nonref;
+            }
+            
+            if (strand=='F') 
+            {
+                ++g->depth_fwd;
+            }
+            else
+            {
+                ++g->depth_rev;
+            }
+            
+            g->base_qualities_sum += qual;
+    
+            ++g->depth;
+            g->quals.push_back(qual);
+            g->cycles.push_back(cycle);
+            g->alleles.append(1, allele);
+            g->strands.append(1, strand);
+            g->no_mismatches.push_back(no_mismatches);
+        }
+        else //multiallelic
+        {
+            
+        }
     }
     else if (g->vtype==VT_VNTR)
     {
-
+        
     }
 }
 
@@ -359,6 +502,59 @@ void BCFGenotypingBufferedReader::genotype_and_print(BCFOrderedWriter* odw, Geno
         
         if (g->no_nonref)
         {
+            //depth
+            bcf_update_format_int32(odw->hdr, v, "DP", &g->depth, 1);    
+    
+            //cycles
+            bcf_update_format_int32(odw->hdr, v, "CY", &g->cycles[0], g->cycles.size());    
+    
+            //strand
+            char* str = const_cast<char*>(g->strands.c_str());
+            bcf_update_format_string(odw->hdr, v, "ST", const_cast<const char**>(&str), 1);
+    
+            //alleles
+            str = const_cast<char*>(g->alleles.c_str());
+            bcf_update_format_string(odw->hdr, v, "AL", const_cast<const char**>(&str),1);
+    
+            //no of mismatches
+            bcf_update_format_int32(odw->hdr, v, "NM", &g->no_mismatches[0], g->no_mismatches.size());   
+        }
+        else
+        {
+            //depth
+            bcf_update_format_int32(odw->hdr, v, "DPF", &g->depth_fwd, 1);    
+            bcf_update_format_int32(odw->hdr, v, "DPR", &g->depth_rev, 1);    
+    
+        }
+        
+        odw->write(v);
+        bcf_destroy(v);
+                
+        ++no_snps_genotyped;
+    }
+    else if (g->vtype==VT_INDEL)
+    {
+        bcf1_t *v = bcf_init();
+        bcf_clear(v);
+        bcf_set_n_sample(v, 1);
+
+
+        bcf_set_rid(v, bcf_get_rid(g->v));
+        bcf_set_pos1(v, bcf_get_pos1(g->v));
+
+        kstring_t new_alleles = {0,0,0};
+        char** alleles = bcf_get_allele(g->v);
+        for (size_t i=0; i<bcf_get_n_allele(g->v); ++i)
+        {
+            if (i) kputc(',', &new_alleles);
+            kputs(alleles[i], &new_alleles);
+        }
+        bcf_update_alleles_str(odw->hdr, v, new_alleles.s);
+
+        if (new_alleles.l) free(new_alleles.s);
+        
+        if (g->no_nonref)
+        {
             //bcf_print(odr->hdr, v);
     
             //depth
@@ -394,11 +590,6 @@ void BCFGenotypingBufferedReader::genotype_and_print(BCFOrderedWriter* odw, Geno
         odw->write(v);
         bcf_destroy(v);
         
-        
-        ++no_snps_genotyped;
-    }
-    else if (g->vtype==VT_INDEL)
-    {
         ++no_indels_genotyped;
     }
     else if (g->vtype==VT_VNTR)

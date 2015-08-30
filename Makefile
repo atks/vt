@@ -23,6 +23,7 @@ SOURCES = align\
 		chmm\
 		compute_concordance\
 		compute_features\
+		compute_features2\
 		config\
 		consolidate_variants\
 		construct_probes\
