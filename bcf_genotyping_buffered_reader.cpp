@@ -142,8 +142,8 @@ void BCFGenotypingBufferedReader::collect_sufficient_statistics(GenotypingRecord
             int32_t no_mismatches = 0;
             ((nm_aux=bam_aux_get(s, "NM")) &&  (no_mismatches = bam_aux2i(nm_aux)));
 
-            if (false)
-            {
+//            if (true)
+//            {
                 int32_t n_cigar_op = bam_get_n_cigar_op(s);
                 int32_t no_mismatches1 = 0;
                 if (n_cigar_op)
@@ -253,9 +253,9 @@ void BCFGenotypingBufferedReader::collect_sufficient_statistics(GenotypingRecord
     
                     ++mdp;
                 }
-            }
-            else
-            {
+//            }
+//            else
+//            {
 //
 //            //iterate cigar
 //            uint32_t n_cigar_op = bam_get_n_cigar_op(s);
@@ -514,7 +514,7 @@ void BCFGenotypingBufferedReader::collect_sufficient_statistics(GenotypingRecord
 //                    }
 //                }
 //            }
-            }
+           // }
 
             if (false && no_mismatches != no_mismatches1 )
             {
