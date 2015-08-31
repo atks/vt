@@ -177,6 +177,10 @@ class Igor : Program
         bcf_hdr_add_sample(odw->hdr, NULL);
 
         //COMMON
+        bcf_hdr_append(odw->hdr, "##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">");
+        bcf_hdr_append(odw->hdr, "##FORMAT=<ID=PL,Number=G,Type=Integer,Description=\"PHRED scaled genotype likelihoods\">");
+        bcf_hdr_append(odw->hdr, "##FORMAT=<ID=ADF,Number=A,Type=Integer,Description=\"Allele Depth (Forward strand)\">");
+        bcf_hdr_append(odw->hdr, "##FORMAT=<ID=ADR,Number=A,Type=Integer,Description=\"Allele Depth (Reverse strand)\">");
         bcf_hdr_append(odw->hdr, "##FORMAT=<ID=DP,Number=1,Type=Integer,Description=\"Depth\">");
 
         //NONREF
@@ -185,7 +189,6 @@ class Igor : Program
         bcf_hdr_append(odw->hdr, "##FORMAT=<ID=CY,Number=.,Type=Integer,Description=\"Cycle of base\">");
         bcf_hdr_append(odw->hdr, "##FORMAT=<ID=ST,Number=1,Type=String,Description=\"Strand of allele\">");
         bcf_hdr_append(odw->hdr, "##FORMAT=<ID=NM,Number=.,Type=Integer,Description=\"Number of mismatches per read\">");
-
 
         //REF
         bcf_hdr_append(odw->hdr, "##FORMAT=<ID=BQSUM,Number=1,Type=Integer,Description=\"Sum of Base Qualities\">");

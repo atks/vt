@@ -50,6 +50,8 @@ class GenotypingRecord
     
     //for records that only have reference observation
     uint32_t no_nonref;
+    std::vector<uint32_t> allele_depth_fwd;
+    std::vector<uint32_t> allele_depth_rev;  
     uint32_t depth, depth_fwd, depth_rev;    
     uint32_t base_qualities_sum;  
         

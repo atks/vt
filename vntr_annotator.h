@@ -219,9 +219,9 @@ class VNTRAnnotator
     void print();
 
     /**
-     * Returns true if is to be classified as an STR
+     * Returns true if is to be classified as a VNTR
      */
-    bool is_str(Variant& variant, int32_t mode);
+    bool is_vntr(Variant& variant, int32_t mode);
 
 };
 

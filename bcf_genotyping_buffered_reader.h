@@ -34,6 +34,7 @@
 #include "bcf_ordered_reader.h"
 #include "variant.h"
 #include "variant_manip.h"
+#include "log_tool.h"
 
 /**
  * Wrapper for BCFOrderedReader.
@@ -70,6 +71,7 @@ class BCFGenotypingBufferedReader
     //tools//
     /////////
     VariantManip *vm;
+    LogTool lt;
     
     /**
      * Constructor.
@@ -80,7 +82,12 @@ class BCFGenotypingBufferedReader
      * Collects sufficient statistics from read for variants to be genotyped.
      */
     void process_read(bam_hdr_t *h, bam1_t *s);
-    
+ 
+    /**
+     * Compute SNP genotype likelihoods in PHRED scale.
+     */
+    void compute_snp_pl(std::string& alleles, std::vector<uint32_t>& quals, uint32_t ploidy,  std::vector<uint32_t>& pls);
+   
     /**
      * Collects sufficient statistics from read for variants to be genotyped.
      */
@@ -94,8 +101,7 @@ class BCFGenotypingBufferedReader
     /**
      * Genotype variant and print to odw.
      */
-    void genotype_and_print(BCFOrderedWriter* odw, GenotypingRecord* g);
-    
+    void genotype_and_print(BCFOrderedWriter* odw, GenotypingRecord* g);    
 
 };
 

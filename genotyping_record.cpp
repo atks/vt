@@ -49,6 +49,8 @@ void GenotypingRecord::clear()
     cycles.clear();
     no_mismatches.clear();
     
+    allele_depth_fwd.resize(2,0);
+    allele_depth_rev.resize(2,0);  
     depth = 0;
     depth_fwd = 0;
     depth_rev = 0;

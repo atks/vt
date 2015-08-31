@@ -750,7 +750,7 @@ std::string VNTRAnnotator::shift_phase(std::string& seq, size_t i)
 /**
  * Returns true if is to be classified as an STR
  */
-bool VNTRAnnotator::is_str(Variant& variant, int32_t mode)
+bool VNTRAnnotator::is_vntr(Variant& variant, int32_t mode)
 {
     uint32_t mlen = variant.vntr.mlen;
     uint32_t rlen = variant.vntr.rend1 - variant.vntr.rbeg1 + 1;

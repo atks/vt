@@ -123,12 +123,19 @@ class Igor : Program
                  "              x : integrated models",
                  false, "e", "str", cmd);
             TCLAP::ValueArg<std::string> arg_annotation_mode("a", "a", "mode [x]\n"
-                 "              e : determine by exact alignment.\n"
+                 "              e : output VNTR variant .\n"
                  "              f : determine by fuzzy alignment.\n"
                  "              p : determine by penalized fuzzy alignment.\n"
                  "              h : using HMMs"
                  "              x : integrated models",
                  false, "e", "str", cmd);
+            TCLAP::ValueArg<std::string> arg_classification("a", "a", "mode [x]\n"
+                 "              e : output VNTR variant .\n"
+                 "              f : determine by fuzzy alignment.\n"
+                 "              p : determine by penalized fuzzy alignment.\n"
+                 "              h : using HMMs"
+                 "              x : integrated models",
+                 false, "e", "str", cmd);     
             TCLAP::ValueArg<uint32_t> arg_alignment_penalty("p", "p", "alignment penalty [0]\n", false, 0, "int", cmd);
             TCLAP::SwitchArg arg_debug("d", "d", "debug [false]", cmd, false);
             TCLAP::UnlabeledValueArg<std::string> arg_input_vcf_file("<in.vcf>", "input VCF file", true, "","file", cmd);
