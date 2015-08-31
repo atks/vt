@@ -1288,7 +1288,7 @@ class Igor : Program
                 }
             }
         }
-        else
+        else //don't use MD tag
         {
             //iterate cigar
             uint32_t n_cigar_op = bam_get_n_cigar_op(s);

@@ -142,89 +142,381 @@ void BCFGenotypingBufferedReader::collect_sufficient_statistics(GenotypingRecord
             int32_t no_mismatches = 0;
             ((nm_aux=bam_aux_get(s, "NM")) &&  (no_mismatches = bam_aux2i(nm_aux)));
 
-            int32_t n_cigar_op = bam_get_n_cigar_op(s);
-            int32_t no_mismatches1 = 0;
-            if (n_cigar_op)
+            if (false)
             {
-                int32_t vpos1 = g->pos1;
-                int32_t cpos1 = bam_get_pos1(s);
-                int32_t rpos1 = 0;
-
-                uint32_t *cigar = bam_get_cigar(s);
-                for (int32_t i = 0; i < n_cigar_op; ++i)
+                int32_t n_cigar_op = bam_get_n_cigar_op(s);
+                int32_t no_mismatches1 = 0;
+                if (n_cigar_op)
                 {
-                    int32_t opchr = bam_cigar_opchr(cigar[i]);
-                    int32_t oplen = bam_cigar_oplen(cigar[i]);
-
-                    if (opchr=='M')
+                    int32_t vpos1 = g->pos1;
+                    int32_t cpos1 = bam_get_pos1(s);
+                    int32_t rpos1 = 0;
+    
+                    uint32_t *cigar = bam_get_cigar(s);
+                    for (int32_t i = 0; i < n_cigar_op; ++i)
                     {
-                        if (vpos1>=cpos1 && vpos1<=cpos1+oplen)
+                        int32_t opchr = bam_cigar_opchr(cigar[i]);
+                        int32_t oplen = bam_cigar_oplen(cigar[i]);
+    
+                        if (opchr=='M')
                         {
-                            uint8_t* bseq = bam_get_seq(s);
-                            uint8_t* bqual = bam_get_qual(s);
-                            int32_t l_qseq = bam_get_l_qseq(s);
-
-                            rpos1 += vpos1-cpos1;
-
-    //                        std::cerr << bcf_get_allele(g->v)[0][0]  << " vs " << bam_base2char(bam_seqi(bseq, rpos1)) << "\n";
-
-                            allele = bam_base2char(bam_seqi(bseq, rpos1)) == bcf_get_allele(g->v)[0][0] ? 'R' : 'A';
-                            qual = bqual[rpos1];
-                           // std::cerr << "read length " << bam_get_l_qseq(s) << " " << rpos1 << "\n";
-                            cycle = strand == 'F' ? rpos1 : (bam_get_l_qseq(s) - rpos1);
-
-                         //   break;
+                            if (vpos1>=cpos1 && vpos1<=cpos1+oplen)
+                            {
+                                uint8_t* bseq = bam_get_seq(s);
+                                uint8_t* bqual = bam_get_qual(s);
+                                int32_t l_qseq = bam_get_l_qseq(s);
+    
+                                rpos1 += vpos1-cpos1;
+    
+        //                        std::cerr << bcf_get_allele(g->v)[0][0]  << " vs " << bam_base2char(bam_seqi(bseq, rpos1)) << "\n";
+    
+                                char obs_allele = bam_base2char(bam_seqi(bseq, rpos1));
+                                
+    //                            std::cerr << obs_allele << " " << bcf_get_allele(g->v)[0][0] << " " << bcf_get_allele(g->v)[1][0] << "\n";
+                                
+                                if (obs_allele==bcf_get_allele(g->v)[0][0])
+                                {    
+                                    allele = 'R';
+                                }
+                                else if (obs_allele==bcf_get_allele(g->v)[1][0])
+                                {    
+                                    allele = 'A';
+                                }
+                                else 
+                                {    
+                                    allele = 'O';
+                                }
+                                qual = bqual[rpos1];
+                               // std::cerr << "read length " << bam_get_l_qseq(s) << " " << rpos1 << "\n";
+                                cycle = strand == 'F' ? rpos1 : (bam_get_l_qseq(s) - rpos1);
+    
+                             //   break;
+                            }
+    
+                            cpos1 += oplen;
+                            rpos1 += oplen;
                         }
-
-                        cpos1 += oplen;
-                        rpos1 += oplen;
+                        else if (opchr=='D' || opchr=='N')
+                        {
+                            cpos1 += oplen;
+                        }
+                        else if (opchr=='I')
+                        {
+                            ++no_mismatches1;
+                            rpos1 += oplen;
+                        }
+                        else if (opchr=='S')
+                        {
+                            rpos1 += oplen;
+                        }
                     }
-                    else if (opchr=='D' || opchr=='N')
+                }
+    
+                uint8_t *md_aux;
+                char* md = 0;
+                ((md_aux=bam_aux_get(s, "MD")) &&  (md = bam_aux2Z(md_aux)));
+                char* mdp = md;
+                bool indel = false;
+                uint8_t* bqual = bam_get_qual(s);
+                uint32_t rpos1 = 0;
+                std::string digit_string;
+                uint32_t no_matches = 0;
+                while (*mdp)
+                {
+                    if (isdigit(*mdp))
                     {
-                        cpos1 += oplen;
+                        str2uint32(digit_string, no_matches);
+                        rpos1 += no_matches;
+                        indel = false;
                     }
-                    else if (opchr=='I')
+                    else if (*mdp=='N')
+                    {
+                        ++rpos1;
+                        //ignore
+                    }
+                    else if (*mdp=='^')
                     {
                         ++no_mismatches1;
-                        rpos1 += oplen;
+                        indel = true;
                     }
-                    else if (opchr=='S')
+                    else //alphabet
                     {
-                        rpos1 += oplen;
+                        if (!indel) 
+                        {
+                            ++no_mismatches1;
+                        }
+                        else
+                        {
+                            ++rpos1;
+                        }
                     }
+    
+                    ++mdp;
                 }
             }
-
-            uint8_t *md_aux;
-            char* md = 0;
-            ((md_aux=bam_aux_get(s, "MD")) &&  (md = bam_aux2Z(md_aux)));
-            char* mdp = md;
-            bool indel = false;
-            while (*mdp)
+            else
             {
-                if (isdigit(*mdp))
-                {
-                    indel = false;
-                }
-                else if (*mdp=='N')
-                {
-                    //ignore
-                }
-                else if (*mdp=='^')
-                {
-                    ++no_mismatches1;
-                    indel = true;
-                }
-                else //alphabet
-                {
-                    if (!indel) ++no_mismatches1;
-                }
+//
+//            //iterate cigar
+//            uint32_t n_cigar_op = bam_get_n_cigar_op(s);
+//
+//            char* mdp = md;
+//            uint32_t cpos1 = pos1; //current 1 based genome position
+//            uint32_t spos0 = 0;    //current position in read sequence
+//
+//            //variables for I's embedded in Matches in the MD tag
+//            uint32_t md_mlen_left = 0;
 
-
-                ++mdp;
+//            if (n_cigar_op)
+//            {
+//                uint32_t *cigar = bam_get_cigar(s);
+//                bool seenM = false;
+//
+//                if (debug>=3) pileup.print_state();
+//                for (uint32_t i = 0; i < n_cigar_op; ++i)
+//                {
+//                    uint32_t oplen = bam_cigar_oplen(cigar[i]);
+//                    char opchar = bam_cigar_opchr(cigar[i]);
+//
+//                    if (debug) std::cerr << "CIGAR: " << oplen << " " << opchar << "\n";
+//
+//                    if (opchar=='S')
+//                    {
+//                        if (i==n_cigar_op-1 || (i==0 && n_cigar_op>=2 && bam_cigar_opchr(cigar[1])=='M'))
+//                        {
+//                            //add to S evidence
+//                            std::string ins = "";
+//                            float mean_qual = 0;
+//                            for (size_t j=0; j<oplen ; ++j)
+//                            {
+//                                ins += bam_base2char(bam_seqi(seq, spos0+j));
+//                                mean_qual += qual[spos0+j];
+//                            }
+//                            mean_qual /= oplen;
+//
+//                            if (cpos1==pos1)
+//                            {
+//                                if (debug) std::cerr << "\t\t\tadding LSCLIP: " << cpos1 << "\t" << ins << " {" << mean_qual << "}\n";
+//                                pileup.add_lsclip(cpos1, ins, mean_qual, strand);
+//                            }
+//                            else if (seenM)
+//                            {
+//                                if (debug) std::cerr << "\t\t\tadding RSCLIP: " << (cpos1-1) << "\t" << ins << " {" << mean_qual << "}\n";
+//                                pileup.add_rsclip(cpos1-1, ins, mean_qual, strand);
+//                            }
+//                        }
+//
+//                        spos0 += oplen;
+//                    }
+//                    else if (opchar=='M')
+//                    {
+//                        uint32_t lpos1 = cpos1; // we need this because M contains matches and mismatches
+//                        uint32_t sspos0 = spos0; // we need this because M contains matches and mismatches
+//                        uint32_t mlen = oplen;
+//                        uint32_t i = 0;
+//                        seenM = true;
+//
+//                        if (debug) std::cerr << "\t\tmd len left : " << md_mlen_left << "\n";
+//                        if (debug) std::cerr << "\t\tmlen : " << mlen << "\n";
+//                        if (debug) std::cerr << "\t\tmdp : " << mdp << "\n";
+//
+//                        //left over MD matches to handle.
+//                        if (md_mlen_left)
+//                        {
+//                            uint32_t ilen = md_mlen_left<=mlen ? md_mlen_left : mlen;
+//                            pileup.add_ref(lpos1, sspos0, ilen, seq);
+//
+//                            if (debug)
+//                            {
+//                                uint32_t gbeg1 = lpos1;
+//                                uint32_t gend1 = lpos1+ilen-1;
+//
+//                                std::cerr << "\t\t\tadding REF: " << gbeg1 << "-" << gend1 << ":";
+//                                for (size_t i=sspos0; i<=(sspos0+ilen-1); ++i)
+//                                {
+//                                    std::cerr << (bam_base2char(bam_seqi(seq, i)));
+//                                }
+//                                std::cerr << " (" << gend1-gbeg1+1 << ") [" <<  mlen-ilen << "]\n";
+//                            }
+//
+//                            lpos1 += ilen;
+//                            sspos0 += ilen;
+//
+//                            if (md_mlen_left>=mlen)
+//                            //yet another insertion
+//                            {
+//                                md_mlen_left -= ilen;
+//                                cpos1 += ilen;
+//                                spos0 += ilen;
+//                                continue;
+//                            }
+//                            //a snp next
+//                            else
+//                            {
+//                                md_mlen_left = 0;
+//                                mlen -= ilen;
+//                                //go to loop in the next section
+//                            }
+//                        }
+//
+//                        while (*mdp)
+//                        {
+//                            if (isalpha(*mdp)) //SNPs
+//                            {
+//                                char ref = toupper(*mdp);
+//                                char alt = (bam_base2char(bam_seqi(seq, spos0+(lpos1-cpos1))));
+//                                if (debug) std::cerr << "\tMD: Mismatch " << ref << "\n";
+//                                if (debug) std::cerr << "\t\t\tadding SNP: " << lpos1 << ":" << ref << "/" << alt << " [" << (mlen-1)<< "]\n";
+////                                if (qual[sspos0]>vf.get_snp_baseq_cutoff())
+////                                {
+//                                    pileup.add_snp(lpos1, ref, alt, qual[sspos0], vf.get_snp_baseq_cutoff());
+////                                }
+//                                ++lpos1;
+//                                ++mdp;
+//                                ++sspos0;
+//                                --mlen;
+//                            }
+//                            else if (isdigit(*mdp)) //matches
+//                            {
+//                                char* end = 0;
+//                                int32_t len = std::strtol(mdp, &end, 10);
+//                                mdp = end;
+//
+//                                if (debug) std::cerr << "\tMD: Match " << len << "\n";
+//
+//                                if (len)
+//                                {
+//                                    uint32_t ilen = len<=mlen ? len : mlen;
+//
+//                                    if (debug)
+//                                    {
+//                                        uint32_t gbeg1 = lpos1;
+//                                        uint32_t gend1 = lpos1+ilen-1;
+//
+//                                        //std::cerr << "\t\t\tadding REF: " << gbeg1 << "-" << gend1 << ":";
+//                                        for (size_t i=sspos0; i<=(sspos0+ilen-1); ++i)
+//                                        {
+//                                            std::cerr << (bam_base2char(bam_seqi(seq, i)));
+//                                        }
+//                                        std::cerr << " (" << gend1-gbeg1+1 << ") [" <<  mlen-ilen << "]\n";
+//                                    }
+//
+//                                    pileup.add_ref(lpos1, sspos0, ilen, seq);
+//
+//                                    lpos1 += ilen;
+//                                    sspos0 += ilen;
+//
+//                                    //next up an insertion
+//                                    if (len>mlen)
+//                                    {
+//                                        md_mlen_left = len - mlen;
+//                                        break;
+//                                    }
+//                                    else
+//                                    {
+//                                        mlen -= ilen;
+//                                    }
+//                                }
+//                            }
+//                            else // deletion
+//                            {
+//                                break;
+//                            }
+//
+//                            if (mlen==0)
+//                            {
+//                                break;
+//                            }
+//                        }
+//
+//                        //note that only insertions, matches and mismatches can only occur here.
+//
+//                        cpos1 += oplen;
+//                        spos0 += oplen;
+//                    }
+//                    else if (opchar=='D')
+//                    {
+//                        bool is_del = false;
+//
+//                        if (*mdp=='0') ++mdp;
+//
+//                        if (*mdp!='^')
+//                        {
+//                            bam_print_key_values(odr->hdr, s);
+//                            std::cerr << "mdp: " << mdp << "\n";
+//                            std::cerr << "inconsistent MD and cigar, deletion does not occur at the right place.\n";
+//                            exit(1);
+//                        }
+//                        else
+//                        {
+//                            ++mdp;
+//                            std::string del = "";
+//                            while (isalpha(*mdp))
+//                            {
+//                                del += toupper(*mdp);
+//                                ++mdp;
+//                            }
+//
+//                            if (debug) std::cerr << "\t\t\tadding DEL: " << (cpos1-1) << " " << del << "\n";
+//                            pileup.add_del((cpos1-1), del);
+//
+//                            cpos1 += oplen;
+//                        }
+//                    }
+//                    else if (opchar=='I')
+//                    {
+//                        //leading Is
+//                        if (!seenM)
+//                        {
+////                            //add to S evidence
+////                            std::string ins = "";
+////                            float mean_qual = 0;
+////                            for (size_t j=0; j<oplen ; ++j)
+////                            {
+////                                ins += bam_base2char(bam_seqi(seq, spos0+j));
+////                                mean_qual += qual[spos0+j];
+////                            }
+////                            mean_qual /= oplen;
+////
+////                            if (mean_qual>sclip_mq_cutoff)
+////                            {
+////                                if (debug) std::cerr << "\t\t\tadding LSCLIP: " << cpos1 << "\t" << ins << " {" << mean_qual << "}\n";
+////                                pileup.add_lsclip(cpos1, ins, mean_qual, strand);
+////                            }
+//
+//                            spos0 += oplen;
+//                        }
+//                        //trailing Is
+//                        else if (i==n_cigar_op-1 || (i+2==n_cigar_op && bam_cigar_opchr(cigar[n_cigar_op-1])=='S'))
+//                        {
+//                            //bam_print_key_values(odr->hdr, s);
+//                            spos0 += oplen;
+//                        }
+//                        else
+//                        {
+//                            //insertions are not present in MD tags
+//                            //may be handled independently of future matches
+//                            std::string ins = "";
+//                            for (size_t i=0; i<oplen ; ++i)
+//                            {
+//                                ins += bam_base2char(bam_seqi(seq, spos0+i));
+//                            }
+//
+//                            if (debug) std::cerr << "\t\t\tadding INS: " << (cpos1-1) << " " << ins  << "\n";
+//                            pileup.add_ins((cpos1-1), ins, pos1);
+//
+//                            spos0 += oplen;
+//                        }
+//                    }
+//                    else
+//                    {
+//                        std::cerr << "never seen before state " << opchar << "\n";
+//                    }
+//                }
+//            }
             }
 
-            if (false&&  no_mismatches != no_mismatches1 )
+            if (false && no_mismatches != no_mismatches1 )
             {
                 if (n_cigar_op)
                 {
@@ -246,8 +538,6 @@ void BCFGenotypingBufferedReader::collect_sufficient_statistics(GenotypingRecord
 
             if (allele=='R')
             {
-                ++g->no_nonref;
-                
                 if (strand=='F')
                 {
                     ++g->depth_fwd;
@@ -604,9 +894,11 @@ void BCFGenotypingBufferedReader::genotype_and_print(BCFOrderedWriter* odw, Geno
         else
         {
             //depth
+            bcf_update_format_int32(odw->hdr, v, "BQSUM", &g->base_qualities_sum, 1);
+            
+            //depth
             bcf_update_format_int32(odw->hdr, v, "DPF", &g->depth_fwd, 1);
             bcf_update_format_int32(odw->hdr, v, "DPR", &g->depth_rev, 1);
-
         }
 
         odw->write(v);
