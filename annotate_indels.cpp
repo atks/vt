@@ -299,7 +299,11 @@ class Igor : Program
         kputs(vntr.repeat_tract.c_str(), &s);
         kputc(',', &s);
         kputs("<VNTR>", &s);
-        bcf_update_alleles_str(h, v, s.s);
+        
+        if ((vntr.rl-vntr.motif.size())>=6)
+        {    
+            bcf_update_alleles_str(h, v, s.s);
+        }
         bcf_update_info_string(h, v, MOTIF.c_str(), vntr.motif.c_str());
         bcf_update_info_string(h, v, RU.c_str(), vntr.ru.c_str());
         bcf_update_info_float(h, v, RL.c_str(), &vntr.rl, 1);

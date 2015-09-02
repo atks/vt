@@ -47,11 +47,13 @@
 #include "candidate_region_extractor.h"
 
 //definition of STRs
-#define LAI_2003_STR     0
-#define KELKAR_2008_STR  1
-#define FONDON_2012_STR  2
-#define ANANDA_2013_STR  3
-#define WILLEMS_2014_STR 4
+#define LAI_2003_STR       0
+#define KELKAR_2008_STR    1
+#define FONDON_2012_STR    2
+#define ANANDA_2013_STR    3
+#define WILLEMS_2014_STR   4
+#define TAN_KANG_2015_VNTR 5
+
 
 //forms of alignment
 #define REFERENCE                                0

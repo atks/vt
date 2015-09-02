@@ -755,7 +755,21 @@ bool VNTRAnnotator::is_vntr(Variant& variant, int32_t mode)
     uint32_t mlen = variant.vntr.mlen;
     uint32_t rlen = variant.vntr.rend1 - variant.vntr.rbeg1 + 1;
 
-    if (mode==WILLEMS_2014_STR)
+    if (mode==TAN_KANG_2015_VNTR)
+    {
+        return (rlen - mlen >= 6);
+
+//        equivalent to    
+//        (mlen==1 && rlen>=5)  ||
+//        (mlen==2 && rlen>=11) ||
+//        (mlen==3 && rlen>=14) ||
+//        (mlen==4 && rlen>=14) ||
+//        (mlen==5 && rlen>=16) ||
+//        (mlen==6 && rlen>=17) ||
+//        (mlen>=7 && rlen>=mlen*2)
+    
+    }
+    else if (mode==WILLEMS_2014_STR)
     {
         return ((mlen==1 && rlen>=6) ||
                 (mlen==2 && rlen>=11) ||
