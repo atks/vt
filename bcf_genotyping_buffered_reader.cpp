@@ -63,6 +63,8 @@ void BCFGenotypingBufferedReader::process_read(bam_hdr_t *h, bam1_t *s)
     uint32_t pos1 = bam_get_pos1(s);
     uint32_t end1 = bam_get_end_pos1(s);
 
+    //wrap bam1_t in augmented_cigar
+
     GenotypingRecord* g;
     for (std::list<GenotypingRecord*>::iterator i=buffer.begin(); i!=buffer.end(); ++i)
     {

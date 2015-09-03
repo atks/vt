@@ -21,21 +21,39 @@
    THE SOFTWARE.
 */
 
-#include "augmented_cigar.h"
+#include "augmented_bam_record.h"
 
 /**
  * Constructor.
  */
-AugmentedCigar::AugmentedCigar(bam1_t* s)
+AugmentedBAMRecord::AugmentedBAMRecord(bam1_t* s)
 {
     uint32_t *cigar = bam_get_cigar(s);
     int32_t n_cigar_op = bam_get_n_cigar_op(s);
-    
+    int32_t opchr;
+    int32_t oplen;
+
+    //get MD tag
+    uint8_t *md_aux;
+    char* md = 0;
+    ((md_aux=bam_aux_get(s, "MD")) &&  (md = bam_aux2Z(md_aux)));
+    char* mdp = md;
+
+    uint32_t cpos1 = pos1; //current 1 based genome position
+    uint32_t spos0 = 0;    //current position in read sequence
+
+    //variables for I's embedded in Matches in the MD tag
+    uint32_t md_mlen_left = 0;
+            
     for (int32_t i = 0; i < n_cigar_op; ++i)
     {
-        int32_t opchr = bam_cigar_opchr(cigar[i]);
-        int32_t oplen = bam_cigar_oplen(cigar[i]);
+        opchr = bam_cigar_opchr(cigar[i]);
+        oplen = bam_cigar_oplen(cigar[i]);
 
+        if (opchr=='S')
+        {
+        }     
+       // aug_cigar
         std::cerr << oplen << ((char)opchr);
     }
 }
@@ -44,7 +62,7 @@ AugmentedCigar::AugmentedCigar(bam1_t* s)
 /**
  * left_align augmented cigar.
  */
-void AugmentedCigar::left_align()
+void AugmentedBAMRecord::left_align()
 {
 
 }

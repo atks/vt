@@ -39,21 +39,41 @@
 /**
  * Augmented Cigar.
  *
- * Easier to examine and use for genotyping.
+ * The augmented cigar is basically a cigar that converts a normal
+ * cigar to include mismatches.  An additional structure is added 
+ * to point to the releveant sequences.
+ *
+ * The goal is to simply allow a single iteration of the augmented
+ * cigar for genotyping purposes.  In addition, this structure is 
+ * amenable to left alignment.
+ * 
+ * Contains
+ * 1. seq from bam1_t
+ * 2. qual from bam1_t
+ * 3. cigar from bam1_t
+ * 4. MD from bam1_t (or reconstructed)
+ * 5. aux_cigar that includes mismatches
+ * 6. aux_seq that points to
+ *    a. base substitution in MD
+ *    b. inserted sequence in seq (I)
+ *    c. deleted sequence in MD (D)
+ *    
+ * For ease of left alignment of indels, and extracting a SNP
  */
-class AugmentedCigar
+class AugmentedBAMRecord
 {
     public:
+    bam1_t *s;
     uint8_t* seq;
     uint32_t* cigar;
     uint32_t* md;
     int32_t pos1;
     std::vector<uint32_t> aug_cigar;
-
+    
     /**
      * Constructor.
      */
-    AugmentedCigar(bam1_t* s);
+    AugmentedBAMRecord(bam1_t* s);
 
     /**
      * left_align augmented cigar.
