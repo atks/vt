@@ -145,299 +145,115 @@ void BCFGenotypingBufferedReader::collect_sufficient_statistics(GenotypingRecord
             int32_t no_mismatches = 0;
             ((nm_aux=bam_aux_get(s, "NM")) &&  (no_mismatches = bam_aux2i(nm_aux)));
 
-
+            int32_t n_cigar_op = bam_get_n_cigar_op(s);
             int32_t no_mismatches1 = 0;
-            
-//=====================================
-//                int32_t n_cigar_op = bam_get_n_cigar_op(s);
-//                int32_t no_mismatches1 = 0;
-//                if (n_cigar_op)
-//                {
-//                    int32_t vpos1 = g->pos1;
-//                    int32_t cpos1 = bam_get_pos1(s);
-//                    int32_t rpos1 = 0;
-//    
-//                    uint32_t *cigar = bam_get_cigar(s);
-//                    for (int32_t i = 0; i < n_cigar_op; ++i)
-//                    {
-//                        int32_t opchr = bam_cigar_opchr(cigar[i]);
-//                        int32_t oplen = bam_cigar_oplen(cigar[i]);
-//    
-//                        if (opchr=='M')
-//                        {
-//                            if (vpos1>=cpos1 && vpos1<=cpos1+oplen)
-//                            {
-//                                uint8_t* bseq = bam_get_seq(s);
-//                                uint8_t* bqual = bam_get_qual(s);
-//                                int32_t l_qseq = bam_get_l_qseq(s);
-//    
-//                                rpos1 += vpos1-cpos1;
-//    
-//        //                        std::cerr << bcf_get_allele(g->v)[0][0]  << " vs " << bam_base2char(bam_seqi(bseq, rpos1)) << "\n";
-//    
-//                                char obs_allele = bam_base2char(bam_seqi(bseq, rpos1));
-//                                
-//    //                            std::cerr << obs_allele << " " << bcf_get_allele(g->v)[0][0] << " " << bcf_get_allele(g->v)[1][0] << "\n";
-//                                
-//                                if (obs_allele==bcf_get_allele(g->v)[0][0])
-//                                {    
-//                                    allele = 'R';
-//                                }
-//                                else if (obs_allele==bcf_get_allele(g->v)[1][0])
-//                                {    
-//                                    allele = 'A';
-//                                }
-//                                else 
-//                                {    
-//                                    allele = 'O';
-//                                }
-//                                qual = bqual[rpos1];
-//                               // std::cerr << "read length " << bam_get_l_qseq(s) << " " << rpos1 << "\n";
-//                                cycle = strand == 'F' ? rpos1 : (bam_get_l_qseq(s) - rpos1);
-//    
-//                             //   break;
-//                            }
-//    
-//                            cpos1 += oplen;
-//                            rpos1 += oplen;
-//                        }
-//                        else if (opchr=='D' || opchr=='N')
-//                        {
-//                            cpos1 += oplen;
-//                        }
-//                        else if (opchr=='I')
-//                        {
-//                            ++no_mismatches1;
-//                            rpos1 += oplen;
-//                        }
-//                        else if (opchr=='S')
-//                        {
-//                            rpos1 += oplen;
-//                        }
-//                    }
-//                }
-//    
-//                uint8_t *md_aux;
-//                char* md = 0;
-//                ((md_aux=bam_aux_get(s, "MD")) &&  (md = bam_aux2Z(md_aux)));
-//                char* mdp = md;
-//                bool indel = false;
-//                uint8_t* bqual = bam_get_qual(s);
-//                uint32_t rpos1 = 0;
-//                std::string digit_string;
-//                uint32_t no_matches = 0;
-//                while (*mdp)
-//                {
-//                    if (isdigit(*mdp))
-//                    {
-//                        str2uint32(digit_string, no_matches);
-//                        rpos1 += no_matches;
-//                        indel = false;
-//                    }
-//                    else if (*mdp=='N')
-//                    {
-//                        ++rpos1;
-//                        //ignore
-//                    }
-//                    else if (*mdp=='^')
-//                    {
-//                        ++no_mismatches1;
-//                        indel = true;
-//                    }
-//                    else //alphabet
-//                    {
-//                        if (!indel) 
-//                        {
-//                            ++no_mismatches1;
-//                        }
-//                        else
-//                        {
-//                            ++rpos1;
-//                        }
-//                    }
-//    
-//                    ++mdp;
-//                }
-//=====================================
-
-            //iterate cigar
-            uint32_t n_cigar_op = bam_get_n_cigar_op(s);
-
-            
-            uint8_t *md_aux;
-            char* md = 0;
-            ((md_aux=bam_aux_get(s, "MD")) &&  (md = bam_aux2Z(md_aux)));
-//                char* mdp = md;
-//                bool indel = false;
-//                uint8_t* bqual = bam_get_qual(s);
-//                uint32_t rpos1 = 0;
-//                std::string digit_string;
-//                uint32_t no_matches = 0;
-
-            char* mdp = md;
-            uint32_t cpos1 = pos1; //current 1 based genome position
-            uint32_t spos0 = 0;    //current position in read sequence
-
-            //variables for I's embedded in Matches in the MD tag
-            uint32_t md_mlen_left = 0;
-
             if (n_cigar_op)
             {
+                int32_t vpos1 = g->pos1;
+                int32_t cpos1 = bam_get_pos1(s);
+                int32_t rpos1 = 0;
+
                 uint32_t *cigar = bam_get_cigar(s);
-                bool seenM = false;
-
-                for (uint32_t i = 0; i < n_cigar_op; ++i)
+                for (int32_t i = 0; i < n_cigar_op; ++i)
                 {
-                    uint32_t oplen = bam_cigar_oplen(cigar[i]);
-                    char opchar = bam_cigar_opchr(cigar[i]);
+                    int32_t opchr = bam_cigar_opchr(cigar[i]);
+                    int32_t oplen = bam_cigar_oplen(cigar[i]);
 
-                    if (opchar=='S')
+                    if (opchr=='M')
                     {
-                        spos0 += oplen;
-                    }
-                    else if (opchar=='M')
-                    {
-                        uint32_t lpos1 = cpos1; // we need this because M contains matches and mismatches
-                        uint32_t sspos0 = spos0; // we need this because M contains matches and mismatches
-                        uint32_t mlen = oplen;
-                        uint32_t i = 0;
-                        seenM = true;
-
-                        //left over MD matches to handle.
-                        if (md_mlen_left)
+                        if (vpos1>=cpos1 && vpos1<=cpos1+oplen)
                         {
-                            uint32_t ilen = md_mlen_left<=mlen ? md_mlen_left : mlen;
-                     
-                            lpos1 += ilen;
-                            sspos0 += ilen;
+                            uint8_t* bseq = bam_get_seq(s);
+                            uint8_t* bqual = bam_get_qual(s);
+                            int32_t l_qseq = bam_get_l_qseq(s);
 
-                            //yet another insertion
-                            if (md_mlen_left>=mlen)
-                            {
-                                md_mlen_left -= ilen;
-                                cpos1 += ilen;
-                                spos0 += ilen;
-                                continue;
+                            rpos1 += vpos1-cpos1;
+
+    //                        std::cerr << bcf_get_allele(g->v)[0][0]  << " vs " << bam_base2char(bam_seqi(bseq, rpos1)) << "\n";
+
+                            char obs_allele = bam_base2char(bam_seqi(bseq, rpos1));
+                            
+//                            std::cerr << obs_allele << " " << bcf_get_allele(g->v)[0][0] << " " << bcf_get_allele(g->v)[1][0] << "\n";
+                            
+                            if (obs_allele==bcf_get_allele(g->v)[0][0])
+                            {    
+                                allele = 'R';
                             }
-                            //a snp next
-                            else
-                            {
-                                md_mlen_left = 0;
-                                mlen -= ilen;
-                                //go to loop in the next section
+                            else if (obs_allele==bcf_get_allele(g->v)[1][0])
+                            {    
+                                allele = 'A';
                             }
+                            else 
+                            {    
+                                allele = 'O';
+                            }
+                            q = bqual[rpos1];
+                           // std::cerr << "read length " << bam_get_l_qseq(s) << " " << rpos1 << "\n";
+                            cycle = strand == 'F' ? rpos1 : (bam_get_l_qseq(s) - rpos1);
+
+                         //   break;
                         }
-
-                        while (*mdp)
-                        {
-                            if (isalpha(*mdp)) //SNPs
-                            {
-                                char ref = toupper(*mdp);
-                                char alt = (bam_base2char(bam_seqi(seq, spos0+(lpos1-cpos1))));
-                               
-                                ++lpos1;
-                                ++mdp;
-                                ++sspos0;
-                                --mlen;
-                            }
-                            else if (isdigit(*mdp)) //matches
-                            {
-                                char* end = 0;
-                                int32_t len = std::strtol(mdp, &end, 10);
-                                mdp = end;
-
-                                if (len)
-                                {
-                                    uint32_t ilen = len<=mlen ? len : mlen;
-
-                                    lpos1 += ilen;
-                                    sspos0 += ilen;
-
-                                    //next up an insertion
-                                    if (len>mlen)
-                                    {
-                                        md_mlen_left = len - mlen;
-                                        break;
-                                    }
-                                    else
-                                    {
-                                        mlen -= ilen;
-                                    }
-                                }
-                            }
-                            else // deletion
-                            {
-                                break;
-                            }
-
-                            if (mlen==0)
-                            {
-                                break;
-                            }
-                        }
-
-                        //note that only insertions, matches and mismatches can only occur here.
 
                         cpos1 += oplen;
-                        spos0 += oplen;
+                        rpos1 += oplen;
                     }
-                    else if (opchar=='D')
+                    else if (opchr=='D' || opchr=='N')
                     {
-                        bool is_del = false;
-
-                        if (*mdp=='0') ++mdp;
-
-                        if (*mdp!='^')
-                        {
-                            std::cerr << "mdp: " << mdp << "\n";
-                            std::cerr << "inconsistent MD and cigar, deletion does not occur at the right place.\n";
-                            exit(1);
-                        }
-                        
-                        ++mdp;
-                        std::string del = "";
-                        while (isalpha(*mdp))
-                        {
-                            del += toupper(*mdp);
-                            ++mdp;
-                        }
-
-                        cpos1 += oplen;                        
+                        cpos1 += oplen;
                     }
-                    else if (opchar=='I')
+                    else if (opchr=='I')
                     {
-                        //leading Is
-                        if (!seenM)
-                        {
-                            spos0 += oplen;
-                        }
-                        //trailing Is
-                        else if (i==n_cigar_op-1 || (i+2==n_cigar_op && bam_cigar_opchr(cigar[n_cigar_op-1])=='S'))
-                        {
-                            spos0 += oplen;
-                        }
-                        else
-                        {
-                            //insertions are not present in MD tags
-                            //may be handled independently of future matches
-                            std::string ins = "";
-                            for (size_t i=0; i<oplen ; ++i)
-                            {
-                                ins += bam_base2char(bam_seqi(seq, spos0+i));
-                            }
-
-                            spos0 += oplen;
-                        }
+                        ++no_mismatches1;
+                        rpos1 += oplen;
                     }
-                    else
+                    else if (opchr=='S')
                     {
-                        std::cerr << "never seen before state " << opchar << "\n";
-                        exit(1);
+                        rpos1 += oplen;
                     }
                 }
             }
 
-//=====================================
+            uint8_t *md_aux;
+            char* md = 0;
+            ((md_aux=bam_aux_get(s, "MD")) &&  (md = bam_aux2Z(md_aux)));
+            char* mdp = md;
+            bool indel = false;
+            uint8_t* bqual = bam_get_qual(s);
+            uint32_t rpos1 = 0;
+            std::string digit_string;
+            uint32_t no_matches = 0;
+            while (*mdp)
+            {
+                if (isdigit(*mdp))
+                {
+                    str2uint32(digit_string, no_matches);
+                    rpos1 += no_matches;
+                    indel = false;
+                }
+                else if (*mdp=='N')
+                {
+                    ++rpos1;
+                    //ignore
+                }
+                else if (*mdp=='^')
+                {
+                    ++no_mismatches1;
+                    indel = true;
+                }
+                else //alphabet
+                {
+                    if (!indel) 
+                    {
+                        ++no_mismatches1;
+                    }
+                    else
+                    {
+                        ++rpos1;
+                    }
+                }
+
+                ++mdp;
+            }
 
             if (false && no_mismatches != no_mismatches1 )
             {

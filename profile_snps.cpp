@@ -154,13 +154,11 @@ class Igor : Program
 //#           file is used for GENCODE annotation of frame shift and non frame shift Indels
 //# filter  - filter applied to variants for this particular data set
 //# path    - path of indexed BCF file
-//#dataset     type            filter                                  path
-//1000g        TP              N_ALLELE==2&&VTYPE==SNP                 /net/fantasia/home/atks/ref/vt/grch37/1000G.snps_indels.sites.bcf
-//dbsnp        TP              N_ALLELE==2&&VTYPE==SNP                 /net/fantasia/home/atks/ref/vt/grch37/dbsnp.13147541variants.sites.bcf
-//Omni_POLY    TP              N_ALLELE==2&&VTYPE==SNP&&INFO.AC!=0     /net/fantasia/home/atks/ref/vt/grch37/omni.chip.sites.bcf
-//Omni_MONO    FP              N_ALLELE==2&&VTYPE==SNP&&INFO.AC==0     /net/fantasia/home/atks/ref/vt/grch37/omni.chip.sites.bcf
-//GENCODE_V19  cds_annotation  .                                       /net/fantasia/home/atks/ref/vt/grch37/gencode.cds.bed.gz
-//DUST         cplx_annotation .                                       /net/fantasia/home/atks/ref/vt/grch37/mdust.bed.gz
+//#dataset               type             filter                                 path
+//1000g                  TP               N_ALLELE==2&&VTYPE==SNP                /net/fantasia/home/atks/ref/vt/grch37/1000G.v5.snps.indels.complex.svs.sites.bcf
+//dbsnp                  TP               N_ALLELE==2&&VTYPE==SNP                /net/fantasia/home/atks/ref/vt/grch37/dbSNP138.snps.indels.complex.sites.bcf
+//GENCODE_V19            cds_annotation   .                                      /net/fantasia/home/atks/ref/vt/grch37/gencode.v19.cds.bed.gz
+//DUST                   cplx_annotation  .                                      /net/fantasia/home/atks/ref/vt/grch37/mdust.bed.gz
 
         input_vcf_files.push_back(input_vcf_file);
         dataset_labels.push_back("data");
@@ -348,7 +346,7 @@ class Igor : Program
         fprintf(stderr, "\n");
         fprintf(stderr, "  %s\n", "data set");
         fprintf(stderr, "     No. SNPs          : %10d [%.2f]\n", stats[0].a,  (float)stats[0].a_ts/(stats[0].a_tv));
-        fprintf(stderr, "        SYN/NONSYN     : %10.2f (%d/%d)\n", (float)nonsyn/(nonsyn+syn), nonsyn, syn);
+        //fprintf(stderr, "        SYN/NONSYN     : %10.2f (%d/%d)\n", (float)nonsyn/(nonsyn+syn), nonsyn, syn);
         fprintf(stderr, "        Low complexity : %10.2f (%d/%d)\n", (float)lcplx/stats[0].a, lcplx, stats[0].a);
         fprintf(stderr, "\n");
 
