@@ -55,7 +55,6 @@ AugmentedBAMRecord::AugmentedBAMRecord(bam1_t* s)
         opchr = bam_cigar_opchr(cigar[i]);
         oplen = bam_cigar_oplen(cigar[i]);
 
-
         //variables for I's embedded in Matches in the MD tag
         uint32_t md_mlen_left = 0;
        
@@ -103,6 +102,9 @@ AugmentedBAMRecord::AugmentedBAMRecord(bam1_t* s)
                 {
                     char ref = toupper(*mdp);
                     char alt = (bam_base2char(bam_seqi(seq, spos0+(lpos1-cpos1))));
+                   
+                   
+                   
                    
                     ++lpos1;
                     ++mdp;
