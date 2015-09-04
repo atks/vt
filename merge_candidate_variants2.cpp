@@ -179,14 +179,12 @@ Each VCF file is required to have the FORMAT flags E and N and should have exact
         odw = new BCFOrderedWriter(output_vcf_file, 0);
         bcf_hdr_append(odw->hdr, "##fileformat=VCFv4.1");
         bcf_hdr_transfer_contigs(sr->hdrs[0], odw->hdr);
-        bcf_hdr_append(odw->hdr, "##INFO=<ID=SAMPLES,Number=.,Type=String,Description=\"Samples with evidence.\">");
+       // bcf_hdr_append(odw->hdr, "##INFO=<ID=SAMPLES,Number=.,Type=String,Description=\"Samples with evidence.\">");
         bcf_hdr_append(odw->hdr, "##INFO=<ID=NSAMPLES,Number=.,Type=Integer,Description=\"Number of samples.\">");
         bcf_hdr_append(odw->hdr, "##INFO=<ID=E,Number=.,Type=Integer,Description=\"Evidence read counts for each sample\">");
         bcf_hdr_append(odw->hdr, "##INFO=<ID=N,Number=.,Type=Integer,Description=\"Read counts for each sample\">");
         bcf_hdr_append(odw->hdr, "##INFO=<ID=ESUM,Number=1,Type=Integer,Description=\"Total evidence read count\">");
         bcf_hdr_append(odw->hdr, "##INFO=<ID=NSUM,Number=1,Type=Integer,Description=\"Total read count\">");
-        bcf_hdr_append(odw->hdr, "##INFO=<ID=AF,Number=A,Type=Float,Description=\"Allele Frequency\">");
-        //bcf_hdr_append(odw->hdr, "##INFO=<ID=LR,Number=1,Type=String,Description=\"Likelihood Ratio Statistic\">");
         odw->write_hdr();
 
         ///////////////
@@ -231,7 +229,7 @@ Each VCF file is required to have the FORMAT flags E and N and should have exact
         kstring_t sample_names = {0,0,0};
         float af = 0;
         uint32_t no = 0;
-        
+
         //obtain sample names
         char* index2sample[nfiles];
         for (uint32_t i=0; i<nfiles; ++i)
@@ -249,11 +247,10 @@ Each VCF file is required to have the FORMAT flags E and N and should have exact
             esum = 0;
             nsum = 0;
             sample_names.l = 0;
-            af = 0;
             bool max_lr_gt_30 = false;
             float max_qual = 0;
             int32_t vtype;
-            
+
             for (uint32_t i=0; i<current_recs.size(); ++i)
             {
                 int32_t file_index = current_recs[i]->file_index;
@@ -273,7 +270,6 @@ Each VCF file is required to have the FORMAT flags E and N and should have exact
                         max_lr_gt_30 = true;
                     }
                 }
-               // bcf_print(h,v);
 
                 if (bcf_get_format_int32(h, v, "E", &E, &no_E) < 0 ||
                     bcf_get_format_int32(h, v, "N", &N, &no_N) < 0)
@@ -281,7 +277,7 @@ Each VCF file is required to have the FORMAT flags E and N and should have exact
                     fprintf(stderr, "[E:%s:%d %s] cannot get format values E or N from %s\n", __FILE__, __LINE__, __FUNCTION__, sr->file_names[i].c_str());
                     exit(1);
                 }
-                
+
                 if (vtype==VT_SNP)
                 {
                     if (bcf_get_info_float(h, v, "LLR", &LLR, &no_LLR) < 0)
@@ -289,61 +285,29 @@ Each VCF file is required to have the FORMAT flags E and N and should have exact
                         fprintf(stderr, "[E:%s:%d %s] cannot get INFO LLR from %s\n", __FILE__, __LINE__, __FUNCTION__, sr->file_names[i].c_str());
                         exit(1);
                     }
-                    
+
                     float qual = -10*LLR[0];
-                    
+
                     if (qual > 30)
                     {
                         max_lr_gt_30 = true;
-                        
+
                         if (max_qual<qual)
                         {
                             max_qual = qual;
                         }
-                    }    
-                }                
-                                
+                    }
+                }
+
                 e[i] = E[0];
                 n[i] = N[0];
                 esum += E[0];
                 nsum += N[0];
-                if (i) kputc(',', &sample_names);
-                kputs(index2sample[file_index], &sample_names);
-                af += ((double)E[0])/((double)N[0]);
-                ++no;          
+//                if (i) kputc(',', &sample_names);
+//                kputs(index2sample[file_index], &sample_names);
+                ++no;
             }
 
-            //output statistics
-//           af /= nfiles;
-
-            //compute lrt
-//            float num = 0;
-//            float log10numhomref, log10numhet, log10numhomalt;
-//            float denum = 0;
-//            float log10phomref = log10((1-af)*(1-af));
-//            float log10phet = log10(2*af*(1-af));
-//            float log10phomalt = log10(af*af);
-//
-//            for (int32_t i=0; i<no; ++i)
-//            {
-//                //std::cerr <<"LR " << i << " " << e[i] << " " << n[i] <<"\n";
-//                //std::cerr << lt->log10choose(n[i], e[i]) << "\n";
-//                //does this still happen?
-//                if (e[i]>n[i])
-//                {
-//                //    std::cerr << "E>N\n";
-//                    e[i] = n[i];
-//                }
-//
-//                log10numhomref = log10phomref + lt->log10choose(n[i], e[i]) + (n[i]-e[i])*log10me + e[i]*log10e;
-//                log10numhet = log10phet + lt->log10choose(n[i], e[i]) + log10half*n[i];
-//                log10numhomalt = log10phomalt + lt->log10choose(n[i], e[i]) + (n[i]-e[i])*log10e + e[i]*log10me;
-//                num += lt->log10sum(log10numhomref, lt->log10sum(log10numhet, log10numhomalt));
-//                denum += lt->log10choose(n[i], e[i]) + (n[i]-e[i])*log10me + e[i]*log10e;
-//            }
-//            float lr = num-denum;
-
-//            if (lr>lr_cutoff)
             if (max_lr_gt_30 || vtype&VT_INDEL)
             {
                 //bcf_update_info_string(odw->hdr, nv, "SAMPLES", sample_names.s);
@@ -352,14 +316,12 @@ Each VCF file is required to have the FORMAT flags E and N and should have exact
                 bcf_update_info_int32(odw->hdr, nv, "N", &n, no);
                 bcf_update_info_int32(odw->hdr, nv, "ESUM", &esum, 1);
                 bcf_update_info_int32(odw->hdr, nv, "NSUM", &nsum, 1);
-                bcf_update_info_float(odw->hdr, nv, "AF", &af, 1);
-                
+
                 if (vtype == VT_SNP)
                 {
-                   // std::cerr << max_qual << "\n";
                     bcf_set_qual(nv, max_qual);
                 }
-                
+
                 odw->write(nv);
 
                 int32_t vtype = vm->classify_variant(odw->hdr, nv, var);
