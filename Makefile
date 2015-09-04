@@ -142,7 +142,7 @@ clean :
 cleanvt :
 	-rm -rf $(TARGET) $(TOOLOBJ)    
 
-test:
+test: vt
 	for x in ./test/*/_run.sh; do \
 		$${x}; \
 	done
