@@ -37,6 +37,9 @@
 #include "hts_utils.h"
 
 /**
+ * The augmented BAM record adds functionalities to process the
+ * cigar and MD5 tag in an integrated fashion.
+ * 
  * Augmented Cigar.
  *
  * The augmented cigar is basically a cigar that converts a normal
@@ -77,8 +80,13 @@ class AugmentedBAMRecord
 
     /**
      * left_align augmented cigar.
+     *
+     * returns
+     * 1 - if left alignment was performed
+     * 2 - if left alignment was not possible
+     * 3 - if left alignment is possible beyond the extent of the alignment
      */
-    void left_align();
+    bool left_align();
 };
 
 #endif
