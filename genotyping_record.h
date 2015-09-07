@@ -43,6 +43,7 @@ class GenotypingRecord
     
     //for records that observe at least one alternate observation
     std::vector<uint32_t> quals;
+    std::vector<uint32_t> map_quals;
     std::string strands;
     std::string alleles;
     std::vector<uint32_t> cycles;

@@ -185,9 +185,10 @@ class Igor : Program
 
         //NONREF
         bcf_hdr_append(odw->hdr, "##FORMAT=<ID=BQ,Number=.,Type=Integer,Description=\"Phred-scaled Base Qualities\">");
-        bcf_hdr_append(odw->hdr, "##FORMAT=<ID=AL,Number=1,Type=String,Description=\"Alleles - R or A\">");
+        bcf_hdr_append(odw->hdr, "##FORMAT=<ID=MQ,Number=.,Type=Integer,Description=\"Phred-scaled Map Qualities\">");
         bcf_hdr_append(odw->hdr, "##FORMAT=<ID=CY,Number=.,Type=Integer,Description=\"Cycle of base\">");
         bcf_hdr_append(odw->hdr, "##FORMAT=<ID=ST,Number=1,Type=String,Description=\"Strand of allele\">");
+        bcf_hdr_append(odw->hdr, "##FORMAT=<ID=AL,Number=1,Type=String,Description=\"Alleles - R or A\">");
         bcf_hdr_append(odw->hdr, "##FORMAT=<ID=NM,Number=.,Type=Integer,Description=\"Number of mismatches per read\">");
 
         //REF
@@ -413,6 +414,7 @@ class Igor : Program
             //iterate sam
             bam_hdr_t *h = odr->hdr;
             bam1_t * s = bam_init1();
+            AugmentedBAMRecord as;
             while (odr->read(s))
             {
                 ++no_reads;

@@ -71,12 +71,29 @@ class AugmentedBAMRecord
     uint32_t* cigar;
     uint32_t* md;
     int32_t pos1;
+    
+    //new augmented cigar with X's
     std::vector<uint32_t> aug_cigar;
+    
+    //points to md sequences
+    std::vector<char*> aug_seq;
+            
+    
 
     /**
      * Constructor.
      */
+    AugmentedBAMRecord();
+    
+    /**
+     * Constructor.
+     */
     AugmentedBAMRecord(bam1_t* s);
+
+    /**
+     * Initialize.
+     */
+    void initialize(bam1_t* s);
 
     /**
      * left_align augmented cigar.
@@ -87,6 +104,11 @@ class AugmentedBAMRecord
      * 3 - if left alignment is possible beyond the extent of the alignment
      */
     bool left_align();
+
+    /**
+     * Clear.
+     */
+    void clear();
 
     /**
      * Prints alignment of record.

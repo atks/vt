@@ -607,15 +607,21 @@ void BCFGenotypingBufferedReader::genotype_and_print(BCFOrderedWriter* odw, Geno
             //PL
             bcf_update_format_int32(odw->hdr, v, "PL", &pls[0], 3);
             
-            //ADF
-            bcf_update_format_int32(odw->hdr, v, "ADF", &g->allele_depth_fwd[0], 2);
-            
-            //ADR
-            bcf_update_format_int32(odw->hdr, v, "ADR", &g->allele_depth_rev[0], 2);
-            
             //depth
             bcf_update_format_int32(odw->hdr, v, "DP", &g->depth, 1);
 
+//            //ADF
+//            bcf_update_format_int32(odw->hdr, v, "ADF", &g->allele_depth_fwd[0], 2);
+//            
+//            //ADR
+//            bcf_update_format_int32(odw->hdr, v, "ADR", &g->allele_depth_rev[0], 2);
+
+            //base quality
+            bcf_update_format_int32(odw->hdr, v, "BQ", &g->quals[0], g->quals.size());
+                
+            //map quality
+            bcf_update_format_int32(odw->hdr, v, "MQ", &g->map_quals[0], g->map_quals.size());
+                
             //cycles
             bcf_update_format_int32(odw->hdr, v, "CY", &g->cycles[0], g->cycles.size());
 
@@ -632,12 +638,15 @@ void BCFGenotypingBufferedReader::genotype_and_print(BCFOrderedWriter* odw, Geno
         }
         else
         {
-            //depth
+            //bq sum
             bcf_update_format_int32(odw->hdr, v, "BQSUM", &g->base_qualities_sum, 1);
             
             //depth
-            bcf_update_format_int32(odw->hdr, v, "DPF", &g->depth_fwd, 1);
-            bcf_update_format_int32(odw->hdr, v, "DPR", &g->depth_rev, 1);
+            bcf_update_format_int32(odw->hdr, v, "DP", &g->depth, 1);
+            
+//            //depth
+//            bcf_update_format_int32(odw->hdr, v, "DPF", &g->depth_fwd, 1);
+//            bcf_update_format_int32(odw->hdr, v, "DPR", &g->depth_rev, 1);
         }
 
         odw->write(v);
@@ -673,11 +682,11 @@ void BCFGenotypingBufferedReader::genotype_and_print(BCFOrderedWriter* odw, Geno
             //depth
             bcf_update_format_int32(odw->hdr, v, "DP", &g->depth, 1);
 
-            //quals
-            bcf_update_format_int32(odw->hdr, v, "BQ", &g->quals[0], g->quals.size());
+//            //quals
+//            bcf_update_format_int32(odw->hdr, v, "BQ", &g->quals[0], g->quals.size());
 
-            //cycles
-            bcf_update_format_int32(odw->hdr, v, "CY", &g->cycles[0], g->cycles.size());
+//            //cycles
+//            bcf_update_format_int32(odw->hdr, v, "CY", &g->cycles[0], g->cycles.size());
 
             //strand
             char* str = const_cast<char*>(g->strands.c_str());
@@ -692,12 +701,16 @@ void BCFGenotypingBufferedReader::genotype_and_print(BCFOrderedWriter* odw, Geno
         }
         else
         {
-            //depth
-            bcf_update_format_int32(odw->hdr, v, "DPF", &g->depth_fwd, 1);
-            bcf_update_format_int32(odw->hdr, v, "DPR", &g->depth_rev, 1);
-
             //qualsum
             bcf_update_format_int32(odw->hdr, v, "BQSUM", &g->base_qualities_sum, 1);
+            
+            bcf_update_format_int32(odw->hdr, v, "DP", &g->depth, 1);
+            
+//            //depth
+//            bcf_update_format_int32(odw->hdr, v, "DPF", &g->depth_fwd, 1);
+//            bcf_update_format_int32(odw->hdr, v, "DPR", &g->depth_rev, 1);
+
+
         }
 
         odw->write(v);

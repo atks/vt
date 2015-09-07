@@ -44,6 +44,7 @@ void GenotypingRecord::clear()
     no_nonref = 0;
     
     quals.clear();
+    map_quals.clear();
     strands.clear();
     alleles.clear();
     cycles.clear();

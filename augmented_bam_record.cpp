@@ -26,13 +26,30 @@
 /**
  * Constructor.
  */
+AugmentedBAMRecord::AugmentedBAMRecord()
+{
+    clear();
+}
+
+/**
+ * Constructor.
+ */
 AugmentedBAMRecord::AugmentedBAMRecord(bam1_t* s)
+{
+    clear();
+    initialize(s);
+}
+
+/**
+ * Initialize.
+ */
+void AugmentedBAMRecord::initialize(bam1_t* s)
 {
     this->s = s;
 
     uint32_t *cigar = bam_get_cigar(s);
     int32_t n_cigar_op = bam_get_n_cigar_op(s);
-    int32_t opchr;
+    char opchr;
     int32_t oplen;
 
     aug_cigar.clear();
@@ -41,6 +58,8 @@ AugmentedBAMRecord::AugmentedBAMRecord(bam1_t* s)
     uint8_t *md_aux;
     char* md = 0;
     ((md_aux=bam_aux_get(s, "MD")) &&  (md = bam_aux2Z(md_aux)));
+    
+    //this points to the part of md that is yet to be processed.
     char* mdp = md;
 
     uint32_t cpos1 = pos1; //current 1 based genome position
@@ -62,6 +81,7 @@ AugmentedBAMRecord::AugmentedBAMRecord(bam1_t* s)
         {
             spos0 += oplen;
             aug_cigar.push_back(cigar[i]);
+            aug_seq.push_back(NULL);
         }
         else if (opchr=='M')
         {
@@ -102,9 +122,6 @@ AugmentedBAMRecord::AugmentedBAMRecord(bam1_t* s)
                 {
                     char ref = toupper(*mdp);
                     char alt = (bam_base2char(bam_seqi(seq, spos0+(lpos1-cpos1))));
-
-
-
 
                     ++lpos1;
                     ++mdp;
@@ -216,7 +233,21 @@ AugmentedBAMRecord::AugmentedBAMRecord(bam1_t* s)
  */
 bool AugmentedBAMRecord::left_align()
 {
+    return true;
+}
 
+/**
+ * Clear.
+ */
+void AugmentedBAMRecord::clear()
+{
+    s = NULL;
+    seq = NULL;
+    cigar = NULL;
+    md = NULL;
+    pos1 = 0;
+    aug_cigar.clear();
+    aug_seq.clear();
 }
 
 /**
@@ -224,4 +255,87 @@ bool AugmentedBAMRecord::left_align()
  */
 void AugmentedBAMRecord::print()
 {
+    int32_t oplen;
+    char opchr;
+    
+    std::string ref;
+    std::string align;
+    std::string seq;
+    int32_t spos0 = 0;     
+    
+    for (uint32_t i=0; i<aug_cigar.size(); ++i)
+    {
+        oplen = bam_cigar_oplen(aug_cigar[i]);
+        opchr = bam_cigar_opchr(aug_cigar[i]);
+        
+        if (opchr=='S')
+        {
+            ref.append('-', oplen);
+            
+            for (uint32_t j=0; j<oplen; ++j)
+            {
+                seq.append(bam_base2char(bam_seqi(this->seq, spos0+j)), 1);
+            }
+            
+            align.append('S', oplen);
+        }    
+        else if (opchr=='=')
+        {
+            for (uint32_t j=0; j<oplen; ++j)
+            {
+                ref.append(bam_base2char(bam_seqi(this->seq, spos0+j)), 1);
+                seq.append(bam_base2char(bam_seqi(this->seq, spos0+j)), 1);
+            }
+        
+            align.append('=', oplen);
+            
+            spos0 += oplen;
+        }
+        else if (opchr=='X')
+        {
+            for (uint32_t j=0; j<oplen; ++j)
+            {
+                ref.append(aug_seq[j], 1);
+                seq.append(bam_base2char(bam_seqi(this->seq, spos0+j)), 1);
+            }
+        
+            align.append('X', oplen);
+            
+            spos0 += oplen;
+        } 
+        else if (opchr=='I')
+        {
+            ref.append('-', oplen);
+            
+            for (uint32_t j=0; j<oplen; ++j)
+            {
+                seq.append(bam_base2char(bam_seqi(this->seq, spos0+j)), 1);
+            }
+            
+            align.append('I', oplen);
+            
+            spos0 += oplen;
+        }
+        else if (opchr=='D')
+        {
+            for (uint32_t j=0; j<oplen; ++j)
+            {
+                ref.append(aug_seq[j], oplen);
+            }
+            
+            seq.append('-', oplen);
+            
+            align.append('D', oplen);
+        }
+        else
+        {
+            std::cerr << "unrecognized cigar state " << opchr << "\n";
+//            exit(1);
+        }
+        
+    }
+    
+    std::cerr << ref << "\n";
+    std::cerr << align << "\n";
+    std::cerr << seq << "\n";        
 }

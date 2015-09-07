@@ -35,6 +35,7 @@
 #include "htslib/sam.h"
 #include "htslib/vcf.h"
 #include "htslib/kseq.h"
+#include "augmented_bam_record.h"
 
 void genotype2(int argc, char ** argv);
 
