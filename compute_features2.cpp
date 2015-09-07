@@ -79,7 +79,7 @@ class Igor : Program
         //////////////////////////
         try
         {
-            std::string desc = "Compute features for variants.";
+            std::string desc = "Compute features for variants in vt pipeline from separate genotype files";
 
             TCLAP::CmdLine cmd(desc, ' ', version);
             VTOutput my;
@@ -108,6 +108,9 @@ class Igor : Program
 
     void initialize()
     {
+        //convert to paste like set up
+        
+        
         //////////////////////
         //i/o initialization//
         //////////////////////

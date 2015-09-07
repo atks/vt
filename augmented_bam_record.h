@@ -39,17 +39,17 @@
 /**
  * The augmented BAM record adds functionalities to process the
  * cigar and MD5 tag in an integrated fashion.
- * 
+ *
  * Augmented Cigar.
  *
  * The augmented cigar is basically a cigar that converts a normal
- * cigar to include mismatches.  An additional structure is added 
+ * cigar to include mismatches.  An additional structure is added
  * to point to the releveant sequences.
  *
  * The goal is to simply allow a single iteration of the augmented
- * cigar for genotyping purposes.  In addition, this structure is 
+ * cigar for genotyping purposes.  In addition, this structure is
  * amenable to left alignment.
- * 
+ *
  * Contains
  * 1. seq from bam1_t
  * 2. qual from bam1_t
@@ -60,7 +60,7 @@
  *    a. base substitution in MD
  *    b. inserted sequence in seq (I)
  *    c. deleted sequence in MD (D)
- *    
+ *
  * For ease of left alignment of indels, and extracting a SNP
  */
 class AugmentedBAMRecord
@@ -72,7 +72,7 @@ class AugmentedBAMRecord
     uint32_t* md;
     int32_t pos1;
     std::vector<uint32_t> aug_cigar;
-    
+
     /**
      * Constructor.
      */
@@ -87,6 +87,11 @@ class AugmentedBAMRecord
      * 3 - if left alignment is possible beyond the extent of the alignment
      */
     bool left_align();
+
+    /**
+     * Prints alignment of record.
+     */
+    void print();
 };
 
 #endif

@@ -29,12 +29,12 @@
 AugmentedBAMRecord::AugmentedBAMRecord(bam1_t* s)
 {
     this->s = s;
-    
+
     uint32_t *cigar = bam_get_cigar(s);
     int32_t n_cigar_op = bam_get_n_cigar_op(s);
     int32_t opchr;
     int32_t oplen;
-    
+
     aug_cigar.clear();
 
     //get MD tag
@@ -49,7 +49,7 @@ AugmentedBAMRecord::AugmentedBAMRecord(bam1_t* s)
     //variables for I's embedded in Matches in the MD tag
     uint32_t md_mlen_left = 0;
     bool seenM = false;
-            
+
     for (int32_t i = 0; i < n_cigar_op; ++i)
     {
         opchr = bam_cigar_opchr(cigar[i]);
@@ -57,7 +57,7 @@ AugmentedBAMRecord::AugmentedBAMRecord(bam1_t* s)
 
         //variables for I's embedded in Matches in the MD tag
         uint32_t md_mlen_left = 0;
-       
+
         if (opchr=='S')
         {
             spos0 += oplen;
@@ -75,7 +75,7 @@ AugmentedBAMRecord::AugmentedBAMRecord(bam1_t* s)
             if (md_mlen_left)
             {
                 uint32_t ilen = md_mlen_left<=mlen ? md_mlen_left : mlen;
-         
+
                 lpos1 += ilen;
                 sspos0 += ilen;
 
@@ -95,17 +95,17 @@ AugmentedBAMRecord::AugmentedBAMRecord(bam1_t* s)
                     //go to loop in the next section
                 }
             }
-            
+
             while (*mdp)
             {
                 if (isalpha(*mdp)) //SNPs
                 {
                     char ref = toupper(*mdp);
                     char alt = (bam_base2char(bam_seqi(seq, spos0+(lpos1-cpos1))));
-                   
-                   
-                   
-                   
+
+
+
+
                     ++lpos1;
                     ++mdp;
                     ++sspos0;
@@ -145,7 +145,7 @@ AugmentedBAMRecord::AugmentedBAMRecord(bam1_t* s)
                 {
                     break;
                 }
-                
+
                 //note that only insertions, matches and mismatches can only occur here.
 
                 cpos1 += oplen;
@@ -164,7 +164,7 @@ AugmentedBAMRecord::AugmentedBAMRecord(bam1_t* s)
                 std::cerr << "inconsistent MD and cigar, deletion does not occur at the right place.\n";
                 exit(1);
             }
-            
+
             ++mdp;
             std::string del = "";
             while (isalpha(*mdp))
@@ -173,7 +173,7 @@ AugmentedBAMRecord::AugmentedBAMRecord(bam1_t* s)
                 ++mdp;
             }
 
-            cpos1 += oplen;                        
+            cpos1 += oplen;
         }
         else if (opchr=='I')
         {
@@ -214,7 +214,14 @@ AugmentedBAMRecord::AugmentedBAMRecord(bam1_t* s)
 /**
  * left_align augmented cigar.
  */
-void AugmentedBAMRecord::left_align()
+bool AugmentedBAMRecord::left_align()
 {
 
+}
+
+/**
+ * Prints alignment of record.
+ */
+void AugmentedBAMRecord::print()
+{
 }
