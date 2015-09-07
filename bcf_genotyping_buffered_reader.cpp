@@ -138,6 +138,7 @@ void BCFGenotypingBufferedReader::collect_sufficient_statistics(GenotypingRecord
             uint32_t pos1 = bam_get_pos1(s);
             uint8_t* seq = bam_get_seq(s);
             uint8_t* qual = bam_get_qual(s);
+            uint8_t mapq = bam_get_mapq(s);
             //uint32_t qual = 30;
             uint32_t q = 30;
             uint32_t cycle = 10;
@@ -308,6 +309,7 @@ void BCFGenotypingBufferedReader::collect_sufficient_statistics(GenotypingRecord
 
             ++g->depth;
             g->quals.push_back(q);
+            g->map_quals.push_back(mapq);
             g->cycles.push_back(cycle);
             g->alleles.append(1, allele);
             g->strands.append(1, strand);
