@@ -424,6 +424,10 @@ class Igor : Program
                     continue;
                 }
 
+
+                as.initialize(odr->hdr, s);
+
+
                 gbr->flush(odw, h, s);
                 gbr->process_read(h, s);
 
@@ -447,6 +451,46 @@ class Igor : Program
             //iterate VCF file
                 //random access per site
 
+        }
+    }
+
+    void genotype3()
+    {
+        if (mode=="d")
+        {
+            //iterate sam
+            bam_hdr_t *h = odr->hdr;
+            bam1_t * s = bam_init1();
+            while (odr->read(s))
+            {
+                ++no_reads;
+
+                if (!filter_read(s))
+                {
+                    continue;
+                }
+
+                gbr->flush(odw, h, s);
+                gbr->process_read(h, s);
+
+                ++no_passed_reads;
+                if ((no_reads & 0x0000FFFF) == 0)
+                {
+                    std::cerr << bam_get_chrom(h,s) << ":" << bam_get_pos1(s) << " ("  << gbr->buffer.size() << ")\n";
+                }
+            }
+
+            no_snps_genotyped = gbr->no_snps_genotyped;
+            no_indels_genotyped = gbr->no_indels_genotyped;
+            no_vntrs_genotyped = gbr->no_vntrs_genotyped;
+
+            gbr->flush(odw, h, s, true);
+            odw->close();
+        }
+        else if (mode=="s")
+        {
+            //iterate VCF file
+                //random access per site
         }
     }
 
@@ -547,7 +591,7 @@ void genotype2(int argc, char ** argv)
 {
     Igor igor(argc, argv);
     igor.print_options();
-    igor.genotype2();
+    igor.genotype3();
     igor.print_stats();
 }
 

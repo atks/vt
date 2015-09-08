@@ -35,6 +35,7 @@
 #include "variant.h"
 #include "variant_manip.h"
 #include "log_tool.h"
+#include "augmented_bam_record.h"
 
 /**
  * Wrapper for BCFOrderedReader.
@@ -51,12 +52,13 @@ class BCFGenotypingBufferedReader
     //i/o//
     ///////
     BCFOrderedReader* odr;
-
+    
     //////////////////
     //buffer related//
     //////////////////
     std::list<GenotypingRecord*> buffer;
     std::string chrom;
+    AugmentedBAMRecord as;
 
     Variant variant;
 
@@ -87,6 +89,11 @@ class BCFGenotypingBufferedReader
      * Compute SNP genotype likelihoods in PHRED scale.
      */
     void compute_snp_pl(std::string& alleles, std::vector<uint32_t>& quals, uint32_t ploidy,  std::vector<uint32_t>& pls);
+
+    /**
+     * Collects sufficient statistics from read for variants to be genotyped.
+     */
+    void collect_sufficient_statistics2(GenotypingRecord *g,  AugmentedBAMRecord& as);
    
     /**
      * Collects sufficient statistics from read for variants to be genotyped.
