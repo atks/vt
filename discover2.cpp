@@ -1077,7 +1077,6 @@ class Igor : Program
                         uint32_t lpos1 = cpos1; // we need this because M contains matches and mismatches
                         uint32_t sspos0 = spos0; // we need this because M contains matches and mismatches
                         uint32_t mlen = oplen;
-                        uint32_t i = 0;
                         seenM = true;
 
                         if (debug) std::cerr << "\t\tmd len left : " << md_mlen_left << "\n";
@@ -1096,9 +1095,9 @@ class Igor : Program
                                 uint32_t gend1 = lpos1+ilen-1;
 
                                 std::cerr << "\t\t\tadding REF: " << gbeg1 << "-" << gend1 << ":";
-                                for (size_t i=sspos0; i<=(sspos0+ilen-1); ++i)
+                                for (size_t j=sspos0; j<=(sspos0+ilen-1); ++j)
                                 {
-                                    std::cerr << (bam_base2char(bam_seqi(seq, i)));
+                                    std::cerr << (bam_base2char(bam_seqi(seq, j)));
                                 }
                                 std::cerr << " (" << gend1-gbeg1+1 << ") [" <<  mlen-ilen << "]\n";
                             }
@@ -1158,9 +1157,9 @@ class Igor : Program
                                         uint32_t gend1 = lpos1+ilen-1;
 
                                         //std::cerr << "\t\t\tadding REF: " << gbeg1 << "-" << gend1 << ":";
-                                        for (size_t i=sspos0; i<=(sspos0+ilen-1); ++i)
+                                        for (size_t j=sspos0; j<=(sspos0+ilen-1); ++j)
                                         {
-                                            std::cerr << (bam_base2char(bam_seqi(seq, i)));
+                                            std::cerr << (bam_base2char(bam_seqi(seq, j)));
                                         }
                                         std::cerr << " (" << gend1-gbeg1+1 << ") [" <<  mlen-ilen << "]\n";
                                     }

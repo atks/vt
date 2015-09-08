@@ -67,19 +67,16 @@ class AugmentedBAMRecord
 {
     public:
     bam1_t *s;
-    uint8_t* seq;
-    uint32_t* cigar;
-    uint32_t* md;
-    int32_t pos1;
     
     //new augmented cigar with X's
     std::vector<uint32_t> aug_cigar;
     
-    //points to md sequences
-    std::vector<char*> aug_seq;
+    //points to mismatch, deleted and inserted sequences
+    std::vector<std::string> aug_ref;
             
+    //points to mismatch, deleted and inserted sequences
+    std::vector<std::string> aug_alt;
     
-
     /**
      * Constructor.
      */

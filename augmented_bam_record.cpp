@@ -47,85 +47,98 @@ void AugmentedBAMRecord::initialize(bam1_t* s)
 {
     this->s = s;
 
-    uint32_t *cigar = bam_get_cigar(s);
+    uint8_t* seq = bam_get_seq(s);
+
+    //CIGAR related variables
     int32_t n_cigar_op = bam_get_n_cigar_op(s);
+    uint32_t *cigar = bam_get_cigar(s);
     char opchr;
     int32_t oplen;
-
-    aug_cigar.clear();
 
     //get MD tag
     uint8_t *md_aux;
     char* md = 0;
     ((md_aux=bam_aux_get(s, "MD")) &&  (md = bam_aux2Z(md_aux)));
-    
-    //this points to the part of md that is yet to be processed.
-    char* mdp = md;
+    char* mdp = md; //pointer to md
 
-    uint32_t cpos1 = pos1; //current 1 based genome position
-    uint32_t spos0 = 0;    //current position in read sequence
 
-    //variables for I's embedded in Matches in the MD tag
-    uint32_t md_mlen_left = 0;
-    bool seenM = false;
+    //variables for keep track of CIGAR and MD tag
+    uint32_t cpos1 = bam_get_pos1(s); //current 1-based genome position
+    uint32_t spos0 = 0;                //current 0-based position in read sequence and qual field
+    uint32_t md_mlen_left = 0;         //unprocessed MD matches that embeds insertions
+    bool seenM = false;                //to check read is aligned
+    bool expectedI = true;             //true when the next state expected is I, for error checking
 
     for (int32_t i = 0; i < n_cigar_op; ++i)
     {
         opchr = bam_cigar_opchr(cigar[i]);
         oplen = bam_cigar_oplen(cigar[i]);
 
-        //variables for I's embedded in Matches in the MD tag
-        uint32_t md_mlen_left = 0;
-
+        if (expectedI && opchr!='I')
+        {
+            fprintf(stderr, "[%s:%d %s] Inconsistent CIGAR and MD.\n", __FILE__, __LINE__, __FUNCTION__);
+            //print warning
+        }
+        
         if (opchr=='S')
         {
             spos0 += oplen;
             aug_cigar.push_back(cigar[i]);
-            aug_seq.push_back(NULL);
+            aug_ref.push_back("");
+            aug_alt.push_back("");
         }
         else if (opchr=='M')
         {
-            uint32_t lpos1 = cpos1; // we need this because M contains matches and mismatches
-            uint32_t sspos0 = spos0; // we need this because M contains matches and mismatches
-            uint32_t mlen = oplen;
-            uint32_t i = 0;
             seenM = true;
 
+            uint32_t lpos1 = cpos1; // we need this because M contains matches and mismatches
+            uint32_t sspos0 = spos0; // we need this because M contains matches and mismatches
+            
+            uint32_t mlen = oplen; //match length
+    
             //left over MD matches to handle.
+            //this occurs when I is embedded.
             if (md_mlen_left)
             {
-                uint32_t ilen = md_mlen_left<=mlen ? md_mlen_left : mlen;
-
-                lpos1 += ilen;
-                sspos0 += ilen;
-
-                //yet another insertion
-                if (md_mlen_left>=mlen)
+                //cigar I embedded in MD matches
+                //CIGAR: 6M4I6M
+                //MD   : 12
+                //to process the next insertion or SNP
+                if (md_mlen_left>mlen)
                 {
-                    md_mlen_left -= ilen;
-                    cpos1 += ilen;
-                    spos0 += ilen;
+                    md_mlen_left -= mlen;
+                    cpos1 += mlen;
+                    spos0 += mlen;
+                    
+                    //no need to process MD tag since we are in the midst of perfect matches
+                    //we skip to process the next insertion cigar operation
+                    expectedI = true;
                     continue;
                 }
-                //a snp next
+                //this is very important
+                //CIGAR: 12M
+                //MD   : 6A5
+                //need to process MD tag
+                //to process the next insertion or SNP
                 else
                 {
                     md_mlen_left = 0;
-                    mlen -= ilen;
+                    mlen -= md_mlen_left;
                     //go to loop in the next section
                 }
             }
 
+            //might have multiple mismatches
             while (*mdp)
             {
-                if (isalpha(*mdp)) //SNPs
+                if (isalpha(*mdp)) //mismatches
                 {
-                    char ref = toupper(*mdp);
-                    char alt = (bam_base2char(bam_seqi(seq, spos0+(lpos1-cpos1))));
+                    aug_cigar.push_back(bam_cigar_gen(1, BAM_CDIFF));
+                    aug_ref.push_back(std::string(1, toupper(*mdp)));
+                    aug_alt.push_back(std::string(1, bam_base2char(bam_seqi(seq, spos0))));
 
-                    ++lpos1;
                     ++mdp;
-                    ++sspos0;
+                    ++spos0;
                     --mlen;
                 }
                 else if (isdigit(*mdp)) //matches
@@ -136,37 +149,37 @@ void AugmentedBAMRecord::initialize(bam1_t* s)
 
                     if (len)
                     {
-                        uint32_t ilen = len<=mlen ? len : mlen;
-
-                        lpos1 += ilen;
-                        sspos0 += ilen;
-
-                        //next up an insertion
+                        //another I
                         if (len>mlen)
                         {
                             md_mlen_left = len - mlen;
+                            expectedI = true;
+                            mlen = 0;
+                            
+                            aug_cigar.push_back(bam_cigar_gen(mlen, BAM_CEQUAL));
+                            aug_ref.push_back("");
+                            aug_alt.push_back("");
+                            
                             break;
                         }
+                        //another mismatch
                         else
                         {
-                            mlen -= ilen;
+                            mlen -= len;
+                            
+                            aug_cigar.push_back(bam_cigar_gen(len, BAM_CEQUAL));
+                            aug_ref.push_back("");
+                            aug_alt.push_back("");
+                            
+                            //continue processing MD tag
                         }
                     }
                 }
-                else // deletion
+                else // deletion, to be handled in the cigar's D operation
                 {
+                    expectedI = false;
                     break;
                 }
-
-                if (mlen==0)
-                {
-                    break;
-                }
-
-                //note that only insertions, matches and mismatches can only occur here.
-
-                cpos1 += oplen;
-                spos0 += oplen;
             }
         }
         else if (opchr=='D')
@@ -177,6 +190,7 @@ void AugmentedBAMRecord::initialize(bam1_t* s)
 
             if (*mdp!='^')
             {
+                fprintf(stderr, "[%s:%d %s] Inconsistent CIGAR and MD where deletion is expected\n", __FILE__, __LINE__, __FUNCTION__);
                 std::cerr << "mdp: " << mdp << "\n";
                 std::cerr << "inconsistent MD and cigar, deletion does not occur at the right place.\n";
                 exit(1);
@@ -184,24 +198,37 @@ void AugmentedBAMRecord::initialize(bam1_t* s)
 
             ++mdp;
             std::string del = "";
+                
             while (isalpha(*mdp))
             {
                 del += toupper(*mdp);
                 ++mdp;
             }
 
-            cpos1 += oplen;
+            aug_cigar.push_back(cigar[i]);
+            aug_ref.push_back(del);
+            aug_alt.push_back("");
         }
         else if (opchr=='I')
         {
             //leading Is
             if (!seenM)
             {
+                //convert to Ss
+                aug_cigar.push_back(cigar[i]);
+                
+                
+                aug_cigar.push_back(bam_cigar_gen(oplen, BAM_CSOFT_CLIP));
+                aug_ref.push_back("");
+                aug_alt.push_back("");
                 spos0 += oplen;
             }
             //trailing Is
             else if (i==n_cigar_op-1 || (i+2==n_cigar_op && bam_cigar_opchr(cigar[n_cigar_op-1])=='S'))
             {
+                aug_cigar.push_back(bam_cigar_gen(oplen, BAM_CSOFT_CLIP));
+                aug_ref.push_back("");
+                aug_alt.push_back("");
                 spos0 += oplen;
             }
             else
@@ -214,12 +241,16 @@ void AugmentedBAMRecord::initialize(bam1_t* s)
                     ins += bam_base2char(bam_seqi(seq, spos0+i));
                 }
 
+                aug_cigar.push_back(bam_cigar_gen(oplen, BAM_CINS));
+                aug_ref.push_back("");
+                aug_alt.push_back(ins);
+            
                 spos0 += oplen;
             }
         }
         else
         {
-            std::cerr << "never seen before state " << opchr << "\n";
+            fprintf(stderr, "[%s:%d %s] Cigar state not handled %c\n", __FILE__, __LINE__, __FUNCTION__, opchr);
             exit(1);
         }
 
@@ -242,12 +273,9 @@ bool AugmentedBAMRecord::left_align()
 void AugmentedBAMRecord::clear()
 {
     s = NULL;
-    seq = NULL;
-    cigar = NULL;
-    md = NULL;
-    pos1 = 0;
     aug_cigar.clear();
-    aug_seq.clear();
+    aug_ref.clear();
+    aug_alt.clear();
 }
 
 /**
@@ -274,7 +302,7 @@ void AugmentedBAMRecord::print()
             
             for (uint32_t j=0; j<oplen; ++j)
             {
-                seq.append(bam_base2char(bam_seqi(this->seq, spos0+j)), 1);
+                seq.append(bam_base2char(bam_seqi(bam_get_seq(this->s), spos0+j)), 1);
             }
             
             align.append('S', oplen);
@@ -283,48 +311,35 @@ void AugmentedBAMRecord::print()
         {
             for (uint32_t j=0; j<oplen; ++j)
             {
-                ref.append(bam_base2char(bam_seqi(this->seq, spos0+j)), 1);
-                seq.append(bam_base2char(bam_seqi(this->seq, spos0+j)), 1);
+                ref.append(bam_base2char(bam_seqi(bam_get_seq(this->s), spos0+j)), 1);
+                seq.append(bam_base2char(bam_seqi(bam_get_seq(this->s), spos0+j)), 1);
             }
-        
             align.append('=', oplen);
             
             spos0 += oplen;
         }
         else if (opchr=='X')
         {
-            for (uint32_t j=0; j<oplen; ++j)
-            {
-                ref.append(aug_seq[j], 1);
-                seq.append(bam_base2char(bam_seqi(this->seq, spos0+j)), 1);
-            }
-        
-            align.append('X', oplen);
+            //assume oplen is always 1.
             
-            spos0 += oplen;
+            ref.append(aug_ref[i]);
+            seq.append(aug_alt[i]);
+            align.append('X', 1);
+            
+            spos0 += 1;
         } 
         else if (opchr=='I')
         {
             ref.append('-', oplen);
-            
-            for (uint32_t j=0; j<oplen; ++j)
-            {
-                seq.append(bam_base2char(bam_seqi(this->seq, spos0+j)), 1);
-            }
-            
+            seq.append(aug_alt[i]);
             align.append('I', oplen);
             
             spos0 += oplen;
         }
         else if (opchr=='D')
         {
-            for (uint32_t j=0; j<oplen; ++j)
-            {
-                ref.append(aug_seq[j], oplen);
-            }
-            
+            ref.append(aug_ref[i]);
             seq.append('-', oplen);
-            
             align.append('D', oplen);
         }
         else
