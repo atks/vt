@@ -289,7 +289,7 @@ void AugmentedBAMRecord::initialize(bam_hdr_t* h, bam1_t* s)
         }
         else if (opchr=='X')
         {
-            if (qual[rpos0]>20) 
+            if (qual[rpos0]>=20) 
             {
                 ++no_mismatches;
             }

@@ -263,6 +263,13 @@ int32_t VariantManip::classify_variant(bcf_hdr_t *h, bcf1_t *v, Variant& var)
                 var.alleles.push_back(Allele(type, sv_type));
             }
         }
+        else if (strchr(allele[i],'[')||strchr(allele[i],']'))
+        {
+            type = VT_SV;
+            var.type |= type;
+            std::string sv_type("<BND>");
+            var.alleles.push_back(Allele(type, sv_type));
+        }
         else if (allele[i][0]=='.' || strcmp(allele[i],allele[0])==0)
         {
             type = VT_REF;

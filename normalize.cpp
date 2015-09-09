@@ -184,7 +184,7 @@ class Igor : Program
                 }
             }
 
-            if (is_ref_consistent && !vm->is_normalized(v))
+            if (is_ref_consistent && !(type&VT_SV) && !(type&VT_VNTR) && !vm->is_normalized(v))
             {
                 const char* chrom = odr->get_seqname(v);
                 uint32_t pos1 = bcf_get_pos1(v);
