@@ -23,6 +23,7 @@
 #include "htslib/vcf.h"
 #include "htslib/faidx.h"
 #include "bcf_ordered_writer.h"
+#include "variant.h"
 
 /**
  * A generic record that holds information for genotyping a 
@@ -40,6 +41,11 @@ class GenotypingRecord
     int32_t end1;
         
     int32_t vtype;
+    
+    //indel specific record
+    int32_t dlen;
+    uint32_t len;
+    std::string indel;
     
     //for records that observe at least one alternate observation
     std::vector<uint32_t> quals;

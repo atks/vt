@@ -31,6 +31,22 @@ GenotypingRecord::GenotypingRecord(bcf1_t *v, int32_t vtype)
     pos1 = bcf_get_pos1(v);
     end1 = bcf_get_end_pos1(v);
     this->vtype = vtype;
+    
+    if (vtype==VT_INDEL && bcf_get_n_allele(v)==2)
+    {
+        char** alleles = bcf_get_allele(v);
+        dlen = strlen(alleles[1])-strlen(alleles[0]);
+        len = abs(dlen);
+    
+        if (dlen>0)
+        {
+            indel.append(&alleles[1][1]);
+        }    
+        else
+        {
+            indel.append(&alleles[0][1]);
+        }    
+    }    
 }
 
 /**

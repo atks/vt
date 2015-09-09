@@ -273,6 +273,7 @@ void AugmentedBAMRecord::initialize(bam_hdr_t* h, bam1_t* s)
     
     //count number of mismatches
     uint8_t* qual = bam_get_qual(s);
+    rpos0 = 0;
     for (uint32_t i=0; i<aug_cigar.size(); ++i)
     {
         uint32_t oplen = bam_cigar_oplen(aug_cigar[i]);
@@ -288,8 +289,10 @@ void AugmentedBAMRecord::initialize(bam_hdr_t* h, bam1_t* s)
         }
         else if (opchr=='X')
         {
-            if (qual[rpos0]>20) ++no_mismatches;
-            
+            if (qual[rpos0]>20) 
+            {
+                ++no_mismatches;
+            }
             ++rpos0;
         } 
         else if (opchr=='I')
@@ -447,11 +450,12 @@ void AugmentedBAMRecord::print()
     std::string ref;
     std::string align;
     std::string seq;
+    std::string quals;
     int32_t spos0 = 0;     
     
     
     
-    
+    uint8_t* qual = bam_get_qual(s);
     for (uint32_t i=0; i<aug_cigar.size(); ++i)
     {
         oplen = bam_cigar_oplen(aug_cigar[i]);
@@ -464,6 +468,7 @@ void AugmentedBAMRecord::print()
             for (uint32_t j=0; j<oplen; ++j)
             {
                 seq.append(1, bam_base2char(bam_seqi(bam_get_seq(this->s), spos0+j)));
+                quals.append(1, qual[spos0+j]+33);
             }
             
             align.append(oplen, 'S');
@@ -474,6 +479,7 @@ void AugmentedBAMRecord::print()
             {
                 ref.append(1, bam_base2char(bam_seqi(bam_get_seq(this->s), spos0+j)));
                 seq.append(1, bam_base2char(bam_seqi(bam_get_seq(this->s), spos0+j)));
+                quals.append(1, qual[spos0+j]+33);
             }
             align.append(oplen, '=');
             
@@ -486,6 +492,7 @@ void AugmentedBAMRecord::print()
             ref.append(aug_ref[i]);
             seq.append(aug_alt[i]);
             align.append(1, 'X');
+            quals.append(1, qual[spos0]+33);
             
             spos0 += 1;
         } 
@@ -494,6 +501,11 @@ void AugmentedBAMRecord::print()
             ref.append(oplen, '-');
             seq.append(aug_alt[i]);
             align.append( oplen, 'I');
+            
+            for (uint32_t j=0; j<oplen; ++j)
+            {
+                quals.append(1, qual[spos0+j]+33);
+            }
             
             spos0 += oplen;
         }
@@ -513,5 +525,6 @@ void AugmentedBAMRecord::print()
     
     std::cerr << "REF   : "<< ref << "\n";
     std::cerr << "ALIGN : "<< align << "\n";
-    std::cerr << "READ  : "<< seq << "\n";        
+    std::cerr << "READ  : "<< seq << "\n";  
+    std::cerr << "QUAL  : "<< quals << "\n";        
 }
