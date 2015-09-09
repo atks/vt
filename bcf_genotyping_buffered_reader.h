@@ -52,7 +52,7 @@ class BCFGenotypingBufferedReader
     //i/o//
     ///////
     BCFOrderedReader* odr;
-    
+
     //////////////////
     //buffer related//
     //////////////////
@@ -68,13 +68,13 @@ class BCFGenotypingBufferedReader
     uint32_t no_snps_genotyped;
     uint32_t no_indels_genotyped;
     uint32_t no_vntrs_genotyped;
-    
+
     /////////
     //tools//
     /////////
     VariantManip *vm;
     LogTool lt;
-    
+
     /**
      * Constructor.
      */
@@ -84,22 +84,22 @@ class BCFGenotypingBufferedReader
      * Collects sufficient statistics from read for variants to be genotyped.
      */
     void process_read(bam_hdr_t *h, bam1_t *s);
- 
+
     /**
      * Compute SNP genotype likelihoods in PHRED scale.
      */
     void compute_snp_pl(std::string& alleles, std::vector<uint32_t>& quals, uint32_t ploidy,  std::vector<uint32_t>& pls);
-    
+
     /**
      * Compute Indel genotype likelihoods in PHRED scale.
      */
     void compute_indel_pl(std::string& alleles, std::vector<uint32_t>& quals, uint32_t ploidy,  std::vector<uint32_t>& pls);
-    
+
     /**
      * Collects sufficient statistics from read for variants to be genotyped.
      */
     void collect_sufficient_statistics2(GenotypingRecord *g,  AugmentedBAMRecord& as);
-   
+
     /**
      * Collects sufficient statistics from read for variants to be genotyped.
      */
@@ -113,7 +113,7 @@ class BCFGenotypingBufferedReader
     /**
      * Genotype variant and print to odw.
      */
-    void genotype_and_print(BCFOrderedWriter* odw, GenotypingRecord* g);    
+    void genotype_and_print(BCFOrderedWriter* odw, GenotypingRecord* g);
 
 };
 

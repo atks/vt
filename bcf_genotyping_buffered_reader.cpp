@@ -54,11 +54,6 @@ BCFGenotypingBufferedReader::BCFGenotypingBufferedReader(std::string filename, s
  */
 void BCFGenotypingBufferedReader::process_read(bam_hdr_t *h, bam1_t *s)
 {
-//    if (buffer.size()>1)
-//    {
-//        std::cerr << "size : " << buffer.size() << "\n";
-//    }
-
     uint32_t tid = bam_get_tid(s);
     uint32_t pos1 = bam_get_pos1(s);
     uint32_t end1 = bam_get_end_pos1(s);
@@ -66,10 +61,12 @@ void BCFGenotypingBufferedReader::process_read(bam_hdr_t *h, bam1_t *s)
     //wrap bam1_t in AugmentBAMRecord
     as.initialize(h, s);
 
+    //collect statistics for variant records that are in the buffer and overlap with the read
     GenotypingRecord* g;
     for (std::list<GenotypingRecord*>::iterator i=buffer.begin(); i!=buffer.end(); ++i)
     {
         g = *i;
+        //same chromosome
         if (tid==g->rid)
         {
             if (end1<g->pos1)
@@ -84,34 +81,42 @@ void BCFGenotypingBufferedReader::process_read(bam_hdr_t *h, bam1_t *s)
             }
             else
             {
-//                std::cerr << "\tcollect statistics\n";
                 collect_sufficient_statistics2(*i, as);
             }
         }
+        //prior chromosome
         else if (tid<g->rid)
         {
+            //this should not occur if the buffer was flushed before invoking process read
             return;
         }
-        else if (tid==g->rid)
+        //latter chromosome
+        else if (tid>g->rid)
         {
+            //in case if the buffer has a VCF record later in the list which matches it
             continue;
         }
     }
 
-    //adding new VCF records
+    //you will only reach here if a read occurs after or overlaps the last record in the buffer
+    //adding new VCF records and collecting statistics if necessary
     bcf1_t *v = bcf_init();
     while (odr->read(v))
     {
-        //std::cerr << "\tgot read " << "\n";
         int32_t vtype = vm->classify_variant(odr->hdr, v, variant);
         g = new GenotypingRecord(v, vtype);
-
-        collect_sufficient_statistics2(g, as);
         buffer.push_back(g);
-
-
-
-        if (tid!=g->rid || end1<g->pos1)
+        
+        if (tid==g->rid)
+        {    
+            if (end1>=g->pos1 && pos1<=g->end1)
+            {
+                collect_sufficient_statistics2(g, as);
+            }
+        }
+        
+        //VCF record occurs after the read
+        if (tid<g->rid || end1<g->pos1)
         {
             return;
         }
@@ -278,8 +283,6 @@ void BCFGenotypingBufferedReader::collect_sufficient_statistics2(GenotypingRecor
 
             uint32_t q = len*30;
             uint32_t cycle = 10;
-
-
 
             std::vector<uint32_t>& aug_cigar = as.aug_cigar;
             std::vector<std::string>& aug_ref = as.aug_ref;
@@ -902,9 +905,7 @@ void BCFGenotypingBufferedReader::compute_indel_pl(std::string& alleles, std::ve
         double pAA = 0;
         double p;
         double q;
-        
-//         std::cerr <<"start: "  << " "<< pRR << " " << pRA << " " << pAA << "\n";
-        
+
         for (uint32_t i=0; i<alleles.size(); ++i)
         {
             if (alleles[i]=='R')
@@ -923,10 +924,6 @@ void BCFGenotypingBufferedReader::compute_indel_pl(std::string& alleles, std::ve
                 pRA += -0.30103+lt.log10sum(p,q);
                 pAA += p;
             }
-            
-            
-//            std::cerr << alleles[i] << " "<< pRR << " " << pRA << " " << pAA << "\n";
-            
         }
 
         pls[0] = -10*pRR;
