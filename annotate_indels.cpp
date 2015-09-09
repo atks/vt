@@ -269,6 +269,9 @@ class Igor : Program
         std::clog << "\n";
     }
 
+    /**
+     * Inserts a VNTR record.
+     */
     void insert_vntr_record(bcf_hdr_t* h, bcf1_t *v, Variant& variant)
     {
         VNTR& vntr = variant.vntr;
@@ -289,6 +292,12 @@ class Igor : Program
         bcf_update_genotypes(h, v, gts, no_samples);
     }
 
+    /**
+     * Updates an Indel record with:
+     * a. MOTIF
+     * b. RU
+     * c. RL
+     */
     void update_indel_record(bcf_hdr_t* h, bcf1_t *v, Variant& variant)
     {
         VNTR& vntr = variant.vntr;
@@ -307,11 +316,23 @@ class Igor : Program
         bcf_update_info_string(h, v, MOTIF.c_str(), vntr.motif.c_str());
         bcf_update_info_string(h, v, RU.c_str(), vntr.ru.c_str());
         bcf_update_info_float(h, v, RL.c_str(), &vntr.rl, 1);
-        
-//        variant.get_vntr_string(&s);
-//        bcf_update_info_string(h, v, "TR", s.s);
     }
 
+    /**
+     * Updates an Indel record with an overlapping VNTR:
+     */
+    void update_indel_record_with_vntr_annotation(bcf_hdr_t* h, bcf1_t *v, Variant& variant)
+    {
+        VNTR& vntr = variant.vntr;
+         
+        bcf_update_info_string(h, v, MOTIF.c_str(), vntr.motif.c_str());
+        bcf_update_info_string(h, v, RU.c_str(), vntr.ru.c_str());
+        bcf_update_info_float(h, v, RL.c_str(), &vntr.rl, 1);
+        
+        variant.get_vntr_string(&s);
+        bcf_update_info_string(h, v, "TR", s.s);    
+    }
+    
     void annotate_indels()
     {
         odw->write_hdr();
@@ -338,6 +359,9 @@ class Igor : Program
             {
 //                bcf_print(odr->hdr, v);
                 va->annotate(odr->hdr, v, variant, method);
+                
+                
+                //setup a pass filter for the VNTR classification
                 
                 //add a filter to indicate VNTR fitness.
                 update_indel_record(h, v, variant);

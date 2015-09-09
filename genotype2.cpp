@@ -216,7 +216,6 @@ class Igor : Program
         no_indels_genotyped = 0;
         no_vntrs_genotyped = 0;
 
-
         //for tracking overlapping reads
         reads = kh_init(rdict);
 

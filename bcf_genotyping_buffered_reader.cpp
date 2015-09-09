@@ -248,6 +248,18 @@ void BCFGenotypingBufferedReader::collect_sufficient_statistics2(GenotypingRecor
                 }
             }
 
+            //update no. of mismatches
+            uint32_t no_mismatches = as.no_mismatches;
+            if (allele != 'R' && q<20)
+            {
+                ++no_mismatches;
+            }    
+
+            if (allele != 'R' && no_mismatches==0)
+            {
+                std::cerr << "soemthing wrong\n";
+            }    
+
             g->base_qualities_sum += q;
 
             ++g->depth;
@@ -256,7 +268,7 @@ void BCFGenotypingBufferedReader::collect_sufficient_statistics2(GenotypingRecor
             g->cycles.push_back(cycle);
             g->alleles.append(1, allele);
             g->strands.append(1, strand);
-            g->no_mismatches.push_back(as.no_mismatches);
+            g->no_mismatches.push_back(no_mismatches);
         }
         else //multiallelic
         {

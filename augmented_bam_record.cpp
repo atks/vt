@@ -419,13 +419,8 @@ void AugmentedBAMRecord::print()
                 has_indels = true;
                 break;
             }
-            
         }
-        
-    
     }
-
-    
 
     std::cerr << "##################" << "\n";
     std::cerr << "Augmented CIGAR" << "\n";
@@ -433,9 +428,7 @@ void AugmentedBAMRecord::print()
 
     int32_t oplen;
     char opchr;
-    
-    
-    
+
     std::cerr << "AUG_CIGAR : ";
     for (uint32_t i=0; i<aug_cigar.size(); ++i)
     {
@@ -452,8 +445,6 @@ void AugmentedBAMRecord::print()
     std::string seq;
     std::string quals;
     int32_t spos0 = 0;     
-    
-    
     
     uint8_t* qual = bam_get_qual(s);
     for (uint32_t i=0; i<aug_cigar.size(); ++i)
@@ -518,9 +509,7 @@ void AugmentedBAMRecord::print()
         else
         {
             std::cerr << "unrecognized cigar state " << opchr << "\n";
-//            exit(1);
         }
-        
     }
     
     std::cerr << "REF   : "<< ref << "\n";
