@@ -146,10 +146,10 @@ void BCFGenotypingBufferedReader::collect_sufficient_statistics2(GenotypingRecor
             uint32_t pos1 = bam_get_pos1(s);
             uint8_t* seq = bam_get_seq(s);
             uint8_t* qual = bam_get_qual(s);
-            uint32_t rlen = bam_get_l_qseq(s);
+            int32_t rlen = bam_get_l_qseq(s);
             uint8_t mapq = bam_get_mapq(s);
             uint32_t q = 30;
-            uint32_t cycle = 10;
+            int32_t cycle = 0;
 
             std::vector<uint32_t>& aug_cigar = as.aug_cigar;
             std::vector<std::string>& aug_ref = as.aug_ref;
@@ -176,7 +176,8 @@ void BCFGenotypingBufferedReader::collect_sufficient_statistics2(GenotypingRecor
                         rpos0 += vpos1-cpos1;
                         allele = 'R';
                         q = qual[rpos0];
-                        cycle = strand == 'F' ? (rpos0+1) : (rlen - rpos0);
+                        cycle = rpos0<(rlen>>1) ? (rpos0+1) : -(rlen - rpos0 + 1);
+                        
                         break;
                     }
                     else
@@ -192,11 +193,10 @@ void BCFGenotypingBufferedReader::collect_sufficient_statistics2(GenotypingRecor
                     {
 //                        std::cerr << i << ") " << vpos1 << "," << cpos1 << "," << rpos0 << " : " << aug_ref[i] << "/" << aug_alt[i] << " vs " <<bcf_get_allele(g->v)[1][0] << "\n";
 
-                        allele = aug_alt[i].at(0) == bcf_get_allele(g->v)[1][0] ? 'A' : 'O';
+                        allele = aug_alt[i].at(0) == bcf_get_allele(g->v)[1][0] ? '1' : 'O';
                         q = qual[rpos0];
-
-                        cycle = strand == 'F' ? (rpos0+1) : (rlen - rpos0);
-
+                        cycle = rpos0<(rlen>>1) ? (rpos0+1) : -(rlen - rpos0 + 1);
+                        
                         break;
                     }
 
@@ -257,7 +257,7 @@ void BCFGenotypingBufferedReader::collect_sufficient_statistics2(GenotypingRecor
 
             if (allele != 'R' && no_mismatches==0)
             {
-                std::cerr << "soemthing wrong\n";
+                std::cerr << "something wrong\n";
             }    
 
             g->base_qualities_sum += q;

@@ -122,21 +122,32 @@ class Igor : Program
                  "              h : using HMMs"
                  "              x : integrated models",
                  false, "e", "str", cmd);
-            TCLAP::ValueArg<std::string> arg_annotation_mode("a", "a", "mode [x]\n"
-                 "              e : output VNTR variant .\n"
+            TCLAP::ValueArg<std::string> arg_annotation_mode("a", "a", "annotation type [x]\n"
+                 "              e : output VNTR variant.\n"
                  "              f : determine by fuzzy alignment.\n"
                  "              p : determine by penalized fuzzy alignment.\n"
                  "              h : using HMMs"
                  "              x : integrated models",
                  false, "e", "str", cmd);
-//            TCLAP::ValueArg<std::string> arg_classification("a", "a", "mode [x]\n"g
-//                 "              e : output VNTR variant .\n"
-//                 "              f : determine by fuzzy alignment.\n"
-//                 "              p : determine by penalized fuzzy alignment.\n"
-//                 "              h : using HMMs"
-//                 "              x : integrated models",
-//                 false, "e", "str", cmd);     
-            TCLAP::ValueArg<uint32_t> arg_alignment_penalty("p", "p", "alignment penalty [0]\n", false, 0, "int", cmd);
+            TCLAP::ValueArg<std::string> arg_classification("a", "a", "mode [x]\n"
+                 "              Classification schemas of TR"
+                 "       "
+                 "              lai2003     :  .\n"
+                 "              kelkar2008  : determine by fuzzy alignment.\n"
+                 "              fondon2012  : determine by penalized fuzzy alignment.\n"
+                 "              ananda2013  : using HMMs"
+                 "              willems2013 : using HMMs"
+                 "              tankang2015 : integrated models",
+                 false, "e", "str", cmd);     
+                 
+                 #define LAI_2003_STR       0
+#define KELKAR_2008_STR    1
+#define FONDON_2012_STR    2
+#define ANANDA_2013_STR    3
+#define WILLEMS_2014_STR   4
+#define TAN_KANG_2015_VNTR 5
+                 
+            TCLAP::ValueArg<uint32_t> arg_alignment_penalty("p", "p", "alignment penalty [0]", false, 0, "int", cmd);
             TCLAP::SwitchArg arg_debug("d", "d", "debug [false]", cmd, false);
             TCLAP::UnlabeledValueArg<std::string> arg_input_vcf_file("<in.vcf>", "input VCF file", true, "","file", cmd);
             TCLAP::ValueArg<std::string> arg_fexp("f", "f", "filter expression []", false, "", "str", cmd);

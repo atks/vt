@@ -224,7 +224,6 @@ class VNTRAnnotator
      * Returns true if is to be classified as a VNTR
      */
     bool is_vntr(Variant& variant, int32_t mode);
-
 };
 
 #endif

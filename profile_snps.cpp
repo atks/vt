@@ -166,6 +166,10 @@ class Igor : Program
         dataset_fexps.push_back(fexp);
 
         htsFile *hts = hts_open(ref_data_sets_list.c_str(), "r");
+        if (!hts)
+        {
+            exit(1);
+        }    
         kstring_t s = {0,0,0};
         std::vector<std::string> vec;
         while (hts_getline(hts, '\n', &s)>=0)
