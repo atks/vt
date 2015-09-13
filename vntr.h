@@ -40,6 +40,7 @@ class VNTR
     public:
 
     //repeat tract
+    int32_t rid;                //rid, redundant data with Variant. todo: something about this.
     std::string repeat_tract;   //repeat tract
     uint32_t rbeg1;             //beginning of repeat tract
     uint32_t rend1;             //end of repeat tract
@@ -67,6 +68,11 @@ class VNTR
      * Clear object.
      */
     void clear();
+
+    /**
+     * Checks for equality.
+     */
+    bool equals(VNTR& vntr);   
 
     /**
      * Get VNTR representation in string format.

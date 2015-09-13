@@ -33,6 +33,7 @@ VNTR::VNTR(){};
  */
 void VNTR::clear()
 {
+    rid = -1;
     repeat_tract.clear();
     rbeg1 = 0;
     rend1 = 0;
@@ -50,6 +51,17 @@ void VNTR::clear()
     total_no_ru = 0;
 }
 
+/**
+ * Checks for equality.
+ */
+bool VNTR::equals(VNTR& vntr)
+{
+    return (rid==vntr.rid &&
+            rbeg1==vntr.rbeg1 &&
+            rend1==vntr.rend1 &&
+            motif==vntr.motif);
+}
+    
 /**
  * Get VNTR representation in string format.
  */
