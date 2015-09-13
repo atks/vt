@@ -85,6 +85,8 @@ void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::str
         //1. pick candidate region
         vntr.repeat_tract.assign(bcf_get_ref(v));
         vntr.rbeg1 = bcf_get_pos1(v);
+        char** alleles = bcf_get_allele(v);
+        vntr.rend1 = strlen(alleles[0]);
  //       pick_candidate_region(h, v, vntr, REFERENCE);
 
         //2. detect candidate motifs from a reference seqeuence
