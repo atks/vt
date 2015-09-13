@@ -181,26 +181,6 @@ void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::str
             return;
 
         }
-        else if (mode=="x")
-        {
-            if (debug) std::cerr << "============================================\n";
-            if (debug) std::cerr << "Integrated Methods\n";
-
-            //1. selects candidate region by fuzzy left and right alignment
-            cre->extract_regions_by_fuzzy_alignment_with_penalty(h, v, vntr);
-
-            //2. detect candidate motifs from candidate region
-            pick_candidate_motifs(h, v, vntr);
-
-            //3. choose the best candidate motif
-            choose_best_motif(h, v, mt, vntr, PICK_BEST_MOTIF);
-
-            //4. evaluate reference length
-            detect_repeat_region(h, v, variant, CLIP_1L2R);
-
-            if (debug) std::cerr << "============================================\n";
-            return;
-        }
     }
 }
 

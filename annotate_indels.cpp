@@ -66,6 +66,11 @@ class Igor : Program
 
     bool debug;
 
+    /////////////
+    //vntr buffer
+    /////////////
+    std::list<bcf1_t*> buffer;
+
     //////////
     //filter//
     //////////
@@ -292,6 +297,11 @@ class Igor : Program
             bcf_update_genotypes(h, v, gts, no_samples);
         }
     }
+    
+    /**
+     * Returns true bcf1_t records v and w overlap.
+     */
+    bool is_overlapping(bcf1_t* v, bcf1_t w);
 
     /**
      * Updates an Indel record with an overlapping VNTR and end of allelelic region.
