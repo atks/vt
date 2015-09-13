@@ -115,37 +115,22 @@ class Igor : Program
             TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_output_vcf_file("o", "o", "output VCF file [-]", false, "-", "str", cmd);
             TCLAP::ValueArg<std::string> arg_ref_fasta_file("r", "r", "reference sequence fasta file [e]", true, "e", "str", cmd);
-            TCLAP::ValueArg<std::string> arg_method("m", "m", "mode [x]\n"
-                 "              e : determine by exact alignment.\n"
-                 "              f : determine by fuzzy alignment.\n"
-                 "              p : determine by penalized fuzzy alignment.\n"
-                 "              h : using HMMs"
-                 "              x : integrated models",
-                 false, "e", "str", cmd);
-            TCLAP::ValueArg<std::string> arg_annotation_mode("a", "a", "annotation type [x]\n"
-                 "              e : output VNTR variant.\n"
-                 "              f : determine by fuzzy alignment.\n"
-                 "              p : determine by penalized fuzzy alignment.\n"
-                 "              h : using HMMs"
-                 "              x : integrated models",
-                 false, "e", "str", cmd);
-            TCLAP::ValueArg<std::string> arg_classification("a", "a", "mode [x]\n"
-                 "              Classification schemas of TR"
-                 "       "
-                 "              lai2003     :  .\n"
-                 "              kelkar2008  : determine by fuzzy alignment.\n"
-                 "              fondon2012  : determine by penalized fuzzy alignment.\n"
-                 "              ananda2013  : using HMMs"
-                 "              willems2013 : using HMMs"
-                 "              tankang2015 : integrated models",
-                 false, "e", "str", cmd);     
-                 
-                 #define LAI_2003_STR       0
-#define KELKAR_2008_STR    1
-#define FONDON_2012_STR    2
-#define ANANDA_2013_STR    3
-#define WILLEMS_2014_STR   4
-#define TAN_KANG_2015_VNTR 5
+            TCLAP::ValueArg<std::string> arg_annotation_mode("a", "a", "annotation type [v]\n"
+                 "              v : output VNTR variant (defined by classification) and mark Indels with overlapping VNTR.\n"
+                 "              a : annotate each indel with RU, RL, MOTIF, REF.\n",
+                 false, "v", "str", cmd);
+            TCLAP::ValueArg<std::string> arg_classification("c", "c", "classification schemas of tandem repeat [f]\n"
+                 "              lai : lai2003     \n"
+                 "              kel : kelkar2008  \n"
+                 "              fon : fondon2012  \n"
+                 "              ana : ananda2013  \n"
+                 "              wil : willems2014 \n"
+                 "              tan : tan_kang2015",
+                 false, "tan_kang2015", "str", cmd);     
+            TCLAP::ValueArg<std::string> arg_method("m", "m", "mode [e]\n"
+                 "              exact : determine by exact alignment.\n"
+                 "              fuzzy : determine by fuzzy alignment.",
+                 false, "e", "str", cmd);                 
                  
             TCLAP::ValueArg<uint32_t> arg_alignment_penalty("p", "p", "alignment penalty [0]", false, 0, "int", cmd);
             TCLAP::SwitchArg arg_debug("d", "d", "debug [false]", cmd, false);
@@ -254,6 +239,16 @@ class Igor : Program
         vm = new VariantManip(ref_fasta_file);
         va = new VNTRAnnotator(ref_fasta_file, debug);
         fai = fai_load(ref_fasta_file.c_str());
+        
+//        
+//        #define LAI_2003_STR       0
+//#define KELKAR_2008_STR    1
+//#define FONDON_2012_STR    2
+//#define ANANDA_2013_STR    3
+//#define WILLEMS_2014_STR   4
+//#define TAN_KANG_2015_VNTR 5
+//                 
+        
     }
 
     void print_options()

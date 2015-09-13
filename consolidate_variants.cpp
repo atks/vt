@@ -1,6 +1,6 @@
 /* The MIT License
 
-   Copyright (c) 2014 Adrian Tan <atks@umich.edu>
+   Copyright (c) 2015 Adrian Tan <atks@umich.edu>
 
    Permission is hereby granted, free of charge, to any person obtaining a copy
    of this software and associated documentation files (the "Software"), to deal
@@ -70,7 +70,8 @@ class Igor : Program
         //////////////////////////
         try
         {
-            std::string desc = "Removes overlapping variants in a VCF file.";
+            std::string desc = "Annotates overlapping variants with VNTRs"
+                "Annotates overlapping Indels with STRs";
 
             TCLAP::CmdLine cmd(desc, ' ', version);
             VTOutput my;
