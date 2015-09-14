@@ -408,7 +408,8 @@ class Igor : Program
         bcf_update_info_string(h, v, MOTIF.c_str(), vntr.motif.c_str());
         bcf_update_info_string(h, v, RU.c_str(), vntr.ru.c_str());
         bcf_update_info_float(h, v, RL.c_str(), &vntr.rl, 1);
-
+        bcf_update_info_int32(h, v, "END", &vntr.rend1, 1);
+        
         //individual fields - just set GT
         bcf_update_genotypes(h, v, gts, no_samples);
     }
@@ -470,6 +471,11 @@ class Igor : Program
                             odw->write(v);
                             v = odw->get_bcf1_from_pool();
                         }
+                    }
+                    else
+                    {
+                        odw->write(v);
+                        v = odw->get_bcf1_from_pool();
                     }
                 }
                 

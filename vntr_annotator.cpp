@@ -441,8 +441,8 @@ void VNTRAnnotator::detect_repeat_region(bcf_hdr_t* h, bcf1_t *v, Variant& varia
         }
 
         vntr.ru = choose_repeat_unit(vntr.repeat_tract, vntr.motif);
-//        vntr.rl = (float)vntr.repeat_tract.size()/vntr.ru.size();
         vntr.rl = (float)vntr.repeat_tract.size();
+        vntr.rend1 = vntr.rbeg1 +  vntr.rl -1;
 
         if (debug)
         {
@@ -467,6 +467,7 @@ void VNTRAnnotator::detect_repeat_region(bcf_hdr_t* h, bcf1_t *v, Variant& varia
 
         vntr.ru = choose_repeat_unit(vntr.repeat_tract, vntr.motif);
         vntr.rl = (float)vntr.repeat_tract.size()/vntr.ru.size();
+        vntr.rend1 = vntr.rbeg1 +  vntr.rl -1;
 
         if (debug)
         {
@@ -735,10 +736,15 @@ std::string VNTRAnnotator::shift_phase(std::string& seq, size_t i)
 bool VNTRAnnotator::is_vntr(Variant& variant, int32_t mode)
 {
     uint32_t mlen = variant.vntr.mlen;
-    uint32_t rlen = variant.vntr.rend1 - variant.vntr.rbeg1 + 1;
+    uint32_t rlen = variant.vntr.rl;
 
     if (mode==TAN_KANG_2015_VNTR)
     {
+//        if (rlen - mlen < 6)
+//        {
+//            variant.vntr.print();
+//        }
+        
         return (rlen - mlen >= 6);
 
 //        equivalent to    

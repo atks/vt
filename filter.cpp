@@ -63,8 +63,20 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
 
     if (type&VT_LOGIC_OP)
     {
+        if (!left->value_exists && type==VT_NOT)
+        {
+            if (debug)
+                std::cerr << "\tVT_NOT "   <<  left->b << " \n";
+
+            b = true;
+            return;
+        }
+
+        
+        //think about this, what happens when INFO values are not present, do you treat as a flag?
         if (!left->value_exists)
         {
+            b = false;
             value_exists = false;
             return;
         }
@@ -80,10 +92,11 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
 
         if (!right->value_exists)
         {
+            b = false;
             value_exists = false;
             return;
         }
-
+        
         if (type==VT_AND)
         {
             if (debug)
@@ -440,6 +453,7 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
                 }
                 else
                 {
+                    b = false;
                     value_exists = false;
                 }
             }
@@ -455,6 +469,7 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
                 }
                 else
                 {
+                    b = false;
                     value_exists = false;
                 }
 
@@ -467,10 +482,12 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
                 float *fs = NULL;
                 if (bcf_get_info_float(h, v, tag.s, &fs, &ns)>0)
                 {
+                    b = true;
                     f = (float)fs[0];
                 }
                 else
                 {
+                    b = false;
                     value_exists = false;
                 }
 
@@ -485,10 +502,12 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
 
                 if (bcf_get_info_string(h, v, tag.s, &s.s, &n)>0)
                 {
+                    b = true;
                     s.m = n;
                 }
                 else
                 {
+                    b = false;
                     value_exists = false;
                 }
             }
@@ -500,11 +519,13 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
 
             if (bcf_get_info_int32(h, v, tag.s, &data, &n)>0)
             {
+                b = true;
                 i = *((int*)data);
                 f = (float) i;
             }
             else
             {
+                b = false;
                 value_exists = false;
             }
 
@@ -517,10 +538,12 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
 
             if (bcf_get_info_float(h, v, tag.s, &data, &n)>0)
             {
+                b = true;
                 f = *((float*)data);
             }
             else
             {
+                b = false;
                 value_exists = false;
             }
 
@@ -532,10 +555,12 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
 
             if (bcf_get_info_string(h, v, tag.s, &s.s, &n)>0)
             {
+                b = true;
                 s.m=n;
             }
             else
             {
+                b = false;
                 value_exists = false;
             }
         }

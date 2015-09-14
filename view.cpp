@@ -136,6 +136,8 @@ class Igor : Program
         filter.parse(fexp.c_str(), false);
         filter_exists = fexp=="" ? false : true;
 
+//        exit(1);
+
         ////////////////////////
         //stats initialization//
         ////////////////////////
@@ -165,6 +167,8 @@ class Igor : Program
         Variant variant;
         while (odr->read(v))
         {
+//            bcf_print(h,v);
+            
             if (filter_exists)
             {   
                 vm->classify_variant(h, v, variant);
