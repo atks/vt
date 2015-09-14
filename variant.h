@@ -48,6 +48,10 @@ class Variant
     std::string chrom;
     uint32_t rid;
     uint32_t pos1;
+    uint32_t end1;
+    
+    //linked VCF file
+    bcf1_t* v;
 
     //contains alleles
     std::vector<Allele> alleles;

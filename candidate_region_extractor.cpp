@@ -251,10 +251,10 @@ void CandidateRegionExtractor::extract_regions_by_exact_alignment(bcf_hdr_t* h, 
     }
 
     vntr.repeat_tract = seq;
+    vntr.rid = bcf_get_rid(v);
     vntr.rbeg1 = min_beg1;
     vntr.rend1 = max_end1;
     
-
     if (seq_len) free(seq);
 }
 

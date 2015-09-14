@@ -81,7 +81,9 @@ void VNTR::print()
     std::cerr << "++++++++++++++++++++++++++++\n";
     std::cerr << "VNTR Summary\n";
     std::cerr << "repeat_tract : " << repeat_tract << "\n";
-    std::cerr << "pos1         : " << rbeg1 << "\n";
+    std::cerr << "rid          : " << rid << "\n";
+    std::cerr << "rbeg1        : " << rbeg1 << "\n";
+    std::cerr << "rend1        : " << rend1 << "\n";
     std::cerr << "motif        : " << motif << "\n";
     std::cerr << "ru           : " << ru << "\n";
     std::cerr << "rl           : " << rl << "\n";

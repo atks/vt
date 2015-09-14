@@ -23,8 +23,6 @@
 
 #include "consolidate_variants.h"
 
-KHASH_MAP_INIT_STR(xdict, bcf1_t*);
-
 namespace
 {
 
@@ -46,9 +44,11 @@ class Igor : Program
     BCFOrderedReader *odr;
     BCFOrderedWriter *odw;
 
-    std::vector<bcf1_t*> pool;
-
-
+    ////////////////
+    //variant buffer
+    ////////////////
+    std::list<Variant> variant_buffer; //front is most recent
+        
     /////////
     //stats//
     /////////
@@ -59,7 +59,7 @@ class Igor : Program
     /////////
     //tools//
     /////////
-    VariantManip *var_manip;
+    VariantManip *vm;
 
     Igor(int argc, char **argv)
     {
@@ -70,7 +70,7 @@ class Igor : Program
         //////////////////////////
         try
         {
-            std::string desc = "Annotates overlapping variants with VNTRs"
+            std::string desc = "Consolidates variants"
                 "Annotates overlapping Indels with STRs";
 
             TCLAP::CmdLine cmd(desc, ' ', version);
@@ -104,7 +104,9 @@ class Igor : Program
         odw->link_hdr(odr->hdr);
         odw->write_hdr();
 
-
+        bcf_hdr_append(odw->hdr, "##FILTER=<ID=overlap-vntr,Description=\"Overlaps with VNTR\">");
+        bcf_hdr_append(odw->hdr, "##FILTER=<ID=overlap-indel,Description=\"Overlaps with indel\">");
+        
         bcf_hdr_append(odw->hdr, "##FILTER=<ID=olap,Description=\"Overlapping Alleles\">");
         bcf_hdr_append(odw->hdr, "##FILTER=<ID=snpstr,Description=\"SNP in STR\">");
         bcf_hdr_append(odw->hdr, "##FILTER=<ID=badmotif,Description=\"Poorly defined motif\">");
@@ -120,65 +122,143 @@ class Igor : Program
         ////////////////////////
         //tools initialization//
         ////////////////////////
+        vm = new VariantManip();
     }
 
+//    /**
+//     * Inserts a VNTR record.
+//     * Returns true if successful.
+//     */
+//    bool insert_variant_record_into_buffer(Variant& variant)
+//    {
+//        std::list<VNTR>::iterator i = variant_buffer.begin();
+//        while(i!=variant_buffer.end())
+//        {
+//            VNTR& cvntr = *i;
+//
+//            if (vntr.rid > cvntr.rid)
+//            {
+//                variant_buffer.insert(i, vntr);
+//                return true;
+//            }
+//            else if (vntr.rid == cvntr.rid)
+//            {
+//                if (vntr.rbeg1 > cvntr.rbeg1)
+//                {
+//                    variant_buffer.insert(i, vntr);
+//                    return true;
+//                }
+//                else if (vntr.rbeg1 == cvntr.rbeg1)
+//                {
+//                    if (vntr.rend1 > cvntr.rend1)
+//                    {
+//                        variant_buffer.insert(i, vntr);
+//                        return true;
+//                    }
+//                    else if (cvntr.rend1 == vntr.rend1)
+//                    {
+//                        if (cvntr.motif > vntr.motif)
+//                        {
+//                            variant_buffer.insert(i, vntr);
+//                            return true;
+//                        }
+//                        else if (cvntr.motif == vntr.motif)
+//                        {
+//                            //do not insert
+//                         
+////                            std::cerr << "NEVER inseert\n";
+//                            return false;
+//                        }
+//                        else // cvntr.motif > vntr.motif
+//                        {
+//                            ++i;
+//                        }
+//                    }
+//                    else // cvntr.rend1 > vntr.rend1
+//                    {
+//                        ++i;
+//                    }
+//                }
+//                else //vntr.rbeg1 < cvntr.rbeg1
+//                {
+//                    ++i;
+//                }
+//            }
+//            else //vntr.rid < cvntr.rid is impossible if input file is ordered.
+//            {
+//                fprintf(stderr, "[%s:%d %s] File %s is unordered\n", __FILE__, __LINE__, __FUNCTION__, input_vcf_file.c_str());
+//                exit(1);
+//            }
+//        }
+//
+//        variant_buffer.push_back(vntr);
+//        return true;
+//    }
+//
+//    /**
+//     * Flush variant buffer.
+//     */
+//    void flush_variant_buffer(bcf1_t* v)
+//    {
+//        if (variant_buffer.empty())
+//        {
+//            return;
+//        }
+//
+//        int32_t rid = bcf_get_rid(v);
+//        int32_t pos1 = bcf_get_pos1(v);
+//
+//        //search for vntr to start deleting from.
+//        std::list<Variant>::iterator i = variant_buffer.begin();
+//        while(i!=variant_buffer.end())
+//        {
+//            VNTR& vntr = *i;
+//
+////            std::cerr << vntr.rid << " " << rid << "\n";
+//
+//            if (vntr.rid < rid)
+//            {
+//                break;
+//            }
+//            else if (vntr.rid == rid)
+//            {
+//                if (vntr.rend1 < pos1-1000)
+//                {
+//                    break;
+//                }
+//            }
+//            else //rid < vntr.rid is impossible
+//            {
+//                fprintf(stderr, "[%s:%d %s] File %s is unordered\n", __FILE__, __LINE__, __FUNCTION__, input_vcf_file.c_str());
+//                exit(1);
+//            }
+//
+//            ++i;
+//        }
+//
+//        while (i!=variant_buffer.end())
+//        {
+//            i = variant_buffer.erase(i);
+//        }
+//    }
+    
     void consolidate_variants()
     {
-        kstring_t variant = {0, 0, 0};
-
-        int32_t crid = -1;
-        int32_t cpos1 = -1;
-        int32_t cepos1 = -1;
-        bcf1_t* cv = NULL;
-
         bcf1_t *v = odw->get_bcf1_from_pool();
 
+        Variant* variant;
         while (odr->read(v))
         {
             bcf_unpack(v, BCF_UN_STR);
-            int32_t rid = bcf_get_rid(v);
-            int32_t pos1 = bcf_get_pos1(v);
-            int32_t epos1 = bcf_get_end_pos1(v);
+            
+            variant = new Variant();
+            
+            
 
-            //does this overlap
-            if (crid==rid && cepos1>=pos1 && cpos1<=epos1)
-            {
-                //update overlap range
-                cpos1 = std::min(cpos1, pos1);
-                cepos1 = std::max(cepos1, epos1);
-
-                if (cv)
-                {
-                    ++no_overlap_variants;
-                    cv = NULL;
-                }
-
-                ++no_overlap_variants;
-            }
-            else
-            {
-                crid = rid;
-                cpos1 = pos1;
-                cepos1 = epos1;
-
-                if (cv)
-                {
-                    odw->write(cv);
-                    ++no_nonoverlap_variants;
-                }
-                cv = v;
-                v = odw->get_bcf1_from_pool();
-            }
-
+            
             ++no_total_variants;
         }
 
-        //the last non overlapping variant
-        if (cv)
-        {
-            odw->write(cv);
-            ++no_nonoverlap_variants;
-        }
 
         odr->close();
         odw->close();
@@ -186,7 +266,7 @@ class Igor : Program
 
     void print_options()
     {
-        std::clog << "remove_overlap v" << version << "\n\n";
+        std::clog << "consolidate_variants v" << version << "\n\n";
 
         std::clog << "options:     input VCF file        " << input_vcf_file << "\n";
         std::clog << "         [o] output VCF file       " << output_vcf_file << "\n";
