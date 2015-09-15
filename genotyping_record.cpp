@@ -23,21 +23,31 @@
  * Constructor.
  * @v - VCF record.
  */
-GenotypingRecord::GenotypingRecord(bcf1_t *v, int32_t vtype)
+GenotypingRecord::GenotypingRecord(bcf_hdr_t *h, bcf1_t *v, int32_t vtype)
 {
     clear();
+    this->h = h;
     this->v = v;
     rid = bcf_get_rid(v);
     pos1 = bcf_get_pos1(v);
-    end1 = bcf_get_end_pos1(v);
     this->vtype = vtype;
     
-    if (vtype==VT_INDEL && bcf_get_n_allele(v)==2)
+    if (vtype==VT_SNP && bcf_get_n_allele(v)==2)
+    {
+        end1 = bcf_get_end_pos1(v);
+    }
+    else if (vtype==VT_INDEL && bcf_get_n_allele(v)==2)
     {
         char** alleles = bcf_get_allele(v);
         dlen = strlen(alleles[1])-strlen(alleles[0]);
         len = abs(dlen);
     
+        int32_t n = 1;
+        if (bcf_get_info_int32(h, v, "END", &end1, &n)<0)
+        {
+            end1 = bcf_get_end_pos1(v);
+        }
+        
         if (dlen>0)
         {
             indel.append(&alleles[1][1]);

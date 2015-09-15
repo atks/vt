@@ -206,8 +206,6 @@ class Igor : Program
 //        bcf_hdr_append(odw->hdr, "##INFO=<ID=OLD_VARIANT,Number=1,Type=String,Description=\"Original chr:pos:ref:alt encoding\">\n");
 //        bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_LFLANK,Number=1,Type=String,Description=\"Right Flank Sequence\">");
 //        bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_RFLANK,Number=1,Type=String,Description=\"Left Flank Sequence\">");
-//        bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_LFLANKPOS,Number=2,Type=Integer,Description=\"Positions of left flank\">");
-//        bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_RFLANKPOS,Number=2,Type=Integer,Description=\"Positions of right flank\">");
 //        bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_MOTIF_DISCORDANCE,Number=1,Type=Integer,Description=\"Descriptive Discordance for each reference repeat unit.\">");
 //        bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_MOTIF_COMPLETENESS,Number=1,Type=Integer,Description=\"Descriptive Discordance for each reference repeat unit.\">");
 //        bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_STR_CONCORDANCE,Number=1,Type=Float,Description=\"Overall discordance of RUs.\">");
@@ -274,7 +272,7 @@ class Igor : Program
     {
 //        std::cerr << "=====\n";
 //        vntr.print();
-        
+
         std::list<VNTR>::iterator i = vntr_buffer.begin();
         while(i!=vntr_buffer.end())
         {
@@ -283,7 +281,7 @@ class Igor : Program
 //            std::cerr << "******\n";
 //            cvntr.print();
 //            std::cerr << "=====\n";
-            
+
             if (vntr.rid > cvntr.rid)
             {
                 vntr_buffer.insert(i, vntr);
@@ -313,7 +311,7 @@ class Igor : Program
                         else if (cvntr.motif == vntr.motif)
                         {
                             //do not insert
-                         
+
 //                            std::cerr << "NEVER inseert\n";
                             return false;
                         }
@@ -409,21 +407,9 @@ class Igor : Program
         bcf_update_info_string(h, v, RU.c_str(), vntr.ru.c_str());
         bcf_update_info_float(h, v, RL.c_str(), &vntr.rl, 1);
         bcf_update_info_int32(h, v, "END", &vntr.rend1, 1);
-        
+
         //individual fields - just set GT
         bcf_update_genotypes(h, v, gts, no_samples);
-    }
-
-    /**
-     * Updates an Indel record with an overlapping VNTR and end of allelelic region.
-     */
-    void update_indel_record(bcf_hdr_t* h, bcf1_t *v, Variant& variant)
-    {
-        VNTR& vntr = variant.vntr;
-
-        variant.get_vntr_string(&s);
-        bcf_update_info_string(h, v, "TR", s.s);
-        bcf_update_info_int32(h, v, "END", &vntr.rend1, 1);
     }
 
     void annotate_indels()
@@ -448,20 +434,21 @@ class Igor : Program
 
             bcf_unpack(v, BCF_UN_STR);
             int32_t vtype = vm->classify_variant(odr->hdr, v, variant);
-            if (vtype&VT_INDEL || vtype&VT_VNTR)
+            if (vtype&VT_INDEL)
             {
                 flush_vntr_buffer(v);
-                
+
                 //  bcf_print(odr->hdr, v);
                 va->annotate(odr->hdr, v, variant, method);
-
-                //setup a pass filter for the VNTR classification
 
                 if (annotation_mode=="v")
                 {
                     if (va->is_vntr(variant, vntr_classification))
                     {
-                        update_indel_record(h, v, variant);
+                        variant.get_vntr_string(&s);
+                        bcf_update_info_string(h, v, "TR", s.s);
+                        int32_t end1 = variant.vntr.rend1;
+                        bcf_update_info_int32(h, v, "END", &end1, 1);
                         odw->write(v);
                         v = odw->get_bcf1_from_pool();
 
@@ -474,17 +461,21 @@ class Igor : Program
                     }
                     else
                     {
+                        int32_t end1 = variant.vntr.rend1;
+                        bcf_update_info_int32(h, v, "END", &end1, 1);
                         odw->write(v);
                         v = odw->get_bcf1_from_pool();
                     }
                 }
-                
-//                if (no_variants_annotated&)
-//                
+
+
 //                std::cerr << "vntr_buffer size " << vntr_buffer.size() << "\n";
 
                 ++no_variants_annotated;
             }
+            else if (vtype&VT_VNTR)
+            {
+            }    
             else
             {
                 odw->write(v);

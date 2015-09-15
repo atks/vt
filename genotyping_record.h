@@ -35,6 +35,7 @@
 class GenotypingRecord
 {
     public:
+    bcf_hdr_t *h;
     bcf1_t *v;
     int32_t rid;
     int32_t pos1;
@@ -66,7 +67,7 @@ class GenotypingRecord
      * Constructor.
      * @v - VCF record.
      */
-    GenotypingRecord(bcf1_t *v, int32_t vtype);
+    GenotypingRecord(bcf_hdr_t*h, bcf1_t *v, int32_t vtype);
 
     /**
      * Clears this record.

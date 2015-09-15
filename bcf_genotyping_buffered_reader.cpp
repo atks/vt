@@ -104,7 +104,7 @@ void BCFGenotypingBufferedReader::process_read(bam_hdr_t *h, bam1_t *s)
     while (odr->read(v))
     {
         int32_t vtype = vm->classify_variant(odr->hdr, v, variant);
-        g = new GenotypingRecord(v, vtype);
+        g = new GenotypingRecord(odr->hdr, v, vtype);
         buffer.push_back(g);
         
         if (tid==g->rid)
