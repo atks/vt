@@ -68,6 +68,11 @@ class Variant
     /**
      * Constructor.
      */
+    Variant(bcf1_t* v);
+
+    /**
+     * Constructor.
+     */
     Variant();
 
     /**

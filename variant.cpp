@@ -26,6 +26,14 @@
 /**
  * Constructor.
  */
+Variant::Variant(bcf1_t* v)
+{
+    this->v = v;
+}
+
+/**
+ * Constructor.
+ */
 Variant::Variant()
 {
     type = VT_REF;
