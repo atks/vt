@@ -47,6 +47,9 @@ class GenotypingRecord
     int32_t dlen;
     uint32_t len;
     std::string indel;
+        
+    //vntr specific record
+        
     
     //for records that observe at least one alternate observation
     std::vector<uint32_t> quals;

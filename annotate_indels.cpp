@@ -210,6 +210,12 @@ class Igor : Program
 //        bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_MOTIF_COMPLETENESS,Number=1,Type=Integer,Description=\"Descriptive Discordance for each reference repeat unit.\">");
 //        bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_STR_CONCORDANCE,Number=1,Type=Float,Description=\"Overall discordance of RUs.\">");
 
+        //for scoring TRs
+        bcf_hdr_append(odw->hdr, "##INFO=<ID=SCORE,Number=1,Type=Float,Description=\"Number of repeat units in repeat tract\">\n");
+        bcf_hdr_append(odw->hdr, "##INFO=<ID=DISCORDANCE,Number=1,Type=Float,Description=\"Discordance of repeat tract.\">");
+        bcf_hdr_append(odw->hdr, "##INFO=<ID=EXACT,Number=0,Type=Flag,Description=\"Repeat units in repeat tract is all exact.\">\n");
+
+
         //helper variable initialization for adding additional vntr records
         if (annotation_mode=="v")
         {
@@ -412,6 +418,25 @@ class Igor : Program
         bcf_update_genotypes(h, v, gts, no_samples);
     }
 
+    bool genotype_str(char* repeat_tract, char* ru, float& score, float& discordance, bool& exact)
+    {
+        //check if start is not the same as the RU.
+        int32_t rlen = strlen(repeat_tract);
+        int32_t mlen = strlen(ru);
+        
+        if (strncmp(repeat_tract, ru, mlen)!=0)
+        {
+            return false;
+        }            
+        
+        
+        
+        
+        
+        return true;
+    }
+
+
     void annotate_indels()
     {
         odw->write_hdr();
@@ -420,6 +445,9 @@ class Igor : Program
         bcf_hdr_t *h = odw->hdr;
         Variant variant;
         kstring_t old_alleles = {0,0,0};
+
+        int32_t no_exact = 0;
+        int32_t no_inexact = 0;
 
         while (odr->read(v))
         {
@@ -475,6 +503,31 @@ class Igor : Program
             }
             else if (vtype&VT_VNTR)
             {
+                char** allele = bcf_get_allele(v);
+                char* ru = NULL;
+                int32_t n = 0;
+                if (bcf_get_info_string(odw->hdr, v, "RU", &ru, &n)>0)
+                {    
+                    float genotype = 0;
+                    float discordance = 0;
+                    bool exact = false;
+                    
+                    bool res = genotype_str(allele[0], ru, genotype, discordance, exact);
+                    
+                    if (!res)
+                    {    
+                        ++no_inexact;
+                        
+                        bcf_print(odw->hdr, v);
+                        std::cerr << "genotype    : " << genotype << "\n";
+                        std::cerr << "discordance : " << discordance << "\n";
+                        std::cerr << "exact       : " << exact << "\n";
+                    }
+                    
+                    ++no_exact;
+                            
+                    free(ru);
+                }
             }    
             else
             {
@@ -482,7 +535,10 @@ class Igor : Program
                 v = odw->get_bcf1_from_pool();
             }
         }
-
+        
+        std::cerr << "no inexact : " << no_inexact << "\n";
+        std::cerr << "no exact : " << no_exact << "\n";
+    
         odw->close();
         odr->close();
     };

@@ -31,7 +31,7 @@ GenotypingRecord::GenotypingRecord(bcf_hdr_t *h, bcf1_t *v, int32_t vtype)
     rid = bcf_get_rid(v);
     pos1 = bcf_get_pos1(v);
     this->vtype = vtype;
-    
+
     if (vtype==VT_SNP && bcf_get_n_allele(v)==2)
     {
         end1 = bcf_get_end_pos1(v);
@@ -41,22 +41,33 @@ GenotypingRecord::GenotypingRecord(bcf_hdr_t *h, bcf1_t *v, int32_t vtype)
         char** alleles = bcf_get_allele(v);
         dlen = strlen(alleles[1])-strlen(alleles[0]);
         len = abs(dlen);
-    
-        int32_t n = 1;
-        if (bcf_get_info_int32(h, v, "END", &end1, &n)<0)
+
+        int32_t *end1;
+        int32_t n = 0;
+        if (bcf_get_info_int32(h, v, "END", &end1, &n)>0)
         {
-            end1 = bcf_get_end_pos1(v);
+           this->end1 = end1[0];
+           free(end1);
         }
-        
+        else
+        {
+            this->end1 = bcf_get_end_pos1(v);
+        }
+
         if (dlen>0)
         {
             indel.append(&alleles[1][1]);
-        }    
+        }
         else
         {
             indel.append(&alleles[0][1]);
-        }    
-    }    
+        }
+    }
+    else if (vtype==VT_VNTR)
+    {
+        char** alleles = bcf_get_allele(v);
+        end1 = bcf_get_end_pos1(v);
+    }
 }
 
 /**
@@ -66,28 +77,28 @@ void GenotypingRecord::clear()
 {
     v =NULL;
     vtype = -1;
-    
+
     no_nonref = 0;
-    
+
     quals.clear();
     map_quals.clear();
     strands.clear();
     alleles.clear();
     cycles.clear();
     no_mismatches.clear();
-    
+
     allele_depth_fwd.resize(2,0);
-    allele_depth_rev.resize(2,0);  
+    allele_depth_rev.resize(2,0);
     depth = 0;
     depth_fwd = 0;
     depth_rev = 0;
-    base_qualities_sum = 0; 
+    base_qualities_sum = 0;
 }
 
 /**
  * Destructor.
  */
 GenotypingRecord::~GenotypingRecord()
-{   
+{
     if (v) bcf_destroy(v);
 }

@@ -462,7 +462,6 @@ void BCFGenotypingBufferedReader::collect_sufficient_statistics2(GenotypingRecor
         }
         else //multiallelic
         {
-
         }
     }
     else if (g->vtype==VT_VNTR)
@@ -843,7 +842,7 @@ void BCFGenotypingBufferedReader::flush(BCFOrderedWriter* odw, bam_hdr_t *h, bam
 
             if (tid==g->rid)
             {
-                if (bam_get_pos1(s)>g->end1)
+                if (bam_get_pos1(s) > g->end1)
                 {
                     genotype_and_print(odw, g);
                     delete g;
@@ -1054,7 +1053,6 @@ void BCFGenotypingBufferedReader::genotype_and_print(BCFOrderedWriter* odw, Geno
         bcf_clear(v);
         bcf_set_n_sample(v, 1);
 
-
         bcf_set_rid(v, bcf_get_rid(g->v));
         bcf_set_pos1(v, bcf_get_pos1(g->v));
 
@@ -1149,6 +1147,35 @@ void BCFGenotypingBufferedReader::genotype_and_print(BCFOrderedWriter* odw, Geno
     }
     else if (g->vtype==VT_VNTR)
     {
+        bcf1_t *v = bcf_init();
+        bcf_clear(v);
+        bcf_set_n_sample(v, 1);
+
+        bcf_set_rid(v, bcf_get_rid(g->v));
+        bcf_set_pos1(v, bcf_get_pos1(g->v));
+
+        kstring_t new_alleles = {0,0,0};
+        char** alleles = bcf_get_allele(g->v);
+        for (size_t i=0; i<bcf_get_n_allele(g->v); ++i)
+        {
+            if (i) kputc(',', &new_alleles);
+            kputs(alleles[i], &new_alleles);
+        }
+        bcf_update_alleles_str(odw->hdr, v, new_alleles.s);
+
+        if (new_alleles.l) free(new_alleles.s);
+
+        
+        //GT
+        int32_t gts[2];
+        gts[0] = bcf_gt_unphased(0);
+        gts[1] = bcf_gt_unphased(1);
+        bcf_update_genotypes(odw->hdr, v, &gts[0], 2);
+        
+        
+        odw->write(v);
+        bcf_destroy(v);
+        
         ++no_vntrs_genotyped;
     }
 }
