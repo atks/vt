@@ -29,15 +29,18 @@ GenotypingRecord::GenotypingRecord(bcf_hdr_t *h, bcf1_t *v, int32_t vtype)
     this->h = h;
     this->v = v;
     rid = bcf_get_rid(v);
-    pos1 = bcf_get_pos1(v);
     this->vtype = vtype;
 
     if (vtype==VT_SNP && bcf_get_n_allele(v)==2)
     {
+        rid = bcf_get_rid(v);
+        pos1 = bcf_get_pos1(v);
         end1 = bcf_get_end_pos1(v);
     }
     else if (vtype==VT_INDEL && bcf_get_n_allele(v)==2)
     {
+        rid = bcf_get_rid(v);
+        pos1 = bcf_get_pos1(v);
         char** alleles = bcf_get_allele(v);
         dlen = strlen(alleles[1])-strlen(alleles[0]);
         len = abs(dlen);
@@ -65,8 +68,20 @@ GenotypingRecord::GenotypingRecord(bcf_hdr_t *h, bcf1_t *v, int32_t vtype)
     }
     else if (vtype==VT_VNTR)
     {
-        char** alleles = bcf_get_allele(v);
+        rid = bcf_get_rid(v);
+        pos1 = bcf_get_pos1(v);
         end1 = bcf_get_end_pos1(v);
+        
+        char *motif = NULL;
+        int32_t n = 0;
+        
+        if (bcf_get_info_string(h, v, "MOTIF", &motif, &n)>0)
+        {
+//           // std::cerr << "MOTIF " << motif << "\n";
+            
+           this->motif.assign(motif);
+           free(motif);
+        }
     }
 }
 

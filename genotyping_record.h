@@ -26,8 +26,8 @@
 #include "variant.h"
 
 /**
- * A generic record that holds information for genotyping a 
- * variant across multiple samples. 
+ * A generic record that holds information for genotyping a
+ * variant across multiple samples.
  *
  * Maintains read information and allows for additional reads
  * till VCF record can be printed out.
@@ -40,17 +40,20 @@ class GenotypingRecord
     int32_t rid;
     int32_t pos1;
     int32_t end1;
-        
+
     int32_t vtype;
-    
+
     //indel specific record
     int32_t dlen;
     uint32_t len;
     std::string indel;
-        
+
     //vntr specific record
-        
-    
+    std::string motif;
+
+    //vntr specific record
+    std::vector<float> counts;
+
     //for records that observe at least one alternate observation
     std::vector<uint32_t> quals;
     std::vector<uint32_t> map_quals;
@@ -58,14 +61,14 @@ class GenotypingRecord
     std::vector<int32_t> alleles;
     std::vector<uint32_t> cycles;
     std::vector<uint32_t> no_mismatches;
-    
+
     //for records that only have reference observation
     uint32_t no_nonref;
     std::vector<uint32_t> allele_depth_fwd;
-    std::vector<uint32_t> allele_depth_rev;  
-    uint32_t depth, depth_fwd, depth_rev;    
-    uint32_t base_qualities_sum;  
-        
+    std::vector<uint32_t> allele_depth_rev;
+    uint32_t depth, depth_fwd, depth_rev;
+    uint32_t base_qualities_sum;
+
     /**
      * Constructor.
      * @v - VCF record.

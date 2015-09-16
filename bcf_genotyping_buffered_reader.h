@@ -98,12 +98,7 @@ class BCFGenotypingBufferedReader
     /**
      * Collects sufficient statistics from read for variants to be genotyped.
      */
-    void collect_sufficient_statistics2(GenotypingRecord *g,  AugmentedBAMRecord& as);
-
-    /**
-     * Collects sufficient statistics from read for variants to be genotyped.
-     */
-    void collect_sufficient_statistics(GenotypingRecord *g, bam1_t *s);
+    void collect_sufficient_statistics(GenotypingRecord *g,  AugmentedBAMRecord& as);
 
     /**
      * Flush records.
