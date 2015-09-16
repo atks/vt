@@ -55,7 +55,7 @@ class GenotypingRecord
     std::vector<uint32_t> quals;
     std::vector<uint32_t> map_quals;
     std::string strands;
-    std::string alleles;
+    std::vector<int32_t> alleles;
     std::vector<uint32_t> cycles;
     std::vector<uint32_t> no_mismatches;
     

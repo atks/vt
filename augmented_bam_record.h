@@ -68,7 +68,9 @@ class AugmentedBAMRecord
     public:
     bam_hdr_t *h;
     bam1_t *s;
-
+    int32_t pos1;
+    int32_t end1;
+    
     //new augmented cigar with X's
     std::vector<uint32_t> aug_cigar;
 

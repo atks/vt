@@ -183,14 +183,19 @@ class Igor : Program
         bcf_hdr_append(odw->hdr, "##FORMAT=<ID=ADR,Number=A,Type=Integer,Description=\"Allele Depth (Reverse strand)\">");
         bcf_hdr_append(odw->hdr, "##FORMAT=<ID=DP,Number=1,Type=Integer,Description=\"Depth\">");
 
-        //NONREF
+        //NONREF SNP
         bcf_hdr_append(odw->hdr, "##FORMAT=<ID=BQ,Number=.,Type=Integer,Description=\"Phred-scaled Base Qualities\">");
         bcf_hdr_append(odw->hdr, "##FORMAT=<ID=MQ,Number=.,Type=Integer,Description=\"Phred-scaled Map Qualities\">");
         bcf_hdr_append(odw->hdr, "##FORMAT=<ID=CY,Number=.,Type=Integer,Description=\"Cycle of base\">");
         bcf_hdr_append(odw->hdr, "##FORMAT=<ID=ST,Number=1,Type=String,Description=\"Strand of allele\">");
-        bcf_hdr_append(odw->hdr, "##FORMAT=<ID=AL,Number=1,Type=String,Description=\"Alleles - R or A\">");
+        bcf_hdr_append(odw->hdr, "##FORMAT=<ID=AL,Number=.,Type=Integer,Description=\"Alleles - 0,1,2,... for reference and alternate alleles. "
+                                 "-1 : other allele, -2 : deletion, -3 : insertion\">");
         bcf_hdr_append(odw->hdr, "##FORMAT=<ID=NM,Number=.,Type=Integer,Description=\"Number of mismatches per read\">");
 
+        //NONREF INDEL
+        bcf_hdr_append(odw->hdr, "##FORMAT=<ID=RQ,Number=.,Type=Integer,Description=\"Phred-scaled Reference Allele Qualities\">");
+        bcf_hdr_append(odw->hdr, "##FORMAT=<ID=AQ,Number=.,Type=Integer,Description=\"Phred-scaled Reference Allele Qualities\">");
+       
         //REF
         bcf_hdr_append(odw->hdr, "##FORMAT=<ID=BQSUM,Number=1,Type=Integer,Description=\"Sum of Base Qualities\">");
         bcf_hdr_append(odw->hdr, "##FORMAT=<ID=DPF,Number=1,Type=Integer,Description=\"Depth of forward reference alleles\">");

@@ -46,12 +46,12 @@ GenotypingRecord::GenotypingRecord(bcf_hdr_t *h, bcf1_t *v, int32_t vtype)
         int32_t n = 0;
         if (bcf_get_info_int32(h, v, "END", &end1, &n)>0)
         {
-           this->end1 = end1[0];
+           this->end1 = end1[0] + 3;
            free(end1);
         }
         else
         {
-            this->end1 = bcf_get_end_pos1(v);
+            this->end1 = bcf_get_end_pos1(v) + 3;
         }
 
         if (dlen>0)

@@ -49,7 +49,8 @@ void AugmentedBAMRecord::initialize(bam_hdr_t* h, bam1_t* s)
     
     this->h = h;
     this->s = s;
-
+    this->pos1 = bam_get_pos1(s);
+    
     uint8_t* seq = bam_get_seq(s);
 
     //CIGAR related variables
