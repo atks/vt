@@ -219,8 +219,8 @@ class Igor : Program
         bcf_hdr_append(odw->hdr, "##FORMAT=<ID=NM,Number=.,Type=Integer,Description=\"Number of mismatches per read\">");
 
         //NONREF INDEL
-        bcf_hdr_append(odw->hdr, "##FORMAT=<ID=RQ,Number=.,Type=Integer,Description=\"Phred-scaled Reference Allele Qualities\">");
-        bcf_hdr_append(odw->hdr, "##FORMAT=<ID=AQ,Number=.,Type=Integer,Description=\"Phred-scaled Reference Allele Qualities\">");
+        bcf_hdr_append(odw->hdr, "##FORMAT=<ID=RQ,Number=.,Type=Integer,Description=\"Phred-scaled Reference Allele Qualities for Indel\">");
+        bcf_hdr_append(odw->hdr, "##FORMAT=<ID=AQ,Number=.,Type=Integer,Description=\"Phred-scaled Alternative Allele Qualities for Indel\">");
        
         //VNTR
         bcf_hdr_append(odw->hdr, "##FORMAT=<ID=CG,Number=.,Type=Float,Description=\"Repeat count genotype\">");

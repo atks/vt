@@ -349,7 +349,7 @@ void BCFGenotypingBufferedReader::collect_sufficient_statistics(GenotypingRecord
                         if (indel==aug_alt[i])
                         {
                             q = len*30;
-                            allele = 0;
+                            allele = 1;
                         }
                         else
                         {
@@ -440,7 +440,7 @@ void BCFGenotypingBufferedReader::collect_sufficient_statistics(GenotypingRecord
                 }
             }
 
-            if (allele==0)
+            if (allele!=0)
             {
                 ++g->no_nonref;
             }
@@ -968,17 +968,17 @@ void BCFGenotypingBufferedReader::genotype_and_print(BCFOrderedWriter* odw, Geno
         if (new_alleles.l) free(new_alleles.s);
 
         //copy over values
-        if (bcf_has_filter(odr->hdr, g->v, const_cast<char*>("overlap_snp")))
+        if (bcf_has_filter(odr->hdr, g->v, const_cast<char*>("overlap_snp"))==1)
         {
-            bcf_add_filter(odw->hdr, v, bcf_hdr_id2int(odw->hdr, BCF_DT_ID, "overlap_snp")==1);
+            bcf_add_filter(odw->hdr, v, bcf_hdr_id2int(odw->hdr, BCF_DT_ID, "overlap_snp"));
         }
-        if (bcf_has_filter(odr->hdr, g->v, const_cast<char*>("overlap_indel")))
+        if (bcf_has_filter(odr->hdr, g->v, const_cast<char*>("overlap_indel"))==1)
         {
-            bcf_add_filter(odw->hdr, v, bcf_hdr_id2int(odw->hdr, BCF_DT_ID, "overlap_indel")==1);
+            bcf_add_filter(odw->hdr, v, bcf_hdr_id2int(odw->hdr, BCF_DT_ID, "overlap_indel"));
         }
-        if (bcf_has_filter(odr->hdr, g->v, const_cast<char*>("overlap_vntr")))
+        if (bcf_has_filter(odr->hdr, g->v, const_cast<char*>("overlap_vntr"))==1)
         {
-            bcf_add_filter(odw->hdr, v, bcf_hdr_id2int(odw->hdr, BCF_DT_ID, "overlap_vntr")==1);
+            bcf_add_filter(odw->hdr, v, bcf_hdr_id2int(odw->hdr, BCF_DT_ID, "overlap_vntr"));
         }
         
         char* motif = NULL;

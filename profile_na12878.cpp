@@ -23,10 +23,10 @@
 
 #include "profile_na12878.h"
 
-#define REF   0
-#define MIXED 1
-#define TRUE  2
-#define FALSE 3
+#define REF     0
+#define BROADKB 1
+#define TRUE    2
+#define FALSE   3
 
 namespace
 {
@@ -118,7 +118,7 @@ class Igor : Program
     std::vector<int32_t> dataset_types;
     std::vector<std::string> dataset_fexps;
     std::string cds_bed_file;
-    
+
     ///////
     //i/o//
     ///////
@@ -203,21 +203,39 @@ class Igor : Program
 //# This file contains information on how to process reference data sets.
 //#
 //# dataset - name of data set, this label will be printed.
-//# type    - Truth set (Truth) and False set (False)
+//# type    - BroadKB
+//#            Truth set (Truth) and False set (False)
 //#           overlap percentages labeled as (Precision, Sensitivity) and (False Discovery Rate, Type I Error) respectively
 //#         - cds_annotation
 //#           file is used for GENCODE annotation of frame shift and non frame shift Indels
 //# filter  - filter applied to variants for this particular data set
 //# path    - path of indexed BCF file
-//# 
+//#
 //# Please do not change order of data set.  profile_na12878 assumes this order.
 //#
 //#dataset            type             filter                                                                path
-//broad.kb            Mixed            PASS&&VTYPE==SNP&&N_ALLELE==2                                         /net/fantasia/home/atks/dev/vt/bundle/public/grch37/NA12878.broad.kb.snps.indels.complex.genotypes.bcf
+//broad.kb            BroadKB            PASS&&VTYPE==SNP&&N_ALLELE==2                                         /net/fantasia/home/atks/dev/vt/bundle/public/grch37/NA12878.broad.kb.snps.indels.complex.genotypes.bcf
 //illumina.platinum   Truth            PASS&&VTYPE==SNP&&N_ALLELE==2                                         /net/fantasia/home/atks/dev/vt/bundle/public/grch37/NA12878.illumina.platinum.snps.indels.complex.genotypes.bcf
 //broad.kb.fp         False            PASS&&VTYPE==SNP&&N_ALLELE==2&&INFO.TruthStatus=='FALSE_POSITIVE'     /net/fantasia/home/atks/dev/vt/bundle/public/grch37/NA12878.broad.kb.snps.indels.complex.genotypes.bcf
 //gencode.v19         cds_annotation   .                                                                     /net/fantasia/home/atks/dev/vt/bundle/public/grch37/gencode.v19.cds.bed.gz
 
+     
+        ////////////////////////////
+        //Broad Knowledgebase note//
+        ////////////////////////////   
+//         325 DISCORDANT
+//      148199 FALSE_POSITIVE
+//         350 SUSPECT
+//      165399 TRUE_POSITIVE
+//       54613 UNKNOWN
+         
+//        TRUE POSITIVE    FALSE POSITIVE     DISCORDANT   SUSPECT   UNKNOWN
+//        314   ./.        148199 ./.         325 ./.      350 ./.   54613 ./.
+//        3155  0/0                           
+//        61053 0/1                           
+//        39902 1/0                           
+//        60975 1/1   
+                        
         input_vcf_files.push_back(input_vcf_file);
         dataset_labels.push_back("data");
         dataset_types.push_back(REF);
@@ -229,7 +247,7 @@ class Igor : Program
             fprintf(stderr, "[E:%s:%d %s] Reference file cannot be opened %s\n", __FILE__, __LINE__, __FUNCTION__, ref_data_sets_list.c_str());
             exit(1);
         }
-        
+
         kstring_t s = {0,0,0};
         std::vector<std::string> vec;
         while (hts_getline(hts, '\n', &s)>=0)
@@ -240,20 +258,20 @@ class Igor : Program
             std::string line(s.s);
             split(vec, " ", line);
 
-            if (vec[1] == "Truth" || vec[1] == "False" || vec[1] == "Mixed")
+            if (vec[1] == "Truth" || vec[1] == "False" || vec[1] == "BroadKB")
             {
                 dataset_labels.push_back(vec[0]);
                 if (vec[1]=="Truth")
-                {    
+                {
                     dataset_types.push_back(TRUE);
                 }
                 else if (vec[1]=="False")
                 {
                     dataset_types.push_back(FALSE);
                 }
-                else if (vec[1]=="Mixed")
+                else if (vec[1]=="BroadKB")
                 {
-                    dataset_types.push_back(MIXED);
+                    dataset_types.push_back(BROADKB);
                 }
                 dataset_fexps.push_back(vec[2]);
                 input_vcf_files.push_back(vec[3]);
@@ -270,7 +288,7 @@ class Igor : Program
         }
         hts_close(hts);
         if (s.m) free(s.s);
-        
+
         /////////////////////////
         //filter initialization//
         /////////////////////////
@@ -413,7 +431,7 @@ class Igor : Program
             for (size_t i=1; i<no_overlap_files; ++i)
             {
                 //for BROAD KB stats type of data set
-                if (dataset_types[i]==MIXED)
+                if (dataset_types[i]==BROADKB)
                 {
                     int32_t y1 = -1;
                     int32_t y2 = -1;
@@ -432,15 +450,12 @@ class Igor : Program
 
                         y1 = bcf_gt_allele(gts[na12878_index[i]*2]);
                         y2 = bcf_gt_allele(gts[na12878_index[i]*2+1]);
-                        if (y1>0 || y2>0)
+
+                        if (y1>0 && y2>0)
                         {
-                            y = 1;
+                            y = y1+y2;
                         }
-                        else if (y1==0 || y2==0)
-                        {
-                            y = 0;
-                        }
-                        else if (y1<0 || y2<0)
+                        else
                         {
                             y = -1;
                         }
@@ -448,9 +463,9 @@ class Igor : Program
 
                     if (presence[0])
                     {
-                        if (x1>0 || x2>0)
+                        if (x1>0 && x2>0)
                         {
-                            xt = 1;
+                            xt = x1+x2;
                         }
                         else if (x1==0 || x2==0)
                         {
@@ -494,7 +509,6 @@ class Igor : Program
                                 ++kbstats[i].tn;
                             }
                         }
-
                     }
                     else if (presence[0] && !presence[i])
                     {
@@ -526,7 +540,7 @@ class Igor : Program
                     if (ndst) free(dst);
                 }
                 else
-                {    
+                {
                     if (presence[0] && !presence[i])
                     {
                         ++stats[i].a;
@@ -542,10 +556,10 @@ class Igor : Program
                         stats[i].ab_tv += tv;
                         stats[i].ab_ins += ins;
                         stats[i].ab_del += del;
-    
+
                         bcf_unpack(presence_bcfptr[i]->v, BCF_UN_IND);
                         int k = bcf_get_genotypes(presence_bcfptr[i]->h, presence_bcfptr[i]->v, &gts, &n);
-    
+
                         int32_t y1 = bcf_gt_allele(gts[na12878_index[i]*2]);
                         int32_t y2 = bcf_gt_allele(gts[na12878_index[i]*2+1]);
                         int32_t y = y1+y2;
@@ -553,7 +567,7 @@ class Igor : Program
                         {
                             y = 3;
                         }
-    
+
                         ++concordance[i].geno[x][y];
                     }
                     else if (!presence[0] && presence[i])
@@ -568,7 +582,7 @@ class Igor : Program
                     {
                         //not in either, do nothing
                     }
-    
+
                     presence[i]=0;
                     presence_bcfptr[i]=NULL;
                 }
@@ -601,7 +615,7 @@ class Igor : Program
         //FDR/FNR
         for (int32_t i=1; i<dataset_labels.size(); ++i)
         {
-            if (dataset_types[i]==MIXED)
+            if (dataset_types[i]==BROADKB)
             {
                 fprintf(stderr, "  %s\n", dataset_labels[i].c_str());
                 fprintf(stderr, "    TP  %10d \n", kbstats[i].tp);
@@ -619,7 +633,7 @@ class Igor : Program
                 fprintf(stderr, "\n");
             }
         }
-        
+
         //overlaps
         for (int32_t i=1; i<dataset_labels.size(); ++i)
         {
@@ -630,7 +644,7 @@ class Igor : Program
                 fprintf(stderr, "    A-B %10d [%.2f] [%.2f]\n", stats[i].a,  (float)stats[i].a_ts/stats[i].a_tv, (float)stats[i].a_ins/stats[i].a_del);
                 fprintf(stderr, "    A&B %10d [%.2f] [%.2f]\n", stats[i].ab, (float)stats[i].ab_ts/stats[i].ab_tv, (float)stats[i].ab_ins/stats[i].ab_del);
                 fprintf(stderr, "    B-A %10d [%.2f] [%.2f]\n", stats[i].b,  (float)stats[i].b_ts/stats[i].b_tv, (float)stats[i].b_ins/stats[i].b_del);
-    
+
                 if (dataset_types[i]==TRUE)
                 {
                     fprintf(stderr, "     Sensitivity  %4.1f%%\n", 100*(float)stats[i].ab/(stats[i].b+stats[i].ab));
@@ -646,7 +660,7 @@ class Igor : Program
         //concordance
         for (int32_t i=1; i<dataset_labels.size(); ++i)
         {
-            if (dataset_types[i]==TRUE)
+            if (dataset_types[i]==TRUE || dataset_types[i]==BROADKB)
             {
                 int32_t (&geno)[4][4] = concordance[i].geno;
                 int32_t total = 0;
@@ -662,9 +676,9 @@ class Igor : Program
                         }
                     }
                 }
-    
+
                 int32_t discordance = total-concordance;
-    
+
                 fprintf(stderr, "  %s\n", dataset_labels[i].c_str());
                 fprintf(stderr, "                R/R       R/A       A/A       ./.\n");
                 fprintf(stderr, "    R/R    %8d  %8d  %8d  %8d\n", geno[0][0], geno[0][1], geno[0][2], geno[0][3]);
@@ -672,11 +686,11 @@ class Igor : Program
                 fprintf(stderr, "    A/A    %8d  %8d  %8d  %8d\n", geno[2][0], geno[2][1], geno[2][2], geno[2][3]);
                 fprintf(stderr, "    ./.    %8d  %8d  %8d  %8d\n", geno[3][0], geno[3][1], geno[3][2], geno[3][3]);
                 fprintf(stderr, "\n");
-    
+
                 fprintf(stderr, "    Total genotype pairs :  %8d\n", total);
                 fprintf(stderr, "    Concordance          :  %8.2f%% (%d)\n", (float)concordance/total*100, concordance);
                 fprintf(stderr, "    Discordance          :  %8.2f%% (%d)\n", (float)discordance/total*100, discordance);
-    
+
                 fprintf(stderr, "\n");
             }
         }
