@@ -67,8 +67,8 @@ BCFOrderedReader::BCFOrderedReader(std::string file_name, std::vector<GenomeInte
         {    
             if (intervals_present)
             {
-                fprintf(stderr, "[E:%s] index cannot be loaded for %s for random access\n", __FUNCTION__, file_name.c_str());
-                exit(1);
+                fprintf(stderr, "[E:%s] index cannot be loaded for %s for random access, ignoring specified intervals and reading from start.\n", __FUNCTION__, file_name.c_str());
+//                exit(1);
             }
         }
     }
@@ -84,8 +84,8 @@ BCFOrderedReader::BCFOrderedReader(std::string file_name, std::vector<GenomeInte
             {
                 if (intervals_present)
                 {
-                    fprintf(stderr, "[E:%s] index cannot be loaded for %s for random access\n", __FUNCTION__, file_name.c_str());
-                    exit(1);
+                    fprintf(stderr, "[E:%s] index cannot be loaded for %s for random access, ignoring specified intervals and reading from start.\n", __FUNCTION__, file_name.c_str());
+//                    exit(1);
                 }
             }
         }
@@ -94,7 +94,7 @@ BCFOrderedReader::BCFOrderedReader(std::string file_name, std::vector<GenomeInte
             if (intervals_present)
             {
                 fprintf(stderr, "[E:%s] no random access support for VCF file: %s\n", __FUNCTION__, file_name.c_str());
-                exit(1);
+//                exit(1);
             }
         }
     }
