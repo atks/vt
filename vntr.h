@@ -41,6 +41,7 @@ class VNTR
 
     //repeat tract
     int32_t rid;                //rid, redundant data with Variant. todo: something about this.
+
     std::string repeat_tract;   //repeat tract
     uint32_t rbeg1;             //beginning of repeat tract
     uint32_t rend1;             //end of repeat tract
@@ -56,8 +57,8 @@ class VNTR
     float motif_score;          //motif score from motif tree
     float motif_concordance;    //motif concordance from hmm
     float rl;                   //number of repeat units on repeat tract
-    float no_exact_ru;          //number exact repeat units from hmm
-    float total_no_ru;          //total no of repeat units from hmm
+    int32_t no_exact_ru;          //number exact repeat units from hmm
+    int32_t total_no_ru;          //total no of repeat units from hmm
 
     /**
      * Constructor.

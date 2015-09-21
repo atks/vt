@@ -44,6 +44,24 @@ VNTRAnnotator::VNTRAnnotator(std::string& ref_fasta_file, bool debug)
     max_mlen = 10;
     mt = new MotifTree(max_mlen, debug);
 
+    ///////////////////
+    //initialize raHMMs
+    ///////////////////
+    ahmm = new AHMM(false);
+    
+    float delta = 0.01;
+    float epsilon = 0.05;
+    float tau = 0.01;
+    float eta = 0.01;
+    float mismatch_penalty = 1;
+    qual.resize(1000, 'K');
+    ahmm->set_delta(delta);
+    ahmm->set_epsilon(epsilon);
+    ahmm->set_tau(tau);
+    ahmm->set_eta(eta);
+    ahmm->set_mismatch_penalty(mismatch_penalty);
+    ahmm->initialize_T();
+    
     this->debug = debug;
     qual.assign(256, 'K');
 };
@@ -105,7 +123,7 @@ void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::str
         //3. choose the motif
         //4. refine the repeat region to be detected
         //   a. clip ends - this is a simplistic way of simply removing the anchor base.
-        
+        //5. evaluate
         
         
         //EXACT MODE
@@ -410,8 +428,23 @@ void VNTRAnnotator::detect_repeat_region(bcf_hdr_t* h, bcf1_t *v, Variant& varia
         }
 
         vntr.ru = choose_repeat_unit(vntr.repeat_tract, vntr.motif);
-        vntr.rl = (float)vntr.repeat_tract.size();
-        vntr.rend1 = vntr.rbeg1 +  vntr.rl -1;
+        vntr.rend1 = vntr.rbeg1+vntr.rl-1;
+
+        ahmm->set_model(vntr.ru.c_str());
+        ahmm->align(vntr.repeat_tract.c_str(), qual.c_str());   
+
+        vntr.motif_concordance = ahmm->motif_concordance;
+        vntr.no_exact_ru = ahmm->exact_motif_count;
+        vntr.total_no_ru = ahmm->motif_count;
+        vntr.rl = ahmm->repeat_tract_len;
+        
+//statistics for repeat unit
+//    float motif_score;          //motif score from motif tree
+//    float motif_concordance;    //motif concordance from hmm
+//    float rl;                   //number of repeat units on repeat tract
+//    float no_exact_ru;          //number exact repeat units from hmm
+//    float total_no_ru;          //total no of repeat units from hmm
+
 
         if (debug)
         {
@@ -442,6 +475,9 @@ void VNTRAnnotator::detect_repeat_region(bcf_hdr_t* h, bcf1_t *v, Variant& varia
         {
             vntr.print();
         }
+    }
+    else if (false)
+    {
     }
 
     //fill in flanks
@@ -714,7 +750,7 @@ bool VNTRAnnotator::is_vntr(Variant& variant, int32_t mode)
 //            variant.vntr.print();
 //        }
         
-        return (rlen - mlen >= 6);
+        return (rlen - mlen >= 6 && variant.vntr.no_exact_ru>=2);
 
 //        equivalent to    
 //        (mlen==1 && rlen>=5)  ||

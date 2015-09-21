@@ -103,8 +103,8 @@ class VNTRAnnotator
     bool debug;
     int32_t max_len;
 
-    AHMM* ahmm;
-    std::string qual;
+    
+    
 
     std::string MOTIF;
     std::string RU;
@@ -113,6 +113,13 @@ class VNTRAnnotator
     std::string REFPOS;
     std::string SCORE;
     std::string TR;
+
+    
+    ////////
+    //raHMMs
+    ////////
+    std::string qual;
+    AHMM* ahmm;
 
     ///////
     //tools

@@ -55,7 +55,7 @@ GenotypingRecord::GenotypingRecord(bcf_hdr_t *h, bcf1_t *v, int32_t vtype)
 
         int32_t *beg1;
         int32_t n = 0;
-        if (bcf_get_info_int32(h, v, "RFLANK_END", &beg1, &n)>0)
+        if (bcf_get_info_int32(h, v, "LFE", &beg1, &n)>0)
         {
            this->beg1 = beg1[0];
            free(beg1);
@@ -67,9 +67,9 @@ GenotypingRecord::GenotypingRecord(bcf_hdr_t *h, bcf1_t *v, int32_t vtype)
 
         int32_t *end1;
          n = 0;
-        if (bcf_get_info_int32(h, v, "LFLANK_BEG", &end1, &n)>0)
+        if (bcf_get_info_int32(h, v, "RFB", &end1, &n)>0)
         {
-           this->end1 = end1[0] + 3;
+           this->end1 = end1[0];
            free(end1);
         }
         else

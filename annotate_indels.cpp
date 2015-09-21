@@ -202,12 +202,14 @@ class Igor : Program
 //        REFPOS = bcf_hdr_append_info_with_backup_naming(odw->hdr, "REFPOS", "1", "Integer", "Start position of repeat tract", true);
 //        SCORE = bcf_hdr_append_info_with_backup_naming(odw->hdr, "SCORE", "1", "Float", "Score of repeat unit", true);
         TR = bcf_hdr_append_info_with_backup_naming(odw->hdr, "TR", "1", "String", "Tandem repeat representation", true);
-        TR = bcf_hdr_append_info_with_backup_naming(odw->hdr, "LFLANK_END", "1", "Integer", "Left flank end position of the Indel, left/right alignment invariant, not necessarily equal to POS.", true);
-        TR = bcf_hdr_append_info_with_backup_naming(odw->hdr, "RFLANK_BEG", "1", "Integer", "Right flank beginning position of the Indel, left/right alignment invariant,  not necessarily equal to POS+length(REF)-1.", true);
+        TR = bcf_hdr_append_info_with_backup_naming(odw->hdr, "LFE", "1", "Integer", "Left flank end position of the Indel, left/right alignment invariant, not necessarily equal to POS.", true);
+        TR = bcf_hdr_append_info_with_backup_naming(odw->hdr, "RFB", "1", "Integer", "Right flank beginning position of the Indel, left/right alignment invariant,  not necessarily equal to POS+length(REF)-1.", true);
 //        bcf_hdr_append(odw->hdr, "##INFO=<ID=OLD_VARIANT,Number=1,Type=String,Description=\"Original chr:pos:ref:alt encoding\">\n");
 //        bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_LFLANK,Number=1,Type=String,Description=\"Right Flank Sequence\">");
 //        bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_RFLANK,Number=1,Type=String,Description=\"Left Flank Sequence\">");
-//        bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_MOTIF_DISCORDANCE,Number=1,Type=Integer,Description=\"Descriptive Discordance for each reference repeat unit.\">");
+        bcf_hdr_append(odw->hdr, "##INFO=<ID=CONCORDANCE,Number=1,Type=Float,Description=\"Concordance of repeat unit unit.\">");
+        bcf_hdr_append(odw->hdr, "##INFO=<ID=RU_COUNT,Number=2,Type=Integer,Description=\"Number of exact repeat units and total number of repeat units.\">");
+
 //        bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_MOTIF_COMPLETENESS,Number=1,Type=Integer,Description=\"Descriptive Discordance for each reference repeat unit.\">");
 //        bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_STR_CONCORDANCE,Number=1,Type=Float,Description=\"Overall discordance of RUs.\">");
 
@@ -415,6 +417,13 @@ class Igor : Program
         bcf_update_info_float(h, v, RL.c_str(), &vntr.rl, 1);
         bcf_update_info_int32(h, v, "END", &vntr.rend1, 1);
 
+        bcf_update_info_float(h, v, "CONCORDANCE", &vntr.motif_concordance, 1);
+        
+        int32_t ru_count[2] = {vntr.no_exact_ru, vntr.total_no_ru};
+        bcf_update_info_int32(h, v, "RU_COUNT", &ru_count, 2);
+        
+
+
         //individual fields - just set GT
         bcf_update_genotypes(h, v, gts, no_samples);
     }
@@ -429,10 +438,6 @@ class Igor : Program
         {
             return false;
         }            
-        
-        
-        
-        
         
         return true;
     }
@@ -472,12 +477,17 @@ class Igor : Program
 
                 if (annotation_mode=="v")
                 {
+//                    std::cerr << variant.vntr.rbeg1 << " " <<
+                    
+                    int32_t left_flank_end1 = variant.vntr.rbeg1-1;
+                    int32_t right_flank_beg1 = variant.vntr.rend1+1;
+                    bcf_update_info_int32(h, v, "LFE", &left_flank_end1, 1);
+                    bcf_update_info_int32(h, v, "RFB", &right_flank_beg1, 1);
+                    
                     if (va->is_vntr(variant, vntr_classification))
                     {
                         variant.get_vntr_string(&s);
                         bcf_update_info_string(h, v, "TR", s.s);
-                        int32_t end1 = variant.vntr.rend1;
-                        bcf_update_info_int32(h, v, "END", &end1, 1);
                         odw->write(v);
                         v = odw->get_bcf1_from_pool();
 
@@ -490,8 +500,6 @@ class Igor : Program
                     }
                     else
                     {
-                        int32_t end1 = variant.vntr.rend1;
-                        bcf_update_info_int32(h, v, "END", &end1, 1);
                         odw->write(v);
                         v = odw->get_bcf1_from_pool();
                     }
