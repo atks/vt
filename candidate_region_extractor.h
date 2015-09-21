@@ -54,6 +54,7 @@
 //forms of choosing a motif
 #define PICK_BEST_MOTIF             0
 
+//
 #define ALLELE_EXACT  1
 #define ALLELE_FUZZY  2
 

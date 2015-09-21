@@ -98,6 +98,16 @@ void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::str
     }
     else if (variant.type&VT_INDEL)
     {
+        //the basic steps in annotating a TR
+        //
+        //1. extract a region that has a chance of containing the repeat units
+        //2. choose a set of candidate motifs
+        //3. choose the motif
+        //4. refine the repeat region to be detected
+        //   a. clip ends - this is a simplistic way of simply removing the anchor base.
+        
+        
+        
         //EXACT MODE
         if (mode=="e")
         {

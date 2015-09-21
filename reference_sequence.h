@@ -24,11 +24,8 @@
 #ifndef REFERENCE_SEQUENCE_H
 #define REFERENCE_SEQUENCE_H
 
-#include <map>
 #include <vector>
-#include "utils.h"
 #include "hts_utils.h"
-#include "variant_manip.h"
 #include "htslib/faidx.h"
 
 /**
@@ -41,14 +38,21 @@ class ReferenceSequence
     uint32_t buffer_size;
     uint32_t buffer_size_mask;
     uint32_t window_size;
-    std::vector<char> P;
+
+    //main buffer sequence
+    std::vector<char> seq;
+
+    //secondary buffer sequence for wrap around cases of the sequence.
+    std::vector<char> cseq;
 
     int32_t tid;
     uint32_t beg0, end0; // index of P for the start and end position in 0 base coordinates
 
+    std::string chrom;
+    uint32_t gbeg1;
 
-    //  beg0 points to the beginning of the pileup
-    //  end0 points to the position after the end of the pileup
+    //  beg0 points to the beginning of the buffered sequence
+    //  end0 points to the position after the end of the buffered sequence
     //
     //      end0
     //       |
@@ -60,62 +64,52 @@ class ReferenceSequence
     //       |
     //      beg0
     //
-    //  when beg0==end0, pileup is empty
+    //  when beg0==end0, buffered sequence is empty
     //  gbeg1 - is the coordinate of the genome position that beg0 represents.
     //
-    //  invariance:  pileup is always continuous
-    //
-    //  how do we check if
-    //
-
-    //for use if we need to update the reference.
-    std::string chrom;
-
-    //where should we check if a read is from another chromosome?
-
-    //genome position at the beginning of the pileup
-    uint32_t gbeg1;
+    //  invariance:  buffered sequence is always continuous
 
     int32_t debug;
 
+    //fai index
     faidx_t *fai;
 
     public:
 
-//interface this
-//faidx_fetch_seq(fai, chrom, pos1-10, pos1-1, &len);
-    
-    /**
-     * Get a base.
-     */
-    char fetch_base(std::string& chrom, uint32_t& pos1);  
-   
-    /**
-     * Fetches sequence.
-     *
-     * Sequence is buffered in a circular buffer.
-     */
-    void fetch_seq(std::string& chrom, uint32_t start0, uint32_t end0);
-
     /**
      * Constructor.
      *
-     * @k - size of pileup is 2^k
+     * @k - size of buffered sequence is 2^k
      */
     ReferenceSequence(uint32_t k=10, uint32_t window_size=256);
 
     /**
-     * Overloads subscript operator for accessing pileup positions.
+     * Get a base.
+     */
+    char fetch_base(std::string& chrom, uint32_t& pos1);
+
+    /**
+     * Fetches sequence chrom:start1-end1
+     *
+     * Retrieved sequence is in seq with the length of n.
+     */
+    void fetch_seq(std::string& chrom, uint32_t start1, uint32_t end1, char* seq, int32_t n);
+
+
+    private:
+
+    /**
+     * Overloads subscript operator for accessing buffered sequence positions.
      */
     char& operator[] (const int32_t i);
 
     /**
-     * Returns the maximum size of the pileup.
+     * Returns the maximum size of the buffered sequence.
      */
     uint32_t max_size();
 
     /**
-     * Returns the size of the pileup.
+     * Returns the size of the buffered sequence.
      */
     uint32_t size();
 
@@ -159,7 +153,6 @@ class ReferenceSequence
      */
     uint32_t get_window_size();
 
-   
     /**
      * Converts gpos1 to index in P.
      */
@@ -171,12 +164,12 @@ class ReferenceSequence
     uint32_t diff(uint32_t i, uint32_t j);
 
     /**
-     * Print pileup state.
+     * Print buffered sequence state.
      */
     void print_state();
 
     /**
-     * Print pileup state extent.
+     * Print buffered sequence state extent.
      */
     void print_state_extent();
 };

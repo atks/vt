@@ -191,6 +191,14 @@ bool CandidateRegionExtractor::is_homopolymer(bcf_hdr_t* h, bcf1_t* v)
 
 /**
  * Extract reference sequence region for motif discovery.
+ *
+ * The input is a VCF record that contains an indel.
+ * 
+ * If the the indel has multiple alleles, it will examine all
+ * alleles.
+ *
+ *
+ *  
  */
 void CandidateRegionExtractor::extract_regions_by_exact_alignment(bcf_hdr_t* h, bcf1_t* v, VNTR& vntr)
 {
