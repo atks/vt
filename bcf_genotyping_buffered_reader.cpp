@@ -67,7 +67,7 @@ void BCFGenotypingBufferedReader::process_read(bam_hdr_t *h, bam1_t *s)
     {
         g = *i;
         
-        std::cerr << g->pos1 << " " << g->beg1 << " " << g->end1 << "\n";
+        std::cerr << g->pos1 << " " << g->beg1 << " " << g->end1 << " ";
         
         //same chromosome
         if (tid==g->rid)
@@ -82,14 +82,26 @@ void BCFGenotypingBufferedReader::process_read(bam_hdr_t *h, bam1_t *s)
                 //this should not occur if the buffer was flushed before invoking process read
                 continue;
             }
-            else if (beg1 <= g->beg1 && g->end1 <= end1)
+            //else if (beg1 <= g->beg1 && g->end1 <= end1)
+            else if (beg1 <= g->pos1 && g->pos1 <= end1)
             {
                 collect_sufficient_statistics(*i, as);
+            
+                if (beg1 <= g->beg1 && g->end1 <= end1)
+                {    
+                    std::cerr << "COMPLETE";
+                }
+                else
+                {
+                    std::cerr << "PARTIAL";
+                }
             }
             else
             {
                 //other types of overlap, just ignore
             }
+            
+            std::cerr << "\n";
         }
         //prior chromosome
         else if (tid<g->rid)
@@ -913,6 +925,10 @@ void BCFGenotypingBufferedReader::genotype_and_print(BCFOrderedWriter* odw, Geno
             //depth
             bcf_update_format_int32(odw->hdr, v, "DP", &g->depth, 1);
 
+            //AD
+            uint32_t allele_depth[2] = {g->allele_depth_fwd[0]+g->allele_depth_rev[0], g->allele_depth_fwd[1]+g->allele_depth_rev[1]};
+            bcf_update_format_int32(odw->hdr, v, "AD", &allele_depth, 2);
+            
             //ADF
             bcf_update_format_int32(odw->hdr, v, "ADF", &g->allele_depth_fwd[0], 2);
 

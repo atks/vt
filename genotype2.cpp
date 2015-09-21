@@ -205,6 +205,7 @@ class Igor : Program
         //COMMON
         bcf_hdr_append(odw->hdr, "##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">");
         bcf_hdr_append(odw->hdr, "##FORMAT=<ID=PL,Number=G,Type=Integer,Description=\"PHRED scaled genotype likelihoods\">");
+        bcf_hdr_append(odw->hdr, "##FORMAT=<ID=AD,Number=A,Type=Integer,Description=\"Allele Depth\">");
         bcf_hdr_append(odw->hdr, "##FORMAT=<ID=ADF,Number=A,Type=Integer,Description=\"Allele Depth (Forward strand)\">");
         bcf_hdr_append(odw->hdr, "##FORMAT=<ID=ADR,Number=A,Type=Integer,Description=\"Allele Depth (Reverse strand)\">");
         bcf_hdr_append(odw->hdr, "##FORMAT=<ID=DP,Number=1,Type=Integer,Description=\"Depth\">");
