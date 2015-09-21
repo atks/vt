@@ -210,7 +210,7 @@ class Igor : Program
         bcf_hdr_append(odw->hdr, "##FORMAT=<ID=DP,Number=1,Type=Integer,Description=\"Depth\">");
 
         //NONREF SNP
-        bcf_hdr_append(odw->hdr, "##FORMAT=<ID=BQ,Number=.,Type=Integer,Description=\"Phred-scaled Base Qualities\">");
+        bcf_hdr_append(odw->hdr, "##FORMAT=<ID=AQ,Number=.,Type=Integer,Description=\"Phred-scaled Allele Likelihoods, the number of entries is ploidy*no_alleles\">");
         bcf_hdr_append(odw->hdr, "##FORMAT=<ID=MQ,Number=.,Type=Integer,Description=\"Phred-scaled Map Qualities\">");
         bcf_hdr_append(odw->hdr, "##FORMAT=<ID=CY,Number=.,Type=Integer,Description=\"Cycle of base\">");
         bcf_hdr_append(odw->hdr, "##FORMAT=<ID=ST,Number=1,Type=String,Description=\"Strand of allele\">");
@@ -228,6 +228,8 @@ class Igor : Program
         
         //REF
         bcf_hdr_append(odw->hdr, "##FORMAT=<ID=BQSUM,Number=1,Type=Integer,Description=\"Sum of Base Qualities\">");
+        bcf_hdr_append(odw->hdr, "##FORMAT=<ID=AQSUM,Number=A,Type=Integer,Description=\"Sum of Allele Likelihoods\">");
+        
         bcf_hdr_append(odw->hdr, "##FORMAT=<ID=DPF,Number=1,Type=Integer,Description=\"Depth of forward reference alleles\">");
         bcf_hdr_append(odw->hdr, "##FORMAT=<ID=DPR,Number=1,Type=Integer,Description=\"Depth of reverse reference alleles\">");
 
@@ -448,53 +450,6 @@ class Igor : Program
             //iterate sam
             bam_hdr_t *h = odr->hdr;
             bam1_t * s = bam_init1();
-            AugmentedBAMRecord as;
-            while (odr->read(s))
-            {
-                ++no_reads;
-
-                if (!filter_read(s))
-                {
-                    continue;
-                }
-
-
-                as.initialize(odr->hdr, s);
-
-
-                gbr->flush(odw, h, s);
-                gbr->process_read(h, s);
-
-                ++no_passed_reads;
-                if ((no_reads & 0x0000FFFF) == 0)
-                {
-                    std::cerr << bam_get_chrom(h,s) << ":" << bam_get_pos1(s) << " ("  << gbr->buffer.size() << ")\n";
-//                    std::cerr << bam_get_chrom(h,s) << ":" << bam_get_pos1(s) << " ("  << kh_size(reads)<< ")\n";
-                }
-            }
-
-            no_snps_genotyped = gbr->no_snps_genotyped;
-            no_indels_genotyped = gbr->no_indels_genotyped;
-            no_vntrs_genotyped = gbr->no_vntrs_genotyped;
-
-            gbr->flush(odw, h, s, true);
-            odw->close();
-        }
-        else if (mode=="s")
-        {
-            //iterate VCF file
-                //random access per site
-
-        }
-    }
-
-    void genotype3()
-    {
-        if (mode=="d")
-        {
-            //iterate sam
-            bam_hdr_t *h = odr->hdr;
-            bam1_t * s = bam_init1();
             while (odr->read(s))
             {
                 ++no_reads;
@@ -625,7 +580,7 @@ void genotype2(int argc, char ** argv)
 {
     Igor igor(argc, argv);
     igor.print_options();
-    igor.genotype3();
+    igor.genotype2();
     igor.print_stats();
 }
 

@@ -202,7 +202,8 @@ class Igor : Program
 //        REFPOS = bcf_hdr_append_info_with_backup_naming(odw->hdr, "REFPOS", "1", "Integer", "Start position of repeat tract", true);
 //        SCORE = bcf_hdr_append_info_with_backup_naming(odw->hdr, "SCORE", "1", "Float", "Score of repeat unit", true);
         TR = bcf_hdr_append_info_with_backup_naming(odw->hdr, "TR", "1", "String", "Tandem repeat representation", true);
-        TR = bcf_hdr_append_info_with_backup_naming(odw->hdr, "END", "1", "Integer", "End position of the variant described in this record", true);
+        TR = bcf_hdr_append_info_with_backup_naming(odw->hdr, "LFLANK_END", "1", "Integer", "Left flank end position of the Indel, left/right alignment invariant, not necessarily equal to POS.", true);
+        TR = bcf_hdr_append_info_with_backup_naming(odw->hdr, "RFLANK_BEG", "1", "Integer", "Right flank beginning position of the Indel, left/right alignment invariant,  not necessarily equal to POS+length(REF)-1.", true);
 //        bcf_hdr_append(odw->hdr, "##INFO=<ID=OLD_VARIANT,Number=1,Type=String,Description=\"Original chr:pos:ref:alt encoding\">\n");
 //        bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_LFLANK,Number=1,Type=String,Description=\"Right Flank Sequence\">");
 //        bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_RFLANK,Number=1,Type=String,Description=\"Left Flank Sequence\">");
@@ -318,7 +319,7 @@ class Igor : Program
                         {
                             //do not insert
 
-//                            std::cerr << "NEVER inseert\n";
+//                            std::cerr << "NEVER insert\n";
                             return false;
                         }
                         else // cvntr.motif > vntr.motif

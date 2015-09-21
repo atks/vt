@@ -29,25 +29,45 @@ GenotypingRecord::GenotypingRecord(bcf_hdr_t *h, bcf1_t *v, int32_t vtype)
     this->h = h;
     this->v = v;
     rid = bcf_get_rid(v);
+    pos1 = bcf_get_pos1(v);
     this->vtype = vtype;
 
     if (vtype==VT_SNP && bcf_get_n_allele(v)==2)
     {
         rid = bcf_get_rid(v);
-        pos1 = bcf_get_pos1(v);
-        end1 = bcf_get_end_pos1(v);
+        beg1 = bcf_get_pos1(v);
+        end1 = beg1;
     }
     else if (vtype==VT_INDEL && bcf_get_n_allele(v)==2)
     {
+        //for Indels, this refers to the flanking positions
+        //   insertion 
+        //        if T/TG - beg1=pos1, end1=pos1+1
+        //        if T/GT - beg1=pos1-1, end1=pos1
+        //   deletion  
+        //        if TG/T - beg1=pos1, end1=pos1+length(REF)
+        //        if TG/G - beg1=pos1-1, end1=pos1+length(REF)-1
+        
         rid = bcf_get_rid(v);
-        pos1 = bcf_get_pos1(v);
         char** alleles = bcf_get_allele(v);
         dlen = strlen(alleles[1])-strlen(alleles[0]);
         len = abs(dlen);
 
-        int32_t *end1;
+        int32_t *beg1;
         int32_t n = 0;
-        if (bcf_get_info_int32(h, v, "END", &end1, &n)>0)
+        if (bcf_get_info_int32(h, v, "RFLANK_END", &beg1, &n)>0)
+        {
+           this->beg1 = beg1[0];
+           free(beg1);
+        }
+        else
+        {
+            this->beg1 = bcf_get_pos1(v) - 3;
+        }
+
+        int32_t *end1;
+         n = 0;
+        if (bcf_get_info_int32(h, v, "LFLANK_BEG", &end1, &n)>0)
         {
            this->end1 = end1[0] + 3;
            free(end1);
@@ -69,16 +89,14 @@ GenotypingRecord::GenotypingRecord(bcf_hdr_t *h, bcf1_t *v, int32_t vtype)
     else if (vtype==VT_VNTR)
     {
         rid = bcf_get_rid(v);
-        pos1 = bcf_get_pos1(v);
-        end1 = bcf_get_end_pos1(v);
+        beg1 = bcf_get_pos1(v) - 1;
+        end1 = bcf_get_end_pos1(v) + 1;
         
         char *motif = NULL;
         int32_t n = 0;
         
         if (bcf_get_info_string(h, v, "MOTIF", &motif, &n)>0)
         {
-//           // std::cerr << "MOTIF " << motif << "\n";
-            
            this->motif.assign(motif);
            free(motif);
         }

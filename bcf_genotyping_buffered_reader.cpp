@@ -54,32 +54,35 @@ BCFGenotypingBufferedReader::BCFGenotypingBufferedReader(std::string filename, s
  */
 void BCFGenotypingBufferedReader::process_read(bam_hdr_t *h, bam1_t *s)
 {
-    uint32_t tid = bam_get_tid(s);
-    uint32_t pos1 = bam_get_pos1(s);
-    uint32_t end1 = bam_get_end_pos1(s);
-
     //wrap bam1_t in AugmentBAMRecord
     as.initialize(h, s);
+    
+    uint32_t tid = bam_get_tid(s);
+    uint32_t beg1 = as.beg1;
+    uint32_t end1 = as.end1;
 
     //collect statistics for variant records that are in the buffer and overlap with the read
     GenotypingRecord* g;
     for (std::list<GenotypingRecord*>::iterator i=buffer.begin(); i!=buffer.end(); ++i)
     {
         g = *i;
+        
+        std::cerr << g->pos1 << " " << g->beg1 << " " << g->end1 << "\n";
+        
         //same chromosome
         if (tid==g->rid)
         {
-            if (end1 < g->pos1-3)
+            if (end1 < g->beg1)
             {
                 //can terminate
                 return;
             }
-            else if (pos1 > g->end1)
+            else if (beg1 > g->end1)
             {
                 //this should not occur if the buffer was flushed before invoking process read
                 continue;
             }
-            else if (pos1<=g->pos1-3 && g->end1 <= end1)
+            else if (beg1 <= g->beg1 && g->end1 <= end1)
             {
                 collect_sufficient_statistics(*i, as);
             }
@@ -113,15 +116,15 @@ void BCFGenotypingBufferedReader::process_read(bam_hdr_t *h, bam1_t *s)
 
         if (tid==g->rid)
         {
-            //if (end1>=g->pos1 && pos1<=g->end1)
-            if (pos1<=g->pos1-3 && g->end1 <= end1)
+            //if (end1>=g->beg1 && pos1<=g->end1)
+            if (beg1 <= g->beg1 && g->end1 <= end1)
             {
                 collect_sufficient_statistics(g, as);
             }
         }
 
         //VCF record occurs after the read
-        if (tid<g->rid || end1<g->pos1)
+        if (tid < g->rid || end1 < g->beg1)
         {
             return;
         }
@@ -163,7 +166,6 @@ void BCFGenotypingBufferedReader::collect_sufficient_statistics(GenotypingRecord
             int32_t vpos1 = g->pos1;
             int32_t cpos1 = bam_get_pos1(s);
             int32_t rpos0 = 0;
-
 
             for (uint32_t i=0; i<aug_cigar.size(); ++i)
             {
@@ -281,187 +283,200 @@ void BCFGenotypingBufferedReader::collect_sufficient_statistics(GenotypingRecord
     {
         if (bcf_get_n_allele(g->v)==2)
         {
-            bam1_t *s = as.s;
-
-            char strand = bam_is_rev(s) ? 'R' : 'F';
-            int32_t allele = 0;
-            uint32_t pos1 = bam_get_pos1(s);
-            uint8_t* seq = bam_get_seq(s);
-            uint8_t* qual = bam_get_qual(s);
-            uint32_t rlen = bam_get_l_qseq(s);
-            uint8_t mapq = bam_get_mapq(s);
-
-
-            int32_t dlen = g->dlen;
-            uint32_t len = g->len;
-            std::string& indel = g->indel;
-
-            uint32_t q = len*30;
-            uint32_t cycle = 10;
-
-            std::vector<uint32_t>& aug_cigar = as.aug_cigar;
-            std::vector<std::string>& aug_ref = as.aug_ref;
-            std::vector<std::string>& aug_alt = as.aug_alt;
-
-            int32_t vpos1 = g->pos1;
-
-            int32_t cpos1 = bam_get_pos1(s);
-            int32_t rpos0 = 0;
-
-            for (uint32_t i=0; i<aug_cigar.size(); ++i)
+            if (as.beg1 <= g->beg1 && g->end1 <= as.end1)
             {
-                uint32_t oplen = bam_cigar_oplen(aug_cigar[i]);
-                char opchr = bam_cigar_opchr(aug_cigar[i]);
-
-                if (opchr=='S')
+                bam1_t *s = as.s;
+    
+                char strand = bam_is_rev(s) ? 'R' : 'F';
+                int32_t allele = 0;
+                uint32_t pos1 = bam_get_pos1(s);
+                uint8_t* seq = bam_get_seq(s);
+                uint8_t* qual = bam_get_qual(s);
+                uint32_t rlen = bam_get_l_qseq(s);
+                uint8_t mapq = bam_get_mapq(s);
+    
+    
+                int32_t dlen = g->dlen;
+                uint32_t len = g->len;
+                std::string& indel = g->indel;
+    
+                uint32_t q = len*30;
+                uint32_t cycle = 10;
+    
+                std::vector<uint32_t>& aug_cigar = as.aug_cigar;
+                std::vector<std::string>& aug_ref = as.aug_ref;
+                std::vector<std::string>& aug_alt = as.aug_alt;
+    
+                int32_t vpos1 = g->pos1;
+    
+                int32_t cpos1 = bam_get_pos1(s);
+                int32_t rpos0 = 0;
+    
+                for (uint32_t i=0; i<aug_cigar.size(); ++i)
                 {
-                    rpos0 += oplen;
-                }
-                else if (opchr=='=')
-                {
-                    if (vpos1>=cpos1 && vpos1<=(cpos1+oplen-1))
+                    uint32_t oplen = bam_cigar_oplen(aug_cigar[i]);
+                    char opchr = bam_cigar_opchr(aug_cigar[i]);
+    
+                    if (opchr=='S')
                     {
-                        cycle = strand == 'F' ? (rpos0+1) : (rlen - rpos0);
+                        rpos0 += oplen;
                     }
-
-                    cpos1 += oplen;
-                    rpos0 += oplen;
-                }
-                else if (opchr=='X')
-                {
-                    if (cpos1-1==vpos1)
+                    else if (opchr=='=')
                     {
-                        cycle = strand == 'F' ? (rpos0+1) : (rlen - rpos0);
-                    }
-
-                    ++cpos1;
-                    ++rpos0;
-                }
-                else if (opchr=='I')
-                {
-//                    std::cerr << "dlen  " << dlen << "\n";
-//                    std::cerr << "cpos1 " << cpos1 << "\n";
-//                    std::cerr << "vpos1 " << vpos1 << "\n";
-//                    std::cerr << "indel " << aug_alt[i] << "\n";
-
-                    if (dlen>0 && cpos1-1==vpos1)
-                    {
-                        if (indel==aug_alt[i])
+                        if (vpos1>=cpos1 && vpos1<=(cpos1+oplen-1))
                         {
-                            q = len*30;
-                            allele = 1;
+                            cycle = strand == 'F' ? (rpos0+1) : (rlen - rpos0);
                         }
-                        else
-                        {
-                            q = abs(len-aug_ref[i].size())*30;
-                            allele = -1;
-                        }
-
-                        cycle = strand == 'F' ? (rpos0+1) : (rlen - rpos0);
-                        break;
+    
+                        cpos1 += oplen;
+                        rpos0 += oplen;
                     }
-                    else if (dlen<0 && cpos1-1==vpos1)
+                    else if (opchr=='X')
                     {
-                        q = 30;
-                        allele = -3;
-
-                        cycle = strand == 'F' ? (rpos0+1) : (rlen - rpos0);
-                        break;
+                        if (cpos1-1==vpos1)
+                        {
+                            cycle = strand == 'F' ? (rpos0+1) : (rlen - rpos0);
+                        }
+    
+                        ++cpos1;
+                        ++rpos0;
                     }
-
-                    rpos0 += oplen;
+                    else if (opchr=='I')
+                    {
+    //                    std::cerr << "dlen  " << dlen << "\n";
+    //                    std::cerr << "cpos1 " << cpos1 << "\n";
+    //                    std::cerr << "vpos1 " << vpos1 << "\n";
+    //                    std::cerr << "indel " << aug_alt[i] << "\n";
+    
+                        if (dlen>0 && cpos1-1==vpos1)
+                        {
+                            if (indel==aug_alt[i])
+                            {
+                                q = len*30;
+                                allele = 1;
+                            }
+                            else
+                            {
+                                q = abs(len-aug_ref[i].size())*30;
+                                allele = -1;
+                            }
+    
+                            cycle = strand == 'F' ? (rpos0+1) : (rlen - rpos0);
+                            break;
+                        }
+                        else if (dlen<0 && cpos1-1==vpos1)
+                        {
+                            q = 30;
+                            allele = -3;
+    
+                            cycle = strand == 'F' ? (rpos0+1) : (rlen - rpos0);
+                            break;
+                        }
+    
+                        rpos0 += oplen;
+                    }
+                    else if (opchr=='D')
+                    {
+    //                    std::cerr << "dlen  " << dlen << "\n";
+    //                    std::cerr << "cpos1 " << cpos1 << "\n";
+    //                    std::cerr << "vpos1 " << vpos1 << "\n";
+    //                    std::cerr << "indel " << aug_ref[i] << "\n";
+    
+                        if (dlen<0 && cpos1-1==vpos1)
+                        {
+                            if (indel==aug_ref[i])
+                            {
+                                q = len*30;
+                                allele = 1;
+                            }
+                            else
+                            {
+                                q = abs(len-aug_ref[i].size())*30;
+                                allele = -1;
+                            }
+    
+                            cycle = strand == 'F' ? (rpos0+1) : (rlen - rpos0);
+                            break;
+                        }
+                        else if (dlen>0 && cpos1-1==vpos1)
+                        {
+                            q = 30;
+                            allele = -2;
+    
+                            cycle = strand == 'F' ? (rpos0+1) : (rlen - rpos0);
+                            break;
+                        }
+    
+                        cpos1 += oplen;
+                    }
+                    else
+                    {
+                        std::cerr << "unrecognized cigar state " << opchr << "\n";
+                    }
                 }
-                else if (opchr=='D')
+    
+                if (allele==0)
                 {
-//                    std::cerr << "dlen  " << dlen << "\n";
-//                    std::cerr << "cpos1 " << cpos1 << "\n";
-//                    std::cerr << "vpos1 " << vpos1 << "\n";
-//                    std::cerr << "indel " << aug_ref[i] << "\n";
-
-                    if (dlen<0 && cpos1-1==vpos1)
+                    if (strand=='F')
                     {
-                        if (indel==aug_ref[i])
-                        {
-                            q = len*30;
-                            allele = 1;
-                        }
-                        else
-                        {
-                            q = abs(len-aug_ref[i].size())*30;
-                            allele = -1;
-                        }
-
-                        cycle = strand == 'F' ? (rpos0+1) : (rlen - rpos0);
-                        break;
+                        ++g->depth_fwd;
+                        ++g->allele_depth_fwd[0];
                     }
-                    else if (dlen>0 && cpos1-1==vpos1)
+                    else
                     {
-                        q = 30;
-                        allele = -2;
-
-                        cycle = strand == 'F' ? (rpos0+1) : (rlen - rpos0);
-                        break;
+                        ++g->depth_rev;
+                        ++g->allele_depth_rev[0];
                     }
-
-                    cpos1 += oplen;
                 }
-                else
+                else //non ref
                 {
-                    std::cerr << "unrecognized cigar state " << opchr << "\n";
+                    ++g->no_nonref;
+    
+                    if (strand=='F')
+                    {
+                        ++g->depth_fwd;
+                        ++g->allele_depth_fwd[1];
+                    }
+                    else
+                    {
+                        ++g->depth_rev;
+                        ++g->allele_depth_rev[1];
+                    }
                 }
-            }
-
-            if (allele==0)
-            {
+    
+                if (allele!=0)
+                {
+                    ++g->no_nonref;
+                }
+    
                 if (strand=='F')
                 {
                     ++g->depth_fwd;
-                    ++g->allele_depth_fwd[0];
                 }
                 else
                 {
                     ++g->depth_rev;
-                    ++g->allele_depth_rev[0];
                 }
-            }
-            else //non ref
-            {
-                ++g->no_nonref;
-
-                if (strand=='F')
-                {
-                    ++g->depth_fwd;
-                    ++g->allele_depth_fwd[1];
-                }
-                else
-                {
-                    ++g->depth_rev;
-                    ++g->allele_depth_rev[1];
-                }
-            }
-
-            if (allele!=0)
-            {
-                ++g->no_nonref;
-            }
-
-            if (strand=='F')
-            {
-                ++g->depth_fwd;
+    
+                g->base_qualities_sum += q;
+    
+                ++g->depth;
+                g->quals.push_back(q);
+                g->cycles.push_back(cycle);
+                g->alleles.push_back(allele);
+                g->strands.append(1, strand);
+                g->no_mismatches.push_back(as.no_mismatches);
             }
             else
             {
-                ++g->depth_rev;
+                ++g->depth;
+                g->quals.push_back(0);
+                g->quals.push_back(0);
+                g->cycles.push_back(-1);
+                g->alleles.push_back(-1);
+                g->strands.append(1, (bam_is_rev(as.s) ? 'R' : 'F'));
+                g->no_mismatches.push_back(as.no_mismatches);
             }
-
-            g->base_qualities_sum += q;
-
-            ++g->depth;
-            g->quals.push_back(q);
-            g->cycles.push_back(cycle);
-            g->alleles.push_back(allele);
-            g->strands.append(1, strand);
-            g->no_mismatches.push_back(as.no_mismatches);
         }
         else //multiallelic
         {
@@ -484,7 +499,7 @@ void BCFGenotypingBufferedReader::collect_sufficient_statistics(GenotypingRecord
         std::vector<std::string>& aug_alt = as.aug_alt;
 
         //genomic bookend positions of VNTR
-        int32_t vpos1 = g->pos1-1;
+        int32_t vpos1 = g->beg1-1;
         int32_t vend1 = g->end1+1;
         
         //position with respect to read

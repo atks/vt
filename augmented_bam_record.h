@@ -68,7 +68,7 @@ class AugmentedBAMRecord
     public:
     bam_hdr_t *h;
     bam1_t *s;
-    int32_t pos1;
+    int32_t beg1;
     int32_t end1;
     
     //new augmented cigar with X's
@@ -99,7 +99,7 @@ class AugmentedBAMRecord
     void initialize(bam_hdr_t* h, bam1_t* s);
 
     /**
-     * left_align augmented cigar.
+     * Left align indels in an augmented cigar.
      *
      * returns
      * 1 - if left alignment was performed
@@ -107,6 +107,16 @@ class AugmentedBAMRecord
      * 3 - if left alignment is possible beyond the extent of the alignment
      */
     bool left_align();
+
+    /**
+     * Right align indels in an augmented cigar.
+     *
+     * returns
+     * 1 - if left alignment was performed
+     * 2 - if left alignment was not possible
+     * 3 - if left alignment is possible beyond the extent of the alignment
+     */
+    bool right_align();
 
     /**
      * Clear.
