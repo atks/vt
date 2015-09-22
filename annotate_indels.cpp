@@ -50,6 +50,7 @@ class Igor : Program
     std::string MOTIF;
     std::string RU;
     std::string RL;
+    std::string LL;
     std::string REF;
     std::string REFPOS;
     std::string SCORE;
@@ -132,7 +133,8 @@ class Igor : Program
                  false, 6, "integer", cmd);
             TCLAP::ValueArg<std::string> arg_method("m", "m", "mode [e]\n"
                  "              exact : determine by exact alignment.\n"
-                 "              fuzzy : determine by fuzzy alignment.",
+                 "              fuzzy : determine by fuzzy alignment."
+                 "              hmm   : determine by hmm alignment.",
                  false, "e", "str", cmd);
 
             TCLAP::ValueArg<uint32_t> arg_alignment_penalty("p", "p", "alignment penalty [0]", false, 0, "int", cmd);
@@ -170,7 +172,7 @@ class Igor : Program
         ///////////
         //options//
         ///////////
-        if (method!="e" && method!="f")
+        if (method!="e" && method!="f" && method!="h")
         {
             fprintf(stderr, "[%s:%d %s] Not a valid mode of VNTR detection: %s\n", __FILE__,__LINE__,__FUNCTION__, method.c_str());
             exit(1);
@@ -197,7 +199,8 @@ class Igor : Program
 
         MOTIF = bcf_hdr_append_info_with_backup_naming(odw->hdr, "MOTIF", "1", "String", "Canonical motif in an VNTR or homopolymer", true);
         RU = bcf_hdr_append_info_with_backup_naming(odw->hdr, "RU", "1", "String", "Repeat unit in a VNTR or homopolymer", true);
-        RL = bcf_hdr_append_info_with_backup_naming(odw->hdr, "RL", "1", "Float", "Repeat unit length", true);
+        RL = bcf_hdr_append_info_with_backup_naming(odw->hdr, "RL", "1", "Float", "Reference repeat unit length", true);
+        LL = bcf_hdr_append_info_with_backup_naming(odw->hdr, "LL", "1", "Float", "Longest repeat unit length", true);
 //        REF = bcf_hdr_append_info_with_backup_naming(odw->hdr, "REF", "1", "String", "Repeat tract on the reference sequence", true);
 //        REFPOS = bcf_hdr_append_info_with_backup_naming(odw->hdr, "REFPOS", "1", "Integer", "Start position of repeat tract", true);
 //        SCORE = bcf_hdr_append_info_with_backup_naming(odw->hdr, "SCORE", "1", "Float", "Score of repeat unit", true);
@@ -279,17 +282,10 @@ class Igor : Program
      */
     bool insert_vntr_record_into_buffer(VNTR& vntr)
     {
-//        std::cerr << "=====\n";
-//        vntr.print();
-
         std::list<VNTR>::iterator i = vntr_buffer.begin();
         while(i!=vntr_buffer.end())
         {
             VNTR& cvntr = *i;
-
-//            std::cerr << "******\n";
-//            cvntr.print();
-//            std::cerr << "=====\n";
 
             if (vntr.rid > cvntr.rid)
             {
@@ -320,8 +316,6 @@ class Igor : Program
                         else if (cvntr.motif == vntr.motif)
                         {
                             //do not insert
-
-//                            std::cerr << "NEVER insert\n";
                             return false;
                         }
                         else // cvntr.motif > vntr.motif
@@ -505,7 +499,6 @@ class Igor : Program
                     }
                 }
 
-
 //                std::cerr << "vntr_buffer size " << vntr_buffer.size() << "\n";
 
                 ++no_variants_annotated;
@@ -545,8 +538,8 @@ class Igor : Program
             }
         }
         
-        std::cerr << "no inexact : " << no_inexact << "\n";
-        std::cerr << "no exact : " << no_exact << "\n";
+//        std::cerr << "no inexact : " << no_inexact << "\n";
+//        std::cerr << "no exact : " << no_exact << "\n";
     
         odw->close();
         odr->close();

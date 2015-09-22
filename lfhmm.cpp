@@ -646,6 +646,22 @@ void LFHMM::align(const char* read, const char* qual)
     }
 
     trace_path();
+
+    exact_motif_count = motif_count;
+    motif_concordance = 0;
+    for (int32_t k=1; k<=motif_count; ++k)
+    {
+        if (motif_discordance[k])
+        {
+            --exact_motif_count;
+        }
+
+        if (mlen>=motif_discordance[k])
+        {
+            motif_concordance += (float)(mlen-motif_discordance[k]) / mlen;
+        }
+    }
+    motif_concordance *= 100.0/motif_count;
 };
 
 /**
@@ -760,8 +776,10 @@ void LFHMM::collect_statistics(int32_t src_t, int32_t des_t, int32_t j)
         {
             rflank_start[MODEL] = NAN;
             rflank_start[READ] = NAN;
-            rflank_end[MODEL] = INFINITY;
-            rflank_end[READ] = INFINITY;
+            rflank_end[MODEL] = INT32_MAX;
+            rflank_end[READ] = INT32_MAX;
+
+            std::cerr << "SET TO INFINITY " << rflank_end[READ] << "\n";
 
 //            std::cerr << std::setprecision(1) << std::fixed;
 //            std::cerr << std::setw(8) << std::setprecision(2) << std::fixed  << ((float)rflank_start[MODEL]) << " " <<  ((float)rflank_end[MODEL]) << "\n";
@@ -1183,21 +1201,6 @@ void LFHMM::print_alignment(std::string& pad)
     std::cerr << "\n";
     std::cerr << "motif #           : " << motif_count << " [" << motif_start[READ] << "," << motif_end[READ] << "]\n";
 
-    exact_motif_count = motif_count;
-    motif_concordance = 0;
-    for (int32_t k=1; k<=motif_count; ++k)
-    {
-        if (motif_discordance[k])
-        {
-            --exact_motif_count;
-        }
-
-        if (mlen>=motif_discordance[k])
-        {
-            motif_concordance += (float)(mlen-motif_discordance[k]) / mlen;
-        }
-    }
-    motif_concordance *= 100.0/motif_count;
     std::cerr << "motif concordance : " << motif_concordance << "% (" << exact_motif_count << "/" << motif_count << ")\n";
     std::cerr << "motif discordance : ";
     for (int32_t k=1; k<=motif_count; ++k)

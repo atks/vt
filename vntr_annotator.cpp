@@ -47,11 +47,11 @@ VNTRAnnotator::VNTRAnnotator(std::string& ref_fasta_file, bool debug)
     ///////////////////
     //initialize raHMMs
     ///////////////////
-    float delta = 0.01;
+    float delta = 0.0001;
     float epsilon = 0.05;
     float tau = 0.01;
     float eta = 0.01;
-    float mismatch_penalty = 1;
+    float mismatch_penalty = 3;
     qual.resize(1000, 'K');
     
     
@@ -167,6 +167,27 @@ void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::str
         }
         //FUZZY DETECTION
         else if (mode=="f")
+        {
+            if (debug) std::cerr << "============================================\n";
+            if (debug) std::cerr << "ANNOTATING INDEL FUZZILY\n";
+
+            //1. selects candidate region by fuzzy left and right alignment
+            cre->extract_regions_by_exact_alignment(h, v, vntr);
+
+            //2. detect candidate motifs from candidate region
+            pick_candidate_motifs(h, v, vntr);
+
+            //3. choose the best candidate motif
+            choose_best_motif(h, v, mt, vntr, PICK_BEST_MOTIF);
+
+            //4. evaluate reference length
+            detect_repeat_region(h, v, variant, FRAHMM);
+
+            if (debug) std::cerr << "============================================\n";
+            return;
+        }
+        //HMM DETECTION
+        else if (mode=="h")
         {
             if (debug) std::cerr << "============================================\n";
             if (debug) std::cerr << "ANNOTATING INDEL FUZZILY\n";
@@ -527,7 +548,7 @@ void VNTRAnnotator::detect_repeat_region(bcf_hdr_t* h, bcf1_t *v, Variant& varia
 
         rfhmm->set_model(vntr.ru.c_str(), rflank);
         rfhmm->align(seq, qual.c_str());
-//        rfhmm->print_alignment();
+        rfhmm->print_alignment();
         
         if (rflank_len) free(rflank);
         if (seq_len) free(seq);
@@ -536,51 +557,68 @@ void VNTRAnnotator::detect_repeat_region(bcf_hdr_t* h, bcf1_t *v, Variant& varia
         ////////////////
         //left alignment
         ////////////////
+        int32_t lflank_end1;
+        int32_t rflank_beg1;
                 
-        int32_t lflank_end1 = vntr.rbeg1-101+1 + rfhmm->get_lflank_read_epos1() -1;
+        lflank_end1 = vntr.rbeg1-101+1 + rfhmm->get_lflank_read_epos1() -1;
         
-         //pick 5 bases to right
-        int32_t lflank_len;
-        char* lflank = faidx_fetch_seq(fai, variant.chrom.c_str(), lflank_end1-5-1, lflank_end1-1, &lflank_len);
+        int32_t slen = 100;
+             //pick 5 bases to right
+            int32_t lflank_len;
+        while(true)
+        {
 
-        //pick 105 bases for aligning 
-        seq = faidx_fetch_seq(fai, variant.chrom.c_str(), lflank_end1-5-1, lflank_end1+100-1-1, &seq_len);
+            char* lflank = faidx_fetch_seq(fai, variant.chrom.c_str(), lflank_end1-5-1, lflank_end1-1, &lflank_len);
+    
+            //pick 105 bases for aligning 
+            seq = faidx_fetch_seq(fai, variant.chrom.c_str(), lflank_end1-5-1, lflank_end1+slen-1-1, &seq_len);
+            
+            lfhmm->set_model(lflank, vntr.ru.c_str());
+            lfhmm->align(seq, qual.c_str());
+            lfhmm->print_alignment();
+            
+            if (seq_len) free(seq);
+                
+            if (lfhmm->get_rflank_read_epos1()!=INT32_MAX)
+            {
+                rflank_beg1 = lflank_end1 - 5 + lfhmm->get_rflank_read_spos1() -1;
+                break;
+                
+            }
+            else
+            {
+                slen +=100;
+            }
+        }
         
-        lfhmm->set_model(lflank, vntr.ru.c_str());
-        lfhmm->align(seq, qual.c_str());
-//        lfhmm->print_alignment();
-        
-        int32_t rflank_beg1 = lflank_end1 - 5 + lfhmm->get_rflank_read_spos1();
-        
-
-
-
-        if (seq_len) free(seq);
         if (lflank_len) free(lflank);
 
         
         lflank = faidx_fetch_seq(fai, variant.chrom.c_str(), lflank_end1-10-1, lflank_end1-1, &lflank_len);
         rflank = faidx_fetch_seq(fai, variant.chrom.c_str(), rflank_beg1-1, rflank_beg1 +10 -1 -1, &rflank_len);
 
+        vntr.rbeg1 = lflank_end1+1;
+        vntr.rend1 = rflank_beg1-1;
+        int32_t repeat_tract_len;
+        char* repeat_tract = faidx_fetch_seq(fai, variant.chrom.c_str(), lflank_end1, rflank_beg1-1-1, &repeat_tract_len);
+        vntr.repeat_tract.assign(repeat_tract);
+        if (repeat_tract_len) free(repeat_tract);
         vntr.motif_concordance = lfhmm->motif_concordance;
         vntr.no_exact_ru = lfhmm->exact_motif_count;
         vntr.total_no_ru = lfhmm->motif_count;
-//        vntr.rl = ahmm->repeat_tract_len;
+        vntr.rl = rflank_beg1-lflank_end1-1;
 
 
-//        std::cerr << lflank_end1 << ":" << lflank << "\n";
-//        std::cerr << rflank_beg1 << ":" << rflank << "\n";
-//            
+        std::cerr << "lflank_end1 : lflank "<< lflank_end1 << ":" << lflank << "\n";
+        std::cerr << "rflank_beg1 : rflank " << rflank_beg1 << ":" << rflank << "\n";
+            
         
 
         if (lflank_len) free(lflank);
         if (rflank_len) free(rflank);
 
 
-//        vntr.motif_concordance = ahmm->motif_concordance;
-//        vntr.no_exact_ru = ahmm->exact_motif_count;
-//        vntr.total_no_ru = ahmm->motif_count;
-//        vntr.rl = ahmm->repeat_tract_len;
+
 
     
         if (debug)
@@ -859,8 +897,12 @@ bool VNTRAnnotator::is_vntr(Variant& variant, int32_t mode)
 //        {
 //            variant.vntr.print();
 //        }
+//        std::cerr << "rlen " << rlen << "\n";
+//        std::cerr << "mlen " << mlen << "\n";
+//        std::cerr << "no_exact_ru " << variant.vntr.no_exact_ru << "\n";
 
-        return (rlen - mlen >= 6 && variant.vntr.no_exact_ru>=2);
+
+        return (rlen - mlen >= 6 && variant.vntr.motif_concordance>0.8 && variant.vntr.no_exact_ru>=2);
 
 //        equivalent to
 //        (mlen==1 && rlen>=5)  ||

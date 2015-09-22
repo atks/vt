@@ -68,8 +68,10 @@ char ReferenceSequence::fetch_base(std::string& chrom, uint32_t& pos1)
         free(refseq);
     
         return base;
-        return 'N';
+
     }
+    
+    return 'N';
 }
 
 /**
