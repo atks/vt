@@ -56,7 +56,7 @@ Node::Node(int32_t type)
 void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
 {
     if (debug)
-        std::cerr << "evaluation  "  << type << "\n";
+        std::cerr << "evaluation  "  << type2string(type) << "\n";
 
     //by default
     value_exists = true;
@@ -72,7 +72,6 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
             return;
         }
 
-        
         //think about this, what happens when INFO values are not present, do you treat as a flag?
         if (!left->value_exists)
         {
@@ -96,7 +95,7 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
             value_exists = false;
             return;
         }
-        
+
         if (type==VT_AND)
         {
             if (debug)
@@ -120,6 +119,14 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
 
         if (type==VT_EQ)
         {
+            //if an INFO field is involved and does not exist, then we evaluate as false
+            if (!left->value_exists || !right->value_exists)
+            {
+                value_exists = true;
+                b = false;
+                return;
+            }
+            
             if ((left->type&VT_INT))
             {
                 if ((right->type&VT_INT))
@@ -167,6 +174,14 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
         }
         else if (type==VT_MATCH)
         {
+            //if an INFO field is involved and does not exist, then we evaluate as false
+            if (!left->value_exists || !right->value_exists)
+            {
+                value_exists = true;
+                b = false;
+                return;
+            }
+            
             if ((left->type&VT_STR) && (right->type&VT_STR))
             {
                 if (debug)
@@ -188,6 +203,14 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
         }
         else if (type==VT_NO_MATCH)
         {
+            //if an INFO field is involved and does not exist, then we evaluate as false
+            if (!left->value_exists || !right->value_exists)
+            {
+                value_exists = true;
+                b = false;
+                return;
+            }
+            
             if ((left->type&VT_STR) && (right->type&VT_STR))
             {
                 if (debug)
@@ -210,6 +233,14 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
         else if (type==VT_NE)
         {
             //fprintf(stderr, "[%s:%d %s] check: %s %s: !=\n", __FILE__, __LINE__, __FUNCTION__, type2string(left->type).c_str(), type2string(right->type).c_str());
+            
+            //if an INFO field is involved and does not exist, then we evaluate as false
+            if (!left->value_exists || !right->value_exists)
+            {
+                value_exists = true;
+                b = false;
+                return;
+            }
 
             if ((left->type&VT_INT))
             {
@@ -248,6 +279,14 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
         }
         else if (type==VT_LE)
         {
+            //if an INFO field is involved and does not exist, then we evaluate as false
+            if (!left->value_exists || !right->value_exists)
+            {
+                value_exists = true;
+                b = false;
+                return;
+            }
+            
             if ((left->type&VT_INT))
             {
                 if ((right->type&VT_INT))
@@ -286,6 +325,14 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
         }
         else if (type==VT_GE)
         {
+            //if an INFO field is involved and does not exist, then we evaluate as false
+            if (!left->value_exists || !right->value_exists)
+            {
+                value_exists = true;
+                b = false;
+                return;
+            }
+            
             if ((left->type&VT_INT))
             {
                 if ((right->type&VT_INT))
@@ -323,6 +370,14 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
         }
         else if (type==VT_GT)
         {
+            //if an INFO field is involved and does not exist, then we evaluate as false
+            if (!left->value_exists || !right->value_exists)
+            {
+                value_exists = true;
+                b = false;
+                return;
+            }
+            
             if ((left->type&VT_INT))
             {
                 if ((right->type&VT_INT))
@@ -360,6 +415,14 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
         }
         else if (type==VT_LT)
         {
+            //if an INFO field is involved and does not exist, then we evaluate as false
+            if (!left->value_exists || !right->value_exists)
+            {
+                value_exists = true;
+                b = false;
+                return;
+            }
+            
             if ((left->type&VT_INT))
             {
                 if ((right->type&VT_INT))
@@ -1655,6 +1718,8 @@ int32_t Filter::peek_op(const char* &r, int32_t len, int32_t &oplen, bool debug)
  */
 void Filter::apply(Node* node, bool debug)
 {
+    node->value_exists = false;
+
     //evaluate downstream
     if (node->left!=NULL)
     {
