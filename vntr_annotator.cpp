@@ -47,21 +47,39 @@ VNTRAnnotator::VNTRAnnotator(std::string& ref_fasta_file, bool debug)
     ///////////////////
     //initialize raHMMs
     ///////////////////
-    ahmm = new AHMM(false);
-    
     float delta = 0.01;
     float epsilon = 0.05;
     float tau = 0.01;
     float eta = 0.01;
     float mismatch_penalty = 1;
     qual.resize(1000, 'K');
+    
+    
+    ahmm = new AHMM(false);
     ahmm->set_delta(delta);
     ahmm->set_epsilon(epsilon);
     ahmm->set_tau(tau);
     ahmm->set_eta(eta);
     ahmm->set_mismatch_penalty(mismatch_penalty);
     ahmm->initialize_T();
-    
+
+    lfhmm = new LFHMM(false);
+    lfhmm->set_delta(delta);
+    lfhmm->set_epsilon(epsilon);
+    lfhmm->set_tau(tau);
+    lfhmm->set_eta(eta);
+    lfhmm->set_mismatch_penalty(mismatch_penalty);
+    lfhmm->initialize_T();
+
+    rfhmm = new RFHMM(false);
+    rfhmm->set_delta(delta);
+    rfhmm->set_epsilon(epsilon);
+    rfhmm->set_tau(tau);
+    rfhmm->set_eta(eta);
+    rfhmm->set_mismatch_penalty(mismatch_penalty);
+    rfhmm->initialize_T();
+
+
     this->debug = debug;
     qual.assign(256, 'K');
 };
@@ -124,8 +142,8 @@ void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::str
         //4. refine the repeat region to be detected
         //   a. clip ends - this is a simplistic way of simply removing the anchor base.
         //5. evaluate
-        
-        
+
+
         //EXACT MODE
         if (mode=="e")
         {
@@ -154,7 +172,7 @@ void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::str
             if (debug) std::cerr << "ANNOTATING INDEL FUZZILY\n";
 
             //1. selects candidate region by fuzzy left and right alignment
-            cre->extract_regions_by_fuzzy_alignment(h, v, vntr);
+            cre->extract_regions_by_exact_alignment(h, v, vntr);
 
             //2. detect candidate motifs from candidate region
             pick_candidate_motifs(h, v, vntr);
@@ -163,7 +181,7 @@ void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::str
             choose_best_motif(h, v, mt, vntr, PICK_BEST_MOTIF);
 
             //4. evaluate reference length
-            detect_repeat_region(h, v, variant, CLIP_ENDS);
+            detect_repeat_region(h, v, variant, FRAHMM);
 
             if (debug) std::cerr << "============================================\n";
             return;
@@ -431,13 +449,15 @@ void VNTRAnnotator::detect_repeat_region(bcf_hdr_t* h, bcf1_t *v, Variant& varia
         vntr.rend1 = vntr.rbeg1+vntr.rl-1;
 
         ahmm->set_model(vntr.ru.c_str());
-        ahmm->align(vntr.repeat_tract.c_str(), qual.c_str());   
+        ahmm->align(vntr.repeat_tract.c_str(), qual.c_str());
+
+
 
         vntr.motif_concordance = ahmm->motif_concordance;
         vntr.no_exact_ru = ahmm->exact_motif_count;
         vntr.total_no_ru = ahmm->motif_count;
         vntr.rl = ahmm->repeat_tract_len;
-        
+
 //statistics for repeat unit
 //    float motif_score;          //motif score from motif tree
 //    float motif_concordance;    //motif concordance from hmm
@@ -476,8 +496,98 @@ void VNTRAnnotator::detect_repeat_region(bcf_hdr_t* h, bcf1_t *v, Variant& varia
             vntr.print();
         }
     }
-    else if (false)
+    else if (mode==FRAHMM)
     {
+        if (debug)
+        {
+            std::cerr << "********************************************\n";
+            std::cerr << "Using Flanking raHMMs\n";
+            std:: cerr << "\n";
+        }
+
+        if (vntr.repeat_tract.size()>2)
+        {
+            vntr.repeat_tract = vntr.repeat_tract.substr(1, vntr.repeat_tract.size()-2);
+            ++vntr.rbeg1;
+        }
+
+        vntr.ru = choose_repeat_unit(vntr.repeat_tract, vntr.motif);
+        
+        /////////////////
+        //right alignment
+        /////////////////
+        
+        //pick 5 bases to the right
+        int32_t rflank_len;
+        char* rflank = faidx_fetch_seq(fai, variant.chrom.c_str(), vntr.rbeg1-1, vntr.rbeg1+5-1-1, &rflank_len);
+
+        //pick 105 bases for aligning 
+        int32_t seq_len;
+        char* seq = faidx_fetch_seq(fai, variant.chrom.c_str(), vntr.rbeg1-101, vntr.rbeg1+5-1-1, &seq_len);
+
+        rfhmm->set_model(vntr.ru.c_str(), rflank);
+        rfhmm->align(seq, qual.c_str());
+//        rfhmm->print_alignment();
+        
+        if (rflank_len) free(rflank);
+        if (seq_len) free(seq);
+        
+                
+        ////////////////
+        //left alignment
+        ////////////////
+                
+        int32_t lflank_end1 = vntr.rbeg1-101+1 + rfhmm->get_lflank_read_epos1() -1;
+        
+         //pick 5 bases to right
+        int32_t lflank_len;
+        char* lflank = faidx_fetch_seq(fai, variant.chrom.c_str(), lflank_end1-5-1, lflank_end1-1, &lflank_len);
+
+        //pick 105 bases for aligning 
+        seq = faidx_fetch_seq(fai, variant.chrom.c_str(), lflank_end1-5-1, lflank_end1+100-1-1, &seq_len);
+        
+        lfhmm->set_model(lflank, vntr.ru.c_str());
+        lfhmm->align(seq, qual.c_str());
+//        lfhmm->print_alignment();
+        
+        int32_t rflank_beg1 = lflank_end1 - 5 + lfhmm->get_rflank_read_spos1();
+        
+
+
+
+        if (seq_len) free(seq);
+        if (lflank_len) free(lflank);
+
+        
+        lflank = faidx_fetch_seq(fai, variant.chrom.c_str(), lflank_end1-10-1, lflank_end1-1, &lflank_len);
+        rflank = faidx_fetch_seq(fai, variant.chrom.c_str(), rflank_beg1-1, rflank_beg1 +10 -1 -1, &rflank_len);
+
+        vntr.motif_concordance = lfhmm->motif_concordance;
+        vntr.no_exact_ru = lfhmm->exact_motif_count;
+        vntr.total_no_ru = lfhmm->motif_count;
+//        vntr.rl = ahmm->repeat_tract_len;
+
+
+//        std::cerr << lflank_end1 << ":" << lflank << "\n";
+//        std::cerr << rflank_beg1 << ":" << rflank << "\n";
+//            
+        
+
+        if (lflank_len) free(lflank);
+        if (rflank_len) free(rflank);
+
+
+//        vntr.motif_concordance = ahmm->motif_concordance;
+//        vntr.no_exact_ru = ahmm->exact_motif_count;
+//        vntr.total_no_ru = ahmm->motif_count;
+//        vntr.rl = ahmm->repeat_tract_len;
+
+    
+        if (debug)
+        {
+            vntr.print();
+        }
+        
     }
 
     //fill in flanks
@@ -749,10 +859,10 @@ bool VNTRAnnotator::is_vntr(Variant& variant, int32_t mode)
 //        {
 //            variant.vntr.print();
 //        }
-        
+
         return (rlen - mlen >= 6 && variant.vntr.no_exact_ru>=2);
 
-//        equivalent to    
+//        equivalent to
 //        (mlen==1 && rlen>=5)  ||
 //        (mlen==2 && rlen>=11) ||
 //        (mlen==3 && rlen>=14) ||
@@ -760,7 +870,7 @@ bool VNTRAnnotator::is_vntr(Variant& variant, int32_t mode)
 //        (mlen==5 && rlen>=16) ||
 //        (mlen==6 && rlen>=17) ||
 //        (mlen>=7 && rlen>=mlen*2)
-    
+
     }
     else if (mode==WILLEMS_2014_STR)
     {

@@ -69,6 +69,7 @@
 
 #define CLIP_ENDS 0
 #define CLIP_1L2R 1
+#define FRAHMM    2
 
 /**
  * Class for determining basic traits of an indel
@@ -104,15 +105,6 @@ class VNTRAnnotator
     int32_t max_len;
 
     
-    
-
-    std::string MOTIF;
-    std::string RU;
-    std::string RL;
-    std::string REF;
-    std::string REFPOS;
-    std::string SCORE;
-    std::string TR;
 
     
     ////////
@@ -120,6 +112,9 @@ class VNTRAnnotator
     ////////
     std::string qual;
     AHMM* ahmm;
+    LFHMM* lfhmm;
+    RFHMM* rfhmm;
+    
 
     ///////
     //tools
