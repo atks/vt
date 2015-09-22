@@ -548,7 +548,7 @@ void VNTRAnnotator::detect_repeat_region(bcf_hdr_t* h, bcf1_t *v, Variant& varia
 
         rfhmm->set_model(vntr.ru.c_str(), rflank);
         rfhmm->align(seq, qual.c_str());
-        rfhmm->print_alignment();
+        if (debug) rfhmm->print_alignment();
         
         if (rflank_len) free(rflank);
         if (seq_len) free(seq);
@@ -564,18 +564,19 @@ void VNTRAnnotator::detect_repeat_region(bcf_hdr_t* h, bcf1_t *v, Variant& varia
         
         int32_t slen = 100;
              //pick 5 bases to right
-            int32_t lflank_len;
+        int32_t lflank_len;
+        char* lflank;
         while(true)
         {
 
-            char* lflank = faidx_fetch_seq(fai, variant.chrom.c_str(), lflank_end1-5-1, lflank_end1-1, &lflank_len);
+            lflank = faidx_fetch_seq(fai, variant.chrom.c_str(), lflank_end1-5-1, lflank_end1-1, &lflank_len);
     
             //pick 105 bases for aligning 
             seq = faidx_fetch_seq(fai, variant.chrom.c_str(), lflank_end1-5-1, lflank_end1+slen-1-1, &seq_len);
             
             lfhmm->set_model(lflank, vntr.ru.c_str());
             lfhmm->align(seq, qual.c_str());
-            lfhmm->print_alignment();
+            if (debug) lfhmm->print_alignment();
             
             if (seq_len) free(seq);
                 
@@ -609,8 +610,8 @@ void VNTRAnnotator::detect_repeat_region(bcf_hdr_t* h, bcf1_t *v, Variant& varia
         vntr.rl = rflank_beg1-lflank_end1-1;
 
 
-        std::cerr << "lflank_end1 : lflank "<< lflank_end1 << ":" << lflank << "\n";
-        std::cerr << "rflank_beg1 : rflank " << rflank_beg1 << ":" << rflank << "\n";
+//        std::cerr << "lflank_end1 : lflank "<< lflank_end1 << ":" << lflank << "\n";
+//        std::cerr << "rflank_beg1 : rflank " << rflank_beg1 << ":" << rflank << "\n";
             
         
 

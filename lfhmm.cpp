@@ -661,7 +661,7 @@ void LFHMM::align(const char* read, const char* qual)
             motif_concordance += (float)(mlen-motif_discordance[k]) / mlen;
         }
     }
-    motif_concordance *= 100.0/motif_count;
+    motif_concordance *= 1.0/motif_count;
 };
 
 /**
@@ -779,7 +779,7 @@ void LFHMM::collect_statistics(int32_t src_t, int32_t des_t, int32_t j)
             rflank_end[MODEL] = INT32_MAX;
             rflank_end[READ] = INT32_MAX;
 
-            std::cerr << "SET TO INFINITY " << rflank_end[READ] << "\n";
+//            std::cerr << "SET TO INFINITY " << rflank_end[READ] << "\n";
 
 //            std::cerr << std::setprecision(1) << std::fixed;
 //            std::cerr << std::setw(8) << std::setprecision(2) << std::fixed  << ((float)rflank_start[MODEL]) << " " <<  ((float)rflank_end[MODEL]) << "\n";

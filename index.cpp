@@ -73,6 +73,11 @@ class Igor : Program
     void index()
     {
         htsFile *file = hts_open(input_vcf_file.c_str(), "r");
+        if (file==NULL)
+        {
+            exit(1);
+        }    
+        
         htsFormat ftype = file->format;
         if (ftype.compression!=bgzf&&ftype.format!=vcf&&ftype.format!=bcf)
         {
