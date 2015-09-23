@@ -1160,6 +1160,8 @@ void LFHMM::print_alignment()
  */
 void LFHMM::print_alignment(std::string& pad)
 {
+    std::cerr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
+
     if (!optimal_path_traced)
     {
         std::cerr << "path not traced\n";
@@ -1272,6 +1274,7 @@ void LFHMM::print_alignment(std::string& pad)
         ++path;
     }
     std::cerr << " \n";
+    std::cerr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
 };
 
 /**

@@ -49,6 +49,8 @@ void VNTR::clear()
     rl = 0;
     no_exact_ru = 0;
     total_no_ru = 0;
+    
+    is_large_repeat_tract = false;
 }
 
 /**
@@ -78,7 +80,7 @@ void VNTR::get_vntr_allele_string(std::string& var)
  */
 void VNTR::print()
 {
-    std::cerr << "++++++++++++++++++++++++++++\n";
+    std::cerr << "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n";
     std::cerr << "VNTR Summary\n";
     std::cerr << "rid          : " << rid << "\n";
     std::cerr << "motif        : " << motif << "\n";
@@ -99,5 +101,5 @@ void VNTR::print()
     std::cerr << "repeat units              : " << fuzzy_rl << "\n";
     std::cerr << "exact repeat units        : " << fuzzy_no_exact_ru << "\n";
     std::cerr << "total no. of repeat units : " << fuzzy_total_no_ru << "\n";        
-    std::cerr << "++++++++++++++++++++++++++++\n";
+    std::cerr << "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n";
 };

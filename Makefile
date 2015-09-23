@@ -36,6 +36,7 @@ SOURCES = align\
 		estimate\
 		estimator\
 		filter\
+		flank_detector\
 		gencode\
 		genome_interval\
 		genotype\

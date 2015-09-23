@@ -1116,8 +1116,8 @@ void RFHMM::print_alignment()
  */
 void RFHMM::print_alignment(std::string& pad)
 {
-    std::cerr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
-            
+    std::cerr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
+
     if (!optimal_path_traced)
     {
         std::cerr << "path not traced\n";
@@ -1237,7 +1237,7 @@ void RFHMM::print_alignment(std::string& pad)
         ++path;
     }
     std::cerr << " \n";
-    std::cerr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";    
+    std::cerr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
 };
 
 /**

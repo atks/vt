@@ -76,7 +76,10 @@ class VNTR
     float fuzzy_rl;                   //number of repeat units on repeat tract
     int32_t fuzzy_no_exact_ru;        //number exact repeat units from hmm
     int32_t fuzzy_total_no_ru;        //total no of repeat units from hmm
-
+    
+    //large repeat tract
+    bool is_large_repeat_tract;
+    
     /**
      * Constructor.
      */

@@ -30,23 +30,6 @@ VNTRAnnotator::VNTRAnnotator(std::string& ref_fasta_file, bool debug)
 {
     vm = new VariantManip(ref_fasta_file.c_str());
 
-
-
-    fai = fai_load(ref_fasta_file.c_str());
-    if (fai==NULL)
-    {
-        fprintf(stderr, "[%s:%d %s] Cannot load genome index: %s\n", __FILE__, __LINE__, __FUNCTION__, ref_fasta_file.c_str());
-        exit(1);
-    }
-
-    cre = new CandidateRegionExtractor(ref_fasta_file, debug);
-
-    max_mlen = 10;
-    mt = new MotifTree(max_mlen, debug);
-
-    ///////////////////
-    //initialize raHMMs
-    ///////////////////
     float delta = 0.0001;
     float epsilon = 0.05;
     float tau = 0.01;
@@ -61,21 +44,18 @@ VNTRAnnotator::VNTRAnnotator(std::string& ref_fasta_file, bool debug)
     ahmm->set_mismatch_penalty(mismatch_penalty);
     ahmm->initialize_T();
 
-    lfhmm = new LFHMM(false);
-    lfhmm->set_delta(delta);
-    lfhmm->set_epsilon(epsilon);
-    lfhmm->set_tau(tau);
-    lfhmm->set_eta(eta);
-    lfhmm->set_mismatch_penalty(mismatch_penalty);
-    lfhmm->initialize_T();
+    fai = fai_load(ref_fasta_file.c_str());
+    if (fai==NULL)
+    {
+        fprintf(stderr, "[%s:%d %s] Cannot load genome index: %s\n", __FILE__, __LINE__, __FUNCTION__, ref_fasta_file.c_str());
+        exit(1);
+    }
 
-    rfhmm = new RFHMM(false);
-    rfhmm->set_delta(delta);
-    rfhmm->set_epsilon(epsilon);
-    rfhmm->set_tau(tau);
-    rfhmm->set_eta(eta);
-    rfhmm->set_mismatch_penalty(mismatch_penalty);
-    rfhmm->initialize_T();
+    cre = new CandidateRegionExtractor(ref_fasta_file, debug);
+    fd = new FlankDetector(ref_fasta_file, debug);
+
+    max_mlen = 10;
+    mt = new MotifTree(max_mlen, debug);
 
     this->debug = debug;
     qual.assign(256, 'K');
@@ -83,7 +63,7 @@ VNTRAnnotator::VNTRAnnotator(std::string& ref_fasta_file, bool debug)
 
 /**
  * Destructor.
- */
+ */ 
 VNTRAnnotator::~VNTRAnnotator()
 {
     delete vm;
@@ -105,6 +85,8 @@ VNTRAnnotator::~VNTRAnnotator()
  */
 void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::string mode)
 {
+    bcf_print_liten(h,v);
+
     VNTR& vntr = variant.vntr;
 
     //update chromosome and position
@@ -112,7 +94,7 @@ void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::str
     variant.pos1 = bcf_get_pos1(v);
 
     //this is for reannotating an VNTR record
-    //this is more for the purpose of evaluation to 
+    //this is more for the purpose of evaluation to
     //check if vt's algorithm is concordant with
     //VNTRs from other sources.
     if (variant.type==VT_VNTR)
@@ -160,7 +142,7 @@ void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::str
             choose_best_motif(h, v, mt, vntr, PICK_BEST_MOTIF);
 
             //4. evaluate reference length
-            detect_repeat_region(h, v, variant, CLIP_ENDS);
+            fd->detect_flanks(h, v, variant, CLIP_ENDS);
 
             if (debug) std::cerr << "============================================\n";
             return;
@@ -181,7 +163,7 @@ void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::str
             choose_best_motif(h, v, mt, vntr, PICK_BEST_MOTIF);
 
             //4. evaluate reference length
-            detect_repeat_region(h, v, variant, FRAHMM);
+            fd->detect_flanks(h, v, variant, FRAHMM);
 
             if (debug) std::cerr << "============================================\n";
             return;
@@ -226,7 +208,7 @@ void VNTRAnnotator::choose_best_motif(bcf_hdr_t* h, bcf1_t* v, MotifTree* mt, VN
             vntr.mlen = cm.motif.size();
             vntr.motif_score = cm.score;
         }
-
+ 
         if (debug)
         {
             printf("selected: %10s %.2f %.2f %.2f %.2f (%d/%d)\n", mt->pcm.top().motif.c_str(),
@@ -426,213 +408,6 @@ void VNTRAnnotator::choose_best_motif(bcf_hdr_t* h, bcf1_t* v, MotifTree* mt, VN
 }
 
 /**
- * Detect repeat region.
- */
-void VNTRAnnotator::detect_repeat_region(bcf_hdr_t* h, bcf1_t *v, Variant& variant, uint32_t mode)
-{
-    VNTR& vntr = variant.vntr;
-
-    //simple single base pair clipping of ends
-    if (mode==CLIP_ENDS)
-    {
-        if (debug)
-        {
-            std::cerr << "********************************************\n";
-            std::cerr << "CLIP ENDS\n";
-            std:: cerr << "\n";
-        }
-
-        if (vntr.repeat_tract.size()>2)
-        {
-            vntr.repeat_tract = vntr.repeat_tract.substr(1, vntr.repeat_tract.size()-2);
-            ++vntr.rbeg1;
-        }
-
-        vntr.ru = choose_repeat_unit(vntr.repeat_tract, vntr.motif);
-        vntr.rend1 = vntr.rbeg1+vntr.rl-1;
-
-        ahmm->set_model(vntr.ru.c_str());
-        ahmm->align(vntr.repeat_tract.c_str(), qual.c_str());
-
-        vntr.motif_concordance = ahmm->motif_concordance;
-        vntr.no_exact_ru = ahmm->exact_motif_count;
-        vntr.total_no_ru = ahmm->motif_count;
-        vntr.rl = ahmm->repeat_tract_len;
-
-//statistics for repeat unit
-//    float motif_score;          //motif score from motif tree
-//    float motif_concordance;    //motif concordance from hmm
-//    float rl;                   //number of repeat units on repeat tract
-//    float no_exact_ru;          //number exact repeat units from hmm
-//    float total_no_ru;          //total no of repeat units from hmm
-
-        if (debug)
-        {
-            vntr.print();
-        }
-    }
-    //simple single base pair clipping of ends
-    else if (mode==CLIP_1L2R)
-    {
-        if (debug)
-        {
-            std::cerr << "********************************************\n";
-            std::cerr << "CLIP ENDS\n";
-            std:: cerr << "\n";
-        }
-
-        if (vntr.repeat_tract.size()>3)
-        {
-            vntr.repeat_tract = vntr.repeat_tract.substr(1, vntr.repeat_tract.size()-3);
-            ++vntr.rbeg1;
-        }
-
-        vntr.ru = choose_repeat_unit(vntr.repeat_tract, vntr.motif);
-        vntr.rl = (float)vntr.repeat_tract.size()/vntr.ru.size();
-        vntr.rend1 = vntr.rbeg1 +  vntr.rl -1;
-
-        if (debug)
-        {
-            vntr.print();
-        }
-    }
-    else if (mode==FRAHMM)
-    {
-        if (debug)
-        {
-            std::cerr << "********************************************\n";
-            std::cerr << "4. DETECTING REPEAT TRACT FUZZILY\n";
-        }
-
-        if (vntr.repeat_tract.size()>2)
-        {
-            vntr.repeat_tract = vntr.repeat_tract.substr(1, vntr.repeat_tract.size()-2);
-            ++vntr.rbeg1;
-        }
-
-        /////////////////
-        //exact alignment
-        /////////////////
-        vntr.ru = choose_repeat_unit(vntr.repeat_tract, vntr.motif);
-     //   vntr.rend1 = vntr.rbeg1+vntr.rl-1;
-
-        ahmm->set_model(vntr.ru.c_str());
-        ahmm->align(vntr.repeat_tract.c_str(), qual.c_str());
-
-        vntr.motif_concordance = ahmm->motif_concordance;
-        vntr.no_exact_ru = ahmm->exact_motif_count;
-        vntr.total_no_ru = ahmm->motif_count;
-        vntr.rl = ahmm->repeat_tract_len;
-
-        ///////////////////////
-        //fuzzy right alignment
-        ///////////////////////
-        if (debug)
-        {
-            std::cerr << "++++++++++++++++++++++++++++++++++++++++++++\n";
-            std::cerr << "4a. FUZZY right alignment\n";
-        }
-        int32_t slen = 100;
-        
-        //pick 5 bases to the right
-        int32_t rflank_len;
-        char* rflank = faidx_fetch_seq(fai, variant.chrom.c_str(), vntr.rbeg1-1, vntr.rbeg1+5-1-1, &rflank_len);
-
-        //pick 105 bases for aligning
-        int32_t seq_len;
-        char* seq = faidx_fetch_seq(fai, variant.chrom.c_str(), vntr.rbeg1-slen-1, vntr.rbeg1+5-1-1, &seq_len);
-
-        rfhmm->set_model(vntr.ru.c_str(), rflank);
-        rfhmm->align(seq, qual.c_str());
-        if (debug) rfhmm->print_alignment();
-
-        if (rflank_len) free(rflank);
-        if (seq_len) free(seq);
-
-
-        //////////////////////
-        //fuzzy left alignment
-        //////////////////////
-        if (debug)
-        {
-            std::cerr << "\n";
-            std::cerr << "++++++++++++++++++++++++++++++++++++++++++++\n";
-            std::cerr << "4b. FUZZY left alignment\n";
-        }
-        int32_t lflank_end1;
-        int32_t rflank_beg1;
-
-        lflank_end1 = vntr.rbeg1-slen-1+1 + rfhmm->get_lflank_read_epos1() - 1;
-
-        slen = 100;
-
-        //pick 5 bases to right
-        int32_t lflank_len;
-        char* lflank;
-        while(true)
-        {
-            lflank = faidx_fetch_seq(fai, variant.chrom.c_str(), lflank_end1-5-1, lflank_end1-1, &lflank_len);
-
-            //pick 105 bases for aligning
-            seq = faidx_fetch_seq(fai, variant.chrom.c_str(), lflank_end1-5-1, lflank_end1+slen-1-1, &seq_len);
-
-            lfhmm->set_model(lflank, vntr.ru.c_str());
-            lfhmm->align(seq, qual.c_str());
-            if (debug) lfhmm->print_alignment();
-
-            if (seq_len) free(seq);
-
-            if (lfhmm->get_rflank_read_epos1()!=INT32_MAX)
-            {
-                rflank_beg1 = lflank_end1 - 5 + lfhmm->get_rflank_read_spos1() -1;
-                break;
-            }
-            else
-            {
-                slen +=100;
-            }
-        }
-
-        if (lflank_len) free(lflank);
-
-        lflank = faidx_fetch_seq(fai, variant.chrom.c_str(), lflank_end1-10-1, lflank_end1-1, &lflank_len);
-        rflank = faidx_fetch_seq(fai, variant.chrom.c_str(), rflank_beg1-1, rflank_beg1 +10 -1 -1, &rflank_len);
-
-        vntr.fuzzy_rbeg1 = lflank_end1+1;
-        vntr.fuzzy_rend1 = rflank_beg1-1;
-        int32_t repeat_tract_len;
-        char* repeat_tract = faidx_fetch_seq(fai, variant.chrom.c_str(), lflank_end1, rflank_beg1-1-1, &repeat_tract_len);
-        vntr.fuzzy_repeat_tract.assign(repeat_tract);
-        if (repeat_tract_len) free(repeat_tract);
-        vntr.fuzzy_motif_concordance = lfhmm->motif_concordance;
-        vntr.fuzzy_no_exact_ru = lfhmm->exact_motif_count;
-        vntr.fuzzy_total_no_ru = lfhmm->motif_count;
-        vntr.fuzzy_rl = rflank_beg1-lflank_end1-1;
-
-
-//        std::cerr << "lflank_end1 : lflank "<< lflank_end1 << ":" << lflank << "\n";
-//        std::cerr << "rflank_beg1 : rflank " << rflank_beg1 << ":" << rflank << "\n";
-
-
-        if (lflank_len) free(lflank);
-        if (rflank_len) free(rflank);
-
-        if (debug)
-        {
-            vntr.print();
-        }
-
-    }
-
-    //fill in flanks
-    const char* chrom = variant.chrom.c_str();
-    uint32_t pos1 = vntr.rbeg1;
-    int32_t len = 0;
-    faidx_fetch_seq(fai, chrom, pos1-10, pos1-1, &len);
-
-};
-
-/**
  * Chooses a phase of the motif that is appropriate for the alignment
  */
 std::string VNTRAnnotator::choose_repeat_unit(std::string& ref, std::string& motif)
@@ -647,236 +422,6 @@ std::string VNTRAnnotator::choose_repeat_unit(std::string& ref, std::string& mot
     }
 
     return motif;
-}
-
-/**
- * Checks if a vntr is a homopolymer.
- */
-bool VNTRAnnotator::is_homopolymer(bcf_hdr_t* h, bcf1_t* v)
-{
-    bool is_homopolymer = false;
-    uint32_t ref_len = strlen(bcf_get_ref(v));
-    for (size_t i=1; i<bcf_get_n_allele(v); ++i)
-    {
-        std::string ref(bcf_get_alt(v, 0));
-        std::string alt(bcf_get_alt(v, i));
-        int32_t pos1 = bcf_get_pos1(v);
-    }
-
-    return is_homopolymer;
-}
-
-/**
- * This is a quick scan for a motif that is exactly repeated.
- */
-std::string VNTRAnnotator::scan_exact_motif(std::string& sequence)
-{
-    size_t i = 0;
-    size_t len = sequence.size();
-    size_t sub_motif_len;
-    const char* seq = sequence.c_str();
-    size_t d = 0;
-    size_t max_sub_motif_len = len/2;
-    for (sub_motif_len = 1; sub_motif_len<=max_sub_motif_len; ++sub_motif_len)
-    {
-        size_t n_sub_motif = len/sub_motif_len;
-
-        bool exact = true;
-        size_t concordant = 0;
-        size_t c1 = 0;
-
-        for (size_t j=0; j<n_sub_motif; ++j)
-        {
-            if ((strncmp(&seq[0], &seq[j*sub_motif_len], sub_motif_len)))
-            {
-                exact = false;
-
-                for (size_t k=0; k<sub_motif_len; ++k)
-                {
-                    if (seq[j*sub_motif_len+k]==seq[k])
-                    {
-                       ++concordant;
-                    }
-                }
-            }
-            else
-            {
-                ++c1;
-                concordant += sub_motif_len;
-            }
-        }
-
-        if (n_sub_motif*sub_motif_len<len)
-        {
-            if (strncmp(&seq[0], &seq[n_sub_motif*sub_motif_len], len-n_sub_motif*sub_motif_len))
-            {
-                exact = false;
-            }
-        }
-
-        if (exact)
-        {
-            return sequence.substr(0, sub_motif_len);
-        }
-    }
-
-    return "";
-}
-
-/**
- * Trim alleles.
- */
-void VNTRAnnotator::trim(int32_t& pos1, std::string& ref, std::string& alt)
-{
-    while (true)
-    {
-        if (ref.size()==1 || alt.size()==1)
-        {
-            break;
-        }
-        else if (ref.at(0)!=alt.at(0) && ref.at(ref.size()-1)!=alt.at(alt.size()-1))
-        {
-            break;
-        }
-        else
-        {
-            if (ref.at(ref.size()-1)==alt.at(alt.size()-1))
-            {
-                ref.erase(ref.size()-1,1);
-                alt.erase(alt.size()-1,1);
-            }
-            else if (ref.at(0)==alt.at(0))
-            {
-                ref.erase(0,1);
-                alt.erase(0,1);
-                ++pos1;
-            }
-        }
-    }
-}
-
-/**
- * Detect allele lower bound extent.
- */
-void VNTRAnnotator::detect_lower_bound_allele_extent(const char* chrom, int32_t& pos1, std::vector<std::string>& alleles, int32_t& start1, int32_t& end1)
-{
-    if (alleles.size()==2)
-    {
-        std::string ref = alleles[0];
-        std::string alt = alleles[1];
-
-        trim(pos1, ref, alt);
-    }
-    else
-    {
-    }
-}
-
-/**
- * Extracts the shortest repeat unit in a sequence.
- */
-char* VNTRAnnotator::get_shortest_repeat_motif(char* allele, int32_t len)
-{
-    std::cerr << "get shortest repeatmotif " << allele << " : " << len << "\n";
-
-    size_t i = 0;
-    size_t sub_motif_len;
-    while ((sub_motif_len=factors[len][i])!=len)
-    {
-        std::cerr << "sub motif len : " << sub_motif_len << " " <<  i << "\n";
-
-        bool exact = true;
-
-        size_t n_sub_motif = len/sub_motif_len;
-
-        for (size_t i=0; i<sub_motif_len; ++i)
-        {
-            char b;
-            for (size_t j=0; j<n_sub_motif; ++j)
-            {
-                if (j)
-                {
-                    if (b != allele[j*sub_motif_len+i])
-                    {
-                        exact = false;
-                        break;
-                    }
-                }
-                else
-                {
-                    b = allele[j*sub_motif_len+i];
-                }
-            }
-
-            if (!exact) break;
-        }
-
-        if (exact) break;
-        ++i;
-    }
-
-    char *motif = allele+len-sub_motif_len;
-
-    return motif;
-};
-
-/**
- * Gets motif of a repeat unit.
- */
-std::string VNTRAnnotator::get_motif(std::string& ru)
-{
-    std::string motif = "";
-    for (size_t i=0; i<ru.size(); ++i)
-    {
-        std::string phase = shift_phase(ru, i);
-        std::string rc = reverse_complement(phase);
-        motif = phase < rc ? phase : rc;
-    }
-
-    return motif;
-}
-
-/**
- * Reverse complement a sequence.
- */
-std::string VNTRAnnotator::reverse_complement(std::string& seq)
-{
-    std::string rc = "";
-
-    for (size_t i=seq.size()-1; i>0; --i)
-    {
-        char b = seq.at(i);
-
-        switch (b)
-        {
-            case 'A':
-                rc.append(1, 'A');
-                break;
-            case 'C':
-                rc.append(1, 'C');
-                break;
-            case 'G':
-                rc.append(1, 'G');
-                break;
-            case 'T':
-                rc.append(1, 'T');
-                break;
-        }
-    }
-
-    return rc;
-}
-
-/**
- * Shifts a sequence to the right by i bases.
- */
-std::string VNTRAnnotator::shift_phase(std::string& seq, size_t i)
-{
-    i = i<seq.size() ? i : i%seq.size();
-    std::string shifted = seq.substr(i, seq.size()-i);
-    shifted.append(seq, 0, i);
-
-    return shifted;
 }
 
 /**

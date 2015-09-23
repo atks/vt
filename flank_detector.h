@@ -1,6 +1,6 @@
 /* The MIT License
 
-   Copyright (c) 2014 Adrian Tan <atks@umich.edu>
+   Copyright (c) 2015 Adrian Tan <atks@umich.edu>
 
    Permission is hereby granted, free of charge, to any person obtaining a copy
    of this software and associated documentation files (the "Software"), to deal
@@ -21,8 +21,8 @@
    THE SOFTWARE.
 */
 
-#ifndef VNTR_ANNOTATOR_H
-#define VNTR_ANNOTATOR_H
+#ifndef FLANK_DETECTOR_H
+#define FLANK_DETECTOR_H
 
 #include <cstdlib>
 #include <cstdint>
@@ -45,7 +45,6 @@
 #include "motif_tree.h"
 #include "vntr.h"
 #include "candidate_region_extractor.h"
-#include "flank_detector.h"
 
 //definition of STRs
 #define LAI_2003_STR       1
@@ -62,12 +61,6 @@
 #define FUZZY_LEFT_RIGHT_ALIGNMENT               2
 #define FUZZY_LEFT_RIGHT_ALIGNMENT_WITH_PENALTY  3
 
-//forms of choosing a motif
-#define PICK_BEST_MOTIF             0
-
-#define ALLELE_EXACT  1
-#define ALLELE_FUZZY  2
-
 #define CLIP_ENDS 0
 #define CLIP_1L2R 1
 #define FRAHMM    2
@@ -77,79 +70,92 @@
  * motifs, flanks and VNTR type statistics.
  * RU,RL,LFLANK,RFLANK,LFLANKPOS,RFLANKPOS,MOTIF_CONCORDANCE,MOTIF_CONCORDANCE
  */
-class VNTRAnnotator
+class FlankDetector
 {
     public:
 
     uint32_t max_mlen; //maximum length for motif search in the fast tree.
 
     //model
-
+    char* motif;
+    int32_t motif_len;
+    int32_t ref_len;
+    char* lflank;
+    char* rflank;
+    bool exact;
+    int32_t* motif_concordance;
+    float* motif_completeness;
+    float concordance;
     bool debug;
     int32_t max_len;
 
     ////////
     //raHMMs
     ////////
-    std::string qual;
-    AHMM* ahmm;  
 
     ///////
     //tools
     ///////
-    VariantManip *vm;
     faidx_t* fai;
-    CandidateRegionExtractor* cre;
-    MotifTree* mt;
-    FlankDetector* fd;
+    
+    std::string qual;
+    AHMM* ahmm;
+    LFHMM* lfhmm;
+    RFHMM* rfhmm;    
+    
 
     //for retrieving sequences
     int8_t* seq;
 
-    //factors[n][index], for determining what sub repeat units to examine
-    int32_t** factors;
-
     /**
      * Constructor.
      */
-    VNTRAnnotator(std::string& ref_fasta_file, bool debug=false);
+    FlankDetector(std::string& ref_fasta_file, bool debug=false);
 
     /**
      * Destructor.
      */
-    ~VNTRAnnotator();
+    ~FlankDetector();
 
     /**
-     * Annotates VNTR characteristics.
-     * @mode
-     *   e - determine by exact alignment
-     *   f - determine by fuzzy alignment
-     *   p - determine by penalized fuzzy alignment
-     *   h - using HMMs     
-     *   x - integrated models     
+     * Detect repeat region.
      */
-    void annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::string mode);
+    void detect_flanks(bcf_hdr_t* h, bcf1_t *v, Variant& variant, uint32_t mode);
 
     /**
-     * Pick candidate motifs.
-     * candidate_motifs contain motifs and a measure of confidence
+     * Shifts a string.
      */
-    void pick_candidate_motifs(bcf_hdr_t* h, bcf1_t* v, VNTR& vntr);
-
-    /**
-     * Chooses a phase of the motif that is appropriate for the alignment
-     */
-    void choose_best_motif(bcf_hdr_t* h, bcf1_t* v, MotifTree* mt, VNTR& vntr, uint32_t mode);
-
+    std::string shift_str(std::string& seq, uint32_t i);
+        
     /**
      * Chooses a phase of the motif that is appropriate for the alignment
      */
     std::string choose_repeat_unit(std::string& ref, std::string& motif);
 
     /**
-     * Returns true if is to be classified as a VNTR
+     * Trim alleles.
      */
-    bool is_vntr(Variant& variant, int32_t mode, std::string& method);
+    void trim(int32_t& pos1, std::string& ref, std::string& alt);
+
+    /**
+     * Checks if a vntr is a homopolymer.
+     */
+    bool is_homopolymer(bcf_hdr_t* h, bcf1_t* v);
+
+    /**
+     * Gets motif of a repeat unit.
+     */
+    std::string get_motif(std::string& ru);
+
+    /**
+     * Reverse complement a sequence.
+     */
+    std::string reverse_complement(std::string& seq);
+
+    /**
+     * Shifts a sequence to the right by i bases.
+     */
+    std::string shift_phase(std::string& seq, size_t i);
 };
 
 #endif
