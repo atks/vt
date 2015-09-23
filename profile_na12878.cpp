@@ -674,7 +674,7 @@ class Igor : Program
 
                 int32_t discordance = total-concordance;
 
-                fprintf(stderr, "  %s\n", dataset_labels[i].c_str());
+                fprintf(stderr, "                  %s\n", dataset_labels[i].c_str());
                 fprintf(stderr, "                R/R       R/A       A/A       ./.\n");
                 fprintf(stderr, "    R/R    %8d  %8d  %8d  %8d\n", geno[0][0], geno[0][1], geno[0][2], geno[0][3]);
                 fprintf(stderr, "    R/A    %8d  %8d  %8d  %8d\n", geno[1][0], geno[1][1], geno[1][2], geno[1][3]);
