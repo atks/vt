@@ -34,31 +34,48 @@
 
 /**
  * Class for representing a VNTR.
+ *
+ * 2 sets of attributes for the exact and fuzzy detections of the repeat region.
  */
 class VNTR
 {
     public:
 
-    //repeat tract
+    //chromosome
     int32_t rid;                //rid, redundant data with Variant. todo: something about this.
 
+    //motif
+    std::string motif;                //motif
+    std::string ru;                   //repeat unit on the reference
+    uint32_t mlen;                    //length of motif
+
+    //exact repeat tract
     std::string repeat_tract;   //repeat tract
-    uint32_t rbeg1;             //beginning of repeat tract
-    uint32_t rend1;             //end of repeat tract
+    int32_t rbeg1;             //beginning of repeat tract
+    int32_t rend1;             //end of repeat tract
     std::string lflank;         //left flank
     std::string rflank;         //right flank
 
-   //motif
-    std::string motif;          //motif
-    std::string ru;             //repeat unit on the reference
-    uint32_t mlen;              //length of motif
-
-    //statistics for repeat unit
+    //statistics for exact repeat unit
     float motif_score;          //motif score from motif tree
     float motif_concordance;    //motif concordance from hmm
     float rl;                   //number of repeat units on repeat tract
-    int32_t no_exact_ru;          //number exact repeat units from hmm
-    int32_t total_no_ru;          //total no of repeat units from hmm
+    int32_t no_exact_ru;        //number exact repeat units from hmm
+    int32_t total_no_ru;        //total no of repeat units from hmm
+    
+    //fuzzy repeat tract
+    std::string fuzzy_repeat_tract;   //repeat tract
+    int32_t fuzzy_rbeg1;             //beginning of repeat tract
+    int32_t fuzzy_rend1;             //end of repeat tract
+    std::string fuzzy_lflank;         //left flank
+    std::string fuzzy_rflank;         //right flank
+
+    //fuzzy statistics for fuzzy repeat unit
+    float fuzzy_motif_score;          //motif score from motif tree
+    float fuzzy_motif_concordance;    //motif concordance from hmm
+    float fuzzy_rl;                   //number of repeat units on repeat tract
+    int32_t fuzzy_no_exact_ru;        //number exact repeat units from hmm
+    int32_t fuzzy_total_no_ru;        //total no of repeat units from hmm
 
     /**
      * Constructor.
@@ -80,6 +97,11 @@ class VNTR
      */
     void get_vntr_allele_string(std::string& var);
 
+    /**
+     * Get VNTR fuzzy representation in string format.
+     */
+    void get_fuzzy_vntr_allele_string(std::string& var);
+        
     /**
      * Print object.
      */

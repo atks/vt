@@ -96,6 +96,11 @@ class Variant
     void get_vntr_string(kstring_t* s);
 
     /**
+     * Gets a fuzzy string representation of the underlying VNTR.
+     */
+    void get_fuzzy_vntr_string(kstring_t* s);
+
+    /**
      * Converts VTYPE to string.
      */
     static std::string vtype2string(int32_t VTYPE);

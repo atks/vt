@@ -79,14 +79,6 @@
 class VNTRAnnotator
 {
     public:
-//##INFO=<ID=VT_RU,Number=1,Type=String,Description=\"Repeat unit in a STR or Homopolymer\">");
-//##INFO=<ID=VT_RL,Number=1,Type=Integer,Description=\"Repeat Length\">");
-//##INFO=<ID=VT_LFLANK,Number=1,Type=String,Description=\"Right Flank Sequence\">");
-//##INFO=<ID=VT_RFLANK,Number=1,Type=String,Description=\"Left Flank Sequence\">");
-//##INFO=<ID=VT_LFLANKPOS,Number=2,Type=Integer,Description=\"Positions of left flank\">");
-//##INFO=<ID=VT_RFLANKPOS,Number=2,Type=Integer,Description=\"Positions of right flank\">");
-//##INFO=<ID=VT_MOTIF_DISCORDANCE,Number=1,Type=String,Description=\"Descriptive Discordance for each reference repeat unit.\">");
-//##INFO=<ID=VT_STR_CONCORDANCE,Number=1,Type=Float,Description=\"Overall discordance of RUs.\">");
 
     uint32_t max_mlen; //maximum length for motif search in the fast tree.
 
@@ -104,17 +96,13 @@ class VNTRAnnotator
     bool debug;
     int32_t max_len;
 
-    
-
-    
     ////////
     //raHMMs
     ////////
     std::string qual;
     AHMM* ahmm;
     LFHMM* lfhmm;
-    RFHMM* rfhmm;
-    
+    RFHMM* rfhmm;    
 
     ///////
     //tools
@@ -225,7 +213,7 @@ class VNTRAnnotator
     /**
      * Returns true if is to be classified as a VNTR
      */
-    bool is_vntr(Variant& variant, int32_t mode);
+    bool is_vntr(Variant& variant, int32_t mode, std::string& method);
 };
 
 #endif

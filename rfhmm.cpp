@@ -1116,12 +1116,14 @@ void RFHMM::print_alignment()
  */
 void RFHMM::print_alignment(std::string& pad)
 {
+    std::cerr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
+            
     if (!optimal_path_traced)
     {
         std::cerr << "path not traced\n";
     }
 
-    if (debug) print_T();
+    //if (debug) print_T();
     std::cerr << "\n";
 
     std::cerr << "repeat motif : " << model[MOTIF] << "\n";
@@ -1235,6 +1237,7 @@ void RFHMM::print_alignment(std::string& pad)
         ++path;
     }
     std::cerr << " \n";
+    std::cerr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";    
 };
 
 /**

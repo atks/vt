@@ -132,9 +132,8 @@ class Igor : Program
                  "              6 : tan_kang2015",
                  false, 6, "integer", cmd);
             TCLAP::ValueArg<std::string> arg_method("m", "m", "mode [e]\n"
-                 "              exact : determine by exact alignment.\n"
-                 "              fuzzy : determine by fuzzy alignment."
-                 "              hmm   : determine by hmm alignment.",
+                 "              e : by exact alignment"
+                 "              f : by fuzzy alignment",
                  false, "e", "str", cmd);
 
             TCLAP::ValueArg<uint32_t> arg_alignment_penalty("p", "p", "alignment penalty [0]", false, 0, "int", cmd);
@@ -172,7 +171,7 @@ class Igor : Program
         ///////////
         //options//
         ///////////
-        if (method!="e" && method!="f" && method!="h")
+        if (method!="e" && method!="f")
         {
             fprintf(stderr, "[%s:%d %s] Not a valid mode of VNTR detection: %s\n", __FILE__,__LINE__,__FUNCTION__, method.c_str());
             exit(1);
@@ -204,25 +203,27 @@ class Igor : Program
 //        REF = bcf_hdr_append_info_with_backup_naming(odw->hdr, "REF", "1", "String", "Repeat tract on the reference sequence", true);
 //        REFPOS = bcf_hdr_append_info_with_backup_naming(odw->hdr, "REFPOS", "1", "Integer", "Start position of repeat tract", true);
 //        SCORE = bcf_hdr_append_info_with_backup_naming(odw->hdr, "SCORE", "1", "Float", "Score of repeat unit", true);
-        TR = bcf_hdr_append_info_with_backup_naming(odw->hdr, "TR", "1", "String", "Tandem repeat representation", true);
-        TR = bcf_hdr_append_info_with_backup_naming(odw->hdr, "LFE", "1", "Integer", "Left flank end position of the Indel, left/right alignment invariant, not necessarily equal to POS.", true);
-        TR = bcf_hdr_append_info_with_backup_naming(odw->hdr, "RFB", "1", "Integer", "Right flank beginning position of the Indel, left/right alignment invariant,  not necessarily equal to POS+length(REF)-1.", true);
+        TR = bcf_hdr_append_info_with_backup_naming(odw->hdr, "TR", "1", "String", "Tandem repeat associated with this indel.", true);
+        TR = bcf_hdr_append_info_with_backup_naming(odw->hdr, "FLANK_POS", "2", "Integer", "Left and right flank positions of the Indel, left/right alignment invariant, not necessarily equal to POS.", true);
+        TR = bcf_hdr_append_info_with_backup_naming(odw->hdr, "FUZZY_FLANK_POS", "2", "Integer", "Fuzzy Left and right flank positions of the Indel, left/right alignment invariant,  not necessarily equal to POS+length(REF)-1.", true);
+
 //        bcf_hdr_append(odw->hdr, "##INFO=<ID=OLD_VARIANT,Number=1,Type=String,Description=\"Original chr:pos:ref:alt encoding\">\n");
 //        bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_LFLANK,Number=1,Type=String,Description=\"Right Flank Sequence\">");
 //        bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_RFLANK,Number=1,Type=String,Description=\"Left Flank Sequence\">");
-        bcf_hdr_append(odw->hdr, "##INFO=<ID=CONCORDANCE,Number=1,Type=Float,Description=\"Concordance of repeat unit unit.\">");
-        bcf_hdr_append(odw->hdr, "##INFO=<ID=RU_COUNT,Number=2,Type=Integer,Description=\"Number of exact repeat units and total number of repeat units.\">");
 
-//        bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_MOTIF_COMPLETENESS,Number=1,Type=Integer,Description=\"Descriptive Discordance for each reference repeat unit.\">");
-//        bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_STR_CONCORDANCE,Number=1,Type=Float,Description=\"Overall discordance of RUs.\">");
+        bcf_hdr_append(odw->hdr, "##INFO=<ID=CONCORDANCE,Number=1,Type=Float,Description=\"Concordance of repeat unit unit.\">");
+        bcf_hdr_append(odw->hdr, "##INFO=<ID=FUZZY CONCORDANCE,Number=1,Type=Float,Description=\"Fuzzy Concordance of repeat unit unit.\">");
+
+        bcf_hdr_append(odw->hdr, "##INFO=<ID=RU_COUNT,Number=2,Type=Integer,Description=\"Number of exact repeat units and total number of repeat units.\">");
+        bcf_hdr_append(odw->hdr, "##INFO=<ID=FUZZY_RU_COUNT,Number=2,Type=Integer,Description=\"Fuzzy Number of exact repeat units and total number of repeat units.\">");
+
 
         //for scoring TRs
         bcf_hdr_append(odw->hdr, "##INFO=<ID=SCORE,Number=1,Type=Float,Description=\"Number of repeat units in repeat tract\">\n");
         bcf_hdr_append(odw->hdr, "##INFO=<ID=DISCORDANCE,Number=1,Type=Float,Description=\"Discordance of repeat tract.\">");
         bcf_hdr_append(odw->hdr, "##INFO=<ID=EXACT,Number=0,Type=Flag,Description=\"Repeat units in repeat tract is all exact.\">\n");
 
-
-        //helper variable initialization for adding additional vntr records
+        //helper variable initialization for adding genotype fields for additional vntr records
         if (annotation_mode=="v")
         {
             no_samples = bcf_hdr_nsamples(odw->hdr);
@@ -408,15 +409,42 @@ class Igor : Program
         bcf_update_alleles_str(h, v, s.s);
         bcf_update_info_string(h, v, MOTIF.c_str(), vntr.motif.c_str());
         bcf_update_info_string(h, v, RU.c_str(), vntr.ru.c_str());
-        bcf_update_info_float(h, v, RL.c_str(), &vntr.rl, 1);
-        bcf_update_info_int32(h, v, "END", &vntr.rend1, 1);
 
-        bcf_update_info_float(h, v, "CONCORDANCE", &vntr.motif_concordance, 1);
-        
-        int32_t ru_count[2] = {vntr.no_exact_ru, vntr.total_no_ru};
-        bcf_update_info_int32(h, v, "RU_COUNT", &ru_count, 2);
-        
 
+        if (method=="e")
+        {
+            s.l = 0;
+            kputs(vntr.repeat_tract.c_str(), &s);
+            kputc(',', &s);
+            kputs("<VNTR>", &s);
+            bcf_update_alleles_str(h, v, s.s);
+            bcf_update_info_string(h, v, MOTIF.c_str(), vntr.motif.c_str());
+            bcf_update_info_string(h, v, RU.c_str(), vntr.ru.c_str());
+
+            bcf_update_info_float(h, v, "CONCORDANCE", &vntr.motif_concordance, 1);
+
+            bcf_update_info_float(h, v, RL.c_str(), &vntr.rl, 1);
+            bcf_update_info_int32(h, v, "END", &vntr.rend1, 1);
+            int32_t ru_count[2] = {vntr.no_exact_ru, vntr.total_no_ru};
+            bcf_update_info_int32(h, v, "RU_COUNT", &ru_count, 2);
+        }
+        else if (method=="f")
+        {
+            s.l = 0;
+            kputs(vntr.fuzzy_repeat_tract.c_str(), &s);
+            kputc(',', &s);
+            kputs("<VNTR>", &s);
+            bcf_update_alleles_str(h, v, s.s);
+            bcf_update_info_string(h, v, MOTIF.c_str(), vntr.motif.c_str());
+            bcf_update_info_string(h, v, RU.c_str(), vntr.ru.c_str());
+
+            bcf_update_info_float(h, v, "CONCORDANCE", &vntr.fuzzy_motif_concordance, 1);
+
+            bcf_update_info_float(h, v, RL.c_str(), &vntr.fuzzy_rl, 1);
+            bcf_update_info_int32(h, v, "END", &vntr.fuzzy_rend1, 1);
+            int32_t ru_count[2] = {vntr.fuzzy_no_exact_ru, vntr.fuzzy_total_no_ru};
+            bcf_update_info_int32(h, v, "FUZZY_RU_COUNT", &ru_count, 2);
+        }
 
         //individual fields - just set GT
         bcf_update_genotypes(h, v, gts, no_samples);
@@ -427,12 +455,12 @@ class Igor : Program
         //check if start is not the same as the RU.
         int32_t rlen = strlen(repeat_tract);
         int32_t mlen = strlen(ru);
-        
+
         if (strncmp(repeat_tract, ru, mlen)!=0)
         {
             return false;
-        }            
-        
+        }
+
         return true;
     }
 
@@ -472,13 +500,22 @@ class Igor : Program
                 if (annotation_mode=="v")
                 {
 //                    std::cerr << variant.vntr.rbeg1 << " " <<
-                    
-                    int32_t left_flank_end1 = variant.vntr.rbeg1-1;
-                    int32_t right_flank_beg1 = variant.vntr.rend1+1;
-                    bcf_update_info_int32(h, v, "LFE", &left_flank_end1, 1);
-                    bcf_update_info_int32(h, v, "RFB", &right_flank_beg1, 1);
-                    
-                    if (va->is_vntr(variant, vntr_classification))
+
+                    if (method=="e")
+                    {
+                        int32_t flank_pos1[2] = {variant.vntr.rbeg1-1, variant.vntr.rend1+1};
+                        bcf_update_info_int32(h, v, "FLANK_POS", &flank_pos1, 2);
+                    }
+                    else if (method=="f")
+                    {
+                        int32_t flank_pos1[2] = {variant.vntr.rbeg1-1, variant.vntr.rend1+1};
+                        bcf_update_info_int32(h, v, "FLANK_POS", &flank_pos1, 2);
+
+                        int32_t fuzzy_flank_pos1[2] = {variant.vntr.fuzzy_rbeg1-1, variant.vntr.fuzzy_rend1+1};
+                        bcf_update_info_int32(h, v, "FUZZY_FLANK_POS", &fuzzy_flank_pos1, 2);
+                    }
+
+                    if (va->is_vntr(variant, vntr_classification, method))
                     {
                         variant.get_vntr_string(&s);
                         bcf_update_info_string(h, v, "TR", s.s);
@@ -509,38 +546,38 @@ class Igor : Program
                 char* ru = NULL;
                 int32_t n = 0;
                 if (bcf_get_info_string(odw->hdr, v, "RU", &ru, &n)>0)
-                {    
+                {
                     float genotype = 0;
                     float discordance = 0;
                     bool exact = false;
-                    
+
                     bool res = genotype_str(allele[0], ru, genotype, discordance, exact);
-                    
+
                     if (!res)
-                    {    
+                    {
                         ++no_inexact;
-                        
+
                         bcf_print(odw->hdr, v);
                         std::cerr << "genotype    : " << genotype << "\n";
                         std::cerr << "discordance : " << discordance << "\n";
                         std::cerr << "exact       : " << exact << "\n";
                     }
-                    
+
                     ++no_exact;
-                            
+
                     free(ru);
                 }
-            }    
+            }
             else
             {
                 odw->write(v);
                 v = odw->get_bcf1_from_pool();
             }
         }
-        
+
 //        std::cerr << "no inexact : " << no_inexact << "\n";
 //        std::cerr << "no exact : " << no_exact << "\n";
-    
+
         odw->close();
         odr->close();
     };

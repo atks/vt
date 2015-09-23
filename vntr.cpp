@@ -80,12 +80,24 @@ void VNTR::print()
 {
     std::cerr << "++++++++++++++++++++++++++++\n";
     std::cerr << "VNTR Summary\n";
-    std::cerr << "repeat_tract : " << repeat_tract << "\n";
     std::cerr << "rid          : " << rid << "\n";
-    std::cerr << "rbeg1        : " << rbeg1 << "\n";
-    std::cerr << "rend1        : " << rend1 << "\n";
     std::cerr << "motif        : " << motif << "\n";
     std::cerr << "ru           : " << ru << "\n";
-    std::cerr << "rl           : " << rl << "\n";
+    std::cerr << "\n";
+    std::cerr << "Exact\n";    
+    std::cerr << "repeat_tract              : " << repeat_tract << "\n";
+    std::cerr << "position                  : [" << rbeg1 << "," << rend1 << "]\n";
+    std::cerr << "motif_concordance         : " << motif_concordance << "\n";
+    std::cerr << "repeat units              : " << rl << "\n";
+    std::cerr << "exact repeat units        : " << no_exact_ru << "\n";
+    std::cerr << "total no. of repeat units : " << total_no_ru << "\n";
+    std::cerr << "\n";
+    std::cerr << "Fuzzy\n";    
+    std::cerr << "repeat_tract              : " << fuzzy_repeat_tract << "\n";
+    std::cerr << "position                  : [" << fuzzy_rbeg1 << "," << fuzzy_rend1 << "]\n";
+    std::cerr << "motif_concordance         : " << fuzzy_motif_concordance << "\n";
+    std::cerr << "repeat units              : " << fuzzy_rl << "\n";
+    std::cerr << "exact repeat units        : " << fuzzy_no_exact_ru << "\n";
+    std::cerr << "total no. of repeat units : " << fuzzy_total_no_ru << "\n";        
     std::cerr << "++++++++++++++++++++++++++++\n";
 };

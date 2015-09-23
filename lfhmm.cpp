@@ -1166,8 +1166,8 @@ void LFHMM::print_alignment(std::string& pad)
     }
 
     std::cerr << "\n";
-    print_T();
-    std::cerr << "\n";
+//    print_T();
+//    std::cerr << "\n";
     std::cerr << "QUAL+33\tMATCH\tMISMATCH\tPENALTY\n";
     int32_t qual = 'K' - 33;
     std::cerr << qual << "\t"<< log10_emission_odds('A', 'A', qual) << "\t"
