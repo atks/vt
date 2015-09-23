@@ -107,7 +107,7 @@ void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::str
  //       pick_candidate_region(h, v, vntr, REFERENCE);
 
         //2. detect candidate motifs from a reference seqeuence
-        pick_candidate_motifs(h, v, vntr);
+        pick_candidate_motifs(h, v, variant);
 
         //3. choose the best candidate motif
         choose_best_motif(h, v, mt, vntr, REFERENCE);
@@ -134,7 +134,7 @@ void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::str
             cre->extract_regions_by_exact_alignment(h, v, vntr);
 
             //2. detect candidate motifs from a reference sequence
-            pick_candidate_motifs(h, v, vntr);
+            pick_candidate_motifs(h, v, variant);
 
             //3. choose the best candidate motif
             choose_best_motif(h, v, mt, vntr, PICK_BEST_MOTIF);
@@ -155,7 +155,7 @@ void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::str
             cre->extract_regions_by_exact_alignment(h, v, vntr);
 
             //2. detect candidate motifs from candidate region
-            pick_candidate_motifs(h, v, vntr);
+            pick_candidate_motifs(h, v, variant);
 
             //3. choose the best candidate motif
             choose_best_motif(h, v, mt, vntr, PICK_BEST_MOTIF);
@@ -174,7 +174,7 @@ void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::str
  * Invokes motif tree and the candidate motifs are stored in a
  * heap within the motif tree.
  */
-void VNTRAnnotator::pick_candidate_motifs(bcf_hdr_t* h, bcf1_t* v, VNTR& vntr)
+void VNTRAnnotator::pick_candidate_motifs(bcf_hdr_t* h, bcf1_t* v, Variant& variant)
 {
     if (debug)
     {
@@ -182,7 +182,28 @@ void VNTRAnnotator::pick_candidate_motifs(bcf_hdr_t* h, bcf1_t* v, VNTR& vntr)
         std::cerr << "PICK CANDIDATE MOTIFS\n\n";
     }
 
-    mt->detect_candidate_motifs(vntr.repeat_tract);
+    if (variant.ins && variant.alleles.size()==1)
+    {   
+        char** alleles = bcf_get_allele(v);
+        
+        if (debug)
+        {     
+            const char* repeat_tract = variant.vntr.repeat_tract.c_str();
+            std::cerr << "Longest Allele : "   << alleles[0][0] << "[" <<  &alleles[1][1]  << "]" << &repeat_tract[1] << "\n"; 
+        }
+        
+        //spike in inserted allele
+        std::string spiked_seq(alleles[1]);
+        std::string insertion = variant.vntr.repeat_tract.substr(strlen(alleles[0]), variant.vntr.repeat_tract.size()-strlen(alleles[0]));
+        spiked_seq.append(insertion); 
+           
+        
+        mt->detect_candidate_motifs(spiked_seq);   
+    }
+    else
+    {
+        mt->detect_candidate_motifs(variant.vntr.repeat_tract);
+    }
 }
 
 /**
@@ -205,6 +226,51 @@ void VNTRAnnotator::choose_best_motif(bcf_hdr_t* h, bcf1_t* v, MotifTree* mt, VN
             vntr.motif = cm.motif;
             vntr.mlen = cm.motif.size();
             vntr.motif_score = cm.score;
+
+//            if (cm.motif.size()==1)
+//            {    
+//                if (cm.score>0.8)
+//                {
+//                    vntr.motif = cm.motif;
+//                    vntr.mlen = cm.motif.size();
+//                    vntr.motif_score = cm.score;
+//                }
+//                else
+//                {
+//                    while ()
+//                    {
+//                        mt->pcm.pop();
+//                
+//                    cm = mt->pcm.top();
+//                    vntr.motif = cm.motif;
+//                    vntr.mlen = cm.motif.size();
+//                    vntr.motif_score = cm.score;
+//                }
+//            }
+//            else if (cm.motif.size()>1)
+//            {
+//                if (cm.score>0.7)
+//                {    
+//                    vntr.motif = cm.motif;
+//                    vntr.mlen = cm.motif.size();
+//                    vntr.motif_score = cm.score;
+//                }
+//                else
+//                {
+//                    mt->pcm.pop();
+//                
+//                    cm = mt->pcm.top();
+//                    vntr.motif = cm.motif;
+//                    vntr.mlen = cm.motif.size();
+//                    vntr.motif_score = cm.score; 
+//                }
+//            }
+//            else
+//            {
+//                vntr.motif = cm.motif;
+//                vntr.mlen = cm.motif.size();
+//                vntr.motif_score = cm.score;
+//            }
         }
 
         if (debug)
@@ -462,7 +528,7 @@ bool VNTRAnnotator::is_vntr(Variant& variant, int32_t mode, std::string& method)
             {
                 return true;
             }
-            else if (mlen>1 && motif_concordance>0.75)
+            else if (mlen>1 || motif_concordance>0.75)
             {
                 return true;
             }

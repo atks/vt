@@ -39,7 +39,7 @@ FlankDetector::FlankDetector(std::string& ref_fasta_file, bool debug)
     //initialize raHMMs
     ///////////////////
     float delta = 0.0001;
-    float epsilon = 0.05;
+    float epsilon = 0.0005;
     float tau = 0.01;
     float eta = 0.01;
     float mismatch_penalty = 3;
@@ -190,7 +190,12 @@ void FlankDetector::detect_flanks(bcf_hdr_t* h, bcf1_t *v, Variant& variant, uin
             }
             else
             {
-                
+                if (vntr.repeat_tract.size()>=3)
+                {
+                    vntr.repeat_tract = vntr.repeat_tract.substr(1, vntr.repeat_tract.size()-2);
+                    ++vntr.rbeg1;
+                    --vntr.rend1;
+                }
             }
         }
         
@@ -223,42 +228,67 @@ void FlankDetector::detect_flanks(bcf_hdr_t* h, bcf1_t *v, Variant& variant, uin
             std::cerr << "++++++++++++++++++++++++++++++++++++++++++++\n";
             std::cerr << "4a. Fuzzy right alignment\n";
         }
+        
         int32_t slen = 100;
         
-        //pick 5 bases to the right
+        char* rflank;
         int32_t rflank_len;
-        char* rflank = faidx_fetch_seq(fai, variant.chrom.c_str(), vntr.rbeg1-1, vntr.rbeg1+5-1-1, &rflank_len);
-
-        //pick 105 bases for aligning
-        int32_t seq_len;
-        char* seq = faidx_fetch_seq(fai, variant.chrom.c_str(), vntr.rbeg1-slen-1, vntr.rbeg1+5-1-1, &seq_len);
-
-        rfhmm->set_model(vntr.ru.c_str(), rflank);
-        rfhmm->align(seq, qual.c_str());
-        if (debug) rfhmm->print_alignment();
-
-        if (rflank_len) free(rflank);
-        if (seq_len) free(seq);
-
-        //////////////////////
-        //fuzzy left alignment
-        //////////////////////
-        if (debug)
-        {
-            std::cerr << "\n";
-            std::cerr << "++++++++++++++++++++++++++++++++++++++++++++\n";
-            std::cerr << "4b. Fuzzy left alignment\n";
-        }
+        char* lflank;
+        int32_t lflank_len;
+        
         int32_t lflank_end1;
         int32_t rflank_beg1;
-
-        lflank_end1 = vntr.rbeg1-slen-1+1 + rfhmm->get_lflank_read_epos1() - 1;
+        
+        char* seq;
+        int32_t seq_len;
+        
+        while (true)
+        {
+            //pick 5 bases to the right
+            rflank = faidx_fetch_seq(fai, variant.chrom.c_str(), vntr.rend1+1-1, vntr.rend1+5-1, &rflank_len);
+    
+            //pick 105 bases for aligning
+            
+            seq = faidx_fetch_seq(fai, variant.chrom.c_str(), vntr.rend1-slen-1, vntr.rend1+5-1, &seq_len);
+            
+            rfhmm->set_model(vntr.ru.c_str(), rflank);
+            rfhmm->align(seq, qual.c_str());
+            if (debug) rfhmm->print_alignment();
+    
+            if (rflank_len) free(rflank);
+            if (seq_len) free(seq);
+    
+            //////////////////////
+            //fuzzy left alignment
+            //////////////////////
+            if (debug)
+            {
+                std::cerr << "\n";
+                std::cerr << "++++++++++++++++++++++++++++++++++++++++++++\n";
+                std::cerr << "4b. Fuzzy left alignment\n";
+            }
+    
+            if (rfhmm->get_lflank_read_epos1()!=0)
+            {
+                lflank_end1 = vntr.rend1-slen-1+1 + rfhmm->get_lflank_read_epos1() - 1;
+                break;
+            }
+            else if (slen==1000)
+            {
+                lflank_end1 = vntr.rend1 - 1000 - 1;
+                vntr.is_large_repeat_tract = true;
+                break;
+            }
+            else
+            {
+                slen +=100;
+            }
+            
+        }
 
         slen = 100;
 
         //pick 5 bases to right
-        int32_t lflank_len;
-        char* lflank;
         while(true)
         {
             lflank = faidx_fetch_seq(fai, variant.chrom.c_str(), lflank_end1-5-1, lflank_end1-1, &lflank_len);
@@ -279,7 +309,7 @@ void FlankDetector::detect_flanks(bcf_hdr_t* h, bcf1_t *v, Variant& variant, uin
             }
             else if (slen==1000)
             {
-                rflank_beg1 = lflank_end1 - 5 + 1000 -1;
+                rflank_beg1 = lflank_end1 + 1000;
                 vntr.is_large_repeat_tract = true;
                 break;
             }

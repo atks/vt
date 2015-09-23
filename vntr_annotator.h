@@ -134,7 +134,7 @@ class VNTRAnnotator
      * Pick candidate motifs.
      * candidate_motifs contain motifs and a measure of confidence
      */
-    void pick_candidate_motifs(bcf_hdr_t* h, bcf1_t* v, VNTR& vntr);
+    void pick_candidate_motifs(bcf_hdr_t* h, bcf1_t* v, Variant& variant);
 
     /**
      * Chooses a phase of the motif that is appropriate for the alignment
