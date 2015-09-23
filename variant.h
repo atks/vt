@@ -42,14 +42,14 @@ class Variant
     public:
 
     //aggegrated type from the alleles
-    int32_t type;       
+    int32_t type;
 
     //location information
     std::string chrom;
     uint32_t rid;
     uint32_t pos1;
     uint32_t end1;
-    
+
     //linked VCF file
     bcf1_t* v;
 

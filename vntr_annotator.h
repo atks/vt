@@ -92,7 +92,7 @@ class VNTRAnnotator
     //raHMMs
     ////////
     std::string qual;
-    AHMM* ahmm;  
+    AHMM* ahmm;
 
     ///////
     //tools
@@ -125,8 +125,8 @@ class VNTRAnnotator
      *   e - determine by exact alignment
      *   f - determine by fuzzy alignment
      *   p - determine by penalized fuzzy alignment
-     *   h - using HMMs     
-     *   x - integrated models     
+     *   h - using HMMs
+     *   x - integrated models
      */
     void annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::string mode);
 

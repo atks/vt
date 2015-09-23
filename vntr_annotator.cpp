@@ -63,7 +63,7 @@ VNTRAnnotator::VNTRAnnotator(std::string& ref_fasta_file, bool debug)
 
 /**
  * Destructor.
- */ 
+ */
 VNTRAnnotator::~VNTRAnnotator()
 {
     delete vm;
@@ -85,8 +85,6 @@ VNTRAnnotator::~VNTRAnnotator()
  */
 void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::string mode)
 {
-    bcf_print_liten(h,v);
-
     VNTR& vntr = variant.vntr;
 
     //update chromosome and position
@@ -208,7 +206,7 @@ void VNTRAnnotator::choose_best_motif(bcf_hdr_t* h, bcf1_t* v, MotifTree* mt, VN
             vntr.mlen = cm.motif.size();
             vntr.motif_score = cm.score;
         }
- 
+
         if (debug)
         {
             printf("selected: %10s %.2f %.2f %.2f %.2f (%d/%d)\n", mt->pcm.top().motif.c_str(),
