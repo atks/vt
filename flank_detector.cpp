@@ -28,12 +28,10 @@
  */
 FlankDetector::FlankDetector(std::string& ref_fasta_file, bool debug)
 {
-    fai = fai_load(ref_fasta_file.c_str());
-    if (fai==NULL)
-    {
-        fprintf(stderr, "[%s:%d %s] Cannot load genome index: %s\n", __FILE__, __LINE__, __FUNCTION__, ref_fasta_file.c_str());
-        exit(1);
-    }
+    //////////////////////
+    //initialize variables
+    //////////////////////
+    this->debug = debug;
 
     ///////////////////
     //initialize raHMMs
@@ -68,8 +66,17 @@ FlankDetector::FlankDetector(std::string& ref_fasta_file, bool debug)
     rfhmm->set_mismatch_penalty(mismatch_penalty);
     rfhmm->initialize_T();
 
-    this->debug = debug;
     qual.assign(256, 'K');
+
+    //////////////////
+    //initialize tools
+    //////////////////
+    fai = fai_load(ref_fasta_file.c_str());
+    if (fai==NULL)
+    {
+        fprintf(stderr, "[%s:%d %s] Cannot load genome index: %s\n", __FILE__, __LINE__, __FUNCTION__, ref_fasta_file.c_str());
+        exit(1);
+    }
 };
 
 /**
@@ -113,13 +120,6 @@ void FlankDetector::detect_flanks(bcf_hdr_t* h, bcf1_t *v, Variant& variant, uin
         vntr.no_exact_ru = ahmm->exact_motif_count;
         vntr.total_no_ru = ahmm->motif_count;
         vntr.rl = ahmm->repeat_tract_len;
-
-//statistics for repeat unit
-//    float motif_score;          //motif score from motif tree
-//    float motif_concordance;    //motif concordance from hmm
-//    float rl;                   //number of repeat units on repeat tract
-//    float no_exact_ru;          //number exact repeat units from hmm
-//    float total_no_ru;          //total no of repeat units from hmm
 
         if (debug)
         {
@@ -167,7 +167,7 @@ void FlankDetector::detect_flanks(bcf_hdr_t* h, bcf1_t *v, Variant& variant, uin
             std::cerr << "++++++++++++++++++++++++++++++++++++++++++++\n";
             std::cerr << "4a. Exact left/right alignment\n";
         }
-        
+
         if (vntr.repeat_tract.size()>2)
         {
             if (vntr.mlen==1)
@@ -176,16 +176,16 @@ void FlankDetector::detect_flanks(bcf_hdr_t* h, bcf1_t *v, Variant& variant, uin
                 int32_t length = vntr.repeat_tract.size();
                 if (vntr.repeat_tract.at(0)!=vntr.motif.at(0))
                 {
-                    offset = 1;  
-                    ++vntr.rbeg1;  
+                    offset = 1;
+                    ++vntr.rbeg1;
                 }
-                
+
                 if (vntr.repeat_tract.at(vntr.repeat_tract.size()-1)!=vntr.motif.at(0))
                 {
-                    length -= offset+1;    
+                    length -= offset+1;
                     --vntr.rend1;
                 }
-                
+
                 vntr.repeat_tract = vntr.repeat_tract.substr(offset, length);
             }
             else
@@ -198,7 +198,7 @@ void FlankDetector::detect_flanks(bcf_hdr_t* h, bcf1_t *v, Variant& variant, uin
                 }
             }
         }
-        
+
         vntr.ru = choose_repeat_unit(vntr.repeat_tract, vntr.motif);
         ahmm->set_model(vntr.ru.c_str());
         ahmm->align(vntr.repeat_tract.c_str(), qual.c_str());
@@ -207,7 +207,7 @@ void FlankDetector::detect_flanks(bcf_hdr_t* h, bcf1_t *v, Variant& variant, uin
         vntr.no_exact_ru = ahmm->exact_motif_count;
         vntr.total_no_ru = ahmm->motif_count;
         vntr.rl = ahmm->repeat_tract_len;
-        
+
         if (debug)
         {
             std::cerr << "\n";
@@ -219,7 +219,7 @@ void FlankDetector::detect_flanks(bcf_hdr_t* h, bcf1_t *v, Variant& variant, uin
             std::cerr << "total no. of repeat units : " << vntr.total_no_ru << "\n";
             std::cerr << "\n";
         }
-        
+
         ///////////////////////
         //fuzzy right alignment
         ///////////////////////
@@ -228,36 +228,36 @@ void FlankDetector::detect_flanks(bcf_hdr_t* h, bcf1_t *v, Variant& variant, uin
             std::cerr << "++++++++++++++++++++++++++++++++++++++++++++\n";
             std::cerr << "4a. Fuzzy right alignment\n";
         }
-        
+
         int32_t slen = 100;
-        
+
         char* rflank;
         int32_t rflank_len;
         char* lflank;
         int32_t lflank_len;
-        
+
         int32_t lflank_end1;
         int32_t rflank_beg1;
-        
+
         char* seq;
         int32_t seq_len;
-        
+
         while (true)
         {
             //pick 5 bases to the right
             rflank = faidx_fetch_seq(fai, variant.chrom.c_str(), vntr.rend1+1-1, vntr.rend1+5-1, &rflank_len);
-    
+
             //pick 105 bases for aligning
-            
+
             seq = faidx_fetch_seq(fai, variant.chrom.c_str(), vntr.rend1-slen-1, vntr.rend1+5-1, &seq_len);
-            
+
             rfhmm->set_model(vntr.ru.c_str(), rflank);
             rfhmm->align(seq, qual.c_str());
             if (debug) rfhmm->print_alignment();
-    
+
             if (rflank_len) free(rflank);
             if (seq_len) free(seq);
-    
+
             //////////////////////
             //fuzzy left alignment
             //////////////////////
@@ -267,7 +267,7 @@ void FlankDetector::detect_flanks(bcf_hdr_t* h, bcf1_t *v, Variant& variant, uin
                 std::cerr << "++++++++++++++++++++++++++++++++++++++++++++\n";
                 std::cerr << "4b. Fuzzy left alignment\n";
             }
-    
+
             if (rfhmm->get_lflank_read_epos1()!=0)
             {
                 lflank_end1 = vntr.rend1-slen-1+1 + rfhmm->get_lflank_read_epos1() - 1;
@@ -283,7 +283,7 @@ void FlankDetector::detect_flanks(bcf_hdr_t* h, bcf1_t *v, Variant& variant, uin
             {
                 slen +=100;
             }
-            
+
         }
 
         slen = 100;
@@ -335,11 +335,6 @@ void FlankDetector::detect_flanks(bcf_hdr_t* h, bcf1_t *v, Variant& variant, uin
         vntr.fuzzy_total_no_ru = lfhmm->motif_count;
         vntr.fuzzy_rl = rflank_beg1-lflank_end1-1;
 
-
-//        std::cerr << "lflank_end1 : lflank "<< lflank_end1 << ":" << lflank << "\n";
-//        std::cerr << "rflank_beg1 : rflank " << rflank_beg1 << ":" << rflank << "\n";
-
-
         if (lflank_len) free(lflank);
         if (rflank_len) free(rflank);
 
@@ -356,7 +351,6 @@ void FlankDetector::detect_flanks(bcf_hdr_t* h, bcf1_t *v, Variant& variant, uin
     uint32_t pos1 = vntr.rbeg1;
     int32_t len = 0;
     faidx_fetch_seq(fai, chrom, pos1-10, pos1-1, &len);
-
 };
 
 /**
@@ -368,8 +362,8 @@ std::string FlankDetector::shift_str(std::string& seq, uint32_t i)
     if (i)
     {
         sseq = seq.substr(i) + seq.substr(0,i);
-    }    
-    
+    }
+
     return sseq;
 }
 
@@ -388,112 +382,4 @@ std::string FlankDetector::choose_repeat_unit(std::string& ref, std::string& mot
     }
 
     return motif;
-}
-
-/**
- * Checks if a vntr is a homopolymer.
- */
-bool FlankDetector::is_homopolymer(bcf_hdr_t* h, bcf1_t* v)
-{
-    bool is_homopolymer = false;
-    uint32_t ref_len = strlen(bcf_get_ref(v));
-    for (size_t i=1; i<bcf_get_n_allele(v); ++i)
-    {
-        std::string ref(bcf_get_alt(v, 0));
-        std::string alt(bcf_get_alt(v, i));
-        int32_t pos1 = bcf_get_pos1(v);
-    }
-
-    return is_homopolymer;
-}
-
-/**
- * Trim alleles.
- */
-void FlankDetector::trim(int32_t& pos1, std::string& ref, std::string& alt)
-{
-    while (true)
-    {
-        if (ref.size()==1 || alt.size()==1)
-        {
-            break;
-        }
-        else if (ref.at(0)!=alt.at(0) && ref.at(ref.size()-1)!=alt.at(alt.size()-1))
-        {
-            break;
-        }
-        else
-        {
-            if (ref.at(ref.size()-1)==alt.at(alt.size()-1))
-            {
-                ref.erase(ref.size()-1,1);
-                alt.erase(alt.size()-1,1);
-            }
-            else if (ref.at(0)==alt.at(0))
-            {
-                ref.erase(0,1);
-                alt.erase(0,1);
-                ++pos1;
-            }
-        }
-    }
-}
-
-/**
- * Gets motif of a repeat unit.
- */
-std::string FlankDetector::get_motif(std::string& ru)
-{
-    std::string motif = "";
-    for (size_t i=0; i<ru.size(); ++i)
-    {
-        std::string phase = shift_phase(ru, i);
-        std::string rc = reverse_complement(phase);
-        motif = phase < rc ? phase : rc;
-    }
-
-    return motif;
-}
-
-/**
- * Reverse complement a sequence.
- */
-std::string FlankDetector::reverse_complement(std::string& seq)
-{
-    std::string rc = "";
-
-    for (size_t i=seq.size()-1; i>0; --i)
-    {
-        char b = seq.at(i);
-
-        switch (b)
-        {
-            case 'A':
-                rc.append(1, 'A');
-                break;
-            case 'C':
-                rc.append(1, 'C');
-                break;
-            case 'G':
-                rc.append(1, 'G');
-                break;
-            case 'T':
-                rc.append(1, 'T');
-                break;
-        }
-    }
-
-    return rc;
-}
-
-/**
- * Shifts a sequence to the right by i bases.
- */
-std::string FlankDetector::shift_phase(std::string& seq, size_t i)
-{
-    i = i<seq.size() ? i : i%seq.size();
-    std::string shifted = seq.substr(i, seq.size()-i);
-    shifted.append(seq, 0, i);
-
-    return shifted;
 }

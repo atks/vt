@@ -419,11 +419,13 @@ class Igor : Program
                 x1 = bcf_gt_allele(gts[na12878_index[0]*2]);
                 x2 = bcf_gt_allele(gts[na12878_index[0]*2+1]);
 
-                x = x1+x2;
-
-                if (x<0)
+                if (x1>=0 && x2>=0)
                 {
-                    x = 3;
+                    x = x1+x2;
+                }
+                else
+                {
+                    x = -1;
                 }
             }
 
@@ -433,25 +435,24 @@ class Igor : Program
                 //for BROAD KB stats type of data set
                 if (dataset_types[i]==BROADKB)
                 {
-                    int32_t y1 = -1;
-                    int32_t y2 = -1;
-                    int32_t y = -2;
-                    int32_t xt = -2;
-
-                    char* dst = NULL;
-                    int32_t ndst = 0;
-
+                    int32_t y1, y2, y;
+                    std::string truth_status;
+                    
                     if (presence[i])
                     {
                         bcf_unpack(presence_bcfptr[i]->v, BCF_UN_IND);
-                        k0 = bcf_get_genotypes(presence_bcfptr[1]->h, presence_bcfptr[1]->v, &gts, &n);
+                        bcf_get_genotypes(presence_bcfptr[1]->h, presence_bcfptr[1]->v, &gts, &n);
 
-                        bcf_get_info_string(presence_bcfptr[1]->h, presence_bcfptr[1]->v, "TruthStatus", &dst, &ndst);
-
+                        char* ts = NULL;
+                        int32_t n = 0;
+                        bcf_get_info_string(presence_bcfptr[1]->h, presence_bcfptr[1]->v, "TruthStatus", &ts, &n);
+                        truth_status.assign(ts);
+                        if (n) free(ts);
+                            
                         y1 = bcf_gt_allele(gts[na12878_index[i]*2]);
                         y2 = bcf_gt_allele(gts[na12878_index[i]*2+1]);
 
-                        if (y1>0 && y2>0)
+                        if (y1>=0 && y2>=0)
                         {
                             y = y1+y2;
                         }
@@ -463,52 +464,48 @@ class Igor : Program
 
                     if (presence[0])
                     {
-                        if (x1>0 && x2>0)
+                        if (x>0)
                         {
-                            xt = x1+x2;
+                            ++no_positive_variants;
                         }
-                        else if (x1==0 || x2==0)
+                        else if (x==0)
                         {
-                            xt = 0;
+                            ++no_negative_variants;
                         }
-                        else if (x1<0 || x2<0)
-                        {
-                            xt = -1;
-                        }
-                        ++no_variants;
-
-                        if (xt>0) ++no_positive_variants;
-                        if (xt==0) ++no_negative_variants;
                     }
 
                     if (presence[0] && presence[i])
                     {
-                        if (strcmp(dst, "TRUE_POSITIVE")==0)
+                        if (truth_status=="TRUE_POSITIVE")
                         {
-                            if (xt>0 && y>0)
+                            if (x>0 && y>0)
                             {
                                 ++kbstats[i].tp;
                             }
-                            else if (xt>0 && y==0)
+                            else if (x>0 && y==0)
                             {
                                 ++kbstats[i].fp;
                             }
-                            else if (xt==0 && y>0)
+                            else if (x==0 && y>0)
                             {
                                 ++kbstats[i].fn;
                             }
                         }
-                        else if (strcmp(dst, "FALSE_POSITIVE")==0)
+                        else if (truth_status=="FALSE_POSITIVE")
                         {
-                            if (xt>0)
+                            if (x>0)
                             {
                                 ++kbstats[i].fp;
                             }
-                            else if (xt==0)
+                            else if (x==0)
                             {
                                 ++kbstats[i].tn;
                             }
                         }
+                        
+                        int32_t yt = y<0 ? 3 : y;
+                        int32_t xt = x<0 ? 3 : x;
+                        ++concordance[i].geno[xt][yt];
                     }
                     else if (presence[0] && !presence[i])
                     {
@@ -516,7 +513,7 @@ class Igor : Program
                     }
                     else if (!presence[0] && presence[i])
                     {
-                        if (strcmp(dst, "TRUE_POSITIVE")==0)
+                        if (truth_status=="TRUE_POSITIVE")
                         {
                             if (y>0)
                             {
@@ -527,7 +524,7 @@ class Igor : Program
                                 ++kbstats[i].tn;
                             }
                         }
-                        else if (strcmp(dst, "FALSE_POSITIVE")==0)
+                        else if (truth_status=="FALSE_POSITIVE")
                         {
                             ++kbstats[i].tn;
                         }
@@ -537,7 +534,7 @@ class Igor : Program
                         //++kbstats[i].tn; potentially true negative BUT knowledge base is curated manually.
                     }
 
-                    if (ndst) free(dst);
+                    
                 }
                 else
                 {
@@ -563,12 +560,10 @@ class Igor : Program
                         int32_t y1 = bcf_gt_allele(gts[na12878_index[i]*2]);
                         int32_t y2 = bcf_gt_allele(gts[na12878_index[i]*2+1]);
                         int32_t y = y1+y2;
-                        if (y<0)
-                        {
-                            y = 3;
-                        }
+                        int32_t yt = y<0 ? 3 : y;
+                        int32_t xt = x<0 ? 3 : x;
 
-                        ++concordance[i].geno[x][y];
+                        ++concordance[i].geno[xt][yt];
                     }
                     else if (!presence[0] && presence[i])
                     {
