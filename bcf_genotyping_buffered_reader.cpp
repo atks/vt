@@ -67,7 +67,7 @@ void BCFGenotypingBufferedReader::process_read(bam_hdr_t *h, bam1_t *s)
     {
         g = *i;
         
-        std::cerr << g->pos1 << " " << g->beg1 << " " << g->end1 << " ";
+//        std::cerr << g->pos1 << " " << g->beg1 << " " << g->end1 << " ";
         
         //same chromosome
         if (tid==g->rid)
@@ -89,11 +89,12 @@ void BCFGenotypingBufferedReader::process_read(bam_hdr_t *h, bam1_t *s)
             
                 if (beg1 <= g->beg1 && g->end1 <= end1)
                 {    
-                    std::cerr << "COMPLETE";
+//                    std::cerr << "COMPLETE";
                 }
                 else
                 {
-                    std::cerr << "PARTIAL";
+                    //drop
+//                    std::cerr << "PARTIAL";
                 }
             }
             else
@@ -101,7 +102,7 @@ void BCFGenotypingBufferedReader::process_read(bam_hdr_t *h, bam1_t *s)
                 //other types of overlap, just ignore
             }
             
-            std::cerr << "\n";
+//            std::cerr << "\n";
         }
         //prior chromosome
         else if (tid<g->rid)
@@ -771,6 +772,14 @@ void BCFGenotypingBufferedReader::genotype_and_print(BCFOrderedWriter* odw, Geno
             bcf_add_filter(odw->hdr, v, bcf_hdr_id2int(odw->hdr, BCF_DT_ID, "overlap_vntr"));
         }
 
+        char* flankseq = NULL;
+        int32_t n = 0;
+        if (bcf_get_info_string(odr->hdr, g->v, "FLANKSEQ", &flankseq, &n)>0)
+        {
+            bcf_update_info_string(odw->hdr, v, "FLANKSEQ", flankseq);
+            free(flankseq);
+        }
+
         std::vector<uint32_t> pls(3);
         compute_snp_pl(g->alleles, g->quals, 2, pls);
 
@@ -889,12 +898,33 @@ void BCFGenotypingBufferedReader::genotype_and_print(BCFOrderedWriter* odw, Geno
             bcf_update_info_string(odw->hdr, v, "TR", motif);
             free(motif);
         }    
-        int32_t* end = NULL;
+        int32_t* flanks = NULL;
         n = 0;
-        if (bcf_get_info_int32(odr->hdr, g->v, "END", &end, &n)>0)
+        if (bcf_get_info_int32(odr->hdr, g->v, "FLANKS", &flanks, &n)>0)
         {
-            bcf_update_info_int32(odw->hdr, v, "END", end, 1);
-            free(end);
+            bcf_update_info_int32(odw->hdr, v, "FLANKS", flanks, 2);
+            free(flanks);
+        }
+        int32_t* fz_flanks = NULL;
+        n = 0;
+        if (bcf_get_info_int32(odr->hdr, g->v, "FZ_FLANKS", &fz_flanks, &n)>0)
+        {
+            bcf_update_info_int32(odw->hdr, v, "FZ_FLANKS", fz_flanks, 2);
+            free(fz_flanks);
+        }
+        char* flankseq = NULL;
+        n = 0;
+        if (bcf_get_info_string(odr->hdr, g->v, "FLANKSEQ", &flankseq, &n)>0)
+        {
+            bcf_update_info_string(odw->hdr, v, "FLANKSEQ", flankseq);
+            free(flankseq);
+        }
+        char* tr = NULL;
+        n = 0;
+        if (bcf_get_info_string(odr->hdr, g->v, "TR", &tr, &n)>0)
+        {
+            bcf_update_info_string(odw->hdr, v, "TR", tr);
+            free(tr);
         }
         
         std::vector<uint32_t> pls(3);
@@ -1026,21 +1056,53 @@ void BCFGenotypingBufferedReader::genotype_and_print(BCFOrderedWriter* odw, Geno
             bcf_update_info_string(odw->hdr, v, "RU", ru);
             free(ru);
         }  
-        float* rl = NULL;
+        float* fz_concordance = NULL;
         n =0;
-        if (bcf_get_info_float(odr->hdr, g->v, "RL", &rl, &n)>0)
+        if (bcf_get_info_float(odr->hdr, g->v, "FZ_CONCORDANCE", &fz_concordance, &n)>0)
         {
-            bcf_update_info_float(odw->hdr, v, "RL", rl, 1);
-            free(rl);
+            bcf_update_info_float(odw->hdr, v, "FZ_CONCORDANCE", fz_concordance, 1);
+            free(fz_concordance);
         }
-        int32_t* end = NULL;
+        float* fz_rl = NULL;
+        n =0;
+        if (bcf_get_info_float(odr->hdr, g->v, "FZ_RL", &fz_rl, &n)>0)
+        {
+            bcf_update_info_float(odw->hdr, v, "FZ_RL", fz_rl, 1);
+            free(fz_rl);
+        }
+        float* fz_ll = NULL;
+        n =0;
+        if (bcf_get_info_float(odr->hdr, g->v, "FZ_LL", &fz_ll, &n)>0)
+        {
+            bcf_update_info_float(odw->hdr, v, "FZ_LL", fz_ll, 1);
+            free(fz_ll);
+        }
+        int32_t* flanks = NULL;
         n = 0;
-        if (bcf_get_info_int32(odr->hdr, g->v, "END", &end, &n)>0)
+        if (bcf_get_info_int32(odr->hdr, g->v, "FLANKS", &flanks, &n)>0)
         {
-            bcf_update_info_int32(odw->hdr, v, "END", end, 1);
-            free(end);
+            bcf_update_info_int32(odw->hdr, v, "FLANKS", flanks, 2);
+            free(flanks);
         }
-
+        int32_t* fz_flanks = NULL;
+        n = 0;
+        if (bcf_get_info_int32(odr->hdr, g->v, "FZ_FLANKS", &fz_flanks, &n)>0)
+        {
+            bcf_update_info_int32(odw->hdr, v, "FZ_FLANKS", fz_flanks, 2);
+            free(fz_flanks);
+        }
+        char* flankseq = NULL;
+        n = 0;
+        if (bcf_get_info_string(odr->hdr, g->v, "FLANKSEQ", &flankseq, &n)>0)
+        {
+            bcf_update_info_string(odw->hdr, v, "FLANKSEQ", flankseq);
+            free(flankseq);
+        }
+        if (bcf_get_info_flag(odr->hdr, g->v, "LARGE_REPEAT_REGION", NULL, 0)>0)
+        {
+            bcf_update_info_flag(odw->hdr, v, "LARGE_REPEAT_REGION", NULL, 0);
+        }
+        
         //CG
         std::map<float,int32_t> count_histogram;
         for (uint32_t i=0; i<g->counts.size();++i)

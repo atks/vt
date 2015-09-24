@@ -40,40 +40,23 @@ GenotypingRecord::GenotypingRecord(bcf_hdr_t *h, bcf1_t *v, int32_t vtype)
     }
     else if (vtype==VT_INDEL && bcf_get_n_allele(v)==2)
     {
-        //for Indels, this refers to the flanking positions
-        //   insertion 
-        //        if T/TG - beg1=pos1, end1=pos1+1
-        //        if T/GT - beg1=pos1-1, end1=pos1
-        //   deletion  
-        //        if TG/T - beg1=pos1, end1=pos1+length(REF)
-        //        if TG/G - beg1=pos1-1, end1=pos1+length(REF)-1
-        
         rid = bcf_get_rid(v);
         char** alleles = bcf_get_allele(v);
         dlen = strlen(alleles[1])-strlen(alleles[0]);
         len = abs(dlen);
 
-        int32_t *beg1;
+        int32_t *flanks_pos1;
         int32_t n = 0;
-        if (bcf_get_info_int32(h, v, "LFE", &beg1, &n)>0)
+                
+        if (bcf_get_info_int32(h, v, "FLANKS", &flanks_pos1, &n)>0)
         {
-           this->beg1 = beg1[0];
-           free(beg1);
+           this->beg1 = flanks_pos1[0];
+           this->end1 = flanks_pos1[1];
+           free(flanks_pos1);
         }
         else
         {
             this->beg1 = bcf_get_pos1(v) - 3;
-        }
-
-        int32_t *end1;
-         n = 0;
-        if (bcf_get_info_int32(h, v, "RFB", &end1, &n)>0)
-        {
-           this->end1 = end1[0];
-           free(end1);
-        }
-        else
-        {
             this->end1 = bcf_get_end_pos1(v) + 3;
         }
 

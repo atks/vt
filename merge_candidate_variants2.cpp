@@ -107,7 +107,6 @@ class Igor : Program
     uint32_t no_samples;
     uint32_t no_candidate_snps;
     uint32_t no_candidate_indels;
-    uint32_t no_candidate_snpindels;
     uint32_t no_other_variant_types;
 
     /////////
@@ -198,7 +197,6 @@ Each VCF file is required to have the FORMAT flags E and N and should have exact
         ////////////////////////
         no_candidate_snps = 0;
         no_candidate_indels = 0;
-        no_candidate_snpindels = 0;
         no_other_variant_types = 0;
 
         /////////
@@ -333,10 +331,6 @@ Each VCF file is required to have the FORMAT flags E and N and should have exact
                 {
                     ++no_candidate_indels;
                 }
-                else if (vtype == (VT_SNP|VT_INDEL))
-                {
-                    ++no_candidate_snpindels;
-                }
                 else
                 {
                     ++no_other_variant_types;
@@ -362,7 +356,6 @@ Each VCF file is required to have the FORMAT flags E and N and should have exact
         std::clog << "\n";
         std::cerr << "stats: Total Number of Candidate SNPs                 " << no_candidate_snps << "\n";
         std::cerr << "       Total Number of Candidate Indels               " << no_candidate_indels << "\n";
-        std::cerr << "       Total Number of Candidate SNPIndels            " << no_candidate_snpindels << "\n";
         std::cerr << "       Total Number of Candidate other variant types  " << no_other_variant_types << "\n\n";
     };
 

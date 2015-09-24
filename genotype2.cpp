@@ -176,19 +176,32 @@ class Igor : Program
         bcf_hdr_add_sample(odw->hdr, strdup(sample_id.c_str()));
         bcf_hdr_add_sample(odw->hdr, NULL);
 
-        //VARIANT ANNOTATION
+        //INFO fields
         bcf_hdr_append_info_with_backup_naming(odw->hdr, "MOTIF", "1", "String", "Canonical motif in an VNTR or homopolymer", true);
         bcf_hdr_append_info_with_backup_naming(odw->hdr, "RU", "1", "String", "Repeat unit in a VNTR or homopolymer", true);
-        bcf_hdr_append_info_with_backup_naming(odw->hdr, "RL", "1", "Float", "Repeat unit length", true);
 
-        bcf_hdr_append_info_with_backup_naming(odw->hdr, "TR", "1", "String", "Tandem repeat representation", true);
-        bcf_hdr_append_info_with_backup_naming(odw->hdr, "END", "1", "Integer", "End position of the variant described in this record", true);
+        bcf_hdr_append_info_with_backup_naming(odw->hdr, "RL", "1", "Float", "Reference repeat unit length", true);
+        bcf_hdr_append_info_with_backup_naming(odw->hdr, "LL", "1", "Float", "Longest repeat unit length", true);
+        bcf_hdr_append_info_with_backup_naming(odw->hdr, "CONCORDANCE", "1", "Float", "Concordance of repeat unit.", true);
+        bcf_hdr_append_info_with_backup_naming(odw->hdr, "RU_COUNTS", "2", "Integer", "Number of exact repeat units and total number of repeat units.", true);
+        bcf_hdr_append_info_with_backup_naming(odw->hdr, "FLANKS", "2", "Integer", "Left and right flank positions of the Indel, left/right alignment invariant, not necessarily equal to POS.", true);
+
+        bcf_hdr_append_info_with_backup_naming(odw->hdr, "FZ_RL", "1", "Float", "Fuzzy reference repeat unit length", true);
+        bcf_hdr_append_info_with_backup_naming(odw->hdr, "FZ_LL", "1", "Float", "Fuzzy longest repeat unit length", true);
+        bcf_hdr_append_info_with_backup_naming(odw->hdr, "FZ_CONCORDANCE", "1", "Float", "Fuzzy concordance of repeat unit.", true);
+        bcf_hdr_append_info_with_backup_naming(odw->hdr, "FZ_RU_COUNTS", "2", "Integer", "Fuzzy number of exact repeat units and total number of repeat units.", true);
+        bcf_hdr_append_info_with_backup_naming(odw->hdr, "FZ_FLANKS", "2", "Integer", "Fuzzy left and right flank positions of the Indel, left/right alignment invariant, not necessarily equal to POS.", true);
+
+        bcf_hdr_append_info_with_backup_naming(odw->hdr, "TR", "1", "String", "Tandem repeat associated with this indel.", true);
+
+        bcf_hdr_append(odw->hdr, "##INFO=<ID=LARGE_REPEAT_REGION,Number=0,Type=Flag,Description=\"Very large repeat region, vt only detects up to 1000bp long regions.\">");
+        bcf_hdr_append(odw->hdr, "##INFO=<ID=FLANKSEQ,Number=1,Type=String,Description=\"Flanking sequence 10bp on either side of detected repeat region.\">");
         
         //FILTERS
         bcf_hdr_append(odw->hdr, "##FILTER=<ID=overlap_snp,Description=\"Overlaps with snp\">");
         bcf_hdr_append(odw->hdr, "##FILTER=<ID=overlap_indel,Description=\"Overlaps with indel\">");
         bcf_hdr_append(odw->hdr, "##FILTER=<ID=overlap_vntr,Description=\"Overlaps with VNTR\">");
-        
+
         //COMMON
         bcf_hdr_append(odw->hdr, "##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">");
         bcf_hdr_append(odw->hdr, "##FORMAT=<ID=PL,Number=G,Type=Integer,Description=\"PHRED scaled genotype likelihoods\">");
@@ -209,15 +222,15 @@ class Igor : Program
         //NONREF INDEL
         bcf_hdr_append(odw->hdr, "##FORMAT=<ID=RQ,Number=.,Type=Integer,Description=\"Phred-scaled Reference Allele Qualities for Indel\">");
         bcf_hdr_append(odw->hdr, "##FORMAT=<ID=AQ,Number=.,Type=Integer,Description=\"Phred-scaled Alternative Allele Qualities for Indel\">");
-       
+
         //VNTR
         bcf_hdr_append(odw->hdr, "##FORMAT=<ID=CG,Number=.,Type=Float,Description=\"Repeat count genotype\">");
         bcf_hdr_append(odw->hdr, "##FORMAT=<ID=CT,Number=.,Type=Float,Description=\"Repeat counts\">");
-        
+
         //REF
         bcf_hdr_append(odw->hdr, "##FORMAT=<ID=BQSUM,Number=1,Type=Integer,Description=\"Sum of Base Qualities\">");
         bcf_hdr_append(odw->hdr, "##FORMAT=<ID=AQSUM,Number=A,Type=Integer,Description=\"Sum of Allele Likelihoods\">");
-        
+
         bcf_hdr_append(odw->hdr, "##FORMAT=<ID=DPF,Number=1,Type=Integer,Description=\"Depth of forward reference alleles\">");
         bcf_hdr_append(odw->hdr, "##FORMAT=<ID=DPR,Number=1,Type=Integer,Description=\"Depth of reverse reference alleles\">");
 

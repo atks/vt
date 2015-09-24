@@ -119,7 +119,7 @@ class Igor : Program
             TCLAP::ValueArg<std::string> arg_intervals("i", "i", "intervals", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_output_vcf_file("o", "o", "output VCF file [-]", false, "-", "str", cmd);
-            TCLAP::ValueArg<std::string> arg_ref_fasta_file("r", "r", "reference sequence fasta file [e]", true, "e", "str", cmd);
+            TCLAP::ValueArg<std::string> arg_ref_fasta_file("r", "r", "reference sequence fasta file []", true, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_annotation_mode("a", "a", "annotation type [v]\n"
                  "              v : a. output VNTR variant (defined by classification).\n"
                  "                     RU    repeat unit on reference sequence (CA)\n"
@@ -138,10 +138,10 @@ class Igor : Program
                  "              5 : willems2014 \n"
                  "              6 : tan_kang2015",
                  false, 6, "integer", cmd);
-            TCLAP::ValueArg<std::string> arg_method("m", "m", "mode [e]\n"
+            TCLAP::ValueArg<std::string> arg_method("m", "m", "mode [f]\n"
                  "              e : by exact alignment"
                  "              f : by fuzzy alignment",
-                 false, "e", "str", cmd);
+                 false, "f", "str", cmd);
 
             TCLAP::SwitchArg arg_debug("d", "d", "debug [false]", cmd, false);
             TCLAP::UnlabeledValueArg<std::string> arg_input_vcf_file("<in.vcf>", "input VCF file", true, "","file", cmd);
@@ -230,8 +230,7 @@ class Igor : Program
 
         bcf_hdr_append(odw->hdr, "##INFO=<ID=LARGE_REPEAT_REGION,Number=0,Type=Flag,Description=\"Very large repeat region, vt only detects up to 1000bp long regions.\">");
         bcf_hdr_append(odw->hdr, "##INFO=<ID=FLANKSEQ,Number=1,Type=String,Description=\"Flanking sequence 10bp on either side of detected repeat region.\">");
-        
-        
+                
         //helper variable initialization for adding genotype fields for additional vntr records
         if (annotation_mode=="v")
         {
@@ -292,64 +291,127 @@ class Igor : Program
      */
     bool insert_vntr_record_into_buffer(VNTR& vntr)
     {
-        std::list<VNTR>::iterator i = vntr_buffer.begin();
-        while(i!=vntr_buffer.end())
+        if (method=="e")
         {
-            VNTR& cvntr = *i;
-
-            if (vntr.rid > cvntr.rid)
+            std::list<VNTR>::iterator i = vntr_buffer.begin();
+            while(i!=vntr_buffer.end())
             {
-                vntr_buffer.insert(i, vntr);
-                return true;
-            }
-            else if (vntr.rid == cvntr.rid)
-            {
-                if (vntr.rbeg1 > cvntr.rbeg1)
+                VNTR& cvntr = *i;
+    
+                if (vntr.rid > cvntr.rid)
                 {
                     vntr_buffer.insert(i, vntr);
                     return true;
                 }
-                else if (vntr.rbeg1 == cvntr.rbeg1)
+                else if (vntr.rid == cvntr.rid)
                 {
-                    if (vntr.rend1 > cvntr.rend1)
+                    if (vntr.rbeg1 > cvntr.rbeg1)
                     {
                         vntr_buffer.insert(i, vntr);
                         return true;
                     }
-                    else if (cvntr.rend1 == vntr.rend1)
+                    else if (vntr.rbeg1 == cvntr.rbeg1)
                     {
-                        if (cvntr.motif > vntr.motif)
+                        if (vntr.rend1 > cvntr.rend1)
                         {
                             vntr_buffer.insert(i, vntr);
                             return true;
                         }
-                        else if (cvntr.motif == vntr.motif)
+                        else if (cvntr.rend1 == vntr.rend1)
                         {
-                            //do not insert
-                            return false;
+                            if (cvntr.motif > vntr.motif)
+                            {
+                                vntr_buffer.insert(i, vntr);
+                                return true;
+                            }
+                            else if (cvntr.motif == vntr.motif)
+                            {
+                                //do not insert
+                                return false;
+                            }
+                            else // cvntr.motif > vntr.motif
+                            {
+                                ++i;
+                            }
                         }
-                        else // cvntr.motif > vntr.motif
+                        else // cvntr.rend1 > vntr.rend1
                         {
                             ++i;
                         }
                     }
-                    else // cvntr.rend1 > vntr.rend1
+                    else //vntr.rbeg1 < cvntr.rbeg1
                     {
                         ++i;
                     }
                 }
-                else //vntr.rbeg1 < cvntr.rbeg1
+                else //vntr.rid < cvntr.rid is impossible if input file is ordered.
                 {
-                    ++i;
+                    fprintf(stderr, "[%s:%d %s] File %s is unordered\n", __FILE__, __LINE__, __FUNCTION__, input_vcf_file.c_str());
+                    exit(1);
                 }
             }
-            else //vntr.rid < cvntr.rid is impossible if input file is ordered.
+        }
+        else if (method=="f")
+        {
+            std::list<VNTR>::iterator i = vntr_buffer.begin();
+            while(i!=vntr_buffer.end())
             {
-                fprintf(stderr, "[%s:%d %s] File %s is unordered\n", __FILE__, __LINE__, __FUNCTION__, input_vcf_file.c_str());
-                exit(1);
+                VNTR& cvntr = *i;
+    
+                if (vntr.rid > cvntr.rid)
+                {
+                    vntr_buffer.insert(i, vntr);
+                    return true;
+                }
+                else if (vntr.rid == cvntr.rid)
+                {
+                    if (vntr.fuzzy_rbeg1 > cvntr.fuzzy_rbeg1)
+                    {
+                        vntr_buffer.insert(i, vntr);
+                        return true;
+                    }
+                    else if (vntr.fuzzy_rbeg1 == cvntr.fuzzy_rbeg1)
+                    {
+                        if (vntr.fuzzy_rend1 > cvntr.fuzzy_rend1)
+                        {
+                            vntr_buffer.insert(i, vntr);
+                            return true;
+                        }
+                        else if (cvntr.fuzzy_rend1 == vntr.fuzzy_rend1)
+                        {
+                            if (cvntr.motif > vntr.motif)
+                            {
+                                vntr_buffer.insert(i, vntr);
+                                return true;
+                            }
+                            else if (cvntr.motif == vntr.motif)
+                            {
+                                //do not insert
+                                return false;
+                            }
+                            else // cvntr.motif > vntr.motif
+                            {
+                                ++i;
+                            }
+                        }
+                        else // cvntr.fuzzy_rend1 > vntr.fuzzy_rend1
+                        {
+                            ++i;
+                        }
+                    }
+                    else //vntr.fuzzy_rbeg1 < cvntr.fuzzy_rbeg1
+                    {
+                        ++i;
+                    }
+                }
+                else //vntr.rid < cvntr.rid is impossible if input file is ordered.
+                {
+                    fprintf(stderr, "[%s:%d %s] File %s is unordered\n", __FILE__, __LINE__, __FUNCTION__, input_vcf_file.c_str());
+                    exit(1);
+                }
             }
         }
-
+        
         vntr_buffer.push_back(vntr);
         return true;
     }
@@ -381,9 +443,19 @@ class Igor : Program
             }
             else if (vntr.rid == rid)
             {
-                if (vntr.rend1 < pos1-1000)
+                if (method=="e")
                 {
-                    break;
+                    if (vntr.rend1 < pos1-2000)
+                    {
+                        break;
+                    }
+                }
+                else if (method=="f")
+                {
+                    if (vntr.fuzzy_rend1 < pos1-2000)
+                    {
+                        break;
+                    }
                 }
             }
             else //rid < vntr.rid is impossible
@@ -545,6 +617,8 @@ class Igor : Program
             int32_t vtype = vm->classify_variant(odr->hdr, v, variant);
             if (vtype&VT_INDEL)
             {
+//                bcf_print_liten(h,v);
+                
                 flush_vntr_buffer(v);
 
                 //  bcf_print(odr->hdr, v);
