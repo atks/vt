@@ -62,6 +62,12 @@ class BCFGenotypingBufferedReader
 
     Variant variant;
 
+    ///////////
+    //options//
+    ///////////
+    bool output_annotations;
+    
+
     /////////
     //stats//
     /////////

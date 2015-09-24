@@ -211,7 +211,7 @@ class Igor : Program
         bcf_hdr_append(odw->hdr, "##FORMAT=<ID=DP,Number=1,Type=Integer,Description=\"Depth\">");
 
         //NONREF SNP
-        bcf_hdr_append(odw->hdr, "##FORMAT=<ID=AQ,Number=.,Type=Integer,Description=\"Phred-scaled Allele Likelihoods, the number of entries is ploidy*no_alleles\">");
+        bcf_hdr_append(odw->hdr, "##FORMAT=<ID=BQ,Number=.,Type=Integer,Description=\"Base Qualities\">");
         bcf_hdr_append(odw->hdr, "##FORMAT=<ID=MQ,Number=.,Type=Integer,Description=\"Phred-scaled Map Qualities\">");
         bcf_hdr_append(odw->hdr, "##FORMAT=<ID=CY,Number=.,Type=Integer,Description=\"Cycle of base\">");
         bcf_hdr_append(odw->hdr, "##FORMAT=<ID=ST,Number=1,Type=String,Description=\"Strand of allele\">");
@@ -220,8 +220,8 @@ class Igor : Program
         bcf_hdr_append(odw->hdr, "##FORMAT=<ID=NM,Number=.,Type=Integer,Description=\"Number of mismatches per read\">");
 
         //NONREF INDEL
-        bcf_hdr_append(odw->hdr, "##FORMAT=<ID=RQ,Number=.,Type=Integer,Description=\"Phred-scaled Reference Allele Qualities for Indel\">");
-        bcf_hdr_append(odw->hdr, "##FORMAT=<ID=AQ,Number=.,Type=Integer,Description=\"Phred-scaled Alternative Allele Qualities for Indel\">");
+        bcf_hdr_append(odw->hdr, "##FORMAT=<ID=RQ,Number=.,Type=Integer,Description=\"Phred-scaled Reference Allele Qualities for Indels\">");
+        bcf_hdr_append(odw->hdr, "##FORMAT=<ID=AQ,Number=.,Type=Integer,Description=\"Phred-scaled Alternative Allele Qualities for Indels, the number of entries is ploidy*no_alleles\">");
 
         //VNTR
         bcf_hdr_append(odw->hdr, "##FORMAT=<ID=CG,Number=.,Type=Float,Description=\"Repeat count genotype\">");

@@ -31,9 +31,13 @@ BCFGenotypingBufferedReader::BCFGenotypingBufferedReader(std::string filename, s
     /////////////////////
     //io initialization//
     /////////////////////
-
     odr = new BCFOrderedReader(filename, intervals);
-
+    
+    //////////////////////////
+    //options initialization//
+    //////////////////////////
+    output_annotations = false;
+    
     ////////////////////////
     //stats initialization//
     ////////////////////////
@@ -772,12 +776,15 @@ void BCFGenotypingBufferedReader::genotype_and_print(BCFOrderedWriter* odw, Geno
             bcf_add_filter(odw->hdr, v, bcf_hdr_id2int(odw->hdr, BCF_DT_ID, "overlap_vntr"));
         }
 
-        char* flankseq = NULL;
-        int32_t n = 0;
-        if (bcf_get_info_string(odr->hdr, g->v, "FLANKSEQ", &flankseq, &n)>0)
-        {
-            bcf_update_info_string(odw->hdr, v, "FLANKSEQ", flankseq);
-            free(flankseq);
+        if (output_annotations)
+        {    
+            char* flankseq = NULL;
+            int32_t n = 0;
+            if (bcf_get_info_string(odr->hdr, g->v, "FLANKSEQ", &flankseq, &n)>0)
+            {
+                bcf_update_info_string(odw->hdr, v, "FLANKSEQ", flankseq);
+                free(flankseq);
+            }
         }
 
         std::vector<uint32_t> pls(3);
@@ -891,15 +898,8 @@ void BCFGenotypingBufferedReader::genotype_and_print(BCFOrderedWriter* odw, Geno
             bcf_add_filter(odw->hdr, v, bcf_hdr_id2int(odw->hdr, BCF_DT_ID, "overlap_vntr"));
         }
         
-        char* motif = NULL;
-        int32_t n =0;
-        if (bcf_get_info_string(odr->hdr, g->v, "TR", &motif, &n)>0)
-        {
-            bcf_update_info_string(odw->hdr, v, "TR", motif);
-            free(motif);
-        }    
         int32_t* flanks = NULL;
-        n = 0;
+        int32_t n = 0;
         if (bcf_get_info_int32(odr->hdr, g->v, "FLANKS", &flanks, &n)>0)
         {
             bcf_update_info_int32(odw->hdr, v, "FLANKS", flanks, 2);
@@ -912,19 +912,30 @@ void BCFGenotypingBufferedReader::genotype_and_print(BCFOrderedWriter* odw, Geno
             bcf_update_info_int32(odw->hdr, v, "FZ_FLANKS", fz_flanks, 2);
             free(fz_flanks);
         }
-        char* flankseq = NULL;
-        n = 0;
-        if (bcf_get_info_string(odr->hdr, g->v, "FLANKSEQ", &flankseq, &n)>0)
+        
+        if (output_annotations)
         {
-            bcf_update_info_string(odw->hdr, v, "FLANKSEQ", flankseq);
-            free(flankseq);
-        }
-        char* tr = NULL;
-        n = 0;
-        if (bcf_get_info_string(odr->hdr, g->v, "TR", &tr, &n)>0)
-        {
-            bcf_update_info_string(odw->hdr, v, "TR", tr);
-            free(tr);
+            char* motif = NULL;
+            n =0;
+            if (bcf_get_info_string(odr->hdr, g->v, "TR", &motif, &n)>0)
+            {
+                bcf_update_info_string(odw->hdr, v, "TR", motif);
+                free(motif);
+            }    
+            char* flankseq = NULL;
+            n = 0;
+            if (bcf_get_info_string(odr->hdr, g->v, "FLANKSEQ", &flankseq, &n)>0)
+            {
+                bcf_update_info_string(odw->hdr, v, "FLANKSEQ", flankseq);
+                free(flankseq);
+            }
+            char* tr = NULL;
+            n = 0;
+            if (bcf_get_info_string(odr->hdr, g->v, "TR", &tr, &n)>0)
+            {
+                bcf_update_info_string(odw->hdr, v, "TR", tr);
+                free(tr);
+            }
         }
         
         std::vector<uint32_t> pls(3);
@@ -1077,6 +1088,7 @@ void BCFGenotypingBufferedReader::genotype_and_print(BCFOrderedWriter* odw, Geno
             bcf_update_info_float(odw->hdr, v, "FZ_LL", fz_ll, 1);
             free(fz_ll);
         }
+        
         int32_t* flanks = NULL;
         n = 0;
         if (bcf_get_info_int32(odr->hdr, g->v, "FLANKS", &flanks, &n)>0)
@@ -1093,11 +1105,17 @@ void BCFGenotypingBufferedReader::genotype_and_print(BCFOrderedWriter* odw, Geno
         }
         char* flankseq = NULL;
         n = 0;
-        if (bcf_get_info_string(odr->hdr, g->v, "FLANKSEQ", &flankseq, &n)>0)
+        
+        
+        if (output_annotations)
         {
-            bcf_update_info_string(odw->hdr, v, "FLANKSEQ", flankseq);
-            free(flankseq);
+            if (bcf_get_info_string(odr->hdr, g->v, "FLANKSEQ", &flankseq, &n)>0)
+            {
+                bcf_update_info_string(odw->hdr, v, "FLANKSEQ", flankseq);
+                free(flankseq);
+            }
         }
+        
         if (bcf_get_info_flag(odr->hdr, g->v, "LARGE_REPEAT_REGION", NULL, 0)>0)
         {
             bcf_update_info_flag(odw->hdr, v, "LARGE_REPEAT_REGION", NULL, 0);
