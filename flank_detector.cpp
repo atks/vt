@@ -241,7 +241,8 @@ void FlankDetector::detect_flanks(bcf_hdr_t* h, bcf1_t *v, Variant& variant, uin
 
         char* seq;
         int32_t seq_len;
-
+//        bool encountered_N = false;
+        
         while (true)
         {
             //pick 5 bases to the right
@@ -250,7 +251,14 @@ void FlankDetector::detect_flanks(bcf_hdr_t* h, bcf1_t *v, Variant& variant, uin
             //pick 105 bases for aligning
 
             seq = faidx_fetch_seq(fai, variant.chrom.c_str(), vntr.rend1-slen-1, vntr.rend1+5-1, &seq_len);
-
+//            char* nptr = NULL;
+//            if ((nptr=strchr(seq, 'N')))
+//            {
+//                encountered_N = true;
+//                *nptr = NULL;
+//                
+//            }    
+            
             rfhmm->set_model(vntr.ru.c_str(), rflank);
             rfhmm->align(seq, qual.c_str());
             if (debug) rfhmm->print_alignment();

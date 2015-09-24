@@ -877,11 +877,11 @@ bool RFHMM::flanks_are_mapped()
 float RFHMM::log10_emission_odds(char probe_base, char read_base, uint32_t pl)
 {
     //4 encodes for N
-    if (read_base=='N' || probe_base=='N')
-    {
-        //silent match
-        return -INFINITY;
-    }
+//    if (read_base=='N' || probe_base=='N')
+//    {
+//        //silent match
+//        return -INFINITY;
+//    }
 
     if (read_base!=probe_base)
     {
