@@ -306,8 +306,8 @@ Each VCF file is required to have the FORMAT flags E and N and should have exact
                 ++no;
             }
 
-            if (max_lr_gt_30 || vtype&VT_INDEL)
-            {
+//            if (max_lr_gt_30 || vtype&VT_INDEL)
+//            {
                 //bcf_update_info_string(odw->hdr, nv, "SAMPLES", sample_names.s);
                 bcf_update_info_int32(odw->hdr, nv, "NSAMPLES", &no, 1);
                 bcf_update_info_int32(odw->hdr, nv, "E", &e, no);
@@ -322,7 +322,6 @@ Each VCF file is required to have the FORMAT flags E and N and should have exact
 
                 odw->write(nv);
 
-                int32_t vtype = vm->classify_variant(odw->hdr, nv, var);
                 if (vtype == VT_SNP)
                 {
                     ++no_candidate_snps;
@@ -335,7 +334,7 @@ Each VCF file is required to have the FORMAT flags E and N and should have exact
                 {
                     ++no_other_variant_types;
                 }
-            }
+//            }
         }
 
         sr->close();

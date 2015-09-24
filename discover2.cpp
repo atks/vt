@@ -560,8 +560,6 @@ class Igor : Program
         float LLR = 0;
         kstring_t new_alleles = {0,0,0};
 
-        p.F = 0;
-
         if (p.X[1])
         {
             if (vf.filter_snp(p.X[1], p.N+p.E-p.F))
@@ -636,6 +634,7 @@ class Igor : Program
         if (p.X[4])
         {
             if (vf.filter_snp(p.X[4], p.N+p.E-p.F))
+//            if (vf.filter_snp(p.X[4], p.N+p.E))
             {
                 bcf_clear(v);
                 bcf_set_rid(v, rid);
@@ -671,6 +670,7 @@ class Igor : Program
         if (p.X[8])
         {
             if (vf.filter_snp(p.X[8], p.N+p.E-p.F))
+//            if (vf.filter_snp(p.X[8], p.N+p.E))
             {
                 bcf_clear(v);
                 bcf_set_rid(v, rid);
@@ -703,7 +703,7 @@ class Igor : Program
             }
         }
 
-        if (p.X[15] && false)
+        if (false && p.X[15])
         {
             bcf_clear(v);
             bcf_set_rid(v, rid);

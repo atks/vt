@@ -325,6 +325,9 @@ void AugmentedBAMRecord::initialize(bam_hdr_t* h, bam1_t* s)
  */
 bool AugmentedBAMRecord::left_align()
 {
+    //chec if any indel is not left aligned!
+
+
     return true;
 }
 

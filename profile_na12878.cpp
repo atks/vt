@@ -151,6 +151,13 @@ class Igor : Program
     int32_t fs;
     int32_t nfs;
 
+    ////////////////////
+    //analysis options//
+    ////////////////////
+    bool ignore_genotypes;
+    bool write_discordant_sites;
+    bool write_sites_with_discordant_genotypes;
+    
     ////////////////
     //common tools//
     ////////////////
@@ -174,6 +181,7 @@ class Igor : Program
             TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "file", cmd);
             TCLAP::ValueArg<std::string> arg_fexp("f", "f", "filter expression []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_ref_data_sets_list("g", "g", "file containing list of reference datasets []", false, "", "file", cmd);
+//            TCLAP::SwitchArg arg_ignore_genotypes("a", "a", "ignore genotypes when comparing against broad's truth set [false]", false, "", "file", cmd);
             TCLAP::UnlabeledValueArg<std::string> arg_input_vcf_file("<in.vcf>", "input VCF file", true, "","file", cmd);
 
             cmd.parse(argc, argv);

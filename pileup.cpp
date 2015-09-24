@@ -127,6 +127,7 @@ void PileupPosition::print()
         }
         std::cerr << "\n";
     }
+    
     if (I.size()!=0)
     {
         std::cerr << "\tINS: ";
@@ -137,6 +138,7 @@ void PileupPosition::print()
 
         std::cerr << "\n";
     }
+    
     if (J.size()!=0)
     {
         std::cerr << "\tRSCLIP: ";
@@ -147,6 +149,7 @@ void PileupPosition::print()
 
         std::cerr << "\n";
     }
+    
     if (K.size()!=0)
     {
         std::cerr << "\tLSCLIP: ";
