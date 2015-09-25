@@ -747,10 +747,10 @@ void BCFGenotypingBufferedReader::genotype_and_print(BCFOrderedWriter* odw, Geno
         bcf_clear(v);
         bcf_set_n_sample(v, 1);
 
-
         bcf_set_rid(v, bcf_get_rid(g->v));
         bcf_set_pos1(v, bcf_get_pos1(g->v));
-
+        bcf_set_qual(v, bcf_get_qual(g->v));
+        
         kstring_t new_alleles = {0,0,0};
         char** alleles = bcf_get_allele(g->v);
         for (size_t i=0; i<bcf_get_n_allele(g->v); ++i)

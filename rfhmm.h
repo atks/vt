@@ -425,11 +425,11 @@ class RFHMM
 
         return NULL_TRACK;
     }
-
+    
     int32_t move_Y_M(int32_t t, int32_t j)
     {
         int32_t p;
-        if (j<rlen)
+        if (j<rlen-rflen)
         {
             return make_track(Y,MOTIF,1,1);
         }
@@ -440,7 +440,7 @@ class RFHMM
     int32_t move_M_M(int32_t t, int32_t j)
     {
         int32_t p;
-        if ((p=track_get_p(t))<=mlen && j<rlen)
+        if ((p=track_get_p(t))<=mlen && j<rlen-rflen)
         {
             if (p==mlen)
             {
@@ -503,7 +503,7 @@ class RFHMM
 
     int32_t move_Y_D(int32_t t, int32_t j)
     {
-        if (j<rlen)
+        if (j<rlen-rflen)
         {
             return make_track(Y,MOTIF,1,1);
         }
@@ -604,7 +604,19 @@ class RFHMM
 
     int32_t move_Y_MR(int32_t t, int32_t j)
     {
-        if (j<rlen)
+//        if (j<rlen)
+//        {
+//            if ((track_get_d(t)==MOTIF && track_get_p(t)==mlen))
+//            {
+//                return make_track(Y,RFLANK,0,1);
+//            }
+//            else
+//            {
+//                return NULL_TRACK;
+//            }
+//        }
+
+        if (j<rlen-rflen)
         {
             if ((track_get_d(t)==MOTIF && track_get_p(t)==mlen))
             {
@@ -621,7 +633,12 @@ class RFHMM
 
     int32_t move_M_MR(int32_t t, int32_t j)
     {
-        if (track_get_p(t)==mlen && j<rlen)
+//        if (track_get_p(t)==mlen && j<rlen)
+//        {
+//            return make_track(M,RFLANK,0,1);
+//        }
+
+        if (track_get_p(t)==mlen && j==rlen-rflen)
         {
             return make_track(M,RFLANK,0,1);
         }
@@ -631,8 +648,12 @@ class RFHMM
 
     int32_t move_D_MR(int32_t t, int32_t j)
     {
-        int32_t p;
-        if ((p=track_get_p(t))==mlen)
+//        if (track_get_p(t)==mlen)
+//        {
+//            return make_track(D,RFLANK,0,1);
+//        }
+
+        if (track_get_p(t)==mlen && j==rlen-rflen)
         {
             return make_track(D,RFLANK,0,1);
         }
@@ -642,8 +663,12 @@ class RFHMM
 
     int32_t move_I_MR(int32_t t, int32_t j)
     {
-        int32_t p;
-        if ((track_get_p(t)==mlen) && j<rlen)
+//        if ((track_get_p(t)==mlen) && j<rlen)
+//        {
+//            return make_track(I,RFLANK,0,1);
+//        }
+
+        if ((track_get_p(t)==mlen) && j==rlen-rflen)
         {
             return make_track(I,RFLANK,0,1);
         }

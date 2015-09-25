@@ -560,6 +560,9 @@ class Igor : Program
         float LLR = 0;
         kstring_t new_alleles = {0,0,0};
 
+        p.E = 0;
+        p.F = 0;
+
         if (p.X[1])
         {
             if (vf.filter_snp(p.X[1], p.N+p.E-p.F))

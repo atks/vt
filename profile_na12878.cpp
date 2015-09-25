@@ -181,7 +181,7 @@ class Igor : Program
             TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "file", cmd);
             TCLAP::ValueArg<std::string> arg_fexp("f", "f", "filter expression []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_ref_data_sets_list("g", "g", "file containing list of reference datasets []", false, "", "file", cmd);
-//            TCLAP::SwitchArg arg_ignore_genotypes("a", "a", "ignore genotypes when comparing against broad's truth set [false]", false, "", "file", cmd);
+            TCLAP::SwitchArg arg_ignore_genotypes("a", "a", "ignore genotypes when comparing against broad's truth set [false]", cmd, false);
             TCLAP::UnlabeledValueArg<std::string> arg_input_vcf_file("<in.vcf>", "input VCF file", true, "","file", cmd);
 
             cmd.parse(argc, argv);
@@ -190,6 +190,7 @@ class Igor : Program
             fexp = arg_fexp.getValue();
             parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
             ref_data_sets_list = arg_ref_data_sets_list.getValue();
+            ignore_genotypes = arg_ignore_genotypes.getValue();
             input_vcf_file = arg_input_vcf_file.getValue();
 
             ///////////////////////
@@ -353,6 +354,11 @@ class Igor : Program
             na12878_index[i] = bcf_hdr_id2int(sr->hdrs[i], BCF_DT_SAMPLE, "NA12878");
             if (na12878_index[i]==-1)
             {
+                if (i==0 && ignore_genotypes)
+                {
+                    continue;
+                }                    
+                
                 fprintf(stderr, "[E:%s:%d %s] NA12878 not found in %s\n", __FILE__, __LINE__, __FUNCTION__, input_vcf_files[i].c_str());
                 exit(1);
             }
@@ -393,7 +399,9 @@ class Igor : Program
             int32_t start1 = bcf_get_pos1(v);
             int32_t end1 = bcf_get_end_pos1(v);
 
-            //annotate
+            ///////////////////////
+            //annotate coding indel
+            ///////////////////////
             if (presence[0])
             {
                 if (orom_gencode_cds->overlaps_with(chrom, start1, end1))
@@ -422,18 +430,36 @@ class Igor : Program
                 stats[0].a_ins += ins;
                 stats[0].a_del += del;
 
-                bcf_unpack(v, BCF_UN_STR);
-                int k = bcf_get_genotypes(presence_bcfptr[0]->h, presence_bcfptr[0]->v, &gts, &n);
-                x1 = bcf_gt_allele(gts[na12878_index[0]*2]);
-                x2 = bcf_gt_allele(gts[na12878_index[0]*2+1]);
-
-                if (x1>=0 && x2>=0)
+                if (!ignore_genotypes)
                 {
-                    x = x1+x2;
+                    bcf_unpack(v, BCF_UN_STR);
+                    
+                    
+                    if (bcf_get_genotypes(presence_bcfptr[0]->h, presence_bcfptr[0]->v, &gts, &n))
+                    {    
+                        x1 = bcf_gt_allele(gts[na12878_index[0]*2]);
+                        x2 = bcf_gt_allele(gts[na12878_index[0]*2+1]);
+        
+                        if (x1>=0 && x2>=0)
+                        {
+                            x = x1+x2;
+                        }
+                        else
+                        {
+                            x = -1;
+                        }
+                    }
+                    else
+                    {
+                        x1 = x2 = -1;
+                        x = 3;
+                    }
                 }
                 else
                 {
-                    x = -1;
+                    x1 = 0;
+                    x2 = 1;
+                    x = 1;
                 }
             }
 
@@ -514,6 +540,20 @@ class Igor : Program
                         int32_t yt = y<0 ? 3 : y;
                         int32_t xt = x<0 ? 3 : x;
                         ++concordance[i].geno[xt][yt];
+                        
+                        if (xt!=yt && xt!=3 && yt!=3)
+                        {
+                            bcf_print_lite(sr->hdrs[0], presence_bcfptr[0]->v);
+                            std::cerr << " " << x << " " << y << " ";
+                                
+                            int32_t* ad = NULL;
+                            int32_t n_ad = 0;
+                            if (bcf_get_format_int32(sr->hdrs[0], presence_bcfptr[0]->v, "AD", &ad, &n_ad)>0)    
+                            {
+                                std::cerr << ad[0] << " " << ad[1] << "\n";
+                                free(ad);    
+                            }
+                        }
                     }
                     else if (presence[0] && !presence[i])
                     {

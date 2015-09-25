@@ -413,6 +413,7 @@ uint32_t Pileup::inc(uint32_t i, uint32_t j)
 {
     return (i+j) & buffer_size_mask;
 };
+
 /**
  * Updates the last aligned base in a read.
  *
@@ -459,7 +460,7 @@ void Pileup::add_M(uint32_t mgpos1, uint32_t spos0, uint32_t len, uint8_t* seq, 
         ++P[i].N;
 
         uint8_t q = qual[spos0+j];
-        if (q>snp_baseq_cutoff)
+        if (q>=snp_baseq_cutoff)
         {
             char alt = (bam_base2char(bam_seqi(seq, spos0+j)));
 
@@ -495,7 +496,7 @@ void Pileup::add_M(uint32_t mgpos1, uint32_t spos0, uint32_t len, uint8_t* seq, 
             ++P[i].N;
 
             uint8_t q = qual[spos0+j];
-            if (q>snp_baseq_cutoff)
+            if (q>=snp_baseq_cutoff)
             {
                 char alt = (bam_base2char(bam_seqi(seq, spos0+j)));
 
@@ -749,7 +750,7 @@ void Pileup::add_snp(uint32_t gpos1, char ref, char alt, uint8_t qual, uint32_t 
 
     ++P[i].N;
 
-    if (qual>baseq_cutoff)
+    if (qual>=baseq_cutoff)
     {
         if (alt!=P[i].R)
         {

@@ -507,10 +507,10 @@ void RFHMM::proc_comp(int32_t A, int32_t B, int32_t index1, int32_t j, int32_t m
         max_track = t;
     }
 
-    if (debug)
-    {
+    if (debug) 
+    { 
         std::cerr << "\t" << state2string(A) << "=>" << state2string(B);
-        std::cerr << " (" << ((index1-j)>>MAXLEN_NBITS) << "," << j << ") ";
+        std::cerr << " (" << ((index1-j)>>MAXLEN_NBITS) << "," << j << ") "; 
         std::cerr << track2string(U[A][index1]) << "=>";
         std::cerr << track2string(t) << " ";
         std::cerr << emission << " (e: " << (track_get_d(t)<=RFLANK?track_get_base(t):'N') << " vs " << (j!=rlen?read[j]:'N')  << ") + ";
@@ -524,7 +524,7 @@ void RFHMM::proc_comp(int32_t A, int32_t B, int32_t index1, int32_t j, int32_t m
 /**
  * Align read against model.
  */
-void RFHMM::align(const char* read, const char* qual)
+void RFHMM::align(const char* read, const char* qual) 
 {
     clear_statistics();
     optimal_path_traced = false;

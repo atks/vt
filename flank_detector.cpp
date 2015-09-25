@@ -66,7 +66,7 @@ FlankDetector::FlankDetector(std::string& ref_fasta_file, bool debug)
     rfhmm->set_mismatch_penalty(mismatch_penalty);
     rfhmm->initialize_T();
 
-    qual.assign(256, 'K');
+    qual.assign(1000, 'K');
 
     //////////////////
     //initialize tools
@@ -251,13 +251,7 @@ void FlankDetector::detect_flanks(bcf_hdr_t* h, bcf1_t *v, Variant& variant, uin
             //pick 105 bases for aligning
 
             seq = faidx_fetch_seq(fai, variant.chrom.c_str(), vntr.rend1-slen-1, vntr.rend1+5-1, &seq_len);
-//            char* nptr = NULL;
-//            if ((nptr=strchr(seq, 'N')))
-//            {
-//                encountered_N = true;
-//                *nptr = NULL;
-//                
-//            }    
+ 
             
             rfhmm->set_model(vntr.ru.c_str(), rflank);
             rfhmm->align(seq, qual.c_str());
@@ -276,7 +270,9 @@ void FlankDetector::detect_flanks(bcf_hdr_t* h, bcf1_t *v, Variant& variant, uin
                 std::cerr << "4b. Fuzzy left alignment\n";
             }
 
-            if (rfhmm->get_lflank_read_epos1()!=0)
+            //this is a hack around rfhmm rigidity in modeling the RUs
+            //todo: we should change this to a reverse version of LFHMM!!!!
+            if (rfhmm->get_lflank_read_epos1()>2*vntr.ru.size())
             {
                 lflank_end1 = vntr.rend1-slen-1+1 + rfhmm->get_lflank_read_epos1() - 1;
                 break;
@@ -290,8 +286,8 @@ void FlankDetector::detect_flanks(bcf_hdr_t* h, bcf1_t *v, Variant& variant, uin
             else
             {
                 slen +=100;
+                std::cerr << "extending the reference sequence for RFHMM : " << slen << "\n";
             }
-
         }
 
         slen = 100;
@@ -324,6 +320,7 @@ void FlankDetector::detect_flanks(bcf_hdr_t* h, bcf1_t *v, Variant& variant, uin
             else
             {
                 slen +=100;
+                std::cerr << "extending the reference sequence for LFHMM : " << slen << "\n";
             }
         }
 

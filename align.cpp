@@ -93,8 +93,8 @@ class Igor : Program
             TCLAP::ValueArg<std::string> arg_lflank("l", "l", "left flanks", false, "", "string");
             TCLAP::ValueArg<std::string> arg_ru("u", "u", "repeat unit", false, "", "string");
             TCLAP::ValueArg<std::string> arg_rflank("r", "r", "right flanks", false, "", "string");
-            TCLAP::ValueArg<float> arg_delta("d", "d", "delta", false, 0.01, "float");
-            TCLAP::ValueArg<float> arg_epsilon("e", "e", "epsilon", false, 0.05, "float");
+            TCLAP::ValueArg<float> arg_delta("d", "d", "delta", false, 0.0001, "float");
+            TCLAP::ValueArg<float> arg_epsilon("e", "e", "epsilon", false, 0.0005, "float");
             TCLAP::ValueArg<float> arg_tau("t", "t", "tau", false, 0.01, "float");
             TCLAP::ValueArg<float> arg_eta("n", "n", "eta", false, 0.01, "float");
             TCLAP::ValueArg<float> arg_mismatch_penalty("p", "p", "mismatch penalty", false, 1, "float");
@@ -198,6 +198,11 @@ class Igor : Program
         }
         else if (method=="rfhmm")
         {
+            float delta = 0.0001;
+            float epsilon = 0.0005;
+            float tau = 0.01;
+            float eta = 0.01;
+            
             RFHMM hmm(debug);
             std::string qual;
             for (int32_t i=0; i<y.size(); ++i)
