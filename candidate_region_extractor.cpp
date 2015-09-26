@@ -197,8 +197,9 @@ bool CandidateRegionExtractor::is_homopolymer(bcf_hdr_t* h, bcf1_t* v)
  * If the the indel has multiple alleles, it will examine all
  * alleles.
  *
- *
- *  
+ * todo: is might be a good idea to combine this step with motif detection
+ *       since there seems to be a need to have an iterative process here
+ *       to ensure a good candidate motif is chosen. *  
  */
 void CandidateRegionExtractor::extract_regions_by_exact_alignment(bcf_hdr_t* h, bcf1_t* v, VNTR& vntr)
 {

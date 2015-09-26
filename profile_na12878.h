@@ -30,6 +30,7 @@
 #include "htslib/kseq.h"
 #include "htslib/hts.h"
 #include "bcf_synced_reader.h"
+#include "bcf_ordered_writer.h"
 #include "interval_tree.h"
 #include "hts_utils.h"
 #include "filter.h"

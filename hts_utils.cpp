@@ -818,6 +818,25 @@ bool bcf_is_in_order(bcf1_t *a, bcf1_t *b)
 }
 
 /**
+ * Returns a copy v that only has the chr:pos1:ref:alt information.
+ */
+bcf1_t* bcf_copy_variant(bcf_hdr_t *h, bcf1_t *v)
+{
+    bcf1_t* nv = bcf_init1();
+    bcf_clear(nv);
+    bcf_set_n_sample(nv, bcf_get_n_sample(v));
+    
+    bcf_set_rid(nv, bcf_get_rid(v));
+    bcf_set_pos1(nv, bcf_get_pos1(v));
+    kstring_t s = {0,0,0};
+    bcf_alleles2string(h, v, &s);
+    bcf_update_alleles_str(h, nv, s.s);  
+    if (s.m) free(s.s); 
+        
+    return nv;    
+}
+
+/**
  * Gets a sorted string representation of a variant.
  */
 void bcf_variant2string_sorted(bcf_hdr_t *h, bcf1_t *v, kstring_t *var)

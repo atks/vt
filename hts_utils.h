@@ -316,6 +316,11 @@ uint32_t bcf_g2i(std::string genotype);
 bool bcf_is_in_order(bcf1_t *a, bcf1_t *b);
 
 /**
+ * Returns a copy v that only has the chr:pos1:ref:alt information.
+ */
+bcf1_t* bcf_copy_variant(bcf_hdr_t *h, bcf1_t *v);
+
+/**
  * Gets a string representation of a variant.
  */
 void bcf_variant2string(bcf_hdr_t *h, bcf1_t *v, kstring_t *var);
