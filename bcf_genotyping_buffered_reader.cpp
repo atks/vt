@@ -124,7 +124,7 @@ void BCFGenotypingBufferedReader::process_read(bam_hdr_t *h, bam1_t *s)
         if (tid==g->rid)
         {
             //if (end1>=g->beg1 && pos1<=g->end1)
-            if (beg1 <= g->beg1 && g->end1 <= end1)
+            if (beg1 <= g->pos1 && g->pos1 <= end1)
             {
                 collect_sufficient_statistics(g, as);
             }
@@ -770,9 +770,27 @@ void BCFGenotypingBufferedReader::collect_sufficient_statistics(GenotypingRecord
     
                 int32_t vpos1 = g->pos1;
     
+                char lflank_state[3] = {'N', 'N', 'N'};
+                char rflank_state[3] = {'N', 'N', 'N'};
+                uint32_t lflank_qual[3] = {0, 0, 0};
+                uint32_t rflank_qual[3] = {0, 0, 0};
+            
+                char fuzzy_lflank_state[3] = {'N', 'N', 'N'};
+                char fuzzy_rflank_state[3] = {'N', 'N', 'N'};
+                uint32_t fuzzy_lflank_qual[3] = {0, 0, 0};
+                uint32_t fuzzy_rflank_qual[3] = {0, 0, 0};
+                
                 int32_t cpos1 = bam_get_pos1(s);
+                int32_t cend1 = 0;
                 int32_t rpos0 = 0;
     
+                int32_t lend1 = g->lend1;
+                int32_t lmid1 = g->lend1 - 1;
+                int32_t lbeg1 = g->lend1 - 2;
+                int32_t rbeg1 = g->rbeg1;
+                int32_t rmid1 = g->rbeg1 + 1;
+                int32_t rend1 = g->rbeg1 + 2;
+                
                 for (uint32_t i=0; i<aug_cigar.size(); ++i)
                 {
                     uint32_t oplen = bam_cigar_oplen(aug_cigar[i]);
@@ -784,7 +802,49 @@ void BCFGenotypingBufferedReader::collect_sufficient_statistics(GenotypingRecord
                     }
                     else if (opchr=='=')
                     {
-                        if (vpos1>=cpos1 && vpos1<=(cpos1+oplen-1))
+                        cend1 = cpos1+oplen-1;
+                        
+                        //collect lflank information
+                        if (cpos1<=lend1 && lbeg1<=cend1)
+                        {
+                            if (cpos1<=lbeg1) 
+                            {
+                                lflank_state[0] = '=';
+                                lflank_qual[0] = qual[rpos0+lbeg1-cpos1];
+                            }
+                            if (cpos1<=lmid1 && lmid1<=cend1)
+                            {
+                                lflank_state[1] = '=';
+                                lflank_qual[1] = qual[rpos0+lmid1-cpos1];
+                            }
+                            if (lend1<=cend1) 
+                            {
+                                lflank_state[2] = '=';
+                                lflank_qual[2] = qual[rpos0+lend1-cpos1];
+                            }
+                        }
+                        
+                        //collect rflank information
+                        if (cpos1<=rend1 && rbeg1<=cend1)
+                        {
+                            if (cpos1<=rbeg1) 
+                            {
+                                rflank_state[0] = '=';
+                                rflank_qual[0] = qual[rpos0+rbeg1-cpos1];
+                            }
+                            if (cpos1<=rmid1 && rmid1<=cend1)
+                            {
+                                rflank_state[1] = '=';
+                                rflank_qual[1] = qual[rpos0+rmid1-cpos1];
+                            }
+                            if (rend1<=cend1) 
+                            {
+                                rflank_state[2] = '=';
+                                rflank_qual[2] = qual[rpos0+rend1-cpos1];
+                            }
+                        }
+                        
+                        if (vpos1>=cpos1 && vpos1<=cend1)
                         {
                             cycle = strand == 'F' ? (rpos0+1) : (rlen - rpos0);
                         }
@@ -794,6 +854,40 @@ void BCFGenotypingBufferedReader::collect_sufficient_statistics(GenotypingRecord
                     }
                     else if (opchr=='X')
                     {
+                        cend1 = cpos1+oplen-1;
+                        
+                        //collect lleft and right flank information
+                        if (cpos1==lbeg1) 
+                        {
+                            lflank_state[0] = '=';
+                            lflank_qual[0] = qual[rpos0];
+                        }
+                        else if (cpos1==lmid1)
+                        {
+                            lflank_state[1] = '=';
+                            lflank_qual[1] = qual[rpos0];
+                        }
+                        else if (cpos1==lend1) 
+                        {
+                            lflank_state[2] = '=';
+                            lflank_qual[2] = qual[rpos0];
+                        }
+                        else if (cpos1==rbeg1) 
+                        {
+                            rflank_state[0] = '=';
+                            rflank_qual[0] = qual[rpos0];
+                        }
+                        else if (cpos1==rmid1)
+                        {
+                            rflank_state[1] = '=';
+                            rflank_qual[1] = qual[rpos0];
+                        }
+                        else if (cpos1==rend1) 
+                        {
+                            rflank_state[2] = '=';
+                            rflank_qual[2] = qual[rpos0];
+                        }
+                                                
                         if (cpos1-1==vpos1)
                         {
                             cycle = strand == 'F' ? (rpos0+1) : (rlen - rpos0);
@@ -1104,13 +1198,12 @@ void BCFGenotypingBufferedReader::flush(BCFOrderedWriter* odw, bam_hdr_t *h, bam
     }
 }
 
-
 /**
  * Compute SNP genotype likelihoods in PHRED scale.
  */
-void BCFGenotypingBufferedReader::compute_snp_pl(std::vector<int32_t>& alleles, std::vector<uint32_t>& quals, uint32_t ploidy,  std::vector<uint32_t>& pls)
+void BCFGenotypingBufferedReader::compute_snp_pl(std::vector<int32_t>& alleles, std::vector<uint32_t>& quals, uint32_t ploidy, uint32_t no_alleles, std::vector<uint32_t>& pls)
 {
-    if (ploidy==2)
+    if (ploidy==2 && no_alleles==2)
     {
         double pRR = 1;
         double pRA = 1;
@@ -1126,12 +1219,23 @@ void BCFGenotypingBufferedReader::compute_snp_pl(std::vector<int32_t>& alleles, 
                 pRA *= 0.5*(1-p+p/3);
                 pAA *= p;
             }
-            else
+            else if (alleles[i]==1)
             {
                 p = lt.pl2prob(quals[i])/3;
                 pRR *= p;
                 pRA *= 0.5*(1-p+p/3);
                 pAA *= 1-p;
+            }
+            else if (alleles[i]==-101)
+            {
+                p = lt.pl2prob(quals[i])/3;
+                pRR *= p;
+                pRA *= 0.5*(1-p+p/3);
+                pAA *= 1-p;
+            }
+            else //deletion
+            {
+                //can't do anything
             }
         }
 
@@ -1139,12 +1243,21 @@ void BCFGenotypingBufferedReader::compute_snp_pl(std::vector<int32_t>& alleles, 
         pls[1] = -10*log10(pRA);
         pls[2] = -10*log10(pAA);
     }
+    else if (ploidy==2 && no_alleles>2)
+    {
+        //handle multiallelics
+        
+    }
+    else
+    {
+        //!!!!!!
+    }
 }
 
 /**
  * Compute Indel genotype likelihoods in PHRED scale.
  */
-void BCFGenotypingBufferedReader::compute_indel_pl(std::vector<int32_t>& alleles, std::vector<uint32_t>& quals, uint32_t ploidy,  std::vector<uint32_t>& pls)
+void BCFGenotypingBufferedReader::compute_indel_pl(std::vector<int32_t>& alleles, std::vector<uint32_t>& quals, uint32_t ploidy, uint32_t no_alleles, std::vector<uint32_t>& pls)
 {
     if (ploidy==2)
     {
@@ -1178,6 +1291,157 @@ void BCFGenotypingBufferedReader::compute_indel_pl(std::vector<int32_t>& alleles
         pls[1] = -10*pRA;
         pls[2] = -10*pAA;
     }
+}
+
+//char strand = bam_is_rev(s) ? 'R' : 'F';
+//int32_t allele = 0;
+//uint32_t pos1 = bam_get_pos1(s);
+//uint8_t* seq = bam_get_seq(s);
+//uint8_t* qual = bam_get_qual(s);
+//uint32_t rlen = bam_get_l_qseq(s);
+//uint8_t mapq = bam_get_mapq(s);
+//
+//int32_t dlen = g->dlen;
+//uint32_t len = g->len;
+//std::string& indel = g->indel;
+//
+//uint32_t q = len*30;
+//uint32_t cycle = 10;
+//
+//std::vector<uint32_t>& aug_cigar = as.aug_cigar;
+//std::vector<std::string>& aug_ref = as.aug_ref;
+//std::vector<std::string>& aug_alt = as.aug_alt;
+//
+//int32_t vpos1 = g->pos1;
+//
+//char lflank_state[3] = {'N', 'N', 'N'};
+//char rflank_state[3] = {'N', 'N', 'N'};
+//uint32_t lflank_qual[3] = {0, 0, 0};
+//uint32_t rflank_qual[3] = {0, 0, 0};
+//
+//char fuzzy_lflank_state[3] = {'N', 'N', 'N'};
+//char fuzzy_rflank_state[3] = {'N', 'N', 'N'};
+//uint32_t fuzzy_lflank_qual[3] = {0, 0, 0};
+//uint32_t fuzzy_rflank_qual[3] = {0, 0, 0};
+//
+//int32_t cpos1 = bam_get_pos1(s);
+//int32_t cend1 = 0;
+//int32_t rpos0 = 0;
+//
+//int32_t lend1 = g->lend1;
+//int32_t lmid1 = g->lend1 - 1;
+//int32_t lbeg1 = g->lend1 - 2;
+//int32_t rbeg1 = g->rbeg1;
+//int32_t rmid1 = g->rbeg1 + 1;
+//int32_t rend1 = g->rbeg1 + 2;
+//BCFGenotypingBufferedReader::
+
+/**
+ * Compute Indel allele likelihoods in PHRED scale.
+ */
+void BCFGenotypingBufferedReader::compute_indel_al(char lflanks_state[], char lflanks_qual[], 
+                      char rflanks_state[], char rflanks_qual[],
+                      std::vector<std::string> alleles,
+                      std::vector<int32_t> alleles_len,
+                      std::string& obs_indel,
+                      std::vector<float>& AQs,
+                      std::vector<int32_t>& ALs,
+                      std::string& DLs)
+{
+    
+    double flank_p = 1;
+    bool unexpected_flanks = false;
+    
+    //compute probabilites from flanks
+    for (uint32_t i=0; i<3; ++i)
+    {
+        if (lflanks_state[i]=='=')
+        {
+            flank_p *= 1-lt.pl2prob(lflanks_qual[i]);      
+        }
+        else if (lflanks_state[i]=='X')
+        {
+            flank_p *= lt.pl2prob(lflanks_qual[i]);  
+            unexpected_flanks = true;
+        }    
+        
+        if (rflanks_state[i]=='=')
+        {
+            flank_p *= 1-lt.pl2prob(rflanks_qual[i]);       
+        }
+        else if (rflanks_state[i]=='X')
+        {
+            flank_p *= lt.pl2prob(rflanks_qual[i]); 
+            unexpected_flanks = true;  
+        }
+    }
+    
+    uint32_t no_alleles = alleles.size();
+    
+    float delta = 0.001;
+    float epsilon = 0.5;
+    float tau = 0.1;
+    
+    uint32_t obs_indel_len = obs_indel.size();
+        
+    std::vector<float> aqs(no_alleles, 0);
+    
+    bool unexpected_allele = true;
+    char dl = '?';
+    uint32_t len = 0;
+    float indel_probs = delta*(1-epsilon);
+    
+    
+    for (uint32_t i=0; i<no_alleles; ++i)
+    {
+        double al = flank_p;
+        int32_t len = obs_indel_len-alleles_len[i];
+        
+        if (len==0)
+        {
+            if (obs_indel==alleles[i])
+            {
+                dl = i + 65;
+                unexpected_allele = false;
+            }
+            else
+            {
+                //should we compute mismatch probabilities?
+            }       
+        } 
+        else
+        {
+            al *= indel_probs*epsilon*abs(len);
+        }    
+        
+        aqs[i] = al;
+        AQs.push_back(10*log10(al)); 
+    }
+    
+    if (unexpected_allele)
+    {
+        if (unexpected_flanks)
+        {
+            dl = '!';
+        }
+        else
+        {
+            dl = '?';
+        }
+    }
+    else 
+    {
+        if (unexpected_flanks)
+        {
+            dl = tolower(dl);
+        }
+        else
+        {
+            //perfect!
+        }
+    }
+    
+    DLs.append(1, dl);    
 }
 
 /**
@@ -1232,7 +1496,7 @@ void BCFGenotypingBufferedReader::genotype_and_print(BCFOrderedWriter* odw, Geno
         }
 
         std::vector<uint32_t> pls(3);
-        compute_snp_pl(g->alleles, g->quals, 2, pls);
+        compute_snp_pl(g->alleles, g->quals, 2, 2, pls);
 
         uint32_t min_pl = pls[0];
         uint32_t min_gt_index = 0;
@@ -1383,7 +1647,7 @@ void BCFGenotypingBufferedReader::genotype_and_print(BCFOrderedWriter* odw, Geno
         }
         
         std::vector<uint32_t> pls(3);
-        compute_indel_pl(g->alleles, g->quals, 2, pls);
+        compute_indel_pl(g->alleles, g->quals, 2, 2, pls);
 
         uint32_t min_pl = pls[0];
         uint32_t min_gt_index = 0;

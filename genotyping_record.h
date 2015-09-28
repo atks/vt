@@ -52,6 +52,24 @@ class GenotypingRecord
     int32_t beg1;
     int32_t end1;
     
+    //repeat tract length
+    int32_t lend1;
+    int32_t rbeg1;
+    
+    int32_t fuzzy_lend1;
+    int32_t fuzzy_rbeg1;
+    
+    char rflank[3];
+    char lflank[3];
+    char rflank_state[3];
+    char lflank_state[3];
+    
+    char fuzzy_rflank[3];
+    char fuzzy_lflank[3];
+    
+    char fuzzy_rflank_state[3];
+    char fuzzy_lflank_state[3];
+    
     int32_t vtype;
 
     //indel specific record
@@ -70,6 +88,7 @@ class GenotypingRecord
     std::vector<uint32_t> map_quals;
     std::string strands;
     std::vector<int32_t> alleles;
+    std::vector<char> dalleles;
     std::vector<uint32_t> cycles;
     std::vector<uint32_t> no_mismatches;
 
@@ -85,6 +104,11 @@ class GenotypingRecord
      * @v - VCF record.
      */
     GenotypingRecord(bcf_hdr_t*h, bcf1_t *v, int32_t vtype);
+
+    /**
+     * Translates from descriptive allele to integer encoding.
+     */
+    int32_t dallele2allele(char dallele);
 
     /**
      * Clears this record.

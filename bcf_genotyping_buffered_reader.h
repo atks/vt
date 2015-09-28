@@ -94,13 +94,31 @@ class BCFGenotypingBufferedReader
     /**
      * Compute SNP genotype likelihoods in PHRED scale.
      */
-    void compute_snp_pl(std::vector<int32_t>& alleles, std::vector<uint32_t>& quals, uint32_t ploidy,  std::vector<uint32_t>& pls);
+    void compute_snp_pl(std::vector<int32_t>& alleles, 
+                        std::vector<uint32_t>& quals, 
+                        uint32_t ploidy, uint32_t no_alleles, 
+                        std::vector<uint32_t>& pls);
 
     /**
      * Compute Indel genotype likelihoods in PHRED scale.
      */
-    void compute_indel_pl(std::vector<int32_t>& alleles, std::vector<uint32_t>& quals, uint32_t ploidy,  std::vector<uint32_t>& pls);
+    void compute_indel_pl(std::vector<int32_t>& alleles, 
+                          std::vector<uint32_t>& quals, 
+                          uint32_t ploidy, uint32_t no_alleles, 
+                          std::vector<uint32_t>& pls);
 
+    /**
+     * Compute Indel allele likelihoods in PHRED scale.
+     */
+    void compute_indel_al(char lflanks_state[], char lflanks_qual[], 
+                          char rflanks_state[], char rflanks_qual[],
+                          std::vector<std::string> alleles,
+                          std::vector<int32_t> alleles_len,
+                          std::string& obs_indel,
+                          std::vector<float>& AQs,
+                          std::vector<int32_t>& ALs,
+                          std::string& DLs);
+                        
     /**
      * Collects sufficient statistics from read for variants to be genotyped.
      */

@@ -45,21 +45,37 @@ GenotypingRecord::GenotypingRecord(bcf_hdr_t *h, bcf1_t *v, int32_t vtype)
         dlen = strlen(alleles[1])-strlen(alleles[0]);
         len = abs(dlen);
 
-        int32_t *flanks_pos1;
+        int32_t *flanks;
         int32_t n = 0;
-                
-        if (bcf_get_info_int32(h, v, "FLANKS", &flanks_pos1, &n)>0)
+        if (bcf_get_info_int32(h, v, "FLANKS", &flanks, &n)>0)
         {
-           this->beg1 = flanks_pos1[0];
-           this->end1 = flanks_pos1[1];
-           free(flanks_pos1);
+            lend1 = flanks[0];
+            rbeg1 = flanks[1];
+            free(flanks);
         }
         else
         {
-            this->beg1 = bcf_get_pos1(v) - 3;
-            this->end1 = bcf_get_end_pos1(v) + 3;
+            lend1 = bcf_get_pos1(v) - 1;
+            rbeg1 = bcf_get_end_pos1(v) + 1;
         }
 
+        int32_t *fuzzy_flanks;
+        n = 0;
+        if (bcf_get_info_int32(h, v, "FZ_FLANKS", &fuzzy_flanks, &n)>0)
+        {
+            fuzzy_lend1 = fuzzy_flanks[0];
+            fuzzy_rbeg1 = fuzzy_flanks[1];
+            free(fuzzy_flanks);
+        }
+        else
+        {
+            fuzzy_lend1 = bcf_get_pos1(v) - 1;
+            fuzzy_rbeg1 = bcf_get_end_pos1(v) + 1;
+        }
+
+        beg1 = std::min(lend1-2, fuzzy_lend1-2);
+        end1 = std::max(rbeg1+2, fuzzy_rbeg1+2);
+    
         if (dlen>0)
         {
             indel.append(&alleles[1][1]);
@@ -85,6 +101,56 @@ GenotypingRecord::GenotypingRecord(bcf_hdr_t *h, bcf1_t *v, int32_t vtype)
         }
     }
 }
+
+/**
+ * Translates from descriptive allele to integer encoding.
+ */
+int32_t GenotypingRecord::dallele2allele(char dallele)
+{
+    if (dallele=='0')
+    {
+        return 0;
+    }
+    else if (dallele=='~')
+    {
+        return -1;
+    }    
+    else if ('A'<=dallele && dallele<='Z')
+    {
+        return dallele - 64;
+    }
+    else if ('a'<=dallele && dallele<='z')
+    {
+        return ((int32_t)dallele) - 99;
+    }
+    else if (dallele=='*')
+    {
+        return -101;
+    }
+    else if (dallele=='-')
+    {
+        return -102;
+    }
+    else if (dallele=='+')
+    {
+        return -103;
+    }
+    else if (dallele=='?')
+    {
+        return -104;
+    }
+    else if (dallele=='.')
+    {
+        return -105;
+    }
+    else if (dallele=='!')
+    {
+        return -127;
+    } 
+    
+    else return 128;  
+}
+
 
 /**
  * Clears this record.
