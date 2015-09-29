@@ -168,7 +168,7 @@ class Igor : Program
         odr = new BAMOrderedReader(input_sam_file, intervals);
 
         //input vcf
-        gbr = new BCFGenotypingBufferedReader(input_vcf_file, intervals);
+        gbr = new BCFGenotypingBufferedReader(input_vcf_file, intervals, ref_fasta_file);
 
         //output vcf
         odw = new BCFOrderedWriter(output_vcf_file);

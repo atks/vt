@@ -23,7 +23,7 @@
  * Constructor.
  * @v - VCF record.
  */
-GenotypingRecord::GenotypingRecord(bcf_hdr_t *h, bcf1_t *v, int32_t vtype)
+GenotypingRecord::GenotypingRecord(bcf_hdr_t *h, bcf1_t *v, int32_t vtype, faidx_t *fai)
 {
     clear();
     this->h = h;
@@ -31,8 +31,9 @@ GenotypingRecord::GenotypingRecord(bcf_hdr_t *h, bcf1_t *v, int32_t vtype)
     rid = bcf_get_rid(v);
     pos1 = bcf_get_pos1(v);
     this->vtype = vtype;
-
-    if (vtype==VT_SNP && bcf_get_n_allele(v)==2)
+    int32_t n_allele = bcf_get_n_allele(v);
+    
+    if (vtype==VT_SNP && n_allele==2)
     {
         rid = bcf_get_rid(v);
         beg1 = bcf_get_pos1(v);
@@ -76,6 +77,22 @@ GenotypingRecord::GenotypingRecord(bcf_hdr_t *h, bcf1_t *v, int32_t vtype)
         beg1 = std::min(lend1-2, fuzzy_lend1-2);
         end1 = std::max(rbeg1+2, fuzzy_rbeg1+2);
     
+        //construct alleles
+        
+        //get reference sequence
+        char* ref_seq = NULL;
+        int32_t ref_len = 0;
+        ref_seq = faidx_fetch_seq(fai, bcf_get_chrom(h,v), lend1+1-1, rbeg1-1-1, &ref_len);
+        
+        for (uint32_t i=0; i<n_allele; ++i)
+        {
+            
+        }
+        
+//        for ()
+//        {
+//        }
+//    
         if (dlen>0)
         {
             indel.append(&alleles[1][1]);
@@ -162,12 +179,14 @@ void GenotypingRecord::clear()
 
     no_nonref = 0;
 
-    quals.clear();
-    map_quals.clear();
-    strands.clear();
-    alleles.clear();
-    cycles.clear();
-    no_mismatches.clear();
+    bqs.clear();
+    aqs.clear();
+    mqs.clear();
+    sts.clear();
+    als.clear();
+    dls.clear();
+    cys.clear();
+    nms.clear();
 
     allele_depth_fwd.resize(2,0);
     allele_depth_rev.resize(2,0);

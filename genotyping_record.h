@@ -51,7 +51,18 @@ class GenotypingRecord
     //        if TG/G - beg1=pos1-1, end1=pos1+length(REF)-1
     int32_t beg1;
     int32_t end1;
+    int32_t vtype;
+
+    ///////////////////////
+    //indel specific record
+    ///////////////////////
     
+    std::vector<std::string> indel_alleles;
+    
+    int32_t dlen;
+    uint32_t len;
+    std::string indel;
+
     //repeat tract length
     int32_t lend1;
     int32_t rbeg1;
@@ -59,38 +70,26 @@ class GenotypingRecord
     int32_t fuzzy_lend1;
     int32_t fuzzy_rbeg1;
     
-    char rflank[3];
-    char lflank[3];
-    char rflank_state[3];
-    char lflank_state[3];
-    
-    char fuzzy_rflank[3];
-    char fuzzy_lflank[3];
-    
-    char fuzzy_rflank_state[3];
-    char fuzzy_lflank_state[3];
-    
-    int32_t vtype;
 
-    //indel specific record
-    int32_t dlen;
-    uint32_t len;
-    std::string indel;
-
+    //////////////////////
     //vntr specific record
+    //////////////////////
     std::string motif;
 
     //vntr specific record
     std::vector<float> counts;
 
     //for records that observe at least one alternate observation
-    std::vector<uint32_t> quals;  //for SNPs, store BQ, for Indels, store AQ
-    std::vector<uint32_t> map_quals;
-    std::string strands;
-    std::vector<int32_t> alleles;
-    std::vector<char> dalleles;
-    std::vector<uint32_t> cycles;
-    std::vector<uint32_t> no_mismatches;
+    std::vector<uint32_t> bqs;  //for SNPs, store BQ, for Indels, store AQ
+    
+    std::vector<uint32_t> aqs;  // store AQ
+    
+    std::vector<uint32_t> mqs;   //map qualities
+    std::string sts;      //strands
+    std::vector<int32_t> als; //alleles
+    std::string dls;  //descriptive alleles
+    std::vector<uint32_t> cys; //cycles
+    std::vector<uint32_t> nms;  //number of mismatches
 
     //for records that only have reference observation
     uint32_t no_nonref;
@@ -99,11 +98,16 @@ class GenotypingRecord
     uint32_t depth, depth_fwd, depth_rev;
     uint32_t base_qualities_sum;
 
+    //////////////////////
+    //tools
+    //////////////////////
+    faidx_t *fai;
+    
     /**
      * Constructor.
      * @v - VCF record.
      */
-    GenotypingRecord(bcf_hdr_t*h, bcf1_t *v, int32_t vtype);
+    GenotypingRecord(bcf_hdr_t*h, bcf1_t *v, int32_t vtype, faidx_t *fai);
 
     /**
      * Translates from descriptive allele to integer encoding.

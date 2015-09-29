@@ -66,7 +66,6 @@ class BCFGenotypingBufferedReader
     //options//
     ///////////
     bool output_annotations;
-    
 
     /////////
     //stats//
@@ -80,11 +79,12 @@ class BCFGenotypingBufferedReader
     /////////
     VariantManip *vm;
     LogTool lt;
+    faidx_t *fai;
 
     /**
      * Constructor.
      */
-    BCFGenotypingBufferedReader(std::string filename, std::vector<GenomeInterval>& intervals);
+    BCFGenotypingBufferedReader(std::string filename, std::vector<GenomeInterval>& intervals, std::string ref_fasta_file);
 
     /**
      * Collects sufficient statistics from read for variants to be genotyped.
@@ -110,14 +110,13 @@ class BCFGenotypingBufferedReader
     /**
      * Compute Indel allele likelihoods in PHRED scale.
      */
-    void compute_indel_al(char lflanks_state[], char lflanks_qual[], 
-                          char rflanks_state[], char rflanks_qual[],
-                          std::vector<std::string> alleles,
-                          std::vector<int32_t> alleles_len,
+    void compute_indel_al(char lflank_state[], uint32_t lflank_qual[], 
+                          char rflank_state[], uint32_t rflank_qual[],
+                          std::vector<std::string>& alleles,
                           std::string& obs_indel,
-                          std::vector<float>& AQs,
-                          std::vector<int32_t>& ALs,
-                          std::string& DLs);
+                          std::vector<uint32_t>& aqs,
+                          std::vector<int32_t>& als,
+                          std::string& dls);
                         
     /**
      * Collects sufficient statistics from read for variants to be genotyped.
