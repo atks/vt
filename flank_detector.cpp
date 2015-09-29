@@ -286,7 +286,9 @@ void FlankDetector::detect_flanks(bcf_hdr_t* h, bcf1_t *v, Variant& variant, uin
             else
             {
                 slen +=100;
-                std::cerr << "extending the reference sequence for RFHMM : " << slen << "\n";
+                
+                if (debug)
+                    std::cerr << "extending the reference sequence for RFHMM : " << slen << "\n";
             }
         }
 
@@ -320,7 +322,8 @@ void FlankDetector::detect_flanks(bcf_hdr_t* h, bcf1_t *v, Variant& variant, uin
             else
             {
                 slen +=100;
-                std::cerr << "extending the reference sequence for LFHMM : " << slen << "\n";
+                if (debug)
+                    std::cerr << "extending the reference sequence for LFHMM : " << slen << "\n";
             }
         }
 

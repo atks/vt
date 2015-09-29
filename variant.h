@@ -50,9 +50,13 @@ class Variant
     uint32_t pos1;
     uint32_t end1;
 
-    //linked VCF file
+    //linked VCF record
     bcf1_t* v;
-
+    
+    //associated VCF records
+    //for merging into a multiallelic
+    std::vector<bcf1_t*> vs;
+        
     //contains alleles
     std::vector<Allele> alleles;
 

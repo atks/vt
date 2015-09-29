@@ -52,8 +52,12 @@ class Igor : Program
     ////////////
     //filter ids
     ////////////
-    int32_t overlap_indel;
-    int32_t overlap_vntr;
+    char* overlap_snp;
+    char* overlap_indel;
+    char* overlap_vntr;
+    int32_t overlap_snp_id;
+    int32_t overlap_indel_id;
+    int32_t overlap_vntr_id;
     
     /////////
     //stats//
@@ -61,7 +65,9 @@ class Igor : Program
     int32_t no_total_variants;
     int32_t no_nonoverlap_variants;
     int32_t no_overlap_variants;
-
+    int32_t no_new_multiallelic_snps;
+    int32_t no_new_multiallelic_indels;
+    
     /////////
     //tools//
     /////////
@@ -108,12 +114,18 @@ class Igor : Program
         odr = new BCFOrderedReader(input_vcf_file, intervals);
         odw = new BCFOrderedWriter(output_vcf_file, 0);
         odw->link_hdr(odr->hdr);
+        bcf_hdr_append(odw->hdr, "##FILTER=<ID=overlap_snp,Description=\"Overlaps with snp\">");
         bcf_hdr_append(odw->hdr, "##FILTER=<ID=overlap_vntr,Description=\"Overlaps with VNTR\">");
         bcf_hdr_append(odw->hdr, "##FILTER=<ID=overlap_indel,Description=\"Overlaps with indel\">");
         odw->write_hdr();
 
-        overlap_indel = bcf_hdr_id2int(odw->hdr, BCF_DT_ID, "overlap_indel");
-        overlap_vntr = bcf_hdr_id2int(odw->hdr, BCF_DT_ID, "overlap_vntr");
+        char* overlap_snp = const_cast<char*>("overlap_snp");
+        char* overlap_indel = const_cast<char*>("overlap_indel");
+        char* overlap_vntr = const_cast<char*>("overlap_vntr");
+
+        overlap_snp_id = bcf_hdr_id2int(odw->hdr, BCF_DT_ID, "overlap_snp");
+        overlap_indel_id = bcf_hdr_id2int(odw->hdr, BCF_DT_ID, "overlap_indel");
+        overlap_vntr_id = bcf_hdr_id2int(odw->hdr, BCF_DT_ID, "overlap_vntr");
 
         ////////////////////////
         //stats initialization//
@@ -121,7 +133,9 @@ class Igor : Program
         no_total_variants = 0;
         no_nonoverlap_variants = 0;
         no_overlap_variants = 0;
-
+        no_new_multiallelic_snps = 0;
+        no_new_multiallelic_indels = 0;
+    
         ////////////////////////
         //tools initialization//
         ////////////////////////
@@ -137,7 +151,7 @@ class Igor : Program
         int32_t n = 0;
         if (bcf_get_info_string(odw->hdr, variant->v, "TR", &tr, &n)>0)
         {
-            bcf_add_filter(odw->hdr, variant->v, overlap_vntr);
+            bcf_add_filter(odw->hdr, variant->v, overlap_vntr_id);
             free(tr);
         }
         
@@ -168,23 +182,46 @@ class Igor : Program
                     {
                         if (cvariant->type==VT_INDEL)
                         {    
-                            bcf_add_filter(odw->hdr, variant->v, overlap_indel);
+                            bcf_add_filter(odw->hdr, variant->v, overlap_indel_id);
                         }
                         else if (cvariant->type==VT_VNTR)
                         {    
-                            bcf_add_filter(odw->hdr, variant->v, overlap_vntr);
+                            bcf_add_filter(odw->hdr, variant->v, overlap_vntr_id);
                         }
+                        else if (cvariant->type==VT_SNP)
+                        {    
+                            bcf_add_filter(odw->hdr, variant->v, overlap_snp_id);
+                            
+                            //compile into multiallelic
+                            if (bcf_has_filter(odw->hdr, cvariant->v, overlap_snp))
+                            {
+                                //already exists a multiallelic
+                            }
+                            else
+                            {
+                                //make a new multiallelic
+                            }
+                            
+                            
+                            
+                            
+                            
+                        }
+                        
                     }
                     else if (variant->type==VT_INDEL)
                     {
-                        bcf_add_filter(odw->hdr, cvariant->v, overlap_indel);
+                        bcf_add_filter(odw->hdr, cvariant->v, overlap_indel_id);
+                        
+                        
+                        
+                        
                     }
                     else if (variant->type==VT_VNTR)
                     {
-                        bcf_add_filter(odw->hdr, cvariant->v, overlap_vntr);
+                        bcf_add_filter(odw->hdr, cvariant->v, overlap_vntr_id);
                     }
-                    
-                    
+                                        
                     ++i;
                 }
             }
@@ -218,9 +255,21 @@ class Igor : Program
             
             if (variant->rid < rid) 
             {
-                odw->write(variant->v);
-                delete variant;
-                variant_buffer.pop_back();
+                if (is_potentially_multiallelic(variant))
+                {
+                    if (consolidate_multiallelic(variant))
+                    {
+                        odw->write(variant->v);
+                        delete variant;
+                        variant_buffer.pop_back();
+                    }
+                }    
+                else
+                {    
+                    odw->write(variant->v);
+                    delete variant;
+                    variant_buffer.pop_back();
+                }
             }
             else if (variant->rid == rid) 
             {
@@ -236,6 +285,51 @@ class Igor : Program
                 }
             }
         }
+    }
+
+    /**
+     * Consolidate multiallelic variant based on associated biallelic records
+     * stored in vs.  Updates v which is to be the consolidated multiallelic
+     * variant.
+     *
+     * returns true if the multiallelic variant is good to go.
+     */
+    bool consolidate_multiallelic(Variant* variant)
+    {
+        if (variant->type==VT_SNP)
+        {
+            if (bcf_has_filter(odr->hdr, variant->v, overlap_snp) &&
+                !bcf_has_filter(odr->hdr, variant->v, overlap_indel) &&
+                !bcf_has_filter(odr->hdr, variant->v, overlap_vntr))
+            {
+                //make multiallelic
+                
+                ++no_new_multiallelic_snps;
+                return true;
+            }
+        }
+        else if (variant->type==VT_INDEL)
+        {
+            if (bcf_has_filter(odr->hdr, variant->v, overlap_indel) &&
+                !bcf_has_filter(odr->hdr, variant->v, overlap_snp) &&
+                !bcf_has_filter(odr->hdr, variant->v, overlap_vntr))
+            {
+                //make multiallelic
+                
+                ++no_new_multiallelic_indels;
+                return true;                
+            }
+        }    
+        
+        return false;
+    }
+
+    /**
+     * Returns true if the record has associated .
+     */
+    bool is_potentially_multiallelic(Variant* variant)
+    {
+        return variant->vs.size()!=0; 
     }
 
     /**
