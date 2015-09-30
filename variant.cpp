@@ -26,9 +26,42 @@
 /**
  * Constructor.
  */
-Variant::Variant(bcf1_t* v)
+Variant::Variant(bcf_hdr_t* h, bcf1_t* v)
 {
     this->v = v;
+
+    classify(h, v);
+
+    chrom = bcf_get_chrom(h, v);
+    rid = bcf_get_rid(v);
+
+    //attempts to update relevant information on variants
+    if (type==VT_SNP)
+    {
+        
+    }
+    else if (type==VT_INDEL)
+    {
+    }     
+    else if (type==VT_VNTR)
+    {
+    }    
+}
+
+/**
+ * Constructor for a variant object that is to be composed from several variants.
+ */
+Variant::Variant(Variant* v1, Variant* v2)
+{
+    type = VT_UNDEFINED;
+
+    chrom = v1->chrom;
+    rid = v1->rid;
+    pos1 = std::min(v1->pos1, v2->pos1);
+    end1 = std::max(v1->end1, v2->end1);
+
+    vs.push_back(v1->v);
+    vs.push_back(v2->v);
 }
 
 /**
@@ -37,16 +70,24 @@ Variant::Variant(bcf1_t* v)
 Variant::Variant()
 {
     type = VT_REF;
-    overlapping_snps = 0;
-    overlapping_indels = 0;
-    overlapping_vntrs = 0;
+    v = NULL;
+    no_overlapping_snps = 0;
+    no_overlapping_indels = 0;
+    no_overlapping_vntrs = 0;
     alleles.clear();
 }
 
 /**
  * Destructor.
  */
-Variant::~Variant() {};
+Variant::~Variant()
+{
+    if (v) bcf_destroy(v);
+    for (uint32_t i=0; i<vs.size(); ++i)
+    {
+        if (vs[i]) bcf_destroy(vs[i]);
+    }
+};
 
 /**
  * Clears variant information.
@@ -57,6 +98,275 @@ void Variant::clear()
     alleles.clear();
     vntr.clear();
 };
+
+/**
+ * Classifies variants.
+ */
+int32_t Variant::classify(bcf_hdr_t *h, bcf1_t *v)
+{
+    bcf_unpack(v, BCF_UN_STR);
+    chrom.assign(bcf_get_chrom(h, v));
+    rid = bcf_get_rid(v);
+    pos1 = bcf_get_pos1(v);
+    char** allele = bcf_get_allele(v);
+    end1 = pos1 + strlen(allele[0]) - 1;
+    int32_t n_allele = bcf_get_n_allele(v);
+
+    uint32_t pos1 = pos1;
+    int32_t pos0 = pos1-1;
+    ts = 0;
+    tv = 0;
+    ins = 0;
+    del = 0;
+
+    clear(); // this sets the type to VT_REF by default.
+
+    bool homogeneous_length = true;
+
+    char* ref = allele[0];
+    int32_t rlen = strlen(ref);
+
+    //if only ref allele, skip this entire for loop
+    for (size_t i=1; i<n_allele; ++i)
+    {
+        int32_t allele_type = VT_REF;
+
+        //check for symbolic alternative alleles
+        if (strchr(allele[i],'<'))
+        {
+            size_t len = strlen(allele[i]);
+            if (len>=5)
+            {
+                //VN/d+
+                if (allele[i][0]=='<' && allele[i][1]=='V' && allele[i][2]=='N' && allele[i][len-1]=='>' )
+                {
+                    for (size_t j=3; j<len-1; ++j)
+                    {
+                        if (allele[i][j]<'0' || allele[i][j]>'9')
+                        {
+                            allele_type = VT_VNTR;
+                        }
+                    }
+                }
+                //VNTR
+                else if (len==6 &&
+                         allele[i][0]=='<' &&
+                         allele[i][1]=='V' && allele[i][2]=='N' && allele[i][3]=='T' && allele[i][4]=='R' &&
+                         allele[i][5]=='>' )
+                {
+                     allele_type = VT_VNTR;
+                }
+                //ST/d+
+                else if (allele[i][0]=='<' && allele[i][1]=='S' && allele[i][2]=='T' && allele[i][len-1]=='>' )
+                {
+                    for (size_t j=3; j<len-1; ++j)
+                    {
+                        if (allele[i][j]<'0' || allele[i][j]>'9')
+                        {
+                            allele_type = VT_VNTR;
+                        }
+                    }
+                }
+                //STR
+                else if (len==5 &&
+                         allele[i][0]=='<' &&
+                         allele[i][1]=='S' && allele[i][2]=='T' && allele[i][3]=='R' &&
+                         allele[i][4]=='>' )
+                {
+                     allele_type = VT_VNTR;
+                }
+            }
+
+            if (allele_type==VT_VNTR)
+            {
+                allele_type = VT_VNTR;
+                type |= allele_type;
+                alleles.push_back(Allele(allele_type));
+            }
+            else
+            {
+                allele_type = VT_SV;
+                type |= allele_type;
+                std::string sv_type(allele[i]);
+                alleles.push_back(Allele(allele_type, sv_type));
+            }
+        }
+        else if (strchr(allele[i],'[')||strchr(allele[i],']'))
+        {
+            allele_type = VT_SV;
+            type |= allele_type;
+            std::string sv_type("<BND>");
+            alleles.push_back(Allele(allele_type, sv_type));
+        }
+        else if (allele[i][0]=='.' || strcmp(allele[i],allele[0])==0)
+        {
+            type = VT_REF;
+        }
+        else
+        {
+            kstring_t REF = {0,0,0};
+            kstring_t ALT = {0,0,0};
+
+            ref = allele[0];
+            char* alt = allele[i];
+            int32_t alen = strlen(alt);
+
+            if (rlen!=alen)
+            {
+                homogeneous_length = false;
+            }
+
+            //trimming
+            //this is required in particular for the
+            //characterization of multiallelics and
+            //in general, any unnormalized variant
+            int32_t rl = rlen;
+            int32_t al = alen;
+            //trim right
+            while (rl!=1 && al!=1)
+            {
+                if (ref[rl-1]==alt[al-1])
+                {
+                    --rl;
+                    --al;
+                }
+                else
+                {
+                    break;
+                }
+            }
+
+            //trim left
+            while (rl !=1 && al!=1)
+            {
+                if (ref[0]==alt[0])
+                {
+                    ++ref;
+                    ++alt;
+                    --rl;
+                    --al;
+                }
+                else
+                {
+                    break;
+                }
+            }
+
+            kputsn(ref, rl, &REF);
+            kputsn(alt, al, &ALT);
+
+            ref = REF.s;
+            alt = ALT.s;
+
+            int32_t mlen = std::min(rl, al);
+            int32_t dlen = al-rl;
+            int32_t diff = 0;
+            int32_t ts = 0;
+            int32_t tv = 0;
+
+            if (mlen==1 && dlen)
+            {
+                char ls, le, ss;
+
+                if (rl>al)
+                {
+                     ls = ref[0];
+                     le = ref[rl-1];
+                     ss = alt[0];
+                }
+                else
+                {
+                     ls = alt[0];
+                     le = alt[al-1];
+                     ss = ref[0];
+                }
+
+                if (ls!=ss && le!=ss)
+                {
+                    ++diff;
+
+                    if ((ls=='G' && ss=='A') ||
+                        (ls=='A' && ss=='G') ||
+                        (ls=='C' && ss=='T') ||
+                        (ls=='T' && ss=='C'))
+                    {
+                        ++ts;
+                    }
+                    else
+                    {
+                        ++tv;
+                    }
+                }
+            }
+            else
+            {
+                for (int32_t j=0; j<mlen; ++j)
+                {
+                    if (ref[j]!=alt[j])
+                    {
+                        ++diff;
+
+                        if ((ref[j]=='G' && alt[j]=='A') ||
+                            (ref[j]=='A' && alt[j]=='G') ||
+                            (ref[j]=='C' && alt[j]=='T') ||
+                            (ref[j]=='T' && alt[j]=='C'))
+                        {
+                            ++ts;
+                        }
+                        else
+                        {
+                            ++tv;
+                        }
+                    }
+                }
+            }
+
+            //substitution variants
+            if (mlen==diff)
+            {
+                allele_type |= mlen==1 ? VT_SNP : VT_MNP;
+            }
+
+            //indel variants
+            if (dlen)
+            {
+                allele_type |= VT_INDEL;
+            }
+
+            //clumped SNPs and MNPs
+            if (diff && diff < mlen) //internal gaps
+            {
+                allele_type |= VT_CLUMPED;
+            }
+
+            type |= allele_type;
+            alleles.push_back(Allele(type, diff, alen, dlen, mlen, ts, tv));
+            ts += ts;
+            tv += tv;
+            ins = dlen>0?1:0;
+            del = dlen<0?1:0;
+
+            if (REF.m) free(REF.s);
+            if (ALT.m) free(ALT.s);
+        }
+    }
+
+    if (type==VT_VNTR)
+    {
+        //do nothing
+    }
+
+    //additionally define MNPs by length of all alleles
+    if (!(type&(VT_VNTR|VT_SV)) && type!=VT_REF)
+    {
+        if (homogeneous_length && rlen>1 && n_allele>1)
+        {
+            type |= VT_MNP;
+        }
+    }
+
+    return type;
+}
 
 /**
  * Prints variant information.

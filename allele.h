@@ -29,13 +29,14 @@
 #ifndef ALLELE_H
 #define ALLELE_H
 
-#define VT_REF      0   //dlen==0 && diff==0
-#define VT_SNP      1   //min(rlen,alen)==1 && diff==1
-#define VT_MNP      2   //min(rlen,alen)==diff  || all allele lengths are the same and greater than 1.
-#define VT_INDEL    4   //diff!=0 && (rlen==1 || alen==1)
-#define VT_CLUMPED  8   //all others sequence explicit
-#define VT_VNTR     16  //variable number of tandem repeats
-#define VT_SV       32  //structural variant
+#define VT_REF        0   //dlen==0 && diff==0
+#define VT_SNP        1   //min(rlen,alen)==1 && diff==1
+#define VT_MNP        2   //min(rlen,alen)==diff  || all allele lengths are the same and greater than 1.
+#define VT_INDEL      4   //diff!=0 && (rlen==1 || alen==1)
+#define VT_CLUMPED    8   //all others sequence explicit
+#define VT_VNTR      16   //variable number of tandem repeats
+#define VT_SV        32   //structural variant
+#define VT_UNDEFINED 64   //undefined variant
 
 /**
  * Allele.

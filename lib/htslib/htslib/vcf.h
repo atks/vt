@@ -102,10 +102,11 @@ typedef struct {
     const bcf_idinfo_t *val;
 } bcf_idpair_t;
 
+// Note that bcf_hdr_t structs must always be created via bcf_hdr_init()
 typedef struct {
-    int32_t n[3];
+    int32_t n[3];           // n:the size of the dictionary block in use, (allocated size, m, is below to preserve ABI)
     bcf_idpair_t *id[3];
-    void *dict[3]; // ID dictionary, contig dict and sample dict
+    void *dict[3];          // ID dictionary, contig dict and sample dict
     char **samples;
     bcf_hrec_t **hrec;
     int nhrec, dirty;
@@ -113,6 +114,7 @@ typedef struct {
     int nsamples_ori;           // for bcf_hdr_set_samples()
     uint8_t *keep_samples;
     kstring_t mem;
+    int32_t m[3];          // m: allocated size of the dictionary block in use (see n above)
 } bcf_hdr_t;
 
 extern uint8_t bcf_type_shift[];
@@ -235,6 +237,7 @@ typedef struct {
     #define bcf_write1(fp,h,v)  bcf_write((fp),(h),(v))
     #define vcf_write1(fp,h,v)  vcf_write((fp),(h),(v))
     #define bcf_destroy1(v)     bcf_destroy(v)
+    #define bcf_empty1(v)       bcf_empty(v)
     #define vcf_parse1(s,h,v)   vcf_parse((s),(h),(v))
     #define bcf_clear1(v)       bcf_clear(v)
     #define vcf_format1(h,v,s)  vcf_format((h),(v),(s))
@@ -288,7 +291,7 @@ typedef struct {
      *              ^LIST|FILE  .. exclude samples from list/file
      *              -           .. include all samples
      *              NULL        .. exclude all samples
-     *  @is_file: @samples is a file (1) or a comma-separated list (1)
+     *  @is_file: @samples is a file (1) or a comma-separated list (0)
      *
      *  The bottleneck of VCF reading is parsing of genotype fields. If the
      *  reader knows in advance that only subset of samples is needed (possibly
@@ -528,11 +531,6 @@ typedef struct {
      *  @alleles:           Array of alleles
      *  @nals:              Number of alleles
      *  @alleles_string:    Comma-separated alleles, starting with the REF allele
-     *
-     *  Not that in order for indexing to work correctly in presence of INFO/END tag,
-     *  the length of reference allele (line->rlen) must be set explicitly by the caller,
-     *  or otherwise, if rlen is zero, strlen(line->d.allele[0]) is used to set the length
-     *  on bcf_write().
      */
     int bcf_update_alleles(const bcf_hdr_t *hdr, bcf1_t *line, const char **alleles, int nals);
     int bcf_update_alleles_str(const bcf_hdr_t *hdr, bcf1_t *line, const char *alleles_string);

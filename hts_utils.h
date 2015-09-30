@@ -466,7 +466,7 @@ void bcf_set_id(bcf1_t *v, char* id);
 #define bcf_get_qual(v) ((v)->qual)
 
 /**
- * Get n_filt of a bcf record
+ * Get n_flt of a bcf record
  */
 #define bcf_get_n_filter(v) ((v)->d.n_flt)
 

@@ -35,7 +35,7 @@
 #define VARIANT_H
 
 /**
- * Variant.
+ * This represents a Variant and is augmented on top of VCF's record to handle the notion of variants as defined by us.
  */
 class Variant
 {
@@ -47,8 +47,8 @@ class Variant
     //location information
     std::string chrom;
     uint32_t rid;
-    uint32_t pos1;
-    uint32_t end1;
+    uint32_t pos1; //for indels, this will reflect lend1-1
+    uint32_t end1; //for indels, this will reflect rbeg1-1 
 
     //linked VCF record
     bcf1_t* v;
@@ -67,9 +67,13 @@ class Variant
     int32_t del;        //no. of deletions
 
     //overlapping statistics
-    int32_t overlapping_snps;
-    int32_t overlapping_indels;
-    int32_t overlapping_vntrs;
+    //for normal variants
+    // - the number of other variants overlapping with this 
+    //for candidate multiallelic/complex variant
+    // - the number of variants considered for merging into a multiallelic/complex variant
+    int32_t no_overlapping_snps;
+    int32_t no_overlapping_indels;
+    int32_t no_overlapping_vntrs;
     
     //describes VNTR
     VNTR vntr;
@@ -77,7 +81,12 @@ class Variant
     /**
      * Constructor.
      */
-    Variant(bcf1_t* v);
+    Variant(bcf_hdr_t* h, bcf1_t* v);
+
+    /**
+     * Constructor.
+     */
+    Variant(Variant* v1, Variant* v2);
 
     /**
      * Constructor.
@@ -93,6 +102,11 @@ class Variant
      * Clears variant information.
      */
     void clear();
+
+    /**
+     * Classifies variants based on observed alleles in vcf record.
+     */
+    int32_t classify(bcf_hdr_t *h, bcf1_t *v);
 
     /**
      * Prints variant information.

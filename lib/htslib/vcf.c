@@ -56,8 +56,6 @@ static bcf_idinfo_t bcf_idinfo_def = { .info = { 15, 15, 15 }, .hrec = { NULL, N
  *** VCF header parser ***
  *************************/
 
-int bcf_hdr_sync(bcf_hdr_t *h);
-
 int bcf_hdr_add_sample(bcf_hdr_t *h, const char *s)
 {
     if ( !s ) return 0;
@@ -122,23 +120,11 @@ int bcf_hdr_sync(bcf_hdr_t *h)
     {
         vdict_t *d = (vdict_t*)h->dict[i];
         khint_t k;
-
-        // find out the largest id, there may be holes because of IDX
-        int max_id = -1;
-        for (k=kh_begin(d); k<kh_end(d); k++)
+        if ( h->n[i] < kh_size(d) )
         {
-            if (!kh_exist(d,k)) continue;
-            if ( max_id < kh_val(d,k).id ) max_id = kh_val(d,k).id;
-        }
-        if ( max_id >= h->n[i] )
-        {
-            h->id[i] = (bcf_idpair_t*)realloc(h->id[i], (max_id+1)*sizeof(bcf_idpair_t));
-            for (k=h->n[i]; k<=max_id; k++)
-            {
-                h->id[i][k].key = NULL;
-                h->id[i][k].val = NULL;
-            }
-            h->n[i] = max_id+1;
+            // this should be true only for i=2, BCF_DT_SAMPLE
+            h->n[i] = kh_size(d);
+            h->id[i] = (bcf_idpair_t*) realloc(h->id[i], kh_size(d)*sizeof(bcf_idpair_t));
         }
         for (k=kh_begin(d); k<kh_end(d); k++)
         {
@@ -355,6 +341,27 @@ bcf_hrec_t *bcf_hdr_parse_line(const bcf_hdr_t *h, const char *line, int *len)
     return hrec;
 }
 
+static int bcf_hdr_set_idx(bcf_hdr_t *hdr, int dict_type, const char *tag, bcf_idinfo_t *idinfo)
+{
+    // If available, preserve existing IDX
+    if ( idinfo->id==-1 )
+        idinfo->id = hdr->n[dict_type]++;
+    else if ( idinfo->id < hdr->n[dict_type] && hdr->id[dict_type][idinfo->id].key )
+    {
+        fprintf(stderr,"[%s:%d %s] Conflicting IDX=%d lines in the header dictionary, the new tag is %s\n", __FILE__,__LINE__,__FUNCTION__, idinfo->id, tag);
+        exit(1);
+    }
+
+    if ( idinfo->id >= hdr->n[dict_type] ) hdr->n[dict_type] = idinfo->id+1;
+    hts_expand0(bcf_idpair_t,hdr->n[dict_type],hdr->m[dict_type],hdr->id[dict_type]);
+
+    // NB: the next kh_put call can invalidate the idinfo pointer, therefore
+    // we leave it unassigned here. It myst be set explicitly in bcf_hdr_sync.
+    hdr->id[dict_type][idinfo->id].key = tag;
+
+    return 0;
+}
+
 // returns: 1 when hdr needs to be synced, 0 otherwise
 int bcf_hdr_register_hrec(bcf_hdr_t *hdr, bcf_hrec_t *hrec)
 {
@@ -392,16 +399,13 @@ int bcf_hdr_register_hrec(bcf_hdr_t *hdr, bcf_hrec_t *hrec)
                 return 0;
             }
         }
-        else
-        {
-            idx = kh_size(d) - 1;
-            hrec_add_idx(hrec, idx);
-        }
 
         kh_val(d, k) = bcf_idinfo_def;
         kh_val(d, k).id = idx;
         kh_val(d, k).info[0] = j;
         kh_val(d, k).hrec[0] = hrec;
+        bcf_hdr_set_idx(hdr, BCF_DT_CTG, kh_key(d,k), &kh_val(d,k));
+        if ( idx==-1 ) hrec_add_idx(hrec, kh_val(d,k).id);
 
         return 1;
     }
@@ -476,9 +480,9 @@ int bcf_hdr_register_hrec(bcf_hdr_t *hdr, bcf_hrec_t *hrec)
     kh_val(d, k) = bcf_idinfo_def;
     kh_val(d, k).info[info&0xf] = info;
     kh_val(d, k).hrec[info&0xf] = hrec;
-    kh_val(d, k).id = idx==-1 ? kh_size(d) - 1 : idx;
-
-    if ( idx==-1 ) hrec_add_idx(hrec, kh_val(d, k).id);
+    kh_val(d, k).id = idx;
+    bcf_hdr_set_idx(hdr, BCF_DT_ID, kh_key(d,k), &kh_val(d,k));
+    if ( idx==-1 ) hrec_add_idx(hrec, kh_val(d,k).id);
 
     return 1;
 }
@@ -837,7 +841,7 @@ int bcf_hdr_write(htsFile *hfp, bcf_hdr_t *h)
  *** BCF site I/O ***
  ********************/
 
-bcf1_t *bcf_init1()
+bcf1_t *bcf_init()
 {
     bcf1_t *v;
     v = (bcf1_t*)calloc(1, sizeof(bcf1_t));
@@ -876,7 +880,7 @@ void bcf_clear(bcf1_t *v)
     if (v->d.m_id) v->d.id[0] = 0;
 }
 
-void bcf_empty1(bcf1_t *v)
+void bcf_empty(bcf1_t *v)
 {
     bcf_clear1(v);
     free(v->d.id);
@@ -886,7 +890,7 @@ void bcf_empty1(bcf1_t *v)
     free(v->shared.s); free(v->indiv.s);
 }
 
-void bcf_destroy1(bcf1_t *v)
+void bcf_destroy(bcf1_t *v)
 {
     bcf_empty1(v);
     free(v);
@@ -908,7 +912,6 @@ static inline int bcf_read1_core(BGZF *fp, bcf1_t *v)
     v->n_allele = x[6]>>16; v->n_info = x[6]&0xffff;
     v->n_fmt = x[7]>>24; v->n_sample = x[7]&0xffffff;
     v->shared.l = x[0], v->indiv.l = x[1];
-
     // silent fix of broken BCFs produced by earlier versions of bcf_subset, prior to and including bd6ed8b4
     if ( (!v->indiv.l || !v->n_sample) && v->n_fmt ) v->n_fmt = 0;
 
@@ -1049,11 +1052,12 @@ static int bcf1_sync(bcf1_t *line)
     }
     else if ( line->d.shared_dirty )
     {
-        // The line was edited, update the BCF data block, ptr_ori points
-        // to the original unchanged BCF data.
+        // The line was edited, update the BCF data block.
+        
+        if ( !(line->unpacked & BCF_UN_STR) ) bcf_unpack(line,BCF_UN_STR);
+        
+        // ptr_ori points to the original unchanged BCF data.
         uint8_t *ptr_ori = (uint8_t *) line->shared.s;
-
-        assert( line->unpacked & BCF_UN_STR );
 
         // ID: single typed string
         if ( line->d.shared_dirty & BCF1_DIRTY_ID )
@@ -2424,15 +2428,13 @@ int bcf_translate(const bcf_hdr_t *dst_hdr, bcf_hdr_t *src_hdr, bcf1_t *line)
             src_hdr->transl[dict] = (int*) malloc(src_hdr->n[dict]*sizeof(int));
             for (i=0; i<src_hdr->n[dict]; i++)
             {
-                if ( !src_hdr->id[dict][i].key || !dst_hdr->id[dict][i].key )    // gap left after removed BCF header lines
-                    src_hdr->transl[dict][i] = -1;
-                else if ( i>=dst_hdr->n[dict] || strcmp(src_hdr->id[dict][i].key,dst_hdr->id[dict][i].key) )
+                if ( !src_hdr->id[dict][i].key ) // gap left after removed BCF header lines
                 {
-                    src_hdr->transl[dict][i] = bcf_hdr_id2int(dst_hdr,dict,src_hdr->id[dict][i].key);
-                    src_hdr->ntransl++;
-                }
-                else
                     src_hdr->transl[dict][i] = -1;
+                    continue;
+                }
+                src_hdr->transl[dict][i] = bcf_hdr_id2int(dst_hdr,dict,src_hdr->id[dict][i].key);
+                if ( src_hdr->transl[dict][i]!=-1 && i!=src_hdr->transl[dict][i] ) src_hdr->ntransl++;
             }
         }
         if ( !src_hdr->ntransl )
@@ -2686,6 +2688,7 @@ int bcf_is_snp(bcf1_t *v)
         // mpileup's <X> allele, see also below. This is not completely satisfactory,
         // a general library is here narrowly tailored to fit samtools.
         if ( v->d.allele[i][0]=='<' && v->d.allele[i][1]=='X' && v->d.allele[i][2]=='>' ) continue;
+        if ( v->d.allele[i][0]=='<' && v->d.allele[i][1]=='*' && v->d.allele[i][2]=='>' ) continue;
 
         break;
     }
@@ -2699,11 +2702,13 @@ static void bcf_set_variant_type(const char *ref, const char *alt, variant_t *va
     {
         if ( *alt == '.' || *ref==*alt ) { var->n = 0; var->type = VCF_REF; return; }
         if ( *alt == 'X' ) { var->n = 0; var->type = VCF_REF; return; }  // mpileup's X allele shouldn't be treated as variant
+        if ( *alt == '*' ) { var->n = 0; var->type = VCF_REF; return; } 
         var->n = 1; var->type = VCF_SNP; return;
     }
     if ( alt[0]=='<' )
     {
         if ( alt[1]=='X' && alt[2]=='>' ) { var->n = 0; var->type = VCF_REF; return; }  // mpileup's X allele shouldn't be treated as variant
+        if ( alt[1]=='*' && alt[2]=='>' ) { var->n = 0; var->type = VCF_REF; return; }
         var->type = VCF_OTHER;
         return;
     }
@@ -2793,6 +2798,8 @@ int bcf_update_info(const bcf_hdr_t *hdr, bcf1_t *line, const char *key, const v
 
     if ( !n || (type==BCF_HT_STR && !values) )
     {
+        if ( n==0 && !strcmp("END",key) )
+            line->rlen = line->n_allele ? strlen(line->d.allele[0]) : 0;
         if ( inf )
         {
             // Mark the tag for removal, free existing memory if necessary
@@ -2860,6 +2867,8 @@ int bcf_update_info(const bcf_hdr_t *hdr, bcf1_t *line, const char *key, const v
         line->d.shared_dirty |= BCF1_DIRTY_INF;
     }
     line->unpacked |= BCF_UN_INFO;
+
+    if ( n==1 && !strcmp("END",key) ) line->rlen = ((int32_t*)values)[0] - line->pos;
     return 0;
 }
 
@@ -3068,6 +3077,11 @@ static inline int _bcf1_sync_alleles(const bcf_hdr_t *hdr, bcf1_t *line, int nal
         als++;
         n++;
     }
+
+    // Update REF length
+    bcf_info_t *end_info = bcf_get_info(hdr,line,"END");
+    line->rlen = end_info ? end_info->v1.i : strlen(line->d.allele[0]);
+
     return 0;
 }
 int bcf_update_alleles(const bcf_hdr_t *hdr, bcf1_t *line, const char **alleles, int nals)
@@ -3206,6 +3220,7 @@ int bcf_get_info_values(const bcf_hdr_t *hdr, bcf1_t *line, const char *tag, voi
     if ( type==BCF_HT_FLAG ) return 1;
 
     bcf_info_t *info = &line->d.info[i];
+    if ( !info->vptr ) return -3;           // the tag was marked for removal
     if ( type==BCF_HT_STR )
     {
         if ( *ndst < info->len+1 )
@@ -3281,6 +3296,7 @@ int bcf_get_format_string(const bcf_hdr_t *hdr, bcf1_t *line, const char *tag, c
         if ( line->d.fmt[i].id==tag_id ) break;
     if ( i==line->n_fmt ) return -3;                               // the tag is not present in this record
     bcf_fmt_t *fmt = &line->d.fmt[i];
+    if ( !fmt->p ) return -3;                                      // the tag was marked for removal
 
     int nsmpl = bcf_hdr_nsamples(hdr);
     if ( !*dst )
@@ -3324,6 +3340,7 @@ int bcf_get_format_values(const bcf_hdr_t *hdr, bcf1_t *line, const char *tag, v
         if ( line->d.fmt[i].id==tag_id ) break;
     if ( i==line->n_fmt ) return -3;                               // the tag is not present in this record
     bcf_fmt_t *fmt = &line->d.fmt[i];
+    if ( !fmt->p ) return -3;                                      // the tag was marked for removal
 
     if ( type==BCF_HT_STR )
     {
