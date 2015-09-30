@@ -59,13 +59,18 @@ class Variant
         
     //contains alleles
     std::vector<Allele> alleles;
-
+        
     //sum from all the alleles
     int32_t ts;         //no. of transitions
     int32_t tv;         //no. of tranversions (mlen-ts)
     int32_t ins;        //no. of insertions
     int32_t del;        //no. of deletions
 
+    //overlapping statistics
+    int32_t overlapping_snps;
+    int32_t overlapping_indels;
+    int32_t overlapping_vntrs;
+    
     //describes VNTR
     VNTR vntr;
 

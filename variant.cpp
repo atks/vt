@@ -37,6 +37,9 @@ Variant::Variant(bcf1_t* v)
 Variant::Variant()
 {
     type = VT_REF;
+    overlapping_snps = 0;
+    overlapping_indels = 0;
+    overlapping_vntrs = 0;
     alleles.clear();
 }
 

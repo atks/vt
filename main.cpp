@@ -31,7 +31,7 @@
 #include "compute_features.h"
 #include "compute_concordance.h"
 #include "config.h"
-#include "consolidate_variants.h"
+#include "consolidate.h"
 #include "construct_probes.h"
 #include "xcmp.h"
 #include "decompose_blocksub.h"
@@ -335,9 +335,9 @@ int main(int argc, char ** argv)
     {
         annotate_1000g(argc-1, ++argv);
     }
-    else if (argc>1 && cmd=="consolidate_variants")
+    else if (argc>1 && cmd=="consolidate")
     {
-        consolidate_variants(argc-1, ++argv);
+        consolidate(argc-1, ++argv);
     }
     else if (argc>1 && cmd=="filter")
     {

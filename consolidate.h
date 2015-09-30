@@ -41,6 +41,6 @@
 #include "bcf_ordered_writer.h"
 #include "variant_manip.h"
 
-void consolidate_variants(int argc, char **argv);
+void consolidate(int argc, char **argv);
     
 #endif
