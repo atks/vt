@@ -401,7 +401,7 @@ class Igor : Program
 
             if (!VAR_COUNT[POLYMORPHIC][vtype])  continue;
             std::string variant_desc = vtype==VT_BLKSUB ? "block substitutions" : (vtype==VT_NAIVE_CLUMPED ? "clumped variants" : "complex substitutions");
-            fprintf(stderr, "       no. of %-21s       : %10d\n", variant_desc.c_str(), VAR_COUNT[POLYMORPHIC][vtype]);
+            fprintf(stderr, "       no. of %-21s      : %10d\n", variant_desc.c_str(), VAR_COUNT[POLYMORPHIC][vtype]);
             for (int32_t no_alleles=1; no_alleles<=4; ++no_alleles)
             {
                 if (VAR_COUNT[no_alleles][vtype])

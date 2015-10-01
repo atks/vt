@@ -159,16 +159,16 @@ class Igor : Program
         char* tr = NULL;
         int32_t n = 0;
         
-        //this is for indels that are annotated with TR - you cannot
-        //detect by overlap of the reference sequence because in the normalized
-        //representation for insertions, only the anchor base is present.
-        //This is not an issue for deletions.
-        //reminder: consolidate is for a VCF file that is produced by annotate_indels.
-        if (bcf_get_info_string(odw->hdr, variant->v, "TR", &tr, &n)>0)
-        {
-            bcf_add_filter(odw->hdr, variant->v, overlap_vntr_id);
-            free(tr);
-        }
+//        //this is for indels that are annotated with TR - you cannot
+//        //detect by overlap of the reference sequence because in the normalized
+//        //representation for insertions, only the anchor base is present.
+//        //This is not an issue for deletions.
+//        //reminder: consolidate is for a VCF file that is produced by annotate_indels.
+//        if (bcf_get_info_string(odw->hdr, variant->v, "TR", &tr, &n)>0)
+//        {
+//            bcf_add_filter(odw->hdr, variant->v, overlap_vntr_id);
+//            free(tr);
+//        }
         
         //update filters
         std::list<Variant *>::iterator i = variant_buffer.begin();
@@ -182,16 +182,16 @@ class Igor : Program
             }
             else if (variant->rid == cvariant->rid)
             {
-                if (variant->end1 < cvariant->pos1) //not possible
+                if (variant->end1 < cvariant->beg1) //not possible
                 {
                     fprintf(stderr, "[%s:%d %s] File %s is unordered\n", __FILE__, __LINE__, __FUNCTION__, input_vcf_file.c_str());
                     exit(1);
                 }
-                else if (variant->pos1 > cvariant->end1) //does not overlap
+                else if (variant->beg1 > cvariant->end1+1000) //does not overlap
                 {
                     break;
                 }
-                else //overlaps
+                else if (variant->end1 >= cvariant->beg1 && variant->beg1 <= cvariant->end1) //overlaps
                 {
                     ///////
                     //SNP//
@@ -231,8 +231,8 @@ class Igor : Program
                         }
                         else if (cvariant->type==VT_UNDEFINED)
                         {        
-                            variant->vs.push_back(bcf_dup(variant->v));
-                            ++variant->no_overlapping_snps;
+                            cvariant->vs.push_back(bcf_dup(variant->v));
+                            ++cvariant->no_overlapping_snps;
                         }                        
                     }
                     /////////
@@ -305,6 +305,10 @@ class Igor : Program
                                         
                     ++i;
                 }
+                else
+                {
+                    ++i;
+                }
             }
             else //variant.rid < cvariant.rid is impossible if input file is ordered.
             {
@@ -320,15 +324,15 @@ class Igor : Program
     /**
      * Flush variant buffer.
      */
-    void flush_variant_buffer(bcf1_t* v)
+    void flush_variant_buffer(Variant* var)
     {
         if (variant_buffer.empty())
         {
             return;
         }
 
-        int32_t rid = bcf_get_rid(v);
-        int32_t pos1 = bcf_get_pos1(v);
+        int32_t rid = var->rid;
+        int32_t beg1 = var->beg1;
 
         while (!variant_buffer.empty())
         {
@@ -338,6 +342,9 @@ class Igor : Program
             {
                 if (variant->type==VT_UNDEFINED)
                 {
+                    
+                    std::cerr << "PRINT CONSOLIDATED VARIANT\n";
+                    
                     if (consolidate_multiallelic(variant))
                     {
                         odw->write(variant->v);
@@ -356,12 +363,28 @@ class Igor : Program
             }
             else if (variant->rid == rid) 
             {
-                if (variant->pos1 < pos1-1000)
+                if (variant->beg1 < beg1-1000)
                 {
-                    odw->write(variant->v);
-                    variant->v = NULL;
-                    delete variant;
-                    variant_buffer.pop_back();
+                    if (variant->type==VT_UNDEFINED)
+                    {
+                        if (consolidate_multiallelic(variant))
+                        {
+                            odw->write(variant->v);
+                            variant->v = NULL;
+                        }
+                        
+                        delete variant;
+                        variant_buffer.pop_back();
+                        
+                        
+                    }    
+                    else
+                    {    
+                        odw->write(variant->v);
+                        variant->v = NULL;
+                        delete variant;
+                        variant_buffer.pop_back();
+                    }
                 }
                 else
                 {
@@ -385,8 +408,14 @@ class Igor : Program
             variant->no_overlapping_vntrs ==0)
         {
             bcf1_t* v = bcf_init1();
+            bcf_clear(v);
             
             std::vector<bcf1_t*>& vs = variant->vs;
+            
+//            std::cerr << "no overlapping SNPs " << variant->no_overlapping_snps << "\n";
+//            
+//            std::cerr << "consolidating: " << (vs.size()+1) << " alleles\n";
+//                
             
             bcf_set_rid(v, bcf_get_rid(vs[0]));
             bcf_set_pos1(v, bcf_get_pos1(vs[0]));
@@ -395,9 +424,12 @@ class Igor : Program
             kputc(bcf_get_snp_ref(vs[0]), &s);
             kputc(',', &s);
             int32_t no_alleles = vs.size();
+            
+            
             char alts[no_alleles];
             for (uint32_t i=0; i<no_alleles; ++i)
             {
+                bcf_unpack(vs[i], BCF_UN_STR);
                 alts[i] = bcf_get_snp_alt(vs[i]);
             }
             //selection sort
@@ -419,19 +451,71 @@ class Igor : Program
             }
             kputc(alts[no_alleles-1], &s);
             bcf_update_alleles_str(odw->hdr, v, s.s);
+            
+            variant->v = v;
                
             ++no_new_multiallelic_snps;
             return true;
         }
-        else if (variant->no_overlapping_snps ==0 &&
-                 variant->no_overlapping_indels !=0 &&
-                 variant->no_overlapping_vntrs ==0)
+//        else if (variant->no_overlapping_snps !=0 &&
+//                 variant->no_overlapping_indels !=0 &&
+//                 variant->no_overlapping_vntrs !=0)
+        else //complex variants
         {
             
-//                //make multiallelic
+            std::cerr << variant->no_overlapping_snps << " ";
+            std::cerr << variant->no_overlapping_indels << " ";
+            std::cerr << variant->no_overlapping_vntrs << "\n";
+        
+            bcf1_t* v = bcf_init1();
+            bcf_clear(v);
+            
+            std::vector<bcf1_t*>& vs = variant->vs;
+            
+//            std::cerr << "no overlapping SNPs " << variant->no_overlapping_snps << "\n";
+//            std::cerr << "consolidating: " << (vs.size()+1) << " alleles\n";
+           
+            
+            bcf_set_rid(v, bcf_get_rid(vs[0]));
+            bcf_set_pos1(v, bcf_get_pos1(vs[0]));
+            
+            kstring_t s = {0,0,0};
+            kputc(bcf_get_snp_ref(vs[0]), &s);
+            kputc(',', &s);
+            int32_t no_alleles = vs.size();
+            
+            
+            char alts[no_alleles];
+            for (uint32_t i=0; i<no_alleles; ++i)
+            {
+                bcf_unpack(vs[i], BCF_UN_STR);
+                bcf_print(odw->hdr, vs[i]);
+                alts[i] = bcf_get_snp_alt(vs[i]);
+            }
+//            //selection sort
+//            for (uint32_t i=0; i<no_alleles-1; ++i)
+//            {
+//                for (uint32_t j=i+1; j<no_alleles; ++j)
+//                {
+//                    if (alts[j]<alts[i])
+//                    {
+//                        char tmp = alts[j];
+//                        alts[j] = alts[i];
+//                        alts[i] = tmp;
+//                    }    
+//                    alts[i] = bcf_get_snp_alt(vs[i]);
+//                }
 //                
-//                ++no_new_multiallelic_indels;
-//                return true;                
+//                kputc(alts[i], &s);
+//                kputc(',', &s);
+//            }
+//            kputc(alts[no_alleles-1], &s);
+//            bcf_update_alleles_str(odw->hdr, v, s.s);
+//            
+//            variant->v = v;
+               
+            ++no_new_multiallelic_indels;
+            return false;              
 //            
         }    
         
@@ -444,11 +528,29 @@ class Igor : Program
     void flush_variant_buffer()
     {
         while (!variant_buffer.empty())
-        {
+        {   
             Variant* variant = variant_buffer.back();
-            odw->write(variant->v);
-            delete variant;
-            variant_buffer.pop_back();
+            
+            if (variant->type==VT_UNDEFINED)
+            {
+                if (consolidate_multiallelic(variant))
+                {
+                    odw->write(variant->v);
+                    variant->v = NULL;
+                }
+                
+                delete variant;
+                variant_buffer.pop_back();
+                
+                
+            }    
+            else
+            {    
+                odw->write(variant->v);
+                variant->v = NULL;
+                delete variant;
+                variant_buffer.pop_back();
+            }
         }
     }
 
@@ -459,10 +561,9 @@ class Igor : Program
         Variant* variant;
         while (odr->read(v))
         {
-            bcf_unpack(v, BCF_UN_STR);
-            flush_variant_buffer(v);
-                       
             variant = new Variant(odw->hdr, v);
+            flush_variant_buffer(variant);
+            
             vm->classify_variant(odw->hdr, v, *variant);
             insert_variant_record_into_buffer(variant);
 
@@ -495,6 +596,7 @@ class Igor : Program
         std::clog << "\n";
         std::clog << "stats: Total number of observed variants    " << no_total_variants << "\n";
         std::clog << "       Total number of nonoverlap variants  " << no_nonoverlap_variants << "\n";
+        std::clog << "       Total number of multiallelic SNPs    " << no_new_multiallelic_snps << "\n";
         std::clog << "       Total number of overlap variants     " << no_overlap_variants << "\n";
         std::clog << "\n";
     };

@@ -30,21 +30,87 @@ Variant::Variant(bcf_hdr_t* h, bcf1_t* v)
 {
     this->v = v;
 
-    classify(h, v);
+    type = classify(h, v);
 
     chrom = bcf_get_chrom(h, v);
     rid = bcf_get_rid(v);
+    pos1 = bcf_get_pos1(v);
+
+    no_overlapping_snps = 0;
+    no_overlapping_indels = 0;
+    no_overlapping_vntrs = 0;
 
     //attempts to update relevant information on variants
     if (type==VT_SNP)
     {
-        
+        beg1 = pos1;
+        end1 = pos1;
     }
     else if (type==VT_INDEL)
     {
+        int32_t *flanks = NULL;
+        int32_t n = 0;
+        if (bcf_get_info_int32(h, v, "FLANKS", &flanks, &n)>0)
+        {
+            vntr.rbeg1 = flanks[0]+1;
+            vntr.rend1 = flanks[1]-1;
+            free(flanks);
+        }
+        else
+        {
+            vntr.rbeg1 = bcf_get_pos1(v) - 1;
+            vntr.rend1 = bcf_get_end_pos1(v) + 1;
+        }
+
+        int32_t *fuzzy_flanks = NULL;
+        n = 0;
+        if (bcf_get_info_int32(h, v, "FZ_FLANKS", &fuzzy_flanks, &n)>0)
+        {
+            vntr.fuzzy_rbeg1 = fuzzy_flanks[0];
+            vntr.fuzzy_rend1 = fuzzy_flanks[1];
+            free(fuzzy_flanks);
+        }
+        else
+        {
+            vntr.fuzzy_rbeg1 = bcf_get_pos1(v) - 1;
+            vntr.fuzzy_rend1 = bcf_get_end_pos1(v) + 1;
+        }
+
+        beg1 = std::min(vntr.rbeg1-1, vntr.fuzzy_rbeg1-1);
+        end1 = std::max(vntr.rend1+1, vntr.fuzzy_rend1+1);
     }     
     else if (type==VT_VNTR)
     {
+        int32_t *flanks = NULL;
+        int32_t n = 0;
+        if (bcf_get_info_int32(h, v, "FLANKS", &flanks, &n)>0)
+        {
+            vntr.rbeg1 = flanks[0]+1;
+            vntr.rend1 = flanks[1]-1;
+            free(flanks);
+        }
+        else
+        {
+            vntr.rbeg1 = bcf_get_pos1(v) - 1;
+            vntr.rend1 = bcf_get_end_pos1(v) + 1;
+        }
+
+        int32_t *fuzzy_flanks = NULL;
+        n = 0;
+        if (bcf_get_info_int32(h, v, "FZ_FLANKS", &fuzzy_flanks, &n)>0)
+        {
+            vntr.fuzzy_rbeg1 = fuzzy_flanks[0];
+            vntr.fuzzy_rend1 = fuzzy_flanks[1];
+            free(fuzzy_flanks);
+        }
+        else
+        {
+            vntr.fuzzy_rbeg1 = bcf_get_pos1(v) - 1;
+            vntr.fuzzy_rend1 = bcf_get_end_pos1(v) + 1;
+        }
+
+        beg1 = std::min(vntr.rbeg1-1, vntr.fuzzy_rbeg1-1);
+        end1 = std::max(vntr.rend1+1, vntr.fuzzy_rend1+1);
     }    
 }
 
@@ -58,7 +124,12 @@ Variant::Variant(Variant* v1, Variant* v2)
     chrom = v1->chrom;
     rid = v1->rid;
     pos1 = std::min(v1->pos1, v2->pos1);
+    beg1 = std::min(v1->beg1, v2->beg1);
     end1 = std::max(v1->end1, v2->end1);
+
+    no_overlapping_snps = 0;
+    no_overlapping_indels = 0;
+    no_overlapping_vntrs = 0;
 
     vs.push_back(v1->v);
     vs.push_back(v2->v);
@@ -82,11 +153,11 @@ Variant::Variant()
  */
 Variant::~Variant()
 {
-    if (v) bcf_destroy(v);
-    for (uint32_t i=0; i<vs.size(); ++i)
-    {
-        if (vs[i]) bcf_destroy(vs[i]);
-    }
+//    if (v) bcf_destroy(v);
+//    for (uint32_t i=0; i<vs.size(); ++i)
+//    {
+//        if (vs[i]) bcf_destroy(vs[i]);
+//    }
 };
 
 /**

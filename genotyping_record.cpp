@@ -46,7 +46,7 @@ GenotypingRecord::GenotypingRecord(bcf_hdr_t *h, bcf1_t *v, int32_t vtype, faidx
         dlen = strlen(alleles[1])-strlen(alleles[0]);
         len = abs(dlen);
 
-        int32_t *flanks;
+        int32_t *flanks = NULL;
         int32_t n = 0;
         if (bcf_get_info_int32(h, v, "FLANKS", &flanks, &n)>0)
         {
@@ -60,7 +60,7 @@ GenotypingRecord::GenotypingRecord(bcf_hdr_t *h, bcf1_t *v, int32_t vtype, faidx
             rbeg1 = bcf_get_end_pos1(v) + 1;
         }
 
-        int32_t *fuzzy_flanks;
+        int32_t *fuzzy_flanks = NULL;
         n = 0;
         if (bcf_get_info_int32(h, v, "FZ_FLANKS", &fuzzy_flanks, &n)>0)
         {
