@@ -62,22 +62,27 @@ Variant::Variant(bcf_hdr_t* h, bcf1_t* v)
             vntr.rend1 = bcf_get_end_pos1(v) + 1;
         }
 
-        int32_t *fuzzy_flanks = NULL;
-        n = 0;
-        if (bcf_get_info_int32(h, v, "FZ_FLANKS", &fuzzy_flanks, &n)>0)
-        {
-            vntr.fuzzy_rbeg1 = fuzzy_flanks[0];
-            vntr.fuzzy_rend1 = fuzzy_flanks[1];
-            free(fuzzy_flanks);
-        }
-        else
-        {
-            vntr.fuzzy_rbeg1 = bcf_get_pos1(v) - 1;
-            vntr.fuzzy_rend1 = bcf_get_end_pos1(v) + 1;
-        }
+        beg1 = vntr.rbeg1-1;
+        end1 = vntr.rend1+1;        
 
-        beg1 = std::min(vntr.rbeg1-1, vntr.fuzzy_rbeg1-1);
-        end1 = std::max(vntr.rend1+1, vntr.fuzzy_rend1+1);
+//        int32_t *fuzzy_flanks = NULL;
+//        n = 0;
+//        if (bcf_get_info_int32(h, v, "FZ_FLANKS", &fuzzy_flanks, &n)>0)
+//        {
+//            vntr.fuzzy_rbeg1 = fuzzy_flanks[0];
+//            vntr.fuzzy_rend1 = fuzzy_flanks[1];
+//            free(fuzzy_flanks);
+//        }
+//        else
+//        {
+//            vntr.fuzzy_rbeg1 = bcf_get_pos1(v) - 1;
+//            vntr.fuzzy_rend1 = bcf_get_end_pos1(v) + 1;
+//        }
+//
+//        beg1 = std::min(vntr.rbeg1-1, vntr.fuzzy_rbeg1-1);
+//        end1 = std::max(vntr.rend1+1, vntr.fuzzy_rend1+1);
+
+        
     }     
     else if (type==VT_VNTR)
     {

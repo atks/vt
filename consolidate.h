@@ -33,6 +33,7 @@
 #include <map>
 #include "htslib/vcf.h"
 #include "htslib/kseq.h"
+#include "Rmath/Rmath.h"
 #include "hts_utils.h"
 #include "program.h"
 #include "genome_interval.h"
@@ -40,6 +41,7 @@
 #include "bcf_ordered_reader.h"
 #include "bcf_ordered_writer.h"
 #include "variant_manip.h"
+#include "log_tool.h"
 
 void consolidate(int argc, char **argv);
     

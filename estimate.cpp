@@ -41,7 +41,6 @@ class Igor : Program
     std::string interval_list;
     std::string arg_sample_list;
     bool compute_estimate[NO_EST];
-    std::string estimates;
 
     char** samples;
     int32_t *imap;
@@ -193,8 +192,7 @@ class Igor : Program
             parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
             print_sites_only = arg_print_sites_only.getValue();
             fexp = arg_fexp.getValue();
-
-            parse_estimators(compute_estimate, estimates);
+            parse_estimators(compute_estimate, arg_estimates.getValue());
         }
         catch (TCLAP::ArgException &e)
         {
