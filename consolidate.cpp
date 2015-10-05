@@ -158,6 +158,7 @@ class Igor : Program
         bcf_hdr_append(odw->hdr, "##FILTER=<ID=overlap_vntr,Description=\"Overlaps with VNTR.\">");
         bcf_hdr_append(odw->hdr, "##FILTER=<ID=shorter_vntr,Description=\"Another VNTR overlaps with this VNTR.\">");
         bcf_hdr_append(odw->hdr, "##FILTER=<ID=on_vntr_boundary,Description=\"This variant lies near a VNTR boundary.\">");
+        bcf_hdr_append(odw->hdr, "##FILTER=<ID=fail_lr,Description=\"Fail likelihood ratio cutoff.\">");
         bcf_hdr_append(odw->hdr, "##INFO=<ID=OVERLAPS,Number=3,Type=Integer,Description=\"Number of SNPs, Indels and VNTRs overlapping with this variant.\">");
         odw->write_hdr();      
 
@@ -264,6 +265,7 @@ class Igor : Program
                         else if (cvariant->type==VT_UNDEFINED)
                         {
                             cvariant->vs.push_back(bcf_dup(variant->v));
+                            cvariant->snp_vs.push_back(bcf_dup(variant->v));
                             ++cvariant->no_overlapping_snps;
                         }
                     }
@@ -304,6 +306,7 @@ class Igor : Program
                         else if (cvariant->type==VT_UNDEFINED)
                         {
                             cvariant->vs.push_back(bcf_dup(variant->v));
+                            cvariant->indel_vs.push_back(bcf_dup(variant->v));
                             ++cvariant->no_overlapping_indels;
                         }
                     }
@@ -345,6 +348,7 @@ class Igor : Program
                         else if (cvariant->type==VT_UNDEFINED)
                         {
                             cvariant->vs.push_back(bcf_dup(variant->v));
+                            cvariant->vntr_vs.push_back(bcf_dup(variant->v));
                             ++cvariant->no_overlapping_vntrs;
                         }
                     }
@@ -426,8 +430,6 @@ class Igor : Program
 
                         delete variant;
                         variant_buffer.pop_back();
-
-
                     }
                     else
                     {
@@ -463,123 +465,72 @@ class Igor : Program
             bcf1_t* v = bcf_init1();
             bcf_clear(v);
 
-            std::vector<bcf1_t*>& vs = variant->vs;
-
-//            std::cerr << "no overlapping SNPs " << variant->no_overlapping_snps << "\n";
-//
-//            std::cerr << "consolidating: " << (vs.size()+1) << " alleles\n";
-//
-
-            bcf_set_rid(v, bcf_get_rid(vs[0]));
-            bcf_set_pos1(v, bcf_get_pos1(vs[0]));
-
-            kstring_t s = {0,0,0};
-            kputc(bcf_get_snp_ref(vs[0]), &s);
-            kputc(',', &s);
-            int32_t no_alleles = vs.size();
-
-
-            char alts[no_alleles];
-            for (uint32_t i=0; i<no_alleles; ++i)
+            bcf1_t* vntr_v = variant->vntr_vs[0];
+            
+            
+            char* motif = NULL;
+            int32_t n_motif = 0;
+            
+            double* fuzzy_concordance = NULL;
+            int32_t n_fuzzy_concordance = 0;
+            int32_t* flanks = NULL;
+            int32_t n_flanks = 0;
+            int32_t* fuzzy_flanks = NULL;
+            int32_t n_fuzzy_flanks = 0;
+            if (bcf_get_info_string(odr->hdr, v, "MOTIF", &motif, &n_motif)>0 &&
+                bcf_get_info_string(odr->hdr, v, "FZ_CONCORDANCE", &fuzzy_concordance, &n_fuzzy_concordance)>0 &&
+                bcf_get_info_string(odr->hdr, v, "FLANKS", &flanks, &n_flanks)>0 &&
+                bcf_get_info_string(odr->hdr, v, "FZ_FLANKS", &fuzzy_flanks, &n_fuzzy_flanks)>0)
+                
             {
-                bcf_unpack(vs[i], BCF_UN_STR);
-                alts[i] = bcf_get_snp_alt(vs[i]);
-            }
-            //selection sort
-            for (uint32_t i=0; i<no_alleles-1; ++i)
-            {
-                for (uint32_t j=i+1; j<no_alleles; ++j)
+                std::vector<bcf1_t *>& indel_vs = variant->indel_vs;
+                
+                for (uint32_t i=0; i<indel_vs.size(); ++i)
                 {
-                    if (alts[j]<alts[i])
-                    {
-                        char tmp = alts[j];
-                        alts[j] = alts[i];
-                        alts[i] = tmp;
-                    }
-                    alts[i] = bcf_get_snp_alt(vs[i]);
+                    char* gmotif = NULL;
+                    int32_t n_gmotif = 0;
+                    
                 }
+                
+                
+                
+                
+                
+                free(motif);
+                free(fuzzy_concordance);
+                free(flanks);
+                free(fuzzy_flanks);
+                
+            } 
+            
+            
+            
+            
+            
+            
+          
 
-                kputc(alts[i], &s);
-                kputc(',', &s);
-            }
-            kputc(alts[no_alleles-1], &s);
-            bcf_update_alleles_str(odw->hdr, v, s.s);
-
-            variant->v = v;
-
-            ++no_new_multiallelic_snps;
-            return true;
-        }
-//        else if (variant->no_overlapping_snps !=0 &&
-//                 variant->no_overlapping_indels !=0 &&
-//                 variant->no_overlapping_vntrs !=0)
-        else //complex variants
-        {
-            std::cerr << "Complex variants consideration\n";
-            std::cerr << "overlapping SNPs   : " << variant->no_overlapping_snps << "\n";
-            std::cerr << "overlapping Indels : "<< variant->no_overlapping_indels << "\n";
-            std::cerr << "overlapping VNTRs  : "<< variant->no_overlapping_vntrs << "\n";
-
-            bcf1_t* v = bcf_init1();
-            bcf_clear(v);
-
-            std::vector<bcf1_t*>& vs = variant->vs;
 
 //            std::cerr << "no overlapping SNPs " << variant->no_overlapping_snps << "\n";
+//
 //            std::cerr << "consolidating: " << (vs.size()+1) << " alleles\n";
+//
 
-
-            bcf_set_rid(v, bcf_get_rid(vs[0]));
-            bcf_set_pos1(v, bcf_get_pos1(vs[0]));
-
-            kstring_t s = {0,0,0};
-            kputc(bcf_get_snp_ref(vs[0]), &s);
-            kputc(',', &s);
-            int32_t no_alleles = vs.size();
-
-
-            char alts[no_alleles];
-            for (uint32_t i=0; i<no_alleles; ++i)
-            {
-                bcf_unpack(vs[i], BCF_UN_STR);
-                bcf_print(odw->hdr, vs[i]);
-                
-                double ln_lr = 0;
-                double max_ln_lr = 0;
-                int32_t* e = NULL;
-                int32_t n_e = 0;
-                int32_t* n = NULL;
-                int32_t n_n = 0;
-                
-                if (bcf_get_info_int32(odr->hdr, vs[i], "E", &e, &n_e)>0 &&
-                    bcf_get_info_int32(odr->hdr, vs[i], "N", &n, &n_n)>0)
-                {
-                    if (n_e!=n_n)
-                    {
-                        std::cerr << "soomething wrong\n";
-                    }
-                    else
-                    {   
-                        for (uint32_t i=0; i<n_e; ++i)
-                        {
-                            ln_lr  = compute_glfsingle_llr(e[i], n[i]);
-                            ln_lr  = ln_lr>0 ? 0 : -10*(ln_lr-M_LOG10E);
-//                            std::cerr  << "\t" << ln_lr << "\n";
-                            
-                                                     
-                            max_ln_lr = ln_lr > max_ln_lr ? ln_lr : max_ln_lr;
-                        }
-                        
-                        
-                        std::cerr  << "\t" << max_ln_lr << "\n";
-                    }    
-                                        
-                    free(e);
-                    free(n);
-                }    
-                
-               
-            }
+//            bcf_set_rid(v, bcf_get_rid(vs[0]));
+//            bcf_set_pos1(v, bcf_get_pos1(vs[0]));
+//
+//            kstring_t s = {0,0,0};
+//            kputc(bcf_get_snp_ref(vs[0]), &s);
+//            kputc(',', &s);
+//            int32_t no_alleles = vs.size();
+//
+//
+//            char alts[no_alleles];
+//            for (uint32_t i=0; i<no_alleles; ++i)
+//            {
+//                bcf_unpack(vs[i], BCF_UN_STR);
+//                alts[i] = bcf_get_snp_alt(vs[i]);
+//            }
 //            //selection sort
 //            for (uint32_t i=0; i<no_alleles-1; ++i)
 //            {
@@ -601,10 +552,107 @@ class Igor : Program
 //            bcf_update_alleles_str(odw->hdr, v, s.s);
 //
 //            variant->v = v;
+//
+//            ++no_new_multiallelic_snps;
+            return true;
+        }
+//        else if (variant->no_overlapping_snps !=0 &&
+//                 variant->no_overlapping_indels !=0 &&
+//                 variant->no_overlapping_vntrs !=0)
+        else //complex variants
+        {
+            std::cerr << "Complex variants consideration\n";
+            std::cerr << "overlapping SNPs   : " << variant->no_overlapping_snps << "\n";
+            std::cerr << "overlapping Indels : "<< variant->no_overlapping_indels << "\n";
+            std::cerr << "overlapping VNTRs  : "<< variant->no_overlapping_vntrs << "\n";
 
+            //merge variants
+            if (variant->no_overlapping_vntrs == 1)
+            {
+                bcf1_t* v = bcf_init1();
+                bcf_clear(v);
+    
+                std::vector<bcf1_t*>& vs = variant->vs;
+                int32_t no_alleles = vs.size();
+
+                
+                char alts[no_alleles];
+                for (uint32_t i=0; i<no_alleles; ++i)
+                {
+                    bcf_unpack(vs[i], BCF_UN_STR);
+                    
+                    double ln_lr = 0;
+                    double max_ln_lr = 0;
+                    int32_t* e = NULL;
+                    int32_t n_e = 0;
+                    int32_t* n = NULL;
+                    int32_t n_n = 0;
+                
+                    if (bcf_get_info_int32(odr->hdr, v, "E", &e, &n_e)>0 &&
+                        bcf_get_info_int32(odr->hdr, v, "N", &n, &n_n)>0)
+                    {
+                        for (uint32_t i=0; i<n_e; ++i)
+                        {
+                            ln_lr  = compute_glfsingle_llr(e[i], n[i]);
+                            ln_lr  = ln_lr>0 ? 0 : -10*(ln_lr-M_LOG10E);
+                            max_ln_lr = ln_lr > max_ln_lr ? ln_lr : max_ln_lr;
+                        }
+                        
+                        
+                        bcf_set_qual(v, max_ln_lr);
+                                   
+                        free(e);
+                        free(n);
+                    }    
+                
+                    bcf_print(odw->hdr, vs[i]);
+                    
+                    std::cerr << "\tQUAL = " << bcf_get_qual(vs[i]) << "\n";
+                    
+                }
+                
+            }  
+//            else if (variant->no_overlapping_vntrs > 1)
+//            {
+//            }  
+            else //no VNTRs
+            {
+                std::cerr  << "###########\n";
+                std::cerr  << "OTHER TYPES\n";
+                std::cerr  << "###########\n";
+                    
+                bcf1_t* v = bcf_init1();
+                bcf_clear(v);
+    
+                std::vector<bcf1_t*>& vs = variant->vs;
+    
+    //            std::cerr << "no overlapping SNPs " << variant->no_overlapping_snps << "\n";
+    //            std::cerr << "consolidating: " << (vs.size()+1) << " alleles\n";
+    
+    
+                bcf_set_rid(v, bcf_get_rid(vs[0]));
+                bcf_set_pos1(v, bcf_get_pos1(vs[0]));
+    
+                kstring_t s = {0,0,0};
+                kputc(bcf_get_snp_ref(vs[0]), &s);
+                kputc(',', &s);
+                int32_t no_alleles = vs.size();
+    
+    
+                char alts[no_alleles];
+                for (uint32_t i=0; i<no_alleles; ++i)
+                {
+                    bcf_unpack(vs[i], BCF_UN_STR);
+                    bcf_print(odw->hdr, vs[i]);
+                    
+                    std::cerr << "\tQUAL = " << bcf_get_qual(vs[i]) << "\n";
+                    
+                }
+                
+            }
+           
             ++no_new_multiallelic_indels;
             return false;
-//
         }
 
         return false;
@@ -657,6 +705,35 @@ class Igor : Program
             flush_variant_buffer(variant);
 
             vm->classify_variant(odw->hdr, v, *variant);
+
+            //compute likelihood ratio and store in QUAL field
+            if (variant->type&VT_INDEL)
+            {
+                double ln_lr = 0;
+                double max_ln_lr = 0;
+                int32_t* e = NULL;
+                int32_t n_e = 0;
+                int32_t* n = NULL;
+                int32_t n_n = 0;
+                
+                if (bcf_get_info_int32(odr->hdr, v, "E", &e, &n_e)>0 &&
+                    bcf_get_info_int32(odr->hdr, v, "N", &n, &n_n)>0)
+                {
+                    for (uint32_t i=0; i<n_e; ++i)
+                    {
+                        ln_lr  = compute_glfsingle_llr(e[i], n[i]);
+                        ln_lr  = ln_lr>0 ? 0 : -10*(ln_lr-M_LOG10E);
+                        max_ln_lr = ln_lr > max_ln_lr ? ln_lr : max_ln_lr;
+                    }
+                    
+                    
+                    bcf_set_qual(v, max_ln_lr);
+                               
+                    free(e);
+                    free(n);
+                }    
+            }    
+
             insert_variant_record_into_buffer(variant);
 
             v = odw->get_bcf1_from_pool();
@@ -672,7 +749,7 @@ class Igor : Program
 
     void print_options()
     {
-        std::clog << "consolidate_variants v" << version << "\n\n";
+        std::clog << "consolidate v" << version << "\n\n";
 
         std::clog << "options:     input VCF file        " << input_vcf_file << "\n";
         std::clog << "         [o] output VCF file       " << output_vcf_file << "\n";
@@ -686,11 +763,11 @@ class Igor : Program
     void print_stats()
     {
         std::clog << "\n";
-        std::clog << "stats: Total number of observed variants    " << no_total_variants << "\n";
-        std::clog << "       Total number of nonoverlap variants  " << no_nonoverlap_variants << "\n";
-        std::clog << "       Total number of multiallelic SNPs    " << no_new_multiallelic_snps << "\n";
-        std::clog << "       Total number of multiallelic Indels  " << no_new_multiallelic_indels << "\n";
-        std::clog << "       Total number of overlap variants     " << no_overlap_variants << "\n";
+        std::clog << "stats: Total number of observed variants        " << no_total_variants << "\n";
+        std::clog << "       Total number of nonoverlap variants      " << no_nonoverlap_variants << "\n";
+        std::clog << "       Total number of new multiallelic SNPs    " << no_new_multiallelic_snps << "\n";
+        std::clog << "       Total number of new multiallelic Indels  " << no_new_multiallelic_indels << "\n";
+        std::clog << "       Total number of overlap variants         " << no_overlap_variants << "\n";
         std::clog << "\n";
     };
 

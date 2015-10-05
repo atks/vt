@@ -54,10 +54,12 @@ class Variant
     //linked VCF record
     bcf1_t* v;
     
-    //associated VCF records
-    //for merging into a multiallelic
+    //associated VCF records for merging into a multiallelic
     std::vector<bcf1_t*> vs;
-        
+    std::vector<bcf1_t*> snp_vs;
+    std::vector<bcf1_t*> indel_vs;
+    std::vector<bcf1_t*> vntr_vs;
+    
     //contains alleles
     std::vector<Allele> alleles;
         

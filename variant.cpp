@@ -138,6 +138,32 @@ Variant::Variant(Variant* v1, Variant* v2)
 
     vs.push_back(v1->v);
     vs.push_back(v2->v);
+    
+    if (v1->type==VT_SNP)
+    {
+        snp_vs.push_back(v1->v);
+    }    
+    else if (v1->type==VT_INDEL)
+    {
+        indel_vs.push_back(v1->v);
+    }
+    else if (v1->type==VT_VNTR)
+    {
+        vntr_vs.push_back(v1->v);
+    }  
+
+    if (v2->type==VT_SNP)
+    {
+        snp_vs.push_back(v2->v);
+    }    
+    else if (v2->type==VT_INDEL)
+    {
+        indel_vs.push_back(v2->v);
+    }
+    else if (v2->type==VT_VNTR)
+    {
+        vntr_vs.push_back(v2->v);
+    }
 }
 
 /**
