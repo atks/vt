@@ -189,6 +189,7 @@ Variant::~Variant()
 //    {
 //        if (vs[i]) bcf_destroy(vs[i]);
 //    }
+    clear();
 };
 
 /**
@@ -199,6 +200,10 @@ void Variant::clear()
     type = VT_REF;
     alleles.clear();
     vntr.clear();
+    vs.clear();
+    snp_vs.clear();
+    indel_vs.clear();
+    vntr_vs.clear();    
 };
 
 /**
