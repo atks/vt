@@ -93,16 +93,6 @@ class VNTR
     bool equals(VNTR& vntr);
 
     /**
-     * Get VNTR representation in string format.
-     */
-    void get_vntr_allele_string(std::string& var);
-
-    /**
-     * Get VNTR fuzzy representation in string format.
-     */
-    void get_fuzzy_vntr_allele_string(std::string& var);
-
-    /**
      * Print object.
      */
     void print();

@@ -50,6 +50,7 @@ class Igor : Program
     std::string TR;               //annotating indels with overlapping tandem repeat
 
     std::string MOTIF;            //canonical motif of tandem repeat
+    std::string GMOTIF;           //generating motif used in fuzzy alignment
     std::string RU;               //repeat unit on reference sequence that is in phase from the start position of the variant
 
     std::string RL;               //repeat tract length
@@ -208,8 +209,9 @@ class Igor : Program
         //////////////////////////////
         //INFO header adding for VCF//
         //////////////////////////////
-        MOTIF = bcf_hdr_append_info_with_backup_naming(odw->hdr, "MOTIF", "1", "String", "Canonical motif in an VNTR", true);
-        RU = bcf_hdr_append_info_with_backup_naming(odw->hdr, "RU", "1", "String", "Repeat unit in a VNTR or homopolymer", true);
+        MOTIF = bcf_hdr_append_info_with_backup_naming(odw->hdr, "MOTIF", "1", "String", "Canonical motif in an VNTR.", true);
+        GMOTIF = bcf_hdr_append_info_with_backup_naming(odw->hdr, "GMOTIF", "1", "String", "Generating Motif used in fuzzy alignment.", true);
+        RU = bcf_hdr_append_info_with_backup_naming(odw->hdr, "RU", "1", "String", "Repeat unit in the reference sequence.", true);
 
         RL = bcf_hdr_append_info_with_backup_naming(odw->hdr, "RL", "1", "Float", "Reference repeat unit length", true);
         LL = bcf_hdr_append_info_with_backup_naming(odw->hdr, "LL", "1", "Float", "Longest repeat unit length", true);
@@ -492,10 +494,7 @@ class Igor : Program
         {
             bcf_set_pos1(v, vntr.rbeg1);
 
-            s.l = 0;
-            kputs(vntr.repeat_tract.c_str(), &s);
-            kputc(',', &s);
-            kputs("<VNTR>", &s);
+            variant.get_vntr_string(&s);
             bcf_update_alleles_str(h, v, s.s);
             bcf_update_info_string(h, v, MOTIF.c_str(), vntr.motif.c_str());
             bcf_update_info_string(h, v, RU.c_str(), vntr.ru.c_str());
@@ -531,10 +530,7 @@ class Igor : Program
         {
             bcf_set_pos1(v, vntr.fuzzy_rbeg1);
 
-            s.l = 0;
-            kputs(vntr.fuzzy_repeat_tract.c_str(), &s);
-            kputc(',', &s);
-            kputs("<VNTR>", &s);
+            variant.get_fuzzy_vntr_string(&s);
             bcf_update_alleles_str(h, v, s.s);
             bcf_update_info_string(h, v, MOTIF.c_str(), vntr.motif.c_str());
             bcf_update_info_string(h, v, RU.c_str(), vntr.ru.c_str());
@@ -628,6 +624,9 @@ class Igor : Program
 
                 if (annotation_mode=="v")
                 {
+                    ///////////////////////////////////////////////////////////////////////////////////////////////////////
+                    //annotate indels with exact flanks and fuzzy flanks and generating motif used in fuzzy flank detection
+                    ///////////////////////////////////////////////////////////////////////////////////////////////////////
                     if (method=="e")
                     {
                         int32_t flank_pos1[2] = {variant.vntr.rbeg1-1, variant.vntr.rend1+1};
@@ -675,7 +674,8 @@ class Igor : Program
                         flanks.append(seq);
                         free(seq);
                         bcf_update_info_string(h, v, "FLANKSEQ", flanks.c_str());
-
+                        bcf_update_info_string(h, v, "GMOTIF", variant.vntr.motif.c_str() );
+                        
 //                        //update flanking sequences
 //                        std::string flanks;
 //                        int32_t seq_len;
@@ -693,6 +693,9 @@ class Igor : Program
 //                        bcf_update_info_string(h, v, "FLANKSEQ", flanks.c_str());
                     }
 
+                    /////////////////
+                    //add VNTR record
+                    /////////////////
                     if (va->is_vntr(variant, vntr_classification, method))
                     {
                         if (method=="e")

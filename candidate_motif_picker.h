@@ -1,6 +1,6 @@
 /* The MIT License
 
-   Copyright (c) 2014 Adrian Tan <atks@umich.edu>
+   Copyright (c) 2015 Adrian Tan <atks@umich.edu>
 
    Permission is hereby granted, free of charge, to any person obtaining a copy
    of this software and associated documentation files (the "Software"), to deal
@@ -21,8 +21,8 @@
    THE SOFTWARE.
 */
 
-#ifndef VNTR_ANNOTATOR_H
-#define VNTR_ANNOTATOR_H
+#ifndef CANDIDATE_MOTIF_PICKER_H
+#define CANDIDATE_MOTIF_PICKER_H
 
 #include <cstdlib>
 #include <cstdint>
@@ -47,17 +47,28 @@
 #include "candidate_region_extractor.h"
 #include "flank_detector.h"
 
+//forms of alignment
+#define REFERENCE                                0
+#define EXACT_LEFT_RIGHT_ALIGNMENT               1
+#define FUZZY_LEFT_RIGHT_ALIGNMENT               2
+#define FUZZY_LEFT_RIGHT_ALIGNMENT_WITH_PENALTY  3
+
 //forms of choosing a motif
 #define PICK_BEST_MOTIF             0
+
 #define ALLELE_EXACT  1
 #define ALLELE_FUZZY  2
+
+#define CLIP_ENDS 0
+#define CLIP_1L2R 1
+#define FRAHMM    2
 
 /**
  * Class for determining basic traits of an indel
  * motifs, flanks and VNTR type statistics.
  * RU,RL,LFLANK,RFLANK,LFLANKPOS,RFLANKPOS,MOTIF_CONCORDANCE,MOTIF_CONCORDANCE
  */
-class VNTRAnnotator
+class CandidateMotifPicker
 {
     public:
 
@@ -92,23 +103,12 @@ class VNTRAnnotator
     /**
      * Constructor.
      */
-    VNTRAnnotator(std::string& ref_fasta_file, bool debug=false);
+    CandidateMotifPicker(std::string& ref_fasta_file, bool debug=false);
 
     /**
      * Destructor.
      */
-    ~VNTRAnnotator();
-
-    /**
-     * Annotates VNTR characteristics.
-     * @mode
-     *   e - determine by exact alignment
-     *   f - determine by fuzzy alignment
-     *   p - determine by penalized fuzzy alignment
-     *   h - using HMMs
-     *   x - integrated models
-     */
-    void annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::string mode);
+    ~CandidateMotifPicker();
 
     /**
      * Pick candidate motifs.
@@ -125,11 +125,6 @@ class VNTRAnnotator
      * Chooses a phase of the motif that is appropriate for the alignment
      */
     std::string choose_repeat_unit(std::string& ref, std::string& motif);
-
-    /**
-     * Returns true if is to be classified as a VNTR
-     */
-    bool is_vntr(Variant& variant, int32_t mode, std::string& method);
 };
 
 #endif

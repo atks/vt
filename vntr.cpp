@@ -65,17 +65,6 @@ bool VNTR::equals(VNTR& vntr)
 }
 
 /**
- * Get VNTR representation in string format.
- */
-void VNTR::get_vntr_allele_string(std::string& var)
-{
-    var.clear();
-    var.append(repeat_tract.c_str());
-    var.append(1, ':');
-    var.append("<VNTR>");
-}
-
-/**
  * Print object.
  */
 void VNTR::print()

@@ -19,6 +19,7 @@ SOURCES = align\
 		bcf_ordered_writer\
 		bcf_synced_reader\
 		bed\
+		candidate_motif_picker\
 		candidate_region_extractor\
 		cat\
 		chmm\

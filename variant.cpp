@@ -464,7 +464,7 @@ void Variant::print()
 };
 
 /**
- * Gets a string representation of the underlying VNTR.
+ * Gets a string representation of the underlying VNTR by exact alignment.
  */
 void Variant::get_vntr_string(kstring_t* s)
 {
@@ -476,10 +476,12 @@ void Variant::get_vntr_string(kstring_t* s)
     kputs(vntr.repeat_tract.c_str(), s);
     kputc(':', s);
     kputs("<VNTR>", s);
+    kputc(':', s);
+    kputs(vntr.motif.c_str(), s);    
 };
 
 /**
- * Gets a string representation of the underlying VNTR.
+ * Gets a string representation of the underlying VNTR by fuzzy alignment.
  */
 void Variant::get_fuzzy_vntr_string(kstring_t* s)
 {
@@ -491,6 +493,8 @@ void Variant::get_fuzzy_vntr_string(kstring_t* s)
     kputs(vntr.fuzzy_repeat_tract.c_str(), s);
     kputc(':', s);
     kputs("<VNTR>", s);
+    kputc(':', s);
+    kputs(vntr.motif.c_str(), s);    
 };
 
 /**

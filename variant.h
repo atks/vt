@@ -113,14 +113,14 @@ class Variant
      * Prints variant information.
      */
     void print();
-
+    
     /**
-     * Gets a string representation of the underlying VNTR.
+     * Gets a string representation of the underlying VNTR by exact alignment.
      */
     void get_vntr_string(kstring_t* s);
 
     /**
-     * Gets a fuzzy string representation of the underlying VNTR.
+     * Gets a string representation of the underlying VNTR by fuzzy alignment.
      */
     void get_fuzzy_vntr_string(kstring_t* s);
 
