@@ -45,26 +45,13 @@
 #include "motif_tree.h"
 #include "vntr.h"
 
-//forms of alignment
+//modes for extracting candidate repeat region
 #define REFERENCE                                0
 #define EXACT_LEFT_RIGHT_ALIGNMENT               1
 #define FUZZY_LEFT_RIGHT_ALIGNMENT               2
-#define FUZZY_LEFT_RIGHT_ALIGNMENT_WITH_PENALTY  3
-
-//forms of choosing a motif
-#define PICK_BEST_MOTIF             0
-
-//
-#define ALLELE_EXACT  1
-#define ALLELE_FUZZY  2
-
-#define CLIP_ENDS 0
-#define CLIP_1L2R 1
 
 /**
- * Class for determining basic traits of an indel
- * motifs, flanks and VNTR type statistics.
- * RU,RL,LFLANK,RFLANK,LFLANKPOS,RFLANKPOS,MOTIF_CONCORDANCE,MOTIF_CONCORDANCE
+ * Extract a candidate repeat region without knowledge of repeat unit.
  */
 class CandidateRegionExtractor
 {
@@ -127,7 +114,7 @@ class CandidateRegionExtractor
      *       - ALLELE_EXACT  by exact alignment
      *       - ALLELE_FUZZY  by fuzzy alignment
      */
-    void pick_candidate_region(bcf_hdr_t* h, bcf1_t* v, VNTR& vntr, uint32_t mode);
+    void pick_candidate_region(bcf_hdr_t* h, bcf1_t* v,  Variant& variant, uint32_t mode);
 
     /**
      * Pick shortest motif.
@@ -138,11 +125,6 @@ class CandidateRegionExtractor
      * This is a quick scan for a motif that is exactly repeated.
      */
     std::string scan_exact_motif(std::string& sequence);
-
-    /**
-     * Detect repeat region.
-     */
-    void detect_repeat_region(bcf_hdr_t* h, bcf1_t *v, Variant& variant, uint32_t mode);
 
     /**
      * Chooses a phase of the motif that is appropriate for the alignment
@@ -162,7 +144,7 @@ class CandidateRegionExtractor
     /**
      * Extract region to for motif discovery.
      */
-    void extract_regions_by_exact_alignment(bcf_hdr_t* h, bcf1_t* v, VNTR& vntr);
+    void extract_regions_by_exact_alignment(bcf_hdr_t* h, bcf1_t* v,  Variant& variant);
 
     /**
      * Left align alleles.
@@ -177,7 +159,7 @@ class CandidateRegionExtractor
     /**
      * Extract reference sequence region for motif discovery in a fuzzy fashion.
      */
-    void extract_regions_by_fuzzy_alignment(bcf_hdr_t* h, bcf1_t* v, VNTR& vntr);
+    void extract_regions_by_fuzzy_alignment(bcf_hdr_t* h, bcf1_t* v,  Variant& variant);
 
     /**
      * Fuzzy left align alleles allowing for mismatches and indels defined by penalty.
@@ -204,37 +186,6 @@ class CandidateRegionExtractor
      * Returns right aligned position.
      */
     uint32_t fuzzy_right_align(const char* chrom, int32_t pos1, std::string ref, std::string alt, uint32_t penalty);
-
-    /**
-     * Extract reference sequence region for motif discovery in a fuzzy fashion.
-     */
-    void extract_regions_by_fuzzy_alignment_with_penalty(bcf_hdr_t* h, bcf1_t* v, VNTR& vntr);
-
-    /**
-     * Fuzzy left align alleles allowing for mismatches and indels defined by penalty.
-     *
-     * @chrom   - chromosome
-     * @pos1    - 1 based position
-     * @ref     - reference sequence
-     * @alt     - alternative sequence
-     * @penalty - mismatch/indels allowed
-     *
-     * Returns left aligned position.
-     */
-    uint32_t fuzzy_left_align_with_penalty(const char* chrom, int32_t pos1, std::string ref, std::string alt, uint32_t penalty);
-
-    /**
-     * Fuzzy right align alleles allowing for mismatches and indels defined by penalty.
-     *
-     * @chrom   - chromosome
-     * @pos1    - 1 based position
-     * @ref     - reference sequence
-     * @alt     - alternative sequence
-     * @penalty - mismatch/indels allowed
-     *
-     * Returns right aligned position.
-     */
-    uint32_t fuzzy_right_align_with_penalty(const char* chrom, int32_t pos1, std::string ref, std::string alt, uint32_t penalty);
 
 };
 

@@ -56,26 +56,15 @@
 #define WILLEMS_2014_STR   5
 #define TAN_KANG_2015_VNTR 6
 
-//forms of alignment
-#define REFERENCE                                0
-#define EXACT_LEFT_RIGHT_ALIGNMENT               1
-#define FUZZY_LEFT_RIGHT_ALIGNMENT               2
-#define FUZZY_LEFT_RIGHT_ALIGNMENT_WITH_PENALTY  3
-
-//forms of choosing a motif
-#define PICK_BEST_MOTIF             0
-
-#define ALLELE_EXACT  1
-#define ALLELE_FUZZY  2
-
-#define CLIP_ENDS 0
-#define CLIP_1L2R 1
-#define FRAHMM    2
-
 /**
  * Class for determining basic traits of an indel
  * motifs, flanks and VNTR type statistics.
- * RU,RL,LFLANK,RFLANK,LFLANKPOS,RFLANKPOS,MOTIF_CONCORDANCE,MOTIF_CONCORDANCE
+ * MOTIF
+ * RU
+ * RL
+ * FLANKS
+ * FZ_FLANKS
+ * FZ_CONCORDANCE
  */
 class VNTRAnnotator
 {

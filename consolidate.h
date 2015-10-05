@@ -42,6 +42,7 @@
 #include "bcf_ordered_writer.h"
 #include "variant_manip.h"
 #include "log_tool.h"
+#include "htslib/faidx.h"
 
 void consolidate(int argc, char **argv);
     

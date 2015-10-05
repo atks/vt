@@ -51,6 +51,9 @@ class Igor : Program
 
     std::string MOTIF;            //canonical motif of tandem repeat
     std::string GMOTIF;           //generating motif used in fuzzy alignment
+    
+    //is there a definition for a impure tandem repeat? - should we mark such regions?
+        
     std::string RU;               //repeat unit on reference sequence that is in phase from the start position of the variant
 
     std::string RL;               //repeat tract length
@@ -113,7 +116,7 @@ class Igor : Program
         //////////////////////////
         try
         {
-            std::string desc = "annotates indels with VNTR information - repeat tract length, repeat motif, flank information";
+            std::string desc = "annotates indels with VNTR information and adds a VNTR record.";
 
             TCLAP::CmdLine cmd(desc, ' ', version);
             VTOutput my; cmd.setOutput(&my);
@@ -123,12 +126,23 @@ class Igor : Program
             TCLAP::ValueArg<std::string> arg_ref_fasta_file("r", "r", "reference sequence fasta file []", true, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_annotation_mode("a", "a", "annotation type [v]\n"
                  "              v : a. output VNTR variant (defined by classification).\n"
-                 "                     RU    repeat unit on reference sequence (CA)\n"
-                 "                     MOTIF canonical representation (AC)\n"
-                 "                     RL    repeat tract length in bases (11)\n"
+                 "                     RU                    repeat unit on reference sequence (CA)\n"
+                 "                     MOTIF                 canonical representation (AC)\n"
+                 "                     RL                    repeat tract length in bases (11)\n"
+                 "                     FLANKS                flanking positions of repeat tract determined by exact alignment\n"
+                 "                     RU_COUNTS             number of exact repeat units and total number of repeat units in\n"
+                 "                                           repeat tract determined by exact alignment\n"
+                 "                     FZ_RL                 fuzzy repeat tract length in bases (11)\n"
+                 "                     FZ_FLANKS             flanking positions of repeat tract determined by fuzzy alignment\n"
+                 "                     FZ_RU_COUNTS          number of exact repeat units and total number of repeat units in\n"
+                 "                                           repeat tract determined by fuzzy alignment\n"
+                 "                     FLANKSEQ              flanking sequence of indel\n"
+                 "                     LARGE_REPEAT_REGION   repeat region exceeding 2000bp\n"
                  "                  b. mark indels with overlapping VNTR.\n"
+                 "                     FLANKS       flanking positions of repeat tract determined by exact alignment\n"
+                 "                     FZ_FLANKS    flanking positions of repeat tract determined by fuzzy alignment\n"
+                 "                     GMOTIF       generating motif used in fuzzy alignment\n"
                  "                     TR    position and alleles of VNTR (20:23413:CACACACACAC:<VNTR>)\n"
-                 "                     END   end position if allelic region (23423)\n"
                  "              a : annotate each indel with RU, RL, MOTIF, REF.",
                  false, "v", "str", cmd);
             TCLAP::ValueArg<int32_t> arg_vntr_classification("c", "c", "classification schemas of tandem repeat [6]\n"
@@ -143,7 +157,6 @@ class Igor : Program
                  "              e : by exact alignment"
                  "              f : by fuzzy alignment",
                  false, "f", "str", cmd);
-
             TCLAP::SwitchArg arg_debug("d", "d", "debug [false]", cmd, false);
             TCLAP::UnlabeledValueArg<std::string> arg_input_vcf_file("<in.vcf>", "input VCF file", true, "","file", cmd);
             TCLAP::ValueArg<std::string> arg_fexp("f", "f", "filter expression []", false, "", "str", cmd);
@@ -680,23 +693,7 @@ class Igor : Program
                         flanks.append(seq);
                         free(seq);
                         bcf_update_info_string(h, v, "FLANKSEQ", flanks.c_str());
-                        bcf_update_info_string(h, v, "GMOTIF", variant.vntr.motif.c_str() );
-                        
-//                        //update flanking sequences
-//                        std::string flanks;
-//                        int32_t seq_len;
-//                        char* seq = faidx_fetch_seq(fai, variant.chrom.c_str(), variant.vntr.fuzzy_rbeg1-10-1, variant.vntr.fuzzy_rbeg1-1-1, &seq_len);
-//                        flanks.assign(seq);
-//                        free(seq);
-//                        flanks.append(1, '[');
-//                        seq = faidx_fetch_seq(fai, variant.chrom.c_str(), variant.vntr.fuzzy_rbeg1-1, variant.vntr.fuzzy_rend1-1, &seq_len);
-//                        flanks.append(seq);
-//                        free(seq);
-//                        flanks.append(1, ']');
-//                        seq = faidx_fetch_seq(fai, variant.chrom.c_str(), variant.vntr.fuzzy_rend1+1-1, variant.vntr.fuzzy_rend1+10-1, &seq_len);
-//                        flanks.append(seq);
-//                        free(seq);
-//                        bcf_update_info_string(h, v, "FLANKSEQ", flanks.c_str());
+                        bcf_update_info_string(h, v, "GMOTIF", variant.vntr.motif.c_str());                        
                     }
 
                     /////////////////
@@ -724,6 +721,9 @@ class Igor : Program
                             v = odw->get_bcf1_from_pool();
                         }
                     }
+                    //ADD ANOTHER CLASSIFICATION FOR IMPURE VNTRs - useful for marking 
+                    //else if
+                    //
                     else
                     {
                         odw->write(v);

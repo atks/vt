@@ -1166,7 +1166,7 @@ void RFHMM::print_alignment(std::string& pad)
         }
     }
     motif_concordance *= 1.0/motif_count;
-    std::cerr << "motif concordance : " << motif_concordance << "% (" << exact_motif_count << "/" << motif_count << ")\n";
+    std::cerr << "motif concordance : " << (motif_concordance*100) << "% (" << exact_motif_count << "/" << motif_count << ")\n";
     std::cerr << "motif discordance : ";
     for (int32_t k=1; k<=motif_count; ++k)
     {

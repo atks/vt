@@ -1170,12 +1170,12 @@ void LFHMM::print_alignment(std::string& pad)
     std::cerr << "\n";
 //    print_T();
 //    std::cerr << "\n";
-    std::cerr << "QUAL+33\tMATCH\tMISMATCH\tPENALTY\n";
-    int32_t qual = 'K' - 33;
-    std::cerr << qual << "\t"<< log10_emission_odds('A', 'A', qual) << "\t"
-                             << log10_emission_odds('A', 'C', qual) << "\t"
-                             << log10_emission_odds('A', 'C', qual, 2) << "\n";
-    std::cerr << "\n";
+//    std::cerr << "QUAL+33\tMATCH\tMISMATCH\tPENALTY\n";
+//    int32_t qual = 'K' - 33;
+//    std::cerr << qual << "\t"<< log10_emission_odds('A', 'A', qual) << "\t"
+//                             << log10_emission_odds('A', 'C', qual) << "\t"
+//                             << log10_emission_odds('A', 'C', qual, 2) << "\n";
+//    std::cerr << "\n";
 
     std::cerr << "lflank       : " << model[LFLANK] << "\n";
     std::cerr << "repeat motif : " << model[MOTIF] << "\n";
@@ -1203,7 +1203,7 @@ void LFHMM::print_alignment(std::string& pad)
     std::cerr << "\n";
     std::cerr << "motif #           : " << motif_count << " [" << motif_start[READ] << "," << motif_end[READ] << "]\n";
 
-    std::cerr << "motif concordance : " << motif_concordance << "% (" << exact_motif_count << "/" << motif_count << ")\n";
+    std::cerr << "motif concordance : " << (motif_concordance*100) << "% (" << exact_motif_count << "/" << motif_count << ")\n";
     std::cerr << "motif discordance : ";
     for (int32_t k=1; k<=motif_count; ++k)
     {

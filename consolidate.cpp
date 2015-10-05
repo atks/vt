@@ -35,9 +35,10 @@ class Igor : Program
     ///////////
     std::string input_vcf_file;
     std::string output_vcf_file;
+    std::string ref_fasta_file;
     std::vector<GenomeInterval> intervals;
-    bool merge_by_pos;
-
+    bool debug;
+    
     ///////
     //i/o//
     ///////
@@ -67,11 +68,13 @@ class Igor : Program
     int32_t no_overlap_variants;
     int32_t no_new_multiallelic_snps;
     int32_t no_new_multiallelic_indels;
+    int32_t no_new_multiallelic_vntr_indels;
 
     /////////
     //tools//
     /////////
     VariantManip *vm;
+    faidx_t * fai;
     LogTool lt;
 
     Igor(int argc, char **argv)
@@ -100,12 +103,16 @@ class Igor : Program
             TCLAP::ValueArg<std::string> arg_intervals("i", "i", "intervals []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "file", cmd);
             TCLAP::ValueArg<std::string> arg_output_vcf_file("o", "o", "output VCF file [-]", false, "-", "str", cmd);
+            TCLAP::ValueArg<std::string> arg_ref_fasta_file("r", "r", "reference sequence fasta file []", true, "", "str", cmd);
+            TCLAP::SwitchArg arg_debug("d", "d", "debug [false]", cmd, false);
             TCLAP::UnlabeledValueArg<std::string> arg_input_vcf_file("<in.vcf>", "input VCF file", true, "","file", cmd);
 
             cmd.parse(argc, argv);
 
             input_vcf_file = arg_input_vcf_file.getValue();
             output_vcf_file = arg_output_vcf_file.getValue();
+            ref_fasta_file = arg_ref_fasta_file.getValue();
+            debug = arg_debug.getValue();
             parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
         }
         catch (TCLAP::ArgException &e)
@@ -178,11 +185,13 @@ class Igor : Program
         no_overlap_variants = 0;
         no_new_multiallelic_snps = 0;
         no_new_multiallelic_indels = 0;
+        no_new_multiallelic_vntr_indels = 0;
 
         ////////////////////////
         //tools initialization//
         ////////////////////////
         vm = new VariantManip();
+        fai = fai_load(ref_fasta_file.c_str());
     }
 
     /**
@@ -511,50 +520,150 @@ class Igor : Program
         }
         else 
         {
-            if (variant->no_overlapping_vntrs ==1)
+            //1 overlapping VNTR
+            if (variant->no_overlapping_vntrs==1)
             {
-//            bcf1_t* v = bcf_init1();
-//            bcf_clear(v);
-//
-//            bcf1_t* vntr_v = variant->vntr_vs[0];
-//            
-//            
-//            char* motif = NULL;
-//            int32_t n_motif = 0;
-//            
-//            double* fuzzy_concordance = NULL;
-//            int32_t n_fuzzy_concordance = 0;
-//            int32_t* flanks = NULL;
-//            int32_t n_flanks = 0;
-//            int32_t* fuzzy_flanks = NULL;
-//            int32_t n_fuzzy_flanks = 0;
-//            if (bcf_get_info_string(odr->hdr, v, "MOTIF", &motif, &n_motif)>0 &&
-//                bcf_get_info_string(odr->hdr, v, "FZ_CONCORDANCE", &fuzzy_concordance, &n_fuzzy_concordance)>0 &&
-//                bcf_get_info_string(odr->hdr, v, "FLANKS", &flanks, &n_flanks)>0 &&
-//                bcf_get_info_string(odr->hdr, v, "FZ_FLANKS", &fuzzy_flanks, &n_fuzzy_flanks)>0)
-//                
-//            {
-//                std::vector<bcf1_t *>& indel_vs = variant->indel_vs;
-//                
-//                for (uint32_t i=0; i<indel_vs.size(); ++i)
-//                {
-//                    char* gmotif = NULL;
-//                    int32_t n_gmotif = 0;
-//                    
-//                }
-//                
-//                
-//                
-//                
-//                
-//                free(motif);
-//                free(fuzzy_concordance);
-//                free(flanks);
-//                free(fuzzy_flanks);
-//                
-//            } 
-              
-              return false;
+                if (debug)
+                {
+                    std::cerr  << "###########################\n";
+                    std::cerr  << "#1 VNTR and multiple Indels\n";
+                    std::cerr  << "###########################\n";
+                    std::cerr << "no overlapping SNPs   " << variant->no_overlapping_snps << "\n";
+                    std::cerr << "no overlapping Indels " << variant->no_overlapping_indels << "\n";
+                    std::cerr << "no overlapping VNTRs  " << variant->no_overlapping_vntrs << "\n";
+                    std::cerr << "consolidating: " << (variant->vs.size()+1) << " alleles\n";
+                }
+                
+                bcf1_t* vntr_v = variant->vntr_vs[0];
+                if (debug)
+                {    
+                    bcf_print(odw->hdr, vntr_v);
+                    std::cerr << "\tQUAL = " << bcf_get_qual(vntr_v) << "\n";
+                }
+                
+                char* motif = NULL;
+                int32_t n_motif = 0;
+                double* fuzzy_concordance = NULL;
+                int32_t n_fuzzy_concordance = 0;
+                int32_t* flanks = NULL;
+                int32_t n_flanks = 0;
+                int32_t* fuzzy_flanks = NULL;
+                int32_t n_fuzzy_flanks = 0;
+                if (bcf_get_info_string(odr->hdr, vntr_v, "MOTIF", &motif, &n_motif)>0 &&
+                    bcf_get_info_float(odr->hdr, vntr_v, "FZ_CONCORDANCE", &fuzzy_concordance, &n_fuzzy_concordance)>0 &&
+                    bcf_get_info_int32(odr->hdr, vntr_v, "FLANKS", &flanks, &n_flanks)>0 &&
+                    bcf_get_info_int32(odr->hdr, vntr_v, "FZ_FLANKS", &fuzzy_flanks, &n_fuzzy_flanks)>0)
+                    
+                {
+                    std::vector<bcf1_t *>& indel_vs = variant->indel_vs;
+                    std::vector<uint32_t> ref_beg1;
+                    std::vector<uint32_t> ref_end1;              
+                    uint32_t min_beg1 = INT_MAX;
+                    uint32_t max_end1 = 0;
+                    std::vector<bcf1_t*> candidate_indel_vs;
+                        
+                    for (uint32_t i=0; i<indel_vs.size(); ++i)
+                    {
+                        if (debug)
+                        {    
+                            bcf_print(odw->hdr, indel_vs[i]);
+                            std::cerr << "\tQUAL = " << bcf_get_qual(indel_vs[i]) << "\n";
+                        }
+                        
+                        if (bcf_get_qual(indel_vs[i])>30)
+                        {
+                            if (bcf_get_pos1(indel_vs[i])==flanks[0])
+                            {
+                                char* gmotif = NULL;
+                                int32_t n_gmotif = 0;
+                                if (bcf_get_info_string(odr->hdr, indel_vs[i], "GMOTIF", &gmotif, &n_gmotif)>0)
+                                {
+                                    if (strcmp(motif, gmotif)==0)
+                                    {
+                                        uint32_t beg1 = bcf_get_pos1(indel_vs[i]);
+                                        uint32_t end1 = bcf_get_end1(indel_vs[i]);
+                                        ref_beg1.push_back(beg1);
+                                        ref_end1.push_back(end1);
+                                        min_beg1 = beg1<min_beg1 ? beg1 : min_beg1;
+                                        max_end1 = end1>max_end1 ? end1 : max_end1;
+                                        candidate_indel_vs.push_back(indel_vs[i]);
+                                    }    
+                                
+                                    free(gmotif);    
+                                }
+                            }
+                            else
+                            {
+                                //not on correct position
+                            }
+                        }  
+                    }
+                    
+                    for (uint32_t i=0; i<variant->snp_vs.size(); ++i)
+                    {
+                        if (debug)
+                        {
+                            bcf_print(odw->hdr, variant->snp_vs[i]);
+                            std::cerr << "\tQUAL = " << bcf_get_qual(variant->snp_vs[i]) << "\n";
+                        }
+                    }
+                    
+                    
+                    if (candidate_indel_vs.size()>1)
+                    {
+                        bcf1_t* v = bcf_init1();
+                        bcf_clear(v);
+                        bcf_set_rid(v, bcf_get_rid(candidate_indel_vs[0]));
+                        bcf_set_pos1(v, min_beg1);
+                        variant->v = v;
+                        
+                        kstring_t alleles = {0,0,0};
+                        
+                        int32_t seq_len = 0;
+                        char* seq = faidx_fetch_seq(fai, variant->chrom.c_str(), min_beg1-1, max_end1-1, &seq_len);
+                        kputs(seq, &alleles);    
+                        
+                        for (uint32_t i=0; i<candidate_indel_vs.size(); ++i)
+                        {
+                            kputc(',', &alleles);
+                            std::string alt;
+                            alt.append(seq, ref_beg1[i]-min_beg1);
+                            alt.append(bcf_get_alt(candidate_indel_vs[i], 1));
+                            alt.append(seq, ref_end1[i]-min_beg1+1, max_end1-ref_end1[i]);
+                            kputs(alt.c_str(), &alleles);
+                            
+                        }
+                        
+                        bcf_update_alleles_str(odw->hdr, v, alleles.s);
+                        
+                        if (seq_len) free(seq);
+                        if (alleles.m) free(alleles.s);
+                        
+                        if (debug)
+                        {    
+                            bcf_print(odw->hdr, v);   
+                        }
+                        
+                        ++no_new_multiallelic_vntr_indels;
+                        ++no_new_multiallelic_indels;
+                        
+                        free(motif);
+                        free(fuzzy_concordance);
+                        free(flanks);
+                        free(fuzzy_flanks); 
+                        
+                        return true;     
+                    }    
+                    else
+                    {
+                        free(motif);
+                        free(fuzzy_concordance);
+                        free(flanks);
+                        free(fuzzy_flanks);
+                        
+                        return false;
+                    }                   
+                } 
             }  
             else if (variant->no_overlapping_vntrs > 1)
             {
@@ -562,9 +671,12 @@ class Igor : Program
             }
             else //no VNTRs
             {
-                std::cerr  << "###########\n";
-                std::cerr  << "OTHER TYPES\n";
-                std::cerr  << "###########\n";
+                if (debug)
+                {
+                    std::cerr  << "###########\n";
+                    std::cerr  << "OTHER TYPES\n";
+                    std::cerr  << "###########\n";
+                }
                     
                 bcf1_t* v = bcf_init1();
                 bcf_clear(v);
@@ -587,17 +699,19 @@ class Igor : Program
                 char alts[no_alleles];
                 for (uint32_t i=0; i<no_alleles; ++i)
                 {
-                    bcf_unpack(vs[i], BCF_UN_STR);
-                    bcf_print(odw->hdr, vs[i]);
-                    
-                    std::cerr << "\tQUAL = " << bcf_get_qual(vs[i]) << "\n";
-                    
+                    if (debug)
+                    {
+                        bcf_unpack(vs[i], BCF_UN_STR);
+                        bcf_print(odw->hdr, vs[i]);
+                        
+                        std::cerr << "\tQUAL = " << bcf_get_qual(vs[i]) << "\n";
+                    }
                 }
                 
                 bcf_destroy(v);
             }
            
-            ++no_new_multiallelic_indels;
+            
             return false;
         }
 
@@ -713,6 +827,7 @@ class Igor : Program
         std::clog << "       Total number of nonoverlap variants      " << no_nonoverlap_variants << "\n";
         std::clog << "       Total number of new multiallelic SNPs    " << no_new_multiallelic_snps << "\n";
         std::clog << "       Total number of new multiallelic Indels  " << no_new_multiallelic_indels << "\n";
+        std::clog << "            VNTR                                     " << no_new_multiallelic_vntr_indels << "\n";
         std::clog << "       Total number of overlap variants         " << no_overlap_variants << "\n";
         std::clog << "\n";
     };

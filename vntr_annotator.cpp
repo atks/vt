@@ -89,12 +89,7 @@ void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::str
         if (debug) std::cerr << "ANNOTATING VNTR/STR \n";
 
         //1. pick candidate region
-        vntr.repeat_tract.assign(bcf_get_ref(v));
-        vntr.rbeg1 = bcf_get_pos1(v);
-        char** alleles = bcf_get_allele(v);
-        vntr.rend1 = strlen(alleles[0]);
-        vntr.fuzzy_rbeg1 = vntr.rbeg1;
-        vntr.fuzzy_rend1 = vntr.rend1;
+        cre->pick_candidate_region(h, v, variant, REFERENCE);
         
         //2. detect candidate motifs from a reference seqeuence
         cmp->generate_candidate_motifs(h, v, variant);
@@ -106,10 +101,10 @@ void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::str
         //the basic steps in annotating a TR
         //
         //1. extract a region that has a chance of containing the repeat units
-        //2. choose a set of candidate motifs
-        //3. choose the motif
-        //4. detect repeat region and evaluate
-
+        //2. choose a set of candidate motifs and pick motif
+        //3. detect repeat region and evaluate
+        //4. iterate 2 and 3
+        
         //EXACT MODE
         if (mode=="e")
         {
@@ -117,7 +112,7 @@ void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::str
             if (debug) std::cerr << "ANNOTATING INDEL EXACTLY\n";
 
             //1. pick candidate region using exact left and right alignment
-            cre->extract_regions_by_exact_alignment(h, v, vntr);
+            cre->pick_candidate_region(h, v, variant, EXACT_LEFT_RIGHT_ALIGNMENT);
 
             //2. evaluate reference length
             fd->detect_flanks(h, v, variant, CLIP_ENDS);
@@ -132,8 +127,8 @@ void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::str
             if (debug) std::cerr << "ANNOTATING INDEL FUZZILY\n";
 
             //1. selects candidate region by fuzzy left and right alignment
-            cre->extract_regions_by_exact_alignment(h, v, vntr);
-
+            cre->pick_candidate_region(h, v, variant, EXACT_LEFT_RIGHT_ALIGNMENT);
+            
             //2. detect candidate motifs from a reference sequence
             cmp->generate_candidate_motifs(h, v, variant);
             cmp->next_motif(h, v, variant);
@@ -141,7 +136,7 @@ void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::str
             //3. evaluate reference length
             fd->detect_flanks(h, v, variant, FRAHMM);
 
-            //introduce reiteration!!!!
+            //introduce reiteration based on concordance and exact concordance.
 
             if (debug) std::cerr << "============================================\n";
             return;

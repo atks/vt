@@ -42,20 +42,12 @@
 #include "program.h"
 #include "vntr.h"
 
-//forms of alignment
-#define REFERENCE                                0
-#define EXACT_LEFT_RIGHT_ALIGNMENT               1
-#define FUZZY_LEFT_RIGHT_ALIGNMENT               2
-#define FUZZY_LEFT_RIGHT_ALIGNMENT_WITH_PENALTY  3
-
-#define CLIP_ENDS 0
-#define CLIP_1L2R 1
-#define FRAHMM    2
+//modes for flank detection
+#define CLIP_ENDS 0 //literally just clip the flanking bases
+#define FRAHMM    1 //raHMM alignment
 
 /**
- * Class for determining basic traits of an indel
- * motifs, flanks and VNTR type statistics.
- * RU,RL,LFLANK,RFLANK,LFLANKPOS,RFLANKPOS,MOTIF_CONCORDANCE,MOTIF_CONCORDANCE
+ * Class for determining flanks of an Indel.
  */
 class FlankDetector
 {

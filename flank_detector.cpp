@@ -104,7 +104,22 @@ void FlankDetector::detect_flanks(bcf_hdr_t* h, bcf1_t *v, Variant& variant, uin
             std:: cerr << "\n";
         }
 
-        if (vntr.repeat_tract.size()>2)
+        //in the case of simple indels, it is guaranteed that repeat tract length 
+        //is always greater than 2 after exact alignment for deletions. This is 
+        //because at least one end of the REF and ALT will end or start in the same base, 
+        //and this allows the exact alignment detection of the repeat region to always 
+        //increase by at least 1 base.
+        //
+        //exceptions:
+        //
+        //    simple insertion
+        //    C[G]C  => [GC]
+        //      GA
+        //
+        //    complex substitution
+        //    C[G]C  => [G]
+        //      TA
+        if (vntr.repeat_tract.size()>2) 
         {
             vntr.repeat_tract = vntr.repeat_tract.substr(1, vntr.repeat_tract.size()-2);
             ++vntr.rbeg1;
@@ -120,31 +135,6 @@ void FlankDetector::detect_flanks(bcf_hdr_t* h, bcf1_t *v, Variant& variant, uin
         vntr.no_exact_ru = ahmm->exact_motif_count;
         vntr.total_no_ru = ahmm->motif_count;
         vntr.rl = ahmm->repeat_tract_len;
-
-        if (debug)
-        {
-            vntr.print();
-        }
-    }
-    //simple single base pair clipping of ends
-    else if (mode==CLIP_1L2R)
-    {
-        if (debug)
-        {
-            std::cerr << "********************************************\n";
-            std::cerr << "CLIP ENDS\n";
-            std:: cerr << "\n";
-        }
-
-        if (vntr.repeat_tract.size()>3)
-        {
-            vntr.repeat_tract = vntr.repeat_tract.substr(1, vntr.repeat_tract.size()-3);
-            ++vntr.rbeg1;
-        }
-
-        vntr.ru = choose_repeat_unit(vntr.repeat_tract, vntr.motif);
-        vntr.rl = (float)vntr.repeat_tract.size()/vntr.ru.size();
-        vntr.rend1 = vntr.rbeg1 +  vntr.rl -1;
 
         if (debug)
         {
