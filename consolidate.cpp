@@ -233,7 +233,8 @@ class Igor : Program
                     {
                         if (cvariant->type==VT_SNP)
                         {
-                            //make a new a multiallelic
+                            //make a new candidate multiallelic SNP 
+                            //only if there are overlapping SNPs
                             if (bcf_get_n_filter(cvariant->v)==0)
                             {
                                 Variant* multiallelic_variant = new Variant(cvariant, variant);
@@ -280,7 +281,7 @@ class Igor : Program
                         }
                         else if (cvariant->type==VT_INDEL)
                         {
-                            //make a new a multiallelic
+                            //make a new a multiallelic only if 2 indels overlap with one another
                             if (bcf_get_n_filter(cvariant->v) == 0)
                             {
                                 Variant* multiallelic_variant = new Variant(cvariant, variant);
@@ -327,6 +328,13 @@ class Igor : Program
                         }
                         else if (cvariant->type==VT_VNTR)
                         {
+                            //can mark the overlapping VNTRs
+                            //write over
+                            //this should perhaps only be handled in vntr overlaps with indels?
+                            //this is a bit tricky.
+                            //consider ONLY overlapping VNTRs
+                            
+                            
                             bcf_add_filter(odw->hdr, variant->v, overlap_vntr_id);
                             ++variant->no_overlapping_indels;
                             bcf_add_filter(odw->hdr, cvariant->v, overlap_vntr_id);
