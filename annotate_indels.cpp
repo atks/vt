@@ -494,7 +494,10 @@ class Igor : Program
         {
             bcf_set_pos1(v, vntr.rbeg1);
 
-            variant.get_vntr_string(&s);
+            s.l = 0;
+            kputs(vntr.repeat_tract.c_str(), &s);
+            kputc(',', &s);
+            kputs("<VNTR>", &s);
             bcf_update_alleles_str(h, v, s.s);
             bcf_update_info_string(h, v, MOTIF.c_str(), vntr.motif.c_str());
             bcf_update_info_string(h, v, RU.c_str(), vntr.ru.c_str());
@@ -530,7 +533,10 @@ class Igor : Program
         {
             bcf_set_pos1(v, vntr.fuzzy_rbeg1);
 
-            variant.get_fuzzy_vntr_string(&s);
+             s.l = 0;
+            kputs(vntr.fuzzy_repeat_tract.c_str(), &s);
+            kputc(',', &s);
+            kputs("<VNTR>", &s);
             bcf_update_alleles_str(h, v, s.s);
             bcf_update_info_string(h, v, MOTIF.c_str(), vntr.motif.c_str());
             bcf_update_info_string(h, v, RU.c_str(), vntr.ru.c_str());
