@@ -172,7 +172,7 @@ void RFHMM::initialize_structures()
     moves[M][I] = &RFHMM::move_M_I;
     moves[I][I] = &RFHMM::move_I_I;
 
-    moves[S][MR] = &RFHMM::move_Y_MR;
+    moves[S][MR] = &RFHMM::move_S_MR;
     moves[Y][MR] = &RFHMM::move_Y_MR;
     moves[M][MR] = &RFHMM::move_M_MR;
     moves[D][MR] = &RFHMM::move_D_MR;
@@ -792,6 +792,14 @@ void RFHMM::collect_statistics(int32_t src_t, int32_t des_t, int32_t j)
         }
         else if (des_u==I)
         {
+        }
+        else if (des_u==Y)
+        {
+            rflank_start[MODEL] = track_get_p(src_t);
+            rflank_start[READ] = j+1;
+
+            lflank_end[MODEL] = track_get_p(des_t);
+            lflank_end[READ] = j;
         }
     }
     else if (src_u==M)

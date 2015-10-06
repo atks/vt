@@ -69,6 +69,7 @@ class Igor : Program
     int32_t no_new_multiallelic_snps;
     int32_t no_new_multiallelic_indels;
     int32_t no_new_multiallelic_vntr_indels;
+    int32_t no_overlap_vntrs;
 
     /////////
     //tools//
@@ -186,6 +187,7 @@ class Igor : Program
         no_new_multiallelic_snps = 0;
         no_new_multiallelic_indels = 0;
         no_new_multiallelic_vntr_indels = 0;
+        no_overlap_vntrs = 0;
 
         ////////////////////////
         //tools initialization//
@@ -273,7 +275,8 @@ class Igor : Program
                         }
                         else if (cvariant->type==VT_UNDEFINED)
                         {
-                            bcf1_t* v = bcf_dup(variant->v);
+                            //bcf1_t* v = bcf_dup(variant->v);
+                            bcf1_t* v = variant->v;
                             cvariant->vs.push_back(v);
                             cvariant->snp_vs.push_back(v);
                             ++cvariant->no_overlapping_snps;
@@ -315,7 +318,8 @@ class Igor : Program
                         }
                         else if (cvariant->type==VT_UNDEFINED)
                         {
-                            bcf1_t* v = bcf_dup(variant->v);
+                            //bcf1_t* v = bcf_dup(variant->v);
+                            bcf1_t* v = variant->v;
                             cvariant->vs.push_back(v);
                             cvariant->indel_vs.push_back(v);
                             ++cvariant->no_overlapping_indels;
@@ -358,10 +362,13 @@ class Igor : Program
                         }
                         else if (cvariant->type==VT_UNDEFINED)
                         {
-                            bcf1_t* v = bcf_dup(variant->v);
+                            //bcf1_t* v = bcf_dup(variant->v);
+                            bcf1_t* v = variant->v;
                             cvariant->vs.push_back(v);
                             cvariant->vntr_vs.push_back(v);
                             ++cvariant->no_overlapping_vntrs;
+                            
+                            ++no_overlap_vntrs;
                         }
                     }
 
@@ -520,7 +527,9 @@ class Igor : Program
         }
         else 
         {
-            //1 overlapping VNTR
+            //////////////////////
+            //One overlapping VNTR
+            //////////////////////
             if (variant->no_overlapping_vntrs==1)
             {
                 if (debug)
@@ -665,8 +674,34 @@ class Igor : Program
                     }                   
                 } 
             }  
+            //////////////////////////////
+            //Two or more overlapping VNTR
+            //////////////////////////////
             else if (variant->no_overlapping_vntrs > 1)
             {
+                if (true)
+                {
+                    std::cerr  << "###################################\n";
+                    std::cerr  << "#2 or more VNTR and multiple Indels\n";
+                    std::cerr  << "###################################\n";
+                    std::cerr << "no overlapping SNPs   " << variant->no_overlapping_snps << "\n";
+                    std::cerr << "no overlapping Indels " << variant->no_overlapping_indels << "\n";
+                    std::cerr << "no overlapping VNTRs  " << variant->no_overlapping_vntrs << "\n";
+                    std::cerr << "consolidating: " << (variant->vs.size()+1) << " alleles\n";
+                }
+                
+                for (uint32_t i=0; i<variant->vs.size(); ++i)
+                {
+                    if (true)
+                    {    
+                        bcf_print(odw->hdr, variant->vs[i]);
+                        std::cerr << "\tQUAL = " << bcf_get_qual(variant->vs[i]) << "\n";
+                    }
+                    
+                   
+                }
+                
+                
                 return false;
             }
             else //no VNTRs
@@ -828,7 +863,7 @@ class Igor : Program
         std::clog << "       Total number of new multiallelic SNPs    " << no_new_multiallelic_snps << "\n";
         std::clog << "       Total number of new multiallelic Indels  " << no_new_multiallelic_indels << "\n";
         std::clog << "            VNTR                                     " << no_new_multiallelic_vntr_indels << "\n";
-        std::clog << "       Total number of overlap variants         " << no_overlap_variants << "\n";
+        std::clog << "       Total number of overlap VNTRs            " << no_overlap_vntrs << "\n";
         std::clog << "\n";
     };
 

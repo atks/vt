@@ -131,8 +131,12 @@ void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::str
             
             //2. detect candidate motifs from a reference sequence
             cmp->generate_candidate_motifs(h, v, variant);
-            cmp->next_motif(h, v, variant);
-           
+            
+            if (!cmp->next_motif(h, v, variant))
+            {
+                std::cerr << "oops, no candidate motif for next step\n";
+                    
+            }
             //3. evaluate reference length
             fd->detect_flanks(h, v, variant, FRAHMM);
 
@@ -184,7 +188,7 @@ bool VNTRAnnotator::is_vntr(Variant& variant, int32_t mode, std::string& method)
             {
                 return true;
             }
-            else if (mlen>1 || motif_concordance>0.75)
+            else if (mlen>1 && motif_concordance>0.75)
             {
                 return true;
             }

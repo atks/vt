@@ -340,6 +340,7 @@ void MotifTree::detect_candidate_motifs(char* seq, uint32_t len)
                 else
                 {
                     if (debug) std::cerr << motif << " : " << p << " " << tree[i->first].len << " " << f << " (< 2 copies)\n";
+                    pcm.push(CandidateMotif(motif, p, tree[i->first].len, f));
                 }
             }
         }

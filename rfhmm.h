@@ -616,16 +616,9 @@ class RFHMM
 //            }
 //        }
 
-        if (j<rlen-rflen)
+        if (j==rlen-rflen)
         {
-            if ((track_get_d(t)==MOTIF && track_get_p(t)==mlen))
-            {
-                return make_track(Y,RFLANK,0,1);
-            }
-            else
-            {
-                return NULL_TRACK;
-            }
+           return make_track(Y,RFLANK,1,1);
         }
 
         return NULL_TRACK;
@@ -640,7 +633,7 @@ class RFHMM
 
         if (track_get_p(t)==mlen && j==rlen-rflen)
         {
-            return make_track(M,RFLANK,0,1);
+            return make_track(M,RFLANK,1,1);
         }
 
         return NULL_TRACK;

@@ -54,34 +54,42 @@ void CandidateMotifPicker::generate_candidate_motifs(bcf_hdr_t* h, bcf1_t* v, Va
         std::cerr << "PICK CANDIDATE MOTIFS\n\n";
     }
 
-    if (variant.ins && variant.alleles.size()==1)
-    {   
+    if (variant.ins)
+    {
         char** alleles = bcf_get_allele(v);
-        
+
         if (debug)
-        {     
+        {
             const char* repeat_tract = variant.vntr.repeat_tract.c_str();
-            std::cerr << "Longest Allele : "   << alleles[0][0] << "[" <<  &alleles[1][1]  << "]" << &repeat_tract[1] << "\n"; 
+            std::cerr << "Longest Allele : "   << alleles[0][0] << "[" <<  &alleles[1][1]  << "]" << &repeat_tract[1] << "\n";
         }
-        
+
         //spike in inserted allele
         std::string spiked_seq(alleles[1]);
         std::string insertion = variant.vntr.repeat_tract.substr(strlen(alleles[0]), variant.vntr.repeat_tract.size()-strlen(alleles[0]));
-        spiked_seq.append(insertion); 
-           
+        spiked_seq.append(insertion);
+        mt->detect_candidate_motifs(spiked_seq);
         
-        mt->detect_candidate_motifs(spiked_seq);   
+        indel_sequence.assign(&alleles[1][1]);
     }
     else
     {
         mt->detect_candidate_motifs(variant.vntr.repeat_tract);
+
+        char** alleles = bcf_get_allele(v);
+        indel_sequence.assign(&alleles[0][1]);
+    }
+    
+    if (debug)
+    {
+        std::cerr << "Indel : "  << indel_sequence << "\n";
     }
 }
 
 /**
- * Chooses a phase of the motif that is appropriate for the alignment
+ * Choose the next best motif.
  */
-void CandidateMotifPicker::next_motif(bcf_hdr_t* h, bcf1_t* v, Variant& variant)
+bool CandidateMotifPicker::next_motif(bcf_hdr_t* h, bcf1_t* v, Variant& variant)
 {
     if (debug)
     {
@@ -89,45 +97,57 @@ void CandidateMotifPicker::next_motif(bcf_hdr_t* h, bcf1_t* v, Variant& variant)
         std::cerr << "PICKING NEXT BEST MOTIF\n\n";
     }
 
-    ////
-    //Pick highest scoring motif from motif tree
-    //
-    
-        //extract deleted or inserted fragments
-        //this should work for multiallelics
-//        std::vector<std::string> indels;
-//        char* ref = bcf_get_ref_allele(v, 0);
-//                
-//        
-//        char* ref = bcf_get_ref_allele(v, 0);
-//      
-        
-    if (!mt->pcm.empty())
+    while (!mt->pcm.empty())
     {
         CandidateMotif cm = mt->pcm.top();
 
-        variant.vntr.motif = cm.motif;
-        variant.vntr.mlen = cm.motif.size();
-        variant.vntr.motif_score = cm.score;
-
-        //check for consistency between chosen motif and inserted/deleted fragment
-
+        //check for existence of pattern in indel sequence
+        if (is_in_indel_fragment(cm.motif))
+        {
+            if (debug)
+            {
+                printf("selected: %10s %.2f %.2f\n", mt->pcm.top().motif.c_str(),
+                                                                mt->pcm.top().score,
+                                                                mt->pcm.top().fit);
+            }
+            variant.vntr.motif = cm.motif;
+            variant.vntr.mlen = cm.motif.size();
+            variant.vntr.motif_score = cm.score;
+            mt->pcm.pop();
+            return true;
+        }
+        else
+        {
+            if (debug)
+            {
+                printf("rejected: %10s %.2f %.2f (not in indel fragment)\n",
+                                                                mt->pcm.top().motif.c_str(),
+                                                                mt->pcm.top().score,
+                                                                mt->pcm.top().fit);
+            }
+            mt->pcm.pop();
+        }
     }
 
-    if (debug)
+    return false;
+}
+
+/**
+ * Checks if motif is in indel fragment.
+ */
+bool CandidateMotifPicker::is_in_indel_fragment(std::string motif)
+{
+    for (uint32_t i=0; i<motif.size(); ++i)
     {
-        printf("selected: %10s %.2f %.2f\n", mt->pcm.top().motif.c_str(),
-                                                        mt->pcm.top().score,
-                                                        mt->pcm.top().fit);
-    }
-   
-    if (debug)
-    {
-        printf("selected: %10s %.2f %.2f \n", mt->pcm.top().motif.c_str(),
-                                                        mt->pcm.top().score,
-                                                        mt->pcm.top().fit);
+        std::string shifted_motif = motif.substr(i) + motif.substr(0,i);
+        
+        if (indel_sequence.find(shifted_motif.c_str())!=std::string::npos)
+        {
+            return true;
+        }
     }
     
+    return false;
 }
 
 /**

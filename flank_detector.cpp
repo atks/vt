@@ -146,7 +146,7 @@ void FlankDetector::detect_flanks(bcf_hdr_t* h, bcf1_t *v, Variant& variant, uin
         if (debug)
         {
             std::cerr << "********************************************\n";
-            std::cerr << "4. DETECTING REPEAT TRACT FUZZILY\n";
+            std::cerr << "DETECTING REPEAT TRACT FUZZILY\n";
         }
 
         /////////////////
@@ -155,7 +155,7 @@ void FlankDetector::detect_flanks(bcf_hdr_t* h, bcf1_t *v, Variant& variant, uin
         if (debug)
         {
             std::cerr << "++++++++++++++++++++++++++++++++++++++++++++\n";
-            std::cerr << "4a. Exact left/right alignment\n";
+            std::cerr << "Exact left/right alignment\n";
         }
 
         if (vntr.repeat_tract.size()>2)
@@ -216,7 +216,7 @@ void FlankDetector::detect_flanks(bcf_hdr_t* h, bcf1_t *v, Variant& variant, uin
         if (debug)
         {
             std::cerr << "++++++++++++++++++++++++++++++++++++++++++++\n";
-            std::cerr << "4a. Fuzzy right alignment\n";
+            std::cerr << "Fuzzy right alignment\n";
         }
 
         int32_t slen = 100;
@@ -257,7 +257,7 @@ void FlankDetector::detect_flanks(bcf_hdr_t* h, bcf1_t *v, Variant& variant, uin
             {
                 std::cerr << "\n";
                 std::cerr << "++++++++++++++++++++++++++++++++++++++++++++\n";
-                std::cerr << "4b. Fuzzy left alignment\n";
+                std::cerr << "Fuzzy left alignment\n";
             }
 
             //this is a hack around rfhmm rigidity in modeling the RUs

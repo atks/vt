@@ -59,9 +59,9 @@ class CandidateMotifPicker
 {
     public:
 
-    uint32_t max_mlen; //maximum length for motif search in the fast tree.
-
     //model
+    std::string indel_sequence;
+    uint32_t max_mlen; //maximum length for motif search in the fast tree.
 
     bool debug;
     int32_t max_len;
@@ -69,10 +69,7 @@ class CandidateMotifPicker
     ///////
     //tools
     ///////
-    VariantManip *vm;
-    CandidateRegionExtractor* cre;
     MotifTree* mt;
-    FlankDetector* fd;
 
     /**
      * Constructor.
@@ -92,8 +89,13 @@ class CandidateMotifPicker
     /**
      * Choose the next best motif.
      */
-    void next_motif(bcf_hdr_t* h, bcf1_t* v, Variant& variant);
-
+    bool next_motif(bcf_hdr_t* h, bcf1_t* v, Variant& variant);
+    
+    /**
+     * Checks if motif is in indel fragment.
+     */
+    bool is_in_indel_fragment(std::string motif);
+ 
     /**
      * Chooses a phase of the motif that is appropriate for the alignment
      */
