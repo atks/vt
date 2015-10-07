@@ -160,6 +160,7 @@ void FlankDetector::detect_flanks(bcf_hdr_t* h, bcf1_t *v, Variant& variant, uin
 
         if (vntr.repeat_tract.size()>2)
         {
+            //removing the anchor bases
             if (vntr.mlen==1)
             {
                 int32_t offset = 0;
@@ -187,6 +188,14 @@ void FlankDetector::detect_flanks(bcf_hdr_t* h, bcf1_t *v, Variant& variant, uin
                     --vntr.rend1;
                 }
             }
+        }
+        //this is for nonexistent repeat units
+        // 
+        // RU : T
+        // repeat_tract : G[T]C where T is an insert
+        else if (vntr.repeat_tract.size()==2)
+        {
+            
         }
 
         vntr.ru = choose_repeat_unit(vntr.repeat_tract, vntr.motif);

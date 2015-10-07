@@ -1167,15 +1167,15 @@ void LFHMM::print_alignment(std::string& pad)
         std::cerr << "path not traced\n";
     }
 
+    //std::cerr << "\n";
+    //print_T();
     std::cerr << "\n";
-//    print_T();
-//    std::cerr << "\n";
-//    std::cerr << "QUAL+33\tMATCH\tMISMATCH\tPENALTY\n";
-//    int32_t qual = 'K' - 33;
-//    std::cerr << qual << "\t"<< log10_emission_odds('A', 'A', qual) << "\t"
-//                             << log10_emission_odds('A', 'C', qual) << "\t"
-//                             << log10_emission_odds('A', 'C', qual, 2) << "\n";
-//    std::cerr << "\n";
+    std::cerr << "QUAL+33\tMATCH\tMISMATCH\tPENALTY\n";
+    int32_t qual = 'K' - 33;
+    std::cerr << "A vs A    : " << log10_emission_odds('A', 'A', qual) << "\n";
+    std::cerr << "A vs C    : " << log10_emission_odds('A', 'C', qual) << "\n";
+    std::cerr << "A vs C p2 : " << log10_emission_odds('A', 'C', qual, 2) << "\n";
+    std::cerr << "\n";
 
     std::cerr << "lflank       : " << model[LFLANK] << "\n";
     std::cerr << "repeat motif : " << model[MOTIF] << "\n";
