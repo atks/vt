@@ -21,7 +21,7 @@
    THE SOFTWARE.
 */
 
-#include "rpartition.h"
+#include "profile_vntrs.h"
 
 namespace
 {
@@ -275,7 +275,7 @@ class Igor : Program
 
 }
 
-void rpartition(int argc, char ** argv)
+void profile_vntr(int argc, char ** argv)
 {
     Igor igor(argc, argv);
     igor.print_options();

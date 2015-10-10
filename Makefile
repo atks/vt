@@ -78,6 +78,7 @@ SOURCES = align\
 		profile_mendelian\
 		profile_na12878\
 		profile_snps\
+		profile_vntrs\
 		program\
 		reference_sequence\
 		remove_overlap\

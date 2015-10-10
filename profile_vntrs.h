@@ -21,8 +21,8 @@
    THE SOFTWARE.
 */
 
-#ifndef RPARTITION_H
-#define RPARTITION_H
+#ifndef PROFILE_VNTRS_H
+#define PROFILE_VNTRS_H
 
 #include "bcf_synced_reader.h"
 #include "bcf_ordered_writer.h"
@@ -35,6 +35,6 @@
 #include "hts_utils.h"
 #include "program.h"
 
-void rpartition(int argc, char ** argv);
+void profile_vntrs(int argc, char ** argv);
 
 #endif
