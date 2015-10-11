@@ -27,6 +27,7 @@ SOURCES = align\
 		compute_features\
 		compute_features2\
 		config\
+		consolidate_vntrs\
 		consolidate\
 		construct_probes\
 		decompose\

@@ -21,8 +21,8 @@
    THE SOFTWARE.
 */
 
-#ifndef CONSOLIDATE_VARIANTS_H
-#define CONSOLIDATE_VARIANTS_H
+#ifndef CONSOLIDATE_VNTRS_H
+#define CONSOLIDATE_VNTRS_H
 
 #include <cstdlib>
 #include <cstdint>
@@ -44,6 +44,6 @@
 #include "log_tool.h"
 #include "htslib/faidx.h"
 
-void consolidate(int argc, char **argv);
+void consolidate_vntrs(int argc, char **argv);
     
 #endif

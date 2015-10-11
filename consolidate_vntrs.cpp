@@ -21,7 +21,7 @@
    THE SOFTWARE.
 */
 
-#include "consolidate.h"
+#include "consolidate_vntrs.h"
 
 namespace
 {
@@ -874,7 +874,7 @@ class Igor : Program
 
 }
 
-void consolidate(int argc, char ** argv)
+void consolidate_vntrs(int argc, char ** argv)
 {
     Igor igor(argc, argv);
     igor.print_options();
