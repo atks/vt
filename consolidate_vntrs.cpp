@@ -122,36 +122,6 @@ class Igor : Program
             abort();
         }
     };
-
-    /**
-     * Compute GLFSingle single variant likelihood ratio P(Non Variant)/P(Variant) for Indel
-     */
-    double compute_glfsingle_llr(uint32_t e, uint32_t n)
-    {
-        double ln_theta = -6.907755; // theta = 0.001;
-        double ln_one_minus_theta = -0.0010005; // 1-theta = 0.999;
-        double ln_one_third = -1.098612; 
-        double ln_two_thirds = -0.4054651; 
-        double ln_0_001 = -6.907755;                    
-        double ln_0_999 = -0.0010005; 
-        double ln_0_5 = -0.6931472;         
-        
-        double ln_pRR = (n-e) * ln_0_999 + e * ln_0_001;
-        double ln_pRA = n * ln_0_5;
-        double ln_pAA = e * ln_0_999 + (n-e) * ln_0_001;
-        
-        double ln_lr = ln_one_minus_theta + ln_pRR;
-        ln_lr = logspace_add(ln_lr, ln_one_third+ln_theta+ln_pRA);
-        ln_lr = logspace_add(ln_lr, ln_two_thirds+ln_theta+ln_pAA);
-        
-//        std::cerr << "\t\t" << ln_pRR << " " <<  ln_lr <<  " ";
-        
-        ln_lr = ln_pRR - ln_lr;
-        
-//         std::cerr <<  ln_lr << "\n";
-        
-        return ln_lr;
-    }
     
     void initialize()
     {
@@ -238,113 +208,11 @@ class Igor : Program
                 }
                 else if (variant->end1 >= cvariant->beg1 && variant->beg1 <= cvariant->end1) //overlaps
                 {
-                    ///////
-                    //SNP//
-                    ///////
-                    if (variant->type==VT_SNP)
+                    
+                    if (variant->type==VT_VNTR)
                     {
-                        if (cvariant->type==VT_SNP)
-                        {
-                            //make a new candidate multiallelic SNP 
-                            //only if there are overlapping SNPs
-                            if (bcf_get_n_filter(cvariant->v)==0)
-                            {
-                                Variant* multiallelic_variant = new Variant(cvariant, variant);
-                                multiallelic_variant->no_overlapping_snps = 2;
-                                variant_buffer.push_front(multiallelic_variant);
-                            }
-
-                            bcf_add_filter(odw->hdr, variant->v, overlap_snp_id);
-                            ++variant->no_overlapping_snps;
-                            bcf_add_filter(odw->hdr, cvariant->v, overlap_snp_id);
-                            ++cvariant->no_overlapping_snps;
-                        }
-                        else if (cvariant->type==VT_INDEL)
-                        {
-                            bcf_add_filter(odw->hdr, variant->v, overlap_indel_id);
-                            ++variant->no_overlapping_indels;
-                            bcf_add_filter(odw->hdr, cvariant->v, overlap_snp_id);
-                            ++cvariant->no_overlapping_snps;
-                        }
-                        else if (cvariant->type==VT_VNTR)
-                        {
-                            bcf_add_filter(odw->hdr, variant->v, overlap_vntr_id);
-                            ++variant->no_overlapping_vntrs;
-                            bcf_add_filter(odw->hdr, cvariant->v, overlap_snp_id);
-                            ++variant->no_overlapping_snps;
-                        }
-                        else if (cvariant->type==VT_UNDEFINED)
-                        {
-                            //bcf1_t* v = bcf_dup(variant->v);
-                            bcf1_t* v = variant->v;
-                            cvariant->vs.push_back(v);
-                            cvariant->snp_vs.push_back(v);
-                            ++cvariant->no_overlapping_snps;
-                        }
-                    }
-                    /////////
-                    //INDEL//
-                    /////////
-                    else if (variant->type==VT_INDEL)
-                    {
-                        if (cvariant->type==VT_SNP)
-                        {
-                            bcf_add_filter(odw->hdr, variant->v, overlap_snp_id);
-                            ++variant->no_overlapping_snps;
-                            bcf_add_filter(odw->hdr, cvariant->v, overlap_indel_id);
-                            ++cvariant->no_overlapping_indels;
-                        }
-                        else if (cvariant->type==VT_INDEL)
-                        {
-                            //make a new a multiallelic only if 2 indels overlap with one another
-                            if (bcf_get_n_filter(cvariant->v) == 0)
-                            {
-                                Variant* multiallelic_variant = new Variant(cvariant, variant);
-                                multiallelic_variant->no_overlapping_indels = 2;
-                                variant_buffer.push_front(multiallelic_variant);
-                            }
-
-                            bcf_add_filter(odw->hdr, variant->v, overlap_indel_id);
-                            ++variant->no_overlapping_indels;
-                            bcf_add_filter(odw->hdr, cvariant->v, overlap_indel_id);
-                            ++cvariant->no_overlapping_indels;
-                        }
-                        else if (cvariant->type==VT_VNTR)
-                        {
-                            bcf_add_filter(odw->hdr, variant->v, overlap_vntr_id);
-                            ++variant->no_overlapping_vntrs;
-                            bcf_add_filter(odw->hdr, cvariant->v, overlap_indel_id);
-                            ++cvariant->no_overlapping_indels;
-                        }
-                        else if (cvariant->type==VT_UNDEFINED)
-                        {
-                            //bcf1_t* v = bcf_dup(variant->v);
-                            bcf1_t* v = variant->v;
-                            cvariant->vs.push_back(v);
-                            cvariant->indel_vs.push_back(v);
-                            ++cvariant->no_overlapping_indels;
-                        }
-                    }
-                    ////////
-                    //VNTR//
-                    ////////
-                    else if (variant->type==VT_VNTR)
-                    {
-                        if (cvariant->type==VT_SNP)
-                        {
-                            bcf_add_filter(odw->hdr, variant->v, overlap_snp_id);
-                            ++variant->no_overlapping_snps;
-                            bcf_add_filter(odw->hdr, cvariant->v, overlap_vntr_id);
-                            ++cvariant->no_overlapping_vntrs;
-                        }
-                        else if (cvariant->type==VT_INDEL)
-                        {
-                            bcf_add_filter(odw->hdr, variant->v, overlap_indel_id);
-                            ++variant->no_overlapping_indels;
-                            bcf_add_filter(odw->hdr, cvariant->v, overlap_vntr_id);
-                            ++cvariant->no_overlapping_vntrs;
-                        }
-                        else if (cvariant->type==VT_VNTR)
+                        
+                        if (cvariant->type==VT_VNTR)
                         {
                             //can mark the overlapping VNTRs
                             //write over
@@ -789,7 +657,7 @@ class Igor : Program
         }
     }
 
-    void consolidate()
+    void consolidate_vntrs()
     {
         bcf1_t *v = odw->get_bcf1_from_pool();
 
@@ -802,31 +670,10 @@ class Igor : Program
             vm->classify_variant(odw->hdr, v, *variant);
 
             //compute likelihood ratio and store in QUAL field
-            if (variant->type&VT_INDEL)
+            if (variant->type == VT_VNTR)
             {
-                double ln_lr = 0;
-                double max_ln_lr = 0;
-                int32_t* e = NULL;
-                int32_t n_e = 0;
-                int32_t* n = NULL;
-                int32_t n_n = 0;
                 
-                if (bcf_get_info_int32(odr->hdr, v, "E", &e, &n_e)>0 &&
-                    bcf_get_info_int32(odr->hdr, v, "N", &n, &n_n)>0)
-                {
-                    for (uint32_t i=0; i<n_e; ++i)
-                    {
-                        ln_lr  = compute_glfsingle_llr(e[i], n[i]);
-                        ln_lr  = ln_lr>0 ? 0 : -10*(ln_lr-M_LOG10E);
-                        max_ln_lr = ln_lr > max_ln_lr ? ln_lr : max_ln_lr;
-                    }
-                    
-                    
-                    bcf_set_qual(v, max_ln_lr);
-                               
-                    free(e);
-                    free(n);
-                }    
+                
             }    
 
             insert_variant_record_into_buffer(variant);
@@ -879,6 +726,6 @@ void consolidate_vntrs(int argc, char ** argv)
     Igor igor(argc, argv);
     igor.print_options();
     igor.initialize();
-    igor.consolidate();
+    igor.consolidate_vntrs();
     igor.print_stats();
 };
