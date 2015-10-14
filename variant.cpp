@@ -43,8 +43,8 @@ Variant::Variant(bcf_hdr_t* h, bcf1_t* v)
     //attempts to update relevant information on variants
     if (type==VT_SNP)
     {
-        beg1 = pos1;
-        end1 = pos1;
+        beg1 = bcf_get_pos1(v);
+        end1 = bcf_get_pos1(v);
     }
     else if (type==VT_INDEL)
     {
@@ -116,6 +116,9 @@ Variant::Variant(bcf_hdr_t* h, bcf1_t* v)
 
         beg1 = std::min(vntr.rbeg1-1, vntr.fuzzy_rbeg1-1);
         end1 = std::max(vntr.rend1+1, vntr.fuzzy_rend1+1);
+            
+        vs.push_back(v);
+        vntr_vs.push_back(v);
     }    
 }
 

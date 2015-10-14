@@ -45,5 +45,5 @@
 #include "htslib/faidx.h"
 
 void consolidate_vntrs(int argc, char **argv);
-    
+
 #endif

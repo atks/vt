@@ -32,6 +32,7 @@
 #include "compute_concordance.h"
 #include "config.h"
 #include "consolidate.h"
+#include "consolidate_vntrs.h"
 #include "construct_probes.h"
 #include "xcmp.h"
 #include "decompose_blocksub.h"
@@ -339,6 +340,10 @@ int main(int argc, char ** argv)
     {
         consolidate(argc-1, ++argv);
     }
+    else if (argc>1 && cmd=="consolidate_vntrs")
+    {
+        consolidate_vntrs(argc-1, ++argv);
+    }    
     else if (argc>1 && cmd=="filter")
     {
         hfilter(argc-1, ++argv);

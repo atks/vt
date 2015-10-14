@@ -35,7 +35,6 @@ class Igor : Program
     ///////////
     std::string input_vcf_file;
     std::string output_vcf_file;
-    std::string ref_fasta_file;
     std::vector<GenomeInterval> intervals;
     bool debug;
     
@@ -64,19 +63,40 @@ class Igor : Program
     //stats//
     /////////
     int32_t no_total_variants;
-    int32_t no_nonoverlap_variants;
-    int32_t no_overlap_variants;
-    int32_t no_new_multiallelic_snps;
-    int32_t no_new_multiallelic_indels;
-    int32_t no_new_multiallelic_vntr_indels;
+    
+    int32_t no_vntrs;
+    
     int32_t no_overlap_vntrs;
+    std::vector<int32_t> overlapping_vntr_hist;
+    
+    int32_t no_dropped_vntrs;
 
+    //exactness refers to purity of sequence
+    //exact   - concordance is 1
+    //inexact - concordance is <1
+
+    //isolate is a relative measure and refers to a VNTR that does not overlap with any other detected VNTR.
+    //isolated  - does not overlap with another VNTR
+    //clustered - overlaps with other VNTRs
+    int32_t no_isolated_exact_vntrs;
+    
+    
+    int32_t no_perfect_concordance_isolated_exact_vntrs;
+    int32_t no_imperfect_concordance_isolated_exact_vntrs;
+    
+    
+    int32_t no_isolated_inexact_vntrs;
+ 
+    int32_t no_isolated_complete_overlap_vntrs;
+    int32_t no_isolated_incomplete_overlap_vntrs;
+ 
+    int32_t no_clustered_exact_vntrs;
+    int32_t no_clustered_inexact_vntrs;
+    
     /////////
     //tools//
     /////////
     VariantManip *vm;
-    faidx_t * fai;
-    LogTool lt;
 
     Igor(int argc, char **argv)
     {
@@ -87,15 +107,10 @@ class Igor : Program
         //////////////////////////
         try
         {
-            std::string desc = "Consolidates variants in the following ways\n"
-                 "              1.Updates each variant's filter field if it overlaps with another variant.\n"
+            std::string desc = "Consolidates VNTRs\n"
                  "                    SNP   - overlap at position \n"
                  "                    Indel - overlap with region bounded by exact flanks\n"
                  "                    VNTR  - overlap with region bounded by fuzzy flanks\n"
-                 "              2.Adds candidate multiallelic SNPs that do not overlap with Indels or VNTRs\n"
-                 "              3.Adds candidate multiallelic Indels if and only if\n"
-                 "                    a. they do not overlap with SNPs and VNTRs\n"
-                 "                    b. the exact flanks and fuzzy flanks are equal to one another\n"
                  "              4.Adds INFO fields indicating the number of variants that overlap with this variant";
 
             TCLAP::CmdLine cmd(desc, ' ', version);
@@ -104,7 +119,6 @@ class Igor : Program
             TCLAP::ValueArg<std::string> arg_intervals("i", "i", "intervals []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "file", cmd);
             TCLAP::ValueArg<std::string> arg_output_vcf_file("o", "o", "output VCF file [-]", false, "-", "str", cmd);
-            TCLAP::ValueArg<std::string> arg_ref_fasta_file("r", "r", "reference sequence fasta file []", true, "", "str", cmd);
             TCLAP::SwitchArg arg_debug("d", "d", "debug [false]", cmd, false);
             TCLAP::UnlabeledValueArg<std::string> arg_input_vcf_file("<in.vcf>", "input VCF file", true, "","file", cmd);
 
@@ -112,7 +126,6 @@ class Igor : Program
 
             input_vcf_file = arg_input_vcf_file.getValue();
             output_vcf_file = arg_output_vcf_file.getValue();
-            ref_fasta_file = arg_ref_fasta_file.getValue();
             debug = arg_debug.getValue();
             parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
         }
@@ -129,64 +142,74 @@ class Igor : Program
         //i/o initialization//
         //////////////////////
         odr = new BCFOrderedReader(input_vcf_file, intervals);
-        odw = new BCFOrderedWriter(output_vcf_file, 0);
+        odw = new BCFOrderedWriter(output_vcf_file, 3000);
         odw->link_hdr(odr->hdr);
-        bcf_hdr_append(odw->hdr, "##FILTER=<ID=overlap_snp,Description=\"Overlaps with SNP.\">");
-        bcf_hdr_append(odw->hdr, "##FILTER=<ID=overlap_indel,Description=\"Overlaps with Indel.\">");
-        bcf_hdr_append(odw->hdr, "##FILTER=<ID=overlap_vntr,Description=\"Overlaps with VNTR.\">");
         bcf_hdr_append(odw->hdr, "##FILTER=<ID=shorter_vntr,Description=\"Another VNTR overlaps with this VNTR.\">");
-        bcf_hdr_append(odw->hdr, "##FILTER=<ID=on_vntr_boundary,Description=\"This variant lies near a VNTR boundary.\">");
-        bcf_hdr_append(odw->hdr, "##FILTER=<ID=fail_lr,Description=\"Fail likelihood ratio cutoff.\">");
-        bcf_hdr_append(odw->hdr, "##INFO=<ID=OVERLAPS,Number=3,Type=Integer,Description=\"Number of SNPs, Indels and VNTRs overlapping with this variant.\">");
         odw->write_hdr();      
 
-        overlap_snp = const_cast<char*>("overlap_snp");
-        overlap_indel = const_cast<char*>("overlap_indel");
         overlap_vntr = const_cast<char*>("overlap_vntr");
-
-        overlap_snp_id = bcf_hdr_id2int(odw->hdr, BCF_DT_ID, "overlap_snp");
-        overlap_indel_id = bcf_hdr_id2int(odw->hdr, BCF_DT_ID, "overlap_indel");
         overlap_vntr_id = bcf_hdr_id2int(odw->hdr, BCF_DT_ID, "overlap_vntr");
 
         ////////////////////////
         //stats initialization//
         ////////////////////////
+        
         no_total_variants = 0;
-        no_nonoverlap_variants = 0;
-        no_overlap_variants = 0;
-        no_new_multiallelic_snps = 0;
-        no_new_multiallelic_indels = 0;
-        no_new_multiallelic_vntr_indels = 0;
+        
+        no_vntrs = 0;
+        
         no_overlap_vntrs = 0;
+        no_dropped_vntrs = 0;
+        
+        //VNTR types
+        no_isolated_exact_vntrs = 0;
+        
+        no_perfect_concordance_isolated_exact_vntrs = 0;
+        no_imperfect_concordance_isolated_exact_vntrs = 0;
+        
+        no_isolated_inexact_vntrs = 0;
+        
+        no_clustered_exact_vntrs = 0;
+        no_clustered_inexact_vntrs = 0;
+
+        no_isolated_complete_overlap_vntrs = 0;
+        no_isolated_incomplete_overlap_vntrs = 0;
 
         ////////////////////////
         //tools initialization//
         ////////////////////////
         vm = new VariantManip();
-        fai = fai_load(ref_fasta_file.c_str());
     }
+    
+    /**
+     * Update distribution of overlapping VNTRs
+     */
+    void update_overlapping_vntr_hist(int32_t no_overlapping_vntrs)
+    {
+        if (overlapping_vntr_hist.size()<no_overlapping_vntrs+1)
+        {
+            for (uint32_t i=overlapping_vntr_hist.size(); i<no_overlapping_vntrs+1; ++i)
+            {
+                overlapping_vntr_hist.push_back(0);
+            }
+        }
+        
+        ++overlapping_vntr_hist[no_overlapping_vntrs];
+    } 
+    
 
     /**
      * Inserts a Variant record.
      */
     void insert_variant_record_into_buffer(Variant* variant)
     {
-        char* tr = NULL;
-        int32_t n = 0;
-
-//        //this is for indels that are annotated with TR - you cannot
-//        //detect by overlap of the reference sequence because in the normalized
-//        //representation for insertions, only the anchor base is present.
-//        //This is not an issue for deletions.
-//        //reminder: consolidate is for a VCF file that is produced by annotate_indels.
-//        if (bcf_get_info_string(odw->hdr, variant->v, "TR", &tr, &n)>0)
-//        {
-//            bcf_add_filter(odw->hdr, variant->v, overlap_vntr_id);
-//            free(tr);
-//        }
-
-        //update filters
         std::list<Variant *>::iterator i = variant_buffer.begin();
+
+        if (variant->type==VT_VNTR)
+        { 
+            ++no_vntrs;
+        }
+        
         while(i!=variant_buffer.end())
         {
             Variant *cvariant = *i;
@@ -202,42 +225,25 @@ class Igor : Program
                     fprintf(stderr, "[%s:%d %s] File %s is unordered\n", __FILE__, __LINE__, __FUNCTION__, input_vcf_file.c_str());
                     exit(1);
                 }
-                else if (variant->beg1 > cvariant->end1+1000) //does not overlap
+                //after most recent variant, we need to have the 1000 window, because the variants are roughly
+                //ordered by start.  It is possible to have the start positions changed when merging VNTRs
+                //resulting in unordered variants.
+                else if (variant->beg1 > cvariant->end1 + 1000) 
                 {
                     break;
                 }
                 else if (variant->end1 >= cvariant->beg1 && variant->beg1 <= cvariant->end1) //overlaps
-                {
-                    
-                    if (variant->type==VT_VNTR)
-                    {
+                {   
+                    if (variant->type==VT_VNTR && cvariant->type==VT_VNTR)
+                    {   
+                        bcf1_t* v = variant->v;
+                        cvariant->beg1 = std::min(cvariant->beg1, variant->beg1);
+                        cvariant->end1 = std::max(cvariant->end1, variant->end1);
+                        cvariant->vs.push_back(v);
+                        cvariant->vntr_vs.push_back(v);
+                        ++cvariant->no_overlapping_vntrs;
                         
-                        if (cvariant->type==VT_VNTR)
-                        {
-                            //can mark the overlapping VNTRs
-                            //write over
-                            //this should perhaps only be handled in vntr overlaps with indels?
-                            //this is a bit tricky.
-                            //consider ONLY overlapping VNTRs
-                            
-                            
-                            bcf_add_filter(odw->hdr, variant->v, overlap_vntr_id);
-                            ++variant->no_overlapping_indels;
-                            bcf_add_filter(odw->hdr, cvariant->v, overlap_vntr_id);
-                            ++cvariant->no_overlapping_vntrs;
-
-                            //mark a better VNTR?? by score and by length?
-                        }
-                        else if (cvariant->type==VT_UNDEFINED)
-                        {
-                            //bcf1_t* v = bcf_dup(variant->v);
-                            bcf1_t* v = variant->v;
-                            cvariant->vs.push_back(v);
-                            cvariant->vntr_vs.push_back(v);
-                            ++cvariant->no_overlapping_vntrs;
-                            
-                            ++no_overlap_vntrs;
-                        }
+                        return;
                     }
 
                     ++i;
@@ -277,14 +283,10 @@ class Igor : Program
 
             if (variant->rid < rid)
             {
-                if (variant->type==VT_UNDEFINED)
+                if (variant->type==VT_VNTR)
                 {
-                    std::cerr << "PRINT CONSOLIDATED VARIANT\n";
-
-                    if (consolidate_multiallelic(variant))
+                    if (consolidate_multiple_overlapping_vntrs(variant))
                     {
-                        int32_t overlaps[3] = {variant->no_overlapping_snps, variant->no_overlapping_indels, variant->no_overlapping_vntrs};
-                        bcf_update_info_int32(odw->hdr, variant->v, "OVERLAPS", &overlaps, 3);
                         odw->write(variant->v);
                         variant->v = NULL;
                         delete variant;
@@ -293,35 +295,30 @@ class Igor : Program
                 }
                 else
                 {
-                    int32_t overlaps[3] = {variant->no_overlapping_snps, variant->no_overlapping_indels, variant->no_overlapping_vntrs};
-                    bcf_update_info_int32(odw->hdr, variant->v, "OVERLAPS", &overlaps, 3);
                     odw->write(variant->v);
                     variant->v = NULL;
                     delete variant;
-                    variant_buffer.pop_back();
+                    variant_buffer.pop_back();               
                 }
             }
             else if (variant->rid == rid)
             {
                 if (variant->beg1 < beg1-1000)
                 {
-                    if (variant->type==VT_UNDEFINED)
+                    if (variant->type==VT_VNTR)
                     {
-                        if (consolidate_multiallelic(variant))
+                        if (consolidate_multiple_overlapping_vntrs(variant))
                         {
-                            int32_t overlaps[3] = {variant->no_overlapping_snps, variant->no_overlapping_indels, variant->no_overlapping_vntrs};
-                            bcf_update_info_int32(odw->hdr, variant->v, "OVERLAPS", &overlaps, 3);
-                            odw->write(variant->v);
-                            variant->v = NULL;
+                          
+                            
                         }
-
+                        
                         delete variant;
                         variant_buffer.pop_back();
+                        
                     }
                     else
                     {
-                        int32_t overlaps[3] = {variant->no_overlapping_snps, variant->no_overlapping_indels, variant->no_overlapping_vntrs};
-                        bcf_update_info_int32(odw->hdr, variant->v, "OVERLAPS", &overlaps, 3);
                         odw->write(variant->v);
                         variant->v = NULL;
                         delete variant;
@@ -337,283 +334,211 @@ class Igor : Program
     }
 
     /**
+     * Compute purity by sequence content.
+     */
+    float compute_purity_by_sequence_content(char* repeat_tract, char* motif)
+    {   
+        uint32_t motif_count[20];
+        motif_count[0] = 0;
+        motif_count[2] = 0;
+        motif_count[6] = 0;
+        motif_count[19] = 0;
+        
+        //count bases
+        char* motif_ptr = motif;
+        while (*motif_ptr)
+        {
+            ++motif_count[*motif_ptr-'A'];
+            ++motif_ptr;
+        }
+              
+        uint32_t dmb = 0;
+        if (motif_count[0]) ++dmb;
+        if (motif_count[2]) ++dmb;
+        if (motif_count[6]) ++dmb;
+        if (motif_count[19]) ++dmb;
+            
+        uint32_t repeat_tract_count[20];
+        repeat_tract_count[0] = 0;
+        repeat_tract_count[2] = 0;
+        repeat_tract_count[6] = 0;
+        repeat_tract_count[19] = 0;
+        
+        uint32_t len = 0;
+        char* repeat_tract_ptr = repeat_tract;
+        while (*repeat_tract_ptr)
+        {
+            ++repeat_tract_count[*repeat_tract_ptr-'A'];  
+            ++len;            
+            ++repeat_tract_ptr;
+        }
+        
+        uint32_t db = 0;
+        
+        db += motif_count[0] ? repeat_tract_count[0] : 0;
+        db += motif_count[2] ? repeat_tract_count[2] : 0;
+        db += motif_count[6] ? repeat_tract_count[6] : 0;
+        db += motif_count[19] ? repeat_tract_count[19] : 0;
+        
+        return (float) db / (float) len;
+    }
+
+    /**
      * Consolidate multiallelic variant based on associated biallelic records
      * stored in vs.  Updates v which is to be the consolidated multiallelic
      * variant.
      *
      * returns true if the multiallelic variant is good to go.
      */
-    bool consolidate_multiallelic(Variant* variant)
+    bool consolidate_multiple_overlapping_vntrs(Variant* variant)
     {
-        if (variant->no_overlapping_snps !=0 &&
-            variant->no_overlapping_indels ==0 &&
-            variant->no_overlapping_vntrs ==0)
+        update_overlapping_vntr_hist(variant->no_overlapping_vntrs);
+        
+        if (variant->no_overlapping_vntrs==0)
         {
-            bcf1_t* v = bcf_init1();
-            bcf_clear(v);
-            std::vector<bcf1_t*> vs = variant->vs;
+            if ( debug)
+            {
+                std::cerr  << "################\n";
+                std::cerr  << "#1 isolated VNTR\n";
+                std::cerr  << "################\n";
+                std::cerr << "no overlapping SNPs   " << variant->no_overlapping_snps << "\n";
+                std::cerr << "no overlapping Indels " << variant->no_overlapping_indels << "\n";
+                std::cerr << "no overlapping VNTRs  " << variant->no_overlapping_vntrs << "\n";
+                std::cerr << "consolidating: " << variant->vs.size() << " alleles\n";
             
-            bcf_set_rid(v, bcf_get_rid(vs[0]));
-            bcf_set_pos1(v, bcf_get_pos1(vs[0]));
-
-            kstring_t s = {0,0,0};
-            kputc(bcf_get_snp_ref(vs[0]), &s);
-            kputc(',', &s);
-            int32_t no_alleles = vs.size();
-
-
-            char alts[no_alleles];
-            for (uint32_t i=0; i<no_alleles; ++i)
-            {
-                bcf_unpack(vs[i], BCF_UN_STR);
-                alts[i] = bcf_get_snp_alt(vs[i]);
+                bcf_print(odw->hdr, variant->v);
             }
-            //selection sort
-            for (uint32_t i=0; i<no_alleles-1; ++i)
-            {
-                for (uint32_t j=i+1; j<no_alleles; ++j)
-                {
-                    if (alts[j]<alts[i])
-                    {
-                        char tmp = alts[j];
-                        alts[j] = alts[i];
-                        alts[i] = tmp;
-                    }
-                    alts[i] = bcf_get_snp_alt(vs[i]);
-                }
-
-                kputc(alts[i], &s);
-                kputc(',', &s);
-            }
-            kputc(alts[no_alleles-1], &s);
-            bcf_update_alleles_str(odw->hdr, v, s.s);
-
-            variant->v = v;
-
-            ++no_new_multiallelic_snps;
-            return true;
-        }
-        else 
-        {
-            //////////////////////
-            //One overlapping VNTR
-            //////////////////////
-            if (variant->no_overlapping_vntrs==1)
-            {
-                if (debug)
-                {
-                    std::cerr  << "###########################\n";
-                    std::cerr  << "#1 VNTR and multiple Indels\n";
-                    std::cerr  << "###########################\n";
-                    std::cerr << "no overlapping SNPs   " << variant->no_overlapping_snps << "\n";
-                    std::cerr << "no overlapping Indels " << variant->no_overlapping_indels << "\n";
-                    std::cerr << "no overlapping VNTRs  " << variant->no_overlapping_vntrs << "\n";
-                    std::cerr << "consolidating: " << (variant->vs.size()+1) << " alleles\n";
-                }
+            
+            bcf1_t* vntr_v = variant->v;
+            
+            
+            
+            char* motif = NULL;
+            int32_t n_motif = 0;
+            float* fuzzy_concordance = NULL;
+            int32_t n_fuzzy_concordance = 0;
+            int32_t* flanks = NULL;
+            int32_t n_flanks = 0;
+            int32_t* fuzzy_flanks = NULL;
+            int32_t n_fuzzy_flanks = 0;
+            if (bcf_get_info_string(odr->hdr, vntr_v, "MOTIF", &motif, &n_motif)>0 &&
+                bcf_get_info_float(odr->hdr, vntr_v, "FZ_CONCORDANCE", &fuzzy_concordance, &n_fuzzy_concordance)>0 &&
+                bcf_get_info_int32(odr->hdr, vntr_v, "FLANKS", &flanks, &n_flanks)>0 &&
+                bcf_get_info_int32(odr->hdr, vntr_v, "FZ_FLANKS", &fuzzy_flanks, &n_fuzzy_flanks)>0)
                 
-                bcf1_t* vntr_v = variant->vntr_vs[0];
-                if (debug)
-                {    
-                    bcf_print(odw->hdr, vntr_v);
-                    std::cerr << "\tQUAL = " << bcf_get_qual(vntr_v) << "\n";
-                }
+            {
+//                std::cerr << "1" << ") " << motif << "\t" << fuzzy_concordance[0] << "\t" << fuzzy_flanks[0] << "," << fuzzy_flanks[1] << "\n";
+//                std::cerr << "\t" << bcf_get_ref(variant->v) << "\n";
                 
-                char* motif = NULL;
-                int32_t n_motif = 0;
-                double* fuzzy_concordance = NULL;
-                int32_t n_fuzzy_concordance = 0;
-                int32_t* flanks = NULL;
-                int32_t n_flanks = 0;
-                int32_t* fuzzy_flanks = NULL;
-                int32_t n_fuzzy_flanks = 0;
-                if (bcf_get_info_string(odr->hdr, vntr_v, "MOTIF", &motif, &n_motif)>0 &&
-                    bcf_get_info_float(odr->hdr, vntr_v, "FZ_CONCORDANCE", &fuzzy_concordance, &n_fuzzy_concordance)>0 &&
-                    bcf_get_info_int32(odr->hdr, vntr_v, "FLANKS", &flanks, &n_flanks)>0 &&
-                    bcf_get_info_int32(odr->hdr, vntr_v, "FZ_FLANKS", &fuzzy_flanks, &n_fuzzy_flanks)>0)
-                    
+                float impurity = compute_purity_by_sequence_content(bcf_get_ref(variant->v), motif);
+                  
+                if (flanks[0]==fuzzy_flanks[0]  &&
+                    flanks[1]==fuzzy_flanks[1])
                 {
-                    std::vector<bcf1_t *>& indel_vs = variant->indel_vs;
-                    std::vector<uint32_t> ref_beg1;
-                    std::vector<uint32_t> ref_end1;              
-                    uint32_t min_beg1 = INT_MAX;
-                    uint32_t max_end1 = 0;
-                    std::vector<bcf1_t*> candidate_indel_vs;
-                        
-                    for (uint32_t i=0; i<indel_vs.size(); ++i)
+                    
+                    ++no_isolated_exact_vntrs;
+                    
+                    if (fuzzy_concordance[0]==1)
                     {
-                        if (debug)
-                        {    
-                            bcf_print(odw->hdr, indel_vs[i]);
-                            std::cerr << "\tQUAL = " << bcf_get_qual(indel_vs[i]) << "\n";
-                        }
-                        
-                        if (bcf_get_qual(indel_vs[i])>30)
-                        {
-                            if (bcf_get_pos1(indel_vs[i])==flanks[0])
-                            {
-                                char* gmotif = NULL;
-                                int32_t n_gmotif = 0;
-                                if (bcf_get_info_string(odr->hdr, indel_vs[i], "GMOTIF", &gmotif, &n_gmotif)>0)
-                                {
-                                    if (strcmp(motif, gmotif)==0)
-                                    {
-                                        uint32_t beg1 = bcf_get_pos1(indel_vs[i]);
-                                        uint32_t end1 = bcf_get_end1(indel_vs[i]);
-                                        ref_beg1.push_back(beg1);
-                                        ref_end1.push_back(end1);
-                                        min_beg1 = beg1<min_beg1 ? beg1 : min_beg1;
-                                        max_end1 = end1>max_end1 ? end1 : max_end1;
-                                        candidate_indel_vs.push_back(indel_vs[i]);
-                                    }    
-                                
-                                    free(gmotif);    
-                                }
-                            }
-                            else
-                            {
-                                //not on correct position
-                            }
-                        }  
+                        ++no_perfect_concordance_isolated_exact_vntrs;
                     }
-                    
-                    for (uint32_t i=0; i<variant->snp_vs.size(); ++i)
-                    {
-                        if (debug)
-                        {
-                            bcf_print(odw->hdr, variant->snp_vs[i]);
-                            std::cerr << "\tQUAL = " << bcf_get_qual(variant->snp_vs[i]) << "\n";
-                        }
-                    }
-                    
-                    
-                    if (candidate_indel_vs.size()>1)
-                    {
-                        bcf1_t* v = bcf_init1();
-                        bcf_clear(v);
-                        bcf_set_rid(v, bcf_get_rid(candidate_indel_vs[0]));
-                        bcf_set_pos1(v, min_beg1);
-                        variant->v = v;
-                        
-                        kstring_t alleles = {0,0,0};
-                        
-                        int32_t seq_len = 0;
-                        char* seq = faidx_fetch_seq(fai, variant->chrom.c_str(), min_beg1-1, max_end1-1, &seq_len);
-                        kputs(seq, &alleles);    
-                        
-                        for (uint32_t i=0; i<candidate_indel_vs.size(); ++i)
-                        {
-                            kputc(',', &alleles);
-                            std::string alt;
-                            alt.append(seq, ref_beg1[i]-min_beg1);
-                            alt.append(bcf_get_alt(candidate_indel_vs[i], 1));
-                            alt.append(seq, ref_end1[i]-min_beg1+1, max_end1-ref_end1[i]);
-                            kputs(alt.c_str(), &alleles);
-                            
-                        }
-                        
-                        bcf_update_alleles_str(odw->hdr, v, alleles.s);
-                        
-                        if (seq_len) free(seq);
-                        if (alleles.m) free(alleles.s);
-                        
-                        if (debug)
-                        {    
-                            bcf_print(odw->hdr, v);   
-                        }
-                        
-                        ++no_new_multiallelic_vntr_indels;
-                        ++no_new_multiallelic_indels;
-                        
-                        free(motif);
-                        free(fuzzy_concordance);
-                        free(flanks);
-                        free(fuzzy_flanks); 
-                        
-                        return true;     
-                    }    
                     else
                     {
+                        ++no_imperfect_concordance_isolated_exact_vntrs;
+                    }
+                    
+//                    odw->write(variant->v);
+//                    variant->v = NULL;
+//                    delete variant;
+//                    variant_buffer.pop_back();
+                }   
+                else
+                {
+                    
+                    if (flanks[0]>=fuzzy_flanks[0]  &&
+                        flanks[1]<=fuzzy_flanks[1])
+                    {
+                        
+                        ++no_isolated_complete_overlap_vntrs;
+                    
+                    
+                        std::cerr << "1" << ") " << motif << "\t" << fuzzy_concordance[0] << "\t" << flanks[0] << "," << flanks[1] << "\t" << fuzzy_flanks[0] << "," << fuzzy_flanks[1] << "\n";
+                        std::cerr << "\t" << impurity << "\t" << bcf_get_ref(variant->v) << "\n";
+                    }
+                    else
+                    {
+                        
+                        
+                        
+                        ++no_isolated_incomplete_overlap_vntrs;
+                    }            
+                    ++no_isolated_inexact_vntrs;
+                }   
+                  
+                free(motif);
+                free(fuzzy_concordance);
+                free(flanks);
+                free(fuzzy_flanks);
+            }
+        }  
+        else if (variant->no_overlapping_vntrs >= 1)
+        {
+            if (debug)
+            {
+                std::cerr  << "###################################\n";
+                std::cerr  << "#2 or more VNTR and multiple Indels\n";
+                std::cerr  << "###################################\n";
+                std::cerr << "no overlapping SNPs   " << variant->no_overlapping_snps << "\n";
+                std::cerr << "no overlapping Indels " << variant->no_overlapping_indels << "\n";
+                std::cerr << "no overlapping VNTRs  " << variant->no_overlapping_vntrs << "\n";
+                std::cerr << "consolidating: " << (variant->vs.size()+1) << " alleles\n";
+                
+                for (uint32_t i=0; i<variant->vntr_vs.size(); ++i)
+                {
+                    bcf1_t* vntr_v = variant->vntr_vs[i];
+                    
+                    
+                    char* motif = NULL;
+                    int32_t n_motif = 0;
+                    float* fuzzy_concordance = NULL;
+                    int32_t n_fuzzy_concordance = 0;
+                    int32_t* flanks = NULL;
+                    int32_t n_flanks = 0;
+                    int32_t* fuzzy_flanks = NULL;
+                    int32_t n_fuzzy_flanks = 0;
+                    if (bcf_get_info_string(odr->hdr, vntr_v, "MOTIF", &motif, &n_motif)>0 &&
+                        bcf_get_info_float(odr->hdr, vntr_v, "FZ_CONCORDANCE", &fuzzy_concordance, &n_fuzzy_concordance)>0 &&
+                        bcf_get_info_int32(odr->hdr, vntr_v, "FLANKS", &flanks, &n_flanks)>0 &&
+                        bcf_get_info_int32(odr->hdr, vntr_v, "FZ_FLANKS", &fuzzy_flanks, &n_fuzzy_flanks)>0)
+                        
+                    {
+                        
+                        
+                        float impurity = compute_purity_by_sequence_content(bcf_get_ref(vntr_v), motif);
+                        
+                        std::vector<bcf1_t *>& vntr_vs = variant->vntr_vs;
+                        std::vector<uint32_t> ref_beg1;
+                        std::vector<uint32_t> ref_end1;              
+                        uint32_t min_beg1 = INT_MAX;
+                        uint32_t max_end1 = 0;
+                        
+//                        std::cerr << (i+1) << ") " << motif << "\t" << fuzzy_concordance[0] << "\t" << flanks[0] << "," << flanks[1] << "\t" << fuzzy_flanks[0] << "," << fuzzy_flanks[1] << "\n";
+//                        std::cerr << "\t" << bcf_get_ref(vntr_v) << "\n";
+                            
                         free(motif);
                         free(fuzzy_concordance);
                         free(flanks);
                         free(fuzzy_flanks);
-                        
-                        return false;
-                    }                   
-                } 
-            }  
-            //////////////////////////////
-            //Two or more overlapping VNTR
-            //////////////////////////////
-            else if (variant->no_overlapping_vntrs > 1)
-            {
-                if (true)
-                {
-                    std::cerr  << "###################################\n";
-                    std::cerr  << "#2 or more VNTR and multiple Indels\n";
-                    std::cerr  << "###################################\n";
-                    std::cerr << "no overlapping SNPs   " << variant->no_overlapping_snps << "\n";
-                    std::cerr << "no overlapping Indels " << variant->no_overlapping_indels << "\n";
-                    std::cerr << "no overlapping VNTRs  " << variant->no_overlapping_vntrs << "\n";
-                    std::cerr << "consolidating: " << (variant->vs.size()+1) << " alleles\n";
-                }
-                
-                for (uint32_t i=0; i<variant->vs.size(); ++i)
-                {
-                    if (true)
-                    {    
-                        bcf_print(odw->hdr, variant->vs[i]);
-                        std::cerr << "\tQUAL = " << bcf_get_qual(variant->vs[i]) << "\n";
+                           
+                    
                     }
                     
-                   
+//                    bcf_print(odw->hdr, variant->vntr_vs[i]);
                 }
-                
-                
-                return false;
             }
-            else //no VNTRs
-            {
-                if (debug)
-                {
-                    std::cerr  << "###########\n";
-                    std::cerr  << "OTHER TYPES\n";
-                    std::cerr  << "###########\n";
-                }
-                    
-                bcf1_t* v = bcf_init1();
-                bcf_clear(v);
-    
-                std::vector<bcf1_t*>& vs = variant->vs;
-    
-    //            std::cerr << "no overlapping SNPs " << variant->no_overlapping_snps << "\n";
-    //            std::cerr << "consolidating: " << (vs.size()+1) << " alleles\n";
-    
-    
-                bcf_set_rid(v, bcf_get_rid(vs[0]));
-                bcf_set_pos1(v, bcf_get_pos1(vs[0]));
-    
-                kstring_t s = {0,0,0};
-                kputc(bcf_get_snp_ref(vs[0]), &s);
-                kputc(',', &s);
-                int32_t no_alleles = vs.size();
-    
-    
-                char alts[no_alleles];
-                for (uint32_t i=0; i<no_alleles; ++i)
-                {
-                    if (debug)
-                    {
-                        bcf_unpack(vs[i], BCF_UN_STR);
-                        bcf_print(odw->hdr, vs[i]);
-                        
-                        std::cerr << "\tQUAL = " << bcf_get_qual(vs[i]) << "\n";
-                    }
-                }
-                
-                bcf_destroy(v);
-            }
-           
+            
+            
+            
             
             return false;
         }
@@ -630,25 +555,19 @@ class Igor : Program
         {
             Variant* variant = variant_buffer.back();
 
-            if (variant->type==VT_UNDEFINED)
+            if (variant->type==VT_VNTR)
             {
-                if (consolidate_multiallelic(variant))
+                if (consolidate_multiple_overlapping_vntrs(variant))
                 {
-                    int32_t overlaps[3] = {variant->no_overlapping_snps, variant->no_overlapping_indels, variant->no_overlapping_vntrs};
-                    bcf_update_info_int32(odw->hdr, variant->v, "OVERLAPS", &overlaps, 3);
                     odw->write(variant->v);
                     variant->v = NULL;
                 }
 
                 delete variant;
                 variant_buffer.pop_back();
-
-
             }
             else
             {
-                int32_t overlaps[3] = {variant->no_overlapping_snps, variant->no_overlapping_indels, variant->no_overlapping_vntrs};
-                bcf_update_info_int32(odw->hdr, variant->v, "OVERLAPS", &overlaps, 3);
                 odw->write(variant->v);
                 variant->v = NULL;
                 delete variant;
@@ -665,19 +584,9 @@ class Igor : Program
         while (odr->read(v))
         {
             variant = new Variant(odw->hdr, v);
+            
             flush_variant_buffer(variant);
-
-            vm->classify_variant(odw->hdr, v, *variant);
-
-            //compute likelihood ratio and store in QUAL field
-            if (variant->type == VT_VNTR)
-            {
-                
-                
-            }    
-
             insert_variant_record_into_buffer(variant);
-
             v = odw->get_bcf1_from_pool();
 
             ++no_total_variants;
@@ -691,7 +600,7 @@ class Igor : Program
 
     void print_options()
     {
-        std::clog << "consolidate v" << version << "\n\n";
+        std::clog << "consolidate_vntrs v" << version << "\n\n";
 
         std::clog << "options:     input VCF file        " << input_vcf_file << "\n";
         std::clog << "         [o] output VCF file       " << output_vcf_file << "\n";
@@ -706,11 +615,27 @@ class Igor : Program
     {
         std::clog << "\n";
         std::clog << "stats: Total number of observed variants        " << no_total_variants << "\n";
-        std::clog << "       Total number of nonoverlap variants      " << no_nonoverlap_variants << "\n";
-        std::clog << "       Total number of new multiallelic SNPs    " << no_new_multiallelic_snps << "\n";
-        std::clog << "       Total number of new multiallelic Indels  " << no_new_multiallelic_indels << "\n";
-        std::clog << "            VNTR                                     " << no_new_multiallelic_vntr_indels << "\n";
         std::clog << "       Total number of overlap VNTRs            " << no_overlap_vntrs << "\n";
+        for (uint32_t i=0; i<overlapping_vntr_hist.size(); ++i)
+        {
+            if (overlapping_vntr_hist[i])
+            {
+                std::clog << "       " << i << "    "  << overlapping_vntr_hist[i] << "\n";
+            }
+        }
+        std::clog << "       Total number of dropped VNTRs            " << no_dropped_vntrs << "\n";
+        
+        std::clog << "       VNTR Classification          \n";
+        std::clog << "       Number of VNTRs      " << no_vntrs << "\n";
+        std::clog << "\n";
+        std::clog << "       Number of isolated exact VNTRs      " << no_isolated_exact_vntrs << "\n";
+        std::clog << "                     perfect concordance   " << no_perfect_concordance_isolated_exact_vntrs << "\n";
+        std::clog << "                     imperfect concordance " << no_imperfect_concordance_isolated_exact_vntrs << "\n";
+        std::clog << "       Number of isolated inexact VNTRs    " << no_isolated_inexact_vntrs << "\n";
+        std::clog << "                     complete overlaps     " << no_isolated_complete_overlap_vntrs << "\n";
+        std::clog << "                     incomplete overlaps   " << no_isolated_incomplete_overlap_vntrs << "\n";
+        std::clog << "       Number of clustered exact VNTRs     " << no_clustered_exact_vntrs << "\n";
+        std::clog << "       Number of clustered inexact VNTRs   " << no_clustered_inexact_vntrs << "\n";
         std::clog << "\n";
     };
 
