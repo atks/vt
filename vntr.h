@@ -47,20 +47,23 @@ class VNTR
     //motif
     std::string motif;         //motif
     std::string ru;            //repeat unit on the reference
-    uint32_t mlen;             //length of motif
+    uint32_t dmb;              //denotes the number of distinct motif bases 
+    int32_t mlen;             //length of motif
     float motif_score;         //motif score from motif tree
 
+    std::string definition_support; //either exact or fuzzy
+
     //exact repeat tract
-    std::string repeat_tract;   //repeat tract
-    int32_t rbeg1;              //beginning of repeat tract
-    int32_t rend1;              //end of repeat tract
-    float rl;                   //number of repeat units on repeat tract
-    float ll;                   //number of repeat units on longest allele
-    float motif_concordance;    //motif concordance from hmm
-    int32_t no_exact_ru;        //number exact repeat units from hmm
-    int32_t total_no_ru;        //total no of repeat units from hmm
-    std::string lflank;         //left flank
-    std::string rflank;         //right flank
+    std::string exact_repeat_tract;   //repeat tract
+    int32_t exact_rbeg1;              //beginning of repeat tract
+    int32_t exact_rend1;              //end of repeat tract
+    float exact_rl;                   //number of repeat units on repeat tract
+    float exact_ll;                   //number of repeat units on longest allele
+    float exact_motif_concordance;    //motif concordance from hmm
+    int32_t exact_no_exact_ru;        //number exact repeat units from hmm
+    int32_t exact_total_no_ru;        //total no of repeat units from hmm
+    std::string exact_lflank;         //left flank
+    std::string exact_rflank;         //right flank
 
     //fuzzy repeat tract
     std::string fuzzy_repeat_tract;   //repeat tract

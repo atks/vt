@@ -52,18 +52,18 @@ Variant::Variant(bcf_hdr_t* h, bcf1_t* v)
         int32_t n = 0;
         if (bcf_get_info_int32(h, v, "FLANKS", &flanks, &n)>0)
         {
-            vntr.rbeg1 = flanks[0]+1;
-            vntr.rend1 = flanks[1]-1;
+            vntr.exact_rbeg1 = flanks[0]+1;
+            vntr.exact_rend1 = flanks[1]-1;
             free(flanks);
         }
         else
         {
-            vntr.rbeg1 = bcf_get_pos1(v) - 1;
-            vntr.rend1 = bcf_get_end_pos1(v) + 1;
+            vntr.exact_rbeg1 = bcf_get_pos1(v) - 1;
+            vntr.exact_rend1 = bcf_get_end_pos1(v) + 1;
         }
 
-        beg1 = vntr.rbeg1-1;
-        end1 = vntr.rend1+1;        
+        beg1 = vntr.exact_rbeg1-1;
+        end1 = vntr.exact_rend1+1;        
 
 //        int32_t *fuzzy_flanks = NULL;
 //        n = 0;
@@ -90,14 +90,14 @@ Variant::Variant(bcf_hdr_t* h, bcf1_t* v)
         int32_t n = 0;
         if (bcf_get_info_int32(h, v, "FLANKS", &flanks, &n)>0)
         {
-            vntr.rbeg1 = flanks[0]+1;
-            vntr.rend1 = flanks[1]-1;
+            vntr.exact_rbeg1 = flanks[0]+1;
+            vntr.exact_rend1 = flanks[1]-1;
             free(flanks);
         }
         else
         {
-            vntr.rbeg1 = bcf_get_pos1(v) - 1;
-            vntr.rend1 = bcf_get_end_pos1(v) + 1;
+            vntr.exact_rbeg1 = bcf_get_pos1(v) - 1;
+            vntr.exact_rend1 = bcf_get_end_pos1(v) + 1;
         }
 
         int32_t *fuzzy_flanks = NULL;
@@ -114,8 +114,8 @@ Variant::Variant(bcf_hdr_t* h, bcf1_t* v)
             vntr.fuzzy_rend1 = bcf_get_end_pos1(v) + 1;
         }
 
-        beg1 = std::min(vntr.rbeg1-1, vntr.fuzzy_rbeg1-1);
-        end1 = std::max(vntr.rend1+1, vntr.fuzzy_rend1+1);
+        beg1 = std::min(vntr.exact_rbeg1-1, vntr.fuzzy_rbeg1-1);
+        end1 = std::max(vntr.exact_rend1+1, vntr.fuzzy_rend1+1);
             
         vs.push_back(v);
         vntr_vs.push_back(v);
@@ -505,9 +505,9 @@ void Variant::get_vntr_string(kstring_t* s)
     s->l = 0;
     kputs(chrom.c_str(), s);
     kputc(':', s);
-    kputw(vntr.rbeg1, s);
+    kputw(vntr.exact_rbeg1, s);
     kputc(':', s);
-    kputs(vntr.repeat_tract.c_str(), s);
+    kputs(vntr.exact_repeat_tract.c_str(), s);
     kputc(':', s);
     kputs("<VNTR>", s);
     kputc(':', s);

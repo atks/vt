@@ -153,21 +153,22 @@ void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::str
  */
 bool VNTRAnnotator::is_vntr(Variant& variant, int32_t mode, std::string& method)
 {
-    uint32_t mlen = 0;
-    uint32_t rlen = 0;
+    uint32_t mlen = variant.vntr.mlen;
+    uint32_t rlen = variant.vntr.exact_rl;
     float motif_concordance = 0;
     uint32_t no_exact_ru = 0;
 
+    
+    VNTR& vntr = variant.vntr;
+    
     if (method == "e")
     {
-        mlen = variant.vntr.mlen;
-        rlen = variant.vntr.rl;
-        motif_concordance = variant.vntr.motif_concordance;
-        no_exact_ru = variant.vntr.no_exact_ru;
+
+        motif_concordance = variant.vntr.exact_motif_concordance;
+        no_exact_ru = variant.vntr.exact_no_exact_ru;
     }
     else if (method == "f")
     {
-        mlen = variant.vntr.mlen;
         rlen = variant.vntr.fuzzy_rl;
         motif_concordance = variant.vntr.fuzzy_motif_concordance;
         no_exact_ru = variant.vntr.fuzzy_no_exact_ru;
@@ -179,20 +180,42 @@ bool VNTRAnnotator::is_vntr(Variant& variant, int32_t mode, std::string& method)
 //        {
 //            variant.vntr.print();
 //        }
-//        std::cerr << "rlen " << rlen << "\n";
-//        std::cerr << "mlen " << mlen << "\n";
-//        std::cerr << "no_exact_ru " << variant.vntr.no_exact_ru << "\n";
-        if ((rlen - mlen) >= 6 && no_exact_ru>=2)
+        if (method == "f")
         {
-            if (mlen==1 && motif_concordance>0.9)
+            if ((vntr.fuzzy_rl - vntr.mlen)>=6 && vntr.fuzzy_no_exact_ru>=2)
             {
-                return true;
-            }
-            else if (mlen>1 && motif_concordance>0.75)
-            {
-                return true;
+                //should we set separate cutoffs for motifs that contain only 2 types of nucleotides?
+                //
+                if (vntr.mlen==1 && vntr.fuzzy_motif_concordance>0.9)
+                {
+                    vntr.definition_support = "f";
+                    return true;
+                }
+                else if (vntr.mlen>1 && vntr.fuzzy_motif_concordance>0.75)
+                {
+                    vntr.definition_support = "f";
+                    return true;
+                }
             }
         }
+        
+        //if the fuzzy definition is not caught above, this will fall through to the exact definition.
+                
+        if ((vntr.exact_rl - vntr.mlen)>=6 && vntr.exact_no_exact_ru>=2)
+        {
+            //should we set separate cutoffs for motifs that contain only 2 types of nucleotides?
+            //
+            if (vntr.mlen==1 && vntr.exact_motif_concordance>0.9)
+            {
+                vntr.definition_support = "e";
+                return true;                
+            }
+            else if (vntr.mlen>1 && vntr.exact_motif_concordance>0.75)
+            {
+                vntr.definition_support = "e";
+                return true;
+            }
+        }        
 
         return false;
     }

@@ -322,19 +322,19 @@ class Igor : Program
                 }
                 else if (vntr.rid == cvntr.rid)
                 {
-                    if (vntr.rbeg1 > cvntr.rbeg1)
+                    if (vntr.exact_rbeg1 > cvntr.exact_rbeg1)
                     {
                         vntr_buffer.insert(i, vntr);
                         return true;
                     }
-                    else if (vntr.rbeg1 == cvntr.rbeg1)
+                    else if (vntr.exact_rbeg1 == cvntr.exact_rbeg1)
                     {
-                        if (vntr.rend1 > cvntr.rend1)
+                        if (vntr.exact_rend1 > cvntr.exact_rend1)
                         {
                             vntr_buffer.insert(i, vntr);
                             return true;
                         }
-                        else if (cvntr.rend1 == vntr.rend1)
+                        else if (cvntr.exact_rend1 == vntr.exact_rend1)
                         {
                             if (cvntr.motif > vntr.motif)
                             {
@@ -462,7 +462,7 @@ class Igor : Program
             {
                 if (method=="e")
                 {
-                    if (vntr.rend1 < pos1-2000)
+                    if (vntr.exact_rend1 < pos1-2000)
                     {
                         break;
                     }
@@ -503,36 +503,36 @@ class Igor : Program
         bcf_update_info_string(h, v, RU.c_str(), vntr.ru.c_str());
 
 
-        if (method=="e")
+        if (variant.vntr.definition_support=="e")
         {
-            bcf_set_pos1(v, vntr.rbeg1);
+            bcf_set_pos1(v, vntr.exact_rbeg1);
 
             s.l = 0;
-            kputs(vntr.repeat_tract.c_str(), &s);
+            kputs(vntr.exact_repeat_tract.c_str(), &s);
             kputc(',', &s);
             kputs("<VNTR>", &s);
             bcf_update_alleles_str(h, v, s.s);
             bcf_update_info_string(h, v, MOTIF.c_str(), vntr.motif.c_str());
             bcf_update_info_string(h, v, RU.c_str(), vntr.ru.c_str());
 
-            bcf_update_info_float(h, v, RL.c_str(), &vntr.rl, 1);
-            bcf_update_info_float(h, v, LL.c_str(), &vntr.ll, 1);
-            int32_t ru_count[2] = {vntr.no_exact_ru, vntr.total_no_ru};
-            bcf_update_info_float(h, v, CONCORDANCE.c_str(), &vntr.motif_concordance, 1);
+            bcf_update_info_float(h, v, RL.c_str(), &vntr.exact_rl, 1);
+            bcf_update_info_float(h, v, LL.c_str(), &vntr.exact_ll, 1);
+            int32_t ru_count[2] = {vntr.exact_no_exact_ru, vntr.exact_total_no_ru};
+            bcf_update_info_float(h, v, CONCORDANCE.c_str(), &vntr.exact_motif_concordance, 1);
             bcf_update_info_int32(h, v, RU_COUNTS.c_str(), &ru_count, 2);
 
             //update flanking sequences
             std::string flanks;
             int32_t seq_len;
-            char* seq = faidx_fetch_seq(fai, variant.chrom.c_str(), variant.vntr.rbeg1-10-1, variant.vntr.rbeg1-1-1, &seq_len);
+            char* seq = faidx_fetch_seq(fai, variant.chrom.c_str(), variant.vntr.exact_rbeg1-10-1, variant.vntr.exact_rbeg1-1-1, &seq_len);
             flanks.assign(seq);
             free(seq);
             flanks.append(1, '[');
-            seq = faidx_fetch_seq(fai, variant.chrom.c_str(), variant.vntr.rbeg1-1, variant.vntr.rend1-1, &seq_len);
+            seq = faidx_fetch_seq(fai, variant.chrom.c_str(), variant.vntr.exact_rbeg1-1, variant.vntr.exact_rend1-1, &seq_len);
             flanks.append(seq);
             free(seq);
             flanks.append(1, ']');
-            seq = faidx_fetch_seq(fai, variant.chrom.c_str(), variant.vntr.rend1+1-1, variant.vntr.rend1+10-1, &seq_len);
+            seq = faidx_fetch_seq(fai, variant.chrom.c_str(), variant.vntr.exact_rend1+1-1, variant.vntr.exact_rend1+10-1, &seq_len);
             flanks.append(seq);
             free(seq);
             bcf_update_info_string(h, v, "FLANKSEQ", flanks.c_str());
@@ -542,7 +542,7 @@ class Igor : Program
                 bcf_update_info_flag(h, v, "LARGE_REPEAT_REGION", NULL, 1);
             }
         }
-        else if (method=="f")
+        else if (variant.vntr.definition_support=="f")
         {
             bcf_set_pos1(v, vntr.fuzzy_rbeg1);
 
@@ -559,7 +559,7 @@ class Igor : Program
             bcf_update_info_float(h, v, FZ_RL.c_str(), &vntr.fuzzy_rl, 1);
             bcf_update_info_float(h, v, FZ_LL.c_str(), &vntr.fuzzy_ll, 1);
 
-            int32_t flank_pos1[2] = {variant.vntr.rbeg1-1, variant.vntr.rend1+1};
+            int32_t flank_pos1[2] = {variant.vntr.exact_rbeg1-1, variant.vntr.exact_rend1+1};
             bcf_update_info_int32(h, v, FLANKS.c_str(), &flank_pos1, 2);
 
             int32_t fuzzy_flank_pos1[2] = {variant.vntr.fuzzy_rbeg1-1, variant.vntr.fuzzy_rend1+1};
@@ -648,28 +648,28 @@ class Igor : Program
                     ///////////////////////////////////////////////////////////////////////////////////////////////////////
                     if (method=="e")
                     {
-                        int32_t flank_pos1[2] = {variant.vntr.rbeg1-1, variant.vntr.rend1+1};
+                        int32_t flank_pos1[2] = {variant.vntr.exact_rbeg1-1, variant.vntr.exact_rend1+1};
                         bcf_update_info_int32(h, v, FLANKS.c_str(), &flank_pos1, 2);
 
                         //update flanking sequences
                         std::string flanks;
                         int32_t seq_len;
-                        char* seq = faidx_fetch_seq(fai, variant.chrom.c_str(), variant.vntr.rbeg1-10-1, variant.vntr.rbeg1-1-1, &seq_len);
+                        char* seq = faidx_fetch_seq(fai, variant.chrom.c_str(), variant.vntr.exact_rbeg1-10-1, variant.vntr.exact_rbeg1-1-1, &seq_len);
                         flanks.assign(seq);
                         free(seq);
                         flanks.append(1, '[');
-                        seq = faidx_fetch_seq(fai, variant.chrom.c_str(), variant.vntr.rbeg1-1, variant.vntr.rend1-1, &seq_len);
+                        seq = faidx_fetch_seq(fai, variant.chrom.c_str(), variant.vntr.exact_rbeg1-1, variant.vntr.exact_rend1-1, &seq_len);
                         flanks.append(seq);
                         free(seq);
                         flanks.append(1, ']');
-                        seq = faidx_fetch_seq(fai, variant.chrom.c_str(), variant.vntr.rend1+1-1, variant.vntr.rend1+10-1, &seq_len);
+                        seq = faidx_fetch_seq(fai, variant.chrom.c_str(), variant.vntr.exact_rend1+1-1, variant.vntr.exact_rend1+10-1, &seq_len);
                         flanks.append(seq);
                         free(seq);
                         bcf_update_info_string(h, v, "FLANKSEQ", flanks.c_str());
                     }
                     else if (method=="f")
                     {
-                        int32_t flank_pos1[2] = {variant.vntr.rbeg1-1, variant.vntr.rend1+1};
+                        int32_t flank_pos1[2] = {variant.vntr.exact_rbeg1-1, variant.vntr.exact_rend1+1};
                         bcf_update_info_int32(h, v, FLANKS.c_str(), &flank_pos1, 2);
 
                         int32_t fuzzy_flank_pos1[2] = {variant.vntr.fuzzy_rbeg1-1, variant.vntr.fuzzy_rend1+1};
@@ -681,15 +681,15 @@ class Igor : Program
                         //has instead stabilized with respect to slippage mutation.
                         std::string flanks;
                         int32_t seq_len;
-                        char* seq = faidx_fetch_seq(fai, variant.chrom.c_str(), variant.vntr.rbeg1-10-1, variant.vntr.rbeg1-1-1, &seq_len);
+                        char* seq = faidx_fetch_seq(fai, variant.chrom.c_str(), variant.vntr.exact_rbeg1-10-1, variant.vntr.exact_rbeg1-1-1, &seq_len);
                         flanks.assign(seq);
                         free(seq);
                         flanks.append(1, '[');
-                        seq = faidx_fetch_seq(fai, variant.chrom.c_str(), variant.vntr.rbeg1-1, variant.vntr.rend1-1, &seq_len);
+                        seq = faidx_fetch_seq(fai, variant.chrom.c_str(), variant.vntr.exact_rbeg1-1, variant.vntr.exact_rend1-1, &seq_len);
                         flanks.append(seq);
                         free(seq);
                         flanks.append(1, ']');
-                        seq = faidx_fetch_seq(fai, variant.chrom.c_str(), variant.vntr.rend1+1-1, variant.vntr.rend1+10-1, &seq_len);
+                        seq = faidx_fetch_seq(fai, variant.chrom.c_str(), variant.vntr.exact_rend1+1-1, variant.vntr.exact_rend1+10-1, &seq_len);
                         flanks.append(seq);
                         free(seq);
                         bcf_update_info_string(h, v, "FLANKSEQ", flanks.c_str());
@@ -701,11 +701,11 @@ class Igor : Program
                     /////////////////
                     if (va->is_vntr(variant, vntr_classification, method))
                     {
-                        if (method=="e")
+                        if (variant.vntr.definition_support=="e")
                         {
                             variant.get_vntr_string(&s);
                         }
-                        else if (method=="f")
+                        else if (variant.vntr.definition_support=="f")
                         {
                             variant.get_fuzzy_vntr_string(&s);
                         }

@@ -119,22 +119,25 @@ void FlankDetector::detect_flanks(bcf_hdr_t* h, bcf1_t *v, Variant& variant, uin
         //    complex substitution
         //    C[G]C  => [G]
         //      TA
-        if (vntr.repeat_tract.size()>2) 
+        if (vntr.exact_repeat_tract.size()>2) 
         {
-            vntr.repeat_tract = vntr.repeat_tract.substr(1, vntr.repeat_tract.size()-2);
-            ++vntr.rbeg1;
+            vntr.exact_repeat_tract = vntr.exact_repeat_tract.substr(1, vntr.exact_repeat_tract.size()-2);
+            ++vntr.exact_rbeg1;
         }
 
-        vntr.ru = choose_repeat_unit(vntr.repeat_tract, vntr.motif);
-        vntr.rend1 = vntr.rbeg1+vntr.rl-1;
+        vntr.ru = choose_repeat_unit(vntr.exact_repeat_tract, vntr.motif);
+        
+//        std::cerr << "repeat tract : "
+        
+        vntr.exact_rend1 = vntr.exact_rbeg1+vntr.exact_rl-1;
 
         ahmm->set_model(vntr.ru.c_str());
-        ahmm->align(vntr.repeat_tract.c_str(), qual.c_str());
+        ahmm->align(vntr.exact_repeat_tract.c_str(), qual.c_str());
 
-        vntr.motif_concordance = ahmm->motif_concordance;
-        vntr.no_exact_ru = ahmm->exact_motif_count;
-        vntr.total_no_ru = ahmm->motif_count;
-        vntr.rl = ahmm->repeat_tract_len;
+        vntr.exact_motif_concordance = ahmm->motif_concordance;
+        vntr.exact_no_exact_ru = ahmm->exact_motif_count;
+        vntr.exact_total_no_ru = ahmm->motif_count;
+        vntr.exact_rl = ahmm->repeat_tract_len;
 
         if (debug)
         {
@@ -158,34 +161,34 @@ void FlankDetector::detect_flanks(bcf_hdr_t* h, bcf1_t *v, Variant& variant, uin
             std::cerr << "Exact left/right alignment\n";
         }
 
-        if (vntr.repeat_tract.size()>2)
+        if (vntr.exact_repeat_tract.size()>2)
         {
             //removing the anchor bases
             if (vntr.mlen==1)
             {
                 int32_t offset = 0;
-                int32_t length = vntr.repeat_tract.size();
-                if (vntr.repeat_tract.at(0)!=vntr.motif.at(0))
+                int32_t length = vntr.exact_repeat_tract.size();
+                if (vntr.exact_repeat_tract.at(0)!=vntr.motif.at(0))
                 {
                     offset = 1;
-                    ++vntr.rbeg1;
+                    ++vntr.exact_rbeg1;
                 }
 
-                if (vntr.repeat_tract.at(vntr.repeat_tract.size()-1)!=vntr.motif.at(0))
+                if (vntr.exact_repeat_tract.at(vntr.exact_repeat_tract.size()-1)!=vntr.motif.at(0))
                 {
                     length -= offset+1;
-                    --vntr.rend1;
+                    --vntr.exact_rend1;
                 }
 
-                vntr.repeat_tract = vntr.repeat_tract.substr(offset, length);
+                vntr.exact_repeat_tract = vntr.exact_repeat_tract.substr(offset, length);
             }
             else
             {
-                if (vntr.repeat_tract.size()>=3)
+                if (vntr.exact_repeat_tract.size()>=3)
                 {
-                    vntr.repeat_tract = vntr.repeat_tract.substr(1, vntr.repeat_tract.size()-2);
-                    ++vntr.rbeg1;
-                    --vntr.rend1;
+                    vntr.exact_repeat_tract = vntr.exact_repeat_tract.substr(1, vntr.exact_repeat_tract.size()-2);
+                    ++vntr.exact_rbeg1;
+                    --vntr.exact_rend1;
                 }
             }
         }
@@ -193,29 +196,29 @@ void FlankDetector::detect_flanks(bcf_hdr_t* h, bcf1_t *v, Variant& variant, uin
         // 
         // RU : T
         // repeat_tract : G[T]C where T is an insert
-        else if (vntr.repeat_tract.size()==2)
+        else if (vntr.exact_repeat_tract.size()==2)
         {
             
         }
 
-        vntr.ru = choose_repeat_unit(vntr.repeat_tract, vntr.motif);
+        vntr.ru = choose_repeat_unit(vntr.exact_repeat_tract, vntr.motif);
         ahmm->set_model(vntr.ru.c_str());
-        ahmm->align(vntr.repeat_tract.c_str(), qual.c_str());
+        ahmm->align(vntr.exact_repeat_tract.c_str(), qual.c_str());
 
-        vntr.motif_concordance = ahmm->motif_concordance;
-        vntr.no_exact_ru = ahmm->exact_motif_count;
-        vntr.total_no_ru = ahmm->motif_count;
-        vntr.rl = ahmm->repeat_tract_len;
+        vntr.exact_motif_concordance = ahmm->motif_concordance;
+        vntr.exact_no_exact_ru = ahmm->exact_motif_count;
+        vntr.exact_total_no_ru = ahmm->motif_count;
+        vntr.exact_rl = ahmm->repeat_tract_len;
 
         if (debug)
         {
             std::cerr << "\n";
-            std::cerr << "repeat_tract              : " << vntr.repeat_tract << "\n";
-            std::cerr << "position                  : [" << vntr.rbeg1 << "," << vntr.rend1 << "]\n";
-            std::cerr << "motif_concordance         : " << vntr.motif_concordance << "\n";
-            std::cerr << "repeat units              : " << vntr.rl << "\n";
-            std::cerr << "exact repeat units        : " << vntr.no_exact_ru << "\n";
-            std::cerr << "total no. of repeat units : " << vntr.total_no_ru << "\n";
+            std::cerr << "repeat_tract              : " << vntr.exact_repeat_tract << "\n";
+            std::cerr << "position                  : [" << vntr.exact_rbeg1 << "," << vntr.exact_rend1 << "]\n";
+            std::cerr << "motif_concordance         : " << vntr.exact_motif_concordance << "\n";
+            std::cerr << "repeat units              : " << vntr.exact_rl << "\n";
+            std::cerr << "exact repeat units        : " << vntr.exact_no_exact_ru << "\n";
+            std::cerr << "total no. of repeat units : " << vntr.exact_total_no_ru << "\n";
             std::cerr << "\n";
         }
 
@@ -245,11 +248,11 @@ void FlankDetector::detect_flanks(bcf_hdr_t* h, bcf1_t *v, Variant& variant, uin
         while (true)
         {
             //pick 5 bases to the right
-            rflank = faidx_fetch_seq(fai, variant.chrom.c_str(), vntr.rend1+1-1, vntr.rend1+5-1, &rflank_len);
+            rflank = faidx_fetch_seq(fai, variant.chrom.c_str(), vntr.exact_rend1+1-1, vntr.exact_rend1+5-1, &rflank_len);
 
             //pick 105 bases for aligning
 
-            seq = faidx_fetch_seq(fai, variant.chrom.c_str(), vntr.rend1-slen-1, vntr.rend1+5-1, &seq_len);
+            seq = faidx_fetch_seq(fai, variant.chrom.c_str(), vntr.exact_rend1-slen-1, vntr.exact_rend1+5-1, &seq_len);
  
             
             rfhmm->set_model(vntr.ru.c_str(), rflank);
@@ -273,12 +276,12 @@ void FlankDetector::detect_flanks(bcf_hdr_t* h, bcf1_t *v, Variant& variant, uin
             //todo: we should change this to a reverse version of LFHMM!!!!
             if (rfhmm->get_lflank_read_epos1()>2*vntr.ru.size())
             {
-                lflank_end1 = vntr.rend1-slen-1+1 + rfhmm->get_lflank_read_epos1() - 1;
+                lflank_end1 = vntr.exact_rend1-slen-1+1 + rfhmm->get_lflank_read_epos1() - 1;
                 break;
             }
             else if (slen==1000)
             {
-                lflank_end1 = vntr.rend1 - 1000 - 1;
+                lflank_end1 = vntr.exact_rend1 - 1000 - 1;
                 vntr.is_large_repeat_tract = true;
                 break;
             }
@@ -355,7 +358,7 @@ void FlankDetector::detect_flanks(bcf_hdr_t* h, bcf1_t *v, Variant& variant, uin
 
     //fill in flanks
     const char* chrom = variant.chrom.c_str();
-    uint32_t pos1 = vntr.rbeg1;
+    uint32_t pos1 = vntr.exact_rbeg1;
     int32_t len = 0;
     faidx_fetch_seq(fai, chrom, pos1-10, pos1-1, &len);
 };

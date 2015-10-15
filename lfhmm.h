@@ -584,7 +584,12 @@ class LFHMM
     /////
     int32_t move_M_Z(int32_t t, int32_t j)
     {
-        if (track_get_d(t)==MOTIF && track_get_p(t)==mlen && j<rlen)
+//        if (track_get_d(t)==MOTIF && track_get_p(t)==mlen && j<rlen)
+//        {
+//            return track_set_u(t,M);
+//        }
+        
+        if (track_get_d(t)==MOTIF && j<rlen)
         {
             return track_set_u(t,M);
         }

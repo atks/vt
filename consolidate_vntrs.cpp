@@ -84,11 +84,16 @@ class Igor : Program
     int32_t no_perfect_concordance_isolated_exact_vntrs;
     int32_t no_imperfect_concordance_isolated_exact_vntrs;
     
+    int32_t no_perfect_concordance_isolated_inexact_vntrs;
+    int32_t no_imperfect_concordance_isolated_inexact_vntrs;
+    
     
     int32_t no_isolated_inexact_vntrs;
  
     int32_t no_isolated_complete_overlap_vntrs;
     int32_t no_isolated_incomplete_overlap_vntrs;
+    int32_t no_isolated_partial_overlap_vntrs;
+    int32_t no_isolated_no_overlap_vntrs;
  
     int32_t no_clustered_exact_vntrs;
     int32_t no_clustered_inexact_vntrs;
@@ -107,10 +112,10 @@ class Igor : Program
         //////////////////////////
         try
         {
-            std::string desc = "Consolidates VNTRs\n"
-                 "                    SNP   - overlap at position \n"
-                 "                    Indel - overlap with region bounded by exact flanks\n"
-                 "                    VNTR  - overlap with region bounded by fuzzy flanks\n"
+            std::string desc = "Consolidates VNTRs by\n"
+                 "              1. removing overlapping VNTRs and leaving behind the most complete VNTR\n"
+                 "              2. resolves adjacent VNTRs\n"
+                 "              3. marking VNTRs that are \n"
                  "              4.Adds INFO fields indicating the number of variants that overlap with this variant";
 
             TCLAP::CmdLine cmd(desc, ' ', version);
@@ -167,6 +172,9 @@ class Igor : Program
         no_perfect_concordance_isolated_exact_vntrs = 0;
         no_imperfect_concordance_isolated_exact_vntrs = 0;
         
+        no_perfect_concordance_isolated_inexact_vntrs = 0;
+        no_imperfect_concordance_isolated_inexact_vntrs = 0;
+        
         no_isolated_inexact_vntrs = 0;
         
         no_clustered_exact_vntrs = 0;
@@ -174,6 +182,9 @@ class Igor : Program
 
         no_isolated_complete_overlap_vntrs = 0;
         no_isolated_incomplete_overlap_vntrs = 0;
+        
+        no_isolated_partial_overlap_vntrs = 0;
+        no_isolated_no_overlap_vntrs = 0;
 
         ////////////////////////
         //tools initialization//
@@ -410,9 +421,7 @@ class Igor : Program
             }
             
             bcf1_t* vntr_v = variant->v;
-            
-            
-            
+                        
             char* motif = NULL;
             int32_t n_motif = 0;
             float* fuzzy_concordance = NULL;
@@ -435,7 +444,6 @@ class Igor : Program
                 if (flanks[0]==fuzzy_flanks[0]  &&
                     flanks[1]==fuzzy_flanks[1])
                 {
-                    
                     ++no_isolated_exact_vntrs;
                     
                     if (fuzzy_concordance[0]==1)
@@ -444,6 +452,8 @@ class Igor : Program
                     }
                     else
                     {
+//                        std::cerr << "1" << ") " << motif << "\t" << fuzzy_concordance[0] << "\t" << flanks[0] << "," << flanks[1] << "\t" << fuzzy_flanks[0] << "," << fuzzy_flanks[1] << "\n";
+//                        std::cerr << "\t" << bcf_get_ref(variant->v) << "\n";
                         ++no_imperfect_concordance_isolated_exact_vntrs;
                     }
                     
@@ -454,24 +464,48 @@ class Igor : Program
                 }   
                 else
                 {
-                    
+                    //complete overlap 
+                    //most should have imperfect concordance
+                    //those that have perfect concordance implies that the alternate allele resulted in a imperfect VNTR  
                     if (flanks[0]>=fuzzy_flanks[0]  &&
                         flanks[1]<=fuzzy_flanks[1])
                     {
-                        
                         ++no_isolated_complete_overlap_vntrs;
-                    
-                    
+//                        std::cerr << "1" << ") " << motif << "\t" << fuzzy_concordance[0] << "\t" << flanks[0] << "," << flanks[1] << "\t" << fuzzy_flanks[0] << "," << fuzzy_flanks[1] << "\n";
+//                        std::cerr << "\t" << impurity << "\t" << bcf_get_ref(variant->v) << "\n";
+                    }
+                    //partial overlaps
+                    //these are induced possibly by errors at the boundary of VNTRs
+                    //
+                    //
+                    else if (flanks[0]<=fuzzy_flanks[1]  &&
+                             flanks[1]>=fuzzy_flanks[0])
+                    {   
+//                      std::cerr << "1" << ") " << motif << "\t" << fuzzy_concordance[0] << "\t" << flanks[0] << "," << flanks[1] << "\t" << fuzzy_flanks[0] << "," << fuzzy_flanks[1] << "\n";
+//                      std::cerr << "\t" << impurity << "\t" << bcf_get_ref(variant->v) << "\n";
+                        ++no_isolated_partial_overlap_vntrs;
+                    }    
+                    else
+                    {
                         std::cerr << "1" << ") " << motif << "\t" << fuzzy_concordance[0] << "\t" << flanks[0] << "," << flanks[1] << "\t" << fuzzy_flanks[0] << "," << fuzzy_flanks[1] << "\n";
-                        std::cerr << "\t" << impurity << "\t" << bcf_get_ref(variant->v) << "\n";
+//                      std::cerr << "\t" << impurity << "\t" << bcf_get_ref(variant->v) << "\n";
+                        ++no_isolated_no_overlap_vntrs;
+                    }
+                          
+                    
+                    if (fuzzy_concordance[0]==1)
+                    {
+                        ++no_perfect_concordance_isolated_exact_vntrs;
                     }
                     else
                     {
+                        std::cerr << "1" << ") " << motif << "\t" << fuzzy_concordance[0] << "\t" << flanks[0] << "," << flanks[1] << "\t" << fuzzy_flanks[0] << "," << fuzzy_flanks[1] << "\n";
+                        std::cerr << "\t" << bcf_get_ref(variant->v) << "\n";
+                        ++no_imperfect_concordance_isolated_exact_vntrs;
+                    }      
                         
-                        
-                        
-                        ++no_isolated_incomplete_overlap_vntrs;
-                    }            
+                    ++no_perfect_concordance_isolated_inexact_vntrs;  
+                            
                     ++no_isolated_inexact_vntrs;
                 }   
                   
@@ -511,16 +545,9 @@ class Igor : Program
                         bcf_get_info_int32(odr->hdr, vntr_v, "FLANKS", &flanks, &n_flanks)>0 &&
                         bcf_get_info_int32(odr->hdr, vntr_v, "FZ_FLANKS", &fuzzy_flanks, &n_fuzzy_flanks)>0)
                         
-                    {
-                        
-                        
+                    {   
                         float impurity = compute_purity_by_sequence_content(bcf_get_ref(vntr_v), motif);
-                        
-                        std::vector<bcf1_t *>& vntr_vs = variant->vntr_vs;
-                        std::vector<uint32_t> ref_beg1;
-                        std::vector<uint32_t> ref_end1;              
-                        uint32_t min_beg1 = INT_MAX;
-                        uint32_t max_end1 = 0;
+                       
                         
 //                        std::cerr << (i+1) << ") " << motif << "\t" << fuzzy_concordance[0] << "\t" << flanks[0] << "," << flanks[1] << "\t" << fuzzy_flanks[0] << "," << fuzzy_flanks[1] << "\n";
 //                        std::cerr << "\t" << bcf_get_ref(vntr_v) << "\n";
@@ -633,7 +660,8 @@ class Igor : Program
         std::clog << "                     imperfect concordance " << no_imperfect_concordance_isolated_exact_vntrs << "\n";
         std::clog << "       Number of isolated inexact VNTRs    " << no_isolated_inexact_vntrs << "\n";
         std::clog << "                     complete overlaps     " << no_isolated_complete_overlap_vntrs << "\n";
-        std::clog << "                     incomplete overlaps   " << no_isolated_incomplete_overlap_vntrs << "\n";
+        std::clog << "                     partial overlaps      " << no_isolated_partial_overlap_vntrs << "\n";
+        std::clog << "                     no overlaps           " << no_isolated_no_overlap_vntrs << "\n";
         std::clog << "       Number of clustered exact VNTRs     " << no_clustered_exact_vntrs << "\n";
         std::clog << "       Number of clustered inexact VNTRs   " << no_clustered_inexact_vntrs << "\n";
         std::clog << "\n";

@@ -34,21 +34,30 @@ VNTR::VNTR(){};
 void VNTR::clear()
 {
     rid = -1;
-    repeat_tract.clear();
-    rbeg1 = 0;
-    rend1 = 0;
-    lflank.clear();
-    rflank.clear();
-
     motif.clear();
     ru.clear();
+    motif_score = 0;
     mlen = 0;
 
-    motif_score = 0;
-    motif_concordance = 0;
-    rl = 0;
-    no_exact_ru = 0;
-    total_no_ru = 0;
+    exact_repeat_tract.clear();
+    exact_rbeg1 = 0;
+    exact_rend1 = 0;
+    exact_lflank.clear();
+    exact_rflank.clear();
+    exact_motif_concordance = 0;
+    exact_rl = 0;
+    exact_no_exact_ru = 0;
+    exact_total_no_ru = 0;
+
+    fuzzy_repeat_tract.clear();
+    fuzzy_rbeg1 = 0;
+    fuzzy_rend1 = 0;
+    fuzzy_lflank.clear();
+    fuzzy_rflank.clear();
+    fuzzy_motif_concordance = 0;
+    fuzzy_rl = 0;
+    fuzzy_no_exact_ru = 0;
+    fuzzy_total_no_ru = 0;
 
     is_large_repeat_tract = false;
 }
@@ -59,8 +68,8 @@ void VNTR::clear()
 bool VNTR::equals(VNTR& vntr)
 {
     return (rid==vntr.rid &&
-            rbeg1==vntr.rbeg1 &&
-            rend1==vntr.rend1 &&
+            exact_rbeg1==vntr.exact_rbeg1 &&
+            exact_rend1==vntr.exact_rend1 &&
             motif==vntr.motif);
 }
 
@@ -76,14 +85,14 @@ void VNTR::print()
     std::cerr << "ru           : " << ru << "\n";
     std::cerr << "\n";
     std::cerr << "Exact\n";
-    std::cerr << "repeat_tract                    : " << repeat_tract << "\n";
-    std::cerr << "position                        : [" << rbeg1 << "," << rend1 << "]\n";
-    std::cerr << "reference repeat unit length    : " << rl << "\n";
-    std::cerr << "longest allele length           : " << ll << "\n";
-    std::cerr << "motif_concordance               : " << motif_concordance << "\n";
-    std::cerr << "repeat units                    : " << rl << "\n";
-    std::cerr << "exact repeat units              : " << no_exact_ru << "\n";
-    std::cerr << "total no. of repeat units       : " << total_no_ru << "\n";
+    std::cerr << "repeat_tract                    : " << exact_repeat_tract << "\n";
+    std::cerr << "position                        : [" << exact_rbeg1 << "," << exact_rend1 << "]\n";
+    std::cerr << "reference repeat unit length    : " << exact_rl << "\n";
+    std::cerr << "longest allele length           : " << exact_ll << "\n";
+    std::cerr << "motif_concordance               : " << exact_motif_concordance << "\n";
+    std::cerr << "repeat units                    : " << exact_rl << "\n";
+    std::cerr << "exact repeat units              : " << exact_no_exact_ru << "\n";
+    std::cerr << "total no. of repeat units       : " << exact_total_no_ru << "\n";
     std::cerr << "\n";
     std::cerr << "Fuzzy\n";
     std::cerr << "repeat_tract                    : " << fuzzy_repeat_tract << "\n";

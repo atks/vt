@@ -75,12 +75,12 @@ void CandidateRegionExtractor::pick_candidate_region(bcf_hdr_t* h, bcf1_t* v, Va
     if (mode==REFERENCE)
     {
         VNTR& vntr = variant.vntr;
-        vntr.repeat_tract.assign(bcf_get_ref(v));
-        vntr.rbeg1 = bcf_get_pos1(v);
+        vntr.exact_repeat_tract.assign(bcf_get_ref(v));
+        vntr.exact_rbeg1 = bcf_get_pos1(v);
         char** alleles = bcf_get_allele(v);
-        vntr.rend1 = strlen(alleles[0]);
-        vntr.fuzzy_rbeg1 = vntr.rbeg1;
-        vntr.fuzzy_rend1 = vntr.rend1;
+        vntr.exact_rend1 = strlen(alleles[0]);
+        vntr.fuzzy_rbeg1 = vntr.exact_rbeg1;
+        vntr.fuzzy_rend1 = vntr.exact_rend1;
         
     }
     else if (mode==EXACT_LEFT_RIGHT_ALIGNMENT)
@@ -198,10 +198,10 @@ void CandidateRegionExtractor::extract_regions_by_exact_alignment(bcf_hdr_t* h, 
         std::cerr << "                   " << seq << "\n";
     }
 
-    vntr.repeat_tract = seq;
+    vntr.exact_repeat_tract = seq;
     vntr.rid = bcf_get_rid(v);
-    vntr.rbeg1 = min_beg1;
-    vntr.rend1 = max_end1;
+    vntr.exact_rbeg1 = min_beg1;
+    vntr.exact_rend1 = max_end1;
     
     if (seq_len) free(seq);
 }
@@ -315,8 +315,8 @@ void CandidateRegionExtractor::extract_regions_by_fuzzy_alignment(bcf_hdr_t* h, 
         std::cerr << "                   " << seq << "\n";
     }
 
-    vntr.repeat_tract = seq;
-    vntr.rbeg1 = min_beg1;
+    vntr.exact_repeat_tract = seq;
+    vntr.exact_rbeg1 = min_beg1;
 
     if (seq_len) free(seq);
 }

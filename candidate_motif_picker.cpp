@@ -60,13 +60,13 @@ void CandidateMotifPicker::generate_candidate_motifs(bcf_hdr_t* h, bcf1_t* v, Va
 
         if (debug)
         {
-            const char* repeat_tract = variant.vntr.repeat_tract.c_str();
+            const char* repeat_tract = variant.vntr.exact_repeat_tract.c_str();
             std::cerr << "Longest Allele : "   << alleles[0][0] << "[" <<  &alleles[1][1]  << "]" << &repeat_tract[1] << "\n";
         }
 
         //spike in inserted allele
         std::string spiked_seq(alleles[1]);
-        std::string insertion = variant.vntr.repeat_tract.substr(strlen(alleles[0]), variant.vntr.repeat_tract.size()-strlen(alleles[0]));
+        std::string insertion = variant.vntr.exact_repeat_tract.substr(strlen(alleles[0]), variant.vntr.exact_repeat_tract.size()-strlen(alleles[0]));
         spiked_seq.append(insertion);
         mt->detect_candidate_motifs(spiked_seq);
         
@@ -74,7 +74,7 @@ void CandidateMotifPicker::generate_candidate_motifs(bcf_hdr_t* h, bcf1_t* v, Va
     }
     else
     {
-        mt->detect_candidate_motifs(variant.vntr.repeat_tract);
+        mt->detect_candidate_motifs(variant.vntr.exact_repeat_tract);
 
         char** alleles = bcf_get_allele(v);
         indel_sequence.assign(&alleles[0][1]);
