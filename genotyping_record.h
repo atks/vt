@@ -107,7 +107,7 @@ class GenotypingRecord
      * Constructor.
      * @v - VCF record.
      */
-    GenotypingRecord(bcf_hdr_t*h, bcf1_t *v, int32_t vtype, faidx_t *fai);
+    GenotypingRecord(bcf_hdr_t*h, bcf1_t *v, int32_t vtype);
 
     /**
      * Translates from descriptive allele to integer encoding.

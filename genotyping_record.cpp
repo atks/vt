@@ -23,7 +23,7 @@
  * Constructor.
  * @v - VCF record.
  */
-GenotypingRecord::GenotypingRecord(bcf_hdr_t *h, bcf1_t *v, int32_t vtype, faidx_t *fai)
+GenotypingRecord::GenotypingRecord(bcf_hdr_t *h, bcf1_t *v, int32_t vtype)
 {
     clear();
     this->h = h;
@@ -80,14 +80,14 @@ GenotypingRecord::GenotypingRecord(bcf_hdr_t *h, bcf1_t *v, int32_t vtype, faidx
         //construct alleles
         
         //get reference sequence
-        char* ref_seq = NULL;
-        int32_t ref_len = 0;
-        ref_seq = faidx_fetch_seq(fai, bcf_get_chrom(h,v), lend1+1-1, rbeg1-1-1, &ref_len);
-        
-        for (uint32_t i=0; i<n_allele; ++i)
-        {
-            
-        }
+//        char* ref_seq = NULL;
+//        int32_t ref_len = 0;
+////        ref_seq = faidx_fetch_seq(fai, bcf_get_chrom(h,v), lend1+1-1, rbeg1-1-1, &ref_len);
+//        
+//        for (uint32_t i=0; i<n_allele; ++i)
+//        {
+//            
+//        }
         
 //        for ()
 //        {

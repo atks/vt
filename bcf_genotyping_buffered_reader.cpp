@@ -124,7 +124,7 @@ void BCFGenotypingBufferedReader::process_read(bam_hdr_t *h, bam1_t *s)
     while (odr->read(v))
     {
         int32_t vtype = vm->classify_variant(odr->hdr, v, variant);
-        g = new GenotypingRecord(odr->hdr, v, vtype, fai);
+        g = new GenotypingRecord(odr->hdr, v, vtype);
         buffer.push_back(g);
 
         if (tid==g->rid)
@@ -1151,6 +1151,17 @@ void BCFGenotypingBufferedReader::flush(BCFOrderedWriter* odw, bam_hdr_t *h, bam
 {
     if (flush_all)
     {
+        //read all the remaining from the reference genotyping file
+        bcf1_t *v = bcf_init();
+        while (odr->read(v))
+        {
+            int32_t vtype = vm->classify_variant(odr->hdr, v, variant);
+            GenotypingRecord* g = new GenotypingRecord(odr->hdr, v, vtype);
+            buffer.push_back(g);
+            v = bcf_init();
+        }
+        bcf_destroy(v);
+        
         GenotypingRecord* g;
         while (!buffer.empty())
         {

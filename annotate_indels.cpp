@@ -56,6 +56,9 @@ class Igor : Program
         
     std::string RU;               //repeat unit on reference sequence that is in phase from the start position of the variant
 
+    std::string EXACT;            //VNTR described by exact alignment, this is used if the purity score of the fuzzy alignment is too low.
+    std::string FUZZY;            //VNTR described by fuzzy alignment
+
     std::string RL;               //repeat tract length
     std::string LL;               //repeat tract length of the longest allele
     std::string CONCORDANCE;      //concordance of the repeat unit
@@ -67,6 +70,9 @@ class Igor : Program
     std::string FZ_CONCORDANCE;   //concordance of the repeat unit
     std::string FZ_RU_COUNTS;     //repeat unit counts - exact and inexact
     std::string FZ_FLANKS;        //flank positions
+
+    std::string MODE;             //mode of VNTR annotation, this is either exact or fuzzy.  This is important as in fuzzy mode
+                                  //when the cutoffs fail, the exact mode is considered too and annotation may fall back on that.
 
     //helper variables for populating additional VNTR records
     uint32_t no_samples;
@@ -243,6 +249,8 @@ class Igor : Program
             FZ_FLANKS = bcf_hdr_append_info_with_backup_naming(odw->hdr, "FZ_FLANKS", "2", "Integer", "Fuzzy left and right flank positions of the Indel, left/right alignment invariant, not necessarily equal to POS.", true);
         }
 
+        EXACT = bcf_hdr_append_info_with_backup_naming(odw->hdr, "EXACT", "0", "Flag", "Exact mode of VNTR annotation", true);
+        FUZZY = bcf_hdr_append_info_with_backup_naming(odw->hdr, "FUZZY", "0", "Flag", "Fuzzy mode of VNTR annotation", true);
         TR = bcf_hdr_append_info_with_backup_naming(odw->hdr, "TR", "1", "String", "Tandem repeat associated with this indel.", true);
 
         bcf_hdr_append(odw->hdr, "##INFO=<ID=LARGE_REPEAT_REGION,Number=0,Type=Flag,Description=\"Very large repeat region, vt only detects up to 1000bp long regions.\">");
@@ -505,8 +513,10 @@ class Igor : Program
 
         if (variant.vntr.definition_support=="e")
         {
-            bcf_set_pos1(v, vntr.exact_rbeg1);
+            bcf_update_info_flag(h, v, "EXACT", NULL, 1);
 
+            //VNTR position and sequences
+            bcf_set_pos1(v, vntr.exact_rbeg1);
             s.l = 0;
             kputs(vntr.exact_repeat_tract.c_str(), &s);
             kputc(',', &s);
@@ -544,24 +554,28 @@ class Igor : Program
         }
         else if (variant.vntr.definition_support=="f")
         {
+            bcf_update_info_flag(h, v, "FUZZY", NULL, 1);
+            
+            //VNTR position and sequences
             bcf_set_pos1(v, vntr.fuzzy_rbeg1);
-
-             s.l = 0;
+            s.l = 0;
             kputs(vntr.fuzzy_repeat_tract.c_str(), &s);
             kputc(',', &s);
             kputs("<VNTR>", &s);
             bcf_update_alleles_str(h, v, s.s);
+
+            //VNTR motif
             bcf_update_info_string(h, v, MOTIF.c_str(), vntr.motif.c_str());
             bcf_update_info_string(h, v, RU.c_str(), vntr.ru.c_str());
 
+            //VNTR characteristics
             bcf_update_info_float(h, v, FZ_CONCORDANCE.c_str(), &vntr.fuzzy_motif_concordance, 1);
-
             bcf_update_info_float(h, v, FZ_RL.c_str(), &vntr.fuzzy_rl, 1);
             bcf_update_info_float(h, v, FZ_LL.c_str(), &vntr.fuzzy_ll, 1);
-
             int32_t flank_pos1[2] = {variant.vntr.exact_rbeg1-1, variant.vntr.exact_rend1+1};
             bcf_update_info_int32(h, v, FLANKS.c_str(), &flank_pos1, 2);
 
+            //flank positions
             int32_t fuzzy_flank_pos1[2] = {variant.vntr.fuzzy_rbeg1-1, variant.vntr.fuzzy_rend1+1};
             bcf_update_info_int32(h, v, FZ_FLANKS.c_str(), &fuzzy_flank_pos1, 2);
             int32_t ru_count[2] = {vntr.fuzzy_no_exact_ru, vntr.fuzzy_total_no_ru};
