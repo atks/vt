@@ -41,6 +41,7 @@ class Igor : Program
     std::vector<GenomeInterval> intervals;
     std::string interval_list;
     uint32_t sort_window_size;
+    bool naive;
     bool print;
     bool print_sites_only;
     int32_t no_subset_samples;
@@ -86,7 +87,8 @@ class Igor : Program
             TCLAP::ValueArg<std::string> arg_input_vcf_file_list("L", "L", "file containing list of input VCF files", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_fexp("f", "f", "filter expression []", false, "", "str", cmd);
             TCLAP::ValueArg<uint32_t> arg_sort_window_size("w", "w", "local sorting window size [0]", false, 0, "int", cmd);
-            TCLAP::SwitchArg arg_print("p", "p", "print options and summary []", cmd, false);
+            TCLAP::SwitchArg arg_naive("n", "n", "naive, assumes that headers are the same. [false]", cmd, false);
+            TCLAP::SwitchArg arg_print("p", "p", "print options and summary [false]", cmd, false);
             TCLAP::SwitchArg arg_print_sites_only("s", "s", "print site information only without genotypes [false]", cmd, false);
             TCLAP::UnlabeledMultiArg<std::string> arg_input_vcf_files("<in1.vcf>...", "Multiple VCF files",false, "files", cmd);
 
@@ -128,44 +130,47 @@ class Igor : Program
             odw->set_hdr(bcf_hdr_subset(odr->hdr, 0, 0, 0));
         }
 
-        if (input_vcf_files.size()>1)
+        if (!naive)
         {
-            uint32_t no_samples = bcf_hdr_get_n_sample(odw->hdr);
-
-            //inspect headers in second file and above, insert missing headers
-            for (uint32_t i=1; i<input_vcf_files.size(); ++i)
+            if (input_vcf_files.size()>1)
             {
-                vcfFile* file = bcf_open(input_vcf_files[i].c_str(), "r");
-                if (!file)
+                uint32_t no_samples = bcf_hdr_get_n_sample(odw->hdr);
+    
+                //inspect headers in second file and above, insert missing headers
+                for (uint32_t i=1; i<input_vcf_files.size(); ++i)
                 {
-                    fprintf(stderr, "[%s:%d %s] Cannot open %s\n", __FILE__, __LINE__, __FUNCTION__, input_vcf_files[i].c_str());
-                    exit(1);
-                }
-                bcf_hdr_t* h = bcf_hdr_read(file);
-
-                //check samples consistency
-                if (no_subset_samples==-1)
-                {
-                    if (no_samples!=bcf_hdr_get_n_sample(h))
+                    vcfFile* file = bcf_open(input_vcf_files[i].c_str(), "r");
+                    if (!file)
                     {
-                        fprintf(stderr, "[%s:%d %s] Different number of samples%s\n", __FILE__, __LINE__, __FUNCTION__, input_vcf_files[i].c_str());
+                        fprintf(stderr, "[%s:%d %s] Cannot open %s\n", __FILE__, __LINE__, __FUNCTION__, input_vcf_files[i].c_str());
                         exit(1);
                     }
-
-                    for (uint32_t j=0; j<no_samples; ++j)
+                    bcf_hdr_t* h = bcf_hdr_read(file);
+    
+                    //check samples consistency
+                    if (no_subset_samples==-1)
                     {
-                        if (strcmp(bcf_hdr_get_sample_name(odw->hdr, j), bcf_hdr_get_sample_name(h, j)))
+                        if (no_samples!=bcf_hdr_get_n_sample(h))
                         {
-                            fprintf(stderr, "[%s:%d %s] Different samples %s\n", __FILE__, __LINE__, __FUNCTION__, input_vcf_files[i].c_str());
+                            fprintf(stderr, "[%s:%d %s] Different number of samples%s\n", __FILE__, __LINE__, __FUNCTION__, input_vcf_files[i].c_str());
                             exit(1);
                         }
+    
+                        for (uint32_t j=0; j<no_samples; ++j)
+                        {
+                            if (strcmp(bcf_hdr_get_sample_name(odw->hdr, j), bcf_hdr_get_sample_name(h, j)))
+                            {
+                                fprintf(stderr, "[%s:%d %s] Different samples %s\n", __FILE__, __LINE__, __FUNCTION__, input_vcf_files[i].c_str());
+                                exit(1);
+                            }
+                        }
                     }
+    
+                    bcf_hdr_merge(odw->hdr, h);
+    
+                    bcf_close(file);
+                    bcf_hdr_destroy(h);
                 }
-
-                bcf_hdr_merge(odw->hdr, h);
-
-                bcf_close(file);
-                bcf_hdr_destroy(h);
             }
         }
 
@@ -188,47 +193,93 @@ class Igor : Program
 
     void cat()
     {
-        odw->write_hdr();
-        bcf1_t *v = bcf_init();
-        Variant variant;
-
-        for (size_t i=0; i<input_vcf_files.size(); ++i)
+        if (!naive)
         {
-            if (i)
+            odw->write_hdr();
+            bcf1_t *v = bcf_init();
+            Variant variant;
+    
+            for (size_t i=0; i<input_vcf_files.size(); ++i)
             {
-                delete odr;
-                odr = new BCFOrderedReader(input_vcf_files[i], intervals);
-            }
-
-            while(odr->read(v))
-            {
-                if (filter_exists)
+                if (i)
                 {
-                    vm->classify_variant(odr->hdr, v, variant);
-                    if (!filter.apply(odr->hdr, v, &variant))
+                    delete odr;
+                    odr = new BCFOrderedReader(input_vcf_files[i], intervals);
+                }
+    
+                while(odr->read(v))
+                {
+                    if (filter_exists)
                     {
-                        continue;
+                        vm->classify_variant(odr->hdr, v, variant);
+                        if (!filter.apply(odr->hdr, v, &variant))
+                        {
+                            continue;
+                        }
                     }
+    
+                    if (no_subset_samples==0)
+                    {
+                        bcf_subset(odw->hdr, v, 0, 0);
+                    }
+    
+                    bcf_translate(odw->hdr, odr->hdr, v);
+                    odw->write(v);
+                    if (sort_window_size)
+                    {
+                        v = odw->get_bcf1_from_pool();
+                    }
+                    ++no_variants;
                 }
-
-                if (no_subset_samples==0)
-                {
-                    bcf_subset(odw->hdr, v, 0, 0);
-                }
-
-                bcf_translate(odw->hdr, odr->hdr, v);
-                odw->write(v);
-                if (sort_window_size)
-                {
-                    v = odw->get_bcf1_from_pool();
-                }
-                ++no_variants;
+    
+                odr->close();
             }
-
-            odr->close();
+    
+            odw->close();
         }
-
-        odw->close();
+        else
+        {
+            odw->write_hdr();
+            bcf1_t *v = bcf_init();
+            Variant variant;
+    
+            for (size_t i=0; i<input_vcf_files.size(); ++i)
+            {
+                if (i)
+                {
+                    delete odr;
+                    odr = new BCFOrderedReader(input_vcf_files[i], intervals);
+                }
+    
+                while(odr->read(v))
+                {
+                    if (filter_exists)
+                    {
+                        vm->classify_variant(odr->hdr, v, variant);
+                        if (!filter.apply(odr->hdr, v, &variant))
+                        {
+                            continue;
+                        }
+                    }
+    
+                    if (no_subset_samples==0)
+                    {
+                        bcf_subset(odw->hdr, v, 0, 0);
+                    }
+    
+                    odw->write(v);
+                    if (sort_window_size)
+                    {
+                        v = odw->get_bcf1_from_pool();
+                    }
+                    ++no_variants;
+                }
+    
+                odr->close();
+            }
+    
+            odw->close();
+        }
     };
 
     void print_options()
