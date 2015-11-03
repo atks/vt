@@ -158,10 +158,13 @@ class Igor : Program
 
             ++no_variants;
 
-            if (filter_exists && !filter.apply(h,v,&variant))
+            if (filter_exists)
             {
                 vm->classify_variant(h, v, variant);
-                continue;
+                if (!filter.apply(h,v,&variant))
+                {
+                    continue;
+                }
             }
 
             if (no_subset_samples)
