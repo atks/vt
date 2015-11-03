@@ -38,12 +38,13 @@ void VTOutput::usage(TCLAP::CmdLineInterface& c)
     //prints unlabeled arument list first
     for (TCLAP::ArgListIterator it = args.begin(); it != args.end(); it++)
     {
-        if (typeid(**it)==typeid(TCLAP::UnlabeledValueArg<std::string>))
+        TCLAP::Arg& arg = **it;
+        if (typeid(arg)==typeid(TCLAP::UnlabeledValueArg<std::string>))
         {
             TCLAP::UnlabeledValueArg<std::string> *i = (TCLAP::UnlabeledValueArg<std::string> *) (*it);
             s = i->getName();
         }
-        else if (typeid(**it)==typeid(TCLAP::UnlabeledMultiArg<std::string>))
+        else if (typeid(arg)==typeid(TCLAP::UnlabeledMultiArg<std::string>))
         {
             TCLAP::UnlabeledMultiArg<std::string> *i = (TCLAP::UnlabeledMultiArg<std::string> *) (*it);
             s = i->getName();
@@ -66,29 +67,30 @@ void VTOutput::usage(TCLAP::CmdLineInterface& c)
             std::clog << "          ";
         }
 
-        if (typeid(**it)==typeid(TCLAP::ValueArg<std::string>) ||
-            typeid(**it)==typeid(TCLAP::ValueArg<uint32_t>) ||
-            typeid(**it)==typeid(TCLAP::ValueArg<int32_t>) ||
-            typeid(**it)==typeid(TCLAP::ValueArg<double>) ||
-            typeid(**it)==typeid(TCLAP::ValueArg<float>))
+        TCLAP::Arg& arg = **it;
+        if (typeid(arg)==typeid(TCLAP::ValueArg<std::string>) ||
+            typeid(arg)==typeid(TCLAP::ValueArg<uint32_t>) ||
+            typeid(arg)==typeid(TCLAP::ValueArg<int32_t>) ||
+            typeid(arg)==typeid(TCLAP::ValueArg<double>) ||
+            typeid(arg)==typeid(TCLAP::ValueArg<float>))
         {
             TCLAP::ValueArg<std::string> *i = (TCLAP::ValueArg<std::string> *) (*it);
 
             std::clog  << "-" << (i->getFlag()=="" ? i->getName() : i->getFlag())
                        << "  " << i->getDescription() << "\n";
         }
-        else if (typeid(**it)==typeid(TCLAP::SwitchArg))
+        else if (typeid(arg)==typeid(TCLAP::SwitchArg))
         {
             TCLAP::SwitchArg *i = (TCLAP::SwitchArg *) (*it);
 
             std::clog  << "-" << i->getFlag()
                        << "  " << i->getDescription() << "\n";
         }
-        else if (typeid(**it)==typeid(TCLAP::UnlabeledValueArg<std::string>))
+        else if (typeid(arg)==typeid(TCLAP::UnlabeledValueArg<std::string>))
         {
             //ignored
         }
-        else if (typeid(**it)==typeid(TCLAP::UnlabeledMultiArg<std::string>))
+        else if (typeid(arg)==typeid(TCLAP::UnlabeledMultiArg<std::string>))
         {
             //ignored
         }

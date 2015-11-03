@@ -44,8 +44,6 @@
 namespace
 {
 
-KHASH_MAP_INIT_INT(32, char)
-
 class Igor : Program
 {
     public:
@@ -183,11 +181,14 @@ class Igor : Program
         sv = new SVTree();
     }
 
+    KHASH_MAP_INIT_INT(32, char)
+
     void peek()
     {
         no_samples = bcf_hdr_get_n_sample(odr->hdr);
 
         int ret, is_missing;
+        
         khiter_t k;
         khash_t(32) *h = kh_init(32);
 
