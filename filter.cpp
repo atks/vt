@@ -478,13 +478,13 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
         }
         else if (type==VT_FILTER)
         {
-            if (bcf_has_filter(h, v, tag.s)!=1)
+            if (bcf_get_n_filter(v) && bcf_has_filter(h, v, tag.s))
             {
-                b = false;
+                b = true;
             }
             else
             {
-                b = true;
+                b = false;
             }
         }
         else if (type==VT_N_FILTER)
