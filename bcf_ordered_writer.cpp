@@ -160,6 +160,7 @@ void BCFOrderedWriter::write(bcf1_t *v)
     }
     else
     {
+        //todo:  add a mechanism to populate header similar to vcf_parse in vcf_format which is called by bcf_write
         bcf_write(file, hdr, v);
     }
 }

@@ -153,15 +153,12 @@ class Igor : Program
 
         while(odr->read(v))
         {
-            variant.clear();
-            bool printed = false;
-
             ++no_variants;
 
             if (filter_exists)
             {
                 vm->classify_variant(h, v, variant);
-                if (!filter.apply(h,v,&variant))
+                if (!filter.apply(h, v, &variant))
                 {
                     continue;
                 }
@@ -207,7 +204,6 @@ class Igor : Program
 
                 //check if the alleles used are a subset of the report alleles in shared data
                 //reduce observed alleles
-
             }
         }
 

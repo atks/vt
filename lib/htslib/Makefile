@@ -255,7 +255,7 @@ kstring.o kstring.pico: kstring.c $(htslib_kstring_h)
 knetfile.o knetfile.pico: knetfile.c $(htslib_knetfile_h)
 hfile.o hfile.pico: hfile.c config.h $(htslib_hfile_h) $(hfile_internal_h) $(hts_internal_h) $(htslib_khash_h)
 hfile_irods.o hfile_irods.pico: hfile_irods.c config.h $(hfile_internal_h)
-hfile_libcurl.o hfile_libcurl.pico: hfile_libcurl.c config.h $(hfile_internal_h) $(htslib_kstring_h)
+hfile_libcurl.o hfile_libcurl.pico: hfile_libcurl.c config.h $(hfile_internal_h) $(htslib_hts_h) $(htslib_kstring_h)
 hfile_net.o hfile_net.pico: hfile_net.c config.h $(hfile_internal_h) $(htslib_knetfile_h)
 hts.o hts.pico: hts.c config.h version.h $(htslib_hts_h) $(htslib_bgzf_h) $(cram_h) $(htslib_hfile_h) $(htslib_khash_h) $(htslib_kseq_h) $(htslib_ksort_h) $(hts_internal_h)
 vcf.o vcf.pico: vcf.c config.h $(htslib_vcf_h) $(htslib_bgzf_h) $(htslib_tbx_h) $(htslib_hfile_h) $(htslib_khash_h) $(htslib_kseq_h) $(htslib_kstring_h) $(htslib_khash_str2int_h)
@@ -346,7 +346,7 @@ test/test-vcf-sweep.o: test/test-vcf-sweep.c $(htslib_vcf_sweep_h)
 
 install: libhts.a $(BUILT_PROGRAMS) $(BUILT_PLUGINS) installdirs install-$(SHLIB_FLAVOUR) install-pkgconfig
 	$(INSTALL_PROGRAM) $(BUILT_PROGRAMS) $(DESTDIR)$(bindir)
-	test -n "$(BUILT_PLUGINS)" && $(INSTALL_PROGRAM) $(BUILT_PLUGINS) $(DESTDIR)$(plugindir)
+	if test -n "$(BUILT_PLUGINS)"; then $(INSTALL_PROGRAM) $(BUILT_PLUGINS) $(DESTDIR)$(plugindir); fi
 	$(INSTALL_DATA) htslib/*.h $(DESTDIR)$(includedir)/htslib
 	$(INSTALL_DATA) libhts.a $(DESTDIR)$(libdir)/libhts.a
 	$(INSTALL_DATA) htsfile.1 tabix.1 $(DESTDIR)$(man1dir)
@@ -354,7 +354,7 @@ install: libhts.a $(BUILT_PROGRAMS) $(BUILT_PLUGINS) installdirs install-$(SHLIB
 
 installdirs:
 	$(INSTALL_DIR) $(DESTDIR)$(bindir) $(DESTDIR)$(includedir) $(DESTDIR)$(includedir)/htslib $(DESTDIR)$(libdir) $(DESTDIR)$(man1dir) $(DESTDIR)$(man5dir) $(DESTDIR)$(pkgconfigdir)
-	test -n "$(plugindir)" && $(INSTALL_DIR) $(DESTDIR)$(plugindir)
+	if test -n "$(plugindir)"; then $(INSTALL_DIR) $(DESTDIR)$(plugindir); fi
 
 # After installation, the real file in $(libdir) will be libhts.so.X.Y.Z,
 # with symlinks libhts.so (used via -lhts during linking of client programs)
