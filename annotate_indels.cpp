@@ -648,8 +648,11 @@ class Igor : Program
             int32_t vtype = vm->classify_variant(odr->hdr, v, variant);
             if (vtype&VT_INDEL)
             {
-//                bcf_print_liten(h,v);
-
+                if (debug)
+                {
+                    bcf_print_liten(h,v);
+                }
+                
                 flush_vntr_buffer(v);
 
                 //  bcf_print(odr->hdr, v);
