@@ -45,7 +45,7 @@ GenotypingRecord::GenotypingRecord(bcf_hdr_t *h, bcf1_t *v, int32_t vtype)
         dlen = strlen(alleles[1])-strlen(alleles[0]);
         len = abs(dlen);
 
-        int32_t *flanks_pos1;
+        int32_t *flanks_pos1 = NULL;
         int32_t n = 0;
                 
         if (bcf_get_info_int32(h, v, "FLANKS", &flanks_pos1, &n)>0)

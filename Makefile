@@ -63,6 +63,7 @@ SOURCES = align\
 		ordered_region_overlap_matcher\
 		partition\
 		paste\
+		paste_and_compute_features_sequential\
 		pedigree\
 		peek\
 		pileup\
