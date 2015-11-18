@@ -777,10 +777,10 @@ bool AHMM::flanks_are_mapped()
  */
 float AHMM::log10_emission_odds(char probe_base, char read_base, uint32_t pl, float mismatch_penalty)
 {
-    if (read_base=='N' || probe_base=='N')
-    {
-        return -INFINITY;  //is this appropriate in this case?
-    }
+//    if (read_base=='N' || probe_base=='N')
+//    {
+//        return -INFINITY;  //is this appropriate in this case?
+//    }
 
     if (read_base!=probe_base)
     {
@@ -797,10 +797,10 @@ float AHMM::log10_emission_odds(char probe_base, char read_base, uint32_t pl, fl
  */
 float AHMM::log10_emission_odds(char probe_base, char read_base, uint32_t pl)
 {
-    if (read_base=='N' || probe_base=='N')
-    {
-        return -INFINITY;  //is this appropriate in this case?
-    }
+//    if (read_base=='N' || probe_base=='N')
+//    {
+//        return -INFINITY;  //is this appropriate in this case?
+//    }
 
     if (read_base!=probe_base)
     {

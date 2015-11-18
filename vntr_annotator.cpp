@@ -58,7 +58,7 @@ VNTRAnnotator::VNTRAnnotator(std::string& ref_fasta_file, bool debug)
     mt = new MotifTree(max_mlen, debug);
 
     this->debug = debug;
-    qual.assign(256, 'K');
+    qual.assign(2048, 'K');
 };
 
 /**

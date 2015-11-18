@@ -480,16 +480,20 @@ void BCFGenotypingBufferedReader::collect_sufficient_statistics(GenotypingRecord
                 ++g->depth;
                 g->quals.push_back(q);
                 g->cycles.push_back(cycle);
+                g->map_quals.push_back(mapq);
                 g->alleles.push_back(allele);
                 g->strands.append(1, strand);
                 g->no_mismatches.push_back(as.no_mismatches);
             }
             else
             {
+                bam1_t *s = as.s;
+                uint8_t mapq = bam_get_mapq(s);
+                
                 ++g->depth;
                 g->quals.push_back(0);
-                g->quals.push_back(0);
                 g->cycles.push_back(-1);
+                g->map_quals.push_back(mapq);
                 g->alleles.push_back(-1);
                 g->strands.append(1, (bam_is_rev(as.s) ? 'R' : 'F'));
                 g->no_mismatches.push_back(as.no_mismatches);
@@ -613,6 +617,17 @@ void BCFGenotypingBufferedReader::flush(BCFOrderedWriter* odw, bam_hdr_t *h, bam
 {
     if (flush_all)
     {
+        //read all the remaining from the reference genotyping file
+        bcf1_t *v = bcf_init();
+        while (odr->read(v))
+        {
+            int32_t vtype = vm->classify_variant(odr->hdr, v, variant);
+            GenotypingRecord* g = new GenotypingRecord(odr->hdr, v, vtype);
+            buffer.push_back(g);
+            v = bcf_init();
+        }
+        bcf_destroy(v);
+        
         GenotypingRecord* g;
         while (!buffer.empty())
         {
@@ -715,7 +730,7 @@ void BCFGenotypingBufferedReader::compute_indel_pl(std::vector<int32_t>& alleles
             if (alleles[i]==0)
             {
                 p = -((float)quals[i])/10;
-                q = p - 1;
+                q = p - 2;
                 pRR += p;
                 pRA += -0.30103+lt.log10sum(p,q);
                 pAA += q;
@@ -723,7 +738,7 @@ void BCFGenotypingBufferedReader::compute_indel_pl(std::vector<int32_t>& alleles
             else
             {
                 p = -((float)quals[i])/10;
-                q = p - 1;
+                q = p - 2;
                 pRR += q;
                 pRA += -0.30103+lt.log10sum(p,q);
                 pAA += p;
@@ -841,19 +856,36 @@ void BCFGenotypingBufferedReader::genotype_and_print(BCFOrderedWriter* odw, Geno
         }
         else
         {
-            int32_t gts[2];
-            gts[0] = bcf_gt_unphased(0);
-            gts[1] = bcf_gt_unphased(0);
-
-            //GT
-            bcf_update_genotypes(odw->hdr, v, &gts[0], 2);
-
-            //bq sum
-            bcf_update_format_int32(odw->hdr, v, "BQSUM", &g->base_qualities_sum, 1);
-
-            //depth
-            bcf_update_format_int32(odw->hdr, v, "DP", &g->depth, 1);
-
+            if (g->depth)
+            {
+                int32_t gts[2];
+                gts[0] = bcf_gt_unphased(0);
+                gts[1] = bcf_gt_unphased(0);
+    
+                //GT
+                bcf_update_genotypes(odw->hdr, v, &gts[0], 2);
+    
+                //bq sum
+                bcf_update_format_int32(odw->hdr, v, "BQSUM", &g->base_qualities_sum, 1);
+    
+                //depth
+                bcf_update_format_int32(odw->hdr, v, "DP", &g->depth, 1);
+            }
+            else
+            {
+                int32_t gts[2];
+                gts[0] = bcf_gt_unphased(-1);
+                gts[1] = bcf_gt_unphased(-1);
+    
+                //GT
+                bcf_update_genotypes(odw->hdr, v, &gts[0], 2);
+    
+                //bq sum
+                bcf_update_format_int32(odw->hdr, v, "BQSUM", &g->base_qualities_sum, 1);
+    
+                //depth
+                bcf_update_format_int32(odw->hdr, v, "DP", &g->depth, 1);
+            }
 //            //depth
 //            bcf_update_format_int32(odw->hdr, v, "DPF", &g->depth_fwd, 1);
 //            bcf_update_format_int32(odw->hdr, v, "DPR", &g->depth_rev, 1);
@@ -979,6 +1011,9 @@ void BCFGenotypingBufferedReader::genotype_and_print(BCFOrderedWriter* odw, Geno
             //quals
             bcf_update_format_int32(odw->hdr, v, "BQ", &g->quals[0], g->quals.size());
 
+            //map quality
+            bcf_update_format_int32(odw->hdr, v, "MQ", &g->map_quals[0], g->map_quals.size());
+
             //cycles
             bcf_update_format_int32(odw->hdr, v, "CY", &g->cycles[0], g->cycles.size());
 
@@ -994,18 +1029,35 @@ void BCFGenotypingBufferedReader::genotype_and_print(BCFOrderedWriter* odw, Geno
         }
         else
         {
-            int32_t gts[2];
-            gts[0] = bcf_gt_unphased(0);
-            gts[1] = bcf_gt_unphased(0);
-
-            //GT
-            bcf_update_genotypes(odw->hdr, v, &gts[0], 2);
-
-            //qualsum
-            bcf_update_format_int32(odw->hdr, v, "BQSUM", &g->base_qualities_sum, 1);
-
-            bcf_update_format_int32(odw->hdr, v, "DP", &g->depth, 1);
-
+            if (g->depth)
+            {
+                int32_t gts[2];
+                gts[0] = bcf_gt_unphased(0);
+                gts[1] = bcf_gt_unphased(0);
+    
+                //GT
+                bcf_update_genotypes(odw->hdr, v, &gts[0], 2);
+    
+                //qualsum
+                bcf_update_format_int32(odw->hdr, v, "BQSUM", &g->base_qualities_sum, 1);
+    
+                bcf_update_format_int32(odw->hdr, v, "DP", &g->depth, 1);
+            }
+            else
+            {
+                int32_t gts[2];
+                gts[0] = bcf_gt_unphased(-1);
+                gts[1] = bcf_gt_unphased(-1);
+    
+                //GT
+                bcf_update_genotypes(odw->hdr, v, &gts[0], 2);
+    
+                //bq sum
+                bcf_update_format_int32(odw->hdr, v, "BQSUM", &g->base_qualities_sum, 1);
+    
+                //depth
+                bcf_update_format_int32(odw->hdr, v, "DP", &g->depth, 1);
+            }
 
 //            //depth
 //            bcf_update_format_int32(odw->hdr, v, "DPF", &g->depth_fwd, 1);

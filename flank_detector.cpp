@@ -66,7 +66,7 @@ FlankDetector::FlankDetector(std::string& ref_fasta_file, bool debug)
     rfhmm->set_mismatch_penalty(mismatch_penalty);
     rfhmm->initialize_T();
 
-    qual.assign(256, 'K');
+    qual.assign(2048, 'K');
 
     //////////////////
     //initialize tools
