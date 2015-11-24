@@ -104,33 +104,60 @@ void FlankDetector::detect_flanks(bcf_hdr_t* h, bcf1_t *v, Variant& variant, uin
             std:: cerr << "\n";
         }
 
-        //in the case of simple indels, it is guaranteed that repeat tract length 
-        //is always greater than 2 after exact alignment for deletions. This is 
-        //because at least one end of the REF and ALT will end or start in the same base, 
-        //and this allows the exact alignment detection of the repeat region to always 
-        //increase by at least 1 base.
-        //
-        //exceptions:
-        //
-        //    simple insertion
-        //    C[G]C  => [GC]
-        //      GA
-        //
-        //    complex substitution
-        //    C[G]C  => [G]
-        //      TA
-        if (vntr.exact_repeat_tract.size()>2) 
+        /////////////////
+        //exact alignment
+        /////////////////
+        if (debug)
         {
-            vntr.exact_repeat_tract = vntr.exact_repeat_tract.substr(1, vntr.exact_repeat_tract.size()-2);
-            ++vntr.exact_rbeg1;
+            std::cerr << "++++++++++++++++++++++++++++++++++++++++++++\n";
+            std::cerr << "Exact left/right alignment\n";
         }
 
-        vntr.ru = choose_repeat_unit(vntr.exact_repeat_tract, vntr.motif);
-        
-//        std::cerr << "repeat tract : "
-        
-        vntr.exact_rend1 = vntr.exact_rbeg1+vntr.exact_rl-1;
+        if (vntr.exact_repeat_tract.size()>2)
+        {
+            //removing the anchor bases
+            if (vntr.mlen==1)
+            {
+                int32_t offset = 0;
+                int32_t length = vntr.exact_repeat_tract.size();
+                if (vntr.exact_repeat_tract.at(0)!=vntr.motif.at(0))
+                {
+                    offset = 1;
+                    ++vntr.exact_rbeg1;
+                }
 
+                if (vntr.exact_repeat_tract.at(vntr.exact_repeat_tract.size()-1)!=vntr.motif.at(0))
+                {
+                    length -= offset+1;
+                    --vntr.exact_rend1;
+                }
+
+                vntr.exact_repeat_tract = vntr.exact_repeat_tract.substr(offset, length);
+            }
+            else
+            {
+                if (vntr.exact_repeat_tract.size()>=3)
+                {
+                    vntr.exact_repeat_tract = vntr.exact_repeat_tract.substr(1, vntr.exact_repeat_tract.size()-2);
+                    ++vntr.exact_rbeg1;
+                    --vntr.exact_rend1;
+                }
+            }
+        }
+        //this is for nonexistent repeat units
+        // 
+        // RU : T
+        // repeat_tract : G[T]C where T is an insert
+        else if (vntr.exact_repeat_tract.size()==2)
+        {
+            
+        }
+
+        
+//        std::cerr << "repeat tract: " << vntr.exact_repeat_tract << "\n";
+//        std::cerr << "motif: " << vntr.motif << "\n";
+        
+        vntr.ru = choose_repeat_unit(vntr.exact_repeat_tract, vntr.motif);
         ahmm->set_model(vntr.ru.c_str());
         ahmm->align(vntr.exact_repeat_tract.c_str(), qual.c_str());
 
@@ -141,7 +168,14 @@ void FlankDetector::detect_flanks(bcf_hdr_t* h, bcf1_t *v, Variant& variant, uin
 
         if (debug)
         {
-            vntr.print();
+            std::cerr << "\n";
+            std::cerr << "repeat_tract              : " << vntr.exact_repeat_tract << "\n";
+            std::cerr << "position                  : [" << vntr.exact_rbeg1 << "," << vntr.exact_rend1 << "]\n";
+            std::cerr << "motif_concordance         : " << vntr.exact_motif_concordance << "\n";
+            std::cerr << "repeat units              : " << vntr.exact_rl << "\n";
+            std::cerr << "exact repeat units        : " << vntr.exact_no_exact_ru << "\n";
+            std::cerr << "total no. of repeat units : " << vntr.exact_total_no_ru << "\n";
+            std::cerr << "\n";
         }
     }
     else if (mode==FRAHMM)
@@ -200,6 +234,10 @@ void FlankDetector::detect_flanks(bcf_hdr_t* h, bcf1_t *v, Variant& variant, uin
         {
             
         }
+        
+//        std::cerr << "CHECK repeat tract: " << vntr.exact_repeat_tract << "\n";
+//        std::cerr << "CHECK motif: " << vntr.motif << "\n";
+        
 
         vntr.ru = choose_repeat_unit(vntr.exact_repeat_tract, vntr.motif);
         ahmm->set_model(vntr.ru.c_str());

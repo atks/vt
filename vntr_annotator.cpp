@@ -114,7 +114,15 @@ void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::str
             //1. pick candidate region using exact left and right alignment
             cre->pick_candidate_region(h, v, variant, EXACT_LEFT_RIGHT_ALIGNMENT);
 
-            //2. evaluate reference length
+            //2. detect candidate motifs from a reference sequence
+            cmp->generate_candidate_motifs(h, v, variant);
+
+            if (!cmp->next_motif(h, v, variant))
+            {
+                std::cerr << "oops, no candidate motif for next step\n";
+            }
+            
+            //3. detect flanks and evaluate reference tract
             fd->detect_flanks(h, v, variant, CLIP_ENDS);
 
             if (debug) std::cerr << "============================================\n";
@@ -131,12 +139,12 @@ void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::str
             
             //2. detect candidate motifs from a reference sequence
             cmp->generate_candidate_motifs(h, v, variant);
-            
+
             if (!cmp->next_motif(h, v, variant))
             {
                 std::cerr << "oops, no candidate motif for next step\n";
-                    
             }
+            
             //3. evaluate reference length
             fd->detect_flanks(h, v, variant, FRAHMM);
 
@@ -163,7 +171,6 @@ bool VNTRAnnotator::is_vntr(Variant& variant, int32_t mode, std::string& method)
     
     if (method == "e")
     {
-
         motif_concordance = variant.vntr.exact_motif_concordance;
         no_exact_ru = variant.vntr.exact_no_exact_ru;
     }
