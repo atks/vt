@@ -87,7 +87,8 @@ class Igor : Program
     std::string output_vcf_file;
     std::vector<GenomeInterval> intervals;
     std::string interval_list;
-    double lr_cutoff;
+    float snp_variant_score_cutoff;
+    float indel_variant_score_cutoff;
 
     ///////
     //i/o//
@@ -107,7 +108,6 @@ class Igor : Program
     uint32_t no_samples;
     uint32_t no_candidate_snps;
     uint32_t no_candidate_indels;
-    uint32_t no_other_variant_types;
 
     /////////
     //tools//
@@ -133,13 +133,15 @@ Each VCF file is required to have the FORMAT flags E and N and should have exact
             TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_output_vcf_file("o", "o", "output VCF file [-]", false, "-", "", cmd);
             TCLAP::ValueArg<std::string> arg_input_vcf_file_list("L", "L", "file containing list of input VCF files", true, "", "str", cmd);
-            TCLAP::ValueArg<float> arg_lr_cutoff("c", "c", "variant likelihood cutoff [2]", false, 2, "float", cmd);
+            TCLAP::ValueArg<float> arg_snp_variant_score_cutoff("c", "c", "SNP variant score cutoff [30]", false, 30, "float", cmd);
+            TCLAP::ValueArg<float> arg_indel_variant_score_cutoff("d", "d", "Indel variant score cutoff [30]", false, 30, "float", cmd);
 
             cmd.parse(argc, argv);
 
             input_vcf_file_list = arg_input_vcf_file_list.getValue();
             output_vcf_file = arg_output_vcf_file.getValue();
-            lr_cutoff = arg_lr_cutoff.getValue();
+            snp_variant_score_cutoff = arg_snp_variant_score_cutoff.getValue();
+            indel_variant_score_cutoff = arg_indel_variant_score_cutoff.getValue();
             parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
 
             ///////////////////////
@@ -176,11 +178,11 @@ Each VCF file is required to have the FORMAT flags E and N and should have exact
         sr = new BCFSyncedReader(input_vcf_files, intervals, false);
 
         odw = new BCFOrderedWriter(output_vcf_file, 0);
-        bcf_hdr_append(odw->hdr, "##fileformat=VCFv4.1");
+        bcf_hdr_append(odw->hdr, "##fileformat=VCFv4.2");
         bcf_hdr_transfer_contigs(sr->hdrs[0], odw->hdr);
         bcf_hdr_append(odw->hdr, "##QUAL=Maximum variant score of the alternative allele likelihood ratio: -10 * log10 [P(Non variant)/P(Variant)] amongst all individuals.");
         bcf_hdr_append(odw->hdr, "##INFO=<ID=SAMPLES,Number=.,Type=String,Description=\"Samples with evidence.\">");
-        bcf_hdr_append(odw->hdr, "##INFO=<ID=NSAMPLES,Number=.,Type=Integer,Description=\"Number of samples.\">");
+        bcf_hdr_append(odw->hdr, "##INFO=<ID=NSAMPLES,Number=1,Type=Integer,Description=\"Number of samples.\">");
         bcf_hdr_append(odw->hdr, "##INFO=<ID=E,Number=.,Type=Integer,Description=\"Evidence read counts for each sample\">");
         bcf_hdr_append(odw->hdr, "##INFO=<ID=N,Number=.,Type=Integer,Description=\"Read counts for each sample\">");
         bcf_hdr_append(odw->hdr, "##INFO=<ID=ESUM,Number=1,Type=Integer,Description=\"Total evidence read count\">");
@@ -199,8 +201,7 @@ Each VCF file is required to have the FORMAT flags E and N and should have exact
         ////////////////////////
         no_candidate_snps = 0;
         no_candidate_indels = 0;
-        no_other_variant_types = 0;
-
+     
         /////////
         //tools//
         /////////
@@ -213,13 +214,6 @@ Each VCF file is required to have the FORMAT flags E and N and should have exact
         int32_t *E = (int32_t*) malloc(1*sizeof(int32_t));
         int32_t *N = (int32_t*) malloc(1*sizeof(int32_t));
         int32_t no_E = 1, no_N = 1;
-
-        float *LLR = (float*) malloc(1*sizeof(float));
-        int32_t no_LLR = 1;
-
-        double log10e = log10(0.01);
-        double log10me = log10(0.99);
-        double log10half = log10(0.5);
 
         uint32_t nfiles = sr->get_nfiles();
         int32_t e[nfiles];
@@ -247,8 +241,8 @@ Each VCF file is required to have the FORMAT flags E and N and should have exact
             esum = 0;
             nsum = 0;
             sample_names.l = 0;
-            bool max_lr_gt_30 = false;
-            float max_qual = 0;
+            bool max_variant_score_gt_cutoff = false;
+            float max_variant_score = 0;
             int32_t vtype;
 
             for (uint32_t i=0; i<current_recs.size(); ++i)
@@ -265,10 +259,6 @@ Each VCF file is required to have the FORMAT flags E and N and should have exact
                     bcf_set_pos1(nv, bcf_get_pos1(v));
                     bcf_update_alleles(odw->hdr, nv, const_cast<const char**>(bcf_get_allele(v)), bcf_get_n_allele(v));
                     vtype = vm->classify_variant(odw->hdr, nv, var);
-                    if (vtype == VT_INDEL)
-                    {
-                        max_lr_gt_30 = true;
-                    }
                 }
 
                 if (bcf_get_format_int32(h, v, "E", &E, &no_E) < 0 ||
@@ -278,24 +268,24 @@ Each VCF file is required to have the FORMAT flags E and N and should have exact
                     exit(1);
                 }
 
+                float variant_score = bcf_get_qual(v);
 
-                float qual = bcf_get_qual(v);
-
-                if (bcf_float_is_missing(qual))
+                if (bcf_float_is_missing(variant_score))
                 {
-                    qual = 0;
+                    variant_score = 0;
                 }
 
-                if (qual > 30)
+                if ((vtype == VT_SNP && variant_score >= snp_variant_score_cutoff) ||
+                    (vtype == VT_INDEL && variant_score >= indel_variant_score_cutoff))
                 {
-                    max_lr_gt_30 = true;
+                    max_variant_score_gt_cutoff = true;
 
-                    if (max_qual<qual)
+                    if (max_variant_score < variant_score)
                     {
-                        max_qual = qual;
+                        max_variant_score = variant_score;
                     }
                 }
-
+                
                 e[i] = E[0];
                 n[i] = N[0];
                 esum += E[0];
@@ -305,7 +295,7 @@ Each VCF file is required to have the FORMAT flags E and N and should have exact
                 ++no;
             }
 
-            if (max_lr_gt_30)
+            if (max_variant_score_gt_cutoff)
             {
                 bcf_update_info_string(odw->hdr, nv, "SAMPLES", sample_names.s);
                 bcf_update_info_int32(odw->hdr, nv, "NSAMPLES", &no, 1);
@@ -313,7 +303,7 @@ Each VCF file is required to have the FORMAT flags E and N and should have exact
                 bcf_update_info_int32(odw->hdr, nv, "N", &n, no);
                 bcf_update_info_int32(odw->hdr, nv, "ESUM", &esum, 1);
                 bcf_update_info_int32(odw->hdr, nv, "NSUM", &nsum, 1);
-                bcf_set_qual(nv, max_qual);
+                bcf_set_qual(nv, max_variant_score);
 
                 odw->write(nv);
 
@@ -325,10 +315,6 @@ Each VCF file is required to have the FORMAT flags E and N and should have exact
                 {
                     ++no_candidate_indels;
                 }
-                else
-                {
-                    ++no_other_variant_types;
-                }
             }
         }
 
@@ -339,18 +325,20 @@ Each VCF file is required to have the FORMAT flags E and N and should have exact
     void print_options()
     {
         std::clog << "merge_candidate_variants v" << version << "\n\n";
-        std::clog << "options: [L] input VCF file list   " << input_vcf_file_list << " (" << input_vcf_files.size() << " files)\n";
-        std::clog << "         [o] output VCF file       " << output_vcf_file << "\n";
-        print_int_op("         [i] intervals             ", intervals);
+        std::clog << "options: [L] input VCF file list         " << input_vcf_file_list << " (" << input_vcf_files.size() << " files)\n";
+        std::clog << "         [o] output VCF file             " << output_vcf_file << "\n";
+        std::clog << "         [c] SNP variant score cutoff    " << snp_variant_score_cutoff << "\n";
+        std::clog << "         [d] Indel variant score cutoff  " << indel_variant_score_cutoff << "\n";
+        print_int_op("         [i] intervals                   ", intervals);
         std::clog << "\n";
     }
 
     void print_stats()
     {
         std::clog << "\n";
-        std::cerr << "stats: Total Number of Candidate SNPs                 " << no_candidate_snps << "\n";
-        std::cerr << "       Total Number of Candidate Indels               " << no_candidate_indels << "\n";
-        std::cerr << "       Total Number of Candidate other variant types  " << no_other_variant_types << "\n\n";
+        std::clog << "stats: Total Number of Candidate SNPs                 " << no_candidate_snps << "\n";
+        std::clog << "       Total Number of Candidate Indels               " << no_candidate_indels << "\n";
+        std::clog << "\n";
     };
 
     ~Igor()

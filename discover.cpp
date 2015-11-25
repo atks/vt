@@ -64,8 +64,8 @@ class Igor : Program
 
     //variables for keeping track of chromosome
     std::string chrom; //current chromosome
-    int32_t tid; // current sequence id in bam
-    int32_t rid; // current sequence id in bcf
+    int32_t tid;       // current sequence id in bam
+    int32_t rid;       // current sequence id in bcf
 
     ///////
     //i/o//
