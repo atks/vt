@@ -21,7 +21,7 @@
    THE SOFTWARE.
 */
 
-#include "discover2.h"
+#include "discover.h"
 
 namespace
 {
@@ -1588,7 +1588,7 @@ class Igor : Program
 
 }
 
-void discover2(int argc, char ** argv)
+void discover(int argc, char ** argv)
 {
     Igor igor(argc, argv);
     igor.print_options();

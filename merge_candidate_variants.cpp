@@ -21,7 +21,7 @@
    THE SOFTWARE.
 */
 
-#include "merge_candidate_variants2.h"
+#include "merge_candidate_variants.h"
 
 namespace
 {
@@ -208,7 +208,7 @@ Each VCF file is required to have the FORMAT flags E and N and should have exact
         vm = new VariantManip();
     }
 
-    void merge_candidate_variants2()
+    void merge_candidate_variants()
     {
         int32_t *E = (int32_t*) malloc(1*sizeof(int32_t));
         int32_t *N = (int32_t*) malloc(1*sizeof(int32_t));
@@ -362,12 +362,12 @@ Each VCF file is required to have the FORMAT flags E and N and should have exact
 
 }
 
-void merge_candidate_variants2(int argc, char ** argv)
+void merge_candidate_variants(int argc, char ** argv)
 {
     Igor igor(argc, argv);
     igor.print_options();
     igor.initialize();
-    igor.merge_candidate_variants2();
+    igor.merge_candidate_variants();
     igor.print_stats();
 }
 

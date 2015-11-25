@@ -34,6 +34,6 @@
 #include "utils.h"
 #include "variant_manip.h"
 
-void merge_candidate_variants2(int argc, char ** argv);
+void merge_candidate_variants(int argc, char ** argv);
 
 #endif
