@@ -34,7 +34,6 @@ SOURCES = align\
 		decompose2\
 		decompose_blocksub\
 		discover\
-		discover2\
 		estimate\
 		estimator\
 		filter\
@@ -55,7 +54,6 @@ SOURCES = align\
 		log_tool\
 		merge\
 		merge_candidate_variants\
-		merge_candidate_variants2\
 		motif_tree\
 		motif_map\
 		multi_partition\

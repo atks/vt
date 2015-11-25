@@ -21,8 +21,8 @@
    THE SOFTWARE.
 */
 
-#ifndef DISCOVER_H
-#define DISCOVER_H
+#ifndef DISCOVER2_H
+#define DISCOVER2_H
 
 #include <vector>
 #include <map>
@@ -34,9 +34,15 @@
 #include "bam_ordered_reader.h"
 #include "bcf_ordered_reader.h"
 #include "bcf_ordered_writer.h"
+#include "variant_filter.h"
 #include "variant_manip.h"
 #include "utils.h"
+#include "allele.h"
+#include "pileup.h"
+#include "Rmath/Rmath.h"
+#include "hts_utils.h"
+#include "log_tool.h"
 
-void discover(int argc, char ** argv);
+void discover2(int argc, char ** argv);
 
 #endif
