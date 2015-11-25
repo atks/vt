@@ -184,6 +184,8 @@ Each VCF file is required to have the FORMAT flags E and N and should have exact
         bcf_hdr_append(odw->hdr, "##INFO=<ID=N,Number=.,Type=Integer,Description=\"Read counts for each sample\">");
         bcf_hdr_append(odw->hdr, "##INFO=<ID=ESUM,Number=1,Type=Integer,Description=\"Total evidence read count\">");
         bcf_hdr_append(odw->hdr, "##INFO=<ID=NSUM,Number=1,Type=Integer,Description=\"Total read count\">");
+        bcf_hdr_append(odw->hdr, "##INFO=<ID=MIN_LLR,Number=1,Type=Float,Description=\"Minimum Log likelihood ratio: log10 [P(Non variant)/P(Variant)].\">");
+        
         odw->write_hdr();
 
         ///////////////
@@ -276,26 +278,26 @@ Each VCF file is required to have the FORMAT flags E and N and should have exact
                     exit(1);
                 }
 
-                if (vtype==VT_SNP)
+                if (bcf_get_info_float(h, v, "MAX_LLR", &LLR, &no_LLR) < 0)
                 {
-                    if (bcf_get_info_float(h, v, "LLR", &LLR, &no_LLR) < 0)
+                    fprintf(stderr, "[E:%s:%d %s] cannot get INFO LLR from %s\n", __FILE__, __LINE__, __FUNCTION__, sr->file_names[i].c_str());
+                    exit(1);
+                }
+
+                float qual = -10*LLR[0];
+
+                if (qual > 30)
+                {
+                    max_lr_gt_30 = true;
+
+                    if (max_qual<qual)
                     {
-                        fprintf(stderr, "[E:%s:%d %s] cannot get INFO LLR from %s\n", __FILE__, __LINE__, __FUNCTION__, sr->file_names[i].c_str());
-                        exit(1);
-                    }
-
-                    float qual = -10*LLR[0];
-
-                    if (qual > 30)
-                    {
-                        max_lr_gt_30 = true;
-
-                        if (max_qual<qual)
-                        {
-                            max_qual = qual;
-                        }
+                        max_qual = qual;
                     }
                 }
+                
+                
+                bcf_update_info_float(odw->hdr, v, "LLR", &LLR, 1);
 
                 e[i] = E[0];
                 n[i] = N[0];

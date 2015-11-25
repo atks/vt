@@ -228,16 +228,16 @@ class Igor : Program
 
         odw = new BCFOrderedWriter(output_vcf_file, 0);
         bam_hdr_transfer_contigs_to_bcf_hdr(odr->hdr, odw->hdr);
+        bcf_hdr_append(odw->hdr, "##QUAL=Variant score of the alternative allele likelihood ratio: -10 * log10 [P(Non variant)/P(Variant)].");
         bcf_hdr_append(odw->hdr, "##ALT=<ID=RSC,Description=\"Right Soft Clip\">");
         bcf_hdr_append(odw->hdr, "##ALT=<ID=LSC,Description=\"Left Soft Clip\">");
         bcf_hdr_append(odw->hdr, "##INFO=<ID=SEQ,Number=1,Type=String,Description=\"Soft clipped Sequence\">");
-        bcf_hdr_append(odw->hdr, "##INFO=<ID=LLR,Number=1,Type=Float,Description=\"Log likelihood ratio: log10 [P(Non variant)/P(Variant)].\">");
         bcf_hdr_append(odw->hdr, "##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">");
         bcf_hdr_append(odw->hdr, "##FORMAT=<ID=E,Number=1,Type=Integer,Description=\"Number of reads containing evidence of the alternate allele\">");
         bcf_hdr_append(odw->hdr, "##FORMAT=<ID=N,Number=1,Type=Integer,Description=\"Total number of reads at a candidate locus with reads that contain evidence of the alternate allele\">");
         bcf_hdr_append(odw->hdr, "##FORMAT=<ID=MQS,Number=.,Type=Float,Description=\"Mean qualities of soft clipped bases.\">");
         bcf_hdr_append(odw->hdr, "##FORMAT=<ID=STR,Number=.,Type=String,Description=\"Strands of soft clipped sequences.\">");
-        
+
         bcf_hdr_add_sample(odw->hdr, sample_id.c_str());
         bcf_hdr_add_sample(odw->hdr, NULL);
         v = bcf_init();
@@ -484,11 +484,11 @@ class Igor : Program
         {
             for (k = kh_begin(reads); k != kh_end(reads); ++k)
             {
-        		if (kh_exist(reads, k))
-        		{
-        		    free((char*)kh_key(reads, k));
+                if (kh_exist(reads, k))
+                {
+                    free((char*)kh_key(reads, k));
                     kh_del(rdict, reads, k);
-        		}
+                }
             }
 
             //tid is not updated here, it is handled by flush()
@@ -499,35 +499,99 @@ class Igor : Program
     }
 
     /**
-     * Compute GLFSingle single variant likelihood ratio P(Non Variant)/P(Variant)
+     * Compute likelihood ratio P(Non Variant)/P(Variant) for an alternative SNP allele.
      */
-    double compute_glfsingle_llr(std::vector<uint32_t>& REF_Q, std::vector<uint32_t>& ALT_Q)
+    float compute_snp_variant_score(std::vector<uint32_t>& REF_Q, std::vector<uint32_t>& ALT_Q)
     {
-        double pRR = 1;
-        double pRA = 1;
-        double pAA = 1;
-        double p;
-        double theta = 0.001;
+//        double pRR = 1;
+//        double pRA = 1;
+//        double pAA = 1;
+//        double p;
+//        double theta = 0.001;
+//
+//        for (uint32_t i=0; i<REF_Q.size(); ++i)
+//        {
+//            p = lt.pl2prob(REF_Q[i]);
+//            pRR *= 1-p;
+//            pRA *= 0.5;
+//            pAA *= p;
+//        }
+//
+//        for (uint32_t i=0; i<ALT_Q.size(); ++i)
+//        {
+//            p = lt.pl2prob(ALT_Q[i]);
+//            pRR *= p;
+//            pRA *= 0.5;
+//            pAA *= 1-p;
+//        }
+//
+//        double ln_lr = log10(pRR/((1-theta)*pRR+0.33*theta*pRA+0.67*theta*pAA));
+//        ln_lr = ln_lr>0 ? 0 : ln_lr;
+//
+//        return (float) (-10 * ln_lr);
         
+        ///////
+        float lg_theta = -3; // theta = 0.001;
+        float lg_one_minus_theta = -0.0004345118; // 1-theta = 0.999;
+        float lg_0_5 = -0.30103;
+        float lg_one_third = -0.4771213;
+        float lg_two_thirds = -0.1760913;
+
+        float lg_pRR = 0;
+        float lg_pRA = 0;
+        float lg_pAA = 0;
+
         for (uint32_t i=0; i<REF_Q.size(); ++i)
         {
-            p = lt.pl2prob(REF_Q[i]);
-            pRR *= 1-p;
-            pRA *= 0.5;
-            pAA *= p; 
+            lg_pRR += lt.pl2pl_one_minus_p(REF_Q[i])/-10.0;
+            lg_pRA += lg_0_5;
+            lg_pAA += REF_Q[i]/-10.0;
         }
         
         for (uint32_t i=0; i<ALT_Q.size(); ++i)
         {
-            p = lt.pl2prob(ALT_Q[i]);
-            pRR *= p;
-            pRA *= 0.5;
-            pAA *= 1-p;                                
+            lg_pRR += ALT_Q[i]/-10.0;
+            lg_pRA += lg_0_5;
+            lg_pAA += lt.pl2pl_one_minus_p(ALT_Q[i])/-10.0;
         }
         
-        return log10(pRR/((1-theta)*pRR+0.33*theta*pRA+0.67*theta*pAA));
+        float lg_lr = lg_one_minus_theta + lg_pRR;
+        lg_lr = lt.log10sum(lg_lr, lg_one_third+lg_theta+lg_pRA);
+        lg_lr = lt.log10sum(lg_lr, lg_two_thirds+lg_theta+lg_pAA);
+        lg_lr = lg_pRR - lg_lr;
+
+        lg_lr = lg_lr>0 ? 0 : lg_lr;
+
+        return -10 * lg_lr;
     }
-    
+
+    /**
+     * Compute likelihood ratio P(Non Variant)/P(Variant) for an alternative Indel allele.
+     */
+    float compute_indel_variant_score(uint32_t e, uint32_t n)
+    {
+        float ln_theta = -6.907755; // theta = 0.001;
+        float ln_one_minus_theta = -0.0010005; // 1-theta = 0.999;
+        float ln_one_third = -1.098612;
+        float ln_two_thirds = -0.4054651;
+        float ln_0_001 = -6.907755;
+        float ln_0_999 = -0.0010005;
+        float ln_0_5 = -0.6931472;
+
+        float ln_pRR = (n-e) * ln_0_999 + e * ln_0_001;
+        float ln_pRA = n * ln_0_5;
+        float ln_pAA = e * ln_0_999 + (n-e) * ln_0_001;
+
+        float ln_lr = ln_one_minus_theta + ln_pRR;
+        ln_lr = logspace_add(ln_lr, ln_one_third+ln_theta+ln_pRA);
+        ln_lr = logspace_add(ln_lr, ln_two_thirds+ln_theta+ln_pAA);
+        ln_lr = ln_pRR - ln_lr;
+
+        ln_lr = ln_lr>0 ? 0 : ln_lr;
+
+        return -10 * ln_lr;
+    }
+
     /**
      * Write out pileupPosition as a VCF entry if it contains a variant.
      */
@@ -557,7 +621,7 @@ class Igor : Program
         std::string alleles = "";
         int32_t N = 0;
         int32_t E = 0;
-        float LLR = 0;
+        float variant_score = 0;
         kstring_t new_alleles = {0,0,0};
 
         p.E = 0;
@@ -576,13 +640,12 @@ class Igor : Program
                 alleles.append(1, ',');
                 alleles.append(1, 'A');
                 bcf_update_alleles_str(odw->hdr, v, alleles.c_str());
-                bcf_update_genotypes(odw->hdr, v, &gts, ploidy);
                 E = p.X[1];
                 bcf_update_format_int32(odw->hdr, v, "E", &E, 1);
                 N = p.N+p.E;
                 bcf_update_format_int32(odw->hdr, v, "N", &N, 1);
-                LLR = (float) compute_glfsingle_llr(p.REF_Q, p.ALT_Q);
-                bcf_update_info_float(odw->hdr, v, "LLR", &LLR, 1);
+                variant_score = compute_snp_variant_score(p.REF_Q, p.ALT_Q);
+                bcf_set_qual(v, variant_score);
                 odw->write(v);
 
                 ++no_snps;
@@ -612,13 +675,12 @@ class Igor : Program
                 alleles.append(1, ',');
                 alleles.append(1, 'C');
                 bcf_update_alleles_str(odw->hdr, v, alleles.c_str());
-                bcf_update_genotypes(odw->hdr, v, &gts, ploidy);
                 E = p.X[2];
                 bcf_update_format_int32(odw->hdr, v, "E", &E, 1);
                 N = p.N+p.E;
                 bcf_update_format_int32(odw->hdr, v, "N", &N, 1);
-                LLR = (float) compute_glfsingle_llr(p.REF_Q, p.ALT_Q);
-                bcf_update_info_float(odw->hdr, v, "LLR", &LLR, 1);
+                variant_score = compute_snp_variant_score(p.REF_Q, p.ALT_Q);
+                bcf_set_qual(v, variant_score);
                 odw->write(v);
 
                 ++no_snps;
@@ -648,13 +710,12 @@ class Igor : Program
                 alleles.append(1, ',');
                 alleles.append(1, 'G');
                 bcf_update_alleles_str(odw->hdr, v, alleles.c_str());
-                bcf_update_genotypes(odw->hdr, v, &gts, ploidy);
                 E = p.X[4];
                 bcf_update_format_int32(odw->hdr, v, "E", &E, 1);
                 N = p.N+p.E;
                 bcf_update_format_int32(odw->hdr, v, "N", &N, 1);
-                LLR = (float) compute_glfsingle_llr(p.REF_Q, p.ALT_Q);
-                bcf_update_info_float(odw->hdr, v, "LLR", &LLR, 1);
+                variant_score = compute_snp_variant_score(p.REF_Q, p.ALT_Q);
+                bcf_set_qual(v, variant_score);
                 odw->write(v);
 
                 ++no_snps;
@@ -684,13 +745,12 @@ class Igor : Program
                 alleles.append(1, ',');
                 alleles.append(1, 'T');
                 bcf_update_alleles_str(odw->hdr, v, alleles.c_str());
-                bcf_update_genotypes(odw->hdr, v, &gts, ploidy);
                 E = p.X[8];
                 bcf_update_format_int32(odw->hdr, v, "E", &E, 1);
                 N = p.N+p.E;
                 bcf_update_format_int32(odw->hdr, v, "N", &N, 1);
-                LLR = (float) compute_glfsingle_llr(p.REF_Q, p.ALT_Q);
-                bcf_update_info_float(odw->hdr, v, "LLR", &LLR, 1);
+                variant_score = compute_snp_variant_score(p.REF_Q, p.ALT_Q);
+                bcf_set_qual(v, variant_score);
                 odw->write(v);
 
                 ++no_snps;
@@ -704,27 +764,6 @@ class Igor : Program
                     ++no_tv;
                 }
             }
-        }
-
-        if (false && p.X[15])
-        {
-            bcf_clear(v);
-            bcf_set_rid(v, rid);
-            bcf_set_pos1(v, gpos1);
-            bcf_set_n_sample(v, 1);
-            alleles.clear();
-            alleles.append(1, p.R);
-            alleles.append(1, ',');
-            alleles.append(1, 'N');
-            bcf_update_alleles_str(odw->hdr, v, alleles.c_str());
-            bcf_update_genotypes(odw->hdr, v, &gts, ploidy);
-            E = p.X[15];
-            bcf_update_format_int32(odw->hdr, v, "E", &E, 1);
-            N = p.N+p.E;
-            bcf_update_format_int32(odw->hdr, v, "N", &N, 1);
-            odw->write(v);
-
-            ++no_snps;
         }
 
         if (p.D.size()!=0)
@@ -749,9 +788,10 @@ class Igor : Program
                         alleles.append(1, ',');
                         alleles.append(1, p.R);
                         bcf_update_alleles_str(odw->hdr, v, alleles.c_str());
-                        bcf_update_genotypes(odw->hdr, v, &gts, ploidy);
                         bcf_update_format_int32(odw->hdr, v, "E", &E, 1);
                         bcf_update_format_int32(odw->hdr, v, "N", &N, 1);
+                        variant_score = compute_indel_variant_score(E, N);
+                        bcf_set_qual(v, variant_score);
                         odw->write(v);
 
                         ++no_deletions;
@@ -782,9 +822,10 @@ class Igor : Program
                         alleles.append(1, p.R);
                         alleles.append(ins);
                         bcf_update_alleles_str(odw->hdr, v, alleles.c_str());
-                        bcf_update_genotypes(odw->hdr, v, &gts, ploidy);
                         bcf_update_format_int32(odw->hdr, v, "E", &E, 1);
                         bcf_update_format_int32(odw->hdr, v, "N", &N, 1);
+                        variant_score = compute_indel_variant_score(E, N);
+                        bcf_set_qual(v, variant_score);
                         odw->write(v);
 
                         ++no_insertions;
@@ -1524,11 +1565,11 @@ class Igor : Program
         //clear hash of reads
         for (khiter_t k = kh_begin(reads); k != kh_end(reads); ++k)
         {
-    		if (kh_exist(reads, k))
-    		{
-    		    free((char*)kh_key(reads, k));
+            if (kh_exist(reads, k))
+            {
+                free((char*)kh_key(reads, k));
                 kh_del(rdict, reads, k);
-    		}
+            }
         }
     };
 

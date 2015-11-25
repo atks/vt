@@ -32,12 +32,13 @@ double LogTool::round(double x)
 };
 
 /**
- * Convert PL to probabilities.
+ * Convert -10log(p) to p.
  */
 double LogTool::pl2prob(uint32_t pl)
 {
     if (pl>=PL.size())
     {
+        //cap
         if (pl > 3236)
         {
             pl = 3236;
@@ -45,7 +46,9 @@ double LogTool::pl2prob(uint32_t pl)
 
         for (uint32_t i=PL.size(); i<=pl; ++i)
         {
-            PL.push_back(std::pow(10, -((double) i)/10.0));
+            double p = std::pow(10, -((double) i)/10.0);
+            PL.push_back(p);
+            PL_one_minus_p.push_back(-10*std::log10(1-p));
         }
     }
 
@@ -53,7 +56,31 @@ double LogTool::pl2prob(uint32_t pl)
 }
 
 /**
- * Convert PL to log10(sqrt(e(1-e))).
+ * Convert -10log(p) to -10log(1-p).
+ */
+double LogTool::pl2pl_one_minus_p(uint32_t pl)
+{
+    if (pl>=PL.size())
+    {
+        //cap
+        if (pl > 3236)
+        {
+            pl = 3236;
+        }
+
+        for (uint32_t i=PL.size(); i<=pl; ++i)
+        {
+            double p = std::pow(10, -((double) i)/10.0);
+            PL.push_back(p);
+            PL_one_minus_p.push_back(-10*std::log10(1-p));
+        }
+    }
+
+    return PL_one_minus_p[pl];
+}
+
+/**
+ * Convert -10log(p) to log10(sqrt(p(1-p))).
  */
 double LogTool::pl2log10_varp(uint32_t pl)
 {
