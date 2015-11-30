@@ -56,7 +56,9 @@ void CandidateMotifPicker::generate_candidate_motifs(bcf_hdr_t* h, bcf1_t* v, Va
 
     if (variant.ins)
     {
+        this->v = v;
         char** alleles = bcf_get_allele(v);
+        int32_t n_allele = bcf_get_n_allele(v);
 
         if (debug)
         {
@@ -69,20 +71,21 @@ void CandidateMotifPicker::generate_candidate_motifs(bcf_hdr_t* h, bcf1_t* v, Va
         std::string insertion = variant.vntr.exact_repeat_tract.substr(strlen(alleles[0]), variant.vntr.exact_repeat_tract.size()-strlen(alleles[0]));
         spiked_seq.append(insertion);
         mt->detect_candidate_motifs(spiked_seq);
-        
-        indel_sequence.assign(&alleles[1][1]);
     }
     else
     {
+        this->v = v;
         mt->detect_candidate_motifs(variant.vntr.exact_repeat_tract);
-
-        char** alleles = bcf_get_allele(v);
-        indel_sequence.assign(&alleles[0][1]);
     }
     
     if (debug)
     {
-        std::cerr << "Indel : "  << indel_sequence << "\n";
+        char** alleles = bcf_get_allele(v);
+        uint32_t n_allele = bcf_get_n_allele(v);
+        for (uint32_t i=0; i<n_allele; ++i)
+        {
+            std::cerr << "ASSIGN INDEL SEQUENCE : " << alleles[i] << "\n";
+        }
     }
 }
 
@@ -141,9 +144,14 @@ bool CandidateMotifPicker::is_in_indel_fragment(std::string motif)
     {
         std::string shifted_motif = motif.substr(i) + motif.substr(0,i);
         
-        if (indel_sequence.find(shifted_motif.c_str())!=std::string::npos)
+        char** alleles = bcf_get_allele(v);
+        uint32_t n_allele = bcf_get_n_allele(v);
+        for (uint32_t i=0; i<n_allele; ++i)
         {
-            return true;
+            if (strstr(alleles[i], shifted_motif.c_str()))
+            {
+                return true;
+            }
         }
     }
     

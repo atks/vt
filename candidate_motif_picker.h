@@ -60,7 +60,7 @@ class CandidateMotifPicker
     public:
 
     //model
-    std::string indel_sequence;
+    bcf1_t* v;    
     uint32_t max_mlen; //maximum length for motif search in the fast tree.
 
     bool debug;

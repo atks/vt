@@ -356,7 +356,7 @@ class Igor : Program
 
 	  for( size_t j=0, k=0; j < v_skips.size(); ++j) {
 	    if ( ! odr->read(v) ) {
-	      fprintf(stderr, "[E:%s:%d %s] Cannot read variant from genotype files. j=%d, k=%d, pos[k]=%d", __FILE__, __LINE__, __FUNCTION__, j, k, v_poss[k]);
+	      fprintf(stderr, "[E:%s:%d %s] Cannot read variant from genotype files. j=%zu, k=%zu, pos[k]=%d", __FILE__, __LINE__, __FUNCTION__, j, k, v_poss[k]);
 	      exit(1);		
 	    }
 	    if ( v_skips[j] ) continue;
