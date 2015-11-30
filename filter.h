@@ -24,6 +24,8 @@
 #ifndef FILTER_H
 #define FILTER_H
 
+#include <algorithm>
+#include <cctype>
 #include "htslib/vcf.h"
 #include "htslib/kstring.h"
 #include "variant_manip.h"

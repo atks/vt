@@ -994,6 +994,16 @@ void Filter::parse(const char* exp, bool debug)
 {
     if (strlen(exp)!=0)
     {
+        //trim the white spaces out of the string
+        std::string exp_no_space = "";
+        for (uint32_t i=0; i<strlen(exp); ++i)
+        {
+            if (!isspace(exp[i]))
+            {
+                exp_no_space.append(1, exp[i]);
+            }    
+        }
+        
         if (tree!=NULL)
         {
             delete tree;
@@ -1002,7 +1012,7 @@ void Filter::parse(const char* exp, bool debug)
         else
         {
             tree = new Node();
-            parse(exp, strlen(exp), tree, debug);
+            parse(exp_no_space.c_str(), exp_no_space.size(), tree, debug);
         }
 
         if (!tree->type&VT_BOOL)

@@ -145,7 +145,7 @@ class Igor : Program
         /////////////////////////
         //filter initialization//
         /////////////////////////
-        filter.parse(fexp.c_str());
+        filter.parse(fexp.c_str(), false);
         filter_exists = fexp=="" ? false : true;
 
         ////////////////////////
@@ -281,7 +281,15 @@ class Igor : Program
         std::clog << "Options:     input VCF file a   " << input_vcf_files[0] << "\n";
         std::clog << "             input VCF file b   " << input_vcf_files[1] << "\n";
         print_str_op("         [f] filter             ", fexp);
-        print_boo_op("         [w] write_partition    ", write_partition);
+        if (write_partition)
+        {
+            std::clog << "         [w] write_partition    true (partitions will be written to a-b.bcf, a&b.bcf and b-a.bcf)\n";
+        }    
+        else
+        {
+            std::clog << "         [w] write_partition    false\n";
+
+        }
         print_int_op("         [i] intervals          ", intervals);
         std::clog << "\n";
    }

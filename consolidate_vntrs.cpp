@@ -115,7 +115,7 @@ class Igor : Program
                  "              1. removing overlapping VNTRs and leaving behind the most complete VNTR\n"
                  "              2. resolves adjacent VNTRs\n"
                  "              3. marking VNTRs that are \n"
-                 "              4.Adds INFO fields indicating the number of variants that overlap with this variant";
+                 "              4. Adds INFO fields indicating the number of variants that overlap with this variant";
 
             TCLAP::CmdLine cmd(desc, ' ', version);
             VTOutput my;
@@ -159,9 +159,7 @@ class Igor : Program
         ////////////////////////
         
         no_total_variants = 0;
-        
         no_vntrs = 0;
-        
         no_overlap_vntrs = 0;
         no_dropped_vntrs = 0;
         
@@ -567,7 +565,6 @@ class Igor : Program
                     {   
                         float impurity = compute_purity_by_sequence_content(bcf_get_ref(vntr_v), motif);
                        
-                        
 //                        std::cerr << (i+1) << ") " << motif << "\t" << fuzzy_concordance[0] << "\t" << flanks[0] << "," << flanks[1] << "\t" << fuzzy_flanks[0] << "," << fuzzy_flanks[1] << "\n";
 //                        std::cerr << "\t" << bcf_get_ref(vntr_v) << "\n";
                             

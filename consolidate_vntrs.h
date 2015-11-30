@@ -37,12 +37,9 @@
 #include "hts_utils.h"
 #include "program.h"
 #include "genome_interval.h"
-#include "bcf_synced_reader.h"
 #include "bcf_ordered_reader.h"
 #include "bcf_ordered_writer.h"
 #include "variant_manip.h"
-#include "log_tool.h"
-#include "htslib/faidx.h"
 
 void consolidate_vntrs(int argc, char **argv);
 
