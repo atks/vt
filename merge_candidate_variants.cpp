@@ -181,8 +181,8 @@ Each VCF file is required to have the FORMAT flags E and N and should have exact
         bcf_hdr_append(odw->hdr, "##fileformat=VCFv4.2");
         bcf_hdr_transfer_contigs(sr->hdrs[0], odw->hdr);
         bcf_hdr_append(odw->hdr, "##QUAL=Maximum variant score of the alternative allele likelihood ratio: -10 * log10 [P(Non variant)/P(Variant)] amongst all individuals.");
-        bcf_hdr_append(odw->hdr, "##INFO=<ID=SAMPLES,Number=.,Type=String,Description=\"Samples with evidence.\">");
         bcf_hdr_append(odw->hdr, "##INFO=<ID=NSAMPLES,Number=1,Type=Integer,Description=\"Number of samples.\">");
+        bcf_hdr_append(odw->hdr, "##INFO=<ID=SAMPLES,Number=.,Type=String,Description=\"Samples with evidence. (up to first 10 samples)\">");
         bcf_hdr_append(odw->hdr, "##INFO=<ID=E,Number=.,Type=Integer,Description=\"Evidence read counts for each sample\">");
         bcf_hdr_append(odw->hdr, "##INFO=<ID=N,Number=.,Type=Integer,Description=\"Read counts for each sample\">");
         bcf_hdr_append(odw->hdr, "##INFO=<ID=ESUM,Number=1,Type=Integer,Description=\"Total evidence read count\">");
@@ -290,15 +290,19 @@ Each VCF file is required to have the FORMAT flags E and N and should have exact
                 n[i] = N[0];
                 esum += E[0];
                 nsum += N[0];
-                if (i) kputc(',', &sample_names);
-                kputs(index2sample[file_index], &sample_names);
+                //just output first 10 samples
+                if (no<=9)
+                {    
+                    if (i) kputc(',', &sample_names);
+                    kputs(index2sample[file_index], &sample_names);
+                }
                 ++no;
             }
 
             if (max_variant_score_gt_cutoff)
             {
-                bcf_update_info_string(odw->hdr, nv, "SAMPLES", sample_names.s);
                 bcf_update_info_int32(odw->hdr, nv, "NSAMPLES", &no, 1);
+                bcf_update_info_string(odw->hdr, nv, "SAMPLES", sample_names.s);
                 bcf_update_info_int32(odw->hdr, nv, "E", &e, no);
                 bcf_update_info_int32(odw->hdr, nv, "N", &n, no);
                 bcf_update_info_int32(odw->hdr, nv, "ESUM", &esum, 1);
