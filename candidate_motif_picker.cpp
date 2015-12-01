@@ -54,38 +54,61 @@ void CandidateMotifPicker::generate_candidate_motifs(bcf_hdr_t* h, bcf1_t* v, Va
         std::cerr << "PICK CANDIDATE MOTIFS\n\n";
     }
 
-    if (variant.ins)
+    this->v = v;
+
+    bool alt_is_longest_allele = false;
+    char** alleles = bcf_get_allele(v);
+    uint32_t n_allele = bcf_get_n_allele(v);
+    uint32_t longest_allele_index = 0;
+    uint32_t longest_allele_length = strlen(alleles[0]);
+
+    for (uint32_t i=1; i<n_allele; ++i)
     {
-        this->v = v;
-        char** alleles = bcf_get_allele(v);
-        int32_t n_allele = bcf_get_n_allele(v);
-
-        if (debug)
+        uint32_t len = strlen(alleles[i]);
+        if (len>longest_allele_length)
         {
-            const char* repeat_tract = variant.vntr.exact_repeat_tract.c_str();
-            std::cerr << "Longest Allele : "   << alleles[0][0] << "[" <<  &alleles[1][1]  << "]" << &repeat_tract[1] << "\n";
+            longest_allele_index = i;
+            longest_allele_length = len;
         }
+    }
 
-        //spike in inserted allele
-        std::string spiked_seq(alleles[1]);
-        std::string insertion = variant.vntr.exact_repeat_tract.substr(strlen(alleles[0]), variant.vntr.exact_repeat_tract.size()-strlen(alleles[0]));
-        spiked_seq.append(insertion);
+    if (debug)
+    {
+        std::cerr << "Alleles              : ";
+        for (uint32_t i=0; i<n_allele; ++i)
+        {
+            if (i) std::cerr << ",";
+            std::cerr << alleles[i];
+        }
+        std::cerr << "\n";
+
+        std::cerr << "Repeat Tract Position : [" << variant.vntr.exact_rbeg1 << "," << variant.vntr.exact_rend1 << "]\n";
+        std::cerr << "Repeat Tract          : " << variant.vntr.exact_repeat_tract << "\n";
+        std::cerr << "Longest Allele        : " << alleles[longest_allele_index] << "\n";
+        std::cerr << "Longest Allele index  : " << longest_allele_index << "\n";
+            
+        if (longest_allele_index)
+        {
+            std::string spiked_seq = variant.vntr.exact_repeat_tract;
+            std::cerr << "\tspos1          " << variant.vntr.exact_rbeg1-bcf_get_pos1(v) << "\n";
+            std::cerr << "\treplace length " << strlen(alleles[0]) << "\n";
+                   
+            spiked_seq.replace(variant.vntr.exact_rbeg1-bcf_get_pos1(v), strlen(alleles[0]), alleles[longest_allele_index]);
+            spiked_seq.insert(variant.vntr.exact_rbeg1-bcf_get_pos1(v), 1, '[');
+            spiked_seq.insert(variant.vntr.exact_rbeg1-bcf_get_pos1(v)+ strlen(alleles[longest_allele_index])+1, 1, ']');
+            std::cerr << "Spiked Longest Allele : "   << spiked_seq << "\n";
+        }   
+    }
+
+    if (longest_allele_index)
+    {
+        std::string spiked_seq = variant.vntr.exact_repeat_tract;
+        spiked_seq.replace(variant.vntr.exact_rbeg1-bcf_get_pos1(v), strlen(alleles[0]), alleles[longest_allele_index]);
         mt->detect_candidate_motifs(spiked_seq);
     }
     else
     {
-        this->v = v;
         mt->detect_candidate_motifs(variant.vntr.exact_repeat_tract);
-    }
-    
-    if (debug)
-    {
-        char** alleles = bcf_get_allele(v);
-        uint32_t n_allele = bcf_get_n_allele(v);
-        for (uint32_t i=0; i<n_allele; ++i)
-        {
-            std::cerr << "ASSIGN INDEL SEQUENCE : " << alleles[i] << "\n";
-        }
     }
 }
 
@@ -143,7 +166,7 @@ bool CandidateMotifPicker::is_in_indel_fragment(std::string motif)
     for (uint32_t i=0; i<motif.size(); ++i)
     {
         std::string shifted_motif = motif.substr(i) + motif.substr(0,i);
-        
+
         char** alleles = bcf_get_allele(v);
         uint32_t n_allele = bcf_get_n_allele(v);
         for (uint32_t i=0; i<n_allele; ++i)
@@ -154,7 +177,7 @@ bool CandidateMotifPicker::is_in_indel_fragment(std::string motif)
             }
         }
     }
-    
+
     return false;
 }
 
@@ -174,4 +197,3 @@ std::string CandidateMotifPicker::choose_repeat_unit(std::string& ref, std::stri
 
     return motif;
 }
-

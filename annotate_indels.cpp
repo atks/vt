@@ -654,7 +654,7 @@ class Igor : Program
 
                 flush_vntr_buffer(v);
 
-                //  bcf_print(odr->hdr, v);
+//                bcf_print_liten(odr->hdr, v);
                 va->annotate(odr->hdr, v, variant, method);
 
                 if (annotation_mode=="v")

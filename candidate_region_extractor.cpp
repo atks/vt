@@ -153,6 +153,11 @@ void CandidateRegionExtractor::extract_regions_by_exact_alignment(bcf_hdr_t* h, 
     int32_t min_beg1 = bcf_get_pos1(v);
     int32_t max_end1 = min_beg1;
 
+    if (debug)
+    {
+       bcf_print_liten(h, v);
+    }
+
     //merge candidate search region
     for (size_t i=1; i<bcf_get_n_allele(v); ++i)
     {
@@ -160,13 +165,8 @@ void CandidateRegionExtractor::extract_regions_by_exact_alignment(bcf_hdr_t* h, 
         std::string alt(bcf_get_alt(v, i));
         int32_t pos1 = bcf_get_pos1(v);
 
-        //why do this??
+        //this prevents introduction of flanks that do not harbour the repeat unit
         trim(pos1, ref, alt);
-
-        if (debug)
-        {
-           bcf_print_liten(h, v);
-        }
 
         int32_t end1 = pos1 + ref.size() - 1;
         right_align(chrom, end1, ref, alt);
@@ -182,7 +182,7 @@ void CandidateRegionExtractor::extract_regions_by_exact_alignment(bcf_hdr_t* h, 
 
         if (debug)
         {
-            std::cerr << "EXACT REGION " << min_beg1 << "-" << max_end1 << " (" << max_end1-min_beg1+1 <<") " << "\n";
+            std::cerr << "EXACT REGION " << min_beg1 << "-" << max_end1 << " (" << max_end1-min_beg1+1 <<") from " << pos1 << ":" << ref << ":" << alt << "\n";
             std::cerr << "             " << seq << "\n";
         }
 
@@ -516,17 +516,21 @@ void CandidateRegionExtractor::trim(int32_t& pos1, std::string& ref, std::string
         }
         else
         {
+            //trim from the right side
             if (ref.at(ref.size()-1)==alt.at(alt.size()-1))
             {
                 ref.erase(ref.size()-1,1);
                 alt.erase(alt.size()-1,1);
             }
+            //trim from the left side
             else if (ref.at(0)==alt.at(0))
             {
                 ref.erase(0,1);
                 alt.erase(0,1);
                 ++pos1;
             }
+            
+            //we choose one side to trim at a time to ensure that we do not accidentally end up with an empty allele
         }
     }
 }

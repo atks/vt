@@ -279,7 +279,8 @@ void MotifTree::detect_candidate_motifs(char* seq, uint32_t len)
 {
     if (debug)
     {
-        std::cerr << "detecting motifs for an str\n";
+        std::cerr << "++++++++++++++++++++++++++++++++++++++++++++\n";
+        std::cerr << "DETECTING MOTIFS FOR A VNTR\n\n";
         std::cerr << "seq: " << seq << "\n";
     }
 
