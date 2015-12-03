@@ -34,6 +34,7 @@
 #include "program.h"
 #include "sv_tree.h"
 #include "variant_manip.h"
+#include "vntr_tree.h"
 
 void peek(int argc, char ** argv);
 

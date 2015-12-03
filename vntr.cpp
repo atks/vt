@@ -74,6 +74,62 @@ bool VNTR::equals(VNTR& vntr)
 }
 
 /**
+ * Return the string of unique bases in a motif.
+ */
+std::string VNTR::get_basis(std::string& motif)
+{
+    bool bases[4] = {false, false, false, false};
+    
+    for (uint32_t i=0; i<motif.size(); ++i)
+    {
+        char base = motif.at(i);
+        
+        if (base<=67)
+        {
+            if (base==65)
+            {
+                if (!bases[0]) 
+                {
+                    bases[0] = true;
+                }
+            }  
+            else
+            {
+                if (!bases[1]) 
+                {
+                    bases[1] = true;
+                }
+            }  
+        }   
+        else
+        {
+            if (base==71)
+            {
+                if (!bases[2]) 
+                {
+                    bases[2] = true;
+                }
+            }  
+            else
+            {
+                if (!bases[3]) 
+                {
+                    bases[3] = true;
+                }
+            } 
+        } 
+    }
+    
+    std::string basis;
+    if (bases[0]) basis.append(1, 'A');
+    if (bases[1]) basis.append(1, 'C');
+    if (bases[2]) basis.append(1, 'G');
+    if (bases[3]) basis.append(1, 'T');
+        
+    return basis;
+}
+
+/**
  * Print object.
  */
 void VNTR::print()
@@ -83,6 +139,7 @@ void VNTR::print()
     std::cerr << "rid          : " << rid << "\n";
     std::cerr << "motif        : " << motif << "\n";
     std::cerr << "ru           : " << ru << "\n";
+    std::cerr << "basis        : " << basis << "\n";
     std::cerr << "\n";
     std::cerr << "Exact\n";
     std::cerr << "repeat_tract                    : " << exact_repeat_tract << "\n";

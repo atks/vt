@@ -1,5 +1,5 @@
 /* The MIT License
-   Copyright (c) 2014 Adrian Tan <atks@umich.edu>
+   Copyright (c) 2015 Adrian Tan <atks@umich.edu>
    Permission is hereby granted, free of charge, to any person obtaining a copy
    of this software and associated documentation files (the "Software"), to deal
    in the Software without restriction, including without limitation the rights
@@ -21,6 +21,7 @@
 #include "htslib/kstring.h"
 #include "htslib/khash.h"
 #include "variant_manip.h"
+#include "vntr_annotator.h"
 
 #ifndef VNTR_TREE_H
 #define VNTR_TREE_H
@@ -34,7 +35,7 @@ class VNTRNode
 
     std::string motif;
     int32_t exact_count, fuzzy_count;
-  
+
     /**
      * Constructor.
      */
@@ -67,8 +68,7 @@ class VNTRNode
 class VNTRTree
 {
     public:
-
-    
+        
     /**
      * Constructor.
      */
@@ -80,7 +80,8 @@ class VNTRTree
     ~VNTRTree();
 
     /**
-     * Observes and update the count of a new tag.
+     * Assumes that the variant is appropriately updated on its VNTR chracteristics.
+     * Updates tree on motif, exact/fuzziness of VNTR.
      */
     void count(Variant& variant);
 

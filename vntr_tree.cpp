@@ -1,5 +1,5 @@
 /* The MIT License
-   Copyright (c) 2014 Adrian Tan <atks@umich.edu>
+   Copyright (c) 2015 Adrian Tan <atks@umich.edu>
    Permission is hereby granted, free of charge, to any person obtaining a copy
    of this software and associated documentation files (the "Software"), to deal
    in the Software without restriction, including without limitation the rights
@@ -24,7 +24,7 @@
  */
 VNTRNode::VNTRNode()
 {
-   
+
 };
 
 /**
@@ -72,10 +72,20 @@ VNTRTree::~VNTRTree()
 };
 
 /**
- * Observes and update the count of a new tag.
+ * Assumes that the variant is appropriately updated on its VNTR chracteristics.
+ * Updates tree on motif, exact/fuzziness of VNTR.
  */
 void VNTRTree::count(Variant& variant)
 {
+    if (variant.type == VT_VNTR)
+    {
+        bcf_print(variant.h, variant.v);
+        VNTR& vntr = variant.vntr;
+        
+        vntr.print();
+        
+    }    
+    
 };
 
 /**
@@ -83,5 +93,5 @@ void VNTRTree::count(Variant& variant)
  */
 void VNTRTree::print()
 {
-  
+
 };

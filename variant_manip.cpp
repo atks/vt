@@ -178,6 +178,9 @@ bool VariantManip::is_normalized(bcf1_t *v)
  */
 int32_t VariantManip::classify_variant(bcf_hdr_t *h, bcf1_t *v, Variant& var)
 {
+    var.h = h;
+    var.v = v;    
+    
     bcf_unpack(v, BCF_UN_STR);
     var.chrom.assign(bcf_get_chrom(h, v));
     var.rid = bcf_get_rid(v);
@@ -427,7 +430,7 @@ int32_t VariantManip::classify_variant(bcf_hdr_t *h, bcf1_t *v, Variant& var)
 
     if (var.type==VT_VNTR)
     {
-        //do nothing
+        var.update_vntr_from_info_fields(h, v);
     }
 
     //additionally define MNPs by length of all alleles

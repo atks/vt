@@ -560,7 +560,6 @@ class Igor : Program
                         bcf_get_info_float(odr->hdr, vntr_v, "FZ_CONCORDANCE", &fuzzy_concordance, &n_fuzzy_concordance)>0 &&
                         bcf_get_info_int32(odr->hdr, vntr_v, "FLANKS", &flanks, &n_flanks)>0 &&
                         bcf_get_info_int32(odr->hdr, vntr_v, "FZ_FLANKS", &fuzzy_flanks, &n_fuzzy_flanks)>0)
-
                     {
                         float impurity = compute_purity_by_sequence_content(bcf_get_ref(vntr_v), motif);
 
@@ -579,6 +578,11 @@ class Igor : Program
 //                    bcf_print(odw->hdr, variant->vntr_vs[i]);
                 }
             }
+
+
+            //if all motifs are consistent, take the one with the largest region
+            
+//            bool is_motif_consistent
 
 
 

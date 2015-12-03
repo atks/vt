@@ -229,8 +229,7 @@ std::string VNTRAnnotator::basis(std::string& motif)
     if (bases[2]) basis.append(1, 'G');
     if (bases[3]) basis.append(1, 'T');
         
-    
-    return cannonicalize(basis);
+    return basis;
 }
 
 /**

@@ -100,7 +100,8 @@ class Igor : Program
     //tools//
     /////////
     VariantManip *vm;
-    SVTree* sv;
+    SVTree* sv_tree;
+    VNTRTree* vntr_tree;
 
     Igor(int argc, char **argv)
     {
@@ -184,7 +185,8 @@ class Igor : Program
         //tools initialization//
         ////////////////////////
         vm = new VariantManip(ref_fasta_file);
-        sv = new SVTree();
+        sv_tree = new SVTree();
+        vntr_tree = new VNTRTree();
     }
 
     KHASH_MAP_INIT_INT(32, char)
@@ -237,24 +239,24 @@ class Igor : Program
 
             if (vtype==VT_VNTR)
             {
-                ++VAR_COUNT[POLYMORPHIC][VT_VNTR];
-                if (variant.vntr.motif.size()<NO_MOTIF_LEN_CATEGORIES)
-                {
-                    ++VAR_MOTIF_LEN[variant.vntr.motif.size()-1];
-                }
-                else
-                {
-                    ++VAR_MOTIF_LEN[NO_MOTIF_LEN_CATEGORIES-1];
-                }
-                
-                
-                //vntr->count(variant);
+//                ++VAR_COUNT[POLYMORPHIC][VT_VNTR];
+//                if (variant.vntr.motif.size()<NO_MOTIF_LEN_CATEGORIES)
+//                {
+//                    ++VAR_MOTIF_LEN[variant.vntr.motif.size()-1];
+//                }
+//                else
+//                {
+//                    ++VAR_MOTIF_LEN[NO_MOTIF_LEN_CATEGORIES-1];
+//                }
+//                
+//                
+                vntr_tree->count(variant);
             }
 
             if (vtype==VT_SV)
             {
                 ++VAR_COUNT[POLYMORPHIC][VT_SV];
-                sv->count(variant);
+                sv_tree->count(variant);
             }
 
             if (vtype>0 && vtype<64)
@@ -453,7 +455,7 @@ class Igor : Program
 
         fprintf(stderr, "       ======= Structural variants ========\n");
         fprintf(stderr, "\n");
-        std::vector<SVNode*> s = sv->enumerate_dfs();
+        std::vector<SVNode*> s = sv_tree->enumerate_dfs();
         fprintf(stderr, "       no. of structural variants         : %10d\n", s[0]->count+s[0]->mcount);
         if (s[0]->count)
         {
@@ -493,9 +495,9 @@ class Igor : Program
             }
         }
 
-        if (sv->mixed_sv_count)
+        if (sv_tree->mixed_sv_count)
         {
-            fprintf(stderr, "            mixed sv                      :  %15d\n", sv->mixed_sv_count);
+            fprintf(stderr, "            mixed sv                      :  %15d\n", sv_tree->mixed_sv_count);
         }
 
         fprintf(stderr, "\n");
@@ -714,7 +716,8 @@ class Igor : Program
         bcf_destroy(v);
 
         delete vm;
-        delete sv;
+        delete sv_tree;
+        delete vntr_tree;
     };
 
     private:

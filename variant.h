@@ -52,6 +52,7 @@ class Variant
     uint32_t end1; //for detecting overlaps, for indels and VNTRs, this will reflect rbeg1
 
     //linked VCF record
+    bcf_hdr_t* h;
     bcf1_t* v;
     
     //associated VCF records for merging into a multiallelic
@@ -110,6 +111,11 @@ class Variant
      * Classifies variants based on observed alleles in vcf record.
      */
     int32_t classify(bcf_hdr_t *h, bcf1_t *v);
+
+    /**
+     * Updates VNTR related information from INFO fields.
+     */
+    void update_vntr_from_info_fields(bcf_hdr_t *h, bcf1_t *v);
 
     /**
      * Prints variant information.

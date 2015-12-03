@@ -86,36 +86,7 @@ Variant::Variant(bcf_hdr_t* h, bcf1_t* v)
     }     
     else if (type==VT_VNTR)
     {
-        int32_t *flanks = NULL;
-        int32_t n = 0;
-        if (bcf_get_info_int32(h, v, "FLANKS", &flanks, &n)>0)
-        {
-            vntr.exact_rbeg1 = flanks[0]+1;
-            vntr.exact_rend1 = flanks[1]-1;
-            free(flanks);
-        }
-        else
-        {
-            vntr.exact_rbeg1 = bcf_get_pos1(v) - 1;
-            vntr.exact_rend1 = bcf_get_end_pos1(v) + 1;
-        }
-
-        int32_t *fuzzy_flanks = NULL;
-        n = 0;
-        if (bcf_get_info_int32(h, v, "FZ_FLANKS", &fuzzy_flanks, &n)>0)
-        {
-            vntr.fuzzy_rbeg1 = fuzzy_flanks[0];
-            vntr.fuzzy_rend1 = fuzzy_flanks[1];
-            free(fuzzy_flanks);
-        }
-        else
-        {
-            vntr.fuzzy_rbeg1 = bcf_get_pos1(v) - 1;
-            vntr.fuzzy_rend1 = bcf_get_end_pos1(v) + 1;
-        }
-
-        beg1 = std::min(vntr.exact_rbeg1-1, vntr.fuzzy_rbeg1-1);
-        end1 = std::max(vntr.exact_rend1+1, vntr.fuzzy_rend1+1);
+        update_vntr_from_info_fields(h, v);
             
         vs.push_back(v);
         vntr_vs.push_back(v);
@@ -214,6 +185,9 @@ void Variant::clear()
  */
 int32_t Variant::classify(bcf_hdr_t *h, bcf1_t *v)
 {
+    this->h = h;
+    this->v = v;
+    
     bcf_unpack(v, BCF_UN_STR);
     chrom.assign(bcf_get_chrom(h, v));
     rid = bcf_get_rid(v);
@@ -463,7 +437,7 @@ int32_t Variant::classify(bcf_hdr_t *h, bcf1_t *v)
 
     if (type==VT_VNTR)
     {
-        //do nothing
+        update_vntr_from_info_fields(h, v);
     }
 
     //additionally define MNPs by length of all alleles
@@ -476,6 +450,117 @@ int32_t Variant::classify(bcf_hdr_t *h, bcf1_t *v)
     }
 
     return type;
+}
+
+/**
+ * Updates VNTR related information from INFO fields.
+ */
+void Variant::update_vntr_from_info_fields(bcf_hdr_t *h, bcf1_t *v)
+{
+    vntr.motif = bcf_get_rid(v);
+    char** allele = bcf_get_allele(v);
+    vntr.exact_repeat_tract.assign(allele[0]);
+    
+     char *motif = NULL;
+    int32_t n = 0;
+    if (bcf_get_info_string(h, v, "MOTIF", &motif, &n)>0)
+    {
+        vntr.motif.assign(motif);
+        free(motif);
+        
+        vntr.basis = vntr.get_basis(vntr.motif);
+    }
+    else
+    {
+        vntr.motif = "";
+    }
+    
+    char *ru = NULL;
+    n = 0;
+    if (bcf_get_info_string(h, v, "RU", &ru, &n)>0)
+    {
+        vntr.ru.assign(ru);
+        free(ru);
+    }
+    else
+    {
+        vntr.ru = "";
+    }
+    
+    float *exact_motif_concordance = NULL;
+    n = 0;
+    if (bcf_get_info_float(h, v, "CONCORDANCE", &exact_motif_concordance, &n)>0)
+    {
+        vntr.exact_motif_concordance = exact_motif_concordance[0];
+        free(exact_motif_concordance);
+    }
+    else
+    {
+        vntr.exact_motif_concordance = -1;
+    }
+    
+    float *fuzzy_motif_concordance = NULL;
+    n = 0;
+    if (bcf_get_info_float(h, v, "FZ_CONCORDANCE", &fuzzy_motif_concordance, &n)>0)
+    {
+        vntr.fuzzy_motif_concordance = fuzzy_motif_concordance[0];
+        free(fuzzy_motif_concordance);
+    }
+    else
+    {
+        vntr.fuzzy_motif_concordance = -1;
+    }
+    
+    int32_t *flanks = NULL;
+    n = 0;
+    if (bcf_get_info_int32(h, v, "FLANKS", &flanks, &n)>0)
+    {
+        vntr.exact_rbeg1 = flanks[0]+1;
+        vntr.exact_rend1 = flanks[1]-1;
+        free(flanks);
+        
+        if (bcf_get_pos1(v)==vntr.exact_rbeg1 && bcf_get_end1(v)==vntr.exact_rend1)
+        {
+            char** allele = bcf_get_allele(v);
+            vntr.exact_repeat_tract.assign(allele[0]);
+        }
+        else
+        {
+            vntr.exact_repeat_tract = "";
+        }
+    }
+    else
+    {
+        vntr.exact_rbeg1 = bcf_get_pos1(v) - 1;
+        vntr.exact_rend1 = bcf_get_end_pos1(v) + 1;
+    }
+
+    int32_t *fuzzy_flanks = NULL;
+    n = 0;
+    if (bcf_get_info_int32(h, v, "FZ_FLANKS", &fuzzy_flanks, &n)>0)
+    {
+        vntr.fuzzy_rbeg1 = fuzzy_flanks[0];
+        vntr.fuzzy_rend1 = fuzzy_flanks[1];
+        free(fuzzy_flanks);
+        
+        if (bcf_get_pos1(v)==vntr.fuzzy_rbeg1 && bcf_get_end1(v)==vntr.fuzzy_rend1)
+        {
+            char** allele = bcf_get_allele(v);
+            vntr.fuzzy_repeat_tract.assign(allele[0]);
+        }
+        else
+        {
+            vntr.fuzzy_repeat_tract = "";
+        }
+    }
+    else
+    {
+        vntr.fuzzy_rbeg1 = bcf_get_pos1(v) - 1;
+        vntr.fuzzy_rend1 = bcf_get_end_pos1(v) + 1;
+    }
+
+    beg1 = std::min(vntr.exact_rbeg1-1, vntr.fuzzy_rbeg1-1);
+    end1 = std::max(vntr.exact_rend1+1, vntr.fuzzy_rend1+1);
 }
 
 /**
