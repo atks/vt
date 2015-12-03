@@ -38,7 +38,7 @@ MotifMap::MotifMap(uint32_t max_len)
         fprintf(stderr, "[%s:%d %s] max_len > 16  not supported : %d\n", __FILE__, __LINE__, __FUNCTION__, max_len);
         exit(1);
     }
-    
+
     this->max_len = max_len;
 
     max_index = 0;
@@ -70,11 +70,11 @@ MotifMap::MotifMap(uint32_t max_len)
 //            print_seq(seq, len);
 //            uint32_t rindex = seq2index(seq, len);
 //            std::cerr << "\trindex: " << rindex << "\n\n";
-//                
-//            canonical(seq,len);    
+//
+//            canonical(seq,len);
 //        }
 //
-//        if (len==3) exit(1);    
+//        if (len==3) exit(1);
 //    }
 }
 
@@ -93,8 +93,8 @@ uint32_t MotifMap::canonical(uint32_t seq, uint32_t len)
     if (len==1)
     {
         return seq;
-    }    
-    
+    }
+
     uint32_t cseq = seq;
     for (uint32_t i=1; i<len; ++i)
     {
@@ -110,36 +110,32 @@ uint32_t MotifMap::canonical(uint32_t seq, uint32_t len)
  */
 bool MotifMap::is_aperiodic(uint32_t motif, uint32_t len)
 {
-    
 //    std::cerr << "\tchecking: " << seq2str(motif,len) << "\n";
-    
+
     //for prime factors of len
     for (uint32_t i=1; i<=(len>>1); ++i)
     {
-        
 //        std::cerr << "\t\ti: " << i << "\n";
-        
+
         if (len%i==0)
         {
             uint32_t n = 0;
 //            std::cerr << "\t\t\tsubunit: " << seq2str(motif,i) << "\n";
             for (uint32_t j=0; j<len/i; ++j)
             {
-                for (uint32_t k=0; k<i; ++k)    
-                { 
+                for (uint32_t k=0; k<i; ++k)
+                {
                     n = set_seqi(n, i*j+k, get_seqi(motif, k));
                 }
             }
-            
+
 //            std::cerr << "\t\t\t\t" << seq2str(n,len) << "\n";
-            if (n==motif) return false;    
-        }    
+            if (n==motif) return false;
+        }
     }
-    
-//    if (len==4) exit(1);
-    
+
     return true;
-    
+
 }
 
 /**
@@ -191,8 +187,6 @@ void MotifMap::print_seq(uint32_t seq, uint32_t len)
     }
     std::cerr << "\n";
 };
-
-
 
 /**
  * Converts sequence to string.

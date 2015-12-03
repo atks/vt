@@ -101,6 +101,7 @@ SOURCES = align\
 		view\
 		vntr\
 		vntr_annotator\
+		vntr_tree\
 		vntrize\
    	    tbx_ordered_reader\
     	ahmm\

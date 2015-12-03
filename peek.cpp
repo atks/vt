@@ -90,6 +90,12 @@ class Igor : Program
     int32_t no_snp3;
     int32_t no_snp4;
 
+    int32_t no_vntr_distinct_bases[4];
+    std::vector<int32_t> vntr1_lengths;
+    std::vector<int32_t> vntr2_lengths;
+    std::vector<int32_t> vntr3_lengths;
+    std::vector<int32_t> vntr4_lengths;
+        
     /////////
     //tools//
     /////////
@@ -240,6 +246,9 @@ class Igor : Program
                 {
                     ++VAR_MOTIF_LEN[NO_MOTIF_LEN_CATEGORIES-1];
                 }
+                
+                
+                //vntr->count(variant);
             }
 
             if (vtype==VT_SV)

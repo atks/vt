@@ -37,7 +37,7 @@ class Igor : Program
     std::string output_vcf_file;
     std::vector<GenomeInterval> intervals;
     bool debug;
-    
+
     ///////
     //i/o//
     ///////
@@ -63,12 +63,12 @@ class Igor : Program
     //stats//
     /////////
     int32_t no_total_variants;
-    
+
     int32_t no_vntrs;
-    
+
     int32_t no_overlap_vntrs;
     std::vector<int32_t> overlapping_vntr_hist;
-    
+
     int32_t no_dropped_vntrs;
 
     //exactness refers to purity of sequence
@@ -79,24 +79,24 @@ class Igor : Program
     //isolated  - does not overlap with another VNTR
     //clustered - overlaps with other VNTRs
     int32_t no_isolated_exact_vntrs;
-    
+
     int32_t no_perfect_concordance_isolated_exact_vntrs;
     int32_t no_imperfect_concordance_isolated_exact_vntrs;
-    
+
     int32_t no_perfect_concordance_isolated_inexact_vntrs;
     int32_t no_imperfect_concordance_isolated_inexact_vntrs;
-    
-    
+
+
     int32_t no_isolated_inexact_vntrs;
- 
+
     int32_t no_isolated_complete_overlap_vntrs;
     int32_t no_isolated_incomplete_overlap_vntrs;
     int32_t no_isolated_partial_overlap_vntrs;
     int32_t no_isolated_no_overlap_vntrs;
- 
+
     int32_t no_clustered_exact_vntrs;
     int32_t no_clustered_inexact_vntrs;
-    
+
     /////////
     //tools//
     /////////
@@ -139,7 +139,7 @@ class Igor : Program
             abort();
         }
     };
-    
+
     void initialize()
     {
         //////////////////////
@@ -149,7 +149,7 @@ class Igor : Program
         odw = new BCFOrderedWriter(output_vcf_file, 3000);
         odw->link_hdr(odr->hdr);
         bcf_hdr_append(odw->hdr, "##FILTER=<ID=shorter_vntr,Description=\"Another VNTR overlaps with this VNTR.\">");
-        odw->write_hdr();      
+        odw->write_hdr();
 
         overlap_vntr = const_cast<char*>("overlap_vntr");
         overlap_vntr_id = bcf_hdr_id2int(odw->hdr, BCF_DT_ID, "overlap_vntr");
@@ -157,29 +157,29 @@ class Igor : Program
         ////////////////////////
         //stats initialization//
         ////////////////////////
-        
+
         no_total_variants = 0;
         no_vntrs = 0;
         no_overlap_vntrs = 0;
         no_dropped_vntrs = 0;
-        
+
         //VNTR types
         no_isolated_exact_vntrs = 0;
-        
+
         no_perfect_concordance_isolated_exact_vntrs = 0;
         no_imperfect_concordance_isolated_exact_vntrs = 0;
-        
+
         no_perfect_concordance_isolated_inexact_vntrs = 0;
         no_imperfect_concordance_isolated_inexact_vntrs = 0;
-        
+
         no_isolated_inexact_vntrs = 0;
-        
+
         no_clustered_exact_vntrs = 0;
         no_clustered_inexact_vntrs = 0;
 
         no_isolated_complete_overlap_vntrs = 0;
         no_isolated_incomplete_overlap_vntrs = 0;
-        
+
         no_isolated_partial_overlap_vntrs = 0;
         no_isolated_no_overlap_vntrs = 0;
 
@@ -188,7 +188,7 @@ class Igor : Program
         ////////////////////////
         vm = new VariantManip();
     }
-    
+
     /**
      * Update distribution of overlapping VNTRs
      */
@@ -201,10 +201,10 @@ class Igor : Program
                 overlapping_vntr_hist.push_back(0);
             }
         }
-        
+
         ++overlapping_vntr_hist[no_overlapping_vntrs];
-    } 
-    
+    }
+
 
     /**
      * Inserts a Variant record.
@@ -214,10 +214,10 @@ class Igor : Program
         std::list<Variant *>::iterator i = variant_buffer.begin();
 
         if (variant->type==VT_VNTR)
-        { 
+        {
             ++no_vntrs;
         }
-        
+
         while(i!=variant_buffer.end())
         {
             Variant *cvariant = *i;
@@ -236,21 +236,21 @@ class Igor : Program
                 //after most recent variant, we need to have the 1000 window, because the variants are roughly
                 //ordered by start.  It is possible to have the start positions changed when merging VNTRs
                 //resulting in unordered variants.
-                else if (variant->beg1 > cvariant->end1 + 1000) 
+                else if (variant->beg1 > cvariant->end1 + 1000)
                 {
                     break;
                 }
                 else if (variant->end1 >= cvariant->beg1 && variant->beg1 <= cvariant->end1) //overlaps
-                {   
+                {
                     if (variant->type==VT_VNTR && cvariant->type==VT_VNTR)
-                    {   
+                    {
                         bcf1_t* v = variant->v;
                         cvariant->beg1 = std::min(cvariant->beg1, variant->beg1);
                         cvariant->end1 = std::max(cvariant->end1, variant->end1);
                         cvariant->vs.push_back(v);
                         cvariant->vntr_vs.push_back(v);
                         ++cvariant->no_overlapping_vntrs;
-                        
+
                         return;
                     }
 
@@ -306,7 +306,7 @@ class Igor : Program
                     odw->write(variant->v);
                     variant->v = NULL;
                     delete variant;
-                    variant_buffer.pop_back();               
+                    variant_buffer.pop_back();
                 }
             }
             else if (variant->rid == rid)
@@ -317,13 +317,13 @@ class Igor : Program
                     {
                         if (consolidate_multiple_overlapping_vntrs(variant))
                         {
-                          
-                            
+
+
                         }
-                        
+
                         delete variant;
                         variant_buffer.pop_back();
-                        
+
                     }
                     else
                     {
@@ -345,13 +345,13 @@ class Igor : Program
      * Compute purity by sequence content.
      */
     float compute_purity_by_sequence_content(char* repeat_tract, char* motif)
-    {   
+    {
         uint32_t motif_count[20];
         motif_count[0] = 0;
         motif_count[2] = 0;
         motif_count[6] = 0;
         motif_count[19] = 0;
-        
+
         //count bases
         char* motif_ptr = motif;
         while (*motif_ptr)
@@ -359,35 +359,35 @@ class Igor : Program
             ++motif_count[*motif_ptr-'A'];
             ++motif_ptr;
         }
-              
+
         uint32_t dmb = 0;
         if (motif_count[0]) ++dmb;
         if (motif_count[2]) ++dmb;
         if (motif_count[6]) ++dmb;
         if (motif_count[19]) ++dmb;
-            
+
         uint32_t repeat_tract_count[20];
         repeat_tract_count[0] = 0;
         repeat_tract_count[2] = 0;
         repeat_tract_count[6] = 0;
         repeat_tract_count[19] = 0;
-        
+
         uint32_t len = 0;
         char* repeat_tract_ptr = repeat_tract;
         while (*repeat_tract_ptr)
         {
-            ++repeat_tract_count[*repeat_tract_ptr-'A'];  
-            ++len;            
+            ++repeat_tract_count[*repeat_tract_ptr-'A'];
+            ++len;
             ++repeat_tract_ptr;
         }
-        
+
         uint32_t db = 0;
-        
+
         db += motif_count[0] ? repeat_tract_count[0] : 0;
         db += motif_count[2] ? repeat_tract_count[2] : 0;
         db += motif_count[6] ? repeat_tract_count[6] : 0;
         db += motif_count[19] ? repeat_tract_count[19] : 0;
-        
+
         return (float) db / (float) len;
     }
 
@@ -401,7 +401,7 @@ class Igor : Program
     bool consolidate_multiple_overlapping_vntrs(Variant* variant)
     {
         update_overlapping_vntr_hist(variant->no_overlapping_vntrs);
-        
+
         if (variant->no_overlapping_vntrs==0)
         {
             if ( debug)
@@ -413,12 +413,12 @@ class Igor : Program
                 std::cerr << "no overlapping Indels " << variant->no_overlapping_indels << "\n";
                 std::cerr << "no overlapping VNTRs  " << variant->no_overlapping_vntrs << "\n";
                 std::cerr << "consolidating: " << variant->vs.size() << " alleles\n";
-            
+
                 bcf_print(odw->hdr, variant->v);
             }
-            
+
             bcf1_t* vntr_v = variant->v;
-                        
+
             char* motif = NULL;
             int32_t n_motif = 0;
             float* fuzzy_concordance = NULL;
@@ -431,18 +431,18 @@ class Igor : Program
                 bcf_get_info_float(odr->hdr, vntr_v, "FZ_CONCORDANCE", &fuzzy_concordance, &n_fuzzy_concordance)>0 &&
                 bcf_get_info_int32(odr->hdr, vntr_v, "FLANKS", &flanks, &n_flanks)>0 &&
                 bcf_get_info_int32(odr->hdr, vntr_v, "FZ_FLANKS", &fuzzy_flanks, &n_fuzzy_flanks)>0)
-                
+
             {
 //                std::cerr << "1" << ") " << motif << "\t" << fuzzy_concordance[0] << "\t" << fuzzy_flanks[0] << "," << fuzzy_flanks[1] << "\n";
 //                std::cerr << "\t" << bcf_get_ref(variant->v) << "\n";
-                
+
                 float impurity = compute_purity_by_sequence_content(bcf_get_ref(variant->v), motif);
-                  
+
                 if (flanks[0]==fuzzy_flanks[0]  &&
                     flanks[1]==fuzzy_flanks[1])
                 {
                     ++no_isolated_exact_vntrs;
-                    
+
                     if (fuzzy_concordance[0]==1)
                     {
                         ++no_perfect_concordance_isolated_exact_vntrs;
@@ -456,43 +456,43 @@ class Igor : Program
                         std::cerr << "no overlapping Indels " << variant->no_overlapping_indels << "\n";
                         std::cerr << "no overlapping VNTRs  " << variant->no_overlapping_vntrs << "\n";
                         std::cerr << "consolidating: " << variant->vs.size() << " alleles\n";
-                    
+
                         bcf_print(odw->hdr, variant->v);
-                        
+
 //                        std::cerr << "1" << ") " << motif << "\t" << fuzzy_concordance[0] << "\t" << flanks[0] << "," << flanks[1] << "\t" << fuzzy_flanks[0] << "," << fuzzy_flanks[1] << "\n";
 //                        std::cerr << "\t" << bcf_get_ref(variant->v) << "\n";
-                  
+
                         ///////////////////////////////////////////////////////////////
                         //large deletions OR repeat tract contains inexact repeat units
                         ///////////////////////////////////////////////////////////////
-                  
+
 //TTTG and TTA sandwiches a perfect 4 copies of TTGTTGTTGTTG
-//20	48231646	.	TTTGTTGTTGTTGTTGTTA	T	.	.	NSAMPLES=1;E=10;N=16;ESUM=10;NSUM=16;FLANKS=48231646,48231678;FZ_FLANKS=48231646,48231678;FLANKSEQ=TTTGATTGGT[TTGTTGTTGTTGTTGTTATTGTTGTTGTTGT]CGTCATTGTT;GMOTIF=GTT;TR=20:48231647:TTGTTGTTGTTGTTGTTATTGTTGTTGTTGT:<VNTR>:GTT
-//20	48231647	.	TTGTTGTTGTTGTTGTTATTGTTGTTGTTGT	<VNTR>	.	.	MOTIF=GTT;RU=TTG;FUZZY;FZ_CONCORDANCE=0.969697;FZ_RL=31;FZ_LL=0;FLANKS=48231646,48231678;FZ_FLANKS=48231646,48231678;FZ_RU_COUNTS=10,11;FLANKSEQ=TTTGATTGGT[TTGTTGTTGTTGTTGTTATTGTTGTTGTTGT]CGTCATTGTT
+//20    48231646    .   TTTGTTGTTGTTGTTGTTA T   .   .   NSAMPLES=1;E=10;N=16;ESUM=10;NSUM=16;FLANKS=48231646,48231678;FZ_FLANKS=48231646,48231678;FLANKSEQ=TTTGATTGGT[TTGTTGTTGTTGTTGTTATTGTTGTTGTTGT]CGTCATTGTT;GMOTIF=GTT;TR=20:48231647:TTGTTGTTGTTGTTGTTATTGTTGTTGTTGT:<VNTR>:GTT
+//20    48231647    .   TTGTTGTTGTTGTTGTTATTGTTGTTGTTGT <VNTR>  .   .   MOTIF=GTT;RU=TTG;FUZZY;FZ_CONCORDANCE=0.969697;FZ_RL=31;FZ_LL=0;FLANKS=48231646,48231678;FZ_FLANKS=48231646,48231678;FZ_RU_COUNTS=10,11;FLANKSEQ=TTTGATTGGT[TTGTTGTTGTTGTTGTTATTGTTGTTGTTGT]CGTCATTGTT
 
 //2 copies of TTTTAG sandwiches a TTAAC.  i.e. TTTTAG[TTAAC]TTTTAG
-//20	10546879	.	GTTTTAGTTAAC	G	.	.	NSAMPLES=1;E=21;N=48;ESUM=21;NSUM=48;FLANKS=10546879,10546897;FZ_FLANKS=10546879,10546897;FLANKSEQ=ATTGCCATTG[TTTTAGTTAACTTTTAG]CACTGGGTAT;GMOTIF=AGTTTT;TR=20:10546880:TTTTAGTTAACTTTTAG:<VNTR>:AGTTTT
-//20	10546880	.	TTTTAGTTAACTTTTAG	<VNTR>	.	.	MOTIF=AGTTTT;RU=TTTTAG;FUZZY;FZ_CONCORDANCE=0.833333;FZ_RL=17;FZ_LL=0;FLANKS=10546879,10546897;FZ_FLANKS=10546879,10546897;FZ_RU_COUNTS=2,3;FLANKSEQ=ATTGCCATTG[TTTTAGTTAACTTTTAG]CACTGGGTAT
+//20    10546879    .   GTTTTAGTTAAC    G   .   .   NSAMPLES=1;E=21;N=48;ESUM=21;NSUM=48;FLANKS=10546879,10546897;FZ_FLANKS=10546879,10546897;FLANKSEQ=ATTGCCATTG[TTTTAGTTAACTTTTAG]CACTGGGTAT;GMOTIF=AGTTTT;TR=20:10546880:TTTTAGTTAACTTTTAG:<VNTR>:AGTTTT
+//20    10546880    .   TTTTAGTTAACTTTTAG   <VNTR>  .   .   MOTIF=AGTTTT;RU=TTTTAG;FUZZY;FZ_CONCORDANCE=0.833333;FZ_RL=17;FZ_LL=0;FLANKS=10546879,10546897;FZ_FLANKS=10546879,10546897;FZ_RU_COUNTS=2,3;FLANKSEQ=ATTGCCATTG[TTTTAGTTAACTTTTAG]CACTGGGTAT
 
                         ++no_imperfect_concordance_isolated_exact_vntrs;
                     }
-                    
+
 //                    odw->write(variant->v);
 //                    variant->v = NULL;
 //                    delete variant;
 //                    variant_buffer.pop_back();
-                }   
+                }
                 else
                 {
-                    //complete overlap 
+                    //complete overlap
                     //most should have imperfect concordance
-                    //those that have perfect concordance implies that the alternate allele resulted in a imperfect VNTR  
+                    //those that have perfect concordance implies that the alternate allele resulted in a imperfect VNTR
                     if (flanks[0]>=fuzzy_flanks[0]  &&
                         flanks[1]<=fuzzy_flanks[1])
                     {
-                        ++no_isolated_complete_overlap_vntrs;
 //                        std::cerr << "1" << ") " << motif << "\t" << fuzzy_concordance[0] << "\t" << flanks[0] << "," << flanks[1] << "\t" << fuzzy_flanks[0] << "," << fuzzy_flanks[1] << "\n";
 //                        std::cerr << "\t" << impurity << "\t" << bcf_get_ref(variant->v) << "\n";
+                       ++no_isolated_complete_overlap_vntrs;
                     }
                     //partial overlaps
                     //these are induced possibly by errors at the boundary of VNTRs
@@ -500,41 +500,41 @@ class Igor : Program
                     //
                     else if (flanks[0]<=fuzzy_flanks[1]  &&
                              flanks[1]>=fuzzy_flanks[0])
-                    {   
+                    {
 //                      std::cerr << "1" << ") " << motif << "\t" << fuzzy_concordance[0] << "\t" << flanks[0] << "," << flanks[1] << "\t" << fuzzy_flanks[0] << "," << fuzzy_flanks[1] << "\n";
 //                      std::cerr << "\t" << impurity << "\t" << bcf_get_ref(variant->v) << "\n";
                         ++no_isolated_partial_overlap_vntrs;
-                    }    
+                    }
                     else
                     {
 //                      std::cerr << "1" << ") " << motif << "\t" << fuzzy_concordance[0] << "\t" << flanks[0] << "," << flanks[1] << "\t" << fuzzy_flanks[0] << "," << fuzzy_flanks[1] << "\n";
 //                      std::cerr << "\t" << impurity << "\t" << bcf_get_ref(variant->v) << "\n";
                         ++no_isolated_no_overlap_vntrs;
                     }
-                    
+
                     if (fuzzy_concordance[0]==1)
                     {
-                        ++no_perfect_concordance_isolated_inexact_vntrs;  
+                        ++no_perfect_concordance_isolated_inexact_vntrs;
                     }
                     else
                     {
                         ++no_imperfect_concordance_isolated_inexact_vntrs;
-                    }      
-                        
-                    ++no_perfect_concordance_isolated_inexact_vntrs;  
-                            
+                    }
+
+                    ++no_perfect_concordance_isolated_inexact_vntrs;
+
                     ++no_isolated_inexact_vntrs;
-                }   
-                  
+                }
+
                 free(motif);
                 free(fuzzy_concordance);
                 free(flanks);
                 free(fuzzy_flanks);
             }
-        }  
+        }
         else if (variant->no_overlapping_vntrs >= 1)
         {
-            if (debug)
+            if ((true && variant->vntr_vs.size()>6) || debug)
             {
                 std::cerr  << "###################################\n";
                 std::cerr  << "#2 or more VNTR and multiple Indels\n";
@@ -543,12 +543,11 @@ class Igor : Program
                 std::cerr << "no overlapping Indels " << variant->no_overlapping_indels << "\n";
                 std::cerr << "no overlapping VNTRs  " << variant->no_overlapping_vntrs << "\n";
                 std::cerr << "consolidating: " << (variant->vs.size()+1) << " alleles\n";
-                
+
                 for (uint32_t i=0; i<variant->vntr_vs.size(); ++i)
                 {
                     bcf1_t* vntr_v = variant->vntr_vs[i];
-                    
-                    
+
                     char* motif = NULL;
                     int32_t n_motif = 0;
                     float* fuzzy_concordance = NULL;
@@ -561,28 +560,29 @@ class Igor : Program
                         bcf_get_info_float(odr->hdr, vntr_v, "FZ_CONCORDANCE", &fuzzy_concordance, &n_fuzzy_concordance)>0 &&
                         bcf_get_info_int32(odr->hdr, vntr_v, "FLANKS", &flanks, &n_flanks)>0 &&
                         bcf_get_info_int32(odr->hdr, vntr_v, "FZ_FLANKS", &fuzzy_flanks, &n_fuzzy_flanks)>0)
-                        
-                    {   
+
+                    {
                         float impurity = compute_purity_by_sequence_content(bcf_get_ref(vntr_v), motif);
-                       
-//                        std::cerr << (i+1) << ") " << motif << "\t" << fuzzy_concordance[0] << "\t" << flanks[0] << "," << flanks[1] << "\t" << fuzzy_flanks[0] << "," << fuzzy_flanks[1] << "\n";
-//                        std::cerr << "\t" << bcf_get_ref(vntr_v) << "\n";
-                            
+
+                        std::cerr << (i+1) << ") " << motif << "\t" << fuzzy_concordance[0] << "\t" << flanks[0] << "," << flanks[1] << "\t" << fuzzy_flanks[0] << "," << fuzzy_flanks[1] << "\n";
+                        std::cerr << "\t" << bcf_get_ref(vntr_v) << "\n";
+                        bcf_print(odw->hdr, vntr_v);
+                        
                         free(motif);
                         free(fuzzy_concordance);
                         free(flanks);
                         free(fuzzy_flanks);
-                           
-                    
+
+
                     }
-                    
+
 //                    bcf_print(odw->hdr, variant->vntr_vs[i]);
                 }
             }
-            
-            
-            
-            
+
+
+
+
             return false;
         }
 
@@ -627,7 +627,7 @@ class Igor : Program
         while (odr->read(v))
         {
             variant = new Variant(odw->hdr, v);
-            
+
             flush_variant_buffer(variant);
             insert_variant_record_into_buffer(variant);
             v = odw->get_bcf1_from_pool();
@@ -637,8 +637,9 @@ class Igor : Program
 
         flush_variant_buffer();
 
-        odr->close();
+        //you have to close the writer first as the header used by the writer is linked to the reader
         odw->close();
+        odr->close();
     };
 
     void print_options()
@@ -668,7 +669,7 @@ class Igor : Program
         std::clog << "                     partial overlaps      " << no_isolated_partial_overlap_vntrs << "\n";
         std::clog << "                     no overlaps           " << no_isolated_no_overlap_vntrs << "\n";
         std::clog << "       Number of clustered exact VNTRs     " << no_clustered_exact_vntrs << "\n";
-        
+
         for (uint32_t i=0; i<overlapping_vntr_hist.size(); ++i)
         {
             if (overlapping_vntr_hist[i])
@@ -676,8 +677,8 @@ class Igor : Program
                 std::clog << "       " << i << "    "  << overlapping_vntr_hist[i] << "\n";
             }
         }
-        
-        
+
+
         std::clog << "       Number of clustered inexact VNTRs   " << no_clustered_inexact_vntrs << "\n";
         std::clog << "\n";
     };

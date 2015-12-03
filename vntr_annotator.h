@@ -119,6 +119,16 @@ class VNTRAnnotator
     void annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::string mode);
 
     /**
+     * Return the cannonicalized representation of a motif.
+     */
+    static std::string cannonicalize(std::string& motif);
+
+    /**
+     * Return the Return the string of unique bases in a motif.
+     */
+    static std::string basis(std::string& motif);
+
+    /**
      * Returns true if is to be classified as a VNTR
      */
     bool is_vntr(Variant& variant, int32_t mode, std::string& method);

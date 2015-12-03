@@ -103,7 +103,7 @@ class CandidateRegionExtractor
 
     /**
      * Annotates VNTR characteristics.
-     * RU,RL,LFLANK,RFLANK,LFLANKPOS,RFLANKPOS,MOTIF_CONCORDANCE,MOTIF_CONCORDANCE
+     * RU,RL,LFLANK,RFLANK,LFLANKPOS,RFLANKPOS,MOTIF_CONCORDANCE
      */
     void annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::string mode);
 
