@@ -30,9 +30,12 @@ VNTRNode::VNTRNode()
 /**
  * Constructor.
  */
-VNTRNode::VNTRNode(std::string& motif)
+VNTRNode::VNTRNode(std::string motif, std::string basis, int32_t exact_count, int32_t fuzzy_count)
 {
     this->motif = motif;
+    this->basis = basis;
+    this->exact_count = exact_count;
+    this->fuzzy_count = fuzzy_count;
 };
 
 /**
@@ -61,7 +64,25 @@ void VNTRNode::print()
  */
 VNTRTree::VNTRTree()
 {
-
+    vntrs[0].resize(1);
+    vntrs[1].resize(1);
+    vntrs[2].resize(1);
+    vntrs[3].resize(1);
+    
+    //for all subsets of ACGT
+    std::string motifs[15] = {"A", "C", "G", "T",
+                              "AC", "AG", "AT", "CG", "CT", "GT",
+                              "ACG", "ACT", "AGT", "CGT",
+                              "ACGT"};
+    
+    for (uint32_t i=0; i<15; ++i)
+    {
+        VNTRNode* node = new VNTRNode(motifs[i], motifs[i], 0, 0);
+        motif_map[motifs[i]] = node;
+        int32_t basis_len = motifs[i].size();
+        int32_t motif_len = motifs[i].size();
+        vntrs[basis_len-1][motif_len-basis_len].push_back(node);
+    }
 };
 
 /**
@@ -79,19 +100,68 @@ void VNTRTree::count(Variant& variant)
 {
     if (variant.type == VT_VNTR)
     {
-        bcf_print(variant.h, variant.v);
         VNTR& vntr = variant.vntr;
+
+        VNTRNode* node = NULL; 
+        std::cerr << "LCOATING " << vntr.motif << " " << vntr.basis << " " << motif_map.size()<< "\n";
+        if (motif_map.find(vntr.motif)==motif_map.end())
+        {
+           bcf_print(variant.h, variant.v);
+     
+            std::cerr << "INSERTING NEW NODE " << vntr.motif << " " << vntr.basis << "\n";
+            
+            node = new VNTRNode(vntr.motif, vntr.basis, 0, 0);
+            motif_map[vntr.motif] = node;
+            int32_t basis_len = vntr.basis.size();
+            int32_t motif_len = vntr.motif.size();
+            
+            if (vntrs[basis_len-1].size()<motif_len-basis_len+1)
+            {        
+                vntrs[basis_len-1].resize(motif_len-basis_len+1);
+            }
+            vntrs[basis_len-1][motif_len-basis_len].push_back(node);
+            
+        }
+        else
+        {
+            node = motif_map[vntr.motif];
+        }
         
-        vntr.print();
+        if (vntr.exact_rbeg1==vntr.fuzzy_rbeg1 &&
+            vntr.exact_rend1==vntr.fuzzy_rend1)
+        {
+            ++node->exact_count;
+        }
+        else
+        {
+            ++node->fuzzy_count;
+        }
         
-    }    
-    
+        
+
+        //vntr.print();
+    }
 };
 
 /**
  * Print this tree.
  */
 void VNTRTree::print()
-{
-
+{   
+    std::cerr <<  "PRINT VNTR TREE\n";
+    
+    for (uint32_t basis_len=1; basis_len<=4; ++basis_len)
+    {
+        std::cerr << "basis length " << basis_len << "\n";
+        for (uint32_t motif_len=basis_len; motif_len-basis_len<vntrs[basis_len-1].size(); ++motif_len)
+        {
+            std::cerr << "\tmotif length " << motif_len << "\n";
+            std::list<VNTRNode*>::iterator i;
+            for (i=vntrs[basis_len-1][motif_len-basis_len].begin(); i!=vntrs[basis_len-1][motif_len-basis_len].end(); ++i)
+            {
+                VNTRNode& vntr_node = **i;
+                std::cerr << "\t\t" << vntr_node.motif << " " << (vntr_node.exact_count+vntr_node.fuzzy_count) << " (" << vntr_node.exact_count << "/" << vntr_node.fuzzy_count << ")\n";
+            }
+        }
+    }
 };

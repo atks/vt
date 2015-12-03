@@ -32,9 +32,10 @@
 class VNTRNode
 {
     public:
-
     std::string motif;
+    std::string basis;
     int32_t exact_count, fuzzy_count;
+
 
     /**
      * Constructor.
@@ -44,7 +45,7 @@ class VNTRNode
     /**
      * Constructor.
      */
-    VNTRNode(std::string& motif);
+    VNTRNode(std::string motif, std::string basis, int32_t exact_count, int32_t fuzzy_count);
 
     /**
      * Destructor.
@@ -68,7 +69,10 @@ class VNTRNode
 class VNTRTree
 {
     public:
-        
+    
+    std::vector<std::list<VNTRNode*> > vntrs[4];
+    std::map<std::string, VNTRNode*> motif_map;
+         
     /**
      * Constructor.
      */

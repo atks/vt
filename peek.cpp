@@ -453,6 +453,8 @@ class Igor : Program
         }
         fprintf(stderr, "\n");
 
+        vntr_tree->print();
+
         fprintf(stderr, "       ======= Structural variants ========\n");
         fprintf(stderr, "\n");
         std::vector<SVNode*> s = sv_tree->enumerate_dfs();

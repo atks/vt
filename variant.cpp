@@ -515,8 +515,8 @@ void Variant::update_vntr_from_info_fields(bcf_hdr_t *h, bcf1_t *v)
     n = 0;
     if (bcf_get_info_int32(h, v, "FLANKS", &flanks, &n)>0)
     {
-        vntr.exact_rbeg1 = flanks[0]+1;
-        vntr.exact_rend1 = flanks[1]-1;
+        vntr.exact_rbeg1 = flanks[0];
+        vntr.exact_rend1 = flanks[1];
         free(flanks);
         
         if (bcf_get_pos1(v)==vntr.exact_rbeg1 && bcf_get_end1(v)==vntr.exact_rend1)
