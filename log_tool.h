@@ -45,6 +45,7 @@ class LogTool
 {
     private:
     std::vector<double> PL;
+    std::vector<double> PL_one_minus_p;
     std::vector<double> LOG10_VARP;
     std::vector<double> LOG10FACT;
 
@@ -52,12 +53,17 @@ class LogTool
     LogTool () {};
 
     /**
-     * Convert PL to probabilities.
+     * Convert -10log(p) to p.
      */
     double pl2prob(uint32_t PL);
+    
+    /**
+     * Convert -10log(p) to -10log(1-p).
+     */
+    double pl2pl_one_minus_p(uint32_t pl);
 
     /**
-     * Convert PL to log10(sqrt(e(1-e))).
+     * Convert -10log(p) to log10(sqrt(e(1-e))).
      */
     double pl2log10_varp(uint32_t PL);
 
