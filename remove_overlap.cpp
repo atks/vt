@@ -68,7 +68,7 @@ class Igor : Program
         //////////////////////////
         try
         {
-            std::string desc = "Removes overlapping variants in a VCF file.";
+            std::string desc = "Removes overlapping variants in a VCF file by tagging such variants with the FILTER flag overlap.";
 
             TCLAP::CmdLine cmd(desc, ' ', version);
             VTOutput my;
