@@ -64,7 +64,6 @@ class Igor : Program
     ///////////
     //options//
     ///////////
-    std::string filters;
     std::vector<std::string> input_vcf_files;
     std::vector<GenomeInterval> intervals;
     std::string interval_list;
@@ -78,10 +77,11 @@ class Igor : Program
     //////////
     //filter//
     //////////
+    std::vector<std::string> fexps;
     std::string fexp;
-    Filter filter;
-    bool filter_exists;
-
+    Filter filters[2];
+    bool filter_exists[2];
+        
     /////////
     //stats//
     /////////
@@ -113,6 +113,12 @@ class Igor : Program
             cmd.parse(argc, argv);
 
             fexp = arg_fexp.getValue();
+            split(fexps, ",", fexp) ;
+            if (fexps.size()>2)
+            {
+                fprintf(stderr, "[%s:%d %s] Cannot have more than 2 filter expressions \n", __FILE__, __LINE__, __FUNCTION__);
+                exit(1);  
+            }
             parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
             write_partition = arg_write_partition.getValue();
             input_vcf_files = arg_input_vcf_files.getValue();
@@ -145,9 +151,21 @@ class Igor : Program
         /////////////////////////
         //filter initialization//
         /////////////////////////
-        filter.parse(fexp.c_str(), false);
-        filter_exists = fexp=="" ? false : true;
-
+        if (fexps.size()==1)
+        {
+            filters[0].parse(fexps[0].c_str());
+            filter_exists[0] = true;
+            filters[1].parse(fexps[0].c_str());
+            filter_exists[1] = true;
+        }
+        else
+        {
+            filters[0].parse(fexps[0].c_str());
+            filter_exists[0] = true;
+            filters[1].parse(fexps[1].c_str());
+            filter_exists[1] = true;
+        }
+        
         ////////////////////////
         //stats initialization//
         ////////////////////////
@@ -186,12 +204,17 @@ class Igor : Program
             //check existence
             for (int32_t i=0; i<crecs.size(); ++i)
             {
-                if (filter_exists && !filter.apply(crecs[i]->h,crecs[i]->v,&variant))
+                int32_t index = crecs[i]->file_index;
+
+                if (filter_exists[index])
                 {
-                    continue;
+                    if (!filters[index].apply(crecs[i]->h,crecs[i]->v, &variant))
+                    {
+                        continue;
+                    }
                 }
 
-                ++presence[crecs[i]->file_index];
+                ++presence[index];
             }
 
             int32_t ts = 0;
@@ -280,7 +303,19 @@ class Igor : Program
         std::clog << "\n";
         std::clog << "Options:     input VCF file a   " << input_vcf_files[0] << "\n";
         std::clog << "             input VCF file b   " << input_vcf_files[1] << "\n";
-        print_str_op("         [f] filter             ", fexp);
+        
+        
+         std::cerr << "SIZE" << fexps.size() << "\n";
+        if (fexps.size()==1)
+        {
+            print_str_op("         [f] filter             ", fexp);
+        }
+        else
+        {
+           
+            print_str_op("         [f] filter a           ", fexps[0]);
+            print_str_op("             filter b           ", fexps[1]);
+        }
         if (write_partition)
         {
             std::clog << "         [w] write_partition    true (partitions will be written to a-b.bcf, a&b.bcf and b-a.bcf)\n";
