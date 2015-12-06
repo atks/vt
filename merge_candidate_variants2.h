@@ -21,8 +21,8 @@
    THE SOFTWARE.
 */
 
-#ifndef MERGE_CANDIDATE_VARIANTS_H
-#define MERGE_CANDIDATE_VARIANTS_H
+#ifndef MERGE_CANDIDATE_VARIANTS2_H
+#define MERGE_CANDIDATE_VARIANTS2_H
 
 #include "bcf_ordered_writer.h"
 #include "bcf_synced_reader.h"
@@ -34,6 +34,6 @@
 #include "utils.h"
 #include "variant_manip.h"
 
-void merge_candidate_variants(int argc, char ** argv);
+void merge_candidate_variants2(int argc, char ** argv);
 
 #endif

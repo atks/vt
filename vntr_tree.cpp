@@ -103,13 +103,8 @@ void VNTRTree::count(Variant& variant)
         VNTR& vntr = variant.vntr;
 
         VNTRNode* node = NULL; 
-        std::cerr << "LCOATING " << vntr.motif << " " << vntr.basis << " " << motif_map.size()<< "\n";
         if (motif_map.find(vntr.motif)==motif_map.end())
         {
-           bcf_print(variant.h, variant.v);
-     
-            std::cerr << "INSERTING NEW NODE " << vntr.motif << " " << vntr.basis << "\n";
-            
             node = new VNTRNode(vntr.motif, vntr.basis, 0, 0);
             motif_map[vntr.motif] = node;
             int32_t basis_len = vntr.basis.size();
@@ -136,10 +131,6 @@ void VNTRTree::count(Variant& variant)
         {
             ++node->fuzzy_count;
         }
-        
-        
-
-        //vntr.print();
     }
 };
 
@@ -148,8 +139,6 @@ void VNTRTree::count(Variant& variant)
  */
 void VNTRTree::print()
 {   
-    std::cerr <<  "PRINT VNTR TREE\n";
-    
     for (uint32_t basis_len=1; basis_len<=4; ++basis_len)
     {
         std::cerr << "basis length " << basis_len << "\n";
