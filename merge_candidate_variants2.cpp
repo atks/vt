@@ -21,57 +21,14 @@
    THE SOFTWARE.
 */
 
-#include "merge_candidate_variants.h"
+#include "merge_candidate_variants2.h"
+
+#define SINGLE_SAMPLE_DISCOVERY_VCF_FILE
+#define AGGREGATED_SAMPLES_DISCOVERY_VCF_FILE
+#define AGGREGATED_SAMPLES_DISCOVERY_VCF_FILE
 
 namespace
 {
-
-class Evidence
-{
-    public:
-    uint32_t i, m;
-    uint32_t* e;
-    uint32_t* n;
-    kstring_t samples;
-    int32_t esum, nsum;
-    double af;
-    double lr;
-    bcf1_t *v;
-
-    Evidence(uint32_t m)
-    {
-        this->m = m;
-        i = 0;
-        e = (uint32_t*) malloc(m*sizeof(uint32_t));
-        n = (uint32_t*) malloc(m*sizeof(uint32_t));
-        samples = {0,0,0};
-        esum = 0;
-        nsum = 0;
-        af = 0;
-        lr = 0;
-        v = NULL;
-    };
-
-    ~Evidence()
-    {
-        i = 0;
-        free(e);
-        free(n);
-        if (samples.m) free(samples.s);
-        v = NULL;
-    };
-
-    void clear()
-    {
-        i = 0;
-        samples.l = 0;
-        esum = 0;
-        nsum = 0;
-        af = 0;
-        lr = 0;
-        v = NULL;
-    };
-};
 
 class Igor : Program
 {
@@ -100,6 +57,7 @@ class Igor : Program
     ///////////////
     //general use//
     ///////////////
+    
     kstring_t variant;
 
     /////////
@@ -190,6 +148,24 @@ Each VCF file is required to have the FORMAT flags E and N and should have exact
 
         odw->write_hdr();
 
+        //inspect header of each file to figure out if it is a merged candidate variant list or not
+        for (uint32_t i=0; i<sr->hdrs.size(); ++i)
+        {
+            if (bcf_hdr_exists(sr->hdrs[i], BCF_HL_INFO, "NSAMPLE"))
+            {
+            }   
+                //mark as aggregate file
+                //  
+                //if contains MOTIF in INFO field
+                    //mark as VNTR annotated
+                    
+            //if does not exist NSAMPLES in INFO field and 1 sample
+                //mark as single site list
+           
+            
+             
+        }
+
         ///////////////
         //general use//
         ///////////////
@@ -209,7 +185,7 @@ Each VCF file is required to have the FORMAT flags E and N and should have exact
         vm = new VariantManip();
     }
 
-    void merge_candidate_variants()
+    void merge_candidate_variants2()
     {
         int32_t *E = (int32_t*) malloc(1*sizeof(int32_t));
         int32_t *N = (int32_t*) malloc(1*sizeof(int32_t));
@@ -359,7 +335,7 @@ void merge_candidate_variants2(int argc, char ** argv)
     Igor igor(argc, argv);
     igor.print_options();
     igor.initialize();
-    igor.merge_candidate_variants();
+    igor.merge_candidate_variants2();
     igor.print_stats();
 }
 

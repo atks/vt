@@ -86,6 +86,14 @@ bool str_ends_with(std::string& file_name, const char* ext);
 void bam_hdr_transfer_contigs_to_bcf_hdr(const bam_hdr_t *sh, bcf_hdr_t *vh);
 
 /**
+ * Checks if a particular header type exists
+ * @hdr  - header
+ * @type - BCF_HL_FLT, BCF_HL_INFO, BCF_HL_FMT, BCF_HL_CTG
+ * @key  - the key name
+ */
+bool bcf_hdr_exists(bcf_hdr_t *hdr, int type, const char *key);
+;
+/**
  * Get number of sequences.
  */
 #define bam_hdr_get_n_targets(h) ((h)->n_targets)

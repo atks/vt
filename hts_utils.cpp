@@ -112,6 +112,38 @@ void bam_hdr_transfer_contigs_to_bcf_hdr(const bam_hdr_t *sh, bcf_hdr_t *vh)
     if (s.m) free(s.s);
 }
 
+/**
+ * Checks if a particular header type exists
+ * @hdr  - header
+ * @type - BCF_HL_FLT, BCF_HL_INFO, BCF_HL_FMT, BCF_HL_CTG
+ * @key  - the key name
+ */
+bool bcf_hdr_exists(bcf_hdr_t *hdr, int type, const char *key)
+{
+    if (!key && type>=BCF_HL_FLT && type<= BCF_HL_CTG) //FLT, INFO, FMT, CTG
+    {
+        for (uint32_t i=0; i<hdr->nhrec; ++i)
+        {
+            if (hdr->hrec[i]->type==type)
+            {
+                int j = bcf_hrec_find_key(hdr->hrec[i], "ID");
+                if (j>0)
+                {
+                    vdict_t *d = type==BCF_HL_CTG ? (vdict_t*)hdr->dict[BCF_DT_CTG] : (vdict_t*)hdr->dict[BCF_DT_ID];
+                    char* val = hdr->hrec[i]->vals[j];
+
+                    if (strcmp(key, val)==0)
+                    {
+                        return true;
+                    }
+                }
+            }
+        }
+    }
+
+    return false;
+}
+
 /**********
  *BAM UTILS
  **********/
@@ -129,14 +161,14 @@ int32_t bam_get_end_pos1(bam1_t *s)
         for (int32_t i = 0; i < n_cigar_op; ++i)
         {
             int32_t opchr = bam_cigar_opchr(cigar[i]);
-            
+
             if (opchr=='M' || opchr=='D' || opchr=='N' || opchr=='=' || opchr=='X')
             {
                 end_pos1 += bam_cigar_oplen(cigar[i]);
             }
         }
     }
-    
+
     return end_pos1-1;
 }
 
@@ -825,15 +857,15 @@ bcf1_t* bcf_copy_variant(bcf_hdr_t *h, bcf1_t *v)
     bcf1_t* nv = bcf_init1();
     bcf_clear(nv);
     bcf_set_n_sample(nv, bcf_get_n_sample(v));
-    
+
     bcf_set_rid(nv, bcf_get_rid(v));
     bcf_set_pos1(nv, bcf_get_pos1(v));
     kstring_t s = {0,0,0};
     bcf_alleles2string(h, v, &s);
-    bcf_update_alleles_str(h, nv, s.s);  
-    if (s.m) free(s.s); 
-        
-    return nv;    
+    bcf_update_alleles_str(h, nv, s.s);
+    if (s.m) free(s.s);
+
+    return nv;
 }
 
 /**
