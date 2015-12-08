@@ -91,7 +91,7 @@ void bam_hdr_transfer_contigs_to_bcf_hdr(const bam_hdr_t *sh, bcf_hdr_t *vh);
  * @type - BCF_HL_FLT, BCF_HL_INFO, BCF_HL_FMT, BCF_HL_CTG
  * @key  - the key name
  */
-bool bcf_hdr_exists(bcf_hdr_t *hdr, int type, const char *key);
+bool bcf_hdr_exists(bcf_hdr_t *hdr, int32_t type, const char *key);
 ;
 /**
  * Get number of sequences.

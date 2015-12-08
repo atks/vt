@@ -45,6 +45,7 @@
 #include "hfilter.h"
 #include "index.h"
 #include "merge_candidate_variants.h"
+#include "merge_candidate_variants2.h"
 #include "merge.h"
 #include "multi_partition.h"
 #include "normalize.h"
@@ -245,6 +246,10 @@ int main(int argc, char ** argv)
     else if (argc>1 && cmd=="merge_candidate_variants")
     {
         merge_candidate_variants(argc-1, ++argv);
+    }
+    else if (argc>1 && cmd=="merge_candidate_variants2")
+    {
+        merge_candidate_variants2(argc-1, ++argv);
     }
     else if (argc>1 && cmd=="union_variants")
     {

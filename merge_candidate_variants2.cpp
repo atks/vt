@@ -23,9 +23,9 @@
 
 #include "merge_candidate_variants2.h"
 
-#define SINGLE_SAMPLE_DISCOVERY_VCF_FILE
-#define AGGREGATED_SAMPLES_DISCOVERY_VCF_FILE
-#define AGGREGATED_SAMPLES_DISCOVERY_VCF_FILE
+#define SINGLE     0
+#define AGGREGATED 1 
+#define ANNOTATED  2
 
 namespace
 {
@@ -57,7 +57,7 @@ class Igor : Program
     ///////////////
     //general use//
     ///////////////
-    
+    std::vector<int32_t> file_types;
     kstring_t variant;
 
     /////////
@@ -90,36 +90,18 @@ Each VCF file is required to have the FORMAT flags E and N and should have exact
             TCLAP::ValueArg<std::string> arg_intervals("i", "i", "intervals", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_output_vcf_file("o", "o", "output VCF file [-]", false, "-", "", cmd);
-            TCLAP::ValueArg<std::string> arg_input_vcf_file_list("L", "L", "file containing list of input VCF files", true, "", "str", cmd);
+            TCLAP::ValueArg<std::string> arg_input_vcf_file_list("L", "L", "file containing list of input VCF files", false, "", "str", cmd);
             TCLAP::ValueArg<float> arg_snp_variant_score_cutoff("c", "c", "SNP variant score cutoff [30]", false, 30, "float", cmd);
             TCLAP::ValueArg<float> arg_indel_variant_score_cutoff("d", "d", "Indel variant score cutoff [30]", false, 30, "float", cmd);
-
+            TCLAP::UnlabeledMultiArg<std::string> arg_input_vcf_files("<in1.vcf>...", "Multiple VCF files",false, "files", cmd);
+    
             cmd.parse(argc, argv);
 
-            input_vcf_file_list = arg_input_vcf_file_list.getValue();
+            parse_files(input_vcf_files, arg_input_vcf_files.getValue(), arg_input_vcf_file_list.getValue());
             output_vcf_file = arg_output_vcf_file.getValue();
             snp_variant_score_cutoff = arg_snp_variant_score_cutoff.getValue();
             indel_variant_score_cutoff = arg_indel_variant_score_cutoff.getValue();
             parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
-
-            ///////////////////////
-            //parse input VCF files
-            ///////////////////////
-            htsFile *file = hts_open(input_vcf_file_list.c_str(), "r");
-            if (file==NULL)
-            {
-                std::cerr << "cannot open " << input_vcf_file_list.c_str() << "\n";
-                exit(1);
-            }
-            kstring_t *s = &file->line;
-            while (hts_getline(file, KS_SEP_LINE, s) >= 0)
-            {
-                if (s->s[0]!='#')
-                {
-                    input_vcf_files.push_back(std::string(s->s));
-                }
-            }
-            hts_close(file);
         }
         catch (TCLAP::ArgException &e)
         {
@@ -149,21 +131,35 @@ Each VCF file is required to have the FORMAT flags E and N and should have exact
         odw->write_hdr();
 
         //inspect header of each file to figure out if it is a merged candidate variant list or not
+        file_types.resize(sr->hdrs.size());
         for (uint32_t i=0; i<sr->hdrs.size(); ++i)
         {
-            if (bcf_hdr_exists(sr->hdrs[i], BCF_HL_INFO, "NSAMPLE"))
-            {
-            }   
-                //mark as aggregate file
-                //  
-                //if contains MOTIF in INFO field
-                    //mark as VNTR annotated
-                    
-            //if does not exist NSAMPLES in INFO field and 1 sample
-                //mark as single site list
-           
             
-             
+            
+            //mark as aggregate file
+            if (bcf_hdr_exists(sr->hdrs[i], BCF_HL_INFO, "NSAMPLE") && bcf_hdr_get_n_sample(sr->hdrs[i])==0)
+            {
+                if (bcf_hdr_exists(sr->hdrs[i], BCF_HL_INFO, "MOTIF"))
+                {
+                    std::cerr << "annotated\n";
+                    file_types[i] = ANNOTATED;
+                }    
+                else
+                {
+                    std::cerr << "aggregated\n";
+                    file_types[i] = AGGREGATED;
+                }
+            }   
+            else if (bcf_hdr_exists(sr->hdrs[i], BCF_HL_FMT, "E")&& bcf_hdr_get_n_sample(sr->hdrs[i])==1) 
+            {
+                std::cerr << "single\n";
+                file_types[i] = SINGLE;
+            }
+            else
+            {
+                fprintf(stderr, "[E:%s:%d %s] Unrecognized VCF file type from vt pipeline: %s\n", __FILE__, __LINE__, __FUNCTION__, input_vcf_files[i].c_str());
+                exit(1);
+            }
         }
 
         ///////////////
@@ -304,7 +300,7 @@ Each VCF file is required to have the FORMAT flags E and N and should have exact
 
     void print_options()
     {
-        std::clog << "merge_candidate_variants v" << version << "\n\n";
+        std::clog << "merge_candidate_variants2 v" << version << "\n\n";
         std::clog << "options: [L] input VCF file list         " << input_vcf_file_list << " (" << input_vcf_files.size() << " files)\n";
         std::clog << "         [o] output VCF file             " << output_vcf_file << "\n";
         std::clog << "         [c] SNP variant score cutoff    " << snp_variant_score_cutoff << "\n";

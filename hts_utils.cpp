@@ -118,17 +118,17 @@ void bam_hdr_transfer_contigs_to_bcf_hdr(const bam_hdr_t *sh, bcf_hdr_t *vh)
  * @type - BCF_HL_FLT, BCF_HL_INFO, BCF_HL_FMT, BCF_HL_CTG
  * @key  - the key name
  */
-bool bcf_hdr_exists(bcf_hdr_t *hdr, int type, const char *key)
+bool bcf_hdr_exists(bcf_hdr_t *hdr, int32_t type, const char *key)
 {
-    if (!key && type>=BCF_HL_FLT && type<= BCF_HL_CTG) //FLT, INFO, FMT, CTG
+    if (type>=BCF_HL_FLT && type<= BCF_HL_CTG) //FLT, INFO, FMT, CTG
     {
         for (uint32_t i=0; i<hdr->nhrec; ++i)
         {
             if (hdr->hrec[i]->type==type)
             {
                 int j = bcf_hrec_find_key(hdr->hrec[i], "ID");
-                if (j>0)
-                {
+                if (j>=0)
+                {   
                     vdict_t *d = type==BCF_HL_CTG ? (vdict_t*)hdr->dict[BCF_DT_CTG] : (vdict_t*)hdr->dict[BCF_DT_ID];
                     char* val = hdr->hrec[i]->vals[j];
 

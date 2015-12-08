@@ -54,6 +54,7 @@ BCFSyncedReader::BCFSyncedReader(std::vector<std::string>& file_names, std::vect
 
     uint32_t no_stdins = 0;
 
+//    bool toexit = false;
     for (size_t i = 0; i<nfiles; ++i)
     {
         if (file_names[0]=="+")
@@ -78,6 +79,7 @@ BCFSyncedReader::BCFSyncedReader(std::vector<std::string>& file_names, std::vect
         {
             fprintf(stderr, "[%s:%d %s] Cannot open %s\n", __FILE__, __LINE__, __FUNCTION__, file_names[i].c_str());
             exit(1);
+//            toexit = true;        
         }
         ftypes[i] = files[i]->format;
 
@@ -131,6 +133,13 @@ BCFSyncedReader::BCFSyncedReader(std::vector<std::string>& file_names, std::vect
             free(seqnames);
         }
     }
+    
+//    if (toexit)
+//    {
+//        //fprintf(stderr, "[E:%s:%d %s] BCFSyncedReader does not support reading from more than one STDIN stream\n", __FILE__, __LINE__, __FUNCTION__);
+//        exit(1);
+//        //toexit = true;
+//    }
 }
 
 /**
