@@ -112,38 +112,6 @@ void bam_hdr_transfer_contigs_to_bcf_hdr(const bam_hdr_t *sh, bcf_hdr_t *vh)
     if (s.m) free(s.s);
 }
 
-/**
- * Checks if a particular header type exists
- * @hdr  - header
- * @type - BCF_HL_FLT, BCF_HL_INFO, BCF_HL_FMT, BCF_HL_CTG
- * @key  - the key name
- */
-bool bcf_hdr_exists(bcf_hdr_t *hdr, int32_t type, const char *key)
-{
-    if (type>=BCF_HL_FLT && type<= BCF_HL_CTG) //FLT, INFO, FMT, CTG
-    {
-        for (uint32_t i=0; i<hdr->nhrec; ++i)
-        {
-            if (hdr->hrec[i]->type==type)
-            {
-                int j = bcf_hrec_find_key(hdr->hrec[i], "ID");
-                if (j>=0)
-                {   
-                    vdict_t *d = type==BCF_HL_CTG ? (vdict_t*)hdr->dict[BCF_DT_CTG] : (vdict_t*)hdr->dict[BCF_DT_ID];
-                    char* val = hdr->hrec[i]->vals[j];
-
-                    if (strcmp(key, val)==0)
-                    {
-                        return true;
-                    }
-                }
-            }
-        }
-    }
-
-    return false;
-}
-
 /**********
  *BAM UTILS
  **********/
@@ -425,6 +393,37 @@ void bcf_hdr_transfer_contigs(const bcf_hdr_t *hsrc, bcf_hdr_t *hdest)
 }
 
 /**
+ * Checks if a particular header type exists
+ * @hdr  - header
+ * @type - BCF_HL_FLT, BCF_HL_INFO, BCF_HL_FMT, BCF_HL_CTG
+ * @key  - the key name
+ */
+bool bcf_hdr_exists(bcf_hdr_t *hdr, int32_t type, const char *key)
+{
+    if (type>=BCF_HL_FLT && type<= BCF_HL_CTG) //FLT, INFO, FMT, CTG
+    {
+        for (uint32_t i=0; i<hdr->nhrec; ++i)
+        {
+            if (hdr->hrec[i]->type==type)
+            {
+                int j = bcf_hrec_find_key(hdr->hrec[i], "ID");
+                if (j>=0)
+                {
+                    char* val = hdr->hrec[i]->vals[j];
+
+                    if (strcmp(key, val)==0)
+                    {
+                        return true;
+                    }
+                }
+            }
+        }
+    }
+
+    return false;
+}
+
+/**
  * Extracts sequence length by rid.
  */
 int32_t* bcf_hdr_seqlen(const bcf_hdr_t *hdr, int32_t *nseq)
@@ -445,6 +444,56 @@ int32_t* bcf_hdr_seqlen(const bcf_hdr_t *hdr, int32_t *nseq)
     }
 
     return len;
+}
+
+/**
+ * Copies an info fields from one record to another
+ * @hsrc  - source header
+ * @vsrc  - source bcf1_t
+ * @hdest - destination header
+ * @vdest - destination bcf1_t
+ * @type  - BCF_HT_FLAG, BCF_HT_INT, BCF_HT_REAL, BCF_HT_STR
+ * @key   - the key name
+ */
+void bcf_copy_info_field(bcf_hdr_t *hsrc, bcf1_t* vsrc, bcf_hdr_t *hdest, bcf1_t* vdest, const char* key, int32_t type)
+{
+    if (type==BCF_HT_FLAG) 
+    {
+        if (bcf_get_info_flag(hsrc, vsrc, key, NULL, NULL)>0)
+        {
+            bcf_update_info_flag(hdest, vdest, key, NULL, 1);
+        }
+    }
+    else if (type==BCF_HT_INT)
+    {
+        int32_t* str = NULL;
+        int32_t n = 0;
+        if (bcf_get_info_int32(hsrc, vsrc, key, &str, &n)>0)
+        {
+            bcf_update_info_int32(hdest, vdest, key, str, n);
+            free(str);
+        }
+    }
+    else if (type==BCF_HT_REAL)
+    {
+        float* str = NULL;
+        int32_t n = 0;
+        if (bcf_get_info_float(hsrc, vsrc, key, &str, &n)>0)
+        {
+            bcf_update_info_float(hdest, vdest, key, str, n);
+            free(str);
+        }
+    }
+    else if (type==BCF_HT_STR)
+    {
+        char** str = NULL;
+        int32_t n = 0;
+        if (bcf_get_info_string(hsrc, vsrc, key, &str, &n)>0)
+        {
+            bcf_update_info_string(hdest, vdest, key, str);
+            free(str);
+        }
+    }
 }
 
 /**

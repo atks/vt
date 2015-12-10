@@ -86,14 +86,6 @@ bool str_ends_with(std::string& file_name, const char* ext);
 void bam_hdr_transfer_contigs_to_bcf_hdr(const bam_hdr_t *sh, bcf_hdr_t *vh);
 
 /**
- * Checks if a particular header type exists
- * @hdr  - header
- * @type - BCF_HL_FLT, BCF_HL_INFO, BCF_HL_FMT, BCF_HL_CTG
- * @key  - the key name
- */
-bool bcf_hdr_exists(bcf_hdr_t *hdr, int32_t type, const char *key);
-;
-/**
  * Get number of sequences.
  */
 #define bam_hdr_get_n_targets(h) ((h)->n_targets)
@@ -238,10 +230,29 @@ void bam_print(bam_hdr_t *h, bam1_t *s);
 void bcf_hdr_transfer_contigs(const bcf_hdr_t *sh, bcf_hdr_t *vh);
 
 /**
+ * Checks if a particular header type exists
+ * @hdr  - header
+ * @type - BCF_HL_FLT, BCF_HL_INFO, BCF_HL_FMT, BCF_HL_CTG
+ * @key  - the key name
+ */
+bool bcf_hdr_exists(bcf_hdr_t *hdr, int32_t type, const char *key);
+
+/**
  * Extracts sequence length by rid.
  */
 int32_t* bcf_hdr_seqlen(const bcf_hdr_t *hdr, int32_t *nseq);
 
+/**
+ * Copies an info fields from one record to another
+ * @hsrc  - source header
+ * @vsrc  - source bcf1_t
+ * @hdest - destination header
+ * @vdest - destination bcf1_t
+ * @type  - BCF_HT_FLAG, BCF_HT_INT, BCF_HT_REAL, BCF_HT_STR
+ * @key   - the key name
+ */
+void bcf_copy_info_field(bcf_hdr_t *hsrc, bcf1_t* vsrc, bcf_hdr_t *hdest, bcf1_t* vdest, const char* key, int32_t type);
+ 
 /**
  * Get samples from bcf header
  */
