@@ -265,8 +265,6 @@ Each VCF file is required to have the FORMAT flags E and N and should have exact
                     break;
                 }
 
-
-
                 if (file_types[file_index] == SINGLE)
                 {
 

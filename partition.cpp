@@ -158,7 +158,7 @@ class Igor : Program
             filters[1].parse(fexps[0].c_str());
             filter_exists[1] = true;
         }
-        else
+        else if (fexps.size()==2)
         {
             filters[0].parse(fexps[0].c_str());
             filter_exists[0] = true;
@@ -303,16 +303,13 @@ class Igor : Program
         std::clog << "\n";
         std::clog << "Options:     input VCF file a   " << input_vcf_files[0] << "\n";
         std::clog << "             input VCF file b   " << input_vcf_files[1] << "\n";
-        
-        
-         std::cerr << "SIZE" << fexps.size() << "\n";
+                
         if (fexps.size()==1)
         {
             print_str_op("         [f] filter             ", fexp);
         }
-        else
-        {
-           
+        else if (fexps.size()==2)
+        {           
             print_str_op("         [f] filter a           ", fexps[0]);
             print_str_op("             filter b           ", fexps[1]);
         }

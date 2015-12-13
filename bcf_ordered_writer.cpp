@@ -55,6 +55,10 @@ BCFOrderedWriter::BCFOrderedWriter(std::string output_vcf_file_name, int32_t win
         {
             kputc('b', &mode);
         }
+        else if (str_ends_with(file_name, ".ubcf"))
+        {
+            kputs("bu", &mode);
+        }
         else
         {
             fprintf(stderr, "[%s:%d %s] Not a VCF/BCF file: %s\n", __FILE__,__LINE__,__FUNCTION__, file_name.c_str());
