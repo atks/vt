@@ -455,7 +455,7 @@ class Igor : Program
 
         if (VAR_COUNT[POLYMORPHIC][VT_VNTR])
         {
-            vntr_tree->print();
+//            vntr_tree->print();
         }
         
         fprintf(stderr, "       ======= Structural variants ========\n");
