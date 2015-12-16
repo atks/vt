@@ -51,6 +51,7 @@
 #include "normalize.h"
 #include "partition.h"
 #include "paste.h"
+#include "paste_and_compute_features_sequential.h"
 #include "peek.h"
 #include "profile_afs.h"
 #include "profile_chm1.h"
@@ -298,6 +299,10 @@ int main(int argc, char ** argv)
     else if (argc>1 && cmd=="profile_chrom")
     {
         profile_chrom(argc-1, ++argv);
+    }
+    else if (argc>1 && cmd=="paste_and_compute_features_sequential")
+    {
+        paste_and_compute_features_sequential(argc-1, ++argv);
     }
     else if (argc>1 && cmd=="align")
     {
