@@ -174,6 +174,8 @@ bool BCFOrderedReader::initialize_next_interval()
         if (ftype.format==bcf)
         {
             intervals[interval_index++].to_string(&s);
+            hts_itr_destroy(itr);
+            itr = NULL;
             itr = bcf_itr_querys(idx, hdr, s.s);
             if (itr)
             {
@@ -183,6 +185,8 @@ bool BCFOrderedReader::initialize_next_interval()
         else if (ftype.format==vcf && ftype.compression==bgzf)
         {
             intervals[interval_index++].to_string(&s);
+            hts_itr_destroy(itr);
+            itr = NULL;
             itr = tbx_itr_querys(tbx, s.s);
             if (itr)
             {
@@ -280,4 +284,6 @@ void BCFOrderedReader::close()
     bcf_close(file);
     if (hdr) bcf_hdr_destroy(hdr);
     hdr = NULL;
+    if (itr) hts_itr_destroy(itr);
+    itr = NULL;
 }
