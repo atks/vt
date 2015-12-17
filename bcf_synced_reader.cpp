@@ -284,6 +284,8 @@ void BCFSyncedReader::close()
     {
         bcf_close(files[i]);
         bcf_hdr_destroy(hdrs[i]);
+        if (idxs[i]) hts_idx_destroy(idxs[i]);
+        if (tbxs[i]) tbx_destroy(tbxs[i]);
         bcf_itr_destroy(itrs[i]);
     }
 

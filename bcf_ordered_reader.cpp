@@ -286,6 +286,10 @@ bcf1_t* BCFOrderedReader::get_bcf1_from_pool()
 void BCFOrderedReader::close()
 {
     bcf_close(file);
+    if (idx) hts_idx_destroy(idx);
+    idx = NULL;
+    if (tbx) tbx_destroy(tbx);
+    tbx = NULL;    
     if (hdr) bcf_hdr_destroy(hdr);
     hdr = NULL;
     if (itr) hts_itr_destroy(itr);

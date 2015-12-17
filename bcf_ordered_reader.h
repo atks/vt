@@ -78,7 +78,6 @@ class BCFOrderedReader
     tbx_t *tbx;
     hts_itr_t *itr;
     bcf1_t *v;
-    bcf1_t *buffer_v;
 
     //for control
     htsFormat ftype;
