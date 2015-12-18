@@ -193,6 +193,9 @@ class Igor : Program
 
         odw->close();
         odr->close();
+        
+        delete(odw);
+        delete(odr);
     };
 
     void print_options()

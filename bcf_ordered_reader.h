@@ -105,6 +105,11 @@ class BCFOrderedReader
     BCFOrderedReader(std::string input_vcf_file_name, std::vector<GenomeInterval>& intervals);
 
     /**
+     * Destructor.
+     */
+    ~BCFOrderedReader();
+
+    /**
      * Jump to interval. Returns false if not successful.
      *
      * @interval - string representation of interval.
@@ -121,12 +126,6 @@ class BCFOrderedReader
     * Returns false only if all intervals are accessed.
     */
     bool initialize_next_interval();
-
-//    /**
-//     * Returns next set of vcf records at a start position.
-//     * Note that this function should never be used in conjunction with read(bcf1_t *v)
-//     */
-//    bool read_next_position(std::vector<bcf1_t *>& vs);
 
     /**
      * Gets sequence name of a record.
@@ -149,15 +148,6 @@ class BCFOrderedReader
     void close();
 
     private:
-    /**
-     * Gets record from pool, creates a new record if necessary
-     */
-    bcf1_t* get_bcf1_from_pool();
-
-    /**
-     * Returns record to pool
-     */
-    void store_bcf1_into_pool(bcf1_t* v);
 };
 
 #endif

@@ -23,6 +23,12 @@
 
 #include "bcf_ordered_reader.h"
 
+/**
+ * Initialize files and intervals.
+ *
+ * @input_vcf_file_name     name of the input VCF file
+ * @intervals          list of intervals, if empty, all records are selected.
+ */
 BCFOrderedReader::BCFOrderedReader(std::string file_name, std::vector<GenomeInterval>& intervals)
 {
     this->file_name = (file_name=="+")? "-" : file_name;
@@ -40,8 +46,8 @@ BCFOrderedReader::BCFOrderedReader(std::string file_name, std::vector<GenomeInte
     if (!file)
     {
         fprintf(stderr, "[%s:%d %s] Cannot open %s\n", __FILE__, __LINE__, __FUNCTION__, file_name.c_str());
-        exit(1);    
-    }    
+        exit(1);
+    }
     ftype = file->format;
 
     if (ftype.format!=vcf && ftype.format!=bcf)
@@ -58,13 +64,13 @@ BCFOrderedReader::BCFOrderedReader(std::string file_name, std::vector<GenomeInte
     intervals_present =  intervals.size()!=0;
 
     if (ftype.format==bcf)
-    {   
+    {
         if ((idx = bcf_index_load(file_name.c_str())))
         {
             index_loaded = true;
         }
         else
-        {    
+        {
             if (intervals_present)
             {
                 fprintf(stderr, "[E:%s] index cannot be loaded for %s for random access, ignoring specified intervals and reading from start.\n", __FUNCTION__, file_name.c_str());
@@ -75,7 +81,7 @@ BCFOrderedReader::BCFOrderedReader(std::string file_name, std::vector<GenomeInte
     else if (ftype.format==vcf)
     {
         if (ftype.compression==bgzf)
-        {    
+        {
             if ((tbx = tbx_index_load(file_name.c_str())))
             {
                 index_loaded = true;
@@ -101,6 +107,14 @@ BCFOrderedReader::BCFOrderedReader(std::string file_name, std::vector<GenomeInte
 
     random_access_enabled = intervals_present && index_loaded;
 };
+
+/**
+ * Destructor.
+ */
+BCFOrderedReader::~BCFOrderedReader()
+{
+    close();
+}
 
 /**
  * Jump to interval. Returns false if not successful.
@@ -255,41 +269,20 @@ bool BCFOrderedReader::read(bcf1_t *v)
 };
 
 /**
- * Returns record to pool
- */
-void BCFOrderedReader::store_bcf1_into_pool(bcf1_t* v)
-{
-    bcf_clear(v);
-    pool.push_back(v);
-}
-
-/**
- * Gets record from pool, creates a new record if necessary
- */
-bcf1_t* BCFOrderedReader::get_bcf1_from_pool()
-{
-    if(!pool.empty())
-    {
-        bcf1_t* v = pool.front();
-        pool.pop_front();
-        return v;
-    }
-    else
-    {
-        return bcf_init1();
-    }
-};
-
-/**
  * Closes the file.
  */
 void BCFOrderedReader::close()
 {
-    bcf_close(file);
+    if (file && bcf_close(file))
+    {
+        fprintf(stderr, "[%s:%d %s] Cannot close %s\n", __FILE__, __LINE__, __FUNCTION__, file_name.c_str());
+        exit(1);
+    }
+    file = NULL;
     if (idx) hts_idx_destroy(idx);
     idx = NULL;
     if (tbx) tbx_destroy(tbx);
-    tbx = NULL;    
+    tbx = NULL;
     if (hdr) bcf_hdr_destroy(hdr);
     hdr = NULL;
     if (itr) hts_itr_destroy(itr);
