@@ -28,11 +28,16 @@
 #include "htslib/kseq.h"
 #include "program.h"
 #include "hts_utils.h"
+#include "bcf_ordered_reader.h"
 #include "tbx_ordered_reader.h"
 #include "interval_tree.h"
 #include <list>
 #include "bed.h"
 
+/**
+ *  This class allows for overlap matching via streaming which
+ *  requires that files are ordered.
+ */
 class OrderedRegionOverlapMatcher
 {
     public:
@@ -45,7 +50,8 @@ class OrderedRegionOverlapMatcher
     ///////
     //i/o//
     ///////
-    TBXOrderedReader *todr;    
+    BCFOrderedReader *todr; 
+    TBXOrderedReader *todr; 
     
     kstring_t s;
     

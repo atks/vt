@@ -136,7 +136,7 @@ class BCFOrderedReader
      * Checks if index is loaded.
      */
     bool is_index_loaded();
-    
+
     /**
      * Gets bcf header.
      */

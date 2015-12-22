@@ -39,6 +39,7 @@ class Igor : Program
     std::vector<std::string> samples;
     std::string variant;
     uint32_t sort_window_size;
+    bool stream; // this is to force VCF streaming and avoid index jump
     bool print_header;
     bool print_header_only;
     bool print_sites_only;
@@ -85,6 +86,7 @@ class Igor : Program
             cmd.setOutput(&my);
             TCLAP::ValueArg<std::string> arg_intervals("i", "i", "intervals []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "file", cmd);
+            TCLAP::SwitchArg arg_stream("t", "t", "stream variants []", cmd, false);
             TCLAP::SwitchArg arg_print("p", "p", "print options and summary []", cmd, false);
             TCLAP::SwitchArg arg_print_header("h", "h", "omit header, this option is honored only for STDOUT [false]", cmd, false);
             TCLAP::SwitchArg arg_print_header_only("H", "H", "print header only, this option is honored only for STDOUT [false]", cmd, false);
@@ -101,6 +103,7 @@ class Igor : Program
             output_vcf_file = arg_output_vcf_file.getValue();
             parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
             fexp = arg_fexp.getValue();
+            stream = arg_stream.getValue();
             print_header = arg_print_header.getValue();
             print_header_only = arg_print_header_only.getValue();
             no_subset_samples = arg_print_sites_only.getValue() ? 0 : -1;
@@ -119,6 +122,7 @@ class Igor : Program
         //////////////////////
         //i/o initialization//
         //////////////////////
+        if (stream) {}
         odr = new BCFOrderedReader(input_vcf_file, intervals);
         odw = new BCFOrderedWriter(output_vcf_file, sort_window_size);
         if (no_subset_samples==-1)
@@ -135,8 +139,6 @@ class Igor : Program
         /////////////////////////
         filter.parse(fexp.c_str(), false);
         filter_exists = fexp=="" ? false : true;
-
-//        exit(1);
 
         ////////////////////////
         //stats initialization//
