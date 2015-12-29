@@ -78,6 +78,7 @@ bam_hdr_t *bam_hdr_dup(const bam_hdr_t *h0)
     // Then the pointery stuff
     h->cigar_tab = NULL;
     h->sdict = NULL;
+    // TODO Check for memory allocation failures
     h->text = (char*)calloc(h->l_text + 1, 1);
     memcpy(h->text, h0->text, h->l_text);
     h->target_len = (uint32_t*)calloc(h->n_targets, sizeof(uint32_t));
@@ -98,6 +99,7 @@ static bam_hdr_t *hdr_from_dict(sdict_t *d)
     h = bam_hdr_init();
     h->sdict = d;
     h->n_targets = kh_size(d);
+    // TODO Check for memory allocation failures
     h->target_len = (uint32_t*)malloc(sizeof(uint32_t) * h->n_targets);
     h->target_name = (char**)malloc(sizeof(char*) * h->n_targets);
     for (k = kh_begin(d); k != kh_end(d); ++k) {
@@ -152,10 +154,16 @@ bam_hdr_t *bam_hdr_read(BGZF *fp)
     if (h->n_targets < 0) goto invalid;
 
     // read reference sequence names and lengths
-    h->target_name = (char**)calloc(h->n_targets, sizeof(char*));
-    if (!h->target_name) goto nomem;
-    h->target_len = (uint32_t*)calloc(h->n_targets, sizeof(uint32_t));
-    if (!h->target_len) goto nomem;
+    if (h->n_targets > 0) {
+        h->target_name = (char**)calloc(h->n_targets, sizeof(char*));
+        if (!h->target_name) goto nomem;
+        h->target_len = (uint32_t*)calloc(h->n_targets, sizeof(uint32_t));
+        if (!h->target_len) goto nomem;
+    }
+    else {
+        h->target_name = NULL;
+        h->target_len = NULL;
+    }
 
     for (i = 0; i != h->n_targets; ++i) {
         bytes = bgzf_read(fp, &name_len, 4);
@@ -408,7 +416,7 @@ int bam_read1(BGZF *fp, bam1_t *b)
     c->l_qseq = x[4];
     c->mtid = x[5]; c->mpos = x[6]; c->isize = x[7];
     b->l_data = block_len - 32;
-    if (b->l_data < 0 || c->l_qseq < 0) return -4;
+    if (b->l_data < 0 || c->l_qseq < 0 || c->l_qname < 1) return -4;
     if ((char *)bam_get_aux(b) - (char *)b->data > b->l_data)
         return -4;
     if (b->m_data < b->l_data) {
@@ -1087,6 +1095,9 @@ int sam_format1(const bam_hdr_t *h, const bam1_t *b, kstring_t *str)
         if (s[0] == 0xff) kputc('*', str);
         else for (i = 0; i < c->l_qseq; ++i) kputc(s[i] + 33, str);
     } else kputsn("*\t*", 3, str);
+
+    // FIXME change "s+N <= b->data+b->l_data" to "b->data+b->l_data - s >= N"
+    // (or equivalent) everywhere to avoid looking past the end of the array
     s = bam_get_aux(b); // aux
     while (s+4 <= b->data + b->l_data) {
         uint8_t type, key[2];
@@ -1148,10 +1159,13 @@ int sam_format1(const bam_hdr_t *h, const bam1_t *b, kstring_t *str)
             ++s;
         } else if (type == 'B') {
             uint8_t sub_type = *(s++);
-            int32_t n;
+            int sub_type_size = aux_type2size(sub_type);
+            uint32_t n;
+            if (sub_type_size == 0 || b->data + b->l_data - s < 4)
+                return -1;
             memcpy(&n, s, 4);
-            s += 4; // no point to the start of the array
-            if (s + n >= b->data + b->l_data)
+            s += 4; // now points to the start of the array
+            if ((b->data + b->l_data - s) / sub_type_size < n)
                 return -1;
             kputsn("B:", 2, str); kputc(sub_type, str); // write the typing
             for (i = 0; i < n; ++i) { // FIXME: for better performance, put the loop after "if"
@@ -1163,6 +1177,7 @@ int sam_format1(const bam_hdr_t *h, const bam1_t *b, kstring_t *str)
                 else if ('i' == sub_type) { kputw(*(int32_t*)s, str); s += 4; }
                 else if ('I' == sub_type) { kputuw(*(uint32_t*)s, str); s += 4; }
                 else if ('f' == sub_type) { ksprintf(str, "%g", *(float*)s); s += 4; }
+                else return -1;
             }
         }
     }
