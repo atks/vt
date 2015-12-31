@@ -216,7 +216,7 @@ void BCFGenotypingBufferedReader::collect_sufficient_statistics(GenotypingRecord
                     {
 //                        std::cerr << i << ") " << vpos1 << "," << cpos1 << "," << rpos0 << " : " << aug_ref[i] << "/" << aug_alt[i] << " vs " <<bcf_get_allele(g->v)[1][0] << "\n";
 
-                        allele = aug_alt[i].at(0) == bcf_get_allele(g->v)[1][0] ? 1 : -1;
+                        allele = (aug_alt[i].at(0) == bcf_get_allele(g->v)[1][0]) ? 1 : -1;
                         q = qual[rpos0];
                         cycle = rpos0<(rlen>>1) ? (rpos0+1) : -(rlen - rpos0 + 1);
 
@@ -423,8 +423,7 @@ void BCFGenotypingBufferedReader::collect_sufficient_statistics(GenotypingRecord
                             cycle = strand == 'F' ? (rpos0+1) : (rlen - rpos0);
                             break;
                         }
-    
-                        cpos1 += oplen;
+     
                     }
                     else
                     {
@@ -686,7 +685,7 @@ void BCFGenotypingBufferedReader::compute_snp_pl(std::vector<int32_t>& alleles, 
         double pRR = 1;
         double pRA = 1;
         double pAA = 1;
-        double p;
+        double p = 0;
 
         for (uint32_t i=0; i<alleles.size(); ++i)
         {
@@ -697,12 +696,19 @@ void BCFGenotypingBufferedReader::compute_snp_pl(std::vector<int32_t>& alleles, 
                 pRA *= 0.5*(1-p+p/3);
                 pAA *= p;
             }
-            else
+            else if (alleles[i]==1)
             {
                 p = lt.pl2prob(quals[i])/3;
                 pRR *= p;
                 pRA *= 0.5*(1-p+p/3);
                 pAA *= 1-p;
+            }
+            else if (alleles[i]==-1)
+            {
+                p = lt.pl2prob(quals[i])/3;
+                pRR *= p;
+                pRA *= 0.5*(2*p/3);
+                pAA *= p;
             }
         }
 
@@ -722,8 +728,8 @@ void BCFGenotypingBufferedReader::compute_indel_pl(std::vector<int32_t>& alleles
         double pRR = 0;
         double pRA = 0;
         double pAA = 0;
-        double p;
-        double q;
+        double p = 0;
+        double q = 0;
 
         for (uint32_t i=0; i<alleles.size(); ++i)
         {
@@ -735,10 +741,19 @@ void BCFGenotypingBufferedReader::compute_indel_pl(std::vector<int32_t>& alleles
                 pRA += -0.30103+lt.log10sum(p,q);
                 pAA += q;
             }
+            else if (alleles[i]==1)
+            {
+                p = -((float)quals[i])/10;
+                q = p - 2;
+                pRR += q;
+                pRA += -0.30103+lt.log10sum(p,q);
+                pAA += p;
+            }
             else
             {
                 p = -((float)quals[i])/10;
                 q = p - 2;
+                p = q;
                 pRR += q;
                 pRA += -0.30103+lt.log10sum(p,q);
                 pAA += p;
