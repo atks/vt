@@ -35,11 +35,14 @@ class Igor : Program
     ///////////
     std::string input_vcf_file;
     std::string output_vcf_file;
+    std::string streaming_selection_bed_file;
+    uint32_t left_window;
+    uint32_t right_window;
     std::vector<GenomeInterval> intervals;
     std::vector<std::string> samples;
     std::string variant;
     uint32_t sort_window_size;
-    bool stream; // this is to force VCF streaming and avoid index jump
+    bool stream_selection;
     bool print_header;
     bool print_header_only;
     bool print_sites_only;
@@ -69,6 +72,7 @@ class Igor : Program
     //tools//
     /////////
     VariantManip *vm;
+    OrderedRegionOverlapMatcher *orom_regions;
 
     Igor(int argc, char **argv)
     {
@@ -86,7 +90,9 @@ class Igor : Program
             cmd.setOutput(&my);
             TCLAP::ValueArg<std::string> arg_intervals("i", "i", "intervals []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "file", cmd);
-            TCLAP::SwitchArg arg_stream("t", "t", "stream variants []", cmd, false);
+            TCLAP::ValueArg<std::string> arg_streaming_selection_bed_file("t", "t", "bed file for variant selection via streaming []", false, "", "file", cmd);
+            TCLAP::ValueArg<uint32_t> arg_left_window("l", "l", "left window size for overlap []", false, 0, "int", cmd);
+            TCLAP::ValueArg<uint32_t> arg_right_window("r", "r", "right window size for overlap []", false, 0, "int", cmd);
             TCLAP::SwitchArg arg_print("p", "p", "print options and summary []", cmd, false);
             TCLAP::SwitchArg arg_print_header("h", "h", "omit header, this option is honored only for STDOUT [false]", cmd, false);
             TCLAP::SwitchArg arg_print_header_only("H", "H", "print header only, this option is honored only for STDOUT [false]", cmd, false);
@@ -103,7 +109,9 @@ class Igor : Program
             output_vcf_file = arg_output_vcf_file.getValue();
             parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
             fexp = arg_fexp.getValue();
-            stream = arg_stream.getValue();
+            streaming_selection_bed_file = arg_streaming_selection_bed_file.getValue();
+            left_window = arg_left_window.getValue();
+            right_window = arg_right_window.getValue();
             print_header = arg_print_header.getValue();
             print_header_only = arg_print_header_only.getValue();
             no_subset_samples = arg_print_sites_only.getValue() ? 0 : -1;
@@ -122,7 +130,13 @@ class Igor : Program
         //////////////////////
         //i/o initialization//
         //////////////////////
-        if (stream) {}
+        stream_selection = false;
+        if (streaming_selection_bed_file != "")
+        {
+            orom_regions = new OrderedRegionOverlapMatcher(streaming_selection_bed_file);
+            stream_selection = true;
+        }
+        
         odr = new BCFOrderedReader(input_vcf_file, intervals);
         odw = new BCFOrderedWriter(output_vcf_file, sort_window_size);
         if (no_subset_samples==-1)
@@ -167,12 +181,26 @@ class Igor : Program
         bcf1_t *v = odw->get_bcf1_from_pool();
         bcf_hdr_t *h = odr->hdr;
         Variant variant;
+        
         while (odr->read(v))
         {
 //            bcf_print(h,v);
-            
+
+            if (stream_selection)
+            {
+                bcf_unpack(v, BCF_UN_STR);
+                std::string chrom = bcf_get_chrom(odr->hdr,v);
+                int32_t start1 = bcf_get_pos1(v);
+                int32_t end1 = bcf_get_end_pos1(v);
+
+                if (!orom_regions->overlaps_with(chrom, start1-left_window, end1+right_window))
+                {
+                    continue;
+                }
+            }
+
             if (filter_exists)
-            {   
+            {
                 vm->classify_variant(h, v, variant);
                 if (!filter.apply(h, v, &variant, false))
                 {
@@ -195,7 +223,7 @@ class Igor : Program
 
         odw->close();
         odr->close();
-        
+
         delete(odw);
         delete(odr);
     };

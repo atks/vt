@@ -31,6 +31,7 @@
 #include "hts_utils.h"
 #include "program.h"
 #include "variant_manip.h"
+#include "ordered_region_overlap_matcher.h"
 
 bool view(int argc, char ** argv);
     
