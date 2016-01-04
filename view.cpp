@@ -234,15 +234,18 @@ class Igor : Program
 
         std::clog << "view v" << version << "\n\n";
 
-        std::clog << "options:     input VCF file              " << input_vcf_file << "\n";
-        std::clog << "         [o] output VCF file             " << output_vcf_file << "\n";
-        std::clog << "         [w] sort window size            " << sort_window_size << "\n";
-        std::clog << "         [h] print header                " << (print_header ? "yes" : "no") << "\n";
-        std::clog << "         [H] print header only           " << (print_header_only ? "yes" : "no") << "\n";
-        std::clog << "         [s] print site information only " << (print_sites_only ? "yes" : "no") << "\n";
-        std::clog << "         [p] print options and stats     " << (print ? "yes" : "no") << "\n";
-        print_str_op("         [f] filter                      ", fexp);
-        print_int_op("         [i] intervals                   ", intervals);
+        std::clog << "options:     input VCF file                " << input_vcf_file << "\n";
+        std::clog << "         [o] output VCF file               " << output_vcf_file << "\n";
+        std::clog << "         [w] sort window size              " << sort_window_size << "\n";
+        print_str_op("         [t] streaming selection bed file  ", streaming_selection_bed_file);
+        print_num_op("         [l] left window                   ", left_window);
+        print_num_op("         [r] right window                  ", right_window);
+        std::clog << "         [h] print header                  " << (print_header ? "yes" : "no") << "\n";
+        std::clog << "         [H] print header only             " << (print_header_only ? "yes" : "no") << "\n";
+        std::clog << "         [s] print site information only   " << (print_sites_only ? "yes" : "no") << "\n";
+        std::clog << "         [p] print options and stats       " << (print ? "yes" : "no") << "\n";
+        print_str_op("         [f] filter                        ", fexp);
+        print_int_op("         [i] intervals                     ", intervals);
         std::clog << "\n";
     }
 
