@@ -34,6 +34,7 @@
 #include "htslib/vcfutils.h"
 #include "hts_utils.h"
 #include "program.h"
+#include "ordered_bcf_overlap_matcher.h"
 
 void profile_vntrs(int argc, char ** argv);
 

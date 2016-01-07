@@ -59,6 +59,7 @@ class Igor : Program
     //i/o//
     ///////
     BCFSyncedReader *sr;
+    OrderedBCFOverlapMatcher *obom;
 
     //////////
     //filter//
@@ -121,9 +122,78 @@ class Igor : Program
     void initialize()
     {
         //////////////////////
+        //reference data set//
+        //////////////////////
+//# This file contains information on how to process reference data sets.
+//# dataset - name of data set, this label will be printed.
+//# type    - True Positives (TP) and False Positives (FP).
+//#           overlap percentages labeled as (Precision, Sensitivity) and (False Discovery Rate, Type I Error) respectively.
+//#         - annotation.
+//#           file is used for GENCODE annotation of frame shift and non frame shift Indels.
+//# filter  - filter applied to variants for this particular data set.
+//# path    - path of indexed BCF file.
+//#dataset     type            filter                       path
+//trf_lobstr   TP              VTYPE==VNTR                  /net/fantasia/home/atks/ref/vt/grch37/trf.lobstr.sites.bcf
+
+        dataset_labels.push_back("data");
+        dataset_types.push_back(REF);
+        dataset_fexps.push_back(fexp);
+        dataset_info_site_tags.push_back("");
+        dataset_info_gt_tags.push_back("");
+
+        htsFile *hts = hts_open(ref_data_sets_list.c_str(), "r");
+        if (!hts)
+        {
+            fprintf(stderr, "[E:%s:%d %s] Reference file cannot be opened %s\n", __FILE__, __LINE__, __FUNCTION__, ref_data_sets_list.c_str());
+            exit(1);
+        }
+
+        kstring_t s = {0,0,0};
+        std::vector<std::string> vec;
+        while (hts_getline(hts, '\n', &s)>=0)
+        {
+            if (s.s[0] == '#')
+                continue;
+
+            std::string line(s.s);
+            split(vec, " ", line);
+
+            if (vec[1] == "Truth" || vec[1] == "False" || vec[1] == "BroadKB")
+            {
+                dataset_labels.push_back(vec[0]);
+                if (vec[1]=="Truth")
+                {
+                    dataset_types.push_back(TRUE);
+                }
+                else if (vec[1]=="False")
+                {
+                    dataset_types.push_back(FALSE);
+                }
+                else if (vec[1]=="BroadKB")
+                {
+                    dataset_types.push_back(BROADKB);
+                }
+                dataset_fexps.push_back(vec[2]);
+                input_vcf_files.push_back(vec[3]);
+            }
+            else if (vec[1] == "cds_annotation")
+            {
+                cds_bed_file = vec[3];
+            }
+            else
+            {
+                fprintf(stderr, "[E:%s:%d %s] Reference data set type %s not recognized\n", __FILE__, __LINE__, __FUNCTION__, vec[1].c_str());
+                exit(1);
+            }
+        }
+        hts_close(hts);
+        if (s.m) free(s.s);
+            
+        //////////////////////
         //i/o initialization//
         //////////////////////
         sr = new BCFSyncedReader(input_vcf_files, intervals, SYNC_BY_VAR);
+        obom = new OrderedBCFOverlapMatcher(vcf_file);
 
         ///////////////////////
         //tool initialization//
@@ -241,7 +311,7 @@ class Igor : Program
 
     void print_options()
     {
-        std::clog << "rpartition v" << version << "\n";
+        std::clog << "profile_vntrs v" << version << "\n";
         std::clog << "\n";
         std::clog << "Options:     input VCF file a   " << input_vcf_files[0] << "\n";
         std::clog << "             input VCF file b   " << input_vcf_files[1] << "\n";
@@ -275,7 +345,7 @@ class Igor : Program
 
 }
 
-void profile_vntr(int argc, char ** argv)
+void profile_vntrs(int argc, char ** argv)
 {
     Igor igor(argc, argv);
     igor.print_options();

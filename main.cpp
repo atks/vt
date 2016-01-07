@@ -63,6 +63,7 @@
 #include "profile_mendelian.h"
 #include "profile_na12878.h"
 #include "profile_snps.h"
+#include "profile_vntrs.h"
 #include "remove_overlap.h"
 #include "rminfo.h"
 #include "rpartition.h"
@@ -271,6 +272,10 @@ int main(int argc, char ** argv)
     else if (argc>1 && cmd=="construct_probes")
     {
         construct_probes(argc-1, ++argv);
+    }
+    else if (argc>1 && cmd=="profile_vntrs")
+    {
+        profile_vntrs(argc-1, ++argv);
     }
     else if (argc>1 && cmd=="profile_indels")
     {
