@@ -23,6 +23,11 @@
 
 #include "profile_vntrs.h"
 
+#define REF     0
+#define BROADKB 1
+#define TRUE    2
+#define FALSE   3
+
 namespace
 {
 
@@ -55,6 +60,17 @@ class Igor : Program
     std::string interval_list;
     bool write_partition;
 
+    ///////////////////////
+    //reference data sets//
+    ///////////////////////
+    std::string ref_data_sets_list;
+    std::vector<std::string> dataset_labels;
+    std::vector<int32_t> dataset_types;
+    std::vector<std::string> dataset_fexps;
+    std::vector<std::string> dataset_info_site_tags;
+    std::vector<std::string> dataset_info_gt_tags;
+    std::string cds_bed_file;
+        
     ///////
     //i/o//
     ///////
@@ -193,7 +209,7 @@ class Igor : Program
         //i/o initialization//
         //////////////////////
         sr = new BCFSyncedReader(input_vcf_files, intervals, SYNC_BY_VAR);
-        obom = new OrderedBCFOverlapMatcher(vcf_file);
+        obom = new OrderedBCFOverlapMatcher(input_vcf_files[1], intervals);
 
         ///////////////////////
         //tool initialization//
