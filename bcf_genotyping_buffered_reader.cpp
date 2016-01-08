@@ -1209,6 +1209,78 @@ void BCFGenotypingBufferedReader::flush(BCFOrderedWriter* odw, bam_hdr_t *h, bam
     }
 }
 
+//    /**
+//     * Compute -10 * log10 likelihood ratio P(Non Variant)/P(Variant) for an alternative SNP allele.
+//     */
+//    float compute_snp_variant_score(std::vector<uint32_t>& REF_Q, std::vector<uint32_t>& ALT_Q)
+//    {
+////        double pRR = 1;
+////        double pRA = 1;
+////        double pAA = 1;
+////        double p;
+////        double theta = 0.001;
+////
+////        for (uint32_t i=0; i<REF_Q.size(); ++i)
+////        {
+////            p = lt.pl2prob(REF_Q[i]);
+////            pRR *= 1-p;
+////            pRA *= 0.5;
+////            pAA *= p;
+////        }
+////
+////        for (uint32_t i=0; i<ALT_Q.size(); ++i)
+////        {
+////            p = lt.pl2prob(ALT_Q[i]);
+////            pRR *= p;
+////            pRA *= 0.5;
+////            pAA *= 1-p;
+////        }
+////
+////        double ln_lr = log10(pRR/((1-theta)*pRR+0.33*theta*pRA+0.67*theta*pAA));
+////        ln_lr = ln_lr>0 ? 0 : ln_lr;
+////
+////        return (float) (-10 * ln_lr);
+//        
+//        ///////
+//        float lg_theta = -3; // theta = 0.001;
+//        float lg_one_minus_theta = -0.0004345118; // 1-theta = 0.999;
+//        float lg_0_5 = -0.30103;
+//        float lg_one_third = -0.4771213;
+//        float lg_two_thirds = -0.1760913;
+//
+//        float lg_pRR = 0;
+//        float lg_pRA = 0;
+//        float lg_pAA = 0;
+//
+//        for (uint32_t i=0; i<REF_Q.size(); ++i)
+//        {
+//            lg_pRR += lt.pl2pl_one_minus_p(REF_Q[i])/-10.0;
+//            lg_pRA += lg_0_5;
+//            lg_pAA += REF_Q[i]/-10.0;
+//        }
+//        
+//        for (uint32_t i=0; i<ALT_Q.size(); ++i)
+//        {
+//            lg_pRR += ALT_Q[i]/-10.0;
+//            lg_pRA += lg_0_5;
+//            lg_pAA += lt.pl2pl_one_minus_p(ALT_Q[i])/-10.0;
+//        }
+//        
+//        float lg_lr = lg_one_minus_theta + lg_pRR;
+//        lg_lr = lt.log10sum(lg_lr, lg_one_third+lg_theta+lg_pRA);
+//        lg_lr = lt.log10sum(lg_lr, lg_two_thirds+lg_theta+lg_pAA);
+//        lg_lr = lg_pRR - lg_lr;
+//
+//        if (lg_lr>0)
+//        {
+//            return 0;
+//        }    
+//        else
+//        {
+//            return -10 * lg_lr;
+//        }
+//    }
+
 /**
  * Compute SNP genotype likelihoods in PHRED scale.
  */
@@ -1216,33 +1288,84 @@ void BCFGenotypingBufferedReader::compute_snp_pl(std::vector<int32_t>& alleles, 
 {
     if (ploidy==2 && no_alleles==2)
     {
-        double pRR = 1;
-        double pRA = 1;
-        double pAA = 1;
-        double p;
+//        double pRR = 1;
+//        double pRA = 1;
+//        double pAA = 1;
+//        double p;
+//
+//        for (uint32_t i=0; i<alleles.size(); ++i)
+//        {
+//            if (alleles[i]==0)
+//            {
+//                p = lt.pl2prob(quals[i]);
+//                pRR *= 1-p;
+//                pRA *= 0.5*(1-p+p/3);
+//                pAA *= p/3;
+//            }
+//            else if (alleles[i]==1)
+//            {
+//                p = lt.pl2prob(quals[i])/3;
+//                pRR *= p;
+//                pRA *= 0.5*(1-p+p);
+//                pAA *= 1-p;
+//            }
+//            else if (alleles[i]==-101)
+//            {
+//                p = lt.pl2prob(quals[i])/3;
+//                pRR *= p;
+//                pRA *= 0.5*(2*p);
+//                pAA *= p;
+//            }
+//            else //deletion
+//            {
+//                //can't do anything
+//            }
+//        }
+//
+//        pls[0] = -10*log10(pRR);
+//        pls[1] = -10*log10(pRA);
+//        pls[2] = -10*log10(pAA);
+
+        float lg_theta = -3; // theta = 0.001;
+        float lg_one_minus_theta = -0.0004345118; // 1-theta = 0.999;
+        float lg_0_5 = -0.30103;
+        float lg_one_third = -0.4771213;
+        float lg_two_thirds = -0.1760913;
+
+        float lg_pRR = 0;
+        float lg_pRA = 0;
+        float lg_pAA = 0;
 
         for (uint32_t i=0; i<alleles.size(); ++i)
         {
             if (alleles[i]==0)
             {
-                p = lt.pl2prob(quals[i]);
-                pRR *= 1-p;
-                pRA *= 0.5*(1-p+p/3);
-                pAA *= p;
+                lg_pRR += lt.pl2pl_one_minus_p(quals[i])/-10.0;
+                lg_pRA += lg_0_5;
+                lg_pAA += quals[i]/-10.0;
+            
+//                p = lt.pl2prob(quals[i]);
+//                pRR *= 1-p;
+//                pRA *= 0.5*(1-p+p/3);
+//                pAA *= p/3;
             }
             else if (alleles[i]==1)
             {
-                p = lt.pl2prob(quals[i])/3;
-                pRR *= p;
-                pRA *= 0.5*(1-p+p/3);
-                pAA *= 1-p;
+                lg_pRR += quals[i]/-10.0;
+                lg_pRA += lg_0_5;
+                lg_pAA += lt.pl2pl_one_minus_p(quals[i])/-10.0;
+                
+//                p = lt.pl2prob(quals[i])/3;
+//                pRR *= p;
+//                pRA *= 0.5*(1-p+p);
+//                pAA *= 1-p;
             }
             else if (alleles[i]==-101)
             {
-                p = lt.pl2prob(quals[i])/3;
-                pRR *= p;
-                pRA *= 0.5*(2*p);
-                pAA *= p;
+//                p = lt.pl2prob(quals[i])/3;
+//                pRR *= p;
+//                pRA *= 0.5*(2*p);
+//                pAA *= p;
             }
             else //deletion
             {
@@ -1250,9 +1373,10 @@ void BCFGenotypingBufferedReader::compute_snp_pl(std::vector<int32_t>& alleles, 
             }
         }
 
-        pls[0] = -10*log10(pRR);
-        pls[1] = -10*log10(pRA);
-        pls[2] = -10*log10(pAA);
+        pls[0] = lg_pRR;
+        pls[1] = lg_pRA;
+        pls[2] = lg_pAA;
+        
     }
     else if (ploidy==2 && no_alleles>2)
     {
@@ -1302,7 +1426,7 @@ void BCFGenotypingBufferedReader::compute_snp_pl(std::vector<int32_t>& alleles, 
  */
 void BCFGenotypingBufferedReader::compute_indel_pl(std::vector<int32_t>& alleles, std::vector<uint32_t>& quals, uint32_t ploidy, uint32_t no_alleles, std::vector<uint32_t>& pls)
 {
-    if (ploidy==2)
+    if (ploidy==2 && no_alleles==2)
     {
         double pRR = 0;
         double pRA = 0;

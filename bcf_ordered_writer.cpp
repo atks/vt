@@ -23,7 +23,7 @@
 
 #include "bcf_ordered_writer.h"
 
-BCFOrderedWriter::BCFOrderedWriter(std::string output_vcf_file_name, int32_t window)
+BCFOrderedWriter::BCFOrderedWriter(std::string output_vcf_file_name, int32_t window, int32_t compression)
 {
     this->file_name = output_vcf_file_name;
     this->window = window;
@@ -50,10 +50,22 @@ BCFOrderedWriter::BCFOrderedWriter(std::string output_vcf_file_name, int32_t win
         else if (str_ends_with(file_name, ".vcf.gz"))
         {
             kputc('z', &mode);
+            if (compression!=6 && compression!=-1)
+            {
+                kputw(compression, &mode);
+            }                
         }
         else if (str_ends_with(file_name, ".bcf"))
         {
             kputc('b', &mode);
+            if (compression!=6 && compression!=-1)
+            {
+                kputw(compression, &mode);
+            } 
+            else if (compression==-1)
+            {
+                kputc('u', &mode);
+            }    
         }
         else if (str_ends_with(file_name, ".ubcf"))
         {
