@@ -35,7 +35,7 @@ class Igor : Program
     ///////////
     std::string input_vcf_file;
     std::string output_vcf_file;
-    int32_t compression;
+    int32_t compression_level;
     std::string streaming_selection_bed_file;
     uint32_t left_window;
     uint32_t right_window;
@@ -92,8 +92,8 @@ class Igor : Program
             TCLAP::ValueArg<std::string> arg_intervals("i", "i", "intervals []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "file", cmd);
             TCLAP::ValueArg<std::string> arg_streaming_selection_bed_file("t", "t", "bed file for variant selection via streaming []", false, "", "file", cmd);
-            TCLAP::ValueArg<int32_t> arg_compression("c", "c", "compression level 0-9, 0 and -1 denotes uncompressed with the former being wrapped in bgzf.[6]", false, 0, "int", cmd);
-            TCLAP::ValueArg<uint32_t> arg_left_window("l", "l", "left window size for overlap []", false, 6, "int", cmd);
+            TCLAP::ValueArg<int32_t> arg_compression_level("c", "c", "compression level 0-9, 0 and -1 denotes uncompressed with the former being wrapped in bgzf.[6]", false, 6, "int", cmd);
+            TCLAP::ValueArg<uint32_t> arg_left_window("l", "l", "left window size for overlap []", false, 0, "int", cmd);
             TCLAP::ValueArg<uint32_t> arg_right_window("r", "r", "right window size for overlap []", false, 0, "int", cmd);
             TCLAP::SwitchArg arg_print("p", "p", "print options and summary []", cmd, false);
             TCLAP::SwitchArg arg_print_header("h", "h", "omit header, this option is honored only for STDOUT [false]", cmd, false);
@@ -109,7 +109,7 @@ class Igor : Program
 
             input_vcf_file = arg_input_vcf_file.getValue();
             output_vcf_file = arg_output_vcf_file.getValue();
-            compression = arg_compression.getValue();
+            compression_level = arg_compression_level.getValue();
             parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
             fexp = arg_fexp.getValue();
             streaming_selection_bed_file = arg_streaming_selection_bed_file.getValue();
@@ -141,7 +141,7 @@ class Igor : Program
         }
         
         odr = new BCFOrderedReader(input_vcf_file, intervals);
-        odw = new BCFOrderedWriter(output_vcf_file, sort_window_size);
+        odw = new BCFOrderedWriter(output_vcf_file, sort_window_size, compression_level);
         if (no_subset_samples==-1)
         {
             odw->link_hdr(odr->hdr);

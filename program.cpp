@@ -300,7 +300,6 @@ void Program::print_ifiles(const char* option_line, std::vector<std::string>& fi
             if (i) std::clog << ",";
             std::clog << files[i];
         }
-        std::clog << "\n";
         if (files.size()>2)
         {
             std::clog << " and " << (files.size()-2) <<  " other files\n";

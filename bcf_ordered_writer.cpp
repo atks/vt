@@ -53,7 +53,11 @@ BCFOrderedWriter::BCFOrderedWriter(std::string output_vcf_file_name, int32_t win
             if (compression!=6 && compression!=-1)
             {
                 kputw(compression, &mode);
-            }                
+            }  
+            else if (compression==-1)
+            {
+                kputw(0, &mode);
+            }              
         }
         else if (str_ends_with(file_name, ".bcf"))
         {

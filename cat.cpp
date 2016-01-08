@@ -38,6 +38,7 @@ class Igor : Program
     std::vector<std::string> input_vcf_files;
     std::string input_vcf_file_list;
     std::string output_vcf_file;
+    int32_t compression_level;
     std::vector<GenomeInterval> intervals;
     std::string interval_list;
     uint32_t sort_window_size;
@@ -84,6 +85,7 @@ class Igor : Program
             TCLAP::ValueArg<std::string> arg_intervals("i", "i", "intervals", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_output_vcf_file("o", "o", "output VCF file [-]", false, "-", "", cmd);
+            TCLAP::ValueArg<int32_t> arg_compression_level("c", "c", "compression level 0-9, 0 and -1 denotes uncompressed with the former being wrapped in bgzf.[6]", false, 6, "int", cmd);
             TCLAP::ValueArg<std::string> arg_input_vcf_file_list("L", "L", "file containing list of input VCF files", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_fexp("f", "f", "filter expression []", false, "", "str", cmd);
             TCLAP::ValueArg<uint32_t> arg_sort_window_size("w", "w", "local sorting window size [0]", false, 0, "int", cmd);
@@ -96,6 +98,7 @@ class Igor : Program
 
             parse_files(input_vcf_files, arg_input_vcf_files.getValue(), arg_input_vcf_file_list.getValue());
             output_vcf_file = arg_output_vcf_file.getValue();
+            compression_level = arg_compression_level.getValue();
             fexp = arg_fexp.getValue();
             sort_window_size = arg_sort_window_size.getValue();
             parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
@@ -120,7 +123,7 @@ class Igor : Program
             exit(1);
         }
         odr = new BCFOrderedReader(input_vcf_files[0], intervals);
-        odw = new BCFOrderedWriter(output_vcf_file, sort_window_size);
+        odw = new BCFOrderedWriter(output_vcf_file, sort_window_size, compression_level);
         if (no_subset_samples==-1)
         {
             odw->set_hdr(odr->hdr);
