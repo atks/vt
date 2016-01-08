@@ -97,7 +97,8 @@ class BCFGenotypingBufferedReader
     void compute_snp_pl(std::vector<int32_t>& alleles, 
                         std::vector<uint32_t>& quals, 
                         uint32_t ploidy, uint32_t no_alleles, 
-                        std::vector<uint32_t>& pls);
+                        std::vector<uint32_t>& pls,
+                        float& pl_offset);
 
     /**
      * Compute Indel genotype likelihoods in PHRED scale.

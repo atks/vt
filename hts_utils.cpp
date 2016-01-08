@@ -771,7 +771,15 @@ uint32_t bcf_ap2g(uint32_t no_allele, uint32_t no_ploidy)
 }
 
 /**
- * Gets number of genotypes from number of alleles and genotypes.
+ * Gets alleles from number of ploidy and genotype index.
+ */
+void bcf_pg2a(uint32_t no_ploidy, uint32_t genotype_index, std::vector<int32_t>& alleles)
+{
+    
+}
+
+/**
+ * Gets number of ploidy from number of alleles and genotypes.
  */
 uint32_t bcf_ag2p(uint32_t no_alleles, uint32_t no_genotypes)
 {
