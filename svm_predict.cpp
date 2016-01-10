@@ -64,9 +64,7 @@ class Igor : Program
     //common tools//
     ////////////////
     VariantManip *vm;
-    OrderedRegionOverlapMatcher *orom_lcplx;
-    OrderedRegionOverlapMatcher *orom_gencode_cds;
-
+   
     Igor(int argc, char ** argv)
     {
         //////////////////////////

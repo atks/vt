@@ -34,7 +34,7 @@
 #include "hts_utils.h"
 #include "filter.h"
 #include "program.h"
-#include "ordered_region_overlap_matcher.h"
+#include "libsvm/svm.h"
 
 void svm_train(int argc, char ** argv);
 

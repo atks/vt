@@ -5,4 +5,16 @@ A tool set for short variant discovery in genetic sequence data.
 
 Visit http://genome.sph.umich.edu/wiki/vt for instructions.
 
-vt uses htslib, tclap, Rmath and pcre2.
+vt uses htslib[1], tclap[2], Rmath[3], pcre2[4] and libsvm[5].
+
+-----------------------------------------------------------------
+
+Reference
+
+1. https://github.com/samtools/htslib
+2. http://tclap.sourceforge.net
+3. https://github.com/atks/Rmath
+4. http://sourceforge.net/projects/pcre
+5. Chih-Chung Chang and Chih-Jen Lin, LIBSVM : a library for support vector machines. ACM Transactions on Intelligent Systems and Technology, 2:27:1--27:27, 2011.
+   https://github.com/cjlin1/libsvm
+

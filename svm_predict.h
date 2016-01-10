@@ -29,12 +29,12 @@
 #include "htslib/kstring.h"
 #include "htslib/kseq.h"
 #include "htslib/hts.h"
-#include "bcf_synced_reader.h"
+#include "bcf_ordered_reader.h"
 #include "interval_tree.h"
 #include "hts_utils.h"
 #include "filter.h"
 #include "program.h"
-#include "ordered_region_overlap_matcher.h"
+#include "libsvm/svm.h"
 
 void svm_predict(int argc, char ** argv);
 
