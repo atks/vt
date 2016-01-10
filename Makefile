@@ -91,6 +91,8 @@ SOURCES = align\
 		sort\
 		subset\
 		sv_tree\
+		svm_train\
+		svm_predict\
 		test\
 		union_variants\
 		uniq\

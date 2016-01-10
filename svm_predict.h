@@ -1,6 +1,6 @@
 /* The MIT License
 
-   Copyright (c) 2014 Adrian Tan <atks@umich.edu>
+   Copyright (c) 2016 Adrian Tan <atks@umich.edu>
 
    Permission is hereby granted, free of charge, to any person obtaining a copy
    of this software and associated documentation files (the "Software"), to deal
@@ -21,8 +21,8 @@
    THE SOFTWARE.
 */
 
-#ifndef PROFILE_SNPS_H
-#define PROFILE_SNPS_H
+#ifndef SVM_PREDICT_H
+#define SVM_PREDICT_H
 
 #include "htslib/vcf.h"
 #include "htslib/vcfutils.h"
@@ -36,6 +36,6 @@
 #include "program.h"
 #include "ordered_region_overlap_matcher.h"
 
-void profile_snps(int argc, char ** argv);
+void svm_predict(int argc, char ** argv);
 
 #endif

@@ -70,6 +70,8 @@
 #include "seq.h"
 #include "sort.h"
 #include "subset.h"
+#include "svm_predict.h"
+#include "svm_train.h"
 #include "test.h"
 #include "union_variants.h"
 #include "uniq.h"
@@ -228,6 +230,14 @@ int main(int argc, char ** argv)
     else if (argc>1 && cmd=="rpartition")
     {
         rpartition(argc-1, ++argv);
+    }
+    else if (argc>1 && cmd=="svm_train")
+    {
+        svm_train(argc-1, ++argv);
+    }
+    else if (argc>1 && cmd=="svm_predict")
+    {
+        svm_predict(argc-1, ++argv);
     }
     else if (argc>1 && cmd=="multi_partition")
     {
