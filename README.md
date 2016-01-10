@@ -5,7 +5,7 @@ A tool set for short variant discovery in genetic sequence data.
 
 Visit http://genome.sph.umich.edu/wiki/vt for instructions.
 
-vt uses htslib<sup>1</sup>, tclap^2, Rmath[3], pcre2[4] and libsvm[5].
+vt uses htslib<sup>1</sup>, tclap<sup>2</sup>, Rmath<sup>3</sup>, pcre2<sup>4</sup> and libsvm<sup>5</sup>.
 
 -----------------------------------------------------------------
 
