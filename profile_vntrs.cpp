@@ -174,7 +174,7 @@ class Igor : Program
             std::string line(s.s);
             split(vec, " ", line);
 
-            if (vec[1] == "Truth" || vec[1] == "False" || vec[1] == "BroadKB")
+            if (vec[1] == "Truth")
             {
                 dataset_labels.push_back(vec[0]);
                 if (vec[1]=="Truth")

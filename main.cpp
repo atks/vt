@@ -34,7 +34,6 @@
 #include "consolidate.h"
 #include "consolidate_vntrs.h"
 #include "construct_probes.h"
-#include "xcmp.h"
 #include "decompose_blocksub.h"
 #include "decompose.h"
 #include "decompose2.h"
@@ -362,10 +361,6 @@ int main(int argc, char ** argv)
     else if (argc>1 && cmd=="filter")
     {
         hfilter(argc-1, ++argv);
-    }
-    else if (argc>1 && cmd=="xcmp")
-    {
-        xcmp(argc-1, ++argv);
     }
     else if (argc>1 && cmd=="test")
     {
