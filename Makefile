@@ -108,7 +108,6 @@ SOURCES = align\
 		vntrize\
    	    tbx_ordered_reader\
     	ahmm\
-        xcmp\
 
 SOURCESONLY = main.cpp
 
