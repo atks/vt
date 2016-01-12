@@ -24,24 +24,25 @@
 #include "profile_vntrs.h"
 
 #define REF     0
-#define BROADKB 1
-#define TRUE    2
-#define FALSE   3
+#define TRUE    1
 
 namespace
 {
 
-class OverlapStats
+class VNTROverlapStats
 {
     public:
 
-    uint32_t a,ab,b;
+    uint32_t a,ab,b,fuzzy_a,fuzzy_ab,fuzzy_b;
         
-    OverlapStats()
+    VNTROverlapStats()
     {
         a = 0;
         ab = 0;
         b = 0;
+        fuzzy_a = 0;
+        fuzzy_ab = 0;
+        fuzzy_b = 0;
     };
 };
 
@@ -58,8 +59,7 @@ class Igor : Program
     std::vector<std::string> input_vcf_files;
     std::vector<GenomeInterval> intervals;
     std::string interval_list;
-    bool write_partition;
-
+    
     ///////////////////////
     //reference data sets//
     ///////////////////////
@@ -74,8 +74,8 @@ class Igor : Program
     ///////
     //i/o//
     ///////
-    BCFSyncedReader *sr;
-    OrderedBCFOverlapMatcher *obom;
+    BCFOrderedReader *odr;
+    std::vector<OrderedBCFOverlapMatcher *> oboms;
 
     //////////
     //filter//
@@ -83,13 +83,12 @@ class Igor : Program
     std::string fexp;
     Filter filter;
     bool filter_exists;
-    float rfrac;
 
     /////////
     //stats//
     /////////
-    OverlapStats stats;
-
+    std::vector<VNTROverlapStats> stats;
+       
     ////////////////
     //common tools//
     ////////////////
@@ -102,7 +101,7 @@ class Igor : Program
         //////////////////////////
         try
         {
-            std::string desc = "reciprocal partition of VNTRs between two data sets.\n";
+            std::string desc = "profile VNTRs.\n";
 
             version = "0.5";
             TCLAP::CmdLine cmd(desc, ' ', version);
@@ -110,23 +109,16 @@ class Igor : Program
             TCLAP::ValueArg<std::string> arg_intervals("i", "i", "intervals []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "file", cmd);
             TCLAP::ValueArg<std::string> arg_fexp("f", "f", "filter", false, "", "str", cmd);
-            TCLAP::ValueArg<float> arg_rfrac("r", "r", "reciprocal overlap ", false, 0.9, "float", cmd);
+            TCLAP::ValueArg<std::string> arg_ref_data_sets_list("g", "g", "file containing list of reference datasets []", false, "", "file", cmd);
             TCLAP::SwitchArg arg_write_partition("w", "w", "write partitioned variants to file", cmd, false);
-            TCLAP::UnlabeledMultiArg<std::string> arg_input_vcf_files("<in1.vcf><in2.vcf>", "2 input VCF files for comparison", true, "files", cmd);
+            TCLAP::UnlabeledValueArg<std::string> arg_input_vcf_file("<in.vcf>", "input VCF file", true, "","file", cmd);
 
             cmd.parse(argc, argv);
 
             fexp = arg_fexp.getValue();
-            rfrac = arg_rfrac.getValue();
             parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
-            write_partition = arg_write_partition.getValue();
-            input_vcf_files = arg_input_vcf_files.getValue();
-
-            if (input_vcf_files.size()!=2)
-            {
-                std::cerr << "error: require 2 VCF files\n";
-                exit(1);
-            }
+            ref_data_sets_list = arg_ref_data_sets_list.getValue();
+            input_vcf_files.push_back(arg_input_vcf_file.getValue());
         }
         catch (TCLAP::ArgException &e)
         {
@@ -140,16 +132,16 @@ class Igor : Program
         //////////////////////
         //reference data set//
         //////////////////////
-//# This file contains information on how to process reference data sets.
-//# dataset - name of data set, this label will be printed.
-//# type    - True Positives (TP) and False Positives (FP).
-//#           overlap percentages labeled as (Precision, Sensitivity) and (False Discovery Rate, Type I Error) respectively.
-//#         - annotation.
-//#           file is used for GENCODE annotation of frame shift and non frame shift Indels.
-//# filter  - filter applied to variants for this particular data set.
-//# path    - path of indexed BCF file.
-//#dataset     type            filter                       path
-//trf_lobstr   TP              VTYPE==VNTR                  /net/fantasia/home/atks/ref/vt/grch37/trf.lobstr.sites.bcf
+//      # This file contains information on how to process reference data sets.
+//      # dataset - name of data set, this label will be printed.
+//      # type    - True Positives (TP) and False Positives (FP).
+//      #           overlap percentages labeled as (Precision, Sensitivity) and (False Discovery Rate, Type I Error) respectively.
+//      #         - annotation.
+//      #           file is used for GENCODE annotation of frame shift and non frame shift Indels.
+//      # filter  - filter applied to variants for this particular data set.
+//      # path    - path of indexed BCF file.
+//      #dataset     type            filter                       path
+//      trf_lobstr   TP              VTYPE==VNTR                  /net/fantasia/home/atks/ref/vt/grch37/trf.lobstr.sites.bcf
 
         dataset_labels.push_back("data");
         dataset_types.push_back(REF);
@@ -174,27 +166,12 @@ class Igor : Program
             std::string line(s.s);
             split(vec, " ", line);
 
-            if (vec[1] == "Truth")
+            if (vec[1] == "TP")
             {
                 dataset_labels.push_back(vec[0]);
-                if (vec[1]=="Truth")
-                {
-                    dataset_types.push_back(TRUE);
-                }
-                else if (vec[1]=="False")
-                {
-                    dataset_types.push_back(FALSE);
-                }
-                else if (vec[1]=="BroadKB")
-                {
-                    dataset_types.push_back(BROADKB);
-                }
+                dataset_types.push_back(TRUE);
                 dataset_fexps.push_back(vec[2]);
                 input_vcf_files.push_back(vec[3]);
-            }
-            else if (vec[1] == "cds_annotation")
-            {
-                cds_bed_file = vec[3];
             }
             else
             {
@@ -208,9 +185,12 @@ class Igor : Program
         //////////////////////
         //i/o initialization//
         //////////////////////
-        sr = new BCFSyncedReader(input_vcf_files, intervals, SYNC_BY_VAR);
-        obom = new OrderedBCFOverlapMatcher(input_vcf_files[1], intervals);
-
+        odr = new BCFOrderedReader(input_vcf_files[0], intervals);
+        for (uint32_t i=1; i<input_vcf_files.size(); ++i)
+        {
+            oboms.push_back(new OrderedBCFOverlapMatcher(input_vcf_files[i], intervals));
+        }
+        
         ///////////////////////
         //tool initialization//
         ///////////////////////
@@ -227,128 +207,81 @@ class Igor : Program
         ////////////////////////
     }
 
-    void rpartition()
+    void profile_vntrs()
     {
         //for combining the alleles
-        std::vector<bcfptr*> crecs;
+        bcf1_t* v = bcf_init1();
         Variant variant;
         std::vector<int32_t> presence(2, 0);
 
-        BCFOrderedWriter *a;
-        BCFOrderedWriter *ab[2];
-        BCFOrderedWriter *b;
-        if (write_partition)
+        while(odr->read(v))
         {
-            a = new BCFOrderedWriter("a-b.bcf");
-            a->link_hdr(sr->hdrs[0]);
-            a->write_hdr();
-            ab[0] = new BCFOrderedWriter("a&b1.bcf");
-            ab[0]->link_hdr(sr->hdrs[0]);
-            ab[0]->write_hdr();
-            ab[1] = new BCFOrderedWriter("a&b2.bcf");
-            ab[1]->link_hdr(sr->hdrs[1]);
-            ab[1]->write_hdr();
-            b = new BCFOrderedWriter("b-a.bcf");
-            b->link_hdr(sr->hdrs[1]);
-            b->write_hdr();
-        }
-
-        while(sr->read_next_position(crecs))
-        {
-            int32_t vtype = vm->classify_variant(crecs[0]->h, crecs[0]->v, variant);
-
-            //check existence
-            for (int32_t i=0; i<crecs.size(); ++i)
+           
+            bcf_unpack(v, BCF_UN_STR);
+            int32_t vtype = vm->classify_variant(odr->hdr, v, variant);
+            std::string chrom = bcf_get_chrom(odr->hdr,v);
+            int32_t start1 = bcf_get_pos1(v);
+            int32_t end1 = bcf_get_end_pos1(v);
+//            for ()
+//            {
+//                
+//            }
+            for (uint32_t i = 0; i<oboms.size(); ++i)
             {
-                if (vtype != VT_VNTR)
+                if (oboms[i]->overlaps_with(chrom, start1, end1))
                 {
-                    continue;
-                }
-                
-                if (filter_exists && !filter.apply(crecs[i]->h,crecs[i]->v,&variant))
-                {
-                    continue;
-                }
-
-                ++presence[crecs[i]->file_index];
-            }
-
-            update_overlap_stats(presence);
-
-            if (write_partition)
-            {
-                if (presence[0])
-                {
-                    if (presence[1])
-                    {
-                        ab[crecs[0]->file_index]->write(crecs[0]->v);
-                        ab[crecs[1]->file_index]->write(crecs[1]->v);
-                    }
-                    else
-                    {
-                        a->write(crecs[0]->v);
-                    }
-                }
-                else if (presence[1])
-                {
-                    b->write(crecs[0]->v);
                 }
             }
 
-            presence[0] = 0;
-            presence[1] = 0;
-        }
 
-        if (write_partition)
-        {
-            a->close();
-            ab[0]->close();
-            ab[1]->close();
-            b->close();
         }
     };
 
-    void update_overlap_stats(std::vector<int32_t>& presence)
-    {
-        //update overlap stats
-        if (presence[0] && !presence[1])
-        {
-            ++stats.a;
-        }
-        else if (presence[0] && presence[1])
-        {
-            ++stats.ab;
-        }
-        else if (!presence[0] && presence[1])
-        {
-            ++stats.b;
-        }
-    }
+   
 
     void print_options()
     {
         std::clog << "profile_vntrs v" << version << "\n";
         std::clog << "\n";
-        std::clog << "Options:     input VCF file a   " << input_vcf_files[0] << "\n";
-        std::clog << "             input VCF file b   " << input_vcf_files[1] << "\n";
-        print_str_op("         [f] filter             ", fexp);
-        print_boo_op("         [w] write_partition    ", write_partition);
-        print_int_op("         [i] intervals          ", intervals);
+        std::clog << "Options:     input VCF file                 " << input_vcf_files[0] << "\n";
+        print_str_op("         [f] filter                         ", fexp);
+        std::clog << "         [g] reference data sets list file  " << ref_data_sets_list << "\n";
+        print_int_op("         [i] intervals                      ", intervals);
         std::clog << "\n";
    }
 
     void print_stats()
     {
-        fprintf(stderr, "    A:  %10d VNTRs\n", stats.a+stats.ab);
-        fprintf(stderr, "    B:  %10d VNTRs\n", stats.ab+stats.b);
-        fprintf(stderr, "\n");
-        fprintf(stderr, "                   ts/tv  ins/del\n");
-        fprintf(stderr, "    A-B %10d\n", stats.a);
-        fprintf(stderr, "    A&B %10d\n", stats.ab);
-        fprintf(stderr, "    B-A %10d\n", stats.b);
-        fprintf(stderr, "    of A     %4.1f%%\n", 100*(float)stats.ab/(stats.a+stats.ab));
-        fprintf(stderr, "    of B     %4.1f%%\n", 100*(float)stats.ab/(stats.b+stats.ab));
-        fprintf(stderr, "\n");
+        for (int32_t i=1; i<dataset_labels.size(); ++i)
+        {
+            fprintf(stderr, "  %s\n", dataset_labels[i].c_str());
+            fprintf(stderr, "    A-B %10d \n", stats[i].a);
+            fprintf(stderr, "    A&B %10d \n", stats[i].ab);
+            fprintf(stderr, "    B-A %10d \n", stats[i].b);
+
+            if (dataset_types[i]==TRUE)
+            {
+                fprintf(stderr, "    Precision    %4.1f%%\n", 100*(float)stats[i].ab/(stats[i].a+stats[i].ab));
+                fprintf(stderr, "    Sensitivity  %4.1f%%\n", 100*(float)stats[i].ab/(stats[i].b+stats[i].ab));
+            }
+            else
+            {
+                fprintf(stderr, "    FDR          %4.1f%%\n", 100*(float)stats[i].ab/(stats[i].a+stats[i].ab));
+                fprintf(stderr, "    Type I Error %4.1f%%\n", 100*(float)stats[i].ab/(stats[i].b+stats[i].ab));
+            }
+            fprintf(stderr, "\n");
+        }
+        
+//        fprintf(stderr, "    A:  %10d VNTRs\n", stats.a+stats.ab);
+//        fprintf(stderr, "    B:  %10d VNTRs\n", stats.ab+stats.b);
+//        fprintf(stderr, "\n");
+//        fprintf(stderr, "                   ts/tv  ins/del\n");
+//        fprintf(stderr, "    A-B %10d\n", stats.a);
+//        fprintf(stderr, "    A&B %10d\n", stats.ab);
+//        fprintf(stderr, "    B-A %10d\n", stats.b);
+//        fprintf(stderr, "    of A     %4.1f%%\n", 100*(float)stats.ab/(stats.a+stats.ab));
+//        fprintf(stderr, "    of B     %4.1f%%\n", 100*(float)stats.ab/(stats.b+stats.ab));
+//        fprintf(stderr, "\n");
     };
 
     ~Igor()
@@ -366,6 +299,6 @@ void profile_vntrs(int argc, char ** argv)
     Igor igor(argc, argv);
     igor.print_options();
     igor.initialize();
-    igor.rpartition();
+    igor.profile_vntrs();
     igor.print_stats();
 }
