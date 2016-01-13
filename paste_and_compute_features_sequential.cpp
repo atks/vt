@@ -696,7 +696,7 @@ class Igor : Program
 	  float fic = 0;
 	  n = 0;
 	  est->compute_gl_fic(v_pls[k], nfiles, ploidy, MLE_HWE_AF, vn_alleles[k], MLE_GF, fic, n);
-	  if ( isnanf(fic) ) fic = 0;	  
+	  if ( isnan((double)fic) ) fic = 0;	  
 	  if (n) {
 	    bcf_update_info_float(odw->hdr, nv, "IBC", &fic, 1);
 	  }
