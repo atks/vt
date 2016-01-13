@@ -496,6 +496,15 @@ void test(int argc, char ** argv)
 {
     Igor igor(argc, argv);
     
+    
+    printf ("isnan(0.0)       : %d\n",isnan(0.0));
+    printf ("isnan(1.0/0.0)   : %d\n",isnan(1.0/0.0));
+    printf ("isnan(-1.0/0.0)  : %d\n",isnan(-1.0/0.0));
+    printf ("isnan(sqrt(-1.0)): %d\n",isnan(sqrt(-1.0)));
+    printf ("isnan((double)sqrt(-1.0)): %d\n",isnan((double)sqrt(-1.0)));
+    printf ("isnan((float)sqrt(-1.0)): %d\n",isnan((float)sqrt(-1.0)));
+//    printf ("isnanf((double)sqrt(-1.0)): %d\n",isnanf((double)sqrt(-1.0)));
+//    printf ("isnanf((float)sqrt(-1.0)): %d\n",isnanf((float)sqrt(-1.0)));
     //igor.analyse_mdust(argc, argv);
     
     //igor.test_pcre2(argc, argv);
