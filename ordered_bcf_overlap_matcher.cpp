@@ -36,7 +36,11 @@ OrderedBCFOverlapMatcher::OrderedBCFOverlapMatcher(std::string& file, std::vecto
 /**
  * Destructor.
  */
-OrderedBCFOverlapMatcher::~OrderedBCFOverlapMatcher() {};
+OrderedBCFOverlapMatcher::~OrderedBCFOverlapMatcher() 
+{
+    odr->close();
+    delete odr;
+};
 
 /**
  * Returns true if chrom:start1-end1 overlaps with a region in the file.

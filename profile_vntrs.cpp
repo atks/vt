@@ -34,7 +34,11 @@ class VNTROverlapStats
     public:
 
     uint32_t a,ab,b,fuzzy_a,fuzzy_ab,fuzzy_b;
-        
+    std::vector<uint32_t> reciprocal_a;
+    std::vector<uint32_t> reciprocal_ab;
+    std::vector<uint32_t> reciprocal_b;
+    std::vector<float> reciprocal;
+            
     VNTROverlapStats()
     {
         a = 0;
@@ -55,7 +59,6 @@ class Igor : Program
     ///////////
     //options//
     ///////////
-    std::string filters;
     std::vector<std::string> input_vcf_files;
     std::vector<GenomeInterval> intervals;
     std::string interval_list;
@@ -81,8 +84,9 @@ class Igor : Program
     //filter//
     //////////
     std::string fexp;
-    Filter filter;
-    bool filter_exists;
+    std::vector<Filter> filters;
+    std::vector<bool> filter_exists;
+    int32_t no_filters;
 
     /////////
     //stats//
@@ -93,6 +97,7 @@ class Igor : Program
     //common tools//
     ////////////////
     VariantManip *vm;
+    VNTRTree* vntr_tree;
 
     Igor(int argc, char ** argv)
     {
@@ -195,12 +200,17 @@ class Igor : Program
         //tool initialization//
         ///////////////////////
         vm = new VariantManip("");
+        vntr_tree = new VNTRTree();
 
         /////////////////////////
         //filter initialization//
         /////////////////////////
-        filter.parse(fexp.c_str());
-        filter_exists = fexp=="" ? false : true;
+        for (size_t i=0; i<dataset_fexps.size(); ++i)
+        {
+            filters.push_back(Filter(dataset_fexps[i]));
+            filter_exists.push_back(dataset_fexps[i]!="");
+        }
+        no_filters = filters.size();
 
         ////////////////////////
         //stats initialization//
@@ -229,15 +239,36 @@ class Igor : Program
             for (uint32_t i = 0; i<oboms.size(); ++i)
             {
                 if (oboms[i]->overlaps_with(chrom, start1, end1))
-                {
+                {   
+                    //check for exactness
+                    
+                    //if not exact, check reciprocal
+                    
+                    //add to appropriate statistics
+                    
                 }
             }
 
-
+            
+            if (vtype==VT_VNTR)
+            {
+//                ++VAR_COUNT[POLYMORPHIC][VT_VNTR];
+//                if (variant.vntr.motif.size()<NO_MOTIF_LEN_CATEGORIES)
+//                {
+//                    ++VAR_MOTIF_LEN[variant.vntr.motif.size()-1];
+//                }
+//                else
+//                {
+//                    ++VAR_MOTIF_LEN[NO_MOTIF_LEN_CATEGORIES-1];
+//                }
+//                
+//                
+                vntr_tree->count(variant);
+            }
         }
+        
+        odr->close();
     };
-
-   
 
     void print_options()
     {
@@ -252,6 +283,8 @@ class Igor : Program
 
     void print_stats()
     {
+        vntr_tree->print();
+        
         for (int32_t i=1; i<dataset_labels.size(); ++i)
         {
             fprintf(stderr, "  %s\n", dataset_labels[i].c_str());
@@ -286,6 +319,13 @@ class Igor : Program
 
     ~Igor()
     {
+        for (uint32_t i = 0; i<oboms.size(); ++i)
+        {
+            delete oboms[i];
+        }
+        
+        delete odr;
+       
     };
 
     private:

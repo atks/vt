@@ -35,6 +35,7 @@
 #include "hts_utils.h"
 #include "program.h"
 #include "ordered_bcf_overlap_matcher.h"
+#include "vntr_tree.h"
 
 void profile_vntrs(int argc, char ** argv);
 
