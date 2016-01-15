@@ -3,7 +3,7 @@
 # Removes the time from vt stderr output.
 strip_stderr()
 {
-    sed 's/Time elapsed.*/Time elapsed <stripped>/g' | sed 's/file.*/file <stripped>/g' 
+    sed 's/Time elapsed.*/Time elapsed <stripped>/g' | sed 's/file.*/file <stripped>/g'
 }
 
 DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
@@ -67,15 +67,15 @@ TMPDIR=${CMDDIR}/tmp
 mkdir -p ${TMPDIR}
 TMPDIRS+=" $TMPDIR";
 
-if [ "$1" == "debug" ]; then
-    set -x
-fi
-
 # ---------------------------------------------------------------------------
 # Test 01: block decomposition of even-length blocks
 # ---------------------------------------------------------------------------
 
 echo "testing decompose_blocksub of even-length blocks"
+
+if [ "$1" == "debug" ]; then
+    set -x
+fi
 
 ${VT} \
     decompose_blocksub \
@@ -107,6 +107,10 @@ fi
 # ---------------------------------------------------------------------------
 
 echo "testing decompose_blocksub with alignment"
+
+if [ "$1" == "debug" ]; then
+    set -x
+fi
 
 ${VT} \
     decompose_blocksub -a \

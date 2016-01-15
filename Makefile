@@ -155,3 +155,6 @@ cleanvt :
 
 test : vt
 	test/test.sh
+	
+debug : vt
+	test/test.sh debug
