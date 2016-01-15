@@ -1,5 +1,5 @@
 CXX ?= g++
-CFLAGS = -Wall -Wconversion -O3 -fPIC
+CFLAGS = -Wall -O3 -fPIC
 SHVER = 2
 OS = $(shell uname)
 
