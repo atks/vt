@@ -11,7 +11,7 @@ vt uses htslib<sup>1</sup>, tclap<sup>2</sup>, Rmath<sup>3</sup>, pcre2<sup>4</s
 
 How to cite
 
-vt normalize : 
+vt normalize : <br>
 Adrian Tan, Gonçalo R. Abecasis and Hyun Min Kang.  Unified Representation of Genetic Variants. Bioinformaticsv(2015) 31(13): 2202-2204
 
 -----------------------------------------------------------------
