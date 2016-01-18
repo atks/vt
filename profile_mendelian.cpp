@@ -211,12 +211,6 @@ class Igor : Program
             bcf_unpack(v, BCF_UN_IND);
             int32_t vtype = vm->classify_variant(odr->hdr, v, variant);
 
-            //if (bcf_get_n_allele(v)!=2 || vtype!=VT_INDEL || bcf_has_filter(odr->hdr, v, const_cast<char*>("PASS"))!=1)
-            if (bcf_get_n_allele(v)!=2)
-            {
-                continue;
-            }
-
             if (filter_exists)
             {
                 vm->classify_variant(odr->hdr, v, variant);
@@ -226,57 +220,97 @@ class Igor : Program
                 }
             }
 
-            int k = bcf_get_genotypes(h, v, &gts, &n);
-            int r = bcf_get_format_int32(h, v, "DP", &dps, &n_dp);
-
-            if (r==-1)
+            //if (bcf_get_n_allele(v)!=2 || vtype!=VT_INDEL || bcf_has_filter(odr->hdr, v, const_cast<char*>("PASS"))!=1)
+            if (bcf_get_n_allele(v)==2)
             {
-                r = bcf_get_format_int32(h, v, "NR", &dps, &n_dp);
-
+                int k = bcf_get_genotypes(h, v, &gts, &n);
+                int r = bcf_get_format_int32(h, v, "DP", &dps, &n_dp);
+    
                 if (r==-1)
                 {
-                    for (uint32_t i=0; i<nsample; ++i)
+                    r = bcf_get_format_int32(h, v, "NR", &dps, &n_dp);
+    
+                    if (r==-1)
                     {
-                        dps[i] = min_depth;
+                        for (uint32_t i=0; i<nsample; ++i)
+                        {
+                            dps[i] = min_depth;
+                        }
                     }
                 }
+    
+                bool variant_used = false;
+    
+                for (int32_t i =0; i< trios.size(); ++i)
+                {
+                    int32_t j = trios[i].father_index;
+                    int32_t f1 = bcf_gt_allele(gts[(j<<1)]);
+                    int32_t f2 = bcf_gt_allele(gts[(j<<1)+1]);
+                    int32_t min_dp = dps[j];
+    
+                    j = trios[i].mother_index;
+                    int32_t m1 = bcf_gt_allele(gts[(j<<1)]);
+                    int32_t m2 = bcf_gt_allele(gts[(j<<1)+1]);
+                    min_dp = dps[j]<min_dp ? dps[j] : min_dp;
+    
+                    j = trios[i].child_index;
+                    int32_t c1 = bcf_gt_allele(gts[(j<<1)]);
+                    int32_t c2 = bcf_gt_allele(gts[(j<<1)+1]);
+                    min_dp = dps[j]<min_dp ? dps[j] : min_dp;
+    
+                    if (min_dp<min_depth)
+                    {
+                        ++no_failed_min_depth;
+                        continue;
+                    }
+    
+                    if (!(f1<0 || f2<0 || m1<0 || m2<0 || c1<0 || c2<0))
+                    {
+                        if (!ignore_non_variants || (f1+f2+m1+m2+c1+c2!=0))
+                        {
+                            ++trio_genotypes[f1+f2][m1+m2][c1+c2];
+                            variant_used = true;
+                        }
+                    }
+                }
+                if (variant_used) ++no_variants;
             }
-
-            bool variant_used = false;
-
-            for (int32_t i =0; i< trios.size(); ++i)
+            else
             {
-                int32_t j = trios[i].father_index;
-                int32_t f1 = bcf_gt_allele(gts[(j<<1)]);
-                int32_t f2 = bcf_gt_allele(gts[(j<<1)+1]);
-                int32_t min_dp = dps[j];
-
-                j = trios[i].mother_index;
-                int32_t m1 = bcf_gt_allele(gts[(j<<1)]);
-                int32_t m2 = bcf_gt_allele(gts[(j<<1)+1]);
-                min_dp = dps[j]<min_dp ? dps[j] : min_dp;
-
-                j = trios[i].child_index;
-                int32_t c1 = bcf_gt_allele(gts[(j<<1)]);
-                int32_t c2 = bcf_gt_allele(gts[(j<<1)+1]);
-                min_dp = dps[j]<min_dp ? dps[j] : min_dp;
-
-                if (min_dp<min_depth)
-                {
-                    ++no_failed_min_depth;
-                    continue;
-                }
-
-                if (!(f1<0 || f2<0 || m1<0 || m2<0 || c1<0 || c2<0))
-                {
-                    if (!ignore_non_variants || (f1+f2+m1+m2+c1+c2!=0))
-                    {
-                        ++trio_genotypes[f1+f2][m1+m2][c1+c2];
-                        variant_used = true;
-                    }
-                }
+                //implement 2 versions
+             
+                //1. based on fixed genotypes
+                
+                //2. based on genotype likelihoods
+                
+                //mendelian error estimates based on hard counts.
+                
+                //HOM HOM
+                //AA BB => AB
+                //BB CC => BC
+                //CC DD => CD
+                //HET HET
+                //AB AB => AA AB BB
+                //AC AD => AA AC AD CD
+                //AB CD => AC AD BC BD 
+                //HOM HET
+                //AA AB => AA AB
+                //AA BC => AB AC
+                
+                //compute bayes factor
+                //
+                
+                //how to test on proportions?
+                //
+                
+                
+                
+                
+                continue;
+                
             }
-            if (variant_used) ++no_variants;
+            
+
         }
 
         free(gts);
