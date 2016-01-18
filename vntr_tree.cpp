@@ -139,18 +139,72 @@ void VNTRTree::count(Variant& variant)
  */
 void VNTRTree::print(int32_t level)
 {   
-    for (uint32_t basis_len=1; basis_len<=4; ++basis_len)
+    if (level==SEQUENCE)
     {
-        std::cerr << "basis length " << basis_len << "\n";
-        for (uint32_t motif_len=basis_len; motif_len-basis_len<vntrs[basis_len-1].size(); ++motif_len)
+        for (uint32_t basis_len=1; basis_len<=4; ++basis_len)
         {
-            std::cerr << "\tmotif length " << motif_len << "\n";
-            std::list<VNTRNode*>::iterator i;
-            for (i=vntrs[basis_len-1][motif_len-basis_len].begin(); i!=vntrs[basis_len-1][motif_len-basis_len].end(); ++i)
+            std::cerr << "basis length " << basis_len << "\n";
+            for (uint32_t motif_len=basis_len; motif_len-basis_len<vntrs[basis_len-1].size(); ++motif_len)
             {
-                VNTRNode& vntr_node = **i;
-                std::cerr << "\t\t" << vntr_node.motif << " " << (vntr_node.exact_count+vntr_node.fuzzy_count) << " (" << vntr_node.exact_count << "/" << vntr_node.fuzzy_count << ")\n";
+                std::cerr << "\tmotif length " << motif_len << "\n";
+                std::list<VNTRNode*>::iterator i;
+                uint32_t exact_count = 0;
+                uint32_t fuzzy_count = 0;
+                for (i=vntrs[basis_len-1][motif_len-basis_len].begin(); i!=vntrs[basis_len-1][motif_len-basis_len].end(); ++i)
+                {
+                    VNTRNode& vntr_node = **i;
+                    std::cerr << "\t\t" << vntr_node.motif << " " << (vntr_node.exact_count+vntr_node.fuzzy_count) << " (" << vntr_node.exact_count << "/" << vntr_node.fuzzy_count << ")\n";
+                    exact_count += vntr_node.exact_count;
+                    fuzzy_count += vntr_node.fuzzy_count;
+                }
+                std::cerr << "\t\ttotal\t" << (exact_count+fuzzy_count) << " (" << exact_count << "/" << fuzzy_count << ")\n";
             }
         }
-    }
+    }   
+    else if (level==MOTIF)
+    {
+        for (uint32_t basis_len=1; basis_len<=4; ++basis_len)
+        {
+            std::cerr << "basis length " << basis_len << "\n";
+            std::cerr << "\tmotif length\n";
+            for (uint32_t motif_len=basis_len; motif_len-basis_len<vntrs[basis_len-1].size(); ++motif_len)
+            {
+                std::list<VNTRNode*>::iterator i;
+                uint32_t exact_count = 0;
+                uint32_t fuzzy_count = 0;
+                for (i=vntrs[basis_len-1][motif_len-basis_len].begin(); i!=vntrs[basis_len-1][motif_len-basis_len].end(); ++i)
+                {
+                    VNTRNode& vntr_node = **i;
+                    exact_count += vntr_node.exact_count;
+                    fuzzy_count += vntr_node.fuzzy_count;
+                }
+                std::cerr << "\t\t" << motif_len << "\t" << (exact_count+fuzzy_count) << " (" << exact_count << "/" << fuzzy_count << ")\n";
+                
+            }
+        }
+    } 
+    else if (level==BASIS)
+    {
+        for (uint32_t basis_len=1; basis_len<=4; ++basis_len)
+        {
+            uint32_t basis_exact_count = 0;
+            uint32_t basis_fuzzy_count = 0;
+            for (uint32_t motif_len=basis_len; motif_len-basis_len<vntrs[basis_len-1].size(); ++motif_len)
+            {
+                std::list<VNTRNode*>::iterator i;
+                uint32_t exact_count = 0;
+                uint32_t fuzzy_count = 0;
+                for (i=vntrs[basis_len-1][motif_len-basis_len].begin(); i!=vntrs[basis_len-1][motif_len-basis_len].end(); ++i)
+                {
+                    VNTRNode& vntr_node = **i;
+                    exact_count += vntr_node.exact_count;
+                    fuzzy_count += vntr_node.fuzzy_count;
+                }
+                basis_exact_count += exact_count;
+                basis_fuzzy_count += fuzzy_count;                
+            }
+            
+            std::cerr << "basis length " << basis_len << "\t" << (basis_exact_count+basis_fuzzy_count) << " (" << basis_exact_count << "/" << basis_fuzzy_count << ")\n";
+        }
+    } 
 };

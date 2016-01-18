@@ -26,9 +26,9 @@
 #ifndef VNTR_TREE_H
 #define VNTR_TREE_H
 
-#define MOTIF    1 
-#define DMOTIF   2
-#define MOTIFLEN 3
+#define SEQUENCE 1 
+#define MOTIF    2
+#define BASIS    3
 
 /**
  * Class for filtering VCF records.
