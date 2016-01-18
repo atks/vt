@@ -26,6 +26,10 @@
 #ifndef VNTR_TREE_H
 #define VNTR_TREE_H
 
+#define MOTIF    1 
+#define DMOTIF   2
+#define MOTIFLEN 3
+
 /**
  * Class for filtering VCF records.
  */
@@ -92,7 +96,7 @@ class VNTRTree
     /**
      * Print this tree.
      */
-    void print();
+    void print(int32_t level);
 
     private:
 };

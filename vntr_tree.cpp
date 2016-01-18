@@ -137,7 +137,7 @@ void VNTRTree::count(Variant& variant)
 /**
  * Print this tree.
  */
-void VNTRTree::print()
+void VNTRTree::print(int32_t level)
 {   
     for (uint32_t basis_len=1; basis_len<=4; ++basis_len)
     {
