@@ -361,6 +361,18 @@ void bam_print(bam_hdr_t *h, bam1_t *s)
  **************/
 
 /**
+ * Prints header.
+ */
+void bcf_hdr_print(bcf_hdr_t *h)
+{
+    if ( h->dirty ) bcf_hdr_sync(h);
+    int hlen;
+    char *htxt = bcf_hdr_fmt_text(h, 1, &hlen);
+    std::cerr << htxt;
+    free(htxt);
+}
+
+/**
  * Copies contigs found in bcf header to another bcf header.
  */
 void bcf_hdr_transfer_contigs(const bcf_hdr_t *hsrc, bcf_hdr_t *hdest)

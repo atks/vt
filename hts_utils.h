@@ -225,6 +225,11 @@ void bam_print(bam_hdr_t *h, bam1_t *s);
  **************/
 
 /**
+ * Prints header.
+ */
+void bcf_hdr_print(bcf_hdr_t *h);
+
+/**
  * Copies contigs found in bcf header to another bcf header.
  */
 void bcf_hdr_transfer_contigs(const bcf_hdr_t *sh, bcf_hdr_t *vh);

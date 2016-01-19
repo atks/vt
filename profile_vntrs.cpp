@@ -33,7 +33,7 @@ class VNTROverlapStats
 {
     public:
 
-    uint32_t a,ab,b,fuzzy_a,fuzzy_ab,fuzzy_b;
+    uint32_t a, ab1, ab2, b, fuzzy_a, fuzzy_ab1, fuzzy_ab2, fuzzy_b;
     std::vector<uint32_t> reciprocal_a;
     std::vector<uint32_t> reciprocal_ab;
     std::vector<uint32_t> reciprocal_b;
@@ -42,10 +42,12 @@ class VNTROverlapStats
     VNTROverlapStats()
     {
         a = 0;
-        ab = 0;
+        ab1 = 0;
+        ab2 = 0;
         b = 0;
         fuzzy_a = 0;
-        fuzzy_ab = 0;
+        fuzzy_ab1 = 0;
+        fuzzy_ab2 = 0;
         fuzzy_b = 0;
     };
 };
@@ -191,7 +193,7 @@ class Igor : Program
         //i/o initialization//
         //////////////////////
         odr = new BCFOrderedReader(input_vcf_files[0], intervals);
-        for (uint32_t i=1; i<input_vcf_files.size(); ++i)
+        for (uint32_t i=0; i<input_vcf_files.size(); ++i)
         {
             oboms.push_back(new OrderedBCFOverlapMatcher(input_vcf_files[i], intervals));
         }
@@ -215,6 +217,8 @@ class Igor : Program
         ////////////////////////
         //stats initialization//
         ////////////////////////
+        VNTROverlapStats vstats;
+        stats.resize(input_vcf_files.size(), vstats);
     }
 
     void profile_vntrs()
@@ -223,29 +227,50 @@ class Igor : Program
         bcf1_t* v = bcf_init1();
         Variant variant;
         std::vector<int32_t> presence(2, 0);
-
+        std::vector<bcf1_t*> overlap_vars;
+            
         while(odr->read(v))
-        {
-           
+        {           
             bcf_unpack(v, BCF_UN_STR);
             int32_t vtype = vm->classify_variant(odr->hdr, v, variant);
             std::string chrom = bcf_get_chrom(odr->hdr,v);
             int32_t start1 = bcf_get_pos1(v);
             int32_t end1 = bcf_get_end_pos1(v);
-//            for ()
-//            {
-//                
-//            }
+            
             for (uint32_t i = 0; i<oboms.size(); ++i)
             {
-                if (oboms[i]->overlaps_with(chrom, start1, end1))
+                bool exact = false;
+                if (oboms[i]->overlaps_with(chrom, start1, end1, overlap_vars))
                 {   
-                    //check for exactness
+                    ++stats[i].fuzzy_ab1;
                     
-                    //if not exact, check reciprocal
+                    for (uint32_t j=0; j<overlap_vars.size(); ++j)
+                    {
+                        //check for exactness
+                        if (start1==bcf_get_pos1(overlap_vars[j]) && end1==bcf_get_end1(overlap_vars[j]))
+                        {
+                            ++stats[i].ab2;
+                             exact = true;
+                        }
+                        else
+                        {
+                            ++stats[i].fuzzy_ab2;
+                        }
+                    }
                     
-                    //add to appropriate statistics
-                    
+                    if (exact)
+                    {
+                        ++stats[i].ab1;
+                    }    
+                    else
+                    {
+                        ++stats[i].a;
+                    }
+                }
+                else
+                {
+                    ++stats[i].a;
+                    ++stats[i].fuzzy_a;
                 }
             }
 
@@ -261,8 +286,7 @@ class Igor : Program
 //                {
 //                    ++VAR_MOTIF_LEN[NO_MOTIF_LEN_CATEGORIES-1];
 //                }
-//                
-//                
+
                 vntr_tree->count(variant);
             }
         }
@@ -283,25 +307,26 @@ class Igor : Program
 
     void print_stats()
     {
-        vntr_tree->print();
+        vntr_tree->print(BASIS);
         
-        for (int32_t i=1; i<dataset_labels.size(); ++i)
+        for (int32_t i=0; i<dataset_labels.size(); ++i)
         {
             fprintf(stderr, "  %s\n", dataset_labels[i].c_str());
-            fprintf(stderr, "    A-B %10d \n", stats[i].a);
-            fprintf(stderr, "    A&B %10d \n", stats[i].ab);
-            fprintf(stderr, "    B-A %10d \n", stats[i].b);
+            fprintf(stderr, "    A-B  %10d %10d\n", stats[i].a, stats[i].fuzzy_a);
+            fprintf(stderr, "    A&B1 %10d %10d\n", stats[i].ab1, stats[i].fuzzy_ab1);
+            fprintf(stderr, "    A&B2 %10d %10d\n", stats[i].ab2, stats[i].fuzzy_ab2);
+            fprintf(stderr, "    B-A  %10d %10d\n", stats[i].b, stats[i].fuzzy_b);
 
-            if (dataset_types[i]==TRUE)
-            {
-                fprintf(stderr, "    Precision    %4.1f%%\n", 100*(float)stats[i].ab/(stats[i].a+stats[i].ab));
-                fprintf(stderr, "    Sensitivity  %4.1f%%\n", 100*(float)stats[i].ab/(stats[i].b+stats[i].ab));
-            }
-            else
-            {
-                fprintf(stderr, "    FDR          %4.1f%%\n", 100*(float)stats[i].ab/(stats[i].a+stats[i].ab));
-                fprintf(stderr, "    Type I Error %4.1f%%\n", 100*(float)stats[i].ab/(stats[i].b+stats[i].ab));
-            }
+//            if (dataset_types[i]==TRUE)
+//            {
+//                fprintf(stderr, "    Precision    %4.1f%%\n", 100*(float)stats[i].ab/(stats[i].a+stats[i].ab));
+//                fprintf(stderr, "    Sensitivity  %4.1f%%\n", 100*(float)stats[i].ab/(stats[i].b+stats[i].ab));
+//            }
+//            else
+//            {
+//                fprintf(stderr, "    FDR          %4.1f%%\n", 100*(float)stats[i].ab/(stats[i].a+stats[i].ab));
+//                fprintf(stderr, "    Type I Error %4.1f%%\n", 100*(float)stats[i].ab/(stats[i].b+stats[i].ab));
+//            }
             fprintf(stderr, "\n");
         }
         

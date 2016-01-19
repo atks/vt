@@ -51,7 +51,13 @@ class OrderedBCFOverlapMatcher
     std::list<bcf1_t*> buffer;
     bool end_of_file;
     int32_t no_regions;
-    
+   
+	///////
+    //stats
+    ///////
+    int32_t no_overlaps;
+    int32_t no_nonoverlaps;
+
     /**
      * Constructor.
      */
@@ -71,7 +77,22 @@ class OrderedBCFOverlapMatcher
      * Returns true if chrom:start1-end1 overlaps with a region in the file and populates the overlapping variants.
      */
     bool overlaps_with(std::string& chrom, int32_t start1, int32_t end1, std::vector<bcf1_t*>& overlap_vars);
-            
+    
+	/**
+ 	 * Increments the OBOM_OVERLAPS count of a variant record.
+ 	 */
+	void increment_overlap(bcf1_t* v);
+    
+    /**
+     * Get number of overlap variants that has been printed and reset no_overlaps.
+     */
+    int32_t get_no_overlaps();
+
+    /**
+     * Get number of non-overlapping variants that has been printed and reset no_nonoverlaps.
+     */
+    int32_t get_no_nonoverlaps();
+
     private:
 };
     
