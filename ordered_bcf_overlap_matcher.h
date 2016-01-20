@@ -78,6 +78,11 @@ class OrderedBCFOverlapMatcher
      */
     bool overlaps_with(std::string& chrom, int32_t start1, int32_t end1, std::vector<bcf1_t*>& overlap_vars);
     
+    /**
+     * Flushes remaining variants.
+     */
+    void flush();
+        
 	/**
  	 * Increments the OBOM_OVERLAPS count of a variant record.
  	 */

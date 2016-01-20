@@ -38,7 +38,7 @@ class VNTROverlapStats
     std::vector<uint32_t> reciprocal_ab;
     std::vector<uint32_t> reciprocal_b;
     std::vector<float> reciprocal;
-            
+
     VNTROverlapStats()
     {
         a = 0;
@@ -64,7 +64,7 @@ class Igor : Program
     std::vector<std::string> input_vcf_files;
     std::vector<GenomeInterval> intervals;
     std::string interval_list;
-    
+
     ///////////////////////
     //reference data sets//
     ///////////////////////
@@ -75,12 +75,14 @@ class Igor : Program
     std::vector<std::string> dataset_info_site_tags;
     std::vector<std::string> dataset_info_gt_tags;
     std::string cds_bed_file;
-        
+    std::string cplx_bed_file;
     ///////
     //i/o//
     ///////
     BCFOrderedReader *odr;
     std::vector<OrderedBCFOverlapMatcher *> oboms;
+    OrderedRegionOverlapMatcher *orom_lcplx;
+    OrderedRegionOverlapMatcher *orom_gencode_cds;
 
     //////////
     //filter//
@@ -94,7 +96,9 @@ class Igor : Program
     //stats//
     /////////
     std::vector<VNTROverlapStats> stats;
-       
+    uint32_t no_lcplx;
+    uint32_t no_cds;
+                
     ////////////////
     //common tools//
     ////////////////
@@ -149,6 +153,8 @@ class Igor : Program
 //      # path    - path of indexed BCF file.
 //      #dataset     type            filter                       path
 //      trf_lobstr   TP              VTYPE==VNTR                  /net/fantasia/home/atks/ref/vt/grch37/trf.lobstr.sites.bcf
+//      GENCODE_V19  cds_annotation  .                            /net/fantasia/home/atks/ref/vt/grch37/gencode.cds.bed.gz
+//      DUST         cplx_annotation .                            /net/fantasia/home/atks/ref/vt/grch37/mdust.bed.gz
 
         dataset_labels.push_back("data");
         dataset_types.push_back(REF);
@@ -180,6 +186,14 @@ class Igor : Program
                 dataset_fexps.push_back(vec[2]);
                 input_vcf_files.push_back(vec[3]);
             }
+            else if (vec[1] == "cds_annotation")
+            {
+                cds_bed_file = vec[3];
+            }
+            else if (vec[1] == "cplx_annotation")
+            {
+                cplx_bed_file = vec[3];
+            }
             else
             {
                 fprintf(stderr, "[E:%s:%d %s] Reference data set type %s not recognized\n", __FILE__, __LINE__, __FUNCTION__, vec[1].c_str());
@@ -188,7 +202,7 @@ class Igor : Program
         }
         hts_close(hts);
         if (s.m) free(s.s);
-            
+
         //////////////////////
         //i/o initialization//
         //////////////////////
@@ -197,12 +211,14 @@ class Igor : Program
         {
             oboms.push_back(new OrderedBCFOverlapMatcher(input_vcf_files[i], intervals));
         }
-        
+
         ///////////////////////
         //tool initialization//
         ///////////////////////
         vm = new VariantManip("");
         vntr_tree = new VNTRTree();
+        orom_gencode_cds = new OrderedRegionOverlapMatcher(cds_bed_file);
+        orom_lcplx = new OrderedRegionOverlapMatcher(cplx_bed_file);
 
         /////////////////////////
         //filter initialization//
@@ -219,6 +235,8 @@ class Igor : Program
         ////////////////////////
         VNTROverlapStats vstats;
         stats.resize(input_vcf_files.size(), vstats);
+        no_lcplx = 0;
+        no_cds = 0;
     }
 
     void profile_vntrs()
@@ -228,22 +246,32 @@ class Igor : Program
         Variant variant;
         std::vector<int32_t> presence(2, 0);
         std::vector<bcf1_t*> overlap_vars;
-            
+
         while(odr->read(v))
-        {           
+        {
             bcf_unpack(v, BCF_UN_STR);
             int32_t vtype = vm->classify_variant(odr->hdr, v, variant);
             std::string chrom = bcf_get_chrom(odr->hdr,v);
             int32_t start1 = bcf_get_pos1(v);
             int32_t end1 = bcf_get_end_pos1(v);
+
+            if (orom_lcplx->overlaps_with(chrom, start1, end1))
+            {
+                ++no_lcplx;
+            }
+
+            if (orom_gencode_cds->overlaps_with(chrom, start1, end1))
+            {
+                ++no_cds;
+            }
             
             for (uint32_t i = 0; i<oboms.size(); ++i)
             {
                 bool exact = false;
                 if (oboms[i]->overlaps_with(chrom, start1, end1, overlap_vars))
-                {   
+                {
                     ++stats[i].fuzzy_ab1;
-                    
+
                     for (uint32_t j=0; j<overlap_vars.size(); ++j)
                     {
                         //check for exactness
@@ -257,11 +285,11 @@ class Igor : Program
                             ++stats[i].fuzzy_ab2;
                         }
                     }
-                    
+
                     if (exact)
                     {
                         ++stats[i].ab1;
-                    }    
+                    }
                     else
                     {
                         ++stats[i].a;
@@ -272,9 +300,13 @@ class Igor : Program
                     ++stats[i].a;
                     ++stats[i].fuzzy_a;
                 }
+                
+                stats[i].ab2 += oboms[i]->get_no_overlaps();
+                stats[i].b += oboms[i]->get_no_nonoverlaps();
+                
             }
 
-            
+
             if (vtype==VT_VNTR)
             {
 //                ++VAR_COUNT[POLYMORPHIC][VT_VNTR];
@@ -290,7 +322,17 @@ class Igor : Program
                 vntr_tree->count(variant);
             }
         }
+
+        for (uint32_t i = 0; i<oboms.size(); ++i)
+        {
+            oboms[i]->flush();
+            
+            stats[i].ab2 += oboms[i]->get_no_overlaps();
+            stats[i].b += oboms[i]->get_no_nonoverlaps();
+        }
         
+        
+
         odr->close();
     };
 
@@ -308,7 +350,12 @@ class Igor : Program
     void print_stats()
     {
         vntr_tree->print(BASIS);
-        
+
+        fprintf(stderr, "\n");
+        fprintf(stderr, "    no low complexity  %d\n", no_lcplx);
+        fprintf(stderr, "    no coding          %d\n", no_cds);
+        fprintf(stderr, "\n");
+     
         for (int32_t i=0; i<dataset_labels.size(); ++i)
         {
             fprintf(stderr, "  %s\n", dataset_labels[i].c_str());
@@ -329,7 +376,7 @@ class Igor : Program
 //            }
             fprintf(stderr, "\n");
         }
-        
+
 //        fprintf(stderr, "    A:  %10d VNTRs\n", stats.a+stats.ab);
 //        fprintf(stderr, "    B:  %10d VNTRs\n", stats.ab+stats.b);
 //        fprintf(stderr, "\n");
@@ -348,9 +395,9 @@ class Igor : Program
         {
             delete oboms[i];
         }
-        
+
         delete odr;
-       
+
     };
 
     private:

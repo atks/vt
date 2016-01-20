@@ -29,11 +29,9 @@
 OrderedBCFOverlapMatcher::OrderedBCFOverlapMatcher(std::string& file, std::vector<GenomeInterval>& intervals)
 {
     odr = new BCFOrderedReader(file, intervals);
-    //insert overlap info flag to 
-    bcf_hdr_append_info_with_backup_naming(odr->hdr, "OBOM_OVERLAPS", "1", "Integer", "Number of overlapping variants with this variant.", true);    
-    
-    bcf_hdr_print(odr->hdr);
-    
+    //insert overlap info flag to
+    bcf_hdr_append_info_with_backup_naming(odr->hdr, "OBOM_OVERLAPS", "1", "Integer", "Number of overlapping variants with this variant.", true);
+    bcf_hdr_sync(odr->hdr);
     no_regions = 0;
     current_interval.seq = "";
 };
@@ -163,8 +161,8 @@ bool OrderedBCFOverlapMatcher::overlaps_with(std::string& chrom, int32_t start1,
                 break;
             }
 
-            increment_overlap(v);	
-			overlaps = true;
+            increment_overlap(v);
+            overlaps = true;
             buffer.push_back(v);
             overlap_vars.push_back(v);
             v = bcf_init();
@@ -240,21 +238,46 @@ bool OrderedBCFOverlapMatcher::overlaps_with(std::string& chrom, int32_t start1,
     return overlaps;
 };
 
+/**
+ * Flushes remaining variants.
+ */
+void OrderedBCFOverlapMatcher::flush()
+{
+    //clear records from previous chromosome
+    std::list<bcf1_t*>::iterator i = buffer.begin();
+    while (i!=buffer.end())
+    {
+        bcf_destroy(*i);
+        i = buffer.erase(i);
+    }
+    
+    v = bcf_init();
+
+    while (odr->read(v))
+    {
+        ++no_nonoverlaps;
+    }
+
+    if (v)
+    {
+        bcf_destroy(v);
+    }
+}
 
 /**
  * Increments the OBOM_OVERLAPS count of a variant record.
  */
 void OrderedBCFOverlapMatcher::increment_overlap(bcf1_t* v)
 {
-	int32_t n = 0;
-	int32_t *count;
+    int32_t n = 0;
+    int32_t *count;
     bcf_unpack(v, BCF_UN_INFO);
-	if (bcf_get_info_int32(odr->hdr, v, "OBOM_OVERLAPS", &count, &n)>=0)
-	{
-		++count[0];
-		bcf_update_info_int32(odr->hdr, v, "OBOM_OVERLAPS", count, n);
-		free(count);
-	}
+    if (bcf_get_info_int32(odr->hdr, v, "OBOM_OVERLAPS", &count, &n)>=0)
+    {
+        ++count[0];
+        bcf_update_info_int32(odr->hdr, v, "OBOM_OVERLAPS", count, n);
+        free(count);
+    }
 }
 
 /**
@@ -262,10 +285,10 @@ void OrderedBCFOverlapMatcher::increment_overlap(bcf1_t* v)
  */
 int32_t OrderedBCFOverlapMatcher::get_no_overlaps()
 {
-	int32_t val = no_overlaps;
-	no_overlaps = 0;
-    	
-	return val;
+    int32_t val = no_overlaps;
+    no_overlaps = 0;
+
+    return val;
 }
 
 /**
@@ -275,7 +298,7 @@ int32_t OrderedBCFOverlapMatcher::get_no_nonoverlaps()
 {
     int32_t val = no_nonoverlaps;
     no_nonoverlaps = 0;
-        
+
     return val;
 }
 
