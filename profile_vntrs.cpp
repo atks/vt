@@ -98,6 +98,7 @@ class Igor : Program
     std::vector<VNTROverlapStats> stats;
     uint32_t no_lcplx;
     uint32_t no_cds;
+    uint32_t no_vntrs;
                 
     ////////////////
     //common tools//
@@ -237,6 +238,7 @@ class Igor : Program
         stats.resize(input_vcf_files.size(), vstats);
         no_lcplx = 0;
         no_cds = 0;
+        no_vntrs = 0;
     }
 
     void profile_vntrs()
@@ -251,6 +253,14 @@ class Igor : Program
         {
             bcf_unpack(v, BCF_UN_STR);
             int32_t vtype = vm->classify_variant(odr->hdr, v, variant);
+
+            if (vtype!=VT_VNTR)
+            {
+                continue;
+            }
+
+            ++no_vntrs;
+            
             std::string chrom = bcf_get_chrom(odr->hdr,v);
             int32_t start1 = bcf_get_pos1(v);
             int32_t end1 = bcf_get_end_pos1(v);
@@ -302,33 +312,24 @@ class Igor : Program
                 }
                 
                 stats[i].ab2 += oboms[i]->get_no_overlaps();
-                stats[i].b += oboms[i]->get_no_nonoverlaps();
-                
+                stats[i].b += oboms[i]->get_no_nonoverlaps();                
             }
 
-
-            if (vtype==VT_VNTR)
-            {
-//                ++VAR_COUNT[POLYMORPHIC][VT_VNTR];
-//                if (variant.vntr.motif.size()<NO_MOTIF_LEN_CATEGORIES)
-//                {
-//                    ++VAR_MOTIF_LEN[variant.vntr.motif.size()-1];
-//                }
-//                else
-//                {
-//                    ++VAR_MOTIF_LEN[NO_MOTIF_LEN_CATEGORIES-1];
-//                }
-
-                vntr_tree->count(variant);
-            }
+            vntr_tree->count(variant);
         }
 
         for (uint32_t i = 0; i<oboms.size(); ++i)
         {
             oboms[i]->flush();
             
-            stats[i].ab2 += oboms[i]->get_no_overlaps();
-            stats[i].b += oboms[i]->get_no_nonoverlaps();
+            uint32_t ab2 = oboms[i]->get_no_overlaps();
+            uint32_t b = oboms[i]->get_no_overlaps();
+            
+            stats[i].ab2 += ab2;
+            stats[i].b += b;
+        
+            stats[i].fuzzy_ab2 += ab2;
+            stats[i].fuzzy_b += b;
         }
         
         
@@ -349,9 +350,8 @@ class Igor : Program
 
     void print_stats()
     {
-        vntr_tree->print(BASIS);
-
         fprintf(stderr, "\n");
+        fprintf(stderr, "    no VNTRs           %d\n", no_vntrs);
         fprintf(stderr, "    no low complexity  %d\n", no_lcplx);
         fprintf(stderr, "    no coding          %d\n", no_cds);
         fprintf(stderr, "\n");
@@ -363,30 +363,13 @@ class Igor : Program
             fprintf(stderr, "    A&B1 %10d %10d\n", stats[i].ab1, stats[i].fuzzy_ab1);
             fprintf(stderr, "    A&B2 %10d %10d\n", stats[i].ab2, stats[i].fuzzy_ab2);
             fprintf(stderr, "    B-A  %10d %10d\n", stats[i].b, stats[i].fuzzy_b);
-
-//            if (dataset_types[i]==TRUE)
-//            {
-//                fprintf(stderr, "    Precision    %4.1f%%\n", 100*(float)stats[i].ab/(stats[i].a+stats[i].ab));
-//                fprintf(stderr, "    Sensitivity  %4.1f%%\n", 100*(float)stats[i].ab/(stats[i].b+stats[i].ab));
-//            }
-//            else
-//            {
-//                fprintf(stderr, "    FDR          %4.1f%%\n", 100*(float)stats[i].ab/(stats[i].a+stats[i].ab));
-//                fprintf(stderr, "    Type I Error %4.1f%%\n", 100*(float)stats[i].ab/(stats[i].b+stats[i].ab));
-//            }
             fprintf(stderr, "\n");
         }
 
-//        fprintf(stderr, "    A:  %10d VNTRs\n", stats.a+stats.ab);
-//        fprintf(stderr, "    B:  %10d VNTRs\n", stats.ab+stats.b);
-//        fprintf(stderr, "\n");
-//        fprintf(stderr, "                   ts/tv  ins/del\n");
-//        fprintf(stderr, "    A-B %10d\n", stats.a);
-//        fprintf(stderr, "    A&B %10d\n", stats.ab);
-//        fprintf(stderr, "    B-A %10d\n", stats.b);
-//        fprintf(stderr, "    of A     %4.1f%%\n", 100*(float)stats.ab/(stats.a+stats.ab));
-//        fprintf(stderr, "    of B     %4.1f%%\n", 100*(float)stats.ab/(stats.b+stats.ab));
-//        fprintf(stderr, "\n");
+        vntr_tree->print(BASIS);
+        
+        
+        std::clog << "\n";
     };
 
     ~Igor()
