@@ -15,17 +15,15 @@ echo "++++++++++++++++++++++" >&2
 echo "Tests for vt normalize" >&2
 echo "++++++++++++++++++++++" >&2
 
-# ---------------------------------------------------------------------------
-# Test 01: normalization of indels from Mills et al. chromosome 20
-# ---------------------------------------------------------------------------
-
 # create temporary directory and ensure cleanup on termination
 CMDDIR=${DIR}/normalize
 TMPDIR=${CMDDIR}/tmp
 mkdir -p ${TMPDIR}
 TMPDIRS+=" $TMPDIR";
 
+#-----------------------
 echo "testing normalize"
+#-----------------------
 
 if [ "$1" == "debug" ]; then
     set -x
@@ -67,11 +65,9 @@ TMPDIR=${CMDDIR}/tmp
 mkdir -p ${TMPDIR}
 TMPDIRS+=" $TMPDIR";
 
-# ---------------------------------------------------------------------------
-# Test 01: block decomposition of even-length blocks
-# ---------------------------------------------------------------------------
-
+#------------------------------------------------------ 
 echo "testing decompose_blocksub of even-length blocks"
+#------------------------------------------------------ 
 
 if [ "$1" == "debug" ]; then
     set -x
@@ -102,11 +98,9 @@ else
     echo " NOT OK!!!"
 fi
 
-# ---------------------------------------------------------------------------
-# Test 02: block decomposition with alignment
-# ---------------------------------------------------------------------------
-
+#----------------------------------------------- 
 echo "testing decompose_blocksub with alignment"
+#----------------------------------------------- 
 
 if [ "$1" == "debug" ]; then
     set -x
