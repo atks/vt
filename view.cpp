@@ -247,6 +247,7 @@ class Igor : Program
         std::clog << "         [H] print header only             " << (print_header_only ? "yes" : "no") << "\n";
         std::clog << "         [s] print site information only   " << (print_sites_only ? "yes" : "no") << "\n";
         std::clog << "         [p] print options and stats       " << (print ? "yes" : "no") << "\n";
+        std::clog << "         [c] compression level             " << compression_level << "\n";
         print_str_op("         [f] filter                        ", fexp);
         print_int_op("         [i] intervals                     ", intervals);
         std::clog << "\n";
