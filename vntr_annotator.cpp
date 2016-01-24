@@ -70,7 +70,9 @@ VNTRAnnotator::~VNTRAnnotator()
 
 /**
  * Annotates VNTR characteristics.
- * @mode -
+ * @mode - e for exact alignment annotation
+ *       - f for fuzzy alignment annotation
+ *       -     
  */
 void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::string mode)
 {
@@ -86,14 +88,21 @@ void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::str
     //VNTRs from other sources.
     if (variant.type==VT_VNTR)
     {
-        if (debug) std::cerr << "ANNOTATING VNTR/STR \n";
-
-        //1. pick candidate region
-        cre->pick_candidate_region(h, v, variant, REFERENCE);
-        
-        //2. detect candidate motifs from a reference seqeuence
-        cmp->generate_candidate_motifs(h, v, variant);
-        cmp->next_motif(h, v, variant);
+        if (mode=="c")
+        {
+            if (debug) std::cerr << "ANNOTATING VNTR/STR \n";
+    
+            //1. pick candidate region
+            cre->pick_candidate_region(h, v, variant, REFERENCE);
+            
+            //2. detect candidate motifs from a reference seqeuence
+            cmp->generate_candidate_motifs(h, v, variant);
+            cmp->next_motif(h, v, variant);
+        }
+        else if (mode=="e")
+        {
+            
+        }
     }
     //main purpose - annotation of Indels.
     else if (variant.type&VT_INDEL)

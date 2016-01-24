@@ -42,7 +42,8 @@ class Igor : Program
     std::string interval_list;
 
     std::string method;           //methods of detection
-    std::string annotation_mode;  //modes of annotation
+    std::string indel_annotation_mode;  //modes of annotation
+    std::string vntr_annotation_mode;  //modes of annotation
     int32_t vntr_classification;  //vntr classification schemas
     bool override_tag;
     bool add_flank_annotation;     //add flank annotation
@@ -131,7 +132,7 @@ class Igor : Program
             TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_output_vcf_file("o", "o", "output VCF file [-]", false, "-", "str", cmd);
             TCLAP::ValueArg<std::string> arg_ref_fasta_file("r", "r", "reference sequence fasta file []", true, "", "str", cmd);
-            TCLAP::ValueArg<std::string> arg_annotation_mode("a", "a", "annotation type [v]\n"
+            TCLAP::ValueArg<std::string> arg_indel_annotation_mode("a", "a", "Indel annotation type [v]\n"
                  "              v : a. output VNTR variant (defined by classification).\n"
                  "                     RU                    repeat unit on reference sequence (CA)\n"
                  "                     MOTIF                 canonical representation (AC)\n"
@@ -151,6 +152,22 @@ class Igor : Program
                  "                     GMOTIF       generating motif used in fuzzy alignment\n"
                  "                     TR    position and alleles of VNTR (20:23413:CACACACACAC:<VNTR>)\n"
                  "              a : annotate each indel with RU, RL, MOTIF, REF.",
+                 false, "v", "str", cmd);
+          TCLAP::ValueArg<std::string> arg_vntr_annotation_mode("s", "s", "VNTR annotation type [v]\n"
+                 "              r : determine motifs and new fuzzy flanks from REF sequence (when annotating VNTRs)\n"
+                 "                     RU                    repeat unit on reference sequence (CA)\n"
+                 "                     MOTIF                 canonical representation (AC)\n"
+                 "                     RL                    repeat tract length in bases (11)\n"
+                 "                     FLANKS                flanking positions of repeat tract determined by exact alignment\n"
+                 "                     RU_COUNTS             number of exact repeat units and total number of repeat units in\n"
+                 "                                           repeat tract determined by exact alignment\n"
+                 "                     FZ_RL                 fuzzy repeat tract length in bases (11)\n"
+                 "                     FZ_FLANKS             flanking positions of repeat tract determined by fuzzy alignment\n"
+                 "                     FZ_RU_COUNTS          number of exact repeat units and total number of repeat units in\n"
+                 "                                           repeat tract determined by fuzzy alignment\n"
+                 "                     FLANKSEQ              flanking sequence of indel\n"
+                 "                     LARGE_REPEAT_REGION   repeat region exceeding 2000bp\n"
+                 "              c : compute motif concordance only (when annotating VNTRs)",
                  false, "v", "str", cmd);
             TCLAP::ValueArg<int32_t> arg_vntr_classification("c", "c", "classification schemas of tandem repeat [6]\n"
                  "              1 : lai2003     \n"
@@ -177,7 +194,8 @@ class Igor : Program
             output_vcf_file = arg_output_vcf_file.getValue();
             parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
             method = arg_method.getValue();
-            annotation_mode = arg_annotation_mode.getValue();
+            indel_annotation_mode = arg_indel_annotation_mode.getValue();
+            vntr_annotation_mode = arg_vntr_annotation_mode.getValue();
             vntr_classification = arg_vntr_classification.getValue();
             override_tag = arg_override_tag.getValue();
             add_flank_annotation = arg_add_flank_annotation.getValue();
@@ -202,15 +220,15 @@ class Igor : Program
         ///////////
         //options//
         ///////////
-        if (method!="e" && method!="f")
+        if (method!="e" && method!="f" && method!="c")
         {
             fprintf(stderr, "[%s:%d %s] Not a valid mode of VNTR detection: %s\n", __FILE__,__LINE__,__FUNCTION__, method.c_str());
             exit(1);
         }
 
-        if (annotation_mode!="v" && annotation_mode!="a")
+        if (indel_annotation_mode!="v" && indel_annotation_mode!="a")
         {
-            fprintf(stderr, "[%s:%d %s] Not a valid mode of annotation: %s\n", __FILE__,__LINE__,__FUNCTION__, annotation_mode.c_str());
+            fprintf(stderr, "[%s:%d %s] Not a valid mode of annotation: %s\n", __FILE__,__LINE__,__FUNCTION__, indel_annotation_mode.c_str());
             exit(1);
         }
 
@@ -259,7 +277,7 @@ class Igor : Program
         if (add_flank_annotation) bcf_hdr_append(odw->hdr, "##INFO=<ID=FLANKSEQ,Number=1,Type=String,Description=\"Flanking sequence 10bp on either side of detected repeat region.\">");
                 
         //helper variable initialization for adding genotype fields for additional vntr records
-        if (annotation_mode=="v")
+        if (indel_annotation_mode=="v")
         {
             no_samples = bcf_hdr_nsamples(odw->hdr);
             gts = (int32_t*) malloc(no_samples*sizeof(int32_t));
@@ -297,7 +315,8 @@ class Igor : Program
         std::clog << "options:     input VCF file(s)        " << input_vcf_file << "\n";
         std::clog << "         [o] output VCF file          " << output_vcf_file << "\n";
         std::clog << "         [m] method of VNTR detection " << method << "\n";
-        std::clog << "         [a] mode of annotation       " << annotation_mode << "\n";
+        std::clog << "         [a] indel mode of annotation " << indel_annotation_mode << "\n";
+        std::clog << "         [v] vntr mode of annotation  " << vntr_annotation_mode << "\n";
         print_boo_op("         [d] debug                    ", debug);
         print_ref_op("         [r] ref FASTA file           ", ref_fasta_file);
         print_boo_op("         [x] override tag             ", override_tag);
@@ -461,8 +480,6 @@ class Igor : Program
         while(i!=vntr_buffer.end())
         {
             VNTR& vntr = *i;
-
-//            std::cerr << vntr.rid << " " << rid << "\n";
 
             if (vntr.rid < rid)
             {
@@ -657,7 +674,7 @@ class Igor : Program
 //                bcf_print_liten(odr->hdr, v);
                 va->annotate(odr->hdr, v, variant, method);
 
-                if (annotation_mode=="v")
+                if (indel_annotation_mode=="v")
                 {
                     ///////////////////////////////////////////////////////////////////////////////////////////////////////
                     //annotate indels with exact flanks and fuzzy flanks and generating motif used in fuzzy flank detection
@@ -752,36 +769,28 @@ class Igor : Program
                     }
                 }
 
-//                std::cerr << "vntr_buffer size " << vntr_buffer.size() << "\n";
-
                 ++no_variants_annotated;
             }
-            else if (vtype&VT_VNTR)
+            else if (vtype==VT_VNTR)
             {
-                char** allele = bcf_get_allele(v);
-                char* ru = NULL;
-                int32_t n = 0;
-                if (bcf_get_info_string(odw->hdr, v, "RU", &ru, &n)>0)
-                {
-                    float genotype = 0;
-                    float discordance = 0;
-                    bool exact = false;
-
-                    bool res = genotype_str(allele[0], ru, genotype, discordance, exact);
-
-                    if (!res)
-                    {
-                        ++no_inexact;
-
-                        bcf_print(odw->hdr, v);
-                        std::cerr << "genotype    : " << genotype << "\n";
-                        std::cerr << "discordance : " << discordance << "\n";
-                        std::cerr << "exact       : " << exact << "\n";
-                    }
-
-                    ++no_exact;
-
-                    free(ru);
+                va->annotate(odr->hdr, v, variant, vntr_annotation_mode);
+                
+                if (add_flank_annotation)
+                {    
+                    std::string flanks;
+                    int32_t seq_len;
+                    char* seq = faidx_fetch_seq(fai, variant.chrom.c_str(), variant.vntr.exact_rbeg1-10-1, variant.vntr.exact_rbeg1-1-1, &seq_len);
+                    flanks.assign(seq);
+                    free(seq);
+                    flanks.append(1, '[');
+                    seq = faidx_fetch_seq(fai, variant.chrom.c_str(), variant.vntr.exact_rbeg1-1, variant.vntr.exact_rend1-1, &seq_len);
+                    flanks.append(seq);
+                    free(seq);
+                    flanks.append(1, ']');
+                    seq = faidx_fetch_seq(fai, variant.chrom.c_str(), variant.vntr.exact_rend1+1-1, variant.vntr.exact_rend1+10-1, &seq_len);
+                    flanks.append(seq);
+                    free(seq);
+                    bcf_update_info_string(h, v, "FLANKSEQ", flanks.c_str());
                 }
             }
             else // SNP

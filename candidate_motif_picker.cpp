@@ -39,6 +39,7 @@ CandidateMotifPicker::CandidateMotifPicker(bool debug)
  */
 CandidateMotifPicker::~CandidateMotifPicker()
 {
+    delete mt;
 }
 
 /**
