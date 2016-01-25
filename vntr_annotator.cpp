@@ -91,6 +91,27 @@ void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::str
         if (mode=="c")
         {
             if (debug) std::cerr << "ANNOTATING VNTR/STR \n";
+            //takes accepted MOTIF and RU
+            
+            //computes purity 
+            //1. pick candidate region
+            cre->pick_candidate_region(h, v, variant, REFERENCE);
+            
+            //just use the motif annotator
+            //2. detect candidate motifs from a reference seqeuence
+            cmp->generate_candidate_motifs(h, v, variant);
+            cmp->next_motif(h, v, variant);
+             
+            //3. compute purity
+            fd->detect_flanks(h, v, variant, CLIP_ENDS);
+        }
+        else if (mode=="e")
+        {
+            //detects motif again from repeat tract
+            
+            //compute purity based on new motif
+            
+            if (debug) std::cerr << "ANNOTATING VNTR/STR \n";
     
             //1. pick candidate region
             cre->pick_candidate_region(h, v, variant, REFERENCE);
@@ -98,9 +119,6 @@ void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::str
             //2. detect candidate motifs from a reference seqeuence
             cmp->generate_candidate_motifs(h, v, variant);
             cmp->next_motif(h, v, variant);
-        }
-        else if (mode=="e")
-        {
             
         }
     }
