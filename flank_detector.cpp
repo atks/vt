@@ -416,18 +416,40 @@ std::string FlankDetector::shift_str(std::string& seq, uint32_t i)
 }
 
 /**
- * Chooses a phase of the motif that is appropriate for the alignment
+ * Chooses a phase of the motif that is appropriate for the alignment.
+ * This differs from choose_exact_repeat_unit() where the motif is returned
+ * if not suitable repeat unit is found.
  */
-std::string FlankDetector::choose_repeat_unit(std::string& ref, std::string& motif)
+std::string FlankDetector::choose_repeat_unit(std::string& seq, std::string& motif)
 {
     for (uint32_t i=0; i<motif.size(); ++i)
     {
         std::string smotif = shift_str(motif, i);
-        if (ref.compare(0, smotif.size(), smotif)==0)
+        if (seq.compare(0, smotif.size(), smotif)==0)
         {
             return smotif;
         }
     }
 
+    //should return empty string
     return motif;
+}
+
+/**
+ * Chooses a phase of the motif that is appropriate for the alignment.
+ * This returns the empty string if the motif does not have an exact
+ * match in all its phases.
+ */
+std::string FlankDetector::choose_exact_repeat_unit(std::string& seq, std::string& motif)
+{
+    for (uint32_t i=0; i<motif.size(); ++i)
+    {
+        std::string smotif = shift_str(motif, i);
+        if (seq.compare(0, smotif.size(), smotif)==0)
+        {
+            return smotif;
+        }
+    }
+
+    return "";
 }
