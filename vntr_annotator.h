@@ -76,12 +76,6 @@ class VNTRAnnotator
     bool debug;
     int32_t max_len;
 
-    ////////
-    //raHMMs
-    ////////
-    std::string qual;
-    AHMM* ahmm;
-
     ///////
     //tools
     ///////

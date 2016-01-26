@@ -152,11 +152,9 @@ void FlankDetector::detect_flanks(bcf_hdr_t* h, bcf1_t *v, Variant& variant, uin
         {
             
         }
-
-        
+ 
 //        std::cerr << "repeat tract: " << vntr.exact_repeat_tract << "\n";
-//        std::cerr << "motif: " << vntr.motif << "\n";
-        
+//        std::cerr << "motif: " << vntr.motif << "\n";        
         vntr.ru = choose_repeat_unit(vntr.exact_repeat_tract, vntr.motif);
         ahmm->set_model(vntr.ru.c_str());
         ahmm->align(vntr.exact_repeat_tract.c_str(), qual.c_str());
@@ -452,4 +450,53 @@ std::string FlankDetector::choose_exact_repeat_unit(std::string& seq, std::strin
     }
 
     return "";
+}
+
+/**
+ * Computes purity score of a sequence with respect to a motif.
+ */
+void FlankDetector::compute_purity_score(Variant& variant, std::string mode)
+{
+    VNTR& vntr = variant.vntr;
+    
+    std::string& seq = (mode=="e") ? vntr.exact_repeat_tract : vntr.fuzzy_repeat_tract;
+    
+    std::string& motif = vntr.motif; 
+    std::string ru = choose_exact_repeat_unit(seq, motif);
+    float exact_motif_count = 0;
+    
+    if (ru!="")
+    {
+        uint32_t j=0;
+        bool exact = true;
+        for (uint32_t i=0; i<seq.size(); ++i)
+        {
+            if (ru.at(j)!=seq.at(i))            
+            {
+                exact = false;
+                break;
+            }
+            
+            ++j;
+        }
+        
+        if (exact)
+        {
+            vntr.exact_motif_concordance = 1;
+            vntr.exact_no_exact_ru = seq.size()/motif.size();
+            vntr.exact_total_no_ru = vntr.exact_no_exact_ru;
+            vntr.exact_rl = (float) seq.size()/(float) motif.size();
+            return;
+        }   
+    }
+    
+    //fall through to computing inexact sequence
+    ahmm->set_model(ru.c_str());
+    ahmm->align(seq.c_str(), qual.c_str());
+
+    vntr.exact_motif_concordance = ahmm->motif_concordance;
+    vntr.exact_no_exact_ru = ahmm->exact_motif_count;
+    vntr.exact_total_no_ru = ahmm->motif_count;
+    vntr.exact_rl = ahmm->repeat_tract_len;
+    return;
 }

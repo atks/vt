@@ -92,9 +92,23 @@ class FlankDetector
     std::string shift_str(std::string& seq, uint32_t i);
 
     /**
-     * Chooses a phase of the motif that is appropriate for the alignment
+     * Chooses a phase of the motif that is appropriate for the alignment.
+     * This differs from choose_exact_repeat_unit() where the motif is returned
+     * if not suitable repeat unit is found.
      */
-    std::string choose_repeat_unit(std::string& ref, std::string& motif);
+    std::string choose_repeat_unit(std::string& seq, std::string& motif);
+
+    /**
+     * Chooses a phase of the motif that is appropriate for the alignment.
+     * This returns the empty string if the motif does not have an exact
+     * match in all its phases.
+     */
+    std::string choose_exact_repeat_unit(std::string& seq, std::string& motif);
+
+    /**
+     * Computes purity score of a sequence with respect to a motif.
+     */
+    void compute_purity_score(Variant& variant, std::string mode);
 };
 
 #endif

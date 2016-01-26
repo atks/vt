@@ -30,20 +30,6 @@ VNTRAnnotator::VNTRAnnotator(std::string& ref_fasta_file, bool debug)
 {
     vm = new VariantManip(ref_fasta_file.c_str());
 
-    float delta = 0.0001;
-    float epsilon = 0.05;
-    float tau = 0.01;
-    float eta = 0.01;
-    float mismatch_penalty = 3;
-
-    ahmm = new AHMM(false);
-    ahmm->set_delta(delta);
-    ahmm->set_epsilon(epsilon);
-    ahmm->set_tau(tau);
-    ahmm->set_eta(eta);
-    ahmm->set_mismatch_penalty(mismatch_penalty);
-    ahmm->initialize_T();
-
     fai = fai_load(ref_fasta_file.c_str());
     if (fai==NULL)
     {
@@ -54,9 +40,8 @@ VNTRAnnotator::VNTRAnnotator(std::string& ref_fasta_file, bool debug)
     cre = new CandidateRegionExtractor(ref_fasta_file, debug);
     cmp = new CandidateMotifPicker(debug);
     fd = new FlankDetector(ref_fasta_file, debug);
-    
+
     this->debug = debug;
-    qual.assign(256, 'K');
 };
 
 /**
@@ -72,7 +57,7 @@ VNTRAnnotator::~VNTRAnnotator()
  * Annotates VNTR characteristics.
  * @mode - e for exact alignment annotation
  *       - f for fuzzy alignment annotation
- *       -     
+ *       -
  */
 void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::string mode)
 {
@@ -88,38 +73,41 @@ void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::str
     //VNTRs from other sources.
     if (variant.type==VT_VNTR)
     {
-        if (mode=="c")
+        if (mode=="r")
         {
             if (debug) std::cerr << "ANNOTATING VNTR/STR \n";
             //takes accepted MOTIF and RU
-            
-            //computes purity 
+
+            //computes purity
             //1. pick candidate region
             cre->pick_candidate_region(h, v, variant, REFERENCE);
-            
+
             //just use the motif annotator
             //2. detect candidate motifs from a reference seqeuence
             cmp->generate_candidate_motifs(h, v, variant);
             cmp->next_motif(h, v, variant);
-             
+
             //3. compute purity
             fd->detect_flanks(h, v, variant, CLIP_ENDS);
         }
-        else if (mode=="e")
+        else if (mode=="c")
         {
             //detects motif again from repeat tract
-            
+
             //compute purity based on new motif
-            
-            if (debug) std::cerr << "ANNOTATING VNTR/STR \n";
+            std::cerr << "ANNOTATING VNTR's purity score\n";
     
+            if (debug) std::cerr << "ANNOTATING VNTR's purity score\n";
+
             //1. pick candidate region
             cre->pick_candidate_region(h, v, variant, REFERENCE);
-            
+
             //2. detect candidate motifs from a reference seqeuence
             cmp->generate_candidate_motifs(h, v, variant);
             cmp->next_motif(h, v, variant);
-            
+
+//            compute_purity_score(std::string& seq, std::string& motif, Variant& variant)
+
         }
     }
     //main purpose - annotation of Indels.
@@ -131,7 +119,7 @@ void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::str
         //2. choose a set of candidate motifs and pick motif
         //3. detect repeat region and evaluate
         //4. iterate 2 and 3
-        
+
         //EXACT MODE
         if (mode=="e")
         {
@@ -148,7 +136,7 @@ void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::str
             {
                 std::cerr << "oops, no candidate motif for next step\n";
             }
-            
+
             //3. detect flanks and evaluate reference tract
             fd->detect_flanks(h, v, variant, CLIP_ENDS);
 
@@ -163,7 +151,7 @@ void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::str
 
             //1. selects candidate region by fuzzy left and right alignment
             cre->pick_candidate_region(h, v, variant, EXACT_LEFT_RIGHT_ALIGNMENT);
-            
+
             //2. detect candidate motifs from a reference sequence
             cmp->generate_candidate_motifs(h, v, variant);
 
@@ -171,7 +159,7 @@ void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::str
             {
                 std::cerr << "oops, no candidate motif for next step\n";
             }
-            
+
             //3. evaluate reference length
             fd->detect_flanks(h, v, variant, FRAHMM);
 
@@ -196,7 +184,7 @@ std::string VNTRAnnotator::cannonicalize(std::string& motif)
 
         if (shifted_motif > cmotif)
         {
-            cmotif = shifted_motif;   
+            cmotif = shifted_motif;
         }
     }
 
@@ -209,53 +197,53 @@ std::string VNTRAnnotator::cannonicalize(std::string& motif)
 std::string VNTRAnnotator::basis(std::string& motif)
 {
     bool bases[4];
-    
+
     for (uint32_t i=0; i<motif.size(); ++i)
     {
         char base = motif.at(i);
-        
+
         if (base<=67)
         {
             if (base==65)
             {
-                if (!bases[0]) 
+                if (!bases[0])
                 {
                     bases[0] = true;
                 }
-            }  
+            }
             else
             {
-                if (!bases[1]) 
+                if (!bases[1])
                 {
                     bases[1] = true;
                 }
-            }  
-        }   
+            }
+        }
         else
         {
             if (base==71)
             {
-                if (!bases[2]) 
+                if (!bases[2])
                 {
                     bases[2] = true;
                 }
-            }  
+            }
             else
             {
-                if (!bases[3]) 
+                if (!bases[3])
                 {
                     bases[3] = true;
                 }
-            } 
-        } 
+            }
+        }
     }
-    
+
     std::string basis;
     if (bases[0]) basis.append(1, 'A');
     if (bases[1]) basis.append(1, 'C');
     if (bases[2]) basis.append(1, 'G');
     if (bases[3]) basis.append(1, 'T');
-        
+
     return basis;
 }
 
@@ -269,9 +257,9 @@ bool VNTRAnnotator::is_vntr(Variant& variant, int32_t mode, std::string& method)
     float motif_concordance = 0;
     uint32_t no_exact_ru = 0;
 
-    
+
     VNTR& vntr = variant.vntr;
-    
+
     if (method == "e")
     {
         motif_concordance = variant.vntr.exact_motif_concordance;
@@ -308,9 +296,9 @@ bool VNTRAnnotator::is_vntr(Variant& variant, int32_t mode, std::string& method)
                 }
             }
         }
-        
+
         //if the fuzzy definition is not caught above, this will fall through to the exact definition.
-                
+
         if ((vntr.exact_rl - vntr.mlen)>=6 && vntr.exact_no_exact_ru>=2)
         {
             //should we set separate cutoffs for motifs that contain only 2 types of nucleotides?
@@ -318,14 +306,14 @@ bool VNTRAnnotator::is_vntr(Variant& variant, int32_t mode, std::string& method)
             if (vntr.mlen==1 && vntr.exact_motif_concordance>0.9)
             {
                 vntr.definition_support = "e";
-                return true;                
+                return true;
             }
             else if (vntr.mlen>1 && vntr.exact_motif_concordance>0.75)
             {
                 vntr.definition_support = "e";
                 return true;
             }
-        }        
+        }
 
         return false;
     }

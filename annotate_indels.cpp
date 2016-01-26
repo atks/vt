@@ -153,7 +153,7 @@ class Igor : Program
                  "                     TR    position and alleles of VNTR (20:23413:CACACACACAC:<VNTR>)\n"
                  "              a : annotate each indel with RU, RL, MOTIF, REF.",
                  false, "v", "str", cmd);
-          TCLAP::ValueArg<std::string> arg_vntr_annotation_mode("s", "s", "VNTR annotation type [v]\n"
+          TCLAP::ValueArg<std::string> arg_vntr_annotation_mode("s", "s", "VNTR annotation type [r]\n"
                  "              r : determine motifs and new fuzzy flanks from REF sequence (when annotating VNTRs)\n"
                  "                     RU                    repeat unit on reference sequence (CA)\n"
                  "                     MOTIF                 canonical representation (AC)\n"
@@ -167,8 +167,8 @@ class Igor : Program
                  "                                           repeat tract determined by fuzzy alignment\n"
                  "                     FLANKSEQ              flanking sequence of indel\n"
                  "                     LARGE_REPEAT_REGION   repeat region exceeding 2000bp\n"
-                 "              c : compute motif concordance only (when annotating VNTRs)",
-                 false, "v", "str", cmd);
+                 "              c : compute motif concordance only",
+                 false, "c", "str", cmd);
             TCLAP::ValueArg<int32_t> arg_vntr_classification("c", "c", "classification schemas of tandem repeat [6]\n"
                  "              1 : lai2003     \n"
                  "              2 : kelkar2008  \n"
@@ -228,7 +228,13 @@ class Igor : Program
 
         if (indel_annotation_mode!="v" && indel_annotation_mode!="a")
         {
-            fprintf(stderr, "[%s:%d %s] Not a valid mode of annotation: %s\n", __FILE__,__LINE__,__FUNCTION__, indel_annotation_mode.c_str());
+            fprintf(stderr, "[%s:%d %s] Not a valid mode of Indel annotation: %s\n", __FILE__,__LINE__,__FUNCTION__, indel_annotation_mode.c_str());
+            exit(1);
+        }
+        
+        if (vntr_annotation_mode!="r" && vntr_annotation_mode!="c")
+        {
+            fprintf(stderr, "[%s:%d %s] Not a valid mode of VNTR annotation: %s\n", __FILE__,__LINE__,__FUNCTION__, vntr_annotation_mode.c_str());
             exit(1);
         }
 
@@ -528,7 +534,6 @@ class Igor : Program
         bcf_set_rid(v, variant.rid);
         bcf_update_info_string(h, v, MOTIF.c_str(), vntr.motif.c_str());
         bcf_update_info_string(h, v, RU.c_str(), vntr.ru.c_str());
-
 
         if (variant.vntr.definition_support=="e")
         {
