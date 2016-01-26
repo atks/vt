@@ -555,8 +555,8 @@ void Variant::update_vntr_from_info_fields(bcf_hdr_t *h, bcf1_t *v)
     }
     else
     {
-        vntr.fuzzy_rbeg1 = bcf_get_pos1(v) - 1;
-        vntr.fuzzy_rend1 = bcf_get_end_pos1(v) + 1;
+        vntr.fuzzy_rbeg1 = 0;
+        vntr.fuzzy_rend1 = 0;
     }
 
     beg1 = std::min(vntr.exact_rbeg1-1, vntr.fuzzy_rbeg1-1);

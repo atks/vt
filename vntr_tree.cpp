@@ -122,8 +122,24 @@ void VNTRTree::count(Variant& variant)
             node = motif_map[vntr.motif];
         }
         
-        if (vntr.exact_rbeg1==vntr.fuzzy_rbeg1 &&
-            vntr.exact_rend1==vntr.fuzzy_rend1)
+        
+        float concordance = -1;
+        float *score = NULL;
+        int32_t n = 0;
+        if (bcf_get_info_float(variant.h, variant.v, "SCORE", &score, &n)>0)
+        {
+            concordance = score[0];
+            free(score);
+        }
+        else if (bcf_get_info_float(variant.h, variant.v, "CONCORDANCE", &score, &n)>0)
+        {
+            concordance = score[0];
+            free(score);
+        }
+        
+        if (concordance==1 ||
+           (vntr.fuzzy_rbeg1!=0 && vntr.exact_rbeg1==vntr.fuzzy_rbeg1 &&
+            vntr.exact_rend1==vntr.fuzzy_rend1))
         {
             ++node->exact_count;
         }
