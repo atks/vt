@@ -87,6 +87,11 @@ class CandidateMotifPicker
     void generate_candidate_motifs(bcf_hdr_t* h, bcf1_t* v, Variant& variant);
 
     /**
+     * Initialize candidate motif from VCF record.
+     */
+    void set_motif_from_info_field(Variant& variant);
+    
+    /**
      * Choose the next best motif.
      */
     bool next_motif(bcf_hdr_t* h, bcf1_t* v, Variant& variant);

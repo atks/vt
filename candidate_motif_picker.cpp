@@ -114,6 +114,28 @@ void CandidateMotifPicker::generate_candidate_motifs(bcf_hdr_t* h, bcf1_t* v, Va
 }
 
 /**
+ * Initialize candidate motif from VCF record.
+ */
+void CandidateMotifPicker::set_motif_from_info_field(Variant& variant)
+{
+    VNTR& vntr = variant.vntr;
+    char *motif = NULL;
+    int32_t n = 0;
+    if (bcf_get_info_string(variant.h, variant.v, "MOTIF", &motif, &n)>0)
+    {
+        vntr.motif.assign(motif);
+        vntr.mlen = vntr.motif.size();
+        free(motif);
+
+        vntr.basis = vntr.get_basis(vntr.motif);
+    }
+    else
+    {
+        vntr.motif = "";
+    }   
+}
+    
+/**
  * Choose the next best motif.
  */
 bool CandidateMotifPicker::next_motif(bcf_hdr_t* h, bcf1_t* v, Variant& variant)

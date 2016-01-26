@@ -66,7 +66,7 @@ FlankDetector::FlankDetector(std::string& ref_fasta_file, bool debug)
     rfhmm->set_mismatch_penalty(mismatch_penalty);
     rfhmm->initialize_T();
 
-    qual.assign(1000, 'K');
+    qual.assign(1024, 'K');
 
     //////////////////
     //initialize tools
@@ -145,16 +145,14 @@ void FlankDetector::detect_flanks(bcf_hdr_t* h, bcf1_t *v, Variant& variant, uin
             }
         }
         //this is for nonexistent repeat units
-        // 
+        //
         // RU : T
         // repeat_tract : G[T]C where T is an insert
         else if (vntr.exact_repeat_tract.size()==2)
         {
-            
+
         }
- 
-//        std::cerr << "repeat tract: " << vntr.exact_repeat_tract << "\n";
-//        std::cerr << "motif: " << vntr.motif << "\n";        
+
         vntr.ru = choose_repeat_unit(vntr.exact_repeat_tract, vntr.motif);
         ahmm->set_model(vntr.ru.c_str());
         ahmm->align(vntr.exact_repeat_tract.c_str(), qual.c_str());
@@ -225,17 +223,13 @@ void FlankDetector::detect_flanks(bcf_hdr_t* h, bcf1_t *v, Variant& variant, uin
             }
         }
         //this is for nonexistent repeat units
-        // 
+        //
         // RU : T
         // repeat_tract : G[T]C where T is an insert
         else if (vntr.exact_repeat_tract.size()==2)
         {
-            
+
         }
-        
-//        std::cerr << "CHECK repeat tract: " << vntr.exact_repeat_tract << "\n";
-//        std::cerr << "CHECK motif: " << vntr.motif << "\n";
-        
 
         vntr.ru = choose_repeat_unit(vntr.exact_repeat_tract, vntr.motif);
         ahmm->set_model(vntr.ru.c_str());
@@ -280,7 +274,7 @@ void FlankDetector::detect_flanks(bcf_hdr_t* h, bcf1_t *v, Variant& variant, uin
         char* seq;
         int32_t seq_len;
 //        bool encountered_N = false;
-        
+
         while (true)
         {
             //pick 5 bases to the right
@@ -289,8 +283,8 @@ void FlankDetector::detect_flanks(bcf_hdr_t* h, bcf1_t *v, Variant& variant, uin
             //pick 105 bases for aligning
 
             seq = faidx_fetch_seq(fai, variant.chrom.c_str(), vntr.exact_rend1-slen-1, vntr.exact_rend1+5-1, &seq_len);
- 
-            
+
+
             rfhmm->set_model(vntr.ru.c_str(), rflank);
             rfhmm->align(seq, qual.c_str());
             if (debug) rfhmm->print_alignment();
@@ -324,7 +318,7 @@ void FlankDetector::detect_flanks(bcf_hdr_t* h, bcf1_t *v, Variant& variant, uin
             else
             {
                 slen +=100;
-                
+
                 if (debug)
                     std::cerr << "extending the reference sequence for RFHMM : " << slen << "\n";
             }
@@ -458,28 +452,29 @@ std::string FlankDetector::choose_exact_repeat_unit(std::string& seq, std::strin
 void FlankDetector::compute_purity_score(Variant& variant, std::string mode)
 {
     VNTR& vntr = variant.vntr;
-    
+
     std::string& seq = (mode=="e") ? vntr.exact_repeat_tract : vntr.fuzzy_repeat_tract;
-    
-    std::string& motif = vntr.motif; 
+
+    std::string& motif = vntr.motif;
     std::string ru = choose_exact_repeat_unit(seq, motif);
     float exact_motif_count = 0;
-    
+    uint32_t mlen = ru.size();
+
     if (ru!="")
     {
         uint32_t j=0;
         bool exact = true;
         for (uint32_t i=0; i<seq.size(); ++i)
         {
-            if (ru.at(j)!=seq.at(i))            
+            if (ru.at(j)!=seq.at(i))
             {
                 exact = false;
                 break;
             }
-            
-            ++j;
+
+            j = (j==mlen-1) ? 0 : j+1;
         }
-        
+
         if (exact)
         {
             vntr.exact_motif_concordance = 1;
@@ -487,9 +482,13 @@ void FlankDetector::compute_purity_score(Variant& variant, std::string mode)
             vntr.exact_total_no_ru = vntr.exact_no_exact_ru;
             vntr.exact_rl = (float) seq.size()/(float) motif.size();
             return;
-        }   
+        }
     }
-    
+    else
+    {
+        ru = motif;
+    }
+
     //fall through to computing inexact sequence
     ahmm->set_model(ru.c_str());
     ahmm->align(seq.c_str(), qual.c_str());
@@ -498,5 +497,6 @@ void FlankDetector::compute_purity_score(Variant& variant, std::string mode)
     vntr.exact_no_exact_ru = ahmm->exact_motif_count;
     vntr.exact_total_no_ru = ahmm->motif_count;
     vntr.exact_rl = ahmm->repeat_tract_len;
+
     return;
 }

@@ -63,7 +63,7 @@ Variant::Variant(bcf_hdr_t* h, bcf1_t* v)
         }
 
         beg1 = vntr.exact_rbeg1-1;
-        end1 = vntr.exact_rend1+1;        
+        end1 = vntr.exact_rend1+1;
 
 //        int32_t *fuzzy_flanks = NULL;
 //        n = 0;
@@ -82,15 +82,15 @@ Variant::Variant(bcf_hdr_t* h, bcf1_t* v)
 //        beg1 = std::min(vntr.rbeg1-1, vntr.fuzzy_rbeg1-1);
 //        end1 = std::max(vntr.rend1+1, vntr.fuzzy_rend1+1);
 
-        
-    }     
+
+    }
     else if (type==VT_VNTR)
     {
         update_vntr_from_info_fields(h, v);
-            
+
         vs.push_back(v);
         vntr_vs.push_back(v);
-    }    
+    }
 }
 
 /**
@@ -112,11 +112,11 @@ Variant::Variant(Variant* v1, Variant* v2)
 
     vs.push_back(v1->v);
     vs.push_back(v2->v);
-    
+
     if (v1->type==VT_SNP)
     {
         snp_vs.push_back(v1->v);
-    }    
+    }
     else if (v1->type==VT_INDEL)
     {
         indel_vs.push_back(v1->v);
@@ -124,12 +124,12 @@ Variant::Variant(Variant* v1, Variant* v2)
     else if (v1->type==VT_VNTR)
     {
         vntr_vs.push_back(v1->v);
-    }  
+    }
 
     if (v2->type==VT_SNP)
     {
         snp_vs.push_back(v2->v);
-    }    
+    }
     else if (v2->type==VT_INDEL)
     {
         indel_vs.push_back(v2->v);
@@ -177,7 +177,7 @@ void Variant::clear()
     vs.clear();
     snp_vs.clear();
     indel_vs.clear();
-    vntr_vs.clear();    
+    vntr_vs.clear();
 };
 
 /**
@@ -187,7 +187,7 @@ int32_t Variant::classify(bcf_hdr_t *h, bcf1_t *v)
 {
     this->h = h;
     this->v = v;
-    
+
     bcf_unpack(v, BCF_UN_STR);
     chrom.assign(bcf_get_chrom(h, v));
     rid = bcf_get_rid(v);
@@ -460,21 +460,21 @@ void Variant::update_vntr_from_info_fields(bcf_hdr_t *h, bcf1_t *v)
     vntr.motif = bcf_get_rid(v);
     char** allele = bcf_get_allele(v);
     vntr.exact_repeat_tract.assign(allele[0]);
-    
-     char *motif = NULL;
+
+    char *motif = NULL;
     int32_t n = 0;
     if (bcf_get_info_string(h, v, "MOTIF", &motif, &n)>0)
     {
         vntr.motif.assign(motif);
         free(motif);
-        
+
         vntr.basis = vntr.get_basis(vntr.motif);
     }
     else
     {
         vntr.motif = "";
     }
-    
+
     char *ru = NULL;
     n = 0;
     if (bcf_get_info_string(h, v, "RU", &ru, &n)>0)
@@ -486,7 +486,7 @@ void Variant::update_vntr_from_info_fields(bcf_hdr_t *h, bcf1_t *v)
     {
         vntr.ru = "";
     }
-    
+
     float *exact_motif_concordance = NULL;
     n = 0;
     if (bcf_get_info_float(h, v, "CONCORDANCE", &exact_motif_concordance, &n)>0)
@@ -498,7 +498,7 @@ void Variant::update_vntr_from_info_fields(bcf_hdr_t *h, bcf1_t *v)
     {
         vntr.exact_motif_concordance = -1;
     }
-    
+
     float *fuzzy_motif_concordance = NULL;
     n = 0;
     if (bcf_get_info_float(h, v, "FZ_CONCORDANCE", &fuzzy_motif_concordance, &n)>0)
@@ -510,7 +510,7 @@ void Variant::update_vntr_from_info_fields(bcf_hdr_t *h, bcf1_t *v)
     {
         vntr.fuzzy_motif_concordance = -1;
     }
-    
+
     int32_t *flanks = NULL;
     n = 0;
     if (bcf_get_info_int32(h, v, "FLANKS", &flanks, &n)>0)
@@ -518,7 +518,7 @@ void Variant::update_vntr_from_info_fields(bcf_hdr_t *h, bcf1_t *v)
         vntr.exact_rbeg1 = flanks[0];
         vntr.exact_rend1 = flanks[1];
         free(flanks);
-        
+
         if (bcf_get_pos1(v)==vntr.exact_rbeg1 && bcf_get_end1(v)==vntr.exact_rend1)
         {
             char** allele = bcf_get_allele(v);
@@ -542,7 +542,7 @@ void Variant::update_vntr_from_info_fields(bcf_hdr_t *h, bcf1_t *v)
         vntr.fuzzy_rbeg1 = fuzzy_flanks[0];
         vntr.fuzzy_rend1 = fuzzy_flanks[1];
         free(fuzzy_flanks);
-        
+
         if (bcf_get_pos1(v)==vntr.fuzzy_rbeg1 && bcf_get_end1(v)==vntr.fuzzy_rend1)
         {
             char** allele = bcf_get_allele(v);
@@ -596,7 +596,7 @@ void Variant::get_vntr_string(kstring_t* s)
     kputc(':', s);
     kputs("<VNTR>", s);
     kputc(':', s);
-    kputs(vntr.motif.c_str(), s);    
+    kputs(vntr.motif.c_str(), s);
 };
 
 /**
@@ -613,7 +613,7 @@ void Variant::get_fuzzy_vntr_string(kstring_t* s)
     kputc(':', s);
     kputs("<VNTR>", s);
     kputc(':', s);
-    kputs(vntr.motif.c_str(), s);    
+    kputs(vntr.motif.c_str(), s);
 };
 
 /**

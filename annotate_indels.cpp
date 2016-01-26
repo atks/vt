@@ -73,6 +73,8 @@ class Igor : Program
     std::string FZ_RU_COUNTS;     //repeat unit counts - exact and inexact
     std::string FZ_FLANKS;        //flank positions
 
+    std::string SCORE;            //concordance of the repeat unit for existing repeat tract in a VNTR record
+
     std::string MODE;             //mode of VNTR annotation, this is either exact or fuzzy.  This is important as in fuzzy mode
                                   //when the cutoffs fail, the exact mode is considered too and annotation may fall back on that.
 
@@ -278,6 +280,11 @@ class Igor : Program
         EXACT = bcf_hdr_append_info_with_backup_naming(odw->hdr, "EXACT", "0", "Flag", "Exact mode of VNTR annotation", true);
         FUZZY = bcf_hdr_append_info_with_backup_naming(odw->hdr, "FUZZY", "0", "Flag", "Fuzzy mode of VNTR annotation", true);
         TR = bcf_hdr_append_info_with_backup_naming(odw->hdr, "TR", "1", "String", "Tandem repeat associated with this indel.", true);
+
+        if (vntr_annotation_mode=="c")
+        {
+            SCORE = bcf_hdr_append_info_with_backup_naming(odw->hdr, "SCORE", "1", "Float", "Concordance of repeat unit.", true);
+        }    
 
         bcf_hdr_append(odw->hdr, "##INFO=<ID=LARGE_REPEAT_REGION,Number=0,Type=Flag,Description=\"Very large repeat region, vt only detects up to 1000bp long regions.\">");
         if (add_flank_annotation) bcf_hdr_append(odw->hdr, "##INFO=<ID=FLANKSEQ,Number=1,Type=String,Description=\"Flanking sequence 10bp on either side of detected repeat region.\">");
@@ -797,6 +804,13 @@ class Igor : Program
                     free(seq);
                     bcf_update_info_string(h, v, "FLANKSEQ", flanks.c_str());
                 }
+                
+                bcf_update_info_float(h, v, "SCORE", &variant.vntr.exact_motif_concordance, 1);
+                   
+                odw->write(v);
+                v = odw->get_bcf1_from_pool();       
+
+                
             }
             else // SNP
             {

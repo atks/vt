@@ -92,22 +92,16 @@ void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::str
         }
         else if (mode=="c")
         {
-            //detects motif again from repeat tract
-
-            //compute purity based on new motif
-            std::cerr << "ANNOTATING VNTR's purity score\n";
-    
             if (debug) std::cerr << "ANNOTATING VNTR's purity score\n";
 
             //1. pick candidate region
             cre->pick_candidate_region(h, v, variant, REFERENCE);
 
-            //2. detect candidate motifs from a reference seqeuence
-            cmp->generate_candidate_motifs(h, v, variant);
-            cmp->next_motif(h, v, variant);
+            //2. set motifs from info field
+            cmp->set_motif_from_info_field(variant);
 
-//            compute_purity_score(std::string& seq, std::string& motif, Variant& variant)
-
+            //3. compute purity scores
+            fd->compute_purity_score(variant, "e");
         }
     }
     //main purpose - annotation of Indels.
