@@ -130,6 +130,18 @@ bool OrderedBCFOverlapMatcher::overlaps_with(std::string& chrom, int32_t start1,
         std::list<bcf1_t*>::iterator i = buffer.begin();
         while (i!=buffer.end())
         {
+            int32_t n = 0;
+            int32_t *count;
+            int32_t ret = bcf_get_info_int32(odr->hdr, v, "OBOM_OVERLAPS", &count, &n);
+            if (ret==-3)
+            {
+                ++no_nonoverlaps;
+            }
+            else if (ret>0)
+            {
+                free(count);
+            }
+            
             bcf_destroy(*i);
             i = buffer.erase(i);
         }
@@ -272,7 +284,7 @@ void OrderedBCFOverlapMatcher::increment_overlap(bcf1_t* v)
     int32_t n = 0;
     int32_t *count;
     bcf_unpack(v, BCF_UN_INFO);
-    if (bcf_get_info_int32(odr->hdr, v, "OBOM_OVERLAPS", &count, &n)>=0)
+    if (bcf_get_info_int32(odr->hdr, v, "OBOM_OVERLAPS", &count, &n)>0)
     {
         ++count[0];
         bcf_update_info_int32(odr->hdr, v, "OBOM_OVERLAPS", count, n);

@@ -99,6 +99,7 @@ class Igor : Program
     uint32_t no_lcplx;
     uint32_t no_cds;
     uint32_t no_vntrs;
+    uint32_t no_redundant;
                 
     ////////////////
     //common tools//
@@ -239,6 +240,7 @@ class Igor : Program
         no_lcplx = 0;
         no_cds = 0;
         no_vntrs = 0;
+        no_redundant = 0;
     }
 
     void profile_vntrs()
@@ -248,7 +250,9 @@ class Igor : Program
         Variant variant;
         std::vector<int32_t> presence(2, 0);
         std::vector<bcf1_t*> overlap_vars;
-
+        //for measure of redudancy        
+        int32_t last_start1=0, last_end1=0, last_rid=0;
+        
         while(odr->read(v))
         {
             bcf_unpack(v, BCF_UN_STR);
@@ -262,8 +266,28 @@ class Igor : Program
             ++no_vntrs;
             
             std::string chrom = bcf_get_chrom(odr->hdr,v);
+            int32_t rid = bcf_get_rid(v);
             int32_t start1 = bcf_get_pos1(v);
             int32_t end1 = bcf_get_end_pos1(v);
+
+            if (rid==last_rid && start1<=last_end1 && end1>=last_start1)
+            {   
+//                std::cerr << "REDUNDANT\n";
+//                std::cerr << "\t" << rid << ":" << last_start1 << "-" << last_end1 << "\n";    
+//                std::cerr << "\t" << rid << ":" << start1 << "-" << end1 << "\n";    
+//                
+                ++no_redundant;
+            
+                last_rid = rid;
+                last_start1 = std::min(last_start1, start1);
+                last_end1 = std::max(last_end1, end1);    
+            }
+            else
+            {
+                last_rid = rid;
+                last_start1 = start1;
+                last_end1 = end1;
+            }
 
             if (orom_lcplx->overlaps_with(chrom, start1, end1))
             {
@@ -282,17 +306,18 @@ class Igor : Program
                 {
                     ++stats[i].fuzzy_ab1;
 
+                    //check all overlapping variants
                     for (uint32_t j=0; j<overlap_vars.size(); ++j)
                     {
                         //check for exactness
                         if (start1==bcf_get_pos1(overlap_vars[j]) && end1==bcf_get_end1(overlap_vars[j]))
                         {
                             ++stats[i].ab2;
-                             exact = true;
+                            exact = true;
                         }
                         else
                         {
-                            ++stats[i].fuzzy_ab2;
+                            ++stats[i].b;
                         }
                     }
 
@@ -311,8 +336,8 @@ class Igor : Program
                     ++stats[i].fuzzy_a;
                 }
                 
-                stats[i].ab2 += oboms[i]->get_no_overlaps();
-                stats[i].b += oboms[i]->get_no_nonoverlaps();                
+//                stats[i].ab2 += oboms[i]->get_no_overlaps();
+                stats[i].fuzzy_b += oboms[i]->get_no_nonoverlaps();                
             }
 
             vntr_tree->count(variant);
@@ -323,7 +348,7 @@ class Igor : Program
             oboms[i]->flush();
             
             uint32_t ab2 = oboms[i]->get_no_overlaps();
-            uint32_t b = oboms[i]->get_no_overlaps();
+            uint32_t b = oboms[i]->get_no_nonoverlaps();
             
             stats[i].ab2 += ab2;
             stats[i].b += b;
@@ -354,6 +379,7 @@ class Igor : Program
         fprintf(stderr, "    no VNTRs           %d\n", no_vntrs);
         fprintf(stderr, "    no low complexity  %d\n", no_lcplx);
         fprintf(stderr, "    no coding          %d\n", no_cds);
+        fprintf(stderr, "    no redundant       %d\n", no_redundant);
         fprintf(stderr, "\n");
      
         for (int32_t i=0; i<dataset_labels.size(); ++i)
