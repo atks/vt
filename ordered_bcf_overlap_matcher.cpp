@@ -29,11 +29,15 @@
 OrderedBCFOverlapMatcher::OrderedBCFOverlapMatcher(std::string& file, std::vector<GenomeInterval>& intervals)
 {
     odr = new BCFOrderedReader(file, intervals);
-    //insert overlap info flag to
-    bcf_hdr_append_info_with_backup_naming(odr->hdr, "OBOM_OVERLAPS", "1", "Integer", "Number of overlapping variants with this variant.", true);
+    bcf_hdr_append_info_with_backup_naming(odr->hdr, "EXACT_OVERLAPS", "1", "Integer", "Number of exact overlapping variants with this variant.", true);
+    bcf_hdr_append_info_with_backup_naming(odr->hdr, "FUZZY_OVERLAPS", "1", "Integer", "Number of fuzzy overlapping variants with this variant.", true);
+
     bcf_hdr_sync(odr->hdr);
     no_regions = 0;
     current_interval.seq = "";
+    no_exact_overlaps = 0;
+    no_fuzzy_overlaps = 0;
+    no_nonoverlaps = 0;
 };
 
 /**
@@ -119,7 +123,7 @@ bool OrderedBCFOverlapMatcher::overlaps_with(std::string& chrom, int32_t start1,
 /**
  * Returns true if chrom:start1-end1 overlaps with a region in the file and populates the overlapping variants.
  */
-bool OrderedBCFOverlapMatcher::overlaps_with(std::string& chrom, int32_t start1, int32_t end1, std::vector<bcf1_t*>& overlap_vars)
+bool OrderedBCFOverlapMatcher::overlaps_with(std::string& chrom, int32_t beg1, int32_t end1, std::vector<bcf1_t*>& overlap_vars)
 {
     overlap_vars.clear();
     bool overlaps = false;
@@ -130,18 +134,7 @@ bool OrderedBCFOverlapMatcher::overlaps_with(std::string& chrom, int32_t start1,
         std::list<bcf1_t*>::iterator i = buffer.begin();
         while (i!=buffer.end())
         {
-            int32_t n = 0;
-            int32_t *count;
-            int32_t ret = bcf_get_info_int32(odr->hdr, v, "OBOM_OVERLAPS", &count, &n);
-            if (ret==-3)
-            {
-                ++no_nonoverlaps;
-            }
-            else if (ret>0)
-            {
-                free(count);
-            }
-            
+            update_overlap_statistics(*i);
             bcf_destroy(*i);
             i = buffer.erase(i);
         }
@@ -160,20 +153,29 @@ bool OrderedBCFOverlapMatcher::overlaps_with(std::string& chrom, int32_t start1,
         while (odr->read(v))
         {
             bcf_unpack(v, BCF_UN_INFO);
+            int32_t cbeg1 = bcf_get_pos1(v);
+            int32_t cend1 = bcf_get_end_pos1(v);
 
-            if (bcf_get_end_pos1(v)<start1)
+            if (cend1<beg1)
             {
                 continue;
             }
 
-            if (bcf_get_pos1(v)>end1)
+            if (cbeg1>end1)
             {
                 buffer.push_back(v);
                 v = NULL;
                 break;
             }
 
-            increment_overlap(v);
+            if (beg1==cbeg1 && end1==cend1)
+            {
+                increment_exact_overlap(v);
+            }
+            else
+            {
+                increment_fuzzy_overlap(v);
+            }
             overlaps = true;
             buffer.push_back(v);
             overlap_vars.push_back(v);
@@ -193,20 +195,31 @@ bool OrderedBCFOverlapMatcher::overlaps_with(std::string& chrom, int32_t start1,
         std::list<bcf1_t*>::iterator i = buffer.begin();
         while (i!=buffer.end())
         {
-            if (bcf_get_end_pos1(*i)<start1)
+            int32_t cbeg1 = bcf_get_pos1(*i);
+            int32_t cend1 = bcf_get_end_pos1(*i);
+
+            if (cend1<beg1)
             {
+                update_overlap_statistics(*i);
                 bcf_destroy(*i);
                 i = buffer.erase(i);
                 continue;
             }
 
-            if (bcf_get_pos1(*i)>end1)
+            if (cbeg1>end1)
             {
                 need_to_read = false;
                 break;
             }
 
-            increment_overlap(*i);
+            if (beg1==cbeg1 && end1==cend1)
+            {
+                increment_exact_overlap(*i);
+            }
+            else
+            {
+                increment_fuzzy_overlap(*i);
+            }
             overlaps = true;
             overlap_vars.push_back(*i);
 
@@ -222,18 +235,29 @@ bool OrderedBCFOverlapMatcher::overlaps_with(std::string& chrom, int32_t start1,
             {
                 bcf_unpack(v, BCF_UN_INFO);
 
-                if (bcf_get_end_pos1(v)<start1)
+                int32_t cbeg1 = bcf_get_pos1(v);
+                int32_t cend1 = bcf_get_end_pos1(v);
+
+                if (cend1<beg1)
                 {
                     continue;
                 }
 
-                if (bcf_get_pos1(v)>end1)
+                if (cbeg1>end1)
                 {
                     buffer.push_back(v);
                     v = NULL;
                     break;
                 }
 
+                if (beg1==cbeg1 && end1==cend1)
+                {
+                    increment_exact_overlap(v);
+                }
+                else
+                {
+                    increment_fuzzy_overlap(v);
+                }
                 overlaps = true;
                 buffer.push_back(v);
                 overlap_vars.push_back(v);
@@ -259,15 +283,16 @@ void OrderedBCFOverlapMatcher::flush()
     std::list<bcf1_t*>::iterator i = buffer.begin();
     while (i!=buffer.end())
     {
+        update_overlap_statistics(*i);
         bcf_destroy(*i);
         i = buffer.erase(i);
     }
-    
+
     v = bcf_init();
 
     while (odr->read(v))
     {
-        ++no_nonoverlaps;
+//        ++no_nonoverlaps;
     }
 
     if (v)
@@ -277,28 +302,99 @@ void OrderedBCFOverlapMatcher::flush()
 }
 
 /**
- * Increments the OBOM_OVERLAPS count of a variant record.
+ * Increments the EXACT_OVERLAPS count of a variant record.
  */
-void OrderedBCFOverlapMatcher::increment_overlap(bcf1_t* v)
+void OrderedBCFOverlapMatcher::increment_exact_overlap(bcf1_t* v)
 {
     int32_t n = 0;
-    int32_t *count;
+    int32_t *count = NULL;
     bcf_unpack(v, BCF_UN_INFO);
-    if (bcf_get_info_int32(odr->hdr, v, "OBOM_OVERLAPS", &count, &n)>0)
+    if (bcf_get_info_int32(odr->hdr, v, "EXACT_OVERLAPS", &count, &n)>0)
     {
-        ++count[0];
-        bcf_update_info_int32(odr->hdr, v, "OBOM_OVERLAPS", count, n);
+//        std::cerr << "exact " << count[0] << " "  << n << "\n";
+        count[0] = std::min(127, count[0]+1);
+        bcf_update_info_int32(odr->hdr, v, "EXACT_OVERLAPS", count, n);
         free(count);
+    }
+    else
+    {
+        int32_t c = 1;
+        bcf_update_info_int32(odr->hdr, v, "EXACT_OVERLAPS", &c, 1);
     }
 }
 
 /**
- * Get number of overlap variants that has been printed and reset no_overlaps.
+ * Increments the FUZZY_OVERLAPS count of a variant record.
  */
-int32_t OrderedBCFOverlapMatcher::get_no_overlaps()
+void OrderedBCFOverlapMatcher::increment_fuzzy_overlap(bcf1_t* v)
 {
-    int32_t val = no_overlaps;
-    no_overlaps = 0;
+    int32_t n = 0;
+    int32_t *count = NULL;
+    bcf_unpack(v, BCF_UN_INFO);
+    if (bcf_get_info_int32(odr->hdr, v, "FUZZY_OVERLAPS", &count, &n)>0)
+    {
+//        std::cerr << "fuzzy " << count[0] << " "  << n << "\n";
+        count[0] = std::min(127, count[0]+1);
+//        std::cerr << "\tto " << count[0] << "\n";
+//        bcf_print(odr->hdr, v);
+        bcf_update_info_int32(odr->hdr, v, "FUZZY_OVERLAPS", count, n);
+        free(count);
+    }
+    else
+    {
+        int32_t c = 1;
+//        bcf_print(odr->hdr, v);
+        bcf_update_info_int32(odr->hdr, v, "FUZZY_OVERLAPS", &c, 1);
+    }
+}
+
+/**
+ * Updates the number of non overlapping and non overlapping variants.
+ */
+void OrderedBCFOverlapMatcher::update_overlap_statistics(bcf1_t* v)
+{
+    int32_t exact_n = 0;
+    int32_t fuzzy_n = 0;
+    int32_t *exact_count = NULL;
+    int32_t *fuzzy_count = NULL;
+    int32_t ret_exact_overlaps = bcf_get_info_int32(odr->hdr, v, "EXACT_OVERLAPS", &exact_count, &exact_n);
+    int32_t ret_fuzzy_overlaps = bcf_get_info_int32(odr->hdr, v, "FUZZY_OVERLAPS", &fuzzy_count, &fuzzy_n);
+    if (ret_exact_overlaps==-3 && ret_fuzzy_overlaps==-3)
+    {
+        bcf_print(odr->hdr, v);
+        ++no_nonoverlaps;
+    }
+    if (ret_exact_overlaps==-3 && ret_fuzzy_overlaps>0)
+    {
+        ++no_fuzzy_overlaps;
+    }
+    if (ret_exact_overlaps>0)
+    {
+        ++no_exact_overlaps;
+    }
+
+    if (exact_count) free(exact_count);
+    if (fuzzy_count) free(fuzzy_count);
+}
+
+/**
+ * Get number of exact overlap variants that has been printed and reset no_exact_overlaps.
+ */
+int32_t OrderedBCFOverlapMatcher::get_no_exact_overlaps()
+{
+    int32_t val = no_exact_overlaps;
+    no_exact_overlaps = 0;
+
+    return val;
+}
+
+/**
+ * Get number of fuzzy overlap variants that has been printed and reset no_fuzzy_overlaps.
+ */
+int32_t OrderedBCFOverlapMatcher::get_no_fuzzy_overlaps()
+{
+    int32_t val = no_fuzzy_overlaps;
+    no_fuzzy_overlaps = 0;
 
     return val;
 }
@@ -314,3 +410,14 @@ int32_t OrderedBCFOverlapMatcher::get_no_nonoverlaps()
     return val;
 }
 
+/**
+ * Is this record and exact match?.
+ */
+bool OrderedBCFOverlapMatcher::is_exact_match(bcf1_t* v)
+{
+    int32_t exact_n = 0;
+    int32_t *exact_count = NULL;
+    int32_t ret_exact_overlaps = bcf_get_info_int32(odr->hdr, v, "EXACT_OVERLAPS", &exact_count, &exact_n);
+    if (exact_count) free(exact_count);
+    return (ret_exact_overlaps>0);
+}

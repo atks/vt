@@ -55,7 +55,8 @@ class OrderedBCFOverlapMatcher
 	///////
     //stats
     ///////
-    int32_t no_overlaps;
+    int32_t no_exact_overlaps;
+    int32_t no_fuzzy_overlaps;
     int32_t no_nonoverlaps;
 
     /**
@@ -82,22 +83,42 @@ class OrderedBCFOverlapMatcher
      * Flushes remaining variants.
      */
     void flush();
-        
-	/**
- 	 * Increments the OBOM_OVERLAPS count of a variant record.
- 	 */
-	void increment_overlap(bcf1_t* v);
+            
+    /**
+     * Increments the EXACT_OVERLAPS count of a variant record.
+     */
+    void increment_exact_overlap(bcf1_t* v);
     
     /**
-     * Get number of overlap variants that has been printed and reset no_overlaps.
+     * Increments the FUZZY_OVERLAPS count of a variant record.
      */
-    int32_t get_no_overlaps();
+    void increment_fuzzy_overlap(bcf1_t* v);
+    
+    /**
+     * Updates the number of non overlapping and non overlapping variants.
+     */
+    void update_overlap_statistics(bcf1_t* v);
+    
+    /**
+     * Get number of exact overlap variants that has been printed and reset no_exact_overlaps.
+     */
+    int32_t get_no_exact_overlaps();
+    
+    /**
+     * Get number of fuzzy overlap variants that has been printed and reset no_fuzzy_overlaps.
+     */
+    int32_t get_no_fuzzy_overlaps();
 
     /**
      * Get number of non-overlapping variants that has been printed and reset no_nonoverlaps.
      */
     int32_t get_no_nonoverlaps();
 
+    /**
+     * Is this record and exact match?.
+     */
+    bool is_exact_match(bcf1_t* v);
+    
     private:
 };
     

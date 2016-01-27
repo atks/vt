@@ -33,22 +33,15 @@ class VNTROverlapStats
 {
     public:
 
-    uint32_t a, ab1, ab2, b, fuzzy_a, fuzzy_ab1, fuzzy_ab2, fuzzy_b;
-    std::vector<uint32_t> reciprocal_a;
-    std::vector<uint32_t> reciprocal_ab;
-    std::vector<uint32_t> reciprocal_b;
-    std::vector<float> reciprocal;
-
+    uint32_t a, ap, ab, bp, b;
+    
     VNTROverlapStats()
     {
         a = 0;
-        ab1 = 0;
-        ab2 = 0;
+        ap= 0;
+        ab = 0;
+        bp = 0;
         b = 0;
-        fuzzy_a = 0;
-        fuzzy_ab1 = 0;
-        fuzzy_ab2 = 0;
-        fuzzy_b = 0;
     };
 };
 
@@ -270,12 +263,13 @@ class Igor : Program
             int32_t start1 = bcf_get_pos1(v);
             int32_t end1 = bcf_get_end_pos1(v);
 
+            //last condition always true for an ordered file
             if (rid==last_rid && start1<=last_end1 && end1>=last_start1)
             {   
 //                std::cerr << "REDUNDANT\n";
 //                std::cerr << "\t" << rid << ":" << last_start1 << "-" << last_end1 << "\n";    
 //                std::cerr << "\t" << rid << ":" << start1 << "-" << end1 << "\n";    
-//                
+                
                 ++no_redundant;
             
                 last_rid = rid;
@@ -304,60 +298,43 @@ class Igor : Program
                 bool exact = false;
                 if (oboms[i]->overlaps_with(chrom, start1, end1, overlap_vars))
                 {
-                    ++stats[i].fuzzy_ab1;
-
                     //check all overlapping variants
                     for (uint32_t j=0; j<overlap_vars.size(); ++j)
                     {
                         //check for exactness
-                        if (start1==bcf_get_pos1(overlap_vars[j]) && end1==bcf_get_end1(overlap_vars[j]))
+                        
+                        if (oboms[i]->is_exact_match(overlap_vars[j]))
                         {
-                            ++stats[i].ab2;
                             exact = true;
-                        }
-                        else
-                        {
-                            ++stats[i].b;
                         }
                     }
 
                     if (exact)
                     {
-                        ++stats[i].ab1;
+                        ++stats[i].ab;
                     }
                     else
                     {
-                        ++stats[i].a;
+                        ++stats[i].ap;
                     }
                 }
                 else
                 {
                     ++stats[i].a;
-                    ++stats[i].fuzzy_a;
                 }
-                
-//                stats[i].ab2 += oboms[i]->get_no_overlaps();
-                stats[i].fuzzy_b += oboms[i]->get_no_nonoverlaps();                
             }
 
             vntr_tree->count(variant);
         }
 
+        //for processing variants in the reference data sets that occur after the last record of the data set
         for (uint32_t i = 0; i<oboms.size(); ++i)
         {
             oboms[i]->flush();
             
-            uint32_t ab2 = oboms[i]->get_no_overlaps();
-            uint32_t b = oboms[i]->get_no_nonoverlaps();
-            
-            stats[i].ab2 += ab2;
-            stats[i].b += b;
-        
-            stats[i].fuzzy_ab2 += ab2;
-            stats[i].fuzzy_b += b;
+            stats[i].bp += oboms[i]->get_no_fuzzy_overlaps();
+            stats[i].b += oboms[i]->get_no_nonoverlaps();
         }
-        
-        
 
         odr->close();
     };
@@ -385,16 +362,16 @@ class Igor : Program
         for (int32_t i=0; i<dataset_labels.size(); ++i)
         {
             fprintf(stderr, "  %s\n", dataset_labels[i].c_str());
-            fprintf(stderr, "    A-B  %10d %10d\n", stats[i].a, stats[i].fuzzy_a);
-            fprintf(stderr, "    A&B1 %10d %10d\n", stats[i].ab1, stats[i].fuzzy_ab1);
-            fprintf(stderr, "    A&B2 %10d %10d\n", stats[i].ab2, stats[i].fuzzy_ab2);
-            fprintf(stderr, "    B-A  %10d %10d\n", stats[i].b, stats[i].fuzzy_b);
+            fprintf(stderr, "    A-B  %10d \n", stats[i].a);
+            fprintf(stderr, "    A-B~ %10d \n", stats[i].ap);
+            fprintf(stderr, "    A&B  %10d \n", stats[i].ab);
+            fprintf(stderr, "    B-A~ %10d \n", stats[i].bp);
+            fprintf(stderr, "    B-A  %10d \n", stats[i].b);
             fprintf(stderr, "\n");
         }
 
         vntr_tree->print(BASIS);
-        
-        
+                
         std::clog << "\n";
     };
 
