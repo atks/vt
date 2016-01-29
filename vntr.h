@@ -96,7 +96,7 @@ class VNTR
     bool equals(VNTR& vntr);
 
     /**
-     * Return the Return the string of unique bases in a motif.
+     * Return the string of unique bases in a motif.
      */
     static std::string get_basis(std::string& motif);
         

@@ -81,8 +81,6 @@ Variant::Variant(bcf_hdr_t* h, bcf1_t* v)
 //
 //        beg1 = std::min(vntr.rbeg1-1, vntr.fuzzy_rbeg1-1);
 //        end1 = std::max(vntr.rend1+1, vntr.fuzzy_rend1+1);
-
-
     }
     else if (type==VT_VNTR)
     {
