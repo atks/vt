@@ -50,6 +50,8 @@ class VNTRConsolidator
     ///////
     //i/o//
     ///////
+    std::string input_vcf_file;
+    std::string output_vcf_file;
     BCFOrderedReader *odr;
     BCFOrderedWriter *odw;
 
@@ -103,7 +105,11 @@ class VNTRConsolidator
     int32_t no_clustered_exact_vntrs;
     int32_t no_clustered_inexact_vntrs;
 
-
+    /**
+     * Constructor.
+     */
+    VNTRConsolidator(std::string& input_vcf_file, std::vector<GenomeInterval>& intervals, std::string& output_vcf_file);    
+    
     /**
      * Update distribution of overlapping VNTRs
      */
@@ -139,7 +145,7 @@ class VNTRConsolidator
     /**
      * Flush variant buffer.
      */
-    void flush_variant_buffer()
+    void flush_variant_buffer();
 
     private:
 };

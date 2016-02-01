@@ -23,11 +23,16 @@
 
 #include "vntr_consolidator.h"
 
-void initialize()
+/**
+ * Constructor.
+ */
+VNTRConsolidator::VNTRConsolidator(std::string& input_vcf_file, std::vector<GenomeInterval>& intervals, std::string& output_vcf_file)
 {
     //////////////////////
     //i/o initialization//
     //////////////////////
+    this->input_vcf_file = input_vcf_file;
+    this->output_vcf_file = output_vcf_file;
     odr = new BCFOrderedReader(input_vcf_file, intervals);
     odw = new BCFOrderedWriter(output_vcf_file, 3000);
     odw->link_hdr(odr->hdr);
@@ -69,7 +74,7 @@ void initialize()
     ////////////////////////
     //tools initialization//
     ////////////////////////
-    vm = new VariantManip();
+//    vm = new VariantManip();
 }
 
 /**
