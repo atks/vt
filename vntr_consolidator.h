@@ -42,6 +42,28 @@
 #include "variant_manip.h"
 
 /**
+ * struct for storing sequence content.
+ */
+typedef struct
+{
+    std::string basis; 
+    float proportion; 
+} basis_proportion;
+
+/**
+ * Comparator for BCFPtr class.  Used in priority_queue; ensures that
+ * records are ordered according to file order.
+ */
+class CompareBasisProportion
+{
+    public:
+    bool operator()(basis_proportion& a, basis_proportion& b)
+    {
+        return a.proportion >= b.proportion;
+    }
+};
+
+/**
  * For consolidating overlapping VNTRs.
  */
 class VNTRConsolidator
@@ -108,6 +130,8 @@ class VNTRConsolidator
     int32_t no_clustered_exact_vntrs;
     int32_t no_clustered_inexact_vntrs;
 
+    std::priority_queue<basis_proportion, std::vector<basis_proportion>, CompareBasisProportion> ordered_basis;
+    
     /**
      * Constructor.
      */
@@ -117,7 +141,6 @@ class VNTRConsolidator
      * Update distribution of overlapping VNTRs
      */
     void update_overlapping_vntr_hist(int32_t no_overlapping_vntrs);
-
 
     /**
      * Inserts a Variant record.
@@ -143,7 +166,10 @@ class VNTRConsolidator
      */
     bool consolidate_multiple_overlapping_vntrs(Variant* variant);
   
-    bool detect_consistent_motifs(Variant* variant);
+    /**
+     * Detects a a consistent basis motif in a chain of overlapping VNTRs.
+     */
+    void detect_consistent_motifs(Variant* variant);
     
     /**
      * Flush variant buffer.

@@ -99,6 +99,11 @@ class VNTR
      * Return the string of unique bases in a motif.
      */
     static std::string get_basis(std::string& motif);
+    
+    /**
+     * Return the string of unique bases in a motif.
+     */
+    static std::string get_basis(char* motif, uint32_t n);
         
     /**
      * Print object.

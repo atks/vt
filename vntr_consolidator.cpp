@@ -431,10 +431,37 @@ bool VNTRConsolidator::consolidate_multiple_overlapping_vntrs(Variant* variant)
             std::cerr << "no overlapping VNTRs  " << variant->no_overlapping_vntrs << "\n";
             std::cerr << "consolidating: " << (variant->vs.size()+1) << " alleles\n";
 
-            for (uint32_t i=0; i<variant->vntr_vs.size(); ++i)
-            {
-                bcf1_t* vntr_v = variant->vntr_vs[i];
+            detect_consistent_motifs(variant);
+        }
 
+        return false;
+    }
+
+    return false;
+}
+
+/**
+ * Detects a a consistent basis motif in a chain of overlapping VNTRs.
+ */
+void VNTRConsolidator::detect_consistent_motifs(Variant* variant)
+{
+    if (variant->vntr_vs.size()>1)
+    {
+        VNTR& vntr = variant->vntr;
+        std::cerr << vntr.motif << "\n";
+        
+        std::map<std::string, int32_t> basis_map;
+        std::map<std::string, int32_t>::iterator it;
+            
+        for (uint32_t i=0; i<variant->vntr_vs.size(); ++i)
+        {
+            bcf1_t* vntr_v = variant->vntr_vs[i];
+            std::string cbasis = vntr.basis;
+                
+            std::cerr << "cbasis " << cbasis << "\n";    
+                
+            if (true)
+            {    
                 char* motif = NULL;
                 int32_t n_motif = 0;
                 float* fuzzy_concordance = NULL;
@@ -443,96 +470,45 @@ bool VNTRConsolidator::consolidate_multiple_overlapping_vntrs(Variant* variant)
                 int32_t n_flanks = 0;
                 int32_t* fuzzy_flanks = NULL;
                 int32_t n_fuzzy_flanks = 0;
+                                
+//                bcf_unpack(STR_INFO, vntr_v);
+//                bcf_print(odw->hdr, vntr_v);
+                    
                 if (bcf_get_info_string(odr->hdr, vntr_v, "MOTIF", &motif, &n_motif)>0 &&
                     bcf_get_info_float(odr->hdr, vntr_v, "FZ_CONCORDANCE", &fuzzy_concordance, &n_fuzzy_concordance)>0 &&
                     bcf_get_info_int32(odr->hdr, vntr_v, "FLANKS", &flanks, &n_flanks)>0 &&
                     bcf_get_info_int32(odr->hdr, vntr_v, "FZ_FLANKS", &fuzzy_flanks, &n_fuzzy_flanks)>0)
                 {
-                    float impurity = compute_purity_by_sequence_content(bcf_get_ref(vntr_v), motif);
-
-                    std::cerr << (i+1) << ") " << motif << "\t" << fuzzy_concordance[0] << "\t" << flanks[0] << "," << flanks[1] << "\t" << fuzzy_flanks[0] << "," << fuzzy_flanks[1] << "\n";
+                    cbasis = vntr.get_basis(motif, n_motif);
+                    std::cerr << (i+1) << ") " << motif << " (" << cbasis << ")\t" << fuzzy_concordance[0] << "\t" << flanks[0] << "," << flanks[1] << "\t" << fuzzy_flanks[0] << "," << fuzzy_flanks[1] << "\n";
                     std::cerr << "\t" << bcf_get_ref(vntr_v) << "\n";
                     bcf_print(odw->hdr, vntr_v);
-
-                    free(motif);
-                    free(fuzzy_concordance);
-                    free(flanks);
-                    free(fuzzy_flanks);
-
-
                 }
-
-
-    
-//                    bcf_print(odw->hdr, variant->vntr_vs[i]);
             }
-        }
-
-
-        //if all motifs are consistent, take the one with the largest region
-
-//            bool is_motif_consistent
-
-
-
-
-        return false;
-    }
-
-    return false;
-}
-
-bool VNTRConsolidator::detect_consistent_motifs(Variant* variant)
-{
-    if (variant->vntr_vs.size()>1)
-    {
-        VNTR& vntr = variant->vntr;
-        std::cerr << vntr.motif << "\n";
-        
-        for (uint32_t i=0; i<variant->vntr_vs.size(); ++i)
-        {
-            bcf1_t* vntr_v = variant->vntr_vs[i];
             
-
-
-            char* motif = NULL;
-            int32_t n_motif = 0;
-            float* fuzzy_concordance = NULL;
-            int32_t n_fuzzy_concordance = 0;
-            int32_t* flanks = NULL;
-            int32_t n_flanks = 0;
-            int32_t* fuzzy_flanks = NULL;
-            int32_t n_fuzzy_flanks = 0;
-            if (bcf_get_info_string(odr->hdr, vntr_v, "MOTIF", &motif, &n_motif)>0 &&
-                bcf_get_info_float(odr->hdr, vntr_v, "FZ_CONCORDANCE", &fuzzy_concordance, &n_fuzzy_concordance)>0 &&
-                bcf_get_info_int32(odr->hdr, vntr_v, "FLANKS", &flanks, &n_flanks)>0 &&
-                bcf_get_info_int32(odr->hdr, vntr_v, "FZ_FLANKS", &fuzzy_flanks, &n_fuzzy_flanks)>0)
+            if ((it = basis_map.find(cbasis)) != basis_map.end())
             {
-                float impurity = compute_purity_by_sequence_content(bcf_get_ref(vntr_v), motif);
-
-                std::cerr << (i+1) << ") " << motif << "\t" << fuzzy_concordance[0] << "\t" << flanks[0] << "," << flanks[1] << "\t" << fuzzy_flanks[0] << "," << fuzzy_flanks[1] << "\n";
-                std::cerr << "\t" << bcf_get_ref(vntr_v) << "\n";
-                bcf_print(odw->hdr, vntr_v);
-
-                free(motif);
-                free(fuzzy_concordance);
-                free(flanks);
-                free(fuzzy_flanks);
-
-
+                ++it->second;
+            }    
+            else
+            {
+                basis_map[cbasis] = 1;
             }
-
-
-
-//                    bcf_print(odw->hdr, variant->vntr_vs[i]);
+        }
+        
+        while (!ordered_basis.empty()) ordered_basis.pop();
+        int32_t n = variant->vntr_vs.size();
+        while (it!=basis_map.end())
+        {
+            std::cerr << "pqueue " << it->first << ", "  << it->second << "(" << ((float) it->second/n) << ")\n";
+            
+            basis_proportion bp = {it->first, (float) it->second/n};
+            ordered_basis.push(bp);
+            ++it;
         }
     }
-    
-    return false;
-    
 }
-
-
+           
 /**
  * Flush variant buffer.
  */

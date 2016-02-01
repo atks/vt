@@ -99,7 +99,7 @@ class Igor : Program
         while (vc->odr->read(v))
         {
             variant = new Variant(vc->odw->hdr, v);
-
+            std::cerr << "basis " << variant->vntr.basis << "\n";
             vc->flush_variant_buffer(variant);
             vc->insert_variant_record_into_buffer(variant);
             v = vc->odw->get_bcf1_from_pool();

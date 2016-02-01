@@ -78,54 +78,48 @@ bool VNTR::equals(VNTR& vntr)
  */
 std::string VNTR::get_basis(std::string& motif)
 {
+    return get_basis(const_cast<char*>(motif.c_str()), motif.size());
+}
+
+/**
+ * Return the string of unique bases in a motif.
+ */
+std::string VNTR::get_basis(char* motif, uint32_t n)
+{
     bool bases[4] = {false, false, false, false};
-    
-    for (uint32_t i=0; i<motif.size(); ++i)
+
+//    std::cerr << "input " << motif << " " << n << "\n";
+
+    for (uint32_t i=0; i<n; ++i)
     {
-        char base = motif.at(i);
-        
-        if (base<=67)
+        char base = motif[i];
+
+        if (base=='A')
         {
-            if (base==65)
-            {
-                if (!bases[0]) 
-                {
-                    bases[0] = true;
-                }
-            }  
-            else
-            {
-                if (!bases[1]) 
-                {
-                    bases[1] = true;
-                }
-            }  
-        }   
-        else
+            bases[0] = true;
+        }
+        else if (base=='C')
         {
-            if (base==71)
-            {
-                if (!bases[2]) 
-                {
-                    bases[2] = true;
-                }
-            }  
-            else
-            {
-                if (!bases[3]) 
-                {
-                    bases[3] = true;
-                }
-            } 
-        } 
+            bases[1] = true;
+        }
+        else if (base=='G')
+        {
+            bases[2] = true;
+        }
+        else if (base=='T')
+        {
+            bases[3] = true;
+        }
     }
-    
+
     std::string basis;
     if (bases[0]) basis.append(1, 'A');
     if (bases[1]) basis.append(1, 'C');
     if (bases[2]) basis.append(1, 'G');
     if (bases[3]) basis.append(1, 'T');
-        
+
+//    std::cerr << "return " << basis << "\n";
+
     return basis;
 }
 
