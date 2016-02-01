@@ -41,6 +41,9 @@
 #include "bcf_ordered_writer.h"
 #include "variant_manip.h"
 
+/**
+ * For consolidating overlapping VNTRs.
+ */
 class VNTRConsolidator
 {
     public:
@@ -147,6 +150,11 @@ class VNTRConsolidator
      */
     void flush_variant_buffer();
 
+    /**
+     * Close.
+     */
+    void close();
+    
     private:
 };
 

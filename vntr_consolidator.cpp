@@ -563,5 +563,11 @@ void VNTRConsolidator::flush_variant_buffer()
     }
 }
 
-
-
+/**
+ * Close.
+ */
+void VNTRConsolidator::close()
+{
+    odw->close();
+    odr->close();
+}
