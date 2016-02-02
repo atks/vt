@@ -83,7 +83,6 @@ SOURCES = align\
 		program\
 		reference_sequence\
 		remove_overlap\
-		repeat_tract_detector\
 		rfhmm\
 		rminfo\
 		rpartition\

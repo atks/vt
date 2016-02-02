@@ -75,8 +75,8 @@ VNTRConsolidator::VNTRConsolidator(std::string& input_vcf_file, std::vector<Geno
     //tools initialization//
     ////////////////////////
     refseq = new ReferenceSequence(ref_fasta_file);
-//    CandidateMotifPicker* cmp;
-    
+    cmp = new CandidateMotifPicker(debug);
+    fd = new FlankDetector(ref_fasta_file, debug);    
 }
 
 /**
@@ -523,22 +523,62 @@ void VNTRConsolidator::detect_consistent_motifs(Variant* variant)
         std::cerr << "size of ordered_bp " << ordered_basis.size() << "\n";
         
         basis_proportion top_bp = ordered_basis.top();
-        if (top_bp.proportion>0.66)
+        if (top_bp.proportion>=1)
         {
             bcf1_t *new_v = bcf_dup(variant->v);
+
+            char* ref = refseq->fetch_seq(variant->chrom.c_str(), merged_beg1, merged_end1);
             
-            std::cerr << "merged VNTR \n\t"; 
-            
+            std::cerr << "\n";
+            std::cerr << "\n";
+            std::cerr << "\n";
+            std::cerr << "merged VNTR\n"; 
+                
+                
+//                merged_beg1, merged_end1
             bcf_print(odw->hdr, new_v);
-            
-            char* ref = refseq->get_sequence(variant->chrom.c_str(), merged_beg1, merged_end1);
-            
             std::cerr << "newly merged ref " << variant->chrom << ":" << merged_beg1 << "-" << merged_end1 << " " << ref << "\n";
+            
+            //VNTR position and sequences
+            bcf_set_pos1(new_v, merged_beg1);
+            kstring_t s = {0,0,0};
+            s.l = 0;
+            kputs(ref, &s);
+            kputc(',', &s);
+            kputs("<VNTR>", &s);
+            bcf_update_alleles_str(odr->hdr, new_v, s.s);
+            if (s.m) free(s.s);
+            if (ref) free(ref);
+//            //VNTR motif
+//            bcf_update_info_string(h, v, "MOTIF", vntr.motif.c_str());
+//            bcf_update_info_string(h, v, "RU", vntr.ru.c_str());
+//        
+//            //VNTR characteristics
+//            bcf_update_info_float(h, v, "FZ_CONCORDANCE", &vntr.fuzzy_motif_concordance, 1);
+//            bcf_update_info_float(h, v, "FZ_RL", &vntr.fuzzy_rl, 1);
+//            bcf_update_info_float(h, v, "FZ_LL", &vntr.fuzzy_ll, 1);
+//            int32_t flank_pos1[2] = {vntr.exact_rbeg1-1, vntr.exact_rend1+1};
+//            bcf_update_info_int32(h, v, "FLANKS", &flank_pos1, 2);
+//        
+//            //flank positions
+//            int32_t fuzzy_flank_pos1[2] = {vntr.fuzzy_rbeg1-1, vntr.fuzzy_rend1+1};
+//            bcf_update_info_int32(h, v, "FZ_FLANKS", &fuzzy_flank_pos1, 2);
+//            int32_t ru_count[2] = {vntr.fuzzy_no_exact_ru, vntr.fuzzy_total_no_ru};
+//            bcf_update_info_int32(h, v, "FZ_RU_COUNTS", &ru_count, 2);
+//            
+            
+//            Variant 
+//            
+//            cmp->generate_candidate_motifs(h, v, variant);
+//            cmp->next_motif(h, v, variant);
             
 //            merged_beg1 = vntr.fuzzy_rbeg1;
 //            merged_end1 = vntr.fuzzy_rend1;
             
+            
             //search for new best motif
+            
+            
             
             //recompute scores
             

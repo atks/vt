@@ -100,7 +100,7 @@ void CandidateMotifPicker::generate_candidate_motifs(bcf_hdr_t* h, bcf1_t* v, Va
             std::cerr << "Spiked Longest Allele : "   << spiked_seq << "\n";
         }   
     }
-
+    
     if (longest_allele_index)
     {
         std::string spiked_seq = variant.vntr.exact_repeat_tract;

@@ -104,6 +104,16 @@ class FlankDetector
      * match in all its phases.
      */
     std::string choose_exact_repeat_unit(std::string& seq, std::string& motif);
+        
+    /**
+     * Polish repeat tract.
+     */
+    void polish_repeat_tract(Variant& variant);   
+    
+    /**
+     * Polish repeat tract.
+     */
+    void polish_repeat_tract(std::string& sequencevariant);    
 
     /**
      * Computes purity score of a sequence with respect to a motif.

@@ -42,6 +42,9 @@
 #include "bcf_ordered_writer.h"
 #include "variant_manip.h"
 #include "reference_sequence.h"
+#include "candidate_region_extractor.h"
+#include "candidate_motif_picker.h"
+#include "flank_detector.h"
 
 /**
  * struct for storing sequence content.
@@ -134,8 +137,12 @@ class VNTRConsolidator
 
     std::priority_queue<basis_proportion, std::vector<basis_proportion>, CompareBasisProportion> ordered_basis;
     
+    ///////
     //tools
+    ///////
     ReferenceSequence *refseq;
+    CandidateMotifPicker* cmp;
+    FlankDetector* fd;
     
     /**
      * Constructor.

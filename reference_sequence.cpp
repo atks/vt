@@ -97,7 +97,7 @@ void ReferenceSequence::fetch_seq(std::string& chrom, uint32_t start1, uint32_t 
 /**
  * Get sequence.
  */
-char* ReferenceSequence::get_sequence(const char* chrom, uint32_t beg1, uint32_t end1)
+char* ReferenceSequence::fetch_seq(const char* chrom, uint32_t beg1, uint32_t end1)
 {
     char* seq = NULL;
     int32_t len = 0;

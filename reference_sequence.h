@@ -102,7 +102,7 @@ class ReferenceSequence
     /**
      * Get sequence.
      */
-    char* get_sequence(const char* chrom, uint32_t beg1, uint32_t end1);
+    char* fetch_seq(const char* chrom, uint32_t beg1, uint32_t end1);
     
     private:
 
