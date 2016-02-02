@@ -59,9 +59,12 @@ VNTRAnnotator::~VNTRAnnotator()
  *       - f for fuzzy alignment annotation
  *       -
  */
-void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::string mode)
+void VNTRAnnotator::annotate(Variant& variant, std::string mode)
 {
     VNTR& vntr = variant.vntr;
+
+    bcf_hdr_t* h = variant.h;
+    bcf1_t* v = variant.v;
 
     //update chromosome and position
     variant.rid = bcf_get_rid(v);
@@ -80,12 +83,12 @@ void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::str
 
             //computes purity
             //1. pick candidate region
-            cre->pick_candidate_region(h, v, variant, REFERENCE);
+            cre->pick_candidate_region(variant, REFERENCE);
 
             //just use the motif annotator
             //2. detect candidate motifs from a reference seqeuence
-            cmp->generate_candidate_motifs(h, v, variant);
-            cmp->next_motif(h, v, variant);
+            cmp->generate_candidate_motifs(variant);
+            cmp->next_motif(variant);
 
             //3. compute purity
             fd->detect_flanks(h, v, variant, CLIP_ENDS);
@@ -95,7 +98,7 @@ void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::str
             if (debug) std::cerr << "ANNOTATING VNTR's purity score\n";
 
             //1. pick candidate region
-            cre->pick_candidate_region(h, v, variant, REFERENCE);
+            cre->pick_candidate_region(variant, REFERENCE);
 
             //2. set motifs from info field
             cmp->set_motif_from_info_field(variant);
@@ -121,12 +124,12 @@ void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::str
             if (debug) std::cerr << "ANNOTATING INDEL EXACTLY\n";
 
             //1. pick candidate region using exact left and right alignment
-            cre->pick_candidate_region(h, v, variant, EXACT_LEFT_RIGHT_ALIGNMENT);
-
+            cre->pick_candidate_region(variant, EXACT_LEFT_RIGHT_ALIGNMENT);
+            
             //2. detect candidate motifs from a reference sequence
-            cmp->generate_candidate_motifs(h, v, variant);
+            cmp->generate_candidate_motifs(variant);
 
-            if (!cmp->next_motif(h, v, variant))
+            if (!cmp->next_motif(variant))
             {
                 std::cerr << "oops, no candidate motif for next step\n";
             }
@@ -144,12 +147,12 @@ void VNTRAnnotator::annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::str
             if (debug) std::cerr << "ANNOTATING INDEL FUZZILY\n";
 
             //1. selects candidate region by fuzzy left and right alignment
-            cre->pick_candidate_region(h, v, variant, EXACT_LEFT_RIGHT_ALIGNMENT);
+            cre->pick_candidate_region(variant, EXACT_LEFT_RIGHT_ALIGNMENT);
 
             //2. detect candidate motifs from a reference sequence
-            cmp->generate_candidate_motifs(h, v, variant);
+            cmp->generate_candidate_motifs(variant);
 
-            if (!cmp->next_motif(h, v, variant))
+            if (!cmp->next_motif(variant))
             {
                 std::cerr << "oops, no candidate motif for next step\n";
             }

@@ -70,8 +70,11 @@ CandidateRegionExtractor::~CandidateRegionExtractor()
  *       - ALLELE_EXACT  by exact alignment
  *       - ALLELE_FUZZY  by fuzzy alignment
  */
-void CandidateRegionExtractor::pick_candidate_region(bcf_hdr_t* h, bcf1_t* v, Variant& variant, uint32_t mode)
+void CandidateRegionExtractor::pick_candidate_region(Variant& variant, uint32_t mode)
 {
+    bcf_hdr_t* h = variant.h;
+    bcf1_t* v = variant.v; 
+    
     if (mode==REFERENCE)
     {
         VNTR& vntr = variant.vntr;
@@ -85,11 +88,11 @@ void CandidateRegionExtractor::pick_candidate_region(bcf_hdr_t* h, bcf1_t* v, Va
     }
     else if (mode==EXACT_LEFT_RIGHT_ALIGNMENT)
     {
-        extract_regions_by_exact_alignment(h, v, variant);
+        extract_regions_by_exact_alignment(variant);
     }
     else if (mode==FUZZY_LEFT_RIGHT_ALIGNMENT)
     {
-        extract_regions_by_fuzzy_alignment(h, v, variant);
+        extract_regions_by_fuzzy_alignment(variant);
     }
 }
 
@@ -139,13 +142,16 @@ bool CandidateRegionExtractor::is_homopolymer(bcf_hdr_t* h, bcf1_t* v)
  *       since there seems to be a need to have an iterative process here
  *       to ensure a good candidate motif is chosen. *  
  */
-void CandidateRegionExtractor::extract_regions_by_exact_alignment(bcf_hdr_t* h, bcf1_t* v, Variant& variant)
+void CandidateRegionExtractor::extract_regions_by_exact_alignment(Variant& variant)
 {
     if (debug)
     {
         if (debug) std::cerr << "********************************************\n";
         std::cerr << "EXTRACTIING REGION BY EXACT LEFT AND RIGHT ALIGNMENT\n\n";
     }
+
+    bcf_hdr_t* h = variant.h;
+    bcf1_t* v = variant.v;
 
     VNTR& vntr = variant.vntr;
     const char* chrom = bcf_get_chrom(h, v);
@@ -263,7 +269,7 @@ void CandidateRegionExtractor::right_align(const char* chrom, int32_t& pos1, std
 /**
  * Extract reference sequence region for motif discovery in a fuzzy fashion.
  */
-void CandidateRegionExtractor::extract_regions_by_fuzzy_alignment(bcf_hdr_t* h, bcf1_t* v,  Variant& variant)
+void CandidateRegionExtractor::extract_regions_by_fuzzy_alignment(Variant& variant)
 {
     if (debug)
     {
@@ -271,6 +277,9 @@ void CandidateRegionExtractor::extract_regions_by_fuzzy_alignment(bcf_hdr_t* h, 
         std::cerr << "EXTRACTIING REGION BY FUZZY ALIGNMENT\n\n";
     }
 
+    bcf_hdr_t* h = variant.h;
+    bcf1_t* v = variant.v;
+    
     VNTR& vntr = variant.vntr;
     const char* chrom = bcf_get_chrom(h, v);
 

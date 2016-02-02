@@ -110,7 +110,7 @@ class VNTRAnnotator
      *   h - using HMMs
      *   x - integrated models
      */
-    void annotate(bcf_hdr_t* h, bcf1_t* v, Variant& variant, std::string mode);
+    void annotate(Variant& variant, std::string mode);
 
     /**
      * Return the cannonicalized representation of a motif.

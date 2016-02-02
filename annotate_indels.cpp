@@ -663,17 +663,16 @@ class Igor : Program
 
         while (odr->read(v))
         {
+            int32_t vtype = vm->classify_variant(odr->hdr, v, variant);
+            
             if (filter_exists)
             {
-                vm->classify_variant(h, v, variant);
                 if (!filter.apply(h, v, &variant, false))
                 {
                     continue;
                 }
             }
 
-            bcf_unpack(v, BCF_UN_STR);
-            int32_t vtype = vm->classify_variant(odr->hdr, v, variant);
             if (vtype&VT_INDEL)
             {
                 if (debug)
@@ -684,7 +683,7 @@ class Igor : Program
                 flush_vntr_buffer(v);
 
 //                bcf_print_liten(odr->hdr, v);
-                va->annotate(odr->hdr, v, variant, method);
+                va->annotate(variant, method);
 
                 if (indel_annotation_mode=="v")
                 {
@@ -785,7 +784,7 @@ class Igor : Program
             }
             else if (vtype==VT_VNTR)
             {
-                va->annotate(odr->hdr, v, variant, vntr_annotation_mode);
+                va->annotate(variant, vntr_annotation_mode);
                 
                 if (add_flank_annotation)
                 {    

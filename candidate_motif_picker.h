@@ -84,8 +84,13 @@ class CandidateMotifPicker
     /**
      * Initialize motif tree and generate a pool candidate motifs.
      */
-    void generate_candidate_motifs(bcf_hdr_t* h, bcf1_t* v, Variant& variant);
+    void generate_candidate_motifs(Variant& variant);
 
+//    /**
+//     * Initialize motif tree and generate a pool candidate motifs.
+//     */
+//    void generate_candidate_motifs(Variant& variant);
+    
     /**
      * Initialize candidate motif from VCF record.
      */
@@ -94,7 +99,7 @@ class CandidateMotifPicker
     /**
      * Choose the next best motif.
      */
-    bool next_motif(bcf_hdr_t* h, bcf1_t* v, Variant& variant);
+    bool next_motif(Variant& variant);
     
     /**
      * Checks if motif is in indel fragment.

@@ -47,7 +47,7 @@ CandidateMotifPicker::~CandidateMotifPicker()
  * Invokes motif tree and the candidate motifs are stored in a
  * heap within the motif tree.
  */
-void CandidateMotifPicker::generate_candidate_motifs(bcf_hdr_t* h, bcf1_t* v, Variant& variant)
+void CandidateMotifPicker::generate_candidate_motifs(Variant& variant)
 {
     if (debug)
     {
@@ -55,7 +55,7 @@ void CandidateMotifPicker::generate_candidate_motifs(bcf_hdr_t* h, bcf1_t* v, Va
         std::cerr << "PICK CANDIDATE MOTIFS\n\n";
     }
 
-    this->v = v;
+    this->v = variant.v;
 
     bool alt_is_longest_allele = false;
     char** alleles = bcf_get_allele(v);
@@ -138,7 +138,7 @@ void CandidateMotifPicker::set_motif_from_info_field(Variant& variant)
 /**
  * Choose the next best motif.
  */
-bool CandidateMotifPicker::next_motif(bcf_hdr_t* h, bcf1_t* v, Variant& variant)
+bool CandidateMotifPicker::next_motif(Variant& variant)
 {
     if (debug)
     {

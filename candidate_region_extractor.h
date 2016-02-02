@@ -114,7 +114,7 @@ class CandidateRegionExtractor
      *       - ALLELE_EXACT  by exact alignment
      *       - ALLELE_FUZZY  by fuzzy alignment
      */
-    void pick_candidate_region(bcf_hdr_t* h, bcf1_t* v,  Variant& variant, uint32_t mode);
+    void pick_candidate_region(Variant& variant, uint32_t mode);
 
     /**
      * Pick shortest motif.
@@ -144,7 +144,7 @@ class CandidateRegionExtractor
     /**
      * Extract region to for motif discovery.
      */
-    void extract_regions_by_exact_alignment(bcf_hdr_t* h, bcf1_t* v,  Variant& variant);
+    void extract_regions_by_exact_alignment(Variant& variant);
 
     /**
      * Left align alleles.
@@ -159,7 +159,7 @@ class CandidateRegionExtractor
     /**
      * Extract reference sequence region for motif discovery in a fuzzy fashion.
      */
-    void extract_regions_by_fuzzy_alignment(bcf_hdr_t* h, bcf1_t* v,  Variant& variant);
+    void extract_regions_by_fuzzy_alignment(Variant& variant);
 
     /**
      * Fuzzy left align alleles allowing for mismatches and indels defined by penalty.
