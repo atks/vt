@@ -28,8 +28,19 @@
  *
  * @k - size of buffered sequence is 2^k
  */
-ReferenceSequence::ReferenceSequence(uint32_t k, uint32_t window_size)
+ReferenceSequence::ReferenceSequence(std::string& ref_fasta_file, uint32_t k, uint32_t window_size)
 {
+    this->ref_fasta_file = ref_fasta_file;
+    if (ref_fasta_file!="")
+    {
+        fai = fai_load(ref_fasta_file.c_str());
+        if (fai==NULL)
+        {
+            fprintf(stderr, "[%s:%d %s] cannot load genome index: %s\n", __FILE__, __LINE__, __FUNCTION__, ref_fasta_file.c_str());
+            exit(1);
+        }
+    }
+        
     //Buffer size is a power of 2^k.
     buffer_size = 1 << k;
     //this provides a cheaper way to do modulo operations for a circular array.
@@ -120,6 +131,7 @@ bool ReferenceSequence::is_empty()
  */
 void ReferenceSequence::set_reference(std::string& ref_fasta_file)
 {
+    this->ref_fasta_file = ref_fasta_file;
     if (ref_fasta_file!="")
     {
         fai = fai_load(ref_fasta_file.c_str());
@@ -129,6 +141,28 @@ void ReferenceSequence::set_reference(std::string& ref_fasta_file)
             exit(1);
         }
     }
+};
+
+/**
+ * Get sequence.
+ */
+char* ReferenceSequence::get_sequence(const char* chrom, uint32_t beg1, uint32_t end1)
+{
+    char* seq = NULL;
+    int32_t len = 0;
+    seq = faidx_fetch_uc_seq(fai, const_cast<char*>(chrom), beg1-1, end1-1, &len);
+    
+    if (len==-1)
+    {
+        fprintf(stderr, "[W:%s:%d %s] %s not found in reference sequence file %s\n", __FILE__, __LINE__, __FUNCTION__, chrom, ref_fasta_file.c_str());
+    }
+    else if (len==-2)
+    {
+        fprintf(stderr, "[E:%s:%d %s] fatal error in extracting %s:%d-%d  reference sequence file: %s\n", __FILE__, __LINE__, __FUNCTION__, chrom, beg1, end1, ref_fasta_file.c_str());
+        exit(1);
+    }
+    
+    return seq;
 };
 
 /**

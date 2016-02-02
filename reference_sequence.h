@@ -35,6 +35,13 @@
 class ReferenceSequence
 {
     public:
+        
+    //reference file and index
+    std::string ref_fasta_file;
+    faidx_t *fai;
+
+    
+        
     uint32_t buffer_size;
     uint32_t buffer_size_mask;
     uint32_t window_size;
@@ -71,9 +78,6 @@ class ReferenceSequence
 
     int32_t debug;
 
-    //fai index
-    faidx_t *fai;
-
     public:
 
     /**
@@ -81,7 +85,7 @@ class ReferenceSequence
      *
      * @k - size of buffered sequence is 2^k
      */
-    ReferenceSequence(uint32_t k=10, uint32_t window_size=256);
+    ReferenceSequence(std::string& ref_fasta_file, uint32_t k=10, uint32_t window_size=256);
 
     /**
      * Get a base.
@@ -123,6 +127,11 @@ class ReferenceSequence
      */
     void set_reference(std::string& ref_fasta_file);
 
+    /**
+     * Get sequence.
+     */
+    char* get_sequence(const char* chrom, uint32_t beg1, uint32_t end1);
+ 
     /**
      * Set debug.
      */
