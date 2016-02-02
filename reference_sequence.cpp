@@ -95,6 +95,28 @@ void ReferenceSequence::fetch_seq(std::string& chrom, uint32_t start1, uint32_t 
 }
 
 /**
+ * Get sequence.
+ */
+char* ReferenceSequence::get_sequence(const char* chrom, uint32_t beg1, uint32_t end1)
+{
+    char* seq = NULL;
+    int32_t len = 0;
+    seq = faidx_fetch_uc_seq(fai, const_cast<char*>(chrom), beg1-1, end1-1, &len);
+    
+    if (len==-1)
+    {
+        fprintf(stderr, "[W:%s:%d %s] %s not found in reference sequence file %s\n", __FILE__, __LINE__, __FUNCTION__, chrom, ref_fasta_file.c_str());
+    }
+    else if (len==-2)
+    {
+        fprintf(stderr, "[E:%s:%d %s] fatal error in extracting %s:%d-%d  reference sequence file: %s\n", __FILE__, __LINE__, __FUNCTION__, chrom, beg1, end1, ref_fasta_file.c_str());
+        exit(1);
+    }
+    
+    return seq;
+};
+
+/**
  * Overloads subscript operator for accessing buffered sequence positions.
  */
 char& ReferenceSequence::operator[] (const int32_t i)
@@ -141,28 +163,6 @@ void ReferenceSequence::set_reference(std::string& ref_fasta_file)
             exit(1);
         }
     }
-};
-
-/**
- * Get sequence.
- */
-char* ReferenceSequence::get_sequence(const char* chrom, uint32_t beg1, uint32_t end1)
-{
-    char* seq = NULL;
-    int32_t len = 0;
-    seq = faidx_fetch_uc_seq(fai, const_cast<char*>(chrom), beg1-1, end1-1, &len);
-    
-    if (len==-1)
-    {
-        fprintf(stderr, "[W:%s:%d %s] %s not found in reference sequence file %s\n", __FILE__, __LINE__, __FUNCTION__, chrom, ref_fasta_file.c_str());
-    }
-    else if (len==-2)
-    {
-        fprintf(stderr, "[E:%s:%d %s] fatal error in extracting %s:%d-%d  reference sequence file: %s\n", __FILE__, __LINE__, __FUNCTION__, chrom, beg1, end1, ref_fasta_file.c_str());
-        exit(1);
-    }
-    
-    return seq;
 };
 
 /**

@@ -31,6 +31,7 @@
 #include <cfloat>
 #include <vector>
 #include <map>
+#include <algorithm>
 #include "htslib/vcf.h"
 #include "htslib/kseq.h"
 #include "Rmath/Rmath.h"
@@ -40,6 +41,7 @@
 #include "bcf_ordered_reader.h"
 #include "bcf_ordered_writer.h"
 #include "variant_manip.h"
+#include "reference_sequence.h"
 
 /**
  * struct for storing sequence content.
@@ -132,10 +134,13 @@ class VNTRConsolidator
 
     std::priority_queue<basis_proportion, std::vector<basis_proportion>, CompareBasisProportion> ordered_basis;
     
+    //tools
+    ReferenceSequence *refseq;
+    
     /**
      * Constructor.
      */
-    VNTRConsolidator(std::string& input_vcf_file, std::vector<GenomeInterval>& intervals, std::string& output_vcf_file);    
+    VNTRConsolidator(std::string& input_vcf_file, std::vector<GenomeInterval>& intervals, std::string& output_vcf_file, std::string& ref_fasta_file);    
     
     /**
      * Update distribution of overlapping VNTRs

@@ -99,7 +99,11 @@ class ReferenceSequence
      */
     void fetch_seq(std::string& chrom, uint32_t start1, uint32_t end1, char* seq, int32_t n);
 
-
+    /**
+     * Get sequence.
+     */
+    char* get_sequence(const char* chrom, uint32_t beg1, uint32_t end1);
+    
     private:
 
     /**
@@ -126,11 +130,6 @@ class ReferenceSequence
      * Set reference fasta file.
      */
     void set_reference(std::string& ref_fasta_file);
-
-    /**
-     * Get sequence.
-     */
-    char* get_sequence(const char* chrom, uint32_t beg1, uint32_t end1);
  
     /**
      * Set debug.

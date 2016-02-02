@@ -35,6 +35,7 @@ class Igor : Program
     ///////////
     std::string input_vcf_file;
     std::string output_vcf_file;
+    std::string ref_fasta_file;
     std::vector<GenomeInterval> intervals;
     bool debug;
 
@@ -64,6 +65,7 @@ class Igor : Program
             cmd.setOutput(&my);
             TCLAP::ValueArg<std::string> arg_intervals("i", "i", "intervals []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "file", cmd);
+            TCLAP::ValueArg<std::string> arg_ref_fasta_file("r", "r", "reference sequence fasta file []", true, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_output_vcf_file("o", "o", "output VCF file [-]", false, "-", "str", cmd);
             TCLAP::SwitchArg arg_debug("d", "d", "debug [false]", cmd, false);
             TCLAP::UnlabeledValueArg<std::string> arg_input_vcf_file("<in.vcf>", "input VCF file", true, "","file", cmd);
@@ -72,6 +74,7 @@ class Igor : Program
 
             input_vcf_file = arg_input_vcf_file.getValue();
             output_vcf_file = arg_output_vcf_file.getValue();
+            ref_fasta_file = arg_ref_fasta_file.getValue();
             debug = arg_debug.getValue();
             parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
         }
@@ -87,7 +90,7 @@ class Igor : Program
         ////////////////////////
         //tools initialization//
         ////////////////////////
-        vc = new VNTRConsolidator(input_vcf_file, intervals, output_vcf_file);
+        vc = new VNTRConsolidator(input_vcf_file, intervals, output_vcf_file, ref_fasta_file);
         vm = new VariantManip();
     }
 

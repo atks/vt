@@ -26,7 +26,7 @@
 /**
  * Constructor.
  */
-VNTRConsolidator::VNTRConsolidator(std::string& input_vcf_file, std::vector<GenomeInterval>& intervals, std::string& output_vcf_file)
+VNTRConsolidator::VNTRConsolidator(std::string& input_vcf_file, std::vector<GenomeInterval>& intervals, std::string& output_vcf_file, std::string& ref_fasta_file)
 {
     //////////////////////
     //i/o initialization//
@@ -74,7 +74,7 @@ VNTRConsolidator::VNTRConsolidator(std::string& input_vcf_file, std::vector<Geno
     ////////////////////////
     //tools initialization//
     ////////////////////////
-//    vm = new VariantManip();
+    refseq = new ReferenceSequence(ref_fasta_file);
 }
 
 /**
@@ -454,8 +454,8 @@ void VNTRConsolidator::detect_consistent_motifs(Variant* variant)
         std::map<std::string, int32_t> basis_map;
         std::map<std::string, int32_t>::iterator it;
         
-        int32_t merged_beg1 = vntr.fuzzy_rbeg1;
-        int32_t merged_end1 = vntr.fuzzy_rend1;
+        uint32_t merged_beg1 = vntr.fuzzy_rbeg1+1;
+        uint32_t merged_end1 = vntr.fuzzy_rend1-1;
             
             
         for (uint32_t i=0; i<variant->vntr_vs.size(); ++i)
@@ -483,6 +483,14 @@ void VNTRConsolidator::detect_consistent_motifs(Variant* variant)
                     std::cerr << (i+1) << ") " << motif << " (" << cbasis << ")\t" << fuzzy_concordance[0] << "\t" << flanks[0] << "," << flanks[1] << "\t" << fuzzy_flanks[0] << "," << fuzzy_flanks[1] << "\n";
                     std::cerr << "\t" << bcf_get_ref(vntr_v) << "\n";
                     bcf_print(odw->hdr, vntr_v);
+                    
+                    merged_beg1 = std::min(merged_beg1, (uint32_t) fuzzy_flanks[0]+1);
+                    merged_end1 = std::max(merged_end1, (uint32_t) fuzzy_flanks[1]-1);
+                }
+                else
+                {
+                    merged_beg1 = std::min(merged_beg1, (uint32_t) bcf_get_pos1(vntr_v));
+                    merged_end1 = std::max(merged_end1, (uint32_t) bcf_get_end1(vntr_v));
                 }
             }
             
@@ -520,6 +528,15 @@ void VNTRConsolidator::detect_consistent_motifs(Variant* variant)
             std::cerr << "merged VNTR \n\t"; 
             
             bcf_print(odw->hdr, new_v);
+            
+            char* ref = refseq->get_sequence(variant->chrom.c_str(), merged_beg1, merged_end1);
+            
+            std::cerr << "newly merged ref " << variant->chrom << ":" << merged_beg1 << "-" << merged_end1 << " " << ref << "\n";
+            
+//            merged_beg1 = vntr.fuzzy_rbeg1;
+//            merged_end1 = vntr.fuzzy_rend1;
+            
+            
             
         }
         else
