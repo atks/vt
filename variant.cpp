@@ -93,6 +93,7 @@ Variant::Variant(bcf_hdr_t* h, bcf1_t* v)
 
 /**
  * Constructor for a variant object that is to be composed from several variants.
+ * ??????? WHY DO THIS????????
  */
 Variant::Variant(Variant* v1, Variant* v2)
 {
@@ -559,6 +560,44 @@ void Variant::update_vntr_from_info_fields(bcf_hdr_t *h, bcf1_t *v)
 
     beg1 = std::min(vntr.exact_rbeg1-1, vntr.fuzzy_rbeg1-1);
     end1 = std::max(vntr.exact_rend1+1, vntr.fuzzy_rend1+1);
+}
+
+/**
+ * Updates a bcf1_t object with VNTR information.
+ */
+void Variant::update_bcf_with_vntr_info(bcf_hdr_t *h, bcf1_t *v)
+{
+    bcf_update_info_flag(h, v, "FUZZY", NULL, 1);
+
+    //VNTR position and sequences
+    bcf_set_pos1(v, vntr.fuzzy_rbeg1);
+    kstring_t s = {0,0,0};
+    s.l = 0;
+    kputs(vntr.fuzzy_repeat_tract.c_str(), &s);
+    kputc(',', &s);
+    kputs("<VNTR>", &s);
+    bcf_update_alleles_str(h, v, s.s);
+
+    //VNTR motif
+    bcf_update_info_string(h, v, "MOTIF", vntr.motif.c_str());
+    bcf_update_info_string(h, v, "RU", vntr.ru.c_str());
+
+    //VNTR characteristics
+    bcf_update_info_float(h, v, "FZ_CONCORDANCE", &vntr.fuzzy_motif_concordance, 1);
+    bcf_update_info_float(h, v, "FZ_RL", &vntr.fuzzy_rl, 1);
+    bcf_update_info_float(h, v, "FZ_LL", &vntr.fuzzy_ll, 1);
+    int32_t flank_pos1[2] = {vntr.exact_rbeg1-1, vntr.exact_rend1+1};
+    bcf_update_info_int32(h, v, "FLANKS", &flank_pos1, 2);
+
+    //flank positions
+    int32_t fuzzy_flank_pos1[2] = {vntr.fuzzy_rbeg1-1, vntr.fuzzy_rend1+1};
+    bcf_update_info_int32(h, v, "FZ_FLANKS", &fuzzy_flank_pos1, 2);
+    int32_t ru_count[2] = {vntr.fuzzy_no_exact_ru, vntr.fuzzy_total_no_ru};
+    bcf_update_info_int32(h, v, "FZ_RU_COUNTS", &ru_count, 2);
+    
+    if (vntr.is_large_repeat_tract) bcf_update_info_flag(h, v, "LARGE_REPEAT_REGION", NULL, 1);
+
+    if (s.m) free(s.s);
 }
 
 /**

@@ -88,7 +88,8 @@ class Variant
     Variant(bcf_hdr_t* h, bcf1_t* v);
 
     /**
-     * Constructor.
+     * Constructor for a variant object that is to be composed from several variants.
+     * ??????? WHY DO THIS????????
      */
     Variant(Variant* v1, Variant* v2);
 
@@ -117,6 +118,11 @@ class Variant
      */
     void update_vntr_from_info_fields(bcf_hdr_t *h, bcf1_t *v);
 
+    /**
+     * Updates a bcf1_t object with VNTR information.
+     */
+    void update_bcf_with_vntr_info(bcf_hdr_t *h, bcf1_t *v);
+        
     /**
      * Prints variant information.
      */
