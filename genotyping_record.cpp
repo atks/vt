@@ -57,7 +57,7 @@ GenotypingRecord::GenotypingRecord(bcf_hdr_t *h, bcf1_t *v, int32_t vtype)
         else
         {
             lend1 = bcf_get_pos1(v) - 1;
-            rbeg1 = bcf_get_end_pos1(v) + 1;
+            rbeg1 = bcf_get_end1(v) + 1;
         }
 
         int32_t *fuzzy_flanks = NULL;
@@ -71,7 +71,7 @@ GenotypingRecord::GenotypingRecord(bcf_hdr_t *h, bcf1_t *v, int32_t vtype)
         else
         {
             fuzzy_lend1 = bcf_get_pos1(v) - 1;
-            fuzzy_rbeg1 = bcf_get_end_pos1(v) + 1;
+            fuzzy_rbeg1 = bcf_get_end1(v) + 1;
         }
 
         beg1 = std::min(lend1-2, fuzzy_lend1-2);
@@ -106,7 +106,7 @@ GenotypingRecord::GenotypingRecord(bcf_hdr_t *h, bcf1_t *v, int32_t vtype)
     {
         rid = bcf_get_rid(v);
         beg1 = bcf_get_pos1(v) - 1;
-        end1 = bcf_get_end_pos1(v) + 1;
+        end1 = bcf_get_end1(v) + 1;
         
         char *motif = NULL;
         int32_t n = 0;

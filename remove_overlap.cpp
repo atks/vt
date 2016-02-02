@@ -136,7 +136,7 @@ class Igor : Program
             bcf_unpack(v, BCF_UN_STR);
             int32_t rid = bcf_get_rid(v);
             int32_t pos1 = bcf_get_pos1(v);
-            int32_t epos1 = bcf_get_end_pos1(v);
+            int32_t epos1 = bcf_get_end1(v);
 
             //does this overlap            
             if (crid==rid && cepos1>=pos1 && cpos1<=epos1)

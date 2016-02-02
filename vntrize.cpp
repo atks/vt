@@ -164,7 +164,7 @@ class Igor : Program
             
             std::string chrom = bcf_get_chrom(odr->hdr,v);
             int32_t start1 = bcf_get_pos1(v);
-            int32_t end1 = bcf_get_end_pos1(v);
+            int32_t end1 = bcf_get_end1(v);
 
             if (orom_vntrs->overlaps_with(chrom, start1, end1, overlap_vars))
             {   

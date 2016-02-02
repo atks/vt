@@ -78,7 +78,7 @@ bool OrderedBCFOverlapMatcher::overlaps_with(std::string& chrom, int32_t start1,
         while (odr->read(v))
         {
             bcf_unpack(v, BCF_UN_INFO);
-            if (bcf_get_end_pos1(v)<start1) continue;
+            if (bcf_get_end1(v)<start1) continue;
             overlaps = overlaps || (bcf_get_pos1(v)<=end1);
             buffer.push_back(v);
             if (bcf_get_pos1(v)>end1) break;
@@ -91,7 +91,7 @@ bool OrderedBCFOverlapMatcher::overlaps_with(std::string& chrom, int32_t start1,
         std::list<bcf1_t*>::iterator i = buffer.begin();
         while (i!=buffer.end())
         {
-            if (bcf_get_end_pos1(*i)<start1)
+            if (bcf_get_end1(*i)<start1)
             {
                 bcf_destroy(*i);
                 i = buffer.erase(i);
@@ -108,7 +108,7 @@ bool OrderedBCFOverlapMatcher::overlaps_with(std::string& chrom, int32_t start1,
         while (odr->read(v))
         {
             bcf_unpack(v, BCF_UN_INFO);
-            if (bcf_get_end_pos1(v)<start1) continue;
+            if (bcf_get_end1(v)<start1) continue;
             overlaps = overlaps || (bcf_get_pos1(v)<=end1);
             buffer.push_back(v);
             if (bcf_get_pos1(v)>end1) break;
@@ -154,7 +154,7 @@ bool OrderedBCFOverlapMatcher::overlaps_with(std::string& chrom, int32_t beg1, i
         {
             bcf_unpack(v, BCF_UN_INFO);
             int32_t cbeg1 = bcf_get_pos1(v);
-            int32_t cend1 = bcf_get_end_pos1(v);
+            int32_t cend1 = bcf_get_end1(v);
 
             if (cend1<beg1)
             {
@@ -196,7 +196,7 @@ bool OrderedBCFOverlapMatcher::overlaps_with(std::string& chrom, int32_t beg1, i
         while (i!=buffer.end())
         {
             int32_t cbeg1 = bcf_get_pos1(*i);
-            int32_t cend1 = bcf_get_end_pos1(*i);
+            int32_t cend1 = bcf_get_end1(*i);
 
             if (cend1<beg1)
             {
@@ -236,7 +236,7 @@ bool OrderedBCFOverlapMatcher::overlaps_with(std::string& chrom, int32_t beg1, i
                 bcf_unpack(v, BCF_UN_INFO);
 
                 int32_t cbeg1 = bcf_get_pos1(v);
-                int32_t cend1 = bcf_get_end_pos1(v);
+                int32_t cend1 = bcf_get_end1(v);
 
                 if (cend1<beg1)
                 {

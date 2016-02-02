@@ -440,11 +440,6 @@ bool bcf_is_passed(bcf_hdr_t *h, bcf1_t *v);
 #define bcf_get_end1(v) ((v)->pos + strlen((v)->d.allele[0]))
 
 /**
- * Get 1-based end position
- */
-#define bcf_get_end_pos1(v) ((v)->pos + strlen((v)->d.allele[0]))
-
-/**
  * Set 1-based position
  */
 #define bcf_set_pos1(v, p) ((v)->pos = (p)-1)

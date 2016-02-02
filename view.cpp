@@ -194,7 +194,7 @@ class Igor : Program
                 bcf_unpack(v, BCF_UN_STR);
                 std::string chrom = bcf_get_chrom(odr->hdr,v);
                 int32_t start1 = bcf_get_pos1(v);
-                int32_t end1 = bcf_get_end_pos1(v);
+                int32_t end1 = bcf_get_end1(v);
 
                 if (!orom_regions->overlaps_with(chrom, start1-left_window, end1+right_window))
                 {

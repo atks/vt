@@ -75,6 +75,8 @@ VNTRConsolidator::VNTRConsolidator(std::string& input_vcf_file, std::vector<Geno
     //tools initialization//
     ////////////////////////
     refseq = new ReferenceSequence(ref_fasta_file);
+//    CandidateMotifPicker* cmp;
+    
 }
 
 /**
@@ -536,7 +538,11 @@ void VNTRConsolidator::detect_consistent_motifs(Variant* variant)
 //            merged_beg1 = vntr.fuzzy_rbeg1;
 //            merged_end1 = vntr.fuzzy_rend1;
             
+            //search for new best motif
             
+            //recompute scores
+            
+            //clip ends if necessary
             
         }
         else

@@ -59,7 +59,7 @@ Variant::Variant(bcf_hdr_t* h, bcf1_t* v)
         else
         {
             vntr.exact_rbeg1 = bcf_get_pos1(v) - 1;
-            vntr.exact_rend1 = bcf_get_end_pos1(v) + 1;
+            vntr.exact_rend1 = bcf_get_end1(v) + 1;
         }
 
         beg1 = vntr.exact_rbeg1-1;
@@ -530,7 +530,7 @@ void Variant::update_vntr_from_info_fields(bcf_hdr_t *h, bcf1_t *v)
     else
     {
         vntr.exact_rbeg1 = bcf_get_pos1(v) - 1;
-        vntr.exact_rend1 = bcf_get_end_pos1(v) + 1;
+        vntr.exact_rend1 = bcf_get_end1(v) + 1;
     }
 
     int32_t *fuzzy_flanks = NULL;
