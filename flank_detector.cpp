@@ -458,34 +458,37 @@ void FlankDetector::polish_repeat_tract(Variant& variant)
  *
  *
  */
-void FlankDetector::polish_repeat_tract_ends(std::string& repeat_tract, std::string& motif)
+void FlankDetector::polish_repeat_tract_ends(std::string& repeat_tract, std::string& motif, bool debug)
 {
-    std::cerr << "\n======================\n";
-    std::cerr << "polished_repeat_tract\n";
-    std::cerr << "======================\n";
-    std::cerr << "motif      " << motif  << " (" << repeat_tract.size()<< ")\n";
-    //search from 5' end
-    int32_t min_beg = repeat_tract.size();
-    int32_t max_end = -1;
+    if (debug)
+    {
+        std::cerr << "===================\n";
+        std::cerr << "Polish repeat tract\n";
+        std::cerr << "===================\n";
+        std::cerr << "repeat tract : " << repeat_tract << " (" << repeat_tract.size() << ")\n";
+        std::cerr << "motif        : " << motif  << "\n";
+    }
+    
+    min_beg0 = repeat_tract.size();
+    max_end0 = -1;
     int32_t mlen = motif.size();
     int32_t rlen = repeat_tract.size();
 
     //todo:  we can use a FSA for substring matching.
-    //
     //is there a way check all phases simultaneously?
     for (uint32_t i = 0; i<mlen; ++i)
     {
         std::string smotif = shift_str(motif, i);
 
-        int32_t temp_min_beg = 0;
-        int32_t temp_max_end = 0;
+        int32_t temp_min_beg0 = 0;
+        int32_t temp_max_end0 = 0;
 
         for (int32_t j=0; j<rlen; ++j)
         {
             if (repeat_tract.compare(j, mlen, smotif)==0)
             {
-                temp_min_beg = j;
-                min_beg = std::min(j, min_beg);
+                temp_min_beg0 = j;
+                min_beg0 = std::min(j, min_beg0);
                 break;
             }
         }
@@ -494,19 +497,23 @@ void FlankDetector::polish_repeat_tract_ends(std::string& repeat_tract, std::str
         {
             if (repeat_tract.compare(j, mlen, smotif)==0)
             {
-                temp_max_end = j+mlen-1;
-                max_end = std::max(j+mlen-1, max_end);
+                temp_max_end0 = j+mlen-1;
+                max_end0 = std::max(j+mlen-1, max_end0);
                 break;
             }
         }
 
-        std::cerr << smotif  << " " << temp_min_beg << " " << temp_max_end << "\n";
+        if (debug) std::cerr << "\t" << smotif  << " " << temp_min_beg0 << " " << temp_max_end0 << "\n";
     }
 
-    std::cerr << "\n";
-    std::cerr << min_beg << "," << max_end << "\n";
-    std::cerr << "raw      " << repeat_tract << "\n";
-    std::cerr << "polished " << repeat_tract.substr(min_beg, max_end-min_beg+1) << "\n";
+    polished_repeat_tract = repeat_tract.substr(min_beg0, max_end0-min_beg0+1);
+    
+    if (debug)
+    {    
+        std::cerr << "min beg      : " << min_beg0 << "\n";
+        std::cerr << "max end      : " << max_end0 << "\n";
+        std::cerr << "polished     : " << polished_repeat_tract << "\n";
+    }
 }
 
 /**
@@ -517,6 +524,7 @@ void FlankDetector::compute_purity_score(Variant& variant, std::string mode)
     std::string& repeat_tract = (mode=="e") ? variant.vntr.exact_repeat_tract : variant.vntr.fuzzy_repeat_tract;
     compute_purity_score(repeat_tract, variant.vntr.motif);
     
+    variant.vntr.ru = ru;
     variant.vntr.exact_motif_concordance = motif_concordance;
     variant.vntr.exact_no_exact_ru = no_exact_ru;
     variant.vntr.exact_total_no_ru = total_no_ru;
@@ -528,7 +536,7 @@ void FlankDetector::compute_purity_score(Variant& variant, std::string mode)
  */
 void FlankDetector::compute_purity_score(std::string& repeat_tract, std::string motif)
 {
-    std::string ru = choose_exact_repeat_unit(repeat_tract, motif);
+    ru = choose_exact_repeat_unit(repeat_tract, motif);
     float exact_motif_count = 0;
     uint32_t mlen = ru.size();
 

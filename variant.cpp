@@ -620,6 +620,31 @@ void Variant::print()
 };
 
 /**
+ * Gets a string representation of the variant.
+ */
+std::string Variant::get_variant_string()
+{
+    kstring_t var = {0,0,0};
+    bcf_unpack(v, BCF_UN_STR);
+    var.l = 0;
+    kputs(bcf_get_chrom(h, v), &var);
+    kputc(':', &var);
+    kputw(bcf_get_pos1(v), &var);
+    kputc(':', &var);
+    for (size_t i=0; i<bcf_get_n_allele(v); ++i)
+    {
+        if (i) kputc('/', &var);
+        kputs(bcf_get_alt(v, i), &var);
+    }
+            
+    std::string str(var.s);
+    
+    if (var.m) free(var.s);
+    
+    return str;
+} 
+
+/**
  * Gets a string representation of the underlying VNTR by exact alignment.
  */
 void Variant::get_vntr_string(kstring_t* s)

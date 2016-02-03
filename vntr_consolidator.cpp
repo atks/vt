@@ -45,7 +45,6 @@ VNTRConsolidator::VNTRConsolidator(std::string& input_vcf_file, std::vector<Geno
     ////////////////////////
     //stats initialization//
     ////////////////////////
-
     no_total_variants = 0;
     no_vntrs = 0;
     no_overlap_vntrs = 0;
@@ -456,8 +455,8 @@ void VNTRConsolidator::detect_consistent_motifs(Variant* variant)
         std::map<std::string, int32_t> basis_map;
         std::map<std::string, int32_t>::iterator it;
 
-        uint32_t merged_beg1 = vntr.fuzzy_rbeg1+1;
-        uint32_t merged_end1 = vntr.fuzzy_rend1-1;
+        int32_t merged_beg1 = vntr.fuzzy_rbeg1+1;
+        int32_t merged_end1 = vntr.fuzzy_rend1-1;
 
         std::map<std::string, int32_t> motifs;
 
@@ -487,16 +486,16 @@ void VNTRConsolidator::detect_consistent_motifs(Variant* variant)
                     std::cerr << "\t" << bcf_get_ref(vntr_v) << "\n";
                     bcf_print(odw->hdr, vntr_v);
 
-                    merged_beg1 = std::min(merged_beg1, (uint32_t) fuzzy_flanks[0]+1);
-                    merged_end1 = std::max(merged_end1, (uint32_t) fuzzy_flanks[1]-1);
+                    merged_beg1 = std::min(merged_beg1, fuzzy_flanks[0]+1);
+                    merged_end1 = std::max(merged_end1, fuzzy_flanks[1]-1);
               
                     std::string current_motif(motif);
                     motifs[current_motif] = 1;
                 }
                 else
                 {
-                    merged_beg1 = std::min(merged_beg1, (uint32_t) bcf_get_pos1(vntr_v));
-                    merged_end1 = std::max(merged_end1, (uint32_t) bcf_get_end1(vntr_v));
+                    merged_beg1 = std::min(merged_beg1, (int32_t) bcf_get_pos1(vntr_v));
+                    merged_end1 = std::max(merged_end1, (int32_t) bcf_get_end1(vntr_v));
                 }
             }
 
@@ -542,18 +541,10 @@ void VNTRConsolidator::detect_consistent_motifs(Variant* variant)
             bcf_print(odw->hdr, new_v);
             std::cerr << "newly merged ref " << variant->chrom << ":" << merged_beg1 << "-" << merged_end1 << " " << repeat_tract << "\n";
 
-            //VNTR position and sequences
-            bcf_set_pos1(new_v, merged_beg1);
-            kstring_t s = {0,0,0};
-            s.l = 0;
-            kputs(repeat_tract.c_str(), &s);
-            kputc(',', &s);
-            kputs("<VNTR>", &s);
-            bcf_update_alleles_str(odr->hdr, new_v, s.s);
+        
 
 
-            //collect motifs from overlaping records
-            //compute the best from 
+            //collect motifs from overlpaping records
             std::string best_motif = "";
             float best_motif_concordance = 0;    
             std::map<std::string, int32_t>::iterator it;
@@ -561,7 +552,6 @@ void VNTRConsolidator::detect_consistent_motifs(Variant* variant)
             {
                 fd->compute_purity_score(repeat_tract, it->first);
                 
-                std::cerr << "evaluating purity " << it->first << " " << fd->motif_concordance << "\n";
                 if (fd->motif_concordance > best_motif_concordance)
                 {
                     best_motif_concordance = fd->motif_concordance;
@@ -569,51 +559,41 @@ void VNTRConsolidator::detect_consistent_motifs(Variant* variant)
                 }                
             }
             
-            std::cerr << best_motif << " " << best_motif_concordance << "\n";
+            fd->polish_repeat_tract_ends(repeat_tract, best_motif, true);
+
+            //recompute conconcordance with polished tract
+            fd->compute_purity_score(fd->polished_repeat_tract, best_motif);
             
-            //update                   
-            fd->polish_repeat_tract_ends(repeat_tract, best_motif);
-            
+            //VNTR position and sequences
+            bcf_set_pos1(new_v, merged_beg1+fd->min_beg0);
+            kstring_t s = {0,0,0};
+            s.l = 0;
+            kputs(fd->polished_repeat_tract.c_str(), &s);
+            kputc(',', &s);
+            kputs("<VNTR>", &s);
+            bcf_update_alleles_str(odr->hdr, new_v, s.s);
+            if (s.m) free(s.s);
+    
+            //VNTR motif
+            bcf_update_info_string(odw->hdr, new_v, "MOTIF", best_motif.c_str());
+            bcf_update_info_string(odw->hdr, new_v, "RU", fd->ru.c_str());
 
-            bcf_print(odw->hdr, new_v);
+            //VNTR characteristics
+            bcf_update_info_float(odw->hdr, new_v, "FZ_CONCORDANCE", &fd->motif_concordance , 1);
+            bcf_update_info_float(odw->hdr, new_v, "FZ_RL", &fd->rl, 1);
+            int32_t new_fuzzy_flanks[2] = {merged_beg1+fd->min_beg0-1, merged_beg1+fd->min_beg0+(int32_t)fd->polished_repeat_tract.size()};
+            bcf_update_info_int32(odw->hdr, new_v, "FZ_FLANKS", &new_fuzzy_flanks, 2);
 
-
-
-//            //VNTR motif
-//            bcf_update_info_string(h, v, "MOTIF", vntr.motif.c_str());
-//            bcf_update_info_string(h, v, "RU", vntr.ru.c_str());
-//
-//            //VNTR characteristics
-//            bcf_update_info_float(h, v, "FZ_CONCORDANCE", &vntr.fuzzy_motif_concordance, 1);
-//            bcf_update_info_float(h, v, "FZ_RL", &vntr.fuzzy_rl, 1);
-//            bcf_update_info_float(h, v, "FZ_LL", &vntr.fuzzy_ll, 1);
-//            int32_t flank_pos1[2] = {vntr.exact_rbeg1-1, vntr.exact_rend1+1};
-//            bcf_update_info_int32(h, v, "FLANKS", &flank_pos1, 2);
-//
 //            //flank positions
 //            int32_t fuzzy_flank_pos1[2] = {vntr.fuzzy_rbeg1-1, vntr.fuzzy_rend1+1};
 //            bcf_update_info_int32(h, v, "FZ_FLANKS", &fuzzy_flank_pos1, 2);
 //            int32_t ru_count[2] = {vntr.fuzzy_no_exact_ru, vntr.fuzzy_total_no_ru};
 //            bcf_update_info_int32(h, v, "FZ_RU_COUNTS", &ru_count, 2);
-//
 
-//            Variant
-//
-//            cmp->generate_candidate_motifs(h, v, variant);
-//            cmp->next_motif(h, v, variant);
-
-//            merged_beg1 = vntr.fuzzy_rbeg1;
-//            merged_end1 = vntr.fuzzy_rend1;
+              bcf_print(odw->hdr, new_v);
 
 
-            //search for new best motif
-
-
-
-            //recompute scores
-
-            //clip ends if necessary
-            if (s.m) free(s.s);
+            
         }
         else
         {

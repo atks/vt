@@ -47,7 +47,7 @@ class VNTR
     //motif
     std::string motif;         //motif
     std::string ru;            //repeat unit on the reference
-    std::string basis;            //unique bases found in motif 
+    std::string basis;            //unique bases found in motif
     int32_t mlen;             //length of motif
     float motif_score;         //motif score from motif tree
 
@@ -99,12 +99,12 @@ class VNTR
      * Return the string of unique bases in a motif.
      */
     static std::string get_basis(std::string& motif);
-    
+
     /**
      * Return the string of unique bases in a motif.
      */
     static std::string get_basis(char* motif, uint32_t n);
-        
+
     /**
      * Print object.
      */

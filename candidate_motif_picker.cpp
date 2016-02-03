@@ -63,9 +63,11 @@ void CandidateMotifPicker::generate_candidate_motifs(Variant& variant)
 
     bool alt_is_longest_allele = false;
     char** alleles = bcf_get_allele(v);
+    uint32_t pos1 = bcf_get_pos1(v);
     uint32_t n_allele = bcf_get_n_allele(v);
     uint32_t longest_allele_index = 0;
-    uint32_t longest_allele_length = strlen(alleles[0]);
+    uint32_t ref_len = strlen(alleles[0]);
+    uint32_t longest_allele_length = ref_len;
 
     for (uint32_t i=1; i<n_allele; ++i)
     {
@@ -91,25 +93,39 @@ void CandidateMotifPicker::generate_candidate_motifs(Variant& variant)
         std::cerr << "Repeat Tract          : " << variant.vntr.exact_repeat_tract << "\n";
         std::cerr << "Longest Allele        : " << alleles[longest_allele_index] << "\n";
         std::cerr << "Longest Allele index  : " << longest_allele_index << "\n";
-            
-        if (longest_allele_index)
-        {
-            std::string spiked_seq = variant.vntr.exact_repeat_tract;
-            std::cerr << "\tspos1          " << variant.vntr.exact_rbeg1-bcf_get_pos1(v) << "\n";
-            std::cerr << "\treplace length " << strlen(alleles[0]) << "\n";
-                   
-            spiked_seq.replace(variant.vntr.exact_rbeg1-bcf_get_pos1(v), strlen(alleles[0]), alleles[longest_allele_index]);
-            spiked_seq.insert(variant.vntr.exact_rbeg1-bcf_get_pos1(v), 1, '[');
-            spiked_seq.insert(variant.vntr.exact_rbeg1-bcf_get_pos1(v)+ strlen(alleles[longest_allele_index])+1, 1, ']');
-            std::cerr << "Spiked Longest Allele : "   << spiked_seq << "\n";
-        }   
     }
     
     if (longest_allele_index)
     {
+        //in the case of multiallelics, because the repeat tract is actually obtain by merging a regions from
+        //pairwise left and right alignment of the alternative alleles with the reference allele, it is possible that the 
+        //tract occurs prior to the position of the multiallelic variant. 
+        int32_t offset = 0;
+        if (variant.vntr.exact_rbeg1<pos1)
+        {
+            offset = bcf_get_pos1(v) - variant.vntr.exact_rbeg1;
+        }    
+        
         std::string spiked_seq = variant.vntr.exact_repeat_tract;
-        spiked_seq.replace(variant.vntr.exact_rbeg1-bcf_get_pos1(v), strlen(alleles[0]), alleles[longest_allele_index]);
+        spiked_seq.replace(offset, ref_len, alleles[longest_allele_index]);
         mt->detect_candidate_motifs(spiked_seq);
+        
+        if (debug)
+        {
+            //this implictly requires that the variants are left aligned.
+            std::string spiked_seq = variant.vntr.exact_repeat_tract;
+            std::cerr << "\texact repeat tract " << variant.vntr.exact_repeat_tract << "\n";
+            std::cerr << "\trbeg1              " << variant.vntr.exact_rbeg1 << "\n";
+            std::cerr << "\tpos1               " << bcf_get_pos1(v) << "\n";
+            std::cerr << "\toffset             " << offset << "\n";
+            std::cerr << "\treplace length     " << ref_len << "\n";
+           
+//            spiked_seq.replace(variant.vntr.exact_rbeg1-bcf_get_pos1(v), strlen(alleles[0]), alleles[longest_allele_index]);
+//            spiked_seq.insert(variant.vntr.exact_rbeg1-bcf_get_pos1(v), 1, '[');
+//            spiked_seq.insert(variant.vntr.exact_rbeg1-bcf_get_pos1(v)+ strlen(alleles[longest_allele_index])+1, 1, ']');
+//            std::cerr << "Spiked Longest Allele : "   << spiked_seq << "\n";
+        } 
+        
     }
     else
     {
@@ -146,6 +162,7 @@ void CandidateMotifPicker::set_motif_from_info_field(Variant& variant)
     if (bcf_get_info_string(variant.h, variant.v, "MOTIF", &motif, &n)>0)
     {
         vntr.motif.assign(motif);
+        vntr.basis = VNTR::get_basis(motif, (uint32_t) n);
         vntr.mlen = vntr.motif.size();
         free(motif);
 
@@ -190,6 +207,7 @@ bool CandidateMotifPicker::next_motif(Variant& variant, int32_t mode)
                                                                     mt->pcm.top().fit);
                 }
                 variant.vntr.motif = cm.motif;
+                variant.vntr.basis = VNTR::get_basis(cm.motif);
                 variant.vntr.mlen = cm.motif.size();
                 variant.vntr.motif_score = cm.score;
                 mt->pcm.pop();
@@ -216,6 +234,7 @@ bool CandidateMotifPicker::next_motif(Variant& variant, int32_t mode)
         {
             CandidateMotif cm = mt->pcm.top();
             variant.vntr.motif = cm.motif;
+            variant.vntr.basis = VNTR::get_basis(cm.motif);
             variant.vntr.mlen = cm.motif.size();
             variant.vntr.motif_score = cm.score;
             mt->pcm.pop();

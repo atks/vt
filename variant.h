@@ -137,6 +137,11 @@ class Variant
     void print();
 
     /**
+     * Gets a string representation of the variant.
+     */
+    std::string get_variant_string();
+
+    /**
      * Gets a string representation of the underlying VNTR by exact alignment.
      */
     void get_vntr_string(kstring_t* s);

@@ -66,9 +66,17 @@ class FlankDetector
     RFHMM* rfhmm;
     std::string qual;
 
+    /////////////////////
+    //polishing variables
+    /////////////////////
+    int32_t min_beg0;
+    int32_t max_end0;
+    std::string polished_repeat_tract;
+    
     ////////////////////////
     //purity score variables
     ////////////////////////
+    std::string ru;
     float motif_concordance;
     float no_exact_ru;
     uint32_t total_no_ru;
@@ -124,7 +132,7 @@ class FlankDetector
     /**
      * Polish repeat tract ends.
      */
-    void polish_repeat_tract_ends(std::string& repeat_tract, std::string& motif);    
+    void polish_repeat_tract_ends(std::string& repeat_tract, std::string& motif, bool debug=false);    
 
     /**
      * Computes purity score of a sequence with respect to a motif.
