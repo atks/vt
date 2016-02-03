@@ -33,6 +33,7 @@
 #include <map>
 #include <queue>
 #include <list>
+#include <algorithm>
 #include "hts_utils.h"
 #include "htslib/kstring.h"
 #include "rfhmm.h"
@@ -45,6 +46,7 @@
 //modes for flank detection
 #define CLIP_ENDS 0 //literally just clip the flanking bases
 #define FRAHMM    1 //raHMM alignment
+#define POLISH_ENDS 2 //for ensuring that the motif occurs on the ends of the repeat tract
 
 /**
  * Class for determining flanks of an Indel.
@@ -106,14 +108,14 @@ class FlankDetector
     std::string choose_exact_repeat_unit(std::string& seq, std::string& motif);
         
     /**
-     * Polish repeat tract.
+     * Polish repeat tract ends.
      */
     void polish_repeat_tract(Variant& variant);   
     
     /**
-     * Polish repeat tract.
+     * Polish repeat tract ends.
      */
-    void polish_repeat_tract(std::string& sequencevariant);    
+    void polish_repeat_tract_ends(std::string& repeat_tract, std::string& motif);    
 
     /**
      * Computes purity score of a sequence with respect to a motif.

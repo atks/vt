@@ -113,12 +113,12 @@ class VNTRAnnotator
     void annotate(Variant& variant, std::string mode);
 
     /**
-     * Return the cannonicalized representation of a motif.
+     * Return the canonical representation of a motif.
      */
     static std::string cannonicalize(std::string& motif);
 
     /**
-     * Return the Return the string of unique bases in a motif.
+     * Return the string of unique bases in a motif.
      */
     static std::string basis(std::string& motif);
 

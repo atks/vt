@@ -36,6 +36,14 @@
 
 /**
  * This represents a Variant and is augmented on top of VCF's record to handle the notion of variants as defined by us.
+ *
+ * This turned out to be a really heavy class.  Some notes:
+ *
+ * 1. Augmented record of a variant on top of a VCF record
+ * 2. Has tandem repeat specific properties in the class VNTR
+ * 3. Links to overlapping VCF records to aid making multiallelics
+ *
+ * This class is NOT responsible for the destruction of ANY bcf records.
  */
 class Variant
 {
@@ -48,22 +56,22 @@ class Variant
     std::string chrom;
     uint32_t rid;
     uint32_t pos1; //position of first reference base in VCF record
-    uint32_t beg1; //for detecting overlaps, for indels and VNTRs, this will reflect lend1 
+    uint32_t beg1; //for detecting overlaps, for indels and VNTRs, this will reflect lend1
     uint32_t end1; //for detecting overlaps, for indels and VNTRs, this will reflect rbeg1
 
     //linked VCF record
     bcf_hdr_t* h;
     bcf1_t* v;
-    
+
     //associated VCF records for merging into a multiallelic
     std::vector<bcf1_t*> vs;
     std::vector<bcf1_t*> snp_vs;
     std::vector<bcf1_t*> indel_vs;
     std::vector<bcf1_t*> vntr_vs;
-    
+
     //contains alleles
     std::vector<Allele> alleles;
-        
+
     //sum from all the alleles
     int32_t ts;         //no. of transitions
     int32_t tv;         //no. of tranversions (mlen-ts)
@@ -72,13 +80,13 @@ class Variant
 
     //overlapping statistics
     //for normal variants
-    // - the number of other variants overlapping with this 
+    // - the number of other variants overlapping with this
     //for candidate multiallelic/complex variant
     // - the number of variants considered for merging into a multiallelic/complex variant
     int32_t no_overlapping_snps;
     int32_t no_overlapping_indels;
     int32_t no_overlapping_vntrs;
-    
+
     //describes VNTR
     VNTR vntr;
 
@@ -122,12 +130,12 @@ class Variant
      * Updates a bcf1_t object with VNTR information.
      */
     void update_bcf_with_vntr_info(bcf_hdr_t *h, bcf1_t *v);
-        
+
     /**
      * Prints variant information.
      */
     void print();
-    
+
     /**
      * Gets a string representation of the underlying VNTR by exact alignment.
      */

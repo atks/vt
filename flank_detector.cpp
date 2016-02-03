@@ -447,6 +447,69 @@ std::string FlankDetector::choose_exact_repeat_unit(std::string& seq, std::strin
 }
 
 /**
+ * Polish repeat tract ends.
+ */
+void FlankDetector::polish_repeat_tract(Variant& variant)
+{
+}
+
+/**
+ * Polish repeat tract ends.
+ *
+ *
+ */
+void FlankDetector::polish_repeat_tract_ends(std::string& repeat_tract, std::string& motif)
+{
+    std::cerr << "\n======================\n";
+    std::cerr << "polished_repeat_tract\n";
+    std::cerr << "======================\n";
+    std::cerr << "motif      " << motif  << " (" << repeat_tract.size()<< ")\n";
+    //search from 5' end
+    int32_t min_beg = repeat_tract.size();
+    int32_t max_end = -1;
+    int32_t mlen = motif.size();
+    int32_t rlen = repeat_tract.size();
+
+    //todo:  we can use a FSA for substring matching.
+    //
+    //is there a way check all phases simultaneously?
+    for (uint32_t i = 0; i<mlen; ++i)
+    {
+        std::string smotif = shift_str(motif, i);
+
+        int32_t temp_min_beg = 0;
+        int32_t temp_max_end = 0;
+
+        for (int32_t j=0; j<rlen; ++j)
+        {
+            if (repeat_tract.compare(j, mlen, smotif)==0)
+            {
+                temp_min_beg = j;
+                min_beg = std::min(j, min_beg);
+                break;
+            }
+        }
+
+        for (int32_t j=rlen-mlen-1; j>=0; --j)
+        {
+            if (repeat_tract.compare(j, mlen, smotif)==0)
+            {
+                temp_max_end = j+mlen-1;
+                max_end = std::max(j+mlen-1, max_end);
+                break;
+            }
+        }
+
+        std::cerr << smotif  << " " << temp_min_beg << " " << temp_max_end << "\n";
+    }
+
+    std::cerr << "\n";
+    std::cerr << min_beg << "," << max_end << "\n";
+    std::cerr << "raw      " << repeat_tract << "\n";
+    std::cerr << "polished " << repeat_tract.substr(min_beg, max_end-min_beg+1) << "\n";
+}
+
+/**
  * Computes purity score of a sequence with respect to a motif.
  */
 void FlankDetector::compute_purity_score(Variant& variant, std::string mode)

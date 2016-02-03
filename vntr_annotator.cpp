@@ -88,7 +88,7 @@ void VNTRAnnotator::annotate(Variant& variant, std::string mode)
             //just use the motif annotator
             //2. detect candidate motifs from a reference seqeuence
             cmp->generate_candidate_motifs(variant);
-            cmp->next_motif(variant);
+            cmp->next_motif(variant, NO_REQUIREMENT);
 
             //3. compute purity
             fd->detect_flanks(h, v, variant, CLIP_ENDS);
@@ -129,10 +129,12 @@ void VNTRAnnotator::annotate(Variant& variant, std::string mode)
             //2. detect candidate motifs from a reference sequence
             cmp->generate_candidate_motifs(variant);
 
-            if (!cmp->next_motif(variant))
+            if (!cmp->next_motif(variant, CHECK_MOTIF_PRESENCE_IN_ALLELE ))
             {
                 std::cerr << "oops, no candidate motif for next step\n";
             }
+            
+            //is there a fail safe here????????
 
             //3. detect flanks and evaluate reference tract
             fd->detect_flanks(h, v, variant, CLIP_ENDS);
@@ -152,11 +154,13 @@ void VNTRAnnotator::annotate(Variant& variant, std::string mode)
             //2. detect candidate motifs from a reference sequence
             cmp->generate_candidate_motifs(variant);
 
-            if (!cmp->next_motif(variant))
+            if (!cmp->next_motif(variant, CHECK_MOTIF_PRESENCE_IN_ALLELE))
             {
                 std::cerr << "oops, no candidate motif for next step\n";
             }
 
+            //is there a fail safe here????????
+            
             //3. evaluate reference length
             fd->detect_flanks(h, v, variant, FRAHMM);
 
@@ -169,7 +173,7 @@ void VNTRAnnotator::annotate(Variant& variant, std::string mode)
 }
 
 /**
- * Return the cannonicalized representation of a motif.
+ * Return the canonical representation of a motif.
  */
 std::string VNTRAnnotator::cannonicalize(std::string& motif)
 {

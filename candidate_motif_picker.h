@@ -47,8 +47,9 @@
 #include "candidate_region_extractor.h"
 #include "flank_detector.h"
 
-//forms of choosing a motif
-#define PICK_BEST_MOTIF      0
+//modes for picking motifs
+#define NO_REQUIREMENT                 0
+#define CHECK_MOTIF_PRESENCE_IN_ALLELE 1
 
 /**
  * Class for determining basic traits of an indel
@@ -85,12 +86,16 @@ class CandidateMotifPicker
      * Initialize motif tree and generate a pool candidate motifs.
      */
     void generate_candidate_motifs(Variant& variant);
-
-//    /**
-//     * Initialize motif tree and generate a pool candidate motifs.
-//     */
-//    void generate_candidate_motifs(Variant& variant);
     
+    /**
+     * Generate candidate motids from a repeat tract.
+     *
+     * 1. assigns the repeat_tract to the fuzzy_repeat_tract field of the variants VNTR.
+     * 2. examines this sequence for candidate motifs that are stored in the priority queue in the MotifTree class.
+     * 3. the candidate motifs are then to be accessed via next_motif()
+     */
+    void generate_candidate_motifs(char* repeat_tract, Variant& variant);
+
     /**
      * Initialize candidate motif from VCF record.
      */
@@ -99,7 +104,7 @@ class CandidateMotifPicker
     /**
      * Choose the next best motif.
      */
-    bool next_motif(Variant& variant);
+    bool next_motif(Variant& variant, int32_t mode=NO_REQUIREMENT);
     
     /**
      * Checks if motif is in indel fragment.

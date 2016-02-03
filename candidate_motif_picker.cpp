@@ -46,6 +46,10 @@ CandidateMotifPicker::~CandidateMotifPicker()
  * Pick candidate motifs in different modes.
  * Invokes motif tree and the candidate motifs are stored in a
  * heap within the motif tree.
+ *
+ * 1. gets reference sequence from the REF column of a VCF record
+ * 2. examines this sequence for candidate motifs that are stored in the priority queue in the MotifTree class.
+ * 3. the candidate motifs are then to be accessed via next_motif()
  */
 void CandidateMotifPicker::generate_candidate_motifs(Variant& variant)
 {
@@ -114,6 +118,24 @@ void CandidateMotifPicker::generate_candidate_motifs(Variant& variant)
 }
 
 /**
+ * Generate candidate motifs from a repeat tract.
+ *
+ * 1. assigns the repeat_tract to the fuzzy_repeat_tract field of the variants VNTR.
+ * 2. examines this sequence for candidate motifs that are stored in the priority queue in the MotifTree class.
+ * 3. the candidate motifs are then to be accessed via next_motif()
+ */
+void CandidateMotifPicker::generate_candidate_motifs(char* repeat_tract, Variant& variant)
+{
+//    std::cerr << "INVOKED??\n" ;
+    variant.vntr.fuzzy_repeat_tract.assign(repeat_tract);
+//    std::cerr << "assigned repeat tract"  << repeat_tract << "\n";
+    
+    mt->detect_candidate_motifs(variant.vntr.fuzzy_repeat_tract);
+//    std::cerr << mt->pcm.size() << "\n";
+    
+}
+
+/**
  * Initialize candidate motif from VCF record.
  */
 void CandidateMotifPicker::set_motif_from_info_field(Variant& variant)
@@ -136,51 +158,83 @@ void CandidateMotifPicker::set_motif_from_info_field(Variant& variant)
 }
     
 /**
- * Choose the next best motif.
+ * Iterates through the candidate motifs detected in the motif tree.
+ *
+ *  1. examines it if the motif is represented in the motif tree.
+ *     and updated the motif field in the VNTR object of variant 
+ *     with the candidate motif.
+ *  2. 
+ * 
  */
-bool CandidateMotifPicker::next_motif(Variant& variant)
+bool CandidateMotifPicker::next_motif(Variant& variant, int32_t mode)
 {
-    if (debug)
+    if (mode==CHECK_MOTIF_PRESENCE_IN_ALLELE)
     {
-        std::cerr << "********************************************\n";
-        std::cerr << "PICKING NEXT BEST MOTIF\n\n";
-    }
-
-    while (!mt->pcm.empty())
-    {
-        CandidateMotif cm = mt->pcm.top();
-
-        //check for existence of pattern in indel sequence
-        if (is_in_indel_fragment(cm.motif))
+        if (debug)
         {
-            if (debug)
+            std::cerr << "********************************************\n";
+            std::cerr << "PICKING NEXT BEST MOTIF\n\n";
+        }
+    
+        while (!mt->pcm.empty())
+        {
+            CandidateMotif cm = mt->pcm.top();
+    
+            //check for existence of pattern in indel sequence
+            if (is_in_indel_fragment(cm.motif))
             {
-                printf("selected: %10s %.2f %.2f\n", mt->pcm.top().motif.c_str(),
-                                                                mt->pcm.top().score,
-                                                                mt->pcm.top().fit);
+                if (debug)
+                {
+                    printf("selected: %10s %.2f %.2f\n", mt->pcm.top().motif.c_str(),
+                                                                    mt->pcm.top().score,
+                                                                    mt->pcm.top().fit);
+                }
+                variant.vntr.motif = cm.motif;
+                variant.vntr.mlen = cm.motif.size();
+                variant.vntr.motif_score = cm.score;
+                mt->pcm.pop();
+                return true;
             }
+            else
+            {
+                if (debug)
+                {
+                    printf("rejected: %10s %.2f %.2f (not in indel fragment)\n",
+                                                                    mt->pcm.top().motif.c_str(),
+                                                                    mt->pcm.top().score,
+                                                                    mt->pcm.top().fit);
+                }
+                mt->pcm.pop();
+            }
+        }
+    
+        return false;
+    }
+    else if (mode==NO_REQUIREMENT)
+    {
+        if (!mt->pcm.empty())
+        {
+            CandidateMotif cm = mt->pcm.top();
             variant.vntr.motif = cm.motif;
             variant.vntr.mlen = cm.motif.size();
             variant.vntr.motif_score = cm.score;
             mt->pcm.pop();
+            
+//            std::cerr << variant.vntr.motif << " " << variant.vntr.motif_score  << "\n";
+            
             return true;
         }
-        else
-        {
-            if (debug)
-            {
-                printf("rejected: %10s %.2f %.2f (not in indel fragment)\n",
-                                                                mt->pcm.top().motif.c_str(),
-                                                                mt->pcm.top().score,
-                                                                mt->pcm.top().fit);
-            }
-            mt->pcm.pop();
-        }
+    
+        return false;
     }
-
-    return false;
+    else
+    {
+        fprintf(stderr, "[E:%s:%d %s] Motif picking mode not recognized : %d\n", __FILE__, __LINE__, __FUNCTION__, mode);
+        exit(1);    
+        return false;
+    }
 }
-
+    
 /**
  * Checks if motif is in indel fragment.
  */
