@@ -459,6 +459,7 @@ void VNTRConsolidator::detect_consistent_motifs(Variant* variant)
         uint32_t merged_beg1 = vntr.fuzzy_rbeg1+1;
         uint32_t merged_end1 = vntr.fuzzy_rend1-1;
 
+        std::map<std::string, int32_t> motifs;
 
         for (uint32_t i=0; i<variant->vntr_vs.size(); ++i)
         {
@@ -488,6 +489,9 @@ void VNTRConsolidator::detect_consistent_motifs(Variant* variant)
 
                     merged_beg1 = std::min(merged_beg1, (uint32_t) fuzzy_flanks[0]+1);
                     merged_end1 = std::max(merged_end1, (uint32_t) fuzzy_flanks[1]-1);
+              
+                    std::string current_motif(motif);
+                    motifs[current_motif] = 1;
                 }
                 else
                 {
@@ -527,7 +531,8 @@ void VNTRConsolidator::detect_consistent_motifs(Variant* variant)
         {
             bcf1_t *new_v = bcf_dup(variant->v);
 
-            char* ref = refseq->fetch_seq(variant->chrom.c_str(), merged_beg1, merged_end1);
+            std::string repeat_tract;
+            refseq->fetch_seq(variant->chrom.c_str(), merged_beg1, merged_end1, repeat_tract);
 
             std::cerr << "\n";
             std::cerr << "\n";
@@ -535,44 +540,43 @@ void VNTRConsolidator::detect_consistent_motifs(Variant* variant)
             std::cerr << "merged VNTR\n";
 
             bcf_print(odw->hdr, new_v);
-            std::cerr << "newly merged ref " << variant->chrom << ":" << merged_beg1 << "-" << merged_end1 << " " << ref << "\n";
+            std::cerr << "newly merged ref " << variant->chrom << ":" << merged_beg1 << "-" << merged_end1 << " " << repeat_tract << "\n";
 
             //VNTR position and sequences
             bcf_set_pos1(new_v, merged_beg1);
             kstring_t s = {0,0,0};
             s.l = 0;
-            kputs(ref, &s);
+            kputs(repeat_tract.c_str(), &s);
             kputc(',', &s);
             kputs("<VNTR>", &s);
             bcf_update_alleles_str(odr->hdr, new_v, s.s);
 
 
-            //1. detect new candidate motif from combined sequence
-            cmp->generate_candidate_motifs(ref, *variant);
-            
-            std::string str(ref);
-                int32_t f = 0;
-            while (cmp->next_motif(*variant))
+            //collect motifs from overlaping records
+            //compute the best from 
+            std::string best_motif = "";
+            float best_motif_concordance = 0;    
+            std::map<std::string, int32_t>::iterator it;
+            for (it = motifs.begin(); it!=motifs.end(); ++it)
             {
-//                std::cerr << "candidate motifs " << variant->vntr.motif;
-                if (f==3) break;
+                fd->compute_purity_score(repeat_tract, it->first);
                 
-                fd->polish_repeat_tract_ends(str, variant->vntr.motif);
-                
-                ++f;
+                std::cerr << "evaluating purity " << it->first << " " << fd->motif_concordance << "\n";
+                if (fd->motif_concordance > best_motif_concordance)
+                {
+                    best_motif_concordance = fd->motif_concordance;
+                    best_motif = it->first;
+                }                
             }
+            
+            std::cerr << best_motif << " " << best_motif_concordance << "\n";
+            
+            //update                   
+            fd->polish_repeat_tract_ends(repeat_tract, best_motif);
+            
 
-
-//
-//            std::cerr << "UPDATED\n";
-//
             bcf_print(odw->hdr, new_v);
 
-            //2.polish ends
-
-            //update fuzzy ends
-            
-            //print out consolidated VNTR
 
 
 //            //VNTR motif
@@ -610,7 +614,6 @@ void VNTRConsolidator::detect_consistent_motifs(Variant* variant)
 
             //clip ends if necessary
             if (s.m) free(s.s);
-            if (ref) free(ref);
         }
         else
         {

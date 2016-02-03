@@ -514,12 +514,21 @@ void FlankDetector::polish_repeat_tract_ends(std::string& repeat_tract, std::str
  */
 void FlankDetector::compute_purity_score(Variant& variant, std::string mode)
 {
-    VNTR& vntr = variant.vntr;
+    std::string& repeat_tract = (mode=="e") ? variant.vntr.exact_repeat_tract : variant.vntr.fuzzy_repeat_tract;
+    compute_purity_score(repeat_tract, variant.vntr.motif);
+    
+    variant.vntr.exact_motif_concordance = motif_concordance;
+    variant.vntr.exact_no_exact_ru = no_exact_ru;
+    variant.vntr.exact_total_no_ru = total_no_ru;
+    variant.vntr.exact_rl = rl;
+}
 
-    std::string& seq = (mode=="e") ? vntr.exact_repeat_tract : vntr.fuzzy_repeat_tract;
-
-    std::string& motif = vntr.motif;
-    std::string ru = choose_exact_repeat_unit(seq, motif);
+/**
+ * Computes purity score of a sequence with respect to a motif.
+ */
+void FlankDetector::compute_purity_score(std::string& repeat_tract, std::string motif)
+{
+    std::string ru = choose_exact_repeat_unit(repeat_tract, motif);
     float exact_motif_count = 0;
     uint32_t mlen = ru.size();
 
@@ -527,9 +536,9 @@ void FlankDetector::compute_purity_score(Variant& variant, std::string mode)
     {
         uint32_t j=0;
         bool exact = true;
-        for (uint32_t i=0; i<seq.size(); ++i)
+        for (uint32_t i=0; i<repeat_tract.size(); ++i)
         {
-            if (ru.at(j)!=seq.at(i))
+            if (ru.at(j)!=repeat_tract.at(i))
             {
                 exact = false;
                 break;
@@ -540,10 +549,10 @@ void FlankDetector::compute_purity_score(Variant& variant, std::string mode)
 
         if (exact)
         {
-            vntr.exact_motif_concordance = 1;
-            vntr.exact_no_exact_ru = seq.size()/motif.size();
-            vntr.exact_total_no_ru = vntr.exact_no_exact_ru;
-            vntr.exact_rl = (float) seq.size()/(float) motif.size();
+            motif_concordance = 1;
+            no_exact_ru = repeat_tract.size()/motif.size();
+            total_no_ru = no_exact_ru;
+            rl = (float) repeat_tract.size()/(float) motif.size();
             return;
         }
     }
@@ -554,12 +563,12 @@ void FlankDetector::compute_purity_score(Variant& variant, std::string mode)
 
     //fall through to computing inexact sequence
     ahmm->set_model(ru.c_str());
-    ahmm->align(seq.c_str(), qual.c_str());
+    ahmm->align(repeat_tract.c_str(), qual.c_str());
 
-    vntr.exact_motif_concordance = ahmm->motif_concordance;
-    vntr.exact_no_exact_ru = ahmm->exact_motif_count;
-    vntr.exact_total_no_ru = ahmm->motif_count;
-    vntr.exact_rl = ahmm->repeat_tract_len;
+    motif_concordance = ahmm->motif_concordance;
+    no_exact_ru = ahmm->exact_motif_count;
+    total_no_ru = ahmm->motif_count;
+    rl = ahmm->repeat_tract_len;
 
     return;
 }

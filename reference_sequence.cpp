@@ -26,7 +26,7 @@
 /**
  * Constructor.
  *
- * @k - size of buffered sequence is 2^k
+ * @k - size of buffered sequence is 2^k.
  */
 ReferenceSequence::ReferenceSequence(std::string& ref_fasta_file, uint32_t k, uint32_t window_size)
 {
@@ -86,7 +86,7 @@ char ReferenceSequence::fetch_base(std::string& chrom, uint32_t& pos1)
 }
 
 /**
- * Fetches sequence chrom:start1-end1
+ * Fetches sequence chrom:beg1-end1.
  * 
  * Retrieved sequence is in seq with the length of n.
  */
@@ -95,7 +95,20 @@ void ReferenceSequence::fetch_seq(std::string& chrom, uint32_t start1, uint32_t 
 }
 
 /**
- * Get sequence.
+ * Fetches sequence chrom:beg1-end1.
+ */
+void ReferenceSequence::fetch_seq(const char* chrom, uint32_t beg1, uint32_t end1, std::string& seq)
+{
+    char* temp_seq = fetch_seq(chrom, beg1, end1);    
+    if (temp_seq)
+    {
+        seq.assign(temp_seq);
+        free(temp_seq);
+    }
+};
+
+/**
+ * Fetches sequence chrom:beg1-end1.
  */
 char* ReferenceSequence::fetch_seq(const char* chrom, uint32_t beg1, uint32_t end1)
 {

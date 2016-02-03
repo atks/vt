@@ -35,13 +35,13 @@
 class ReferenceSequence
 {
     public:
-        
+
     //reference file and index
     std::string ref_fasta_file;
     faidx_t *fai;
 
-    
-        
+
+
     uint32_t buffer_size;
     uint32_t buffer_size_mask;
     uint32_t window_size;
@@ -83,7 +83,7 @@ class ReferenceSequence
     /**
      * Constructor.
      *
-     * @k - size of buffered sequence is 2^k
+     * @k - size of buffered sequence is 2^k.
      */
     ReferenceSequence(std::string& ref_fasta_file, uint32_t k=10, uint32_t window_size=256);
 
@@ -93,17 +93,22 @@ class ReferenceSequence
     char fetch_base(std::string& chrom, uint32_t& pos1);
 
     /**
-     * Fetches sequence chrom:start1-end1
+     * Fetches sequence chrom:beg1-end1.
      *
      * Retrieved sequence is in seq with the length of n.
      */
     void fetch_seq(std::string& chrom, uint32_t start1, uint32_t end1, char* seq, int32_t n);
 
     /**
-     * Get sequence.
+     * Fetches sequence chrom:beg1-end1.
+     */
+    void fetch_seq(const char* chrom, uint32_t beg1, uint32_t end1, std::string& seq);
+
+    /**
+     * Fetches sequence chrom:beg1-end1.
      */
     char* fetch_seq(const char* chrom, uint32_t beg1, uint32_t end1);
-    
+
     private:
 
     /**
@@ -130,7 +135,7 @@ class ReferenceSequence
      * Set reference fasta file.
      */
     void set_reference(std::string& ref_fasta_file);
- 
+
     /**
      * Set debug.
      */

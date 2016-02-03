@@ -48,6 +48,7 @@
 #define FRAHMM    1 //raHMM alignment
 #define POLISH_ENDS 2 //for ensuring that the motif occurs on the ends of the repeat tract
 
+
 /**
  * Class for determining flanks of an Indel.
  */
@@ -64,6 +65,14 @@ class FlankDetector
     LFHMM* lfhmm;
     RFHMM* rfhmm;
     std::string qual;
+
+    ////////////////////////
+    //purity score variables
+    ////////////////////////
+    float motif_concordance;
+    float no_exact_ru;
+    uint32_t total_no_ru;
+    float rl;
 
     ///////
     //tools
@@ -121,6 +130,11 @@ class FlankDetector
      * Computes purity score of a sequence with respect to a motif.
      */
     void compute_purity_score(Variant& variant, std::string mode);
+        
+    /**
+     * Computes purity score of a sequence with respect to a motif.
+     */
+    void compute_purity_score(std::string& repeat_tract, std::string motif);   
 };
 
 #endif
