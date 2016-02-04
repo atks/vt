@@ -361,7 +361,7 @@ void OrderedBCFOverlapMatcher::update_overlap_statistics(bcf1_t* v)
     int32_t ret_fuzzy_overlaps = bcf_get_info_int32(odr->hdr, v, "FUZZY_OVERLAPS", &fuzzy_count, &fuzzy_n);
     if (ret_exact_overlaps==-3 && ret_fuzzy_overlaps==-3)
     {
-        bcf_print(odr->hdr, v);
+//        bcf_print(odr->hdr, v);
         ++no_nonoverlaps;
     }
     if (ret_exact_overlaps==-3 && ret_fuzzy_overlaps>0)

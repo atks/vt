@@ -46,7 +46,7 @@ class Igor : Program
     std::string fexp;
     Filter filter;
     bool filter_exists;
-    
+
     ///////
     //i/o//
     ///////
@@ -60,12 +60,15 @@ class Igor : Program
     uint32_t no_variants;
     uint32_t no_variants_vntrized;
 
+    //for allele counts [no indel alleles][no tandem repeat alleles]
+    std::vector<std::vector<int32_t> > joint_allele_dist;
+
     /////////
     //tools//
     /////////
     VariantManip *vm;
     OrderedBCFOverlapMatcher *orom_vntrs;
-    
+
     Igor(int argc, char **argv)
     {
         version = "0.5";
@@ -115,13 +118,13 @@ class Igor : Program
         odw->link_hdr(odr->hdr);
         bcf_hdr_append(odw->hdr, "##INFO=<ID=VNTR_OVERLAP_VARIANT,Number=.,Type=String,Description=\"Original chr:pos:ref:alt variant that overlaps with a VNTR\">\n");
         odw->write_hdr();
-        
+
         /////////////////////////
         //filter initialization//
         /////////////////////////
         filter.parse(fexp.c_str(), false);
         filter_exists = fexp=="" ? false : true;
-            
+
         ////////////////////////
         //stats initialization//
         ////////////////////////
@@ -132,6 +135,39 @@ class Igor : Program
         //tools initialization//
         ////////////////////////
         orom_vntrs = new OrderedBCFOverlapMatcher(ref_vntr_vcf_file, intervals);
+    }
+
+    /**
+     * Updates joint allele distribution.
+     */
+    void update_joint_allele_dist(int32_t no_indel_alleles, int32_t no_tandem_repeat_alleles)
+    {
+//        
+//        std::cerr << "updating " << no_indel_alleles << " " << no_tandem_repeat_alleles << "\n";
+//        std::cerr << joint_allele_dist.size() <<  " => ";
+        if (joint_allele_dist.size()<=no_indel_alleles)
+        {
+            std::vector<int32_t> vec;
+            for (uint32_t i = joint_allele_dist.size(); i<=no_indel_alleles; ++i)
+            {
+                joint_allele_dist.push_back(vec);
+            }
+        }
+
+//        std::cerr << joint_allele_dist.size() << "\n";
+//        std::cerr << joint_allele_dist[no_indel_alleles].size() <<  " => ";
+        if (joint_allele_dist[no_indel_alleles].size()<=no_tandem_repeat_alleles)
+        {
+            for (uint32_t i = joint_allele_dist[no_indel_alleles].size(); i<=no_tandem_repeat_alleles; ++i)
+            {
+                joint_allele_dist[no_indel_alleles].push_back(0);
+            }
+        }
+//        std::cerr << joint_allele_dist[no_indel_alleles].size() <<  "\n";
+       
+
+        
+        ++joint_allele_dist[no_indel_alleles][no_tandem_repeat_alleles];
     }
 
     void vntrize()
@@ -152,28 +188,45 @@ class Igor : Program
         while (odr->read(v))
         {
             if (filter_exists)
-            {   
+            {
                 vm->classify_variant(h, v, variant);
                 if (!filter.apply(h, v, &variant, false))
                 {
                     continue;
                 }
             }
-            
+
             bcf_unpack(v, BCF_UN_INFO);
-            
+
             std::string chrom = bcf_get_chrom(odr->hdr,v);
             int32_t start1 = bcf_get_pos1(v);
             int32_t end1 = bcf_get_end1(v);
 
             if (orom_vntrs->overlaps_with(chrom, start1, end1, overlap_vars))
-            {   
+            {
+                uint32_t no_indel_alleles = bcf_get_n_allele(v);
+                uint32_t no_tandem_repeat_alleles = 0;
+
                 for (size_t i=0; i<overlap_vars.size(); ++i)
                 {
                     if (i) kputc(',', &old_alleles);
                     bcf_variant2string(orom_vntrs->odr->hdr, overlap_vars[i], &old_alleles);
+
+                    no_tandem_repeat_alleles = bcf_get_n_allele(overlap_vars[i]) > no_tandem_repeat_alleles ? bcf_get_n_allele(overlap_vars[i]) : no_tandem_repeat_alleles;
+                        
+//                    if (no_tandem_repeat_alleles == 1)
+//                    {
+//                        bcf_print(orom_vntrs->odr->hdr, overlap_vars[i]);
+//                    }     
+                    
+                    if (no_indel_alleles == 13)
+                    {
+                        bcf_print(h, v);
+                    }    
                 }
-  
+
+                update_joint_allele_dist(no_indel_alleles, no_tandem_repeat_alleles);
+
                 bcf_variant2string(odw->hdr, v, &old_alleles);
                 bcf_update_info_string(odw->hdr, v, "VNTR_OVERLAP_VARIANT", old_alleles.s);
                 bcf_set_pos1(v, bcf_get_pos1(overlap_vars[0]));
@@ -186,10 +239,10 @@ class Igor : Program
                     kputs(allele[i], &new_alleles);
                 }
                 bcf_update_alleles_str(odw->hdr, v, new_alleles.s);
-                
+
                 ++no_variants_vntrized;
             }
-            overlap_vars.clear();             
+            overlap_vars.clear();
             ++no_variants;
             odw->write(v);
             v = odw->get_bcf1_from_pool();
@@ -223,6 +276,33 @@ class Igor : Program
         std::clog << "       total no. variants vntrized              : " << no_variants_vntrized << "\n";
         std::clog << "       total no. variants observed              : " << no_variants << "\n";
         std::clog << "\n";
+
+
+        //determine max alleles
+        int32_t max_tr_allele_no = 0;
+        for (uint32_t i = 1; i<joint_allele_dist.size(); ++i)
+        {   
+            std::cerr << i << " " << joint_allele_dist[i].size() << "\n";
+            if (joint_allele_dist[i].size()>max_tr_allele_no)
+            {
+                max_tr_allele_no = joint_allele_dist[i].size();
+            }
+        }
+        --max_tr_allele_no;
+        
+        std::cerr << "Joint distribution of alleles\n";    
+        for (uint32_t i = 1; i<= max_tr_allele_no; ++i) std::cerr << "\t" << i;
+        std::cerr << "\n";
+        for (uint32_t i = 1; i<joint_allele_dist.size(); ++i)
+        {
+            std::cerr << i ;
+            for (uint32_t j = 1; j<joint_allele_dist[i].size(); ++j)
+            {
+                std::cerr << "\t";
+                std::cerr << joint_allele_dist[i][j];
+            }
+            std::cerr << "\n";
+        }
     };
 
     ~Igor() {};
