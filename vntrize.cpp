@@ -38,6 +38,8 @@ class Igor : Program
     std::vector<GenomeInterval> intervals;
     std::string ref_vntr_vcf_file;
     int32_t window_size;
+    uint32_t left_window;
+    uint32_t right_window;
     bool print;
 
     //////////
@@ -86,6 +88,8 @@ class Igor : Program
             TCLAP::ValueArg<std::string> arg_intervals("i", "i", "intervals []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "file", cmd);
             TCLAP::ValueArg<int32_t> arg_window_size("w", "w", "window size for local sorting of variants [10000]", false, 10000, "integer", cmd);
+            TCLAP::ValueArg<uint32_t> arg_left_window("l", "l", "left window size for overlap []", false, 0, "int", cmd);
+            TCLAP::ValueArg<uint32_t> arg_right_window("t", "t", "right window size for overlap []", false, 0, "int", cmd);
             TCLAP::ValueArg<std::string> arg_fexp("f", "f", "filter expression []", false, "", "str", cmd);
             TCLAP::SwitchArg arg_quiet("q", "q", "do not print options and summary []", cmd, false);
             TCLAP::ValueArg<std::string> arg_output_vcf_file("o", "o", "output VCF file [-]", false, "-", "str", cmd);
@@ -99,6 +103,8 @@ class Igor : Program
             fexp = arg_fexp.getValue();
             print = !arg_quiet.getValue();
             window_size = arg_window_size.getValue();
+            left_window = arg_left_window.getValue();
+            right_window = arg_right_window.getValue();
             ref_vntr_vcf_file = arg_ref_vntr_vcf_file.getValue();
         }
         catch (TCLAP::ArgException &e)
@@ -202,7 +208,7 @@ class Igor : Program
             int32_t start1 = bcf_get_pos1(v);
             int32_t end1 = bcf_get_end1(v);
 
-            if (orom_vntrs->overlaps_with(chrom, start1, end1, overlap_vars))
+            if (orom_vntrs->overlaps_with(chrom, start1-left_window, end1+right_window, overlap_vars))
             {
                 uint32_t no_indel_alleles = bcf_get_n_allele(v);
                 uint32_t no_tandem_repeat_alleles = 0;
@@ -219,10 +225,10 @@ class Igor : Program
 //                        bcf_print(orom_vntrs->odr->hdr, overlap_vars[i]);
 //                    }     
                     
-                    if (no_indel_alleles == 13)
-                    {
-                        bcf_print(h, v);
-                    }    
+//                    if (no_indel_alleles == 13)
+//                    {
+//                        bcf_print(h, v);
+//                    }    
                 }
 
                 update_joint_allele_dist(no_indel_alleles, no_tandem_repeat_alleles);
@@ -260,8 +266,10 @@ class Igor : Program
         std::clog << "\n";
         std::clog << "options:     input VCF file        " << input_vcf_file << "\n";
         std::clog << "         [o] output VCF file       " << output_vcf_file << "\n";
+        print_num_op("         [l] left window           ", left_window);
+        print_num_op("         [t] right window          ", right_window);
         std::clog << "         [w] sorting window size   " << window_size << "\n";
-        std::clog << "         [r] reference VNTR file  " << ref_vntr_vcf_file << "\n";
+        std::clog << "         [r] reference VNTR file   " << ref_vntr_vcf_file << "\n";
         print_int_op("         [i] intervals             ", intervals);
         std::clog << "\n";
     }
@@ -282,7 +290,6 @@ class Igor : Program
         int32_t max_tr_allele_no = 0;
         for (uint32_t i = 1; i<joint_allele_dist.size(); ++i)
         {   
-            std::cerr << i << " " << joint_allele_dist[i].size() << "\n";
             if (joint_allele_dist[i].size()>max_tr_allele_no)
             {
                 max_tr_allele_no = joint_allele_dist[i].size();
