@@ -39,6 +39,7 @@
 #include "decompose2.h"
 #include "discover.h"
 #include "estimate.h"
+#include "fuzzy_partition.h"
 #include "genotype2.h"
 #include "genotype.h"
 #include "hfilter.h"
@@ -65,7 +66,6 @@
 #include "profile_vntrs.h"
 #include "remove_overlap.h"
 #include "rminfo.h"
-#include "rpartition.h"
 #include "seq.h"
 #include "sort.h"
 #include "subset.h"
@@ -226,9 +226,9 @@ int main(int argc, char ** argv)
     {
         partition(argc-1, ++argv);
     }
-    else if (argc>1 && cmd=="rpartition")
+    else if (argc>1 && cmd=="fuzzy_partition")
     {
-        rpartition(argc-1, ++argv);
+        fuzzy_partition(argc-1, ++argv);
     }
     else if (argc>1 && cmd=="svm_train")
     {

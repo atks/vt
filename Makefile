@@ -85,7 +85,7 @@ SOURCES = align\
 		remove_overlap\
 		rfhmm\
 		rminfo\
-		rpartition\
+		fuzzy_partition\
 		seq\
 		sort\
 		subset\

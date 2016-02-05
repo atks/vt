@@ -21,20 +21,19 @@
    THE SOFTWARE.
 */
 
-#ifndef RPARTITION_H
-#define RPARTITION_H
+#ifndef FUZZY_PARTITION_H
+#define FUZZY_PARTITION_H
 
-#include "bcf_synced_reader.h"
-#include "bcf_ordered_writer.h"
-#include "filter.h"
-#include "htslib/hfile.h"
-#include "htslib/kseq.h"
-#include "htslib/kstring.h"
 #include "htslib/vcf.h"
-#include "htslib/vcfutils.h"
-#include "hts_utils.h"
+#include "htslib/kseq.h"
 #include "program.h"
+#include "hts_utils.h"
+#include "bcf_ordered_reader.h"
+#include "bcf_ordered_writer.h"
+#include "ordered_bcf_overlap_matcher.h"
+#include "variant_manip.h"
+#include "filter.h"
 
-void rpartition(int argc, char ** argv);
-
+void fuzzy_partition(int argc, char ** argv);
+    
 #endif
