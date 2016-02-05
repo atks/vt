@@ -136,12 +136,14 @@ class Igor : Program
     {
         std::clog << "annotate_regions v" << version << "\n";
         std::clog << "\n";
-        std::clog << "options:     input VCF file(s)     " << input_vcf_file << "\n";
-        std::clog << "         [o] output VCF file       " << output_vcf_file << "\n";
-        print_str_op("         [m] regions bed file      ", regions_bed_file);
-        print_num_op("         [l] left window           ", left_window);
-        print_num_op("         [r] right window          ", right_window);
-        print_int_op("         [i] intervals             ", intervals);
+        std::clog << "options:     input VCF file(s)       " << input_vcf_file << "\n";
+        std::clog << "         [o] output VCF file         " << output_vcf_file << "\n";
+        print_str_op("         [t] region INFO tag         ", REGIONS_TAG);    
+        print_str_op("         [d] region INFO description ", REGIONS_TAG_DESC);
+        print_str_op("         [m] regions bed file        ", regions_bed_file);
+        print_num_op("         [l] left window             ", left_window);
+        print_num_op("         [r] right window            ", right_window);
+        print_int_op("         [i] intervals               ", intervals);
         std::clog << "\n";
     }
 
