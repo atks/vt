@@ -49,6 +49,7 @@
 #include "log_tool.h"
 #include "gencode.h"
 #include "ordered_region_overlap_matcher.h"
+#include "filter.h"
 
 void annotate_regions(int argc, char ** argv);
 

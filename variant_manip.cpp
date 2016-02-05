@@ -81,7 +81,7 @@ bool VariantManip::is_ref_consistent(bcf_hdr_t *h, bcf1_t *v)
 
 /**
  * Checks if a variant is normalized.
- *  Ignores if entry is not a variant.
+ * Ignores if entry is not a variant.
  */
 bool VariantManip::is_normalized(bcf1_t *v)
 {
@@ -171,6 +171,25 @@ bool VariantManip::is_normalized(bcf1_t *v)
 
         return true;
     }
+}
+
+/**
+ * Checks if a variant contains N bases.
+ */
+bool VariantManip::contains_N(bcf1_t *v)
+{
+    char** alleles = bcf_get_allele(v);
+    int32_t n_allele = bcf_get_n_allele(v);
+
+    for (uint32_t i=0; i<n_allele; ++i)
+    {
+        if (strchr(alleles[i], 'N'))
+        {
+            return true;        
+        }    
+    }
+    
+    return false;
 }
 
 /**

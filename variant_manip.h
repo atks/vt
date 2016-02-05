@@ -75,8 +75,14 @@ class VariantManip
 
     /**
      * Checks if a variant is normalized.
+     * Ignores if entry is not a variant.
      */
     bool is_normalized(bcf1_t *v);
+
+    /**
+     * Checks if a variant contains N bases.
+     */
+    bool contains_N(bcf1_t *v);
 
     /**
      * Right trims or left extend a variant.

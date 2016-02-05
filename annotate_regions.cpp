@@ -52,6 +52,13 @@ class Igor : Program
     BCFOrderedReader *odr;
     BCFOrderedWriter *odw;
 
+    //////////
+    //filter//
+    //////////
+    std::string fexp;
+    Filter filter;
+    bool filter_exists;
+    
     /////////
     //stats//
     /////////
@@ -84,6 +91,7 @@ class Igor : Program
             TCLAP::ValueArg<std::string> arg_regions_bed_file("b", "b", "regions BED file []", true, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_REGIONS_TAG("t", "t", "regions tag []", true, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_REGIONS_TAG_DESC("d", "d", "regions tag description []", true, "", "str", cmd);
+            TCLAP::ValueArg<std::string> arg_fexp("f", "f", "filter expression []", false, "", "str", cmd);
             TCLAP::ValueArg<uint32_t> arg_left_window("l", "l", "left window size for overlap []", false, 0, "int", cmd);
             TCLAP::ValueArg<uint32_t> arg_right_window("r", "r", "right window size for overlap []", false, 0, "int", cmd);
             TCLAP::UnlabeledValueArg<std::string> arg_input_vcf_file("<in.vcf>", "input VCF file", true, "","file", cmd);
@@ -96,6 +104,7 @@ class Igor : Program
             regions_bed_file = arg_regions_bed_file.getValue();
             left_window = arg_left_window.getValue();
             right_window = arg_right_window.getValue();
+            fexp = arg_fexp.getValue();
             REGIONS_TAG = arg_REGIONS_TAG.getValue();
             REGIONS_TAG_DESC = arg_REGIONS_TAG_DESC.getValue();
         }
@@ -110,9 +119,9 @@ class Igor : Program
 
     void initialize()
     {
-        //******************
+        ////////////////////
         //i/o initialization
-        //******************
+        ////////////////////
         odr = new BCFOrderedReader(input_vcf_file, intervals);
         odw = new BCFOrderedWriter(output_vcf_file);
         odw->link_hdr(odr->hdr);
@@ -120,6 +129,12 @@ class Igor : Program
         std::string hrec = "##INFO=<ID=" + REGIONS_TAG + ",Number=0,Type=Flag,Description=\"" + REGIONS_TAG_DESC + "\">";
         bcf_hdr_append(odw->hdr, hrec.c_str());
 
+        /////////////////////////
+        //filter initialization//
+        /////////////////////////
+        filter.parse(fexp.c_str(), false);
+        filter_exists = fexp=="" ? false : true;
+            
         ///////////////////////
         //tool initialization//
         ///////////////////////
@@ -138,6 +153,7 @@ class Igor : Program
         std::clog << "\n";
         std::clog << "options:     input VCF file(s)       " << input_vcf_file << "\n";
         std::clog << "         [o] output VCF file         " << output_vcf_file << "\n";
+        print_str_op("         [f] filter                  ", fexp);
         print_str_op("         [t] region INFO tag         ", REGIONS_TAG);    
         print_str_op("         [d] region INFO description ", REGIONS_TAG_DESC);
         print_str_op("         [m] regions bed file        ", regions_bed_file);
@@ -158,6 +174,7 @@ class Igor : Program
     {
         odw->write_hdr();
 
+        bcf_hdr_t *h = odr->hdr;
         bcf1_t *v = odw->get_bcf1_from_pool();
         std::vector<Interval*> overlaps;
         Variant variant;
@@ -165,8 +182,15 @@ class Igor : Program
         while (odr->read(v))
         {
             bcf_unpack(v, BCF_UN_STR);
-            int32_t vtype = vm->classify_variant(odr->hdr, v, variant);
-            std::string chrom = bcf_get_chrom(odr->hdr,v);
+            if (filter_exists)
+            {
+                vm->classify_variant(h, v, variant);
+                if (!filter.apply(h, v, &variant, false))
+                {
+                    continue;
+                }
+            }
+                        std::string chrom = bcf_get_chrom(odr->hdr,v);
             int32_t start1 = bcf_get_pos1(v);
             int32_t end1 = bcf_get_end1(v);
 

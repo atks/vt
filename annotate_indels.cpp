@@ -673,11 +673,17 @@ class Igor : Program
             {
                 std::string var = variant.get_variant_string();
                 fprintf(stderr, "[%s:%d %s] Variant is not normalized, annotate_indels requires that variants are normalized: %s\n", __FILE__, __LINE__, __FUNCTION__, var.c_str());
-                exit(1);
+                continue;
             }
 
             if (vtype&VT_INDEL)
             {
+                //variants with N crashes the alignment models!!!!!!  :(
+                if (vm->contains_N(v))
+                {
+                    continue;
+                }
+                
                 if (debug)
                 {
                     bcf_print_liten(h,v);
