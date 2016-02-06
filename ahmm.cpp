@@ -605,6 +605,7 @@ void AHMM::trace_path()
     optimal_track = NULL_TRACK;
     optimal_state = TBD;
     optimal_probe_len = 0;
+    trf_score = 0;
     for (size_t i=lflen; i<=plen; ++i)
     {
         c = index(i,rlen);
@@ -718,12 +719,18 @@ void AHMM::collect_statistics(int32_t src_t, int32_t des_t, int32_t j)
     {
         if (track_get_base(des_t)!=read[j-1])
         {
+            trf_score -= 7;
             ++motif_discordance[track_get_c(des_t)];
+        }
+        else
+        {
+            trf_score += 2;
         }
     }
 
     if (des_u==D || des_u==I)
     {
+        trf_score -= 7;
         ++motif_discordance[track_get_c(des_t)];
     }
     
@@ -1055,6 +1062,8 @@ void AHMM::print_alignment(std::string& pad)
         std::cerr << motif_discordance[k] << (k==motif_count?"\n":"|");
     }    
     std::cerr << "repeat tract length : " << repeat_tract_len << "\n";
+    std::cerr << "TRF Score           : " << trf_score << "\n";
+    
     std::cerr << "\n";
             
     //print path

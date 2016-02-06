@@ -111,6 +111,7 @@ class AHMM
     float repeat_tract_len;
     int32_t* motif_discordance;
     float motif_concordance, maxLogOdds;
+    int32_t trf_score;
     
     AHMMParameters par;
 
