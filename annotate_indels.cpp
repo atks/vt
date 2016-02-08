@@ -799,23 +799,23 @@ class Igor : Program
 
                 std::cerr << variant.chrom << ":" << variant.beg1 << ":" <<  variant.end1 << "\n";
                 
-//                if (add_flank_annotation)
-//                {
-//                    std::string flanks;
-//                    int32_t seq_len;
-//                    char* seq = faidx_fetch_seq(fai, variant.chrom.c_str(), variant.beg1-10-1, variant.beg1-1-1, &seq_len);
-//                    flanks.assign(seq);
-//                    free(seq);
-//                    flanks.append(1, '[');
-//                    seq = faidx_fetch_seq(fai, variant.chrom.c_str(), variant.beg1-1, variant.end1-1, &seq_len);
-//                    flanks.append(seq);
-//                    free(seq);
-//                    flanks.append(1, ']');
-//                    seq = faidx_fetch_seq(fai, variant.chrom.c_str(), variant.end1+1-1, variant.end1+10-1, &seq_len);
-//                    flanks.append(seq);
-//                    free(seq);
-//                    bcf_update_info_string(h, v, "FLANKSEQ", flanks.c_str());
-//                }
+                if (add_flank_annotation)
+                {
+                    std::string flanks;
+                    int32_t seq_len;
+                    char* seq = faidx_fetch_seq(fai, variant.chrom.c_str(), variant.beg1-10-1, variant.beg1-1-1, &seq_len);
+                    flanks.assign(seq);
+                    free(seq);
+                    flanks.append(1, '[');
+                    seq = faidx_fetch_seq(fai, variant.chrom.c_str(), variant.beg1-1, variant.end1-1, &seq_len);
+                    flanks.append(seq);
+                    free(seq);
+                    flanks.append(1, ']');
+                    seq = faidx_fetch_seq(fai, variant.chrom.c_str(), variant.end1+1-1, variant.end1+10-1, &seq_len);
+                    flanks.append(seq);
+                    free(seq);
+                    bcf_update_info_string(h, v, "FLANKSEQ", flanks.c_str());
+                }
 
                 bcf_update_info_float(h, v, "SCORE", &variant.vntr.exact_motif_concordance, 1);
                 bcf_update_info_float(h, v, "TRF_SCORE", &variant.vntr.exact_motif_concordance, 1);

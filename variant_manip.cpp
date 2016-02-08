@@ -209,7 +209,7 @@ int32_t VariantManip::classify_variant(bcf_hdr_t *h, bcf1_t *v, Variant& var)
     char** allele = bcf_get_allele(v);    
     int32_t n_allele = bcf_get_n_allele(v);
 
-    std::cerr << "beginning of classifying "<< var.beg1 << " " << var.end1 << "\n";
+//    std::cerr << "beginning of classifying "<< var.beg1 << " " << var.end1 << "\n";
 
     uint32_t pos1 = var.pos1;
     int32_t pos0 = pos1-1;
@@ -452,16 +452,14 @@ int32_t VariantManip::classify_variant(bcf_hdr_t *h, bcf1_t *v, Variant& var)
         }
     }
 
- std::cerr << "before updating from info fields "<< var.beg1 << " " << var.end1 << "\n";
+// std::cerr << "before updating from info fields "<< var.beg1 << " " << var.end1 << "\n";
 
     if (var.type==VT_VNTR)
     {
         var.update_vntr_from_info_fields(h, v);
     }
 
- std::cerr << "after updating from info fields "<< var.beg1 << " " << var.end1 << "\n";
-
-
+// std::cerr << "after updating from info fields "<< var.beg1 << " " << var.end1 << "\n";
 
     //additionally define MNPs by length of all alleles
     if (!(var.type&(VT_VNTR|VT_SV)) && var.type!=VT_REF)
@@ -472,7 +470,7 @@ int32_t VariantManip::classify_variant(bcf_hdr_t *h, bcf1_t *v, Variant& var)
         }
     }
 
- std::cerr << "end of classifying "<< var.beg1 << " " << var.end1 << "\n";
+// std::cerr << "end of classifying "<< var.beg1 << " " << var.end1 << "\n";
 
 
     return var.type;
