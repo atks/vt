@@ -37,6 +37,9 @@ VNTRConsolidator::VNTRConsolidator(std::string& input_vcf_file, std::vector<Geno
     odw = new BCFOrderedWriter(output_vcf_file, 3000);
     odw->link_hdr(odr->hdr);
     bcf_hdr_append(odw->hdr, "##FILTER=<ID=shorter_vntr,Description=\"Another VNTR overlaps with this VNTR.\">");
+    //to be removed later
+    bcf_hdr_append(odw->hdr, "##INFO=<ID=END,Number=1,Type=Integer,Description=\"End position of the variant.\">");
+    bcf_hdr_append(odw->hdr, "##INFO=<ID=TRF_SCORE,Number=1,Type=Integer,Description=\"TRF score if the tandem repeat.\">");
     odw->write_hdr();
 
     overlap_vntr = const_cast<char*>("overlap_vntr");
@@ -590,7 +593,7 @@ void VNTRConsolidator::detect_consistent_motifs(Variant* variant)
 //            int32_t ru_count[2] = {vntr.fuzzy_no_exact_ru, vntr.fuzzy_total_no_ru};
 //            bcf_update_info_int32(h, v, "FZ_RU_COUNTS", &ru_count, 2);
 
-              bcf_print(odw->hdr, new_v);
+//              bcf_print(odw->hdr, new_v);
 
 
             

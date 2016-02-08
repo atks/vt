@@ -81,6 +81,7 @@ class FlankDetector
     float no_exact_ru;
     uint32_t total_no_ru;
     float rl;
+    int32_t trf_score;
 
     ///////
     //tools
@@ -127,7 +128,7 @@ class FlankDetector
     /**
      * Polish repeat tract ends.
      */
-    void polish_repeat_tract(Variant& variant);   
+    void polish_repeat_tract_ends(Variant& variant);   
     
     /**
      * Polish repeat tract ends.

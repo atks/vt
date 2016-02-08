@@ -165,7 +165,7 @@ void FlankDetector::detect_flanks(bcf_hdr_t* h, bcf1_t *v, Variant& variant, uin
         if (debug)
         {
             std::cerr << "\n";
-            std::cerr << "repeat_tract              : " << vntr.exact_repeat_tract << "\n";
+//            std::cerr << "repeat_tract              : " << vntr.exact_repeat_tract << "\n";
             std::cerr << "position                  : [" << vntr.exact_rbeg1 << "," << vntr.exact_rend1 << "]\n";
             std::cerr << "motif_concordance         : " << vntr.exact_motif_concordance << "\n";
             std::cerr << "repeat units              : " << vntr.exact_rl << "\n";
@@ -449,7 +449,7 @@ std::string FlankDetector::choose_exact_repeat_unit(std::string& seq, std::strin
 /**
  * Polish repeat tract ends.
  */
-void FlankDetector::polish_repeat_tract(Variant& variant)
+void FlankDetector::polish_repeat_tract_ends(Variant& variant)
 {
 }
 
@@ -493,7 +493,7 @@ void FlankDetector::polish_repeat_tract_ends(std::string& repeat_tract, std::str
             }
         }
 
-        for (int32_t j=rlen-mlen-1; j>=0; --j)
+        for (int32_t j=rlen-mlen; j>=0; --j)
         {
             if (repeat_tract.compare(j, mlen, smotif)==0)
             {
@@ -560,7 +560,8 @@ void FlankDetector::compute_purity_score(std::string& repeat_tract, std::string 
             motif_concordance = 1;
             no_exact_ru = repeat_tract.size()/motif.size();
             total_no_ru = no_exact_ru;
-            rl = (float) repeat_tract.size()/(float) motif.size();
+            rl = (float) repeat_tract.size()/(float) motif.size();            
+            trf_score = repeat_tract.size() << 2;
             return;
         }
     }
@@ -577,6 +578,7 @@ void FlankDetector::compute_purity_score(std::string& repeat_tract, std::string 
     no_exact_ru = ahmm->exact_motif_count;
     total_no_ru = ahmm->motif_count;
     rl = ahmm->repeat_tract_len;
+    trf_score = ahmm->trf_score;
 
     return;
 }

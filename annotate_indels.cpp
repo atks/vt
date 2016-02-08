@@ -254,11 +254,13 @@ class Igor : Program
         //////////////////////////////
         //INFO header adding for VCF//
         //////////////////////////////
+        bcf_hdr_append(odw->hdr, "##INFO=<ID=END,Number=1,Type=Integer,Description=\"End position of the variant.\">");
         MOTIF = bcf_hdr_append_info_with_backup_naming(odw->hdr, "MOTIF", "1", "String", "Canonical motif in an VNTR.", true);
         GMOTIF = bcf_hdr_append_info_with_backup_naming(odw->hdr, "GMOTIF", "1", "String", "Generating Motif used in fuzzy alignment.", true);
         RU = bcf_hdr_append_info_with_backup_naming(odw->hdr, "RU", "1", "String", "Repeat unit in the reference sequence.", true);
         BASIS = bcf_hdr_append_info_with_backup_naming(odw->hdr, "BASIS", "1", "String", "Basis nucleotides in the motif.", true);
-
+        bcf_hdr_append(odw->hdr, "##INFO=<ID=TRF_SCORE,Number=1,Type=Integer,Description=\"TRF Score of the tandem repeat.\">");
+                
         RL = bcf_hdr_append_info_with_backup_naming(odw->hdr, "RL", "1", "Float", "Reference repeat unit length", true);
         LL = bcf_hdr_append_info_with_backup_naming(odw->hdr, "LL", "1", "Float", "Longest repeat unit length", true);
         CONCORDANCE = bcf_hdr_append_info_with_backup_naming(odw->hdr, "CONCORDANCE", "1", "Float", "Concordance of repeat unit.", true);
@@ -629,21 +631,7 @@ class Igor : Program
         //individual fields - just set GT
         bcf_update_genotypes(h, v, gts, no_samples);
     }
-
-    bool genotype_str(char* repeat_tract, char* ru, float& score, float& discordance, bool& exact)
-    {
-        //check if start is not the same as the RU.
-        int32_t rlen = strlen(repeat_tract);
-        int32_t mlen = strlen(ru);
-
-        if (strncmp(repeat_tract, ru, mlen)!=0)
-        {
-            return false;
-        }
-
-        return true;
-    }
-
+    
     void annotate_indels()
     {
         odw->write_hdr();
@@ -660,6 +648,7 @@ class Igor : Program
         {
             int32_t vtype = vm->classify_variant(odr->hdr, v, variant);
 
+             std::cerr << "after classifying " << variant.beg1 << " " << variant.end1 << "\n";
             if (filter_exists)
             {
                 if (!filter.apply(h, v, &variant, false))
@@ -675,6 +664,8 @@ class Igor : Program
                 fprintf(stderr, "[%s:%d %s] Variant is not normalized, annotate_indels requires that variants are normalized: %s\n", __FILE__, __LINE__, __FUNCTION__, var.c_str());
                 continue;
             }
+
+            bcf_print(h,v);
 
             if (vtype&VT_INDEL)
             {
@@ -802,27 +793,32 @@ class Igor : Program
             }
             else if (vtype==VT_VNTR)
             {
+                std::cerr << "before annotation " << variant.beg1 << " " << variant.end1 << "\n";
+                
                 va->annotate(variant, vntr_annotation_mode);
 
-                if (add_flank_annotation)
-                {
-                    std::string flanks;
-                    int32_t seq_len;
-                    char* seq = faidx_fetch_seq(fai, variant.chrom.c_str(), variant.vntr.exact_rbeg1-10-1, variant.vntr.exact_rbeg1-1-1, &seq_len);
-                    flanks.assign(seq);
-                    free(seq);
-                    flanks.append(1, '[');
-                    seq = faidx_fetch_seq(fai, variant.chrom.c_str(), variant.vntr.exact_rbeg1-1, variant.vntr.exact_rend1-1, &seq_len);
-                    flanks.append(seq);
-                    free(seq);
-                    flanks.append(1, ']');
-                    seq = faidx_fetch_seq(fai, variant.chrom.c_str(), variant.vntr.exact_rend1+1-1, variant.vntr.exact_rend1+10-1, &seq_len);
-                    flanks.append(seq);
-                    free(seq);
-                    bcf_update_info_string(h, v, "FLANKSEQ", flanks.c_str());
-                }
+                std::cerr << variant.chrom << ":" << variant.beg1 << ":" <<  variant.end1 << "\n";
+                
+//                if (add_flank_annotation)
+//                {
+//                    std::string flanks;
+//                    int32_t seq_len;
+//                    char* seq = faidx_fetch_seq(fai, variant.chrom.c_str(), variant.beg1-10-1, variant.beg1-1-1, &seq_len);
+//                    flanks.assign(seq);
+//                    free(seq);
+//                    flanks.append(1, '[');
+//                    seq = faidx_fetch_seq(fai, variant.chrom.c_str(), variant.beg1-1, variant.end1-1, &seq_len);
+//                    flanks.append(seq);
+//                    free(seq);
+//                    flanks.append(1, ']');
+//                    seq = faidx_fetch_seq(fai, variant.chrom.c_str(), variant.end1+1-1, variant.end1+10-1, &seq_len);
+//                    flanks.append(seq);
+//                    free(seq);
+//                    bcf_update_info_string(h, v, "FLANKSEQ", flanks.c_str());
+//                }
 
                 bcf_update_info_float(h, v, "SCORE", &variant.vntr.exact_motif_concordance, 1);
+                bcf_update_info_float(h, v, "TRF_SCORE", &variant.vntr.exact_motif_concordance, 1);
 
                 odw->write(v);
                 v = odw->get_bcf1_from_pool();
@@ -831,6 +827,9 @@ class Igor : Program
             }
             else // SNP
             {
+                
+                std::cerr  << " SNP?!?!?!?!?\n" ;
+                
                 //update flanking sequences
                 std::string flanks;
                 int32_t seq_len;

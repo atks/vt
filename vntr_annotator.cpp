@@ -70,6 +70,10 @@ void VNTRAnnotator::annotate(Variant& variant, std::string mode)
     variant.rid = bcf_get_rid(v);
     variant.pos1 = bcf_get_pos1(v);
 
+
+    std::cerr << "mode : " << mode << "\n";
+
+
     //this is for reannotating an VNTR record
     //this is more for the purpose of evaluation to
     //check if vt's algorithm is concordant with
@@ -80,6 +84,7 @@ void VNTRAnnotator::annotate(Variant& variant, std::string mode)
         {
             if (debug) std::cerr << "ANNOTATING VNTR/STR \n";
             //takes accepted MOTIF and RU
+
 
             //computes purity
             //1. pick candidate region
@@ -97,14 +102,21 @@ void VNTRAnnotator::annotate(Variant& variant, std::string mode)
         {
             if (debug) std::cerr << "ANNOTATING VNTR's purity score\n";
 
+std::cerr << "1)" << variant.beg1 << " " << variant.end1 << "\n";
+    
             //1. pick candidate region
             cre->pick_candidate_region(variant, REFERENCE);
+
+std::cerr << "2)" << variant.beg1 << " " << variant.end1 << "\n";
 
             //2. set motifs from info field
             cmp->set_motif_from_info_field(variant);
 
+std::cerr << "3)" << variant.beg1 << " " << variant.end1 << "\n";
             //3. compute purity scores
             fd->compute_purity_score(variant, "e");
+            
+std::cerr << "4)" << variant.beg1 << " " << variant.end1 << "\n";            
         }
     }
     //main purpose - annotation of Indels.
@@ -125,7 +137,7 @@ void VNTRAnnotator::annotate(Variant& variant, std::string mode)
 
             //1. pick candidate region using exact left and right alignment
             cre->pick_candidate_region(variant, EXACT_LEFT_RIGHT_ALIGNMENT);
-            
+
             //2. detect candidate motifs from a reference sequence
             cmp->generate_candidate_motifs(variant);
 
@@ -133,7 +145,7 @@ void VNTRAnnotator::annotate(Variant& variant, std::string mode)
             {
                 std::cerr << "oops, no candidate motif for next step\n";
             }
-            
+
             //is there a fail safe here????????
 
             //3. detect flanks and evaluate reference tract
@@ -160,7 +172,7 @@ void VNTRAnnotator::annotate(Variant& variant, std::string mode)
             }
 
             //is there a fail safe here????????
-            
+
             //3. evaluate reference length
             fd->detect_flanks(h, v, variant, FRAHMM);
 

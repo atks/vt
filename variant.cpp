@@ -48,6 +48,9 @@ Variant::Variant(bcf_hdr_t* h, bcf1_t* v)
     }
     else if (type==VT_INDEL)
     {
+        beg1 = bcf_get_pos1(v);
+        end1 = bcf_get_pos1(v);
+        
         int32_t *flanks = NULL;
         int32_t n = 0;
         if (bcf_get_info_int32(h, v, "FLANKS", &flanks, &n)>0)
@@ -65,29 +68,43 @@ Variant::Variant(bcf_hdr_t* h, bcf1_t* v)
         beg1 = vntr.exact_rbeg1-1;
         end1 = vntr.exact_rend1+1;
 
-//        int32_t *fuzzy_flanks = NULL;
-//        n = 0;
-//        if (bcf_get_info_int32(h, v, "FZ_FLANKS", &fuzzy_flanks, &n)>0)
-//        {
-//            vntr.fuzzy_rbeg1 = fuzzy_flanks[0];
-//            vntr.fuzzy_rend1 = fuzzy_flanks[1];
-//            free(fuzzy_flanks);
-//        }
-//        else
-//        {
-//            vntr.fuzzy_rbeg1 = bcf_get_pos1(v) - 1;
-//            vntr.fuzzy_rend1 = bcf_get_end_pos1(v) + 1;
-//        }
-//
-//        beg1 = std::min(vntr.rbeg1-1, vntr.fuzzy_rbeg1-1);
-//        end1 = std::max(vntr.rend1+1, vntr.fuzzy_rend1+1);
+        int32_t *fuzzy_flanks = NULL;
+        n = 0;
+        if (bcf_get_info_int32(h, v, "FZ_FLANKS", &fuzzy_flanks, &n)>0)
+        {
+            vntr.fuzzy_rbeg1 = fuzzy_flanks[0];
+            vntr.fuzzy_rend1 = fuzzy_flanks[1];
+            free(fuzzy_flanks);
+        }
+        else
+        {
+            vntr.fuzzy_rbeg1 = bcf_get_pos1(v) - 1;
+            vntr.fuzzy_rend1 = bcf_get_end1(v) + 1;
+        }
     }
     else if (type==VT_VNTR)
     {
+        beg1 = bcf_get_pos1(v);
+        end1 = bcf_get_pos1(v);
+        
         update_vntr_from_info_fields(h, v);
 
         vs.push_back(v);
         vntr_vs.push_back(v);
+    }
+    else if (type==VT_SV)
+    {
+        pos1 = bcf_get_pos1(v);
+        beg1 = bcf_get_pos1(v);
+        //end should be obtained from end
+        end1 = bcf_get_pos1(v);
+        int32_t *end = NULL;
+        int32_t n = 0;
+        if (bcf_get_info_int32(h, v, "END", &end, &n)>0)
+        {
+            end1 = end[0];
+            free(end);
+        }
     }
 }
 
@@ -242,11 +259,13 @@ int32_t Variant::classify(bcf_hdr_t *h, bcf1_t *v)
                 //ST/d+
                 else if (allele[i][0]=='<' && allele[i][1]=='S' && allele[i][2]=='T' && allele[i][len-1]=='>' )
                 {
+                    type = VT_VNTR;
+                    
                     for (size_t j=3; j<len-1; ++j)
                     {
-                        if (allele[i][j]<'0' || allele[i][j]>'9')
+                        if ((allele[i][j]<'0' || allele[i][j]>'9') && allele[i][j]!='.')
                         {
-                            allele_type = VT_VNTR;
+                            type = VT_SV;
                         }
                     }
                 }
@@ -557,9 +576,6 @@ void Variant::update_vntr_from_info_fields(bcf_hdr_t *h, bcf1_t *v)
         vntr.fuzzy_rbeg1 = 0;
         vntr.fuzzy_rend1 = 0;
     }
-
-    beg1 = std::min(vntr.exact_rbeg1-1, vntr.fuzzy_rbeg1-1);
-    end1 = std::max(vntr.exact_rend1+1, vntr.fuzzy_rend1+1);
 }
 
 /**

@@ -47,9 +47,10 @@ class VNTR
     //motif
     std::string motif;         //motif
     std::string ru;            //repeat unit on the reference
-    std::string basis;            //unique bases found in motif
-    int32_t mlen;             //length of motif
+    std::string basis;         //unique bases found in motif
+    int32_t mlen;              //length of motif
     float motif_score;         //motif score from motif tree
+    int32_t trf_score;         //score based on Tandem Repeat Finder's scoring scheme.
 
     std::string definition_support; //either exact or fuzzy
 
@@ -60,6 +61,7 @@ class VNTR
     float exact_rl;                   //number of repeat units on repeat tract
     float exact_ll;                   //number of repeat units on longest allele
     float exact_motif_concordance;    //motif concordance from hmm
+    int32_t exact_trf_score;          //TRF score of exact repeat tract     
     int32_t exact_no_exact_ru;        //number exact repeat units from hmm
     int32_t exact_total_no_ru;        //total no of repeat units from hmm
     std::string exact_lflank;         //left flank
@@ -72,6 +74,7 @@ class VNTR
     float fuzzy_rl;                   //number of repeat units on repeat tract
     float fuzzy_ll;                   //number of repeat units on longest allele
     float fuzzy_motif_concordance;    //motif concordance from hmm
+    int32_t fuzzy_trf_score;          //TRF score of fuzzy repeat tract
     int32_t fuzzy_no_exact_ru;        //number exact repeat units from hmm
     int32_t fuzzy_total_no_ru;        //total no of repeat units from hmm
     std::string fuzzy_lflank;         //left flank

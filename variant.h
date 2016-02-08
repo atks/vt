@@ -56,9 +56,9 @@ class Variant
     std::string chrom;
     uint32_t rid;
     uint32_t pos1; //position of first reference base in VCF record
-    uint32_t beg1; //for detecting overlaps, for indels and VNTRs, this will reflect lend1
-    uint32_t end1; //for detecting overlaps, for indels and VNTRs, this will reflect rbeg1
-
+    uint32_t beg1; //same as pos1
+    uint32_t end1; //same as end1
+    
     //linked VCF record
     bcf_hdr_t* h;
     bcf1_t* v;
