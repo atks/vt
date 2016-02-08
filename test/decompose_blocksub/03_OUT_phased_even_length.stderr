@@ -3,7 +3,7 @@ decompose_blocksub v0.5
 options:     input VCF file <stripped>
          [o] output VCF file <stripped>
          [a] align/aggressive mode   false
-         [p] output phased genotypes false
+         [p] output phased genotypes true
 
 
 stats: no. variants                       : 1

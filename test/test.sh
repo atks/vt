@@ -131,4 +131,38 @@ else
     echo " NOT OK!!!"
 fi
 
+#------------------------------------------------------------- 
+echo "testing decompose_blocksub of phased even-length blocks"
+#------------------------------------------------------------- 
+
+if [ "$1" == "debug" ]; then
+    set -x
+fi
+
+${VT} \
+    decompose_blocksub \
+    -p \
+    ${CMDDIR}/03_IN_phased_even_length.vcf \
+    -o ${TMPDIR}/03_OUT_phased_even_length.vcf \
+    2>&1 | strip_stderr > ${TMPDIR}/03_OUT_phased_even_length.stderr
+
+OUT=`diff ${CMDDIR}/03_OUT_phased_even_length.vcf ${TMPDIR}/03_OUT_phased_even_length.vcf`
+ERR=`diff ${CMDDIR}/03_OUT_phased_even_length.stderr ${TMPDIR}/03_OUT_phased_even_length.stderr`
+
+set +x
+
+echo -n "             output VCF file :"
+if [ "$OUT" == "" ]; then
+    echo " ok"
+else
+    echo " NOT OK!!!"
+fi
+
+echo -n "             output logs     :"
+if [ "$ERR" == "" ]; then
+    echo " ok"
+else
+    echo " NOT OK!!!"
+fi
+
 trap "rm -rf ${TMPDIRS}" EXIT KILL TERM INT HUP

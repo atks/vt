@@ -250,7 +250,7 @@ class Igor : Program
                         // Update genotypes with '|' to represent phased blocks, and add PS tag with pos of first
                         // decomposed variant as block ID.
                         int32_t start_pos_of_phased_block = pos1 + chunks[0].pos_ref;
-                        bcf_update_format_int32(odw->hdr, nv, "PS", &start_pos_of_phased_block, 1);
+                        bcf_update_format_int32(odw->hdr, nv, "PS", &start_pos_of_phased_block, bcf_get_n_sample(nv));
 
                         int* gts = NULL; 
                         int n_gts = 0;
@@ -316,7 +316,7 @@ class Igor : Program
                         {
                             // Update genotypes with '|' to represent phased blocks, and add PS tag with pos of first
                             // decomposed variant as block ID.
-                            bcf_update_format_int32(odw->hdr, nv, "PS", &start_pos_of_phased_block, 1);
+                            bcf_update_format_int32(odw->hdr, nv, "PS", &start_pos_of_phased_block, bcf_get_n_sample(nv));
 
                             int* gts = NULL; 
                             int n_gts = 0;
@@ -361,11 +361,11 @@ class Igor : Program
     {
         std::clog << "decompose_blocksub v" << version << "\n";
         std::clog << "\n";
-        std::clog << "options:     input VCF file        " << input_vcf_file << "\n";
-        std::clog << "         [o] output VCF file       " << output_vcf_file << "\n";
-        print_int_op("         [i] intervals             ", intervals);
-        print_boo_op("         [a] align/aggressive mode ", aggressive_mode);
-        print_boo_op("         [p] output phased gentypes ", output_phased_genotypes);
+        std::clog << "options:     input VCF file          " << input_vcf_file << "\n";
+        std::clog << "         [o] output VCF file         " << output_vcf_file << "\n";
+        print_int_op("         [i] intervals               ", intervals);
+        print_boo_op("         [a] align/aggressive mode   ", aggressive_mode);
+        print_boo_op("         [p] output phased genotypes ", output_phased_genotypes);
         std::clog << "\n";
     }
 
