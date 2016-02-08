@@ -49,6 +49,7 @@ class Igor : Program
     //options//
     ///////////
     bool aggressive_mode;
+    bool output_phased_genotypes;
     std::string input_vcf_file;
     std::string output_vcf_file;
     std::vector<GenomeInterval> intervals;
@@ -95,6 +96,7 @@ class Igor : Program
             TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "file", cmd);
             TCLAP::ValueArg<std::string> arg_output_vcf_file("o", "o", "output VCF file [-]", false, "-", "str", cmd);
             TCLAP::SwitchArg arg_aggressive("a", "a", "enable aggressive/alignment mode [false]", cmd, false);
+            TCLAP::SwitchArg arg_output_phased_genotypes("p", "p", "Output phased genotypes and PS tags for decomposed variants [false]", cmd, false);
             TCLAP::UnlabeledValueArg<std::string> arg_input_vcf_file("<in.vcf>", "input VCF file", true, "","file", cmd);
 
             cmd.parse(argc, argv);
@@ -102,6 +104,7 @@ class Igor : Program
             input_vcf_file = arg_input_vcf_file.getValue();
             output_vcf_file = arg_output_vcf_file.getValue();
             aggressive_mode = arg_aggressive.getValue();
+            output_phased_genotypes = arg_output_phased_genotypes.getValue();
             parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
         }
         catch (TCLAP::ArgException &e)
@@ -121,6 +124,12 @@ class Igor : Program
         odw = new BCFOrderedWriter(output_vcf_file, 1000);
         odw->link_hdr(odr->hdr);
         bcf_hdr_append(odw->hdr, "##INFO=<ID=OLD_CLUMPED,Number=1,Type=String,Description=\"Original chr:pos:ref:alt encoding\">\n");
+
+        if (output_phased_genotypes)
+        {
+            bcf_hdr_append(odw->hdr, "##FORMAT=<ID=PS,Number=1,Type=Integer,Description=\"ID for set of phased genotypes\">\n");
+        }
+
         odw->write_hdr();
 
         s = {0,0,0};
@@ -224,8 +233,8 @@ class Igor : Program
                     bcf1_t *nv = odw->get_bcf1_from_pool();
                     bcf_copy(nv, v);
                     bcf_unpack(nv, BCF_UN_ALL);
-
                     bcf_set_pos1(nv, pos1+chunks[i].pos_ref);
+
                     new_alleles.l=0;
                     for (int j=chunks[i].pos_ref; j<chunks[i].pos_ref+chunks[i].len_ref; ++j)
                         kputc(ref[j], &new_alleles);
@@ -235,8 +244,28 @@ class Igor : Program
 
                     bcf_update_alleles_str(odw->hdr, nv, new_alleles.s);
                     bcf_update_info_string(odw->hdr, nv, "OLD_CLUMPED", old_alleles.s);
-                    odw->write(nv);
 
+                    if (output_phased_genotypes)
+                    {
+                        // Update genotypes with '|' to represent phased blocks, and add PS tag with pos of first
+                        // decomposed variant as block ID.
+                        int32_t start_pos_of_phased_block = pos1 + chunks[0].pos_ref;
+                        bcf_update_format_int32(odw->hdr, nv, "PS", &start_pos_of_phased_block, 1);
+
+                        int* gts = NULL; 
+                        int n_gts = 0;
+                        int ploidy = bcf_get_genotypes(odw->hdr, nv, &gts, &n_gts);
+
+                        for (int32_t igt=0; igt < n_gts; ++igt)
+                        {
+                            gts[igt] = bcf_gt_phased(bcf_gt_allele(gts[igt]));
+                        }
+
+                        bcf_update_genotypes(odw->hdr, nv, gts, n_gts);
+                        free(gts);
+                    }
+                    
+                    odw->write(nv);
                     kputc('\0', &new_alleles);
 
                     ++new_no_variants;
@@ -252,6 +281,8 @@ class Igor : Program
             {
                 int32_t rid = bcf_get_rid(v);
                 int32_t pos1 = bcf_get_pos1(v);
+                int32_t start_pos_of_phased_block = -1;
+
                 char** allele = bcf_get_allele(v);
                 char* ref = strdup(allele[0]);
                 char* alt = strdup(allele[1]);
@@ -263,6 +294,11 @@ class Igor : Program
                 {
                     if (ref[i]!=alt[i])
                     {
+                        if (start_pos_of_phased_block == -1)
+                        {
+                            start_pos_of_phased_block = pos1 + i;
+                        }
+
                         bcf1_t *nv = odw->get_bcf1_from_pool();
                         bcf_copy(nv, v);
                         bcf_unpack(nv, BCF_UN_ALL);
@@ -275,6 +311,26 @@ class Igor : Program
 
                         bcf_update_alleles_str(odw->hdr, nv, new_alleles.s);
                         bcf_update_info_string(odw->hdr, nv, "OLD_CLUMPED", old_alleles.s);
+
+                        if (output_phased_genotypes)
+                        {
+                            // Update genotypes with '|' to represent phased blocks, and add PS tag with pos of first
+                            // decomposed variant as block ID.
+                            bcf_update_format_int32(odw->hdr, nv, "PS", &start_pos_of_phased_block, 1);
+
+                            int* gts = NULL; 
+                            int n_gts = 0;
+                            int ploidy = bcf_get_genotypes(odw->hdr, nv, &gts, &n_gts);
+
+                            for (int32_t igt=0; igt < n_gts; ++igt)
+                            {
+                                gts[igt] = bcf_gt_phased(bcf_gt_allele(gts[igt]));
+                            }
+
+                            bcf_update_genotypes(odw->hdr, nv, gts, n_gts);
+                            free(gts);
+                        }
+
                         odw->write(nv);
 
                         ++new_no_variants;
@@ -309,6 +365,7 @@ class Igor : Program
         std::clog << "         [o] output VCF file       " << output_vcf_file << "\n";
         print_int_op("         [i] intervals             ", intervals);
         print_boo_op("         [a] align/aggressive mode ", aggressive_mode);
+        print_boo_op("         [p] output phased gentypes ", output_phased_genotypes);
         std::clog << "\n";
     }
 
