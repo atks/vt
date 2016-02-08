@@ -234,7 +234,9 @@ class Igor : Program
                     bcf_copy(nv, v);
                     bcf_unpack(nv, BCF_UN_ALL);
                     bcf_set_pos1(nv, pos1+chunks[i].pos_ref);
-
+                    std::vector<int32_t> start_pos_of_phased_block;
+                    int32_t no_samples = bcf_get_n_sample(v);
+                        
                     new_alleles.l=0;
                     for (int j=chunks[i].pos_ref; j<chunks[i].pos_ref+chunks[i].len_ref; ++j)
                         kputc(ref[j], &new_alleles);
@@ -249,8 +251,8 @@ class Igor : Program
                     {
                         // Update genotypes with '|' to represent phased blocks, and add PS tag with pos of first
                         // decomposed variant as block ID.
-                        int32_t start_pos_of_phased_block = pos1 + chunks[0].pos_ref;
-                        bcf_update_format_int32(odw->hdr, nv, "PS", &start_pos_of_phased_block, bcf_get_n_sample(nv));
+                        start_pos_of_phased_block.resize(no_samples, pos1 + chunks[0].pos_ref);
+                        bcf_update_format_int32(odw->hdr, nv, "PS", &start_pos_of_phased_block[0], no_samples);
 
                         int* gts = NULL; 
                         int n_gts = 0;
@@ -281,8 +283,9 @@ class Igor : Program
             {
                 int32_t rid = bcf_get_rid(v);
                 int32_t pos1 = bcf_get_pos1(v);
-                int32_t start_pos_of_phased_block = -1;
-
+                std::vector<int32_t> start_pos_of_phased_block;
+                int32_t no_samples = bcf_get_n_sample(v);
+                
                 char** allele = bcf_get_allele(v);
                 char* ref = strdup(allele[0]);
                 char* alt = strdup(allele[1]);
@@ -294,11 +297,8 @@ class Igor : Program
                 {
                     if (ref[i]!=alt[i])
                     {
-                        if (start_pos_of_phased_block == -1)
-                        {
-                            start_pos_of_phased_block = pos1 + i;
-                        }
-
+                        start_pos_of_phased_block.resize(no_samples, pos1 + i);
+                        
                         bcf1_t *nv = odw->get_bcf1_from_pool();
                         bcf_copy(nv, v);
                         bcf_unpack(nv, BCF_UN_ALL);
@@ -316,7 +316,7 @@ class Igor : Program
                         {
                             // Update genotypes with '|' to represent phased blocks, and add PS tag with pos of first
                             // decomposed variant as block ID.
-                            bcf_update_format_int32(odw->hdr, nv, "PS", &start_pos_of_phased_block, bcf_get_n_sample(nv));
+                            bcf_update_format_int32(odw->hdr, nv, "PS", &start_pos_of_phased_block[0], no_samples);
 
                             int* gts = NULL; 
                             int n_gts = 0;

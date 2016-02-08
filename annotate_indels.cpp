@@ -648,7 +648,6 @@ class Igor : Program
         {
             int32_t vtype = vm->classify_variant(odr->hdr, v, variant);
 
-             std::cerr << "after classifying " << variant.beg1 << " " << variant.end1 << "\n";
             if (filter_exists)
             {
                 if (!filter.apply(h, v, &variant, false))
@@ -665,7 +664,7 @@ class Igor : Program
                 continue;
             }
 
-            bcf_print(h,v);
+//            bcf_print(h,v);
 
             if (vtype&VT_INDEL)
             {
@@ -793,11 +792,11 @@ class Igor : Program
             }
             else if (vtype==VT_VNTR)
             {
-                std::cerr << "before annotation " << variant.beg1 << " " << variant.end1 << "\n";
+//                std::cerr << "before annotation " << variant.beg1 << " " << variant.end1 << "\n";
                 
                 va->annotate(variant, vntr_annotation_mode);
 
-                std::cerr << variant.chrom << ":" << variant.beg1 << ":" <<  variant.end1 << "\n";
+//                std::cerr << variant.chrom << ":" << variant.beg1 << ":" <<  variant.end1 << "\n";
                 
                 if (add_flank_annotation)
                 {

@@ -136,6 +136,11 @@ void VNTRTree::count(Variant& variant)
             concordance = score[0];
             free(score);
         }
+        else if (bcf_get_info_float(variant.h, variant.v, "TRF_SCORE", &score, &n)>0)
+        {
+            concordance = score[0];
+            free(score);
+        }
         
         if (concordance==1 ||
            (vntr.fuzzy_rbeg1!=0 && vntr.exact_rbeg1==vntr.fuzzy_rbeg1 &&
