@@ -256,6 +256,14 @@ int32_t Variant::classify(bcf_hdr_t *h, bcf1_t *v)
                 {
                      allele_type = VT_VNTR;
                 }
+                //STR
+                else if (len==5 &&
+                         allele[i][0]=='<' &&
+                         allele[i][1]=='S' && allele[i][2]=='T' && allele[i][3]=='R' &&
+                         allele[i][4]=='>' )
+                {
+                     allele_type = VT_VNTR;
+                }
                 //ST/d+
                 else if (allele[i][0]=='<' && allele[i][1]=='S' && allele[i][2]=='T' && allele[i][len-1]=='>' )
                 {
@@ -268,14 +276,6 @@ int32_t Variant::classify(bcf_hdr_t *h, bcf1_t *v)
                             type = VT_SV;
                         }
                     }
-                }
-                //STR
-                else if (len==5 &&
-                         allele[i][0]=='<' &&
-                         allele[i][1]=='S' && allele[i][2]=='T' && allele[i][3]=='R' &&
-                         allele[i][4]=='>' )
-                {
-                     allele_type = VT_VNTR;
                 }
             }
 
