@@ -85,6 +85,8 @@ class VNTRConsolidator
     BCFOrderedReader *odr;
     BCFOrderedWriter *odw;
 
+    int32_t buffer_window_allowance;
+
     ////////////////
     //variant buffer
     ////////////////
@@ -103,8 +105,13 @@ class VNTRConsolidator
     /////////
     //stats//
     /////////
-    int32_t no_total_variants;
+    int32_t no_snps;
+    int32_t no_indels;
     int32_t no_vntrs;
+    int32_t no_other_variants;
+    
+    
+    int32_t no_total_variants;
     int32_t no_overlap_vntrs;
     std::vector<int32_t> overlapping_vntr_hist;
     int32_t no_dropped_vntrs;
@@ -135,6 +142,7 @@ class VNTRConsolidator
     int32_t no_clustered_exact_vntrs;
     int32_t no_clustered_inexact_vntrs;
 
+    //for storing basis information
     std::priority_queue<basis_proportion, std::vector<basis_proportion>, CompareBasisProportion> ordered_basis;
     
     ///////
@@ -181,7 +189,7 @@ class VNTRConsolidator
     /**
      * Detects a a consistent basis motif in a chain of overlapping VNTRs.
      */
-    void detect_consistent_motifs(Variant* variant);
+    bool detect_consistent_motifs(Variant* variant);
     
     /**
      * Flush variant buffer.

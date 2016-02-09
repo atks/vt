@@ -826,9 +826,6 @@ class Igor : Program
             }
             else // SNP
             {
-                
-                std::cerr  << " SNP?!?!?!?!?\n" ;
-                
                 //update flanking sequences
                 std::string flanks;
                 int32_t seq_len;

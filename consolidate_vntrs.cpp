@@ -126,8 +126,12 @@ class Igor : Program
     void print_stats()
     {
         std::clog << "\n";
-        std::clog << "       VNTR Classification          \n";
-        std::clog << "       Number of VNTRs      " << vc->no_vntrs << "\n";
+        std::clog << "       Variants observed\n";
+        std::clog << "       No. of SNPs                 " << vc->no_snps << "\n";
+        std::clog << "       No. of Indels               " << vc->no_indels << "\n";
+        std::clog << "       No. of VNTRs                " << vc->no_vntrs << "\n";
+        std::clog << "       No. of other variant types  " << vc->no_other_variants << "\n";
+        
         std::clog << "\n";
         std::clog << "       Number of isolated exact VNTRs      " << vc->no_isolated_exact_vntrs << "\n";
         std::clog << "                     perfect concordance   " << vc->no_perfect_concordance_isolated_exact_vntrs << "\n";

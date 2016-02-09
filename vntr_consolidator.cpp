@@ -45,13 +45,19 @@ VNTRConsolidator::VNTRConsolidator(std::string& input_vcf_file, std::vector<Geno
     overlap_vntr = const_cast<char*>("overlap_vntr");
     overlap_vntr_id = bcf_hdr_id2int(odw->hdr, BCF_DT_ID, "overlap_vntr");
 
+    buffer_window_allowance = 5000;
+
     ////////////////////////
     //stats initialization//
     ////////////////////////
     no_total_variants = 0;
-    no_vntrs = 0;
     no_overlap_vntrs = 0;
     no_dropped_vntrs = 0;
+
+    no_snps = 0;
+    no_indels = 0;
+    no_vntrs = 0;
+    no_other_variants = 0;
 
     //VNTR types
     no_isolated_exact_vntrs = 0;
@@ -100,14 +106,29 @@ void VNTRConsolidator::update_overlapping_vntr_hist(int32_t no_overlapping_vntrs
 
 /**
  * Inserts a Variant record.
+ * 
+ * VNTR overlapping variants are handled by adding to an existing VNTR record in the vntr_vs vector for consolidation purposes.
+ * All other variants are simply added. 
  */
 void VNTRConsolidator::insert_variant_record_into_buffer(Variant* variant)
 {
     std::list<Variant *>::iterator i = variant_buffer.begin();
 
-    if (variant->type==VT_VNTR)
+    if (variant->type==VT_SNP)
+    {
+        ++no_snps;
+    }
+    else if (variant->type==VT_INDEL)
+    {
+        ++no_indels;
+    }
+    else if (variant->type==VT_VNTR)
     {
         ++no_vntrs;
+    }
+    else
+    {
+        ++no_other_variants;
     }
 
     while(i!=variant_buffer.end())
@@ -125,10 +146,10 @@ void VNTRConsolidator::insert_variant_record_into_buffer(Variant* variant)
                 fprintf(stderr, "[%s:%d %s] File %s is unordered\n", __FILE__, __LINE__, __FUNCTION__, input_vcf_file.c_str());
                 exit(1);
             }
-            //after most recent variant, we need to have the 1000 window, because the variants are roughly
+            //after most recent variant, we need to have the buffer window allowance, because the variants are roughly
             //ordered by start.  It is possible to have the start positions changed when merging VNTRs
             //resulting in unordered variants.
-            else if (variant->beg1 > cvariant->end1 + 1000)
+            else if (variant->beg1 > cvariant->end1 + buffer_window_allowance)
             {
                 break;
             }
@@ -137,6 +158,7 @@ void VNTRConsolidator::insert_variant_record_into_buffer(Variant* variant)
                 if (variant->type==VT_VNTR && cvariant->type==VT_VNTR)
                 {
                     bcf1_t* v = variant->v;
+                    //this will induce order change thus the 1000bp buffer in the prior conditional
                     cvariant->beg1 = std::min(cvariant->beg1, variant->beg1);
                     cvariant->end1 = std::max(cvariant->end1, variant->end1);
                     cvariant->vs.push_back(v);
@@ -160,6 +182,7 @@ void VNTRConsolidator::insert_variant_record_into_buffer(Variant* variant)
         }
     }
 
+    //push all variants
     variant_buffer.push_front(variant);
 }
 
@@ -202,7 +225,7 @@ void VNTRConsolidator::flush_variant_buffer(Variant* var)
         }
         else if (variant->rid == rid)
         {
-            if (variant->beg1 < beg1-1000)
+            if (variant->beg1 < beg1-buffer_window_allowance)
             {
                 if (variant->type==VT_VNTR)
                 {
@@ -232,55 +255,7 @@ void VNTRConsolidator::flush_variant_buffer(Variant* var)
     }
 }
 
-/**
- * Compute purity by sequence content.
- */
-float VNTRConsolidator::compute_purity_by_sequence_content(char* repeat_tract, char* motif)
-{
-    uint32_t motif_count[20];
-    motif_count[0] = 0;
-    motif_count[2] = 0;
-    motif_count[6] = 0;
-    motif_count[19] = 0;
 
-    //count bases
-    char* motif_ptr = motif;
-    while (*motif_ptr)
-    {
-        ++motif_count[*motif_ptr-'A'];
-        ++motif_ptr;
-    }
-
-    uint32_t dmb = 0;
-    if (motif_count[0]) ++dmb;
-    if (motif_count[2]) ++dmb;
-    if (motif_count[6]) ++dmb;
-    if (motif_count[19]) ++dmb;
-
-    uint32_t repeat_tract_count[20];
-    repeat_tract_count[0] = 0;
-    repeat_tract_count[2] = 0;
-    repeat_tract_count[6] = 0;
-    repeat_tract_count[19] = 0;
-
-    uint32_t len = 0;
-    char* repeat_tract_ptr = repeat_tract;
-    while (*repeat_tract_ptr)
-    {
-        ++repeat_tract_count[*repeat_tract_ptr-'A'];
-        ++len;
-        ++repeat_tract_ptr;
-    }
-
-    uint32_t db = 0;
-
-    db += motif_count[0] ? repeat_tract_count[0] : 0;
-    db += motif_count[2] ? repeat_tract_count[2] : 0;
-    db += motif_count[6] ? repeat_tract_count[6] : 0;
-    db += motif_count[19] ? repeat_tract_count[19] : 0;
-
-    return (float) db / (float) len;
-}
 
 /**
  * Consolidate multiallelic variant based on associated biallelic records
@@ -327,8 +302,7 @@ bool VNTRConsolidator::consolidate_multiple_overlapping_vntrs(Variant* variant)
 //                std::cerr << "1" << ") " << motif << "\t" << fuzzy_concordance[0] << "\t" << fuzzy_flanks[0] << "," << fuzzy_flanks[1] << "\n";
 //                std::cerr << "\t" << bcf_get_ref(variant->v) << "\n";
 
-            float impurity = compute_purity_by_sequence_content(bcf_get_ref(variant->v), motif);
-
+         
             if (flanks[0]==fuzzy_flanks[0]  &&
                 flanks[1]==fuzzy_flanks[1])
             {
@@ -449,7 +423,7 @@ bool VNTRConsolidator::consolidate_multiple_overlapping_vntrs(Variant* variant)
 /**
  * Detects a a consistent basis motif in a chain of overlapping VNTRs.
  */
-void VNTRConsolidator::detect_consistent_motifs(Variant* variant)
+bool VNTRConsolidator::detect_consistent_motifs(Variant* variant)
 {
     if (variant->vntr_vs.size()>1)
     {
@@ -463,6 +437,9 @@ void VNTRConsolidator::detect_consistent_motifs(Variant* variant)
 
         std::map<std::string, int32_t> motifs;
 
+        ///////////////////
+        //merge the regions
+        ///////////////////
         for (uint32_t i=0; i<variant->vntr_vs.size(); ++i)
         {
             bcf1_t* vntr_v = variant->vntr_vs[i];
@@ -487,11 +464,11 @@ void VNTRConsolidator::detect_consistent_motifs(Variant* variant)
                     cbasis = vntr.get_basis(motif, n_motif);
                     std::cerr << (i+1) << ") " << motif << " (" << cbasis << ")\t" << fuzzy_concordance[0] << "\t" << flanks[0] << "," << flanks[1] << "\t" << fuzzy_flanks[0] << "," << fuzzy_flanks[1] << "\n";
                     std::cerr << "\t" << bcf_get_ref(vntr_v) << "\n";
-                    bcf_print(odw->hdr, vntr_v);
+//                    bcf_print(odw->hdr, vntr_v);
 
                     merged_beg1 = std::min(merged_beg1, fuzzy_flanks[0]+1);
                     merged_end1 = std::max(merged_end1, fuzzy_flanks[1]-1);
-              
+
                     std::string current_motif(motif);
                     motifs[current_motif] = 1;
                 }
@@ -513,20 +490,22 @@ void VNTRConsolidator::detect_consistent_motifs(Variant* variant)
         }
 
         //clear priority queue
+        ///////////////////
+        //merge the regions
+        ///////////////////
         while (!ordered_basis.empty()) ordered_basis.pop();
 
         int32_t n = variant->vntr_vs.size();
         it = basis_map.begin();
         while (it!=basis_map.end())
         {
-            std::cerr << "pqueue " << it->first << ", "  << it->second << "(" << ((float) it->second/n) << ")\n";
-
+//            std::cerr << "pqueue " << it->first << ", "  << it->second << "(" << ((float) it->second/n) << ")\n";
             basis_proportion bp = {it->first, (float) it->second/n};
             ordered_basis.push(bp);
             ++it;
         }
 
-        std::cerr << "size of ordered_bp " << ordered_basis.size() << "\n";
+//        std::cerr << "size of ordered_bp " << ordered_basis.size() << "\n";
 
         basis_proportion top_bp = ordered_basis.top();
         if (top_bp.proportion>=1)
@@ -544,29 +523,29 @@ void VNTRConsolidator::detect_consistent_motifs(Variant* variant)
             bcf_print(odw->hdr, new_v);
             std::cerr << "newly merged ref " << variant->chrom << ":" << merged_beg1 << "-" << merged_end1 << " " << repeat_tract << "\n";
 
-        
+
 
 
             //collect motifs from overlpaping records
             std::string best_motif = "";
-            float best_motif_concordance = 0;    
+            float best_motif_concordance = 0;
             std::map<std::string, int32_t>::iterator it;
             for (it = motifs.begin(); it!=motifs.end(); ++it)
             {
                 fd->compute_purity_score(repeat_tract, it->first);
-                
+
                 if (fd->motif_concordance > best_motif_concordance)
                 {
                     best_motif_concordance = fd->motif_concordance;
                     best_motif = it->first;
-                }                
+                }
             }
-            
+
             fd->polish_repeat_tract_ends(repeat_tract, best_motif, true);
 
             //recompute conconcordance with polished tract
             fd->compute_purity_score(fd->polished_repeat_tract, best_motif);
-            
+
             //VNTR position and sequences
             bcf_set_pos1(new_v, merged_beg1+fd->min_beg0);
             kstring_t s = {0,0,0};
@@ -576,7 +555,7 @@ void VNTRConsolidator::detect_consistent_motifs(Variant* variant)
             kputs("<VNTR>", &s);
             bcf_update_alleles_str(odr->hdr, new_v, s.s);
             if (s.m) free(s.s);
-    
+
             //VNTR motif
             bcf_update_info_string(odw->hdr, new_v, "MOTIF", best_motif.c_str());
             bcf_update_info_string(odw->hdr, new_v, "RU", fd->ru.c_str());
@@ -596,13 +575,16 @@ void VNTRConsolidator::detect_consistent_motifs(Variant* variant)
 //              bcf_print(odw->hdr, new_v);
 
 
-            
+            return true;
         }
         else
         {
-
+            return false;
         }
     }
+
+
+    return false;
 }
 
 /**

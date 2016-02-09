@@ -38,6 +38,7 @@ class Igor : Program
     std::vector<GenomeInterval> intervals;
     std::vector<std::string> info_tags;
     bool print;
+    bool remove_filters;
 
     ///////
     //i/o//
@@ -73,6 +74,7 @@ class Igor : Program
             TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "file", cmd);
             TCLAP::ValueArg<std::string> arg_info_tags("t", "t", "list of info tags to be removed []", true, "", "str", cmd);
             TCLAP::SwitchArg arg_quiet("q", "q", "do not print options and summary [false]", cmd, false);
+            TCLAP::SwitchArg arg_remove_filters("x", "x", "remove filters [false]", cmd, false);
             TCLAP::ValueArg<std::string> arg_output_vcf_file("o", "o", "output VCF file [-]", false, "-", "str", cmd);
             TCLAP::UnlabeledValueArg<std::string> arg_input_vcf_file("<in.vcf>", "input VCF file", true, "","file", cmd);
 
@@ -83,6 +85,7 @@ class Igor : Program
             parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
             parse_string_list(info_tags, arg_info_tags.getValue());
             print = !arg_quiet.getValue();
+            remove_filters = arg_remove_filters.getValue();
         }
         catch (TCLAP::ArgException &e)
         {
@@ -127,8 +130,10 @@ class Igor : Program
                 ret += bcf_update_info(h, v, info_tags[i].c_str(), NULL, 0, 0);
             }
 
-            //todo: this is not correct, ret only returns non 0 upon an error.  
+            //todo: this is not correct, ret only returns non 0 upon an error.
             if (!ret) ++no_variants_with_removed_info;
+
+            if (remove_filters) bcf_update_filter(h, v, NULL, 0);
 
             ++no_variants;
 
