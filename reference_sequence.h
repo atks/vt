@@ -107,6 +107,11 @@ class ReferenceSequence
     /**
      * Fetches sequence chrom:beg1-end1.
      */
+    char* fetch_seq(char* chrom, uint32_t beg1, uint32_t end1);
+    
+    /**
+     * Fetches sequence chrom:beg1-end1.
+     */
     char* fetch_seq(const char* chrom, uint32_t beg1, uint32_t end1);
 
     private:

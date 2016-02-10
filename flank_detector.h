@@ -42,6 +42,7 @@
 #include "variant_manip.h"
 #include "program.h"
 #include "vntr.h"
+#include "reference_sequence.h"
 
 //modes for flank detection
 #define CLIP_ENDS 0 //literally just clip the flanking bases
@@ -86,10 +87,7 @@ class FlankDetector
     ///////
     //tools
     ///////
-    faidx_t* fai;
-
-    //for retrieving sequences
-    int8_t* seq;
+    ReferenceSequence *rs;
 
     /**
      * Constructor.

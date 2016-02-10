@@ -71,12 +71,7 @@ FlankDetector::FlankDetector(std::string& ref_fasta_file, bool debug)
     //////////////////
     //initialize tools
     //////////////////
-    fai = fai_load(ref_fasta_file.c_str());
-    if (fai==NULL)
-    {
-        fprintf(stderr, "[%s:%d %s] Cannot load genome index: %s\n", __FILE__, __LINE__, __FUNCTION__, ref_fasta_file.c_str());
-        exit(1);
-    }
+    rs = new ReferenceSequence(ref_fasta_file);
 };
 
 /**
@@ -84,7 +79,7 @@ FlankDetector::FlankDetector(std::string& ref_fasta_file, bool debug)
  */
 FlankDetector::~FlankDetector()
 {
-    fai_destroy(fai);
+    delete rs;
 }
 
 /**
@@ -239,6 +234,7 @@ void FlankDetector::detect_flanks(bcf_hdr_t* h, bcf1_t *v, Variant& variant, uin
         vntr.exact_no_exact_ru = ahmm->exact_motif_count;
         vntr.exact_total_no_ru = ahmm->motif_count;
         vntr.exact_rl = ahmm->repeat_tract_len;
+        vntr.exact_trf_score = ahmm->trf_score;
 
         if (debug)
         {
@@ -263,10 +259,8 @@ void FlankDetector::detect_flanks(bcf_hdr_t* h, bcf1_t *v, Variant& variant, uin
 
         int32_t slen = 100;
 
-        char* rflank;
-        int32_t rflank_len;
-        char* lflank;
-        int32_t lflank_len;
+        char* rflank = NULL;
+        char* lflank = NULL;
 
         int32_t lflank_end1;
         int32_t rflank_beg1;
@@ -278,19 +272,19 @@ void FlankDetector::detect_flanks(bcf_hdr_t* h, bcf1_t *v, Variant& variant, uin
         while (true)
         {
             //pick 5 bases to the right
-            rflank = faidx_fetch_seq(fai, variant.chrom.c_str(), vntr.exact_rend1+1-1, vntr.exact_rend1+5-1, &rflank_len);
+            rflank = rs->fetch_seq(variant.chrom.c_str(), vntr.exact_rend1+1, vntr.exact_rend1+5);
 
             //pick 105 bases for aligning
 
-            seq = faidx_fetch_seq(fai, variant.chrom.c_str(), vntr.exact_rend1-slen-1, vntr.exact_rend1+5-1, &seq_len);
+            seq = rs->fetch_seq(variant.chrom.c_str(), vntr.exact_rend1-slen, vntr.exact_rend1+5);
 
 
             rfhmm->set_model(vntr.ru.c_str(), rflank);
             rfhmm->align(seq, qual.c_str());
             if (debug) rfhmm->print_alignment();
 
-            if (rflank_len) free(rflank);
-            if (seq_len) free(seq);
+            if (rflank) free(rflank);
+            if (seq) free(seq);
 
             //////////////////////
             //fuzzy left alignment
@@ -329,10 +323,10 @@ void FlankDetector::detect_flanks(bcf_hdr_t* h, bcf1_t *v, Variant& variant, uin
         //pick 5 bases to right
         while(true)
         {
-            lflank = faidx_fetch_seq(fai, variant.chrom.c_str(), lflank_end1-5-1, lflank_end1-1, &lflank_len);
+            lflank = rs->fetch_seq(variant.chrom.c_str(), lflank_end1-5, lflank_end1);
 
             //pick 105 bases for aligning
-            seq = faidx_fetch_seq(fai, variant.chrom.c_str(), lflank_end1-5-1, lflank_end1+slen-1-1, &seq_len);
+            char* seq = rs->fetch_seq(variant.chrom.c_str(), lflank_end1-5, lflank_end1+slen-1);
 
             lfhmm->set_model(lflank, vntr.ru.c_str());
             lfhmm->align(seq, qual.c_str());
@@ -342,7 +336,7 @@ void FlankDetector::detect_flanks(bcf_hdr_t* h, bcf1_t *v, Variant& variant, uin
 
             if (lfhmm->get_rflank_read_epos1()!=INT32_MAX)
             {
-                rflank_beg1 = lflank_end1 - 5 + lfhmm->get_rflank_read_spos1() -1;
+                rflank_beg1 = lflank_end1 - 5 + lfhmm->get_rflank_read_spos1() - 1;
                 break;
             }
             else if (slen==1000)
@@ -358,25 +352,24 @@ void FlankDetector::detect_flanks(bcf_hdr_t* h, bcf1_t *v, Variant& variant, uin
                     std::cerr << "extending the reference sequence for LFHMM : " << slen << "\n";
             }
         }
+        if (lflank) free(lflank);
 
-        if (lflank_len) free(lflank);
-
-        lflank = faidx_fetch_seq(fai, variant.chrom.c_str(), lflank_end1-10-1, lflank_end1-1, &lflank_len);
-        rflank = faidx_fetch_seq(fai, variant.chrom.c_str(), rflank_beg1-1, rflank_beg1 +10 -1 -1, &rflank_len);
+        lflank = rs->fetch_seq(variant.chrom.c_str(), lflank_end1-10, lflank_end1);
+        rflank = rs->fetch_seq(variant.chrom.c_str(), rflank_beg1, rflank_beg1 +10-1);
 
         vntr.fuzzy_rbeg1 = lflank_end1+1;
         vntr.fuzzy_rend1 = rflank_beg1-1;
         int32_t repeat_tract_len;
-        char* repeat_tract = faidx_fetch_seq(fai, variant.chrom.c_str(), lflank_end1, rflank_beg1-1-1, &repeat_tract_len);
+        char* repeat_tract = rs->fetch_seq(variant.chrom.c_str(), lflank_end1, rflank_beg1-1-1);
         vntr.fuzzy_repeat_tract.assign(repeat_tract);
-        if (repeat_tract_len) free(repeat_tract);
+        if (repeat_tract) free(repeat_tract);
         vntr.fuzzy_motif_concordance = lfhmm->motif_concordance;
         vntr.fuzzy_no_exact_ru = lfhmm->exact_motif_count;
         vntr.fuzzy_total_no_ru = lfhmm->motif_count;
         vntr.fuzzy_rl = rflank_beg1-lflank_end1-1;
-
-        if (lflank_len) free(lflank);
-        if (rflank_len) free(rflank);
+        
+        if (lflank) free(lflank);
+        if (rflank) free(rflank);
 
         if (debug)
         {
@@ -385,12 +378,6 @@ void FlankDetector::detect_flanks(bcf_hdr_t* h, bcf1_t *v, Variant& variant, uin
             std::cerr << "\n";
         }
     }
-
-    //fill in flanks
-    const char* chrom = variant.chrom.c_str();
-    uint32_t pos1 = vntr.exact_rbeg1;
-    int32_t len = 0;
-    faidx_fetch_seq(fai, chrom, pos1-10, pos1-1, &len);
 };
 
 /**

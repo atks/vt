@@ -110,6 +110,14 @@ void ReferenceSequence::fetch_seq(const char* chrom, uint32_t beg1, uint32_t end
 /**
  * Fetches sequence chrom:beg1-end1.
  */
+char* ReferenceSequence::fetch_seq(char* chrom, uint32_t beg1, uint32_t end1)
+{
+    return fetch_seq(const_cast<const char*>(chrom), beg1, end1);
+}
+
+/**
+ * Fetches sequence chrom:beg1-end1.
+ */
 char* ReferenceSequence::fetch_seq(const char* chrom, uint32_t beg1, uint32_t end1)
 {
     char* seq = NULL;

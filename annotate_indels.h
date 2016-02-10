@@ -33,6 +33,7 @@
 #include "program.h"
 #include "vntr_annotator.h"
 #include "filter.h"
+#include "reference_sequence.h"
 
 void annotate_indels(int argc, char ** argv);
 
