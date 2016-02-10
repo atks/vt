@@ -166,3 +166,48 @@ else
 fi
 
 trap "rm -rf ${TMPDIRS}" EXIT KILL TERM INT HUP
+
+echo "++++++++++++++++++++++" >&2
+echo "Tests for vt decompose" >&2
+echo "++++++++++++++++++++++" >&2
+
+# create temporary directory and ensure cleanup on termination
+CMDDIR=${DIR}/decompose
+TMPDIR=${CMDDIR}/tmp
+mkdir -p ${TMPDIR}
+TMPDIRS+=" $TMPDIR";
+
+#-----------------------
+echo "testing decompose for a triallelic variant"
+#----------------------- 
+
+if [ "$1" == "debug" ]; then
+    set -x
+fi
+
+${VT} \
+    decompose \
+    ${CMDDIR}/01_IN_multi.vcf \
+    -o ${TMPDIR}/01_OUT_multi.vcf \
+    2>&1 | strip_stderr > ${TMPDIR}/01_OUT_multi.stderr
+
+OUT=`diff ${CMDDIR}/01_OUT_multi.vcf ${TMPDIR}/01_OUT_multi.vcf`
+ERR=`diff ${CMDDIR}/01_OUT_multi.stderr ${TMPDIR}/01_OUT_multi.stderr`
+
+set +x
+
+echo -n "             output VCF file :"
+if [ "$OUT" == "" ]; then
+    echo " ok"
+else
+    echo " NOT OK!!!"
+fi
+
+echo -n "             output logs     :"
+if [ "$ERR" == "" ]; then
+    echo " ok"
+else
+    echo " NOT OK!!!"
+fi
+
+trap "rm -rf ${TMPDIRS}" EXIT KILL TERM INT HUP

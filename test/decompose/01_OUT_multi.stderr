@@ -1,0 +1,16 @@
+decompose v0.5
+
+options:     input VCF file <stripped>
+         [s] smart decomposition   false (experimental)
+         [o] output VCF file <stripped>
+
+
+stats: no. variants                 : 1
+       no. biallelic variants       : 0
+       no. multiallelic variants    : 1
+
+       no. additional biallelics    : 1
+       total no. of biallelics      : 2
+
+Time elapsed <stripped>
+
