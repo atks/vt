@@ -49,6 +49,13 @@ class Igor : Program
     BCFOrderedWriter *odw;
     bcf1_t *v;
 
+    //////////
+    //filter//
+    //////////
+    std::string fexp;
+    Filter filter;
+    bool filter_exists;
+
     /////////
     //stats//
     /////////
@@ -89,6 +96,7 @@ class Igor : Program
             TCLAP::ValueArg<std::string> arg_intervals("i", "i", "intervals []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "file", cmd);
             TCLAP::ValueArg<int32_t> arg_window_size("w", "w", "window size for local sorting of variants [10000]", false, 10000, "integer", cmd);
+            TCLAP::ValueArg<std::string> arg_fexp("f", "f", "filter expression []", false, "", "str", cmd);
             TCLAP::SwitchArg arg_strict("n", "n", "do not fail when REF is inconsistent with reference sequence for non SNPs [false]", cmd, true);
             TCLAP::SwitchArg arg_quiet("q", "q", "do not print options and summary [false]", cmd, false);
             TCLAP::SwitchArg arg_debug("d", "d", "debug [false]", cmd, false);
@@ -100,6 +108,7 @@ class Igor : Program
             input_vcf_file = arg_input_vcf_file.getValue();
             output_vcf_file = arg_output_vcf_file.getValue();
             parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
+            fexp = arg_fexp.getValue();
             print = !arg_quiet.getValue();
             strict = arg_strict.getValue();
             debug = arg_debug.getValue();
@@ -124,6 +133,12 @@ class Igor : Program
         bcf_hdr_append(odw->hdr, "##INFO=<ID=OLD_VARIANT,Number=.,Type=String,Description=\"Original chr:pos:ref:alt encoding\">\n");
         odw->write_hdr();
 
+        /////////////////////////
+        //filter initialization//
+        /////////////////////////
+        filter.parse(fexp.c_str(), false);
+        filter_exists = fexp=="" ? false : true;
+            
         ////////////////////////
         //stats initialization//
         ////////////////////////
@@ -170,6 +185,14 @@ class Igor : Program
 
             int32_t type = vm->classify_variant(odw->hdr, v, variant);
 
+            if (filter_exists)
+            {
+                if (!filter.apply(h, v, &variant, false))
+                {
+                    continue;
+                }
+            }
+            
             bool is_ref_consistent = false;
             if (type!=VT_SNP && !(is_ref_consistent = vm->is_ref_consistent(h,v)))
             {
@@ -307,6 +330,7 @@ class Igor : Program
         std::clog << "options:     input VCF file                                  " << input_vcf_file << "\n";
         std::clog << "         [o] output VCF file                                 " << output_vcf_file << "\n";
         std::clog << "         [w] sorting window size                             " << window_size << "\n";
+        print_str_op("         [f] filter                                          ", fexp);
         std::clog << "         [n] no fail on reference inconsistency for non SNPs " << (!strict ? "true" : "false") << "\n";
         std::clog << "         [q] quiet                                           " << (!print ? "true" : "false") << "\n";
         std::clog << "         [d] debug                                           " << (debug ? "true" : "false")  << "\n";
