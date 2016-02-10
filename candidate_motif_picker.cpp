@@ -89,7 +89,7 @@ void CandidateMotifPicker::generate_candidate_motifs(Variant& variant)
         }
         std::cerr << "\n";
 
-        std::cerr << "Repeat Tract Position : [" << variant.vntr.exact_rbeg1 << "," << variant.vntr.exact_rend1 << "]\n";
+        std::cerr << "Repeat Tract Position : [" << variant.vntr.exact_beg1 << "," << variant.vntr.exact_end1 << "]\n";
         std::cerr << "Repeat Tract          : " << variant.vntr.exact_repeat_tract << "\n";
         std::cerr << "Longest Allele        : " << alleles[longest_allele_index] << "\n";
         std::cerr << "Longest Allele index  : " << longest_allele_index << "\n";
@@ -101,9 +101,9 @@ void CandidateMotifPicker::generate_candidate_motifs(Variant& variant)
         //pairwise left and right alignment of the alternative alleles with the reference allele, it is possible that the 
         //tract occurs prior to the position of the multiallelic variant. 
         int32_t offset = 0;
-        if (variant.vntr.exact_rbeg1<pos1)
+        if (variant.vntr.exact_beg1<pos1)
         {
-            offset = bcf_get_pos1(v) - variant.vntr.exact_rbeg1;
+            offset = bcf_get_pos1(v) - variant.vntr.exact_beg1;
         }    
         
         std::string spiked_seq = variant.vntr.exact_repeat_tract;
@@ -115,14 +115,14 @@ void CandidateMotifPicker::generate_candidate_motifs(Variant& variant)
             //this implictly requires that the variants are left aligned.
             std::string spiked_seq = variant.vntr.exact_repeat_tract;
             std::cerr << "\texact repeat tract " << variant.vntr.exact_repeat_tract << "\n";
-            std::cerr << "\trbeg1              " << variant.vntr.exact_rbeg1 << "\n";
+            std::cerr << "\trbeg1              " << variant.vntr.exact_beg1 << "\n";
             std::cerr << "\tpos1               " << bcf_get_pos1(v) << "\n";
             std::cerr << "\toffset             " << offset << "\n";
             std::cerr << "\treplace length     " << ref_len << "\n";
            
-//            spiked_seq.replace(variant.vntr.exact_rbeg1-bcf_get_pos1(v), strlen(alleles[0]), alleles[longest_allele_index]);
-//            spiked_seq.insert(variant.vntr.exact_rbeg1-bcf_get_pos1(v), 1, '[');
-//            spiked_seq.insert(variant.vntr.exact_rbeg1-bcf_get_pos1(v)+ strlen(alleles[longest_allele_index])+1, 1, ']');
+//            spiked_seq.replace(variant.vntr.exact_beg1-bcf_get_pos1(v), strlen(alleles[0]), alleles[longest_allele_index]);
+//            spiked_seq.insert(variant.vntr.exact_beg1-bcf_get_pos1(v), 1, '[');
+//            spiked_seq.insert(variant.vntr.exact_beg1-bcf_get_pos1(v)+ strlen(alleles[longest_allele_index])+1, 1, ']');
 //            std::cerr << "Spiked Longest Allele : "   << spiked_seq << "\n";
         } 
         

@@ -197,6 +197,8 @@ bool VariantManip::contains_N(bcf1_t *v)
  */
 int32_t VariantManip::classify_variant(bcf_hdr_t *h, bcf1_t *v, Variant& var)
 {
+    var.clear(); // this sets the type to VT_REF by default.
+    
     var.h = h;
     var.v = v;    
     
@@ -206,31 +208,28 @@ int32_t VariantManip::classify_variant(bcf_hdr_t *h, bcf1_t *v, Variant& var)
     var.pos1 = bcf_get_pos1(v);
     var.beg1 = var.pos1;
     var.end1 = bcf_get_end1(v);
+ 
     char** allele = bcf_get_allele(v);    
     int32_t n_allele = bcf_get_n_allele(v);
 
-//    std::cerr << "beginning of classifying "<< var.beg1 << " " << var.end1 << "\n";
-
     uint32_t pos1 = var.pos1;
     int32_t pos0 = pos1-1;
-    var.ts = 0;
-    var.tv = 0;
-    var.ins = 0;
-    var.del = 0;
-
-    var.clear(); // this sets the type to VT_REF by default.
-
+ 
     bool homogeneous_length = true;
-
     char* ref = allele[0];
     int32_t rlen = strlen(ref);
+
+    if (strchr(ref, 'N'))
+    {
+        var.contains_N = true;
+    }
 
     //if only ref allele, skip this entire for loop
     for (size_t i=1; i<n_allele; ++i)
     {
         int32_t type = VT_REF;
 
-        //check for tags
+        //check for symbolic alternative alleles
         if (strchr(allele[i],'<'))
         {
             size_t len = strlen(allele[i]);
@@ -292,6 +291,7 @@ int32_t VariantManip::classify_variant(bcf_hdr_t *h, bcf1_t *v, Variant& var)
                 var.alleles.push_back(Allele(type, sv_type));
             }
         }
+        //checks for chromosomal breakpoints
         else if (strchr(allele[i],'[')||strchr(allele[i],']'))
         {
             type = VT_SV;
@@ -299,10 +299,12 @@ int32_t VariantManip::classify_variant(bcf_hdr_t *h, bcf1_t *v, Variant& var)
             std::string sv_type("<BND>");
             var.alleles.push_back(Allele(type, sv_type));
         }
+        //non variant record
         else if (allele[i][0]=='.' || strcmp(allele[i],allele[0])==0)
         {
             type = VT_REF;
         }
+        //explicit sequence of bases
         else
         {
             kstring_t REF = {0,0,0};
@@ -312,6 +314,11 @@ int32_t VariantManip::classify_variant(bcf_hdr_t *h, bcf1_t *v, Variant& var)
             char* alt = allele[i];
             int32_t alen = strlen(alt);
 
+            if (strchr(alt, 'N'))
+            {
+                var.contains_N = true;
+            }
+            
             if (rlen!=alen)
             {
                 homogeneous_length = false;

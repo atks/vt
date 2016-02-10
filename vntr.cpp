@@ -40,8 +40,8 @@ void VNTR::clear()
     mlen = 0;
 
     exact_repeat_tract.clear();
-    exact_rbeg1 = 0;
-    exact_rend1 = 0;
+    exact_beg1 = 0;
+    exact_end1 = 0;
     exact_lflank.clear();
     exact_rflank.clear();
     exact_motif_concordance = 0;
@@ -50,8 +50,8 @@ void VNTR::clear()
     exact_total_no_ru = 0;
 
     fuzzy_repeat_tract.clear();
-    fuzzy_rbeg1 = 0;
-    fuzzy_rend1 = 0;
+    fuzzy_beg1 = 0;
+    fuzzy_end1 = 0;
     fuzzy_lflank.clear();
     fuzzy_rflank.clear();
     fuzzy_motif_concordance = 0;
@@ -68,8 +68,8 @@ void VNTR::clear()
 bool VNTR::equals(VNTR& vntr)
 {
     return (rid==vntr.rid &&
-            exact_rbeg1==vntr.exact_rbeg1 &&
-            exact_rend1==vntr.exact_rend1 &&
+            exact_beg1==vntr.exact_beg1 &&
+            exact_end1==vntr.exact_end1 &&
             motif==vntr.motif);
 }
 
@@ -137,7 +137,7 @@ void VNTR::print()
     std::cerr << "\n";
     std::cerr << "Exact\n";
     std::cerr << "repeat_tract                    : " << exact_repeat_tract << "\n";
-    std::cerr << "position                        : [" << exact_rbeg1 << "," << exact_rend1 << "]\n";
+    std::cerr << "position                        : [" << exact_beg1 << "," << exact_end1 << "]\n";
     std::cerr << "reference repeat unit length    : " << exact_rl << "\n";
     std::cerr << "longest allele length           : " << exact_ll << "\n";
     std::cerr << "motif_concordance               : " << exact_motif_concordance << "\n";
@@ -147,7 +147,7 @@ void VNTR::print()
     std::cerr << "\n";
     std::cerr << "Fuzzy\n";
     std::cerr << "repeat_tract                    : " << fuzzy_repeat_tract << "\n";
-    std::cerr << "position                        : [" << fuzzy_rbeg1 << "," << fuzzy_rend1 << "]\n";
+    std::cerr << "position                        : [" << fuzzy_beg1 << "," << fuzzy_end1 << "]\n";
     std::cerr << "reference repeat unit length    : " << fuzzy_rl << "\n";
     std::cerr << "longest allele length           : " << fuzzy_ll << "\n";
     std::cerr << "motif_concordance               : " << fuzzy_motif_concordance << "\n";
@@ -158,8 +158,8 @@ void VNTR::print()
 
 
     std::string fuzzy_repeat_tract;   //repeat tract
-    int32_t fuzzy_rbeg1;              //beginning of repeat tract
-    int32_t fuzzy_rend1;              //end of repeat tract
+    int32_t fuzzy_beg1;              //beginning of repeat tract
+    int32_t fuzzy_end1;              //end of repeat tract
     float fuzzy_rl;                   //number of repeat units on repeat tract
     float fuzzy_ll;                   //number of repeat units on longest allele
     float fuzzy_motif_concordance;    //motif concordance from hmm

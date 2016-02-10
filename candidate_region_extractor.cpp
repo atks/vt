@@ -79,11 +79,11 @@ void CandidateRegionExtractor::pick_candidate_region(Variant& variant, uint32_t 
     {
         VNTR& vntr = variant.vntr;
         vntr.exact_repeat_tract.assign(bcf_get_ref(v));
-        vntr.exact_rbeg1 = bcf_get_pos1(v);
+        vntr.exact_beg1 = bcf_get_pos1(v);
         char** alleles = bcf_get_allele(v);
-        vntr.exact_rend1 = strlen(alleles[0]);
-        vntr.fuzzy_rbeg1 = vntr.exact_rbeg1;
-        vntr.fuzzy_rend1 = vntr.exact_rend1;
+        vntr.exact_end1 = strlen(alleles[0]);
+        vntr.fuzzy_beg1 = vntr.exact_beg1;
+        vntr.fuzzy_end1 = vntr.exact_end1;
         
     }
     else if (mode==EXACT_LEFT_RIGHT_ALIGNMENT)
@@ -206,8 +206,8 @@ void CandidateRegionExtractor::extract_regions_by_exact_alignment(Variant& varia
 
     vntr.exact_repeat_tract = seq;
     vntr.rid = bcf_get_rid(v);
-    vntr.exact_rbeg1 = min_beg1;
-    vntr.exact_rend1 = max_end1;
+    vntr.exact_beg1 = min_beg1;
+    vntr.exact_end1 = max_end1;
     
     if (seq_len) free(seq);
 }
@@ -325,7 +325,7 @@ void CandidateRegionExtractor::extract_regions_by_fuzzy_alignment(Variant& varia
     }
 
     vntr.exact_repeat_tract = seq;
-    vntr.exact_rbeg1 = min_beg1;
+    vntr.exact_beg1 = min_beg1;
 
     if (seq_len) free(seq);
 }

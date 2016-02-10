@@ -143,8 +143,8 @@ void VNTRTree::count(Variant& variant)
         }
         
         if (concordance==1 ||
-           (vntr.fuzzy_rbeg1!=0 && vntr.exact_rbeg1==vntr.fuzzy_rbeg1 &&
-            vntr.exact_rend1==vntr.fuzzy_rend1))
+           (vntr.fuzzy_beg1!=0 && vntr.exact_beg1==vntr.fuzzy_beg1 &&
+            vntr.exact_end1==vntr.fuzzy_end1))
         {
             ++node->exact_count;
         }

@@ -90,6 +90,9 @@ class Variant
     //describes VNTR
     VNTR vntr;
 
+    //contains N bases in alleles
+    bool contains_N;
+
     /**
      * Constructor.
      */

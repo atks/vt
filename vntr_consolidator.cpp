@@ -432,8 +432,8 @@ bool VNTRConsolidator::detect_consistent_motifs(Variant* variant)
         std::map<std::string, int32_t> basis_map;
         std::map<std::string, int32_t>::iterator it;
 
-        int32_t merged_beg1 = vntr.fuzzy_rbeg1+1;
-        int32_t merged_end1 = vntr.fuzzy_rend1-1;
+        int32_t merged_beg1 = vntr.fuzzy_beg1+1;
+        int32_t merged_end1 = vntr.fuzzy_end1-1;
 
         std::map<std::string, int32_t> motifs;
 
@@ -567,7 +567,7 @@ bool VNTRConsolidator::detect_consistent_motifs(Variant* variant)
             bcf_update_info_int32(odw->hdr, new_v, "FZ_FLANKS", &new_fuzzy_flanks, 2);
 
 //            //flank positions
-//            int32_t fuzzy_flank_pos1[2] = {vntr.fuzzy_rbeg1-1, vntr.fuzzy_rend1+1};
+//            int32_t fuzzy_flank_pos1[2] = {vntr.fuzzy_beg1-1, vntr.fuzzy_end1+1};
 //            bcf_update_info_int32(h, v, "FZ_FLANKS", &fuzzy_flank_pos1, 2);
 //            int32_t ru_count[2] = {vntr.fuzzy_no_exact_ru, vntr.fuzzy_total_no_ru};
 //            bcf_update_info_int32(h, v, "FZ_RU_COUNTS", &ru_count, 2);

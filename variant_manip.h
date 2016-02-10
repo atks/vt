@@ -66,7 +66,7 @@ class VariantManip
     /**
      * Classifies variants.
      */
-    int32_t classify_variant(bcf_hdr_t *h, bcf1_t *v, Variant& var);
+    int32_t classify_variant(bcf_hdr_t *h, bcf1_t *v, Variant& variant);
 
     /**
      * Checks if the REF sequence of a VCF entry is consistent.

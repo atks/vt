@@ -663,6 +663,14 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
             i = abs(variant->alleles[0].dlen);
             f = i;
         }
+        else if (type==VT_VARIANT_CONTAINS_N)
+        {
+            if (debug)
+                std::cerr << "\tVARIANT_CONTAINS_N "   <<  variant->contains_N <<  " \n";
+            
+            bcf_unpack(v, BCF_UN_FLT);
+            b = variant->contains_N;
+        }
         else if (type==VT_N_ALLELE)
         {
             if (debug)
@@ -857,7 +865,6 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
         }
     }
 }
-
 
 /**
  * Converts type to string.
@@ -1374,6 +1381,13 @@ void Filter::parse_literal(const char* exp, int32_t len, Node * node, bool debug
         node->type = VT_VARIANT_LEN;
         node->value_exists = false;
         if (debug) std::cerr << "\tis len\n";
+        return;
+    }
+    else if (strncmp(exp, "VARIANT_CONTAINS_N", len)==0)
+    {
+        node->type = VT_VARIANT_CONTAINS_N;
+        node->value_exists = false;
+        if (debug) std::cerr << "\tis variant contains N\n";
         return;
     }
     else

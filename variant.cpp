@@ -55,31 +55,31 @@ Variant::Variant(bcf_hdr_t* h, bcf1_t* v)
         int32_t n = 0;
         if (bcf_get_info_int32(h, v, "FLANKS", &flanks, &n)>0)
         {
-            vntr.exact_rbeg1 = flanks[0]+1;
-            vntr.exact_rend1 = flanks[1]-1;
+            vntr.exact_beg1 = flanks[0]+1;
+            vntr.exact_end1 = flanks[1]-1;
             free(flanks);
         }
         else
         {
-            vntr.exact_rbeg1 = bcf_get_pos1(v) - 1;
-            vntr.exact_rend1 = bcf_get_end1(v) + 1;
+            vntr.exact_beg1 = bcf_get_pos1(v) - 1;
+            vntr.exact_end1 = bcf_get_end1(v) + 1;
         }
 
-        beg1 = vntr.exact_rbeg1-1;
-        end1 = vntr.exact_rend1+1;
+        beg1 = vntr.exact_beg1-1;
+        end1 = vntr.exact_end1+1;
 
         int32_t *fuzzy_flanks = NULL;
         n = 0;
         if (bcf_get_info_int32(h, v, "FZ_FLANKS", &fuzzy_flanks, &n)>0)
         {
-            vntr.fuzzy_rbeg1 = fuzzy_flanks[0];
-            vntr.fuzzy_rend1 = fuzzy_flanks[1];
+            vntr.fuzzy_beg1 = fuzzy_flanks[0];
+            vntr.fuzzy_end1 = fuzzy_flanks[1];
             free(fuzzy_flanks);
         }
         else
         {
-            vntr.fuzzy_rbeg1 = bcf_get_pos1(v) - 1;
-            vntr.fuzzy_rend1 = bcf_get_end1(v) + 1;
+            vntr.fuzzy_beg1 = bcf_get_pos1(v) - 1;
+            vntr.fuzzy_end1 = bcf_get_end1(v) + 1;
         }
     }
     else if (type==VT_VNTR)
@@ -187,7 +187,19 @@ Variant::~Variant()
  */
 void Variant::clear()
 {
-    type = VT_REF;
+    type = VT_REF;  
+    
+    chrom.clear();
+    rid = 0;
+    pos1 = 0;
+    beg1 = 0;
+    end1 = 0;
+    ts = 0;
+    tv = 0;
+    ins = 0;
+    del = 0;
+
+    contains_N = false;
     alleles.clear();
     vntr.clear();
     vs.clear();
@@ -201,6 +213,8 @@ void Variant::clear()
  */
 int32_t Variant::classify(bcf_hdr_t *h, bcf1_t *v)
 {
+    clear();
+    
     this->h = h;
     this->v = v;
 
@@ -208,23 +222,20 @@ int32_t Variant::classify(bcf_hdr_t *h, bcf1_t *v)
     chrom.assign(bcf_get_chrom(h, v));
     rid = bcf_get_rid(v);
     pos1 = bcf_get_pos1(v);
+    end1 = bcf_get_end1(v);
     char** allele = bcf_get_allele(v);
-    end1 = pos1 + strlen(allele[0]) - 1;
     int32_t n_allele = bcf_get_n_allele(v);
-
-    uint32_t pos1 = pos1;
     int32_t pos0 = pos1-1;
-    ts = 0;
-    tv = 0;
-    ins = 0;
-    del = 0;
 
-    clear(); // this sets the type to VT_REF by default.
 
     bool homogeneous_length = true;
-
     char* ref = allele[0];
     int32_t rlen = strlen(ref);
+
+    if (strchr(ref, 'N'))
+    {
+        contains_N = true;
+    }
 
     //if only ref allele, skip this entire for loop
     for (size_t i=1; i<n_allele; ++i)
@@ -293,6 +304,7 @@ int32_t Variant::classify(bcf_hdr_t *h, bcf1_t *v)
                 alleles.push_back(Allele(allele_type, sv_type));
             }
         }
+        //checks for chromosomal breakpoints
         else if (strchr(allele[i],'[')||strchr(allele[i],']'))
         {
             allele_type = VT_SV;
@@ -300,10 +312,12 @@ int32_t Variant::classify(bcf_hdr_t *h, bcf1_t *v)
             std::string sv_type("<BND>");
             alleles.push_back(Allele(allele_type, sv_type));
         }
+        //non variant record
         else if (allele[i][0]=='.' || strcmp(allele[i],allele[0])==0)
         {
             type = VT_REF;
         }
+        //explicit sequence of bases
         else
         {
             kstring_t REF = {0,0,0};
@@ -313,6 +327,11 @@ int32_t Variant::classify(bcf_hdr_t *h, bcf1_t *v)
             char* alt = allele[i];
             int32_t alen = strlen(alt);
 
+            if (strchr(alt, 'N'))
+            {
+                contains_N = true;
+            }
+            
             if (rlen!=alen)
             {
                 homogeneous_length = false;
@@ -533,11 +552,11 @@ void Variant::update_vntr_from_info_fields(bcf_hdr_t *h, bcf1_t *v)
     n = 0;
     if (bcf_get_info_int32(h, v, "FLANKS", &flanks, &n)>0)
     {
-        vntr.exact_rbeg1 = flanks[0];
-        vntr.exact_rend1 = flanks[1];
+        vntr.exact_beg1 = flanks[0];
+        vntr.exact_end1 = flanks[1];
         free(flanks);
 
-        if (bcf_get_pos1(v)==vntr.exact_rbeg1 && bcf_get_end1(v)==vntr.exact_rend1)
+        if (bcf_get_pos1(v)==vntr.exact_beg1 && bcf_get_end1(v)==vntr.exact_end1)
         {
             char** allele = bcf_get_allele(v);
             vntr.exact_repeat_tract.assign(allele[0]);
@@ -549,19 +568,19 @@ void Variant::update_vntr_from_info_fields(bcf_hdr_t *h, bcf1_t *v)
     }
     else
     {
-        vntr.exact_rbeg1 = bcf_get_pos1(v) - 1;
-        vntr.exact_rend1 = bcf_get_end1(v) + 1;
+        vntr.exact_beg1 = bcf_get_pos1(v) - 1;
+        vntr.exact_end1 = bcf_get_end1(v) + 1;
     }
 
     int32_t *fuzzy_flanks = NULL;
     n = 0;
     if (bcf_get_info_int32(h, v, "FZ_FLANKS", &fuzzy_flanks, &n)>0)
     {
-        vntr.fuzzy_rbeg1 = fuzzy_flanks[0];
-        vntr.fuzzy_rend1 = fuzzy_flanks[1];
+        vntr.fuzzy_beg1 = fuzzy_flanks[0];
+        vntr.fuzzy_end1 = fuzzy_flanks[1];
         free(fuzzy_flanks);
 
-        if (bcf_get_pos1(v)==vntr.fuzzy_rbeg1 && bcf_get_end1(v)==vntr.fuzzy_rend1)
+        if (bcf_get_pos1(v)==vntr.fuzzy_beg1 && bcf_get_end1(v)==vntr.fuzzy_end1)
         {
             char** allele = bcf_get_allele(v);
             vntr.fuzzy_repeat_tract.assign(allele[0]);
@@ -573,8 +592,8 @@ void Variant::update_vntr_from_info_fields(bcf_hdr_t *h, bcf1_t *v)
     }
     else
     {
-        vntr.fuzzy_rbeg1 = 0;
-        vntr.fuzzy_rend1 = 0;
+        vntr.fuzzy_beg1 = 0;
+        vntr.fuzzy_end1 = 0;
     }
 }
 
@@ -586,7 +605,7 @@ void Variant::update_bcf_with_vntr_info(bcf_hdr_t *h, bcf1_t *v)
     bcf_update_info_flag(h, v, "FUZZY", NULL, 1);
 
     //VNTR position and sequences
-    bcf_set_pos1(v, vntr.fuzzy_rbeg1);
+    bcf_set_pos1(v, vntr.fuzzy_beg1);
     kstring_t s = {0,0,0};
     s.l = 0;
     kputs(vntr.fuzzy_repeat_tract.c_str(), &s);
@@ -602,11 +621,11 @@ void Variant::update_bcf_with_vntr_info(bcf_hdr_t *h, bcf1_t *v)
     bcf_update_info_float(h, v, "FZ_CONCORDANCE", &vntr.fuzzy_motif_concordance, 1);
     bcf_update_info_float(h, v, "FZ_RL", &vntr.fuzzy_rl, 1);
     bcf_update_info_float(h, v, "FZ_LL", &vntr.fuzzy_ll, 1);
-    int32_t flank_pos1[2] = {vntr.exact_rbeg1-1, vntr.exact_rend1+1};
+    int32_t flank_pos1[2] = {vntr.exact_beg1-1, vntr.exact_end1+1};
     bcf_update_info_int32(h, v, "FLANKS", &flank_pos1, 2);
 
     //flank positions
-    int32_t fuzzy_flank_pos1[2] = {vntr.fuzzy_rbeg1-1, vntr.fuzzy_rend1+1};
+    int32_t fuzzy_flank_pos1[2] = {vntr.fuzzy_beg1-1, vntr.fuzzy_end1+1};
     bcf_update_info_int32(h, v, "FZ_FLANKS", &fuzzy_flank_pos1, 2);
     int32_t ru_count[2] = {vntr.fuzzy_no_exact_ru, vntr.fuzzy_total_no_ru};
     bcf_update_info_int32(h, v, "FZ_RU_COUNTS", &ru_count, 2);
@@ -668,7 +687,7 @@ void Variant::get_vntr_string(kstring_t* s)
     s->l = 0;
     kputs(chrom.c_str(), s);
     kputc(':', s);
-    kputw(vntr.exact_rbeg1, s);
+    kputw(vntr.exact_beg1, s);
     kputc(':', s);
     kputs(vntr.exact_repeat_tract.c_str(), s);
     kputc(':', s);
@@ -685,7 +704,7 @@ void Variant::get_fuzzy_vntr_string(kstring_t* s)
     s->l = 0;
     kputs(chrom.c_str(), s);
     kputc(':', s);
-    kputw(vntr.fuzzy_rbeg1, s);
+    kputw(vntr.fuzzy_beg1, s);
     kputc(':', s);
     kputs(vntr.fuzzy_repeat_tract.c_str(), s);
     kputc(':', s);

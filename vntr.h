@@ -54,12 +54,14 @@ class VNTR
 
     std::string definition_support; //either exact or fuzzy
 
+    ////////////////////
     //exact repeat tract
+    ////////////////////
     std::string exact_repeat_tract;   //repeat tract
-    int32_t exact_rbeg1;              //beginning of repeat tract
-    int32_t exact_rend1;              //end of repeat tract
-    float exact_rl;                   //number of repeat units on repeat tract
-    float exact_ll;                   //number of repeat units on longest allele
+    int32_t exact_beg1;               //beginning of repeat tract
+    int32_t exact_end1;               //end of repeat tract
+    float exact_rl;                   //length of repeat tract in base pairs
+    float exact_ll;                   //length of repeat tract (including longest alternate allele) in base pairs
     float exact_motif_concordance;    //motif concordance from hmm
     int32_t exact_trf_score;          //TRF score of exact repeat tract     
     int32_t exact_no_exact_ru;        //number exact repeat units from hmm
@@ -67,12 +69,14 @@ class VNTR
     std::string exact_lflank;         //left flank
     std::string exact_rflank;         //right flank
 
-    //fuzzy repeat tract
+    /////////////////
+    //fuzzy alignment
+    /////////////////
     std::string fuzzy_repeat_tract;   //repeat tract
-    int32_t fuzzy_rbeg1;              //beginning of repeat tract
-    int32_t fuzzy_rend1;              //end of repeat tract
-    float fuzzy_rl;                   //number of repeat units on repeat tract
-    float fuzzy_ll;                   //number of repeat units on longest allele
+    int32_t fuzzy_beg1;               //beginning of repeat tract
+    int32_t fuzzy_end1;               //end of repeat tract
+    float fuzzy_rl;                   //length of repeat tract in base pairs
+    float fuzzy_ll;                   //length of repeat tract (including longest alternate allele) in base pairs
     float fuzzy_motif_concordance;    //motif concordance from hmm
     int32_t fuzzy_trf_score;          //TRF score of fuzzy repeat tract
     int32_t fuzzy_no_exact_ru;        //number exact repeat units from hmm
@@ -80,8 +84,9 @@ class VNTR
     std::string fuzzy_lflank;         //left flank
     std::string fuzzy_rflank;         //right flank
 
-    //large repeat tract
+    //types of repeat
     bool is_large_repeat_tract;
+    bool is_interspersed_repeat_tract;
 
     /**
      * Constructor.
