@@ -38,13 +38,22 @@ class Igor : Program
     std::vector<GenomeInterval> intervals;
     std::string ref_fasta_file;
     bool smart;
+    bool debug;
 
     ///////
     //i/o//
     ///////
     BCFOrderedReader *odr;
     BCFOrderedWriter *odw;
-    
+
+    //////////
+    //filter//
+    //////////
+    std::string fexp;
+    Filter filter;
+    bool filter_exists;
+
+    //helper variables
     kstring_t s;
     kstring_t new_alleles;
     kstring_t old_alleles;
@@ -79,6 +88,8 @@ class Igor : Program
             TCLAP::ValueArg<std::string> arg_intervals("i", "i", "intervals []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "file", cmd);
             TCLAP::ValueArg<std::string> arg_output_vcf_file("o", "o", "output VCF file [-]", false, "-", "str", cmd);
+            TCLAP::ValueArg<std::string> arg_fexp("f", "f", "filter expression []", false, "", "str", cmd);
+            TCLAP::SwitchArg arg_debug("d", "d", "debug [false]", cmd, false);
             TCLAP::SwitchArg arg_smart("s", "s", "smart decomposition [false]", cmd, false);
             TCLAP::UnlabeledValueArg<std::string> arg_input_vcf_file("<in.vcf>", "input VCF file", true, "","file", cmd);
 
@@ -86,7 +97,9 @@ class Igor : Program
 
             input_vcf_file = arg_input_vcf_file.getValue();
             output_vcf_file = arg_output_vcf_file.getValue();
+            fexp = arg_fexp.getValue();
             smart = arg_smart.getValue();
+            debug = arg_debug.getValue();
             parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
         }
         catch (TCLAP::ArgException &e)
@@ -109,6 +122,13 @@ class Igor : Program
         bcf_hdr_append(odw->hdr, "##INFO=<ID=OLD_MULTIALLELIC,Number=1,Type=String,Description=\"Original chr:pos:ref:alt encoding\">\n");
         odw->write_hdr();
 
+        /////////////////////////
+        //filter initialization//
+        /////////////////////////
+        filter.parse(fexp.c_str(), false);
+        filter_exists = fexp=="" ? false : true;
+
+        //helper variables
         s = {0,0,0};
         old_alleles = {0,0,0};
         new_alleles = {0,0,0};
@@ -125,6 +145,7 @@ class Igor : Program
         ////////////////////////
         //tools initialization//
         ////////////////////////
+        vm = new VariantManip();
     }
 
     /**
@@ -166,14 +187,23 @@ class Igor : Program
 
     void decompose()
     {
+        bcf_hdr_t* h = odr->hdr;
         bcf1_t* v = bcf_init();
         Variant variant;
 
         while (odr->read(v))
         {
-//            std::cerr << "=============================\n";
-//            bcf_print(odr->hdr, v);
-//            std::cerr << "=============================\n";
+            bcf_unpack(v, BCF_UN_INFO);
+            if (debug) bcf_print_liten(h, v);
+
+            if (filter_exists)
+            {
+                vm->classify_variant(h, v, variant);
+                if (!filter.apply(h, v, &variant, false))
+                {
+                    continue;
+                }
+            }
 
             int32_t n_allele = bcf_get_n_allele(v);
 
