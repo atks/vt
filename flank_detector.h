@@ -73,7 +73,7 @@ class FlankDetector
     int32_t min_beg0;
     int32_t max_end0;
     std::string polished_repeat_tract;
-    
+
     ////////////////////////
     //purity score variables
     ////////////////////////
@@ -83,6 +83,12 @@ class FlankDetector
     uint32_t total_no_ru;
     float rl;
     int32_t trf_score;
+
+    ///////////////////////////////////
+    //composition and entropy variables
+    ///////////////////////////////////
+    int32_t comp[4];
+    float entropy;
 
     ///////
     //tools
@@ -122,26 +128,31 @@ class FlankDetector
      * match in all its phases.
      */
     std::string choose_exact_repeat_unit(std::string& seq, std::string& motif);
-        
+
     /**
      * Polish repeat tract ends.
      */
-    void polish_repeat_tract_ends(Variant& variant);   
-    
+    void polish_repeat_tract_ends(Variant& variant);
+
     /**
      * Polish repeat tract ends.
      */
-    void polish_repeat_tract_ends(std::string& repeat_tract, std::string& motif, bool debug=false);    
+    void polish_repeat_tract_ends(std::string& repeat_tract, std::string& motif, bool debug=false);
 
     /**
      * Computes purity score of a sequence with respect to a motif.
      */
     void compute_purity_score(Variant& variant, std::string mode);
-        
+
     /**
      * Computes purity score of a sequence with respect to a motif.
      */
-    void compute_purity_score(std::string& repeat_tract, std::string motif);   
+    void compute_purity_score(std::string& repeat_tract, std::string motif);
+
+    /**
+     * Computes composition and entropy ofrepeat tract.
+     */
+    void compute_composition_and_entropy(std::string& repeat_tract);
 };
 
 #endif

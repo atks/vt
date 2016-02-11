@@ -44,27 +44,16 @@ class VNTR
     //chromosome
     int32_t rid;  //rid, redundant data with Variant. todo: something about this.
 
+    ///////
     //motif
+    ///////
     std::string motif;         //motif
     std::string ru;            //repeat unit on the reference
-    std::string basis;         //unique bases found in motif
     int32_t mlen;              //length of motif
-    float motif_score;         //motif score from motif tree
-    int32_t trf_score;         //score based on Tandem Repeat Finder's scoring scheme.
+    std::string basis;         //unique bases found in motif
+    int32_t blen;              //basis length
 
     std::string definition_support; //either exact or fuzzy
-
-
-//
-//    //exact alignment related statistics
-//    std::string EX_REPEAT_TRACT;
-//    std::string EX_COMP;
-//    std::string EX_ENTROPY;
-//    std::string EX_RL;
-//    std::string EX_LL;
-//    std::string EX_RU_COUNTS;
-//    std::string EX_SCORE;
-//    std::string EX_TRF_SCORE;
 
     ////////////////////
     //exact repeat tract

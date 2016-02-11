@@ -99,13 +99,10 @@ void FlankDetector::detect_flanks(bcf_hdr_t* h, bcf1_t *v, Variant& variant, uin
             std:: cerr << "\n";
         }
 
-        /////////////////
-        //exact alignment
-        /////////////////
         if (debug)
         {
             std::cerr << "++++++++++++++++++++++++++++++++++++++++++++\n";
-            std::cerr << "Exact left/right alignment\n";
+            std::cerr << "Detect and remove anchor base\n";
         }
 
         if (vntr.exact_repeat_tract.size()>2)
@@ -131,6 +128,7 @@ void FlankDetector::detect_flanks(bcf_hdr_t* h, bcf1_t *v, Variant& variant, uin
             }
             else
             {
+                //this works only for simple indels
                 if (vntr.exact_repeat_tract.size()>=3)
                 {
                     vntr.exact_repeat_tract = vntr.exact_repeat_tract.substr(1, vntr.exact_repeat_tract.size()-2);
@@ -157,10 +155,17 @@ void FlankDetector::detect_flanks(bcf_hdr_t* h, bcf1_t *v, Variant& variant, uin
         vntr.exact_total_no_ru = ahmm->motif_count;
         vntr.exact_rl = ahmm->repeat_tract_len;
 
+        compute_composition_and_entropy(vntr.exact_repeat_tract);
+        vntr.exact_comp[0] = comp[0];
+        vntr.exact_comp[1] = comp[1];
+        vntr.exact_comp[2] = comp[2];
+        vntr.exact_comp[3] = comp[3];
+        vntr.exact_entropy = entropy;
+            
         if (debug)
         {
             std::cerr << "\n";
-//            std::cerr << "repeat_tract              : " << vntr.exact_repeat_tract << "\n";
+            std::cerr << "repeat_tract              : " << vntr.exact_repeat_tract << "\n";
             std::cerr << "position                  : [" << vntr.exact_beg1 << "," << vntr.exact_end1 << "]\n";
             std::cerr << "score                     : " << vntr.exact_score << "\n";
             std::cerr << "repeat units              : " << vntr.exact_rl << "\n";
@@ -175,77 +180,6 @@ void FlankDetector::detect_flanks(bcf_hdr_t* h, bcf1_t *v, Variant& variant, uin
         {
             std::cerr << "********************************************\n";
             std::cerr << "DETECTING REPEAT TRACT FUZZILY\n";
-        }
-
-        /////////////////
-        //exact alignment
-        /////////////////
-        if (debug)
-        {
-            std::cerr << "++++++++++++++++++++++++++++++++++++++++++++\n";
-            std::cerr << "Exact left/right alignment\n";
-        }
-
-        if (vntr.exact_repeat_tract.size()>2)
-        {
-            //removing the anchor bases
-            if (vntr.mlen==1)
-            {
-                int32_t offset = 0;
-                int32_t length = vntr.exact_repeat_tract.size();
-                if (vntr.exact_repeat_tract.at(0)!=vntr.motif.at(0))
-                {
-                    offset = 1;
-                    ++vntr.exact_beg1;
-                }
-
-                if (vntr.exact_repeat_tract.at(vntr.exact_repeat_tract.size()-1)!=vntr.motif.at(0))
-                {
-                    length -= offset+1;
-                    --vntr.exact_end1;
-                }
-
-                vntr.exact_repeat_tract = vntr.exact_repeat_tract.substr(offset, length);
-            }
-            else
-            {
-                if (vntr.exact_repeat_tract.size()>=3)
-                {
-                    vntr.exact_repeat_tract = vntr.exact_repeat_tract.substr(1, vntr.exact_repeat_tract.size()-2);
-                    ++vntr.exact_beg1;
-                    --vntr.exact_end1;
-                }
-            }
-        }
-        //this is for nonexistent repeat units
-        //
-        // RU : T
-        // repeat_tract : G[T]C where T is an insert
-        else if (vntr.exact_repeat_tract.size()==2)
-        {
-
-        }
-
-        vntr.ru = choose_repeat_unit(vntr.exact_repeat_tract, vntr.motif);
-        ahmm->set_model(vntr.ru.c_str());
-        ahmm->align(vntr.exact_repeat_tract.c_str(), qual.c_str());
-
-        vntr.exact_score = ahmm->motif_concordance;
-        vntr.exact_no_exact_ru = ahmm->exact_motif_count;
-        vntr.exact_total_no_ru = ahmm->motif_count;
-        vntr.exact_rl = ahmm->repeat_tract_len;
-        vntr.exact_trf_score = ahmm->trf_score;
-
-        if (debug)
-        {
-            std::cerr << "\n";
-            std::cerr << "repeat_tract              : " << vntr.exact_repeat_tract << "\n";
-            std::cerr << "position                  : [" << vntr.exact_beg1 << "," << vntr.exact_end1 << "]\n";
-            std::cerr << "score         : " << vntr.exact_score << "\n";
-            std::cerr << "repeat units              : " << vntr.exact_rl << "\n";
-            std::cerr << "exact repeat units        : " << vntr.exact_no_exact_ru << "\n";
-            std::cerr << "total no. of repeat units : " << vntr.exact_total_no_ru << "\n";
-            std::cerr << "\n";
         }
 
         ///////////////////////
@@ -370,6 +304,13 @@ void FlankDetector::detect_flanks(bcf_hdr_t* h, bcf1_t *v, Variant& variant, uin
         
         if (lflank) free(lflank);
         if (rflank) free(rflank);
+
+        compute_composition_and_entropy(vntr.fuzzy_repeat_tract);
+        vntr.fuzzy_comp[0] = comp[0];
+        vntr.fuzzy_comp[1] = comp[1];
+        vntr.fuzzy_comp[2] = comp[2];
+        vntr.fuzzy_comp[3] = comp[3];
+        vntr.fuzzy_entropy = entropy;
 
         if (debug)
         {
@@ -568,4 +509,40 @@ void FlankDetector::compute_purity_score(std::string& repeat_tract, std::string 
     trf_score = ahmm->trf_score;
 
     return;
+}
+
+/**
+ * Computes composition and entropy ofrepeat tract.
+ */
+void FlankDetector::compute_composition_and_entropy(std::string& repeat_tract)
+{
+    int32_t aux_comp[10] = {0,0,0,0,0,0,0,0,0,0};
+    int32_t n = repeat_tract.size();
+    
+    for (uint32_t i=0; i<n; ++i)
+    {
+        ++aux_comp[(repeat_tract.at(i)-65)>>1];
+    }
+    
+    float p[4] = {(float) aux_comp[0]/n, (float) aux_comp[1]/n, (float) aux_comp[3]/n, (float) aux_comp[9]/n};
+    
+    entropy = 0;
+    if (p[0]) entropy += p[0] * std::log2(p[0]);
+    if (p[1]) entropy += p[1] * std::log2(p[1]);
+    if (p[2]) entropy += p[2] * std::log2(p[2]);
+    if (p[3]) entropy += p[3] * std::log2(p[3]);
+    entropy = -entropy;
+        
+    comp[0] = std::round(p[0] * 100); 
+    comp[1] = std::round(p[1] * 100);
+    comp[2] = std::round(p[2] * 100);
+    comp[3] = std::round(p[3] * 100);
+            
+//    std::cerr << "tract: " << repeat_tract << "\n";
+//    std::cerr << "A: " << comp[0] << " " << aux_comp[0] << "\n";
+//    std::cerr << "C: " << comp[1] << " " << aux_comp[1] << "\n";
+//    std::cerr << "G: " << comp[2] << " " << aux_comp[3] << "\n";
+//    std::cerr << "T: " << comp[3] << " " << aux_comp[9] << "\n";
+//    std::cerr << "\n";   
+//    std::cerr << "entropy: " << entropy << "\n";    
 }

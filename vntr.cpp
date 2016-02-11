@@ -36,7 +36,6 @@ void VNTR::clear()
     rid = -1;
     motif.clear();
     ru.clear();
-    motif_score = 0;
     mlen = 0;
 
     exact_repeat_tract.clear();
@@ -155,16 +154,4 @@ void VNTR::print()
     std::cerr << "exact repeat units              : " << fuzzy_no_exact_ru << "\n";
     std::cerr << "total no. of repeat units       : " << fuzzy_total_no_ru << "\n";
     std::cerr << "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n";
-
-
-    std::string fuzzy_repeat_tract;   //repeat tract
-    int32_t fuzzy_beg1;              //beginning of repeat tract
-    int32_t fuzzy_end1;              //end of repeat tract
-    float fuzzy_rl;                   //number of repeat units on repeat tract
-    float fuzzy_ll;                   //number of repeat units on longest allele
-    float fuzzy_score;    //motif concordance from hmm
-    int32_t fuzzy_no_exact_ru;        //number exact repeat units from hmm
-    int32_t fuzzy_total_no_ru;        //total no of repeat units from hmm
-    std::string fuzzy_lflank;         //left flank
-    std::string fuzzy_rflank;         //right flank
 };

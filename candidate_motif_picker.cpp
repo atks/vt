@@ -162,11 +162,10 @@ void CandidateMotifPicker::set_motif_from_info_field(Variant& variant)
     if (bcf_get_info_string(variant.h, variant.v, "MOTIF", &motif, &n)>0)
     {
         vntr.motif.assign(motif);
-        vntr.basis = VNTR::get_basis(motif, (uint32_t) n);
-        vntr.mlen = vntr.motif.size();
-        free(motif);
-
         vntr.basis = vntr.get_basis(vntr.motif);
+        vntr.mlen = vntr.motif.size();
+        vntr.blen = vntr.basis.size();
+        free(motif);
     }
     else
     {
@@ -209,7 +208,7 @@ bool CandidateMotifPicker::next_motif(Variant& variant, int32_t mode)
                 variant.vntr.motif = cm.motif;
                 variant.vntr.basis = VNTR::get_basis(cm.motif);
                 variant.vntr.mlen = cm.motif.size();
-                variant.vntr.motif_score = cm.score;
+                variant.vntr.blen = variant.vntr.basis.size();
                 mt->pcm.pop();
                 return true;
             }
@@ -236,7 +235,7 @@ bool CandidateMotifPicker::next_motif(Variant& variant, int32_t mode)
             variant.vntr.motif = cm.motif;
             variant.vntr.basis = VNTR::get_basis(cm.motif);
             variant.vntr.mlen = cm.motif.size();
-            variant.vntr.motif_score = cm.score;
+            variant.vntr.blen = variant.vntr.basis.size();
             mt->pcm.pop();
             
 //            std::cerr << variant.vntr.motif << " " << variant.vntr.motif_score  << "\n";

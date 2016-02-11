@@ -51,9 +51,10 @@ class Igor : Program
     //motif related
     std::string END;
     std::string MOTIF;
+    std::string MLEN;
     std::string RU;
     std::string BASIS;
-    std::string BASIS_LEN;
+    std::string BLEN;
 
     //exact alignment related statistics
     std::string EX_REPEAT_TRACT;
@@ -149,11 +150,7 @@ class Igor : Program
         ///////////
         //options//
         ///////////
-        if (vntr_annotation_mode!="r" && vntr_annotation_mode!="c")
-        {
-            fprintf(stderr, "[%s:%d %s] Not a valid mode of VNTR annotation: %s\n", __FILE__,__LINE__,__FUNCTION__, vntr_annotation_mode.c_str());
-            exit(1);
-        }
+        
 
         /////////////////////////
         //filter initialization//
@@ -178,7 +175,8 @@ class Igor : Program
         MOTIF = bcf_hdr_append_info_with_backup_naming(odw->hdr, "MOTIF", "1", "String", "Canonical motif in an VNTR.", rename);
         RU = bcf_hdr_append_info_with_backup_naming(odw->hdr, "RU", "1", "String", "Repeat unit in the reference sequence.", rename);
         BASIS = bcf_hdr_append_info_with_backup_naming(odw->hdr, "BASIS", "1", "String", "Basis nucleotides in the motif.", rename);
-        BASIS_LEN = bcf_hdr_append_info_with_backup_naming(odw->hdr, "BASIS_LEN", "1", "Integer", "Basis length.", rename);
+        MLEN = bcf_hdr_append_info_with_backup_naming(odw->hdr, "MLEN", "1", "Integer", "Motif length.", rename);
+        BLEN = bcf_hdr_append_info_with_backup_naming(odw->hdr, "BLEN", "1", "Integer", "Basis length.", rename);
 
         //exact alignment related statisitcs
         EX_REPEAT_TRACT = bcf_hdr_append_info_with_backup_naming(odw->hdr, "EX_REPEAT_TRACT", "2", "Integer", "Left and right flank positions of the Indel, left/right alignment invariant, not necessarily equal to POS.", rename);
@@ -309,8 +307,8 @@ class Igor : Program
 
             if (vtype&VT_INDEL)
             {
+                std::cerr << "method " << method << "\n";
                 
-
                 va->annotate(variant, method);
 
                 VNTR& vntr = variant.vntr;
@@ -320,9 +318,10 @@ class Igor : Program
                 
                 bcf_update_info_int32(h, v, END.c_str(), &variant.end1, 1);
                 bcf_update_info_string(h, v, MOTIF.c_str(), vntr.motif.c_str());
+                bcf_update_info_int32(h, v, MLEN.c_str(), &vntr.mlen, 1);
                 bcf_update_info_string(h, v, RU.c_str(), vntr.ru.c_str());
                 bcf_update_info_string(h, v, BASIS.c_str(), vntr.basis.c_str());
-                bcf_update_info_int32(h, v, BASIS_LEN.c_str(), &variant.end1, 1);
+                bcf_update_info_int32(h, v, BLEN.c_str(), &vntr.blen, 1);
         
                 //exact characteristics
                 int32_t exact_flank_pos1[2] = {vntr.exact_beg1, vntr.exact_end1};
@@ -338,15 +337,15 @@ class Igor : Program
                
                 //fuzzy characteristics
                 int32_t fuzzy_flank_pos1[2] = {vntr.fuzzy_beg1, vntr.fuzzy_end1};
-                bcf_update_info_int32(h, v, EX_REPEAT_TRACT.c_str(), &fuzzy_flank_pos1, 2);
-                bcf_update_info_int32(h, v, EX_COMP.c_str(), &vntr.fuzzy_comp[0], 4);
-                bcf_update_info_float(h, v, EX_ENTROPY.c_str(), &vntr.fuzzy_entropy, 1);
-                bcf_update_info_float(h, v, EX_RL.c_str(), &vntr.fuzzy_rl, 1);
-                bcf_update_info_float(h, v, EX_LL.c_str(), &vntr.fuzzy_ll, 1);
+                bcf_update_info_int32(h, v, FZ_REPEAT_TRACT.c_str(), &fuzzy_flank_pos1, 2);
+                bcf_update_info_int32(h, v, FZ_COMP.c_str(), &vntr.fuzzy_comp[0], 4);
+                bcf_update_info_float(h, v, FZ_ENTROPY.c_str(), &vntr.fuzzy_entropy, 1);
+                bcf_update_info_float(h, v, FZ_RL.c_str(), &vntr.fuzzy_rl, 1);
+                bcf_update_info_float(h, v, FZ_LL.c_str(), &vntr.fuzzy_ll, 1);
                 int32_t fuzzy_ru_count[2] = {vntr.fuzzy_no_exact_ru, vntr.fuzzy_total_no_ru};
-                bcf_update_info_int32(h, v, EX_RU_COUNTS.c_str(), &fuzzy_ru_count, 2);
-                bcf_update_info_float(h, v, EX_SCORE.c_str(), &vntr.fuzzy_score, 1);
-                bcf_update_info_float(h, v, EX_TRF_SCORE.c_str(), &vntr.fuzzy_trf_score, 1);
+                bcf_update_info_int32(h, v, FZ_RU_COUNTS.c_str(), &fuzzy_ru_count, 2);
+                bcf_update_info_float(h, v, FZ_SCORE.c_str(), &vntr.fuzzy_score, 1);
+                bcf_update_info_float(h, v, FZ_TRF_SCORE.c_str(), &vntr.fuzzy_trf_score, 1);
              
                 update_flankseq(h, v, variant.chrom.c_str(),
                                 variant.beg1-10, variant.beg1-1,

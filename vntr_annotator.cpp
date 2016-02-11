@@ -124,59 +124,33 @@ void VNTRAnnotator::annotate(Variant& variant, std::string mode)
         //2. choose a set of candidate motifs and pick motif
         //3. detect repeat region and evaluate
         //4. iterate 2 and 3
+        
+        if (debug) std::cerr << "============================================\n";
+        if (debug) std::cerr << "ANNOTATING INDEL\n";
 
-        //EXACT MODE
-        if (mode=="e")
+        //1. selects candidate region by fuzzy left and right alignment
+        cre->pick_candidate_region(variant, EXACT_LEFT_RIGHT_ALIGNMENT);
+
+        //2. detect candidate motifs from a reference sequence
+        cmp->generate_candidate_motifs(variant);
+
+        //this cannot possibly fail as next_motif() guarantees it
+        if (!cmp->next_motif(variant, CHECK_MOTIF_PRESENCE_IN_ALLELE))
         {
-            if (debug) std::cerr << "============================================\n";
-            if (debug) std::cerr << "ANNOTATING INDEL EXACTLY\n";
-
-            //1. pick candidate region using exact left and right alignment
-            cre->pick_candidate_region(variant, EXACT_LEFT_RIGHT_ALIGNMENT);
-
-            //2. detect candidate motifs from a reference sequence
-            cmp->generate_candidate_motifs(variant);
-
-            if (!cmp->next_motif(variant, CHECK_MOTIF_PRESENCE_IN_ALLELE ))
-            {
-                std::cerr << "oops, no candidate motif for next step\n";
-            }
-
-            //is there a fail safe here????????
-
-            //3. detect flanks and evaluate reference tract
-            fd->detect_flanks(h, v, variant, CLIP_ENDS);
-
-            if (debug) std::cerr << "============================================\n";
-            return;
+            std::cerr << "oops, no candidate motif for next step\n";
         }
-        //FUZZY DETECTION
-        else if (mode=="f")
-        {
-            if (debug) std::cerr << "============================================\n";
-            if (debug) std::cerr << "ANNOTATING INDEL FUZZILY\n";
 
-            //1. selects candidate region by fuzzy left and right alignment
-            cre->pick_candidate_region(variant, EXACT_LEFT_RIGHT_ALIGNMENT);
+        //3a. detect flanks
+        fd->detect_flanks(h, v, variant, CLIP_ENDS);
 
-            //2. detect candidate motifs from a reference sequence
-            cmp->generate_candidate_motifs(variant);
+        //3b. evaluate reference length
+        fd->detect_flanks(h, v, variant, FRAHMM);
 
-            if (!cmp->next_motif(variant, CHECK_MOTIF_PRESENCE_IN_ALLELE))
-            {
-                std::cerr << "oops, no candidate motif for next step\n";
-            }
+        //introduce reiteration based on concordance and exact concordance.
 
-            //is there a fail safe here????????
-
-            //3. evaluate reference length
-            fd->detect_flanks(h, v, variant, FRAHMM);
-
-            //introduce reiteration based on concordance and exact concordance.
-
-            if (debug) std::cerr << "============================================\n";
-            return;
-        }
+        if (debug) std::cerr << "============================================\n";
+        return;
+        
     }
 }
 
