@@ -40,43 +40,47 @@ class Igor : Program
     std::string output_vcf_file;
     std::vector<GenomeInterval> intervals;
     std::string interval_list;
-
+    bool debug;
     std::string method;                //methods of detection
     std::string vntr_annotation_mode;  //modes of annotation
     int32_t vntr_classification;       //vntr classification schemas
     bool override_tag;
-   
     bool add_vntr_record;
-   
     bool add_flank_annotation;     //add flank annotation
 
-    //INFO tags
-    std::string TR;               //annotating indels with overlapping tandem repeat
 
-    std::string MOTIF;            //canonical motif of tandem repeat
-    std::string GMOTIF;           //generating motif used in fuzzy alignment
-    std::string RU;               //repeat unit on reference sequence that is in phase from the start position of the variant
-    std::string BASIS;            //unique bases in a motif
+    //motif related
+    std::string END;
+    std::string MOTIF;
+    std::string RU;
+    std::string BASIS;
+    std::string BASIS_LEN;
 
-    std::string EXACT;            //VNTR described by exact alignment, this is used if the purity score of the fuzzy alignment is too low.
-    std::string FUZZY;            //VNTR described by fuzzy alignment
+    //exact alignment related statistics
+    std::string EX_COMP;
+    std::string EX_ENTROPY;
+    std::string EX_TRF_SCORE;
+    std::string EX_RL;
+    std::string EX_LL;
+    std::string EX_SCORE;
+    std::string EX_RU_COUNTS;
+    std::string EX_FLANKS;
 
-    std::string RL;               //repeat tract length
-    std::string LL;               //repeat tract length of the longest allele
-    std::string CONCORDANCE;      //concordance of the repeat unit
-    std::string RU_COUNTS;        //repeat unit counts - exact and inexact
-    std::string FLANKS;           //flank positions
+    //fuzzy alignment related statistics
+    std::string FZ_COMP;
+    std::string FZ_ENTROPY;
+    std::string FZ_TRF_SCORE;
+    std::string FZ_RL;
+    std::string FZ_LL;
+    std::string FZ_SCORE;
+    std::string FZ_RU_COUNTS;
+    std::string FZ_FLANKS;
 
-    std::string FZ_RL;            //repeat tract length
-    std::string FZ_LL;            //repeat tract length of the longest allele
-    std::string FZ_CONCORDANCE;   //concordance of the repeat unit
-    std::string FZ_RU_COUNTS;     //repeat unit counts - exact and inexact
-    std::string FZ_FLANKS;        //flank positions
-
-    std::string SCORE;            //concordance of the repeat unit for existing repeat tract in a VNTR record
-
-    std::string MODE;             //mode of VNTR annotation, this is either exact or fuzzy.  This is important as in fuzzy mode
-                                  //when the cutoffs fail, the exact mode is considered too and annotation may fall back on that.
+    //used in classification
+    std::string EXACT;
+    std::string FUZZY;
+    std::string TR;
+    std::string MODE;
 
     //helper variables for populating additional VNTR records
     uint32_t no_samples;
@@ -85,7 +89,6 @@ class Igor : Program
     //convenience kstring so that we do not have to free memory ALL the time.
     kstring_t s;
 
-    bool debug;
 
     /////////////
     //vntr buffer
@@ -181,7 +184,7 @@ class Igor : Program
             add_flank_annotation = arg_add_flank_annotation.getValue();
             fexp = arg_fexp.getValue();
             add_vntr_record = arg_add_vntr_record.getValue();
-            
+
             debug = arg_debug.getValue();
             ref_fasta_file = arg_ref_fasta_file.getValue();
         }
@@ -231,46 +234,41 @@ class Igor : Program
         //INFO header adding for VCF//
         //////////////////////////////
         bool rename = false;
-        
-        bcf_hdr_append(odw->hdr, "##INFO=<ID=END,Number=1,Type=Integer,Description=\"End position of the variant.\">");
+
+        //motif related
+        END = bcf_hdr_append_info_with_backup_naming(odw->hdr, "END", "1", "Integer", "End position of the variant", rename);
         MOTIF = bcf_hdr_append_info_with_backup_naming(odw->hdr, "MOTIF", "1", "String", "Canonical motif in an VNTR.", rename);
-        GMOTIF = bcf_hdr_append_info_with_backup_naming(odw->hdr, "GMOTIF", "1", "String", "Generating Motif used in fuzzy alignment.", rename);
         RU = bcf_hdr_append_info_with_backup_naming(odw->hdr, "RU", "1", "String", "Repeat unit in the reference sequence.", rename);
         BASIS = bcf_hdr_append_info_with_backup_naming(odw->hdr, "BASIS", "1", "String", "Basis nucleotides in the motif.", rename);
-        
-        
-        bcf_hdr_append(odw->hdr, "##INFO=<ID=EX_TRF_SCORE,Number=1,Type=Integer,Description=\"TRF Score of the tandem repeat.\">");
+        BASIS_LEN = bcf_hdr_append_info_with_backup_naming(odw->hdr, "BASIS_LEN", "1", "Integer", "Basis length.", rename);
 
-        RL = bcf_hdr_append_info_with_backup_naming(odw->hdr, "EX_RL", "1", "Float", "Reference repeat unit length", rename);
-        LL = bcf_hdr_append_info_with_backup_naming(odw->hdr, "EX_LL", "1", "Float", "Longest repeat unit length", rename);
-        CONCORDANCE = bcf_hdr_append_info_with_backup_naming(odw->hdr, "EX_CONCORDANCE", "1", "Float", "Concordance of repeat unit.", rename);
-        RU_COUNTS = bcf_hdr_append_info_with_backup_naming(odw->hdr, "EX_RU_COUNTS", "2", "Integer", "Number of exact repeat units and total number of repeat units.", rename);
-        FLANKS = bcf_hdr_append_info_with_backup_naming(odw->hdr, "EX_FLANKS", "2", "Integer", "Left and right flank positions of the Indel, left/right alignment invariant, not necessarily equal to POS.", rename);
+        //exact alignment related statisitcs
+        EX_COMP = bcf_hdr_append_info_with_backup_naming(odw->hdr, "EX_COMP", "4", "Integer", "Composition(%) of bases in repeat tract", rename);
+        EX_ENTROPY = bcf_hdr_append_info_with_backup_naming(odw->hdr, "EX_ENTROPY", "1", "Float", "Entropy measure of repeat tract", rename);
+        EX_TRF_SCORE = bcf_hdr_append_info_with_backup_naming(odw->hdr, "EX_TRF_SCORE", "1", "Float", "TRF Score for M/I/D as 2/-7/-7", rename);
+        EX_RL = bcf_hdr_append_info_with_backup_naming(odw->hdr, "EX_RL", "1", "Float", "Reference repeat tract length in bases from exact alignment", rename);
+        EX_LL = bcf_hdr_append_info_with_backup_naming(odw->hdr, "EX_LL", "1", "Float", "Longest repeat tract length in bases from exact alignment", rename);
+        EX_SCORE = bcf_hdr_append_info_with_backup_naming(odw->hdr, "EX_SCORE", "1", "Float", "Concordance of repeat unit.", rename);
+        EX_RU_COUNTS = bcf_hdr_append_info_with_backup_naming(odw->hdr, "EX_RU_COUNTS", "2", "Integer", "Number of exact repeat units and total number of repeat units.", rename);
+        EX_FLANKS = bcf_hdr_append_info_with_backup_naming(odw->hdr, "EX_FLANKS", "2", "Integer", "Left and right flank positions of the Indel, left/right alignment invariant, not necessarily equal to POS.", rename);
 
-        //add RPA
+        //fuzzy alignment related statisitcs
+        FZ_COMP = bcf_hdr_append_info_with_backup_naming(odw->hdr, "FZ_COMP", "4", "Integer", "Composition(%) of bases in repeat tract", rename);
+        FZ_ENTROPY = bcf_hdr_append_info_with_backup_naming(odw->hdr, "FZ_ENTROPY", "1", "Float", "Entropy measure of repeat tract", rename);
+        FZ_TRF_SCORE = bcf_hdr_append_info_with_backup_naming(odw->hdr, "FZ_TRF_SCORE", "1", "Float", "TRF Score for M/I/D as 2/-7/-7", rename);
+        FZ_RL = bcf_hdr_append_info_with_backup_naming(odw->hdr, "FZ_RL", "1", "Float", "Reference repeat tract length in bases from exact alignment", rename);
+        FZ_LL = bcf_hdr_append_info_with_backup_naming(odw->hdr, "FZ_LL", "1", "Float", "Longest repeat tract length in bases from exact alignment", rename);
+        FZ_SCORE = bcf_hdr_append_info_with_backup_naming(odw->hdr, "FZ_SCORE", "1", "Float", "Concordance of repeat unit.", rename);
+        FZ_RU_COUNTS = bcf_hdr_append_info_with_backup_naming(odw->hdr, "FZ_RU_COUNTS", "2", "Integer", "Number of exact repeat units and total number of repeat units.", rename);
+        FZ_FLANKS = bcf_hdr_append_info_with_backup_naming(odw->hdr, "FZ_FLANKS", "2", "Integer", "Left and right flank positions of the Indel, left/right alignment invariant, not necessarily equal to POS.", rename);
 
-        if (method=="f")
-        {
-            FZ_RL = bcf_hdr_append_info_with_backup_naming(odw->hdr, "FZ_RL", "1", "Float", "Fuzzy reference repeat unit length", rename);
-            FZ_LL = bcf_hdr_append_info_with_backup_naming(odw->hdr, "FZ_LL", "1", "Float", "Fuzzy longest repeat unit length", rename);
-            FZ_CONCORDANCE = bcf_hdr_append_info_with_backup_naming(odw->hdr, "FZ_CONCORDANCE", "1", "Float", "Fuzzy concordance of repeat unit.", rename);
-            bcf_hdr_append_info_with_backup_naming(odw->hdr, "FZ_TRF_SCORE", "1", "Float", "Fuzzy concordance of repeat unit.", rename);
-            
-            FZ_RU_COUNTS = bcf_hdr_append_info_with_backup_naming(odw->hdr, "FZ_RU_COUNTS", "2", "Integer", "Fuzzy number of exact repeat units and total number of repeat units.", rename);
-            FZ_FLANKS = bcf_hdr_append_info_with_backup_naming(odw->hdr, "FZ_FLANKS", "2", "Integer", "Fuzzy left and right flank positions of the Indel, left/right alignment invariant, not necessarily equal to POS.", rename);
-        }
-
+        //used in classification
         EXACT = bcf_hdr_append_info_with_backup_naming(odw->hdr, "EXACT", "0", "Flag", "Exact mode of VNTR annotation", rename);
         FUZZY = bcf_hdr_append_info_with_backup_naming(odw->hdr, "FUZZY", "0", "Flag", "Fuzzy mode of VNTR annotation", rename);
         TR = bcf_hdr_append_info_with_backup_naming(odw->hdr, "TR", "1", "String", "Tandem repeat associated with this indel.", rename);
 
-        if (vntr_annotation_mode=="c")
-        {
-            SCORE = bcf_hdr_append_info_with_backup_naming(odw->hdr, "SCORE", "1", "Float", "Concordance of repeat unit.", rename);
-        }
-
         bcf_hdr_append(odw->hdr, "##INFO=<ID=LARGE_REPEAT_REGION,Number=0,Type=Flag,Description=\"Very large repeat region, vt only detects up to 1000bp long regions.\">");
-        if (add_flank_annotation) bcf_hdr_append(odw->hdr, "##INFO=<ID=FLANKSEQ,Number=1,Type=String,Description=\"Flanking sequence 10bp on either side of detected repeat region.\">");
+        bcf_hdr_append(odw->hdr, "##INFO=<ID=FLANKSEQ,Number=1,Type=String,Description=\"Flanking sequence 10bp on either side of detected repeat region.\">");
 
         //helper variable initialization for adding genotype fields for additional vntr records
         if (add_vntr_record)
@@ -309,7 +307,6 @@ class Igor : Program
         std::clog << "\n";
         std::clog << "options:     input VCF file(s)        " << input_vcf_file << "\n";
         std::clog << "         [o] output VCF file          " << output_vcf_file << "\n";
-        std::clog << "         [m] method of VNTR detection " << method << "\n";
         std::clog << "         [v] add VNTR records         " << (add_vntr_record ? "true" : "false") << "\n";
         std::clog << "         [k] add_flank_annotation     " << (add_flank_annotation ? "true" : "false") << "\n";
         print_boo_op("         [d] debug                    ", debug);
@@ -546,16 +543,16 @@ class Igor : Program
         bcf_update_info_string(h, v, RU.c_str(), vntr.ru.c_str());
 
         //exact characteristics
-        bcf_update_info_float(h, v, CONCORDANCE.c_str(), &vntr.exact_motif_concordance, 1);
-        bcf_update_info_float(h, v, RL.c_str(), &vntr.exact_rl, 1);
-        bcf_update_info_float(h, v, LL.c_str(), &vntr.exact_ll, 1);
+        bcf_update_info_float(h, v, EX_SCORE.c_str(), &vntr.exact_motif_concordance, 1);
+        bcf_update_info_float(h, v, EX_RL.c_str(), &vntr.exact_rl, 1);
+        bcf_update_info_float(h, v, EX_LL.c_str(), &vntr.exact_ll, 1);
         int32_t ru_count[2] = {vntr.exact_no_exact_ru, vntr.exact_total_no_ru};
-        bcf_update_info_int32(h, v, RU_COUNTS.c_str(), &ru_count, 2);
+        bcf_update_info_int32(h, v, EX_RU_COUNTS.c_str(), &ru_count, 2);
         int32_t flank_pos1[2] = {variant.vntr.exact_beg1-1, variant.vntr.exact_end1+1};
-        bcf_update_info_int32(h, v, FLANKS.c_str(), &flank_pos1, 2);
+        bcf_update_info_int32(h, v, EX_FLANKS.c_str(), &flank_pos1, 2);
 
         //fuzzy characteristics
-        bcf_update_info_float(h, v, FZ_CONCORDANCE.c_str(), &vntr.fuzzy_motif_concordance, 1);
+        bcf_update_info_float(h, v, FZ_SCORE.c_str(), &vntr.fuzzy_motif_concordance, 1);
         bcf_update_info_float(h, v, FZ_RL.c_str(), &vntr.fuzzy_rl, 1);
         bcf_update_info_float(h, v, FZ_LL.c_str(), &vntr.fuzzy_ll, 1);
         int32_t fuzzy_ru_count[2] = {vntr.fuzzy_no_exact_ru, vntr.fuzzy_total_no_ru};
@@ -664,16 +661,26 @@ class Igor : Program
                 ///////////////////////////////////////////////////////////////////////////////////////////////////////
                 //annotate indels with exact flanks and fuzzy flanks and generating motif used in fuzzy flank detection
                 ///////////////////////////////////////////////////////////////////////////////////////////////////////
+                bcf_update_info_string(h, v, "MOTIF", variant.vntr.motif.c_str());
+                bcf_update_info_string(h, v, "BASIS", variant.vntr.basis.c_str());
+                bcf_update_info_string(h, v, "RU", variant.vntr.ru.c_str());
+
+                bcf_update_info_float(h, v, EX_SCORE.c_str(), &variant.vntr.exact_motif_concordance, 1);
+                bcf_update_info_int32(h, v, EX_TRF_SCORE.c_str(), &variant.vntr.exact_trf_score, 1);
+
+                int32_t flank_pos1[2] = {variant.vntr.exact_beg1, variant.vntr.exact_end1};
+                bcf_update_info_int32(h, v, EX_FLANKS.c_str(), &flank_pos1, 2);
+
                 if (method=="e")
                 {
-                    bcf_update_info_string(h, v, "GMOTIF", variant.vntr.motif.c_str());
-                    bcf_update_info_string(h, v, "BASIS", variant.vntr.basis.c_str());
+                    bcf_update_info_string(h, v, MOTIF.c_str(), variant.vntr.motif.c_str());
+                    bcf_update_info_string(h, v, BASIS.c_str(), variant.vntr.basis.c_str());
 
-                    bcf_update_info_float(h, v, "EX_CONCORDANCE", &variant.vntr.exact_motif_concordance, 1);
-                    bcf_update_info_int32(h, v, "EX_TRF_SCORE", &variant.vntr.exact_trf_score, 1);
+                    bcf_update_info_float(h, v, EX_SCORE.c_str(), &variant.vntr.exact_motif_concordance, 1);
+                    bcf_update_info_int32(h, v, EX_TRF_SCORE.c_str(), &variant.vntr.exact_trf_score, 1);
 
                     int32_t flank_pos1[2] = {variant.vntr.exact_beg1-1, variant.vntr.exact_end1+1};
-                    bcf_update_info_int32(h, v, FLANKS.c_str(), &flank_pos1, 2);
+                    bcf_update_info_int32(h, v, EX_FLANKS.c_str(), &flank_pos1, 2);
 
                     if (add_flank_annotation)
                     {
@@ -682,7 +689,7 @@ class Igor : Program
                                 variant.vntr.exact_end1+1, variant.vntr.exact_end1+10);
                     }
                 }
-                
+
                 if (method=="f")
                 {
                     //the reason for this is that we should be handling Indels as though they are
@@ -690,17 +697,17 @@ class Igor : Program
                     //it is indicative (possibly) of a region that although has many scattered repeats
                     //has instead stabilized with respect to slippage mutation.
 
-                    bcf_update_info_string(h, v, "GMOTIF", variant.vntr.motif.c_str());
-                    bcf_update_info_string(h, v, "BASIS", variant.vntr.basis.c_str());
+                    bcf_update_info_string(h, v, MOTIF.c_str(), variant.vntr.motif.c_str());
+                    bcf_update_info_string(h, v, BASIS.c_str(), variant.vntr.basis.c_str());
 
-                    bcf_update_info_float(h, v, CONCORDANCE.c_str(), &variant.vntr.exact_motif_concordance, 1);
-                    bcf_update_info_float(h, v, FZ_CONCORDANCE.c_str(), &variant.vntr.fuzzy_motif_concordance, 1);
+                    bcf_update_info_float(h, v, EX_SCORE.c_str(), &variant.vntr.exact_motif_concordance, 1);
+                    bcf_update_info_float(h, v, FZ_SCORE.c_str(), &variant.vntr.fuzzy_motif_concordance, 1);
 
-                    bcf_update_info_int32(h, v, "EX_TRF_SCORE", &variant.vntr.exact_trf_score, 1);
-                    bcf_update_info_int32(h, v, "FZ_TRF_SCORE", &variant.vntr.fuzzy_trf_score, 1);
-                    
+                    bcf_update_info_int32(h, v, EX_TRF_SCORE.c_str(), &variant.vntr.exact_trf_score, 1);
+                    bcf_update_info_int32(h, v, FZ_TRF_SCORE.c_str(), &variant.vntr.fuzzy_trf_score, 1);
+
                     int32_t flank_pos1[2] = {variant.vntr.exact_beg1-1, variant.vntr.exact_end1+1};
-                    bcf_update_info_int32(h, v, FLANKS.c_str(), &flank_pos1, 2);
+                    bcf_update_info_int32(h, v, FZ_FLANKS.c_str(), &flank_pos1, 2);
 
                     int32_t fuzzy_flank_pos1[2] = {variant.vntr.fuzzy_beg1-1, variant.vntr.fuzzy_end1+1};
                     bcf_update_info_int32(h, v, FZ_FLANKS.c_str(), &fuzzy_flank_pos1, 2);
@@ -749,7 +756,7 @@ class Igor : Program
                     odw->write(v);
                     v = odw->get_bcf1_from_pool();
                 }
-                
+
 
                 ++no_variants_annotated;
             }
