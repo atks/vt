@@ -787,6 +787,7 @@ void LFHMM::collect_statistics(int32_t src_t, int32_t des_t, int32_t j)
             motif_end[MODEL] = track_get_c(des_t);
             motif_count = track_get_c(des_t);
             motif_end[READ] = j;
+            trf_score = 0;
 
             //initialize array for tracking inexact repeats
             for (int32_t k=1; k<=motif_count; ++k)
@@ -794,7 +795,7 @@ void LFHMM::collect_statistics(int32_t src_t, int32_t des_t, int32_t j)
                 motif_discordance[k] = 0;
             }
 
-            if (des_u==D || track_get_base(des_t)!=read[j-1])
+            if (des_u==D || des_u==I || track_get_base(des_t)!=read[j-1])
             {
                 ++motif_discordance[motif_count];
             }
@@ -810,7 +811,8 @@ void LFHMM::collect_statistics(int32_t src_t, int32_t des_t, int32_t j)
             motif_end[MODEL] = track_get_c(des_t);
             motif_count = track_get_c(des_t);
             motif_end[READ] = j;
-
+            trf_score = 0;
+            
             //initialize array for tracking inexact repeats
             for (int32_t k=1; k<=motif_count; ++k)
             {
@@ -818,7 +820,7 @@ void LFHMM::collect_statistics(int32_t src_t, int32_t des_t, int32_t j)
             }
 
             if (des_u==D || track_get_base(des_t)!=read[j-1])
-            {
+            {           
                 ++motif_discordance[motif_count];
             }
         }
@@ -846,12 +848,18 @@ void LFHMM::collect_statistics(int32_t src_t, int32_t des_t, int32_t j)
     {
         if (track_get_base(des_t)!=read[j-1])
         {
+            trf_score -= 7;
             ++motif_discordance[track_get_c(des_t)];
+        }
+        else
+        {
+            trf_score += 2;
         }
     }
 
     if (des_u==D || des_u==I)
     {
+        trf_score -= 7;
         ++motif_discordance[track_get_c(des_t)];
     }
 };
@@ -1204,6 +1212,7 @@ void LFHMM::print_alignment(std::string& pad)
     std::cerr << "motif #           : " << motif_count << " [" << motif_start[READ] << "," << motif_end[READ] << "]\n";
 
     std::cerr << "motif concordance : " << (motif_concordance*100) << "% (" << exact_motif_count << "/" << motif_count << ")\n";
+    std::cerr << "TRF Score         : " << trf_score << "\n";
     std::cerr << "motif discordance : ";
     for (int32_t k=1; k<=motif_count; ++k)
     {

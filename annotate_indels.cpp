@@ -182,8 +182,8 @@ class Igor : Program
         EX_REPEAT_TRACT = bcf_hdr_append_info_with_backup_naming(odw->hdr, "EX_REPEAT_TRACT", "2", "Integer", "Left and right flank positions of the Indel, left/right alignment invariant, not necessarily equal to POS.", rename);
         EX_COMP = bcf_hdr_append_info_with_backup_naming(odw->hdr, "EX_COMP", "4", "Integer", "Composition(%) of bases in repeat tract", rename);
         EX_ENTROPY = bcf_hdr_append_info_with_backup_naming(odw->hdr, "EX_ENTROPY", "1", "Float", "Entropy measure of repeat tract", rename);
-        EX_RL = bcf_hdr_append_info_with_backup_naming(odw->hdr, "EX_RL", "1", "Float", "Reference repeat tract length in bases from exact alignment", rename);
-        EX_LL = bcf_hdr_append_info_with_backup_naming(odw->hdr, "EX_LL", "1", "Float", "Longest repeat tract length in bases from exact alignment", rename);
+        EX_RL = bcf_hdr_append_info_with_backup_naming(odw->hdr, "EX_RL", "1", "Integer", "Reference repeat tract length in bases from exact alignment", rename);
+        EX_LL = bcf_hdr_append_info_with_backup_naming(odw->hdr, "EX_LL", "1", "Integer", "Longest repeat tract length in bases from exact alignment", rename);
         EX_RU_COUNTS = bcf_hdr_append_info_with_backup_naming(odw->hdr, "EX_RU_COUNTS", "2", "Integer", "Number of exact repeat units and total number of repeat units.", rename);
         EX_SCORE = bcf_hdr_append_info_with_backup_naming(odw->hdr, "EX_SCORE", "1", "Float", "Concordance of repeat unit.", rename);
         EX_TRF_SCORE = bcf_hdr_append_info_with_backup_naming(odw->hdr, "EX_TRF_SCORE", "1", "Float", "TRF Score for M/I/D as 2/-7/-7", rename);
@@ -193,8 +193,8 @@ class Igor : Program
         FZ_COMP = bcf_hdr_append_info_with_backup_naming(odw->hdr, "FZ_COMP", "4", "Integer", "Composition(%) of bases in repeat tract", rename);
         FZ_ENTROPY = bcf_hdr_append_info_with_backup_naming(odw->hdr, "FZ_ENTROPY", "1", "Float", "Entropy measure of repeat tract", rename);
         FZ_TRF_SCORE = bcf_hdr_append_info_with_backup_naming(odw->hdr, "FZ_TRF_SCORE", "1", "Float", "TRF Score for M/I/D as 2/-7/-7", rename);
-        FZ_RL = bcf_hdr_append_info_with_backup_naming(odw->hdr, "FZ_RL", "1", "Float", "Reference repeat tract length in bases from exact alignment", rename);
-        FZ_LL = bcf_hdr_append_info_with_backup_naming(odw->hdr, "FZ_LL", "1", "Float", "Longest repeat tract length in bases from exact alignment", rename);
+        FZ_RL = bcf_hdr_append_info_with_backup_naming(odw->hdr, "FZ_RL", "1", "Integer", "Reference repeat tract length in bases from exact alignment", rename);
+        FZ_LL = bcf_hdr_append_info_with_backup_naming(odw->hdr, "FZ_LL", "1", "Integer", "Longest repeat tract length in bases from exact alignment", rename);
         FZ_RU_COUNTS = bcf_hdr_append_info_with_backup_naming(odw->hdr, "FZ_RU_COUNTS", "2", "Integer", "Number of exact repeat units and total number of repeat units.", rename);
         FZ_SCORE = bcf_hdr_append_info_with_backup_naming(odw->hdr, "FZ_SCORE", "1", "Float", "Concordance of repeat unit.", rename);
         FZ_TRF_SCORE = bcf_hdr_append_info_with_backup_naming(odw->hdr, "FZ_TRF_SCORE", "1", "Float", "Concordance of repeat unit.", rename);
@@ -307,8 +307,6 @@ class Igor : Program
 
             if (vtype&VT_INDEL)
             {
-                std::cerr << "method " << method << "\n";
-                
                 va->annotate(variant, method);
 
                 VNTR& vntr = variant.vntr;
@@ -328,24 +326,24 @@ class Igor : Program
                 bcf_update_info_int32(h, v, EX_REPEAT_TRACT.c_str(), &exact_flank_pos1, 2);
                 bcf_update_info_int32(h, v, EX_COMP.c_str(), &vntr.exact_comp[0], 4);
                 bcf_update_info_float(h, v, EX_ENTROPY.c_str(), &vntr.exact_entropy, 1);
-                bcf_update_info_float(h, v, EX_RL.c_str(), &vntr.exact_rl, 1);
-                bcf_update_info_float(h, v, EX_LL.c_str(), &vntr.exact_ll, 1);
+                bcf_update_info_int32(h, v, EX_RL.c_str(), &vntr.exact_rl, 1);
+                bcf_update_info_int32(h, v, EX_LL.c_str(), &vntr.exact_ll, 1);
                 int32_t exact_ru_count[2] = {vntr.exact_no_exact_ru, vntr.exact_total_no_ru};
                 bcf_update_info_int32(h, v, EX_RU_COUNTS.c_str(), &exact_ru_count, 2);
                 bcf_update_info_float(h, v, EX_SCORE.c_str(), &vntr.exact_score, 1);
-                bcf_update_info_float(h, v, EX_TRF_SCORE.c_str(), &vntr.exact_trf_score, 1);
+                bcf_update_info_int32(h, v, EX_TRF_SCORE.c_str(), &vntr.exact_trf_score, 1);
                
                 //fuzzy characteristics
                 int32_t fuzzy_flank_pos1[2] = {vntr.fuzzy_beg1, vntr.fuzzy_end1};
                 bcf_update_info_int32(h, v, FZ_REPEAT_TRACT.c_str(), &fuzzy_flank_pos1, 2);
                 bcf_update_info_int32(h, v, FZ_COMP.c_str(), &vntr.fuzzy_comp[0], 4);
                 bcf_update_info_float(h, v, FZ_ENTROPY.c_str(), &vntr.fuzzy_entropy, 1);
-                bcf_update_info_float(h, v, FZ_RL.c_str(), &vntr.fuzzy_rl, 1);
-                bcf_update_info_float(h, v, FZ_LL.c_str(), &vntr.fuzzy_ll, 1);
+                bcf_update_info_int32(h, v, FZ_RL.c_str(), &vntr.fuzzy_rl, 1);
+                bcf_update_info_int32(h, v, FZ_LL.c_str(), &vntr.fuzzy_ll, 1);
                 int32_t fuzzy_ru_count[2] = {vntr.fuzzy_no_exact_ru, vntr.fuzzy_total_no_ru};
                 bcf_update_info_int32(h, v, FZ_RU_COUNTS.c_str(), &fuzzy_ru_count, 2);
                 bcf_update_info_float(h, v, FZ_SCORE.c_str(), &vntr.fuzzy_score, 1);
-                bcf_update_info_float(h, v, FZ_TRF_SCORE.c_str(), &vntr.fuzzy_trf_score, 1);
+                bcf_update_info_int32(h, v, FZ_TRF_SCORE.c_str(), &vntr.fuzzy_trf_score, 1);
              
                 update_flankseq(h, v, variant.chrom.c_str(),
                                 variant.beg1-10, variant.beg1-1,

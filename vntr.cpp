@@ -139,7 +139,8 @@ void VNTR::print()
     std::cerr << "position                        : [" << exact_beg1 << "," << exact_end1 << "]\n";
     std::cerr << "reference repeat unit length    : " << exact_rl << "\n";
     std::cerr << "longest allele length           : " << exact_ll << "\n";
-    std::cerr << "score               : " << exact_score << "\n";
+    std::cerr << "score                           : " << exact_score << "\n";
+    std::cerr << "trf score                       : " << exact_trf_score << "\n";
     std::cerr << "repeat units                    : " << exact_rl << "\n";
     std::cerr << "exact repeat units              : " << exact_no_exact_ru << "\n";
     std::cerr << "total no. of repeat units       : " << exact_total_no_ru << "\n";
@@ -149,7 +150,8 @@ void VNTR::print()
     std::cerr << "position                        : [" << fuzzy_beg1 << "," << fuzzy_end1 << "]\n";
     std::cerr << "reference repeat unit length    : " << fuzzy_rl << "\n";
     std::cerr << "longest allele length           : " << fuzzy_ll << "\n";
-    std::cerr << "score               : " << fuzzy_score << "\n";
+    std::cerr << "score                           : " << fuzzy_score << "\n";
+    std::cerr << "trf score                       : " << fuzzy_trf_score << "\n";
     std::cerr << "repeat units                    : " << fuzzy_rl << "\n";
     std::cerr << "exact repeat units              : " << fuzzy_no_exact_ru << "\n";
     std::cerr << "total no. of repeat units       : " << fuzzy_total_no_ru << "\n";

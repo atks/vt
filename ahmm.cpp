@@ -734,7 +734,7 @@ void AHMM::collect_statistics(int32_t src_t, int32_t des_t, int32_t j)
         ++motif_discordance[track_get_c(des_t)];
     }
     
-    repeat_tract_len = motif_count - (mlen-last_motif_pos)/((float)mlen);        
+    frac_no_repeats = motif_count - (mlen-last_motif_pos)/((float)mlen);        
 };
 
 /**
@@ -1053,16 +1053,17 @@ void AHMM::print_alignment(std::string& pad)
                           << "[" << motif_start[READ] << "~" << motif_end[READ] << "]"
                           << "[" << rflank_start[READ] << "~" << rflank_end[READ] << "]\n";
     std::cerr << "\n";
-    std::cerr << "motif #             : " << motif_count << " [" << motif_start[READ] << "," << motif_end[READ] << "]\n";
-    std::cerr << "motif concordance   : " << motif_concordance << "% (" << exact_motif_count << "/" << motif_count << ")\n";
-    std::cerr << "last motif position : " << last_motif_pos << "\n";
-    std::cerr << "motif discordance   : ";
+    std::cerr << "motif #                     : " << motif_count << " [" << motif_start[READ] << "," << motif_end[READ] << "]\n";
+    std::cerr << "motif concordance           : " << motif_concordance << "% (" << exact_motif_count << "/" << motif_count << ")\n";
+    std::cerr << "last motif position         : " << last_motif_pos << "\n";
+    std::cerr << "motif discordance           : ";
     for (int32_t k=1; k<=motif_count; ++k)
     {
         std::cerr << motif_discordance[k] << (k==motif_count?"\n":"|");
     }    
-    std::cerr << "repeat tract length : " << repeat_tract_len << "\n";
-    std::cerr << "TRF Score           : " << trf_score << "\n";
+    std::cerr << "fractional no. repeat units : " << frac_no_repeats << "\n";
+    std::cerr << "repeat tract length         : " << rlen << "\n";
+    std::cerr << "TRF Score                   : " << trf_score << "\n";
     
     std::cerr << "\n";
             

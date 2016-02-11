@@ -453,6 +453,8 @@ int32_t VariantManip::classify_variant(bcf_hdr_t *h, bcf1_t *v, Variant& var)
             var.tv += tv;
             var.ins = dlen>0?1:0;
             var.del = dlen<0?1:0;
+            var.max_dlen = var.max_dlen<dlen ? dlen : var.max_dlen; 
+            var.min_dlen = var.min_dlen>dlen ? dlen : var.min_dlen; 
 
             if (REF.m) free(REF.s);
             if (ALT.m) free(ALT.s);

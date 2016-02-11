@@ -161,12 +161,7 @@ Variant::Variant(Variant* v1, Variant* v2)
  */
 Variant::Variant()
 {
-    type = VT_REF;
-    v = NULL;
-    no_overlapping_snps = 0;
-    no_overlapping_indels = 0;
-    no_overlapping_vntrs = 0;
-    alleles.clear();
+    clear();
 }
 
 /**
@@ -189,6 +184,9 @@ void Variant::clear()
 {
     type = VT_REF;  
     
+    h = NULL;
+    v = NULL;
+    
     chrom.clear();
     rid = 0;
     pos1 = 0;
@@ -198,7 +196,13 @@ void Variant::clear()
     tv = 0;
     ins = 0;
     del = 0;
+    max_dlen = 0;
+    min_dlen = 0;
 
+    no_overlapping_snps = 0;
+    no_overlapping_indels = 0;
+    no_overlapping_vntrs = 0;
+    
     contains_N = false;
     alleles.clear();
     vntr.clear();
@@ -226,7 +230,6 @@ int32_t Variant::classify(bcf_hdr_t *h, bcf1_t *v)
     char** allele = bcf_get_allele(v);
     int32_t n_allele = bcf_get_n_allele(v);
     int32_t pos0 = pos1-1;
-
 
     bool homogeneous_length = true;
     char* ref = allele[0];

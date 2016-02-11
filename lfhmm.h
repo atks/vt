@@ -111,6 +111,7 @@ class LFHMM
     int32_t motif_count, exact_motif_count, motif_m, motif_xid;
     int32_t* motif_discordance;
     float motif_concordance, maxLogOdds;
+    int32_t trf_score;
 
     LFHMMParameters par;
 

@@ -151,10 +151,12 @@ void FlankDetector::detect_flanks(bcf_hdr_t* h, bcf1_t *v, Variant& variant, uin
         ahmm->align(vntr.exact_repeat_tract.c_str(), qual.c_str());
 
         vntr.exact_score = ahmm->motif_concordance;
+        vntr.exact_trf_score = ahmm->trf_score;
         vntr.exact_no_exact_ru = ahmm->exact_motif_count;
         vntr.exact_total_no_ru = ahmm->motif_count;
-        vntr.exact_rl = ahmm->repeat_tract_len;
-
+        vntr.exact_rl = vntr.exact_repeat_tract.size();
+        vntr.exact_ll = vntr.exact_rl + variant.max_dlen;
+        
         compute_composition_and_entropy(vntr.exact_repeat_tract);
         vntr.exact_comp[0] = comp[0];
         vntr.exact_comp[1] = comp[1];
@@ -168,6 +170,7 @@ void FlankDetector::detect_flanks(bcf_hdr_t* h, bcf1_t *v, Variant& variant, uin
             std::cerr << "repeat_tract              : " << vntr.exact_repeat_tract << "\n";
             std::cerr << "position                  : [" << vntr.exact_beg1 << "," << vntr.exact_end1 << "]\n";
             std::cerr << "score                     : " << vntr.exact_score << "\n";
+            std::cerr << "trf score                 : " << vntr.exact_trf_score << "\n";
             std::cerr << "repeat units              : " << vntr.exact_rl << "\n";
             std::cerr << "exact repeat units        : " << vntr.exact_no_exact_ru << "\n";
             std::cerr << "total no. of repeat units : " << vntr.exact_total_no_ru << "\n";
@@ -298,9 +301,11 @@ void FlankDetector::detect_flanks(bcf_hdr_t* h, bcf1_t *v, Variant& variant, uin
         vntr.fuzzy_repeat_tract.assign(repeat_tract);
         if (repeat_tract) free(repeat_tract);
         vntr.fuzzy_score = lfhmm->motif_concordance;
+        vntr.fuzzy_trf_score = lfhmm->trf_score;
         vntr.fuzzy_no_exact_ru = lfhmm->exact_motif_count;
         vntr.fuzzy_total_no_ru = lfhmm->motif_count;
         vntr.fuzzy_rl = rflank_beg1-lflank_end1-1;
+        vntr.fuzzy_ll = vntr.fuzzy_rl + variant.max_dlen;
         
         if (lflank) free(lflank);
         if (rflank) free(rflank);
@@ -452,11 +457,24 @@ void FlankDetector::compute_purity_score(Variant& variant, std::string mode)
     std::string& repeat_tract = (mode=="e") ? variant.vntr.exact_repeat_tract : variant.vntr.fuzzy_repeat_tract;
     compute_purity_score(repeat_tract, variant.vntr.motif);
     
-    variant.vntr.ru = ru;
-    variant.vntr.exact_score = score;
-    variant.vntr.exact_no_exact_ru = no_exact_ru;
-    variant.vntr.exact_total_no_ru = total_no_ru;
-    variant.vntr.exact_rl = rl;
+    if (mode=="e")
+    {    
+        variant.vntr.ru = ru;
+        variant.vntr.exact_score = score;
+        variant.vntr.exact_no_exact_ru = no_exact_ru;
+        variant.vntr.exact_total_no_ru = total_no_ru;
+        variant.vntr.exact_rl = rl;
+        variant.vntr.exact_ll = rl + variant.max_dlen;
+    }
+    else
+    {
+        variant.vntr.ru = ru;
+        variant.vntr.fuzzy_score = score;
+        variant.vntr.fuzzy_no_exact_ru = no_exact_ru;
+        variant.vntr.fuzzy_total_no_ru = total_no_ru;
+        variant.vntr.fuzzy_rl = rl;
+        variant.vntr.fuzzy_ll = rl + variant.max_dlen;
+    }
 }
 
 /**
@@ -505,7 +523,7 @@ void FlankDetector::compute_purity_score(std::string& repeat_tract, std::string 
     score = ahmm->motif_concordance;
     no_exact_ru = ahmm->exact_motif_count;
     total_no_ru = ahmm->motif_count;
-    rl = ahmm->repeat_tract_len;
+    rl = repeat_tract.size();
     trf_score = ahmm->trf_score;
 
     return;
@@ -532,6 +550,7 @@ void FlankDetector::compute_composition_and_entropy(std::string& repeat_tract)
     if (p[2]) entropy += p[2] * std::log2(p[2]);
     if (p[3]) entropy += p[3] * std::log2(p[3]);
     entropy = -entropy;
+    entropy = std::round(100*entropy)/100; 
         
     comp[0] = std::round(p[0] * 100); 
     comp[1] = std::round(p[1] * 100);

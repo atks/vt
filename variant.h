@@ -77,6 +77,8 @@ class Variant
     int32_t tv;         //no. of tranversions (mlen-ts)
     int32_t ins;        //no. of insertions
     int32_t del;        //no. of deletions
+    int32_t max_dlen;   //maximum allele length difference
+    int32_t min_dlen;   //minimum allele length difference
 
     //overlapping statistics
     //for normal variants

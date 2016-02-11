@@ -108,7 +108,7 @@ class AHMM
     int32_t lflank_start[2], lflank_end[2], motif_start[2], motif_end[2], rflank_start[2], rflank_end[2];
     int32_t motif_count, exact_motif_count, motif_m, motif_xid;
     int32_t last_motif_pos;
-    float repeat_tract_len;
+    float frac_no_repeats;
     int32_t* motif_discordance;
     float motif_concordance, maxLogOdds;
     int32_t trf_score;
