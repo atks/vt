@@ -132,14 +132,14 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
                 if ((right->type&VT_INT))
                 {
                     if (debug)
-                        std::cerr << "\tVT_EQ "   <<  left->i << "&" << right->i    <<  " \n";
+                        std::cerr << "\tVT_EQ "   <<  left->i << "==" << right->i    <<  " \n";
                     b = (left->i==right->i);
                     return;
                 }
                 else if ((right->type&VT_FLT))
                 {
                     if (debug)
-                        std::cerr << "\tVT_EQ "   <<  left->i << "&" << right->f    <<  " \n";
+                        std::cerr << "\tVT_EQ "   <<  left->i << "==" << right->f    <<  " \n";
                     b = (left->i==right->f);
                     return;
                 }
@@ -149,14 +149,14 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
                 if ((right->type&VT_INT))
                 {
                     if (debug)
-                        std::cerr << "\tVT_EQ "   <<  left->f << "&" << right->i    <<  " \n";
+                        std::cerr << "\tVT_EQ "   <<  left->f << "==" << right->i    <<  " \n";
                     b = (left->f==right->i);
                     return;
                 }
                 else if ((right->type&VT_FLT))
                 {
                     if (debug)
-                        std::cerr << "\tVT_EQ "   <<  left->f << "&" << right->f    <<  " \n";
+                        std::cerr << "\tVT_EQ "   <<  left->f << "==" << right->f    <<  " \n";
                     b = (left->f==right->f);
                     return;
                 }
@@ -427,11 +427,17 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
             {
                 if ((right->type&VT_INT))
                 {
+                    if (debug)
+                        std::cerr << "\tVT_LT "   <<  left->i << "<" << right->i    <<  " \n";
+                        
                     b = (left->i<right->i);
                     return;
                 }
                 else if ((right->type&VT_FLT))
                 {
+                    if (debug)
+                        std::cerr << "\tVT_LT "   <<  left->i << "<" << right->f    <<  " \n";
+                            
                     b = (left->i<right->f);
                     return;
                 }
@@ -440,17 +446,26 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
             {
                 if ((right->type&VT_INT))
                 {
+                    if (debug)
+                        std::cerr << "\tVT_LT "   <<  left->f << "<" << right->i    <<  " \n";
+                            
                     b = (left->f<right->i);
                     return;
                 }
                 else if ((right->type&VT_FLT))
                 {
+                    if (debug)
+                        std::cerr << "\tVT_LT "   <<  left->f << "<" << right->f    <<  " \n";
+                            
                     b = (left->f<right->f);
                     return;
                 }
             }
             else if ((left->type&VT_STR) && (right->type&VT_STR))
             {
+                if (debug)
+                        std::cerr << "\tVT_LT "   <<  left->s.s << "<" << right->s.s    <<  " \n";
+                            
                 b = strcmp(left->s.s, right->s.s)<0 ? true : false;
                 return;
             }
@@ -547,7 +562,8 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
                 if (bcf_get_info_float(h, v, tag.s, &fs, &ns)>0)
                 {
                     b = true;
-                    f = (float)fs[0];
+                    i = (int32_t)fs[0];
+                    f = fs[0];
                 }
                 else
                 {
@@ -563,7 +579,6 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
                 //todo: how do you handle a vector of strings?
 
                 int32_t n = s.m;
-
                 if (bcf_get_info_string(h, v, tag.s, &s.s, &n)>0)
                 {
                     b = true;
@@ -597,13 +612,14 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
         }
         else if (type==(VT_INFO|VT_FLT))
         {
-            int32_t *data = NULL;
-            int32_t n=0;
+            float *data = NULL;
+            int32_t n = 0;
 
             if (bcf_get_info_float(h, v, tag.s, &data, &n)>0)
             {
                 b = true;
-                f = *((float*)data);
+                i = (int32_t) data[0];
+                f = data[0];
             }
             else
             {
@@ -615,12 +631,12 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
         }
         else if (type==(VT_INFO|VT_STR))
         {
-            int32_t n=s.m;
+            int32_t n = s.m;
 
             if (bcf_get_info_string(h, v, tag.s, &s.s, &n)>0)
             {
                 b = true;
-                s.m=n;
+                s.m = n;
             }
             else
             {
