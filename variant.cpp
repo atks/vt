@@ -524,28 +524,28 @@ void Variant::update_vntr_from_info_fields(bcf_hdr_t *h, bcf1_t *v)
         vntr.ru = "";
     }
 
-    float *exact_motif_concordance = NULL;
+    float *exact_score = NULL;
     n = 0;
-    if (bcf_get_info_float(h, v, "CONCORDANCE", &exact_motif_concordance, &n)>0)
+    if (bcf_get_info_float(h, v, "EX_SCORE", &exact_score, &n)>0)
     {
-        vntr.exact_motif_concordance = exact_motif_concordance[0];
-        free(exact_motif_concordance);
+        vntr.exact_score = exact_score[0];
+        free(exact_score);
     }
     else
     {
-        vntr.exact_motif_concordance = -1;
+        vntr.exact_score = -1;
     }
 
-    float *fuzzy_motif_concordance = NULL;
+    float *fuzzy_score = NULL;
     n = 0;
-    if (bcf_get_info_float(h, v, "FZ_CONCORDANCE", &fuzzy_motif_concordance, &n)>0)
+    if (bcf_get_info_float(h, v, "FZ_SCORE", &fuzzy_score, &n)>0)
     {
-        vntr.fuzzy_motif_concordance = fuzzy_motif_concordance[0];
-        free(fuzzy_motif_concordance);
+        vntr.fuzzy_score = fuzzy_score[0];
+        free(fuzzy_score);
     }
     else
     {
-        vntr.fuzzy_motif_concordance = -1;
+        vntr.fuzzy_score = -1;
     }
 
     int32_t *flanks = NULL;
@@ -618,7 +618,7 @@ void Variant::update_bcf_with_vntr_info(bcf_hdr_t *h, bcf1_t *v)
     bcf_update_info_string(h, v, "RU", vntr.ru.c_str());
 
     //VNTR characteristics
-    bcf_update_info_float(h, v, "FZ_CONCORDANCE", &vntr.fuzzy_motif_concordance, 1);
+    bcf_update_info_float(h, v, "FZ_CONCORDANCE", &vntr.fuzzy_score, 1);
     bcf_update_info_float(h, v, "FZ_RL", &vntr.fuzzy_rl, 1);
     bcf_update_info_float(h, v, "FZ_LL", &vntr.fuzzy_ll, 1);
     int32_t flank_pos1[2] = {vntr.exact_beg1-1, vntr.exact_end1+1};

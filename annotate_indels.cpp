@@ -48,7 +48,6 @@ class Igor : Program
     bool add_vntr_record;
     bool add_flank_annotation;     //add flank annotation
 
-
     //motif related
     std::string END;
     std::string MOTIF;
@@ -57,43 +56,26 @@ class Igor : Program
     std::string BASIS_LEN;
 
     //exact alignment related statistics
+    std::string EX_REPEAT_TRACT;
     std::string EX_COMP;
     std::string EX_ENTROPY;
-    std::string EX_TRF_SCORE;
     std::string EX_RL;
     std::string EX_LL;
-    std::string EX_SCORE;
     std::string EX_RU_COUNTS;
-    std::string EX_FLANKS;
-
+    std::string EX_SCORE;
+    std::string EX_TRF_SCORE;
+    
     //fuzzy alignment related statistics
+    std::string FZ_REPEAT_TRACT;
     std::string FZ_COMP;
     std::string FZ_ENTROPY;
-    std::string FZ_TRF_SCORE;
     std::string FZ_RL;
     std::string FZ_LL;
-    std::string FZ_SCORE;
     std::string FZ_RU_COUNTS;
-    std::string FZ_FLANKS;
+    std::string FZ_SCORE;
+    std::string FZ_TRF_SCORE;
 
-    //used in classification
-    std::string EXACT;
-    std::string FUZZY;
-    std::string TR;
-    std::string MODE;
-
-    //helper variables for populating additional VNTR records
-    uint32_t no_samples;
-    int32_t* gts;
-
-    //convenience kstring so that we do not have to free memory ALL the time.
-    kstring_t s;
-
-
-    /////////////
-    //vntr buffer
-    /////////////
-    std::list<VNTR> vntr_buffer; //front is most recent
+    std::string FLANKSEQ;
 
     //////////
     //filter//
@@ -111,7 +93,7 @@ class Igor : Program
     /////////
     //stats//
     /////////
-    int32_t no_variants_annotated;
+    int32_t no_indels_annotated;
 
     ////////////////
     //common tools//
@@ -137,54 +119,17 @@ class Igor : Program
             TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_output_vcf_file("o", "o", "output VCF file [-]", false, "-", "str", cmd);
             TCLAP::ValueArg<std::string> arg_ref_fasta_file("r", "r", "reference sequence fasta file []", true, "", "str", cmd);
-            TCLAP::ValueArg<std::string> arg_vntr_annotation_mode("s", "s", "VNTR annotation type [r]\n"
-                 "              r : determine motifs and new fuzzy flanks from REF sequence (when annotating VNTRs)\n"
-                 "                     RU                    repeat unit on reference sequence (CA)\n"
-                 "                     MOTIF                 canonical representation (AC)\n"
-                 "                     RL                    repeat tract length in bases (11)\n"
-                 "                     FLANKS                flanking positions of repeat tract determined by exact alignment\n"
-                 "                     RU_COUNTS             number of exact repeat units and total number of repeat units in\n"
-                 "                                           repeat tract determined by exact alignment\n"
-                 "                     FZ_RL                 fuzzy repeat tract length in bases (11)\n"
-                 "                     FZ_FLANKS             flanking positions of repeat tract determined by fuzzy alignment\n"
-                 "                     FZ_RU_COUNTS          number of exact repeat units and total number of repeat units in\n"
-                 "                                           repeat tract determined by fuzzy alignment\n"
-                 "                     FLANKSEQ              flanking sequence of indel\n"
-                 "                     LARGE_REPEAT_REGION   repeat region exceeding 2000bp\n"
-                 "              c : compute motif concordance only",
-                 false, "c", "str", cmd);
-            TCLAP::ValueArg<int32_t> arg_vntr_classification("c", "c", "classification schemas of tandem repeat [6]\n"
-                 "              1 : lai2003     \n"
-                 "              2 : kelkar2008  \n"
-                 "              3 : fondon2012  \n"
-                 "              4 : ananda2013  \n"
-                 "              5 : willems2014 \n"
-                 "              6 : tan_kang2015",
-                 false, 6, "integer", cmd);
-            TCLAP::ValueArg<std::string> arg_method("m", "m", "mode [f]\n"
-                 "              e : by exact alignment"
-                 "              f : by fuzzy alignment",
-                 false, "f", "str", cmd);
             TCLAP::SwitchArg arg_debug("d", "d", "debug [false]", cmd, false);
             TCLAP::UnlabeledValueArg<std::string> arg_input_vcf_file("<in.vcf>", "input VCF file", true, "","file", cmd);
             TCLAP::ValueArg<std::string> arg_fexp("f", "f", "filter expression []", false, "", "str", cmd);
             TCLAP::SwitchArg arg_override_tag("x", "x", "override tags [false]", cmd, false);
-            TCLAP::SwitchArg arg_add_vntr_record("v", "v", "add vntr record [false]", cmd, false);
-            TCLAP::SwitchArg arg_add_flank_annotation("k", "k", "add flank annotation [false]", cmd, true);
 
             cmd.parse(argc, argv);
 
             input_vcf_file = arg_input_vcf_file.getValue();
             output_vcf_file = arg_output_vcf_file.getValue();
             parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
-            method = arg_method.getValue();
-            vntr_annotation_mode = arg_vntr_annotation_mode.getValue();
-            vntr_classification = arg_vntr_classification.getValue();
-            override_tag = arg_override_tag.getValue();
-            add_flank_annotation = arg_add_flank_annotation.getValue();
             fexp = arg_fexp.getValue();
-            add_vntr_record = arg_add_vntr_record.getValue();
-
             debug = arg_debug.getValue();
             ref_fasta_file = arg_ref_fasta_file.getValue();
         }
@@ -197,7 +142,6 @@ class Igor : Program
 
     ~Igor()
     {
-        if (s.m) free(s.s);
     };
 
     void initialize()
@@ -205,12 +149,6 @@ class Igor : Program
         ///////////
         //options//
         ///////////
-        if (method!="e" && method!="f" && method!="c")
-        {
-            fprintf(stderr, "[%s:%d %s] Not a valid mode of VNTR detection: %s\n", __FILE__,__LINE__,__FUNCTION__, method.c_str());
-            exit(1);
-        }
-
         if (vntr_annotation_mode!="r" && vntr_annotation_mode!="c")
         {
             fprintf(stderr, "[%s:%d %s] Not a valid mode of VNTR annotation: %s\n", __FILE__,__LINE__,__FUNCTION__, vntr_annotation_mode.c_str());
@@ -243,55 +181,32 @@ class Igor : Program
         BASIS_LEN = bcf_hdr_append_info_with_backup_naming(odw->hdr, "BASIS_LEN", "1", "Integer", "Basis length.", rename);
 
         //exact alignment related statisitcs
+        EX_REPEAT_TRACT = bcf_hdr_append_info_with_backup_naming(odw->hdr, "EX_REPEAT_TRACT", "2", "Integer", "Left and right flank positions of the Indel, left/right alignment invariant, not necessarily equal to POS.", rename);
         EX_COMP = bcf_hdr_append_info_with_backup_naming(odw->hdr, "EX_COMP", "4", "Integer", "Composition(%) of bases in repeat tract", rename);
         EX_ENTROPY = bcf_hdr_append_info_with_backup_naming(odw->hdr, "EX_ENTROPY", "1", "Float", "Entropy measure of repeat tract", rename);
-        EX_TRF_SCORE = bcf_hdr_append_info_with_backup_naming(odw->hdr, "EX_TRF_SCORE", "1", "Float", "TRF Score for M/I/D as 2/-7/-7", rename);
         EX_RL = bcf_hdr_append_info_with_backup_naming(odw->hdr, "EX_RL", "1", "Float", "Reference repeat tract length in bases from exact alignment", rename);
         EX_LL = bcf_hdr_append_info_with_backup_naming(odw->hdr, "EX_LL", "1", "Float", "Longest repeat tract length in bases from exact alignment", rename);
-        EX_SCORE = bcf_hdr_append_info_with_backup_naming(odw->hdr, "EX_SCORE", "1", "Float", "Concordance of repeat unit.", rename);
         EX_RU_COUNTS = bcf_hdr_append_info_with_backup_naming(odw->hdr, "EX_RU_COUNTS", "2", "Integer", "Number of exact repeat units and total number of repeat units.", rename);
-        EX_FLANKS = bcf_hdr_append_info_with_backup_naming(odw->hdr, "EX_FLANKS", "2", "Integer", "Left and right flank positions of the Indel, left/right alignment invariant, not necessarily equal to POS.", rename);
-
+        EX_SCORE = bcf_hdr_append_info_with_backup_naming(odw->hdr, "EX_SCORE", "1", "Float", "Concordance of repeat unit.", rename);
+        EX_TRF_SCORE = bcf_hdr_append_info_with_backup_naming(odw->hdr, "EX_TRF_SCORE", "1", "Float", "TRF Score for M/I/D as 2/-7/-7", rename);
+        
         //fuzzy alignment related statisitcs
+        FZ_REPEAT_TRACT = bcf_hdr_append_info_with_backup_naming(odw->hdr, "FZ_REPEAT_TRACT", "2", "Integer", "Left and right flank positions of the Indel, left/right alignment invariant, not necessarily equal to POS.", rename);
         FZ_COMP = bcf_hdr_append_info_with_backup_naming(odw->hdr, "FZ_COMP", "4", "Integer", "Composition(%) of bases in repeat tract", rename);
         FZ_ENTROPY = bcf_hdr_append_info_with_backup_naming(odw->hdr, "FZ_ENTROPY", "1", "Float", "Entropy measure of repeat tract", rename);
         FZ_TRF_SCORE = bcf_hdr_append_info_with_backup_naming(odw->hdr, "FZ_TRF_SCORE", "1", "Float", "TRF Score for M/I/D as 2/-7/-7", rename);
         FZ_RL = bcf_hdr_append_info_with_backup_naming(odw->hdr, "FZ_RL", "1", "Float", "Reference repeat tract length in bases from exact alignment", rename);
         FZ_LL = bcf_hdr_append_info_with_backup_naming(odw->hdr, "FZ_LL", "1", "Float", "Longest repeat tract length in bases from exact alignment", rename);
-        FZ_SCORE = bcf_hdr_append_info_with_backup_naming(odw->hdr, "FZ_SCORE", "1", "Float", "Concordance of repeat unit.", rename);
         FZ_RU_COUNTS = bcf_hdr_append_info_with_backup_naming(odw->hdr, "FZ_RU_COUNTS", "2", "Integer", "Number of exact repeat units and total number of repeat units.", rename);
-        FZ_FLANKS = bcf_hdr_append_info_with_backup_naming(odw->hdr, "FZ_FLANKS", "2", "Integer", "Left and right flank positions of the Indel, left/right alignment invariant, not necessarily equal to POS.", rename);
+        FZ_SCORE = bcf_hdr_append_info_with_backup_naming(odw->hdr, "FZ_SCORE", "1", "Float", "Concordance of repeat unit.", rename);
+        FZ_TRF_SCORE = bcf_hdr_append_info_with_backup_naming(odw->hdr, "FZ_TRF_SCORE", "1", "Float", "Concordance of repeat unit.", rename);
 
-        //used in classification
-        EXACT = bcf_hdr_append_info_with_backup_naming(odw->hdr, "EXACT", "0", "Flag", "Exact mode of VNTR annotation", rename);
-        FUZZY = bcf_hdr_append_info_with_backup_naming(odw->hdr, "FUZZY", "0", "Flag", "Fuzzy mode of VNTR annotation", rename);
-        TR = bcf_hdr_append_info_with_backup_naming(odw->hdr, "TR", "1", "String", "Tandem repeat associated with this indel.", rename);
+        FLANKSEQ = bcf_hdr_append_info_with_backup_naming(odw->hdr, "FLANKSEQ", "1", "String", "Flanking sequence 10bp on either side of REF.", rename);
 
-        bcf_hdr_append(odw->hdr, "##INFO=<ID=LARGE_REPEAT_REGION,Number=0,Type=Flag,Description=\"Very large repeat region, vt only detects up to 1000bp long regions.\">");
-        bcf_hdr_append(odw->hdr, "##INFO=<ID=FLANKSEQ,Number=1,Type=String,Description=\"Flanking sequence 10bp on either side of detected repeat region.\">");
-
-        //helper variable initialization for adding genotype fields for additional vntr records
-        if (add_vntr_record)
-        {
-            no_samples = bcf_hdr_nsamples(odw->hdr);
-            gts = (int32_t*) malloc(no_samples*sizeof(int32_t));
-            for (uint32_t i=0; i<no_samples; ++i)
-            {
-                gts[i] = 0;
-            }
-        }
-        else
-        {
-            no_samples = 0;
-            gts = NULL;
-        }
-
-        s = {0,0,0};
-
-        ////////////////////////
+              ////////////////////////
         //stats initialization//
         ////////////////////////
-        no_variants_annotated = 0;
+        no_indels_annotated = 0;
 
         ////////////////////////
         //tools initialization//
@@ -319,194 +234,8 @@ class Igor : Program
     void print_stats()
     {
         std::clog << "\n";
-        std::cerr << "stats: no. of variants annotated   " << no_variants_annotated << "\n";
+        std::cerr << "stats: no. of indels annotated   " << no_indels_annotated << "\n";
         std::clog << "\n";
-    }
-
-    /**
-     * Inserts a VNTR record.
-     * Returns true if successful.
-     */
-    bool insert_vntr_record_into_buffer(VNTR& vntr)
-    {
-        if (method=="e")
-        {
-            std::list<VNTR>::iterator i = vntr_buffer.begin();
-            while(i!=vntr_buffer.end())
-            {
-                VNTR& cvntr = *i;
-
-                if (vntr.rid > cvntr.rid)
-                {
-                    vntr_buffer.insert(i, vntr);
-                    return true;
-                }
-                else if (vntr.rid == cvntr.rid)
-                {
-                    if (vntr.exact_beg1 > cvntr.exact_beg1)
-                    {
-                        vntr_buffer.insert(i, vntr);
-                        return true;
-                    }
-                    else if (vntr.exact_beg1 == cvntr.exact_beg1)
-                    {
-                        if (vntr.exact_end1 > cvntr.exact_end1)
-                        {
-                            vntr_buffer.insert(i, vntr);
-                            return true;
-                        }
-                        else if (cvntr.exact_end1 == vntr.exact_end1)
-                        {
-                            if (cvntr.motif > vntr.motif)
-                            {
-                                vntr_buffer.insert(i, vntr);
-                                return true;
-                            }
-                            else if (cvntr.motif == vntr.motif)
-                            {
-                                //do not insert
-                                return false;
-                            }
-                            else // cvntr.motif > vntr.motif
-                            {
-                                ++i;
-                            }
-                        }
-                        else // cvntr.rend1 > vntr.rend1
-                        {
-                            ++i;
-                        }
-                    }
-                    else //vntr.rbeg1 < cvntr.rbeg1
-                    {
-                        ++i;
-                    }
-                }
-                else //vntr.rid < cvntr.rid is impossible if input file is ordered.
-                {
-                    fprintf(stderr, "[%s:%d %s] File %s is unordered\n", __FILE__, __LINE__, __FUNCTION__, input_vcf_file.c_str());
-                    exit(1);
-                }
-            }
-        }
-        else if (method=="f")
-        {
-            std::list<VNTR>::iterator i = vntr_buffer.begin();
-            while(i!=vntr_buffer.end())
-            {
-                VNTR& cvntr = *i;
-
-                if (vntr.rid > cvntr.rid)
-                {
-                    vntr_buffer.insert(i, vntr);
-                    return true;
-                }
-                else if (vntr.rid == cvntr.rid)
-                {
-                    if (vntr.fuzzy_beg1 > cvntr.fuzzy_beg1)
-                    {
-                        vntr_buffer.insert(i, vntr);
-                        return true;
-                    }
-                    else if (vntr.fuzzy_beg1 == cvntr.fuzzy_beg1)
-                    {
-                        if (vntr.fuzzy_end1 > cvntr.fuzzy_end1)
-                        {
-                            vntr_buffer.insert(i, vntr);
-                            return true;
-                        }
-                        else if (cvntr.fuzzy_end1 == vntr.fuzzy_end1)
-                        {
-                            if (cvntr.motif > vntr.motif)
-                            {
-                                vntr_buffer.insert(i, vntr);
-                                return true;
-                            }
-                            else if (cvntr.motif == vntr.motif)
-                            {
-                                //do not insert
-                                return false;
-                            }
-                            else // cvntr.motif > vntr.motif
-                            {
-                                ++i;
-                            }
-                        }
-                        else // cvntr.fuzzy_end1 > vntr.fuzzy_end1
-                        {
-                            ++i;
-                        }
-                    }
-                    else //vntr.fuzzy_beg1 < cvntr.fuzzy_beg1
-                    {
-                        ++i;
-                    }
-                }
-                else //vntr.rid < cvntr.rid is impossible if input file is ordered.
-                {
-                    fprintf(stderr, "[%s:%d %s] File %s is unordered\n", __FILE__, __LINE__, __FUNCTION__, input_vcf_file.c_str());
-                    exit(1);
-                }
-            }
-        }
-
-        vntr_buffer.push_back(vntr);
-        return true;
-    }
-
-    /**
-     * Flush variant buffer.
-     */
-    void flush_vntr_buffer(bcf1_t* v)
-    {
-        if (vntr_buffer.empty())
-        {
-            return;
-        }
-
-        int32_t rid = bcf_get_rid(v);
-        int32_t pos1 = bcf_get_pos1(v);
-
-        //search for vntr to start deleting from.
-        std::list<VNTR>::iterator i = vntr_buffer.begin();
-        while(i!=vntr_buffer.end())
-        {
-            VNTR& vntr = *i;
-
-            if (vntr.rid < rid)
-            {
-                break;
-            }
-            else if (vntr.rid == rid)
-            {
-                if (method=="e")
-                {
-                    if (vntr.exact_end1 < pos1-2000)
-                    {
-                        break;
-                    }
-                }
-                else if (method=="f")
-                {
-                    if (vntr.fuzzy_end1 < pos1-2000)
-                    {
-                        break;
-                    }
-                }
-            }
-            else //rid < vntr.rid is impossible
-            {
-                fprintf(stderr, "[%s:%d %s] File %s is unordered\n", __FILE__, __LINE__, __FUNCTION__, input_vcf_file.c_str());
-                exit(1);
-            }
-
-            ++i;
-        }
-
-        while (i!=vntr_buffer.end())
-        {
-            i = vntr_buffer.erase(i);
-        }
     }
 
     /**
@@ -527,84 +256,6 @@ class Igor : Program
         flanks.append(seq);
         if (seq) free(seq);
         bcf_update_info_string(h, v, "FLANKSEQ", flanks.c_str());
-    }
-
-    /**
-     * Creates a VNTR record.
-     */
-    void create_vntr_record(bcf_hdr_t* h, bcf1_t *v, Variant& variant)
-    {
-        VNTR& vntr = variant.vntr;
-
-        //shared fields
-        bcf_set_rid(v, variant.rid);
-        bcf_update_info_string(h, v, MOTIF.c_str(), vntr.motif.c_str());
-        bcf_update_info_string(h, v, BASIS.c_str(), vntr.basis.c_str());
-        bcf_update_info_string(h, v, RU.c_str(), vntr.ru.c_str());
-
-        //exact characteristics
-        bcf_update_info_float(h, v, EX_SCORE.c_str(), &vntr.exact_motif_concordance, 1);
-        bcf_update_info_float(h, v, EX_RL.c_str(), &vntr.exact_rl, 1);
-        bcf_update_info_float(h, v, EX_LL.c_str(), &vntr.exact_ll, 1);
-        int32_t ru_count[2] = {vntr.exact_no_exact_ru, vntr.exact_total_no_ru};
-        bcf_update_info_int32(h, v, EX_RU_COUNTS.c_str(), &ru_count, 2);
-        int32_t flank_pos1[2] = {variant.vntr.exact_beg1-1, variant.vntr.exact_end1+1};
-        bcf_update_info_int32(h, v, EX_FLANKS.c_str(), &flank_pos1, 2);
-
-        //fuzzy characteristics
-        bcf_update_info_float(h, v, FZ_SCORE.c_str(), &vntr.fuzzy_motif_concordance, 1);
-        bcf_update_info_float(h, v, FZ_RL.c_str(), &vntr.fuzzy_rl, 1);
-        bcf_update_info_float(h, v, FZ_LL.c_str(), &vntr.fuzzy_ll, 1);
-        int32_t fuzzy_ru_count[2] = {vntr.fuzzy_no_exact_ru, vntr.fuzzy_total_no_ru};
-        bcf_update_info_int32(h, v, FZ_RU_COUNTS.c_str(), &fuzzy_ru_count, 2);
-        int32_t fuzzy_flank_pos1[2] = {variant.vntr.fuzzy_beg1-1, variant.vntr.fuzzy_end1+1};
-        bcf_update_info_int32(h, v, FZ_FLANKS.c_str(), &fuzzy_flank_pos1, 2);
-
-        if (vntr.is_large_repeat_tract) bcf_update_info_flag(h, v, "LARGE_REPEAT_REGION", NULL, 1);
-
-        if (variant.vntr.definition_support=="e")
-        {
-            bcf_update_info_flag(h, v, "EXACT", NULL, 1);
-
-            //VNTR position and sequences
-            bcf_set_pos1(v, vntr.exact_beg1);
-            s.l = 0;
-            kputs(vntr.exact_repeat_tract.c_str(), &s);
-            kputc(',', &s);
-            kputs("<VNTR>", &s);
-            bcf_update_alleles_str(h, v, s.s);
-
-            //update flanking sequences
-            if (add_flank_annotation)
-            {
-                update_flankseq(h, v, variant.chrom.c_str(),
-                                variant.vntr.exact_beg1-10, variant.vntr.exact_beg1-1,
-                                variant.vntr.exact_end1+1, variant.vntr.exact_end1+10);
-            }
-        }
-        else if (variant.vntr.definition_support=="f")
-        {
-            bcf_update_info_flag(h, v, "FUZZY", NULL, 1);
-
-            //VNTR position and sequences
-            bcf_set_pos1(v, vntr.fuzzy_beg1);
-            s.l = 0;
-            kputs(vntr.fuzzy_repeat_tract.c_str(), &s);
-            kputc(',', &s);
-            kputs("<VNTR>", &s);
-            bcf_update_alleles_str(h, v, s.s);
-
-            //update flanking sequences
-            if (add_flank_annotation)
-            {
-                update_flankseq(h, v, variant.chrom.c_str(),
-                                variant.vntr.fuzzy_beg1-10, variant.vntr.fuzzy_beg1-1,
-                                variant.vntr.fuzzy_end1+1, variant.vntr.fuzzy_end1+10);
-            }
-        }
-
-        //individual fields - just set GT
-        bcf_update_genotypes(h, v, gts, no_samples);
     }
 
     void annotate_indels()
@@ -636,171 +287,98 @@ class Igor : Program
             {
                 std::string var = variant.get_variant_string();
                 fprintf(stderr, "[%s:%d %s] Variant is not normalized, annotate_indels requires that variants are normalized: %s\n", __FILE__, __LINE__, __FUNCTION__, var.c_str());
+                odw->write(v);
+                v = odw->get_bcf1_from_pool();
+                continue;
+            }
+            
+            //variants with N crashes the alignment models!!!!!!  :(
+            if (vm->contains_N(v))
+            {
+                std::string var = variant.get_variant_string();
+                fprintf(stderr, "[%s:%d %s] Variant contains N bases, skipping annotation: %s\n", __FILE__, __LINE__, __FUNCTION__, var.c_str());
+                odw->write(v);
+                v = odw->get_bcf1_from_pool();
                 continue;
             }
 
-//            bcf_print(h,v);
+            if (debug)
+            {
+                bcf_print_liten(h,v);
+            }
 
             if (vtype&VT_INDEL)
             {
-                //variants with N crashes the alignment models!!!!!!  :(
-                if (vm->contains_N(v))
-                {
-                    continue;
-                }
-
-                if (debug)
-                {
-                    bcf_print_liten(h,v);
-                }
-
-                flush_vntr_buffer(v);
+                
 
                 va->annotate(variant, method);
 
-                ///////////////////////////////////////////////////////////////////////////////////////////////////////
-                //annotate indels with exact flanks and fuzzy flanks and generating motif used in fuzzy flank detection
-                ///////////////////////////////////////////////////////////////////////////////////////////////////////
-                bcf_update_info_string(h, v, "MOTIF", variant.vntr.motif.c_str());
-                bcf_update_info_string(h, v, "BASIS", variant.vntr.basis.c_str());
-                bcf_update_info_string(h, v, "RU", variant.vntr.ru.c_str());
+                VNTR& vntr = variant.vntr;
 
-                bcf_update_info_float(h, v, EX_SCORE.c_str(), &variant.vntr.exact_motif_concordance, 1);
-                bcf_update_info_int32(h, v, EX_TRF_SCORE.c_str(), &variant.vntr.exact_trf_score, 1);
-
-                int32_t flank_pos1[2] = {variant.vntr.exact_beg1, variant.vntr.exact_end1};
-                bcf_update_info_int32(h, v, EX_FLANKS.c_str(), &flank_pos1, 2);
-
-                if (method=="e")
-                {
-                    bcf_update_info_string(h, v, MOTIF.c_str(), variant.vntr.motif.c_str());
-                    bcf_update_info_string(h, v, BASIS.c_str(), variant.vntr.basis.c_str());
-
-                    bcf_update_info_float(h, v, EX_SCORE.c_str(), &variant.vntr.exact_motif_concordance, 1);
-                    bcf_update_info_int32(h, v, EX_TRF_SCORE.c_str(), &variant.vntr.exact_trf_score, 1);
-
-                    int32_t flank_pos1[2] = {variant.vntr.exact_beg1-1, variant.vntr.exact_end1+1};
-                    bcf_update_info_int32(h, v, EX_FLANKS.c_str(), &flank_pos1, 2);
-
-                    if (add_flank_annotation)
-                    {
-                        update_flankseq(h, v, variant.chrom.c_str(),
-                                variant.vntr.exact_beg1-10, variant.vntr.exact_beg1-1,
-                                variant.vntr.exact_end1+1, variant.vntr.exact_end1+10);
-                    }
-                }
-
-                if (method=="f")
-                {
-                    //the reason for this is that we should be handling Indels as though they are
-                    //clearly defined variants, if the fuzzy region was not captured in the first place
-                    //it is indicative (possibly) of a region that although has many scattered repeats
-                    //has instead stabilized with respect to slippage mutation.
-
-                    bcf_update_info_string(h, v, MOTIF.c_str(), variant.vntr.motif.c_str());
-                    bcf_update_info_string(h, v, BASIS.c_str(), variant.vntr.basis.c_str());
-
-                    bcf_update_info_float(h, v, EX_SCORE.c_str(), &variant.vntr.exact_motif_concordance, 1);
-                    bcf_update_info_float(h, v, FZ_SCORE.c_str(), &variant.vntr.fuzzy_motif_concordance, 1);
-
-                    bcf_update_info_int32(h, v, EX_TRF_SCORE.c_str(), &variant.vntr.exact_trf_score, 1);
-                    bcf_update_info_int32(h, v, FZ_TRF_SCORE.c_str(), &variant.vntr.fuzzy_trf_score, 1);
-
-                    int32_t flank_pos1[2] = {variant.vntr.exact_beg1-1, variant.vntr.exact_end1+1};
-                    bcf_update_info_int32(h, v, FZ_FLANKS.c_str(), &flank_pos1, 2);
-
-                    int32_t fuzzy_flank_pos1[2] = {variant.vntr.fuzzy_beg1-1, variant.vntr.fuzzy_end1+1};
-                    bcf_update_info_int32(h, v, FZ_FLANKS.c_str(), &fuzzy_flank_pos1, 2);
-
-                    if (add_flank_annotation)
-                    {
-                        update_flankseq(h, v, variant.chrom.c_str(),
-                            variant.vntr.fuzzy_beg1-10, variant.vntr.fuzzy_beg1-1,
-                            variant.vntr.fuzzy_end1+1, variant.vntr.fuzzy_end1+10);
-                    }
-                }
-
-                /////////////////
-                //add VNTR record
-                /////////////////
-                if (add_vntr_record)
-                {
-                    if (va->is_vntr(variant, vntr_classification, method))
-                    {
-                        if (variant.vntr.definition_support=="e")
-                        {
-                            variant.get_vntr_string(&s);
-                        }
-                        else if (variant.vntr.definition_support=="f")
-                        {
-                            variant.get_fuzzy_vntr_string(&s);
-                        }
-
-                        bcf_update_info_string(h, v, TR.c_str(), s.s);
-                        odw->write(v);
-                        v = odw->get_bcf1_from_pool();
-
-                        if (insert_vntr_record_into_buffer(variant.vntr))
-                        {
-                            create_vntr_record(odr->hdr, v, variant);
-                            odw->write(v);
-                            v = odw->get_bcf1_from_pool();
-                        }
-                    }
-                }
-                //ADD ANOTHER CLASSIFICATION FOR IMPURE VNTRs - useful for marking
-                //else if
-                //
-                else
-                {
-                    odw->write(v);
-                    v = odw->get_bcf1_from_pool();
-                }
-
-
-                ++no_variants_annotated;
+                //shared fields
+                bcf_set_rid(v, variant.rid);
+                
+                bcf_update_info_int32(h, v, END.c_str(), &variant.end1, 1);
+                bcf_update_info_string(h, v, MOTIF.c_str(), vntr.motif.c_str());
+                bcf_update_info_string(h, v, RU.c_str(), vntr.ru.c_str());
+                bcf_update_info_string(h, v, BASIS.c_str(), vntr.basis.c_str());
+                bcf_update_info_int32(h, v, BASIS_LEN.c_str(), &variant.end1, 1);
+        
+                //exact characteristics
+                int32_t exact_flank_pos1[2] = {vntr.exact_beg1, vntr.exact_end1};
+                bcf_update_info_int32(h, v, EX_REPEAT_TRACT.c_str(), &exact_flank_pos1, 2);
+                bcf_update_info_int32(h, v, EX_COMP.c_str(), &vntr.exact_comp[0], 4);
+                bcf_update_info_float(h, v, EX_ENTROPY.c_str(), &vntr.exact_entropy, 1);
+                bcf_update_info_float(h, v, EX_RL.c_str(), &vntr.exact_rl, 1);
+                bcf_update_info_float(h, v, EX_LL.c_str(), &vntr.exact_ll, 1);
+                int32_t exact_ru_count[2] = {vntr.exact_no_exact_ru, vntr.exact_total_no_ru};
+                bcf_update_info_int32(h, v, EX_RU_COUNTS.c_str(), &exact_ru_count, 2);
+                bcf_update_info_float(h, v, EX_SCORE.c_str(), &vntr.exact_score, 1);
+                bcf_update_info_float(h, v, EX_TRF_SCORE.c_str(), &vntr.exact_trf_score, 1);
+               
+                //fuzzy characteristics
+                int32_t fuzzy_flank_pos1[2] = {vntr.fuzzy_beg1, vntr.fuzzy_end1};
+                bcf_update_info_int32(h, v, EX_REPEAT_TRACT.c_str(), &fuzzy_flank_pos1, 2);
+                bcf_update_info_int32(h, v, EX_COMP.c_str(), &vntr.fuzzy_comp[0], 4);
+                bcf_update_info_float(h, v, EX_ENTROPY.c_str(), &vntr.fuzzy_entropy, 1);
+                bcf_update_info_float(h, v, EX_RL.c_str(), &vntr.fuzzy_rl, 1);
+                bcf_update_info_float(h, v, EX_LL.c_str(), &vntr.fuzzy_ll, 1);
+                int32_t fuzzy_ru_count[2] = {vntr.fuzzy_no_exact_ru, vntr.fuzzy_total_no_ru};
+                bcf_update_info_int32(h, v, EX_RU_COUNTS.c_str(), &fuzzy_ru_count, 2);
+                bcf_update_info_float(h, v, EX_SCORE.c_str(), &vntr.fuzzy_score, 1);
+                bcf_update_info_float(h, v, EX_TRF_SCORE.c_str(), &vntr.fuzzy_trf_score, 1);
+             
+                update_flankseq(h, v, variant.chrom.c_str(),
+                                variant.beg1-10, variant.beg1-1,
+                                variant.end1+1, variant.end1+10);
+                                
+                ++no_indels_annotated;
             }
             else if (vtype==VT_VNTR)
             {
                 va->annotate(variant, vntr_annotation_mode);
+              
+                bcf_update_info_float(h, v, "SCORE", &variant.vntr.exact_score, 1);
+                bcf_update_info_float(h, v, "TRF_SCORE", &variant.vntr.exact_score, 1);
 
-                if (add_flank_annotation)
-                {
-                    update_flankseq(h, v, variant.chrom.c_str(),
+                update_flankseq(h, v, variant.chrom.c_str(),
                                 variant.beg1-10, variant.beg1-1,
                                 variant.end1+1, variant.end1+10);
-                }
-
-                bcf_update_info_float(h, v, "SCORE", &variant.vntr.exact_motif_concordance, 1);
-                bcf_update_info_float(h, v, "TRF_SCORE", &variant.vntr.exact_motif_concordance, 1);
-
-                odw->write(v);
-                v = odw->get_bcf1_from_pool();
-
-
             }
-            else // SNP
+            else if (vtype==VT_SNP || vtype==VT_MNP)
             {
-                //update flanking sequences
-                std::string flanks;
-                int32_t seq_len;
-                std::string chrom = bcf_get_chrom(h, v);
-                int32_t pos1 = bcf_get_pos1(v);
-
-                if (add_flank_annotation)
-                {
-                    update_flankseq(h, v, variant.chrom.c_str(),
+                update_flankseq(h, v, variant.chrom.c_str(),
                                 variant.beg1-10, variant.beg1-1,
                                 variant.end1+1, variant.end1+10);
-                }
-
-                odw->write(v);
-                v = odw->get_bcf1_from_pool();
             }
+            else //SVs?
+            {
+                //do nothing
+            }
+            
+            odw->write(v);
+            v = odw->get_bcf1_from_pool();
         }
-
-//        std::cerr << "no inexact : " << no_inexact << "\n";
-//        std::cerr << "no exact : " << no_exact << "\n";
 
         odw->close();
         odr->close();

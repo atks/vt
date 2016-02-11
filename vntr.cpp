@@ -44,7 +44,7 @@ void VNTR::clear()
     exact_end1 = 0;
     exact_lflank.clear();
     exact_rflank.clear();
-    exact_motif_concordance = 0;
+    exact_score = 0;
     exact_rl = 0;
     exact_no_exact_ru = 0;
     exact_total_no_ru = 0;
@@ -54,7 +54,7 @@ void VNTR::clear()
     fuzzy_end1 = 0;
     fuzzy_lflank.clear();
     fuzzy_rflank.clear();
-    fuzzy_motif_concordance = 0;
+    fuzzy_score = 0;
     fuzzy_rl = 0;
     fuzzy_no_exact_ru = 0;
     fuzzy_total_no_ru = 0;
@@ -140,7 +140,7 @@ void VNTR::print()
     std::cerr << "position                        : [" << exact_beg1 << "," << exact_end1 << "]\n";
     std::cerr << "reference repeat unit length    : " << exact_rl << "\n";
     std::cerr << "longest allele length           : " << exact_ll << "\n";
-    std::cerr << "motif_concordance               : " << exact_motif_concordance << "\n";
+    std::cerr << "score               : " << exact_score << "\n";
     std::cerr << "repeat units                    : " << exact_rl << "\n";
     std::cerr << "exact repeat units              : " << exact_no_exact_ru << "\n";
     std::cerr << "total no. of repeat units       : " << exact_total_no_ru << "\n";
@@ -150,7 +150,7 @@ void VNTR::print()
     std::cerr << "position                        : [" << fuzzy_beg1 << "," << fuzzy_end1 << "]\n";
     std::cerr << "reference repeat unit length    : " << fuzzy_rl << "\n";
     std::cerr << "longest allele length           : " << fuzzy_ll << "\n";
-    std::cerr << "motif_concordance               : " << fuzzy_motif_concordance << "\n";
+    std::cerr << "score               : " << fuzzy_score << "\n";
     std::cerr << "repeat units                    : " << fuzzy_rl << "\n";
     std::cerr << "exact repeat units              : " << fuzzy_no_exact_ru << "\n";
     std::cerr << "total no. of repeat units       : " << fuzzy_total_no_ru << "\n";
@@ -162,7 +162,7 @@ void VNTR::print()
     int32_t fuzzy_end1;              //end of repeat tract
     float fuzzy_rl;                   //number of repeat units on repeat tract
     float fuzzy_ll;                   //number of repeat units on longest allele
-    float fuzzy_motif_concordance;    //motif concordance from hmm
+    float fuzzy_score;    //motif concordance from hmm
     int32_t fuzzy_no_exact_ru;        //number exact repeat units from hmm
     int32_t fuzzy_total_no_ru;        //total no of repeat units from hmm
     std::string fuzzy_lflank;         //left flank

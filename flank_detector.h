@@ -78,7 +78,7 @@ class FlankDetector
     //purity score variables
     ////////////////////////
     std::string ru;
-    float motif_concordance;
+    float score;
     float no_exact_ru;
     uint32_t total_no_ru;
     float rl;

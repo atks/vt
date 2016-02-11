@@ -271,13 +271,13 @@ bool VNTRAnnotator::is_vntr(Variant& variant, int32_t mode, std::string& method)
 
     if (method == "e")
     {
-        motif_concordance = variant.vntr.exact_motif_concordance;
+        motif_concordance = variant.vntr.exact_score;
         no_exact_ru = variant.vntr.exact_no_exact_ru;
     }
     else if (method == "f")
     {
         rlen = variant.vntr.fuzzy_rl;
-        motif_concordance = variant.vntr.fuzzy_motif_concordance;
+        motif_concordance = variant.vntr.fuzzy_score;
         no_exact_ru = variant.vntr.fuzzy_no_exact_ru;
     }
 
@@ -293,12 +293,12 @@ bool VNTRAnnotator::is_vntr(Variant& variant, int32_t mode, std::string& method)
             {
                 //should we set separate cutoffs for motifs that contain only 2 types of nucleotides?
                 //
-                if (vntr.mlen==1 && vntr.fuzzy_motif_concordance>0.9)
+                if (vntr.mlen==1 && vntr.fuzzy_score>0.9)
                 {
                     vntr.definition_support = "f";
                     return true;
                 }
-                else if (vntr.mlen>1 && vntr.fuzzy_motif_concordance>0.75)
+                else if (vntr.mlen>1 && vntr.fuzzy_score>0.75)
                 {
                     vntr.definition_support = "f";
                     return true;
@@ -312,12 +312,12 @@ bool VNTRAnnotator::is_vntr(Variant& variant, int32_t mode, std::string& method)
         {
             //should we set separate cutoffs for motifs that contain only 2 types of nucleotides?
             //
-            if (vntr.mlen==1 && vntr.exact_motif_concordance>0.9)
+            if (vntr.mlen==1 && vntr.exact_score>0.9)
             {
                 vntr.definition_support = "e";
                 return true;
             }
-            else if (vntr.mlen>1 && vntr.exact_motif_concordance>0.75)
+            else if (vntr.mlen>1 && vntr.exact_score>0.75)
             {
                 vntr.definition_support = "e";
                 return true;

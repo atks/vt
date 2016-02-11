@@ -54,18 +54,32 @@ class VNTR
 
     std::string definition_support; //either exact or fuzzy
 
+
+//
+//    //exact alignment related statistics
+//    std::string EX_REPEAT_TRACT;
+//    std::string EX_COMP;
+//    std::string EX_ENTROPY;
+//    std::string EX_RL;
+//    std::string EX_LL;
+//    std::string EX_RU_COUNTS;
+//    std::string EX_SCORE;
+//    std::string EX_TRF_SCORE;
+
     ////////////////////
     //exact repeat tract
     ////////////////////
     std::string exact_repeat_tract;   //repeat tract
+    int32_t exact_comp[4];            //composition of bases in repeat tract
+    float exact_entropy ;             //sequence entropy of repeat tract
     int32_t exact_beg1;               //beginning of repeat tract
     int32_t exact_end1;               //end of repeat tract
     float exact_rl;                   //length of repeat tract in base pairs
     float exact_ll;                   //length of repeat tract (including longest alternate allele) in base pairs
-    float exact_motif_concordance;    //motif concordance from hmm
-    int32_t exact_trf_score;          //TRF score of exact repeat tract     
     int32_t exact_no_exact_ru;        //number exact repeat units from hmm
     int32_t exact_total_no_ru;        //total no of repeat units from hmm
+    float exact_score;                //motif concordance from hmm
+    int32_t exact_trf_score;          //TRF score of exact repeat tract     
     std::string exact_lflank;         //left flank
     std::string exact_rflank;         //right flank
 
@@ -73,14 +87,16 @@ class VNTR
     //fuzzy alignment
     /////////////////
     std::string fuzzy_repeat_tract;   //repeat tract
+    int32_t fuzzy_comp[4];            //composition of bases in repeat tract
+    float fuzzy_entropy ;             //sequence entropy of repeat tract
     int32_t fuzzy_beg1;               //beginning of repeat tract
     int32_t fuzzy_end1;               //end of repeat tract
     float fuzzy_rl;                   //length of repeat tract in base pairs
     float fuzzy_ll;                   //length of repeat tract (including longest alternate allele) in base pairs
-    float fuzzy_motif_concordance;    //motif concordance from hmm
-    int32_t fuzzy_trf_score;          //TRF score of fuzzy repeat tract
     int32_t fuzzy_no_exact_ru;        //number exact repeat units from hmm
     int32_t fuzzy_total_no_ru;        //total no of repeat units from hmm
+    float fuzzy_score;                //motif concordance from hmm
+    int32_t fuzzy_trf_score;          //TRF score of fuzzy repeat tract
     std::string fuzzy_lflank;         //left flank
     std::string fuzzy_rflank;         //right flank
 
