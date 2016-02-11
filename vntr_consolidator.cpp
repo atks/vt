@@ -534,9 +534,9 @@ bool VNTRConsolidator::detect_consistent_motifs(Variant* variant)
             {
                 fd->compute_purity_score(repeat_tract, it->first);
 
-                if (fd->motif_concordance > best_motif_concordance)
+                if (fd->score > best_motif_concordance)
                 {
-                    best_motif_concordance = fd->motif_concordance;
+                    best_motif_concordance = fd->score;
                     best_motif = it->first;
                 }
             }
@@ -561,7 +561,7 @@ bool VNTRConsolidator::detect_consistent_motifs(Variant* variant)
             bcf_update_info_string(odw->hdr, new_v, "RU", fd->ru.c_str());
 
             //VNTR characteristics
-            bcf_update_info_float(odw->hdr, new_v, "FZ_CONCORDANCE", &fd->motif_concordance , 1);
+            bcf_update_info_float(odw->hdr, new_v, "FZ_CONCORDANCE", &fd->score , 1);
             bcf_update_info_float(odw->hdr, new_v, "FZ_RL", &fd->rl, 1);
             int32_t new_fuzzy_flanks[2] = {merged_beg1+fd->min_beg0-1, merged_beg1+fd->min_beg0+(int32_t)fd->polished_repeat_tract.size()};
             bcf_update_info_int32(odw->hdr, new_v, "FZ_FLANKS", &new_fuzzy_flanks, 2);
