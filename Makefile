@@ -87,6 +87,7 @@ SOURCES = align\
 		rminfo\
 		fuzzy_partition\
 		seq\
+		set_ref\
 		sort\
 		subset\
 		sv_tree\

@@ -77,6 +77,7 @@
 #include "validate.h"
 #include "view.h"
 #include "vntrize.h"
+#include "set_ref.h"
 
 void print_time(double t)
 {
@@ -213,6 +214,10 @@ int main(int argc, char ** argv)
     else if (argc>1 && cmd=="uniq")
     {
         uniq(argc-1, ++argv);
+    }
+    else if (argc>1 && cmd=="set_ref")
+    {
+        set_ref(argc-1, ++argv);
     }
     else if (argc>1 && cmd=="remove_overlap")
     {
