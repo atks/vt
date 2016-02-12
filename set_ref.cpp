@@ -60,6 +60,9 @@ class Igor : Program
     //stats//
     /////////
     int32_t no_variants_with_REF_set;
+    int32_t no_variants_within_bounds;
+    int32_t no_variants_partial_overlap;
+    int32_t no_variants_no_overlap;
     int32_t no_variants;
 
     ////////////////
@@ -85,11 +88,11 @@ class Igor : Program
             TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_output_vcf_file("o", "o", "output VCF file [-]", false, "-", "str", cmd);
             TCLAP::ValueArg<std::string> arg_ref_fasta_file("r", "r", "reference sequence fasta file []", true, "", "str", cmd);
-            TCLAP::ValueArg<std::string> arg_ref_region_tag("r", "r", "reference region tag []", true, "", "str", cmd);
+            TCLAP::ValueArg<std::string> arg_ref_region_tag("t", "t", "reference region tag []", true, "", "str", cmd);
             TCLAP::SwitchArg arg_debug("d", "d", "debug [false]", cmd, false);
             TCLAP::UnlabeledValueArg<std::string> arg_input_vcf_file("<in.vcf>", "input VCF file", true, "","file", cmd);
             TCLAP::ValueArg<std::string> arg_fexp("f", "f", "filter expression []", false, "", "str", cmd);
-           
+
             cmd.parse(argc, argv);
 
             input_vcf_file = arg_input_vcf_file.getValue();
@@ -113,10 +116,12 @@ class Igor : Program
 
     void initialize()
     {
-        ///////////
-        //options//
-        ///////////
-        
+        //////////////////////
+        //i/o initialization//
+        //////////////////////
+        odr = new BCFOrderedReader(input_vcf_file, intervals);
+        odw = new BCFOrderedWriter(output_vcf_file, 10000);
+        odw->link_hdr(odr->hdr);
 
         /////////////////////////
         //filter initialization//
@@ -124,17 +129,13 @@ class Igor : Program
         filter.parse(fexp.c_str(), false);
         filter_exists = fexp=="" ? false : true;
 
-        //////////////////////
-        //i/o initialization//
-        //////////////////////
-        odr = new BCFOrderedReader(input_vcf_file, intervals);
-        odw = new BCFOrderedWriter(output_vcf_file, 10000);
-        odw->link_hdr(odr->hdr);
-       
         ////////////////////////
         //stats initialization//
         ////////////////////////
         no_variants_with_REF_set = 0;
+        no_variants_within_bounds = 0;
+        no_variants_partial_overlap = 0;
+        no_variants_no_overlap = 0;
         no_variants = 0;
 
         ////////////////////////
@@ -161,6 +162,10 @@ class Igor : Program
     {
         std::clog << "\n";
         std::cerr << "stats: no. of variants with REF set   " << no_variants_with_REF_set << "\n";
+        std::cerr << "           within bounds              " << no_variants_within_bounds << "\n";
+        std::cerr << "           partial overlap            " << no_variants_partial_overlap << "\n";
+        std::cerr << "           no overlap                 " << no_variants_no_overlap << "\n";
+        std::clog << "\n";
         std::cerr << "       total no. of variants          " << no_variants << "\n";
         std::clog << "\n";
     }
@@ -172,7 +177,7 @@ class Igor : Program
         bcf1_t *v = odw->get_bcf1_from_pool();
         bcf_hdr_t *h = odw->hdr;
         Variant variant;
-        
+
         while (odr->read(v))
         {
             int32_t vtype = vm->classify_variant(odr->hdr, v, variant);
@@ -193,23 +198,80 @@ class Igor : Program
                 {
                     if (n==2)
                     {
-                        char* new_ref = rs->fetch_seq(bcf_get_chrom(h,v), region1[0], region1[1]);
-                        if (new_ref)
+                        int32_t pos1 = bcf_get_pos1(v);
+                        int32_t end1 = bcf_get_end1(v);
+                        --region1[0];
+                        ++region1[1];
+                        
+                        if (pos1>=region1[0] && end1<=region1[1])
                         {
-                            //expand alleles
+                            char* lflank = rs->fetch_seq(bcf_get_chrom(h,v), region1[0], pos1-1);
+                            char* rflank = rs->fetch_seq(bcf_get_chrom(h,v), end1+1, region1[1]);
                             kstring_t new_alleles = {0,0,0};
+                            int32_t n_allele = bcf_get_n_allele(v);
+                            char** alleles = bcf_get_allele(v);
                             
-                        }
-                    }    
-                    
-                    
-                    
-                }    
-        
+                            if (debug)
+                            {    
+                                std::cerr << "===============================\n";
+                                std::cerr << "OLD alleles\n";
+                                std::cerr << "pos1 : " << pos1 << "\n";
+                                for (uint32_t i=0; i<n_allele; ++i)
+                                {
+                                    std::cerr << "       " << alleles[i] << "\n";
+                                }
+                            }
+                                        
+                            for (uint32_t i=0; i<n_allele; ++i)
+                            {
+                                if (i) kputc(',', &new_alleles);
+                                kputs(lflank, &new_alleles);
+                                kputs(alleles[i], &new_alleles);
+                                kputs(rflank, &new_alleles);
+                            }
+                            
+                            bcf_update_alleles_str(h, v, new_alleles.s);
                                 
+                            if (debug)
+                            {    
+                                std::cerr << "NEW alleles\n";
+                                std::cerr << "pos1 : " << region1[0] << "\n";
+                                for (uint32_t i=0; i<n_allele; ++i)
+                                {
+                                    std::cerr << "       " << alleles[i] << "\n";
+                                }
+                            }
+                            
+                            ++no_variants_within_bounds;
+                        }
+                        else
+                        {
+                            if (end1>=region1[0] && pos1<=region1[1])
+                            {
+                                
+                                
+                                
+                                ++no_variants_partial_overlap;
+                            }
+                            else
+                            {    
+//                                std::cerr << "===============================\n";
+//                                std::cerr << "weird\n";
+//                                    
+//                                bcf_print(h,v);  
+                                    
+                        
+                                ++no_variants_no_overlap;
+                            }
+                        }
+                    }
+                }
+
                 ++no_variants_with_REF_set;
             }
-           
+
+            ++no_variants;
+            
             odw->write(v);
             v = odw->get_bcf1_from_pool();
         }
