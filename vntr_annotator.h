@@ -56,6 +56,9 @@
 #define WILLEMS_2014_STR   5
 #define TAN_KANG_2015_VNTR 6
 
+//VNTR annotation modes
+#define REPEAT_TRACT_FEATURES  0 // compute composition, entropy, score, trf_score, 
+
 /**
  * Class for determining basic traits of an indel
  * motifs, flanks and VNTR type statistics.
@@ -110,7 +113,7 @@ class VNTRAnnotator
      *   h - using HMMs
      *   x - integrated models
      */
-    void annotate(Variant& variant, std::string mode);
+    void annotate(Variant& variant, int32_t amode);
 
     /**
      * Return the canonical representation of a motif.

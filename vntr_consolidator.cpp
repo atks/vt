@@ -523,16 +523,14 @@ bool VNTRConsolidator::detect_consistent_motifs(Variant* variant)
             bcf_print(odw->hdr, new_v);
             std::cerr << "newly merged ref " << variant->chrom << ":" << merged_beg1 << "-" << merged_end1 << " " << repeat_tract << "\n";
 
-
-
-
             //collect motifs from overlpaping records
             std::string best_motif = "";
             float best_motif_concordance = 0;
             std::map<std::string, int32_t>::iterator it;
             for (it = motifs.begin(); it!=motifs.end(); ++it)
             {
-                fd->compute_purity_score(repeat_tract, it->first);
+                std::string motif = it->first;
+                fd->compute_purity_score(repeat_tract, motif);
 
                 if (fd->score > best_motif_concordance)
                 {

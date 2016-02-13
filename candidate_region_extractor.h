@@ -114,7 +114,7 @@ class CandidateRegionExtractor
      *       - ALLELE_EXACT  by exact alignment
      *       - ALLELE_FUZZY  by fuzzy alignment
      */
-    void pick_candidate_region(Variant& variant, uint32_t mode);
+    void pick_candidate_region(Variant& variant,  int32_t mode, int32_t amode);
 
     /**
      * Pick shortest motif.

@@ -452,36 +452,52 @@ void FlankDetector::polish_repeat_tract_ends(std::string& repeat_tract, std::str
 /**
  * Computes purity score of a sequence with respect to a motif.
  */
-void FlankDetector::compute_purity_score(Variant& variant, std::string mode)
+void FlankDetector::compute_purity_score(Variant& variant, int32_t amode)
 {
-    std::string& repeat_tract = (mode=="e") ? variant.vntr.exact_repeat_tract : variant.vntr.fuzzy_repeat_tract;
-    compute_purity_score(repeat_tract, variant.vntr.motif);
+    VNTR& vntr = variant.vntr;
     
-    if (mode=="e")
+    if (amode&FINAL)
     {    
-        variant.vntr.ru = ru;
-        variant.vntr.exact_score = score;
-        variant.vntr.exact_no_exact_ru = no_exact_ru;
-        variant.vntr.exact_total_no_ru = total_no_ru;
-        variant.vntr.exact_rl = rl;
-        variant.vntr.exact_ll = rl + variant.max_dlen;
+        compute_purity_score(vntr.repeat_tract, vntr.motif);
+        
+        vntr.ru = ru;
+        vntr.exact_score = score;
+        vntr.exact_no_exact_ru = no_exact_ru;
+        vntr.exact_total_no_ru = total_no_ru;
+        vntr.exact_rl = rl;
+        vntr.exact_ll = rl + variant.max_dlen;
     }
-    else
+    
+    if (amode&EXACT)
     {
-        variant.vntr.ru = ru;
-        variant.vntr.fuzzy_score = score;
-        variant.vntr.fuzzy_no_exact_ru = no_exact_ru;
-        variant.vntr.fuzzy_total_no_ru = total_no_ru;
-        variant.vntr.fuzzy_rl = rl;
-        variant.vntr.fuzzy_ll = rl + variant.max_dlen;
+        compute_purity_score(vntr.exact_repeat_tract, vntr.motif);
+        
+        vntr.ru = ru;
+        vntr.fuzzy_score = score;
+        vntr.fuzzy_no_exact_ru = no_exact_ru;
+        vntr.fuzzy_total_no_ru = total_no_ru;
+        vntr.fuzzy_rl = rl;
+        vntr.fuzzy_ll = rl + variant.max_dlen;
+    }
+    
+    if (amode&FUZZY)
+    {
+        compute_purity_score(vntr.fuzzy_repeat_tract, vntr.motif);
+        
+        vntr.ru = ru;
+        vntr.score = score;
+        vntr.no_exact_ru = no_exact_ru;
+        vntr.total_no_ru = total_no_ru;
+        vntr.rl = rl;
+        vntr.ll = rl + variant.max_dlen;
     }
 }
 
 /**
  * Computes purity score of a sequence with respect to a motif.
  */
-void FlankDetector::compute_purity_score(std::string& repeat_tract, std::string motif)
-{
+void FlankDetector::compute_purity_score(std::string& repeat_tract, std::string& motif)
+{ 
     ru = choose_exact_repeat_unit(repeat_tract, motif);
     float exact_motif_count = 0;
     uint32_t mlen = ru.size();
@@ -525,8 +541,42 @@ void FlankDetector::compute_purity_score(std::string& repeat_tract, std::string 
     total_no_ru = ahmm->motif_count;
     rl = repeat_tract.size();
     trf_score = ahmm->trf_score;
+}
 
-    return;
+/**
+ * Computes composition and entropy ofrepeat tract.
+ */
+void FlankDetector::compute_composition_and_entropy(Variant& variant, int32_t amode)
+{
+    VNTR& vntr = variant.vntr;
+        
+    if (amode&FINAL)
+    {    
+        compute_composition_and_entropy(vntr.repeat_tract);
+        vntr.comp[0] = comp[0];
+        vntr.comp[1] = comp[1];
+        vntr.comp[2] = comp[2];
+        vntr.comp[3] = comp[3];
+        vntr.entropy = entropy;
+    }
+    else if (amode&EXACT)
+    {   
+        compute_composition_and_entropy(vntr.exact_repeat_tract);
+        vntr.exact_comp[0] = comp[0];
+        vntr.exact_comp[1] = comp[1];
+        vntr.exact_comp[2] = comp[2];
+        vntr.exact_comp[3] = comp[3];
+        vntr.exact_entropy = entropy;
+    }
+    else if (amode&FUZZY)
+    {   
+        compute_composition_and_entropy(vntr.fuzzy_repeat_tract);
+        vntr.fuzzy_comp[0] = comp[0];
+        vntr.fuzzy_comp[1] = comp[1];
+        vntr.fuzzy_comp[2] = comp[2];
+        vntr.fuzzy_comp[3] = comp[3];
+        vntr.fuzzy_entropy = entropy;
+    }
 }
 
 /**

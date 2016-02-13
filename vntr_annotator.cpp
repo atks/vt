@@ -59,7 +59,7 @@ VNTRAnnotator::~VNTRAnnotator()
  *       - f for fuzzy alignment annotation
  *       -
  */
-void VNTRAnnotator::annotate(Variant& variant, std::string mode)
+void VNTRAnnotator::annotate(Variant& variant, int32_t amode)
 {
     VNTR& vntr = variant.vntr;
 
@@ -76,44 +76,24 @@ void VNTRAnnotator::annotate(Variant& variant, std::string mode)
     //VNTRs from other sources.
     if (variant.type==VT_VNTR)
     {
-        if (mode=="r")
-        {
-            if (debug) std::cerr << "ANNOTATING VNTR/STR \n";
-            //takes accepted MOTIF and RU
+        //always this for the time being
+        //REPEAT_TRACT_FEATURES
+        if (debug) std::cerr << "ANNOTATING VNTR/STR \n";
 
 
-            //computes purity
-            //1. pick candidate region
-            cre->pick_candidate_region(variant, REFERENCE);
+        if (REPEAT_TRACT_FEATURES)
+        
+        //1. pick candidate region
+        cre->pick_candidate_region(variant, REFERENCE, FINAL);
 
-            //just use the motif annotator
-            //2. detect candidate motifs from a reference seqeuence
-            cmp->generate_candidate_motifs(variant);
-            cmp->next_motif(variant, NO_REQUIREMENT);
+        //2. set motifs from info field
+        cmp->set_motif_from_info_field(variant);
 
-            //3. compute purity
-            fd->detect_flanks(h, v, variant, CLIP_ENDS);
-        }
-        else if (mode=="c")
-        {
-            if (debug) std::cerr << "ANNOTATING VNTR's purity score\n";
-
-//std::cerr << "1)" << variant.beg1 << " " << variant.end1 << "\n";
-    
-            //1. pick candidate region
-            cre->pick_candidate_region(variant, REFERENCE);
-
-//std::cerr << "2)" << variant.beg1 << " " << variant.end1 << "\n";
-
-            //2. set motifs from info field
-            cmp->set_motif_from_info_field(variant);
-
-//std::cerr << "3)" << variant.beg1 << " " << variant.end1 << "\n";
-            //3. compute purity scores
-            fd->compute_purity_score(variant, "e");
-            
-//std::cerr << "4)" << variant.beg1 << " " << variant.end1 << "\n";            
-        }
+        //3. compute purity scores
+        fd->compute_purity_score(variant, FINAL);
+ 
+        //3. compute purity scores
+        fd->compute_composition_and_entropy(variant, FINAL);
     }
     //main purpose - annotation of Indels.
     else if (variant.type&VT_INDEL)
@@ -129,7 +109,7 @@ void VNTRAnnotator::annotate(Variant& variant, std::string mode)
         if (debug) std::cerr << "ANNOTATING INDEL\n";
 
         //1. selects candidate region by fuzzy left and right alignment
-        cre->pick_candidate_region(variant, EXACT_LEFT_RIGHT_ALIGNMENT);
+        cre->pick_candidate_region(variant, EXACT_LEFT_RIGHT_ALIGNMENT, EXACT);
 
         //2. detect candidate motifs from a reference sequence
         cmp->generate_candidate_motifs(variant);

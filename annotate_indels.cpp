@@ -306,7 +306,7 @@ class Igor : Program
 
             if (vtype&VT_INDEL)
             {
-                va->annotate(variant, method);
+                va->annotate(variant, EXACT|FUZZY);
 
                 VNTR& vntr = variant.vntr;
 
@@ -352,11 +352,6 @@ class Igor : Program
             }
             else if (vtype==VT_VNTR)
             {
-                va->annotate(variant, vntr_annotation_mode);
-              
-                bcf_update_info_float(h, v, "SCORE", &variant.vntr.exact_score, 1);
-                bcf_update_info_float(h, v, "TRF_SCORE", &variant.vntr.exact_score, 1);
-
                 update_flankseq(h, v, variant.chrom.c_str(),
                                 variant.beg1-10, variant.beg1-1,
                                 variant.end1+1, variant.end1+10);

@@ -264,23 +264,24 @@ class Igor : Program
 
             if (vtype==VT_VNTR)
             {
-                va->annotate(variant, method);
-
+               
                 VNTR& vntr = variant.vntr;
-
-                //shared fields
-                bcf_set_rid(v, variant.rid);
-
-                bcf_update_info_int32(h, v, END.c_str(), &variant.end1, 1);
-                bcf_update_info_string(h, v, MOTIF.c_str(), vntr.motif.c_str());
+                
+                int32_t beg1 = bcf_get_pos1(v);
+                int32_t end1 = bcf_get_end1(v);
+                
+                va->annotate(variant, FINAL);  
+                //assumes MOTIF is present
                 bcf_update_info_int32(h, v, MLEN.c_str(), &vntr.mlen, 1);
+                
+                bcf_update_info_int32(h, v, END.c_str(), &variant.end1, 1);
                 bcf_update_info_string(h, v, RU.c_str(), vntr.ru.c_str());
                 bcf_update_info_string(h, v, BASIS.c_str(), vntr.basis.c_str());
                 bcf_update_info_int32(h, v, BLEN.c_str(), &vntr.blen, 1);
 
-                //exact characteristics
-                int32_t exact_flank_pos1[2] = {vntr.exact_beg1, vntr.exact_end1};
-                bcf_update_info_int32(h, v, REPEAT_TRACT.c_str(), &exact_flank_pos1, 2);
+            
+                int32_t flank_pos1[2] = {vntr.exact_beg1, vntr.exact_end1};
+                bcf_update_info_int32(h, v, REPEAT_TRACT.c_str(), &flank_pos1, 2);
                 bcf_update_info_int32(h, v, COMP.c_str(), &vntr.exact_comp[0], 4);
                 bcf_update_info_float(h, v, ENTROPY.c_str(), &vntr.exact_entropy, 1);
                 bcf_update_info_int32(h, v, RL.c_str(), &vntr.exact_rl, 1);

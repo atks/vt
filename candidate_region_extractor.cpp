@@ -70,29 +70,60 @@ CandidateRegionExtractor::~CandidateRegionExtractor()
  *       - ALLELE_EXACT  by exact alignment
  *       - ALLELE_FUZZY  by fuzzy alignment
  */
-void CandidateRegionExtractor::pick_candidate_region(Variant& variant, uint32_t mode)
+void CandidateRegionExtractor::pick_candidate_region(Variant& variant, int32_t mode, int32_t amode)
 {
     bcf_hdr_t* h = variant.h;
     bcf1_t* v = variant.v; 
     
     if (mode==REFERENCE)
     {
-        VNTR& vntr = variant.vntr;
-        vntr.exact_repeat_tract.assign(bcf_get_ref(v));
-        vntr.exact_beg1 = bcf_get_pos1(v);
-        char** alleles = bcf_get_allele(v);
-        vntr.exact_end1 = strlen(alleles[0]);
-        vntr.fuzzy_beg1 = vntr.exact_beg1;
-        vntr.fuzzy_end1 = vntr.exact_end1;
+        if (amode&FINAL)
+        {
+            VNTR& vntr = variant.vntr;
+            vntr.repeat_tract.assign(bcf_get_ref(v));
+            vntr.beg1 = bcf_get_pos1(v);
+            vntr.end1 = bcf_get_end1(v);
+        }
         
+        if (amode&EXACT)
+        {
+            VNTR& vntr = variant.vntr;
+            vntr.exact_repeat_tract.assign(bcf_get_ref(v));
+            vntr.exact_beg1 = bcf_get_pos1(v);
+            vntr.exact_end1 = bcf_get_end1(v);
+        }
+    
+        if (amode&FUZZY)
+        {
+            VNTR& vntr = variant.vntr;
+            vntr.fuzzy_repeat_tract.assign(bcf_get_ref(v));
+            vntr.fuzzy_beg1 = bcf_get_pos1(v);
+            vntr.fuzzy_end1 = bcf_get_end1(v);
+        }
     }
     else if (mode==EXACT_LEFT_RIGHT_ALIGNMENT)
     {
-        extract_regions_by_exact_alignment(variant);
+        if (amode==EXACT)
+        {    
+            extract_regions_by_exact_alignment(variant);
+        }
+        else
+        {
+            fprintf(stderr, "[E:%s] EXACT_LEFT_RIGHT_ALIGNMENT cannot be updated for any other attribute types beside EXACT.\n", __FUNCTION__);
+            exit(1);
+        }
     }
     else if (mode==FUZZY_LEFT_RIGHT_ALIGNMENT)
     {
-        extract_regions_by_fuzzy_alignment(variant);
+        if (amode==FUZZY)
+        {    
+            extract_regions_by_fuzzy_alignment(variant);
+        }
+        else
+        {
+            fprintf(stderr, "[E:%s] EXACT_LEFT_RIGHT_ALIGNMENT cannot be updated for any other attribute types beside FUZZY.\n", __FUNCTION__);
+            exit(1);
+        }
     }
 }
 
