@@ -58,6 +58,7 @@ class OrderedBCFOverlapMatcher
     int32_t no_exact_overlaps;
     int32_t no_fuzzy_overlaps;
     int32_t no_nonoverlaps;
+    int32_t no_variants;
 
     /**
      * Constructor.
@@ -117,7 +118,7 @@ class OrderedBCFOverlapMatcher
     /**
      * Is this record and exact match?.
      */
-    bool is_exact_match(bcf1_t* v);
+    bool is_exact_match(int32_t rid, int32_t beg1, int32_t end1, bcf1_t* v);
     
     private:
 };

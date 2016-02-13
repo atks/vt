@@ -33,13 +33,14 @@ class VNTROverlapStats
 {
     public:
 
-    uint32_t a, ap, ab, bp, b;
+    uint32_t a, ap, ab1, ab2, bp, b;
 
     VNTROverlapStats()
     {
         a = 0;
         ap= 0;
-        ab = 0;
+        ab1 = 0;
+        ab2 = 0;
         bp = 0;
         b = 0;
     };
@@ -303,7 +304,7 @@ class Igor : Program
                     {
                         //check for exactness
 
-                        if (oboms[i]->is_exact_match(overlap_vars[j]))
+                        if (oboms[i]->is_exact_match(rid, start1, end1, overlap_vars[j]))
                         {
                             exact = true;
                         }
@@ -311,7 +312,7 @@ class Igor : Program
 
                     if (exact)
                     {
-                        ++stats[i].ab;
+                        ++stats[i].ab1;
                     }
                     else
                     {
@@ -332,6 +333,7 @@ class Igor : Program
         {
             oboms[i]->flush();
 
+            stats[i].ab2 += oboms[i]->get_no_exact_overlaps();
             stats[i].bp += oboms[i]->get_no_fuzzy_overlaps();
             stats[i].b += oboms[i]->get_no_nonoverlaps();
         }
@@ -361,10 +363,11 @@ class Igor : Program
 
         for (int32_t i=0; i<dataset_labels.size(); ++i)
         {
-            fprintf(stderr, "  %s\n", dataset_labels[i].c_str());
+            fprintf(stderr, "  %s (%d)\n", dataset_labels[i].c_str(), oboms[i]->no_variants);
             fprintf(stderr, "    A-B  %10d \n", stats[i].a);
             fprintf(stderr, "    A-B~ %10d \n", stats[i].ap);
-            fprintf(stderr, "    A&B  %10d \n", stats[i].ab);
+            fprintf(stderr, "    A&B1 %10d \n", stats[i].ab1);
+            fprintf(stderr, "    A&B2 %10d \n", stats[i].ab2);
             fprintf(stderr, "    B-A~ %10d \n", stats[i].bp);
             fprintf(stderr, "    B-A  %10d \n", stats[i].b);
             fprintf(stderr, "\n");
