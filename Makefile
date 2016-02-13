@@ -12,6 +12,7 @@ SOURCES = align\
 		annotate_indels\
 		annotate_regions\
 		annotate_variants\
+		annotate_vntrs\
 		augmented_bam_record\
 		bam_ordered_reader\
 		bcf_genotyping_buffered_reader\

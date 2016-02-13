@@ -203,11 +203,12 @@ class Igor : Program
             bcf_unpack(v, BCF_UN_INFO);
 
             std::string chrom = bcf_get_chrom(odr->hdr,v);
+            int32_t rid = bcf_get_rid(v);
             int32_t no_tr_alleles = bcf_get_n_allele(v);
             int32_t beg1 = bcf_get_pos1(v);
             int32_t end1 = bcf_get_end1(v);
 
-            if (orom_vcf->overlaps_with(chrom, beg1-left_window, end1+right_window, overlap_vars))
+            if (orom_vcf->overlaps_with(rid, beg1-left_window, end1+right_window, overlap_vars))
             {
                 int32_t no_overlaps = overlap_vars.size();
                 update_joint_allele_dist(no_tr_alleles, no_overlaps);

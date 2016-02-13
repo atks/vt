@@ -77,7 +77,7 @@ class OrderedBCFOverlapMatcher
     /**
      * Returns true if chrom:start1-end1 overlaps with a region in the file and populates the overlapping variants.
      */
-    bool overlaps_with(std::string& chrom, int32_t start1, int32_t end1, std::vector<bcf1_t*>& overlap_vars);
+    bool overlaps_with(int32_t rid, int32_t start1, int32_t end1, std::vector<bcf1_t*>& overlap_vars);
     
     /**
      * Flushes remaining variants.

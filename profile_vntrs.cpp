@@ -296,7 +296,7 @@ class Igor : Program
             for (uint32_t i = 0; i<oboms.size(); ++i)
             {
                 bool exact = false;
-                if (oboms[i]->overlaps_with(chrom, start1, end1, overlap_vars))
+                if (oboms[i]->overlaps_with(rid, start1, end1, overlap_vars))
                 {
                     //check all overlapping variants
                     for (uint32_t j=0; j<overlap_vars.size(); ++j)
@@ -354,9 +354,9 @@ class Igor : Program
     {
         fprintf(stderr, "\n");
         fprintf(stderr, "    no VNTRs           %d\n", no_vntrs);
-        fprintf(stderr, "    no low complexity  %d\n", no_lcplx);
-        fprintf(stderr, "    no coding          %d\n", no_cds);
-        fprintf(stderr, "    no redundant       %d\n", no_redundant);
+        fprintf(stderr, "    no low complexity  %d (%.2f%%)\n", no_lcplx, (float) no_lcplx/no_vntrs*100);
+        fprintf(stderr, "    no coding          %d (%.2f%%)\n", no_cds, (float) no_cds/no_vntrs*100);
+        fprintf(stderr, "    no redundant       %d (%.2f%%)\n", no_redundant, (float) no_redundant/no_vntrs*100);
         fprintf(stderr, "\n");
 
         for (int32_t i=0; i<dataset_labels.size(); ++i)
@@ -371,8 +371,8 @@ class Igor : Program
         }
 
         vntr_tree->print(BASIS);
-        vntr_tree->print(MOTIF);
-        vntr_tree->print(SEQUENCE);
+//        vntr_tree->print(MOTIF);
+//        vntr_tree->print(SEQUENCE);
 
         std::clog << "\n";
     };

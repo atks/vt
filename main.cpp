@@ -27,6 +27,7 @@
 #include "annotate_indels.h"
 #include "annotate_regions.h"
 #include "annotate_variants.h"
+#include "annotate_vntrs.h"
 #include "cat.h"
 #include "compute_features.h"
 #include "compute_concordance.h"
@@ -186,6 +187,10 @@ int main(int argc, char ** argv)
     else if (argc>1 && cmd=="decompose_blocksub")
     {
         decompose_blocksub(argc-1, ++argv);
+    }
+    else if (argc>1 && cmd=="annotate_vntrs")
+    {
+        annotate_vntrs(argc-1, ++argv);
     }
     else if (argc>1 && cmd=="normalize")
     {
