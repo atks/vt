@@ -68,13 +68,13 @@ VNTRTree::VNTRTree()
     vntrs[1].resize(1);
     vntrs[2].resize(1);
     vntrs[3].resize(1);
-    
+
     //for all subsets of ACGT
     std::string motifs[15] = {"A", "C", "G", "T",
                               "AC", "AG", "AT", "CG", "CT", "GT",
                               "ACG", "ACT", "AGT", "CGT",
                               "ACGT"};
-    
+
     for (uint32_t i=0; i<15; ++i)
     {
         VNTRNode* node = new VNTRNode(motifs[i], motifs[i], 0, 0);
@@ -102,27 +102,26 @@ void VNTRTree::count(Variant& variant)
     {
         VNTR& vntr = variant.vntr;
 
-        VNTRNode* node = NULL; 
+        VNTRNode* node = NULL;
         if (motif_map.find(vntr.motif)==motif_map.end())
         {
             node = new VNTRNode(vntr.motif, vntr.basis, 0, 0);
             motif_map[vntr.motif] = node;
             int32_t basis_len = vntr.basis.size();
             int32_t motif_len = vntr.motif.size();
-            
+
             if (vntrs[basis_len-1].size()<motif_len-basis_len+1)
-            {        
+            {
                 vntrs[basis_len-1].resize(motif_len-basis_len+1);
             }
             vntrs[basis_len-1][motif_len-basis_len].push_back(node);
-            
         }
         else
         {
             node = motif_map[vntr.motif];
         }
-        
-        
+
+
         float concordance = -1;
         float *score = NULL;
         int32_t n = 0;
@@ -141,7 +140,7 @@ void VNTRTree::count(Variant& variant)
             concordance = score[0];
             free(score);
         }
-        
+
         if (concordance==1 ||
            (vntr.fuzzy_beg1!=0 && vntr.exact_beg1==vntr.fuzzy_beg1 &&
             vntr.exact_end1==vntr.fuzzy_end1))
@@ -159,7 +158,7 @@ void VNTRTree::count(Variant& variant)
  * Print this tree.
  */
 void VNTRTree::print(int32_t level)
-{   
+{
     if (level==SEQUENCE)
     {
         for (uint32_t basis_len=1; basis_len<=4; ++basis_len)
@@ -181,7 +180,7 @@ void VNTRTree::print(int32_t level)
                 std::cerr << "\t\ttotal\t" << (exact_count+fuzzy_count) << " (" << exact_count << "/" << fuzzy_count << ")\n";
             }
         }
-    }   
+    }
     else if (level==MOTIF)
     {
         for (uint32_t basis_len=1; basis_len<=4; ++basis_len)
@@ -200,10 +199,10 @@ void VNTRTree::print(int32_t level)
                     fuzzy_count += vntr_node.fuzzy_count;
                 }
                 std::cerr << "\t\t" << motif_len << "\t" << (exact_count+fuzzy_count) << " (" << exact_count << "/" << fuzzy_count << ")\n";
-                
+
             }
         }
-    } 
+    }
     else if (level==BASIS)
     {
         for (uint32_t basis_len=1; basis_len<=4; ++basis_len)
@@ -222,10 +221,10 @@ void VNTRTree::print(int32_t level)
                     fuzzy_count += vntr_node.fuzzy_count;
                 }
                 basis_exact_count += exact_count;
-                basis_fuzzy_count += fuzzy_count;                
+                basis_fuzzy_count += fuzzy_count;
             }
-            
+
             std::cerr << "basis length " << basis_len << "\t" << (basis_exact_count+basis_fuzzy_count) << " (" << basis_exact_count << "/" << basis_fuzzy_count << ")\n";
         }
-    } 
+    }
 };

@@ -250,6 +250,8 @@ class Igor : Program
 //                }
 //                
 //                
+
+//                bcf_print(odr->hdr,v);
                 vntr_tree->count(variant);
             }
 
