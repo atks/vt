@@ -60,6 +60,7 @@ class Igor : Program
     std::string REPEAT_TRACT;
     std::string COMP;
     std::string ENTROPY;
+    std::string ENTROPY2;
     std::string RL;
     std::string RU_COUNTS;
     std::string SCORE;
@@ -166,6 +167,7 @@ class Igor : Program
         REPEAT_TRACT = bcf_hdr_append_info_with_backup_naming(odw->hdr, "REPEAT_TRACT", "2", "Integer", "Boundary of the repeat tract detected by exact alignment.", rename);
         COMP = bcf_hdr_append_info_with_backup_naming(odw->hdr, "COMP", "4", "Integer", "Composition(%) of bases in an exact repeat tract.", rename);
         ENTROPY = bcf_hdr_append_info_with_backup_naming(odw->hdr, "ENTROPY", "1", "Float", "Entropy measure of an exact repeat tract (0-2).", rename);
+        ENTROPY2 = bcf_hdr_append_info_with_backup_naming(odw->hdr, "ENTROPY2", "1", "Float", "Dinucloetide Entropy measure of an exact repeat tract (0-2).", rename);
         RL = bcf_hdr_append_info_with_backup_naming(odw->hdr, "RL", "1", "Integer", "Reference exact repeat tract length in bases.", rename);
         RU_COUNTS = bcf_hdr_append_info_with_backup_naming(odw->hdr, "RU_COUNTS", "2", "Integer", "Number of exact repeat units and total number of repeat units in exact repeat tract.", rename);
         SCORE = bcf_hdr_append_info_with_backup_naming(odw->hdr, "SCORE", "1", "Float", "Score of repeat unit in exact repeat tract.", rename);
@@ -280,15 +282,16 @@ class Igor : Program
                 bcf_update_info_int32(h, v, BLEN.c_str(), &vntr.blen, 1);
 
             
-                int32_t flank_pos1[2] = {vntr.exact_beg1, vntr.exact_end1};
-                bcf_update_info_int32(h, v, REPEAT_TRACT.c_str(), &flank_pos1, 2);
-                bcf_update_info_int32(h, v, COMP.c_str(), &vntr.exact_comp[0], 4);
-                bcf_update_info_float(h, v, ENTROPY.c_str(), &vntr.exact_entropy, 1);
-                bcf_update_info_int32(h, v, RL.c_str(), &vntr.exact_rl, 1);
-                int32_t exact_ru_count[2] = {vntr.exact_no_exact_ru, vntr.exact_total_no_ru};
-                bcf_update_info_int32(h, v, RU_COUNTS.c_str(), &exact_ru_count, 2);
-                bcf_update_info_float(h, v, SCORE.c_str(), &vntr.exact_score, 1);
-                bcf_update_info_int32(h, v, TRF_SCORE.c_str(), &vntr.exact_trf_score, 1);
+                int32_t repeat_tract[2] = {vntr.beg1, vntr.end1};
+                bcf_update_info_int32(h, v, REPEAT_TRACT.c_str(), &repeat_tract, 2);
+                bcf_update_info_int32(h, v, COMP.c_str(), &vntr.comp[0], 4);
+                bcf_update_info_float(h, v, ENTROPY.c_str(), &vntr.entropy, 1);
+                bcf_update_info_float(h, v, ENTROPY2.c_str(), &vntr.entropy2, 1);
+                bcf_update_info_int32(h, v, RL.c_str(), &vntr.rl, 1);
+                int32_t ru_count[2] = {vntr.no_exact_ru, vntr.total_no_ru};
+                bcf_update_info_int32(h, v, RU_COUNTS.c_str(), &ru_count, 2);
+                bcf_update_info_float(h, v, SCORE.c_str(), &vntr.score, 1);
+                bcf_update_info_int32(h, v, TRF_SCORE.c_str(), &vntr.trf_score, 1);
 
                 update_flankseq(h, v, variant.chrom.c_str(),
                                 variant.beg1-10, variant.beg1-1,

@@ -455,29 +455,31 @@ void FlankDetector::polish_repeat_tract_ends(std::string& repeat_tract, std::str
 void FlankDetector::compute_purity_score(Variant& variant, int32_t amode)
 {
     VNTR& vntr = variant.vntr;
-    
+     
     if (amode&FINAL)
-    {    
+    {
         compute_purity_score(vntr.repeat_tract, vntr.motif);
         
         vntr.ru = ru;
+        vntr.score = score;
+        vntr.trf_score = trf_score;
+        vntr.no_exact_ru = no_exact_ru;
+        vntr.total_no_ru = total_no_ru;
+        vntr.rl = rl;
+        vntr.ll = rl + variant.max_dlen;
+    }
+    
+    if (amode&EXACT)
+    {    
+        compute_purity_score(vntr.exact_repeat_tract, vntr.motif);
+        
+        vntr.ru = ru;
         vntr.exact_score = score;
+        vntr.exact_trf_score = trf_score;
         vntr.exact_no_exact_ru = no_exact_ru;
         vntr.exact_total_no_ru = total_no_ru;
         vntr.exact_rl = rl;
         vntr.exact_ll = rl + variant.max_dlen;
-    }
-    
-    if (amode&EXACT)
-    {
-        compute_purity_score(vntr.exact_repeat_tract, vntr.motif);
-        
-        vntr.ru = ru;
-        vntr.fuzzy_score = score;
-        vntr.fuzzy_no_exact_ru = no_exact_ru;
-        vntr.fuzzy_total_no_ru = total_no_ru;
-        vntr.fuzzy_rl = rl;
-        vntr.fuzzy_ll = rl + variant.max_dlen;
     }
     
     if (amode&FUZZY)
@@ -485,11 +487,12 @@ void FlankDetector::compute_purity_score(Variant& variant, int32_t amode)
         compute_purity_score(vntr.fuzzy_repeat_tract, vntr.motif);
         
         vntr.ru = ru;
-        vntr.score = score;
-        vntr.no_exact_ru = no_exact_ru;
-        vntr.total_no_ru = total_no_ru;
-        vntr.rl = rl;
-        vntr.ll = rl + variant.max_dlen;
+        vntr.fuzzy_score = score;
+        vntr.fuzzy_trf_score = trf_score;
+        vntr.fuzzy_no_exact_ru = no_exact_ru;
+        vntr.fuzzy_total_no_ru = total_no_ru;
+        vntr.fuzzy_rl = rl;
+        vntr.fuzzy_ll = rl + variant.max_dlen;
     }
 }
 
@@ -499,6 +502,7 @@ void FlankDetector::compute_purity_score(Variant& variant, int32_t amode)
 void FlankDetector::compute_purity_score(std::string& repeat_tract, std::string& motif)
 { 
     ru = choose_exact_repeat_unit(repeat_tract, motif);
+    
     float exact_motif_count = 0;
     uint32_t mlen = ru.size();
 
@@ -558,6 +562,7 @@ void FlankDetector::compute_composition_and_entropy(Variant& variant, int32_t am
         vntr.comp[2] = comp[2];
         vntr.comp[3] = comp[3];
         vntr.entropy = entropy;
+        vntr.entropy2 = entropy2;
     }
     else if (amode&EXACT)
     {   
@@ -567,6 +572,7 @@ void FlankDetector::compute_composition_and_entropy(Variant& variant, int32_t am
         vntr.exact_comp[2] = comp[2];
         vntr.exact_comp[3] = comp[3];
         vntr.exact_entropy = entropy;
+        vntr.exact_entropy2 = entropy2;
     }
     else if (amode&FUZZY)
     {   
@@ -576,6 +582,7 @@ void FlankDetector::compute_composition_and_entropy(Variant& variant, int32_t am
         vntr.fuzzy_comp[2] = comp[2];
         vntr.fuzzy_comp[3] = comp[3];
         vntr.fuzzy_entropy = entropy;
+        vntr.fuzzy_entropy2 = entropy2;
     }
 }
 
@@ -584,15 +591,44 @@ void FlankDetector::compute_composition_and_entropy(Variant& variant, int32_t am
  */
 void FlankDetector::compute_composition_and_entropy(std::string& repeat_tract)
 {
-    int32_t aux_comp[10] = {0,0,0,0,0,0,0,0,0,0};
+    int32_t aux_comp[4] = {0,0,0,0};
+    int32_t aux_comp2[16] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+    int32_t b2i[10] = {0,1,0,2,0,0,0,0,0,3};
+    
+//    ACGT x ACGT
+//    AA - 0    = 0*0 + 0
+//    AC - 1
+//    AG - 2
+//    AT - 3
+//    CA - 4    = 1*4 + 0 = 1<<2
+//    CC - 5
+//    CG - 6
+//    CT - 7
+//    GA - 8    = 2*4 + 0  = 2<<1 = 10=>100
+//    GC - 9
+//    GG - 10
+//    GT - 11
+//    TA - 12   = 3*4 + 0  = 3<<1  11=>110=>1100
+//    TC - 13
+//    TG - 14
+//    TT - 15    = 3*4+3 = 15
+    
     int32_t n = repeat_tract.size();
     
     for (uint32_t i=0; i<n; ++i)
     {
-        ++aux_comp[(repeat_tract.at(i)-65)>>1];
+        uint32_t b1 = b2i[(repeat_tract.at(i)-65)>>1];
+        
+        ++aux_comp[b1];
+        if (i<n-1)
+        {    
+            uint32_t b2 = b2i[(repeat_tract.at(i+1)-65)>>1];
+            uint32_t bb = (b1<<2) + b2;
+            ++aux_comp2[bb];
+        }
     }
     
-    float p[4] = {(float) aux_comp[0]/n, (float) aux_comp[1]/n, (float) aux_comp[3]/n, (float) aux_comp[9]/n};
+    float p[4] = {(float) aux_comp[0]/n, (float) aux_comp[1]/n, (float) aux_comp[2]/n, (float) aux_comp[3]/n};
     
     entropy = 0;
     if (p[0]) entropy += p[0] * std::log2(p[0]);
@@ -610,8 +646,49 @@ void FlankDetector::compute_composition_and_entropy(std::string& repeat_tract)
 //    std::cerr << "tract: " << repeat_tract << "\n";
 //    std::cerr << "A: " << comp[0] << " " << aux_comp[0] << "\n";
 //    std::cerr << "C: " << comp[1] << " " << aux_comp[1] << "\n";
-//    std::cerr << "G: " << comp[2] << " " << aux_comp[3] << "\n";
-//    std::cerr << "T: " << comp[3] << " " << aux_comp[9] << "\n";
+//    std::cerr << "G: " << comp[2] << " " << aux_comp[2] << "\n";
+//    std::cerr << "T: " << comp[3] << " " << aux_comp[3] << "\n";
 //    std::cerr << "\n";   
 //    std::cerr << "entropy: " << entropy << "\n";    
+
+    entropy2 = 0;
+    if (n!=1)
+    {    
+        float p2[16];
+        for (uint32_t i=0; i<16; ++i)
+        {
+            p2[i] = (float)aux_comp2[i]/(n-1);
+        }
+        
+        for (uint32_t i=0; i<16; ++i)
+        {
+            if (p2[i]) 
+            {
+                entropy2 += p2[i]* std::log2(p2[i]);
+            }
+        }
+        entropy2 = -entropy2;
+        entropy2 = std::round(100*entropy2)/100; 
+   
+//        std::cerr << "tract: " << repeat_tract << "\n";
+//        std::cerr << "AA: " << aux_comp2[0] << " " << p2[0] << "\n";
+//        std::cerr << "AC: " << aux_comp2[1] << " " << p2[1] << "\n";
+//        std::cerr << "AG: " << aux_comp2[2] << " " << p2[2] << "\n";
+//        std::cerr << "AT: " << aux_comp2[3] << " " << p2[3]  << "\n";
+//        std::cerr << "CA: " << aux_comp2[4] << " " << p2[4] << "\n";
+//        std::cerr << "CC: " << aux_comp2[5] << " " << p2[5] << "\n";
+//        std::cerr << "CG: " << aux_comp2[6] << " " << p2[6] << "\n";
+//        std::cerr << "CT: " << aux_comp2[7] << " " << p2[7] << "\n";   
+//        std::cerr << "GA: " << aux_comp2[8] << " " << p2[8] << "\n";
+//        std::cerr << "GC: " << aux_comp2[9] << " " << p2[9] << "\n";
+//        std::cerr << "GG: " << aux_comp2[10] << " " << p2[10] << "\n";
+//        std::cerr << "GT: " << aux_comp2[11] << " " << p2[11] << "\n";   
+//        std::cerr << "TA: " << aux_comp2[12] << " " << p2[12] << "\n";
+//        std::cerr << "TC: " << aux_comp2[13] << " " << p2[13] << "\n";
+//        std::cerr << "TG: " << aux_comp2[14] << " " << p2[14] << "\n";
+//        std::cerr << "TT: " << aux_comp2[15] << " " << p2[15] << "\n";            
+//        std::cerr << "\n";   
+//        std::cerr << "entropy2: " << entropy2 << "\n";   
+    }
+        
 }

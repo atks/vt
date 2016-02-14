@@ -67,6 +67,7 @@ class VNTR
     std::string repeat_tract;   //repeat tract
     int32_t comp[4];            //composition of bases in repeat tract
     float entropy ;             //sequence entropy of repeat tract
+    float entropy2;            //dinucleotide sequence entropy of repeat tract
     int32_t beg1;               //beginning of repeat tract
     int32_t end1;               //end of repeat tract
     int32_t rl;                 //length of repeat tract in base pairs
@@ -84,6 +85,7 @@ class VNTR
     std::string exact_repeat_tract;   //repeat tract
     int32_t exact_comp[4];            //composition of bases in repeat tract
     float exact_entropy ;             //sequence entropy of repeat tract
+    float exact_entropy2 ;            //dinucleotide sequence entropy of repeat tract
     int32_t exact_beg1;               //beginning of repeat tract
     int32_t exact_end1;               //end of repeat tract
     int32_t exact_rl;                 //length of repeat tract in base pairs
@@ -101,6 +103,7 @@ class VNTR
     std::string fuzzy_repeat_tract;   //repeat tract
     int32_t fuzzy_comp[4];            //composition of bases in repeat tract
     float fuzzy_entropy ;             //sequence entropy of repeat tract
+    float fuzzy_entropy2;             //dinucleotide sequence entropy of repeat tract
     int32_t fuzzy_beg1;               //beginning of repeat tract
     int32_t fuzzy_end1;               //end of repeat tract
     int32_t fuzzy_rl;                 //length of repeat tract in base pairs

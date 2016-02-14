@@ -185,10 +185,16 @@ bool VariantManip::contains_N(bcf1_t *v)
     {
         if (strchr(alleles[i], 'N'))
         {
-            return true;        
-        }    
+            //symbolic allele
+            if (i && alleles[i][0]=='<')
+            {
+                continue;
+            }
+            
+            return true;
+        }
     }
-    
+
     return false;
 }
 
@@ -198,23 +204,23 @@ bool VariantManip::contains_N(bcf1_t *v)
 int32_t VariantManip::classify_variant(bcf_hdr_t *h, bcf1_t *v, Variant& var)
 {
     var.clear(); // this sets the type to VT_REF by default.
-    
+
     var.h = h;
-    var.v = v;    
-    
+    var.v = v;
+
     bcf_unpack(v, BCF_UN_STR);
     var.chrom.assign(bcf_get_chrom(h, v));
     var.rid = bcf_get_rid(v);
     var.pos1 = bcf_get_pos1(v);
     var.beg1 = var.pos1;
     var.end1 = bcf_get_end1(v);
- 
-    char** allele = bcf_get_allele(v);    
+
+    char** allele = bcf_get_allele(v);
     int32_t n_allele = bcf_get_n_allele(v);
 
     uint32_t pos1 = var.pos1;
     int32_t pos0 = pos1-1;
- 
+
     bool homogeneous_length = true;
     char* ref = allele[0];
     int32_t rlen = strlen(ref);
@@ -266,7 +272,7 @@ int32_t VariantManip::classify_variant(bcf_hdr_t *h, bcf1_t *v, Variant& var)
                 else if (allele[i][0]=='<' && allele[i][1]=='S' && allele[i][2]=='T' && allele[i][len-1]=='>' )
                 {
                     type = VT_VNTR;
-                    
+
                     for (size_t j=3; j<len-1; ++j)
                     {
                         if ((allele[i][j]<'0' || allele[i][j]>'9') && allele[i][j]!='.')
@@ -274,7 +280,7 @@ int32_t VariantManip::classify_variant(bcf_hdr_t *h, bcf1_t *v, Variant& var)
                             type = VT_SV;
                         }
                     }
-                }                
+                }
             }
 
             if (type==VT_VNTR)
@@ -318,7 +324,7 @@ int32_t VariantManip::classify_variant(bcf_hdr_t *h, bcf1_t *v, Variant& var)
             {
                 var.contains_N = true;
             }
-            
+
             if (rlen!=alen)
             {
                 homogeneous_length = false;
@@ -453,22 +459,18 @@ int32_t VariantManip::classify_variant(bcf_hdr_t *h, bcf1_t *v, Variant& var)
             var.tv += tv;
             var.ins = dlen>0?1:0;
             var.del = dlen<0?1:0;
-            var.max_dlen = var.max_dlen<dlen ? dlen : var.max_dlen; 
-            var.min_dlen = var.min_dlen>dlen ? dlen : var.min_dlen; 
+            var.max_dlen = var.max_dlen<dlen ? dlen : var.max_dlen;
+            var.min_dlen = var.min_dlen>dlen ? dlen : var.min_dlen;
 
             if (REF.m) free(REF.s);
             if (ALT.m) free(ALT.s);
         }
     }
 
-// std::cerr << "before updating from info fields "<< var.beg1 << " " << var.end1 << "\n";
-
     if (var.type==VT_VNTR)
     {
         var.update_vntr_from_info_fields(h, v);
     }
-
-// std::cerr << "after updating from info fields "<< var.beg1 << " " << var.end1 << "\n";
 
     //additionally define MNPs by length of all alleles
     if (!(var.type&(VT_VNTR|VT_SV)) && var.type!=VT_REF)
@@ -478,9 +480,6 @@ int32_t VariantManip::classify_variant(bcf_hdr_t *h, bcf1_t *v, Variant& var)
             var.type |= VT_MNP;
         }
     }
-
-// std::cerr << "end of classifying "<< var.beg1 << " " << var.end1 << "\n";
-
 
     return var.type;
 }

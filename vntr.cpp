@@ -134,6 +134,17 @@ void VNTR::print()
     std::cerr << "ru           : " << ru << "\n";
     std::cerr << "basis        : " << basis << "\n";
     std::cerr << "\n";
+    std::cerr << "Final\n";
+    std::cerr << "repeat_tract                    : " << repeat_tract << "\n";
+    std::cerr << "position                        : [" << beg1 << "," << end1 << "]\n";
+    std::cerr << "reference repeat unit length    : " << rl << "\n";
+    std::cerr << "longest allele length           : " << ll << "\n";
+    std::cerr << "score                           : " << score << "\n";
+    std::cerr << "trf score                       : " << trf_score << "\n";
+    std::cerr << "repeat units                    : " << rl << "\n";
+    std::cerr << "exact repeat units              : " << no_exact_ru << "\n";
+    std::cerr << "total no. of repeat units       : " << total_no_ru << "\n";
+    std::cerr << "\n";
     std::cerr << "Exact\n";
     std::cerr << "repeat_tract                    : " << exact_repeat_tract << "\n";
     std::cerr << "position                        : [" << exact_beg1 << "," << exact_end1 << "]\n";

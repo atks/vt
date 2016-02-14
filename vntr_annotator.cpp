@@ -76,12 +76,7 @@ void VNTRAnnotator::annotate(Variant& variant, int32_t amode)
     //VNTRs from other sources.
     if (variant.type==VT_VNTR)
     {
-        //always this for the time being
-        //REPEAT_TRACT_FEATURES
         if (debug) std::cerr << "ANNOTATING VNTR/STR \n";
-
-
-        if (REPEAT_TRACT_FEATURES)
         
         //1. pick candidate region
         cre->pick_candidate_region(variant, REFERENCE, FINAL);
@@ -91,7 +86,7 @@ void VNTRAnnotator::annotate(Variant& variant, int32_t amode)
 
         //3. compute purity scores
         fd->compute_purity_score(variant, FINAL);
- 
+
         //3. compute purity scores
         fd->compute_composition_and_entropy(variant, FINAL);
     }

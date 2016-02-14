@@ -88,6 +88,7 @@ class FlankDetector
     ///////////////////////////////////
     int32_t comp[4];
     float entropy;
+    float entropy2;
 
     ///////
     //tools
