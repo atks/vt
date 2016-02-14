@@ -506,7 +506,7 @@ void LFHMM::align(const char* read, const char* qual)
     rlen = strlen(read);
     plen = lflen + rlen;
 
-    if (rlen>MAXLEN)
+    if (rlen>=MAXLEN)
     {
         fprintf(stderr, "[%s:%d %s] Sequence to be aligned is greater than %d currently supported: %d\n", __FILE__, __LINE__, __FUNCTION__, MAXLEN, rlen);
         exit(1);

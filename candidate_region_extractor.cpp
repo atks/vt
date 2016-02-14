@@ -83,6 +83,8 @@ void CandidateRegionExtractor::pick_candidate_region(Variant& variant, int32_t m
             vntr.repeat_tract.assign(bcf_get_ref(v));
             vntr.beg1 = bcf_get_pos1(v);
             vntr.end1 = bcf_get_end1(v);
+            vntr.rl = vntr.end1-vntr.beg1+1;
+            vntr.ll = vntr.rl; //??
         }
         
         if (amode&EXACT)
@@ -91,6 +93,8 @@ void CandidateRegionExtractor::pick_candidate_region(Variant& variant, int32_t m
             vntr.exact_repeat_tract.assign(bcf_get_ref(v));
             vntr.exact_beg1 = bcf_get_pos1(v);
             vntr.exact_end1 = bcf_get_end1(v);
+            vntr.exact_rl = vntr.exact_end1-vntr.exact_beg1+1;
+            vntr.exact_ll = vntr.exact_rl; //??
         }
     
         if (amode&FUZZY)
@@ -99,6 +103,8 @@ void CandidateRegionExtractor::pick_candidate_region(Variant& variant, int32_t m
             vntr.fuzzy_repeat_tract.assign(bcf_get_ref(v));
             vntr.fuzzy_beg1 = bcf_get_pos1(v);
             vntr.fuzzy_end1 = bcf_get_end1(v);
+            vntr.fuzzy_rl = vntr.fuzzy_end1-vntr.fuzzy_beg1+1;
+            vntr.fuzzy_ll = vntr.fuzzy_rl; //??
         }
     }
     else if (mode==EXACT_LEFT_RIGHT_ALIGNMENT)

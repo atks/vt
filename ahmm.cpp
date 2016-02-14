@@ -481,7 +481,8 @@ void AHMM::align(const char* read, const char* qual)
     this->read = read;
     this->qual = qual;
     rlen = strlen(read);
-    if (rlen>MAXLEN)
+    
+    if (rlen>=MAXLEN)
     {
         fprintf(stderr, "[%s:%d %s] Sequence to be aligned is greater than %d currently supported, subsetting string to first 1023 characters: %d\n", __FILE__, __LINE__, __FUNCTION__, MAXLEN, rlen);
         rlen = 1023;
