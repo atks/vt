@@ -24,14 +24,8 @@
 #ifndef ANNOTATE_VNTRS_H
 #define ANNOTATE_VNTRS_H
 
-#include "htslib/kstring.h"
-#include "bcf_ordered_reader.h"
-#include "bcf_ordered_writer.h"
 #include "program.h"
-#include "filter.h"
-#include "variant_manip.h"
 #include "vntr_annotator.h"
-#include "reference_sequence.h"
 
 void annotate_vntrs(int argc, char ** argv);
 

@@ -24,16 +24,8 @@
 #ifndef FUZZY_PARTITION_H
 #define FUZZY_PARTITION_H
 
-#include "htslib/vcf.h"
-#include "htslib/kseq.h"
 #include "program.h"
-#include "hts_utils.h"
-#include "bcf_ordered_reader.h"
-#include "bcf_ordered_writer.h"
-#include "ordered_bcf_overlap_matcher.h"
-#include "variant_manip.h"
-#include "filter.h"
 
 void fuzzy_partition(int argc, char ** argv);
-    
+
 #endif

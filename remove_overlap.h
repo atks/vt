@@ -24,22 +24,7 @@
 #ifndef REMOVE_OVERLAP_H
 #define REMOVE_OVERLAP_H
 
-#include <cstdlib>
-#include <cstdint>
-#include <cstring>
-#include <cmath>
-#include <cfloat>
-#include <vector>
-#include <map>
-#include "htslib/vcf.h"
-#include "htslib/kseq.h"
-#include "hts_utils.h"
 #include "program.h"
-#include "genome_interval.h"
-#include "bcf_synced_reader.h"
-#include "bcf_ordered_reader.h"
-#include "bcf_ordered_writer.h"
-#include "variant_manip.h"
 
 void remove_overlap(int argc, char **argv);
     

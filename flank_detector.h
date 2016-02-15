@@ -24,29 +24,18 @@
 #ifndef FLANK_DETECTOR_H
 #define FLANK_DETECTOR_H
 
-#include <cstdlib>
-#include <cstdint>
-#include <cstring>
-#include <cmath>
-#include <cfloat>
-#include <vector>
-#include <map>
-#include <queue>
-#include <list>
-#include <algorithm>
 #include "hts_utils.h"
-#include "htslib/kstring.h"
+#include "utils.h"
 #include "rfhmm.h"
 #include "lfhmm.h"
 #include "ahmm.h"
 #include "variant_manip.h"
-#include "program.h"
-#include "vntr.h"
 #include "reference_sequence.h"
+#include "vntr.h"
 
 //modes for flank detection
-#define CLIP_ENDS 0 //literally just clip the flanking bases
-#define FRAHMM    1 //raHMM alignment
+#define CLIP_ENDS 0   //literally just clip the flanking bases
+#define FRAHMM    1   //raHMM alignment
 #define POLISH_ENDS 2 //for ensuring that the motif occurs on the ends of the repeat tract
 
 /**

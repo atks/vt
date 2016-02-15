@@ -25,8 +25,7 @@
 #define SEQ_H
 
 #include "program.h"
-#include "htslib/faidx.h"
 
 bool seq(int argc, char ** argv);
-    
+
 #endif

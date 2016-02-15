@@ -24,16 +24,8 @@
 #ifndef PASTE_AND_COMPUTE_FEATURES_SEQUENTIAL_H
 #define PASTE_AND_COMPUTE_FEATURES_SEQUENTIAL_H
 
-#include "bcf_ordered_reader.h"
-#include "bcf_ordered_writer.h"
-#include "bcf_synced_reader.h"
-#include "htslib/kseq.h"
-#include "htslib/vcf.h"
-#include "hts_utils.h"
-#include "log_tool.h"
 #include "program.h"
-#include "utils.h"
-#include "variant_manip.h"
+#include "log_tool.h"
 #include "estimator.h"
 
 bool paste_and_compute_features_sequential(int argc, char ** argv);

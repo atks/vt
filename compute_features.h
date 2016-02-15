@@ -24,13 +24,7 @@
 #ifndef COMPUTE_FEATURES_H
 #define COMPUTE_FEATURES_H
 
-#include <cstdlib>
-#include <cfloat>
-#include "bcf_ordered_reader.h"
-#include "bcf_ordered_writer.h"
-#include "variant_manip.h"
 #include "program.h"
-#include "filter.h"
 #include "estimator.h"
 
 void compute_features(int argc, char ** argv);

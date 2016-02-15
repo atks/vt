@@ -26,9 +26,8 @@
 
 #include <algorithm>
 #include <cctype>
-#include "htslib/vcf.h"
-#include "htslib/kstring.h"
-#include "variant_manip.h"
+#include "hts_utils.h"
+#include "variant.h"
 #include "pregex.h"
 
 //TYPES

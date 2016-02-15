@@ -340,6 +340,45 @@ std::string FlankDetector::shift_str(std::string& seq, uint32_t i)
     return sseq;
 }
 
+///**
+// * Complement a base.
+// */
+//char FlankDetector::complement(char base)
+//{
+//    return "ACNGNNNNNT"[(base-65)>>1];  
+//    return "TGNCNNNNNA"[(base-65)>>1];   
+//}
+
+//#define complement(b) ("TGNCNNNNNA"[((b)-65)>>1])
+
+/**
+ * Reverse complement a sequence.
+ */
+//std::string FlankDetector::reverse_complement(std::string& seq)
+//{
+//    std::string rc_seq = "";
+//    for (uint32_t i=seq.size()-1; i>=0; --i)
+//    {
+//        char base = seq.at(i);
+//        if (base=='A')
+//        {
+//        }
+//        else    
+//        
+//        std::string smotif = shift_str(motif, i);
+//        if (seq.compare(0, smotif.size(), smotif)==0)
+//        {
+//            return smotif;
+//        }
+//    }
+//
+//    //cannot find, try reverse complement
+//    
+//
+//    //should return empty string
+//    return motif;
+//}
+
 /**
  * Chooses a phase of the motif that is appropriate for the alignment.
  * This differs from choose_exact_repeat_unit() where the motif is returned
@@ -355,6 +394,9 @@ std::string FlankDetector::choose_repeat_unit(std::string& seq, std::string& mot
             return smotif;
         }
     }
+
+    //cannot find, try reverse complement
+    
 
     //should return empty string
     return motif;

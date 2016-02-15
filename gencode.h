@@ -301,61 +301,61 @@ class GENCODE
     /**
      * Checks if a record is overlapping.  This uses the orderedness of the gtf file to search through the records.
      */
-    bool overlaps_with(std::string& chrom, int32_t start1, int32_t end1, int32_t feature_type)
-    {
-        bool search_flag = false;
-        bool fill_buffer = true;
-        
-        //is this the right chromosome?
-        if (current_chrom!=chrom)
-        {
-            GenomeInterval interval(chrom);
-            todr->jump_to_interval(interval);
-        }
-
-        std::list<GENCODERecord*>::iterator i;
-        while ( i!=buffer.end())
-        {
-            if ((*i)->end<start1)
-            {
-                delete *i;
-                i = buffer.erase(i);
-            }    
-            else if ((*i)->overlaps_with(start1, end1))   
-            {
-                if ((*i)->feature==feature_type)
-                {
-                    search_flag=true;
-                }
-            }
-            else //after end1
-            {
-                fill_buffer = false;
-                break;
-            }
-        }
-        
-        //read and store records till record is after target
-        if (fill_buffer)
-        {
-            kstring_t s = {0,0,0};
-            
-            while (todr->read(&s))
-            {
-                GENCODERecord *rec = parse_gencode(&s);
-                buffer.push_back(rec);
-                
-                if (rec->start>end1)
-                {
-                    break;
-                }    
-            }
-            
-            if (s.m) free(s.s);
-        }    
-        
-        return search_flag;
-    };
+//    bool overlaps_with(std::string& chrom, int32_t start1, int32_t end1, int32_t feature_type)
+//    {
+//        bool search_flag = false;
+//        bool fill_buffer = true;
+//        
+//        //is this the right chromosome?
+//        if (current_chrom!=chrom)
+//        {
+//            GenomeInterval interval(chrom);
+//            todr->jump_to_interval(interval);
+//        }
+//
+//        std::list<GENCODERecord*>::iterator i;
+//        while ( i!=buffer.end())
+//        {
+//            if ((*i)->end<start1)
+//            {
+//                delete *i;
+//                i = buffer.erase(i);
+//            }    
+//            else if ((*i)->overlaps_with(start1, end1))   
+//            {
+//                if ((*i)->feature==feature_type)
+//                {
+//                    search_flag=true;
+//                }
+//            }
+//            else //after end1
+//            {
+//                fill_buffer = false;
+//                break;
+//            }
+//        }
+//        
+//        //read and store records till record is after target
+//        if (fill_buffer)
+//        {
+//            kstring_t s = {0,0,0};
+//            
+//            while (todr->read(&s))
+//            {
+//                GENCODERecord *rec = parse_gencode(&s);
+//                buffer.push_back(rec);
+//                
+//                if (rec->start>end1)
+//                {
+//                    break;
+//                }    
+//            }
+//            
+//            if (s.m) free(s.s);
+//        }    
+//        
+//        return search_flag;
+//    };
 
     private:
     std::string current_chrom;

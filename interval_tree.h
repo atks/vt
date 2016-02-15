@@ -24,9 +24,7 @@
 #ifndef INTERVAL_TREE_H
 #define INTERVAL_TREE_H
 
-#include <cstdint>
-#include <vector>
-#include <iostream>
+#include "utils.h"
 #include "interval.h"
 
 #define RED 1

@@ -24,9 +24,8 @@
 #ifndef REFERENCE_SEQUENCE_H
 #define REFERENCE_SEQUENCE_H
 
-#include <vector>
+#include "utils.h"
 #include "hts_utils.h"
-#include "htslib/faidx.h"
 
 /**
  * A Reference Sequence object wrapping htslib's faidx.
@@ -39,8 +38,6 @@ class ReferenceSequence
     //reference file and index
     std::string ref_fasta_file;
     faidx_t *fai;
-
-
 
     uint32_t buffer_size;
     uint32_t buffer_size_mask;
@@ -108,7 +105,7 @@ class ReferenceSequence
      * Fetches sequence chrom:beg1-end1.
      */
     char* fetch_seq(char* chrom, uint32_t beg1, uint32_t end1);
-    
+
     /**
      * Fetches sequence chrom:beg1-end1.
      */

@@ -24,15 +24,8 @@
 #ifndef MERGE_H
 #define MERGE_H
 
-#include "bcf_ordered_writer.h"
-#include "bcf_synced_reader.h"
-#include "htslib/kseq.h"
-#include "htslib/vcf.h"
-#include "hts_utils.h"
-#include "log_tool.h"
 #include "program.h"
-#include "utils.h"
-#include "variant_manip.h"
+#include "log_tool.h"
 
 bool merge(int argc, char ** argv);
 

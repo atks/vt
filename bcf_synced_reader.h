@@ -24,21 +24,9 @@
 #ifndef BCF_SYNCED_READER_H
 #define BCF_SYNCED_READER_H
 
-#include <cstdlib>
-#include <cstdint>
-#include <cstring>
-#include <cmath>
-#include <cfloat>
-#include <vector>
-#include <map>
-#include <queue>
-#include <list>
-#include "htslib/hts.h"
-#include "htslib/vcf.h"
-#include "htslib/kstring.h"
-#include "htslib/tbx.h"
-#include "genome_interval.h"
 #include "hts_utils.h"
+#include "utils.h"
+#include "genome_interval.h"
 
 #define SYNC_BY_POS true
 #define SYNC_BY_VAR false

@@ -24,8 +24,8 @@
 #ifndef LHMM_H
 #define LHMM_H
 
-#include <sstream>
 #include "log_tool.h"
+#include "utils.h"
 
 #define NSTATES 9
 

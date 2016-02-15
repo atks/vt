@@ -24,16 +24,7 @@
 #ifndef CAT_H
 #define CAT_H
 
-#include "bcf_ordered_reader.h"
-#include "bcf_ordered_writer.h"
-#include "bcf_synced_reader.h"
-#include "filter.h"
-#include "htslib/kseq.h"
-#include "htslib/vcf.h"
-#include "hts_utils.h"
 #include "program.h"
-#include "utils.h"
-#include "variant_manip.h"
 
 bool cat(int argc, char ** argv);
 

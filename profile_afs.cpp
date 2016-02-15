@@ -73,7 +73,6 @@ class Igor : Program
     /////////
     //tools//
     /////////
-    Pedigree *pedigree;
     VariantManip *vm;
 
     Igor(int argc, char ** argv)

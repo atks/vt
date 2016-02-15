@@ -24,12 +24,7 @@
 #ifndef MOTIF_TREE_H
 #define MOTIF_TREE_H
 
-#include <cstdint>
-#include <cstring>
-#include <vector>
-#include <iostream>
-#include <queue>
-#include <map>
+#include "utils.h"
 #include "motif_map.h"
 
 /**

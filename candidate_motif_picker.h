@@ -24,28 +24,11 @@
 #ifndef CANDIDATE_MOTIF_PICKER_H
 #define CANDIDATE_MOTIF_PICKER_H
 
-#include <cstdlib>
-#include <cstdint>
-#include <cstring>
-#include <cmath>
-#include <cfloat>
-#include <vector>
-#include <map>
-#include <queue>
-#include <list>
-#include "hts_utils.h"
-#include "htslib/kstring.h"
-#include "bcf_ordered_reader.h"
-#include "bcf_ordered_writer.h"
 #include "rfhmm.h"
 #include "lfhmm.h"
 #include "ahmm.h"
-#include "variant_manip.h"
-#include "program.h"
+#include "variant.h"
 #include "motif_tree.h"
-#include "vntr.h"
-#include "candidate_region_extractor.h"
-#include "flank_detector.h"
 
 //modes for picking motifs
 #define NO_REQUIREMENT                 0

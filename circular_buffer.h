@@ -24,8 +24,6 @@
 #ifndef CIRCULAR_BUFFER_H
 #define CIRCULAR_BUFFER_H
 
-#include <map>
-#include <vector>
 #include "utils.h"
 #include "hts_utils.h"
 #include "variant_manip.h"

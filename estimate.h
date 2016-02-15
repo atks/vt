@@ -24,8 +24,7 @@
 #ifndef ESTIMATE_H
 #define ESTIMATE_H
 
-#include <cstdlib>
-#include <cfloat>
+#include "utils.h"
 #include "bcf_ordered_reader.h"
 #include "bcf_ordered_writer.h"
 #include "variant_manip.h"

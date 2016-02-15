@@ -24,16 +24,6 @@
 #ifndef ANNOTATE_DBSNP_RSID_H
 #define ANNOTATE_DBSNP_RSID_H
 
-#include "htslib/vcf.h"
-#include "htslib/vcfutils.h"
-#include "htslib/kstring.h"
-#include "htslib/kseq.h"
-#include "htslib/hts.h"
-#include "bcf_synced_reader.h"
-#include "bcf_ordered_writer.h"
-#include "interval_tree.h"
-#include "hts_utils.h"
-#include "filter.h"
 #include "program.h"
 
 void annotate_dbsnp_rsid(int argc, char ** argv);

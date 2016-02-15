@@ -24,18 +24,7 @@
 #ifndef PROFILE_VNTRS_H
 #define PROFILE_VNTRS_H
 
-#include "bcf_synced_reader.h"
-#include "bcf_ordered_writer.h"
-#include "filter.h"
-#include "htslib/hfile.h"
-#include "htslib/kseq.h"
-#include "htslib/kstring.h"
-#include "htslib/vcf.h"
-#include "htslib/vcfutils.h"
-#include "hts_utils.h"
 #include "program.h"
-#include "ordered_bcf_overlap_matcher.h"
-#include "ordered_region_overlap_matcher.h"
 #include "vntr_tree.h"
 
 void profile_vntrs(int argc, char ** argv);

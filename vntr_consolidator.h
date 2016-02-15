@@ -24,24 +24,11 @@
 #ifndef VNTR_CONSOLIDATOR_H
 #define VNTR_CONSOLIDATOR_H
 
-#include <cstdlib>
-#include <cstdint>
-#include <cstring>
-#include <cmath>
-#include <cfloat>
-#include <vector>
-#include <map>
-#include <algorithm>
-#include "htslib/vcf.h"
-#include "htslib/kseq.h"
-#include "Rmath/Rmath.h"
 #include "hts_utils.h"
-#include "program.h"
-#include "genome_interval.h"
+#include "utils.h"
 #include "bcf_ordered_reader.h"
 #include "bcf_ordered_writer.h"
-#include "variant_manip.h"
-#include "reference_sequence.h"
+#include "Rmath/Rmath.h"
 #include "candidate_region_extractor.h"
 #include "candidate_motif_picker.h"
 #include "flank_detector.h"

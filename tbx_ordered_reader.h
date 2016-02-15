@@ -24,18 +24,8 @@
 #ifndef TBX_ORDERED_READER_H
 #define TBX_ORDERED_READER_H
 
-#include <cstdlib>
-#include <cstdint>
-#include <cstring>
-#include <cmath>
-#include <cfloat>
-#include <vector>
-#include <list>
-#include <map>
-#include <queue>
-#include "htslib/vcf.h"
-#include "htslib/tbx.h"
 #include "hts_utils.h"
+#include "utils.h"
 #include "genome_interval.h"
 
 /**

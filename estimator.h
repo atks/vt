@@ -24,19 +24,6 @@
 #ifndef ESTIMATORS_H
 #define ESTIMATORS_H
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <ctype.h>
-#include <math.h>
-#include <string>
-#include <iostream>
-#include <fstream>
-#include <algorithm>
-#include <vector>
-#include <map>
-#include <limits.h>
-#include <float.h>
 #include "utils.h"
 #include "hts_utils.h"
 #include "log_tool.h"

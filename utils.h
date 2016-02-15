@@ -24,28 +24,23 @@
 #ifndef UTILS_H
 #define UTILS_H
 
-#include <sys/stat.h>
-#include <cstdio>
 #include <unistd.h>
+#include <climits>
+#include <iomanip>
 #include <iostream>
 #include <sstream>
-#include <string>
-#include <vector>
-#include <cstdlib>
-#include <cstdint>
 #include <cstring>
-#include <cmath>
-#include <cfloat>
 #include <vector>
 #include <map>
+#include <list>
 #include <queue>
-#include "htslib/kstring.h"
-#include "htslib/khash.h"
-#include "htslib/hts.h"
-#include "htslib/sam.h"
-#include "htslib/vcf.h"
-#include "htslib/vcfutils.h"
-
+//
+//#include <cstdlib>
+//#include <cstdint>
+//#include <cstring>
+//#include <cmath>
+//#include <cfloat>
+//#include <algorithm>
 /**
  * Splits a line into a vector - PERL style
  */
@@ -55,7 +50,6 @@ void split(std::vector<std::string>& vec, const char* delims, std::string& str, 
  * Splits a line into a vector - PERL style
  */
 void split(std::vector<std::string>& vec, const char* delims, const char* str, uint32_t limit=UINT_MAX, bool clear=true, bool collapse=true);
-
 
 /**
  * Casts a string into int32.  Returns true if successful.

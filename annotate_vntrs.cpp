@@ -266,7 +266,6 @@ class Igor : Program
 
             if (vtype==VT_VNTR)
             {
-               
                 VNTR& vntr = variant.vntr;
                 
                 int32_t beg1 = bcf_get_pos1(v);
@@ -282,7 +281,7 @@ class Igor : Program
                 bcf_update_info_int32(h, v, BLEN.c_str(), &vntr.blen, 1);
 
             
-                int32_t repeat_tract[2] = {vntr.beg1, vntr.end1};
+                int32_t repeat_tract[2] = {beg1, end1};
                 bcf_update_info_int32(h, v, REPEAT_TRACT.c_str(), &repeat_tract, 2);
                 bcf_update_info_int32(h, v, COMP.c_str(), &vntr.comp[0], 4);
                 bcf_update_info_float(h, v, ENTROPY.c_str(), &vntr.entropy, 1);

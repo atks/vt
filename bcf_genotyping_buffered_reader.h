@@ -24,12 +24,8 @@
 #ifndef BCF_GENOTYPING_BUFFERED_READER_H
 #define BCF_GENOTYPING_BUFFERED_READER_H
 
-#include <string>
-#include "htslib/kseq.h"
-#include "htslib/vcf.h"
 #include "hts_utils.h"
-#include <list>
-#include "program.h"
+#include "utils.h"
 #include "genotyping_record.h"
 #include "bcf_ordered_reader.h"
 #include "variant.h"

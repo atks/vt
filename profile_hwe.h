@@ -24,18 +24,8 @@
 #ifndef PROFILE_HWE_H
 #define PROFILE_HWE_H
 
-#include <sys/stat.h>
-#include <cstdio>
-#include "htslib/vcf.h"
-#include "htslib/khash.h"
-#include "htslib/kseq.h"
 #include "program.h"
-#include "hts_utils.h"
-#include "bcf_ordered_reader.h"
-#include "variant_manip.h"
-#include "utils.h"
 #include "pedigree.h"
-#include "filter.h"
 
 void profile_hwe(int argc, char ** argv);
 

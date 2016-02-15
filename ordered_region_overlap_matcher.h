@@ -24,14 +24,9 @@
 #ifndef OVERLAP_REGION_MATCHER_H
 #define OVERLAP_REGION_MATCHER_H
 
-#include "htslib/vcf.h"
-#include "htslib/kseq.h"
-#include "program.h"
 #include "hts_utils.h"
 #include "bcf_ordered_reader.h"
 #include "tbx_ordered_reader.h"
-#include "interval_tree.h"
-#include <list>
 #include "bed.h"
 
 /**
@@ -45,21 +40,21 @@ class OrderedRegionOverlapMatcher
     ///////////
     //options//
     ///////////
-    std::string input_file;   
-    
+    std::string input_file;
+
     ///////
     //i/o//
     ///////
-    BCFOrderedReader *odr; 
-    TBXOrderedReader *todr; 
-    
+    BCFOrderedReader *odr;
+    TBXOrderedReader *todr;
+
     kstring_t s;
-    
+
     GenomeInterval current_interval;
     std::list<BEDRecord> buffer;
     bool end_of_file;
     int32_t no_regions;
-    
+
     /**
      * Constructor.
      */
@@ -69,13 +64,13 @@ class OrderedRegionOverlapMatcher
      * Destructor.
      */
     ~OrderedRegionOverlapMatcher();
-    
+
     /**
      * Returns true if chrom:start1-end1 overlaps with a region in the file.
      */
     bool overlaps_with(std::string& chrom, int32_t start1, int32_t end1);
-        
+
     private:
 };
-    
+
 #endif

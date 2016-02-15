@@ -21,25 +21,15 @@
    THE SOFTWARE.
 */
 
-#ifndef FLANK_DETECTOR_H
-#define FLANK_DETECTOR_H
+#ifndef FLANK_ALIGNER_H
+#define FLANK_ALIGNER_H
 
-#include <cstdlib>
-#include <cstdint>
-#include <cstring>
-#include <cmath>
-#include <cfloat>
-#include <vector>
-#include <map>
-#include <queue>
-#include <list>
 #include "hts_utils.h"
-#include "htslib/kstring.h"
+#include "utils.h"
 #include "rfhmm.h"
 #include "lfhmm.h"
 #include "ahmm.h"
 #include "variant_manip.h"
-#include "program.h"
 #include "vntr.h"
 
 //modes for flank detection

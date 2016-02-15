@@ -24,22 +24,7 @@
 #ifndef CONSOLIDATE_VNTRS_H
 #define CONSOLIDATE_VNTRS_H
 
-#include <cstdlib>
-#include <cstdint>
-#include <cstring>
-#include <cmath>
-#include <cfloat>
-#include <vector>
-#include <map>
-#include "htslib/vcf.h"
-#include "htslib/kseq.h"
-#include "Rmath/Rmath.h"
-#include "hts_utils.h"
 #include "program.h"
-#include "genome_interval.h"
-#include "bcf_ordered_reader.h"
-#include "bcf_ordered_writer.h"
-#include "variant_manip.h"
 #include "vntr_consolidator.h"
 
 void consolidate_vntrs(int argc, char **argv);

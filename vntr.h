@@ -24,24 +24,17 @@
 #ifndef VNTR_H
 #define VNTR_H
 
-#include <cstdlib>
-#include <cstdint>
-#include <string>
-#include <cmath>
-#include <cfloat>
-#include <vector>
-#include <iostream>
+#include "utils.h"
 
 //VNTR update modes
 #define FINAL  1 // update final attributes
 #define EXACT  2 // update exact attributes
 #define FUZZY  4 // update fuzzy attributes
 
-
 /**
  * Class for representing a VNTR.
  *
- * 2 sets of attributes for the exact and fuzzy detections of the repeat region.
+ * Includes functions specific to tandem repeats.
  */
 class VNTR
 {
@@ -143,6 +136,11 @@ class VNTR
      * Return the string of unique bases in a motif.
      */
     static std::string get_basis(char* motif, uint32_t n);
+
+    /**
+     * Shifts a string.
+     */
+    static std::string shift_str(std::string& seq, uint32_t i);
 
     /**
      * Print object.

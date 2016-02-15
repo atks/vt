@@ -24,15 +24,6 @@
 #ifndef MULTI_PARTITION_H
 #define MULTI_PARTITION_H
 
-#include "bcf_synced_reader.h"
-#include "bcf_ordered_writer.h"
-#include "filter.h"
-#include "htslib/hfile.h"
-#include "htslib/kseq.h"
-#include "htslib/kstring.h"
-#include "htslib/vcf.h"
-#include "htslib/vcfutils.h"
-#include "hts_utils.h"
 #include "program.h"
 
 void multi_partition(int argc, char ** argv);

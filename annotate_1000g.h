@@ -24,16 +24,6 @@
 #ifndef ANNOTATE_1000G_H
 #define ANNOTATE_1000G_H
 
-#include "htslib/vcf.h"
-#include "htslib/vcfutils.h"
-#include "htslib/kstring.h"
-#include "htslib/kseq.h"
-#include "htslib/hts.h"
-#include "bcf_synced_reader.h"
-#include "bcf_ordered_writer.h"
-#include "interval_tree.h"
-#include "hts_utils.h"
-#include "filter.h"
 #include "program.h"
 
 void annotate_1000g(int argc, char ** argv);

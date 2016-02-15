@@ -24,14 +24,7 @@
 #ifndef DECOMPOSE_H
 #define DECOMPOSE_H
 
-#include "htslib/vcf.h"
-#include "htslib/kseq.h"
 #include "program.h"
-#include "hts_utils.h"
-#include "bcf_ordered_reader.h"
-#include "bcf_ordered_writer.h"
-#include "variant_manip.h"
-#include "filter.h"
 
 void decompose(int argc, char ** argv);
 

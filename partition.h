@@ -24,15 +24,6 @@
 #ifndef PARTITION_H
 #define PARTITION_H
 
-#include "bcf_synced_reader.h"
-#include "bcf_ordered_writer.h"
-#include "filter.h"
-#include "htslib/hfile.h"
-#include "htslib/kseq.h"
-#include "htslib/kstring.h"
-#include "htslib/vcf.h"
-#include "htslib/vcfutils.h"
-#include "hts_utils.h"
 #include "program.h"
 
 void partition(int argc, char ** argv);

@@ -24,17 +24,7 @@
 #ifndef PROFILE_CHM1_H
 #define PROFILE_CHM1_H
 
-#include "htslib/vcf.h"
-#include "htslib/vcfutils.h"
-#include "htslib/kstring.h"
-#include "htslib/kseq.h"
-#include "htslib/hts.h"
-#include "bcf_synced_reader.h"
-#include "interval_tree.h"
-#include "hts_utils.h"
-#include "filter.h"
 #include "program.h"
-#include "ordered_region_overlap_matcher.h"
 
 void profile_chm1(int argc, char ** argv);
 

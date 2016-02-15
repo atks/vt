@@ -141,7 +141,7 @@ class Igor : Program
                     std::clog << "interval " << intervals[i].to_string() << "\n";
                     std::clog << "sequence : cannot be read\n";
                 }
-                
+
             }
         }
         if (print) std::clog << "\n";
@@ -150,7 +150,7 @@ class Igor : Program
     void print_options()
     {
         if (!print) return;
-        
+
         std::clog << "seq v" << version << "\n";
         std::clog << "\n";
         std::clog << "options: [r] reference FASTA file  " << ref_fasta_file << "\n";
@@ -166,7 +166,6 @@ class Igor : Program
 
     private:
 };
-
 }
 
 bool seq(int argc, char ** argv)

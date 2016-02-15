@@ -20,11 +20,12 @@
    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
    THE SOFTWARE.
 */
+
 #ifndef CHMM_H
 #define CHMM_H
 
 #include <iomanip>
-#include "htslib/kstring.h"
+#include "hts_utils.h"
 #include "log_tool.h"
 
 #define MAXLEN 1024

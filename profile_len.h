@@ -24,18 +24,7 @@
 #ifndef PROFILE_LEN_H
 #define PROFILE_LEN_H
 
-#include <sys/stat.h>
-#include <cstdio>
-#include "htslib/vcf.h"
-#include "htslib/khash.h"
-#include "htslib/kseq.h"
 #include "program.h"
-#include "hts_utils.h"
-#include "bcf_ordered_reader.h"
-#include "variant_manip.h"
-#include "utils.h"
-#include "pedigree.h"
-#include "filter.h"
 
 void profile_len(int argc, char ** argv);
 

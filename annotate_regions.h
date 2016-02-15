@@ -24,32 +24,7 @@
 #ifndef ANNOTATE_REGIONS_H
 #define ANNOTATE_REGIONS_H
 
-#include <cstdlib>
-#include <cstdint>
-#include <cstring>
-#include <cmath>
-#include <cfloat>
-#include <vector>
-#include <map>
-#include <queue>
-#include <list>
-#include <string>
-#include <iostream>
-#include "htslib/faidx.h"
-#include "htslib/kstring.h"
-#include "htslib/vcf.h"
-#include "bcf_ordered_reader.h"
-#include "bcf_ordered_writer.h"
-#include "hts_utils.h"
-#include "utils.h"
-#include "interval_tree.h"
-#include "variant_manip.h"
 #include "program.h"
-#include "variant_manip.h"
-#include "log_tool.h"
-#include "gencode.h"
-#include "ordered_region_overlap_matcher.h"
-#include "filter.h"
 
 void annotate_regions(int argc, char ** argv);
 

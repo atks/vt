@@ -25,9 +25,7 @@
 #define CONFIG_H
 
 #include "program.h"
-#include "hts_utils.h"
-#include "htslib/hfile.h"
 
 void config(int argc, char ** argv);
-    
+
 #endif

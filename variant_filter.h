@@ -24,10 +24,9 @@
 #ifndef VARIANT_FILTER_H
 #define VARIANT_FILTER_H
 
-#include <vector>
-#include <map>
-#include "Rmath/Rmath.h"
 #include "hts_utils.h"
+#include "utils.h"
+#include "Rmath/Rmath.h"
 
 /**
  * Class for filtering variants in discover

@@ -37,10 +37,9 @@ CandidateRegionExtractor::CandidateRegionExtractor(std::string& ref_fasta_file, 
     }
 
     max_mlen = 10;
-    
+
    this->debug = debug;
-    
-    mt = new MotifTree(max_mlen, debug);
+
 };
 
 /**
@@ -50,8 +49,6 @@ CandidateRegionExtractor::~CandidateRegionExtractor()
 {
     delete vm;
     fai_destroy(fai);
-    delete rfhmm;
-    delete lfhmm;
 
     if (factors)
     {
@@ -73,8 +70,8 @@ CandidateRegionExtractor::~CandidateRegionExtractor()
 void CandidateRegionExtractor::pick_candidate_region(Variant& variant, int32_t mode, int32_t amode)
 {
     bcf_hdr_t* h = variant.h;
-    bcf1_t* v = variant.v; 
-    
+    bcf1_t* v = variant.v;
+
     if (mode==REFERENCE)
     {
         if (amode&FINAL)
@@ -86,7 +83,7 @@ void CandidateRegionExtractor::pick_candidate_region(Variant& variant, int32_t m
             vntr.rl = vntr.end1-vntr.beg1+1;
             vntr.ll = vntr.rl; //??
         }
-        
+
         if (amode&EXACT)
         {
             VNTR& vntr = variant.vntr;
@@ -96,7 +93,7 @@ void CandidateRegionExtractor::pick_candidate_region(Variant& variant, int32_t m
             vntr.exact_rl = vntr.exact_end1-vntr.exact_beg1+1;
             vntr.exact_ll = vntr.exact_rl; //??
         }
-    
+
         if (amode&FUZZY)
         {
             VNTR& vntr = variant.vntr;
@@ -110,7 +107,7 @@ void CandidateRegionExtractor::pick_candidate_region(Variant& variant, int32_t m
     else if (mode==EXACT_LEFT_RIGHT_ALIGNMENT)
     {
         if (amode==EXACT)
-        {    
+        {
             extract_regions_by_exact_alignment(variant);
         }
         else
@@ -122,7 +119,7 @@ void CandidateRegionExtractor::pick_candidate_region(Variant& variant, int32_t m
     else if (mode==FUZZY_LEFT_RIGHT_ALIGNMENT)
     {
         if (amode==FUZZY)
-        {    
+        {
             extract_regions_by_fuzzy_alignment(variant);
         }
         else
@@ -140,7 +137,7 @@ std::string CandidateRegionExtractor::choose_repeat_unit(std::string& ref, std::
 {
     for (uint32_t i=0; i<motif.size(); ++i)
     {
-        std::string smotif = mt->shift_str(motif, i);
+        std::string smotif = VNTR::shift_str(motif, i);
         if (ref.compare(0, smotif.size(), smotif)==0)
         {
             return smotif;
@@ -171,13 +168,13 @@ bool CandidateRegionExtractor::is_homopolymer(bcf_hdr_t* h, bcf1_t* v)
  * Extract reference sequence region for motif discovery.
  *
  * The input is a VCF record that contains an indel.
- * 
+ *
  * If the the indel has multiple alleles, it will examine all
  * alleles.
  *
  * todo: is might be a good idea to combine this step with motif detection
  *       since there seems to be a need to have an iterative process here
- *       to ensure a good candidate motif is chosen. *  
+ *       to ensure a good candidate motif is chosen. *
  */
 void CandidateRegionExtractor::extract_regions_by_exact_alignment(Variant& variant)
 {
@@ -245,7 +242,7 @@ void CandidateRegionExtractor::extract_regions_by_exact_alignment(Variant& varia
     vntr.rid = bcf_get_rid(v);
     vntr.exact_beg1 = min_beg1;
     vntr.exact_end1 = max_end1;
-    
+
     if (seq_len) free(seq);
 }
 
@@ -316,7 +313,7 @@ void CandidateRegionExtractor::extract_regions_by_fuzzy_alignment(Variant& varia
 
     bcf_hdr_t* h = variant.h;
     bcf1_t* v = variant.v;
-    
+
     VNTR& vntr = variant.vntr;
     const char* chrom = bcf_get_chrom(h, v);
 
@@ -575,7 +572,7 @@ void CandidateRegionExtractor::trim(int32_t& pos1, std::string& ref, std::string
                 alt.erase(0,1);
                 ++pos1;
             }
-            
+
             //we choose one side to trim at a time to ensure that we do not accidentally end up with an empty allele
         }
     }

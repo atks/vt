@@ -25,8 +25,6 @@
 #define TEST_H
 
 #include "program.h"
-#include "htslib/hts.h"
-#include "htslib/vcf.h"
 
 void test(int argc, char ** argv);
     

@@ -24,19 +24,8 @@
 #ifndef BCF_ORDERED_WRITER_H
 #define BCF_ORDERED_WRITER_H
 
-#include <cstdlib>
-#include <cstdint>
-#include <cstring>
-#include <cmath>
-#include <cfloat>
-#include <vector>
-#include <map>
-#include <queue>
-#include <list>
-#include "htslib/vcf.h"
-#include "htslib/vcfutils.h"
-#include "htslib/tbx.h"
 #include "hts_utils.h"
+#include "utils.h"
 
 /**
  * A class for writing ordered VCF/BCF files.

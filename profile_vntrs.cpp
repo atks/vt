@@ -58,7 +58,8 @@ class Igor : Program
     std::vector<std::string> input_vcf_files;
     std::vector<GenomeInterval> intervals;
     std::string interval_list;
-
+    bool debug;
+    
     ///////////////////////
     //reference data sets//
     ///////////////////////
@@ -117,13 +118,14 @@ class Igor : Program
             TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "file", cmd);
             TCLAP::ValueArg<std::string> arg_fexp("f", "f", "filter", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_ref_data_sets_list("g", "g", "file containing list of reference datasets []", true, "", "file", cmd);
-            TCLAP::SwitchArg arg_write_partition("w", "w", "write partitioned variants to file", cmd, false);
+            TCLAP::SwitchArg arg_debug("d", "d", "debug", cmd, false);
             TCLAP::UnlabeledValueArg<std::string> arg_input_vcf_file("<in.vcf>", "input VCF file", true, "","file", cmd);
 
             cmd.parse(argc, argv);
 
             fexp = arg_fexp.getValue();
             parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
+            debug = arg_debug.getValue();
             ref_data_sets_list = arg_ref_data_sets_list.getValue();
             input_vcf_files.push_back(arg_input_vcf_file.getValue());
         }
@@ -363,6 +365,11 @@ class Igor : Program
 
         for (int32_t i=0; i<dataset_labels.size(); ++i)
         {
+            if (i==0 && !debug)
+            {
+                continue;
+            }    
+            
             fprintf(stderr, "  %s (%d)\n", dataset_labels[i].c_str(), oboms[i]->no_variants);
             fprintf(stderr, "    A-B  %10d \n", stats[i].a);
             fprintf(stderr, "    A-B~ %10d \n", stats[i].ap);

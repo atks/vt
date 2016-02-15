@@ -40,7 +40,7 @@ ReferenceSequence::ReferenceSequence(std::string& ref_fasta_file, uint32_t k, ui
             exit(1);
         }
     }
-        
+
     //Buffer size is a power of 2^k.
     buffer_size = 1 << k;
     //this provides a cheaper way to do modulo operations for a circular array.
@@ -60,11 +60,11 @@ ReferenceSequence::ReferenceSequence(std::string& ref_fasta_file, uint32_t k, ui
  */
 char ReferenceSequence::fetch_base(std::string& chrom, uint32_t& pos1)
 {
-    
+
     //check buffer and retrieve base if it is in it.
     if (this->chrom == chrom && pos1>=gbeg1 && pos1<=gbeg1+(end0-beg0))
     {
-        
+
     }
     else
     {
@@ -77,17 +77,17 @@ char ReferenceSequence::fetch_base(std::string& chrom, uint32_t& pos1)
         }
         char base = refseq[0];
         free(refseq);
-    
+
         return base;
 
     }
-    
+
     return 'N';
 }
 
 /**
  * Fetches sequence chrom:beg1-end1.
- * 
+ *
  * Retrieved sequence is in seq with the length of n.
  */
 void ReferenceSequence::fetch_seq(std::string& chrom, uint32_t start1, uint32_t end1, char* seq, int32_t n)
@@ -99,7 +99,7 @@ void ReferenceSequence::fetch_seq(std::string& chrom, uint32_t start1, uint32_t 
  */
 void ReferenceSequence::fetch_seq(const char* chrom, uint32_t beg1, uint32_t end1, std::string& seq)
 {
-    char* temp_seq = fetch_seq(chrom, beg1, end1);    
+    char* temp_seq = fetch_seq(chrom, beg1, end1);
     if (temp_seq)
     {
         seq.assign(temp_seq);
@@ -123,7 +123,7 @@ char* ReferenceSequence::fetch_seq(const char* chrom, uint32_t beg1, uint32_t en
     char* seq = NULL;
     int32_t len = 0;
     seq = faidx_fetch_uc_seq(fai, const_cast<char*>(chrom), beg1-1, end1-1, &len);
-    
+
     if (len==-1)
     {
         fprintf(stderr, "[W:%s:%d %s] %s not found in reference sequence file %s\n", __FILE__, __LINE__, __FUNCTION__, chrom, ref_fasta_file.c_str());
@@ -133,7 +133,7 @@ char* ReferenceSequence::fetch_seq(const char* chrom, uint32_t beg1, uint32_t en
         fprintf(stderr, "[E:%s:%d %s] fatal error in extracting %s:%d-%d  reference sequence file: %s\n", __FILE__, __LINE__, __FUNCTION__, chrom, beg1, end1, ref_fasta_file.c_str());
         exit(1);
     }
-    
+
     return seq;
 };
 

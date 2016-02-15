@@ -24,20 +24,7 @@
 #ifndef VARIANT_MANIP_H
 #define VARIANT_MANIP_H
 
-#include <cstdlib>
-#include <cstdint>
-#include <cstring>
-#include <cmath>
-#include <cfloat>
-#include <vector>
-#include <map>
-#include <queue>
-#include <list>
-#include <string>
-#include <iostream>
-#include "htslib/faidx.h"
-#include "htslib/kstring.h"
-#include "htslib/vcf.h"
+#include "hts_utils.h"
 #include "hts_utils.h"
 #include "variant.h"
 #include "allele.h"

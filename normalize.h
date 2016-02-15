@@ -24,15 +24,8 @@
 #ifndef NORMALIZE_H
 #define NORMALIZE_H
 
-#include "htslib/vcf.h"
-#include "htslib/kseq.h"
 #include "program.h"
-#include "hts_utils.h"
-#include "bcf_ordered_reader.h"
-#include "bcf_ordered_writer.h"
-#include "variant_manip.h"
-#include "filter.h"
 
 bool normalize(int argc, char ** argv);
-    
+
 #endif

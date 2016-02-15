@@ -24,16 +24,7 @@
 #ifndef SORT_H
 #define SORT_H
 
-#include "htslib/vcf.h"
 #include "program.h"
-#include "bcf_ordered_reader.h"
-#include "bcf_ordered_writer.h"
-#include "bcf_synced_reader.h"
-#include "hts_utils.h"
-#include "variant_manip.h"
-#include "filter.h"
-#include "Rmath/Rmath.h"
-#include <cstdio>
 
 bool sort(int argc, char ** argv);
 

@@ -20,8 +20,7 @@
 #ifndef GENOTYPING_RECORD_H
 #define GENOTYPING_RECORD_H
 
-#include "htslib/vcf.h"
-#include "htslib/faidx.h"
+#include "hts_utils.h"
 #include "bcf_ordered_writer.h"
 #include "variant.h"
 

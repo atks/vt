@@ -24,14 +24,7 @@
 #ifndef VIEW_H
 #define VIEW_H
 
-#include "bcf_ordered_reader.h"
-#include "bcf_ordered_writer.h"
-#include "filter.h"
-#include "htslib/vcf.h"
-#include "hts_utils.h"
 #include "program.h"
-#include "variant_manip.h"
-#include "ordered_region_overlap_matcher.h"
 
 bool view(int argc, char ** argv);
     

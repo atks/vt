@@ -117,9 +117,21 @@ std::string VNTR::get_basis(char* motif, uint32_t n)
     if (bases[2]) basis.append(1, 'G');
     if (bases[3]) basis.append(1, 'T');
 
-//    std::cerr << "return " << basis << "\n";
-
     return basis;
+}
+
+/**
+ * Shifts a string.
+ */
+std::string VNTR::shift_str(std::string& seq, uint32_t i)
+{
+    std::string sseq = seq;
+    if (i)
+    {
+        sseq = seq.substr(i) + seq.substr(0,i);
+    }    
+    
+    return sseq;
 }
 
 /**

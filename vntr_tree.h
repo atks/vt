@@ -17,11 +17,9 @@
    THE SOFTWARE.
 */
 
-#include "htslib/vcf.h"
-#include "htslib/kstring.h"
-#include "htslib/khash.h"
-#include "variant_manip.h"
-#include "vntr_annotator.h"
+#include "utils.h"
+#include "hts_utils.h"
+#include "variant.h"
 
 #ifndef VNTR_TREE_H
 #define VNTR_TREE_H

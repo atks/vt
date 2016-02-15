@@ -24,31 +24,16 @@
 #ifndef CANDIDATE_REGION_EXTRACTOR_H
 #define CANDIDATE_REGION_EXTRACTOR_H
 
-#include <cstdlib>
-#include <cstdint>
-#include <cstring>
-#include <cmath>
-#include <cfloat>
-#include <vector>
-#include <map>
-#include <queue>
-#include <list>
 #include "hts_utils.h"
-#include "htslib/kstring.h"
-#include "bcf_ordered_reader.h"
-#include "bcf_ordered_writer.h"
-#include "rfhmm.h"
-#include "lfhmm.h"
+#include "utils.h"
 #include "ahmm.h"
 #include "variant_manip.h"
-#include "program.h"
-#include "motif_tree.h"
 #include "vntr.h"
 
 //modes for extracting candidate repeat region
-#define REFERENCE                                0
-#define EXACT_LEFT_RIGHT_ALIGNMENT               1
-#define FUZZY_LEFT_RIGHT_ALIGNMENT               2
+#define REFERENCE                   0
+#define EXACT_LEFT_RIGHT_ALIGNMENT  1
+#define FUZZY_LEFT_RIGHT_ALIGNMENT  2
 
 /**
  * Extract a candidate repeat region without knowledge of repeat unit.
@@ -60,19 +45,8 @@ class CandidateRegionExtractor
     uint32_t max_mlen; //maximum length for motif search in the fast tree.
 
     //model
-    char* motif;
-    int32_t motif_len;
-    int32_t ref_len;
-    char* lflank;
-    char* rflank;
-    bool exact;
-    int32_t* motif_concordance;
-    float* motif_completeness;
-    float concordance;
-    std::vector<CandidateMotif> candidate_motifs;
     bool debug;
     int32_t max_len;
-
     AHMM* ahmm;
     std::string qual;
 
@@ -81,10 +55,7 @@ class CandidateRegionExtractor
     ///////
     VariantManip *vm;
     faidx_t* fai;
-    MotifTree* mt;
-    RFHMM* rfhmm;
-    LFHMM* lfhmm;
-
+   
     //for retrieving sequences
     int8_t* seq;
 
@@ -115,16 +86,6 @@ class CandidateRegionExtractor
      *       - ALLELE_FUZZY  by fuzzy alignment
      */
     void pick_candidate_region(Variant& variant,  int32_t mode, int32_t amode);
-
-    /**
-     * Pick shortest motif.
-     */
-    std::string pick_motif(std::string& sequence);
-
-    /**
-     * This is a quick scan for a motif that is exactly repeated.
-     */
-    std::string scan_exact_motif(std::string& sequence);
 
     /**
      * Chooses a phase of the motif that is appropriate for the alignment

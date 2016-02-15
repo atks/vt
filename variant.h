@@ -21,15 +21,10 @@
    THE SOFTWARE.
 */
 
-#include <cstdint>
-#include <cstring>
-#include <iostream>
-#include <vector>
-#include "htslib/kstring.h"
-#include "htslib/vcf.h"
+#include "hts_utils.h"
+#include "utils.h"
 #include "allele.h"
 #include "vntr.h"
-#include "hts_utils.h"
 
 #ifndef VARIANT_H
 #define VARIANT_H

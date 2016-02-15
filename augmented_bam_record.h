@@ -24,17 +24,8 @@
 #ifndef AUGMENTED_CIGAR_H
 #define AUGMENTED_CIGAR_H
 
-#include <cstdlib>
-#include <cstdint>
-#include <cstring>
-#include <cmath>
-#include <cfloat>
-#include <vector>
-#include <map>
-#include <queue>
-#include <list>
-#include "htslib/sam.h"
 #include "hts_utils.h"
+#include "utils.h"
 
 /**
  * The augmented BAM record adds functionalities to process the
@@ -70,7 +61,7 @@ class AugmentedBAMRecord
     bam1_t *s;
     int32_t beg1;
     int32_t end1;
-    
+
     //new augmented cigar with X's
     std::vector<uint32_t> aug_cigar;
 

@@ -24,18 +24,7 @@
 #ifndef PROFILE_NA12878_H
 #define PROFILE_NA12878_H
 
-#include "htslib/vcf.h"
-#include "htslib/vcfutils.h"
-#include "htslib/kstring.h"
-#include "htslib/kseq.h"
-#include "htslib/hts.h"
-#include "bcf_synced_reader.h"
-#include "bcf_ordered_writer.h"
-#include "interval_tree.h"
-#include "hts_utils.h"
-#include "filter.h"
 #include "program.h"
-#include "ordered_region_overlap_matcher.h"
 
 void profile_na12878(int argc, char ** argv);
 

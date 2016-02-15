@@ -24,16 +24,7 @@
 #ifndef GENOME_INTERVAL_H
 #define GENOME_INTERVAL_H
 
-#include <queue>
-#include <sstream>
-#include <cstdlib>
-#include <cstdint>
-#include <cstring>
-#include <cmath>
-#include <cfloat>
-#include <vector>
-#include <map>
-#include "hts_utils.h"
+#include "htslib/kstring.h"
 #include "utils.h"
 
 class GenomeInterval

@@ -24,15 +24,8 @@
 #ifndef PROFILE_MENDELIAN_H
 #define PROFILE_MENDELIAN_H
 
-#include "htslib/vcf.h"
-#include "htslib/kseq.h"
 #include "program.h"
-#include "hts_utils.h"
-#include "bcf_ordered_reader.h"
-#include "variant_manip.h"
-#include "utils.h"
 #include "pedigree.h"
-#include "filter.h"
 
 void profile_mendelian(int argc, char ** argv);
 

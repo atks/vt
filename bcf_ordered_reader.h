@@ -24,22 +24,9 @@
 #ifndef BCF_ORDERED_READER_H
 #define BCF_ORDERED_READER_H
 
-#include <cstdlib>
-#include <cstdint>
-#include <cstring>
-#include <cmath>
-#include <cfloat>
-#include <vector>
-#include <list>
-#include <map>
-#include <queue>
-#include "bcf_ordered_reader.h"
-#include "htslib/vcf.h"
-#include "htslib/hts.h"
-#include "htslib/tbx.h"
 #include "hts_utils.h"
+#include "utils.h"
 #include "genome_interval.h"
-#include "interval_tree.h"
 
 /**
  * A class for reading ordered VCF/BCF files.
@@ -88,7 +75,6 @@ class BCFOrderedReader
     //list of intervals
     std::vector<GenomeInterval> intervals;
     uint32_t interval_index;
-    std::map<std::string, IntervalTree*> interval_tree;
 
     //for storing unused bcf records
     std::list<bcf1_t*> pool;

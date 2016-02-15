@@ -42,7 +42,7 @@ class Igor : Program
     std::string output_pdf_file;
     std::vector<GenomeInterval> intervals;
     std::string interval_list;
-    
+
     ///////
     //i/o//
     ///////
@@ -71,7 +71,6 @@ class Igor : Program
     /////////
     //tools//
     /////////
-    Pedigree *pedigree;
     VariantManip *vm;
 
     Igor(int argc, char ** argv)
@@ -140,16 +139,16 @@ class Igor : Program
         bcf1_t *v = bcf_init1();
 
         Variant variant;
-        
+
         while(odr->read(v))
         {
             bcf_unpack(v, BCF_UN_ALL);
-            
+
             if (bcf_get_n_allele(v)!=2)
             {
                 continue;
             }
-            
+
             if (filter_exists)
             {
                 int32_t vtype = vm->classify_variant(odr->hdr, v, variant);
@@ -158,11 +157,11 @@ class Igor : Program
                     continue;
                 }
             }
-            
+
             bool pass = (bcf_has_filter(odr->hdr, v, const_cast<char*>("PASS"))==1);
-            
+
             int32_t rid = bcf_get_rid(v);
-            
+
             k = kh_get(32, chrom, rid);
             if (k==kh_end(chrom))
             {
@@ -172,8 +171,8 @@ class Igor : Program
             else
             {
                 kh_value(chrom, k) = kh_value(chrom, k) + 1;
-            }    
-            
+            }
+
             if (pass)
             {
                 k = kh_get(32, pass_chrom, rid);
@@ -185,13 +184,13 @@ class Igor : Program
                 else
                 {
                     kh_value(pass_chrom, k) = kh_value(pass_chrom, k) + 1;
-                } 
-            }    
-            
+                }
+            }
+
             ++no_variants;
         }
-       
-        
+
+
     };
 
     void print_options()
@@ -203,24 +202,24 @@ class Igor : Program
         print_int_op("         [i] intervals              ", intervals);
         std::clog << "\n";
     }
-  
+
     void print_pdf()
     {
         append_cwd(output_dir);
-                        
+
         //create directory
         mkdir(output_dir.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-        
+
         //create data file
-        std::string file_path = output_dir + "/data.txt"; 
+        std::string file_path = output_dir + "/data.txt";
         FILE *out = fopen(file_path.c_str(), "w");
-        
+
         fprintf(out, "chromosome\ttotal\tpass\tlength\n");
-        
+
         int32_t nseqs;
         const char** seq_names = bcf_hdr_seqnames(odr->hdr, &nseqs);
         int32_t* len = bcf_hdr_seqlen(odr->hdr, &nseqs);
-        
+
         for (int32_t i=0; i<nseqs; ++i)
         {
             int32_t no_total = 0, no_pass = 0;
@@ -228,25 +227,25 @@ class Igor : Program
             if (k!=kh_end(chrom))
             {
                 no_total = kh_value(chrom, k);
-            } 
-            
+            }
+
             k = kh_get(32, pass_chrom, i);
             if (k!=kh_end(pass_chrom))
             {
                 no_pass = kh_value(pass_chrom, k);
-            } 
-            
+            }
+
             fprintf(out, "%s\t%d\t%d\t%d\n", seq_names[i], no_total, no_pass, len[i]);
         }
-        if(nseqs) free(seq_names);   
-        if(nseqs) free(len); 
-        fprintf(out, "\n");        
+        if(nseqs) free(seq_names);
+        if(nseqs) free(len);
+        fprintf(out, "\n");
         fclose(out);
 
         //create r script
-        file_path = output_dir + "/plot.r"; 
+        file_path = output_dir + "/plot.r";
         out = fopen(file_path.c_str(), "w");
-        
+
         fprintf(out, "setwd(\"%s\")\n", output_dir.c_str());
         fprintf(out, "\n");
         fprintf(out, "data = read.table(\"data.txt\", header=T)\n");
@@ -263,7 +262,7 @@ class Igor : Program
         fprintf(out, "legend(\"topright\", c(\"all\", \"pass\", \"chromosome length\"), col = c(\"grey\", rgb(0,0,1,0.5), \"red\"), pch = 20)\n");
         fprintf(out, "dev.off()\n");
         fprintf(out, "\n");
-        
+
         fclose(out);
 
         //run script
@@ -276,14 +275,14 @@ class Igor : Program
         fprintf(stderr, "Stats \n");
         fprintf(stderr, "     no. of variants  : %d\n", no_variants);
         fprintf(stderr, "\n");
-        
+
         //do a textual histogram print out of chrom
         int32_t nseqs;
         const char** seq_names = bcf_hdr_seqnames(odr->hdr, &nseqs);
-        
-        
+
+
         int32_t* len = bcf_hdr_seqlen(odr->hdr, &nseqs);
-        
+
         fprintf(stderr, "     chromosome     total#      pass#      length\n");
         for (int32_t i=0; i<nseqs; ++i)
         {
@@ -292,19 +291,19 @@ class Igor : Program
             if (k!=kh_end(chrom))
             {
                 no_total = kh_value(chrom, k);
-            } 
-            
+            }
+
             k = kh_get(32, pass_chrom, i);
             if (k!=kh_end(pass_chrom))
             {
                 no_pass = kh_value(pass_chrom, k);
-            } 
-            
+            }
+
             fprintf(stderr, "%15s   %8d   %8d   %9d\n", seq_names[i], no_total, no_pass, len[i]);
         }
         fprintf(stderr, "\n");
-        if(nseqs) free(seq_names);   
-        if(nseqs) free(len);    
+        if(nseqs) free(seq_names);
+        if(nseqs) free(len);
     };
 
     ~Igor()

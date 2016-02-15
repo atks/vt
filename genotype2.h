@@ -24,17 +24,9 @@
 #ifndef GENOTYPE2_H
 #define GENOTYPE2_H
 
-#include "utils.h"
 #include "program.h"
-#include "variant_manip.h"
 #include "bcf_genotyping_buffered_reader.h"
 #include "bam_ordered_reader.h"
-#include "bcf_ordered_writer.h"
-#include "genome_interval.h"
-#include "hts_utils.h"
-#include "htslib/sam.h"
-#include "htslib/vcf.h"
-#include "htslib/kseq.h"
 #include "augmented_bam_record.h"
 
 void genotype2(int argc, char ** argv);

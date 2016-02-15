@@ -21,10 +21,8 @@
    THE SOFTWARE.
 */
 
-#include <cstdint>
-#include <iostream>
-#include "htslib/kstring.h"
-#include <vector>
+#include "hts_utils.h"
+#include "utils.h"
 
 #ifndef ALLELE_H
 #define ALLELE_H

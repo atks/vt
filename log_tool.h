@@ -25,16 +25,9 @@
 #define LOG_TOOL_H
 
 #include <assert.h>
-#include <climits>
 #include <cmath>
-#include <cstdint>
-#include <cstdlib>
-#include <cstring>
 #include <float.h>
-#include <iostream>
-#include <map>
-#include <queue>
-#include <vector>
+#include "utils.h"
 
 #define LOGZERO -DBL_MAX
 

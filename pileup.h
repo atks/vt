@@ -24,12 +24,9 @@
 #ifndef PILEUP_H
 #define PILEUP_H
 
-#include <map>
-#include <vector>
 #include "utils.h"
 #include "hts_utils.h"
-#include "variant_manip.h"
-#include "htslib/faidx.h"
+#include "variant.h"
 
 /**
  * Contains sufficient statistic for a position in the pileup.

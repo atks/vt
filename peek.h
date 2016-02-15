@@ -24,16 +24,8 @@
 #ifndef PEEK_H
 #define PEEK_H
 
-#include "bcf_ordered_reader.h"
-#include <cstdio>
-#include "filter.h"
-#include "htslib/khash.h"
-#include "htslib/kseq.h"
-#include "htslib/vcf.h"
-#include "hts_utils.h"
 #include "program.h"
 #include "sv_tree.h"
-#include "variant_manip.h"
 #include "vntr_tree.h"
 
 void peek(int argc, char ** argv);

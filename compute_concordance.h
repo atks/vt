@@ -24,15 +24,7 @@
 #ifndef COMPUTE_CONCORDANCE_H
 #define COMPUTE_CONCORDANCE_H
 
-
-#include "htslib/vcf.h"
-#include "htslib/kstring.h"
-#include "htslib/kseq.h"
-#include "htslib/khash.h"
-#include "hts_utils.h"
 #include "program.h"
-#include "bcf_synced_reader.h"
-#include "filter.h"
 
 KHASH_MAP_INIT_STR(vdict, bcf_idinfo_t)
 typedef khash_t(vdict) vdict_t;

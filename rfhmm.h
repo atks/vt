@@ -23,8 +23,8 @@
 #ifndef RFHMM_H
 #define RFHMM_H
 
-#include <iomanip>
-#include "htslib/kstring.h"
+#include "hts_utils.h"
+#include "utils.h"
 #include "log_tool.h"
 
 #define MAXLEN 1024

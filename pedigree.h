@@ -24,22 +24,8 @@
 #ifndef PED_H
 #define PED_H
 
-#include <cstdlib>
-#include <cstdint>
-#include <cstring>
-#include <cmath>
-#include <cfloat>
-#include <vector>
-#include <map>
-#include <queue>
-#include <list>
-#include <string>
-#include <iostream>
-#include "htslib/faidx.h"
-#include "htslib/kstring.h"
-#include "htslib/tbx.h"
-#include "hts_utils.h"
 #include "utils.h"
+#include "hts_utils.h"
 
 #define PED_UNKNOWN_SEX -1
 #define PED_MALE 0

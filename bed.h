@@ -24,9 +24,9 @@
 #ifndef BED_H
 #define BED_H
 
-#include "htslib/kstring.h"
+#include "hts_utils.h"
 #include "utils.h"
-#include "interval_tree.h"
+#include "interval.h"
 
 class BEDRecord : public Interval
 {

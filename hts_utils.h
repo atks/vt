@@ -24,16 +24,6 @@
 #ifndef HTS_UTILS_H
 #define HTS_UTILS_H
 
-#include <string>
-#include <vector>
-#include <cstdlib>
-#include <cstdint>
-#include <cstring>
-#include <cmath>
-#include <cfloat>
-#include <vector>
-#include <map>
-#include <queue>
 #include <sys/stat.h>
 #include "htslib/kstring.h"
 #include "htslib/khash.h"
@@ -42,6 +32,8 @@
 #include "htslib/vcf.h"
 #include "htslib/bgzf.h"
 #include "htslib/faidx.h"
+#include "htslib/tbx.h"
+#include "htslib/hfile.h"
 #include "utils.h"
 
 /**********

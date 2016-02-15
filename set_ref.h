@@ -24,13 +24,7 @@
 #ifndef SET_REF_H
 #define SET_REF_H
 
-#include "htslib/kstring.h"
-#include "bcf_ordered_reader.h"
-#include "bcf_ordered_writer.h"
-#include "variant_manip.h"
 #include "program.h"
-#include "filter.h"
-#include "reference_sequence.h"
 
 void set_ref(int argc, char ** argv);
 

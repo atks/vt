@@ -24,15 +24,20 @@
 #ifndef PROGRAM_H
 #define PROGRAM_H
 
-#include <vector>
-#include <map>
 #include <typeinfo>
-#include "htslib/hts.h"
 #include "tclap/CmdLine.h"
 #include "tclap/Arg.h"
+#include "bcf_ordered_reader.h"
+#include "bcf_ordered_writer.h"
+#include "bcf_synced_reader.h"
+#include "ordered_bcf_overlap_matcher.h"
+#include "ordered_region_overlap_matcher.h"
 #include "hts_utils.h"
 #include "utils.h"
+#include "variant_manip.h"
+#include "filter.h"
 #include "genome_interval.h"
+#include "reference_sequence.h"
 
 class VTOutput : public TCLAP::StdOutput
 {

@@ -24,7 +24,6 @@
 #define NEEDLE_H
 
 #include <vector>
-
 #include "log_tool.h"
 
 class NWParameters
