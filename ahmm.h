@@ -95,6 +95,8 @@ class AHMM
 {
     public:
 
+    int32_t max_len;
+
     const char* read;
     const char* qual;
 

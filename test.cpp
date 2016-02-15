@@ -62,7 +62,7 @@ class Igor : Program
     ///////////
     std::string method;
     std::vector<std::string> x;
-
+    std::string sequence;
 
     bool debug;
     uint32_t no;
@@ -151,10 +151,117 @@ class Igor : Program
         }
     }
 
-    void test(int argc, char ** argv)
+    /**
+     * Computes composition and entropy ofrepeat tract.
+     */
+    void compute_composition_and_entropy(std::string& repeat_tract)
     {
+        int32_t comp[4];
+        float entropy, entropy2;
         
+        int32_t aux_comp[4] = {0,0,0,0};
+        int32_t aux_comp2[16] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+        int32_t b2i[10] = {0,1,0,2,0,0,0,0,0,3};
         
+    //    ACGT x ACGT
+    //    AA - 0    = 0*0 + 0
+    //    AC - 1
+    //    AG - 2
+    //    AT - 3
+    //    CA - 4    = 1*4 + 0 = 1<<2
+    //    CC - 5
+    //    CG - 6
+    //    CT - 7
+    //    GA - 8    = 2*4 + 0  = 2<<1 = 10=>100
+    //    GC - 9
+    //    GG - 10
+    //    GT - 11
+    //    TA - 12   = 3*4 + 0  = 3<<1  11=>110=>1100
+    //    TC - 13
+    //    TG - 14
+    //    TT - 15    = 3*4+3 = 15
+        
+        int32_t n = repeat_tract.size();
+        
+        for (uint32_t i=0; i<n; ++i)
+        {
+            uint32_t b1 = b2i[(repeat_tract.at(i)-65)>>1];
+            
+            ++aux_comp[b1];
+            if (i<n-1)
+            {    
+                uint32_t b2 = b2i[(repeat_tract.at(i+1)-65)>>1];
+                uint32_t bb = (b1<<2) + b2;
+                ++aux_comp2[bb];
+            }
+        }
+        
+        float p[4] = {(float) aux_comp[0]/n, (float) aux_comp[1]/n, (float) aux_comp[2]/n, (float) aux_comp[3]/n};
+        
+        entropy = 0;
+        if (p[0]) entropy += p[0] * std::log2(p[0]);
+        if (p[1]) entropy += p[1] * std::log2(p[1]);
+        if (p[2]) entropy += p[2] * std::log2(p[2]);
+        if (p[3]) entropy += p[3] * std::log2(p[3]);
+        entropy = -entropy;
+        entropy = std::round(100*entropy)/100; 
+            
+        comp[0] = std::round(p[0] * 100); 
+        comp[1] = std::round(p[1] * 100);
+        comp[2] = std::round(p[2] * 100);
+        comp[3] = std::round(p[3] * 100);
+                
+        std::cerr << "tract: " << repeat_tract << "\n";
+//        std::cerr << "A: " << comp[0] << " " << aux_comp[0] << "\n";
+//        std::cerr << "C: " << comp[1] << " " << aux_comp[1] << "\n";
+//        std::cerr << "G: " << comp[2] << " " << aux_comp[2] << "\n";
+//        std::cerr << "T: " << comp[3] << " " << aux_comp[3] << "\n";
+//        std::cerr << "\n";   
+        std::cerr << "entropy: " << entropy << "\n";    
+    
+        entropy2 = 0;
+        if (n!=1)
+        {    
+            float p2[16];
+            for (uint32_t i=0; i<16; ++i)
+            {
+                p2[i] = (float)aux_comp2[i]/(n-1);
+            }
+            
+            for (uint32_t i=0; i<16; ++i)
+            {
+                if (p2[i]) 
+                {
+                    entropy2 += p2[i]* std::log2(p2[i]);
+                }
+            }
+            entropy2 = -entropy2;
+            entropy2 = std::round(100*entropy2)/100; 
+       
+//            std::cerr << "tract: " << repeat_tract << "\n";
+//            std::cerr << "AA: " << aux_comp2[0] << " " << p2[0] << "\n";
+//            std::cerr << "AC: " << aux_comp2[1] << " " << p2[1] << "\n";
+//            std::cerr << "AG: " << aux_comp2[2] << " " << p2[2] << "\n";
+//            std::cerr << "AT: " << aux_comp2[3] << " " << p2[3]  << "\n";
+//            std::cerr << "CA: " << aux_comp2[4] << " " << p2[4] << "\n";
+//            std::cerr << "CC: " << aux_comp2[5] << " " << p2[5] << "\n";
+//            std::cerr << "CG: " << aux_comp2[6] << " " << p2[6] << "\n";
+//            std::cerr << "CT: " << aux_comp2[7] << " " << p2[7] << "\n";   
+//            std::cerr << "GA: " << aux_comp2[8] << " " << p2[8] << "\n";
+//            std::cerr << "GC: " << aux_comp2[9] << " " << p2[9] << "\n";
+//            std::cerr << "GG: " << aux_comp2[10] << " " << p2[10] << "\n";
+//            std::cerr << "GT: " << aux_comp2[11] << " " << p2[11] << "\n";   
+//            std::cerr << "TA: " << aux_comp2[12] << " " << p2[12] << "\n";
+//            std::cerr << "TC: " << aux_comp2[13] << " " << p2[13] << "\n";
+//            std::cerr << "TG: " << aux_comp2[14] << " " << p2[14] << "\n";
+//            std::cerr << "TT: " << aux_comp2[15] << " " << p2[15] << "\n";            
+//            std::cerr << "\n";   
+            std::cerr << "entropy2: " << entropy2 << "\n";   
+        }
+            
+    }
+    void test(int argc, char ** argv)
+    {   
         version = "0.5";
 
         //////////////////////////
@@ -180,36 +287,37 @@ class Igor : Program
         }
 
         no = 1;
-        
+        for (uint32_t i=0; i<x.size(); ++i)
+        {        
+            compute_composition_and_entropy(x[i]);
+        }
 //        print_genotypes(x[0], x[1], "");
 //        uint32_t g = bcf_ap2g(x[0], x[1]);
 //
 //        std::cerr << "A: " << x[0] << " P: " << x[1] << " G: " << g << "\n";
 
-        vcfFile *vcf = bcf_open(x[0].c_str(), "rb");
-        bcf_hdr_t *h = bcf_hdr_read(vcf);
-        bcf1_t *v = bcf_init();
-        
-        
-        std::cerr << "writing to " << x[1] << "\n";
-        vcfFile *ovcf = bcf_open(x[1].c_str(), "wu");
-        bcf_hdr_write(ovcf, h);
-        
-        while (bcf_read(vcf, h, v)>=0)
-        {
-            //std::cerr << "test\n";
-            bcf_write(ovcf, h, v);    
-        }
-        
-        bcf_close(ovcf);
-        bcf_close(vcf);
-        
+//        vcfFile *vcf = bcf_open(x[0].c_str(), "rb");
+//        bcf_hdr_t *h = bcf_hdr_read(vcf);
+//        bcf1_t *v = bcf_init();
+//        
+//        
+//        std::cerr << "writing to " << x[1] << "\n";
+//        vcfFile *ovcf = bcf_open(x[1].c_str(), "wu");
+//        bcf_hdr_write(ovcf, h);
+//        
+//        while (bcf_read(vcf, h, v)>=0)
+//        {
+//            //std::cerr << "test\n";
+//            bcf_write(ovcf, h, v);    
+//        }
+//        
+//        bcf_close(ovcf);
+//        bcf_close(vcf);
     };
 
     void print_stats()
     {
         std::clog << "\n";
-
     };
 
     /**
@@ -219,9 +327,7 @@ class Igor : Program
     {
         int ref_len = 0;
         
-        
         char* seq = faidx_fetch_uc_seq(fai, chrom.c_str(), pos1-1, pos1+len-2, &ref_len);
-        
         
         if (!seq || ref_len!=len)
         {
@@ -314,10 +420,7 @@ class Igor : Program
             free(seq);
         }
 
-
         std::cerr << no_non_n << "/" << no << "\n";
-
-
     };
         
     /**
@@ -362,10 +465,6 @@ class Igor : Program
                 exit(1);
             }
         }
-        
-        
-
-
     };
 
    /**
@@ -497,12 +596,13 @@ void test(int argc, char ** argv)
     Igor igor(argc, argv);
     
     
-    printf ("isnan(0.0)       : %d\n",isnan(0.0));
-    printf ("isnan(1.0/0.0)   : %d\n",isnan(1.0/0.0));
-    printf ("isnan(-1.0/0.0)  : %d\n",isnan(-1.0/0.0));
-    printf ("isnan(sqrt(-1.0)): %d\n",isnan(sqrt(-1.0)));
-    printf ("isnan((double)sqrt(-1.0)): %d\n",isnan((double)sqrt(-1.0)));
-    printf ("isnan((float)sqrt(-1.0)): %d\n",isnan((float)sqrt(-1.0)));
+    igor.test(argc, argv);
+//    printf ("isnan(0.0)       : %d\n",isnan(0.0));
+//    printf ("isnan(1.0/0.0)   : %d\n",isnan(1.0/0.0));
+//    printf ("isnan(-1.0/0.0)  : %d\n",isnan(-1.0/0.0));
+//    printf ("isnan(sqrt(-1.0)): %d\n",isnan(sqrt(-1.0)));
+//    printf ("isnan((double)sqrt(-1.0)): %d\n",isnan((double)sqrt(-1.0)));
+//    printf ("isnan((float)sqrt(-1.0)): %d\n",isnan((float)sqrt(-1.0)));
 //    printf ("isnanf((double)sqrt(-1.0)): %d\n",isnanf((double)sqrt(-1.0)));
 //    printf ("isnanf((float)sqrt(-1.0)): %d\n",isnanf((float)sqrt(-1.0)));
     //igor.analyse_mdust(argc, argv);

@@ -340,45 +340,6 @@ std::string FlankDetector::shift_str(std::string& seq, uint32_t i)
     return sseq;
 }
 
-///**
-// * Complement a base.
-// */
-//char FlankDetector::complement(char base)
-//{
-//    return "ACNGNNNNNT"[(base-65)>>1];  
-//    return "TGNCNNNNNA"[(base-65)>>1];   
-//}
-
-//#define complement(b) ("TGNCNNNNNA"[((b)-65)>>1])
-
-/**
- * Reverse complement a sequence.
- */
-//std::string FlankDetector::reverse_complement(std::string& seq)
-//{
-//    std::string rc_seq = "";
-//    for (uint32_t i=seq.size()-1; i>=0; --i)
-//    {
-//        char base = seq.at(i);
-//        if (base=='A')
-//        {
-//        }
-//        else    
-//        
-//        std::string smotif = shift_str(motif, i);
-//        if (seq.compare(0, smotif.size(), smotif)==0)
-//        {
-//            return smotif;
-//        }
-//    }
-//
-//    //cannot find, try reverse complement
-//    
-//
-//    //should return empty string
-//    return motif;
-//}
-
 /**
  * Chooses a phase of the motif that is appropriate for the alignment.
  * This differs from choose_exact_repeat_unit() where the motif is returned
@@ -545,11 +506,12 @@ void FlankDetector::compute_purity_score(std::string& repeat_tract, std::string&
 { 
     ru = choose_exact_repeat_unit(repeat_tract, motif);
     
-    float exact_motif_count = 0;
-    uint32_t mlen = ru.size();
-
+    ///////////////////
+    //exact calculation
+    ///////////////////
     if (ru!="")
     {
+        uint32_t mlen = ru.size();
         uint32_t j=0;
         bool exact = true;
         for (uint32_t i=0; i<repeat_tract.size(); ++i)
@@ -569,24 +531,33 @@ void FlankDetector::compute_purity_score(std::string& repeat_tract, std::string&
             no_exact_ru = repeat_tract.size()/motif.size();
             total_no_ru = no_exact_ru;
             rl = (float) repeat_tract.size()/(float) motif.size();            
-            trf_score = repeat_tract.size() << 2;
-            return;
+            trf_score = repeat_tract.size() << 1;
+            return; //done!
         }
     }
-    else
+        
+    ///////////////////    
+    //fuzzy calculation
+    ///////////////////
+    ru = motif;
+    
+    if (ru.size()>ahmm->max_len)
     {
-        ru = motif;
+        //compute by chunks
+        //todo:: not the best way. update with a localized aligner
+        
     }
-
-    //fall through to computing inexact sequence
-    ahmm->set_model(ru.c_str());
-    ahmm->align(repeat_tract.c_str(), qual.c_str());
-
-    score = ahmm->motif_concordance;
-    no_exact_ru = ahmm->exact_motif_count;
-    total_no_ru = ahmm->motif_count;
-    rl = repeat_tract.size();
-    trf_score = ahmm->trf_score;
+    else
+    {    
+        ahmm->set_model(ru.c_str());
+        ahmm->align(repeat_tract.c_str(), qual.c_str());
+        
+        score = ahmm->motif_concordance;
+        no_exact_ru = ahmm->exact_motif_count;
+        total_no_ru = ahmm->motif_count;
+        rl = repeat_tract.size();
+        trf_score = ahmm->trf_score;
+    }
 }
 
 /**

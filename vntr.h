@@ -126,7 +126,12 @@ class VNTR
      * Checks for equality.
      */
     bool equals(VNTR& vntr);
-
+    
+    /**
+     * Reverse complement a sequence.
+     */
+    std::string reverse_complement(std::string& seq);
+        
     /**
      * Return the string of unique bases in a motif.
      */

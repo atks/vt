@@ -72,6 +72,23 @@ bool VNTR::equals(VNTR& vntr)
             motif==vntr.motif);
 }
 
+#define complement(b) ("TGNCNNNNNA"[((b)-65)>>1])
+
+/**
+ * Reverse complement a sequence.
+ */
+std::string VNTR::reverse_complement(std::string& seq)
+{
+    std::string reverse_complement_seq = "";
+    for (int32_t i=seq.size()-1; i>0; --i)
+    {
+        char base = seq.at(i);
+        reverse_complement_seq.push_back(complement(base));
+    }
+
+    return reverse_complement_seq;
+}
+
 /**
  * Return the string of unique bases in a motif.
  */
@@ -129,8 +146,8 @@ std::string VNTR::shift_str(std::string& seq, uint32_t i)
     if (i)
     {
         sseq = seq.substr(i) + seq.substr(0,i);
-    }    
-    
+    }
+
     return sseq;
 }
 

@@ -21,70 +21,38 @@
    THE SOFTWARE.
 */
 
-#ifndef FLANK_ALIGNER_H
-#define FLANK_ALIGNER_H
+#ifndef FUZZY_ALIGNER_H
+#define FUZZY_ALIGNER_H
 
 #include "hts_utils.h"
 #include "utils.h"
-#include "rfhmm.h"
-#include "lfhmm.h"
-#include "ahmm.h"
 #include "variant_manip.h"
 #include "vntr.h"
-
-//modes for flank detection
-#define CLIP_ENDS 0 //literally just clip the flanking bases
-#define FRAHMM    1 //raHMM alignment
 
 /**
  * Class for determining flanks of an Indel.
  */
-class FlankDetector
+class FuzzyAligner
 {
     public:
 
     bool debug;
 
-    ////////
-    //raHMMs
-    ////////
-    AHMM* ahmm;
-    LFHMM* lfhmm;
-    RFHMM* rfhmm;
-    std::string qual;
-
-    ///////
-    //tools
-    ///////
-    faidx_t* fai;
-
-    //for retrieving sequences
-    int8_t* seq;
-
     /**
      * Constructor.
      */
-    FlankDetector(std::string& ref_fasta_file, bool debug=false);
+    FuzzyAligner(bool debug=false);
 
     /**
      * Destructor.
      */
-    ~FlankDetector();
-
+    ~FuzzyAligner();
+    
     /**
-     * Detect repeat region.
+     * Align and compute genotype likelihood.
      */
-    void detect_flanks(bcf_hdr_t* h, bcf1_t *v, Variant& variant, uint32_t mode);
+    void align(std::string& sequence, std::string& repeat_unit);
 
-    /**
-     * Shifts a string.
-     */
-    std::string shift_str(std::string& seq, uint32_t i);
-
-    /**
-     * Chooses a phase of the motif that is appropriate for the alignment
-     */
-    std::string choose_repeat_unit(std::string& ref, std::string& motif);
 };
 
 #endif

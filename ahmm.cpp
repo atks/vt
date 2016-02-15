@@ -120,6 +120,8 @@ void AHMM::initialize()
  */
 void AHMM::initialize_structures()
 {
+    max_len = MAXLEN;
+    
     model = new char*[3];
     model[LFLANK] = NULL;
     model[MOTIF] = NULL;
