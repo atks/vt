@@ -60,6 +60,7 @@ class Igor : Program
     std::string EX_REPEAT_TRACT;
     std::string EX_COMP;
     std::string EX_ENTROPY;
+    std::string EX_ENTROPY2;
     std::string EX_RL;
     std::string EX_LL;
     std::string EX_RU_COUNTS;
@@ -70,6 +71,7 @@ class Igor : Program
     std::string FZ_REPEAT_TRACT;
     std::string FZ_COMP;
     std::string FZ_ENTROPY;
+    std::string FZ_ENTROPY2;
     std::string FZ_RL;
     std::string FZ_LL;
     std::string FZ_RU_COUNTS;
@@ -182,6 +184,7 @@ class Igor : Program
         EX_REPEAT_TRACT = bcf_hdr_append_info_with_backup_naming(odw->hdr, "EX_REPEAT_TRACT", "2", "Integer", "Boundary of the repeat tract detected by exact alignment.", rename);
         EX_COMP = bcf_hdr_append_info_with_backup_naming(odw->hdr, "EX_COMP", "4", "Integer", "Composition(%) of bases in an exact repeat tract.", rename);
         EX_ENTROPY = bcf_hdr_append_info_with_backup_naming(odw->hdr, "EX_ENTROPY", "1", "Float", "Entropy measure of an exact repeat tract (0-2).", rename);
+        EX_ENTROPY2 = bcf_hdr_append_info_with_backup_naming(odw->hdr, "EX_ENTROPY2", "1", "Float", "Dinucleotide entropy measure of an exact repeat tract (0-2).", rename);
         EX_RL = bcf_hdr_append_info_with_backup_naming(odw->hdr, "EX_RL", "1", "Integer", "Reference exact repeat tract length in bases.", rename);
         EX_LL = bcf_hdr_append_info_with_backup_naming(odw->hdr, "EX_LL", "1", "Integer", "Longest exact repeat tract length in bases.", rename);
         EX_RU_COUNTS = bcf_hdr_append_info_with_backup_naming(odw->hdr, "EX_RU_COUNTS", "2", "Integer", "Number of exact repeat units and total number of repeat units in exact repeat tract.", rename);
@@ -192,6 +195,7 @@ class Igor : Program
         FZ_REPEAT_TRACT = bcf_hdr_append_info_with_backup_naming(odw->hdr, "FZ_REPEAT_TRACT", "2", "Integer", "Boundary of the repeat tract detected by fuzzy alignment.", rename);                      
         FZ_COMP = bcf_hdr_append_info_with_backup_naming(odw->hdr, "FZ_COMP", "4", "Integer", "Composition(%) of bases in a fuzzy repeat tract.", rename);                                              
         FZ_ENTROPY = bcf_hdr_append_info_with_backup_naming(odw->hdr, "FZ_ENTROPY", "1", "Float", "Entropy measure of a fuzzy repeat tract (0-2).", rename);                                                  
+        FZ_ENTROPY2 = bcf_hdr_append_info_with_backup_naming(odw->hdr, "FZ_ENTROPY2", "1", "Float", "Dinucleotide entropy measure of a fuzzy repeat tract (0-2).", rename);                                                  
         FZ_RL = bcf_hdr_append_info_with_backup_naming(odw->hdr, "FZ_RL", "1", "Integer", "Reference fuzzy repeat tract length in bases.", rename);                                                      
         FZ_LL = bcf_hdr_append_info_with_backup_naming(odw->hdr, "FZ_LL", "1", "Integer", "Longest fuzzy repeat tract length in bases.", rename);                                                        
         FZ_RU_COUNTS = bcf_hdr_append_info_with_backup_naming(odw->hdr, "FZ_RU_COUNTS", "2", "Integer", "Number of exact repeat units and total number of repeat units in fuzzy repeat tract.", rename); 
@@ -325,6 +329,7 @@ class Igor : Program
                 bcf_update_info_int32(h, v, EX_REPEAT_TRACT.c_str(), &exact_flank_pos1, 2);
                 bcf_update_info_int32(h, v, EX_COMP.c_str(), &vntr.exact_comp[0], 4);
                 bcf_update_info_float(h, v, EX_ENTROPY.c_str(), &vntr.exact_entropy, 1);
+                bcf_update_info_float(h, v, EX_ENTROPY2.c_str(), &vntr.exact_entropy2, 1);
                 bcf_update_info_int32(h, v, EX_RL.c_str(), &vntr.exact_rl, 1);
                 bcf_update_info_int32(h, v, EX_LL.c_str(), &vntr.exact_ll, 1);
                 int32_t exact_ru_count[2] = {vntr.exact_no_exact_ru, vntr.exact_total_no_ru};
@@ -337,6 +342,7 @@ class Igor : Program
                 bcf_update_info_int32(h, v, FZ_REPEAT_TRACT.c_str(), &fuzzy_flank_pos1, 2);
                 bcf_update_info_int32(h, v, FZ_COMP.c_str(), &vntr.fuzzy_comp[0], 4);
                 bcf_update_info_float(h, v, FZ_ENTROPY.c_str(), &vntr.fuzzy_entropy, 1);
+                bcf_update_info_float(h, v, FZ_ENTROPY2.c_str(), &vntr.fuzzy_entropy2, 1);
                 bcf_update_info_int32(h, v, FZ_RL.c_str(), &vntr.fuzzy_rl, 1);
                 bcf_update_info_int32(h, v, FZ_LL.c_str(), &vntr.fuzzy_ll, 1);
                 int32_t fuzzy_ru_count[2] = {vntr.fuzzy_no_exact_ru, vntr.fuzzy_total_no_ru};

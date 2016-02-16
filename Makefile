@@ -10,6 +10,7 @@ SOURCES = align\
 		annotate_1000g\
 		annotate_dbsnp_rsid\
 		annotate_indels\
+		annotate_mendelian\
 		annotate_regions\
 		annotate_variants\
 		annotate_vntrs\

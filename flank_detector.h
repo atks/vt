@@ -77,7 +77,9 @@ class FlankDetector
     ///////////////////////////////////
     int32_t comp[4];
     float entropy;
+    float kl_divergence;
     float entropy2;
+    float kl_divergence2;
 
     ///////
     //tools

@@ -156,8 +156,11 @@ class Igor : Program
      */
     void compute_composition_and_entropy(std::string& repeat_tract)
     {
-        int32_t comp[4];
-        float entropy, entropy2;
+            int32_t comp[4];
+    float entropy;
+    float kl_divergence;
+    float entropy2;
+    float kl_divergence2;
         
         int32_t aux_comp[4] = {0,0,0,0};
         int32_t aux_comp2[16] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
@@ -203,6 +206,8 @@ class Igor : Program
         if (p[1]) entropy += p[1] * std::log2(p[1]);
         if (p[2]) entropy += p[2] * std::log2(p[2]);
         if (p[3]) entropy += p[3] * std::log2(p[3]);
+        kl_divergence = p[0] + p[1] + p[2] + p[3];
+        kl_divergence = entropy + 2*kl_divergence;
         entropy = -entropy;
         entropy = std::round(100*entropy)/100; 
             
@@ -212,14 +217,17 @@ class Igor : Program
         comp[3] = std::round(p[3] * 100);
                 
         std::cerr << "tract: " << repeat_tract << "\n";
-//        std::cerr << "A: " << comp[0] << " " << aux_comp[0] << "\n";
-//        std::cerr << "C: " << comp[1] << " " << aux_comp[1] << "\n";
-//        std::cerr << "G: " << comp[2] << " " << aux_comp[2] << "\n";
-//        std::cerr << "T: " << comp[3] << " " << aux_comp[3] << "\n";
-//        std::cerr << "\n";   
-        std::cerr << "entropy: " << entropy << "\n";    
+    //    std::cerr << "A: " << comp[0] << " " << aux_comp[0] << "\n";
+    //    std::cerr << "C: " << comp[1] << " " << aux_comp[1] << "\n";
+    //    std::cerr << "G: " << comp[2] << " " << aux_comp[2] << "\n";
+    //    std::cerr << "T: " << comp[3] << " " << aux_comp[3] << "\n";
+    //    std::cerr << "\n";   
+        std::cerr << "entropy       : " << entropy << "\n";    
+        std::cerr << "kl_divergence : " << kl_divergence << "\n";    
     
         entropy2 = 0;
+        kl_divergence2 = 0;
+        float log2q = -4;
         if (n!=1)
         {    
             float p2[16];
@@ -233,33 +241,40 @@ class Igor : Program
                 if (p2[i]) 
                 {
                     entropy2 += p2[i]* std::log2(p2[i]);
+                    kl_divergence2 += p2[i];
                 }
             }
+            kl_divergence2 = entropy2 + 4*kl_divergence2;
             entropy2 = -entropy2;
+            
             entropy2 = std::round(100*entropy2)/100; 
        
-//            std::cerr << "tract: " << repeat_tract << "\n";
-//            std::cerr << "AA: " << aux_comp2[0] << " " << p2[0] << "\n";
-//            std::cerr << "AC: " << aux_comp2[1] << " " << p2[1] << "\n";
-//            std::cerr << "AG: " << aux_comp2[2] << " " << p2[2] << "\n";
-//            std::cerr << "AT: " << aux_comp2[3] << " " << p2[3]  << "\n";
-//            std::cerr << "CA: " << aux_comp2[4] << " " << p2[4] << "\n";
-//            std::cerr << "CC: " << aux_comp2[5] << " " << p2[5] << "\n";
-//            std::cerr << "CG: " << aux_comp2[6] << " " << p2[6] << "\n";
-//            std::cerr << "CT: " << aux_comp2[7] << " " << p2[7] << "\n";   
-//            std::cerr << "GA: " << aux_comp2[8] << " " << p2[8] << "\n";
-//            std::cerr << "GC: " << aux_comp2[9] << " " << p2[9] << "\n";
-//            std::cerr << "GG: " << aux_comp2[10] << " " << p2[10] << "\n";
-//            std::cerr << "GT: " << aux_comp2[11] << " " << p2[11] << "\n";   
-//            std::cerr << "TA: " << aux_comp2[12] << " " << p2[12] << "\n";
-//            std::cerr << "TC: " << aux_comp2[13] << " " << p2[13] << "\n";
-//            std::cerr << "TG: " << aux_comp2[14] << " " << p2[14] << "\n";
-//            std::cerr << "TT: " << aux_comp2[15] << " " << p2[15] << "\n";            
-//            std::cerr << "\n";   
-            std::cerr << "entropy2: " << entropy2 << "\n";   
+//        std::cerr << "tract: " << repeat_tract << "\n";
+//        std::cerr << "AA: " << aux_comp2[0] << " " << p2[0] << "\n";
+//        std::cerr << "AC: " << aux_comp2[1] << " " << p2[1] << "\n";
+//        std::cerr << "AG: " << aux_comp2[2] << " " << p2[2] << "\n";
+//        std::cerr << "AT: " << aux_comp2[3] << " " << p2[3]  << "\n";
+//        std::cerr << "CA: " << aux_comp2[4] << " " << p2[4] << "\n";
+//        std::cerr << "CC: " << aux_comp2[5] << " " << p2[5] << "\n";
+//        std::cerr << "CG: " << aux_comp2[6] << " " << p2[6] << "\n";
+//        std::cerr << "CT: " << aux_comp2[7] << " " << p2[7] << "\n";   
+//        std::cerr << "GA: " << aux_comp2[8] << " " << p2[8] << "\n";
+//        std::cerr << "GC: " << aux_comp2[9] << " " << p2[9] << "\n";
+//        std::cerr << "GG: " << aux_comp2[10] << " " << p2[10] << "\n";
+//        std::cerr << "GT: " << aux_comp2[11] << " " << p2[11] << "\n";   
+//        std::cerr << "TA: " << aux_comp2[12] << " " << p2[12] << "\n";
+//        std::cerr << "TC: " << aux_comp2[13] << " " << p2[13] << "\n";
+//        std::cerr << "TG: " << aux_comp2[14] << " " << p2[14] << "\n";
+//        std::cerr << "TT: " << aux_comp2[15] << " " << p2[15] << "\n";            
+//        std::cerr << "\n";   
+            std::cerr << "entropy2       : " << entropy2 << "\n";   
+            std::cerr << "kl_divergence2 : " << kl_divergence2 << "\n";   
         }
             
     }
+    
+    
+    
     void test(int argc, char ** argv)
     {   
         version = "0.5";

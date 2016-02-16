@@ -648,6 +648,8 @@ void FlankDetector::compute_composition_and_entropy(std::string& repeat_tract)
     if (p[1]) entropy += p[1] * std::log2(p[1]);
     if (p[2]) entropy += p[2] * std::log2(p[2]);
     if (p[3]) entropy += p[3] * std::log2(p[3]);
+    kl_divergence = p[0] + p[1] + p[2] + p[3];
+    kl_divergence = entropy + 2*kl_divergence;
     entropy = -entropy;
     entropy = std::round(100*entropy)/100; 
         
@@ -662,9 +664,12 @@ void FlankDetector::compute_composition_and_entropy(std::string& repeat_tract)
 //    std::cerr << "G: " << comp[2] << " " << aux_comp[2] << "\n";
 //    std::cerr << "T: " << comp[3] << " " << aux_comp[3] << "\n";
 //    std::cerr << "\n";   
-//    std::cerr << "entropy: " << entropy << "\n";    
+    std::cerr << "entropy       : " << entropy << "\n";    
+    std::cerr << "kl_divergence : " << kl_divergence << "\n";    
 
     entropy2 = 0;
+    kl_divergence2 = 0;
+    float log2q = -4;
     if (n!=1)
     {    
         float p2[16];
@@ -678,9 +683,12 @@ void FlankDetector::compute_composition_and_entropy(std::string& repeat_tract)
             if (p2[i]) 
             {
                 entropy2 += p2[i]* std::log2(p2[i]);
+                kl_divergence2 += p2[i];
             }
         }
+        kl_divergence2 = entropy2 + 4*kl_divergence2;
         entropy2 = -entropy2;
+        
         entropy2 = std::round(100*entropy2)/100; 
    
 //        std::cerr << "tract: " << repeat_tract << "\n";
@@ -701,7 +709,8 @@ void FlankDetector::compute_composition_and_entropy(std::string& repeat_tract)
 //        std::cerr << "TG: " << aux_comp2[14] << " " << p2[14] << "\n";
 //        std::cerr << "TT: " << aux_comp2[15] << " " << p2[15] << "\n";            
 //        std::cerr << "\n";   
-//        std::cerr << "entropy2: " << entropy2 << "\n";   
+        std::cerr << "entropy2       : " << entropy2 << "\n";   
+        std::cerr << "kl_divergence2 : " << kl_divergence2 << "\n";   
     }
         
 }

@@ -21,7 +21,7 @@
    THE SOFTWARE.
 */
 
-#include "profile_mendelian.h"
+#include "annotate_mendelian.h"
 
 namespace
 {
@@ -171,7 +171,7 @@ class Igor : Program
         vm = new VariantManip();
     }
 
-    void profile_mendelian()
+    void annotate_mendelian()
     {
         bcf_hdr_t *h = odr->hdr;
         bcf1_t *v = bcf_init1();
@@ -220,6 +220,7 @@ class Igor : Program
                 }
             }
 
+            //if (bcf_get_n_allele(v)!=2 || vtype!=VT_INDEL || bcf_has_filter(odr->hdr, v, const_cast<char*>("PASS"))!=1)
             if (bcf_get_n_allele(v)==2)
             {
                 int k = bcf_get_genotypes(h, v, &gts, &n);
@@ -276,72 +277,31 @@ class Igor : Program
             }
             else
             {
-                int k = bcf_get_genotypes(h, v, &gts, &n);
-                int r = bcf_get_format_int32(h, v, "DP", &dps, &n_dp);
-    
-                if (r==-1)
-                {
-                    
-                }
-    
-                bool variant_used = false;
-    
-                for (int32_t i =0; i< trios.size(); ++i)
-                {
-                    int32_t j = trios[i].father_index;
-                    int32_t f1 = bcf_gt_allele(gts[(j<<1)]);
-                    int32_t f2 = bcf_gt_allele(gts[(j<<1)+1]);
-                    int32_t min_dp = dps[j];
-    
-                    j = trios[i].mother_index;
-                    int32_t m1 = bcf_gt_allele(gts[(j<<1)]);
-                    int32_t m2 = bcf_gt_allele(gts[(j<<1)+1]);
-                    min_dp = dps[j]<min_dp ? dps[j] : min_dp;
-    
-                    j = trios[i].child_index;
-                    int32_t c1 = bcf_gt_allele(gts[(j<<1)]);
-                    int32_t c2 = bcf_gt_allele(gts[(j<<1)+1]);
-                    min_dp = dps[j]<min_dp ? dps[j] : min_dp;
-    
-                    if (min_dp<min_depth)
-                    {
-                        ++no_failed_min_depth;
-                        continue;
-                    }
-    
-                    if (!(f1<0 || f2<0 || m1<0 || m2<0 || c1<0 || c2<0))
-                    {
-                        if (!ignore_non_variants || (f1+f2+m1+m2+c1+c2!=0))
-                        {
-                            bool c1_in_dad = false;
-                            bool c1_in_mom = false;
-                            bool c2_in_dad = false;
-                            bool c2_in_mom = false;
-                            
-                            
-                                                        
-                            //biallelic 
-                            //HOM HOM
-                            //1. AA BB => AB              2
-                            //2. AA AA => AA
-                            
-                            //HET HET
-                            //1. AB AB => AA AB BB        2
-                            //2. AC AD => AA AC AD CD
-                            //3. AB CD => AC AD BC BD 
-                            
-                            //HOM HET
-                            //1. AA AB => AA AB           2
-                            //2. AA BC => AB AC
-                            
-                            
-                            ++trio_genotypes[f1+f2][m1+m2][c1+c2];
-                            variant_used = true;
-                        }
-                    }
-                }
-                if (variant_used) ++no_variants;
+                //implement 2 versions
+             
+                //1. based on fixed genotypes
                 
+                //2. based on genotype likelihoods
+                
+                //mendelian error estimates based on hard counts.
+                
+                //HOM HOM
+                //AA BB => AB
+                //BB CC => BC
+                //CC DD => CD
+                //HET HET
+                //AB AB => AA AB BB
+                //AC AD => AA AC AD CD
+                //AB CD => AC AD BC BD 
+                //HOM HET
+                //AA AB => AA AB
+                //AA BC => AB AC
+                
+                //compute bayes factor
+                //
+                
+                //how to test on proportions?
+                //
                 
                 
                 
@@ -798,12 +758,12 @@ class Igor : Program
 
 }
 
-void profile_mendelian(int argc, char ** argv)
+void annotate_mendelian(int argc, char ** argv)
 {
     Igor igor(argc, argv);
     igor.print_options();
     igor.initialize();
-    igor.profile_mendelian();
+    igor.annotate_mendelian();
     igor.print_stats();
     igor.print_pdf();
 }
