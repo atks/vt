@@ -460,7 +460,7 @@ class Igor : Program
             return error_count/total*100;
         }
 
-        return NAN;
+        return (0.0/0.0);
     };
 
     float get_homhet_ratio(int32_t gt[3][3][3], int32_t f, int32_t m, int32_t collapse)
@@ -515,7 +515,7 @@ class Igor : Program
             }
         }
 
-        return (het==0 ? NAN : hom/het);
+        return (het==0 ? (0.0/0.0) : hom/het);
     };
 
     float get_homhet_proportion(int32_t gt[3][3][3], int32_t f, int32_t m, int32_t collapse)
@@ -570,7 +570,7 @@ class Igor : Program
             }
         }
 
-        return ((het+hom)==0 ? NAN : het/(hom+het)*100);
+        return ((het+hom)==0 ? (0.0/0.0) : het/(hom+het)*100);
     };
 
     void print_pdf()
@@ -758,7 +758,7 @@ class Igor : Program
 
 }
 
-void annotate_mendelian(int argc, char ** argv)
+void annotate_mendelian(int argc, char** argv)
 {
     Igor igor(argc, argv);
     igor.print_options();

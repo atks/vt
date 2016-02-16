@@ -27,6 +27,6 @@
 #include "program.h"
 #include "pedigree.h"
 
-void annotate_mendelian(int argc, char ** argv);
+void annotate_mendelian(int argc, char** argv);
 
 #endif
