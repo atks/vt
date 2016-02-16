@@ -42,7 +42,7 @@ class Igor : Program
     std::vector<GenomeInterval> intervals;
     std::string interval_list;
     int32_t min_depth;
-    float_t min_gq;
+    float min_gq;
     bool ignore_non_variants;
 
     ///////
