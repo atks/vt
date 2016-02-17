@@ -175,7 +175,7 @@ class Igor : Program
         odw->write_hdr();
 
         bcf_hdr_t *h = odr->hdr;
-        bcf1_t *v = odw->get_bcf1_from_pool();
+        bcf1_t *v = bcf_init1();
         std::vector<Interval*> overlaps;
         Variant variant;
         kstring_t s = {0,0,0};
@@ -190,7 +190,8 @@ class Igor : Program
                     continue;
                 }
             }
-                        std::string chrom = bcf_get_chrom(odr->hdr,v);
+           
+            std::string chrom = bcf_get_chrom(odr->hdr,v);
             int32_t start1 = bcf_get_pos1(v);
             int32_t end1 = bcf_get_end1(v);
 
@@ -202,7 +203,6 @@ class Igor : Program
 
             ++no_variants;
             odw->write(v);
-            v = odw->get_bcf1_from_pool();
         }
 
         odw->close();
