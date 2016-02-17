@@ -79,6 +79,8 @@ class VNTR
     int32_t exact_comp[4];            //composition of bases in repeat tract
     float exact_entropy ;             //sequence entropy of repeat tract
     float exact_entropy2 ;            //dinucleotide sequence entropy of repeat tract
+    float exact_kl_divergence;        //Kullback-Leibler divergence of repeat tract
+    float exact_kl_divergence2;       //dinucleotide Kullback-Leibler divergence of repeat tract
     int32_t exact_beg1;               //beginning of repeat tract
     int32_t exact_end1;               //end of repeat tract
     int32_t exact_rl;                 //length of repeat tract in base pairs
@@ -97,6 +99,8 @@ class VNTR
     int32_t fuzzy_comp[4];            //composition of bases in repeat tract
     float fuzzy_entropy ;             //sequence entropy of repeat tract
     float fuzzy_entropy2;             //dinucleotide sequence entropy of repeat tract
+    float fuzzy_kl_divergence;        //Kullback-Leibler divergence of repeat tract
+    float fuzzy_kl_divergence2;       //dinucleotide Kullback-Leibler divergence of repeat tract    
     int32_t fuzzy_beg1;               //beginning of repeat tract
     int32_t fuzzy_end1;               //end of repeat tract
     int32_t fuzzy_rl;                 //length of repeat tract in base pairs
