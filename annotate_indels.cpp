@@ -286,23 +286,24 @@ class Igor : Program
             //require normalization
             if (!vm->is_normalized(v))
             {
-                std::string var = variant.get_variant_string();
-                fprintf(stderr, "[%s:%d %s] Variant is not normalized, annotate_indels requires that variants are normalized: %s\n", __FILE__, __LINE__, __FUNCTION__, var.c_str());
-                odw->write(v);
-                v = odw->get_bcf1_from_pool();
+//                std::string var = variant.get_variant_string();
+//                fprintf(stderr, "[%s:%d %s] Variant is not normalized, annotate_indels requires that variants are normalized: %s\n", __FILE__, __LINE__, __FUNCTION__, var.c_str());
+//                odw->write(v);
+//                v = odw->get_bcf1_from_pool();
                 continue;
             }
             
             //variants with N crashes the alignment models!!!!!!  :(
             if (vm->contains_N(v))
             {
-                std::string var = variant.get_variant_string();
-                fprintf(stderr, "[%s:%d %s] Variant contains N bases, skipping annotation: %s\n", __FILE__, __LINE__, __FUNCTION__, var.c_str());
-                odw->write(v);
-                v = odw->get_bcf1_from_pool();
+//                std::string var = variant.get_variant_string();
+//                fprintf(stderr, "[%s:%d %s] Variant contains N bases, skipping annotation: %s\n", __FILE__, __LINE__, __FUNCTION__, var.c_str());
+//                odw->write(v);
+//                v = odw->get_bcf1_from_pool();
                 continue;
             }
 
+ bcf_print_liten(h,v);
             if (debug)
             {
                 bcf_print_liten(h,v);

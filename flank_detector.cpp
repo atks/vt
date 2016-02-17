@@ -664,8 +664,8 @@ void FlankDetector::compute_composition_and_entropy(std::string& repeat_tract)
 //    std::cerr << "G: " << comp[2] << " " << aux_comp[2] << "\n";
 //    std::cerr << "T: " << comp[3] << " " << aux_comp[3] << "\n";
 //    std::cerr << "\n";   
-    std::cerr << "entropy       : " << entropy << "\n";    
-    std::cerr << "kl_divergence : " << kl_divergence << "\n";    
+//    std::cerr << "entropy       : " << entropy << "\n";    
+//    std::cerr << "kl_divergence : " << kl_divergence << "\n";    
 
     entropy2 = 0;
     kl_divergence2 = 0;
@@ -709,8 +709,8 @@ void FlankDetector::compute_composition_and_entropy(std::string& repeat_tract)
 //        std::cerr << "TG: " << aux_comp2[14] << " " << p2[14] << "\n";
 //        std::cerr << "TT: " << aux_comp2[15] << " " << p2[15] << "\n";            
 //        std::cerr << "\n";   
-        std::cerr << "entropy2       : " << entropy2 << "\n";   
-        std::cerr << "kl_divergence2 : " << kl_divergence2 << "\n";   
+//        std::cerr << "entropy2       : " << entropy2 << "\n";   
+//        std::cerr << "kl_divergence2 : " << kl_divergence2 << "\n";   
     }
         
 }

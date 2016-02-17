@@ -72,7 +72,7 @@ bool VariantManip::is_ref_consistent(bcf_hdr_t *h, bcf1_t *v)
 
     if (!is_consistent)
     {
-        fprintf(stderr, "[%s:%d %s] Variant is not consistent: %s:%d-%d - %s(REF) vs %s(FASTA)\n", __FILE__, __LINE__, __FUNCTION__, chrom, pos0, pos0+rlen-1, vcf_ref, ref);
+        fprintf(stderr, "[%s:%d %s] Variant is not consistent: %s:%d-%d - %s(REF) vs %s(FASTA)\n", __FILE__, __LINE__, __FUNCTION__, chrom, (pos0+1), pos0+rlen, vcf_ref, ref);
     }
     free(ref);
 

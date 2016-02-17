@@ -153,6 +153,7 @@ class Igor : Program
         std::clog << "         [o] output VCF file          " << output_vcf_file << "\n";
         std::clog << "         [t] reference region tag     " << ref_region_tag << "\n";
         print_boo_op("         [d] debug                    ", debug);
+        print_str_op("         [f] filter                   ", fexp);
         print_ref_op("         [r] ref FASTA file           ", ref_fasta_file);
         print_int_op("         [i] intervals                ", intervals);
         std::clog << "\n";
@@ -200,13 +201,23 @@ class Igor : Program
                     {
                         int32_t pos1 = bcf_get_pos1(v);
                         int32_t end1 = bcf_get_end1(v);
+                        
+                        if (debug)
+                        {    
+                            std::cerr << "+++++++++++++++++++++++++++++++\n";
+                            std::cerr << "region : [" << (region1[0]-1) << "," << (region1[1]+1) << "]\n";
+                            std::cerr << "REF    : [" << pos1 << "," << end1 << "]\n";
+                        }
                         --region1[0];
                         ++region1[1];
                         
                         if (pos1>=region1[0] && end1<=region1[1])
                         {
-                            char* lflank = rs->fetch_seq(bcf_get_chrom(h,v), region1[0], pos1-1);
-                            char* rflank = rs->fetch_seq(bcf_get_chrom(h,v), end1+1, region1[1]);
+                            char* lflank = 0;
+                            char* rflank = 0;
+             
+                            if (region1[0]<pos1) lflank = rs->fetch_seq(bcf_get_chrom(h,v), region1[0], pos1-1);
+                            if (end1<region1[1]) rflank = rs->fetch_seq(bcf_get_chrom(h,v), end1+1, region1[1]);
                             kstring_t new_alleles = {0,0,0};
                             int32_t n_allele = bcf_get_n_allele(v);
                             char** alleles = bcf_get_allele(v);
@@ -221,15 +232,26 @@ class Igor : Program
                                     std::cerr << "       " << alleles[i] << "\n";
                                 }
                             }
-                                        
+                            
+                            if (debug)
+                            {    
+                                std::cerr << "add flanks\n";
+                                if (lflank) std::cerr << "lflank: " << lflank << "\n";
+                                if (rflank) std::cerr << "rflank: " << rflank << "\n";
+                            }
+                                       
                             for (uint32_t i=0; i<n_allele; ++i)
                             {
                                 if (i) kputc(',', &new_alleles);
-                                kputs(lflank, &new_alleles);
+                                if (lflank) kputs(lflank, &new_alleles);
                                 kputs(alleles[i], &new_alleles);
-                                kputs(rflank, &new_alleles);
+                                if (rflank) kputs(rflank, &new_alleles);
                             }
                             
+                            if (lflank) free(lflank);
+                            if (rflank) free(rflank);
+                                
+                            bcf_set_pos1(v, region1[0]);
                             bcf_update_alleles_str(h, v, new_alleles.s);
                                 
                             if (debug)
@@ -248,9 +270,6 @@ class Igor : Program
                         {
                             if (end1>=region1[0] && pos1<=region1[1])
                             {
-                                
-                                
-                                
                                 ++no_variants_partial_overlap;
                             }
                             else
@@ -259,8 +278,7 @@ class Igor : Program
 //                                std::cerr << "weird\n";
 //                                    
 //                                bcf_print(h,v);  
-                                    
-                        
+                                
                                 ++no_variants_no_overlap;
                             }
                         }
