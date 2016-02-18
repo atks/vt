@@ -26,6 +26,7 @@
 #include "bed.h"
 #include "pcre2.h"
 #include "pregex.h"
+#include "reference_sequence.h"
 
 namespace
 {
@@ -111,6 +112,7 @@ class Igor : Program
         }
     }
 
+    
     /**
      * Gets number of genotypes from number of alleles and ploidy.
      */

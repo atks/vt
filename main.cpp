@@ -32,6 +32,7 @@
 #include "cat.h"
 #include "compute_features.h"
 #include "compute_concordance.h"
+#include "compute_rl_dist.h"
 #include "config.h"
 #include "consolidate.h"
 #include "consolidate_vntrs.h"
@@ -69,6 +70,7 @@
 #include "remove_overlap.h"
 #include "rminfo.h"
 #include "seq.h"
+#include "set_ref.h"
 #include "sort.h"
 #include "subset.h"
 #include "svm_predict.h"
@@ -79,7 +81,6 @@
 #include "validate.h"
 #include "view.h"
 #include "vntrize.h"
-#include "set_ref.h"
 
 void print_time(double t)
 {
@@ -296,6 +297,10 @@ int main(int argc, char ** argv)
     else if (argc>1 && cmd=="construct_probes")
     {
         construct_probes(argc-1, ++argv);
+    }
+    else if (argc>1 && cmd=="compute_rl_dist")
+    {
+        compute_rl_dist(argc-1, ++argv);
     }
     else if (argc>1 && cmd=="profile_vntrs")
     {

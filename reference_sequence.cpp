@@ -56,6 +56,14 @@ ReferenceSequence::ReferenceSequence(std::string& ref_fasta_file, uint32_t k, ui
 };
 
 /**
+ * Fetch length of sequence seq.
+ */
+int32_t ReferenceSequence::fetch_seq_len(std::string& seq)
+{
+    return faidx_seq_len(fai, seq.c_str());
+}
+
+/**
  * Get a base.
  */
 char ReferenceSequence::fetch_base(std::string& chrom, uint32_t& pos1)

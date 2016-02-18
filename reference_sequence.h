@@ -85,6 +85,11 @@ class ReferenceSequence
     ReferenceSequence(std::string& ref_fasta_file, uint32_t k=10, uint32_t window_size=256);
 
     /**
+     * Fetch length of sequence seq.
+     */
+    int32_t fetch_seq_len(std::string& seq);
+        
+    /**
      * Get a base.
      */
     char fetch_base(std::string& chrom, uint32_t& pos1);

@@ -28,6 +28,7 @@ SOURCES = align\
 		compute_concordance\
 		compute_features\
 		compute_features2\
+		compute_rl_dist\
 		config\
 		consolidate_vntrs\
 		consolidate\
