@@ -90,6 +90,26 @@ std::string VNTR::reverse_complement(std::string& seq)
 }
 
 /**
+ * Return the canonical representation of a motif.
+ */
+std::string VNTR::get_canonical(std::string& motif)
+{
+    std::string cmotif = motif;
+
+    for (uint32_t i=0; i<motif.size(); ++i)
+    {
+        std::string shifted_motif = shift_str(motif, i);
+
+        if (shifted_motif < cmotif)
+        {
+            cmotif = shifted_motif;
+        }
+    }
+
+    return cmotif;
+}
+
+/**
  * Return the string of unique bases in a motif.
  */
 std::string VNTR::get_basis(std::string& motif)

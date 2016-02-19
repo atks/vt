@@ -135,7 +135,12 @@ class VNTR
      * Reverse complement a sequence.
      */
     std::string reverse_complement(std::string& seq);
-        
+    
+    /**
+     * Return the canonical representation of a motif.
+     */
+    std::string get_canonical(std::string& motif);
+            
     /**
      * Return the string of unique bases in a motif.
      */

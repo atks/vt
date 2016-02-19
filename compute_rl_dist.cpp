@@ -57,12 +57,14 @@ class Igor : Program
             TCLAP::ValueArg<std::string> arg_intervals("i", "i", "intervals []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "file", cmd);
             TCLAP::ValueArg<std::string> arg_ref_fasta_file("r", "r", "reference sequence fasta file []", true, "", "str", cmd);
+            TCLAP::SwitchArg arg_debug("d", "d", "debug [false]", cmd, false);
             TCLAP::ValueArg<std::string> arg_chromosome("c", "c", "chromosome fasta file []", false, "", "str", cmd);
 
             cmd.parse(argc, argv);
             
             parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
             ref_fasta_file = arg_ref_fasta_file.getValue();
+            debug = arg_debug.getValue();
         }
         catch (TCLAP::ArgException &e)
         {
@@ -153,7 +155,7 @@ class Igor : Program
             {
                 if (v[j]!=0)
                 {
-                    std::cout << motif << "\t" << (j+1) << " " << v[j] << "\n";
+                    std::cout << motif << "\t" << (j+1) << "\t" << v[j] << "\n";
                 }
             }
             
@@ -178,7 +180,7 @@ class Igor : Program
             {
                 if (v[j]!=0)
                 {
-                    std::cerr << motif << "\t" << (j+1) << " " << v[j] << "\n";
+                    std::cerr << motif << "\t" << (j+1) << "\t" << v[j] << "\n";
                 }
             }
             
@@ -191,7 +193,6 @@ class Igor : Program
      */
     void compute_rl_dist()
     {
-        debug = false;
         int32_t L = 3;
 
         if (intervals.size()==0)
@@ -220,6 +221,8 @@ class Igor : Program
             for (int32_t pos1=beg1; pos1<=end1; ++pos1)
             {
                 char b = rs->fetch_base(chrom, pos1);
+                    
+                    
 
                 if (b=='N') continue;
 
@@ -233,7 +236,7 @@ class Igor : Program
                 {
                     rs->fetch_seq(chrom.c_str(), pos1, pos1+offset, del);
                     
-                    if (del.find('N')!=std::string::npos)
+                    if (del.find('N')!=std::string::npos || del.size()!=L)
                     {
                         continue;
                     }

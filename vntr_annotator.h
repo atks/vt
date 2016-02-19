@@ -96,16 +96,6 @@ class VNTRAnnotator
     void annotate(Variant& variant, int32_t amode);
 
     /**
-     * Return the canonical representation of a motif.
-     */
-    static std::string canonicalize(std::string& motif);
-
-    /**
-     * Return the string of unique bases in a motif.
-     */
-    static std::string basis(std::string& motif);
-
-    /**
      * Returns true if is to be classified as a VNTR
      */
     bool is_vntr(Variant& variant, int32_t mode, std::string& method);
