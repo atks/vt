@@ -88,7 +88,7 @@ class Igor : Program
     /**
      * Return the canonical representation of a motif.
      */
-    std::string cannonicalize(std::string& motif)
+    std::string canonicalize(std::string& motif)
     {
         std::string cmotif = motif;
 
@@ -96,7 +96,7 @@ class Igor : Program
         {
             std::string shifted_motif = motif.substr(i) + motif.substr(0,i);
 
-            if (shifted_motif > cmotif)
+            if (shifted_motif < cmotif)
             {
                 cmotif = shifted_motif;
             }
@@ -110,7 +110,7 @@ class Igor : Program
      */
     void update_stats(std::string& del, int32_t rl)
     {
-        std::string motif = cannonicalize(del);
+        std::string motif = canonicalize(del);
         
         if (stats.find(motif)==stats.end())
         {

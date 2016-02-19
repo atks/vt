@@ -98,7 +98,7 @@ class VNTRAnnotator
     /**
      * Return the canonical representation of a motif.
      */
-    static std::string cannonicalize(std::string& motif);
+    static std::string canonicalize(std::string& motif);
 
     /**
      * Return the string of unique bases in a motif.

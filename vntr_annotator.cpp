@@ -132,7 +132,7 @@ void VNTRAnnotator::annotate(Variant& variant, int32_t amode)
 /**
  * Return the canonical representation of a motif.
  */
-std::string VNTRAnnotator::cannonicalize(std::string& motif)
+std::string VNTRAnnotator::canonicalize(std::string& motif)
 {
     std::string cmotif = motif;
 
@@ -140,7 +140,7 @@ std::string VNTRAnnotator::cannonicalize(std::string& motif)
     {
         std::string shifted_motif = motif.substr(i) + motif.substr(0,i);
 
-        if (shifted_motif > cmotif)
+        if (shifted_motif < cmotif)
         {
             cmotif = shifted_motif;
         }
