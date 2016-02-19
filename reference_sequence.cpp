@@ -56,6 +56,25 @@ ReferenceSequence::ReferenceSequence(std::string& ref_fasta_file, uint32_t k, ui
 };
 
 /**
+ * Fetches the number of sequences.
+ */
+int32_t ReferenceSequence::fetch_nseq()
+{
+    return faidx_nseq(fai);
+}
+
+/**
+ * Fetch name of the ith sequence.
+ */
+std::string ReferenceSequence::fetch_iseq_name(int32_t i)
+{
+    std::string s;
+    s.assign(faidx_iseq(fai, i));
+    
+    return s;
+}
+
+/**
  * Fetch length of sequence seq.
  */
 int32_t ReferenceSequence::fetch_seq_len(std::string& seq)
@@ -66,7 +85,7 @@ int32_t ReferenceSequence::fetch_seq_len(std::string& seq)
 /**
  * Get a base.
  */
-char ReferenceSequence::fetch_base(std::string& chrom, uint32_t& pos1)
+char ReferenceSequence::fetch_base(std::string& chrom, int32_t& pos1)
 {
 
     //check buffer and retrieve base if it is in it.
@@ -98,14 +117,14 @@ char ReferenceSequence::fetch_base(std::string& chrom, uint32_t& pos1)
  *
  * Retrieved sequence is in seq with the length of n.
  */
-void ReferenceSequence::fetch_seq(std::string& chrom, uint32_t start1, uint32_t end1, char* seq, int32_t n)
+void ReferenceSequence::fetch_seq(std::string& chrom, int32_t start1, int32_t end1, char* seq, int32_t n)
 {
 }
 
 /**
  * Fetches sequence chrom:beg1-end1.
  */
-void ReferenceSequence::fetch_seq(const char* chrom, uint32_t beg1, uint32_t end1, std::string& seq)
+void ReferenceSequence::fetch_seq(const char* chrom, int32_t beg1, int32_t end1, std::string& seq)
 {
     char* temp_seq = fetch_seq(chrom, beg1, end1);
     if (temp_seq)
@@ -118,7 +137,7 @@ void ReferenceSequence::fetch_seq(const char* chrom, uint32_t beg1, uint32_t end
 /**
  * Fetches sequence chrom:beg1-end1.
  */
-char* ReferenceSequence::fetch_seq(char* chrom, uint32_t beg1, uint32_t end1)
+char* ReferenceSequence::fetch_seq(char* chrom, int32_t beg1, int32_t end1)
 {
     return fetch_seq(const_cast<const char*>(chrom), beg1, end1);
 }
@@ -126,7 +145,7 @@ char* ReferenceSequence::fetch_seq(char* chrom, uint32_t beg1, uint32_t end1)
 /**
  * Fetches sequence chrom:beg1-end1.
  */
-char* ReferenceSequence::fetch_seq(const char* chrom, uint32_t beg1, uint32_t end1)
+char* ReferenceSequence::fetch_seq(const char* chrom, int32_t beg1, int32_t end1)
 {
     char* seq = NULL;
     int32_t len = 0;

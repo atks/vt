@@ -85,36 +85,46 @@ class ReferenceSequence
     ReferenceSequence(std::string& ref_fasta_file, uint32_t k=10, uint32_t window_size=256);
 
     /**
+     * Fetches the number of sequences.
+     */
+    int32_t fetch_nseq();
+
+    /**
+     * Fetch name of the ith sequence.
+     */
+    std::string fetch_iseq_name(int32_t i);
+
+    /**
      * Fetch length of sequence seq.
      */
     int32_t fetch_seq_len(std::string& seq);
-        
+
     /**
      * Get a base.
      */
-    char fetch_base(std::string& chrom, uint32_t& pos1);
+    char fetch_base(std::string& chrom, int32_t& pos1);
 
     /**
      * Fetches sequence chrom:beg1-end1.
      *
      * Retrieved sequence is in seq with the length of n.
      */
-    void fetch_seq(std::string& chrom, uint32_t start1, uint32_t end1, char* seq, int32_t n);
+    void fetch_seq(std::string& chrom, int32_t start1, int32_t end1, char* seq, int32_t n);
 
     /**
      * Fetches sequence chrom:beg1-end1.
      */
-    void fetch_seq(const char* chrom, uint32_t beg1, uint32_t end1, std::string& seq);
+    void fetch_seq(const char* chrom, int32_t beg1, int32_t end1, std::string& seq);
 
     /**
      * Fetches sequence chrom:beg1-end1.
      */
-    char* fetch_seq(char* chrom, uint32_t beg1, uint32_t end1);
+    char* fetch_seq(char* chrom, int32_t beg1, int32_t end1);
 
     /**
      * Fetches sequence chrom:beg1-end1.
      */
-    char* fetch_seq(const char* chrom, uint32_t beg1, uint32_t end1);
+    char* fetch_seq(const char* chrom, int32_t beg1, int32_t end1);
 
     private:
 

@@ -35,12 +35,12 @@ class Igor : Program
     std::string ref_fasta_file;
     std::vector<std::string> x;
     std::string chrom;
-    ReferenceSequence *rs;    
-        
+    ReferenceSequence *rs;
+    std::map<std::string, std::vector<int32_t> > stats;
 
     bool debug;
     uint32_t no;
-  
+
     Igor(int argc, char **argv)
     {
         version = "0.5";
@@ -56,13 +56,11 @@ class Igor : Program
             TCLAP::CmdLine cmd(desc, ' ', version);
             VTOutput my; cmd.setOutput(&my);
             TCLAP::ValueArg<std::string> arg_ref_fasta_file("r", "r", "reference sequence fasta file []", true, "", "str", cmd);
-            TCLAP::ValueArg<std::string> arg_chromosome("c", "c", "chromosome fasta file []", true, "", "str", cmd);
-            TCLAP::UnlabeledMultiArg<std::string> arg_x("ap", "#ploidy #alleles", true, "", cmd);
+            TCLAP::ValueArg<std::string> arg_chromosome("c", "c", "chromosome fasta file []", false, "", "str", cmd);
 
             cmd.parse(argc, argv);
 
             ref_fasta_file = arg_ref_fasta_file.getValue();
-            x = arg_x.getValue();
         }
         catch (TCLAP::ArgException &e)
         {
@@ -84,16 +82,164 @@ class Igor : Program
         rs = new ReferenceSequence(ref_fasta_file);
     }
 
+
+    /**
+     * Return the canonical representation of a motif.
+     */
+    std::string cannonicalize(std::string& motif)
+    {
+        std::string cmotif = motif;
+
+        for (uint32_t i=0; i<motif.size(); ++i)
+        {
+            std::string shifted_motif = motif.substr(i) + motif.substr(0,i);
+
+            if (shifted_motif > cmotif)
+            {
+                cmotif = shifted_motif;
+            }
+        }
+
+        return cmotif;
+    }
+
+    /**
+     * Updates joint allele distribution.
+     */
+    void update_stats(std::string& del, int32_t rl)
+    {
+        std::string motif = cannonicalize(del);
+        
+        if (stats.find(motif)==stats.end())
+        {
+            std::vector<int32_t> v;
+            stats[motif] = v;
+            stats[motif].resize(rl, 0);
+
+            ++stats[motif][rl-1];
+        }
+        else
+        {
+            std::vector<int32_t>& v = stats[motif];
+
+            if (rl-1>v.size()-1)
+            {
+                int32_t to_add = (rl - 1) - (v.size()-1);
+                for (int32_t i=0; i<to_add; ++i)
+                {
+                    stats[motif].push_back(0);
+                }
+            }
+
+            ++v[rl-1];
+        }
+    }
+
+   /**
+     * Print stats.
+     */
+    void print_dist()
+    {
+        std::map<std::string, std::vector<int32_t> >::iterator i = stats.begin();
+
+        std::cerr << "print " << stats.size() << "\n";
+        while (i!=stats.end())
+        {
+            std::string motif = i->first;
+
+            std::vector<int32_t>& v = i->second;
+            std::cerr << "\t" << motif << "\n";
+            for (int32_t j=0; j<v.size(); ++j)
+            {
+                if (v[j]!=0)
+                {
+                    std::cerr << "\t" << (j+1) << " " << v[j] << "\n";
+                }
+            }
+            
+            ++i;
+        }
+    }
+
     /**
      * Gets number of genotypes from number of alleles and ploidy.
      */
-    uint32_t compute_rl_dist()
+    void compute_rl_dist()
     {
-        
-         
 
-              return 1;
-        
+        //map for a sequence
+        //map points to a vector
+        debug = false;
+        int32_t L = 3;
+
+        //for each chromosome
+        int32_t nseq = rs->fetch_nseq();
+        for (uint32_t i = 0; i<nseq; ++i)
+        {
+            std::string chrom = rs->fetch_iseq_name(i);
+            int32_t seq_len = rs->fetch_seq_len(chrom);
+            std::string del;
+
+            //for each position
+            for (int32_t pos1 = 1; pos1<=seq_len; ++pos1)
+            {
+                char b = rs->fetch_base(chrom, pos1);
+
+                if (b=='N') continue;
+
+                if (debug) std::cerr << chrom << ":" << pos1 << " " << b << "\n";
+                if (pos1%1000000==0)
+                {
+                    std::cerr << chrom << ":" << pos1 << " " << b << "\n";
+                    print_dist();
+                }
+                for (int32_t offset = 0; offset<L; ++offset)
+                {
+                    rs->fetch_seq(chrom.c_str(), pos1, pos1+offset, del);
+                    
+                    if (del.find('N')!=std::string::npos)
+                    {
+                        continue;
+                    }
+
+                    //left alignment
+                    int32_t ref_pos1 = pos1 + offset;
+                    int32_t alt_pos1 = pos1 - 1;
+                    char ref = del.at(offset);
+                    char alt = rs->fetch_base(chrom, alt_pos1);
+                    while (ref==alt)
+                    {
+                        --ref_pos1;
+                        --alt_pos1;
+
+                        ref = rs->fetch_base(chrom, ref_pos1);
+                        alt = rs->fetch_base(chrom, alt_pos1);
+                    }
+                    int32_t lflank_pos1 = alt_pos1;
+                    
+                    //right alignment
+                    ref_pos1 = pos1;
+                    alt_pos1 = pos1 + offset + 1;
+                    ref = del.at(0);
+                    alt = rs->fetch_base(chrom, alt_pos1);
+                    while (ref==alt)
+                    {
+                        ++ref_pos1;
+                        ++alt_pos1;
+
+                        ref = rs->fetch_base(chrom, ref_pos1);
+                        alt = rs->fetch_base(chrom, alt_pos1);
+                    }
+                    int32_t rflank_pos1 = alt_pos1;
+
+                    int32_t rl = rflank_pos1 - lflank_pos1 - 1;
+
+                    update_stats(del, rl);
+
+                    if (debug) std::cerr << "\t" << del << " [" << lflank_pos1 << "," << rflank_pos1 << "] (" << rl << ")\n";
+                }
+            }
+        }
     }
 
     void print_options()
@@ -146,7 +292,7 @@ class Igor : Program
 //        std::clog << "       total no. reference observed             : " << no_refs << "\n";
 //        std::clog << "\n";
     };
-    
+
     ~Igor() {};
 
     private:
