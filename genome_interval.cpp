@@ -61,8 +61,8 @@ void GenomeInterval::set(std::string& seq, int32_t start1, int32_t end1)
 void GenomeInterval::set(std::string interval)
 {
     std::vector<std::string> v;
-    split(v, ":-", interval);
-
+    split(v, ":-\t", interval);
+   
     if (v.size()==1)
     {
         seq = v[0];

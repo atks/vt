@@ -33,8 +33,7 @@ class Igor : Program
     //options//
     ///////////
     std::string ref_fasta_file;
-    std::vector<std::string> x;
-    std::string chrom;
+    std::vector<GenomeInterval> intervals;
     ReferenceSequence *rs;
     std::map<std::string, std::vector<int32_t> > stats;
 
@@ -55,11 +54,14 @@ class Igor : Program
             std::string version = "0.5";
             TCLAP::CmdLine cmd(desc, ' ', version);
             VTOutput my; cmd.setOutput(&my);
+            TCLAP::ValueArg<std::string> arg_intervals("i", "i", "intervals []", false, "", "str", cmd);
+            TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "file", cmd);
             TCLAP::ValueArg<std::string> arg_ref_fasta_file("r", "r", "reference sequence fasta file []", true, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_chromosome("c", "c", "chromosome fasta file []", false, "", "str", cmd);
 
             cmd.parse(argc, argv);
-
+            
+            parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
             ref_fasta_file = arg_ref_fasta_file.getValue();
         }
         catch (TCLAP::ArgException &e)
@@ -142,18 +144,16 @@ class Igor : Program
     {
         std::map<std::string, std::vector<int32_t> >::iterator i = stats.begin();
 
-        std::cerr << "print " << stats.size() << "\n";
         while (i!=stats.end())
         {
             std::string motif = i->first;
 
             std::vector<int32_t>& v = i->second;
-            std::cerr << "\t" << motif << "\n";
             for (int32_t j=0; j<v.size(); ++j)
             {
                 if (v[j]!=0)
                 {
-                    std::cerr << "\t" << (j+1) << " " << v[j] << "\n";
+                    std::cout << motif << "\t" << (j+1) << " " << v[j] << "\n";
                 }
             }
             
@@ -161,27 +161,63 @@ class Igor : Program
         }
     }
 
+
+   /**
+     * Print stats.
+     */
+    void print_dist_err()
+    {
+        std::map<std::string, std::vector<int32_t> >::iterator i = stats.begin();
+
+        while (i!=stats.end())
+        {
+            std::string motif = i->first;
+
+            std::vector<int32_t>& v = i->second;
+            for (int32_t j=0; j<v.size(); ++j)
+            {
+                if (v[j]!=0)
+                {
+                    std::cerr << motif << "\t" << (j+1) << " " << v[j] << "\n";
+                }
+            }
+            
+            ++i;
+        }
+    }
+    
     /**
      * Gets number of genotypes from number of alleles and ploidy.
      */
     void compute_rl_dist()
     {
-
-        //map for a sequence
-        //map points to a vector
         debug = false;
         int32_t L = 3;
 
-        //for each chromosome
-        int32_t nseq = rs->fetch_nseq();
-        for (uint32_t i = 0; i<nseq; ++i)
+        if (intervals.size()==0)
         {
-            std::string chrom = rs->fetch_iseq_name(i);
-            int32_t seq_len = rs->fetch_seq_len(chrom);
+            parse_intervals(intervals, "", "1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,X,Y");
+            print_dist_err();
+        }    
+
+
+        for (uint32_t i = 0; i<intervals.size(); ++i)
+        {
+            std::string chrom = intervals[i].seq;
+            if (intervals[i].end1 == ((1<<29) - 1))
+            {
+                intervals[i].end1 = rs->fetch_seq_len(chrom);
+            }    
+            
+            int32_t beg1 = intervals[i].start1;
+            int32_t end1 = intervals[i].end1;
             std::string del;
 
+            std::cerr << "#" << chrom << ":" << beg1 << "-" << end1 << "\n";
+//            print_dist_err();
+        
             //for each position
-            for (int32_t pos1 = 1; pos1<=seq_len; ++pos1)
+            for (int32_t pos1=beg1; pos1<=end1; ++pos1)
             {
                 char b = rs->fetch_base(chrom, pos1);
 
@@ -190,8 +226,8 @@ class Igor : Program
                 if (debug) std::cerr << chrom << ":" << pos1 << " " << b << "\n";
                 if (pos1%1000000==0)
                 {
-                    std::cerr << chrom << ":" << pos1 << " " << b << "\n";
-                    print_dist();
+                    std::cerr << "#" << chrom << ":" << pos1 << " " << b << "\n";
+//                    print_dist_err();
                 }
                 for (int32_t offset = 0; offset<L; ++offset)
                 {
@@ -240,6 +276,8 @@ class Igor : Program
                 }
             }
         }
+        
+        print_dist();
     }
 
     void print_options()
