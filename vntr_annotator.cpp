@@ -156,16 +156,11 @@ bool VNTRAnnotator::is_vntr(Variant& variant, int32_t mode, std::string& method)
 
     if (mode==TAN_KANG_2015_VNTR)
     {
-//        if (rlen - mlen < 6)
-//        {
-//            variant.vntr.print();
-//        }
         if (method == "f")
         {
             if ((vntr.fuzzy_rl - vntr.mlen)>=6 && vntr.fuzzy_no_exact_ru>=2)
             {
                 //should we set separate cutoffs for motifs that contain only 2 types of nucleotides?
-                //
                 if (vntr.mlen==1 && vntr.fuzzy_score>0.9)
                 {
                     vntr.definition_support = "f";

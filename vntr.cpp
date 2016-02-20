@@ -110,6 +110,24 @@ std::string VNTR::get_canonical(std::string& motif)
 }
 
 /**
+ * Checks if a string is aperiodic.
+ */
+bool VNTR::is_aperiodic(std::string& motif)
+{
+    for (uint32_t i=1; i<=(motif.size()-1); ++i)
+    {
+        std::string smotif = shift_str(motif, i);
+        
+        if (smotif == motif)
+        {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+/**
  * Return the string of unique bases in a motif.
  */
 std::string VNTR::get_basis(std::string& motif)

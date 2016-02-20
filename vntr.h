@@ -43,29 +43,25 @@ class VNTR
     //chromosome
     int32_t rid;  //rid, redundant data with Variant. todo: something about this.
 
-    ///////
-    //motif
-    ///////
-    std::string motif;         //motif
-    std::string ru;            //repeat unit on the reference
-    int32_t mlen;              //length of motif
-    std::string basis;         //unique bases found in motif
-    int32_t blen;              //basis length
-
     std::string definition_support; //either exact or fuzzy
 
-    //////////////
-    //repeat tract
-    //////////////
+    ///////////////////////////
+    //decided upon repeat tract
+    ///////////////////////////
+    std::string motif;          //motif
+    std::string ru;             //repeat unit on the reference
+    int32_t mlen;               //length of motif
+    std::string basis;          //unique bases found in motif
+    int32_t blen;               //basis length
     std::string repeat_tract;   //repeat tract
     int32_t comp[4];            //composition of bases in repeat tract
     float entropy ;             //sequence entropy of repeat tract
-    float entropy2;            //dinucleotide sequence entropy of repeat tract
+    float entropy2;             //dinucleotide sequence entropy of repeat tract
     int32_t beg1;               //beginning of repeat tract
     int32_t end1;               //end of repeat tract
     int32_t rl;                 //length of repeat tract in base pairs
     int32_t ll;                 //length of repeat tract (including longest alternate allele) in base pairs
-    int32_t no_exact_ru;              //number exact repeat units from hmm
+    int32_t no_exact_ru;        //number exact repeat units from hmm
     int32_t total_no_ru;        //total no of repeat units from hmm
     float score;                //motif concordance from hmm
     int32_t trf_score;          //TRF score of exact repeat tract
@@ -75,6 +71,11 @@ class VNTR
     ////////////////////
     //exact repeat tract
     ////////////////////
+    std::string exact_motif;          //motif
+    std::string exact_ru;             //repeat unit on the reference
+    int32_t exact_mlen;               //length of motif
+    std::string exact_basis;          //unique bases found in motif
+    int32_t exact_blen;               //basis length
     std::string exact_repeat_tract;   //repeat tract
     int32_t exact_comp[4];            //composition of bases in repeat tract
     float exact_entropy ;             //sequence entropy of repeat tract
@@ -95,6 +96,11 @@ class VNTR
     /////////////////
     //fuzzy alignment
     /////////////////
+    std::string fuzzy_motif;          //motif
+    std::string fuzzy_ru;             //repeat unit on the reference
+    int32_t fuzzy_mlen;               //length of motif
+    std::string fuzzy_basis;          //unique bases found in motif
+    int32_t fuzzy_blen;               //basis length
     std::string fuzzy_repeat_tract;   //repeat tract
     int32_t fuzzy_comp[4];            //composition of bases in repeat tract
     float fuzzy_entropy ;             //sequence entropy of repeat tract
@@ -140,6 +146,11 @@ class VNTR
      * Return the canonical representation of a motif.
      */
     std::string get_canonical(std::string& motif);
+    
+    /**
+     * Checks if a string is aperiodic.
+     */
+    bool is_aperiodic(std::string& motif);
             
     /**
      * Return the string of unique bases in a motif.
