@@ -137,6 +137,8 @@ class VNTR
      */
     bool equals(VNTR& vntr);
     
+    #define complement(b) ("TGNCNNNNNA"[((b)-65)>>1])
+    
     /**
      * Reverse complement a sequence.
      */
@@ -173,3 +175,121 @@ class VNTR
     void print();
 };
 #endif
+
+
+//sub canonicalize
+//{
+//    my $motif = shift;
+//
+//    my $cmotif = $motif;
+//
+//    for my $i (0 .. (length($motif)-1))
+//    {
+//        my $smotif = shift_str($motif, $i);
+//        my $rc_smotif = reverse_complement($smotif);
+//
+//        if (($smotif cmp  $cmotif) < 0)
+//        {
+//            $cmotif = $smotif;
+//        }
+//
+//        if (($rc_smotif cmp  $cmotif) < 0)
+//        {
+//            $cmotif = $rc_smotif;
+//        }
+//    }
+//
+//    return $cmotif;
+//}
+//
+//sub shift_str
+//{
+//    my ($motif, $i, $rest) = @_;
+//
+//    return substr($motif, $i) .  substr($motif, 0, $i);
+//}
+//
+//sub is_periodic
+//{
+//    my $motif = shift;
+//
+//    for my $i (1 .. (length($motif)-1))
+//    {
+//        my $smotif = shift_str($motif, $i);
+//
+//        if ($smotif eq $motif)
+//        {
+//#            print "$motif => $smotif => $i\n";
+//
+//            return $i;
+//        }
+//    }
+//
+//#    print "$motif => 0\n";
+//
+//    return 0;
+//}
+//
+//sub get_aperiodic_submotif
+//{
+//    my $motif = shift;
+//
+//    for my $i (1 .. (length($motif)-1))
+//    {
+//        my $smotif = shift_str($motif, $i);
+//
+//        if ($smotif eq  $motif)
+//        {
+//            return substr($motif, 0, $i);
+//        }
+//    }
+//}
+//
+//sub get_aperiodic_submotif_by_index
+//{
+//    my ($motif, $i) = @_;
+//
+//#    print "REURN BY INDEX : $i\n";
+//
+//    return substr($motif, 0, $i);
+//}
+//
+//sub complement
+//{
+//    my $b = shift;
+//
+//    if ($b eq "A")
+//    {
+//        return "T";
+//    }
+//    elsif ($b eq "C")
+//    {
+//        return "G";
+//    }
+//    elsif ($b eq "G")
+//    {
+//        return "C";
+//    }
+//    elsif ($b eq "T")
+//    {
+//        return "A";
+//    }
+//}
+//
+//sub reverse_complement
+//{
+//    my $seq = shift;
+//
+//    my $rc = "";
+//
+//    my $i = length($seq) - 1;
+//    while ($i>=0)
+//    {
+//        my $b = substr($seq, $i, 1);
+//        $rc .= complement($b);
+//
+//        --$i;
+//    }
+//
+//    return $rc;
+//}

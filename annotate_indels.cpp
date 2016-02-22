@@ -57,12 +57,17 @@ class Igor : Program
     std::string BLEN;
 
     //exact alignment related statistics
+    std::string EX_MOTIF;
+    std::string EX_MLEN;
+    std::string EX_RU;
+    std::string EX_BASIS;
+    std::string EX_BLEN;
     std::string EX_REPEAT_TRACT;
     std::string EX_COMP;
     std::string EX_ENTROPY;
     std::string EX_ENTROPY2;
-    std::string  EX_KL_DIVERGENCE;
-    std::string  EX_KL_DIVERGENCE2;
+    std::string EX_KL_DIVERGENCE;
+    std::string EX_KL_DIVERGENCE2;
     std::string EX_RL;
     std::string EX_LL;
     std::string EX_RU_COUNTS;
@@ -70,12 +75,17 @@ class Igor : Program
     std::string EX_TRF_SCORE;
     
     //fuzzy alignment related statistics
+    std::string FZ_MOTIF;
+    std::string FZ_MLEN;
+    std::string FZ_RU;
+    std::string FZ_BASIS;
+    std::string FZ_BLEN;
     std::string FZ_REPEAT_TRACT;
     std::string FZ_COMP;
     std::string FZ_ENTROPY;
     std::string FZ_ENTROPY2;
-    std::string  FZ_KL_DIVERGENCE;
-    std::string  FZ_KL_DIVERGENCE2;
+    std::string FZ_KL_DIVERGENCE;
+    std::string FZ_KL_DIVERGENCE2;
     std::string FZ_RL;
     std::string FZ_LL;
     std::string FZ_RU_COUNTS;
@@ -185,6 +195,11 @@ class Igor : Program
         BLEN = bcf_hdr_append_info_with_backup_naming(odw->hdr, "BLEN", "1", "Integer", "Basis length.", rename);
 
         //exact alignment related statisitcs
+        EX_MOTIF = bcf_hdr_append_info_with_backup_naming(odw->hdr, "EX_MOTIF", "1", "String", "Canonical motif in a VNTR.", rename);
+        EX_RU = bcf_hdr_append_info_with_backup_naming(odw->hdr, "EX_RU", "1", "String", "Repeat unit in the reference sequence.", rename);
+        EX_BASIS = bcf_hdr_append_info_with_backup_naming(odw->hdr, "EX_BASIS", "1", "String", "Basis nucleotides in the motif.", rename);
+        EX_MLEN = bcf_hdr_append_info_with_backup_naming(odw->hdr, "EX_MLEN", "1", "Integer", "Motif length.", rename);
+        EX_BLEN = bcf_hdr_append_info_with_backup_naming(odw->hdr, "EX_BLEN", "1", "Integer", "Basis length.", rename);
         EX_REPEAT_TRACT = bcf_hdr_append_info_with_backup_naming(odw->hdr, "EX_REPEAT_TRACT", "2", "Integer", "Boundary of the repeat tract detected by exact alignment.", rename);
         EX_COMP = bcf_hdr_append_info_with_backup_naming(odw->hdr, "EX_COMP", "4", "Integer", "Composition(%) of bases in an exact repeat tract.", rename);
         EX_ENTROPY = bcf_hdr_append_info_with_backup_naming(odw->hdr, "EX_ENTROPY", "1", "Float", "Entropy measure of an exact repeat tract [0,2].", rename);
@@ -198,6 +213,11 @@ class Igor : Program
         EX_TRF_SCORE = bcf_hdr_append_info_with_backup_naming(odw->hdr, "EX_TRF_SCORE", "1", "Integer", "TRF Score for M/I/D as 2/-7/-7 in exact repeat tract.", rename);
         
         //fuzzy alignment related statisitcs
+        FZ_MOTIF = bcf_hdr_append_info_with_backup_naming(odw->hdr, "FZ_MOTIF", "1", "String", "Canonical motif in a VNTR.", rename);
+        FZ_RU = bcf_hdr_append_info_with_backup_naming(odw->hdr, "FZ_RU", "1", "String", "Repeat unit in the reference sequence.", rename);
+        FZ_BASIS = bcf_hdr_append_info_with_backup_naming(odw->hdr, "FZ_BASIS", "1", "String", "Basis nucleotides in the motif.", rename);
+        FZ_MLEN = bcf_hdr_append_info_with_backup_naming(odw->hdr, "FZ_MLEN", "1", "Integer", "Motif length.", rename);
+        FZ_BLEN = bcf_hdr_append_info_with_backup_naming(odw->hdr, "FZ_BLEN", "1", "Integer", "Basis length.", rename);
         FZ_REPEAT_TRACT = bcf_hdr_append_info_with_backup_naming(odw->hdr, "FZ_REPEAT_TRACT", "2", "Integer", "Boundary of the repeat tract detected by fuzzy alignment.", rename);                      
         FZ_COMP = bcf_hdr_append_info_with_backup_naming(odw->hdr, "FZ_COMP", "4", "Integer", "Composition(%) of bases in a fuzzy repeat tract.", rename);                                              
         FZ_ENTROPY = bcf_hdr_append_info_with_backup_naming(odw->hdr, "FZ_ENTROPY", "1", "Float", "Entropy measure of a fuzzy repeat tract (0-2).", rename);                                                  
@@ -311,7 +331,8 @@ class Igor : Program
                 continue;
             }
 
- bcf_print_liten(h,v);
+//            bcf_print_liten(h,v);
+            
             if (debug)
             {
                 bcf_print_liten(h,v);
@@ -334,6 +355,11 @@ class Igor : Program
                 bcf_update_info_int32(h, v, BLEN.c_str(), &vntr.blen, 1);
         
                 //exact characteristics
+                bcf_update_info_string(h, v, EX_MOTIF.c_str(), vntr.exact_motif.c_str());
+                bcf_update_info_int32(h, v, EX_MLEN.c_str(), &vntr.exact_mlen, 1);
+                bcf_update_info_string(h, v, EX_RU.c_str(), vntr.exact_ru.c_str());
+                bcf_update_info_string(h, v, EX_BASIS.c_str(), vntr.exact_basis.c_str());
+                bcf_update_info_int32(h, v, EX_BLEN.c_str(), &vntr.exact_blen, 1);
                 int32_t exact_flank_pos1[2] = {vntr.exact_beg1, vntr.exact_end1};
                 bcf_update_info_int32(h, v, EX_REPEAT_TRACT.c_str(), &exact_flank_pos1, 2);
                 bcf_update_info_int32(h, v, EX_COMP.c_str(), &vntr.exact_comp[0], 4);
@@ -349,6 +375,11 @@ class Igor : Program
                 bcf_update_info_int32(h, v, EX_TRF_SCORE.c_str(), &vntr.exact_trf_score, 1);
                
                 //fuzzy characteristics
+                bcf_update_info_string(h, v, FZ_MOTIF.c_str(), vntr.fuzzy_motif.c_str());
+                bcf_update_info_int32(h, v, FZ_MLEN.c_str(), &vntr.fuzzy_mlen, 1);
+                bcf_update_info_string(h, v, FZ_RU.c_str(), vntr.fuzzy_ru.c_str());
+                bcf_update_info_string(h, v, FZ_BASIS.c_str(), vntr.fuzzy_basis.c_str());
+                bcf_update_info_int32(h, v, FZ_BLEN.c_str(), &vntr.fuzzy_blen, 1);
                 int32_t fuzzy_flank_pos1[2] = {vntr.fuzzy_beg1, vntr.fuzzy_end1};
                 bcf_update_info_int32(h, v, FZ_REPEAT_TRACT.c_str(), &fuzzy_flank_pos1, 2);
                 bcf_update_info_int32(h, v, FZ_COMP.c_str(), &vntr.fuzzy_comp[0], 4);

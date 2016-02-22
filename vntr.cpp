@@ -71,8 +71,8 @@ bool VNTR::equals(VNTR& vntr)
             exact_end1==vntr.exact_end1 &&
             motif==vntr.motif);
 }
-
-#define complement(b) ("TGNCNNNNNA"[((b)-65)>>1])
+//
+//#define complement(b) ("TGNCNNNNNA"[((b)-65)>>1])
 
 /**
  * Reverse complement a sequence.
