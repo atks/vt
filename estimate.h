@@ -24,22 +24,8 @@
 #ifndef ESTIMATE_H
 #define ESTIMATE_H
 
-#include "utils.h"
-#include "bcf_ordered_reader.h"
-#include "bcf_ordered_writer.h"
-#include "variant_manip.h"
 #include "program.h"
-#include "filter.h"
 #include "estimator.h"
-
-#define EST_AF      0
-#define EST_GF      1
-#define EST_HWEAF   2
-#define EST_MLEAF   3
-#define EST_HWE     4
-#define EST_FIC     5
-#define EST_AB      6
-#define NO_EST      7
 
 void estimate(int argc, char ** argv);
 

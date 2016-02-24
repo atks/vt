@@ -153,9 +153,6 @@ class Igor : Program
      */
     void update_joint_allele_dist(int32_t no_indel_alleles, int32_t no_tandem_repeat_alleles)
     {
-//        
-//        std::cerr << "updating " << no_indel_alleles << " " << no_tandem_repeat_alleles << "\n";
-//        std::cerr << joint_allele_dist.size() <<  " => ";
         if (joint_allele_dist.size()<=no_indel_alleles)
         {
             std::vector<int32_t> vec;
@@ -165,8 +162,6 @@ class Igor : Program
             }
         }
 
-//        std::cerr << joint_allele_dist.size() << "\n";
-//        std::cerr << joint_allele_dist[no_indel_alleles].size() <<  " => ";
         if (joint_allele_dist[no_indel_alleles].size()<=no_tandem_repeat_alleles)
         {
             for (uint32_t i = joint_allele_dist[no_indel_alleles].size(); i<=no_tandem_repeat_alleles; ++i)
@@ -174,9 +169,6 @@ class Igor : Program
                 joint_allele_dist[no_indel_alleles].push_back(0);
             }
         }
-//        std::cerr << joint_allele_dist[no_indel_alleles].size() <<  "\n";
-       
-
         
         ++joint_allele_dist[no_indel_alleles][no_tandem_repeat_alleles];
     }
@@ -212,11 +204,7 @@ class Igor : Program
             {
                 int32_t no_overlaps = overlap_vars.size();
                 update_joint_allele_dist(no_tr_alleles, no_overlaps);
-//                std::cerr << no_tr_alleles << " " << no_overlaps << "\n";
             }
-            
-//            std::cerr << "hello\n";
-            
         }
 
         odr->close();

@@ -267,16 +267,12 @@ Each VCF file is required to have the FORMAT flags E and N and should have exact
 
                 if (file_types[file_index] == SINGLE)
                 {
-
-
                     if (bcf_get_format_int32(h, v, "E", &E, &no_E) < 0 ||
                         bcf_get_format_int32(h, v, "N", &N, &no_N) < 0)
                     {
                         fprintf(stderr, "[E:%s:%d %s] cannot get format values E or N from %s\n", __FILE__, __LINE__, __FUNCTION__, sr->file_names[file_index].c_str());
                         exit(1);
                     }
-
-
 
                     bcf_hdr_get_sample_name(sr->hdrs[i], 0);
 

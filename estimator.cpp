@@ -94,6 +94,12 @@ void Estimator::compute_af(int32_t *gts, int32_t no_samples, int32_t ploidy,
         GF[0] = (float)GC[0]/GN;
         GF[1] = (float)GC[1]/GN;
         GF[2] = (float)GC[2]/GN;
+        
+//        std::cerr << "AC: " << AC[0] << "," << AC[1] << "\n";
+//        std::cerr << "AF: " << AF[0] << "," << AF[1] << "\n";
+//        std::cerr << "GC: " << AC[0] << AC[0] << "," << AC[1] << "\n";
+//        std::cerr << "GC: " << AC[0] << AC[0] << "," << AC[1] << "\n";
+        
     }
     else
     {

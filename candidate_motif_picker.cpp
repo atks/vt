@@ -94,22 +94,22 @@ void CandidateMotifPicker::generate_candidate_motifs(Variant& variant)
         std::cerr << "Longest Allele        : " << alleles[longest_allele_index] << "\n";
         std::cerr << "Longest Allele index  : " << longest_allele_index << "\n";
     }
-    
+
     if (longest_allele_index)
     {
         //in the case of multiallelics, because the repeat tract is actually obtain by merging a regions from
-        //pairwise left and right alignment of the alternative alleles with the reference allele, it is possible that the 
-        //tract occurs prior to the position of the multiallelic variant. 
+        //pairwise left and right alignment of the alternative alleles with the reference allele, it is possible that the
+        //tract occurs prior to the position of the multiallelic variant.
         int32_t offset = 0;
         if (variant.vntr.exact_beg1<pos1)
         {
             offset = bcf_get_pos1(v) - variant.vntr.exact_beg1;
-        }    
-        
+        }
+
         std::string spiked_seq = variant.vntr.exact_repeat_tract;
         spiked_seq.replace(offset, ref_len, alleles[longest_allele_index]);
         mt->detect_candidate_motifs(spiked_seq);
-        
+
         if (debug)
         {
             //this implictly requires that the variants are left aligned.
@@ -119,13 +119,13 @@ void CandidateMotifPicker::generate_candidate_motifs(Variant& variant)
             std::cerr << "\tpos1               " << bcf_get_pos1(v) << "\n";
             std::cerr << "\toffset             " << offset << "\n";
             std::cerr << "\treplace length     " << ref_len << "\n";
-           
+
 //            spiked_seq.replace(variant.vntr.exact_beg1-bcf_get_pos1(v), strlen(alleles[0]), alleles[longest_allele_index]);
 //            spiked_seq.insert(variant.vntr.exact_beg1-bcf_get_pos1(v), 1, '[');
 //            spiked_seq.insert(variant.vntr.exact_beg1-bcf_get_pos1(v)+ strlen(alleles[longest_allele_index])+1, 1, ']');
 //            std::cerr << "Spiked Longest Allele : "   << spiked_seq << "\n";
-        } 
-        
+        }
+
     }
     else
     {
@@ -145,10 +145,10 @@ void CandidateMotifPicker::generate_candidate_motifs(char* repeat_tract, Variant
 //    std::cerr << "INVOKED??\n" ;
     variant.vntr.fuzzy_repeat_tract.assign(repeat_tract);
 //    std::cerr << "assigned repeat tract"  << repeat_tract << "\n";
-    
+
     mt->detect_candidate_motifs(variant.vntr.fuzzy_repeat_tract);
 //    std::cerr << mt->pcm.size() << "\n";
-    
+
 }
 
 /**
@@ -170,17 +170,17 @@ void CandidateMotifPicker::set_motif_from_info_field(Variant& variant)
     else
     {
         vntr.motif = "";
-    }   
+    }
 }
-    
+
 /**
  * Iterates through the candidate motifs detected in the motif tree.
  *
  *  1. examines it if the motif is represented in the motif tree.
- *     and updated the motif field in the VNTR object of variant 
+ *     and updated the motif field in the VNTR object of variant
  *     with the candidate motif.
- *  2. 
- * 
+ *  2.
+ *
  */
 bool CandidateMotifPicker::next_motif(Variant& variant, int32_t mode)
 {
@@ -191,11 +191,11 @@ bool CandidateMotifPicker::next_motif(Variant& variant, int32_t mode)
             std::cerr << "********************************************\n";
             std::cerr << "PICKING NEXT BEST MOTIF\n\n";
         }
-    
+
         while (!mt->pcm.empty())
         {
             CandidateMotif cm = mt->pcm.top();
-    
+
             //check for existence of pattern in indel sequence
             if (is_in_indel_fragment(cm.motif))
             {
@@ -209,6 +209,14 @@ bool CandidateMotifPicker::next_motif(Variant& variant, int32_t mode)
                 variant.vntr.basis = VNTR::get_basis(cm.motif);
                 variant.vntr.mlen = cm.motif.size();
                 variant.vntr.blen = variant.vntr.basis.size();
+                variant.vntr.exact_motif = variant.vntr.motif;
+                variant.vntr.exact_basis = variant.vntr.basis;
+                variant.vntr.exact_mlen = variant.vntr.mlen;
+                variant.vntr.exact_blen = variant.vntr.blen;
+                variant.vntr.fuzzy_motif = variant.vntr.motif;
+                variant.vntr.fuzzy_basis = variant.vntr.basis;
+                variant.vntr.fuzzy_mlen = variant.vntr.mlen;
+                variant.vntr.fuzzy_blen = variant.vntr.blen;
                 mt->pcm.pop();
                 return true;
             }
@@ -224,7 +232,7 @@ bool CandidateMotifPicker::next_motif(Variant& variant, int32_t mode)
                 mt->pcm.pop();
             }
         }
-    
+
         return false;
     }
     else if (mode==NO_REQUIREMENT)
@@ -236,23 +244,31 @@ bool CandidateMotifPicker::next_motif(Variant& variant, int32_t mode)
             variant.vntr.basis = VNTR::get_basis(cm.motif);
             variant.vntr.mlen = cm.motif.size();
             variant.vntr.blen = variant.vntr.basis.size();
+            variant.vntr.exact_motif = variant.vntr.motif;
+            variant.vntr.exact_basis = variant.vntr.basis;
+            variant.vntr.exact_mlen = variant.vntr.mlen;
+            variant.vntr.exact_blen = variant.vntr.blen;
+            variant.vntr.fuzzy_motif = variant.vntr.motif;
+            variant.vntr.fuzzy_basis = variant.vntr.basis;
+            variant.vntr.fuzzy_mlen = variant.vntr.mlen;
+            variant.vntr.fuzzy_blen = variant.vntr.blen;
             mt->pcm.pop();
-            
+
 //            std::cerr << variant.vntr.motif << " " << variant.vntr.motif_score  << "\n";
-            
+
             return true;
         }
-    
+
         return false;
     }
     else
     {
         fprintf(stderr, "[E:%s:%d %s] Motif picking mode not recognized : %d\n", __FILE__, __LINE__, __FUNCTION__, mode);
-        exit(1);    
+        exit(1);
         return false;
     }
 }
-    
+
 /**
  * Checks if motif is in indel fragment.
  */
