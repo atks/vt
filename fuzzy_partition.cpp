@@ -25,18 +25,19 @@
 
 namespace
 {
-    
+
 class FuzzyOverlapStats
 {
     public:
 
-    uint32_t a, ap, ab, bp, b;
-    
+    uint32_t a, ap, ab1, ab2, bp, b;
+
     FuzzyOverlapStats()
     {
         a = 0;
-        ap= 0;
-        ab = 0;
+        ap = 0;
+        ab1 = 0;
+        ab2 = 0;
         bp = 0;
         b = 0;
     };
@@ -59,7 +60,7 @@ class Igor : Program
     //////////
     //filter//
     //////////
-    std::string fexp;
+    std::vector<std::string> fexps;
     Filter filter;
     bool filter_exists;
 
@@ -67,11 +68,15 @@ class Igor : Program
     //i/o//
     ///////
     BCFOrderedReader *odr;
-    
+    OrderedBCFOverlapMatcher *obom;
+    BCFOrderedWriter *a_odw;
+    BCFOrderedWriter *b_odw;
+
     /////////
     //stats//
     /////////
     FuzzyOverlapStats stats;
+    int32_t no_variants;
 
     //for allele counts [no indel alleles][no tandem repeat alleles]
     std::vector<std::vector<int32_t> > joint_allele_dist;
@@ -80,7 +85,7 @@ class Igor : Program
     //tools//
     /////////
     VariantManip *vm;
-    OrderedBCFOverlapMatcher *orom_vcf;
+    
 
     Igor(int argc, char **argv)
     {
@@ -110,7 +115,7 @@ class Igor : Program
             print = !arg_quiet.getValue();
             left_window = arg_left_window.getValue();
             right_window = arg_right_window.getValue();
-            fexp = arg_fexp.getValue();
+            parse_filters(fexps, arg_fexp.getValue(), 2, false);
             write_partition = arg_write_partition.getValue();
             input_vcf_files = arg_input_vcf_files.getValue();
 
@@ -134,17 +139,80 @@ class Igor : Program
         //////////////////////
         odr = new BCFOrderedReader(input_vcf_files[0], intervals);
         bcf_hdr_append(odr->hdr, "##INFO=<ID=OVERLAP,Number=.,Type=Integer,Description=\"Overlap Count\">\n");
-      
+        obom = new OrderedBCFOverlapMatcher(input_vcf_files[1], intervals, fexps[1]);
+
+        bcf_hdr_append_info_with_backup_naming(odr->hdr, "EXACT_OVERLAPS", "1", "Integer", "Number of exact overlapping variants with this variant.", true);
+        bcf_hdr_append_info_with_backup_naming(odr->hdr, "FUZZY_OVERLAPS", "1", "Integer", "Number of fuzzy overlapping variants with this variant.", true);
+        bcf_hdr_sync(odr->hdr);
+
+        a_odw = NULL;
+        b_odw = NULL;
+        if (write_partition)
+        {
+            a_odw = new BCFOrderedWriter("a.bcf");
+            a_odw->link_hdr(odr->hdr);
+            a_odw->write_hdr();
+            b_odw = new BCFOrderedWriter("b.bcf");
+            b_odw->link_hdr(obom->odr->hdr);
+            b_odw->write_hdr();
+        }
+
+        ///////
+        //stats
+        ///////
+        no_variants = 0;
+
         /////////////////////////
         //filter initialization//
         /////////////////////////
-        filter.parse(fexp.c_str(), false);
-        filter_exists = fexp=="" ? false : true;
-                
+        filter.parse(fexps[0].c_str());
+        filter_exists = fexps[0]=="" ? false : true;
+
         ////////////////////////
         //tools initialization//
         ////////////////////////
-        orom_vcf = new OrderedBCFOverlapMatcher(input_vcf_files[1], intervals);
+    }
+
+    /**
+     * Increments the EXACT_OVERLAPS count of a variant record.
+     */
+    void increment_exact_overlap(bcf_hdr_t* h, bcf1_t* v, int32_t k)
+    {
+        int32_t n = 0;
+        int32_t *count = NULL;
+        bcf_unpack(v, BCF_UN_INFO);
+        if (bcf_get_info_int32(h, v, "EXACT_OVERLAPS", &count, &n)>0)
+        {
+            count[0] = std::min(127, count[0]+k);
+            bcf_update_info_int32(h, v, "EXACT_OVERLAPS", count, n);
+            free(count);
+        }
+        else
+        {
+            int32_t c = 1;
+            bcf_update_info_int32(h, v, "EXACT_OVERLAPS", &c, 1);
+        }
+    }
+
+    /**
+     * Increments the FUZZY_OVERLAPS count of a variant record.
+     */
+    void increment_fuzzy_overlap(bcf_hdr_t* h, bcf1_t* v, int32_t k)
+    {
+        int32_t n = 0;
+        int32_t *count = NULL;
+        bcf_unpack(v, BCF_UN_INFO);
+        if (bcf_get_info_int32(h, v, "FUZZY_OVERLAPS", &count, &n)>0)
+        {
+            count[0] = std::min(127, count[0]+k);
+            bcf_update_info_int32(h, v, "FUZZY_OVERLAPS", count, n);
+            free(count);
+        }
+        else
+        {
+            int32_t c = 1;
+            bcf_update_info_int32(h, v, "FUZZY_OVERLAPS", &c, 1);
+        }
     }
 
 
@@ -169,10 +237,10 @@ class Igor : Program
                 joint_allele_dist[no_indel_alleles].push_back(0);
             }
         }
-        
+
         ++joint_allele_dist[no_indel_alleles][no_tandem_repeat_alleles];
     }
-    
+
     void fuzzy_partition()
     {
         bcf1_t *v = bcf_init1();
@@ -200,14 +268,67 @@ class Igor : Program
             int32_t beg1 = bcf_get_pos1(v);
             int32_t end1 = bcf_get_end1(v);
 
-            if (orom_vcf->overlaps_with(rid, beg1-left_window, end1+right_window, overlap_vars))
+            if (obom->overlaps_with(rid, beg1-left_window, end1+right_window, overlap_vars, b_odw))
             {
                 int32_t no_overlaps = overlap_vars.size();
                 update_joint_allele_dist(no_tr_alleles, no_overlaps);
+                
+                bool exact = false;
+                int32_t partial_overlap = 0;
+                int32_t exact_overlap = 0;
+                for (uint32_t j=0; j<overlap_vars.size(); ++j)
+                {
+                    //check for exactness
+                    if (obom->is_exact_match(rid, beg1, end1, overlap_vars[j]))
+                    {
+                        exact = true;
+                        ++exact_overlap;
+                    }
+                    else
+                    {
+                        ++partial_overlap;
+                    }
+                }
+                
+                increment_exact_overlap(h, v, exact_overlap);
+                increment_fuzzy_overlap(h, v, partial_overlap);
+                
+                if (exact)
+                {
+                    ++stats.ab1;
+                }
+                else
+                {
+                    ++stats.ap;
+                }
             }
+            else
+            {
+                ++stats.a;
+            }
+            
+            if (write_partition)
+            {
+                a_odw->write(v);
+            }
+
+            
+            ++no_variants;
         }
 
+        obom->flush(b_odw);
+
+        stats.ab2 += obom->get_no_exact_overlaps();
+        stats.bp += obom->get_no_fuzzy_overlaps();
+        stats.b += obom->get_no_nonoverlaps();
+
         odr->close();
+        
+        if (write_partition)
+        {    
+            a_odw->close();
+            b_odw->close();
+        }
     };
 
     void print_options()
@@ -220,6 +341,15 @@ class Igor : Program
         std::clog << "             input VCF file b   " << input_vcf_files[1] << "\n";
         print_num_op("         [l] left window           ", left_window);
         print_num_op("         [r] right window          ", right_window);
+        if (write_partition)
+        {
+            std::clog << "         [w] write_partition    true (partitions will be written to a.bcf and b.bcf\n";
+        }    
+        else
+        {
+            std::clog << "         [w] write_partition    false\n";
+
+        }
         print_int_op("         [i] intervals             ", intervals);
         std::clog << "\n";
     }
@@ -230,38 +360,43 @@ class Igor : Program
 
         std::clog << "\n";
         std::clog << "stats:\n";
+        fprintf(stderr, "\n"); 
+        fprintf(stderr, "    A :  %d\n",no_variants);  
+        fprintf(stderr, "    B :  %d\n",obom->no_variants);    
+        fprintf(stderr, "\n");    
         fprintf(stderr, "    A-B  %10d \n", stats.a);
         fprintf(stderr, "    A-B~ %10d \n", stats.ap);
-        fprintf(stderr, "    A&B  %10d \n", stats.ab);
+        fprintf(stderr, "    A&B1 %10d \n", stats.ab1);
+        fprintf(stderr, "    A&B2 %10d \n", stats.ab2);
         fprintf(stderr, "    B-A~ %10d \n", stats.bp);
         fprintf(stderr, "    B-A  %10d \n", stats.b);
         fprintf(stderr, "\n");
-        
-        
-        //determine max alleles
-        int32_t max_tr_allele_no = 0;
-        for (uint32_t i = 1; i<joint_allele_dist.size(); ++i)
-        {   
-            if (joint_allele_dist[i].size()>max_tr_allele_no)
-            {
-                max_tr_allele_no = joint_allele_dist[i].size();
-            }
-        }
-        --max_tr_allele_no;
-        
-        std::cerr << "Joint distribution of alleles\n";    
-        for (uint32_t i = 1; i<= max_tr_allele_no; ++i) std::cerr << "\t" << i;
-        std::cerr << "\n";
-        for (uint32_t i = 1; i<joint_allele_dist.size(); ++i)
-        {
-            std::cerr << i ;
-            for (uint32_t j = 1; j<joint_allele_dist[i].size(); ++j)
-            {
-                std::cerr << "\t";
-                std::cerr << joint_allele_dist[i][j];
-            }
-            std::cerr << "\n";
-        }
+
+//
+//        //determine max alleles
+//        int32_t max_tr_allele_no = 0;
+//        for (uint32_t i = 1; i<joint_allele_dist.size(); ++i)
+//        {
+//            if (joint_allele_dist[i].size()>max_tr_allele_no)
+//            {
+//                max_tr_allele_no = joint_allele_dist[i].size();
+//            }
+//        }
+//        --max_tr_allele_no;
+//
+//        std::cerr << "Joint distribution of alleles\n";
+//        for (uint32_t i = 1; i<= max_tr_allele_no; ++i) std::cerr << "\t" << i;
+//        std::cerr << "\n";
+//        for (uint32_t i = 1; i<joint_allele_dist.size(); ++i)
+//        {
+//            std::cerr << i ;
+//            for (uint32_t j = 1; j<joint_allele_dist[i].size(); ++j)
+//            {
+//                std::cerr << "\t";
+//                std::cerr << joint_allele_dist[i][j];
+//            }
+//            std::cerr << "\n";
+//        }
     };
 
     ~Igor() {};

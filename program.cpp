@@ -194,12 +194,58 @@ void Program::parse_intervals(std::vector<GenomeInterval>& intervals, std::strin
  *
  * @filters       - filters stored in this vector
  * @filter_string - comma delimited filters in a string
+ * @n             - ensure that filters vector had n filters.
+ *                  if there are less, just pad with empty strings
+ *                  if there are more, thrown an error. 
+ *                  if n is 0, ignore the previous contraints.
+ * @pad           - if there are less than expected variant expressions
+ *                      when true, the remaining filter expressions are padded with the empty string.
+ *                      when false and only one expression is observed, the remaining filter expressions
+ *                      duplicated with that filter expression.
  */
-void Program::parse_filters(std::vector<std::string>& filters, std::string filter_string)
+void Program::parse_filters(std::vector<std::string>& filters, std::string filter_string, int32_t n, bool pad)
 {
     filters.clear();
     if (filter_string!="")
         split(filters, ",", filter_string);
+    
+    if (n && filters.size()!=0)
+    {
+        if (filters.size()<n)
+        {
+            if (pad)
+            {    
+                while(filters.size()!=n) filters.push_back("");
+                fprintf(stderr, "[%s:%d %s] Number of filters less than expected, padding remaining filters with empty string\n", __FILE__, __LINE__, __FUNCTION__);
+            }
+            else
+            {
+                if (filters.size()==1)
+                {
+                    filters.resize(n, filters[0]);
+                }    
+                else
+                {
+                    fprintf(stderr, "[%s:%d %s] %d filter expressions are expected : %s\n", __FILE__, __LINE__, __FUNCTION__, n, filter_string.c_str());
+                    exit(1);
+                }
+            }
+        }
+        else if (filters.size()>n)
+        {
+            fprintf(stderr, "[%s:%d %s] %d filter expressions are expected : %s\n", __FILE__, __LINE__, __FUNCTION__, n, filter_string.c_str());
+            exit(1);
+        }
+        else
+        {
+            //all is good
+        }
+    }  
+    
+    if (filters.size()==0)
+    {
+        filters.push_back("");
+    }     
 }
 
 /**

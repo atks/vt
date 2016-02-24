@@ -25,6 +25,8 @@
 #define ORDERED_BCF_OVERLAP_MATCHER_H
 
 #include "bcf_ordered_reader.h"
+#include "bcf_ordered_writer.h"
+#include "filter.h"
 #include "hts_utils.h"
 #include "utils.h"
 
@@ -41,7 +43,6 @@ class OrderedBCFOverlapMatcher
     //i/o//
     ///////
     BCFOrderedReader *odr;    
-    
     bcf1_t *v;
     
     GenomeInterval current_interval;
@@ -49,6 +50,15 @@ class OrderedBCFOverlapMatcher
     bool end_of_file;
     int32_t no_regions;
    
+    //////////
+    //filter//
+    //////////
+    std::string fexp;
+    Filter filter;
+    bool filter_exists;
+
+    Variant variant;
+    
 	///////
     //stats
     ///////
@@ -62,6 +72,11 @@ class OrderedBCFOverlapMatcher
      */
     OrderedBCFOverlapMatcher(std::string& file, std::vector<GenomeInterval>& intervals);
 
+    /**
+     * Constructor.
+     */
+    OrderedBCFOverlapMatcher(std::string& file, std::vector<GenomeInterval>& intervals, std::string fexp);
+        
     /**
      * Destructor.
      */
@@ -78,10 +93,23 @@ class OrderedBCFOverlapMatcher
     bool overlaps_with(int32_t rid, int32_t start1, int32_t end1, std::vector<bcf1_t*>& overlap_vars);
     
     /**
+     * Returns true if chrom:start1-end1 overlaps with a region in the file and populates the overlapping variants.
+     * This ensures that all records in the reference VCF is processed to compute accurate overlap statistics.
+     * Flushed variants are written to odw.
+     */
+    bool overlaps_with(int32_t rid, int32_t beg1, int32_t end1, std::vector<bcf1_t*>& overlap_vars, BCFOrderedWriter* odw);
+            
+    /**
      * Flushes remaining variants.
      */
     void flush();
-            
+    
+    /**
+     * Flushes remaining variants.
+     * Flushed variants are written to odw.
+     */
+    void flush(BCFOrderedWriter* odw);
+                
     /**
      * Increments the EXACT_OVERLAPS count of a variant record.
      */
@@ -96,6 +124,13 @@ class OrderedBCFOverlapMatcher
      * Updates the number of non overlapping and non overlapping variants.
      */
     void update_overlap_statistics(bcf1_t* v);
+    
+    /**
+     * Updates the number of non overlapping and non overlapping variants.
+     * This is always invoked when a variant is flushed.
+     * Record is written to odw.
+     */
+    void update_overlap_statistics(bcf1_t* v, BCFOrderedWriter* odw);
     
     /**
      * Get number of exact overlap variants that has been printed and reset no_exact_overlaps.

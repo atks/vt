@@ -88,9 +88,17 @@ class Program
      *
      * @filters       - filters stored in this vector
      * @filter_string - comma delimited filters in a string
+     * @n             - ensure that filters vector had n filters.
+     *                  if there are less, just pad with empty strings
+     *                  if there are more, thrown an error. 
+     *                  if n is 0, ignore the previous contraints.
+     * @pad           - if there are less than expected variant expressions
+     *                      when true, the remaining filter expressions are padded with the empty string.
+     *                      when false and only one expression is observed, the remaining filter expressions
+     *                      duplicated with that filter expression.
      */
-    void parse_filters(std::vector<std::string>& filters, std::string filter_string);
-
+    void parse_filters(std::vector<std::string>& filters, std::string filter_string, int32_t n=0, bool pad=false);
+        
     /**
      * Parse a list of strings delimited by commas.
      *

@@ -38,7 +38,7 @@ class VNTROverlapStats
     VNTROverlapStats()
     {
         a = 0;
-        ap= 0;
+        ap = 0;
         ab1 = 0;
         ab2 = 0;
         bp = 0;
@@ -59,7 +59,7 @@ class Igor : Program
     std::vector<GenomeInterval> intervals;
     std::string interval_list;
     bool debug;
-    
+
     ///////////////////////
     //reference data sets//
     ///////////////////////
@@ -305,7 +305,6 @@ class Igor : Program
                     for (uint32_t j=0; j<overlap_vars.size(); ++j)
                     {
                         //check for exactness
-
                         if (oboms[i]->is_exact_match(rid, start1, end1, overlap_vars[j]))
                         {
                             exact = true;
@@ -368,8 +367,8 @@ class Igor : Program
             if (i==0 && !debug)
             {
                 continue;
-            }    
-            
+            }
+
             fprintf(stderr, "  %s (%d)\n", dataset_labels[i].c_str(), oboms[i]->no_variants);
             fprintf(stderr, "    A-B  %10d \n", stats[i].a);
             fprintf(stderr, "    A-B~ %10d \n", stats[i].ap);
