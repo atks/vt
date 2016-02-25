@@ -56,6 +56,8 @@ class Igor : Program
     uint32_t right_window;
     bool print;
     bool write_partition;
+    std::string a_vcf_file;
+    std::string b_vcf_file;
 
     //////////
     //filter//
@@ -105,6 +107,8 @@ class Igor : Program
             TCLAP::ValueArg<uint32_t> arg_left_window("l", "l", "left window size for overlap []", false, 0, "int", cmd);
             TCLAP::ValueArg<uint32_t> arg_right_window("r", "r", "right window size for overlap []", false, 0, "int", cmd);
             TCLAP::ValueArg<std::string> arg_fexp("f", "f", "filter expression []", false, "", "str", cmd);
+            TCLAP::ValueArg<std::string> arg_a_vcf_file("a", "a", "output file name for first VCF file [a.bcf]", false, "a.bcf", "str", cmd);
+            TCLAP::ValueArg<std::string> arg_b_vcf_file("b", "b", "output file name for second VCF file [b.bcf]", false, "b.bcf", "str", cmd);
             TCLAP::SwitchArg arg_write_partition("w", "w", "write partitioned variants to file", cmd, false);
             TCLAP::SwitchArg arg_quiet("q", "q", "do not print options and summary []", cmd, false);
             TCLAP::UnlabeledMultiArg<std::string> arg_input_vcf_files("<in1.vcf><in2.vcf>", "2 input VCF files for comparison", true, "files", cmd);
@@ -117,6 +121,8 @@ class Igor : Program
             right_window = arg_right_window.getValue();
             parse_filters(fexps, arg_fexp.getValue(), 2, false);
             write_partition = arg_write_partition.getValue();
+            a_vcf_file = arg_a_vcf_file.getValue();
+            b_vcf_file = arg_b_vcf_file.getValue();
             input_vcf_files = arg_input_vcf_files.getValue();
 
             if (input_vcf_files.size()!=2)
@@ -149,10 +155,10 @@ class Igor : Program
         b_odw = NULL;
         if (write_partition)
         {
-            a_odw = new BCFOrderedWriter("a.bcf");
+            a_odw = new BCFOrderedWriter(a_vcf_file);
             a_odw->link_hdr(odr->hdr);
             a_odw->write_hdr();
-            b_odw = new BCFOrderedWriter("b.bcf");
+            b_odw = new BCFOrderedWriter(b_vcf_file);
             b_odw->link_hdr(obom->odr->hdr);
             b_odw->write_hdr();
         }
@@ -323,6 +329,7 @@ class Igor : Program
         stats.b += obom->get_no_nonoverlaps();
 
         odr->close();
+        obom->close();
         
         if (write_partition)
         {    
@@ -344,6 +351,8 @@ class Igor : Program
         if (write_partition)
         {
             std::clog << "         [w] write_partition    true (partitions will be written to a.bcf and b.bcf\n";
+            std::clog << "         [a] output VCF file a  " << a_vcf_file << "\n";
+            std::clog << "         [b] output VCF file b  " << b_vcf_file << "\n";    
         }    
         else
         {
@@ -372,7 +381,6 @@ class Igor : Program
         fprintf(stderr, "    B-A  %10d \n", stats.b);
         fprintf(stderr, "\n");
 
-//
 //        //determine max alleles
 //        int32_t max_tr_allele_no = 0;
 //        for (uint32_t i = 1; i<joint_allele_dist.size(); ++i)

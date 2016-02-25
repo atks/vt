@@ -93,6 +93,8 @@ class VNTR
     std::string exact_lflank;         //left flank
     std::string exact_rflank;         //right flank
 
+    bool exact_ru_ambiguous;
+
     /////////////////
     //fuzzy alignment
     /////////////////
@@ -142,12 +144,26 @@ class VNTR
     /**
      * Reverse complement a sequence.
      */
-    std::string reverse_complement(std::string& seq);
-    
+    static std::string reverse_complement(std::string& seq);
+
+    /**
+     * Return the canonical representation of a motif.
+     * Considers reverse complements too.
+     */
+    static std::string canonicalize2(std::string& motif);
+            
     /**
      * Return the canonical representation of a motif.
      */
-    std::string get_canonical(std::string& motif);
+    static std::string canonicalize(std::string& motif);
+    
+    /**
+     * Checks if a string is periodic.
+     *
+     * Returns the length of the sub motif.
+     * and returns 0 if the motif is periodic.
+     */
+    static int32_t is_periodic(std::string& motif);
     
     /**
      * Checks if a string is aperiodic.

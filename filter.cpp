@@ -519,7 +519,8 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
             }
 
             int32_t info_type = bcf_hdr_id2type(h, BCF_HL_INFO, bcf_hdr_id2int(h, BCF_DT_ID, tag.s));
-
+            bcf_unpack(v, BCF_UN_INFO);
+             
             if (info_type==BCF_HT_FLAG)
             {
                 type |= VT_FLG;

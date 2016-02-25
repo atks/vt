@@ -462,6 +462,14 @@ void OrderedBCFOverlapMatcher::flush(BCFOrderedWriter* odw)
 }
 
 /**
+ * Closes the file.
+ */
+void OrderedBCFOverlapMatcher::close()
+{
+    odr->close();
+}
+
+/**
  * Increments the EXACT_OVERLAPS count of a variant record.
  */
 void OrderedBCFOverlapMatcher::increment_exact_overlap(bcf1_t* v)
@@ -574,7 +582,7 @@ void OrderedBCFOverlapMatcher::update_overlap_statistics(bcf1_t* v, BCFOrderedWr
     if (exact_count) free(exact_count);
     if (fuzzy_count) free(fuzzy_count);
 
-    odw->write(v);
+    if (odw) odw->write(v);
 }
 
 /**

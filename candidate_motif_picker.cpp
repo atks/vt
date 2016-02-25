@@ -174,6 +174,164 @@ void CandidateMotifPicker::set_motif_from_info_field(Variant& variant)
 }
 
 /**
+ * Gets inserted or deleted allele of a biallelic indel.
+ *
+ * Returns true if indel allele is simple and false if ambiguous
+ */
+bool CandidateMotifPicker::get_indel(std::string ref, std::string alt, std::string& indel)
+{
+    //trim right
+    while (ref.size()!=0 && alt.size()!=0 && ref.back()==alt.back())
+    {
+        ref.pop_back();
+        alt.pop_back();
+    }
+
+    //trim left
+    while (ref.size()!=0 && alt.size()!=0 && ref.front()==alt.front())
+    {
+        ref.erase(0,1);
+        alt.erase(0,1);
+    }
+
+    if (ref.size()==0)
+    {
+        indel.assign(alt);
+        return true;
+    }
+
+    if (alt.size()==0)
+    {
+        indel.assign(ref);
+        return true;
+    }
+
+    //not a simple indel
+    if (ref.size()>alt.size())
+    {
+        indel.assign(ref.substr(alt.size(),ref.size()-alt.size()));
+    }
+    else if (ref.size()<alt.size())
+    {
+        indel.assign(alt.substr(ref.size(),alt.size()-ref.size()));
+    }
+    else
+    {
+        fprintf(stderr, "[%s:%d %s] Not an indel!!!!  ref:%s alt:%s\n", __FILE__, __LINE__, __FUNCTION__, ref.c_str(), alt.c_str());
+        exit(1);
+    }
+
+    return false;
+}
+
+/**
+ * Updates the motif of an indel allele.
+ *
+ * Returns true if the motif is from a simple indel.
+ * Returns false if the motif is ambiguous.
+ */
+void CandidateMotifPicker::update_exact_repeat_unit(Variant& variant)
+{
+    VNTR& vntr = variant.vntr;
+    bcf1_t* v = variant.v;
+    char** alleles = bcf_get_allele(v);
+    int32_t n_allele = bcf_get_n_allele(v);
+    std::string ref;
+    std::string alt;
+    std::string indel;
+    std::string indel_repeat_unit;
+
+    if (n_allele==2)
+    {
+        ref.assign(alleles[0]);
+        alt.assign(alleles[1]);
+
+        bool is_simple_indel = get_indel(ref, alt, indel);
+
+        if (is_simple_indel)
+        {
+            int32_t i = VNTR::is_periodic(indel);
+            if (i)
+            {
+                indel_repeat_unit.assign(indel.substr(0, i));
+            }
+            else
+            {
+                indel_repeat_unit.assign(indel);
+            }
+
+//            return true;
+        }
+        else
+        {
+            indel_repeat_unit.assign(indel);
+//            return false;
+        }
+        
+        vntr.exact_ru_ambiguous = !is_simple_indel;
+    }
+    else
+    {
+        bool all_are_simple_indels = true;
+        std::map<std::string, int32_t> indels;
+
+        for (int32_t i=1; i<n_allele; ++i)
+        {
+            ref.assign(alleles[0]);
+            alt.assign(alleles[1]);
+
+            if (ref.size()==alt.size()) continue;
+            
+            bool is_simple_indel =  get_indel(ref, alt, indel);
+            all_are_simple_indels = all_are_simple_indels && is_simple_indel;
+
+            if (is_simple_indel)
+            {
+                int32_t i = VNTR::is_periodic(indel);
+                if (i)
+                {
+                    indel_repeat_unit.assign(indel.substr(0, i)); 
+                }
+                else
+                {
+                    indel_repeat_unit.assign(indel);
+                }
+            }
+            else
+            {
+                indel_repeat_unit.assign(indel);
+            }
+            
+            ++indels[indel_repeat_unit];
+        }
+
+        std::map<std::string, int32_t>::iterator i = indels.begin();
+        std::string best_indel = "";
+        int32_t best_count = 0;
+        while (i!=indels.end())
+        {
+            if (i->second>best_count)
+            {
+                best_indel = i->first;
+                best_count = i->second;
+            }
+
+            ++i;
+        }
+
+        vntr.exact_ru_ambiguous = !all_are_simple_indels;
+//        return all_are_simple_indels;
+    }
+
+    
+    vntr.exact_ru = indel_repeat_unit;
+    vntr.exact_motif = VNTR::canonicalize(indel_repeat_unit);
+    vntr.exact_basis = VNTR::get_basis(vntr.exact_motif);
+    vntr.exact_mlen = vntr.exact_motif.size();
+    vntr.exact_blen = vntr.exact_basis.size();
+}
+
+/**
  * Iterates through the candidate motifs detected in the motif tree.
  *
  *  1. examines it if the motif is represented in the motif tree.
@@ -209,10 +367,6 @@ bool CandidateMotifPicker::next_motif(Variant& variant, int32_t mode)
                 variant.vntr.basis = VNTR::get_basis(cm.motif);
                 variant.vntr.mlen = cm.motif.size();
                 variant.vntr.blen = variant.vntr.basis.size();
-                variant.vntr.exact_motif = variant.vntr.motif;
-                variant.vntr.exact_basis = variant.vntr.basis;
-                variant.vntr.exact_mlen = variant.vntr.mlen;
-                variant.vntr.exact_blen = variant.vntr.blen;
                 variant.vntr.fuzzy_motif = variant.vntr.motif;
                 variant.vntr.fuzzy_basis = variant.vntr.basis;
                 variant.vntr.fuzzy_mlen = variant.vntr.mlen;
@@ -244,10 +398,6 @@ bool CandidateMotifPicker::next_motif(Variant& variant, int32_t mode)
             variant.vntr.basis = VNTR::get_basis(cm.motif);
             variant.vntr.mlen = cm.motif.size();
             variant.vntr.blen = variant.vntr.basis.size();
-            variant.vntr.exact_motif = variant.vntr.motif;
-            variant.vntr.exact_basis = variant.vntr.basis;
-            variant.vntr.exact_mlen = variant.vntr.mlen;
-            variant.vntr.exact_blen = variant.vntr.blen;
             variant.vntr.fuzzy_motif = variant.vntr.motif;
             variant.vntr.fuzzy_basis = variant.vntr.basis;
             variant.vntr.fuzzy_mlen = variant.vntr.mlen;

@@ -109,6 +109,11 @@ class OrderedBCFOverlapMatcher
      * Flushed variants are written to odw.
      */
     void flush(BCFOrderedWriter* odw);
+    
+    /**
+     * Closes the file.
+     */
+    void close();
                 
     /**
      * Increments the EXACT_OVERLAPS count of a variant record.

@@ -48,6 +48,8 @@ void VNTR::clear()
     exact_no_exact_ru = 0;
     exact_total_no_ru = 0;
 
+    exact_ru_ambiguous = false;
+
     fuzzy_repeat_tract.clear();
     fuzzy_beg1 = 0;
     fuzzy_end1 = 0;
@@ -91,8 +93,35 @@ std::string VNTR::reverse_complement(std::string& seq)
 
 /**
  * Return the canonical representation of a motif.
+ * Considers reverse complements too.
  */
-std::string VNTR::get_canonical(std::string& motif)
+std::string VNTR::canonicalize2(std::string& motif)
+{
+    std::string cmotif = motif;
+
+    for (uint32_t i=0; i<motif.size(); ++i)
+    {
+        std::string shifted_motif = shift_str(motif, i);
+        std::string rc_shifted_motif = reverse_complement(shifted_motif);
+        
+        if (shifted_motif < cmotif)
+        {
+            cmotif = shifted_motif;
+        }
+        
+        if (rc_shifted_motif < cmotif)
+        {
+            cmotif = rc_shifted_motif;
+        }
+    }
+
+    return cmotif;
+}
+
+/**
+ * Return the canonical representation of a motif.
+ */
+std::string VNTR::canonicalize(std::string& motif)
 {
     std::string cmotif = motif;
 
@@ -107,6 +136,27 @@ std::string VNTR::get_canonical(std::string& motif)
     }
 
     return cmotif;
+}
+
+/**
+ * Checks if a string is periodic.
+ *
+ * Returns the length of the sub motif.
+ * and returns 0 if the motif is periodic.
+ */
+int32_t VNTR::is_periodic(std::string& motif)
+{
+    for (int32_t i=1; i<=(motif.size()-1); ++i)
+    {
+        std::string smotif = shift_str(motif, i);
+        
+        if (smotif == motif)
+        {
+            return i;
+        }
+    }
+
+    return 0;
 }
 
 /**

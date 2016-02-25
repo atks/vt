@@ -93,6 +93,7 @@ class Igor : Program
     std::string FZ_TRF_SCORE;
 
     std::string FLANKSEQ;
+    std::string EXACT_RU_AMBIGUOUS;
 
     //////////
     //filter//
@@ -231,8 +232,11 @@ class Igor : Program
         FZ_TRF_SCORE = bcf_hdr_append_info_with_backup_naming(odw->hdr, "FZ_TRF_SCORE", "1", "Integer", "TRF Score for M/I/D as 2/-7/-7 in fuzzy repeat tract.", rename);                                 
                                                                                                                                                                                                          
         FLANKSEQ = bcf_hdr_append_info_with_backup_naming(odw->hdr, "FLANKSEQ", "1", "String", "Flanking sequence 10bp on either side of REF.", rename);
+        EXACT_RU_AMBIGUOUS = bcf_hdr_append_info_with_backup_naming(odw->hdr, "EXACT_RU_AMBIGUOUS", "0", "Flag", "Exact motif is ambiguous.", rename);
 
-              ////////////////////////
+        
+
+        ////////////////////////
         //stats initialization//
         ////////////////////////
         no_indels_annotated = 0;
@@ -373,6 +377,8 @@ class Igor : Program
                 bcf_update_info_int32(h, v, EX_RU_COUNTS.c_str(), &exact_ru_count, 2);
                 bcf_update_info_float(h, v, EX_SCORE.c_str(), &vntr.exact_score, 1);
                 bcf_update_info_int32(h, v, EX_TRF_SCORE.c_str(), &vntr.exact_trf_score, 1);
+               
+                if (vntr.exact_ru_ambiguous) bcf_update_info_flag(h, v, "EXACT_RU_AMBIGUOUS", NULL, 1);
                
                 //fuzzy characteristics
                 bcf_update_info_string(h, v, FZ_MOTIF.c_str(), vntr.fuzzy_motif.c_str());

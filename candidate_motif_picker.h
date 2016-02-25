@@ -83,11 +83,24 @@ class CandidateMotifPicker
      * Initialize candidate motif from VCF record.
      */
     void set_motif_from_info_field(Variant& variant);
-    
+  
+    /**
+     * Updates the motif of an indel allele.
+     *
+     * Returns true if the motif is from a simple indel.
+     * Returns false if the motif is ambiguous.
+     */
+    void update_exact_repeat_unit(Variant& variant);
+          
     /**
      * Choose the next best motif.
      */
     bool next_motif(Variant& variant, int32_t mode=NO_REQUIREMENT);
+    
+    /**
+     * Gets inserted or deleted allele of a biallelic indel.
+     */
+    bool get_indel(std::string ref, std::string alt, std::string& indel);
     
     /**
      * Checks if motif is in indel fragment.
