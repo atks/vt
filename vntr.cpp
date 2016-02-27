@@ -82,7 +82,7 @@ bool VNTR::equals(VNTR& vntr)
 std::string VNTR::reverse_complement(std::string& seq)
 {
     std::string reverse_complement_seq = "";
-    for (int32_t i=seq.size()-1; i>0; --i)
+    for (int32_t i=seq.size()-1; i>=0; --i)
     {
         char base = seq.at(i);
         reverse_complement_seq.push_back(complement(base));
@@ -99,6 +99,7 @@ std::string VNTR::canonicalize2(std::string& motif)
 {
     std::string cmotif = motif;
 
+   
     for (uint32_t i=0; i<motif.size(); ++i)
     {
         std::string shifted_motif = shift_str(motif, i);

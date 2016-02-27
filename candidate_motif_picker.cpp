@@ -322,7 +322,6 @@ void CandidateMotifPicker::update_exact_repeat_unit(Variant& variant)
         vntr.exact_ru_ambiguous = !all_are_simple_indels;
 //        return all_are_simple_indels;
     }
-
     
     vntr.exact_ru = indel_repeat_unit;
     vntr.exact_motif = VNTR::canonicalize(indel_repeat_unit);

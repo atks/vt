@@ -254,7 +254,8 @@ class Igor : Program
         Variant variant;
 
         std::vector<bcf1_t *> overlap_vars;
-
+    int32_t d = 0;
+    
         while (odr->read(v))
         {
             if (filter_exists)
@@ -294,6 +295,41 @@ class Igor : Program
                     {
                         ++partial_overlap;
                     }
+                    
+                    ////////////////
+                    //temporary code
+                    /////////////////
+                    
+                    char* ex_ru = NULL;
+                    std::string ru;
+                    int32_t n = 0;
+                    if (bcf_get_info_string(h, v, "EX_RU", &ex_ru, &n)>0)
+                    {
+                        ru.assign(ex_ru);
+                        free(ex_ru);
+                    }
+                    
+                    char* lb_motif = NULL;
+                    std::string motif;
+                    n = 0;
+                    if (bcf_get_info_string(obom->odr->hdr, overlap_vars[j], "MOTIF", &lb_motif, &n)>0)
+                    {
+                        motif.assign(lb_motif);
+                        free(lb_motif);
+                    }
+
+                    
+                                        
+                    std::string c_ru = VNTR::canonicalize2(ru); 
+                    
+//                    if (ru !)
+                    if (c_ru!=motif)
+                    {    
+                        bcf_print_lite(h,v);
+                        std::cerr << "\t" << ru << "\t" << c_ru << "\t" << motif << "\n";
+                    
+                           ++d;
+                    } 
                 }
                 
                 increment_exact_overlap(h, v, exact_overlap);
@@ -321,6 +357,8 @@ class Igor : Program
             
             ++no_variants;
         }
+
+        std::cerr << "discrepancies " << d  << "\n";
 
         obom->flush(b_odw);
 
