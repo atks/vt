@@ -324,7 +324,7 @@ void CandidateMotifPicker::update_exact_repeat_unit(Variant& variant)
     }
     
     vntr.exact_ru = indel_repeat_unit;
-    vntr.exact_motif = VNTR::canonicalize(indel_repeat_unit);
+    vntr.exact_motif = VNTR::canonicalize2(indel_repeat_unit);
     vntr.exact_basis = VNTR::get_basis(vntr.exact_motif);
     vntr.exact_mlen = vntr.exact_motif.size();
     vntr.exact_blen = vntr.exact_basis.size();

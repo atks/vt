@@ -87,7 +87,7 @@ class Igor : Program
     //tools//
     /////////
     VariantManip *vm;
-    
+
 
     Igor(int argc, char **argv)
     {
@@ -149,6 +149,7 @@ class Igor : Program
 
         bcf_hdr_append_info_with_backup_naming(odr->hdr, "EXACT_OVERLAPS", "1", "Integer", "Number of exact overlapping variants with this variant.", true);
         bcf_hdr_append_info_with_backup_naming(odr->hdr, "FUZZY_OVERLAPS", "1", "Integer", "Number of fuzzy overlapping variants with this variant.", true);
+        bcf_hdr_append_info_with_backup_naming(odr->hdr, "OVERLAPPING_VARIANTS", ".", "String", "Overlapping variants with this variant.", true);
         bcf_hdr_sync(odr->hdr);
 
         a_odw = NULL;
@@ -247,6 +248,33 @@ class Igor : Program
         ++joint_allele_dist[no_indel_alleles][no_tandem_repeat_alleles];
     }
 
+    /**
+     * Gets a string representation of a variant with motif if present.
+     */
+    void bcf_variant2string_with_motif(bcf_hdr_t *h, bcf1_t *v, kstring_t *var)
+    {
+        bcf_unpack(v, BCF_UN_STR);
+        var->l = 0;
+        kputs(bcf_get_chrom(h, v), var);
+        kputc(':', var);
+        kputw(bcf_get_pos1(v), var);
+        kputc(':', var);
+        for (size_t i=0; i<bcf_get_n_allele(v); ++i)
+        {
+            if (i) kputc('/', var);
+            kputs(bcf_get_alt(v, i), var);
+        }
+
+        char* motif = NULL;
+        int32_t n = 0;
+        if (bcf_get_info_string(h, v, "MOTIF", &motif, &n)>0)
+        {
+            kputc(':', var);
+            kputs(motif, var);
+            free(motif);
+        }
+    }
+
     void fuzzy_partition()
     {
         bcf1_t *v = bcf_init1();
@@ -254,8 +282,11 @@ class Igor : Program
         Variant variant;
 
         std::vector<bcf1_t *> overlap_vars;
-    int32_t d = 0;
-    
+
+        //temporary code
+        int32_t d = 0;
+//        std::cerr << "variant\tex_ru\tcanonical_ex_ru\tmotif\tlen\tex_repeat_tract_len\tfz_repeat_tract_len\tmultiallelic\n";
+
         while (odr->read(v))
         {
             if (filter_exists)
@@ -274,15 +305,18 @@ class Igor : Program
             int32_t no_tr_alleles = bcf_get_n_allele(v);
             int32_t beg1 = bcf_get_pos1(v);
             int32_t end1 = bcf_get_end1(v);
+            kstring_t var = {0,0,0};
+            kstring_t ovars = {0,0,0};
 
             if (obom->overlaps_with(rid, beg1-left_window, end1+right_window, overlap_vars, b_odw))
             {
                 int32_t no_overlaps = overlap_vars.size();
                 update_joint_allele_dist(no_tr_alleles, no_overlaps);
-                
+
                 bool exact = false;
                 int32_t partial_overlap = 0;
                 int32_t exact_overlap = 0;
+                ovars.l = 0;
                 for (uint32_t j=0; j<overlap_vars.size(); ++j)
                 {
                     //check for exactness
@@ -295,46 +329,80 @@ class Igor : Program
                     {
                         ++partial_overlap;
                     }
-                    
+
+                    //add overlapping
+                    bcf_variant2string_with_motif(obom->odr->hdr, overlap_vars[j], &var);
+                    if (ovars.l) kputc(',', &ovars);
+                    kputs(var.s, &ovars);
+
                     ////////////////
                     //temporary code
                     /////////////////
-                    
-                    char* ex_ru = NULL;
-                    std::string ru;
-                    int32_t n = 0;
-                    if (bcf_get_info_string(h, v, "EX_RU", &ex_ru, &n)>0)
-                    {
-                        ru.assign(ex_ru);
-                        free(ex_ru);
-                    }
-                    
-                    char* lb_motif = NULL;
-                    std::string motif;
-                    n = 0;
-                    if (bcf_get_info_string(obom->odr->hdr, overlap_vars[j], "MOTIF", &lb_motif, &n)>0)
-                    {
-                        motif.assign(lb_motif);
-                        free(lb_motif);
-                    }
 
-                    
-                                        
-                    std::string c_ru = VNTR::canonicalize2(ru); 
-                    
-//                    if (ru !)
-                    if (c_ru!=motif)
-                    {    
-                        bcf_print_lite(h,v);
-                        std::cerr << "\t" << ru << "\t" << c_ru << "\t" << motif << "\n";
-                    
-                           ++d;
-                    } 
+//                    char* old_multiallelic = NULL;
+//                    bool multiallelic = false;
+//                    int32_t n = 0;
+//                    if (bcf_get_info_string(h, v, "OLD_MULTIALLELIC", &old_multiallelic, &n)>0)
+//                    {
+//                        multiallelic = true;
+//                        free(old_multiallelic);
+//                    }
+//
+//                    char* ex_ru = NULL;
+//                    std::string ru;
+//                    n = 0;
+//                    if (bcf_get_info_string(h, v, "RU", &ex_ru, &n)>0)
+//                    {
+//                        ru.assign(ex_ru);
+//                        free(ex_ru);
+//                    }
+//
+//                    char* lb_motif = NULL;
+//                    std::string motif;
+//                    n = 0;
+//                    if (bcf_get_info_string(obom->odr->hdr, overlap_vars[j], "MOTIF", &lb_motif, &n)>0)
+//                    {
+//                        motif.assign(lb_motif);
+//                        free(lb_motif);
+//                    }
+//
+//                    std::string c_ru = VNTR::canonicalize2(ru);
+//
+//                    if (c_ru!=motif)
+//                    {
+//                        ++d;
+//                    }
+//
+//                    int32_t* ex_repeat_region = NULL;
+//                    int32_t ex_beg1, ex_end1;
+//                    n = 0;
+//                    if (bcf_get_info_int32(h, v, "EX_REPEAT_TRACT", &ex_repeat_region, &n)>0)
+//                    {
+//                        ex_beg1 = ex_repeat_region[0];
+//                        ex_end1 = ex_repeat_region[1];
+//                        free(ex_repeat_region);
+//                    }
+//
+//                    int32_t* fz_repeat_region = NULL;
+//                    int32_t fz_beg1, fz_end1;
+//                    n = 0;
+//                    if (bcf_get_info_int32(h, v, "FZ_REPEAT_TRACT", &fz_repeat_region, &n)>0)
+//                    {
+//                        fz_beg1 = fz_repeat_region[0];
+//                        fz_end1 = fz_repeat_region[1];
+//                        free(fz_repeat_region);
+//                    }
+
+
+//                    bcf_print_lite(h,v);
+//                    std::cerr << "\t" << ru << "\t" << c_ru << "\t" << motif << "\t" <<  variant.alleles[0].dlen << "\t" << (ex_end1-ex_beg1+1) << "\t" << (fz_end1-fz_beg1+1) << "\t" << multiallelic  <<"\n";
                 }
-                
+
+                int32_t ret = bcf_update_info_string(h, v, "OVERLAPPING_VARIANTS", ovars.s);
+
                 increment_exact_overlap(h, v, exact_overlap);
                 increment_fuzzy_overlap(h, v, partial_overlap);
-                
+
                 if (exact)
                 {
                     ++stats.ab1;
@@ -348,13 +416,14 @@ class Igor : Program
             {
                 ++stats.a;
             }
-            
+
             if (write_partition)
             {
                 a_odw->write(v);
             }
 
-            
+            if (var.m) free(var.s);
+
             ++no_variants;
         }
 
@@ -368,9 +437,9 @@ class Igor : Program
 
         odr->close();
         obom->close();
-        
+
         if (write_partition)
-        {    
+        {
             a_odw->close();
             b_odw->close();
         }
@@ -390,8 +459,8 @@ class Igor : Program
         {
             std::clog << "         [w] write_partition    true (partitions will be written to a.bcf and b.bcf\n";
             std::clog << "         [a] output VCF file a  " << a_vcf_file << "\n";
-            std::clog << "         [b] output VCF file b  " << b_vcf_file << "\n";    
-        }    
+            std::clog << "         [b] output VCF file b  " << b_vcf_file << "\n";
+        }
         else
         {
             std::clog << "         [w] write_partition    false\n";
@@ -407,10 +476,10 @@ class Igor : Program
 
         std::clog << "\n";
         std::clog << "stats:\n";
-        fprintf(stderr, "\n"); 
-        fprintf(stderr, "    A :  %d\n",no_variants);  
-        fprintf(stderr, "    B :  %d\n",obom->no_variants);    
-        fprintf(stderr, "\n");    
+        fprintf(stderr, "\n");
+        fprintf(stderr, "    A :  %d\n",no_variants);
+        fprintf(stderr, "    B :  %d\n",obom->no_variants);
+        fprintf(stderr, "\n");
         fprintf(stderr, "    A-B  %10d \n", stats.a);
         fprintf(stderr, "    A-B~ %10d \n", stats.ap);
         fprintf(stderr, "    A&B1 %10d \n", stats.ab1);

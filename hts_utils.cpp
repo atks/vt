@@ -967,7 +967,7 @@ void bcf_variant2string_sorted(bcf_hdr_t *h, bcf1_t *v, kstring_t *var)
         kputs(bcf_get_alt(v, 0), var);
         for (size_t i=0; i<v->n_allele-1; ++i)
         {
-            kputc(',', var);
+            kputc('/', var);
             kputs(temp[i], var);
         }
         free(temp);
