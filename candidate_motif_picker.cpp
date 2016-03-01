@@ -241,6 +241,12 @@ void CandidateMotifPicker::update_exact_repeat_unit(Variant& variant)
     std::string indel;
     std::string indel_repeat_unit;
 
+    if (debug)
+    {
+        std::cerr << "********************************************\n";
+        std::cerr << "UPDATE EXACT REPEAT UNIT\n\n";
+    }
+
     if (n_allele==2)
     {
         ref.assign(alleles[0]);
@@ -259,28 +265,49 @@ void CandidateMotifPicker::update_exact_repeat_unit(Variant& variant)
             {
                 indel_repeat_unit.assign(indel);
             }
-
-//            return true;
+            
+            if (debug)
+            {
+                std::cerr << "simple indel: " << ref << "/" << alt << " => " << indel_repeat_unit << "\n";
+            }
         }
         else
         {
             indel_repeat_unit.assign(indel);
-//            return false;
+        
+            if (debug)
+            {
+                std::cerr << "NON simple indel: " << ref << "/" << alt << " => "  << indel_repeat_unit << "\n";
+            }
         }
+        
+        
         
         vntr.exact_ru_ambiguous = !is_simple_indel;
     }
     else
     {
+        if (debug)
+        {
+            std::cerr << "multiallelic: examine all alleles\n";
+        }
+        
         bool all_are_simple_indels = true;
         std::map<std::string, int32_t> indels;
 
         for (int32_t i=1; i<n_allele; ++i)
         {
             ref.assign(alleles[0]);
-            alt.assign(alleles[1]);
+            alt.assign(alleles[i]);
 
-            if (ref.size()==alt.size()) continue;
+            if (debug) std::cerr << "allele: "  << i << "\n";
+            
+
+            if (ref.size()==alt.size()) 
+            {
+                if (debug) std::cerr << "\tnon indel: "  << ref << "/" << alt << "\n";
+                continue;
+            }
             
             bool is_simple_indel =  get_indel(ref, alt, indel);
             all_are_simple_indels = all_are_simple_indels && is_simple_indel;
@@ -296,10 +323,13 @@ void CandidateMotifPicker::update_exact_repeat_unit(Variant& variant)
                 {
                     indel_repeat_unit.assign(indel);
                 }
+                
+                if (debug) std::cerr << "\tsimple indel: " << ref << "/" << alt << " => " << indel_repeat_unit << "\n";
             }
             else
             {
                 indel_repeat_unit.assign(indel);
+                if (debug) std::cerr << "\tNON simple indel: " << ref << "/" << alt << " => " << indel_repeat_unit << "\n";
             }
             
             ++indels[indel_repeat_unit];

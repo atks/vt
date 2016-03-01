@@ -914,13 +914,16 @@ float LFHMM::log10_emission_odds(char probe_base, char read_base, uint32_t pl, f
 //        return -INFINITY;  //is this appropriate in this case?
 //    }
 
+//    std::cerr << "\tq: " << lt->pl2log10_varp(pl) << "\n";
+//    std::cerr << "\tp: " << mismatch_penalty << "\n";
+
     if (read_base!=probe_base)
     {
-        return lt->pl2log10_varp(pl);
+        return lt->pl2log10_varp(pl)-mismatch_penalty;
     }
     else //match
     {
-        return -(lt->pl2log10_varp(pl)-mismatch_penalty);
+        return -lt->pl2log10_varp(pl);
     }
 };
 
@@ -1175,14 +1178,13 @@ void LFHMM::print_alignment(std::string& pad)
         std::cerr << "path not traced\n";
     }
 
-    //std::cerr << "\n";
-    //print_T();
     std::cerr << "\n";
-    std::cerr << "QUAL+33\tMATCH\tMISMATCH\tPENALTY\n";
+    print_T();
+    std::cerr << "\n";
+    par.print();
     int32_t qual = 'K' - 33;
-    std::cerr << "A vs A    : " << log10_emission_odds('A', 'A', qual) << "\n";
-    std::cerr << "A vs C    : " << log10_emission_odds('A', 'C', qual) << "\n";
-    std::cerr << "A vs C p2 : " << log10_emission_odds('A', 'C', qual, 2) << "\n";
+    std::cerr << "Match    A vs A    : " << log10_emission_odds('A', 'A', qual) << "\n";
+    std::cerr << "Mismatch A vs C    : " << log10_emission_odds('A', 'C', qual) << "\n";
     std::cerr << "\n";
 
     std::cerr << "lflank       : " << model[LFLANK] << "\n";

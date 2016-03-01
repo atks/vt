@@ -85,12 +85,22 @@ class LFHMMParameters
         
     LFHMMParameters()
     {
-        delta = 0.0001;
+//        delta = 0.0001;
+        delta = 0.0000001;
         epsilon = 0.001;
         tau = 0.01;
         eta = 0.01;
-        mismatch_penalty = 1;
+        mismatch_penalty = 5;
     };
+    
+    void print()
+    {
+        printf("delta            : %f\n", delta);
+        printf("epsilon          : %f\n", epsilon);
+        printf("tau              : %f\n", tau);
+        printf("eta              : %f\n", eta);
+        printf("mismatch_penalty : %f\n", mismatch_penalty);
+    }
 };
 
 class LFHMM

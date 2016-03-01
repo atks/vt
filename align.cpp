@@ -176,6 +176,12 @@ class Igor : Program
         }
         else if (method=="lfhmm")
         {
+            float delta = 0.0000001;
+            float epsilon = 0.001;
+            float tau = 0.01;
+            float eta = 0.01;
+            float mismatch_penalty = 5;
+            
             LFHMM hmm(debug);
             double llk;
             std::string qual;
@@ -198,10 +204,11 @@ class Igor : Program
         }
         else if (method=="rfhmm")
         {
-            float delta = 0.0001;
-            float epsilon = 0.0005;
+            float delta = 0.0000001;
+            float epsilon = 0.001;
             float tau = 0.01;
             float eta = 0.01;
+            float mismatch_penalty = 5;
             
             RFHMM hmm(debug);
             std::string qual;

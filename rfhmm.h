@@ -87,12 +87,26 @@ class RFHMMParameters
 
     RFHMMParameters()
     {
-        delta = 0.01;
-        epsilon = 0.05;
+//        delta = 0.01;
+//        epsilon = 0.05;
+//        tau = 0.01;
+//        eta = 0.01;
+//        mismatch_penalty = 1;
+        delta = 0.0000001;
+        epsilon = 0.001;
         tau = 0.01;
         eta = 0.01;
-        mismatch_penalty = 1;
+        mismatch_penalty = 5;
     };
+    
+    void print()
+    {
+        std::cerr << "delta            : " << delta << "\n";
+        std::cerr << "epsilon          : " << epsilon << "\n";
+        std::cerr << "tau              : " << tau << "\n";
+        std::cerr << "eta              : " << eta << "\n";
+        std::cerr << "mismatch penalty : " << mismatch_penalty << "\n";
+    }
 };
 
 class RFHMM

@@ -36,11 +36,16 @@ FlankDetector::FlankDetector(std::string& ref_fasta_file, bool debug)
     ///////////////////
     //initialize raHMMs
     ///////////////////
-    float delta = 0.0001;
-    float epsilon = 0.0005;
+//    float delta = 0.0001;
+//    float epsilon = 0.0005;
+//    float tau = 0.01;
+//    float eta = 0.01;
+//    float mismatch_penalty = 3;
+    float delta = 0.0000001;
+    float epsilon = 0.001;
     float tau = 0.01;
     float eta = 0.01;
-    float mismatch_penalty = 3;
+    float mismatch_penalty = 5;
 
     ahmm = new AHMM(false);
     ahmm->set_delta(delta);
