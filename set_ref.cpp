@@ -284,6 +284,10 @@ class Igor : Program
                         }
                     }
                 }
+                else
+                {
+                    fprintf(stderr, "[%s:%d %s] Cannot access tag: %s\n", __FILE__, __LINE__, __FUNCTION__, ref_region_tag.c_str());
+                }
 
                 ++no_variants_with_REF_set;
             }

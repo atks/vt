@@ -210,14 +210,13 @@ void FlankDetector::detect_flanks(bcf_hdr_t* h, bcf1_t *v, Variant& variant, uin
         char* seq;
         int32_t seq_len;
 //        bool encountered_N = false;
-
+        
         while (true)
         {
             //pick 5 bases to the right
             rflank = rs->fetch_seq(variant.chrom.c_str(), vntr.exact_end1+1, vntr.exact_end1+5);
 
             //pick 105 bases for aligning
-
             seq = rs->fetch_seq(variant.chrom.c_str(), vntr.exact_end1-slen, vntr.exact_end1+5);
 
 
@@ -240,7 +239,7 @@ void FlankDetector::detect_flanks(bcf_hdr_t* h, bcf1_t *v, Variant& variant, uin
 
             //this is a hack around rfhmm rigidity in modeling the RUs
             //todo: we should change this to a reverse version of LFHMM!!!!
-            if (rfhmm->get_lflank_read_epos1()>2*vntr.ru.size())
+            if (rfhmm->get_lflank_read_epos1()>std::min((int32_t)(10*vntr.ru.size()), 50))
             {
                 lflank_end1 = vntr.exact_end1-slen-1+1 + rfhmm->get_lflank_read_epos1() - 1;
                 break;
@@ -276,7 +275,8 @@ void FlankDetector::detect_flanks(bcf_hdr_t* h, bcf1_t *v, Variant& variant, uin
 
             if (seq_len) free(seq);
 
-            if (lfhmm->get_rflank_read_epos1()!=INT32_MAX)
+//            if (lfhmm->get_rflank_read_epos1()!=INT32_MAX ||
+            if (lfhmm->get_rflank_read_spos1()<slen-std::min((int32_t)(10*vntr.ru.size()), 50))
             {
                 rflank_beg1 = lflank_end1 - 5 + lfhmm->get_rflank_read_spos1() - 1;
                 break;
