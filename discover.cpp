@@ -134,7 +134,7 @@ class Igor : Program
             //Reads
             TCLAP::ValueArg<uint32_t> arg_read_mapq_cutoff("t", "t", "MAPQ cutoff for alignments (>) [20]", false, 20, "int", cmd);
             TCLAP::SwitchArg arg_ignore_overlapping_read("l", "l", "ignore overlapping reads [false]", cmd, false);
-            TCLAP::ValueArg<uint32_t> arg_read_exclude_flag("a", "a", "read exclude flag [0x0704]", false, 0x0704, "int", cmd);
+            TCLAP::ValueArg<uint32_t> arg_read_exclude_flag("a", "a", "read exclude flag [0x0F04]", false, 0x0F04, "int", cmd);
 
             //Reference Bias
             TCLAP::ValueArg<float> arg_reference_bias("B", "B", "reference bias [0.1]", false, 0.1, "float", cmd);
@@ -380,6 +380,7 @@ class Igor : Program
             //2. secondary alignment
             //3. not passing QC
             //4. PCR or optical duplicate
+            //5. supplementary alignment
             ++no_exclude_flag_reads;
             return false;
         }

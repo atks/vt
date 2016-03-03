@@ -94,11 +94,6 @@ class VNTRAnnotator
      *   x - integrated models
      */
     void annotate(Variant& variant, int32_t amode);
-
-    /**
-     * Returns true if is to be classified as a VNTR
-     */
-    bool is_vntr(Variant& variant, int32_t mode, std::string& method);
 };
 
 #endif

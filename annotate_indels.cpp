@@ -332,7 +332,7 @@ class Igor : Program
                 continue;
             }
 
-            bcf_print_liten(h,v);
+//            bcf_print_liten(h,v);
             
             if (debug)
             {

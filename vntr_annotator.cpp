@@ -113,7 +113,14 @@ void VNTRAnnotator::annotate(Variant& variant, int32_t amode)
         //this cannot possibly fail as next_motif() guarantees it
         if (!cmp->next_motif(variant, CHECK_MOTIF_PRESENCE_IN_ALLELE))
         {
-            std::cerr << "oops, no candidate motif for next step\n";
+            //fall back on exact motif chosen.
+            VNTR& vntr = variant.vntr;
+            vntr.fuzzy_motif = vntr.exact_motif;
+            vntr.fuzzy_basis = vntr.exact_basis;
+            vntr.fuzzy_mlen = vntr.exact_mlen;
+            vntr.fuzzy_blen = vntr.exact_blen;;
+            
+            if (debug) std::cerr << "updating fuzzy motif with exact motifs\n";
         }
 
         //3a. detect flanks
@@ -127,126 +134,5 @@ void VNTRAnnotator::annotate(Variant& variant, int32_t amode)
         if (debug) std::cerr << "============================================\n";
         return;
         
-    }
-}
-
-/**
- * Returns true if is to be classified as an STR
- */
-bool VNTRAnnotator::is_vntr(Variant& variant, int32_t mode, std::string& method)
-{
-    uint32_t mlen = variant.vntr.mlen;
-    uint32_t rlen = variant.vntr.exact_rl;
-    float motif_concordance = 0;
-    uint32_t no_exact_ru = 0;
-
-
-    VNTR& vntr = variant.vntr;
-
-    if (method == "e")
-    {
-        motif_concordance = variant.vntr.exact_score;
-        no_exact_ru = variant.vntr.exact_no_exact_ru;
-    }
-    else if (method == "f")
-    {
-        rlen = variant.vntr.fuzzy_rl;
-        motif_concordance = variant.vntr.fuzzy_score;
-        no_exact_ru = variant.vntr.fuzzy_no_exact_ru;
-    }
-
-    if (mode==TAN_KANG_2015_VNTR)
-    {
-        if (method == "f")
-        {
-            if ((vntr.fuzzy_rl - vntr.mlen)>=6 && vntr.fuzzy_no_exact_ru>=2)
-            {
-                //should we set separate cutoffs for motifs that contain only 2 types of nucleotides?
-                if (vntr.mlen==1 && vntr.fuzzy_score>0.9)
-                {
-                    vntr.definition_support = "f";
-                    return true;
-                }
-                else if (vntr.mlen>1 && vntr.fuzzy_score>0.75)
-                {
-                    vntr.definition_support = "f";
-                    return true;
-                }
-            }
-        }
-
-        //if the fuzzy definition is not caught above, this will fall through to the exact definition.
-
-        if ((vntr.exact_rl - vntr.mlen)>=6 && vntr.exact_no_exact_ru>=2)
-        {
-            //should we set separate cutoffs for motifs that contain only 2 types of nucleotides?
-            //
-            if (vntr.mlen==1 && vntr.exact_score>0.9)
-            {
-                vntr.definition_support = "e";
-                return true;
-            }
-            else if (vntr.mlen>1 && vntr.exact_score>0.75)
-            {
-                vntr.definition_support = "e";
-                return true;
-            }
-        }
-
-        return false;
-    }
-    else if (mode==WILLEMS_2014_STR)
-    {
-        return ((mlen==1 && rlen>=6) ||
-                (mlen==2 && rlen>=11) ||
-                (mlen==3 && rlen>=14) ||
-                (mlen==4 && rlen>=14) ||
-                (mlen==5 && rlen>=16) ||
-                (mlen==6 && rlen>=17) ||
-                (mlen>=7 && rlen>=mlen*2));
-    }
-    else if (mode==ANANDA_2013_STR)
-    {
-        return ((mlen==1 && rlen>=2) ||
-                (mlen==2 && rlen>=4) ||
-                (mlen==3 && rlen>=6) ||
-                (mlen==4 && rlen>=8) ||
-                (mlen==5 && rlen>=10) ||
-                (mlen==6 && rlen>=12) ||
-                (mlen>=7 && rlen>=mlen*2));
-    }
-    else if (mode==FONDON_2012_STR)
-    {
-        return ((mlen==1 && rlen>=6) ||
-                (mlen==2 && rlen>=13) ||
-                (mlen==3 && rlen>=20) ||
-                (mlen==4 && rlen>=23) ||
-                (mlen==5 && rlen>=27) ||
-                (mlen==6 && rlen>=27));
-    }
-    else if (mode==KELKAR_2008_STR)
-    {
-        return ((mlen==1 && rlen>=6) ||
-                (mlen==2 && rlen>=10) ||
-                (mlen==3 && rlen>=6) ||
-                (mlen==4 && rlen>=8) ||
-                (mlen==5 && rlen>=10) ||
-                (mlen==6 && rlen>=12) ||
-                (mlen>=7 && rlen>=mlen*2));
-    }
-    else if (mode==LAI_2003_STR)
-    {
-        return ((mlen==1 && rlen>=6) ||
-                (mlen==2 && rlen>=8) ||
-                (mlen==3 && rlen>=12) ||
-                (mlen==4 && rlen>=16) ||
-                (mlen==5 && rlen>=20) ||
-                (mlen==6 && rlen>=24) ||
-                (mlen>=7 && rlen>=mlen*2));
-    }
-    else
-    {
-        fprintf(stderr, "[%s:%d %s] STR definition mode does not exist: %d\n", __FILE__,__LINE__,__FUNCTION__, mode);
-        exit(1);
     }
 }

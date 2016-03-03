@@ -151,8 +151,8 @@ void FlankDetector::detect_flanks(bcf_hdr_t* h, bcf1_t *v, Variant& variant, uin
 
         }
 
-        vntr.ru = choose_repeat_unit(vntr.exact_repeat_tract, vntr.motif);
-        ahmm->set_model(vntr.ru.c_str());
+        vntr.ru = choose_repeat_unit(vntr.exact_repeat_tract, vntr.exact_motif);
+        ahmm->set_model(vntr.exact_ru.c_str());
         ahmm->align(vntr.exact_repeat_tract.c_str(), qual.c_str());
 
         vntr.exact_score = ahmm->motif_concordance;

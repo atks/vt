@@ -265,24 +265,16 @@ void CandidateMotifPicker::update_exact_repeat_unit(Variant& variant)
             {
                 indel_repeat_unit.assign(indel);
             }
-            
-            if (debug)
-            {
-                std::cerr << "simple indel: " << ref << "/" << alt << " => " << indel_repeat_unit << "\n";
-            }
+
+            if (debug) std::cerr << "simple indel: " << ref << "/" << alt << " => " << indel_repeat_unit << "\n";
         }
         else
         {
             indel_repeat_unit.assign(indel);
-        
-            if (debug)
-            {
-                std::cerr << "NON simple indel: " << ref << "/" << alt << " => "  << indel_repeat_unit << "\n";
-            }
+
+            if (debug) std::cerr << "NON simple indel: " << ref << "/" << alt << " => "  << indel_repeat_unit << "\n";
         }
-        
-        
-        
+
         vntr.exact_ru_ambiguous = !is_simple_indel;
     }
     else
@@ -291,7 +283,7 @@ void CandidateMotifPicker::update_exact_repeat_unit(Variant& variant)
         {
             std::cerr << "multiallelic: examine all alleles\n";
         }
-        
+
         bool all_are_simple_indels = true;
         std::map<std::string, int32_t> indels;
 
@@ -301,14 +293,14 @@ void CandidateMotifPicker::update_exact_repeat_unit(Variant& variant)
             alt.assign(alleles[i]);
 
             if (debug) std::cerr << "allele: "  << i << "\n";
-            
 
-            if (ref.size()==alt.size()) 
+
+            if (ref.size()==alt.size())
             {
                 if (debug) std::cerr << "\tnon indel: "  << ref << "/" << alt << "\n";
                 continue;
             }
-            
+
             bool is_simple_indel =  get_indel(ref, alt, indel);
             all_are_simple_indels = all_are_simple_indels && is_simple_indel;
 
@@ -317,13 +309,13 @@ void CandidateMotifPicker::update_exact_repeat_unit(Variant& variant)
                 int32_t i = VNTR::is_periodic(indel);
                 if (i)
                 {
-                    indel_repeat_unit.assign(indel.substr(0, i)); 
+                    indel_repeat_unit.assign(indel.substr(0, i));
                 }
                 else
                 {
                     indel_repeat_unit.assign(indel);
                 }
-                
+
                 if (debug) std::cerr << "\tsimple indel: " << ref << "/" << alt << " => " << indel_repeat_unit << "\n";
             }
             else
@@ -331,28 +323,34 @@ void CandidateMotifPicker::update_exact_repeat_unit(Variant& variant)
                 indel_repeat_unit.assign(indel);
                 if (debug) std::cerr << "\tNON simple indel: " << ref << "/" << alt << " => " << indel_repeat_unit << "\n";
             }
-            
+
             ++indels[indel_repeat_unit];
         }
 
+        if (debug) std::cerr << "\narbitrating ...\n";
+
         std::map<std::string, int32_t>::iterator i = indels.begin();
-        std::string best_indel = "";
+        std::string best_repeat_unit = "";
         int32_t best_count = 0;
         while (i!=indels.end())
         {
+             if (debug) std::cerr << "\t" << i->first << " : " << i->second << "\n";
+            
             if (i->second>best_count)
             {
-                best_indel = i->first;
+                best_repeat_unit = i->first;
                 best_count = i->second;
             }
 
             ++i;
         }
 
+        if (debug) std::cerr << "select : " <<  best_repeat_unit << " (" << best_count << ")\n";
+
         vntr.exact_ru_ambiguous = !all_are_simple_indels;
-//        return all_are_simple_indels;
+        indel_repeat_unit = best_repeat_unit;
     }
-    
+
     vntr.exact_ru = indel_repeat_unit;
     vntr.exact_motif = VNTR::canonicalize2(indel_repeat_unit);
     vntr.exact_basis = VNTR::get_basis(vntr.exact_motif);
@@ -389,18 +387,21 @@ bool CandidateMotifPicker::next_motif(Variant& variant, int32_t mode)
                 if (debug)
                 {
                     printf("selected: %10s %.2f %.2f\n", mt->pcm.top().motif.c_str(),
-                                                                    mt->pcm.top().score,
-                                                                    mt->pcm.top().fit);
+                                                         mt->pcm.top().score,
+                                                         mt->pcm.top().fit);
                 }
-                variant.vntr.motif = cm.motif;
-                variant.vntr.basis = VNTR::get_basis(cm.motif);
-                variant.vntr.mlen = cm.motif.size();
-                variant.vntr.blen = variant.vntr.basis.size();
-                variant.vntr.fuzzy_motif = variant.vntr.motif;
-                variant.vntr.fuzzy_basis = variant.vntr.basis;
-                variant.vntr.fuzzy_mlen = variant.vntr.mlen;
-                variant.vntr.fuzzy_blen = variant.vntr.blen;
+                
+                VNTR& vntr = variant.vntr;
+                vntr.motif = cm.motif;
+                vntr.basis = VNTR::get_basis(cm.motif);
+                vntr.mlen = cm.motif.size();
+                vntr.blen = vntr.basis.size();
+                vntr.fuzzy_motif = vntr.motif;
+                vntr.fuzzy_basis = vntr.basis;
+                vntr.fuzzy_mlen = vntr.mlen;
+                vntr.fuzzy_blen = vntr.blen;
                 mt->pcm.pop();
+                
                 return true;
             }
             else
