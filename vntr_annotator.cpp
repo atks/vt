@@ -110,8 +110,6 @@ void VNTRAnnotator::annotate(Variant& variant, int32_t amode)
         //2. detect candidate motifs from a reference sequence
         cmp->generate_candidate_motifs(variant);
 
-        
-
         //this cannot possibly fail as next_motif() guarantees it
         if (!cmp->next_motif(variant, CHECK_MOTIF_PRESENCE_IN_ALLELE))
         {

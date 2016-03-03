@@ -166,8 +166,7 @@ class Igor : Program
     {
         ///////////
         //options//
-        ///////////
-        
+        ///////////        
 
         /////////////////////////
         //filter initialization//
@@ -233,8 +232,6 @@ class Igor : Program
                                                                                                                                                                                                          
         FLANKSEQ = bcf_hdr_append_info_with_backup_naming(odw->hdr, "FLANKSEQ", "1", "String", "Flanking sequence 10bp on either side of REF.", rename);
         EXACT_RU_AMBIGUOUS = bcf_hdr_append_info_with_backup_naming(odw->hdr, "EXACT_RU_AMBIGUOUS", "0", "Flag", "Exact motif is ambiguous.", rename);
-
-        
 
         ////////////////////////
         //stats initialization//
@@ -335,7 +332,7 @@ class Igor : Program
                 continue;
             }
 
-//            bcf_print_liten(h,v);
+            bcf_print_liten(h,v);
             
             if (debug)
             {
