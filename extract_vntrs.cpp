@@ -43,38 +43,6 @@ class Igor : Program
     bool debug;
     std::string vntr_classification;
     int32_t vntr_classification_code;
-    bool override_tag;
-    bool add_vntr_record;
-    bool add_flank_annotation;     //add flank annotation
-
-    //helper variables for populating additional VNTR records
-    uint32_t no_samples;
-    int32_t* gts;
-
-    //convenience kstring so that we do not have to free memory ALL the time.
-    kstring_t s;
-
-    std::string MOTIF;
-    std::string RU;
-    std::string BASIS;
-    std::string MLEN;
-    std::string BLEN;
-    std::string REPEAT_TRACT;
-    std::string COMP;
-    std::string ENTROPY;
-    std::string ENTROPY2;
-    std::string KL_DIVERGENCE;
-    std::string KL_DIVERGENCE2;
-    std::string RL;
-    std::string LL;
-    std::string RU_COUNTS;
-    std::string SCORE;
-    std::string TRF_SCORE;
-
-    /////////////
-    //vntr buffer
-    /////////////
-    std::list<VNTR> vntr_buffer; //front is most recent
 
     //////////
     //filter//
@@ -126,8 +94,8 @@ class Igor : Program
                  "              4 : ananda2013   \n"
                  "              5 : willems2014  \n"
                  "              6 : tan_kang2015 \n"
-                 "              7 : exact        \n"
-                 "              8 : fuzzy        \n",
+                 "              7 : exact_vntr   \n"
+                 "              8 : fuzzy_vntr   \n",
                  false, "tan_kang2015", "string", cmd);
             TCLAP::SwitchArg arg_debug("d", "d", "debug [false]", cmd, false);
             TCLAP::UnlabeledValueArg<std::string> arg_input_vcf_file("<in.vcf>", "input VCF file", true, "","file", cmd);
@@ -139,7 +107,6 @@ class Igor : Program
             parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
             vntr_classification = arg_vntr_classification.getValue();
             fexp = arg_fexp.getValue();
-
             debug = arg_debug.getValue();
             ref_fasta_file = arg_ref_fasta_file.getValue();
         }
@@ -152,7 +119,6 @@ class Igor : Program
 
     ~Igor()
     {
-        if (s.m) free(s.s);
     };
 
     void initialize()
@@ -162,42 +128,41 @@ class Igor : Program
         ///////////
         if (vntr_classification == "lai2003")
         {
-            vntr_classification_code = 1;
+            vntr_classification_code = LAI2003;
         }
-        else if (vntr_classification == "kelkar20083")
+        else if (vntr_classification == "kelkar2008")
         {
-            vntr_classification_code = 1;
+            vntr_classification_code = KELKAR2008;
         }
         else if (vntr_classification == "fondon2012")
         {
-            vntr_classification_code = 1;
+            vntr_classification_code = FONDON2012;
         }
         else if (vntr_classification == "ananda2013")
         {
-            vntr_classification_code = 1;
+            vntr_classification_code = ANANDA2013;
         }
         else if (vntr_classification == "willems2014")
         {
-            vntr_classification_code = 1;
+            vntr_classification_code = WILLEMS2014;
         }
         else if (vntr_classification == "tan_kang2015")
         {
-            vntr_classification_code = 1;
+            vntr_classification_code = TAN_KANG2015;
         }
-        else if (vntr_classification == "exact")
+        else if (vntr_classification == "exact_vntr")
         {
-            vntr_classification_code = 1;
+            vntr_classification_code = EXACT_VNTR;
         }
-        else if (vntr_classification == "fuzzy")
+        else if (vntr_classification == "fuzzy_vntr")
         {
-            vntr_classification_code = 1;
+            vntr_classification_code = FUZZY_VNTR;
         }
         else
         {
             fprintf(stderr, "[%s:%d %s] VNTR classification not recognized: %s\n", __FILE__,__LINE__,__FUNCTION__, vntr_classification.c_str());
             exit(1);
         }
-
 
         /////////////////////////
         //filter initialization//
@@ -208,66 +173,11 @@ class Igor : Program
         //////////////////////
         //i/o initialization//
         //////////////////////
-        odr = new BCFOrderedReader(input_vcf_file, intervals);
-        odw = new BCFOrderedWriter(output_vcf_file, 10000);
-        odw->link_hdr(odr->hdr);
-
-        //////////////////////////////
-        //INFO header adding for VCF//
-        //////////////////////////////
-        bool rename = false;
-        MOTIF = bcf_hdr_append_info_with_backup_naming(odw->hdr, "MOTIF", "1", "String", "Canonical motif in a VNTR.", rename);
-        RU = bcf_hdr_append_info_with_backup_naming(odw->hdr, "RU", "1", "String", "Repeat unit in the reference sequence.", rename);
-        BASIS = bcf_hdr_append_info_with_backup_naming(odw->hdr, "BASIS", "1", "String", "Basis nucleotides in the motif.", rename);
-        MLEN = bcf_hdr_append_info_with_backup_naming(odw->hdr, "MLEN", "1", "Integer", "Motif length.", rename);
-        BLEN = bcf_hdr_append_info_with_backup_naming(odw->hdr, "BLEN", "1", "Integer", "Basis length.", rename);
-        REPEAT_TRACT = bcf_hdr_append_info_with_backup_naming(odw->hdr, "REPEAT_TRACT", "2", "Integer", "Boundary of the repeat tract detected by exact alignment.", rename);
-        COMP = bcf_hdr_append_info_with_backup_naming(odw->hdr, "COMP", "4", "Integer", "Composition(%) of bases in an exact repeat tract.", rename);
-        ENTROPY = bcf_hdr_append_info_with_backup_naming(odw->hdr, "ENTROPY", "1", "Float", "Entropy measure of an exact repeat tract [0,2].", rename);
-        ENTROPY2 = bcf_hdr_append_info_with_backup_naming(odw->hdr, "ENTROPY2", "1", "Float", "Dinucleotide entropy measure of an exact repeat tract [0,4].", rename);
-        KL_DIVERGENCE = bcf_hdr_append_info_with_backup_naming(odw->hdr, "KL_DIVERGENCE", "1", "Float", "Kullback-Leibler Divergence of an exact repeat tract.", rename);
-        KL_DIVERGENCE2 = bcf_hdr_append_info_with_backup_naming(odw->hdr, "KL_DIVERGENCE2", "1", "Float", "Dinucleotide Kullback-Leibler Divergence of an exact repeat tract.", rename);
-        RL = bcf_hdr_append_info_with_backup_naming(odw->hdr, "RL", "1", "Integer", "Reference exact repeat tract length in bases.", rename);
-        LL = bcf_hdr_append_info_with_backup_naming(odw->hdr, "LL", "1", "Integer", "Longest exact repeat tract length in bases.", rename);
-        RU_COUNTS = bcf_hdr_append_info_with_backup_naming(odw->hdr, "RU_COUNTS", "2", "Integer", "Number of exact repeat units and total number of repeat units in exact repeat tract.", rename);
-        SCORE = bcf_hdr_append_info_with_backup_naming(odw->hdr, "SCORE", "1", "Float", "Score of repeat unit in exact repeat tract.", rename);
-        TRF_SCORE = bcf_hdr_append_info_with_backup_naming(odw->hdr, "TRF_SCORE", "1", "Integer", "TRF Score for M/I/D as 2/-7/-7 in exact repeat tract.", rename);
-
-        //used in classification
-        std::string TR = bcf_hdr_append_info_with_backup_naming(odw->hdr, "TR", "1", "String", "Tandem repeat associated with this indel.", rename);
-
-        bcf_hdr_append(odw->hdr, "##INFO=<ID=LARGE_REPEAT_REGION,Number=0,Type=Flag,Description=\"Very large repeat region, vt only detects up to 1000bp long regions.\">");
-        bcf_hdr_append(odw->hdr, "##INFO=<ID=FLANKSEQ,Number=1,Type=String,Description=\"Flanking sequence 10bp on either side of detected repeat region.\">");
-
-        //helper variable initialization for adding genotype fields for additional vntr records
-        if (add_vntr_record)
-        {
-            no_samples = bcf_hdr_nsamples(odw->hdr);
-            gts = (int32_t*) malloc(no_samples*sizeof(int32_t));
-            for (uint32_t i=0; i<no_samples; ++i)
-            {
-                gts[i] = 0;
-            }
-        }
-        else
-        {
-            no_samples = 0;
-            gts = NULL;
-        }
-
-        s = {0,0,0};
-
-        ////////////////////////
-        //stats initialization//
-        ////////////////////////
-        no_vntrs_annotated = 0;
-
+         ve = new VNTRExtractor(input_vcf_file, intervals, output_vcf_file, ref_fasta_file);
+         
         ////////////////////////
         //tools initialization//
         ////////////////////////
-        vm = new VariantManip(ref_fasta_file);
-        ve = new VNTRExtractor(input_vcf_file, intervals, output_vcf_file, ref_fasta_file);
-        rs = new ReferenceSequence(ref_fasta_file);
     }
 
     void print_options()
@@ -276,7 +186,6 @@ class Igor : Program
         std::clog << "\n";
         std::clog << "options:     input VCF file(s)        " << input_vcf_file << "\n";
         std::clog << "         [o] output VCF file          " << output_vcf_file << "\n";
-        std::clog << "         [v] add VNTR records         " << (add_vntr_record ? "true" : "false") << "\n";
         print_boo_op("         [d] debug                    ", debug);
         print_ref_op("         [r] ref FASTA file           ", ref_fasta_file);
         print_int_op("         [i] intervals                ", intervals);
@@ -295,15 +204,22 @@ class Igor : Program
         odw->write_hdr();
         bcf1_t *v = ve->odw->get_bcf1_from_pool();
 
-        Variant* variant;
+        Variant* variant = NULL;
         while (ve->odr->read(v))
         {
-            variant = new Variant(ve->odw->hdr, v);
+            variant = new Variant(ve->odr->hdr, v);
+
+            if (filter_exists)
+            {
+                if (!filter.apply(ve->odr->hdr, v, variant, false))
+                {
+                    continue;
+                }
+            }
+
 //            ve->flush_variant_buffer(variant);
             ve->insert_variant_record_into_buffer(variant);
             v = ve->odw->get_bcf1_from_pool();
-
-            ++ve->no_total_variants;
         }
 
 //        ve->flush_variant_buffer();

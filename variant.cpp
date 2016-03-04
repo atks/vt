@@ -497,107 +497,113 @@ int32_t Variant::classify(bcf_hdr_t *h, bcf1_t *v)
  */
 void Variant::update_vntr_from_info_fields(bcf_hdr_t *h, bcf1_t *v)
 {
-    vntr.motif = bcf_get_rid(v);
-    char** allele = bcf_get_allele(v);
-    vntr.exact_repeat_tract.assign(allele[0]);
-
-    char *motif = NULL;
-    int32_t n = 0;
-    if (bcf_get_info_string(h, v, "MOTIF", &motif, &n)>0)
-    {
-        vntr.motif.assign(motif);
-        free(motif);
-
-        vntr.basis = vntr.get_basis(vntr.motif);
-    }
-    else
-    {
-        vntr.motif = "";
-    }
-
-    char *ru = NULL;
-    n = 0;
-    if (bcf_get_info_string(h, v, "RU", &ru, &n)>0)
-    {
-        vntr.ru.assign(ru);
-        free(ru);
-    }
-    else
-    {
-        vntr.ru = "";
-    }
-
-    float *exact_score = NULL;
-    n = 0;
-    if (bcf_get_info_float(h, v, "EX_SCORE", &exact_score, &n)>0)
-    {
-        vntr.exact_score = exact_score[0];
-        free(exact_score);
-    }
-    else
-    {
-        vntr.exact_score = -1;
-    }
-
-    float *fuzzy_score = NULL;
-    n = 0;
-    if (bcf_get_info_float(h, v, "FZ_SCORE", &fuzzy_score, &n)>0)
-    {
-        vntr.fuzzy_score = fuzzy_score[0];
-        free(fuzzy_score);
-    }
-    else
-    {
-        vntr.fuzzy_score = -1;
-    }
-
-    int32_t *flanks = NULL;
-    n = 0;
-    if (bcf_get_info_int32(h, v, "FLANKS", &flanks, &n)>0)
-    {
-        vntr.exact_beg1 = flanks[0];
-        vntr.exact_end1 = flanks[1];
-        free(flanks);
-
-        if (bcf_get_pos1(v)==vntr.exact_beg1 && bcf_get_end1(v)==vntr.exact_end1)
-        {
-            char** allele = bcf_get_allele(v);
-            vntr.exact_repeat_tract.assign(allele[0]);
-        }
-        else
-        {
-            vntr.exact_repeat_tract = "";
-        }
-    }
-    else
-    {
-        vntr.exact_beg1 = bcf_get_pos1(v) - 1;
-        vntr.exact_end1 = bcf_get_end1(v) + 1;
-    }
-
-    int32_t *fuzzy_flanks = NULL;
-    n = 0;
-    if (bcf_get_info_int32(h, v, "FZ_FLANKS", &fuzzy_flanks, &n)>0)
-    {
-        vntr.fuzzy_beg1 = fuzzy_flanks[0];
-        vntr.fuzzy_end1 = fuzzy_flanks[1];
-        free(fuzzy_flanks);
-
-        if (bcf_get_pos1(v)==vntr.fuzzy_beg1 && bcf_get_end1(v)==vntr.fuzzy_end1)
-        {
-            char** allele = bcf_get_allele(v);
-            vntr.fuzzy_repeat_tract.assign(allele[0]);
-        }
-        else
-        {
-            vntr.fuzzy_repeat_tract = "";
-        }
-    }
-    else
-    {
-        vntr.fuzzy_beg1 = 0;
-        vntr.fuzzy_end1 = 0;
-    }
+//    vntr.motif = bcf_get_rid(v);
+//    char** allele = bcf_get_allele(v);
+//    vntr.exact_repeat_tract.assign(allele[0]);
+//    std::string types = {"", "EX_", "FZ_"};
+//    std::string tags = {"MOTIF", "RU", "BASIS", "MLEN", "BLEN", "REPEAT_TRACT", "COMP", "ENTROPY", "ENTROPY2", "KL_DIVERGENCE", "KL_DIVERGENCE2", "RL", "LL", "RU_COUNTS", "SCORE", "TRF_SCORE"};
+//    
+//    for (uint32_t i=0; i<3 ; ++i)
+//    {
+//        
+//        char *motif = NULL;
+//        int32_t n = 0;
+//        if (bcf_get_info_string(h, v, "MOTIF", &motif, &n)>0)
+//        {
+//            vntr.motif.assign(motif);
+//            free(motif);
+//    
+//            vntr.basis = vntr.get_basis(vntr.motif);
+//        }
+//        else
+//        {
+//            vntr.motif = "";
+//        }
+//    
+//        char *ru = NULL;
+//        n = 0;
+//        if (bcf_get_info_string(h, v, "RU", &ru, &n)>0)
+//        {
+//            vntr.ru.assign(ru);
+//            free(ru);
+//        }
+//        else
+//        {
+//            vntr.ru = "";
+//        }
+//    
+//        float *exact_score = NULL;
+//        n = 0;
+//        if (bcf_get_info_float(h, v, "EX_SCORE", &exact_score, &n)>0)
+//        {
+//            vntr.exact_score = exact_score[0];
+//            free(exact_score);
+//        }
+//        else
+//        {
+//            vntr.exact_score = -1;
+//        }
+//    
+//        float *fuzzy_score = NULL;
+//        n = 0;
+//        if (bcf_get_info_float(h, v, "FZ_SCORE", &fuzzy_score, &n)>0)
+//        {
+//            vntr.fuzzy_score = fuzzy_score[0];
+//            free(fuzzy_score);
+//        }
+//        else
+//        {
+//            vntr.fuzzy_score = -1;
+//        }
+//    
+//        int32_t *flanks = NULL;
+//        n = 0;
+//        if (bcf_get_info_int32(h, v, "FLANKS", &flanks, &n)>0)
+//        {
+//            vntr.exact_beg1 = flanks[0];
+//            vntr.exact_end1 = flanks[1];
+//            free(flanks);
+//    
+//            if (bcf_get_pos1(v)==vntr.exact_beg1 && bcf_get_end1(v)==vntr.exact_end1)
+//            {
+//                char** allele = bcf_get_allele(v);
+//                vntr.exact_repeat_tract.assign(allele[0]);
+//            }
+//            else
+//            {
+//                vntr.exact_repeat_tract = "";
+//            }
+//        }
+//        else
+//        {
+//            vntr.exact_beg1 = bcf_get_pos1(v) - 1;
+//            vntr.exact_end1 = bcf_get_end1(v) + 1;
+//        }
+//    
+//        int32_t *fuzzy_flanks = NULL;
+//        n = 0;
+//        if (bcf_get_info_int32(h, v, "FZ_FLANKS", &fuzzy_flanks, &n)>0)
+//        {
+//            vntr.fuzzy_beg1 = fuzzy_flanks[0];
+//            vntr.fuzzy_end1 = fuzzy_flanks[1];
+//            free(fuzzy_flanks);
+//    
+//            if (bcf_get_pos1(v)==vntr.fuzzy_beg1 && bcf_get_end1(v)==vntr.fuzzy_end1)
+//            {
+//                char** allele = bcf_get_allele(v);
+//                vntr.fuzzy_repeat_tract.assign(allele[0]);
+//            }
+//            else
+//            {
+//                vntr.fuzzy_repeat_tract = "";
+//            }
+//        }
+//        else
+//        {
+//            vntr.fuzzy_beg1 = 0;
+//            vntr.fuzzy_end1 = 0;
+//        }
+//    }
 }
 
 /**

@@ -33,6 +33,15 @@
 #include "candidate_motif_picker.h"
 #include "flank_detector.h"
 
+#define LAI2003      0 
+#define KELKAR2008   1
+#define FONDON2012   2
+#define ANANDA2013   3
+#define WILLEMS2014  4
+#define TAN_KANG2015 5
+#define EXACT_VNTR   6
+#define FUZZY_VNTR   7
+
 /**
  * For consolidating overlapping VNTRs.
  */
@@ -50,6 +59,7 @@ class VNTRExtractor
     BCFOrderedReader *odr;
     BCFOrderedWriter *odw;
 
+    int32_t* gts;
     int32_t buffer_window_allowance;
 
     ////////////////
@@ -57,59 +67,37 @@ class VNTRExtractor
     ////////////////
     std::list<Variant *> variant_buffer; //front is most recent
 
-    ////////////
-    //filter ids
-    ////////////
-    char* overlap_snp;
-    char* overlap_indel;
-    char* overlap_vntr;
-    int32_t overlap_snp_id;
-    int32_t overlap_indel_id;
-    int32_t overlap_vntr_id;
+    /////////////
+    //INFO fields
+    /////////////
+    std::string MOTIF;
+    std::string RU;
+    std::string BASIS;
+    std::string MLEN;
+    std::string BLEN;
+    std::string REPEAT_TRACT;
+    std::string COMP;
+    std::string ENTROPY;
+    std::string ENTROPY2;
+    std::string KL_DIVERGENCE;
+    std::string KL_DIVERGENCE2;
+    std::string RL;
+    std::string LL;
+    std::string RU_COUNTS;
+    std::string SCORE;
+    std::string TRF_SCORE;
 
     /////////
     //stats//
     /////////
-    int32_t no_snps;
-    int32_t no_indels;
-    int32_t no_vntrs;
-    int32_t no_other_variants;
-
-    int32_t no_total_variants;
-    int32_t no_overlap_vntrs;
-    std::vector<int32_t> overlapping_vntr_hist;
-    int32_t no_dropped_vntrs;
-
-    //exactness refers to purity of sequence
-    //exact   - concordance is 1
-    //inexact - concordance is <1
-
-    //isolate is a relative measure and refers to a VNTR that does not overlap with any other detected VNTR.
-    //isolated  - does not overlap with another VNTR
-    //clustered - overlaps with other VNTRs
-    int32_t no_isolated_exact_vntrs;
-    int32_t no_perfect_concordance_isolated_exact_vntrs;
-    int32_t no_imperfect_concordance_isolated_exact_vntrs;
-    int32_t no_perfect_concordance_isolated_inexact_vntrs;
-    int32_t no_imperfect_concordance_isolated_inexact_vntrs;
-    int32_t no_isolated_inexact_vntrs;
-    int32_t no_isolated_complete_overlap_vntrs;
-    int32_t no_isolated_incomplete_overlap_vntrs;
-    int32_t no_isolated_partial_overlap_vntrs;
-    int32_t no_isolated_no_overlap_vntrs;
-
-    int32_t no_clustered_exact_vntrs;
-    int32_t no_clustered_inexact_vntrs;
-
-    //for storing basis information
+    int32_t no_variants;
+    int32_t no_added_vntrs;
    
     ///////
     //tools
     ///////
     ReferenceSequence *refseq;
-    CandidateMotifPicker* cmp;
-    FlankDetector* fd;
-
+ 
     /**
      * Constructor.
      */
@@ -155,9 +143,9 @@ class VNTRExtractor
     void flush_variant_buffer();
 
     /**
-     * Creates a VNTR record.
+     * Creates aVariant object representing a VNTR record.
      */
-    void create_vntr_record(bcf_hdr_t* h, bcf1_t *v, Variant& variant);
+    Variant* create_vntr_record(bcf_hdr_t* h, bcf1_t *v);
 
     /**
      * Close.
