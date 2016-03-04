@@ -21,8 +21,8 @@
    THE SOFTWARE.
 */
 
-#ifndef VNTR_CONSOLIDATOR_H
-#define VNTR_CONSOLIDATOR_H
+#ifndef VNTR_EXTRACTOR_H
+#define VNTR_EXTRACTOR_H
 
 #include "hts_utils.h"
 #include "utils.h"
@@ -34,31 +34,9 @@
 #include "flank_detector.h"
 
 /**
- * struct for storing sequence content.
- */
-typedef struct
-{
-    std::string basis; 
-    float proportion; 
-} basis_proportion;
-
-/**
- * Comparator for BCFPtr class.  Used in priority_queue; ensures that
- * records are ordered according to file order.
- */
-class CompareBasisProportion
-{
-    public:
-    bool operator()(basis_proportion& a, basis_proportion& b)
-    {
-        return a.proportion >= b.proportion;
-    }
-};
-
-/**
  * For consolidating overlapping VNTRs.
  */
-class VNTRConsolidator
+class VNTRExtractor
 {
     public:
 
@@ -96,7 +74,7 @@ class VNTRConsolidator
     int32_t no_indels;
     int32_t no_vntrs;
     int32_t no_other_variants;
-    
+
     int32_t no_total_variants;
     int32_t no_overlap_vntrs;
     std::vector<int32_t> overlapping_vntr_hist;
@@ -124,20 +102,19 @@ class VNTRConsolidator
     int32_t no_clustered_inexact_vntrs;
 
     //for storing basis information
-    std::priority_queue<basis_proportion, std::vector<basis_proportion>, CompareBasisProportion> ordered_basis;
-    
+   
     ///////
     //tools
     ///////
     ReferenceSequence *refseq;
     CandidateMotifPicker* cmp;
     FlankDetector* fd;
-    
+
     /**
      * Constructor.
      */
-    VNTRConsolidator(std::string& input_vcf_file, std::vector<GenomeInterval>& intervals, std::string& output_vcf_file, std::string& ref_fasta_file);    
-    
+    VNTRExtractor(std::string& input_vcf_file, std::vector<GenomeInterval>& intervals, std::string& output_vcf_file, std::string& ref_fasta_file);
+
     /**
      * Update distribution of overlapping VNTRs
      */
@@ -166,22 +143,27 @@ class VNTRConsolidator
      * returns true if the multiallelic variant is good to go.
      */
     bool consolidate_multiple_overlapping_vntrs(Variant* variant);
-  
+
     /**
      * Detects a a consistent basis motif in a chain of overlapping VNTRs.
      */
     bool detect_consistent_motifs(Variant* variant);
-    
+
     /**.
      * Flush variant buffer.
      */
     void flush_variant_buffer();
 
     /**
+     * Creates a VNTR record.
+     */
+    void create_vntr_record(bcf_hdr_t* h, bcf1_t *v, Variant& variant);
+
+    /**
      * Close.
      */
     void close();
-    
+
     private:
 };
 

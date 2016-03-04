@@ -84,7 +84,7 @@ class Igor : Program
 
             TCLAP::CmdLine cmd(desc, ' ', version);
             VTOutput my; cmd.setOutput(&my);
-            TCLAP::ValueArg<std::string> arg_ref_vntr_vcf_file("r", "r", "reference VNTR VCF file []", true, "", "str", cmd);
+            TCLAP::ValueArg<std::string> arg_ref_vntr_vcf_file("r", "r", "reference VNTR VCF file []",true, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_intervals("i", "i", "intervals []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "file", cmd);
             TCLAP::ValueArg<int32_t> arg_window_size("w", "w", "window size for local sorting of variants [10000]", false, 10000, "integer", cmd);
@@ -148,7 +148,7 @@ class Igor : Program
      */
     void update_joint_allele_dist(int32_t no_indel_alleles, int32_t no_tandem_repeat_alleles)
     {
-//        
+//
 //        std::cerr << "updating " << no_indel_alleles << " " << no_tandem_repeat_alleles << "\n";
 //        std::cerr << joint_allele_dist.size() <<  " => ";
         if (joint_allele_dist.size()<=no_indel_alleles)
@@ -170,9 +170,7 @@ class Igor : Program
             }
         }
 //        std::cerr << joint_allele_dist[no_indel_alleles].size() <<  "\n";
-       
 
-        
         ++joint_allele_dist[no_indel_alleles][no_tandem_repeat_alleles];
     }
 
@@ -220,16 +218,16 @@ class Igor : Program
                     bcf_variant2string(orom_vntrs->odr->hdr, overlap_vars[i], &old_alleles);
 
                     no_tandem_repeat_alleles = bcf_get_n_allele(overlap_vars[i]) > no_tandem_repeat_alleles ? bcf_get_n_allele(overlap_vars[i]) : no_tandem_repeat_alleles;
-                        
+
 //                    if (no_tandem_repeat_alleles == 1)
 //                    {
 //                        bcf_print(orom_vntrs->odr->hdr, overlap_vars[i]);
-//                    }     
-                    
+//                    }
+
 //                    if (no_indel_alleles == 13)
 //                    {
 //                        bcf_print(h, v);
-//                    }    
+//                    }
                 }
 
                 update_joint_allele_dist(no_indel_alleles, no_tandem_repeat_alleles);
@@ -287,30 +285,30 @@ class Igor : Program
         std::clog << "\n";
 
 
-        //determine max alleles
-        int32_t max_tr_allele_no = 0;
-        for (uint32_t i = 1; i<joint_allele_dist.size(); ++i)
-        {   
-            if (joint_allele_dist[i].size()>max_tr_allele_no)
-            {
-                max_tr_allele_no = joint_allele_dist[i].size();
-            }
-        }
-        --max_tr_allele_no;
-        
-        std::cerr << "Joint distribution of alleles\n";    
-        for (uint32_t i = 1; i<= max_tr_allele_no; ++i) std::cerr << "\t" << i;
-        std::cerr << "\n";
-        for (uint32_t i = 1; i<joint_allele_dist.size(); ++i)
-        {
-            std::cerr << i ;
-            for (uint32_t j = 1; j<joint_allele_dist[i].size(); ++j)
-            {
-                std::cerr << "\t";
-                std::cerr << joint_allele_dist[i][j];
-            }
-            std::cerr << "\n";
-        }
+//        //determine max alleles
+//        int32_t max_tr_allele_no = 0;
+//        for (uint32_t i = 1; i<joint_allele_dist.size(); ++i)
+//        {
+//            if (joint_allele_dist[i].size()>max_tr_allele_no)
+//            {
+//                max_tr_allele_no = joint_allele_dist[i].size();
+//            }
+//        }
+//        --max_tr_allele_no;
+//
+//        std::cerr << "Joint distribution of alleles\n";
+//        for (uint32_t i = 1; i<= max_tr_allele_no; ++i) std::cerr << "\t" << i;
+//        std::cerr << "\n";
+//        for (uint32_t i = 1; i<joint_allele_dist.size(); ++i)
+//        {
+//            std::cerr << i ;
+//            for (uint32_t j = 1; j<joint_allele_dist[i].size(); ++j)
+//            {
+//                std::cerr << "\t";
+//                std::cerr << joint_allele_dist[i][j];
+//            }
+//            std::cerr << "\n";
+//        }
     };
 
     ~Igor() {};

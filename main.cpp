@@ -42,6 +42,7 @@
 #include "decompose2.h"
 #include "discover.h"
 #include "estimate.h"
+#include "extract_vntrs.h"
 #include "fuzzy_partition.h"
 #include "genotype2.h"
 #include "genotype.h"
@@ -189,6 +190,10 @@ int main(int argc, char ** argv)
     else if (argc>1 && cmd=="decompose_blocksub")
     {
         decompose_blocksub(argc-1, ++argv);
+    }
+    else if (argc>1 && cmd=="extract_vntrs")
+    {
+        extract_vntrs(argc-1, ++argv);
     }
     else if (argc>1 && cmd=="annotate_vntrs")
     {

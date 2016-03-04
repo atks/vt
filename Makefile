@@ -39,6 +39,7 @@ SOURCES = align\
 		discover\
 		estimate\
 		estimator\
+		extract_vntrs\
 		filter\
 		flank_detector\
 		fuzzy_aligner\
@@ -109,6 +110,7 @@ SOURCES = align\
 		vntr\
 		vntr_annotator\
 		vntr_consolidator\
+		vntr_extractor\
 		vntr_tree\
 		vntrize\
    	    tbx_ordered_reader\

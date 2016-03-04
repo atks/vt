@@ -41,11 +41,7 @@ class Igor : Program
     std::vector<GenomeInterval> intervals;
     std::string interval_list;
     bool debug;
-    std::string method;                //methods of detection
-    std::string vntr_annotation_mode;  //modes of annotation
-    int32_t vntr_classification;       //vntr classification schemas
     bool override_tag;
-    bool add_vntr_record;
     bool add_flank_annotation;     //add flank annotation
 
     //motif related
@@ -252,11 +248,9 @@ class Igor : Program
         std::clog << "\n";
         std::clog << "options:     input VCF file(s)        " << input_vcf_file << "\n";
         std::clog << "         [o] output VCF file          " << output_vcf_file << "\n";
-        std::clog << "         [v] add VNTR records         " << (add_vntr_record ? "true" : "false") << "\n";
         std::clog << "         [k] add_flank_annotation     " << (add_flank_annotation ? "true" : "false") << "\n";
         print_boo_op("         [d] debug                    ", debug);
         print_ref_op("         [r] ref FASTA file           ", ref_fasta_file);
-        print_boo_op("         [x] override tag             ", override_tag);
         print_int_op("         [i] intervals                ", intervals);
         std::clog << "\n";
     }
