@@ -50,9 +50,9 @@ class Variant
     //location information
     std::string chrom;
     uint32_t rid;
-    uint32_t pos1; //position of first reference base in VCF record
-    uint32_t beg1; //same as pos1
-    uint32_t end1; //same as end1
+    int32_t pos1; //position of first reference base in VCF record
+    int32_t beg1; //same as pos1
+    int32_t end1; //same as end1
     
     //linked VCF record
     bcf_hdr_t* h;

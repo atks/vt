@@ -32,8 +32,9 @@
 #include "candidate_region_extractor.h"
 #include "candidate_motif_picker.h"
 #include "flank_detector.h"
+#include "filter.h"
 
-#define LAI2003      0 
+#define LAI2003      0
 #define KELKAR2008   1
 #define FONDON2012   2
 #define ANANDA2013   3
@@ -62,10 +63,17 @@ class VNTRExtractor
     int32_t* gts;
     int32_t buffer_window_allowance;
 
+    //////////
+    //filter//
+    //////////
+    std::string fexp;
+    Filter filter;
+    bool filter_exists;
+
     ////////////////
     //variant buffer
     ////////////////
-    std::list<Variant *> variant_buffer; //front is most recent
+    std::list<Variant *> vbuffer; //front is most recent
 
     /////////////
     //INFO fields
@@ -87,21 +95,23 @@ class VNTRExtractor
     std::string SCORE;
     std::string TRF_SCORE;
 
+    int32_t vntr_classification;
+
     /////////
     //stats//
     /////////
     int32_t no_variants;
     int32_t no_added_vntrs;
-   
+
     ///////
     //tools
     ///////
     ReferenceSequence *refseq;
- 
+
     /**
      * Constructor.
      */
-    VNTRExtractor(std::string& input_vcf_file, std::vector<GenomeInterval>& intervals, std::string& output_vcf_file, std::string& ref_fasta_file);
+    VNTRExtractor(std::string& input_vcf_file, std::vector<GenomeInterval>& intervals, std::string& output_vcf_file, std::string& fexp, std::string& ref_fasta_file);
 
     /**
      * Update distribution of overlapping VNTRs
@@ -111,12 +121,7 @@ class VNTRExtractor
     /**
      * Inserts a Variant record.
      */
-    void insert_variant_record_into_buffer(Variant* variant);
-
-    /**
-     * Flush variant buffer.
-     */
-    void flush_variant_buffer(Variant* var);
+    void insert(Variant* variant);
 
     /**
      * Compute purity by sequence content.
@@ -137,20 +142,36 @@ class VNTRExtractor
      */
     bool detect_consistent_motifs(Variant* variant);
 
-    /**.
-     * Flush variant buffer.
+    /**
+     * Process.
      */
-    void flush_variant_buffer();
+    void process();
+
+    /**.
+     * Flush buffer.
+     */
+    void flush(Variant* var=NULL);
+
+    /**.
+     * Close files.
+     */
+    void close();
+
+    /**
+     * Process exiting variant.
+     */
+    void process_exit(Variant* var);
+
+
+    /**
+     * Process overlapping variant.
+     */
+    void process_overlap(Variant& nvar, Variant&cvar);
 
     /**
      * Creates aVariant object representing a VNTR record.
      */
     Variant* create_vntr_record(bcf_hdr_t* h, bcf1_t *v);
-
-    /**
-     * Close.
-     */
-    void close();
 
     private:
 };

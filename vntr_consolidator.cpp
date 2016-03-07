@@ -29,7 +29,7 @@
 VNTRConsolidator::VNTRConsolidator(std::string& input_vcf_file, std::vector<GenomeInterval>& intervals, std::string& output_vcf_file, std::string& ref_fasta_file)
 {
     //////////////////////
-    //i/o initialization//
+    //i/o initialization// 
     //////////////////////
     this->input_vcf_file = input_vcf_file;
     this->output_vcf_file = output_vcf_file;
@@ -106,9 +106,9 @@ void VNTRConsolidator::update_overlapping_vntr_hist(int32_t no_overlapping_vntrs
 
 /**
  * Inserts a Variant record.
- * 
+ *
  * VNTR overlapping variants are handled by adding to an existing VNTR record in the vntr_vs vector for consolidation purposes.
- * All other variants are simply added. 
+ * All other variants are simply added.
  */
 void VNTRConsolidator::insert_variant_record_into_buffer(Variant* variant)
 {
@@ -302,7 +302,7 @@ bool VNTRConsolidator::consolidate_multiple_overlapping_vntrs(Variant* variant)
 //                std::cerr << "1" << ") " << motif << "\t" << fuzzy_concordance[0] << "\t" << fuzzy_flanks[0] << "," << fuzzy_flanks[1] << "\n";
 //                std::cerr << "\t" << bcf_get_ref(variant->v) << "\n";
 
-         
+
             if (flanks[0]==fuzzy_flanks[0]  &&
                 flanks[1]==fuzzy_flanks[1])
             {

@@ -54,8 +54,7 @@ class Igor : Program
     ///////
     //i/o//
     ///////
-    BCFOrderedReader *odr;
-    BCFOrderedWriter *odw;
+    VNTRExtractor* ve;
 
     /////////
     //stats//
@@ -66,7 +65,7 @@ class Igor : Program
     //common tools//
     ////////////////
     VariantManip* vm;
-    VNTRExtractor* ve;
+    
     ReferenceSequence* rs;
 
     Igor(int argc, char **argv)
@@ -173,7 +172,7 @@ class Igor : Program
         //////////////////////
         //i/o initialization//
         //////////////////////
-         ve = new VNTRExtractor(input_vcf_file, intervals, output_vcf_file, ref_fasta_file);
+         ve = new VNTRExtractor(input_vcf_file, intervals, output_vcf_file, fexp, ref_fasta_file);
          
         ////////////////////////
         //tools initialization//
@@ -201,29 +200,7 @@ class Igor : Program
 
     void extract_vntrs()
     {
-        odw->write_hdr();
-        bcf1_t *v = ve->odw->get_bcf1_from_pool();
-
-        Variant* variant = NULL;
-        while (ve->odr->read(v))
-        {
-            variant = new Variant(ve->odr->hdr, v);
-
-            if (filter_exists)
-            {
-                if (!filter.apply(ve->odr->hdr, v, variant, false))
-                {
-                    continue;
-                }
-            }
-
-//            ve->flush_variant_buffer(variant);
-            ve->insert_variant_record_into_buffer(variant);
-            v = ve->odw->get_bcf1_from_pool();
-        }
-
-//        ve->flush_variant_buffer();
-//        ve->close();
+        ve->process();
     };
 
     private:
