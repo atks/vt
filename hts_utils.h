@@ -447,6 +447,26 @@ bool bcf_is_passed(bcf_hdr_t *h, bcf1_t *v);
 void bcf_set_id(bcf1_t *v, char* id);
 
 /**
+ * Gets an info string.
+ */
+std::string bcf_get_info_str(bcf_hdr_t *h, bcf1_t *v, const char* tag, std::string default_value = "");
+
+/**
+ * Gets an info integer.
+ */
+int32_t bcf_get_info_int(bcf_hdr_t *h, bcf1_t *v, const char* tag, int32_t default_value = 0);
+
+/**
+ * Gets an info int vector.
+ */
+std::vector<int32_t> bcf_get_info_int_vec(bcf_hdr_t *h, bcf1_t *v, const char* tag, int32_t default_size=0, int32_t default_value=0);
+
+/**
+ * Gets an info float.
+ */
+float bcf_get_info_flt(bcf_hdr_t *h, bcf1_t *v, const char* tag, float default_value = 0);
+
+/**
  * Get allele
  */
 #define bcf_get_allele(v) ((v)->d.allele)

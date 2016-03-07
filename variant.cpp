@@ -84,8 +84,10 @@ Variant::Variant(bcf_hdr_t* h, bcf1_t* v)
     }
     else if (type==VT_VNTR)
     {
-        beg1 = bcf_get_pos1(v);
-        end1 = bcf_get_pos1(v);
+        pos1 = bcf_get_pos1(v);
+        beg1 = bcf_get_pos1(v);       
+        end1 = bcf_get_info_int(h, v, "END", 0);
+        if (!end1) end1 = strlen(bcf_get_allele(v)[0]);
         
         update_vntr_from_info_fields(h, v);
 
@@ -96,15 +98,8 @@ Variant::Variant(bcf_hdr_t* h, bcf1_t* v)
     {
         pos1 = bcf_get_pos1(v);
         beg1 = bcf_get_pos1(v);
-        //end should be obtained from end
-        end1 = bcf_get_pos1(v);
-        int32_t *end = NULL;
-        int32_t n = 0;
-        if (bcf_get_info_int32(h, v, "END", &end, &n)>0)
-        {
-            end1 = end[0];
-            free(end);
-        }
+        end1 = bcf_get_info_int(h, v, "END", 0);
+        if (!end1) end1 = strlen(bcf_get_allele(v)[0]);
     }
 }
 
@@ -495,115 +490,96 @@ int32_t Variant::classify(bcf_hdr_t *h, bcf1_t *v)
 /**
  * Updates VNTR related information from INFO fields.
  */
+void Variant::update_vntr_from_info_fields()
+{    
+    vntr.motif = bcf_get_rid(v);
+    char** allele = bcf_get_allele(v);
+    vntr.exact_repeat_tract.assign(allele[0]);
+    std::string types[3] = {"", "EX_", "FZ_"};
+    std::string tags[16] = {"MOTIF", "RU", "BASIS", "MLEN", "BLEN", "REPEAT_TRACT", "COMP", "ENTROPY", "ENTROPY2", "KL_DIVERGENCE", "KL_DIVERGENCE2", "RL", "LL", "RU_COUNTS", "SCORE", "TRF_SCORE"};
+    
+    vntr.motif = bcf_get_info_str(h, v, "MOTIF");
+    vntr.ru = bcf_get_info_str(h, v, "RU");
+    vntr.basis = bcf_get_info_str(h, v, "BASIS");
+    vntr.mlen = vntr.motif.size();
+    
+    
+    
+    vntr.blen = (int32_t) vntr.basis.size();
+    vntr.repeat_tract = bcf_get_info_str(h, v, "REPEAT_TRACT");
+    std::vector<int32_t> i_vec = bcf_get_info_int_vec(h, v, "COMP", 4, 0);
+    vntr.comp[0] = i_vec[0];
+    vntr.comp[1] = i_vec[1];
+    vntr.comp[2] = i_vec[2];
+    vntr.comp[3] = i_vec[3];
+    vntr.entropy = bcf_get_info_flt(h, v, "ENTROPY");
+    vntr.entropy2 = bcf_get_info_flt(h, v, "ENTROPY2");
+    vntr.kl_divergence = bcf_get_info_flt(h, v, "KL_DIVERGENCE");
+    vntr.kl_divergence2 = bcf_get_info_flt(h, v, "KL_DIVERGENCE2");
+    vntr.rl = bcf_get_info_flt(h, v, "RL");
+    vntr.ll = bcf_get_info_flt(h, v, "LL");
+    i_vec = bcf_get_info_int_vec(h, v, "RU_COUNTS", 2, 0);
+    vntr.no_exact_ru = i_vec[0];
+    vntr.total_no_ru = i_vec[1];
+    vntr.score = bcf_get_info_flt(h, v, "SCORE");
+    vntr.trf_score = bcf_get_info_flt(h, v, "TRF_SCORE");
+
+    vntr.exact_motif = bcf_get_info_str(h, v, "EX_MOTIF");
+    vntr.exact_ru = bcf_get_info_str(h, v, "EX_RU");
+    vntr.exact_basis = bcf_get_info_str(h, v, "EX_BASIS");
+    vntr.exact_mlen = (int32_t) vntr.exact_motif.size();
+    vntr.exact_blen = (int32_t) vntr.exact_basis.size();
+    vntr.exact_repeat_tract = bcf_get_info_str(h, v, "EX_REPEAT_TRACT");
+    i_vec = bcf_get_info_int_vec(h, v, "EX_COMP", 4, 0);
+    vntr.exact_comp[0] = i_vec[0];
+    vntr.exact_comp[1] = i_vec[1];
+    vntr.exact_comp[2] = i_vec[2];
+    vntr.exact_comp[3] = i_vec[3];
+    vntr.exact_entropy = bcf_get_info_flt(h, v, "EX_ENTROPY");
+    vntr.exact_entropy2 = bcf_get_info_flt(h, v, "EX_ENTROPY2");
+    vntr.exact_kl_divergence = bcf_get_info_flt(h, v, "EX_KL_DIVERGENCE");
+    vntr.exact_kl_divergence2 = bcf_get_info_flt(h, v, "EX_KL_DIVERGENCE2");
+    vntr.exact_rl = bcf_get_info_flt(h, v, "EX_RL");
+    vntr.exact_ll = bcf_get_info_flt(h, v, "EX_LL");
+    i_vec = bcf_get_info_int_vec(h, v, "EX_RU_COUNTS", 2, 0);
+    vntr.exact_no_exact_ru = i_vec[0];
+    vntr.exact_total_no_ru = i_vec[1];
+    vntr.exact_score = bcf_get_info_flt(h, v, "EX_SCORE");
+    vntr.exact_trf_score = bcf_get_info_flt(h, v, "EX_TRF_SCORE");   
+    
+    vntr.fuzzy_motif = bcf_get_info_str(h, v, "FZ_MOTIF");
+    vntr.fuzzy_ru = bcf_get_info_str(h, v, "FZ_RU");
+    vntr.fuzzy_basis = bcf_get_info_str(h, v, "FZ_BASIS");
+    vntr.fuzzy_mlen = (int32_t) vntr.fuzzy_motif.size();
+    vntr.fuzzy_blen = (int32_t) vntr.fuzzy_basis.size();
+    vntr.fuzzy_repeat_tract = bcf_get_info_str(h, v, "FZ_REPEAT_TRACT");
+    i_vec = bcf_get_info_int_vec(h, v, "FZ_COMP", 4, 0);
+    vntr.fuzzy_comp[0] = i_vec[0];
+    vntr.fuzzy_comp[1] = i_vec[1];
+    vntr.fuzzy_comp[2] = i_vec[2];
+    vntr.fuzzy_comp[3] = i_vec[3];
+    vntr.fuzzy_entropy = bcf_get_info_flt(h, v, "FZ_ENTROPY");
+    vntr.fuzzy_entropy2 = bcf_get_info_flt(h, v, "FZ_ENTROPY2");
+    vntr.fuzzy_kl_divergence = bcf_get_info_flt(h, v, "FZ_KL_DIVERGENCE");
+    vntr.fuzzy_kl_divergence2 = bcf_get_info_flt(h, v, "FZ_KL_DIVERGENCE2");
+    vntr.fuzzy_rl = bcf_get_info_flt(h, v, "FZ_RL");
+    vntr.fuzzy_ll = bcf_get_info_flt(h, v, "FZ_LL");
+    i_vec = bcf_get_info_int_vec(h, v, "FZ_RU_COUNTS", 2, 0);
+    vntr.fuzzy_no_exact_ru = i_vec[0];
+    vntr.fuzzy_total_no_ru = i_vec[1];
+    vntr.fuzzy_score = bcf_get_info_flt(h, v, "FZ_SCORE");
+    vntr.fuzzy_trf_score = bcf_get_info_flt(h, v, "FZ_TRF_SCORE");
+}
+
+/**
+ * Updates VNTR related information from INFO fields.
+ */
 void Variant::update_vntr_from_info_fields(bcf_hdr_t *h, bcf1_t *v)
 {
-//    vntr.motif = bcf_get_rid(v);
-//    char** allele = bcf_get_allele(v);
-//    vntr.exact_repeat_tract.assign(allele[0]);
-//    std::string types = {"", "EX_", "FZ_"};
-//    std::string tags = {"MOTIF", "RU", "BASIS", "MLEN", "BLEN", "REPEAT_TRACT", "COMP", "ENTROPY", "ENTROPY2", "KL_DIVERGENCE", "KL_DIVERGENCE2", "RL", "LL", "RU_COUNTS", "SCORE", "TRF_SCORE"};
-//    
-//    for (uint32_t i=0; i<3 ; ++i)
-//    {
-//        
-//        char *motif = NULL;
-//        int32_t n = 0;
-//        if (bcf_get_info_string(h, v, "MOTIF", &motif, &n)>0)
-//        {
-//            vntr.motif.assign(motif);
-//            free(motif);
-//    
-//            vntr.basis = vntr.get_basis(vntr.motif);
-//        }
-//        else
-//        {
-//            vntr.motif = "";
-//        }
-//    
-//        char *ru = NULL;
-//        n = 0;
-//        if (bcf_get_info_string(h, v, "RU", &ru, &n)>0)
-//        {
-//            vntr.ru.assign(ru);
-//            free(ru);
-//        }
-//        else
-//        {
-//            vntr.ru = "";
-//        }
-//    
-//        float *exact_score = NULL;
-//        n = 0;
-//        if (bcf_get_info_float(h, v, "EX_SCORE", &exact_score, &n)>0)
-//        {
-//            vntr.exact_score = exact_score[0];
-//            free(exact_score);
-//        }
-//        else
-//        {
-//            vntr.exact_score = -1;
-//        }
-//    
-//        float *fuzzy_score = NULL;
-//        n = 0;
-//        if (bcf_get_info_float(h, v, "FZ_SCORE", &fuzzy_score, &n)>0)
-//        {
-//            vntr.fuzzy_score = fuzzy_score[0];
-//            free(fuzzy_score);
-//        }
-//        else
-//        {
-//            vntr.fuzzy_score = -1;
-//        }
-//    
-//        int32_t *flanks = NULL;
-//        n = 0;
-//        if (bcf_get_info_int32(h, v, "FLANKS", &flanks, &n)>0)
-//        {
-//            vntr.exact_beg1 = flanks[0];
-//            vntr.exact_end1 = flanks[1];
-//            free(flanks);
-//    
-//            if (bcf_get_pos1(v)==vntr.exact_beg1 && bcf_get_end1(v)==vntr.exact_end1)
-//            {
-//                char** allele = bcf_get_allele(v);
-//                vntr.exact_repeat_tract.assign(allele[0]);
-//            }
-//            else
-//            {
-//                vntr.exact_repeat_tract = "";
-//            }
-//        }
-//        else
-//        {
-//            vntr.exact_beg1 = bcf_get_pos1(v) - 1;
-//            vntr.exact_end1 = bcf_get_end1(v) + 1;
-//        }
-//    
-//        int32_t *fuzzy_flanks = NULL;
-//        n = 0;
-//        if (bcf_get_info_int32(h, v, "FZ_FLANKS", &fuzzy_flanks, &n)>0)
-//        {
-//            vntr.fuzzy_beg1 = fuzzy_flanks[0];
-//            vntr.fuzzy_end1 = fuzzy_flanks[1];
-//            free(fuzzy_flanks);
-//    
-//            if (bcf_get_pos1(v)==vntr.fuzzy_beg1 && bcf_get_end1(v)==vntr.fuzzy_end1)
-//            {
-//                char** allele = bcf_get_allele(v);
-//                vntr.fuzzy_repeat_tract.assign(allele[0]);
-//            }
-//            else
-//            {
-//                vntr.fuzzy_repeat_tract = "";
-//            }
-//        }
-//        else
-//        {
-//            vntr.fuzzy_beg1 = 0;
-//            vntr.fuzzy_end1 = 0;
-//        }
-//    }
+    this->h = h;
+    this->v = v;
+
+    update_vntr_from_info_fields();
 }
 
 /**

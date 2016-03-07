@@ -59,6 +59,7 @@ class VNTRExtractor
     std::string output_vcf_file;
     BCFOrderedReader *odr;
     BCFOrderedWriter *odw;
+    int32_t no_samples;
 
     int32_t* gts;
     int32_t buffer_window_allowance;
@@ -111,7 +112,7 @@ class VNTRExtractor
     /**
      * Constructor.
      */
-    VNTRExtractor(std::string& input_vcf_file, std::vector<GenomeInterval>& intervals, std::string& output_vcf_file, std::string& fexp, std::string& ref_fasta_file);
+    VNTRExtractor(std::string& input_vcf_file, std::vector<GenomeInterval>& intervals, std::string& output_vcf_file, std::string& fexp,  int32_t vntr_classification_code, std::string& ref_fasta_file);
 
     /**
      * Update distribution of overlapping VNTRs
@@ -169,9 +170,9 @@ class VNTRExtractor
     void process_overlap(Variant& nvar, Variant&cvar);
 
     /**
-     * Creates aVariant object representing a VNTR record.
+     * Creates a VNTR record based on classification schema.
      */
-    Variant* create_vntr_record(bcf_hdr_t* h, bcf1_t *v);
+    void create_and_insert_vntr(Variant& nvar);
 
     private:
 };

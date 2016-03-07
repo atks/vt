@@ -23,8 +23,10 @@
 
 #include "vntr_extractor.h"
 
-VNTRExtractor::VNTRExtractor(std::string& input_vcf_file, std::vector<GenomeInterval>& intervals, std::string& output_vcf_file, std::string& fexp, std::string& ref_fasta_file)
+VNTRExtractor::VNTRExtractor(std::string& input_vcf_file, std::vector<GenomeInterval>& intervals, std::string& output_vcf_file, std::string& fexp, int32_t vntr_classification_code, std::string& ref_fasta_file)
 {
+    this->vntr_classification = vntr_classification_code;
+
     //////////////////////
     //i/o initialization//
     //////////////////////
@@ -35,10 +37,9 @@ VNTRExtractor::VNTRExtractor(std::string& input_vcf_file, std::vector<GenomeInte
     odr = new BCFOrderedReader(input_vcf_file, intervals);
     odw = new BCFOrderedWriter(output_vcf_file, buffer_window_allowance);
     odw->link_hdr(odr->hdr);
-    odw->write_hdr();
 
     //for adding empty genotype fields for a VCF file with individual information
-    int32_t no_samples = bcf_hdr_nsamples(odw->hdr);
+    no_samples = bcf_hdr_nsamples(odw->hdr);
     gts = NULL;
     if (no_samples)
     {
@@ -48,12 +49,6 @@ VNTRExtractor::VNTRExtractor(std::string& input_vcf_file, std::vector<GenomeInte
             gts[i] = 0;
         }
     }
-    
-    /////////////////////////
-    //filter initialization//
-    /////////////////////////
-    filter.parse(fexp.c_str(), false);
-    filter_exists = fexp=="" ? false : true;
 
     ////////////////////////////////////////////
     //add relevant field for adding VNTR records
@@ -72,18 +67,23 @@ VNTRExtractor::VNTRExtractor(std::string& input_vcf_file, std::vector<GenomeInte
     ENTROPY2 = bcf_hdr_append_info_with_backup_naming(odw->hdr, "ENTROPY2", "1", "Float", "Dinucleotide entropy measure of an exact repeat tract [0,4].", rename);
     KL_DIVERGENCE = bcf_hdr_append_info_with_backup_naming(odw->hdr, "KL_DIVERGENCE", "1", "Float", "Kullback-Leibler Divergence of an exact repeat tract.", rename);
     KL_DIVERGENCE2 = bcf_hdr_append_info_with_backup_naming(odw->hdr, "KL_DIVERGENCE2", "1", "Float", "Dinucleotide Kullback-Leibler Divergence of an exact repeat tract.", rename);
-    RL = bcf_hdr_append_info_with_backup_naming(odw->hdr, "RL", "1", "Integer", "Reference exact repeat tract length in bases.", rename);
-    LL = bcf_hdr_append_info_with_backup_naming(odw->hdr, "LL", "1", "Integer", "Longest exact repeat tract length in bases.", rename);
+    RL = bcf_hdr_append_info_with_backup_naming(odw->hdr, "RL", "1", "Float", "Reference exact repeat tract length in bases.", rename);
+    LL = bcf_hdr_append_info_with_backup_naming(odw->hdr, "LL", "1", "Float", "Longest exact repeat tract length in bases.", rename);
     RU_COUNTS = bcf_hdr_append_info_with_backup_naming(odw->hdr, "RU_COUNTS", "2", "Integer", "Number of exact repeat units and total number of repeat units in exact repeat tract.", rename);
     SCORE = bcf_hdr_append_info_with_backup_naming(odw->hdr, "SCORE", "1", "Float", "Score of repeat unit in exact repeat tract.", rename);
     TRF_SCORE = bcf_hdr_append_info_with_backup_naming(odw->hdr, "TRF_SCORE", "1", "Integer", "TRF Score for M/I/D as 2/-7/-7 in exact repeat tract.", rename);
+    odw->write_hdr();
 
 //    used in classification
 //    std::string TR = bcf_hdr_append_info_with_backup_naming(odw->hdr, "TR", "1", "String", \"Tandem repeat associated with this indel.", rename);
-//
 //    bcf_hdr_append(odw->hdr, "##INFO=<ID=LARGE_REPEAT_REGION,Number=0,Type=Flag,Description=\"Very large repeat region, vt only detects up to 1000bp long regions.\">");
 //    bcf_hdr_append(odw->hdr, "##INFO=<ID=FLANKSEQ,Number=1,Type=String,Description=\"Flanking sequence 10bp on either side of detected repeat region.\">");
-//
+
+    /////////////////////////
+    //filter initialization//
+    /////////////////////////
+    filter.parse(fexp.c_str(), false);
+    filter_exists = fexp=="" ? false : true;
 
     ////////////////////////
     //stats initialization//
@@ -95,10 +95,6 @@ VNTRExtractor::VNTRExtractor(std::string& input_vcf_file, std::vector<GenomeInte
     //tools initialization//
     ////////////////////////
     refseq = new ReferenceSequence(ref_fasta_file);
-
-    ////////////////////////
-    //tools initialization//
-    ////////////////////////
 }
 
 /**
@@ -107,14 +103,9 @@ VNTRExtractor::VNTRExtractor(std::string& input_vcf_file, std::vector<GenomeInte
  */
 void VNTRExtractor::insert(Variant* var)
 {
+    flush(var);
+
     Variant& nvar = *var;
-
-    //create VNTR record
-    if (nvar.type&VT_INDEL)
-    {
-//        create_variant_record(bcf_hdr_t* h, bcf1_t *v, Variant& variant)
-    }
-
 
     std::cerr << "inside insert\n";
 
@@ -202,10 +193,21 @@ void VNTRExtractor::flush(Variant* var)
             i = vbuffer.erase(i);
         }
 
-        bcf1_t* v;
+        bcf_hdr_t *h = odr->hdr;
+        bcf1_t *v = odw->get_bcf1_from_pool();
         while (odr->read(v))
         {
             Variant* var = new Variant(odr->hdr, v);
+
+            if (filter_exists)
+            {
+                if (!filter.apply(h, v, var, false))
+                {
+                    delete(var);
+                    continue;
+                }
+            }
+
             process_exit(var);
         }
     }
@@ -219,23 +221,29 @@ void VNTRExtractor::process()
     bcf_hdr_t *h = odr->hdr;
     bcf1_t *v = odw->get_bcf1_from_pool();
 
-    Variant* variant = NULL;
     while (odr->read(v))
     {
-        variant = new Variant(h, v);
+        Variant* var = new Variant(h, v);
 
         if (filter_exists)
         {
-            if (!filter.apply(h, v, variant, false))
+            if (!filter.apply(h, v, var, false))
             {
+                delete(var);
                 continue;
             }
         }
 
-        bcf_print_liten(h, v);
+        bcf_print(h, v);
 
-        flush(variant);
-        insert(variant);
+
+        if (vntr_classification==EXACT_VNTR)
+        {
+            create_and_insert_vntr(*var);
+        }
+
+        insert(var);
+
         v = odw->get_bcf1_from_pool();
     }
 
@@ -247,7 +255,7 @@ void VNTRExtractor::process()
 /**
  * Process overlapping variant.
  */
-void VNTRExtractor::process_overlap(Variant& nvar, Variant&cvar)
+void VNTRExtractor::process_overlap(Variant& nvar, Variant& cvar)
 {
 //    if (nvar.beg1 > cvar.beg1)
 //    {
@@ -320,23 +328,61 @@ void VNTRExtractor::close()
 /**
  * Creates a VNTR record based on classification schema.
  */
-Variant* VNTRExtractor::create_vntr_record(bcf_hdr_t* h, bcf1_t *v)
+void VNTRExtractor::create_and_insert_vntr(Variant& nvar)
 {
+    //convert all indels into their corresponding VNTR representation using exact parameters
     if (vntr_classification==EXACT_VNTR)
     {
-//        VNTR& variant = variant.variant;
-//
-//        bcf1_t* v = bcf_init();
-//
-//        //VNTR position and sequences
-//        bcf_set_pos1(v, variant.exact_beg1);
-//        s.l = 0;
-//        kputs(variant.exact_repeat_tract.c_str(), &s);
-//        kputc(',', &s);
-//        kputs("<VNTR>", &s);
-//        bcf_update_alleles_str(h, v, s.s);
-//
-//        //update flanking sequences
+         VNTR& vntr = nvar.vntr;
+
+        //create a new copy of bcf1_t
+        bcf_hdr_t* h = nvar.h;
+        nvar.update_vntr_from_info_fields();
+        bcf1_t* nv = bcf_init1();
+        bcf_clear(nv);
+
+        std::cerr << "INSPECT :" <<  vntr.exact_repeat_tract << ":\n";
+
+        if (vntr.exact_repeat_tract == "")
+        {
+            refseq->fetch_seq(nvar.chrom, vntr.exact_beg1, vntr.exact_end1, vntr.exact_repeat_tract);
+
+            std::cerr << "\tfetch :" <<  vntr.exact_repeat_tract << ":\n";
+        }
+
+        bcf_set_rid(nv, nvar.rid);
+        bcf_set_pos1(nv, vntr.exact_beg1);
+        kstring_t s = {0,0,0};
+        kputs(vntr.exact_repeat_tract.c_str(), &s);
+        kputc(',', &s);
+        kputs("<VNTR>", &s);
+        bcf_update_alleles_str(h, nv, s.s);
+        if (s.m) free(s.s);
+
+        if (no_samples) bcf_update_genotypes(h, nv, gts, no_samples);
+
+        bcf_update_info_string(h, nv, MOTIF.c_str(), vntr.exact_motif.c_str());
+        bcf_update_info_string(h, nv, BASIS.c_str(), vntr.exact_basis.c_str());
+        bcf_update_info_string(h, nv, RU.c_str(), vntr.exact_ru.c_str());
+        bcf_update_info_int32(h, nv, MLEN.c_str(), &vntr.exact_mlen, 1);
+        bcf_update_info_int32(h, nv, BLEN.c_str(), &vntr.exact_blen, 1);
+        int32_t is[2] = {vntr.exact_no_exact_ru, vntr.exact_total_no_ru};
+        bcf_update_info_int32(h, nv, REPEAT_TRACT.c_str(), &is, 2);
+        bcf_update_info_int32(h, nv, COMP.c_str(), &vntr.exact_comp, 4);
+        bcf_update_info_float(h, nv, ENTROPY.c_str(), &vntr.exact_entropy, 1);
+        bcf_update_info_float(h, nv, ENTROPY2.c_str(), &vntr.exact_entropy2, 1);
+        bcf_update_info_float(h, nv, KL_DIVERGENCE.c_str(), &vntr.exact_kl_divergence, 1);
+        bcf_update_info_float(h, nv, KL_DIVERGENCE2.c_str(), &vntr.exact_kl_divergence2, 1);
+        bcf_update_info_float(h, nv, RL.c_str(), &vntr.exact_rl, 1);
+        bcf_update_info_float(h, nv, LL.c_str(), &vntr.exact_ll, 1);
+        int32_t ru_count[2] = {vntr.exact_no_exact_ru, vntr.exact_total_no_ru};
+        bcf_update_info_int32(h, nv, RU_COUNTS.c_str(), &ru_count, 2);
+        bcf_update_info_float(h, nv, SCORE.c_str(), &vntr.exact_score, 1);
+        bcf_update_info_int32(h, nv, TRF_SCORE.c_str(), &vntr.exact_trf_score, 1);
+
+        bcf_print(h, nv);
+
+        //update flanking sequences
 //        if (add_flank_annotation)
 //        {
 //            update_flankseq(h, v, variant.chrom.c_str(),
@@ -344,44 +390,7 @@ Variant* VNTRExtractor::create_vntr_record(bcf_hdr_t* h, bcf1_t *v)
 //                            variant.vntr.exact_end1+1, variant.vntr.exact_end1+10);
 //        }
 //
-//        //shared fields
-//
-//        bcf_set_rid(v, variant.rid);
-//        bcf_update_info_string(h, v, MOTIF.c_str(), variant.motif.c_str());
-//        bcf_update_info_string(h, v, BASIS.c_str(), variant.basis.c_str());
-//        bcf_update_info_string(h, v, RU.c_str(), variant.ru.c_str());
-//
-//        bcf_update_info_float(h, v, SCORE.c_str(), &variant.exact_motif_concordance, 1);
-//        bcf_update_info_float(h, v, RL.c_str(), &variant.exact_rl, 1);
-//        bcf_update_info_float(h, v, LL.c_str(), &variant.exact_ll, 1);
-//        int32_t ru_count[2] = {variant.exact_no_exact_ru, variant.exact_total_no_ru};
-//        bcf_update_info_int32(h, v, RU_COUNTS.c_str(), &ru_count, 2);
-//        int32_t flank_pos1[2] = {variant.variant.exact_beg1-1, variant.variant.exact_end1+1};
-//        bcf_update_info_int32(h, v, FLANKS.c_str(), &flank_pos1, 2);
-//
-//
-////        std::string MOTIF;
-////        std::string RU;
-////        std::string BASIS;
-////        std::string MLEN;
-////        std::string BLEN;
-////        std::string REPEAT_TRACT;
-////        std::string COMP;
-////        std::string ENTROPY;
-////        std::string ENTROPY2;
-////        std::string KL_DIVERGENCE;
-////        std::string KL_DIVERGENCE2;
-////        std::string RL;
-////        std::string LL;
-////        std::string RU_COUNTS;
-////        std::string SCORE;
-////        std::string TRF_SCORE;
-//
-//        if (no_samples) bcf_update_genotypes(h, v, gts, no_samples);
+
     }
 
-    return NULL;
 }
-
-
-

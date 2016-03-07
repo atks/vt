@@ -57,10 +57,12 @@ class VNTR
     int32_t comp[4];            //composition of bases in repeat tract
     float entropy ;             //sequence entropy of repeat tract
     float entropy2;             //dinucleotide sequence entropy of repeat tract
+    float kl_divergence;        //Kullback-Leibler divergence of repeat tract
+    float kl_divergence2;       //dinucleotide Kullback-Leibler divergence of repeat tract
     int32_t beg1;               //beginning of repeat tract
     int32_t end1;               //end of repeat tract
-    int32_t rl;                 //length of repeat tract in base pairs
-    int32_t ll;                 //length of repeat tract (including longest alternate allele) in base pairs
+    float rl;                   //length of repeat tract inrepeat units
+    float ll;                   //length of repeat tract (including longest alternate allele) in repeat units
     int32_t no_exact_ru;        //number exact repeat units from hmm
     int32_t total_no_ru;        //total no of repeat units from hmm
     float score;                //motif concordance from hmm
@@ -84,8 +86,8 @@ class VNTR
     float exact_kl_divergence2;       //dinucleotide Kullback-Leibler divergence of repeat tract
     int32_t exact_beg1;               //beginning of repeat tract
     int32_t exact_end1;               //end of repeat tract
-    int32_t exact_rl;                 //length of repeat tract in base pairs
-    int32_t exact_ll;                 //length of repeat tract (including longest alternate allele) in base pairs
+    float exact_rl;                   //length of repeat tract in repeat units
+    float exact_ll;                   //length of repeat tract (including longest alternate allele) inrepeat units
     int32_t exact_no_exact_ru;        //number exact repeat units from hmm
     int32_t exact_total_no_ru;        //total no of repeat units from hmm
     float exact_score;                //motif concordance from hmm
@@ -111,8 +113,8 @@ class VNTR
     float fuzzy_kl_divergence2;       //dinucleotide Kullback-Leibler divergence of repeat tract    
     int32_t fuzzy_beg1;               //beginning of repeat tract
     int32_t fuzzy_end1;               //end of repeat tract
-    int32_t fuzzy_rl;                 //length of repeat tract in base pairs
-    int32_t fuzzy_ll;                 //length of repeat tract (including longest alternate allele) in base pairs
+    float fuzzy_rl;                   //length of repeat tract in repeat units
+    float fuzzy_ll;                   //length of repeat tract (including longest alternate allele) in repeat units
     int32_t fuzzy_no_exact_ru;        //number exact repeat units from hmm
     int32_t fuzzy_total_no_ru;        //total no of repeat units from hmm
     float fuzzy_score;                //motif concordance from hmm

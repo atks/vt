@@ -114,6 +114,11 @@ class ReferenceSequence
     /**
      * Fetches sequence chrom:beg1-end1.
      */
+    void fetch_seq(std::string& chrom, int32_t beg1, int32_t end1, std::string& seq);
+
+    /**
+     * Fetches sequence chrom:beg1-end1.
+     */
     void fetch_seq(const char* chrom, int32_t beg1, int32_t end1, std::string& seq);
 
     /**

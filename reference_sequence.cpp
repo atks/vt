@@ -124,6 +124,19 @@ void ReferenceSequence::fetch_seq(std::string& chrom, int32_t start1, int32_t en
 /**
  * Fetches sequence chrom:beg1-end1.
  */
+void ReferenceSequence::fetch_seq(std::string& chrom, int32_t beg1, int32_t end1, std::string& seq)
+{
+    char* temp_seq = fetch_seq(chrom.c_str(), beg1, end1);
+    if (temp_seq)
+    {
+        seq.assign(temp_seq);
+        free(temp_seq);
+    }
+};
+
+/**
+ * Fetches sequence chrom:beg1-end1.
+ */
 void ReferenceSequence::fetch_seq(const char* chrom, int32_t beg1, int32_t end1, std::string& seq)
 {
     char* temp_seq = fetch_seq(chrom, beg1, end1);

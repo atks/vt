@@ -65,7 +65,7 @@ class Igor : Program
     //common tools//
     ////////////////
     VariantManip* vm;
-    
+
     ReferenceSequence* rs;
 
     Igor(int argc, char **argv)
@@ -172,8 +172,8 @@ class Igor : Program
         //////////////////////
         //i/o initialization//
         //////////////////////
-         ve = new VNTRExtractor(input_vcf_file, intervals, output_vcf_file, fexp, ref_fasta_file);
-         
+         ve = new VNTRExtractor(input_vcf_file, intervals, output_vcf_file, fexp,  vntr_classification_code, ref_fasta_file);
+
         ////////////////////////
         //tools initialization//
         ////////////////////////
@@ -186,6 +186,7 @@ class Igor : Program
         std::clog << "options:     input VCF file(s)        " << input_vcf_file << "\n";
         std::clog << "         [o] output VCF file          " << output_vcf_file << "\n";
         print_boo_op("         [d] debug                    ", debug);
+        print_str_op("         [c] VNTR classification      ", vntr_classification);
         print_ref_op("         [r] ref FASTA file           ", ref_fasta_file);
         print_int_op("         [i] intervals                ", intervals);
         std::clog << "\n";

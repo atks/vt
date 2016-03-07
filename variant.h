@@ -124,6 +124,11 @@ class Variant
     /**
      * Updates VNTR related information from INFO fields.
      */
+    void update_vntr_from_info_fields();
+
+    /**
+     * Updates VNTR related information from INFO fields.
+     */
     void update_vntr_from_info_fields(bcf_hdr_t *h, bcf1_t *v);
 
     /**

@@ -1082,3 +1082,87 @@ void bcf_set_id(bcf1_t *v, char* id)
 
     v->d.id = strdup(id);
 };
+
+/**
+ * Gets an info string.
+ */
+std::string bcf_get_info_str(bcf_hdr_t *h, bcf1_t *v, const char* tag, std::string default_value)
+{
+    std::string str = "";
+    char* s = NULL;
+    int32_t n = 0;
+    if (bcf_get_info_string(h, v, tag, &s, &n)>0)
+    {
+        str.assign(s);
+        free(s);
+    }
+    else
+    {
+        return default_value;
+    }
+    
+    return str;    
+}
+
+/**
+ * Gets an info integer.
+ */
+int32_t bcf_get_info_int(bcf_hdr_t *h, bcf1_t *v, const char* tag, int32_t default_value)
+{
+    int32_t i = 0;
+    int32_t* temp_i = NULL;
+    int32_t n = 0;
+    if (bcf_get_info_int32(h, v, tag, &temp_i, &n)>0)
+    {
+        i = *temp_i;
+        free(temp_i);
+    }
+    else
+    {
+        return default_value;
+    }
+    
+    return i;    
+}
+
+/**
+ * Gets an info int vector.
+ */
+std::vector<int32_t> bcf_get_info_int_vec(bcf_hdr_t *h, bcf1_t *v, const char* tag, int32_t default_size, int32_t default_value)
+{
+    std::vector<int32_t> i_vec;
+    int32_t* temp_i = NULL;
+    int32_t n = 0;
+    if (bcf_get_info_int32(h, v, tag, &temp_i, &n)>0)
+    {
+        for (int32_t j=0; j<n; ++j) i_vec.push_back(temp_i[j]);
+        free(temp_i);
+    }
+    else
+    {
+        i_vec.resize(default_size, default_value);
+    }
+    
+    return i_vec;    
+}
+
+/**
+ * Gets an info float.
+ */
+float bcf_get_info_flt(bcf_hdr_t *h, bcf1_t *v, const char* tag, float default_value)
+{
+    float f = 0;
+    float* temp_f = NULL;
+    int32_t n = 0;
+    if (bcf_get_info_float(h, v, tag, &temp_f, &n)>0)
+    {
+        f = *temp_f;
+        free(temp_f);
+    }
+    else
+    {
+        return default_value;
+    }
+    
+    return f;    
+}
