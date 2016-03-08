@@ -89,18 +89,23 @@ FlankDetector::~FlankDetector()
 
 /**
  * Detect repeat region.
+ *
+ * updates
+ * beg1
+ * end1
+ * repeat_tract
  */
-void FlankDetector::detect_flanks(bcf_hdr_t* h, bcf1_t *v, Variant& variant, uint32_t mode)
+void FlankDetector::detect_flanks(Variant& variant, uint32_t mode)
 {
     VNTR& vntr = variant.vntr;
 
     //simple single base pair clipping of ends
-    if (mode==CLIP_ENDS)
+    if (mode==EXACT)
     {
         if (debug)
         {
             std::cerr << "********************************************\n";
-            std::cerr << "CLIP ENDS\n";
+            std::cerr << "EXACT\n";
             std:: cerr << "\n";
         }
 
@@ -150,24 +155,6 @@ void FlankDetector::detect_flanks(bcf_hdr_t* h, bcf1_t *v, Variant& variant, uin
 
         }
 
-        vntr.ru = choose_repeat_unit(vntr.exact_repeat_tract, vntr.exact_motif);
-        ahmm->set_model(vntr.exact_ru.c_str());
-        ahmm->align(vntr.exact_repeat_tract.c_str(), qual.c_str());
-
-        vntr.exact_score = ahmm->motif_concordance;
-        vntr.exact_trf_score = ahmm->trf_score;
-        vntr.exact_no_exact_ru = ahmm->exact_motif_count;
-        vntr.exact_total_no_ru = ahmm->motif_count;
-        vntr.exact_rl = vntr.exact_repeat_tract.size();
-        vntr.exact_ll = vntr.exact_rl + variant.max_dlen;
-
-        compute_composition_and_entropy(vntr.exact_repeat_tract);
-        vntr.exact_comp[0] = comp[0];
-        vntr.exact_comp[1] = comp[1];
-        vntr.exact_comp[2] = comp[2];
-        vntr.exact_comp[3] = comp[3];
-        vntr.exact_entropy = entropy;
-
         if (debug)
         {
             std::cerr << "\n";
@@ -181,7 +168,7 @@ void FlankDetector::detect_flanks(bcf_hdr_t* h, bcf1_t *v, Variant& variant, uin
             std::cerr << "\n";
         }
     }
-    else if (mode==FRAHMM)
+    else if (mode==FUZZY)
     {
         if (debug)
         {
@@ -218,7 +205,7 @@ void FlankDetector::detect_flanks(bcf_hdr_t* h, bcf1_t *v, Variant& variant, uin
             rs->fetch_seq(variant.chrom, vntr.exact_end1-slen, vntr.exact_end1+5, seq);
 
 
-            rfhmm->set_model(vntr.ru.c_str(), rflank.c_str());
+            rfhmm->set_model(vntr.exact_ru.c_str(), rflank.c_str());
             rfhmm->align(seq.c_str(), qual.c_str());
             if (debug) rfhmm->print_alignment();
 
@@ -264,7 +251,7 @@ void FlankDetector::detect_flanks(bcf_hdr_t* h, bcf1_t *v, Variant& variant, uin
             //pick 105 bases for aligning
             rs->fetch_seq(variant.chrom, lflank_end1-5, lflank_end1+slen-1, seq);
 
-            lfhmm->set_model(lflank.c_str(), vntr.ru.c_str());
+            lfhmm->set_model(lflank.c_str(), vntr.exact_ru.c_str());
             lfhmm->align(seq.c_str(), qual.c_str());
             if (debug) lfhmm->print_alignment();
 
@@ -287,17 +274,10 @@ void FlankDetector::detect_flanks(bcf_hdr_t* h, bcf1_t *v, Variant& variant, uin
                     std::cerr << "extending the reference sequence for LFHMM : " << slen << "\n";
             }
         }
-        
+
         vntr.fuzzy_beg1 = lflank_end1+1;
         vntr.fuzzy_end1 = rflank_beg1-1;
         rs->fetch_seq(variant.chrom, lflank_end1+1, rflank_beg1-1, vntr.fuzzy_repeat_tract);
-        vntr.fuzzy_score = lfhmm->motif_concordance;
-        vntr.fuzzy_trf_score = lfhmm->trf_score;
-        vntr.fuzzy_no_exact_ru = lfhmm->exact_motif_count;
-        vntr.fuzzy_total_no_ru = lfhmm->motif_count;
-//        vntr.fuzzy_ref = lfhmm->frac_no_repeats; lfhmm->frac_no_repeats
-        vntr.fuzzy_rl = vntr.fuzzy_end1 - vntr.fuzzy_beg1 + 1;
-        vntr.fuzzy_ll = vntr.fuzzy_rl + variant.max_dlen;     
     }
 };
 
@@ -429,6 +409,16 @@ void FlankDetector::polish_repeat_tract_ends(std::string& repeat_tract, std::str
 
 /**
  * Computes purity score of a sequence with respect to a motif.
+ *
+ * updates
+ * 1. ru
+ * 2. score
+ * 3. trf_score
+ * 4. no_exact_ru
+ * 5. total_no_ru
+ * 6. alen
+ * 7. rl
+ * 8. ll
  */
 void FlankDetector::compute_purity_score(Variant& variant, int32_t amode)
 {
@@ -451,7 +441,7 @@ void FlankDetector::compute_purity_score(Variant& variant, int32_t amode)
     {
         compute_purity_score(vntr.exact_repeat_tract, vntr.exact_motif);
 
-        vntr.ru = ru;
+        vntr.exact_ru = ru;
         vntr.exact_score = score;
         vntr.exact_trf_score = trf_score;
         vntr.exact_no_exact_ru = no_exact_ru;
@@ -463,8 +453,8 @@ void FlankDetector::compute_purity_score(Variant& variant, int32_t amode)
     if (amode&FUZZY)
     {
         compute_purity_score(vntr.fuzzy_repeat_tract, vntr.fuzzy_motif);
-        
-        vntr.ru = ru;
+
+        vntr.fuzzy_ru = ru;
         vntr.fuzzy_score = score;
         vntr.fuzzy_trf_score = trf_score;
         vntr.fuzzy_no_exact_ru = no_exact_ru;
@@ -538,6 +528,13 @@ void FlankDetector::compute_purity_score(std::string& repeat_tract, std::string&
 
 /**
  * Computes composition and entropy ofrepeat tract.
+ *
+ * updates
+ * 1. comp
+ * 2. entropy
+ * 3. entropy2
+ * 4. kl_divergence
+ * 5. kl_divergence2
  */
 void FlankDetector::compute_composition_and_entropy(Variant& variant, int32_t amode)
 {
@@ -550,6 +547,7 @@ void FlankDetector::compute_composition_and_entropy(Variant& variant, int32_t am
         vntr.comp[1] = comp[1];
         vntr.comp[2] = comp[2];
         vntr.comp[3] = comp[3];
+
         vntr.entropy = entropy;
         vntr.entropy2 = entropy2;
         vntr.kl_divergence = kl_divergence;
@@ -562,6 +560,7 @@ void FlankDetector::compute_composition_and_entropy(Variant& variant, int32_t am
         vntr.exact_comp[1] = comp[1];
         vntr.exact_comp[2] = comp[2];
         vntr.exact_comp[3] = comp[3];
+
         vntr.exact_entropy = entropy;
         vntr.exact_entropy2 = entropy2;
         vntr.exact_kl_divergence = kl_divergence;
@@ -633,8 +632,10 @@ void FlankDetector::compute_composition_and_entropy(std::string& repeat_tract)
     kl_divergence = p[0] + p[1] + p[2] + p[3];
     kl_divergence = entropy + 2*kl_divergence;
     kl_divergence = std::round(100*kl_divergence)/100;
+    kl_divergence = fix_neg_zero(kl_divergence);
     entropy = -entropy;
-    entropy = std::round(100*entropy)/100;
+    entropy =  std::round(100*entropy)/100;
+    entropy =  fix_neg_zero(entropy);
 
     comp[0] = std::round(p[0] * 100);
     comp[1] = std::round(p[1] * 100);
@@ -671,9 +672,11 @@ void FlankDetector::compute_composition_and_entropy(std::string& repeat_tract)
         }
         kl_divergence2 = entropy2 + 4*kl_divergence2;
         kl_divergence2 = std::round(100*kl_divergence2)/100;
+        kl_divergence2 = fix_neg_zero(kl_divergence2);
         entropy2 = -entropy2;
         entropy2 = std::round(100*entropy2)/100;
-
+        entropy2 = fix_neg_zero(entropy2);
+    
 //        std::cerr << "tract: " << repeat_tract << "\n";
 //        std::cerr << "AA: " << aux_comp2[0] << " " << p2[0] << "\n";
 //        std::cerr << "AC: " << aux_comp2[1] << " " << p2[1] << "\n";

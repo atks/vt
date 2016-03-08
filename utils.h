@@ -34,13 +34,9 @@
 #include <map>
 #include <list>
 #include <queue>
-//
-//#include <cstdlib>
-//#include <cstdint>
-//#include <cstring>
-//#include <cmath>
-//#include <cfloat>
-//#include <algorithm>
+
+#define fix_neg_zero(f) ((f)==0?0:(f))
+
 /**
  * Splits a line into a vector - PERL style
  */

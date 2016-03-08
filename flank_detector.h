@@ -62,6 +62,13 @@ class FlankDetector
     int32_t max_end0;
     std::string polished_repeat_tract;
 
+    /////////////////
+    //flank variables
+    /////////////////
+    int32_t beg1;
+    int32_t end1;
+    std::string repeat_tract;
+
     ////////////////////////
     //purity score variables
     ////////////////////////
@@ -97,10 +104,21 @@ class FlankDetector
      */
     ~FlankDetector();
 
+//    /**
+//     * Computes purity score of a sequence with respect to a motif.
+//     */
+//    void compute_purity_score(Variant& variant, int32_t amode);
+//
+//    /**
+//     * Computes purity score of a sequence with respect to a motif.
+//     */
+//    void detect_flanks(std::string& repeat_tract, std::string& motif);
+//        
+
     /**
      * Detect repeat region.
      */
-    void detect_flanks(bcf_hdr_t* h, bcf1_t *v, Variant& variant, uint32_t mode);
+    void detect_flanks(Variant& variant, uint32_t mode);
 
     /**
      * Shifts a string.

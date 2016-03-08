@@ -76,6 +76,7 @@ void VNTRAnnotator::annotate(Variant& variant, int32_t amode)
     //VNTRs from other sources.
     if (variant.type==VT_VNTR)
     {
+        if (debug) std::cerr << "============================================\n";
         if (debug) std::cerr << "ANNOTATING VNTR/STR \n";
         
         //1. pick candidate region
@@ -87,7 +88,7 @@ void VNTRAnnotator::annotate(Variant& variant, int32_t amode)
         //3. compute purity scores
         fd->compute_purity_score(variant, FINAL);
 
-        //4. compute purity scores
+        //4. compute composition and sequence statistics
         fd->compute_composition_and_entropy(variant, FINAL);
     }
     //main purpose - annotation of Indels.
@@ -118,6 +119,7 @@ void VNTRAnnotator::annotate(Variant& variant, int32_t amode)
             //fall back on exact motif chosen.
             VNTR& vntr = variant.vntr;
             vntr.fuzzy_motif = vntr.exact_motif;
+            vntr.fuzzy_ru = vntr.exact_ru;
             vntr.fuzzy_basis = vntr.exact_basis;
             vntr.fuzzy_mlen = vntr.exact_mlen;
             vntr.fuzzy_blen = vntr.exact_blen;;
@@ -125,20 +127,15 @@ void VNTRAnnotator::annotate(Variant& variant, int32_t amode)
             if (debug) std::cerr << "updating fuzzy motif with exact motifs\n";
         }
 
-        //3a. detect flanks
-        fd->detect_flanks(h, v, variant, CLIP_ENDS);
+        fd->detect_flanks(variant, EXACT);
+        fd->compute_purity_score(variant, EXACT);
+        fd->compute_composition_and_entropy(variant, EXACT);
 
-        //3b. evaluate reference length
-        fd->detect_flanks(h, v, variant, FRAHMM);
-
-
-
-
-        //3. compute purity scores
+        fd->detect_flanks(variant, FUZZY);
+        fd->compute_purity_score(variant, FUZZY);
         fd->compute_composition_and_entropy(variant, FUZZY);
 
         //introduce reiteration based on concordance and exact concordance.
-
 
         if (debug)
         {
