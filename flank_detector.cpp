@@ -143,7 +143,6 @@ void FlankDetector::detect_flanks(bcf_hdr_t* h, bcf1_t *v, Variant& variant, uin
             }
         }
         //this is for nonexistent repeat units
-        //
         // RU : T
         // repeat_tract : G[T]C where T is an insert
         else if (vntr.exact_repeat_tract.size()==2)
@@ -161,14 +160,14 @@ void FlankDetector::detect_flanks(bcf_hdr_t* h, bcf1_t *v, Variant& variant, uin
         vntr.exact_total_no_ru = ahmm->motif_count;
         vntr.exact_rl = vntr.exact_repeat_tract.size();
         vntr.exact_ll = vntr.exact_rl + variant.max_dlen;
-        
+
         compute_composition_and_entropy(vntr.exact_repeat_tract);
         vntr.exact_comp[0] = comp[0];
         vntr.exact_comp[1] = comp[1];
         vntr.exact_comp[2] = comp[2];
         vntr.exact_comp[3] = comp[3];
         vntr.exact_entropy = entropy;
-            
+
         if (debug)
         {
             std::cerr << "\n";
@@ -201,31 +200,27 @@ void FlankDetector::detect_flanks(bcf_hdr_t* h, bcf1_t *v, Variant& variant, uin
 
         int32_t slen = 100;
 
-        char* rflank = NULL;
-        char* lflank = NULL;
+        std::string rflank;
+        std::string lflank;
 
         int32_t lflank_end1;
         int32_t rflank_beg1;
 
-        char* seq;
+        std::string seq;
         int32_t seq_len;
-//        bool encountered_N = false;
-        
+
         while (true)
         {
             //pick 5 bases to the right
-            rflank = rs->fetch_seq(variant.chrom.c_str(), vntr.exact_end1+1, vntr.exact_end1+5);
+            rs->fetch_seq(variant.chrom, vntr.exact_end1+1, vntr.exact_end1+5, rflank);
 
             //pick 105 bases for aligning
-            seq = rs->fetch_seq(variant.chrom.c_str(), vntr.exact_end1-slen, vntr.exact_end1+5);
+            rs->fetch_seq(variant.chrom, vntr.exact_end1-slen, vntr.exact_end1+5, seq);
 
 
-            rfhmm->set_model(vntr.ru.c_str(), rflank);
-            rfhmm->align(seq, qual.c_str());
+            rfhmm->set_model(vntr.ru.c_str(), rflank.c_str());
+            rfhmm->align(seq.c_str(), qual.c_str());
             if (debug) rfhmm->print_alignment();
-
-            if (rflank) free(rflank);
-            if (seq) free(seq);
 
             //////////////////////
             //fuzzy left alignment
@@ -264,16 +259,14 @@ void FlankDetector::detect_flanks(bcf_hdr_t* h, bcf1_t *v, Variant& variant, uin
         //pick 5 bases to right
         while(true)
         {
-            lflank = rs->fetch_seq(variant.chrom.c_str(), lflank_end1-5, lflank_end1);
+            rs->fetch_seq(variant.chrom, lflank_end1-5, lflank_end1, lflank);
 
             //pick 105 bases for aligning
-            char* seq = rs->fetch_seq(variant.chrom.c_str(), lflank_end1-5, lflank_end1+slen-1);
+            rs->fetch_seq(variant.chrom, lflank_end1-5, lflank_end1+slen-1, seq);
 
-            lfhmm->set_model(lflank, vntr.ru.c_str());
-            lfhmm->align(seq, qual.c_str());
+            lfhmm->set_model(lflank.c_str(), vntr.ru.c_str());
+            lfhmm->align(seq.c_str(), qual.c_str());
             if (debug) lfhmm->print_alignment();
-
-            if (seq_len) free(seq);
 
 //            if (lfhmm->get_rflank_read_epos1()!=INT32_MAX ||
             if (lfhmm->get_rflank_read_spos1()<slen-std::min((int32_t)(10*vntr.ru.size()), 50))
@@ -294,40 +287,17 @@ void FlankDetector::detect_flanks(bcf_hdr_t* h, bcf1_t *v, Variant& variant, uin
                     std::cerr << "extending the reference sequence for LFHMM : " << slen << "\n";
             }
         }
-        if (lflank) free(lflank);
-
-        lflank = rs->fetch_seq(variant.chrom.c_str(), lflank_end1-10, lflank_end1);
-        rflank = rs->fetch_seq(variant.chrom.c_str(), rflank_beg1, rflank_beg1 +10-1);
-
+        
         vntr.fuzzy_beg1 = lflank_end1+1;
         vntr.fuzzy_end1 = rflank_beg1-1;
-        int32_t repeat_tract_len;
-        char* repeat_tract = rs->fetch_seq(variant.chrom.c_str(), lflank_end1, rflank_beg1-1-1);
-        vntr.fuzzy_repeat_tract.assign(repeat_tract);
-        if (repeat_tract) free(repeat_tract);
+        rs->fetch_seq(variant.chrom, lflank_end1+1, rflank_beg1-1, vntr.fuzzy_repeat_tract);
         vntr.fuzzy_score = lfhmm->motif_concordance;
         vntr.fuzzy_trf_score = lfhmm->trf_score;
         vntr.fuzzy_no_exact_ru = lfhmm->exact_motif_count;
         vntr.fuzzy_total_no_ru = lfhmm->motif_count;
-        vntr.fuzzy_rl = rflank_beg1-lflank_end1-1;
-        vntr.fuzzy_ll = vntr.fuzzy_rl + variant.max_dlen;
-        
-        if (lflank) free(lflank);
-        if (rflank) free(rflank);
-
-        compute_composition_and_entropy(vntr.fuzzy_repeat_tract);
-        vntr.fuzzy_comp[0] = comp[0];
-        vntr.fuzzy_comp[1] = comp[1];
-        vntr.fuzzy_comp[2] = comp[2];
-        vntr.fuzzy_comp[3] = comp[3];
-        vntr.fuzzy_entropy = entropy;
-
-        if (debug)
-        {
-            std::cerr << "\n";
-            vntr.print();
-            std::cerr << "\n";
-        }
+//        vntr.fuzzy_ref = lfhmm->frac_no_repeats; lfhmm->frac_no_repeats
+        vntr.fuzzy_rl = vntr.fuzzy_end1 - vntr.fuzzy_beg1 + 1;
+        vntr.fuzzy_ll = vntr.fuzzy_rl + variant.max_dlen;     
     }
 };
 
@@ -362,7 +332,7 @@ std::string FlankDetector::choose_repeat_unit(std::string& seq, std::string& mot
     }
 
     //cannot find, try reverse complement
-    
+
 
     //should return empty string
     return motif;
@@ -409,7 +379,7 @@ void FlankDetector::polish_repeat_tract_ends(std::string& repeat_tract, std::str
         std::cerr << "repeat tract : " << repeat_tract << " (" << repeat_tract.size() << ")\n";
         std::cerr << "motif        : " << motif  << "\n";
     }
-    
+
     min_beg0 = repeat_tract.size();
     max_end0 = -1;
     int32_t mlen = motif.size();
@@ -448,9 +418,9 @@ void FlankDetector::polish_repeat_tract_ends(std::string& repeat_tract, std::str
     }
 
     polished_repeat_tract = repeat_tract.substr(min_beg0, max_end0-min_beg0+1);
-    
+
     if (debug)
-    {    
+    {
         std::cerr << "min beg      : " << min_beg0 << "\n";
         std::cerr << "max end      : " << max_end0 << "\n";
         std::cerr << "polished     : " << polished_repeat_tract << "\n";
@@ -463,11 +433,11 @@ void FlankDetector::polish_repeat_tract_ends(std::string& repeat_tract, std::str
 void FlankDetector::compute_purity_score(Variant& variant, int32_t amode)
 {
     VNTR& vntr = variant.vntr;
-     
+
     if (amode&FINAL)
     {
         compute_purity_score(vntr.repeat_tract, vntr.motif);
-        
+
         vntr.ru = ru;
         vntr.score = score;
         vntr.trf_score = trf_score;
@@ -476,11 +446,11 @@ void FlankDetector::compute_purity_score(Variant& variant, int32_t amode)
         vntr.rl = rl;
         vntr.ll = rl + variant.max_dlen;
     }
-    
+
     if (amode&EXACT)
-    {    
-        compute_purity_score(vntr.exact_repeat_tract, vntr.motif);
-        
+    {
+        compute_purity_score(vntr.exact_repeat_tract, vntr.exact_motif);
+
         vntr.ru = ru;
         vntr.exact_score = score;
         vntr.exact_trf_score = trf_score;
@@ -489,10 +459,10 @@ void FlankDetector::compute_purity_score(Variant& variant, int32_t amode)
         vntr.exact_rl = rl;
         vntr.exact_ll = rl + variant.max_dlen;
     }
-    
+
     if (amode&FUZZY)
     {
-        compute_purity_score(vntr.fuzzy_repeat_tract, vntr.motif);
+        compute_purity_score(vntr.fuzzy_repeat_tract, vntr.fuzzy_motif);
         
         vntr.ru = ru;
         vntr.fuzzy_score = score;
@@ -508,9 +478,9 @@ void FlankDetector::compute_purity_score(Variant& variant, int32_t amode)
  * Computes purity score of a sequence with respect to a motif.
  */
 void FlankDetector::compute_purity_score(std::string& repeat_tract, std::string& motif)
-{ 
+{
     ru = choose_exact_repeat_unit(repeat_tract, motif);
-    
+
     ///////////////////
     //exact calculation
     ///////////////////
@@ -535,32 +505,33 @@ void FlankDetector::compute_purity_score(std::string& repeat_tract, std::string&
             score = 1;
             no_exact_ru = repeat_tract.size()/motif.size();
             total_no_ru = no_exact_ru;
-            rl = (float) repeat_tract.size()/(float) motif.size();            
+            rl = (float) repeat_tract.size()/(float) motif.size();
             trf_score = repeat_tract.size() << 1;
             return; //done!
         }
     }
-        
-    ///////////////////    
+
+    ///////////////////
     //fuzzy calculation
     ///////////////////
     ru = motif;
-    
+
     if (ru.size()>ahmm->max_len)
     {
         //compute by chunks
         //todo:: not the best way. update with a localized aligner
-        
+
     }
     else
-    {    
+    {
         ahmm->set_model(ru.c_str());
         ahmm->align(repeat_tract.c_str(), qual.c_str());
-        
+
         score = ahmm->motif_concordance;
+        score = std::round(100*score)/100;
         no_exact_ru = ahmm->exact_motif_count;
         total_no_ru = ahmm->motif_count;
-        rl = repeat_tract.size();
+        rl = ahmm->frac_no_repeats;
         trf_score = ahmm->trf_score;
     }
 }
@@ -571,9 +542,9 @@ void FlankDetector::compute_purity_score(std::string& repeat_tract, std::string&
 void FlankDetector::compute_composition_and_entropy(Variant& variant, int32_t amode)
 {
     VNTR& vntr = variant.vntr;
-        
+
     if (amode&FINAL)
-    {    
+    {
         compute_composition_and_entropy(vntr.repeat_tract);
         vntr.comp[0] = comp[0];
         vntr.comp[1] = comp[1];
@@ -581,9 +552,11 @@ void FlankDetector::compute_composition_and_entropy(Variant& variant, int32_t am
         vntr.comp[3] = comp[3];
         vntr.entropy = entropy;
         vntr.entropy2 = entropy2;
+        vntr.kl_divergence = kl_divergence;
+        vntr.kl_divergence2 = kl_divergence2;
     }
     else if (amode&EXACT)
-    {   
+    {
         compute_composition_and_entropy(vntr.exact_repeat_tract);
         vntr.exact_comp[0] = comp[0];
         vntr.exact_comp[1] = comp[1];
@@ -591,9 +564,11 @@ void FlankDetector::compute_composition_and_entropy(Variant& variant, int32_t am
         vntr.exact_comp[3] = comp[3];
         vntr.exact_entropy = entropy;
         vntr.exact_entropy2 = entropy2;
+        vntr.exact_kl_divergence = kl_divergence;
+        vntr.exact_kl_divergence2 = kl_divergence2;
     }
     else if (amode&FUZZY)
-    {   
+    {
         compute_composition_and_entropy(vntr.fuzzy_repeat_tract);
         vntr.fuzzy_comp[0] = comp[0];
         vntr.fuzzy_comp[1] = comp[1];
@@ -601,6 +576,8 @@ void FlankDetector::compute_composition_and_entropy(Variant& variant, int32_t am
         vntr.fuzzy_comp[3] = comp[3];
         vntr.fuzzy_entropy = entropy;
         vntr.fuzzy_entropy2 = entropy2;
+        vntr.fuzzy_kl_divergence = kl_divergence;
+        vntr.fuzzy_kl_divergence2 = kl_divergence2;
     }
 }
 
@@ -612,7 +589,7 @@ void FlankDetector::compute_composition_and_entropy(std::string& repeat_tract)
     int32_t aux_comp[4] = {0,0,0,0};
     int32_t aux_comp2[16] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
     int32_t b2i[10] = {0,1,0,2,0,0,0,0,0,3};
-    
+
 //    ACGT x ACGT
 //    AA - 0    = 0*0 + 0
 //    AC - 1
@@ -630,24 +607,24 @@ void FlankDetector::compute_composition_and_entropy(std::string& repeat_tract)
 //    TC - 13
 //    TG - 14
 //    TT - 15    = 3*4+3 = 15
-    
+
     int32_t n = repeat_tract.size();
-    
+
     for (uint32_t i=0; i<n; ++i)
     {
         uint32_t b1 = b2i[(repeat_tract.at(i)-65)>>1];
-        
+
         ++aux_comp[b1];
         if (i<n-1)
-        {    
+        {
             uint32_t b2 = b2i[(repeat_tract.at(i+1)-65)>>1];
             uint32_t bb = (b1<<2) + b2;
             ++aux_comp2[bb];
         }
     }
-    
+
     float p[4] = {(float) aux_comp[0]/n, (float) aux_comp[1]/n, (float) aux_comp[2]/n, (float) aux_comp[3]/n};
-    
+
     entropy = 0;
     if (p[0]) entropy += p[0] * std::log2(p[0]);
     if (p[1]) entropy += p[1] * std::log2(p[1]);
@@ -655,47 +632,48 @@ void FlankDetector::compute_composition_and_entropy(std::string& repeat_tract)
     if (p[3]) entropy += p[3] * std::log2(p[3]);
     kl_divergence = p[0] + p[1] + p[2] + p[3];
     kl_divergence = entropy + 2*kl_divergence;
+    kl_divergence = std::round(100*kl_divergence)/100;
     entropy = -entropy;
-    entropy = std::round(100*entropy)/100; 
-        
-    comp[0] = std::round(p[0] * 100); 
+    entropy = std::round(100*entropy)/100;
+
+    comp[0] = std::round(p[0] * 100);
     comp[1] = std::round(p[1] * 100);
     comp[2] = std::round(p[2] * 100);
     comp[3] = std::round(p[3] * 100);
-            
+
 //    std::cerr << "tract: " << repeat_tract << "\n";
 //    std::cerr << "A: " << comp[0] << " " << aux_comp[0] << "\n";
 //    std::cerr << "C: " << comp[1] << " " << aux_comp[1] << "\n";
 //    std::cerr << "G: " << comp[2] << " " << aux_comp[2] << "\n";
 //    std::cerr << "T: " << comp[3] << " " << aux_comp[3] << "\n";
-//    std::cerr << "\n";   
-//    std::cerr << "entropy       : " << entropy << "\n";    
-//    std::cerr << "kl_divergence : " << kl_divergence << "\n";    
+//    std::cerr << "\n";
+//    std::cerr << "entropy       : " << entropy << "\n";
+//    std::cerr << "kl_divergence : " << kl_divergence << "\n";
 
     entropy2 = 0;
     kl_divergence2 = 0;
     float log2q = -4;
     if (n!=1)
-    {    
+    {
         float p2[16];
         for (uint32_t i=0; i<16; ++i)
         {
             p2[i] = (float)aux_comp2[i]/(n-1);
         }
-        
+
         for (uint32_t i=0; i<16; ++i)
         {
-            if (p2[i]) 
+            if (p2[i])
             {
                 entropy2 += p2[i]* std::log2(p2[i]);
                 kl_divergence2 += p2[i];
             }
         }
         kl_divergence2 = entropy2 + 4*kl_divergence2;
+        kl_divergence2 = std::round(100*kl_divergence2)/100;
         entropy2 = -entropy2;
-        
-        entropy2 = std::round(100*entropy2)/100; 
-   
+        entropy2 = std::round(100*entropy2)/100;
+
 //        std::cerr << "tract: " << repeat_tract << "\n";
 //        std::cerr << "AA: " << aux_comp2[0] << " " << p2[0] << "\n";
 //        std::cerr << "AC: " << aux_comp2[1] << " " << p2[1] << "\n";
@@ -704,18 +682,18 @@ void FlankDetector::compute_composition_and_entropy(std::string& repeat_tract)
 //        std::cerr << "CA: " << aux_comp2[4] << " " << p2[4] << "\n";
 //        std::cerr << "CC: " << aux_comp2[5] << " " << p2[5] << "\n";
 //        std::cerr << "CG: " << aux_comp2[6] << " " << p2[6] << "\n";
-//        std::cerr << "CT: " << aux_comp2[7] << " " << p2[7] << "\n";   
+//        std::cerr << "CT: " << aux_comp2[7] << " " << p2[7] << "\n";
 //        std::cerr << "GA: " << aux_comp2[8] << " " << p2[8] << "\n";
 //        std::cerr << "GC: " << aux_comp2[9] << " " << p2[9] << "\n";
 //        std::cerr << "GG: " << aux_comp2[10] << " " << p2[10] << "\n";
-//        std::cerr << "GT: " << aux_comp2[11] << " " << p2[11] << "\n";   
+//        std::cerr << "GT: " << aux_comp2[11] << " " << p2[11] << "\n";
 //        std::cerr << "TA: " << aux_comp2[12] << " " << p2[12] << "\n";
 //        std::cerr << "TC: " << aux_comp2[13] << " " << p2[13] << "\n";
 //        std::cerr << "TG: " << aux_comp2[14] << " " << p2[14] << "\n";
-//        std::cerr << "TT: " << aux_comp2[15] << " " << p2[15] << "\n";            
-//        std::cerr << "\n";   
-//        std::cerr << "entropy2       : " << entropy2 << "\n";   
-//        std::cerr << "kl_divergence2 : " << kl_divergence2 << "\n";   
+//        std::cerr << "TT: " << aux_comp2[15] << " " << p2[15] << "\n";
+//        std::cerr << "\n";
+//        std::cerr << "entropy2       : " << entropy2 << "\n";
+//        std::cerr << "kl_divergence2 : " << kl_divergence2 << "\n";
     }
-        
+
 }

@@ -461,7 +461,7 @@ void LFHMM::proc_comp(int32_t A, int32_t B, int32_t index1, int32_t j, int32_t m
     float emission = 0, score = 0, valid = 0;
 
     //t is the new track
-    int32_t  t =  (this->*(moves[A][B]))(U[A][index1],j);
+    int32_t t =  (this->*(moves[A][B]))(U[A][index1],j);
 
     if (t==NULL_TRACK)
     {
@@ -810,6 +810,7 @@ void LFHMM::collect_statistics(int32_t src_t, int32_t des_t, int32_t j)
 
             motif_end[MODEL] = track_get_c(des_t);
             motif_count = track_get_c(des_t);
+            last_motif_pos = track_get_p(des_t);
             motif_end[READ] = j;
             trf_score = 0;
             
@@ -862,6 +863,8 @@ void LFHMM::collect_statistics(int32_t src_t, int32_t des_t, int32_t j)
         trf_score -= 7;
         ++motif_discordance[track_get_c(des_t)];
     }
+    
+    frac_no_repeats = motif_count - (mlen-last_motif_pos)/((float)mlen);
 };
 
 /**

@@ -61,8 +61,9 @@ class VNTR
     float kl_divergence2;       //dinucleotide Kullback-Leibler divergence of repeat tract
     int32_t beg1;               //beginning of repeat tract
     int32_t end1;               //end of repeat tract
-    float rl;                   //length of repeat tract inrepeat units
-    float ll;                   //length of repeat tract (including longest alternate allele) in repeat units
+    float ref;                  //number of repeat units in reference repeat tract
+    int32_t rl;                 //length of repeat tract in repeat units
+    int32_t ll;                 //length of repeat tract (including longest alternate allele) in repeat units
     int32_t no_exact_ru;        //number exact repeat units from hmm
     int32_t total_no_ru;        //total no of repeat units from hmm
     float score;                //motif concordance from hmm
@@ -86,8 +87,9 @@ class VNTR
     float exact_kl_divergence2;       //dinucleotide Kullback-Leibler divergence of repeat tract
     int32_t exact_beg1;               //beginning of repeat tract
     int32_t exact_end1;               //end of repeat tract
-    float exact_rl;                   //length of repeat tract in repeat units
-    float exact_ll;                   //length of repeat tract (including longest alternate allele) inrepeat units
+    float exact_ref;                  //number of repeat units in exact reference repeat tract
+    int32_t exact_rl;                 //length of repeat tract in repeat units
+    int32_t exact_ll;                 //length of repeat tract (including longest alternate allele) inrepeat units
     int32_t exact_no_exact_ru;        //number exact repeat units from hmm
     int32_t exact_total_no_ru;        //total no of repeat units from hmm
     float exact_score;                //motif concordance from hmm
@@ -113,8 +115,9 @@ class VNTR
     float fuzzy_kl_divergence2;       //dinucleotide Kullback-Leibler divergence of repeat tract    
     int32_t fuzzy_beg1;               //beginning of repeat tract
     int32_t fuzzy_end1;               //end of repeat tract
-    float fuzzy_rl;                   //length of repeat tract in repeat units
-    float fuzzy_ll;                   //length of repeat tract (including longest alternate allele) in repeat units
+    float fuzzy_ref;                  //number of repeat units in fuzzy reference repeat tract
+    int32_t fuzzy_rl;                 //length of repeat tract in repeat units
+    int32_t fuzzy_ll;                 //length of repeat tract (including longest alternate allele) in repeat units
     int32_t fuzzy_no_exact_ru;        //number exact repeat units from hmm
     int32_t fuzzy_total_no_ru;        //total no of repeat units from hmm
     float fuzzy_score;                //motif concordance from hmm

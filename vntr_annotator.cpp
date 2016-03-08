@@ -87,7 +87,7 @@ void VNTRAnnotator::annotate(Variant& variant, int32_t amode)
         //3. compute purity scores
         fd->compute_purity_score(variant, FINAL);
 
-        //3. compute purity scores
+        //4. compute purity scores
         fd->compute_composition_and_entropy(variant, FINAL);
     }
     //main purpose - annotation of Indels.
@@ -106,6 +106,8 @@ void VNTRAnnotator::annotate(Variant& variant, int32_t amode)
         //1. selects candidate region by fuzzy left and right alignment
         cre->pick_candidate_region(variant, EXACT_LEFT_RIGHT_ALIGNMENT, EXACT);
         cmp->update_exact_repeat_unit(variant);
+
+        fd->compute_purity_score(variant, EXACT);
 
         //2. detect candidate motifs from a reference sequence
         cmp->generate_candidate_motifs(variant);
@@ -129,7 +131,21 @@ void VNTRAnnotator::annotate(Variant& variant, int32_t amode)
         //3b. evaluate reference length
         fd->detect_flanks(h, v, variant, FRAHMM);
 
+
+
+
+        //3. compute purity scores
+        fd->compute_composition_and_entropy(variant, FUZZY);
+
         //introduce reiteration based on concordance and exact concordance.
+
+
+        if (debug)
+        {
+            std::cerr << "\n";
+            vntr.print();
+            std::cerr << "\n";
+        }
 
         if (debug) std::cerr << "============================================\n";
         return;

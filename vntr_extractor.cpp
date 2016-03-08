@@ -123,7 +123,7 @@ void VNTRExtractor::insert(Variant* var)
 
         if (nvar.rid > cvar.rid)
         {
-           vbuffer.insert(i, &nvar);
+            vbuffer.insert(i, &nvar);
         }
         else if (nvar.rid == cvar.rid)
         {
@@ -140,6 +140,63 @@ void VNTRExtractor::insert(Variant* var)
     vbuffer.push_back(&nvar);
 
     std::cerr << "exit insert\n";
+}
+
+/**
+ * Process overlapping variant.
+ * a. consolidate VNTRs
+ * b. consolidate multiallelics
+ */
+void VNTRExtractor::process_overlap(Variant& nvar, Variant& cvar)
+{
+//    if (nvar.beg1 > cvar.beg1)
+//    {
+//       vbuffer.insert(i, &nvar);
+//    }
+//    else if (nvar.beg1 == cvar.beg1)
+//    {
+//        if (nvar.end1 > cvar.end1)
+//        {
+//           vbuffer.insert(i, &nvar);
+//        }
+//        else if (cvar.end1 == nvar.end1)
+//        {
+//
+//        }
+//        else // cvar.end1 > nvar.rend1
+//        {
+//            ++i;
+//        }
+//    }
+//    else //nvar.rbeg1 < cvar.rbeg1
+//    {
+//        ++i;
+//    }
+//
+//    if (nvar.type==VT_VNTR && cvar.type==VT_VNTR)
+//    {
+//        if (cvar.vntr.motif > nvar.vntr.motif)
+//        {
+//           vbuffer.insert(i, &nvar);
+//        }
+//        else if (cvar.vntr.motif == nvar.vntr.motif)
+//        {
+//            bcf1_t *v = nvar.vs[0];
+//            cvar.vs.push_back(v);
+//            cvar.indel_vs.push_back(v);
+//
+//            //update cvar
+//            ++ cvar.no_overlapping_indels;
+//
+//            //do not insert
+//    //                            return false;
+//        }
+//        else // cvar.motif > nvar.motif
+//        {
+//            ++i;
+//        }
+//    }
+
 }
 
 /**
@@ -236,7 +293,6 @@ void VNTRExtractor::process()
 
         bcf_print(h, v);
 
-
         if (vntr_classification==EXACT_VNTR)
         {
             create_and_insert_vntr(*var);
@@ -250,63 +306,6 @@ void VNTRExtractor::process()
     flush();
     close();
 };
-
-
-/**
- * Process overlapping variant.
- */
-void VNTRExtractor::process_overlap(Variant& nvar, Variant& cvar)
-{
-//    if (nvar.beg1 > cvar.beg1)
-//    {
-//       vbuffer.insert(i, &nvar);
-//    }
-//    else if (nvar.beg1 == cvar.beg1)
-//    {
-//        if (nvar.end1 > cvar.end1)
-//        {
-//           vbuffer.insert(i, &nvar);
-//        }
-//        else if (cvar.end1 == nvar.end1)
-//        {
-//
-//        }
-//        else // cvar.end1 > nvar.rend1
-//        {
-//            ++i;
-//        }
-//    }
-//    else //nvar.rbeg1 < cvar.rbeg1
-//    {
-//        ++i;
-//    }
-//
-//    if (nvar.type==VT_VNTR && cvar.type==VT_VNTR)
-//    {
-//        if (cvar.vntr.motif > nvar.vntr.motif)
-//        {
-//           vbuffer.insert(i, &nvar);
-//        }
-//        else if (cvar.vntr.motif == nvar.vntr.motif)
-//        {
-//            bcf1_t *v = nvar.vs[0];
-//            cvar.vs.push_back(v);
-//            cvar.indel_vs.push_back(v);
-//
-//            //update cvar
-//            ++ cvar.no_overlapping_indels;
-//
-//            //do not insert
-//    //                            return false;
-//        }
-//        else // cvar.motif > nvar.motif
-//        {
-//            ++i;
-//        }
-//    }
-
-}
-
 
 /**
  * Process exiting variant.
@@ -341,13 +340,9 @@ void VNTRExtractor::create_and_insert_vntr(Variant& nvar)
         bcf1_t* nv = bcf_init1();
         bcf_clear(nv);
 
-        std::cerr << "INSPECT :" <<  vntr.exact_repeat_tract << ":\n";
-
         if (vntr.exact_repeat_tract == "")
         {
             refseq->fetch_seq(nvar.chrom, vntr.exact_beg1, vntr.exact_end1, vntr.exact_repeat_tract);
-
-            std::cerr << "\tfetch :" <<  vntr.exact_repeat_tract << ":\n";
         }
 
         bcf_set_rid(nv, nvar.rid);
@@ -373,11 +368,12 @@ void VNTRExtractor::create_and_insert_vntr(Variant& nvar)
         bcf_update_info_float(h, nv, ENTROPY2.c_str(), &vntr.exact_entropy2, 1);
         bcf_update_info_float(h, nv, KL_DIVERGENCE.c_str(), &vntr.exact_kl_divergence, 1);
         bcf_update_info_float(h, nv, KL_DIVERGENCE2.c_str(), &vntr.exact_kl_divergence2, 1);
-        bcf_update_info_float(h, nv, RL.c_str(), &vntr.exact_rl, 1);
-        bcf_update_info_float(h, nv, LL.c_str(), &vntr.exact_ll, 1);
+        bcf_update_info_int32(h, nv, RL.c_str(), &vntr.exact_rl, 1);
+        bcf_update_info_int32(h, nv, LL.c_str(), &vntr.exact_ll, 1);
         int32_t ru_count[2] = {vntr.exact_no_exact_ru, vntr.exact_total_no_ru};
         bcf_update_info_int32(h, nv, RU_COUNTS.c_str(), &ru_count, 2);
         bcf_update_info_float(h, nv, SCORE.c_str(), &vntr.exact_score, 1);
+        std::cerr << "ex trf score " << vntr.exact_trf_score << "\n";
         bcf_update_info_int32(h, nv, TRF_SCORE.c_str(), &vntr.exact_trf_score, 1);
 
         bcf_print(h, nv);

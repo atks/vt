@@ -516,13 +516,13 @@ void Variant::update_vntr_from_info_fields()
     vntr.entropy2 = bcf_get_info_flt(h, v, "ENTROPY2");
     vntr.kl_divergence = bcf_get_info_flt(h, v, "KL_DIVERGENCE");
     vntr.kl_divergence2 = bcf_get_info_flt(h, v, "KL_DIVERGENCE2");
-    vntr.rl = bcf_get_info_flt(h, v, "RL");
-    vntr.ll = bcf_get_info_flt(h, v, "LL");
+    vntr.rl = bcf_get_info_int(h, v, "RL");
+    vntr.ll = bcf_get_info_int(h, v, "LL");
     i_vec = bcf_get_info_int_vec(h, v, "RU_COUNTS", 2, 0);
     vntr.no_exact_ru = i_vec[0];
     vntr.total_no_ru = i_vec[1];
     vntr.score = bcf_get_info_flt(h, v, "SCORE");
-    vntr.trf_score = bcf_get_info_flt(h, v, "TRF_SCORE");
+    vntr.trf_score = bcf_get_info_int(h, v, "TRF_SCORE");
 
     vntr.exact_motif = bcf_get_info_str(h, v, "EX_MOTIF");
     vntr.exact_ru = bcf_get_info_str(h, v, "EX_RU");
@@ -539,13 +539,13 @@ void Variant::update_vntr_from_info_fields()
     vntr.exact_entropy2 = bcf_get_info_flt(h, v, "EX_ENTROPY2");
     vntr.exact_kl_divergence = bcf_get_info_flt(h, v, "EX_KL_DIVERGENCE");
     vntr.exact_kl_divergence2 = bcf_get_info_flt(h, v, "EX_KL_DIVERGENCE2");
-    vntr.exact_rl = bcf_get_info_flt(h, v, "EX_RL");
-    vntr.exact_ll = bcf_get_info_flt(h, v, "EX_LL");
+    vntr.exact_rl = bcf_get_info_int(h, v, "EX_RL");
+    vntr.exact_ll = bcf_get_info_int(h, v, "EX_LL");
     i_vec = bcf_get_info_int_vec(h, v, "EX_RU_COUNTS", 2, 0);
     vntr.exact_no_exact_ru = i_vec[0];
     vntr.exact_total_no_ru = i_vec[1];
     vntr.exact_score = bcf_get_info_flt(h, v, "EX_SCORE");
-    vntr.exact_trf_score = bcf_get_info_flt(h, v, "EX_TRF_SCORE");   
+    vntr.exact_trf_score = bcf_get_info_int(h, v, "EX_TRF_SCORE");   
     
     vntr.fuzzy_motif = bcf_get_info_str(h, v, "FZ_MOTIF");
     vntr.fuzzy_ru = bcf_get_info_str(h, v, "FZ_RU");
@@ -562,13 +562,13 @@ void Variant::update_vntr_from_info_fields()
     vntr.fuzzy_entropy2 = bcf_get_info_flt(h, v, "FZ_ENTROPY2");
     vntr.fuzzy_kl_divergence = bcf_get_info_flt(h, v, "FZ_KL_DIVERGENCE");
     vntr.fuzzy_kl_divergence2 = bcf_get_info_flt(h, v, "FZ_KL_DIVERGENCE2");
-    vntr.fuzzy_rl = bcf_get_info_flt(h, v, "FZ_RL");
-    vntr.fuzzy_ll = bcf_get_info_flt(h, v, "FZ_LL");
+    vntr.fuzzy_rl = bcf_get_info_int(h, v, "FZ_RL");
+    vntr.fuzzy_ll = bcf_get_info_int(h, v, "FZ_LL");
     i_vec = bcf_get_info_int_vec(h, v, "FZ_RU_COUNTS", 2, 0);
     vntr.fuzzy_no_exact_ru = i_vec[0];
     vntr.fuzzy_total_no_ru = i_vec[1];
     vntr.fuzzy_score = bcf_get_info_flt(h, v, "FZ_SCORE");
-    vntr.fuzzy_trf_score = bcf_get_info_flt(h, v, "FZ_TRF_SCORE");
+    vntr.fuzzy_trf_score = bcf_get_info_int(h, v, "FZ_TRF_SCORE");
 }
 
 /**

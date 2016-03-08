@@ -44,14 +44,6 @@ class Igor : Program
     bool override_tag;
     bool add_flank_annotation;     //add flank annotation
 
-    //motif related
-    std::string END;
-    std::string MOTIF;
-    std::string MLEN;
-    std::string RU;
-    std::string BASIS;
-    std::string BLEN;
-
     //exact alignment related statistics
     std::string EX_MOTIF;
     std::string EX_MLEN;
@@ -64,6 +56,7 @@ class Igor : Program
     std::string EX_ENTROPY2;
     std::string EX_KL_DIVERGENCE;
     std::string EX_KL_DIVERGENCE2;
+    std::string EX_ALEN;
     std::string EX_RL;
     std::string EX_LL;
     std::string EX_RU_COUNTS;
@@ -82,6 +75,7 @@ class Igor : Program
     std::string FZ_ENTROPY2;
     std::string FZ_KL_DIVERGENCE;
     std::string FZ_KL_DIVERGENCE2;
+    std::string FZ_ALEN;
     std::string FZ_RL;
     std::string FZ_LL;
     std::string FZ_RU_COUNTS;
@@ -202,8 +196,9 @@ class Igor : Program
         EX_ENTROPY2 = bcf_hdr_append_info_with_backup_naming(odw->hdr, "EX_ENTROPY2", "1", "Float", "Dinucleotide entropy measure of an exact repeat tract [0,4].", rename);
         EX_KL_DIVERGENCE = bcf_hdr_append_info_with_backup_naming(odw->hdr, "EX_KL_DIVERGENCE", "1", "Float", "Kullback-Leibler Divergence of an exact repeat tract.", rename);
         EX_KL_DIVERGENCE2 = bcf_hdr_append_info_with_backup_naming(odw->hdr, "EX_KL_DIVERGENCE2", "1", "Float", "Dinucleotide Kullback-Leibler Divergence of an exact repeat tract.", rename);
-        EX_RL = bcf_hdr_append_info_with_backup_naming(odw->hdr, "EX_RL", "1", "Float", "Reference exact repeat tract length in bases.", rename);
-        EX_LL = bcf_hdr_append_info_with_backup_naming(odw->hdr, "EX_LL", "1", "Float", "Longest exact repeat tract length in bases.", rename);
+        EX_ALEN = bcf_hdr_append_info_with_backup_naming(odw->hdr, "EX_ALEN", ".", "Float", "Allele lengths in repeat units from exact alignment.", rename); 
+        EX_RL = bcf_hdr_append_info_with_backup_naming(odw->hdr, "EX_RL", "1", "Integer", "Reference exact repeat tract length in bases.", rename);
+        EX_LL = bcf_hdr_append_info_with_backup_naming(odw->hdr, "EX_LL", "1", "Integer", "Longest exact repeat tract length in bases.", rename);
         EX_RU_COUNTS = bcf_hdr_append_info_with_backup_naming(odw->hdr, "EX_RU_COUNTS", "2", "Integer", "Number of exact repeat units and total number of repeat units in exact repeat tract.", rename);
         EX_SCORE = bcf_hdr_append_info_with_backup_naming(odw->hdr, "EX_SCORE", "1", "Float", "Score of repeat unit in exact repeat tract.", rename);
         EX_TRF_SCORE = bcf_hdr_append_info_with_backup_naming(odw->hdr, "EX_TRF_SCORE", "1", "Integer", "TRF Score for M/I/D as 2/-7/-7 in exact repeat tract.", rename);
@@ -220,8 +215,9 @@ class Igor : Program
         FZ_ENTROPY2 = bcf_hdr_append_info_with_backup_naming(odw->hdr, "FZ_ENTROPY2", "1", "Float", "Dinucleotide entropy measure of a fuzzy repeat tract (0-2).", rename);                                                  
         FZ_KL_DIVERGENCE = bcf_hdr_append_info_with_backup_naming(odw->hdr, "FZ_KL_DIVERGENCE", "1", "Float", "Kullback-Leibler Divergence of a fuzzyt repeat tract.", rename);
         FZ_KL_DIVERGENCE2 = bcf_hdr_append_info_with_backup_naming(odw->hdr, "FZ_KL_DIVERGENCE2", "1", "Float", "Dinucleotide Kullback-Leibler Divergence of a fuzzy repeat tract.", rename);
-        FZ_RL = bcf_hdr_append_info_with_backup_naming(odw->hdr, "FZ_RL", "1", "Float", "Reference fuzzy repeat tract length in bases.", rename);                                                      
-        FZ_LL = bcf_hdr_append_info_with_backup_naming(odw->hdr, "FZ_LL", "1", "Float", "Longest fuzzy repeat tract length in bases.", rename);                                                        
+        FZ_ALEN = bcf_hdr_append_info_with_backup_naming(odw->hdr, "FZ_ALEN", ".", "Float", "Allele lengths in repeat units from fuzzy alignment.", rename);                                                      
+        FZ_RL = bcf_hdr_append_info_with_backup_naming(odw->hdr, "FZ_RL", "1", "Integer", "Reference fuzzy repeat tract length in bases.", rename);                                                      
+        FZ_LL = bcf_hdr_append_info_with_backup_naming(odw->hdr, "FZ_LL", "1", "Integer", "Longest fuzzy repeat tract length in bases.", rename);                                                        
         FZ_RU_COUNTS = bcf_hdr_append_info_with_backup_naming(odw->hdr, "FZ_RU_COUNTS", "2", "Integer", "Number of exact repeat units and total number of repeat units in fuzzy repeat tract.", rename); 
         FZ_SCORE = bcf_hdr_append_info_with_backup_naming(odw->hdr, "FZ_SCORE", "1", "Float", "Score of repeat unit in fuzzy repeat tract.", rename);                                                    
         FZ_TRF_SCORE = bcf_hdr_append_info_with_backup_naming(odw->hdr, "FZ_TRF_SCORE", "1", "Integer", "TRF Score for M/I/D as 2/-7/-7 in fuzzy repeat tract.", rename);                                 
@@ -341,13 +337,6 @@ class Igor : Program
 
                 //shared fields
                 bcf_set_rid(v, variant.rid);
-                
-//                bcf_update_info_int32(h, v, END.c_str(), &variant.end1, 1);
-//                bcf_update_info_string(h, v, MOTIF.c_str(), vntr.motif.c_str());
-//                bcf_update_info_int32(h, v, MLEN.c_str(), &vntr.mlen, 1);
-//                bcf_update_info_string(h, v, RU.c_str(), vntr.ru.c_str());
-//                bcf_update_info_string(h, v, BASIS.c_str(), vntr.basis.c_str());
-//                bcf_update_info_int32(h, v, BLEN.c_str(), &vntr.blen, 1);
         
                 //exact characteristics
                 bcf_update_info_string(h, v, EX_MOTIF.c_str(), vntr.exact_motif.c_str());

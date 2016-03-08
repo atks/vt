@@ -67,9 +67,10 @@ class FlankDetector
     ////////////////////////
     std::string ru;
     float score;
-    float no_exact_ru;
-    uint32_t total_no_ru;
-    float rl;
+    int32_t no_exact_ru;
+    int32_t total_no_ru;
+    int32_t rl;
+    int32_t ll;
     int32_t trf_score;
 
     ///////////////////////////////////
