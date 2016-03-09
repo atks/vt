@@ -82,6 +82,8 @@ std::string VNTR::get_associated_indels()
     {
         if (indels!="") indels.append(",");
         indels += i->first;
+        
+        ++i;
     }
     
     return indels;

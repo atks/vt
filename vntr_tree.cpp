@@ -114,13 +114,13 @@ void VNTRTree::count(Variant& variant)
             {
                 vntrs[basis_len-1].resize(motif_len-basis_len+1);
             }
+            
             vntrs[basis_len-1][motif_len-basis_len].push_back(node);
         }
         else
         {
             node = motif_map[vntr.motif];
         }
-
 
         float concordance = -1;
         float *score = NULL;

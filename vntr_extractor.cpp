@@ -152,10 +152,14 @@ void VNTRExtractor::insert(Variant* var)
                         {
                             std::string nvar_associated_indel = bcf_get_info_str(nvar.h, nvar.v, "ASSOCIATED_INDEL", "");
                             cvar.vntr.add_associated_indel(nvar_associated_indel);
-                            
+
                             bcf_destroy(var->v);
                             delete var;
-                            
+                            return;
+                        }
+                        else
+                        {
+                            vbuffer.insert(i, &nvar);
                             return;
                         }
                     }
@@ -282,13 +286,13 @@ void VNTRExtractor::flush(Variant* var)
 
             ++i;
         }
-        
+
         while (i!=vbuffer.end())
         {
             process_exit(*i);
             i = vbuffer.erase(i);
         }
-        
+
     }
     else
     {
@@ -348,11 +352,11 @@ void VNTRExtractor::process_exit(Variant* var)
     {
         std::string indels = var->vntr.get_associated_indels();
         if (indels!="")
-        {    
+        {
             bcf_update_info_string(var->h, var->v, ASSOCIATED_INDEL.c_str(), indels.c_str());
         }
     }
-    
+
 //    bcf_print(var->h, var->v);
     odw->write(var->v);
 }
@@ -416,12 +420,12 @@ void VNTRExtractor::create_and_insert_vntr(Variant& nvar)
         bcf_update_info_int32(h, nv, RU_COUNTS.c_str(), &ru_count, 2);
         bcf_update_info_float(h, nv, SCORE.c_str(), &vntr.exact_score, 1);
         bcf_update_info_int32(h, nv, TRF_SCORE.c_str(), &vntr.exact_trf_score, 1);
-        
+
         Variant *nvntr = new Variant(h, nv);
-        
+
         std::string indel = bcf_variant2string(nvar.h, nvar.v);
         nvntr->vntr.add_associated_indel(indel);
-        
+
         insert(nvntr);
 
 //        bcf_print(h, nvar.v);

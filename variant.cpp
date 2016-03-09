@@ -501,6 +501,7 @@ void Variant::update_vntr_from_info_fields()
     vntr.motif = bcf_get_info_str(h, v, "MOTIF");
     vntr.ru = bcf_get_info_str(h, v, "RU");
     vntr.basis = bcf_get_info_str(h, v, "BASIS");
+    if (vntr.basis=="") vntr.basis = VNTR::get_basis(vntr.motif);
     vntr.mlen = vntr.motif.size();    
     vntr.blen = (int32_t) vntr.basis.size();
     std::vector<int32_t> i_vec = bcf_get_info_int_vec(h, v, "REPEAT_TRACT", 2, 0);

@@ -239,6 +239,8 @@ class Igor : Program
 
             if (vtype==VT_VNTR)
             {
+                //
+                
 //                ++VAR_COUNT[POLYMORPHIC][VT_VNTR];
 //                if (variant.vntr.motif.size()<NO_MOTIF_LEN_CATEGORIES)
 //                {

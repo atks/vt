@@ -83,10 +83,9 @@ class Igor : Program
     //filter//
     //////////
     std::string fexp;
-    std::vector<Filter> filters;
-    std::vector<bool> filter_exists;
-    int32_t no_filters;
-
+    Filter filter;
+    bool filter_exists;
+   
     /////////
     //stats//
     /////////
@@ -221,12 +220,8 @@ class Igor : Program
         /////////////////////////
         //filter initialization//
         /////////////////////////
-        for (size_t i=0; i<dataset_fexps.size(); ++i)
-        {
-            filters.push_back(Filter(dataset_fexps[i]));
-            filter_exists.push_back(dataset_fexps[i]!="");
-        }
-        no_filters = filters.size();
+        filter.parse(fexp.c_str(), false);
+        filter_exists = fexp=="" ? false : true;
 
         ////////////////////////
         //stats initialization//
@@ -242,6 +237,7 @@ class Igor : Program
     void profile_vntrs()
     {
         //for combining the alleles
+        bcf_hdr_t* h = odr->hdr;
         bcf1_t* v = bcf_init1();
         Variant variant;
         std::vector<int32_t> presence(2, 0);
@@ -257,6 +253,14 @@ class Igor : Program
             if (vtype!=VT_VNTR)
             {
                 continue;
+            }
+
+            if (filter_exists)
+            {
+                if (!filter.apply(h, v, &variant, false))
+                {
+                    continue;
+                }
             }
 
             ++no_vntrs;
