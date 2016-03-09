@@ -131,6 +131,9 @@ class VNTR
     //types of repeat
     bool is_large_repeat_tract;
     bool is_interspersed_repeat_tract;
+    
+    //associated indels
+    std::map<std::string, int32_t> associated_indels;        
 
     /**
      * Constructor.
@@ -142,6 +145,16 @@ class VNTR
      */
     void clear();
 
+    /**
+     * Adds an associated indel.
+     */
+    void add_associated_indel(std::string& indel);
+            
+    /**
+     * Get associated indels.
+     */
+    std::string get_associated_indels();
+    
     /**
      * Checks for equality.
      */

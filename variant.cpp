@@ -495,7 +495,7 @@ void Variant::update_vntr_from_info_fields()
 {    
     vntr.motif = bcf_get_rid(v);
     char** allele = bcf_get_allele(v);
-    vntr.exact_repeat_tract.assign(allele[0]);
+//    vntr.exact_repeat_tract.assign(allele[0]);
 //   std::string tags[16] = {"MOTIF", "RU", "BASIS", "MLEN", "BLEN", "REPEAT_TRACT", "COMP", "ENTROPY", "ENTROPY2", "KL_DIVERGENCE", "KL_DIVERGENCE2", "RL", "LL", "RU_COUNTS", "SCORE", "TRF_SCORE"};
     
     vntr.motif = bcf_get_info_str(h, v, "MOTIF");

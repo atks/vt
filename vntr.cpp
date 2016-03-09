@@ -64,6 +64,30 @@ void VNTR::clear()
 }
 
 /**
+ * Adds an associated indel.
+ */
+void VNTR::add_associated_indel(std::string& indel)
+{
+    ++associated_indels[indel];
+}
+
+/**
+ * Get associated indels.
+ */
+std::string VNTR::get_associated_indels()
+{
+    std::string indels;
+    std::map<std::string, int32_t>::iterator i = associated_indels.begin();
+    while (i!=associated_indels.end())
+    {
+        if (indels!="") indels.append(",");
+        indels += i->first;
+    }
+    
+    return indels;
+}
+
+/**
  * Checks for equality.
  */
 bool VNTR::equals(VNTR& vntr)

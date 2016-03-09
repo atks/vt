@@ -35,7 +35,7 @@ VNTRExtractor::VNTRExtractor(std::string& input_vcf_file, std::vector<GenomeInte
     this->input_vcf_file = input_vcf_file;
     this->output_vcf_file = output_vcf_file;
     odr = new BCFOrderedReader(input_vcf_file, intervals);
-    odw = new BCFOrderedWriter(output_vcf_file, buffer_window_allowance);
+    odw = new BCFOrderedWriter(output_vcf_file, 2*buffer_window_allowance);
     odw->link_hdr(odr->hdr);
 
     //for adding empty genotype fields for a VCF file with individual information
@@ -104,7 +104,7 @@ VNTRExtractor::VNTRExtractor(std::string& input_vcf_file, std::vector<GenomeInte
  */
 void VNTRExtractor::insert(Variant* var)
 {
-    std::cerr << "buffer size : " << vbuffer.size() << "\n";
+//    std::cerr << "buffer size : " << vbuffer.size() << "\n";
 
     flush(var);
 
@@ -150,17 +150,12 @@ void VNTRExtractor::insert(Variant* var)
                     {
                         if (cvar.vntr.motif == nvar.vntr.motif)
                         {
-                            bcf1_t *v = nvar.vs[0];
-                            cvar.vs.push_back(v);
-                            cvar.indel_vs.push_back(v);
-
-                            //update cvar
-                            ++cvar.no_overlapping_indels;
-                            return;
-                       }
-                        else
-                        {
-                            vbuffer.insert(i, &nvar);
+                            std::string nvar_associated_indel = bcf_get_info_str(nvar.h, nvar.v, "ASSOCIATED_INDEL", "");
+                            cvar.vntr.add_associated_indel(nvar_associated_indel);
+                            
+                            bcf_destroy(var->v);
+                            delete var;
+                            
                             return;
                         }
                     }
@@ -187,7 +182,7 @@ void VNTRExtractor::insert(Variant* var)
         }
     }
 
-    vbuffer.push_back(&nvar);
+    vbuffer.push_back(var);
 
 //    std::cerr << "exit insert\n";
 }
@@ -262,7 +257,7 @@ void VNTRExtractor::flush(Variant* var)
     {
         Variant& nvar = *var;
 
-        //search for variant to start deleting from.
+        //search for point to start deleting from.
         std::list<Variant*>::iterator i = vbuffer.begin();
         while(i!=vbuffer.end())
         {
@@ -270,38 +265,38 @@ void VNTRExtractor::flush(Variant* var)
 
             if (nvar.rid > cvar.rid)
             {
-                process_exit(&cvar);
-                i = vbuffer.erase(i);
+                break;
             }
             else if (nvar.rid == cvar.rid)
             {
-                if (nvar.end1 < cvar.beg1 - std::min(buffer_window_allowance, cvar.beg1))
+                if ((cvar.end1+buffer_window_allowance) < nvar.beg1)
                 {
                     break;
                 }
-
             }
             else
             {
-                fprintf(stderr, "[%s:%d %s] File %s is unordered\n", __FILE__, __LINE__, __FUNCTION__, input_vcf_file.c_str());
+                fprintf(stderr, "[%s:%d %s] Buffer is unordered\n", __FILE__, __LINE__, __FUNCTION__);
                 exit(1);
             }
 
             ++i;
         }
+        
+        while (i!=vbuffer.end())
+        {
+            process_exit(*i);
+            i = vbuffer.erase(i);
+        }
+        
     }
     else
     {
-
-        std::cerr << "final size of buffer " << vbuffer.size() << "\n";
-
         std::list<Variant*>::iterator i = vbuffer.begin();
         while (i!=vbuffer.end())
         {
             var = *i;
-//            bcf_print(var->h, var->v);
-
-            process_exit(var);
+            process_exit(*i);
             i = vbuffer.erase(i);
         }
     }
@@ -349,6 +344,15 @@ void VNTRExtractor::process()
  */
 void VNTRExtractor::process_exit(Variant* var)
 {
+    if (var->type==VT_VNTR)
+    {
+        std::string indels = var->vntr.get_associated_indels();
+        if (indels!="")
+        {    
+            bcf_update_info_string(var->h, var->v, ASSOCIATED_INDEL.c_str(), indels.c_str());
+        }
+    }
+    
 //    bcf_print(var->h, var->v);
     odw->write(var->v);
 }
@@ -412,14 +416,16 @@ void VNTRExtractor::create_and_insert_vntr(Variant& nvar)
         bcf_update_info_int32(h, nv, RU_COUNTS.c_str(), &ru_count, 2);
         bcf_update_info_float(h, nv, SCORE.c_str(), &vntr.exact_score, 1);
         bcf_update_info_int32(h, nv, TRF_SCORE.c_str(), &vntr.exact_trf_score, 1);
-        std::string indel = bcf_variant2string(nvar.h, nvar.v);
-        bcf_update_info_string(h, nv, ASSOCIATED_INDEL.c_str(), indel.c_str());
-
+        
         Variant *nvntr = new Variant(h, nv);
+        
+        std::string indel = bcf_variant2string(nvar.h, nvar.v);
+        nvntr->vntr.add_associated_indel(indel);
+        
         insert(nvntr);
 
-        bcf_print(h, nvar.v);
-        bcf_print(h, nv);
+//        bcf_print(h, nvar.v);
+//        bcf_print(h, nv);
 
         ++no_added_vntrs;
     }
