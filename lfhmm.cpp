@@ -917,9 +917,6 @@ float LFHMM::log10_emission_odds(char probe_base, char read_base, uint32_t pl, f
 //        return -INFINITY;  //is this appropriate in this case?
 //    }
 
-//    std::cerr << "\tq: " << lt->pl2log10_varp(pl) << "\n";
-//    std::cerr << "\tp: " << mismatch_penalty << "\n";
-
     if (read_base!=probe_base)
     {
         return lt->pl2log10_varp(pl)-mismatch_penalty;

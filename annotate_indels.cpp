@@ -56,7 +56,7 @@ class Igor : Program
     std::string EX_ENTROPY2;
     std::string EX_KL_DIVERGENCE;
     std::string EX_KL_DIVERGENCE2;
-    std::string EX_ALEN;
+    std::string EX_REF;
     std::string EX_RL;
     std::string EX_LL;
     std::string EX_RU_COUNTS;
@@ -75,7 +75,7 @@ class Igor : Program
     std::string FZ_ENTROPY2;
     std::string FZ_KL_DIVERGENCE;
     std::string FZ_KL_DIVERGENCE2;
-    std::string FZ_ALEN;
+    std::string FZ_REF;
     std::string FZ_RL;
     std::string FZ_LL;
     std::string FZ_RU_COUNTS;
@@ -196,7 +196,7 @@ class Igor : Program
         EX_ENTROPY2 = bcf_hdr_append_info_with_backup_naming(odw->hdr, "EX_ENTROPY2", "1", "Float", "Dinucleotide entropy measure of an exact repeat tract [0,4].", rename);
         EX_KL_DIVERGENCE = bcf_hdr_append_info_with_backup_naming(odw->hdr, "EX_KL_DIVERGENCE", "1", "Float", "Kullback-Leibler Divergence of an exact repeat tract.", rename);
         EX_KL_DIVERGENCE2 = bcf_hdr_append_info_with_backup_naming(odw->hdr, "EX_KL_DIVERGENCE2", "1", "Float", "Dinucleotide Kullback-Leibler Divergence of an exact repeat tract.", rename);
-        EX_ALEN = bcf_hdr_append_info_with_backup_naming(odw->hdr, "EX_ALEN", ".", "Float", "Allele lengths in repeat units from exact alignment.", rename); 
+        EX_REF = bcf_hdr_append_info_with_backup_naming(odw->hdr, "EX_REF", ".", "Float", "Allele lengths in repeat units from exact alignment.", rename); 
         EX_RL = bcf_hdr_append_info_with_backup_naming(odw->hdr, "EX_RL", "1", "Integer", "Reference exact repeat tract length in bases.", rename);
         EX_LL = bcf_hdr_append_info_with_backup_naming(odw->hdr, "EX_LL", "1", "Integer", "Longest exact repeat tract length in bases.", rename);
         EX_RU_COUNTS = bcf_hdr_append_info_with_backup_naming(odw->hdr, "EX_RU_COUNTS", "2", "Integer", "Number of exact repeat units and total number of repeat units in exact repeat tract.", rename);
@@ -215,7 +215,7 @@ class Igor : Program
         FZ_ENTROPY2 = bcf_hdr_append_info_with_backup_naming(odw->hdr, "FZ_ENTROPY2", "1", "Float", "Dinucleotide entropy measure of a fuzzy repeat tract (0-2).", rename);                                                  
         FZ_KL_DIVERGENCE = bcf_hdr_append_info_with_backup_naming(odw->hdr, "FZ_KL_DIVERGENCE", "1", "Float", "Kullback-Leibler Divergence of a fuzzyt repeat tract.", rename);
         FZ_KL_DIVERGENCE2 = bcf_hdr_append_info_with_backup_naming(odw->hdr, "FZ_KL_DIVERGENCE2", "1", "Float", "Dinucleotide Kullback-Leibler Divergence of a fuzzy repeat tract.", rename);
-        FZ_ALEN = bcf_hdr_append_info_with_backup_naming(odw->hdr, "FZ_ALEN", ".", "Float", "Allele lengths in repeat units from fuzzy alignment.", rename);                                                      
+        FZ_REF = bcf_hdr_append_info_with_backup_naming(odw->hdr, "FZ_REF", ".", "Float", "Allele lengths in repeat units from fuzzy alignment.", rename);                                                      
         FZ_RL = bcf_hdr_append_info_with_backup_naming(odw->hdr, "FZ_RL", "1", "Integer", "Reference fuzzy repeat tract length in bases.", rename);                                                      
         FZ_LL = bcf_hdr_append_info_with_backup_naming(odw->hdr, "FZ_LL", "1", "Integer", "Longest fuzzy repeat tract length in bases.", rename);                                                        
         FZ_RU_COUNTS = bcf_hdr_append_info_with_backup_naming(odw->hdr, "FZ_RU_COUNTS", "2", "Integer", "Number of exact repeat units and total number of repeat units in fuzzy repeat tract.", rename); 
@@ -351,6 +351,7 @@ class Igor : Program
                 bcf_update_info_float(h, v, EX_ENTROPY2.c_str(), &vntr.exact_entropy2, 1);
                 bcf_update_info_float(h, v, EX_KL_DIVERGENCE.c_str(), &vntr.exact_kl_divergence, 1);
                 bcf_update_info_float(h, v, EX_KL_DIVERGENCE2.c_str(), &vntr.exact_kl_divergence2, 1);
+                bcf_update_info_float(h, v, EX_REF.c_str(), &vntr.exact_ref, 1);
                 bcf_update_info_int32(h, v, EX_RL.c_str(), &vntr.exact_rl, 1);
                 bcf_update_info_int32(h, v, EX_LL.c_str(), &vntr.exact_ll, 1);
                 int32_t exact_ru_count[2] = {vntr.exact_no_exact_ru, vntr.exact_total_no_ru};
@@ -373,6 +374,7 @@ class Igor : Program
                 bcf_update_info_float(h, v, FZ_ENTROPY2.c_str(), &vntr.fuzzy_entropy2, 1);
                 bcf_update_info_float(h, v, FZ_KL_DIVERGENCE.c_str(), &vntr.fuzzy_kl_divergence, 1);
                 bcf_update_info_float(h, v, FZ_KL_DIVERGENCE2.c_str(), &vntr.fuzzy_kl_divergence2, 1);
+                bcf_update_info_float(h, v, FZ_REF.c_str(), &vntr.fuzzy_ref, 1);
                 bcf_update_info_int32(h, v, FZ_RL.c_str(), &vntr.fuzzy_rl, 1);
                 bcf_update_info_int32(h, v, FZ_LL.c_str(), &vntr.fuzzy_ll, 1);
                 int32_t fuzzy_ru_count[2] = {vntr.fuzzy_no_exact_ru, vntr.fuzzy_total_no_ru};

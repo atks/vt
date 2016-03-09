@@ -879,6 +879,18 @@ uint32_t bcf_g2i(std::string genotype)
 /**
  * Gets a string representation of a variant.
  */
+std::string bcf_variant2string(bcf_hdr_t *h, bcf1_t *v)
+{
+    kstring_t var = {0,0,0};
+    bcf_variant2string(h, v, &var);
+    std::string var2(var.s);
+    if (var.m) free(var.s);
+    return var2;
+}
+
+/**
+ * Gets a string representation of a variant.
+ */
 void bcf_variant2string(bcf_hdr_t *h, bcf1_t *v, kstring_t *var)
 {
     bcf_unpack(v, BCF_UN_STR);

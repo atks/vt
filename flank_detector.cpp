@@ -42,7 +42,7 @@ FlankDetector::FlankDetector(std::string& ref_fasta_file, bool debug)
 //    float eta = 0.01;
 //    float mismatch_penalty = 3;
     float delta = 0.0000001;
-    float epsilon = 0.001;
+    float epsilon = 0.0000001;
     float tau = 0.01;
     float eta = 0.01;
     float mismatch_penalty = 5;
@@ -198,14 +198,13 @@ void FlankDetector::detect_flanks(Variant& variant, uint32_t mode)
 
         while (true)
         {
-            //pick 5 bases to the right
+            //fetch sequences for modeling
             rs->fetch_seq(variant.chrom, vntr.exact_end1+1, vntr.exact_end1+5, rflank);
+            rs->fetch_seq(variant.chrom, vntr.exact_end1-slen, vntr.exact_end1, seq);
+            vntr.fuzzy_ru = choose_3prime_repeat_unit(seq, vntr.fuzzy_motif);
+            seq.append(rflank);
 
-            //pick 105 bases for aligning
-            rs->fetch_seq(variant.chrom, vntr.exact_end1-slen, vntr.exact_end1+5, seq);
-
-
-            rfhmm->set_model(vntr.exact_ru.c_str(), rflank.c_str());
+            rfhmm->set_model(vntr.fuzzy_ru.c_str(), rflank.c_str());
             rfhmm->align(seq.c_str(), qual.c_str());
             if (debug) rfhmm->print_alignment();
 
@@ -221,7 +220,7 @@ void FlankDetector::detect_flanks(Variant& variant, uint32_t mode)
 
             //this is a hack around rfhmm rigidity in modeling the RUs
             //todo: we should change this to a reverse version of LFHMM!!!!
-            if (rfhmm->get_lflank_read_epos1()>std::min((int32_t)(10*vntr.ru.size()), 50))
+            if (rfhmm->get_lflank_read_epos1()>std::min((int32_t)(10*vntr.fuzzy_ru.size()), 50))
             {
                 lflank_end1 = vntr.exact_end1-slen-1+1 + rfhmm->get_lflank_read_epos1() - 1;
                 break;
@@ -246,19 +245,20 @@ void FlankDetector::detect_flanks(Variant& variant, uint32_t mode)
         //pick 5 bases to right
         while(true)
         {
-            rs->fetch_seq(variant.chrom, lflank_end1-5, lflank_end1, lflank);
+            //fetch sequences for modeling
+            rs->fetch_seq(variant.chrom, lflank_end1-5+1, lflank_end1, lflank);
+            rs->fetch_seq(variant.chrom, lflank_end1+1, lflank_end1+slen, seq);
+            vntr.fuzzy_ru = choose_5prime_repeat_unit(seq, vntr.fuzzy_motif);
+            seq =  lflank + seq;
 
-            //pick 105 bases for aligning
-            rs->fetch_seq(variant.chrom, lflank_end1-5, lflank_end1+slen-1, seq);
-
-            lfhmm->set_model(lflank.c_str(), vntr.exact_ru.c_str());
+            lfhmm->set_model(lflank.c_str(), vntr.fuzzy_ru.c_str());
             lfhmm->align(seq.c_str(), qual.c_str());
             if (debug) lfhmm->print_alignment();
 
 //            if (lfhmm->get_rflank_read_epos1()!=INT32_MAX ||
-            if (lfhmm->get_rflank_read_spos1()<slen-std::min((int32_t)(10*vntr.ru.size()), 50))
+            if (lfhmm->get_rflank_read_spos1()<slen-std::min((int32_t)(10*vntr.fuzzy_ru.size()), 50))
             {
-                rflank_beg1 = lflank_end1 - 5 + lfhmm->get_rflank_read_spos1() - 1;
+                rflank_beg1 = lflank_end1 - 5 + lfhmm->get_rflank_read_spos1();
                 break;
             }
             else if (slen==1000)
@@ -277,7 +277,7 @@ void FlankDetector::detect_flanks(Variant& variant, uint32_t mode)
 
         vntr.fuzzy_beg1 = lflank_end1+1;
         vntr.fuzzy_end1 = rflank_beg1-1;
-        rs->fetch_seq(variant.chrom, lflank_end1+1, rflank_beg1-1, vntr.fuzzy_repeat_tract);
+        rs->fetch_seq(variant.chrom, vntr.fuzzy_beg1, vntr.fuzzy_end1, vntr.fuzzy_repeat_tract);
     }
 };
 
@@ -296,25 +296,58 @@ std::string FlankDetector::shift_str(std::string& seq, uint32_t i)
 }
 
 /**
- * Chooses a phase of the motif that is appropriate for the alignment.
+ * Chooses a phase of the motif that is appropriate for the alignment from the 5 prime end.
  * This differs from choose_exact_repeat_unit() where the motif is returned
  * if not suitable repeat unit is found.
  */
-std::string FlankDetector::choose_repeat_unit(std::string& seq, std::string& motif)
+std::string FlankDetector::choose_5prime_repeat_unit(std::string& seq, std::string& motif)
 {
+//    std::cerr << "seq   : " << seq << "\n";
+//    std::cerr << "motif : " << motif << "\n";
+    
+    int32_t mlen = motif.size();
     for (uint32_t i=0; i<motif.size(); ++i)
     {
         std::string smotif = shift_str(motif, i);
-        if (seq.compare(0, smotif.size(), smotif)==0)
+        if (seq.compare(0, mlen, smotif)==0)
         {
             return smotif;
         }
+
+        std::string rc_smotif = VNTR::reverse_complement(smotif);
+        if (seq.compare(0, mlen, rc_smotif)==0)
+        {
+            return rc_smotif;
+        }
     }
 
-    //cannot find, try reverse complement
+    return motif;
+}
 
 
-    //should return empty string
+/**
+ * Chooses a phase of the motif that is appropriate for the alignment from the 3 prime end.
+ * This differs from choose_exact_repeat_unit() where the motif is returned
+ * if not suitable repeat unit is found.
+ */
+std::string FlankDetector::choose_3prime_repeat_unit(std::string& seq, std::string& motif)
+{
+    int32_t mlen = motif.size();
+    for (uint32_t i=0; i<motif.size(); ++i)
+    {
+        std::string smotif = shift_str(motif, i);
+        if (seq.compare(seq.size()-mlen, mlen, smotif)==0)
+        {
+            return smotif;
+        }
+
+        std::string rc_smotif = VNTR::reverse_complement(smotif);
+        if (seq.compare(seq.size()-mlen, mlen, rc_smotif)==0)
+        {
+            return rc_smotif;
+        }
+    }
+
     return motif;
 }
 
@@ -325,9 +358,17 @@ std::string FlankDetector::choose_repeat_unit(std::string& seq, std::string& mot
  */
 std::string FlankDetector::choose_exact_repeat_unit(std::string& seq, std::string& motif)
 {
+//    if (debug)
+//    {
+//        std::cerr << "choose_repeat_unit\n";
+//        std::cerr << "\tseq    " << seq << "\n";
+//        std::cerr << "\tmotif  " << motif << "\n";
+//    }
+
     for (uint32_t i=0; i<motif.size(); ++i)
     {
         std::string smotif = shift_str(motif, i);
+
         if (seq.compare(0, smotif.size(), smotif)==0)
         {
             return smotif;
@@ -416,7 +457,7 @@ void FlankDetector::polish_repeat_tract_ends(std::string& repeat_tract, std::str
  * 3. trf_score
  * 4. no_exact_ru
  * 5. total_no_ru
- * 6. alen
+ * 6. ref
  * 7. rl
  * 8. ll
  */
@@ -426,39 +467,42 @@ void FlankDetector::compute_purity_score(Variant& variant, int32_t amode)
 
     if (amode&FINAL)
     {
-        compute_purity_score(vntr.repeat_tract, vntr.motif);
+        compute_purity_score(vntr.repeat_tract, vntr.ru);
 
         vntr.ru = ru;
         vntr.score = score;
         vntr.trf_score = trf_score;
         vntr.no_exact_ru = no_exact_ru;
         vntr.total_no_ru = total_no_ru;
+        vntr.ref = ref;
         vntr.rl = rl;
         vntr.ll = rl + variant.max_dlen;
     }
 
     if (amode&EXACT)
     {
-        compute_purity_score(vntr.exact_repeat_tract, vntr.exact_motif);
+        compute_purity_score(vntr.exact_repeat_tract, vntr.exact_ru);
 
         vntr.exact_ru = ru;
         vntr.exact_score = score;
         vntr.exact_trf_score = trf_score;
         vntr.exact_no_exact_ru = no_exact_ru;
         vntr.exact_total_no_ru = total_no_ru;
+        vntr.exact_ref = ref;
         vntr.exact_rl = rl;
         vntr.exact_ll = rl + variant.max_dlen;
     }
 
     if (amode&FUZZY)
     {
-        compute_purity_score(vntr.fuzzy_repeat_tract, vntr.fuzzy_motif);
+        compute_purity_score(vntr.fuzzy_repeat_tract, vntr.fuzzy_ru);
 
         vntr.fuzzy_ru = ru;
         vntr.fuzzy_score = score;
         vntr.fuzzy_trf_score = trf_score;
         vntr.fuzzy_no_exact_ru = no_exact_ru;
         vntr.fuzzy_total_no_ru = total_no_ru;
+        vntr.fuzzy_ref = ref;
         vntr.fuzzy_rl = rl;
         vntr.fuzzy_ll = rl + variant.max_dlen;
     }
@@ -470,6 +514,13 @@ void FlankDetector::compute_purity_score(Variant& variant, int32_t amode)
 void FlankDetector::compute_purity_score(std::string& repeat_tract, std::string& motif)
 {
     ru = choose_exact_repeat_unit(repeat_tract, motif);
+
+    if (debug)
+    {
+        std::cerr << "ru           " << ru << "\n";
+        std::cerr << "repeat tract " << repeat_tract << "\n";
+
+    }
 
     ///////////////////
     //exact calculation
@@ -495,7 +546,8 @@ void FlankDetector::compute_purity_score(std::string& repeat_tract, std::string&
             score = 1;
             no_exact_ru = repeat_tract.size()/motif.size();
             total_no_ru = no_exact_ru;
-            rl = (float) repeat_tract.size()/(float) motif.size();
+            ref = (float) repeat_tract.size()/motif.size();
+            rl = repeat_tract.size();
             trf_score = repeat_tract.size() << 1;
             return; //done!
         }
@@ -521,7 +573,8 @@ void FlankDetector::compute_purity_score(std::string& repeat_tract, std::string&
         score = std::round(100*score)/100;
         no_exact_ru = ahmm->exact_motif_count;
         total_no_ru = ahmm->motif_count;
-        rl = ahmm->frac_no_repeats;
+        ref = ahmm->frac_no_repeats;
+        rl = repeat_tract.size();
         trf_score = ahmm->trf_score;
     }
 }
@@ -676,7 +729,7 @@ void FlankDetector::compute_composition_and_entropy(std::string& repeat_tract)
         entropy2 = -entropy2;
         entropy2 = std::round(100*entropy2)/100;
         entropy2 = fix_neg_zero(entropy2);
-    
+
 //        std::cerr << "tract: " << repeat_tract << "\n";
 //        std::cerr << "AA: " << aux_comp2[0] << " " << p2[0] << "\n";
 //        std::cerr << "AC: " << aux_comp2[1] << " " << p2[1] << "\n";

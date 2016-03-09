@@ -95,6 +95,7 @@ class VNTRExtractor
     std::string RU_COUNTS;
     std::string SCORE;
     std::string TRF_SCORE;
+    std::string ASSOCIATED_INDEL;
 
     int32_t vntr_classification;
 

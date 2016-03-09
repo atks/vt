@@ -108,8 +108,7 @@ void VNTRAnnotator::annotate(Variant& variant, int32_t amode)
         cre->pick_candidate_region(variant, EXACT_LEFT_RIGHT_ALIGNMENT, EXACT);
         cmp->update_exact_repeat_unit(variant);
 
-        fd->compute_purity_score(variant, EXACT);
-
+        
         //2. detect candidate motifs from a reference sequence
         cmp->generate_candidate_motifs(variant);
 

@@ -67,11 +67,12 @@ VNTRExtractor::VNTRExtractor(std::string& input_vcf_file, std::vector<GenomeInte
     ENTROPY2 = bcf_hdr_append_info_with_backup_naming(odw->hdr, "ENTROPY2", "1", "Float", "Dinucleotide entropy measure of an exact repeat tract [0,4].", rename);
     KL_DIVERGENCE = bcf_hdr_append_info_with_backup_naming(odw->hdr, "KL_DIVERGENCE", "1", "Float", "Kullback-Leibler Divergence of an exact repeat tract.", rename);
     KL_DIVERGENCE2 = bcf_hdr_append_info_with_backup_naming(odw->hdr, "KL_DIVERGENCE2", "1", "Float", "Dinucleotide Kullback-Leibler Divergence of an exact repeat tract.", rename);
-    RL = bcf_hdr_append_info_with_backup_naming(odw->hdr, "RL", "1", "Float", "Reference exact repeat tract length in bases.", rename);
-    LL = bcf_hdr_append_info_with_backup_naming(odw->hdr, "LL", "1", "Float", "Longest exact repeat tract length in bases.", rename);
+    RL = bcf_hdr_append_info_with_backup_naming(odw->hdr, "RL", "1", "Integer", "Reference exact repeat tract length in bases.", rename);
+    LL = bcf_hdr_append_info_with_backup_naming(odw->hdr, "LL", "1", "Integer", "Longest exact repeat tract length in bases.", rename);
     RU_COUNTS = bcf_hdr_append_info_with_backup_naming(odw->hdr, "RU_COUNTS", "2", "Integer", "Number of exact repeat units and total number of repeat units in exact repeat tract.", rename);
     SCORE = bcf_hdr_append_info_with_backup_naming(odw->hdr, "SCORE", "1", "Float", "Score of repeat unit in exact repeat tract.", rename);
     TRF_SCORE = bcf_hdr_append_info_with_backup_naming(odw->hdr, "TRF_SCORE", "1", "Integer", "TRF Score for M/I/D as 2/-7/-7 in exact repeat tract.", rename);
+    ASSOCIATED_INDEL = bcf_hdr_append_info_with_backup_naming(odw->hdr, "ASSOCIATED_INDEL", ".", "String", "Indels that induced this VNTR.", rename);
     odw->write_hdr();
 
 //    used in classification
@@ -103,15 +104,18 @@ VNTRExtractor::VNTRExtractor(std::string& input_vcf_file, std::vector<GenomeInte
  */
 void VNTRExtractor::insert(Variant* var)
 {
+    std::cerr << "buffer size : " << vbuffer.size() << "\n";
+
     flush(var);
 
     Variant& nvar = *var;
 
-    std::cerr << "inside insert\n";
+//    std::cerr << "inside insert\n";
 
-    std::cerr << "\t ";
-    bcf_print_liten(odr->hdr, var->v);
+//    std::cerr << "\t ";
+//    bcf_print_liten(odr->hdr, var->v);
 
+//    bcf_print(nvar.h, nvar.v);
 
     std::list<Variant*>::iterator i =vbuffer.begin();
     while(i != vbuffer.end())
@@ -124,11 +128,57 @@ void VNTRExtractor::insert(Variant* var)
         if (nvar.rid > cvar.rid)
         {
             vbuffer.insert(i, &nvar);
+            return;
         }
         else if (nvar.rid == cvar.rid)
         {
-            process_overlap(nvar, cvar);
+            if (nvar.beg1 > cvar.beg1)
+            {
+               vbuffer.insert(i, &nvar);
+               return;
+            }
+            else if (nvar.beg1 == cvar.beg1)
+            {
+                if (nvar.end1 > cvar.end1)
+                {
+                    vbuffer.insert(i, &nvar);
+                    return;
+                }
+                else if (cvar.end1 == nvar.end1)
+                {
+                    if (nvar.type==VT_VNTR && cvar.type==VT_VNTR)
+                    {
+                        if (cvar.vntr.motif == nvar.vntr.motif)
+                        {
+                            bcf1_t *v = nvar.vs[0];
+                            cvar.vs.push_back(v);
+                            cvar.indel_vs.push_back(v);
 
+                            //update cvar
+                            ++cvar.no_overlapping_indels;
+                            return;
+                       }
+                        else
+                        {
+                            vbuffer.insert(i, &nvar);
+                            return;
+                        }
+                    }
+                    else
+                    {
+                         vbuffer.insert(i, &nvar);
+                         return;
+                    }
+                }
+                else //nvar.rend1 < cvar.end1
+                {
+                    ++i;
+                }
+            }
+            else //nvar.beg1 < cvar.beg1
+            {
+                ++i;
+            }
         }
         else
         {
@@ -139,7 +189,7 @@ void VNTRExtractor::insert(Variant* var)
 
     vbuffer.push_back(&nvar);
 
-    std::cerr << "exit insert\n";
+//    std::cerr << "exit insert\n";
 }
 
 /**
@@ -196,7 +246,6 @@ void VNTRExtractor::process_overlap(Variant& nvar, Variant& cvar)
 //            ++i;
 //        }
 //    }
-
 }
 
 /**
@@ -243,29 +292,17 @@ void VNTRExtractor::flush(Variant* var)
     }
     else
     {
+
+        std::cerr << "final size of buffer " << vbuffer.size() << "\n";
+
         std::list<Variant*>::iterator i = vbuffer.begin();
         while (i!=vbuffer.end())
         {
-            process_exit(*i);
-            i = vbuffer.erase(i);
-        }
-
-        bcf_hdr_t *h = odr->hdr;
-        bcf1_t *v = odw->get_bcf1_from_pool();
-        while (odr->read(v))
-        {
-            Variant* var = new Variant(odr->hdr, v);
-
-            if (filter_exists)
-            {
-                if (!filter.apply(h, v, var, false))
-                {
-                    delete(var);
-                    continue;
-                }
-            }
+            var = *i;
+//            bcf_print(var->h, var->v);
 
             process_exit(var);
+            i = vbuffer.erase(i);
         }
     }
 }
@@ -291,14 +328,14 @@ void VNTRExtractor::process()
             }
         }
 
-        bcf_print(h, v);
+//        bcf_print(h, v);
 
-        if (vntr_classification==EXACT_VNTR)
-        {
-            create_and_insert_vntr(*var);
-        }
+        create_and_insert_vntr(*var);
+
 
         insert(var);
+
+        ++no_variants;
 
         v = odw->get_bcf1_from_pool();
     }
@@ -308,10 +345,11 @@ void VNTRExtractor::process()
 };
 
 /**
- * Process exiting variant.
+ * Process exiting variant.run
  */
 void VNTRExtractor::process_exit(Variant* var)
 {
+//    bcf_print(var->h, var->v);
     odw->write(var->v);
 }
 
@@ -320,8 +358,8 @@ void VNTRExtractor::process_exit(Variant* var)
  */
 void VNTRExtractor::close()
 {
-    odr->close();
     odw->close();
+    odr->close();
 }
 
 /**
@@ -332,7 +370,7 @@ void VNTRExtractor::create_and_insert_vntr(Variant& nvar)
     //convert all indels into their corresponding VNTR representation using exact parameters
     if (vntr_classification==EXACT_VNTR)
     {
-         VNTR& vntr = nvar.vntr;
+        VNTR& vntr = nvar.vntr;
 
         //create a new copy of bcf1_t
         bcf_hdr_t* h = nvar.h;
@@ -361,8 +399,8 @@ void VNTRExtractor::create_and_insert_vntr(Variant& nvar)
         bcf_update_info_string(h, nv, RU.c_str(), vntr.exact_ru.c_str());
         bcf_update_info_int32(h, nv, MLEN.c_str(), &vntr.exact_mlen, 1);
         bcf_update_info_int32(h, nv, BLEN.c_str(), &vntr.exact_blen, 1);
-        int32_t is[2] = {vntr.exact_no_exact_ru, vntr.exact_total_no_ru};
-        bcf_update_info_int32(h, nv, REPEAT_TRACT.c_str(), &is, 2);
+        int32_t repeat_tract[2] = {vntr.exact_beg1, vntr.exact_end1};
+        bcf_update_info_int32(h, nv, REPEAT_TRACT.c_str(), &repeat_tract, 2);
         bcf_update_info_int32(h, nv, COMP.c_str(), &vntr.exact_comp, 4);
         bcf_update_info_float(h, nv, ENTROPY.c_str(), &vntr.exact_entropy, 1);
         bcf_update_info_float(h, nv, ENTROPY2.c_str(), &vntr.exact_entropy2, 1);
@@ -373,20 +411,17 @@ void VNTRExtractor::create_and_insert_vntr(Variant& nvar)
         int32_t ru_count[2] = {vntr.exact_no_exact_ru, vntr.exact_total_no_ru};
         bcf_update_info_int32(h, nv, RU_COUNTS.c_str(), &ru_count, 2);
         bcf_update_info_float(h, nv, SCORE.c_str(), &vntr.exact_score, 1);
-        std::cerr << "ex trf score " << vntr.exact_trf_score << "\n";
         bcf_update_info_int32(h, nv, TRF_SCORE.c_str(), &vntr.exact_trf_score, 1);
+        std::string indel = bcf_variant2string(nvar.h, nvar.v);
+        bcf_update_info_string(h, nv, ASSOCIATED_INDEL.c_str(), indel.c_str());
 
+        Variant *nvntr = new Variant(h, nv);
+        insert(nvntr);
+
+        bcf_print(h, nvar.v);
         bcf_print(h, nv);
 
-        //update flanking sequences
-//        if (add_flank_annotation)
-//        {
-//            update_flankseq(h, v, variant.chrom.c_str(),
-//                            variant.vntr.exact_beg1-10, variant.vntr.exact_beg1-1,
-//                            variant.vntr.exact_end1+1, variant.vntr.exact_end1+10);
-//        }
-//
-
+        ++no_added_vntrs;
     }
 
 }

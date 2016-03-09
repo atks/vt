@@ -344,6 +344,11 @@ bcf1_t* bcf_copy_variant(bcf_hdr_t *h, bcf1_t *v);
 /**
  * Gets a string representation of a variant.
  */
+std::string bcf_variant2string(bcf_hdr_t *h, bcf1_t *v);
+
+/**
+ * Gets a string representation of a variant.
+ */
 void bcf_variant2string(bcf_hdr_t *h, bcf1_t *v, kstring_t *var);
 
 /**

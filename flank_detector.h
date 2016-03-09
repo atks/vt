@@ -76,6 +76,7 @@ class FlankDetector
     float score;
     int32_t no_exact_ru;
     int32_t total_no_ru;
+    float ref;
     int32_t rl;
     int32_t ll;
     int32_t trf_score;
@@ -126,12 +127,19 @@ class FlankDetector
     std::string shift_str(std::string& seq, uint32_t i);
 
     /**
-     * Chooses a phase of the motif that is appropriate for the alignment.
+     * Chooses a phase of the motif that is appropriate for the alignment from the 5 prime end.
      * This differs from choose_exact_repeat_unit() where the motif is returned
      * if not suitable repeat unit is found.
      */
-    std::string choose_repeat_unit(std::string& seq, std::string& motif);
-
+    std::string choose_5prime_repeat_unit(std::string& seq, std::string& motif);
+    
+    /**
+     * Chooses a phase of the motif that is appropriate for the alignment from the 3 prime end.
+     * This differs from choose_exact_repeat_unit() where the motif is returned
+     * if not suitable repeat unit is found.
+     */
+    std::string choose_3prime_repeat_unit(std::string& seq, std::string& motif);
+    
     /**
      * Chooses a phase of the motif that is appropriate for the alignment.
      * This returns the empty string if the motif does not have an exact

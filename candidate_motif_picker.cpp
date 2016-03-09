@@ -392,14 +392,11 @@ bool CandidateMotifPicker::next_motif(Variant& variant, int32_t mode)
                 }
                 
                 VNTR& vntr = variant.vntr;
-                vntr.motif = cm.motif;
-                vntr.basis = VNTR::get_basis(cm.motif);
-                vntr.mlen = cm.motif.size();
-                vntr.blen = vntr.basis.size();
-                vntr.fuzzy_motif = vntr.motif;
-                vntr.fuzzy_basis = vntr.basis;
-                vntr.fuzzy_mlen = vntr.mlen;
-                vntr.fuzzy_blen = vntr.blen;
+                vntr.fuzzy_motif = VNTR::canonicalize2(cm.motif);
+                vntr.fuzzy_basis = VNTR::get_basis(cm.motif);
+                vntr.fuzzy_mlen = vntr.fuzzy_motif.size();
+                vntr.fuzzy_blen = vntr.fuzzy_basis.size();
+  
                 mt->pcm.pop();
                 
                 return true;

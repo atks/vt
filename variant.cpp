@@ -28,6 +28,7 @@
  */
 Variant::Variant(bcf_hdr_t* h, bcf1_t* v)
 {
+    this->h = h;
     this->v = v;
 
     type = classify(h, v);
@@ -49,7 +50,7 @@ Variant::Variant(bcf_hdr_t* h, bcf1_t* v)
     else if (type==VT_INDEL)
     {
         beg1 = bcf_get_pos1(v);
-        end1 = bcf_get_pos1(v);
+        end1 = bcf_get_end1(v);
         
         int32_t *flanks = NULL;
         int32_t n = 0;
@@ -87,7 +88,7 @@ Variant::Variant(bcf_hdr_t* h, bcf1_t* v)
         pos1 = bcf_get_pos1(v);
         beg1 = bcf_get_pos1(v);       
         end1 = bcf_get_info_int(h, v, "END", 0);
-        if (!end1) end1 = strlen(bcf_get_allele(v)[0]);
+        if (!end1) end1 = bcf_get_end1(v);
         
         update_vntr_from_info_fields(h, v);
 
@@ -495,19 +496,17 @@ void Variant::update_vntr_from_info_fields()
     vntr.motif = bcf_get_rid(v);
     char** allele = bcf_get_allele(v);
     vntr.exact_repeat_tract.assign(allele[0]);
-    std::string types[3] = {"", "EX_", "FZ_"};
-    std::string tags[16] = {"MOTIF", "RU", "BASIS", "MLEN", "BLEN", "REPEAT_TRACT", "COMP", "ENTROPY", "ENTROPY2", "KL_DIVERGENCE", "KL_DIVERGENCE2", "RL", "LL", "RU_COUNTS", "SCORE", "TRF_SCORE"};
+//   std::string tags[16] = {"MOTIF", "RU", "BASIS", "MLEN", "BLEN", "REPEAT_TRACT", "COMP", "ENTROPY", "ENTROPY2", "KL_DIVERGENCE", "KL_DIVERGENCE2", "RL", "LL", "RU_COUNTS", "SCORE", "TRF_SCORE"};
     
     vntr.motif = bcf_get_info_str(h, v, "MOTIF");
     vntr.ru = bcf_get_info_str(h, v, "RU");
     vntr.basis = bcf_get_info_str(h, v, "BASIS");
-    vntr.mlen = vntr.motif.size();
-    
-    
-    
+    vntr.mlen = vntr.motif.size();    
     vntr.blen = (int32_t) vntr.basis.size();
-    vntr.repeat_tract = bcf_get_info_str(h, v, "REPEAT_TRACT");
-    std::vector<int32_t> i_vec = bcf_get_info_int_vec(h, v, "COMP", 4, 0);
+    std::vector<int32_t> i_vec = bcf_get_info_int_vec(h, v, "REPEAT_TRACT", 2, 0);
+    vntr.beg1 = i_vec[0];
+    vntr.end1 = i_vec[1];
+    i_vec = bcf_get_info_int_vec(h, v, "COMP", 4, 0);
     vntr.comp[0] = i_vec[0];
     vntr.comp[1] = i_vec[1];
     vntr.comp[2] = i_vec[2];
@@ -529,7 +528,9 @@ void Variant::update_vntr_from_info_fields()
     vntr.exact_basis = bcf_get_info_str(h, v, "EX_BASIS");
     vntr.exact_mlen = (int32_t) vntr.exact_motif.size();
     vntr.exact_blen = (int32_t) vntr.exact_basis.size();
-    vntr.exact_repeat_tract = bcf_get_info_str(h, v, "EX_REPEAT_TRACT");
+    i_vec = bcf_get_info_int_vec(h, v, "EX_REPEAT_TRACT", 2, 0);
+    vntr.exact_beg1 = i_vec[0];
+    vntr.exact_end1 = i_vec[1];
     i_vec = bcf_get_info_int_vec(h, v, "EX_COMP", 4, 0);
     vntr.exact_comp[0] = i_vec[0];
     vntr.exact_comp[1] = i_vec[1];
@@ -552,7 +553,9 @@ void Variant::update_vntr_from_info_fields()
     vntr.fuzzy_basis = bcf_get_info_str(h, v, "FZ_BASIS");
     vntr.fuzzy_mlen = (int32_t) vntr.fuzzy_motif.size();
     vntr.fuzzy_blen = (int32_t) vntr.fuzzy_basis.size();
-    vntr.fuzzy_repeat_tract = bcf_get_info_str(h, v, "FZ_REPEAT_TRACT");
+    i_vec = bcf_get_info_int_vec(h, v, "FZ_REPEAT_TRACT", 2, 0);
+    vntr.fuzzy_beg1 = i_vec[0];
+    vntr.fuzzy_end1 = i_vec[1];
     i_vec = bcf_get_info_int_vec(h, v, "FZ_COMP", 4, 0);
     vntr.fuzzy_comp[0] = i_vec[0];
     vntr.fuzzy_comp[1] = i_vec[1];

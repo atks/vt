@@ -195,7 +195,8 @@ class Igor : Program
     void print_stats()
     {
         std::clog << "\n";
-        std::cerr << "stats: no. of VNTRs added   " << no_vntrs_annotated << "\n";
+        std::cerr << "stats: no. of variants      " << ve->no_variants << "\n";
+        std::cerr << "       no. of VNTRs added   " << ve->no_added_vntrs << "\n";
         std::clog << "\n";
     }
 
