@@ -30,6 +30,7 @@ SOURCES = align\
 		compute_features2\
 		compute_rl_dist\
 		config\
+		consolidate_multiallelics\
 		consolidate_vntrs\
 		consolidate\
 		construct_probes\
@@ -63,6 +64,7 @@ SOURCES = align\
 		motif_tree\
 		motif_map\
 		multi_partition\
+		multiallelics_consolidator\
 		needle\
 		normalize\
 		ordered_bcf_overlap_matcher\

@@ -35,6 +35,7 @@
 #include "compute_rl_dist.h"
 #include "config.h"
 #include "consolidate.h"
+#include "consolidate_multiallelics.h"
 #include "consolidate_vntrs.h"
 #include "construct_probes.h"
 #include "decompose_blocksub.h"
@@ -199,6 +200,10 @@ int main(int argc, char ** argv)
     {
         annotate_vntrs(argc-1, ++argv);
     }
+    else if (argc>1 && cmd=="consolidate_multiallelics")
+    {
+        consolidate_multiallelics(argc-1, ++argv);
+    }    
     else if (argc>1 && cmd=="annotate_mendelian")
     {
         annotate_mendelian(argc-1, ++argv);
