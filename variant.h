@@ -84,6 +84,9 @@ class Variant
     int32_t no_overlapping_indels;
     int32_t no_overlapping_vntrs;
 
+    bool is_new_multiallelic;
+    bool is_involved_in_a_multiallelic;
+
     //describes VNTR
     VNTR vntr;
 

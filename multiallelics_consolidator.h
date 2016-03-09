@@ -79,31 +79,13 @@ class MultiallelicsConsolidator
     /////////////
     //INFO fields
     /////////////
-    std::string MOTIF;
-    std::string RU;
-    std::string BASIS;
-    std::string MLEN;
-    std::string BLEN;
-    std::string REPEAT_TRACT;
-    std::string COMP;
-    std::string ENTROPY;
-    std::string ENTROPY2;
-    std::string KL_DIVERGENCE;
-    std::string KL_DIVERGENCE2;
-    std::string RL;
-    std::string LL;
-    std::string RU_COUNTS;
-    std::string SCORE;
-    std::string TRF_SCORE;
-    std::string ASSOCIATED_INDEL;
-
-    int32_t vntr_classification;
+    std::string ASSOCIATED_BIALLEIC_VARIANTS;
 
     /////////
     //stats//
     /////////
     int32_t no_variants;
-    int32_t no_added_vntrs;
+    int32_t no_added_multiallelics;
 
     ///////
     //tools
@@ -113,7 +95,7 @@ class MultiallelicsConsolidator
     /**
      * Constructor.
      */
-    MultiallelicsConsolidator(std::string& input_vcf_file, std::vector<GenomeInterval>& intervals, std::string& output_vcf_file, std::string& fexp,  int32_t vntr_classification_code, std::string& ref_fasta_file);
+    MultiallelicsConsolidator(std::string& input_vcf_file, std::vector<GenomeInterval>& intervals, std::string& output_vcf_file, std::string& fexp, std::string& ref_fasta_file);
 
     /**
      * Update distribution of overlapping VNTRs
@@ -171,9 +153,9 @@ class MultiallelicsConsolidator
     void process_overlap(Variant& nvar, Variant&cvar);
 
     /**
-     * Creates a VNTR record based on classification schema.
+     * Creates a new multiallelic.
      */
-    void create_and_insert_vntr(Variant& nvar);
+    void create_new_multiallelic(Variant& nvar);
 
     private:
 };
