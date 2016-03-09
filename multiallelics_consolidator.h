@@ -105,7 +105,7 @@ class MultiallelicsConsolidator
     /**
      * Inserts a Variant record.
      */
-    void insert(Variant* variant);
+    Variant* insert(Variant* variant, bool insert_only=false);
 
     /**
      * Compute purity by sequence content.
@@ -151,12 +151,17 @@ class MultiallelicsConsolidator
      * Process overlapping variant.
      */
     void process_overlap(Variant& nvar, Variant&cvar);
+ 
+    /**
+     * Creates or updates a multiallelic.
+     */
+    Variant* create_or_update_multiallelic(Variant& nvar, Variant& cvar);
 
     /**
-     * Creates a new multiallelic.
+     * Updates a multiallelic for printing.
      */
-    void create_new_multiallelic(Variant& nvar);
-
+    void update_multiallelic_for_printing(Variant& var);
+    
     private:
 };
 

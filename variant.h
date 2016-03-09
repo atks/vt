@@ -86,6 +86,7 @@ class Variant
 
     bool is_new_multiallelic;
     bool is_involved_in_a_multiallelic;
+    Variant* associated_new_multiallelic;
 
     //describes VNTR
     VNTR vntr;
