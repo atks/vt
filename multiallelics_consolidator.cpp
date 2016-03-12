@@ -177,7 +177,7 @@ void MultiallelicsConsolidator::flush(Variant* var)
         {
             var = *i;
             process_exit(*i);
-            
+
             i = vbuffer.erase(i);
         }
     }
@@ -203,7 +203,6 @@ void MultiallelicsConsolidator::process()
                 continue;
             }
         }
-//        std::cerr << "pool " << odw->pool.size() << "\n";
 
 //        bcf_print(h, v);
 
@@ -340,7 +339,7 @@ void MultiallelicsConsolidator::update_multiallelic_for_printing(Variant& mvar)
 //        std::cerr << "number of overlapping variants: " << mvar.vs.size() << "\n";
 //        nvar.print();
 //        cvar.print();
-//        std::cerr << "NREW MULTI\n";
+//        std::cerr << "NEW MULTI\n";
 //        std::cerr <<  std::min(nvar.beg1, cvar.beg1) << "\n";
 //        std::cerr <<  nvar.beg1 << "\n";
 //        std::cerr <<  cvar.beg1 << "\n";
@@ -350,7 +349,9 @@ void MultiallelicsConsolidator::update_multiallelic_for_printing(Variant& mvar)
     std::string ref;
     rs->fetch_seq(mvar.chrom, mvar.beg1, mvar.end1, ref);
 
-    std::string new_alleles = ref;
+    
+    std::vector<std::string> alleles;
+    alleles.push_back(ref);
 
     for (uint32_t i=0; i<mvar.vs.size(); ++i)
     {
@@ -358,7 +359,7 @@ void MultiallelicsConsolidator::update_multiallelic_for_printing(Variant& mvar)
         std::string alt(bcf_get_alt(mvar.vs[i], 1));
         int32_t beg1 = bcf_get_pos1(mvar.vs[i]);
         int32_t end1 = bcf_get_end1(mvar.vs[i]);
-        
+
         //extend alt
         std::string left = ref.substr(0, beg1-mvar.beg1);
         std::string right = ref.substr(end1-mvar.beg1+1, mvar.end1-end1);
@@ -366,21 +367,27 @@ void MultiallelicsConsolidator::update_multiallelic_for_printing(Variant& mvar)
 //        std::cerr << "\talt  : " << alt << "\n";
 //        std::cerr << "\txalt : " <<left << " " << alt  << " "  << right << "\n";
 
-        new_alleles += "," + left + alt + right;
+//        new_alleles += "," + left + alt + right;
 
+        alleles.push_back(left + alt + right);
 //        bcf_print_liten(mvar.h, mvar.vs[i]);
         bcf_destroy(mvar.vs[i]);
     }
-    
+
+    int32_t left_trimmed = 0;
+    VariantManip::left_trim(alleles, mvar.beg1, left_trimmed);
+
+    std::string new_alleles = join(alleles, ",");
+
     mvar.vs.clear();
 
 //    std::cerr << "NEW ALLELES : " << new_alleles << "\n";
     bcf_set_pos1(mvar.v, mvar.beg1);
     bcf_update_alleles_str(mvar.h, mvar.v, new_alleles.c_str());
-    
+
 //     bcf_print(mvar.h, mvar.v);
-     
+
 //    std::cerr << "=========================\n";
-        
-       
+
+
 }

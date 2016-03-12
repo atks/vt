@@ -487,7 +487,7 @@ int32_t VariantManip::classify_variant(bcf_hdr_t *h, bcf1_t *v, Variant& var)
 /**
  * Right trims or left extend a variant.
  */
-void VariantManip::right_trim_or_left_extend(std::vector<std::string>& alleles, uint32_t& pos1, const char* chrom, uint32_t& left_extended, uint32_t& right_trimmed)
+void VariantManip::right_trim_or_left_extend(std::vector<std::string>& alleles, int32_t& pos1, const char* chrom, int32_t& left_extended, int32_t& right_trimmed)
 {
     bool to_right_trim = true;
     bool to_left_extend = false;
@@ -562,7 +562,7 @@ void VariantManip::right_trim_or_left_extend(std::vector<std::string>& alleles, 
 /**
  * Left trims a variant.
  */
-void VariantManip::left_trim(std::vector<std::string>& alleles, uint32_t& pos1, uint32_t& left_trimmed)
+void VariantManip::left_trim(std::vector<std::string>& alleles, int32_t& pos1, int32_t& left_trimmed)
 {
     bool to_left_trim =  true;
 

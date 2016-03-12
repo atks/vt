@@ -165,9 +165,9 @@ class Igor : Program
 
     void normalize()
     {
-        uint32_t left_extended = 0;
-        uint32_t left_trimmed = 0;
-        uint32_t right_trimmed = 0;
+        int32_t left_extended = 0;
+        int32_t left_trimmed = 0;
+        int32_t right_trimmed = 0;
 
         kstring_t old_alleles = {0,0,0};
         kstring_t new_alleles = {0,0,0};
@@ -210,7 +210,7 @@ class Igor : Program
             if (is_ref_consistent && !(type&VT_SV) && !(type&VT_VNTR) && !vm->is_normalized(v))
             {
                 const char* chrom = odr->get_seqname(v);
-                uint32_t pos1 = bcf_get_pos1(v);
+                int32_t pos1 = bcf_get_pos1(v);
 
                 std::vector<std::string> alleles;
                 for (size_t i=0; i<bcf_get_n_allele(v); ++i)

@@ -118,6 +118,21 @@ void split(std::vector<std::string>& vec, const char *delims, const char* str, u
 };
 
 /**
+ * Joins a vector of strings into a string - PERL style
+ */
+std::string join(std::vector<std::string>& vec, std::string delim)
+{
+    std::string s;
+    for (uint32_t i=0; i<vec.size(); ++i)
+    {
+        if (i) s += delim;
+        s += vec[i];
+    }
+    
+    return s;
+}
+
+/**
  * Casts a string into int32.  Returns true if successful.
  */
 bool str2int32(std::string& s, int32_t& i)

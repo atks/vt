@@ -48,6 +48,11 @@ void split(std::vector<std::string>& vec, const char* delims, std::string& str, 
 void split(std::vector<std::string>& vec, const char* delims, const char* str, uint32_t limit=UINT_MAX, bool clear=true, bool collapse=true);
 
 /**
+ * Joins a vector of strings into a string - PERL style
+ */
+std::string join(std::vector<std::string>& vec, std::string delim);
+
+/**
  * Casts a string into int32.  Returns true if successful.
  */
 bool str2int32(std::string& s, int32_t& i);

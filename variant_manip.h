@@ -74,12 +74,12 @@ class VariantManip
     /**
      * Right trims or left extend a variant.
      */
-    void right_trim_or_left_extend(std::vector<std::string>& alleles, uint32_t& pos1, const char* chrom, uint32_t& left_extended, uint32_t& right_trimmed);
+    void right_trim_or_left_extend(std::vector<std::string>& alleles, int32_t& pos1, const char* chrom, int32_t& left_extended, int32_t& right_trimmed);
 
     /**
      * Left trims a variant with unnecesary nucleotides.
      */
-    void left_trim(std::vector<std::string>& alleles, uint32_t& pos1, uint32_t& left_trimmed) ;
+    static void left_trim(std::vector<std::string>& alleles, int32_t& pos1, int32_t& left_trimmed);
 
     /**
      * Generates a probing haplotype with flanks around the variant of interest.
