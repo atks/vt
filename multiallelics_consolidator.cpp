@@ -74,93 +74,56 @@ MultiallelicsConsolidator::MultiallelicsConsolidator(std::string& input_vcf_file
 }
 
 /**
- * Inserts a record record.
- * Returns a multiallelic if necessary if successful.
+ * Inserts a biallelic record that is already present.
+ * Also inserts a multiallelic if it induces it.
+ *
+ * assumption: variants are ordered. 
+ *
+ * Note that this function does not guaranteed order of variants,
+ * the positions of the multiallelic variants can change but its position
+ * in the buffer is not updated, the variants when flushed, will be
+ * ordered via OrderedBCFReader.
  */
-Variant* MultiallelicsConsolidator::insert(Variant* var, bool insert_only)
+void MultiallelicsConsolidator::insert(Variant* var)
 {
-//    std::cerr << "buffer size : " << vbuffer.size() << "\n";
-
     flush(var);
-
+    
     Variant& nvar = *var;
-
-//    std::cerr << "inside insert\n";
-
-//    std::cerr << "\t ";
-//    bcf_print_liten(odr->hdr, var->v);
-
-//    bcf_print(nvar.h, nvar.v);
-
     std::list<Variant*>::iterator i =vbuffer.begin();
     bool inserted = false;
-    Variant* new_multiallelic = NULL;
+    Variant* mvar = NULL;
+
     while(i!=vbuffer.end())
     {
         Variant& cvar = **i;
-//        std::cerr << "\t vs ";
-//        bcf_print_liten(odr->hdr, cvar.v);
-//vs 20:1000347:T/TATCCATCCATTCAACCATCCACCCACCCTCCC
 
         if (nvar.rid > cvar.rid)
         {
-            vbuffer.insert(i, &nvar);
-            return new_multiallelic;
+            break;
         }
         else if (nvar.rid == cvar.rid)
         {
-            //possible chance of overlapping
-            if (!insert_only)
+            if (nvar.beg1 <= cvar.beg1 + buffer_window_allowance)
             {
-                if (nvar.beg1 <= cvar.beg1 + buffer_window_allowance)
+                if (nvar.beg1 <= cvar.end1 && nvar.end1>=cvar.beg1)
                 {
-                    if (nvar.beg1 <= cvar.end1 && nvar.end1>=cvar.beg1)
-                    {
-                        new_multiallelic = create_or_update_multiallelic(nvar, cvar);
-                    }
-                }
-                else
-                {
+                    mvar = create_or_update_multiallelic(nvar, cvar);
                     break;
-                }
-            }
-            
-            if (!inserted)
-            {
-                if (nvar.beg1 > cvar.beg1)
-                {
-                    vbuffer.insert(i, &nvar);
-                    inserted = true;
-                    if (insert_only) return NULL;
-                }
-                else if (nvar.beg1 == cvar.beg1)
-                {
-                    if (nvar.end1 >= cvar.end1)
-                    {
-                        vbuffer.insert(i, &nvar);
-                        inserted = true;
-                        if (insert_only) return NULL;
-                    }
-                    else
-                    {
-                        ++i;
-                    }
                 }
                 else
                 {
                     ++i;
                 }
             }
-        }
-        else
-        {
-            fprintf(stderr, "[%s:%d %s] File %s is unordered\n", __FILE__, __LINE__, __FUNCTION__, input_vcf_file.c_str());
-            exit(1);
+            else
+            {
+                break;
+            }
         }
     }
 
-    vbuffer.push_back(var);
-    return new_multiallelic;
+    vbuffer.push_front(var);
+    if (mvar) vbuffer.push_front(mvar);
 }
 
 /**
@@ -168,6 +131,8 @@ Variant* MultiallelicsConsolidator::insert(Variant* var, bool insert_only)
  */
 void MultiallelicsConsolidator::flush(Variant* var)
 {
+    std::cerr << "enter flush\n";
+
     if (vbuffer.empty())
     {
         return;
@@ -193,22 +158,17 @@ void MultiallelicsConsolidator::flush(Variant* var)
                 {
                     break;
                 }
-            }
-            else
-            {
-                fprintf(stderr, "[%s:%d %s] Buffer is unordered\n", __FILE__, __LINE__, __FUNCTION__);
-                exit(1);
-            }
+            }            
 
             ++i;
         }
 
+        //delete all records beyond this point
         while (i!=vbuffer.end())
         {
             process_exit(*i);
             i = vbuffer.erase(i);
         }
-
     }
     else
     {
@@ -245,11 +205,7 @@ void MultiallelicsConsolidator::process()
 
 //        bcf_print(h, v);
 
-        Variant* multi_var = insert(var);
-        if (multi_var)
-        {
-            insert(multi_var, true);
-        }
+        insert(var);
         
         ++no_variants;
 
@@ -286,40 +242,71 @@ void MultiallelicsConsolidator::close()
 
 /**
  * Creates or updates a multiallelic.
+ * @nvar - always a biallelic
+ * @cvar - biallelic or multiallelic
  */
 Variant* MultiallelicsConsolidator::create_or_update_multiallelic(Variant& nvar, Variant& cvar)
 {
-    if (cvar.is_new_multiallelic)
+    if (!cvar.is_new_multiallelic && !cvar.is_involved_in_a_multiallelic)
     {
         Variant *mvar = new Variant();
-        
+
+        mvar->h = nvar.h;
+        mvar->v = bcf_init();
+        bcf_clear(mvar->v);
+        bcf_set_rid(mvar->v, nvar.rid);
+        bcf_set_pos1(mvar->v, std::min(nvar.beg1, cvar.beg1));
+
+        kstring_t s = {0,0,0};
+        kputs("NNN,<MULTI>", &s);
+        bcf_update_alleles_str(mvar->h, mvar->v, s.s);
+        if (s.m) free(s.s);
+
+
+        std::cerr << "NREW MULTI\n";
+        std::cerr <<  std::min(nvar.beg1, cvar.beg1) << "\n";
+        std::cerr <<  nvar.beg1 << "\n";
+        std::cerr <<  cvar.beg1 << "\n";
+
+
+        bcf_print(mvar->h, mvar->v);
+
+        mvar->chrom = nvar.chrom;
+        mvar->rid = nvar.rid;
         mvar->beg1 = std::min(nvar.beg1, cvar.beg1);
         mvar->end1 = std::max(nvar.end1, cvar.end1);
-        
+
+
         bcf1_t *nv = bcf_dup(nvar.v);
         bcf1_t *cv = bcf_dup(cvar.v);
-        
+
         mvar->vs.push_back(nv);
         mvar->vs.push_back(cv);
-        
+
         return mvar;
     }
-    else if (cvar.is_involved_in_a_multiallelic)
-    {
-        //get multiallelic and add on to it
-        Variant *mvar = cvar.associated_new_multiallelic;
 
-        mvar->beg1 = std::min(nvar.beg1, mvar->beg1);
-        mvar->end1 = std::max(nvar.end1, mvar->end1);
-           
-        bcf1_t *nv = bcf_dup(nvar.v);
-        
-        mvar->vs.push_back(nv);
-            
-        return NULL;
-    }  
-   
-    return NULL;
+    Variant *mvar = NULL;
+    if (cvar.is_new_multiallelic)
+    {
+        mvar = &cvar;
+    }
+    else
+    {
+        mvar = cvar.associated_new_multiallelic;
+    }
+    
+    bcf_print(mvar->h, mvar->v);
+
+    mvar->chrom = nvar.chrom;
+    mvar->rid = nvar.rid;
+    mvar->beg1 = std::min(nvar.beg1, cvar.beg1);
+    mvar->end1 = std::max(nvar.end1, cvar.end1);
+
+    bcf1_t *nv = bcf_dup(nvar.v);
+    mvar->vs.push_back(nv);
+
+    return NULL;    
 }
 
 /**
@@ -368,5 +355,4 @@ void MultiallelicsConsolidator::update_multiallelic_for_printing(Variant& nvar)
 //
 //        ++no_added_vntrs;
 //    }
-
 }

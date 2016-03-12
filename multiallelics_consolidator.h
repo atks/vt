@@ -105,7 +105,7 @@ class MultiallelicsConsolidator
     /**
      * Inserts a Variant record.
      */
-    Variant* insert(Variant* variant, bool insert_only=false);
+    void insert(Variant* variant);
 
     /**
      * Compute purity by sequence content.
