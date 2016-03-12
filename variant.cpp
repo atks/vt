@@ -41,6 +41,8 @@ Variant::Variant(bcf_hdr_t* h, bcf1_t* v)
     no_overlapping_indels = 0;
     no_overlapping_vntrs = 0;
 
+    is_new_multiallelic =  false;
+
     //attempts to update relevant information on variants
     if (type==VT_SNP)
     {
@@ -51,41 +53,15 @@ Variant::Variant(bcf_hdr_t* h, bcf1_t* v)
     {
         beg1 = bcf_get_pos1(v);
         end1 = bcf_get_end1(v);
-        
-        int32_t *flanks = NULL;
-        int32_t n = 0;
-        if (bcf_get_info_int32(h, v, "FLANKS", &flanks, &n)>0)
-        {
-            vntr.exact_beg1 = flanks[0]+1;
-            vntr.exact_end1 = flanks[1]-1;
-            free(flanks);
-        }
-        else
-        {
-            vntr.exact_beg1 = bcf_get_pos1(v) - 1;
-            vntr.exact_end1 = bcf_get_end1(v) + 1;
-        }
-
-        beg1 = vntr.exact_beg1-1;
-        end1 = vntr.exact_end1+1;
-
-        int32_t *fuzzy_flanks = NULL;
-        n = 0;
-        if (bcf_get_info_int32(h, v, "FZ_FLANKS", &fuzzy_flanks, &n)>0)
-        {
-            vntr.fuzzy_beg1 = fuzzy_flanks[0];
-            vntr.fuzzy_end1 = fuzzy_flanks[1];
-            free(fuzzy_flanks);
-        }
-        else
-        {
-            vntr.fuzzy_beg1 = bcf_get_pos1(v) - 1;
-            vntr.fuzzy_end1 = bcf_get_end1(v) + 1;
-        }
+    }
+    else if (type & (VT_SNP|VT_MNP|VT_INDEL|VT_CLUMPED))
+    {
+        beg1 = bcf_get_pos1(v);       
+        end1 = bcf_get_info_int(h, v, "END", 0);
+        if (!end1) end1 = bcf_get_end1(v);
     }
     else if (type==VT_VNTR)
     {
-        pos1 = bcf_get_pos1(v);
         beg1 = bcf_get_pos1(v);       
         end1 = bcf_get_info_int(h, v, "END", 0);
         if (!end1) end1 = bcf_get_end1(v);
@@ -97,11 +73,17 @@ Variant::Variant(bcf_hdr_t* h, bcf1_t* v)
     }
     else if (type==VT_SV)
     {
-        pos1 = bcf_get_pos1(v);
         beg1 = bcf_get_pos1(v);
         end1 = bcf_get_info_int(h, v, "END", 0);
         if (!end1) end1 = strlen(bcf_get_allele(v)[0]);
     }
+    else
+    {
+        std::cerr <<  "unexpected type in variant construction\n";
+        print();
+        exit(1);
+    }
+      
 }
 
 /**
@@ -183,6 +165,10 @@ void Variant::clear()
     h = NULL;
     v = NULL;
     
+    is_new_multiallelic = false;
+    is_involved_in_a_multiallelic = false;
+    associated_new_multiallelic = NULL;
+
     chrom.clear();
     rid = 0;
     pos1 = 0;
@@ -629,7 +615,13 @@ void Variant::update_bcf_with_vntr_info(bcf_hdr_t *h, bcf1_t *v)
  */
 void Variant::print()
 {
-    std::cerr << "type : " << vtype2string(type) << "\n";
+    std::cerr << "type  : " << vtype2string(type) << "\n";
+    std::cerr << "\n";
+    if (h!=NULL && v!=NULL) bcf_print_liten(h, v); 
+    std::cerr << "chrom : " << chrom << "\n";
+    std::cerr << "beg1  : " << beg1 << "\n";
+    std::cerr << "end1  : " << end1 << "\n";
+
     std::cerr << "motif: " << vntr.motif << "\n";
     std::cerr << "rlen : " << vntr.motif.size() << "\n";
 

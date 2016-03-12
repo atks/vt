@@ -90,7 +90,7 @@ class MultiallelicsConsolidator
     ///////
     //tools
     ///////
-    ReferenceSequence *refseq;
+    ReferenceSequence *rs;
 
     /**
      * Constructor.
