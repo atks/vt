@@ -177,6 +177,7 @@ void MultiallelicsConsolidator::flush(Variant* var)
         {
             var = *i;
             process_exit(*i);
+            
             i = vbuffer.erase(i);
         }
     }
@@ -202,6 +203,7 @@ void MultiallelicsConsolidator::process()
                 continue;
             }
         }
+//        std::cerr << "pool " << odw->pool.size() << "\n";
 
 //        bcf_print(h, v);
 
@@ -229,6 +231,7 @@ void MultiallelicsConsolidator::process_exit(Variant* var)
 
 //    bcf_print(var->h, var->v);
     odw->write(var->v);
+    delete var;
 }
 
 /**.
@@ -366,7 +369,10 @@ void MultiallelicsConsolidator::update_multiallelic_for_printing(Variant& mvar)
         new_alleles += "," + left + alt + right;
 
 //        bcf_print_liten(mvar.h, mvar.vs[i]);
+        bcf_destroy(mvar.vs[i]);
     }
+    
+    mvar.vs.clear();
 
 //    std::cerr << "NEW ALLELES : " << new_alleles << "\n";
     bcf_set_pos1(mvar.v, mvar.beg1);
@@ -376,44 +382,5 @@ void MultiallelicsConsolidator::update_multiallelic_for_printing(Variant& mvar)
      
 //    std::cerr << "=========================\n";
         
-        
-        
-//        VNTR& vntr = nvar.vntr;
-//
-//        //create a new copy of bcf1_t
-//        bcf_hdr_t* h = nvar.h;
-//        nvar.update_vntr_from_info_fields();
-//        bcf1_t* nv = bcf_init1();
-//        bcf_clear(nv);
-//
-//        if (vntr.exact_repeat_tract == "")
-//        {
-//            rs->fetch_seq(nvar.chrom, vntr.exact_beg1, vntr.exact_end1, vntr.exact_repeat_tract);
-//        }
-//
-//        bcf_set_rid(nv, nvar.rid);
-//        bcf_set_pos1(nv, vntr.exact_beg1);
-//        kstring_t s = {0,0,0};
-//        kputs(vntr.exact_repeat_tract.c_str(), &s);
-//        kputc(',', &s);
-//        kputs("<VNTR>", &s);
-//        bcf_update_alleles_str(h, nv, s.s);
-//        if (s.m) free(s.s);
-//
-//        if (no_samples) bcf_update_genotypes(h, nv, gts, no_samples);
-//
-//
-//
-//        Variant *nvntr = new Variant(h, nv);
-//
-//        std::string indel = bcf_variant2string(nvar.h, nvar.v);
-//        nvntr->vntr.add_associated_indel(indel);
-//
-//        insert(nvntr);
-//
-////        bcf_print(h, nvar.v);
-////        bcf_print(h, nv);
-//
-//        ++no_added_vntrs;
-//    }
+       
 }

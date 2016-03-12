@@ -232,7 +232,8 @@ void BCFOrderedWriter::flush(bool force)
         while (!buffer.empty())
         {
             bcf_write(file, hdr, buffer.back());
-            store_bcf1_into_pool(buffer.back());
+            bcf_destroy(buffer.back());
+            //store_bcf1_into_pool(buffer.back());
             buffer.pop_back();
         }
     }
@@ -247,7 +248,8 @@ void BCFOrderedWriter::flush(bool force)
                 if (bcf_get_pos1(buffer.back())<=cutoff_pos1)
                 {
                     bcf_write(file, hdr, buffer.back());
-                    store_bcf1_into_pool(buffer.back());
+                    bcf_destroy(buffer.back());
+                    //store_bcf1_into_pool(buffer.back());
                     buffer.pop_back();
                 }
                 else
@@ -267,4 +269,19 @@ void BCFOrderedWriter::close()
     flush(true);
     bcf_close(file);
     if (!linked_hdr && hdr) bcf_hdr_destroy(hdr);
+//    while (buffer.size()!=0)
+//    {
+//        bcf_destroy(buffer.pop_back());
+//        buffer.pop_back();
+//        if (bcf_get_pos1(buffer.back())<=cutoff_pos1)
+//        {
+//            bcf_write(file, hdr, buffer.back());
+//            store_bcf1_into_pool(buffer.back());
+//            buffer.pop_back();
+//        }
+//        else
+//        {
+//            return;
+//        }
+//    }
 }
