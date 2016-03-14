@@ -138,6 +138,7 @@ void VNTRExtractor::insert(Variant* var)
                 {
                     if (nvar.type==VT_VNTR && cvar.type==VT_VNTR)
                     {
+                        //duplicate, do not print
                         if (cvar.vntr.motif == nvar.vntr.motif)
                         {
                             std::string nvar_associated_indel = bcf_get_info_str(nvar.h, nvar.v, "ASSOCIATED_INDEL", "");
@@ -345,6 +346,8 @@ void VNTRExtractor::process_exit(Variant* var)
         {
             bcf_update_info_string(var->h, var->v, ASSOCIATED_INDEL.c_str(), indels.c_str());
         }
+        
+        ++no_added_vntrs;
     }
 
 //    bcf_print(var->h, var->v);
@@ -420,8 +423,6 @@ void VNTRExtractor::create_and_insert_vntr(Variant& nvar)
 
 //        bcf_print(h, nvar.v);
 //        bcf_print(h, nv);
-
-        ++no_added_vntrs;
     }
     else if (vntr_classification==FUZZY_VNTR)
     {
@@ -477,8 +478,11 @@ void VNTRExtractor::create_and_insert_vntr(Variant& nvar)
 
 //        bcf_print(h, nvar.v);
 //        bcf_print(h, nv);
-
-        ++no_added_vntrs;
+    }
+    else
+    {
+        fprintf(stderr, "[%s:%d %s] VNTR classification code not recognized :  %d\n", __FILE__, __LINE__, __FUNCTION__, vntr_classification);
+        exit(1);
     }
 
 }

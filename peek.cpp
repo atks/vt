@@ -438,75 +438,81 @@ class Igor : Program
             fprintf(stderr, "\n");
         }
 
-        fprintf(stderr, "       ============== VNTR ===============\n");
-        fprintf(stderr, "\n");
-        fprintf(stderr, "       no. of VNTRs                       : %10d\n", VAR_COUNT[POLYMORPHIC][VT_VNTR]);
-        for (int32_t i=0; i<NO_MOTIF_LEN_CATEGORIES; ++i)
-        {
-            if (VAR_MOTIF_LEN[i])
+        if (VAR_COUNT[POLYMORPHIC][VT_VNTR])
+        {    
+            fprintf(stderr, "       ============== VNTR ===============\n");
+            fprintf(stderr, "\n");
+            fprintf(stderr, "       no. of VNTRs                       : %10d\n", VAR_COUNT[POLYMORPHIC][VT_VNTR]);
+            for (int32_t i=0; i<NO_MOTIF_LEN_CATEGORIES; ++i)
             {
-                if (i<NO_MOTIF_LEN_CATEGORIES-1)
+                if (VAR_MOTIF_LEN[i])
                 {
-                    fprintf(stderr, "           no. of %d bp motifs                   : %10d\n", i+1, VAR_MOTIF_LEN[i]);
-                }
-                else
-                {
-                    fprintf(stderr, "           no. of >%d bp motifs                   : %10d\n", i+1, VAR_MOTIF_LEN[i]);
+                    if (i<NO_MOTIF_LEN_CATEGORIES-1)
+                    {
+                        fprintf(stderr, "           no. of %d bp motifs                   : %10d\n", i+1, VAR_MOTIF_LEN[i]);
+                    }
+                    else
+                    {
+                        fprintf(stderr, "           no. of >%d bp motifs                   : %10d\n", i+1, VAR_MOTIF_LEN[i]);
+                    }
                 }
             }
-        }
-        fprintf(stderr, "\n");
-
-        if (VAR_COUNT[POLYMORPHIC][VT_VNTR])
-        {
-//            vntr_tree->print();
+            fprintf(stderr, "\n");
+    
+            if (VAR_COUNT[POLYMORPHIC][VT_VNTR])
+            {
+    //            vntr_tree->print();
+            }
         }
         
-        fprintf(stderr, "       ======= Structural variants ========\n");
-        fprintf(stderr, "\n");
         std::vector<SVNode*> s = sv_tree->enumerate_dfs();
-        fprintf(stderr, "       no. of structural variants         : %10d\n", s[0]->count+s[0]->mcount);
-        if (s[0]->count)
+        if (s[0]->count+s[0]->mcount)
         {
-            fprintf(stderr, "           2 alleles                      : %15d\n", s[0]->count);
-            for (size_t i=1; i<s.size(); ++i)
+            fprintf(stderr, "       ======= Structural variants ========\n");
+            fprintf(stderr, "\n");
+            fprintf(stderr, "       no. of structural variants         : %10d\n", s[0]->count+s[0]->mcount);
+            if (s[0]->count)
             {
-                if (s[i]->count)
+                fprintf(stderr, "           2 alleles                      : %15d\n", s[0]->count);
+                for (size_t i=1; i<s.size(); ++i)
                 {
-                    fprintf(stderr, "            ");
-                    for (int32_t j=0; j<s[i]->depth; ++j) std::cerr << "   ";
-                    std::string desc = s[i]->sv_type2string(s[i]->type.s);
-                    fprintf(stderr, "%s", desc.c_str());
-                    for (int32_t j=0; j<30-desc.size()-s[i]->depth*3; ++j) std::cerr << " ";
-                    fprintf(stderr, ":           ");
-                    for (int32_t j=0; j<s[i]->depth; ++j) std::cerr << "    ";
-                    fprintf(stderr, "%6d\n", s[i]->count);
+                    if (s[i]->count)
+                    {
+                        fprintf(stderr, "            ");
+                        for (int32_t j=0; j<s[i]->depth; ++j) std::cerr << "   ";
+                        std::string desc = s[i]->sv_type2string(s[i]->type.s);
+                        fprintf(stderr, "%s", desc.c_str());
+                        for (int32_t j=0; j<30-desc.size()-s[i]->depth*3; ++j) std::cerr << " ";
+                        fprintf(stderr, ":           ");
+                        for (int32_t j=0; j<s[i]->depth; ++j) std::cerr << "    ";
+                        fprintf(stderr, "%6d\n", s[i]->count);
+                    }
                 }
             }
-        }
-
-        if (s[0]->mcount)
-        {
-            fprintf(stderr, "           >=3 alleles                    : %15d\n", s[0]->mcount);
-            for (size_t i=1; i<s.size(); ++i)
+    
+            if (s[0]->mcount)
             {
-                if (s[i]->mcount)
+                fprintf(stderr, "           >=3 alleles                    : %15d\n", s[0]->mcount);
+                for (size_t i=1; i<s.size(); ++i)
                 {
-                    fprintf(stderr, "            ");
-                    for (int32_t j=0; j<s[i]->depth; ++j) std::cerr << "   ";
-                    std::string desc = s[i]->sv_type2string(s[i]->type.s);
-                    fprintf(stderr, "%s", desc.c_str());
-                    for (int32_t j=0; j<30-desc.size()-s[i]->depth*3; ++j) std::cerr << " ";
-                    fprintf(stderr, ":           ");
-                    for (int32_t j=0; j<s[i]->depth; ++j) std::cerr << "    ";
-                    fprintf(stderr, "%6d\n", s[i]->mcount);
+                    if (s[i]->mcount)
+                    {
+                        fprintf(stderr, "            ");
+                        for (int32_t j=0; j<s[i]->depth; ++j) std::cerr << "   ";
+                        std::string desc = s[i]->sv_type2string(s[i]->type.s);
+                        fprintf(stderr, "%s", desc.c_str());
+                        for (int32_t j=0; j<30-desc.size()-s[i]->depth*3; ++j) std::cerr << " ";
+                        fprintf(stderr, ":           ");
+                        for (int32_t j=0; j<s[i]->depth; ++j) std::cerr << "    ";
+                        fprintf(stderr, "%6d\n", s[i]->mcount);
+                    }
                 }
             }
-        }
-
-        if (sv_tree->mixed_sv_count)
-        {
-            fprintf(stderr, "            mixed sv                      :  %15d\n", sv_tree->mixed_sv_count);
+    
+            if (sv_tree->mixed_sv_count)
+            {
+                fprintf(stderr, "            mixed sv                      :  %15d\n", sv_tree->mixed_sv_count);
+            }
         }
 
         fprintf(stderr, "\n");
