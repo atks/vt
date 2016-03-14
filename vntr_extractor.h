@@ -79,6 +79,7 @@ class VNTRExtractor
     /////////////
     //INFO fields
     /////////////
+    std::string END;
     std::string MOTIF;
     std::string RU;
     std::string BASIS;

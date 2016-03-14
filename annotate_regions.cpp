@@ -40,11 +40,12 @@ class Igor : Program
     std::string output_vcf_file;
     std::vector<GenomeInterval> intervals;
     std::string interval_list;
-    std::string regions_bed_file;
+    std::string regions_file;
     std::string REGIONS_TAG;
     std::string REGIONS_TAG_DESC;
     uint32_t left_window; 
     uint32_t right_window;
+    bool use_bed;
     
     ///////
     //i/o//
@@ -55,7 +56,7 @@ class Igor : Program
     //////////
     //filter//
     //////////
-    std::string fexp;
+    std::vector<std::string> fexps;
     Filter filter;
     bool filter_exists;
     
@@ -70,7 +71,7 @@ class Igor : Program
     ////////////////
     VariantManip *vm;
     OrderedRegionOverlapMatcher *orom_regions;
-    OrderedRegionOverlapMatcher *orom_gencode_cds;
+    OrderedBCFOverlapMatcher *obom_regions;
 
     Igor(int argc, char **argv)
     {
@@ -88,7 +89,7 @@ class Igor : Program
             TCLAP::ValueArg<std::string> arg_intervals("i", "i", "intervals", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_output_vcf_file("o", "o", "output VCF file [-]", false, "-", "str", cmd);
-            TCLAP::ValueArg<std::string> arg_regions_bed_file("b", "b", "regions BED file []", true, "", "str", cmd);
+            TCLAP::ValueArg<std::string> arg_regions_file("b", "b", "regions BED/BCF file []", true, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_REGIONS_TAG("t", "t", "regions tag []", true, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_REGIONS_TAG_DESC("d", "d", "regions tag description []", true, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_fexp("f", "f", "filter expression []", false, "", "str", cmd);
@@ -101,12 +102,12 @@ class Igor : Program
             input_vcf_file = arg_input_vcf_file.getValue();
             output_vcf_file = arg_output_vcf_file.getValue();
             parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
-            regions_bed_file = arg_regions_bed_file.getValue();
+            parse_filters(fexps, arg_fexp.getValue(), 2, false);
+            regions_file = arg_regions_file.getValue();
             left_window = arg_left_window.getValue();
             right_window = arg_right_window.getValue();
-            fexp = arg_fexp.getValue();
             REGIONS_TAG = arg_REGIONS_TAG.getValue();
-            REGIONS_TAG_DESC = arg_REGIONS_TAG_DESC.getValue();
+            REGIONS_TAG_DESC = arg_REGIONS_TAG_DESC.getValue();            
         }
         catch (TCLAP::ArgException &e)
         {
@@ -132,14 +133,28 @@ class Igor : Program
         /////////////////////////
         //filter initialization//
         /////////////////////////
-        filter.parse(fexp.c_str(), false);
-        filter_exists = fexp=="" ? false : true;
+        filter.parse(fexps[0].c_str(), false);
+        filter_exists = fexps[0]=="" ? false : true;
             
         ///////////////////////
         //tool initialization//
         ///////////////////////
-        orom_regions = new OrderedRegionOverlapMatcher(regions_bed_file);
-
+        if (str_ends_with(regions_file, ".bed") || str_ends_with(regions_file, ".bed.gz"))
+        {    
+            use_bed = true;
+            orom_regions = new OrderedRegionOverlapMatcher(regions_file);
+        }
+        else if (str_ends_with(regions_file, ".vcf") || str_ends_with(regions_file, ".vcf.gz") ||  str_ends_with(regions_file, ".bcf"))
+        {    
+            use_bed = false;
+            obom_regions = new OrderedBCFOverlapMatcher(regions_file, intervals, fexps[1]);
+        }
+        else
+        {
+            fprintf(stderr, "[%s:%d %s] Need to at least specify either a bed or bcf file\n", __FILE__, __LINE__, __FUNCTION__);
+         exit(1);
+        }
+        
         ////////////////////////
         //stats initialization//
         ////////////////////////
@@ -153,10 +168,11 @@ class Igor : Program
         std::clog << "\n";
         std::clog << "options:     input VCF file(s)       " << input_vcf_file << "\n";
         std::clog << "         [o] output VCF file         " << output_vcf_file << "\n";
-        print_str_op("         [f] filter                  ", fexp);
+        print_str_op("         [f] filter 1                ", fexps[0]);
+        print_str_op("             filter 2                ", fexps[1]);
         print_str_op("         [t] region INFO tag         ", REGIONS_TAG);    
-        print_str_op("         [d] region INFO description ", REGIONS_TAG_DESC);
-        print_str_op("         [m] regions bed file        ", regions_bed_file);
+        print_str_op("         [b] region INFO description ", REGIONS_TAG_DESC);
+        print_str_op("         [m] regions file        ", regions_file);
         print_num_op("         [l] left window             ", left_window);
         print_num_op("         [r] right window            ", right_window);
         print_int_op("         [i] intervals               ", intervals);
@@ -195,10 +211,21 @@ class Igor : Program
             int32_t start1 = bcf_get_pos1(v);
             int32_t end1 = bcf_get_end1(v);
 
-            if (orom_regions->overlaps_with(chrom, start1-left_window, end1+right_window))
+            if (use_bed)
             {
-                bcf_update_info_flag(odr->hdr, v, REGIONS_TAG.c_str(), "", 1);
-                ++no_variants_annotated;
+                if (orom_regions->overlaps_with(chrom, start1-left_window, end1+right_window))
+                {
+                    bcf_update_info_flag(odr->hdr, v, REGIONS_TAG.c_str(), "", 1);
+                    ++no_variants_annotated;
+                }
+            }
+            else
+            {
+                if (obom_regions->overlaps_with(chrom, start1-left_window, end1+right_window))
+                {
+                    bcf_update_info_flag(odr->hdr, v, REGIONS_TAG.c_str(), "", 1);
+                    ++no_variants_annotated;
+                }
             }
 
             ++no_variants;
