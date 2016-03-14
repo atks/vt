@@ -620,6 +620,7 @@ void Variant::print()
     std::cerr << "\n";
     if (h!=NULL && v!=NULL) bcf_print_liten(h, v); 
     std::cerr << "chrom : " << chrom << "\n";
+    std::cerr << "rid   : " << rid << "\n";
     std::cerr << "beg1  : " << beg1 << "\n";
     std::cerr << "end1  : " << end1 << "\n";
 

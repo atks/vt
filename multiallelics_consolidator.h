@@ -79,7 +79,9 @@ class MultiallelicsConsolidator
     /////////////
     //INFO fields
     /////////////
-    std::string INVOLVED_MULTIALLEIC_VARIANT;
+    std::string END;
+    std::string INVOLVED_MULTIALLELIC_VARIANT;
+    std::string INVOLVED_BIALLELIC_VARIANTS;
 
     /////////
     //stats//

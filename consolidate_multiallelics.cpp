@@ -41,7 +41,7 @@ class Igor : Program
     std::vector<GenomeInterval> intervals;
     std::string interval_list;
     bool debug;
-    
+
     //////////
     //filter//
     //////////
