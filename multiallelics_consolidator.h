@@ -79,7 +79,7 @@ class MultiallelicsConsolidator
     /////////////
     //INFO fields
     /////////////
-    std::string ASSOCIATED_BIALLEIC_VARIANTS;
+    std::string INVOLVED_MULTIALLEIC_VARIANT;
 
     /////////
     //stats//
@@ -146,12 +146,11 @@ class MultiallelicsConsolidator
      */
     void process_exit(Variant* var);
 
-
     /**
      * Process overlapping variant.
      */
     void process_overlap(Variant& nvar, Variant&cvar);
- 
+
     /**
      * Creates or updates a multiallelic.
      */
@@ -161,7 +160,7 @@ class MultiallelicsConsolidator
      * Updates a multiallelic for printing.
      */
     void update_multiallelic_for_printing(Variant& var);
-    
+
     private:
 };
 

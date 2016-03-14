@@ -183,15 +183,15 @@ bool CandidateMotifPicker::get_indel(std::string ref, std::string alt, std::stri
     //trim right
     while (ref.size()!=0 && alt.size()!=0 && ref.back()==alt.back())
     {
-        ref.pop_back();
-        alt.pop_back();
+        ref.erase(ref.size()-1, 1);
+        alt.erase(alt.size()-1, 1);
     }
 
     //trim left
     while (ref.size()!=0 && alt.size()!=0 && ref.front()==alt.front())
     {
-        ref.erase(0,1);
-        alt.erase(0,1);
+        ref.erase(0, 1);
+        alt.erase(0, 1);
     }
 
     if (ref.size()==0)

@@ -168,7 +168,8 @@ void Variant::clear()
     is_new_multiallelic = false;
     is_involved_in_a_multiallelic = false;
     associated_new_multiallelic = NULL;
-
+    updated_multiallelic = false;
+    
     chrom.clear();
     rid = 0;
     pos1 = 0;
