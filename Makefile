@@ -47,7 +47,6 @@ SOURCES = align\
 		gencode\
 		genome_interval\
 		genotype\
-		genotype2\
 		genotyping_record\
 		hts_utils\
 		hfilter\

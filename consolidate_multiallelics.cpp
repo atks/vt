@@ -40,6 +40,8 @@ class Igor : Program
     std::string output_vcf_file;
     std::vector<GenomeInterval> intervals;
     std::string interval_list;
+    std::string overlap_criterion;
+    std::string overlap_criterion_code;    
     bool debug;
 
     //////////
@@ -82,7 +84,11 @@ class Igor : Program
             TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_output_vcf_file("o", "o", "output VCF file [-]", false, "-", "str", cmd);
             TCLAP::ValueArg<std::string> arg_fexp("f", "f", "filter expression []", false, "", "str", cmd);
-            TCLAP::ValueArg<std::string> arg_ref_fasta_file("r", "r", "reference sequence fasta file []", true, "", "str", cmd);
+            TCLAP::ValueArg<std::string> arg_ref_fasta_file("r", "r", "reference sequence fasta file [ref]", true, "ref", "str", cmd);
+            TCLAP::ValueArg<std::string> arg_overlap_criterion("c", "c", "overlap criterion [reference allele]"
+                                                                         "1. reference allele (ref)"
+                                                                         "2. by exact allelic region (exact)"
+                                                                         "3. by fuzzy allelic region (fuzzy)", true, "", "str", cmd);
             TCLAP::SwitchArg arg_debug("d", "d", "debug [false]", cmd, false);
             TCLAP::UnlabeledValueArg<std::string> arg_input_vcf_file("<in.vcf>", "input VCF file", true, "","file", cmd);
 
@@ -91,6 +97,7 @@ class Igor : Program
             input_vcf_file = arg_input_vcf_file.getValue();
             output_vcf_file = arg_output_vcf_file.getValue();
             parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
+            overlap_criterion = arg_overlap_criterion.getValue();
             fexp = arg_fexp.getValue();
             debug = arg_debug.getValue();
             ref_fasta_file = arg_ref_fasta_file.getValue();

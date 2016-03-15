@@ -1,6 +1,6 @@
 /* The MIT License
 
-   Copyright (c) 2013 Adrian Tan <atks@umich.edu>
+   Copyright (c) 2015 Adrian Tan <atks@umich.edu>
 
    Permission is hereby granted, free of charge, to any person obtaining a copy
    of this software and associated documentation files (the "Software"), to deal
@@ -24,17 +24,10 @@
 #ifndef GENOTYPE_H
 #define GENOTYPE_H
 
-#include <string>
-#include "htslib/kseq.h"
-#include "utils.h"
 #include "program.h"
-#include "hts_utils.h"
+#include "bcf_genotyping_buffered_reader.h"
 #include "bam_ordered_reader.h"
-#include "bcf_ordered_reader.h"
-#include "bcf_ordered_writer.h"
-#include "variant_manip.h"
-#include "log_tool.h"
-#include "lhmm1.h"
+#include "augmented_bam_record.h"
 
 void genotype(int argc, char ** argv);
 
