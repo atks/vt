@@ -470,11 +470,12 @@ class Igor : Program
                 }
             }
 
+            gbr->flush(odw, h, s, true);
+            
             no_snps_genotyped = gbr->no_snps_genotyped;
             no_indels_genotyped = gbr->no_indels_genotyped;
             no_vntrs_genotyped = gbr->no_vntrs_genotyped;
 
-            gbr->flush(odw, h, s, true);
             odw->close();
         }
         else if (mode=="s")
@@ -528,7 +529,7 @@ class Igor : Program
 
     void print_options()
     {
-        std::clog << "genotype2 v" << version << "\n\n";
+        std::clog << "genotype v" << version << "\n\n";
 
         std::clog << "options:     input VCF File                       " << input_vcf_file << "\n";
         std::clog << "         [b] input BAM File                       " << input_sam_file << "\n";
@@ -547,7 +548,7 @@ class Igor : Program
 
     void print_stats()
     {
-        std::clog << "genotype2 v" << version << "\n\n";
+        std::clog << "genotype v" << version << "\n\n";
 
         std::clog << "\n";
         std::clog << "stats: no. reads                    : " << no_reads << "\n";

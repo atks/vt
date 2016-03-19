@@ -417,7 +417,7 @@ class Igor : Program
 
             if (!VAR_COUNT[POLYMORPHIC][vtype])  continue;
             std::string variant_desc = vtype==VT_BLKSUB ? "block substitutions" : (vtype==VT_NAIVE_CLUMPED ? "clumped variants" : "complex substitutions");
-            fprintf(stderr, "       no. of %-21s      : %10d\n", variant_desc.c_str(), VAR_COUNT[POLYMORPHIC][vtype]);
+            fprintf(stderr, "        no. of %-21s      : %10d\n", variant_desc.c_str(), VAR_COUNT[POLYMORPHIC][vtype]);
             for (int32_t no_alleles=1; no_alleles<=4; ++no_alleles)
             {
                 if (VAR_COUNT[no_alleles][vtype])
@@ -518,12 +518,11 @@ class Igor : Program
         fprintf(stderr, "\n");
         fprintf(stderr, "       ========= General summary ==========\n");
         fprintf(stderr, "\n");
-        fprintf(stderr, "       no. of reference records                  : %10d\n", no_reference);
-        fprintf(stderr, "       no. of classified variants                : %10d\n", no_classified_variants);
-        fprintf(stderr, "       no. of unclassified variants              : %10d\n", no_unclassified_variants);
-        fprintf(stderr, "\n");
         fprintf(stderr, "       no. of VCF records                        : %10d\n", no_records);
         fprintf(stderr, "\n");
+        if (no_reference) fprintf(stderr, "       no. of reference records                  : %10d", no_reference);
+        if (no_classified_variants!=no_records) fprintf(stderr, "       no. of classified variants                : %10d", no_classified_variants);
+        if (no_unclassified_variants) fprintf(stderr, "       no. of unclassified variants              : %10d", no_unclassified_variants);
     };
 
     void print_pdf()

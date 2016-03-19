@@ -52,8 +52,13 @@ VariantManip::VariantManip()
 
 /**
  * Checks if the REF sequence of a VCF entry is consistent.
+ *
+ * returns
+ * 2 - bases are not consistent with unmasked bases
+ * 1 - bases are consistent against unmasked sequences
+ * 0 - bases are consistent
  */
-bool VariantManip::is_ref_consistent(bcf_hdr_t *h, bcf1_t *v)
+int32_t VariantManip::is_not_ref_consistent(bcf_hdr_t *h, bcf1_t *v)
 {
     const char* chrom = bcf_get_chrom(h, v);
     uint32_t pos0 = bcf_get_pos0(v);
@@ -68,15 +73,33 @@ bool VariantManip::is_ref_consistent(bcf_hdr_t *h, bcf1_t *v)
         fprintf(stderr, "FAQ: http://genome.sph.umich.edu/wiki/Vt#1._vt_cannot_retrieve_sequences_from_my_reference_sequence_file\n");
         exit(1);
     }
-    bool is_consistent = strcasecmp(vcf_ref, ref)==0;
 
-    if (!is_consistent)
+    int32_t is_not_consistent = 0;
+    for (uint32_t i=0; i<ref_len; ++i)
     {
-        fprintf(stderr, "[%s:%d %s] Variant is not consistent: %s:%d-%d - %s(REF) vs %s(FASTA)\n", __FILE__, __LINE__, __FUNCTION__, chrom, (pos0+1), pos0+rlen, vcf_ref, ref);
+        if (vcf_ref[i] != ref[i])
+        {
+            if (ref[i]=='N' || vcf_ref[i]=='N')
+            {
+                is_not_consistent = 1;
+            }
+            else
+            {
+                is_not_consistent = 2;
+                break;
+            }
+        }
     }
-    free(ref);
+    
+    if (is_not_consistent)
+    {
+       fprintf(stderr, "[%s:%d %s] reference bases not consistent: %s:%d-%d  %s(REF) vs %s(FASTA)\n", __FILE__, __LINE__, __FUNCTION__, 
+                                                                                chrom, pos0, pos0+rlen-1, vcf_ref, ref);       
+    }    
 
-    return is_consistent;
+    if (ref_len) free(ref);
+   
+    return is_not_consistent;
 }
 
 /**
@@ -190,7 +213,7 @@ bool VariantManip::contains_N(bcf1_t *v)
             {
                 continue;
             }
-            
+
             return true;
         }
     }

@@ -280,12 +280,12 @@ class Igor : Program
             //annotate
             if (presence[0])
             {
-                if (orom_lcplx->overlaps_with(chrom, start1, end1))
+                if (orom_lcplx->overlaps_with(chrom, start1-1, end1+1))
                 {
                     ++lcplx;
                 }
 
-                if (orom_gencode_cds->overlaps_with(chrom, start1, end1))
+                if (orom_gencode_cds->overlaps_with(chrom, start1-1, end1+1))
                 {
                     if (abs(variant.alleles[0].dlen)%3!=0)
                     {

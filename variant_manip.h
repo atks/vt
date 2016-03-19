@@ -57,8 +57,13 @@ class VariantManip
 
     /**
      * Checks if the REF sequence of a VCF entry is consistent.
+     *
+     * returns 
+     * 0 - bases are not consistent with unmasked bases
+     * 1 - bases are compared against masked sequences
+     * 2 - bases are consistent 
      */
-    bool is_ref_consistent(bcf_hdr_t *h, bcf1_t *v);
+    int32_t is_not_ref_consistent(bcf_hdr_t *h, bcf1_t *v);
 
     /**
      * Checks if a variant is normalized.

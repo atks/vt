@@ -38,7 +38,10 @@ class Igor : Program
     std::vector<GenomeInterval> intervals;
     std::string ref_fasta_file;
     int32_t window_size;
-    bool strict;
+    // 0 - do not fail at all
+    // 1 - fail on unmasked consistencies
+    // 2 - fail on all consistencies
+    int32_t strict_level;
     bool print;
     bool debug;
 
@@ -88,8 +91,8 @@ class Igor : Program
         //////////////////////////
         try
         {
-            std::string desc = "normalizes variants in a VCF file";
-
+            std::string desc = "normalizes variants in a VCF file. \n";
+                          
             TCLAP::CmdLine cmd(desc, ' ', version);
             VTOutput my; cmd.setOutput(&my);
             TCLAP::ValueArg<std::string> arg_ref_fasta_file("r", "r", "reference sequence fasta file []", true, "", "str", cmd);
@@ -97,7 +100,11 @@ class Igor : Program
             TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "file", cmd);
             TCLAP::ValueArg<int32_t> arg_window_size("w", "w", "window size for local sorting of variants [10000]", false, 10000, "integer", cmd);
             TCLAP::ValueArg<std::string> arg_fexp("f", "f", "filter expression []", false, "", "str", cmd);
-            TCLAP::SwitchArg arg_strict("n", "n", "do not fail when REF is inconsistent with reference sequence for non SNPs [false]", cmd, true);
+            TCLAP::SwitchArg arg_warn_only("n", "n", "warns but does not exit when REF is inconsistent\n"
+                                       "              with reference sequence for non SNPs [false]", cmd, false);
+            TCLAP::SwitchArg arg_warn_for_masked_only("m", "m", "warns but does not exit when REF is inconsistent\n" 
+                                       "              with masked reference sequence for non SNPs.\n"
+                                       "              This overides the -n option [false]", cmd, false);
             TCLAP::SwitchArg arg_quiet("q", "q", "do not print options and summary [false]", cmd, false);
             TCLAP::SwitchArg arg_debug("d", "d", "debug [false]", cmd, false);
             TCLAP::ValueArg<std::string> arg_output_vcf_file("o", "o", "output VCF file [-]", false, "-", "str", cmd);
@@ -110,7 +117,8 @@ class Igor : Program
             parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
             fexp = arg_fexp.getValue();
             print = !arg_quiet.getValue();
-            strict = arg_strict.getValue();
+            strict_level = arg_warn_only.getValue() ? 0 : 2;
+            strict_level = arg_warn_for_masked_only.getValue() ? 1 : strict_level;
             debug = arg_debug.getValue();
             window_size = arg_window_size.getValue();
             ref_fasta_file = arg_ref_fasta_file.getValue();
@@ -193,21 +201,21 @@ class Igor : Program
                 }
             }
             
-            bool is_ref_consistent = false;
-            if (type!=VT_SNP && !(is_ref_consistent = vm->is_ref_consistent(h,v)))
+            int32_t is_not_ref_consistent = 0;
+            if (type!=VT_SNP && (is_not_ref_consistent = vm->is_not_ref_consistent(h,v)))
             {
-                if (strict)
+                if (is_not_ref_consistent > (2-strict_level))
                 {
-                    fprintf(stderr, "[%s:%d %s] Normalization not performed due to inconsistent reference sequences. (use -n option to relax this)\n", __FILE__, __LINE__, __FUNCTION__);
+                    fprintf(stderr, "[%s:%d %s] Normalization not performed due to inconsistent reference sequences. (use -n or -m option to relax this)\n", __FILE__, __LINE__, __FUNCTION__);
                     exit(1);
                 }
-                else
+                else 
                 {
                     fprintf(stderr, "[%s:%d %s] Normalization skipped due to inconsistent reference sequences\n", __FILE__, __LINE__, __FUNCTION__);
                 }
             }
 
-            if (is_ref_consistent && !(type&VT_SV) && !(type&VT_VNTR) && !vm->is_normalized(v))
+            if (!is_not_ref_consistent && !(type&VT_SV) && !(type&VT_VNTR) && !vm->is_normalized(v))
             {
                 const char* chrom = odr->get_seqname(v);
                 int32_t pos1 = bcf_get_pos1(v);
@@ -331,7 +339,8 @@ class Igor : Program
         std::clog << "         [o] output VCF file                                 " << output_vcf_file << "\n";
         std::clog << "         [w] sorting window size                             " << window_size << "\n";
         print_str_op("         [f] filter                                          ", fexp);
-        std::clog << "         [n] no fail on reference inconsistency for non SNPs " << (!strict ? "true" : "false") << "\n";
+        std::clog << "         [m] no fail on masked reference inconsistency       " << (strict_level==1 ? "true" : "false") << "\n";
+        std::clog << "         [n] no fail on reference inconsistency              " << (strict_level==0 ? "true" : "false") << "\n";
         std::clog << "         [q] quiet                                           " << (!print ? "true" : "false") << "\n";
         std::clog << "         [d] debug                                           " << (debug ? "true" : "false")  << "\n";
         std::clog << "         [r] reference FASTA file                            " << ref_fasta_file << "\n";
