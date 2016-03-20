@@ -3,7 +3,8 @@ normalize v0.5
 options:     input VCF file <stripped>
          [o] output VCF file <stripped>
          [w] sorting window size                             10000
-         [n] no fail on reference inconsistency for non SNPs false
+         [m] no fail on masked reference inconsistency       false
+         [n] no fail on reference inconsistency              false
          [q] quiet                                           false
          [d] debug                                           false
          [r] reference FASTA file <stripped>
