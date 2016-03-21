@@ -60,17 +60,20 @@ SOURCES = align\
 		merge\
 		merge_candidate_variants\
 		merge_candidate_variants2\
+		milk_filter\
 		motif_tree\
 		motif_map\
 		multi_partition\
 		multiallelics_consolidator\
 		needle\
 		normalize\
+		nuclear_pedigree\
 		ordered_bcf_overlap_matcher\
 		ordered_region_overlap_matcher\
 		partition\
 		paste\
 		paste_and_compute_features_sequential\
+		paste_genotypes\
 		pedigree\
 		peek\
 		pileup\
