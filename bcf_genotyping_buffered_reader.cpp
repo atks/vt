@@ -678,8 +678,115 @@ void BCFGenotypingBufferedReader::flush(BCFOrderedWriter* odw, bam_hdr_t *h, bam
 /**
  * Compute SNP genotype likelihoods in PHRED scale.
  */
-void BCFGenotypingBufferedReader::compute_snp_pl(std::vector<int32_t>& alleles, std::vector<uint32_t>& quals, uint32_t ploidy,  std::vector<uint32_t>& pls)
-{
+void BCFGenotypingBufferedReader::compute_snp_pl(std::vector<int32_t>& alleles, std::vector<uint32_t>& quals, uint32_t ploidy,  std::vector<uint32_t>& pls) {
+//void BCFGenotypingBufferedReader::compute_snp_pl(std::vector<int32_t>& alleles, std::vector<uint32_t>& quals, uint32_t ploidy, uint32_t no_alleles, std::vector<uint32_t>& pls) //, float& pl_offset)
+    int no_alleles = 2;
+    if (ploidy==2 && no_alleles==2)
+    {
+        float pRR = 1;
+        float pRA = 1;
+        float pAA = 1;
+        float p;
+
+        float pl_offset = 0;
+
+        for (uint32_t i=0; i<alleles.size(); ++i)
+        {
+            if (alleles[i]==0)
+            {
+                p = lt.pl2prob(quals[i]);
+                pRR *= 1-p;
+                pRA *= 0.5*(1-p+p/3);
+                pAA *= p/3;
+
+                float total = pRR + pRA + pAA;
+
+                pRR /= total;
+                pRA /= total;
+                pAA /= total;
+
+                //pl_offset += log10(total);
+            }
+            else if (alleles[i]==1)
+            {
+                p = lt.pl2prob(quals[i]);
+                pRR *= p/3;
+                pRA *= 0.5*(1-p+p/3);
+                pAA *= 1-p;
+
+                float total = pRR + pRA + pAA;
+
+                pRR /= total;
+                pRA /= total;
+                pAA /= total;
+
+                //pl_offset += log10(total);
+            }
+            else if (alleles[i]<-1)
+            {
+                p = lt.pl2prob(quals[i])/3;
+                pRR *= p;
+                pRA *= 0.5*(2*p);
+                pAA *= p;
+
+                float total = pRR + pRA + pAA;
+
+                pRR /= total;
+                pRA /= total;
+                pAA /= total;
+
+                //pl_offset += log10(total);
+            }
+            else //deletion
+            {
+                //ignore this for the time being
+            }
+        }
+
+        pls[0] = log10(pRR);
+        pls[1] = log10(pRA);
+        pls[2] = log10(pAA);
+    }
+    else if (ploidy==2 && no_alleles>2)
+    {
+        int32_t no_genotypes = (no_alleles * (no_alleles+1)) >> 1;
+        
+        float pG[no_genotypes];
+        
+        for (uint32_t i = 0; i<no_genotypes; ++i)
+        {
+            pG[i] = 1;
+        }
+        
+        float p;
+
+        float offset = 0;
+        
+        //handle multiallelics
+        for (uint32_t i=0; i<alleles.size(); ++i)
+        {
+            p = lt.pl2prob(quals[i]);
+            
+            for (uint32_t g = 0; g<no_genotypes; ++g)
+            {
+//                if ()
+                
+                pG[i] = 1;
+            } 
+//            pG[alleles[i]] *=  ;
+            
+         
+        }
+    }
+    else //generic number of ploidy and alleles
+    {
+        //http://genome.sph.umich.edu/wiki/Relationship_between_Ploidy,_Alleles_and_Genotypes
+    }
+}
+
+
+/*
+void BCFGenotypingBufferedReader::compute_snp_pl(std::vector<int32_t>& alleles, std::vector<uint32_t>& quals, uint32_t ploidy,  std::vector<uint32_t>& pls) {
     if (ploidy==2)
     {
         double pRR = 1;
@@ -717,6 +824,7 @@ void BCFGenotypingBufferedReader::compute_snp_pl(std::vector<int32_t>& alleles, 
         pls[2] = -10*log10(pAA);
     }
 }
+*/
 
 /**
  * Compute Indel genotype likelihoods in PHRED scale.

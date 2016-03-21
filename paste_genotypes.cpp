@@ -21,7 +21,7 @@
    THE SOFTWARE.
 */
 
-#include "paste_and_compute_features_sequential.h"
+#include "paste_genotypes.h"
 
 namespace
 {
@@ -41,21 +41,16 @@ class Igor : Program
     bool print;
     std::vector<GenomeInterval> intervals;
     int32_t maxBQ;
-    std::string sex_map_file;  
-    std::string xLabel;
-    std::string yLabel;
-    std::string mtLabel;
-    int32_t xStart;
-    int32_t xStop;
+    double contam_fixed;
+    std::string contam_file_list;
+    int32_t group_size;
 
     ///////
     //i/o//
     ///////
     BCFOrderedReader *odr;
     BCFOrderedWriter *odw;
-    Estimator *est;
-
-    std::map<std::string,int> mSex;
+    Estimator *est;  
 
     ///////////////
     //general use//
@@ -96,17 +91,14 @@ class Igor : Program
             VTOutput my; cmd.setOutput(&my);
             TCLAP::SwitchArg arg_print("p", "p", "print options and summary []", cmd, false);
             TCLAP::ValueArg<std::string> arg_output_vcf_file("o", "o", "output VCF file [-]", false, "-", "", cmd);
-            TCLAP::ValueArg<std::string> arg_input_vcf_file_list("L", "L", "file containing list of input VCF files", false, "", "str", cmd);
+            TCLAP::ValueArg<std::string> arg_input_vcf_file_list("L", "L", "file containing list of input VCF files", false, "", "file", cmd);
             TCLAP::UnlabeledMultiArg<std::string> arg_input_vcf_files("<in1.vcf>...", "Multiple VCF files",false, "files", cmd);
 	    TCLAP::ValueArg<std::string> arg_intervals("i","i","Intervals[]", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "file", cmd);
-            TCLAP::ValueArg<std::string> arg_sex_map_file("g", "sex-map", "file containing sex map of each individual. ID fitst, X ploidy second", false, "", "file", cmd);	    
             TCLAP::ValueArg<int32_t> arg_max_bq("q", "q", "Maximum base quality to cap []", false, 30, "int", cmd);
-            TCLAP::ValueArg<std::string> arg_xLabel("", "xLabel", "Contig name for X chromosome", false, "X", "str", cmd);
-            TCLAP::ValueArg<std::string> arg_yLabel("", "yLabel", "Contig name for Y chromosome", false, "Y", "str", cmd);
-            TCLAP::ValueArg<std::string> arg_mtLabel("", "mtLabel", "Contig name for mitochondrial chromosome", false, "MT", "str", cmd);
-            TCLAP::ValueArg<int32_t> arg_xStart("", "xStart", "Start base position of non-PAR region in X chromosome", false, 2699520, "int", cmd);
-            TCLAP::ValueArg<int32_t> arg_xStop("", "xStop", "End base position of non-PAR region in X chromosome", false, 154931044, "int", cmd); 	    
+            TCLAP::ValueArg<double> arg_contam_fixed("c", "c", "Contamination levels to adjust the genotype likelihood", false, 0.01, "double", cmd);
+            TCLAP::ValueArg<std::string> arg_contam_file_list("C", "C", "File containg the list of contamination levels to adjust the genotype likelihood", false, "", "file", cmd);
+            TCLAP::ValueArg<int32_t> arg_group_size("g", "g", "Number of files to be read simultaneously", false, 100, "int", cmd);	    	    	    
 	
             cmd.parse(argc, argv);
 
@@ -116,13 +108,8 @@ class Igor : Program
             const std::vector<std::string>& v = arg_input_vcf_files.getValue();
             print = arg_print.getValue();
 	    maxBQ = arg_max_bq.getValue();
+	    group_size = arg_group_size.getValue();
             parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
-	    sex_map_file = arg_sex_map_file.getValue();
-	    xLabel = arg_xLabel.getValue();
-	    yLabel = arg_yLabel.getValue();
-	    mtLabel = arg_mtLabel.getValue();	    
-	    xStart = arg_xStart.getValue();
-	    xStop = arg_xStop.getValue();
 
             if (input_vcf_files.size()==0)
             {
@@ -191,41 +178,6 @@ class Igor : Program
         //general use//
         ///////////////
 
-	// Read sex map if needed
-	if ( !sex_map_file.empty() ) {
-	  htsFile *file = hts_open(sex_map_file.c_str(),"r");
-	  if ( file == NULL ) {
-	    fprintf(stderr,"ERROR: Cannot open %s\n",sex_map_file.c_str());
-	    exit(1);
-	  }
-	  kstring_t *s = &file->line;
-	  while( hts_getline(file,'\n',s) >= 0 ) {
-	    std::string ss = std::string(s->s);
-	    size_t idx = ss.find_first_of("\t ");
-	    if ( idx == std::string::npos ) {
-	      fprintf(stderr,"ERROR: Cannot parse line %s in %s\n",ss.c_str(), sex_map_file.c_str());
-	      exit(1);
-	    }
-	    std::string id = ss.substr(0, idx);
-	    int32_t sex = atoi(ss.substr(idx+1).c_str());
-
-	    if ( mSex.find(id) != mSex.end() ) {
-	      fprintf(stderr,"ERROR: Duplicate ID %s in %s\n",id.c_str(), sex_map_file.c_str());
-	      exit(1);	      
-	    }
-
-	    if ( sex == 0 ) {
-	      fprintf(stderr,"WARNING: Unknown sex for individual %s, assuming females\n",id.c_str());
-	      sex = 2;
-	    }
-	    else if ( sex > 2 ) {
-	      fprintf(stderr,"ERROR: Invalid sex %d for individual %s\n",sex,id.c_str());
-	      exit(1);
-	    }
-	    mSex[id] = sex;
-	  }
-	}
-
         ////////////////////////
         //stats initialization//
         ////////////////////////
@@ -250,7 +202,7 @@ class Igor : Program
       return ( ( xy/(float)n - x1 * y1 / (float) n / (float) n ) / sqrt( xsd * ysd + buffer ) );
     }
 
-    void paste_and_compute_features_sequential()
+    void paste_genotypes()
     {
 	// assume that the following features are available
 	// 1. BQSUM, DPF, DPR
@@ -322,10 +274,6 @@ class Igor : Program
 	std::vector< std::vector<std::string> > v_d_alleles;
 	std::vector< std::vector<int32_t> > v_filts;
 
-	// determine rids for X chromosome
-	int32_t x_rid = bcf_hdr_name2id(odr->hdr,xLabel.c_str());
-	bool x_found = false;
-
         bcf1_t* v = bcf_init();
 	while( odr->read(v) ) {
 	  // skip multi-allelics
@@ -358,9 +306,6 @@ class Igor : Program
 	  }
 	  vn_alleles.push_back(v->n_allele);
 	  vn_genos.push_back(v->n_allele * (v->n_allele+1)/2);
-
-	  if ( ( x_rid == v->rid ) && ( v->pos >= xStart ) && ( v->pos <= xStop ) )
-	    x_found = true;
 
 	  v_filts.push_back(std::vector<int32_t>());
 	  for(size_t i=0; i < v->d.n_flt; ++i) {
@@ -404,267 +349,265 @@ class Igor : Program
 	//bcf_clear(v);
 	bcf_destroy(v);
 
-	for(size_t i=0; i < nfiles; ++i) {
+	std::vector<BCFOrderedReader*> odrs;
+	std::vector<bcf1_t*> vs;
+	
+	//for(size_t i=0; i < nfiles; ++i) {
+	for(size_t i=0; i < nfiles; i += group_size) {
 	  //fprintf(stderr,"Reading input file %s..\n", input_vcf_files[i].c_str());
 	  // set odr and v
-	  odr = new BCFOrderedReader(input_vcf_files[i], intervals);
-	  v = bcf_init();
-
-	  if ( bcf_hdr_nsamples(odr->hdr) != 1 ) {
+	  int i2max = nfiles < i+group_size ? nfiles : i+group_size;
+	  for(size_t i2=i; i2 < i2max; ++i2) {
+	    odrs.push_back(new BCFOrderedReader(input_vcf_files[i2],intervals));
+	    vs.push_back(bcf_init());
+	    
+	    if ( bcf_hdr_nsamples(odrs.back()->hdr) != 1 ) {
 	      fprintf(stderr, "[E:%s:%d %s] The genotype file must contain exactly one sample", __FILE__, __LINE__, __FUNCTION__);
 	      exit(1); 	    
+	    }
+	    if ( i2 > 0 ) 
+	      bcf_hdr_add_sample(odw->hdr, bcf_hdr_get_sample_name(odrs[i2-i]->hdr, 0));	  
 	  }
-	  if ( i > 0 ) 
-	    bcf_hdr_add_sample(odw->hdr, bcf_hdr_get_sample_name(odr->hdr, 0));	  
 
+	  // read BCF files in parallel
 	  for( size_t j=0, k=0; j < v_skips.size(); ++j) {
-	    if ( ! odr->read(v) ) {
-	      fprintf(stderr, "[E:%s:%d %s] Cannot read variant from genotype files. j=%zu, k=%zu, pos[k]=%d", __FILE__, __LINE__, __FUNCTION__, j, k, v_poss[k]);
-	      exit(1);		
-	    }
-	    if ( v_skips[j] ) continue;
-	    bcf_unpack(v, BCF_UN_ALL);	    
+	    for(size_t i2=i; i2 < i2max; ++i2) {
+	      odr = odrs[i2-i];
+	      v = vs[i2-i];
+	      
+	      if ( !odr->read(v) ) {
+		fprintf(stderr, "[E:%s:%d %s] Cannot read variant from genotype files. j=%zu, k=%zu, pos[k]=%d", __FILE__, __LINE__, __FUNCTION__, j, k, v_poss[k]);
+		exit(1);		
+	      }
+	      if ( v_skips[j] ) continue;
+	      bcf_unpack(v, BCF_UN_ALL);	    
 
-	    // check marker infor with anchor files
-	    if ( ( v->rid != v_rids[k] ) || ( v->pos != v_poss[k] ) || ( v->rlen != v_rlens[k] ) || ( v->n_allele != vn_alleles[k] ) ) {
-	      fprintf(stderr, "[E:%s:%d %s] Variant position or ref alleles does not match\n", __FILE__, __LINE__, __FUNCTION__);
-	      exit(1);	      
-	    }
+	      // check marker infor with anchor files
+	      if ( ( v->rid != v_rids[k] ) || ( v->pos != v_poss[k] ) || ( v->rlen != v_rlens[k] ) || ( v->n_allele != vn_alleles[k] ) ) {
+		fprintf(stderr, "[E:%s:%d %s] Variant position or ref alleles does not match\n", __FILE__, __LINE__, __FUNCTION__);
+		exit(1);	      
+	      }
 
-	    for(size_t l=0; l < vn_alleles[k]; ++l) {
-	      if ( v_d_alleles[k][l].compare(v->d.allele[l]) ) {
+	      for(size_t l=0; l < vn_alleles[k]; ++l) {
+		if ( v_d_alleles[k][l].compare(v->d.allele[l]) ) {
 		  fprintf(stderr, "[E:%s:%d %s] Variant alleles does not match\n", __FILE__, __LINE__, __FUNCTION__);
 		  exit(1);		
+		}
 	      }
-	    }
+	      
+	      // extract genotype fields and calculate summary statistics
+	      if ( bcf_get_format_int32(odr->hdr, v, "BQSUM", &p_bqsum, &np_bqsum) >= 0 ) { // BQSUM observed - REF-ONLY
+		if ( bcf_get_format_int32(odr->hdr, v, "DP", &p_dp, &np_dp) < 0 ) {
+		  fprintf(stderr, "[E:%s:%d %s] FORMAT field does not contain expected fields -- BQSUM, DP\n", __FILE__, __LINE__, __FUNCTION__);
+		  exit(1);		
+		}
+		if ( ( np_bqsum != np_dp ) || ( np_dp != 1 ) ) {
+		  fprintf(stderr, "[E:%s:%d %s] FORMAT field does not have the samme number of fields -- BQSUM, DP\n", __FILE__, __LINE__, __FUNCTION__);
+		  exit(1);		  		
+		}
 
-	    // extract genotype fields and calculate summary statistics
-	    if ( bcf_get_format_int32(odr->hdr, v, "BQSUM", &p_bqsum, &np_bqsum) >= 0 ) { // BQSUM observed - REF-ONLY
-	      if ( bcf_get_format_int32(odr->hdr, v, "DP", &p_dp, &np_dp) < 0 ) {
-		fprintf(stderr, "[E:%s:%d %s] FORMAT field does not contain expected fields -- BQSUM, DP\n", __FILE__, __LINE__, __FUNCTION__);
-		exit(1);		
-	      }
-	      if ( ( np_bqsum != np_dp ) || ( np_dp != 1 ) ) {
-		fprintf(stderr, "[E:%s:%d %s] FORMAT field does not have the samme number of fields -- BQSUM, DP\n", __FILE__, __LINE__, __FUNCTION__);
-		exit(1);		  		
-	      }
-
-	      for(size_t l=0; l < vn_alleles[k]; ++l){
-		v_ads[k][ i*vn_alleles[k] + l] = (l == 0 ? p_dp[0] : 0);
-		v_ods[k][ i ] = 0;
-		for(size_t m=0; m <= l; ++m)  {
-		  if ( m == 0 ) {
-		    if ( l == 0 )
-		      v_pls[k][vn_genos[k] * i + l * (l+1) / 2 + m] = 0;
+		/*
+		for(size_t l=0; l < vn_alleles[k]; ++l){
+		  v_ads[k][ i2 * vn_alleles[k] + l] = (l == 0 ? p_dp[0] : 0);
+		  v_ods[k][ i2 ] = 0;
+		  for(size_t m=0; m <= l; ++m)  {
+		    if ( m == 0 ) {
+		      if ( l == 0 )
+			v_pls[k][vn_genos[k] * i2 + l * (l+1) / 2 + m] = 0;
+		      else
+			v_pls[k][vn_genos[k] * i2 + l * (l+1) / 2 + m] = (int32_t)floor(6.931472 * p_dp[0] + 0.5);
+		    }
 		    else
-		      v_pls[k][vn_genos[k] * i + l * (l+1) / 2 + m] = (int32_t)floor(3.0103 * p_dp[0] + 0.5);
+		      v_pls[k][vn_genos[k] * i2 + l * (l+1) / 2 + m] = (int32_t)floor(p_bqsum[0] + 10.98612 * p_dp[0] + 0.5);
 		  }
-		  else
-		    v_pls[k][vn_genos[k] * i + l * (l+1) / 2 + m] = (int32_t)floor(p_bqsum[0] + 4.771213 * p_dp[0] + 0.5);
-		  }
+		}
+		v_dp_sums[k] += p_dp[0];
+		*/
 	      }
-	      v_dp_sums[k] += p_dp[0];
-	    }
-	    else if ( bcf_get_genotypes(odr->hdr, v, &p_gt, &np_gt) >= 0 ) {  // GT unobserved -- non-REF
-	      // extract PL, DP, BQ, MQ, CY, ST, AL, NM
-	      if ( bcf_get_format_int32(odr->hdr, v, "PL", &p_pl, &np_pl) < 0 ) {
-		fprintf(stderr, "[E:%s:%d %s] FORMAT field does not contain expected fields -- PL\n", __FILE__, __LINE__, __FUNCTION__);
-		exit(1);		  		  
-	      }		
-	      if ( bcf_get_format_int32(odr->hdr, v, "DP", &p_dp, &np_dp) < 0 ) {
-		fprintf(stderr, "[E:%s:%d %s] FORMAT field does not contain expected fields -- DP\n", __FILE__, __LINE__, __FUNCTION__);
-		exit(1);		  		  
-	      }
-	      if ( bcf_get_format_int32(odr->hdr, v, "BQ", &p_bq, &np_bq) < 0 ) {
-		fprintf(stderr, "[E:%s:%d %s] FORMAT field does not contain expected fields -- BQ\n", __FILE__, __LINE__, __FUNCTION__);
-		exit(1);		  		  
-	      }
-	      if ( bcf_get_format_int32(odr->hdr, v, "MQ", &p_mq, &np_mq) < 0 ) {
-		fprintf(stderr, "[E:%s:%d %s] FORMAT field does not contain expected fields -- MQ\n", __FILE__, __LINE__, __FUNCTION__);
-		exit(1);		  		  
-	      }
-	      if ( bcf_get_format_int32(odr->hdr, v, "CY", &p_cy, &np_cy) < 0 ) {
-		fprintf(stderr, "[E:%s:%d %s] FORMAT field does not contain expected fields -- GT, CY\n", __FILE__, __LINE__, __FUNCTION__);
-		exit(1);		  		  
-	      }
-	      if ( bcf_get_format_string(odr->hdr, v, "ST", &p_st, &np_st) < 0 ) {
-		fprintf(stderr, "[E:%s:%d %s] FORMAT field does not contain expected fields -- GT, ST\n", __FILE__, __LINE__, __FUNCTION__);
-		exit(1);		  		  
-	      }		
-	      if ( bcf_get_format_int32(odr->hdr, v, "AL", &p_al, &np_al) < 0 ) {
-		fprintf(stderr, "[E:%s:%d %s] FORMAT field does not contain expected fields -- GT, AL\n", __FILE__, __LINE__, __FUNCTION__);
-		exit(1);		  		  
-	      }
-	      if ( bcf_get_format_int32(odr->hdr, v, "NM", &p_nm, &np_nm) < 0 ) {
-		fprintf(stderr, "[E:%s:%d %s] FORMAT field does not contain expected fields -- GT, NM\n", __FILE__, __LINE__, __FUNCTION__);
-		exit(1);		  		  
-	      }
+	      else if ( bcf_get_genotypes(odr->hdr, v, &p_gt, &np_gt) >= 0 ) {  // GT observed -- non-REF
+		// extract PL, DP, BQ, MQ, CY, ST, AL, NM
+		if ( bcf_get_format_int32(odr->hdr, v, "PL", &p_pl, &np_pl) < 0 ) {
+		  fprintf(stderr, "[E:%s:%d %s] FORMAT field does not contain expected fields -- PL\n", __FILE__, __LINE__, __FUNCTION__);
+		  exit(1);		  		  
+		}		
+		if ( bcf_get_format_int32(odr->hdr, v, "DP", &p_dp, &np_dp) < 0 ) {
+		  fprintf(stderr, "[E:%s:%d %s] FORMAT field does not contain expected fields -- DP\n", __FILE__, __LINE__, __FUNCTION__);
+		  exit(1);		  		  
+		}
+		if ( bcf_get_format_int32(odr->hdr, v, "BQ", &p_bq, &np_bq) < 0 ) {
+		  fprintf(stderr, "[E:%s:%d %s] FORMAT field does not contain expected fields -- BQ\n", __FILE__, __LINE__, __FUNCTION__);
+		  exit(1);		  		  
+		}
+		if ( bcf_get_format_int32(odr->hdr, v, "MQ", &p_mq, &np_mq) < 0 ) {
+		  fprintf(stderr, "[E:%s:%d %s] FORMAT field does not contain expected fields -- MQ\n", __FILE__, __LINE__, __FUNCTION__);
+		  exit(1);		  		  
+		}
+		if ( bcf_get_format_int32(odr->hdr, v, "CY", &p_cy, &np_cy) < 0 ) {
+		  fprintf(stderr, "[E:%s:%d %s] FORMAT field does not contain expected fields -- GT, CY\n", __FILE__, __LINE__, __FUNCTION__);
+		  exit(1);		  		  
+		}
+		if ( bcf_get_format_string(odr->hdr, v, "ST", &p_st, &np_st) < 0 ) {
+		  fprintf(stderr, "[E:%s:%d %s] FORMAT field does not contain expected fields -- GT, ST\n", __FILE__, __LINE__, __FUNCTION__);
+		  exit(1);		  		  
+		}		
+		if ( bcf_get_format_int32(odr->hdr, v, "AL", &p_al, &np_al) < 0 ) {
+		  fprintf(stderr, "[E:%s:%d %s] FORMAT field does not contain expected fields -- GT, AL\n", __FILE__, __LINE__, __FUNCTION__);
+		  exit(1);		  		  
+		}
+		if ( bcf_get_format_int32(odr->hdr, v, "NM", &p_nm, &np_nm) < 0 ) {
+		  fprintf(stderr, "[E:%s:%d %s] FORMAT field does not contain expected fields -- GT, NM\n", __FILE__, __LINE__, __FUNCTION__);
+		  exit(1);		  		  
+		}
 
-	      // sanity checking
-	      if ( np_pl != vn_genos[k] ) {
-		fprintf(stderr, "[E:%s:%d %s] np_pl (%d) != n_genos (%d)\n", __FILE__, __LINE__, __FUNCTION__, np_pl, vn_genos[k]);
-		exit(1);
-	      }
-
-	      if ( ( np_dp != 1 ) || ( np_gt != 2 ) ) {
-		fprintf(stderr, "[E:%s:%d %s] Assertion failed in np_dp (%d) == np_gt (%d),  np_st (%d) == np_al (%d)\n", __FILE__, __LINE__, __FUNCTION__, np_dp, np_gt, np_st, np_al);
-		exit(1);		
-	      }
-	      if ( p_dp[0] != strlen(p_st[0]) ) {
-		fprintf(stderr, "[E:%s:%d %s] Assetion failed - p_dp[0] == strlen(p_st[0])\n", __FILE__, __LINE__, __FUNCTION__);
-		exit(1);		  		  		  		  		
-	      }
-
-	      // currently assume everything as diploid
-	      int32_t a1 = bcf_gt_allele(p_gt[0]);
-	      int32_t a2 = bcf_gt_allele(p_gt[1]);
-	      int32_t gt = bcf_alleles2gt(a1, a2);
-	      for(size_t l=0; l < vn_genos[k]; ++l) {
-		if ( p_pl[l] > 255 )
-		  p_pl[l] = 255;
-		v_pls[k][vn_genos[k] * i + l] = p_pl[l];
-	      }
-	      
-	      v_dp_sums[k] += p_dp[0];
-
-	      int32_t bq_s1 = 0;
-	      int32_t bq_s2 = 0;
-	      int32_t mq_s1 = 0;
-	      int32_t mq_s2 = 0;
-	      float   cy_s1 = 0;
-	      float   cy_s2 = 0;
-	      int32_t st_s1 = 0;
-	      int32_t al_s1 = 0;
-	      int32_t nm_s1 = 0;
-	      int32_t nm_s2 = 0;
-	      int32_t bq_al = 0;
-	      int32_t mq_al = 0;
-	      float   cy_al = 0;
-	      int32_t st_al = 0;
-	      int32_t nm_al = 0;
-	      int32_t dp_ra = 0;
-	      int32_t dp_q20 = 0;
-	      double  oth_exp_q20 = 0;
-	      double  oth_obs_q20 = 0;
-	      
-	      int32_t* ads_z = &v_ads[k][ i*vn_alleles[k] ];
-
-	      ++v_ns_nrefs[k];
-	      
-	      for(size_t l=0; l < p_dp[0]; ++l) {
-		if ( p_bq[l] > maxBQ ) p_bq[l] = maxBQ;
+		// sanity checking
+		if ( np_pl != vn_genos[k] ) {
+		  fprintf(stderr, "[E:%s:%d %s] np_pl (%d) != n_genos (%d)\n", __FILE__, __LINE__, __FUNCTION__, np_pl, vn_genos[k]);
+		  exit(1);
+		}
 		
-		if ( p_al[l] >= 0 ) {
-		  if ( p_bq[l] > 20 ) {
-		    oth_exp_q20 += ( est->lt->pl2prob(p_bq[l]) * 2.0 / 3.0 );
-		    ++dp_q20;
-		  }
+		if ( ( np_dp != 1 ) || ( np_gt != 2 ) ) {
+		  fprintf(stderr, "[E:%s:%d %s] Assertion failed in np_dp (%d) == np_gt (%d),  np_st (%d) == np_al (%d)\n", __FILE__, __LINE__, __FUNCTION__, np_dp, np_gt, np_st, np_al);
+		  exit(1);		
+		}
+		if ( p_dp[0] != strlen(p_st[0]) ) {
+		  fprintf(stderr, "[E:%s:%d %s] Assetion failed - p_dp[0] == strlen(p_st[0])\n", __FILE__, __LINE__, __FUNCTION__);
+		  exit(1);		  		  		  		  		
+		}
+		
+		// currently assume everything as diploid
+		int32_t a1 = bcf_gt_allele(p_gt[0]);
+		int32_t a2 = bcf_gt_allele(p_gt[1]);
+		int32_t gt = bcf_alleles2gt(a1, a2);
+		for(size_t l=0; l < vn_genos[k]; ++l) {
+		  //v_pls[k][vn_genos[k] * i2 + l] = p_pl[l];
+		}
+		
+		//v_dp_sums[k] += p_dp[0];
+		
+		int32_t bq_s1 = 0;
+		int32_t bq_s2 = 0;
+		int32_t mq_s1 = 0;
+		int32_t mq_s2 = 0;
+		float   cy_s1 = 0;
+		float   cy_s2 = 0;
+		int32_t st_s1 = 0;
+		int32_t al_s1 = 0;
+		int32_t nm_s1 = 0;
+		int32_t nm_s2 = 0;
+		int32_t bq_al = 0;
+		int32_t mq_al = 0;
+		float   cy_al = 0;
+		int32_t st_al = 0;
+		int32_t nm_al = 0;
+		int32_t dp_ra = 0;
+		int32_t dp_q20 = 0;
+		double  oth_exp_q20 = 0;
+		double  oth_obs_q20 = 0;
+		
+		//int32_t* ads_z = &v_ads[k][ i2*vn_alleles[k] ];
+		
+		++v_ns_nrefs[k];
+		
+		for(size_t l=0; l < p_dp[0]; ++l) {
+		  if ( p_bq[l] > maxBQ ) p_bq[l] = maxBQ;
 		  
-		  // calculate cycle-based tail distance
-		  float log_td = 0-logf((float)abs(v_is_snps[k] ? p_cy[l] : (int)(rand() % 100))+1.); // temporarily ignore cycles
-		  
-		  ++dp_ra;
-		  bq_s1 += p_bq[l];
-		  bq_s2 += (p_bq[l] * p_bq[l]);
-		  mq_s1 += p_mq[l];
-		  mq_s2 += (p_mq[l] * p_mq[l]);
-		  cy_s1 += log_td;
-		  cy_s2 += (log_td * log_td);
-		  st_s1 += ((p_st[0][l] == 'F') ? 0 : 1);
-		  if ( p_al[l] > 0 ) {
-		    ++al_s1;
-		    bq_al += p_bq[l];
-		    mq_al += p_mq[l];
-		    cy_al += log_td; 
-		    st_al += ((p_st[0][l] == 'F') ? 0 : 1);
-		    nm_al += (p_nm[l]-1);
-		    nm_s1 += (p_nm[l]-1);
-		    nm_s2 += ((p_nm[l]-1)*(p_nm[l]-1));
-		    ++ads_z[1];
+		  if ( p_al[l] >= 0 ) {
+		    if ( p_bq[l] > 20 ) {
+		      oth_exp_q20 += ( est->lt->pl2prob(p_bq[l]) * 2.0 / 3.0 );
+		      ++dp_q20;
+		    }
+		    
+		    // calculate cycle-based tail distance
+		    float log_td = 0-logf((float)abs(v_is_snps[k] ? p_cy[l] : (int)(rand() % 100))+1.); // temporarily ignore cycles
+		    
+		    ++dp_ra;
+		    bq_s1 += p_bq[l];
+		    bq_s2 += (p_bq[l] * p_bq[l]);
+		    mq_s1 += p_mq[l];
+		    mq_s2 += (p_mq[l] * p_mq[l]);
+		    cy_s1 += log_td;
+		    cy_s2 += (log_td * log_td);
+		    st_s1 += ((p_st[0][l] == 'F') ? 0 : 1);
+		    if ( p_al[l] > 0 ) {
+		      ++al_s1;
+		      bq_al += p_bq[l];
+		      mq_al += p_mq[l];
+		      cy_al += log_td; 
+		      st_al += ((p_st[0][l] == 'F') ? 0 : 1);
+		      nm_al += (p_nm[l]-1);
+		      nm_s1 += (p_nm[l]-1);
+		      nm_s2 += ((p_nm[l]-1)*(p_nm[l]-1));
+		      //++ads_z[1];
+		    }
+		    else {
+		      nm_s1 += p_nm[l];
+		      nm_s2 += ( p_nm[l] * p_nm[l] );
+		      //++ads_z[0];
+		    }
 		  }
 		  else {
-		    nm_s1 += p_nm[l];
-		    nm_s2 += ( p_nm[l] * p_nm[l] );
-		    ++ads_z[0];
+		    if ( p_bq[l] > 20 ) {
+		      oth_exp_q20 += ( est->lt->pl2prob(p_bq[l]) * 2.0 / 3.0 );
+		      ++oth_obs_q20;
+		      ++dp_q20;
+		    }
+		    //++v_ods[k][i2];
 		  }
 		}
-		else {
-		  if ( p_bq[l] > 20 ) {
-		    oth_exp_q20 += ( est->lt->pl2prob(p_bq[l]) * 2.0 / 3.0 );
-		    ++oth_obs_q20;
-		    ++dp_q20;
-		  }
-		  ++v_ods[k][i];
+		
+		float sqrt_dp_ra = sqrt((float)dp_ra);
+		float ior = (float)(oth_obs_q20 / (oth_exp_q20 + 1e-6));
+		float nm1 = al_s1 == 0 ? 0 : nm_al / (float)al_s1;
+		float nm0 = (dp_ra-al_s1) == 0 ? 0 : (nm_s1-nm_al) / (float)(dp_ra-al_s1);		
+		float w_dp_ra  = log(dp_ra+1.); //sqrt(dp_ra);
+		float w_dp_q20 = log(dp_q20+1.); //sqrt(dp_q20);
+		float w_al_s1  = log(al_s1+1.); //sqrt(al_s1);
+		float w_ref_s1 = log(dp_ra-al_s1+1.);
+		
+		if ( gt == 1 ) { // het genotypes
+		  v_ab_nums[k] += (w_dp_ra * (dp_ra - al_s1 + 0.05) / (double)(dp_ra + 0.1));
+		  v_ab_dens[k] += w_dp_ra;
+		  
+		  // E(r) = 0.5(r+a) V(r) = 0.25(r+a)
+		  v_abz_nums[k] += w_dp_ra * (dp_ra - al_s1 - dp_ra*0.5)/sqrt(0.25 * dp_ra + 1e-3);
+		  v_abz_dens[k] += (w_dp_ra * w_dp_ra);
+		  
+		  float bqr = sqrt_dp_ra * compute_correlation( dp_ra, bq_al, bq_s1, bq_s2, al_s1, al_s1, .1 );
+		  float mqr = sqrt_dp_ra * compute_correlation( dp_ra, mq_al, mq_s1, mq_s2, al_s1, al_s1, .1 );
+		  float cyr = sqrt_dp_ra * compute_correlation_f( dp_ra, cy_al, cy_s1, cy_s2, (float)al_s1, (float)al_s1, .1 );
+		  float str = sqrt_dp_ra * compute_correlation( dp_ra, st_al, st_s1, st_s1, al_s1, al_s1, .1 );
+		  float nmr = sqrt_dp_ra * compute_correlation( dp_ra, nm_al, nm_s1, nm_s2, al_s1, al_s1, .1 );
+		  
+		  // Use Stouffer's method to combine the z-scores, but weighted by log of sample size
+		  v_bqr_nums[k] += (bqr * w_dp_ra); v_bqr_dens[k] += (w_dp_ra * w_dp_ra);
+		  v_mqr_nums[k] += (mqr * w_dp_ra); v_mqr_dens[k] += (w_dp_ra * w_dp_ra);
+		  v_cyr_nums[k] += (cyr * w_dp_ra); v_cyr_dens[k] += (w_dp_ra * w_dp_ra);
+		  v_str_nums[k] += (str * w_dp_ra); v_str_dens[k] += (w_dp_ra * w_dp_ra);
+		  v_nmr_nums[k] += (nmr * w_dp_ra); v_nmr_dens[k] += (w_dp_ra * w_dp_ra);	  
 		}
-	      }
-	      
-	      float sqrt_dp_ra = sqrt((float)dp_ra);
-	      float ior = (float)(oth_obs_q20 / (oth_exp_q20 + 1e-6));
-	      float nm1 = al_s1 == 0 ? 0 : nm_al / (float)al_s1;
-	      float nm0 = (dp_ra-al_s1) == 0 ? 0 : (nm_s1-nm_al) / (float)(dp_ra-al_s1);		
-	      float w_dp_ra  = log(dp_ra+1.); //sqrt(dp_ra);
-	      float w_dp_q20 = log(dp_q20+1.); //sqrt(dp_q20);
-	      float w_al_s1  = log(al_s1+1.); //sqrt(al_s1);
-	      float w_ref_s1 = log(dp_ra-al_s1+1.);
-	      
-	      if ( gt == 1 ) { // het genotypes
-		v_ab_nums[k] += (w_dp_ra * (dp_ra - al_s1 + 0.05) / (double)(dp_ra + 0.1));
-		v_ab_dens[k] += w_dp_ra;
 		
-		// E(r) = 0.5(r+a) V(r) = 0.25(r+a)
-		v_abz_nums[k] += w_dp_ra * (dp_ra - al_s1 - dp_ra*0.5)/sqrt(0.25 * dp_ra + 1e-3);
-		v_abz_dens[k] += (w_dp_ra * w_dp_ra);
-		
-		float bqr = sqrt_dp_ra * compute_correlation( dp_ra, bq_al, bq_s1, bq_s2, al_s1, al_s1, .1 );
-		float mqr = sqrt_dp_ra * compute_correlation( dp_ra, mq_al, mq_s1, mq_s2, al_s1, al_s1, .1 );
-		float cyr = sqrt_dp_ra * compute_correlation_f( dp_ra, cy_al, cy_s1, cy_s2, (float)al_s1, (float)al_s1, .1 );
-		float str = sqrt_dp_ra * compute_correlation( dp_ra, st_al, st_s1, st_s1, al_s1, al_s1, .1 );
-		float nmr = sqrt_dp_ra * compute_correlation( dp_ra, nm_al, nm_s1, nm_s2, al_s1, al_s1, .1 );
-		
-		// Use Stouffer's method to combine the z-scores, but weighted by log of sample size
-		v_bqr_nums[k] += (bqr * w_dp_ra); v_bqr_dens[k] += (w_dp_ra * w_dp_ra);
-		v_mqr_nums[k] += (mqr * w_dp_ra); v_mqr_dens[k] += (w_dp_ra * w_dp_ra);
-		v_cyr_nums[k] += (cyr * w_dp_ra); v_cyr_dens[k] += (w_dp_ra * w_dp_ra);
-		v_str_nums[k] += (str * w_dp_ra); v_str_dens[k] += (w_dp_ra * w_dp_ra);
-		v_nmr_nums[k] += (nmr * w_dp_ra); v_nmr_dens[k] += (w_dp_ra * w_dp_ra);	  
-	      }
-	      
-	      v_ior_nums[k] += (ior * w_dp_q20); v_ior_dens[k] += w_dp_q20;
-	      v_nm1_nums[k] += (nm1 * w_al_s1);  v_nm1_dens[k] += w_al_s1;
-	      v_nm0_nums[k] += (nm0 * w_ref_s1); v_nm0_dens[k] += w_ref_s1;		
-	    }
-	    
-	    ++k;
-	  }
-	  odr->close();
-	  delete odr;
-	  //bcf_clear(v);
-	  bcf_destroy(v);
-	}
-        bcf_hdr_add_sample(odw->hdr, NULL);
-
-        odw->write_hdr();
-
-	std::vector<int32_t> vSex; 
-	if ( x_found ) {
-	  if ( mSex.empty() ) {
-	    fprintf(stderr,"WARNING: No --sex-map is defined with non-PAR X chromosome markers are observed. Assuming everyone is female");
-	    vSex.resize(nfiles,2);
-	  }
-	  else {
-	    for(int i=0; i < nfiles; ++i) {
-	      const char* sid = bcf_hdr_int2id(odw->hdr, BCF_DT_SAMPLE, i);
-	      std::map<std::string,int>::iterator it = mSex.find(sid);
-	      if ( it == mSex.end() ) { // not found
-		fprintf(stderr,"WARNING: No sex information is available for %s, treating as female\n",sid);
-		vSex.push_back(2);
-	      }
-	      else {
-		vSex.push_back(it->second);
+		v_ior_nums[k] += (ior * w_dp_q20); v_ior_dens[k] += w_dp_q20;
+		v_nm1_nums[k] += (nm1 * w_al_s1);  v_nm1_dens[k] += w_al_s1;
+		v_nm0_nums[k] += (nm0 * w_ref_s1); v_nm0_dens[k] += w_ref_s1;		
+				
 	      }
 	    }
+	    if ( !v_skips[j] ) ++k;	    
 	  }
+
+	  for(size_t i2=i; i2 < i2max; ++i2) {	
+	    odrs[i2-i]->close();
+	    delete odrs[i2-i];
+	    //bcf_clear(v);
+	    bcf_destroy(vs[i2-i]);
+	  }
+	  odrs.clear();
+	  vs.clear();
 	}
+
+	bcf_hdr_add_sample(odw->hdr, NULL);
+
+        odw->write_hdr();	
 
 	for(size_t k=0; k < v_rids.size(); ++k) {
 	  bcf1_t* nv = bcf_init();
@@ -688,10 +631,8 @@ class Igor : Program
 	  }
 	  
 	  bcf_unpack(nv, BCF_UN_ALL);
-
-	  bool isX = ( ( nv->rid == x_rid ) && ( nv->pos >= xStart ) && ( nv->pos <= xStop ) );
 	  
-	  // calculate the allele frequencies under HWE. When calculating allele frequencies, the sex information will be ignored
+	  // calculate the allele frequencies under HWE
 	  float MLE_HWE_AF[vn_alleles[k]];
 	  float MLE_HWE_GF[vn_genos[k]];
 	  int32_t ploidy = 2; // temporarily constant
@@ -713,34 +654,19 @@ class Igor : Program
 	  
 	  for(size_t i=0; i < nfiles; ++i) {
 	    pls_i = &v_pls[k][ i * vn_genos[k] ];
-
-	    if ( isX && (vSex[i] == 1) ) { // haploid
-	      max_gp = gp_sum = gp = ( est->lt->pl2prob(pls_i[0]) * MLE_HWE_AF[0] );
-	      best_gt = 0; best_a1 = 0; best_a2 = 0;
-	      for(size_t l=1; l < vn_alleles[k]; ++l) {
-		gp = ( est->lt->pl2prob(pls_i[ l*(l+1)/2 + l]) * MLE_HWE_AF[l] );
+	    max_gp = gp_sum = gp = ( est->lt->pl2prob(pls_i[0]) * MLE_HWE_AF[0] * MLE_HWE_AF[0] );
+	    best_gt = 0; best_a1 = 0; best_a2 = 0;
+	    for(size_t l=1; l < vn_alleles[k]; ++l) {
+	      for(size_t m=0; m <= l; ++m) {
+		gp = ( est->lt->pl2prob(pls_i[ l*(l+1)/2 + m]) * MLE_HWE_AF[l] * MLE_HWE_AF[m] * (l == m ? 1 : 2) );
 		gp_sum += gp;
 		if ( max_gp < gp ) {
 		  max_gp = gp;
-		  best_gt = l*(l+1)/2 + l; best_a1 = l; best_a2 = l;
-		}		
-	      }
-	    }
-	    else { // diploid
-	      max_gp = gp_sum = gp = ( est->lt->pl2prob(pls_i[0]) * MLE_HWE_AF[0] * MLE_HWE_AF[0] );
-	      best_gt = 0; best_a1 = 0; best_a2 = 0;
-	      for(size_t l=1; l < vn_alleles[k]; ++l) {
-		for(size_t m=0; m <= l; ++m) {
-		  gp = ( est->lt->pl2prob(pls_i[ l*(l+1)/2 + m]) * MLE_HWE_AF[l] * MLE_HWE_AF[m] * (l == m ? 1 : 2) );
-		  gp_sum += gp;
-		  if ( max_gp < gp ) {
-		    max_gp = gp;
-		    best_gt = l*(l+1)/2 + m; best_a1 = m; best_a2 = l;
-		  }
+		  best_gt = l*(l+1)/2 + m; best_a1 = m; best_a2 = l;
 		}
 	      }
 	    }
-	      
+	    
 	    double prob = 1.-max_gp/gp_sum;
 	    if ( prob <= 3.162278e-26 )
 	      prob = 3.162278e-26;
@@ -748,13 +674,13 @@ class Igor : Program
 	      prob = 1;
 	    
 	    v_gqs[k][i] = (int32_t)est->lt->prob2pl(prob);
-	    
+
 	    if ( ( best_gt > 0 ) && ( v_max_gqs[k] < v_gqs[k][i] ) )
 	      v_max_gqs[k] = v_gqs[k][i];
-	    
+
 	    v_gts[k][2*i]   = ((best_a1 + 1) << 1);
 	    v_gts[k][2*i+1] = ((best_a2 + 1) << 1);	    
-	    an += 2;             // still use diploid representation of chrX for now.
+	    an += 2;
 	    ++acs[best_a1];
 	    ++acs[best_a2];
 	    ++gcs[best_gt];
@@ -786,7 +712,6 @@ class Igor : Program
 	    //bcf_update_info_float(odw->hdr, nv, "HWEGF", &MLE_HWE_GF, n_genos);
 	  }
 
-
 	  // calculate the allele frequencies under HWD	  
 	  float MLE_AF[vn_alleles[k]];
 	  float MLE_GF[vn_genos[k]];
@@ -798,82 +723,24 @@ class Igor : Program
 	    bcf_update_info_float(odw->hdr, nv, "HWDGF", &MLE_GF, vn_genos[k]);
 	  }
 
-	  if ( isX && !mSex.empty() ) { // copy only female GLs to calculate IBC and HWE_SLP
-	    int32_t* p_XX_pls = (int32_t*) malloc(nfiles * vn_genos[k] * sizeof(int32_t));
-	    int i, j, l;
-	    for(i=0, j=0; i < nfiles; ++i) {
-	      if ( vSex[i] == 2 ) {
-		for(l=0; l < vn_genos[k]; ++l)  {
-		  p_XX_pls[vn_genos[k] * j + l] = v_pls[k][vn_genos[k]*i + l];
-		}
-		++j;
-	      }
-	      //v_pls[k][vn_genos[k] * i + l * (l+1) / 2 + m] = 0;	      
-	      //p_XX_pls[j++] = v_pls[k][i];
-	      //}
-	    }
-
-	    float MLE_HWE_AF_XX[vn_alleles[k]];
-	    float MLE_HWE_GF_XX[vn_genos[k]];
-	    float MLE_AF_XX[vn_alleles[k]];
-	    float MLE_GF_XX[vn_genos[k]];
-
-	    // calculate allele frequencies using females
-	    est->compute_gl_af_hwe(p_XX_pls, j, ploidy, vn_alleles[k], MLE_HWE_AF_XX, MLE_HWE_GF_XX,  n, 1e-20);
-	    est->compute_gl_af(p_XX_pls, j, ploidy, vn_alleles[k], MLE_AF_XX, MLE_GF_XX,  n, 1e-20);
-
-
-	    for(i=0; i < vn_alleles[k]; ++i) {
-	      if ( MLE_HWE_AF_XX[i] < 1e-6 ) MLE_HWE_AF_XX[i] = 1e-6;
-	      if ( MLE_AF_XX[i] < 1e-6 ) MLE_AF_XX[i] = 1e-6;	      
-	    }
-	    
-	    for(i=0; i < vn_genos[k]; ++i) {
-	      if ( MLE_HWE_GF_XX[i] < 1e-10 ) MLE_HWE_GF_XX[i] = 1e-10;
-	      if ( MLE_GF_XX[i] < 1e-10 ) MLE_GF_XX[i] = 1e-10;	      
-	    }	    
-	      	    
-	    float fic = 0;
-	    n = 0;
-	    est->compute_gl_fic(p_XX_pls, j, ploidy, MLE_HWE_AF_XX, vn_alleles[k], MLE_GF_XX, fic, n);
-	    if ( isnanf(fic) ) fic = 0;	  
-	    if (n) {
-	      bcf_update_info_float(odw->hdr, nv, "IBC", &fic, 1);
-	    }
-	    
-	    // calculate the LRT statistics related to HWE
-	    float lrts;
-	    float logp;
-	    int32_t df;
-	    n = 0;
-	    est->compute_hwe_lrt(p_XX_pls, j, ploidy, vn_alleles[k], MLE_HWE_GF_XX, MLE_GF_XX, n, lrts, logp, df);
-	    if (n) {
-	      if ( fic > 0 ) logp = 0-logp;
-	      bcf_update_info_float(odw->hdr, nv, "HWE_SLP", &logp, 1);
-	    }
-	    
-	    free(p_XX_pls);
+	  float fic = 0;
+	  n = 0;
+	  est->compute_gl_fic(v_pls[k], nfiles, ploidy, MLE_HWE_AF, vn_alleles[k], MLE_GF, fic, n);
+	  if ( isnanf(fic) ) fic = 0;	  
+	  if (n) {
+	    bcf_update_info_float(odw->hdr, nv, "IBC", &fic, 1);
 	  }
-	  else {
-	    float fic = 0;
-	    n = 0;
-	    est->compute_gl_fic(v_pls[k], nfiles, ploidy, MLE_HWE_AF, vn_alleles[k], MLE_GF, fic, n);
-	    if ( isnanf(fic) ) fic = 0;	  
-	    if (n) {
-	      bcf_update_info_float(odw->hdr, nv, "IBC", &fic, 1);
-	    }
-	    
-	    // calculate the LRT statistics related to HWE
-	    float lrts;
-	    float logp;
-	    int32_t df;
-	    n = 0;
-	    est->compute_hwe_lrt(v_pls[k], nfiles, ploidy, vn_alleles[k], MLE_HWE_GF, MLE_GF, n, lrts, logp, df);
-	    if (n) {
-	      if ( fic > 0 ) logp = 0-logp;
-	      bcf_update_info_float(odw->hdr, nv, "HWE_SLP", &logp, 1);
-	    }
-	  }
+
+	  // calculate the LRT statistics related to HWE
+	  float lrts;
+	  float logp;
+	  int32_t df;
+	  n = 0;
+	  est->compute_hwe_lrt(v_pls[k], nfiles, ploidy, vn_alleles[k], MLE_HWE_GF, MLE_GF, n, lrts, logp, df);
+	  if (n) {
+	    if ( fic > 0 ) logp = 0-logp;
+	    bcf_update_info_float(odw->hdr, nv, "HWE_SLP", &logp, 1);
+	  }	  
 
 	  // add additional annotations
 	  v_ns_nrefs[k] -= (nfiles - gcs[0]);
@@ -905,7 +772,7 @@ class Igor : Program
     {
         if (!print) return;
 
-        std::clog << "paste_and_comput_features v" << version << "\n\n";
+        std::clog << "paste_genotypes v" << version << "\n\n";
         print_ifiles("options:     input VCF file        ", input_vcf_files);
         std::clog << "         [o] output VCF file       " << output_vcf_file << "\n";
         std::clog << "\n";
@@ -927,12 +794,12 @@ class Igor : Program
 
 }
 
-bool paste_and_compute_features_sequential(int argc, char ** argv)
+bool paste_genotypes(int argc, char ** argv)
 {
     Igor igor(argc, argv);
     igor.print_options();
     igor.initialize();
-    igor.paste_and_compute_features_sequential();
+    igor.paste_genotypes();
     igor.print_stats();
     return igor.print;
 }

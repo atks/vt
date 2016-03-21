@@ -47,10 +47,12 @@
 #include "merge_candidate_variants.h"
 #include "merge_candidate_variants2.h"
 #include "merge.h"
+#include "milk_filter.h"
 #include "multi_partition.h"
 #include "normalize.h"
 #include "partition.h"
 #include "paste.h"
+#include "paste_genotypes.h"
 #include "paste_and_compute_features_sequential.h"
 #include "peek.h"
 #include "profile_afs.h"
@@ -160,6 +162,10 @@ int main(int argc, char ** argv)
     {
         print = paste(argc-1, ++argv);
     }
+    else if (argc>1 && cmd=="paste_genotypes")
+    {
+        print = paste_genotypes(argc-1, ++argv);
+    }    
     else if (argc>1 && cmd=="cat")
     {
         print = cat(argc-1, ++argv);
@@ -304,6 +310,10 @@ int main(int argc, char ** argv)
     {
         paste_and_compute_features_sequential(argc-1, ++argv);
     }
+    else if (argc>1 && cmd=="milk_filter")
+    {
+        milk_filter(argc-1, ++argv);
+    }    
     else if (argc>1 && cmd=="align")
     {
         align(argc-1, ++argv);
