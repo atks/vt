@@ -67,6 +67,7 @@ SOURCES = align\
 		paste\
 		paste_genotypes\
 		paste_and_compute_features_sequential\
+		paste_genotypes\
 		pedigree\
 		peek\
 		pileup\
