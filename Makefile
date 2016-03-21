@@ -1,4 +1,4 @@
-OPTFLAG = -O3
+OPTFLAG = -g -O3
 INCLUDES = -I./lib -I. -I./lib/htslib -I./lib/Rmath -I./lib/pcre2
 CFLAGS = -pipe -std=c++0x $(OPTFLAG) $(INCLUDES) -D__STDC_LIMIT_MACROS
 CXX = g++
@@ -54,15 +54,18 @@ SOURCES = align\
 		merge\
 		merge_candidate_variants\
 		merge_candidate_variants2\
+		milk_filter\
 		motif_tree\
 		motif_map\
 		multi_partition\
 		needle\
 		normalize\
+		nuclear_pedigree\
 		ordered_bcf_overlap_matcher\
 		ordered_region_overlap_matcher\
 		partition\
 		paste\
+		paste_genotypes\
 		paste_and_compute_features_sequential\
 		pedigree\
 		peek\

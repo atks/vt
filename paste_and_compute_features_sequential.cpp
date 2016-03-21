@@ -41,13 +41,21 @@ class Igor : Program
     bool print;
     std::vector<GenomeInterval> intervals;
     int32_t maxBQ;
+    std::string sex_map_file;  
+    std::string xLabel;
+    std::string yLabel;
+    std::string mtLabel;
+    int32_t xStart;
+    int32_t xStop;
 
     ///////
     //i/o//
     ///////
     BCFOrderedReader *odr;
     BCFOrderedWriter *odw;
-    Estimator *est;  
+    Estimator *est;
+
+    std::map<std::string,int> mSex;
 
     ///////////////
     //general use//
@@ -92,7 +100,13 @@ class Igor : Program
             TCLAP::UnlabeledMultiArg<std::string> arg_input_vcf_files("<in1.vcf>...", "Multiple VCF files",false, "files", cmd);
 	    TCLAP::ValueArg<std::string> arg_intervals("i","i","Intervals[]", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "file", cmd);
-            TCLAP::ValueArg<int32_t> arg_max_bq("q", "q", "Maximum base quality to cap []", false, 30, "int", cmd);	    
+            TCLAP::ValueArg<std::string> arg_sex_map_file("g", "sex-map", "file containing sex map of each individual. ID fitst, X ploidy second", false, "", "file", cmd);	    
+            TCLAP::ValueArg<int32_t> arg_max_bq("q", "q", "Maximum base quality to cap []", false, 30, "int", cmd);
+            TCLAP::ValueArg<std::string> arg_xLabel("", "xLabel", "Contig name for X chromosome", false, "X", "str", cmd);
+            TCLAP::ValueArg<std::string> arg_yLabel("", "yLabel", "Contig name for Y chromosome", false, "Y", "str", cmd);
+            TCLAP::ValueArg<std::string> arg_mtLabel("", "mtLabel", "Contig name for mitochondrial chromosome", false, "MT", "str", cmd);
+            TCLAP::ValueArg<int32_t> arg_xStart("", "xStart", "Start base position of non-PAR region in X chromosome", false, 2699520, "int", cmd);
+            TCLAP::ValueArg<int32_t> arg_xStop("", "xStop", "End base position of non-PAR region in X chromosome", false, 154931044, "int", cmd); 	    
 	
             cmd.parse(argc, argv);
 
@@ -103,6 +117,12 @@ class Igor : Program
             print = arg_print.getValue();
 	    maxBQ = arg_max_bq.getValue();
             parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
+	    sex_map_file = arg_sex_map_file.getValue();
+	    xLabel = arg_xLabel.getValue();
+	    yLabel = arg_yLabel.getValue();
+	    mtLabel = arg_mtLabel.getValue();	    
+	    xStart = arg_xStart.getValue();
+	    xStop = arg_xStop.getValue();
 
             if (input_vcf_files.size()==0)
             {
@@ -170,6 +190,41 @@ class Igor : Program
         ///////////////
         //general use//
         ///////////////
+
+	// Read sex map if needed
+	if ( !sex_map_file.empty() ) {
+	  htsFile *file = hts_open(sex_map_file.c_str(),"r");
+	  if ( file == NULL ) {
+	    fprintf(stderr,"ERROR: Cannot open %s\n",sex_map_file.c_str());
+	    exit(1);
+	  }
+	  kstring_t *s = &file->line;
+	  while( hts_getline(file,'\n',s) >= 0 ) {
+	    std::string ss = std::string(s->s);
+	    size_t idx = ss.find_first_of("\t ");
+	    if ( idx == std::string::npos ) {
+	      fprintf(stderr,"ERROR: Cannot parse line %s in %s\n",ss.c_str(), sex_map_file.c_str());
+	      exit(1);
+	    }
+	    std::string id = ss.substr(0, idx);
+	    int32_t sex = atoi(ss.substr(idx+1).c_str());
+
+	    if ( mSex.find(id) != mSex.end() ) {
+	      fprintf(stderr,"ERROR: Duplicate ID %s in %s\n",id.c_str(), sex_map_file.c_str());
+	      exit(1);	      
+	    }
+
+	    if ( sex == 0 ) {
+	      fprintf(stderr,"WARNING: Unknown sex for individual %s, assuming females\n",id.c_str());
+	      sex = 2;
+	    }
+	    else if ( sex > 2 ) {
+	      fprintf(stderr,"ERROR: Invalid sex %d for individual %s\n",sex,id.c_str());
+	      exit(1);
+	    }
+	    mSex[id] = sex;
+	  }
+	}
 
         ////////////////////////
         //stats initialization//
@@ -267,6 +322,10 @@ class Igor : Program
 	std::vector< std::vector<std::string> > v_d_alleles;
 	std::vector< std::vector<int32_t> > v_filts;
 
+	// determine rids for X chromosome
+	int32_t x_rid = bcf_hdr_name2id(odr->hdr,xLabel.c_str());
+	bool x_found = false;
+
         bcf1_t* v = bcf_init();
 	while( odr->read(v) ) {
 	  // skip multi-allelics
@@ -300,6 +359,9 @@ class Igor : Program
 	  vn_alleles.push_back(v->n_allele);
 	  vn_genos.push_back(v->n_allele * (v->n_allele+1)/2);
 
+	  if ( ( x_rid == v->rid ) && ( v->pos >= xStart ) && ( v->pos <= xStop ) )
+	    x_found = true;
+
 	  v_filts.push_back(std::vector<int32_t>());
 	  for(size_t i=0; i < v->d.n_flt; ++i) {
 	    v_filts.back().push_back(v->d.flt[i]);
@@ -313,7 +375,7 @@ class Igor : Program
 	  v_ods.push_back( (int32_t*)calloc( nfiles, sizeof(int32_t) ) );
 	}
 	odr->close();
-	delete odr;	
+	delete odr;
 
 	std::vector<float> v_bqr_nums(v_rids.size(), 0);
 	std::vector<float> v_bqr_dens(v_rids.size(), 0);
@@ -339,10 +401,11 @@ class Igor : Program
 	std::vector<int32_t> v_dp_sums(v_rids.size(), 0);
 	std::vector<int32_t> v_max_gqs(v_rids.size(), 0);
 
-	bcf_clear(v);
-	
+	//bcf_clear(v);
+	bcf_destroy(v);
+
 	for(size_t i=0; i < nfiles; ++i) {
-	  fprintf(stderr,"Reading input file %s..\n", input_vcf_files[i].c_str());
+	  //fprintf(stderr,"Reading input file %s..\n", input_vcf_files[i].c_str());
 	  // set odr and v
 	  odr = new BCFOrderedReader(input_vcf_files[i], intervals);
 	  v = bcf_init();
@@ -394,10 +457,10 @@ class Igor : Program
 		    if ( l == 0 )
 		      v_pls[k][vn_genos[k] * i + l * (l+1) / 2 + m] = 0;
 		    else
-		      v_pls[k][vn_genos[k] * i + l * (l+1) / 2 + m] = (int32_t)floor(6.931472 * p_dp[0] + 0.5);
+		      v_pls[k][vn_genos[k] * i + l * (l+1) / 2 + m] = (int32_t)floor(3.0103 * p_dp[0] + 0.5);
 		  }
 		  else
-		    v_pls[k][vn_genos[k] * i + l * (l+1) / 2 + m] = (int32_t)floor(p_bqsum[0] + 10.98612 * p_dp[0] + 0.5);
+		    v_pls[k][vn_genos[k] * i + l * (l+1) / 2 + m] = (int32_t)floor(p_bqsum[0] + 4.771213 * p_dp[0] + 0.5);
 		  }
 	      }
 	      v_dp_sums[k] += p_dp[0];
@@ -457,6 +520,8 @@ class Igor : Program
 	      int32_t a2 = bcf_gt_allele(p_gt[1]);
 	      int32_t gt = bcf_alleles2gt(a1, a2);
 	      for(size_t l=0; l < vn_genos[k]; ++l) {
+		if ( p_pl[l] > 255 )
+		  p_pl[l] = 255;
 		v_pls[k][vn_genos[k] * i + l] = p_pl[l];
 	      }
 	      
@@ -573,15 +638,37 @@ class Igor : Program
 	  }
 	  odr->close();
 	  delete odr;
+	  //bcf_clear(v);
+	  bcf_destroy(v);
 	}
         bcf_hdr_add_sample(odw->hdr, NULL);
 
-        odw->write_hdr();	
+        odw->write_hdr();
 
-	bcf1_t* nv = bcf_init();
-	
+	std::vector<int32_t> vSex; 
+	if ( x_found ) {
+	  if ( mSex.empty() ) {
+	    fprintf(stderr,"WARNING: No --sex-map is defined with non-PAR X chromosome markers are observed. Assuming everyone is female");
+	    vSex.resize(nfiles,2);
+	  }
+	  else {
+	    for(int i=0; i < nfiles; ++i) {
+	      const char* sid = bcf_hdr_int2id(odw->hdr, BCF_DT_SAMPLE, i);
+	      std::map<std::string,int>::iterator it = mSex.find(sid);
+	      if ( it == mSex.end() ) { // not found
+		fprintf(stderr,"WARNING: No sex information is available for %s, treating as female\n",sid);
+		vSex.push_back(2);
+	      }
+	      else {
+		vSex.push_back(it->second);
+	      }
+	    }
+	  }
+	}
+
 	for(size_t k=0; k < v_rids.size(); ++k) {
-	  bcf_clear(nv);
+	  bcf1_t* nv = bcf_init();
+	  //bcf_clear(nv);
 	  nv->rid = v_rids[k];
 	  nv->pos = v_poss[k];
 	  nv->rlen = v_rlens[k];
@@ -601,8 +688,10 @@ class Igor : Program
 	  }
 	  
 	  bcf_unpack(nv, BCF_UN_ALL);
+
+	  bool isX = ( ( nv->rid == x_rid ) && ( nv->pos >= xStart ) && ( nv->pos <= xStop ) );
 	  
-	  // calculate the allele frequencies under HWE
+	  // calculate the allele frequencies under HWE. When calculating allele frequencies, the sex information will be ignored
 	  float MLE_HWE_AF[vn_alleles[k]];
 	  float MLE_HWE_GF[vn_genos[k]];
 	  int32_t ploidy = 2; // temporarily constant
@@ -624,19 +713,34 @@ class Igor : Program
 	  
 	  for(size_t i=0; i < nfiles; ++i) {
 	    pls_i = &v_pls[k][ i * vn_genos[k] ];
-	    max_gp = gp_sum = gp = ( est->lt->pl2prob(pls_i[0]) * MLE_HWE_AF[0] * MLE_HWE_AF[0] );
-	    best_gt = 0; best_a1 = 0; best_a2 = 0;
-	    for(size_t l=1; l < vn_alleles[k]; ++l) {
-	      for(size_t m=0; m <= l; ++m) {
-		gp = ( est->lt->pl2prob(pls_i[ l*(l+1)/2 + m]) * MLE_HWE_AF[l] * MLE_HWE_AF[m] * (l == m ? 1 : 2) );
+
+	    if ( isX && (vSex[i] == 1) ) { // haploid
+	      max_gp = gp_sum = gp = ( est->lt->pl2prob(pls_i[0]) * MLE_HWE_AF[0] );
+	      best_gt = 0; best_a1 = 0; best_a2 = 0;
+	      for(size_t l=1; l < vn_alleles[k]; ++l) {
+		gp = ( est->lt->pl2prob(pls_i[ l*(l+1)/2 + l]) * MLE_HWE_AF[l] );
 		gp_sum += gp;
 		if ( max_gp < gp ) {
 		  max_gp = gp;
-		  best_gt = l*(l+1)/2 + m; best_a1 = m; best_a2 = l;
+		  best_gt = l*(l+1)/2 + l; best_a1 = l; best_a2 = l;
+		}		
+	      }
+	    }
+	    else { // diploid
+	      max_gp = gp_sum = gp = ( est->lt->pl2prob(pls_i[0]) * MLE_HWE_AF[0] * MLE_HWE_AF[0] );
+	      best_gt = 0; best_a1 = 0; best_a2 = 0;
+	      for(size_t l=1; l < vn_alleles[k]; ++l) {
+		for(size_t m=0; m <= l; ++m) {
+		  gp = ( est->lt->pl2prob(pls_i[ l*(l+1)/2 + m]) * MLE_HWE_AF[l] * MLE_HWE_AF[m] * (l == m ? 1 : 2) );
+		  gp_sum += gp;
+		  if ( max_gp < gp ) {
+		    max_gp = gp;
+		    best_gt = l*(l+1)/2 + m; best_a1 = m; best_a2 = l;
+		  }
 		}
 	      }
 	    }
-	    
+	      
 	    double prob = 1.-max_gp/gp_sum;
 	    if ( prob <= 3.162278e-26 )
 	      prob = 3.162278e-26;
@@ -644,13 +748,13 @@ class Igor : Program
 	      prob = 1;
 	    
 	    v_gqs[k][i] = (int32_t)est->lt->prob2pl(prob);
-
+	    
 	    if ( ( best_gt > 0 ) && ( v_max_gqs[k] < v_gqs[k][i] ) )
 	      v_max_gqs[k] = v_gqs[k][i];
-
+	    
 	    v_gts[k][2*i]   = ((best_a1 + 1) << 1);
 	    v_gts[k][2*i+1] = ((best_a2 + 1) << 1);	    
-	    an += 2;
+	    an += 2;             // still use diploid representation of chrX for now.
 	    ++acs[best_a1];
 	    ++acs[best_a2];
 	    ++gcs[best_gt];
@@ -682,6 +786,7 @@ class Igor : Program
 	    //bcf_update_info_float(odw->hdr, nv, "HWEGF", &MLE_HWE_GF, n_genos);
 	  }
 
+
 	  // calculate the allele frequencies under HWD	  
 	  float MLE_AF[vn_alleles[k]];
 	  float MLE_GF[vn_genos[k]];
@@ -693,24 +798,82 @@ class Igor : Program
 	    bcf_update_info_float(odw->hdr, nv, "HWDGF", &MLE_GF, vn_genos[k]);
 	  }
 
-	  float fic = 0;
-	  n = 0;
-	  est->compute_gl_fic(v_pls[k], nfiles, ploidy, MLE_HWE_AF, vn_alleles[k], MLE_GF, fic, n);
-	  if ( isnanf(fic) ) fic = 0;	  
-	  if (n) {
-	    bcf_update_info_float(odw->hdr, nv, "IBC", &fic, 1);
-	  }
+	  if ( isX && !mSex.empty() ) { // copy only female GLs to calculate IBC and HWE_SLP
+	    int32_t* p_XX_pls = (int32_t*) malloc(nfiles * vn_genos[k] * sizeof(int32_t));
+	    int i, j, l;
+	    for(i=0, j=0; i < nfiles; ++i) {
+	      if ( vSex[i] == 2 ) {
+		for(l=0; l < vn_genos[k]; ++l)  {
+		  p_XX_pls[vn_genos[k] * j + l] = v_pls[k][vn_genos[k]*i + l];
+		}
+		++j;
+	      }
+	      //v_pls[k][vn_genos[k] * i + l * (l+1) / 2 + m] = 0;	      
+	      //p_XX_pls[j++] = v_pls[k][i];
+	      //}
+	    }
 
-	  // calculate the LRT statistics related to HWE
-	  float lrts;
-	  float logp;
-	  int32_t df;
-	  n = 0;
-	  est->compute_hwe_lrt(v_pls[k], nfiles, ploidy, vn_alleles[k], MLE_HWE_GF, MLE_GF, n, lrts, logp, df);
-	  if (n) {
-	    if ( fic > 0 ) logp = 0-logp;
-	    bcf_update_info_float(odw->hdr, nv, "HWE_SLP", &logp, 1);
-	  }	  
+	    float MLE_HWE_AF_XX[vn_alleles[k]];
+	    float MLE_HWE_GF_XX[vn_genos[k]];
+	    float MLE_AF_XX[vn_alleles[k]];
+	    float MLE_GF_XX[vn_genos[k]];
+
+	    // calculate allele frequencies using females
+	    est->compute_gl_af_hwe(p_XX_pls, j, ploidy, vn_alleles[k], MLE_HWE_AF_XX, MLE_HWE_GF_XX,  n, 1e-20);
+	    est->compute_gl_af(p_XX_pls, j, ploidy, vn_alleles[k], MLE_AF_XX, MLE_GF_XX,  n, 1e-20);
+
+
+	    for(i=0; i < vn_alleles[k]; ++i) {
+	      if ( MLE_HWE_AF_XX[i] < 1e-6 ) MLE_HWE_AF_XX[i] = 1e-6;
+	      if ( MLE_AF_XX[i] < 1e-6 ) MLE_AF_XX[i] = 1e-6;	      
+	    }
+	    
+	    for(i=0; i < vn_genos[k]; ++i) {
+	      if ( MLE_HWE_GF_XX[i] < 1e-10 ) MLE_HWE_GF_XX[i] = 1e-10;
+	      if ( MLE_GF_XX[i] < 1e-10 ) MLE_GF_XX[i] = 1e-10;	      
+	    }	    
+	      	    
+	    float fic = 0;
+	    n = 0;
+	    est->compute_gl_fic(p_XX_pls, j, ploidy, MLE_HWE_AF_XX, vn_alleles[k], MLE_GF_XX, fic, n);
+	    if ( isnanf(fic) ) fic = 0;	  
+	    if (n) {
+	      bcf_update_info_float(odw->hdr, nv, "IBC", &fic, 1);
+	    }
+	    
+	    // calculate the LRT statistics related to HWE
+	    float lrts;
+	    float logp;
+	    int32_t df;
+	    n = 0;
+	    est->compute_hwe_lrt(p_XX_pls, j, ploidy, vn_alleles[k], MLE_HWE_GF_XX, MLE_GF_XX, n, lrts, logp, df);
+	    if (n) {
+	      if ( fic > 0 ) logp = 0-logp;
+	      bcf_update_info_float(odw->hdr, nv, "HWE_SLP", &logp, 1);
+	    }
+	    
+	    free(p_XX_pls);
+	  }
+	  else {
+	    float fic = 0;
+	    n = 0;
+	    est->compute_gl_fic(v_pls[k], nfiles, ploidy, MLE_HWE_AF, vn_alleles[k], MLE_GF, fic, n);
+	    if ( isnanf(fic) ) fic = 0;	  
+	    if (n) {
+	      bcf_update_info_float(odw->hdr, nv, "IBC", &fic, 1);
+	    }
+	    
+	    // calculate the LRT statistics related to HWE
+	    float lrts;
+	    float logp;
+	    int32_t df;
+	    n = 0;
+	    est->compute_hwe_lrt(v_pls[k], nfiles, ploidy, vn_alleles[k], MLE_HWE_GF, MLE_GF, n, lrts, logp, df);
+	    if (n) {
+	      if ( fic > 0 ) logp = 0-logp;
+	      bcf_update_info_float(odw->hdr, nv, "HWE_SLP", &logp, 1);
+	    }
+	  }
 
 	  // add additional annotations
 	  v_ns_nrefs[k] -= (nfiles - gcs[0]);
@@ -728,10 +891,14 @@ class Igor : Program
 
 	  //fprintf(stderr,"AC = %f, AN = %f, NS_NREF = %f, AB = %f, BQR = %f, MQR = %f, CYR = %f, STR = %f, NMR = %f, IOR = %f, NMA = %f\n", acs[1], an, ns_nref, ab_num, bqr_num, mqr_num, cyr_num, str_num, nmr_num, ior_num, nma_num);
 	  
-	  odw->write(nv);	  
+	  odw->write(nv);
+	  bcf_destroy(nv);	  
 	}
 
+	//bcf_destroy(nv);
+
         odw->close();
+	delete odw;
     };
 
     void print_options()
