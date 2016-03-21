@@ -55,6 +55,7 @@
 #include "normalize.h"
 #include "partition.h"
 #include "paste.h"
+#include "paste_genotypes.h"
 #include "paste_and_compute_features_sequential.h"
 #include "peek.h"
 #include "profile_afs.h"
@@ -198,6 +199,10 @@ int main(int argc, char ** argv)
     else if (argc>1 && cmd=="annotate_vntrs")
     {
         annotate_vntrs(argc-1, ++argv);
+    }
+    else if (argc>1 && cmd=="paste_genotypes")
+    {
+        paste_genotypes(argc-1, ++argv);
     }
     else if (argc>1 && cmd=="consolidate_multiallelics")
     {
