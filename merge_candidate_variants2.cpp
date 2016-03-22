@@ -25,7 +25,6 @@
 
 #define SINGLE     0
 #define AGGREGATED 1
-#define ANNOTATED  2
 
 namespace
 {
@@ -136,16 +135,8 @@ Each VCF file is required to have the FORMAT flags E and N and should have exact
         {
             if (bcf_hdr_exists(sr->hdrs[i], BCF_HL_INFO, "NSAMPLES") && bcf_hdr_get_n_sample(sr->hdrs[i])==0)
             {
-                if (bcf_hdr_exists(sr->hdrs[i], BCF_HL_INFO, "MOTIF"))
-                {
-                    std::cerr << "annotated\n";
-                    file_types[i] = ANNOTATED;
-                }
-                else
-                {
-                    std::cerr << "aggregated\n";
-                    file_types[i] = AGGREGATED;
-                }
+                std::cerr << "aggregated\n";
+                file_types[i] = AGGREGATED;
             }
             else if (bcf_hdr_exists(sr->hdrs[i], BCF_HL_FMT, "E")&& bcf_hdr_get_n_sample(sr->hdrs[i])==1)
             {
@@ -158,27 +149,7 @@ Each VCF file is required to have the FORMAT flags E and N and should have exact
                 exit(1);
             }
         }
-
-
-        bcf_hdr_append_info_with_backup_naming(odw->hdr, "MOTIF", "1", "String", "Canonical motif in an VNTR.", true);
-        bcf_hdr_append_info_with_backup_naming(odw->hdr, "GMOTIF", "1", "String", "Generating Motif used in fuzzy alignment.", true);
-        bcf_hdr_append_info_with_backup_naming(odw->hdr, "RU", "1", "String", "Repeat unit in the reference sequence.", true);
-        bcf_hdr_append_info_with_backup_naming(odw->hdr, "RL", "1", "Float", "Reference repeat unit length", true);
-        bcf_hdr_append_info_with_backup_naming(odw->hdr, "LL", "1", "Float", "Longest repeat unit length", true);
-        bcf_hdr_append_info_with_backup_naming(odw->hdr, "CONCORDANCE", "1", "Float", "Concordance of repeat unit.", true);
-        bcf_hdr_append_info_with_backup_naming(odw->hdr, "RU_COUNTS", "2", "Integer", "Number of exact repeat units and total number of repeat units.", true);
-        bcf_hdr_append_info_with_backup_naming(odw->hdr, "FLANKS", "2", "Integer", "Left and right flank positions of the Indel, left/right alignment invariant, not necessarily equal to POS.", true);
-        bcf_hdr_append_info_with_backup_naming(odw->hdr, "FZ_RL", "1", "Float", "Fuzzy reference repeat unit length", true);
-        bcf_hdr_append_info_with_backup_naming(odw->hdr, "FZ_LL", "1", "Float", "Fuzzy longest repeat unit length", true);
-        bcf_hdr_append_info_with_backup_naming(odw->hdr, "FZ_CONCORDANCE", "1", "Float", "Fuzzy concordance of repeat unit.", true);
-        bcf_hdr_append_info_with_backup_naming(odw->hdr, "FZ_RU_COUNTS", "2", "Integer", "Fuzzy number of exact repeat units and total number of repeat units.", true);
-        bcf_hdr_append_info_with_backup_naming(odw->hdr, "FZ_FLANKS", "2", "Integer", "Fuzzy left and right flank positions of the Indel, left/right alignment invariant, not necessarily equal to POS.", true);
-        bcf_hdr_append_info_with_backup_naming(odw->hdr, "EXACT", "0", "Flag", "Exact mode of VNTR annotation", true);
-        bcf_hdr_append_info_with_backup_naming(odw->hdr, "FUZZY", "0", "Flag", "Fuzzy mode of VNTR annotation", true);
-        bcf_hdr_append_info_with_backup_naming(odw->hdr, "TR", "1", "String", "Tandem repeat associated with this indel.", true);
-        bcf_hdr_append(odw->hdr, "##INFO=<ID=LARGE_REPEAT_REGION,Number=0,Type=Flag,Description=\"Very large repeat region, vt only detects up to 1000bp long regions.\">");
-        bcf_hdr_append(odw->hdr, "##INFO=<ID=FLANKSEQ,Number=1,Type=String,Description=\"Flanking sequence 10bp on either side of detected repeat region.\">");
-
+       
         ///////////////
         //general use//
         ///////////////
@@ -200,16 +171,22 @@ Each VCF file is required to have the FORMAT flags E and N and should have exact
 
     void merge_candidate_variants2()
     {
-        int32_t *E = (int32_t*) malloc(1*sizeof(int32_t));
-        int32_t *N = (int32_t*) malloc(1*sizeof(int32_t));
-        int32_t no_E = 1, no_N = 1;
+        int32_t *E = NULL;
+        int32_t *N = NULL;
+        int32_t no_E = 0, no_N = 0;
+        int32_t *ESUM = NULL;
+        int32_t *NSUM = NULL;
+        int32_t no_ESUM = 0, no_NSUM = 0;
+        char *SAMPLES = NULL;
+        int32_t no_SAMPLES = 0;
 
+        //variables for final record
         uint32_t no_samples = 0;
         std::vector<int32_t> e;
         std::vector<int32_t> n;
         int32_t esum = 0;
         int32_t nsum = 0;
-        kstring_t sample_names = {0,0,0};
+        std::string samples;
  
         bcf1_t* nv = bcf_init();
         Variant var;
@@ -222,12 +199,11 @@ Each VCF file is required to have the FORMAT flags E and N and should have exact
             n.clear();
             esum = 0;
             nsum = 0;
-            sample_names.l = 0;
+            samples = "";
+            
             bool max_variant_score_gt_cutoff = false;
             float max_variant_score = 0;
             int32_t vtype;
-
-
 
             for (uint32_t i=0; i<current_recs.size(); ++i)
             {
@@ -245,25 +221,7 @@ Each VCF file is required to have the FORMAT flags E and N and should have exact
                     vtype = vm->classify_variant(odw->hdr, nv, var);
                 }
 
-
-//MOTIF=AC;RU=AC;FUZZY;FZ_CONCORDANCE=1;FZ_RL=29;FZ_LL=1.54717e-41;FLANKS=69506,69536;FZ_FLANKS=69506,69536;FZ_RU_COUNTS=15,15
-
-                if (vtype==VT_VNTR)
-                {
-                    
-                    std::cerr << "WAKAWAKAWAKA\n";
-                    
-                    bcf_copy_info_field(h, v, odw->hdr, nv, "MOTIF", BCF_HT_STR);
-                    bcf_copy_info_field(h, v, odw->hdr, nv, "RU", BCF_HT_STR);
-                    bcf_copy_info_field(h, v, odw->hdr, nv, "FUZZY", BCF_HT_FLAG);
-                    bcf_copy_info_field(h, v, odw->hdr, nv, "FZ_CONCORDANCE", BCF_HT_INT);
-                    bcf_copy_info_field(h, v, odw->hdr, nv, "FZ_RL", BCF_HT_REAL);
-                    bcf_copy_info_field(h, v, odw->hdr, nv, "FZ_LL", BCF_HT_REAL);
-                    bcf_copy_info_field(h, v, odw->hdr, nv, "FZ_FLANKS", BCF_HT_INT);
-                    bcf_copy_info_field(h, v, odw->hdr, nv, "FZ_RU_COUNTS", BCF_HT_INT);
-
-                    break;
-                }
+                std::cerr << "current recs size " << current_recs.size() << "\n";
 
                 if (file_types[file_index] == SINGLE)
                 {
@@ -274,75 +232,50 @@ Each VCF file is required to have the FORMAT flags E and N and should have exact
                         exit(1);
                     }
 
-                    bcf_hdr_get_sample_name(sr->hdrs[i], 0);
+                    std::cerr << E[0] << " " << N[0] << "\n";
 
-
-
+                    ++no_samples;
                     e.push_back(E[0]);
                     n.push_back(N[0]);
                     esum += E[0];
                     nsum += N[0];
                     char* sample_name = bcf_hdr_get_sample_name(sr->hdrs[file_index], 0);
-                    if (no_samples<=9)
-                    {
-                        if (i) kputc(',', &sample_names);
-                        kputs(sample_name, &sample_names);
-                    }
-                    ++no_samples;
-
+                    
+                    if (i) samples += ",";
+                    samples.append(sample_name);                                       
                 }
                 else if (file_types[file_index] == AGGREGATED)
                 {
-                    std::cerr << "IN aggregated\n";
+                    //#Y	13868285	.	G	A	31.983	.	
+                    //#NSAMPLES=5;
+                    //#SAMPLES=NWD344108,NWD641266,NWD507256,NWD672633,NWD173530;
+                    //#E=40926656,0,40926676,0,40926720;
+                    //#N=40930672,0,40930692,0,40930736;
+                    //#ESUM=13;NSUM=125
+
+                    
 
                     if (bcf_get_info_int32(h, v, "E", &E, &no_E) < 0 ||
-                        bcf_get_info_int32(h, v, "N", &N, &no_N) < 0)
+                        bcf_get_info_int32(h, v, "N", &N, &no_N) < 0 ||
+                        bcf_get_info_string(h, v, "SAMPLES", &SAMPLES, &no_SAMPLES) < 0
+                        )
                     {
-                        fprintf(stderr, "[E:%s:%d %s] cannot get info values E or N from %s\n", __FILE__, __LINE__, __FUNCTION__, sr->file_names[file_index].c_str());
+                        fprintf(stderr, "[E:%s:%d %s] cannot get info values E, N, ESUM, NSUM or SAMPLES from %s\n", __FILE__, __LINE__, __FUNCTION__, sr->file_names[file_index].c_str());
                         exit(1);
                     }
 
                     for (uint32_t j=0; j<no_E; ++j)
                     {
+                        ++no_samples;
+                        
                         e.push_back(E[j]);
                         n.push_back(N[j]);
                         esum += E[j];
                         nsum += N[j];
-                        ++no_samples;
-
-//                        if (no<=9)
-//                        {
-//                            if (i) kputc(',', &sample_name);
-//                            kputs(index2sample[file_index], &sample_name);
-//                        }
                     }
-                }
-                else if (file_types[file_index] == ANNOTATED)
-                {
-                    std::cerr << "IN annotated\n";
-                    if (bcf_get_info_int32(h, v, "E", &E, &no_E) < 0 ||
-                        bcf_get_info_int32(h, v, "N", &N, &no_N) < 0)
-                    {
-                        bcf_print(h,v);
-
-                        fprintf(stderr, "[E:%s:%d %s] cannot get info values E or N from %s\n", __FILE__, __LINE__, __FUNCTION__, sr->file_names[file_index].c_str());
-                        exit(1);
-                    }
-
-                    for (uint32_t j=0; j<no_E; ++j)
-                    {
-                        e.push_back(E[j]);
-                        n.push_back(N[j]);
-                        esum += E[j];
-                        nsum += N[j];
-                        ++no_samples;
-
-//                        if (no<=9)
-//                        {
-//                            if (i) kputc(',', &sample_name);
-//                            kputs(index2sample[file_index], &sample_name);
-//                        }
-                    }
+                    
+                    if (i) samples += ",";
+                    samples.assign(SAMPLES);  
                 }
 
                 float variant_score = bcf_get_qual(v);
@@ -367,9 +300,9 @@ Each VCF file is required to have the FORMAT flags E and N and should have exact
             if (max_variant_score_gt_cutoff)
             {
                 bcf_update_info_int32(odw->hdr, nv, "NSAMPLES", &no_samples, 1);
-                bcf_update_info_string(odw->hdr, nv, "SAMPLES", sample_names.s);
-                bcf_update_info_int32(odw->hdr, nv, "E", &e, no_samples);
-                bcf_update_info_int32(odw->hdr, nv, "N", &n, no_samples);
+                bcf_update_info_string(odw->hdr, nv, "SAMPLES", samples.c_str());
+                bcf_update_info_int32(odw->hdr, nv, "E", &e[0], no_samples);
+                bcf_update_info_int32(odw->hdr, nv, "N", &n[0], no_samples);
                 bcf_update_info_int32(odw->hdr, nv, "ESUM", &esum, 1);
                 bcf_update_info_int32(odw->hdr, nv, "NSUM", &nsum, 1);
                 bcf_set_qual(nv, max_variant_score);
