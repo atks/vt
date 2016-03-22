@@ -240,7 +240,7 @@ void FlankDetector::detect_flanks(Variant& variant, uint32_t mode)
             }
         }
 
-        slen = 100;
+//        slen = 100;
 
         //pick 5 bases to right
         while(true)

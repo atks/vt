@@ -135,12 +135,10 @@ Each VCF file is required to have the FORMAT flags E and N and should have exact
         {
             if (bcf_hdr_exists(sr->hdrs[i], BCF_HL_INFO, "NSAMPLES") && bcf_hdr_get_n_sample(sr->hdrs[i])==0)
             {
-                std::cerr << "aggregated\n";
                 file_types[i] = AGGREGATED;
             }
             else if (bcf_hdr_exists(sr->hdrs[i], BCF_HL_FMT, "E")&& bcf_hdr_get_n_sample(sr->hdrs[i])==1)
             {
-                std::cerr << "single\n";
                 file_types[i] = SINGLE;
             }
             else
@@ -171,6 +169,8 @@ Each VCF file is required to have the FORMAT flags E and N and should have exact
 
     void merge_candidate_variants()
     {
+        int32_t *NSAMPLES = NULL;
+        int32_t no_NSAMPLES = 0;
         int32_t *E = NULL;
         int32_t *N = NULL;
         int32_t no_E = 0, no_N = 0;
@@ -181,7 +181,7 @@ Each VCF file is required to have the FORMAT flags E and N and should have exact
         int32_t no_SAMPLES = 0;
 
         //variables for final record
-        uint32_t no_samples = 0;
+        int32_t no_samples;
         std::vector<int32_t> e;
         std::vector<int32_t> n;
         int32_t esum = 0;
@@ -205,11 +205,15 @@ Each VCF file is required to have the FORMAT flags E and N and should have exact
             float max_variant_score = 0;
             int32_t vtype;
 
+//            std::cerr << "no recs " << current_recs.size() << "\n";
+
             for (uint32_t i=0; i<current_recs.size(); ++i)
             {
                 int32_t file_index = current_recs[i]->file_index;
                 bcf1_t *v = current_recs[i]->v;
                 bcf_hdr_t *h = current_recs[i]->h;
+
+//                bcf_print(h, v);
 
                 if (i==0)
                 {
@@ -259,12 +263,13 @@ Each VCF file is required to have the FORMAT flags E and N and should have exact
                     nsum += N[0];
                     char* sample_name = bcf_hdr_get_sample_name(sr->hdrs[file_index], 0);
                     
-                    if (i) samples += ",";
+                    if (samples.size()!=0) samples += ",";
                     samples.append(sample_name);                                       
                 }
                 else if (file_types[file_index] == AGGREGATED)
                 {
-                    if (bcf_get_info_int32(h, v, "E", &E, &no_E) < 0 ||
+                    if (bcf_get_info_int32(h, v, "NSAMPLES", &NSAMPLES, &no_NSAMPLES) < 0 ||
+                        bcf_get_info_int32(h, v, "E", &E, &no_E) < 0 ||
                         bcf_get_info_int32(h, v, "N", &N, &no_N) < 0 ||
                         bcf_get_info_string(h, v, "SAMPLES", &SAMPLES, &no_SAMPLES) < 0
                         )
@@ -273,8 +278,13 @@ Each VCF file is required to have the FORMAT flags E and N and should have exact
                         exit(1);
                     }
 
-                    for (uint32_t j=0; j<no_E; ++j)
+//                    std::cerr << "no samples :  " << NSAMPLES[0] << " " << no_samples << "\n";
+//                    std::cerr << "samples :  " << SAMPLES << " " << no_samples << "\n";
+
+                    for (uint32_t j=0; j<NSAMPLES[0]; ++j)
                     {
+//                        std::cerr << "process " << no_samples << " \n";
+                        
                         ++no_samples;
                         
                         e.push_back(E[j]);
@@ -283,8 +293,8 @@ Each VCF file is required to have the FORMAT flags E and N and should have exact
                         nsum += N[j];
                     }
                     
-                    if (i) samples += ",";
-                    samples.assign(SAMPLES);  
+                    if (samples.size()!=0) samples.append(",");
+                    samples.append(SAMPLES);  
                 }
             }
 
@@ -300,6 +310,8 @@ Each VCF file is required to have the FORMAT flags E and N and should have exact
 
                 odw->write(nv);
 
+//                bcf_print(odw->hdr, nv);
+
                 if (vtype == VT_SNP)
                 {
                     ++no_candidate_snps;
@@ -309,6 +321,8 @@ Each VCF file is required to have the FORMAT flags E and N and should have exact
                     ++no_candidate_indels;
                 }
             }
+            
+//            exit(1);
         }
 
         sr->close();
