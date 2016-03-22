@@ -59,7 +59,6 @@ SOURCES = align\
 		log_tool\
 		merge\
 		merge_candidate_variants\
-		merge_candidate_variants2\
 		milk_filter\
 		motif_tree\
 		motif_map\

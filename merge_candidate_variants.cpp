@@ -23,55 +23,11 @@
 
 #include "merge_candidate_variants.h"
 
+#define SINGLE     0
+#define AGGREGATED 1
+
 namespace
 {
-
-class Evidence
-{
-    public:
-    uint32_t i, m;
-    uint32_t* e;
-    uint32_t* n;
-    kstring_t samples;
-    int32_t esum, nsum;
-    double af;
-    double lr;
-    bcf1_t *v;
-
-    Evidence(uint32_t m)
-    {
-        this->m = m;
-        i = 0;
-        e = (uint32_t*) malloc(m*sizeof(uint32_t));
-        n = (uint32_t*) malloc(m*sizeof(uint32_t));
-        samples = {0,0,0};
-        esum = 0;
-        nsum = 0;
-        af = 0;
-        lr = 0;
-        v = NULL;
-    };
-
-    ~Evidence()
-    {
-        i = 0;
-        free(e);
-        free(n);
-        if (samples.m) free(samples.s);
-        v = NULL;
-    };
-
-    void clear()
-    {
-        i = 0;
-        samples.l = 0;
-        esum = 0;
-        nsum = 0;
-        af = 0;
-        lr = 0;
-        v = NULL;
-    };
-};
 
 class Igor : Program
 {
@@ -100,6 +56,7 @@ class Igor : Program
     ///////////////
     //general use//
     ///////////////
+    std::vector<int32_t> file_types;
     kstring_t variant;
 
     /////////
@@ -132,36 +89,18 @@ Each VCF file is required to have the FORMAT flags E and N and should have exact
             TCLAP::ValueArg<std::string> arg_intervals("i", "i", "intervals", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_output_vcf_file("o", "o", "output VCF file [-]", false, "-", "", cmd);
-            TCLAP::ValueArg<std::string> arg_input_vcf_file_list("L", "L", "file containing list of input VCF files", true, "", "str", cmd);
+            TCLAP::ValueArg<std::string> arg_input_vcf_file_list("L", "L", "file containing list of input VCF files", false, "", "str", cmd);
             TCLAP::ValueArg<float> arg_snp_variant_score_cutoff("c", "c", "SNP variant score cutoff [30]", false, 30, "float", cmd);
             TCLAP::ValueArg<float> arg_indel_variant_score_cutoff("d", "d", "Indel variant score cutoff [30]", false, 30, "float", cmd);
+            TCLAP::UnlabeledMultiArg<std::string> arg_input_vcf_files("<in1.vcf>...", "Multiple VCF files",false, "files", cmd);
 
             cmd.parse(argc, argv);
 
-            input_vcf_file_list = arg_input_vcf_file_list.getValue();
+            parse_files(input_vcf_files, arg_input_vcf_files.getValue(), arg_input_vcf_file_list.getValue());
             output_vcf_file = arg_output_vcf_file.getValue();
             snp_variant_score_cutoff = arg_snp_variant_score_cutoff.getValue();
             indel_variant_score_cutoff = arg_indel_variant_score_cutoff.getValue();
             parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
-
-            ///////////////////////
-            //parse input VCF files
-            ///////////////////////
-            htsFile *file = hts_open(input_vcf_file_list.c_str(), "r");
-            if (file==NULL)
-            {
-                std::cerr << "cannot open " << input_vcf_file_list.c_str() << "\n";
-                exit(1);
-            }
-            kstring_t *s = &file->line;
-            while (hts_getline(file, KS_SEP_LINE, s) >= 0)
-            {
-                if (s->s[0]!='#')
-                {
-                    input_vcf_files.push_back(std::string(s->s));
-                }
-            }
-            hts_close(file);
         }
         catch (TCLAP::ArgException &e)
         {
@@ -190,6 +129,27 @@ Each VCF file is required to have the FORMAT flags E and N and should have exact
 
         odw->write_hdr();
 
+        //inspect header of each file to figure out if it is a merged candidate variant list or not
+        file_types.resize(sr->hdrs.size());
+        for (uint32_t i=0; i<sr->hdrs.size(); ++i)
+        {
+            if (bcf_hdr_exists(sr->hdrs[i], BCF_HL_INFO, "NSAMPLES") && bcf_hdr_get_n_sample(sr->hdrs[i])==0)
+            {
+                std::cerr << "aggregated\n";
+                file_types[i] = AGGREGATED;
+            }
+            else if (bcf_hdr_exists(sr->hdrs[i], BCF_HL_FMT, "E")&& bcf_hdr_get_n_sample(sr->hdrs[i])==1)
+            {
+                std::cerr << "single\n";
+                file_types[i] = SINGLE;
+            }
+            else
+            {
+                fprintf(stderr, "[E:%s:%d %s] Unrecognized VCF file type from vt pipeline: %s\n", __FILE__, __LINE__, __FUNCTION__, input_vcf_files[i].c_str());
+                exit(1);
+            }
+        }
+       
         ///////////////
         //general use//
         ///////////////
@@ -201,7 +161,7 @@ Each VCF file is required to have the FORMAT flags E and N and should have exact
         ////////////////////////
         no_candidate_snps = 0;
         no_candidate_indels = 0;
-     
+
         /////////
         //tools//
         /////////
@@ -211,36 +171,36 @@ Each VCF file is required to have the FORMAT flags E and N and should have exact
 
     void merge_candidate_variants()
     {
-        int32_t *E = (int32_t*) malloc(1*sizeof(int32_t));
-        int32_t *N = (int32_t*) malloc(1*sizeof(int32_t));
-        int32_t no_E = 1, no_N = 1;
+        int32_t *E = NULL;
+        int32_t *N = NULL;
+        int32_t no_E = 0, no_N = 0;
+        int32_t *ESUM = NULL;
+        int32_t *NSUM = NULL;
+        int32_t no_ESUM = 0, no_NSUM = 0;
+        char *SAMPLES = NULL;
+        int32_t no_SAMPLES = 0;
 
-        uint32_t nfiles = sr->get_nfiles();
-        int32_t e[nfiles];
-        int32_t n[nfiles];
+        //variables for final record
+        uint32_t no_samples = 0;
+        std::vector<int32_t> e;
+        std::vector<int32_t> n;
         int32_t esum = 0;
         int32_t nsum = 0;
-        kstring_t sample_names = {0,0,0};
-        float af = 0;
-        uint32_t no = 0;
-
-        //obtain sample names
-        char* index2sample[nfiles];
-        for (uint32_t i=0; i<nfiles; ++i)
-        {
-            index2sample[i] = bcf_hdr_get_sample_name(sr->hdrs[i], 0);
-        }
-
+        std::string samples;
+ 
         bcf1_t* nv = bcf_init();
         Variant var;
         std::vector<bcfptr*> current_recs;
         while(sr->read_next_position(current_recs))
         {
             //aggregate statistics
-            no = 0;
+            no_samples = 0;
+            e.clear();
+            n.clear();
             esum = 0;
             nsum = 0;
-            sample_names.l = 0;
+            samples = "";
+            
             bool max_variant_score_gt_cutoff = false;
             float max_variant_score = 0;
             int32_t vtype;
@@ -261,20 +221,13 @@ Each VCF file is required to have the FORMAT flags E and N and should have exact
                     vtype = vm->classify_variant(odw->hdr, nv, var);
                 }
 
-                if (bcf_get_format_int32(h, v, "E", &E, &no_E) < 0 ||
-                    bcf_get_format_int32(h, v, "N", &N, &no_N) < 0)
-                {
-                    fprintf(stderr, "[E:%s:%d %s] cannot get format values E or N from %s\n", __FILE__, __LINE__, __FUNCTION__, sr->file_names[i].c_str());
-                    exit(1);
-                }
-
                 float variant_score = bcf_get_qual(v);
-
+                    
                 if (bcf_float_is_missing(variant_score))
                 {
                     variant_score = 0;
                 }
-
+                
                 if ((vtype == VT_SNP && variant_score >= snp_variant_score_cutoff) ||
                     (vtype == VT_INDEL && variant_score >= indel_variant_score_cutoff))
                 {
@@ -285,26 +238,62 @@ Each VCF file is required to have the FORMAT flags E and N and should have exact
                         max_variant_score = variant_score;
                     }
                 }
-                
-                e[i] = E[0];
-                n[i] = N[0];
-                esum += E[0];
-                nsum += N[0];
-                //just output first 10 samples
-                if (no<=9)
-                {    
-                    if (i) kputc(',', &sample_names);
-                    kputs(index2sample[file_index], &sample_names);
+                else
+                {
+                    continue;
                 }
-                ++no;
+                
+                if (file_types[file_index] == SINGLE)
+                {
+                    if (bcf_get_format_int32(h, v, "E", &E, &no_E) < 0 ||
+                        bcf_get_format_int32(h, v, "N", &N, &no_N) < 0)
+                    {
+                        fprintf(stderr, "[E:%s:%d %s] cannot get format values E or N from %s\n", __FILE__, __LINE__, __FUNCTION__, sr->file_names[file_index].c_str());
+                        exit(1);
+                    }
+
+                    ++no_samples;
+                    e.push_back(E[0]);
+                    n.push_back(N[0]);
+                    esum += E[0];
+                    nsum += N[0];
+                    char* sample_name = bcf_hdr_get_sample_name(sr->hdrs[file_index], 0);
+                    
+                    if (i) samples += ",";
+                    samples.append(sample_name);                                       
+                }
+                else if (file_types[file_index] == AGGREGATED)
+                {
+                    if (bcf_get_info_int32(h, v, "E", &E, &no_E) < 0 ||
+                        bcf_get_info_int32(h, v, "N", &N, &no_N) < 0 ||
+                        bcf_get_info_string(h, v, "SAMPLES", &SAMPLES, &no_SAMPLES) < 0
+                        )
+                    {
+                        fprintf(stderr, "[E:%s:%d %s] cannot get info values E, N, ESUM, NSUM or SAMPLES from %s\n", __FILE__, __LINE__, __FUNCTION__, sr->file_names[file_index].c_str());
+                        exit(1);
+                    }
+
+                    for (uint32_t j=0; j<no_E; ++j)
+                    {
+                        ++no_samples;
+                        
+                        e.push_back(E[j]);
+                        n.push_back(N[j]);
+                        esum += E[j];
+                        nsum += N[j];
+                    }
+                    
+                    if (i) samples += ",";
+                    samples.assign(SAMPLES);  
+                }
             }
 
             if (max_variant_score_gt_cutoff)
             {
-                bcf_update_info_int32(odw->hdr, nv, "NSAMPLES", &no, 1);
-                bcf_update_info_string(odw->hdr, nv, "SAMPLES", sample_names.s);
-                bcf_update_info_int32(odw->hdr, nv, "E", &e, no);
-                bcf_update_info_int32(odw->hdr, nv, "N", &n, no);
+                bcf_update_info_int32(odw->hdr, nv, "NSAMPLES", &no_samples, 1);
+                bcf_update_info_string(odw->hdr, nv, "SAMPLES", samples.c_str());
+                bcf_update_info_int32(odw->hdr, nv, "E", &e[0], no_samples);
+                bcf_update_info_int32(odw->hdr, nv, "N", &n[0], no_samples);
                 bcf_update_info_int32(odw->hdr, nv, "ESUM", &esum, 1);
                 bcf_update_info_int32(odw->hdr, nv, "NSUM", &nsum, 1);
                 bcf_set_qual(nv, max_variant_score);
@@ -328,7 +317,7 @@ Each VCF file is required to have the FORMAT flags E and N and should have exact
 
     void print_options()
     {
-        std::clog << "merge_candidate_variants v" << version << "\n\n";
+        std::clog << "merge_candidate_variants2 v" << version << "\n\n";
         std::clog << "options: [L] input VCF file list         " << input_vcf_file_list << " (" << input_vcf_files.size() << " files)\n";
         std::clog << "         [o] output VCF file             " << output_vcf_file << "\n";
         std::clog << "         [c] SNP variant score cutoff    " << snp_variant_score_cutoff << "\n";
