@@ -368,61 +368,44 @@ void VNTRExtractor::close()
  */
 void VNTRExtractor::create_and_insert_vntr(Variant& nvar)
 {
+    bool insert_vntr = false;
+    VNTR& vntr = nvar.vntr;
+    nvar.update_vntr_from_info_fields();
+    
     //convert all indels into their corresponding VNTR representation using exact parameters
     if (vntr_classification==EXACT_VNTR)
-    {
-        VNTR& vntr = nvar.vntr;
-
-        //create a new copy of bcf1_t
-        bcf_hdr_t* h = nvar.h;
+    {    
         nvar.update_vntr_from_info_fields();
-        bcf1_t* nv = bcf_init1();
-        bcf_clear(nv);
-
+        
         if (vntr.exact_repeat_tract == "")
         {
             refseq->fetch_seq(nvar.chrom, vntr.exact_beg1, vntr.exact_end1, vntr.exact_repeat_tract);
+            
         }
+        vntr.repeat_tract = vntr.exact_repeat_tract;
+        vntr.motif =  vntr.exact_motif;
+        vntr.basis =  vntr.exact_basis;
+        vntr.ru =  vntr.exact_ru;
+        vntr.mlen =  vntr.exact_mlen;
+        vntr.blen =  vntr.exact_blen;
+        vntr.beg1 =  vntr.exact_beg1;
+        vntr.end1 =  vntr.exact_end1;
+        vntr.comp[0] =  vntr.exact_comp[0];
+        vntr.comp[1] =  vntr.exact_comp[1];
+        vntr.comp[2] =  vntr.exact_comp[2];
+        vntr.comp[3] =  vntr.exact_comp[3];
+        vntr.entropy =  vntr.exact_entropy;
+        vntr.entropy2 =  vntr.exact_entropy2;
+        vntr.kl_divergence =  vntr.exact_kl_divergence;
+        vntr.kl_divergence2 =  vntr.exact_kl_divergence2;
+        vntr.rl =  vntr.exact_rl;
+        vntr.ll =  vntr.exact_ll;
+        vntr.no_exact_ru =  vntr.exact_no_exact_ru;
+        vntr.total_no_ru =  vntr.exact_total_no_ru;
+        vntr.score =  vntr.exact_score;
+        vntr.trf_score =  vntr.exact_trf_score;
 
-        bcf_set_rid(nv, nvar.rid);
-        bcf_set_pos1(nv, vntr.exact_beg1);
-        kstring_t s = {0,0,0};
-        kputs(vntr.exact_repeat_tract.c_str(), &s);
-        kputc(',', &s);
-        kputs("<VNTR>", &s);
-        bcf_update_alleles_str(h, nv, s.s);
-        if (s.m) free(s.s);
-
-        if (no_samples) bcf_update_genotypes(h, nv, gts, no_samples);
-
-        bcf_update_info_string(h, nv, MOTIF.c_str(), vntr.exact_motif.c_str());
-        bcf_update_info_string(h, nv, BASIS.c_str(), vntr.exact_basis.c_str());
-        bcf_update_info_string(h, nv, RU.c_str(), vntr.exact_ru.c_str());
-        bcf_update_info_int32(h, nv, MLEN.c_str(), &vntr.exact_mlen, 1);
-        bcf_update_info_int32(h, nv, BLEN.c_str(), &vntr.exact_blen, 1);
-        int32_t repeat_tract[2] = {vntr.exact_beg1, vntr.exact_end1};
-        bcf_update_info_int32(h, nv, REPEAT_TRACT.c_str(), &repeat_tract, 2);
-        bcf_update_info_int32(h, nv, COMP.c_str(), &vntr.exact_comp, 4);
-        bcf_update_info_float(h, nv, ENTROPY.c_str(), &vntr.exact_entropy, 1);
-        bcf_update_info_float(h, nv, ENTROPY2.c_str(), &vntr.exact_entropy2, 1);
-        bcf_update_info_float(h, nv, KL_DIVERGENCE.c_str(), &vntr.exact_kl_divergence, 1);
-        bcf_update_info_float(h, nv, KL_DIVERGENCE2.c_str(), &vntr.exact_kl_divergence2, 1);
-        bcf_update_info_int32(h, nv, RL.c_str(), &vntr.exact_rl, 1);
-        bcf_update_info_int32(h, nv, LL.c_str(), &vntr.exact_ll, 1);
-        int32_t ru_count[2] = {vntr.exact_no_exact_ru, vntr.exact_total_no_ru};
-        bcf_update_info_int32(h, nv, RU_COUNTS.c_str(), &ru_count, 2);
-        bcf_update_info_float(h, nv, SCORE.c_str(), &vntr.exact_score, 1);
-        bcf_update_info_int32(h, nv, TRF_SCORE.c_str(), &vntr.exact_trf_score, 1);
-
-        Variant *nvntr = new Variant(h, nv);
-
-        std::string indel = bcf_variant2string(nvar.h, nvar.v);
-        nvntr->vntr.add_associated_indel(indel);
-
-        insert(nvntr);
-
-//        bcf_print(h, nvar.v);
-//        bcf_print(h, nv);
+        insert_vntr = true;
     }
     else if (vntr_classification==FUZZY_VNTR)
     {
@@ -479,10 +462,195 @@ void VNTRExtractor::create_and_insert_vntr(Variant& nvar)
 //        bcf_print(h, nvar.v);
 //        bcf_print(h, nv);
     }
+    else if (vntr_classification==TAN_KANG2015)
+    {
+        VNTR& vntr = nvar.vntr;
+
+        
+
+        //create a new copy of bcf1_t
+        bcf_hdr_t* h = nvar.h;
+        nvar.update_vntr_from_info_fields();
+        bcf1_t* nv = bcf_init1();
+        bcf_clear(nv);
+
+        if (vntr.fuzzy_repeat_tract == "")
+        {
+            refseq->fetch_seq(nvar.chrom, vntr.fuzzy_beg1, vntr.fuzzy_end1, vntr.fuzzy_repeat_tract);
+        }
+
+        bcf_set_rid(nv, nvar.rid);
+        bcf_set_pos1(nv, vntr.fuzzy_beg1);
+        kstring_t s = {0,0,0};
+        kputs(vntr.fuzzy_repeat_tract.c_str(), &s);
+        kputc(',', &s);
+        kputs("<VNTR>", &s);
+        bcf_update_alleles_str(h, nv, s.s);
+        if (s.m) free(s.s);
+
+        if (no_samples) bcf_update_genotypes(h, nv, gts, no_samples);
+
+        bcf_update_info_string(h, nv, MOTIF.c_str(), vntr.fuzzy_motif.c_str());
+        bcf_update_info_string(h, nv, BASIS.c_str(), vntr.fuzzy_basis.c_str());
+        bcf_update_info_string(h, nv, RU.c_str(), vntr.fuzzy_ru.c_str());
+        bcf_update_info_int32(h, nv, MLEN.c_str(), &vntr.fuzzy_mlen, 1);
+        bcf_update_info_int32(h, nv, BLEN.c_str(), &vntr.fuzzy_blen, 1);
+        int32_t repeat_tract[2] = {vntr.fuzzy_beg1, vntr.fuzzy_end1};
+        bcf_update_info_int32(h, nv, REPEAT_TRACT.c_str(), &repeat_tract, 2);
+        bcf_update_info_int32(h, nv, COMP.c_str(), &vntr.fuzzy_comp, 4);
+        bcf_update_info_float(h, nv, ENTROPY.c_str(), &vntr.fuzzy_entropy, 1);
+        bcf_update_info_float(h, nv, ENTROPY2.c_str(), &vntr.fuzzy_entropy2, 1);
+        bcf_update_info_float(h, nv, KL_DIVERGENCE.c_str(), &vntr.fuzzy_kl_divergence, 1);
+        bcf_update_info_float(h, nv, KL_DIVERGENCE2.c_str(), &vntr.fuzzy_kl_divergence2, 1);
+        bcf_update_info_int32(h, nv, RL.c_str(), &vntr.fuzzy_rl, 1);
+        bcf_update_info_int32(h, nv, LL.c_str(), &vntr.fuzzy_ll, 1);
+        int32_t ru_count[2] = {vntr.fuzzy_no_exact_ru, vntr.fuzzy_total_no_ru};
+        bcf_update_info_int32(h, nv, RU_COUNTS.c_str(), &ru_count, 2);
+        bcf_update_info_float(h, nv, SCORE.c_str(), &vntr.fuzzy_score, 1);
+        bcf_update_info_int32(h, nv, TRF_SCORE.c_str(), &vntr.fuzzy_trf_score, 1);
+
+        Variant *nvntr = new Variant(h, nv);
+
+        std::string indel = bcf_variant2string(nvar.h, nvar.v);
+        nvntr->vntr.add_associated_indel(indel);
+
+        insert(nvntr);
+
+//        bcf_print(h, nvar.v);
+//        bcf_print(h, nv);
+
+//        if (vntr.rl - mlen < 6)
+//        {
+//            variant.vntr.print();
+//        }
+//        std::cerr << "rlen " << rlen << "\n";
+//        std::cerr << "mlen " << mlen << "\n";
+////        std::cerr << "no_exact_ru " << variant.vntr.no_exact_ru << "\n";
+//        if ((rlen - mlen) >= 6 && no_exact_ru>=2)
+//        {
+//            if (mlen==1 && motif_concordance>0.9)
+//            {
+//                return true;
+//            }
+//            else if (mlen>1 || motif_concordance>0.75)
+//            {
+//                return true;
+//            }
+//        }
+//
+//        return false;
+    }
+    else if (vntr_classification==WILLEMS2014)
+    {
+        if ((vntr.mlen==1 && vntr.rl>=6) ||
+                (vntr.mlen==2 && vntr.rl>=11) ||
+                (vntr.mlen==3 && vntr.rl>=14) ||
+                (vntr.mlen==4 && vntr.rl>=14) ||
+                (vntr.mlen==5 && vntr.rl>=16) ||
+                (vntr.mlen==6 && vntr.rl>=17) ||
+                (vntr.mlen>=7 && vntr.rl>=vntr.mlen*2))
+        {
+            insert_vntr = true;
+        }                
+    }
+    else if (vntr_classification==ANANDA2013)
+    {
+        if ((vntr.mlen==1 && vntr.rl>=2) ||
+                (vntr.mlen==2 && vntr.rl>=4) ||
+                (vntr.mlen==3 && vntr.rl>=6) ||
+                (vntr.mlen==4 && vntr.rl>=8) ||
+                (vntr.mlen==5 && vntr.rl>=10) ||
+                (vntr.mlen==6 && vntr.rl>=12) ||
+                (vntr.mlen>=7 && vntr.rl>=vntr.mlen*2))
+        {
+            insert_vntr = true;
+        }
+    }
+    else if (vntr_classification==FONDON2012)
+    {
+        if ((vntr.mlen==1 && vntr.rl>=6) ||
+                (vntr.mlen==2 && vntr.rl>=13) ||
+                (vntr.mlen==3 && vntr.rl>=20) ||
+                (vntr.mlen==4 && vntr.rl>=23) ||
+                (vntr.mlen==5 && vntr.rl>=27) ||
+                (vntr.mlen==6 && vntr.rl>=27))
+        {
+            insert_vntr = true;
+        }        
+    }
+    else if (vntr_classification==KELKAR2008)
+    {
+        if ((vntr.mlen==1 && vntr.rl>=6) ||
+                (vntr.mlen==2 && vntr.rl>=10) ||
+                (vntr.mlen==3 && vntr.rl>=6) ||
+                (vntr.mlen==4 && vntr.rl>=8) ||
+                (vntr.mlen==5 && vntr.rl>=10) ||
+                (vntr.mlen==6 && vntr.rl>=12) ||
+                (vntr.mlen>=7 && vntr.rl>=vntr.mlen*2))
+        {
+            insert_vntr = true;
+        }        
+    }
+    else if (vntr_classification==LAI2003)
+    {
+        if ((vntr.mlen==1 && vntr.rl>=6) ||
+                (vntr.mlen==2 && vntr.rl>=8) ||
+                (vntr.mlen==3 && vntr.rl>=12) ||
+                (vntr.mlen==4 && vntr.rl>=16) ||
+                (vntr.mlen==5 && vntr.rl>=20) ||
+                (vntr.mlen==6 && vntr.rl>=24) ||
+                (vntr.mlen>=7 && vntr.rl>=vntr.mlen*2))
+        {
+            insert_vntr = true;
+        }        
+    }   
     else
     {
         fprintf(stderr, "[%s:%d %s] VNTR classification code not recognized :  %d\n", __FILE__, __LINE__, __FUNCTION__, vntr_classification);
         exit(1);
+    }
+
+    if (insert_vntr)
+    {
+        bcf_hdr_t* h = nvar.h;
+        bcf1_t* nv = bcf_init1();
+        bcf_clear(nv);
+        
+        bcf_set_rid(nv, nvar.rid);
+        bcf_set_pos1(nv, vntr.beg1);
+        kstring_t s = {0,0,0};
+        kputs(vntr.repeat_tract.c_str(), &s);
+        kputc(',', &s);
+        kputs("<VNTR>", &s);
+        bcf_update_alleles_str(h, nv, s.s);
+        if (s.m) free(s.s);
+
+        if (no_samples) bcf_update_genotypes(h, nv, gts, no_samples);
+
+        bcf_update_info_string(h, nv, MOTIF.c_str(), vntr.motif.c_str());
+        bcf_update_info_string(h, nv, BASIS.c_str(), vntr.basis.c_str());
+        bcf_update_info_string(h, nv, RU.c_str(), vntr.ru.c_str());
+        bcf_update_info_int32(h, nv, MLEN.c_str(), &vntr.mlen, 1);
+        bcf_update_info_int32(h, nv, BLEN.c_str(), &vntr.blen, 1);
+        int32_t repeat_tract[2] = {vntr.beg1, vntr.end1};
+        bcf_update_info_int32(h, nv, REPEAT_TRACT.c_str(), &repeat_tract, 2);
+        bcf_update_info_int32(h, nv, COMP.c_str(), &vntr.comp, 4);
+        bcf_update_info_float(h, nv, ENTROPY.c_str(), &vntr.entropy, 1);
+        bcf_update_info_float(h, nv, ENTROPY2.c_str(), &vntr.entropy2, 1);
+        bcf_update_info_float(h, nv, KL_DIVERGENCE.c_str(), &vntr.kl_divergence, 1);
+        bcf_update_info_float(h, nv, KL_DIVERGENCE2.c_str(), &vntr.kl_divergence2, 1);
+        bcf_update_info_int32(h, nv, RL.c_str(), &vntr.rl, 1);
+        bcf_update_info_int32(h, nv, LL.c_str(), &vntr.ll, 1);
+        int32_t ru_count[2] = {vntr.no_exact_ru, vntr.total_no_ru};
+        bcf_update_info_int32(h, nv, RU_COUNTS.c_str(), &ru_count, 2);
+        bcf_update_info_float(h, nv, SCORE.c_str(), &vntr.score, 1);
+        bcf_update_info_int32(h, nv, TRF_SCORE.c_str(), &vntr.trf_score, 1);
+
+        Variant *nvntr = new Variant(h, nv);
+        std::string indel = bcf_variant2string(nvar.h, nvar.v);
+        nvntr->vntr.add_associated_indel(indel);
+
+        insert(nvntr);       
     }
 
 }

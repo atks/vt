@@ -94,7 +94,7 @@ class Igor : Program
                  "              5 : willems2014  \n"
                  "              6 : tan_kang2015 \n"
                  "              7 : exact_vntr   \n"
-                 "              8 : fuzzy_vntr   \n",
+                 "              8 : fuzzy_vntr     ",
                  false, "tan_kang2015", "string", cmd);
             TCLAP::SwitchArg arg_debug("d", "d", "debug [false]", cmd, false);
             TCLAP::UnlabeledValueArg<std::string> arg_input_vcf_file("<in.vcf>", "input VCF file", true, "","file", cmd);
