@@ -263,8 +263,11 @@ Each VCF file is required to have the FORMAT flags E and N and should have exact
                     nsum += N[0];
                     char* sample_name = bcf_hdr_get_sample_name(sr->hdrs[file_index], 0);
                     
-                    if (samples.size()!=0) samples += ",";
-                    samples.append(sample_name);                                       
+                    if (no_samples<=10)
+                    {
+                        if (samples.size()!=0) samples += ",";
+                        samples.append(sample_name);                                       
+                    }
                 }
                 else if (file_types[file_index] == AGGREGATED)
                 {
@@ -293,8 +296,20 @@ Each VCF file is required to have the FORMAT flags E and N and should have exact
                         nsum += N[j];
                     }
                     
-                    if (samples.size()!=0) samples.append(",");
-                    samples.append(SAMPLES);  
+                    if (no_samples-NSAMPLES[0]<10)
+                    {     
+                        std::string names(SAMPLES);
+                        std::vector<std::string> sample_names;
+                        split(sample_names, ",", names);
+     
+                        uint32_t cnt = no_samples-NSAMPLES[0];
+                        for (uint32_t j=0; j<sample_names.size()&&cnt<10; ++j)
+                        {
+                            if (samples.size()!=0) samples.append(",");
+                            samples.append(sample_names[j]); 
+                            ++cnt;
+                        }
+                    }
                 }
             }
 
