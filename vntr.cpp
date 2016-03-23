@@ -45,8 +45,8 @@ void VNTR::clear()
     exact_rflank.clear();
     exact_score = 0;
     exact_rl = 0;
-    exact_no_exact_ru = 0;
-    exact_total_no_ru = 0;
+    exact_no_perfect_ru = 0;
+    exact_no_ru = 0;
 
     exact_ru_ambiguous = false;
 
@@ -57,8 +57,8 @@ void VNTR::clear()
     fuzzy_rflank.clear();
     fuzzy_score = 0;
     fuzzy_rl = 0;
-    fuzzy_no_exact_ru = 0;
-    fuzzy_total_no_ru = 0;
+    fuzzy_no_perfect_ru = 0;
+    fuzzy_no_ru = 0;
 
     is_large_repeat_tract = false;
 }
@@ -286,8 +286,8 @@ void VNTR::print()
     std::cerr << "score                           : " << score << "\n";
     std::cerr << "trf score                       : " << trf_score << "\n";
     std::cerr << "repeat units                    : " << rl << "\n";
-    std::cerr << "exact repeat units              : " << no_exact_ru << "\n";
-    std::cerr << "total no. of repeat units       : " << total_no_ru << "\n";
+    std::cerr << "perfect repeat units            : " << no_perfect_ru << "\n";
+    std::cerr << "total no. of repeat units       : " << no_ru << "\n";
     std::cerr << "\n";
     std::cerr << "Exact\n";
     std::cerr << "repeat_tract                    : " << exact_repeat_tract << "\n";
@@ -297,8 +297,8 @@ void VNTR::print()
     std::cerr << "score                           : " << exact_score << "\n";
     std::cerr << "trf score                       : " << exact_trf_score << "\n";
     std::cerr << "repeat units                    : " << exact_rl << "\n";
-    std::cerr << "exact repeat units              : " << exact_no_exact_ru << "\n";
-    std::cerr << "total no. of repeat units       : " << exact_total_no_ru << "\n";
+    std::cerr << "perfect repeat units            : " << exact_no_perfect_ru << "\n";
+    std::cerr << "total no. of repeat units       : " << exact_no_ru << "\n";
     std::cerr << "\n";
     std::cerr << "Fuzzy\n";
     std::cerr << "repeat_tract                    : " << fuzzy_repeat_tract << "\n";
@@ -308,7 +308,7 @@ void VNTR::print()
     std::cerr << "score                           : " << fuzzy_score << "\n";
     std::cerr << "trf score                       : " << fuzzy_trf_score << "\n";
     std::cerr << "repeat units                    : " << fuzzy_rl << "\n";
-    std::cerr << "exact repeat units              : " << fuzzy_no_exact_ru << "\n";
-    std::cerr << "total no. of repeat units       : " << fuzzy_total_no_ru << "\n";
+    std::cerr << "perfect repeat units            : " << fuzzy_no_perfect_ru << "\n";
+    std::cerr << "total no. of repeat units       : " << fuzzy_no_ru << "\n";
     std::cerr << "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n";
 };

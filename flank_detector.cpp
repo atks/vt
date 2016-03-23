@@ -163,8 +163,8 @@ void FlankDetector::detect_flanks(Variant& variant, uint32_t mode)
             std::cerr << "score                     : " << vntr.exact_score << "\n";
             std::cerr << "trf score                 : " << vntr.exact_trf_score << "\n";
             std::cerr << "repeat units              : " << vntr.exact_rl << "\n";
-            std::cerr << "exact repeat units        : " << vntr.exact_no_exact_ru << "\n";
-            std::cerr << "total no. of repeat units : " << vntr.exact_total_no_ru << "\n";
+            std::cerr << "perfect repeat units      : " << vntr.exact_no_perfect_ru << "\n";
+            std::cerr << "no. of repeat units       : " << vntr.exact_no_ru << "\n";
             std::cerr << "\n";
         }
     }
@@ -472,8 +472,8 @@ void FlankDetector::compute_purity_score(Variant& variant, int32_t amode)
         vntr.ru = ru;
         vntr.score = score;
         vntr.trf_score = trf_score;
-        vntr.no_exact_ru = no_exact_ru;
-        vntr.total_no_ru = total_no_ru;
+        vntr.no_perfect_ru = no_perfect_ru;
+        vntr.no_ru = no_ru;
         vntr.ref = ref;
         vntr.rl = rl;
         vntr.ll = rl + variant.max_dlen;
@@ -486,8 +486,8 @@ void FlankDetector::compute_purity_score(Variant& variant, int32_t amode)
         vntr.exact_ru = ru;
         vntr.exact_score = score;
         vntr.exact_trf_score = trf_score;
-        vntr.exact_no_exact_ru = no_exact_ru;
-        vntr.exact_total_no_ru = total_no_ru;
+        vntr.exact_no_perfect_ru = no_perfect_ru;
+        vntr.exact_no_ru = no_ru;
         vntr.exact_ref = ref;
         vntr.exact_rl = rl;
         vntr.exact_ll = rl + variant.max_dlen;
@@ -500,8 +500,8 @@ void FlankDetector::compute_purity_score(Variant& variant, int32_t amode)
         vntr.fuzzy_ru = ru;
         vntr.fuzzy_score = score;
         vntr.fuzzy_trf_score = trf_score;
-        vntr.fuzzy_no_exact_ru = no_exact_ru;
-        vntr.fuzzy_total_no_ru = total_no_ru;
+        vntr.fuzzy_no_perfect_ru = no_perfect_ru;
+        vntr.fuzzy_no_ru = no_ru;
         vntr.fuzzy_ref = ref;
         vntr.fuzzy_rl = rl;
         vntr.fuzzy_ll = rl + variant.max_dlen;
@@ -544,8 +544,8 @@ void FlankDetector::compute_purity_score(std::string& repeat_tract, std::string&
         if (exact)
         {
             score = 1;
-            no_exact_ru = repeat_tract.size()/motif.size();
-            total_no_ru = no_exact_ru;
+            no_perfect_ru = repeat_tract.size()/motif.size();
+            no_ru = no_perfect_ru;
             ref = (float) repeat_tract.size()/motif.size();
             rl = repeat_tract.size();
             trf_score = repeat_tract.size() << 1;
@@ -571,8 +571,8 @@ void FlankDetector::compute_purity_score(std::string& repeat_tract, std::string&
 
         score = ahmm->motif_concordance;
         score = std::round(100*score)/100;
-        no_exact_ru = ahmm->exact_motif_count;
-        total_no_ru = ahmm->motif_count;
+        no_perfect_ru = ahmm->exact_motif_count;
+        no_ru = ahmm->motif_count;
         ref = ahmm->frac_no_repeats;
         rl = repeat_tract.size();
         trf_score = ahmm->trf_score;

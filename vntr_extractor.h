@@ -170,7 +170,17 @@ class VNTRExtractor
      * Process overlapping variant.
      */
     void process_overlap(Variant& nvar, Variant&cvar);
-
+    
+    /**
+     * Copies exact VNTR features to finalized features.
+     */
+    void copy_exact_vntr_features_to_final_vntr_features(VNTR& vntr);
+    
+    /**
+     * Copies fuzzy VNTR features to finalized features.
+     */
+    void copy_fuzzy_vntr_features_to_final_vntr_features(VNTR& vntr);
+        
     /**
      * Creates a VNTR record based on classification schema.
      */

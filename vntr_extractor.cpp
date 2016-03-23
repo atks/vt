@@ -364,6 +364,64 @@ void VNTRExtractor::close()
 }
 
 /**
+ * Copies exact VNTR features to finalized features.
+ */
+void VNTRExtractor::copy_exact_vntr_features_to_final_vntr_features(VNTR& vntr)
+{
+    vntr.repeat_tract = vntr.exact_repeat_tract;
+    vntr.motif =  vntr.exact_motif;
+    vntr.basis =  vntr.exact_basis;
+    vntr.ru =  vntr.exact_ru;
+    vntr.mlen =  vntr.exact_mlen;
+    vntr.blen =  vntr.exact_blen;
+    vntr.beg1 =  vntr.exact_beg1;
+    vntr.end1 =  vntr.exact_end1;
+    vntr.comp[0] =  vntr.exact_comp[0];
+    vntr.comp[1] =  vntr.exact_comp[1];
+    vntr.comp[2] =  vntr.exact_comp[2];
+    vntr.comp[3] =  vntr.exact_comp[3];
+    vntr.entropy =  vntr.exact_entropy;
+    vntr.entropy2 =  vntr.exact_entropy2;
+    vntr.kl_divergence =  vntr.exact_kl_divergence;
+    vntr.kl_divergence2 =  vntr.exact_kl_divergence2;
+    vntr.rl =  vntr.exact_rl;
+    vntr.ll =  vntr.exact_ll;
+    vntr.no_perfect_ru =  vntr.exact_no_perfect_ru;
+    vntr.no_ru =  vntr.exact_no_ru;
+    vntr.score =  vntr.exact_score;
+    vntr.trf_score =  vntr.exact_trf_score;
+}
+
+/**
+ * Copies fuzzy VNTR features to finalized features.
+ */
+void VNTRExtractor::copy_fuzzy_vntr_features_to_final_vntr_features(VNTR& vntr)
+{
+    vntr.repeat_tract = vntr.fuzzy_repeat_tract;
+    vntr.motif =  vntr.fuzzy_motif;
+    vntr.basis =  vntr.fuzzy_basis;
+    vntr.ru =  vntr.fuzzy_ru;
+    vntr.mlen =  vntr.fuzzy_mlen;
+    vntr.blen =  vntr.fuzzy_blen;
+    vntr.beg1 =  vntr.fuzzy_beg1;
+    vntr.end1 =  vntr.fuzzy_end1;
+    vntr.comp[0] =  vntr.fuzzy_comp[0];
+    vntr.comp[1] =  vntr.fuzzy_comp[1];
+    vntr.comp[2] =  vntr.fuzzy_comp[2];
+    vntr.comp[3] =  vntr.fuzzy_comp[3];
+    vntr.entropy =  vntr.fuzzy_entropy;
+    vntr.entropy2 =  vntr.fuzzy_entropy2;
+    vntr.kl_divergence =  vntr.fuzzy_kl_divergence;
+    vntr.kl_divergence2 =  vntr.fuzzy_kl_divergence2;
+    vntr.rl =  vntr.fuzzy_rl;
+    vntr.ll =  vntr.fuzzy_ll;
+    vntr.no_perfect_ru =  vntr.fuzzy_no_perfect_ru;
+    vntr.no_ru =  vntr.fuzzy_no_ru;
+    vntr.score =  vntr.fuzzy_score;
+    vntr.trf_score =  vntr.fuzzy_trf_score;
+}
+
+/**
  * Creates a VNTR record based on classification schema.
  */
 void VNTRExtractor::create_and_insert_vntr(Variant& nvar)
@@ -375,170 +433,40 @@ void VNTRExtractor::create_and_insert_vntr(Variant& nvar)
     //convert all indels into their corresponding VNTR representation using exact parameters
     if (vntr_classification==EXACT_VNTR)
     {    
-        nvar.update_vntr_from_info_fields();
-        
         if (vntr.exact_repeat_tract == "")
         {
             refseq->fetch_seq(nvar.chrom, vntr.exact_beg1, vntr.exact_end1, vntr.exact_repeat_tract);
-            
         }
-        vntr.repeat_tract = vntr.exact_repeat_tract;
-        vntr.motif =  vntr.exact_motif;
-        vntr.basis =  vntr.exact_basis;
-        vntr.ru =  vntr.exact_ru;
-        vntr.mlen =  vntr.exact_mlen;
-        vntr.blen =  vntr.exact_blen;
-        vntr.beg1 =  vntr.exact_beg1;
-        vntr.end1 =  vntr.exact_end1;
-        vntr.comp[0] =  vntr.exact_comp[0];
-        vntr.comp[1] =  vntr.exact_comp[1];
-        vntr.comp[2] =  vntr.exact_comp[2];
-        vntr.comp[3] =  vntr.exact_comp[3];
-        vntr.entropy =  vntr.exact_entropy;
-        vntr.entropy2 =  vntr.exact_entropy2;
-        vntr.kl_divergence =  vntr.exact_kl_divergence;
-        vntr.kl_divergence2 =  vntr.exact_kl_divergence2;
-        vntr.rl =  vntr.exact_rl;
-        vntr.ll =  vntr.exact_ll;
-        vntr.no_exact_ru =  vntr.exact_no_exact_ru;
-        vntr.total_no_ru =  vntr.exact_total_no_ru;
-        vntr.score =  vntr.exact_score;
-        vntr.trf_score =  vntr.exact_trf_score;
+        
+        copy_exact_vntr_features_to_final_vntr_features(vntr);
 
         insert_vntr = true;
     }
     else if (vntr_classification==FUZZY_VNTR)
     {
-        VNTR& vntr = nvar.vntr;
-
-        //create a new copy of bcf1_t
-        bcf_hdr_t* h = nvar.h;
-        nvar.update_vntr_from_info_fields();
-        bcf1_t* nv = bcf_init1();
-        bcf_clear(nv);
-
         if (vntr.fuzzy_repeat_tract == "")
         {
             refseq->fetch_seq(nvar.chrom, vntr.fuzzy_beg1, vntr.fuzzy_end1, vntr.fuzzy_repeat_tract);
         }
+        
+        copy_fuzzy_vntr_features_to_final_vntr_features(vntr);
 
-        bcf_set_rid(nv, nvar.rid);
-        bcf_set_pos1(nv, vntr.fuzzy_beg1);
-        kstring_t s = {0,0,0};
-        kputs(vntr.fuzzy_repeat_tract.c_str(), &s);
-        kputc(',', &s);
-        kputs("<VNTR>", &s);
-        bcf_update_alleles_str(h, nv, s.s);
-        if (s.m) free(s.s);
-
-        if (no_samples) bcf_update_genotypes(h, nv, gts, no_samples);
-
-        bcf_update_info_string(h, nv, MOTIF.c_str(), vntr.fuzzy_motif.c_str());
-        bcf_update_info_string(h, nv, BASIS.c_str(), vntr.fuzzy_basis.c_str());
-        bcf_update_info_string(h, nv, RU.c_str(), vntr.fuzzy_ru.c_str());
-        bcf_update_info_int32(h, nv, MLEN.c_str(), &vntr.fuzzy_mlen, 1);
-        bcf_update_info_int32(h, nv, BLEN.c_str(), &vntr.fuzzy_blen, 1);
-        int32_t repeat_tract[2] = {vntr.fuzzy_beg1, vntr.fuzzy_end1};
-        bcf_update_info_int32(h, nv, REPEAT_TRACT.c_str(), &repeat_tract, 2);
-        bcf_update_info_int32(h, nv, COMP.c_str(), &vntr.fuzzy_comp, 4);
-        bcf_update_info_float(h, nv, ENTROPY.c_str(), &vntr.fuzzy_entropy, 1);
-        bcf_update_info_float(h, nv, ENTROPY2.c_str(), &vntr.fuzzy_entropy2, 1);
-        bcf_update_info_float(h, nv, KL_DIVERGENCE.c_str(), &vntr.fuzzy_kl_divergence, 1);
-        bcf_update_info_float(h, nv, KL_DIVERGENCE2.c_str(), &vntr.fuzzy_kl_divergence2, 1);
-        bcf_update_info_int32(h, nv, RL.c_str(), &vntr.fuzzy_rl, 1);
-        bcf_update_info_int32(h, nv, LL.c_str(), &vntr.fuzzy_ll, 1);
-        int32_t ru_count[2] = {vntr.fuzzy_no_exact_ru, vntr.fuzzy_total_no_ru};
-        bcf_update_info_int32(h, nv, RU_COUNTS.c_str(), &ru_count, 2);
-        bcf_update_info_float(h, nv, SCORE.c_str(), &vntr.fuzzy_score, 1);
-        bcf_update_info_int32(h, nv, TRF_SCORE.c_str(), &vntr.fuzzy_trf_score, 1);
-
-        Variant *nvntr = new Variant(h, nv);
-
-        std::string indel = bcf_variant2string(nvar.h, nvar.v);
-        nvntr->vntr.add_associated_indel(indel);
-
-        insert(nvntr);
-
-//        bcf_print(h, nvar.v);
-//        bcf_print(h, nv);
+        insert_vntr = true;
     }
     else if (vntr_classification==TAN_KANG2015)
     {
-        VNTR& vntr = nvar.vntr;
-
-        
-
-        //create a new copy of bcf1_t
-        bcf_hdr_t* h = nvar.h;
-        nvar.update_vntr_from_info_fields();
-        bcf1_t* nv = bcf_init1();
-        bcf_clear(nv);
-
-        if (vntr.fuzzy_repeat_tract == "")
+        if ((vntr.fuzzy_rl - vntr.fuzzy_mlen) >= 6 && vntr.fuzzy_no_perfect_ru>=2)
         {
-            refseq->fetch_seq(nvar.chrom, vntr.fuzzy_beg1, vntr.fuzzy_end1, vntr.fuzzy_repeat_tract);
+            if (vntr.fuzzy_mlen==1 && vntr.fuzzy_score>0.9)
+            {
+                insert_vntr = true;
+            }
+            else if (vntr.fuzzy_mlen>1 || vntr.fuzzy_score>0.75)
+            {
+                insert_vntr = true;
+            }
         }
 
-        bcf_set_rid(nv, nvar.rid);
-        bcf_set_pos1(nv, vntr.fuzzy_beg1);
-        kstring_t s = {0,0,0};
-        kputs(vntr.fuzzy_repeat_tract.c_str(), &s);
-        kputc(',', &s);
-        kputs("<VNTR>", &s);
-        bcf_update_alleles_str(h, nv, s.s);
-        if (s.m) free(s.s);
-
-        if (no_samples) bcf_update_genotypes(h, nv, gts, no_samples);
-
-        bcf_update_info_string(h, nv, MOTIF.c_str(), vntr.fuzzy_motif.c_str());
-        bcf_update_info_string(h, nv, BASIS.c_str(), vntr.fuzzy_basis.c_str());
-        bcf_update_info_string(h, nv, RU.c_str(), vntr.fuzzy_ru.c_str());
-        bcf_update_info_int32(h, nv, MLEN.c_str(), &vntr.fuzzy_mlen, 1);
-        bcf_update_info_int32(h, nv, BLEN.c_str(), &vntr.fuzzy_blen, 1);
-        int32_t repeat_tract[2] = {vntr.fuzzy_beg1, vntr.fuzzy_end1};
-        bcf_update_info_int32(h, nv, REPEAT_TRACT.c_str(), &repeat_tract, 2);
-        bcf_update_info_int32(h, nv, COMP.c_str(), &vntr.fuzzy_comp, 4);
-        bcf_update_info_float(h, nv, ENTROPY.c_str(), &vntr.fuzzy_entropy, 1);
-        bcf_update_info_float(h, nv, ENTROPY2.c_str(), &vntr.fuzzy_entropy2, 1);
-        bcf_update_info_float(h, nv, KL_DIVERGENCE.c_str(), &vntr.fuzzy_kl_divergence, 1);
-        bcf_update_info_float(h, nv, KL_DIVERGENCE2.c_str(), &vntr.fuzzy_kl_divergence2, 1);
-        bcf_update_info_int32(h, nv, RL.c_str(), &vntr.fuzzy_rl, 1);
-        bcf_update_info_int32(h, nv, LL.c_str(), &vntr.fuzzy_ll, 1);
-        int32_t ru_count[2] = {vntr.fuzzy_no_exact_ru, vntr.fuzzy_total_no_ru};
-        bcf_update_info_int32(h, nv, RU_COUNTS.c_str(), &ru_count, 2);
-        bcf_update_info_float(h, nv, SCORE.c_str(), &vntr.fuzzy_score, 1);
-        bcf_update_info_int32(h, nv, TRF_SCORE.c_str(), &vntr.fuzzy_trf_score, 1);
-
-        Variant *nvntr = new Variant(h, nv);
-
-        std::string indel = bcf_variant2string(nvar.h, nvar.v);
-        nvntr->vntr.add_associated_indel(indel);
-
-        insert(nvntr);
-
-//        bcf_print(h, nvar.v);
-//        bcf_print(h, nv);
-
-//        if (vntr.rl - mlen < 6)
-//        {
-//            variant.vntr.print();
-//        }
-//        std::cerr << "rlen " << rlen << "\n";
-//        std::cerr << "mlen " << mlen << "\n";
-////        std::cerr << "no_exact_ru " << variant.vntr.no_exact_ru << "\n";
-//        if ((rlen - mlen) >= 6 && no_exact_ru>=2)
-//        {
-//            if (mlen==1 && motif_concordance>0.9)
-//            {
-//                return true;
-//            }
-//            else if (mlen>1 || motif_concordance>0.75)
-//            {
-//                return true;
-//            }
-//        }
-//
-//        return false;
     }
     else if (vntr_classification==WILLEMS2014)
     {
@@ -641,7 +569,7 @@ void VNTRExtractor::create_and_insert_vntr(Variant& nvar)
         bcf_update_info_float(h, nv, KL_DIVERGENCE2.c_str(), &vntr.kl_divergence2, 1);
         bcf_update_info_int32(h, nv, RL.c_str(), &vntr.rl, 1);
         bcf_update_info_int32(h, nv, LL.c_str(), &vntr.ll, 1);
-        int32_t ru_count[2] = {vntr.no_exact_ru, vntr.total_no_ru};
+        int32_t ru_count[2] = {vntr.no_perfect_ru, vntr.no_ru};
         bcf_update_info_int32(h, nv, RU_COUNTS.c_str(), &ru_count, 2);
         bcf_update_info_float(h, nv, SCORE.c_str(), &vntr.score, 1);
         bcf_update_info_int32(h, nv, TRF_SCORE.c_str(), &vntr.trf_score, 1);

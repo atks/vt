@@ -506,8 +506,8 @@ void Variant::update_vntr_from_info_fields()
     vntr.rl = bcf_get_info_int(h, v, "RL");
     vntr.ll = bcf_get_info_int(h, v, "LL");
     i_vec = bcf_get_info_int_vec(h, v, "RU_COUNTS", 2, 0);
-    vntr.no_exact_ru = i_vec[0];
-    vntr.total_no_ru = i_vec[1];
+    vntr.no_perfect_ru = i_vec[0];
+    vntr.no_ru = i_vec[1];
     vntr.score = bcf_get_info_flt(h, v, "SCORE");
     vntr.trf_score = bcf_get_info_int(h, v, "TRF_SCORE");
 
@@ -531,8 +531,8 @@ void Variant::update_vntr_from_info_fields()
     vntr.exact_rl = bcf_get_info_int(h, v, "EX_RL");
     vntr.exact_ll = bcf_get_info_int(h, v, "EX_LL");
     i_vec = bcf_get_info_int_vec(h, v, "EX_RU_COUNTS", 2, 0);
-    vntr.exact_no_exact_ru = i_vec[0];
-    vntr.exact_total_no_ru = i_vec[1];
+    vntr.exact_no_perfect_ru = i_vec[0];
+    vntr.exact_no_ru = i_vec[1];
     vntr.exact_score = bcf_get_info_flt(h, v, "EX_SCORE");
     vntr.exact_trf_score = bcf_get_info_int(h, v, "EX_TRF_SCORE");   
     
@@ -556,8 +556,8 @@ void Variant::update_vntr_from_info_fields()
     vntr.fuzzy_rl = bcf_get_info_int(h, v, "FZ_RL");
     vntr.fuzzy_ll = bcf_get_info_int(h, v, "FZ_LL");
     i_vec = bcf_get_info_int_vec(h, v, "FZ_RU_COUNTS", 2, 0);
-    vntr.fuzzy_no_exact_ru = i_vec[0];
-    vntr.fuzzy_total_no_ru = i_vec[1];
+    vntr.fuzzy_no_perfect_ru = i_vec[0];
+    vntr.fuzzy_no_ru = i_vec[1];
     vntr.fuzzy_score = bcf_get_info_flt(h, v, "FZ_SCORE");
     vntr.fuzzy_trf_score = bcf_get_info_int(h, v, "FZ_TRF_SCORE");
 }
@@ -603,7 +603,7 @@ void Variant::update_bcf_with_vntr_info(bcf_hdr_t *h, bcf1_t *v)
     //flank positions
     int32_t fuzzy_flank_pos1[2] = {vntr.fuzzy_beg1-1, vntr.fuzzy_end1+1};
     bcf_update_info_int32(h, v, "FZ_FLANKS", &fuzzy_flank_pos1, 2);
-    int32_t ru_count[2] = {vntr.fuzzy_no_exact_ru, vntr.fuzzy_total_no_ru};
+    int32_t ru_count[2] = {vntr.fuzzy_no_perfect_ru, vntr.fuzzy_no_ru};
     bcf_update_info_int32(h, v, "FZ_RU_COUNTS", &ru_count, 2);
     
     if (vntr.is_large_repeat_tract) bcf_update_info_flag(h, v, "LARGE_REPEAT_REGION", NULL, 1);

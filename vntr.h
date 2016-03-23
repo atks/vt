@@ -65,8 +65,8 @@ class VNTR
     float lref;                       //number of repeat units in reference repeat tract including longest allele              
     int32_t rl;                       //length of repeat tract in base pairs                                                 
     int32_t ll;                       //length of repeat tract (including longest alternate allele) in base pairs            
-    int32_t no_exact_ru;              //number exact repeat units from hmm                                                     
-    int32_t total_no_ru;              //total no of repeat units from hmm                                                      
+    int32_t no_perfect_ru;            //number of perfect repeat units from hmm                                                     
+    int32_t no_ru;                    //total number of repeat units from hmm                                                      
     float score;                      //motif concordance from hmm                                                             
     int32_t trf_score;                //TRF score of exact repeat tract                                                        
     std::string lflank;               //left flank                                                                             
@@ -92,8 +92,8 @@ class VNTR
     float exact_lref;                 //number of repeat units in exact reference repeat tract including longest allele
     int32_t exact_rl;                 //length of repeat tract in base pairs
     int32_t exact_ll;                 //length of repeat tract (including longest alternate allele) in base pairs
-    int32_t exact_no_exact_ru;        //number exact repeat units from hmm
-    int32_t exact_total_no_ru;        //total no of repeat units from hmm
+    int32_t exact_no_perfect_ru;      //number of perfect repeat units from hmm
+    int32_t exact_no_ru;              //number of repeat units from hmm
     float exact_score;                //motif concordance from hmm
     int32_t exact_trf_score;          //TRF score of exact repeat tract
     std::string exact_lflank;         //left flank
@@ -121,8 +121,8 @@ class VNTR
     float fuzzy_lref;                 //number of repeat units in fuzzy reference repeat tract including longest allele
     int32_t fuzzy_rl;                 //length of fuzzy repeat tract in base pairs
     int32_t fuzzy_ll;                 //length of fuzzy repeat tract (including longest alternate allele) in base pairs
-    int32_t fuzzy_no_exact_ru;        //number exact repeat units from fuzzy alignment
-    int32_t fuzzy_total_no_ru;        //total no of repeat units from fuzzy alignment
+    int32_t fuzzy_no_perfect_ru;      //number perfect repeat units from fuzzy alignment
+    int32_t fuzzy_no_ru;              //total number of repeat units from fuzzy alignment
     float fuzzy_score;                //motif concordance from hmm
     int32_t fuzzy_trf_score;          //TRF score of fuzzy repeat tract
     std::string fuzzy_lflank;         //left flank

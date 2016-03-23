@@ -287,7 +287,7 @@ class Igor : Program
                 bcf_update_info_float(h, v, ENTROPY.c_str(), &vntr.entropy, 1);
                 bcf_update_info_float(h, v, ENTROPY2.c_str(), &vntr.entropy2, 1);
                 bcf_update_info_int32(h, v, RL.c_str(), &vntr.rl, 1);
-                int32_t ru_count[2] = {vntr.no_exact_ru, vntr.total_no_ru};
+                int32_t ru_count[2] = {vntr.no_perfect_ru, vntr.no_ru};
                 bcf_update_info_int32(h, v, RU_COUNTS.c_str(), &ru_count, 2);
                 bcf_update_info_float(h, v, SCORE.c_str(), &vntr.score, 1);
                 bcf_update_info_int32(h, v, TRF_SCORE.c_str(), &vntr.trf_score, 1);

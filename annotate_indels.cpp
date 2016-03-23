@@ -354,7 +354,7 @@ class Igor : Program
                 bcf_update_info_float(h, v, EX_REF.c_str(), &vntr.exact_ref, 1);
                 bcf_update_info_int32(h, v, EX_RL.c_str(), &vntr.exact_rl, 1);
                 bcf_update_info_int32(h, v, EX_LL.c_str(), &vntr.exact_ll, 1);
-                int32_t exact_ru_count[2] = {vntr.exact_no_exact_ru, vntr.exact_total_no_ru};
+                int32_t exact_ru_count[2] = {vntr.exact_no_perfect_ru, vntr.exact_no_ru};
                 bcf_update_info_int32(h, v, EX_RU_COUNTS.c_str(), &exact_ru_count, 2);
                 bcf_update_info_float(h, v, EX_SCORE.c_str(), &vntr.exact_score, 1);
                 bcf_update_info_int32(h, v, EX_TRF_SCORE.c_str(), &vntr.exact_trf_score, 1);
@@ -377,7 +377,7 @@ class Igor : Program
                 bcf_update_info_float(h, v, FZ_REF.c_str(), &vntr.fuzzy_ref, 1);
                 bcf_update_info_int32(h, v, FZ_RL.c_str(), &vntr.fuzzy_rl, 1);
                 bcf_update_info_int32(h, v, FZ_LL.c_str(), &vntr.fuzzy_ll, 1);
-                int32_t fuzzy_ru_count[2] = {vntr.fuzzy_no_exact_ru, vntr.fuzzy_total_no_ru};
+                int32_t fuzzy_ru_count[2] = {vntr.fuzzy_no_perfect_ru, vntr.fuzzy_no_ru};
                 bcf_update_info_int32(h, v, FZ_RU_COUNTS.c_str(), &fuzzy_ru_count, 2);
                 bcf_update_info_float(h, v, FZ_SCORE.c_str(), &vntr.fuzzy_score, 1);
                 bcf_update_info_int32(h, v, FZ_TRF_SCORE.c_str(), &vntr.fuzzy_trf_score, 1);
