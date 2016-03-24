@@ -56,6 +56,7 @@ VNTRExtractor::VNTRExtractor(std::string& input_vcf_file, std::vector<GenomeInte
     bcf_hdr_append(odw->hdr, "##ALT=<ID=VNTR,Description=\"Variable Number of Tandem Repeats.\">");
     bcf_hdr_append(odw->hdr, "##INFO=<ID=ASSOCIATED_INDEL,Number=.,Type=String,Description=\"Indels that were annotated as this VNTR.\">");
     bool rename = false;
+    END = bcf_hdr_append_info_with_backup_naming(odw->hdr, "END", "1", "Integer", "End position of the variant.", rename);
     MOTIF = bcf_hdr_append_info_with_backup_naming(odw->hdr, "MOTIF", "1", "String", "Canonical motif in a VNTR.", rename);
     RU = bcf_hdr_append_info_with_backup_naming(odw->hdr, "RU", "1", "String", "Repeat unit in the reference sequence.", rename);
     BASIS = bcf_hdr_append_info_with_backup_naming(odw->hdr, "BASIS", "1", "String", "Basis nucleotides in the motif.", rename);
@@ -90,7 +91,9 @@ VNTRExtractor::VNTRExtractor(std::string& input_vcf_file, std::vector<GenomeInte
     //stats initialization//
     ////////////////////////
     no_variants = 0;
+    no_indels = 0;
     no_added_vntrs = 0;
+    no_duplicate_vntrs = 0;
 
     ////////////////////////
     //tools initialization//
@@ -144,6 +147,7 @@ void VNTRExtractor::insert(Variant* var)
                             std::string nvar_associated_indel = bcf_get_info_str(nvar.h, nvar.v, "ASSOCIATED_INDEL", "");
                             cvar.vntr.add_associated_indel(nvar_associated_indel);
 
+                            ++no_duplicate_vntrs;
                             bcf_destroy(var->v);
                             delete var;
                             return;
@@ -180,62 +184,6 @@ void VNTRExtractor::insert(Variant* var)
     vbuffer.push_back(var);
 
 //    std::cerr << "exit insert\n";
-}
-
-/**
- * Process overlapping variant.
- * a. consolidate VNTRs
- * b. consolidate multiallelics
- */
-void VNTRExtractor::process_overlap(Variant& nvar, Variant& cvar)
-{
-//    if (nvar.beg1 > cvar.beg1)
-//    {
-//       vbuffer.insert(i, &nvar);
-//    }
-//    else if (nvar.beg1 == cvar.beg1)
-//    {
-//        if (nvar.end1 > cvar.end1)
-//        {
-//           vbuffer.insert(i, &nvar);
-//        }
-//        else if (cvar.end1 == nvar.end1)
-//        {
-//
-//        }
-//        else // cvar.end1 > nvar.rend1
-//        {
-//            ++i;
-//        }
-//    }
-//    else //nvar.rbeg1 < cvar.rbeg1
-//    {
-//        ++i;
-//    }
-//
-//    if (nvar.type==VT_VNTR && cvar.type==VT_VNTR)
-//    {
-//        if (cvar.vntr.motif > nvar.vntr.motif)
-//        {
-//           vbuffer.insert(i, &nvar);
-//        }
-//        else if (cvar.vntr.motif == nvar.vntr.motif)
-//        {
-//            bcf1_t *v = nvar.vs[0];
-//            cvar.vs.push_back(v);
-//            cvar.indel_vs.push_back(v);
-//
-//            //update cvar
-//            ++ cvar.no_overlapping_indels;
-//
-//            //do not insert
-//    //                            return false;
-//        }
-//        else // cvar.motif > nvar.motif
-//        {
-//            ++i;
-//        }
-//    }
 }
 
 /**
@@ -319,12 +267,10 @@ void VNTRExtractor::process()
         }
 
 //        bcf_print(h, v);
-
         create_and_insert_vntr(*var);
-
-
         insert(var);
 
+        if (var->type&VT_INDEL) ++no_indels;
         ++no_variants;
 
         v = odw->get_bcf1_from_pool();
@@ -346,7 +292,7 @@ void VNTRExtractor::process_exit(Variant* var)
         {
             bcf_update_info_string(var->h, var->v, ASSOCIATED_INDEL.c_str(), indels.c_str());
         }
-        
+
         ++no_added_vntrs;
     }
 
@@ -426,18 +372,25 @@ void VNTRExtractor::copy_fuzzy_vntr_features_to_final_vntr_features(VNTR& vntr)
  */
 void VNTRExtractor::create_and_insert_vntr(Variant& nvar)
 {
+    if (!(nvar.type&VT_INDEL))
+    {
+        return;
+    }
+    
     bool insert_vntr = false;
     VNTR& vntr = nvar.vntr;
     nvar.update_vntr_from_info_fields();
-    
+
+//    bcf_print(nvar.h, nvar.v);
+
     //convert all indels into their corresponding VNTR representation using exact parameters
     if (vntr_classification==EXACT_VNTR)
-    {    
+    {
         if (vntr.exact_repeat_tract == "")
         {
             refseq->fetch_seq(nvar.chrom, vntr.exact_beg1, vntr.exact_end1, vntr.exact_repeat_tract);
         }
-        
+
         copy_exact_vntr_features_to_final_vntr_features(vntr);
 
         insert_vntr = true;
@@ -448,7 +401,7 @@ void VNTRExtractor::create_and_insert_vntr(Variant& nvar)
         {
             refseq->fetch_seq(nvar.chrom, vntr.fuzzy_beg1, vntr.fuzzy_end1, vntr.fuzzy_repeat_tract);
         }
-        
+
         copy_fuzzy_vntr_features_to_final_vntr_features(vntr);
 
         insert_vntr = true;
@@ -461,12 +414,18 @@ void VNTRExtractor::create_and_insert_vntr(Variant& nvar)
             {
                 insert_vntr = true;
             }
-            else if (vntr.fuzzy_mlen>1 || vntr.fuzzy_score>0.75)
+            else if (vntr.fuzzy_mlen>1 && vntr.fuzzy_score>0.75)
             {
                 insert_vntr = true;
             }
         }
 
+        if (vntr.fuzzy_repeat_tract == "")
+        {
+            refseq->fetch_seq(nvar.chrom, vntr.fuzzy_beg1, vntr.fuzzy_end1, vntr.fuzzy_repeat_tract);
+        }
+
+        copy_fuzzy_vntr_features_to_final_vntr_features(vntr);
     }
     else if (vntr_classification==WILLEMS2014)
     {
@@ -479,7 +438,7 @@ void VNTRExtractor::create_and_insert_vntr(Variant& nvar)
                 (vntr.mlen>=7 && vntr.rl>=vntr.mlen*2))
         {
             insert_vntr = true;
-        }                
+        }
     }
     else if (vntr_classification==ANANDA2013)
     {
@@ -504,7 +463,7 @@ void VNTRExtractor::create_and_insert_vntr(Variant& nvar)
                 (vntr.mlen==6 && vntr.rl>=27))
         {
             insert_vntr = true;
-        }        
+        }
     }
     else if (vntr_classification==KELKAR2008)
     {
@@ -517,7 +476,7 @@ void VNTRExtractor::create_and_insert_vntr(Variant& nvar)
                 (vntr.mlen>=7 && vntr.rl>=vntr.mlen*2))
         {
             insert_vntr = true;
-        }        
+        }
     }
     else if (vntr_classification==LAI2003)
     {
@@ -530,8 +489,8 @@ void VNTRExtractor::create_and_insert_vntr(Variant& nvar)
                 (vntr.mlen>=7 && vntr.rl>=vntr.mlen*2))
         {
             insert_vntr = true;
-        }        
-    }   
+        }
+    }
     else
     {
         fprintf(stderr, "[%s:%d %s] VNTR classification code not recognized :  %d\n", __FILE__, __LINE__, __FUNCTION__, vntr_classification);
@@ -543,7 +502,7 @@ void VNTRExtractor::create_and_insert_vntr(Variant& nvar)
         bcf_hdr_t* h = nvar.h;
         bcf1_t* nv = bcf_init1();
         bcf_clear(nv);
-        
+
         bcf_set_rid(nv, nvar.rid);
         bcf_set_pos1(nv, vntr.beg1);
         kstring_t s = {0,0,0};
@@ -555,6 +514,7 @@ void VNTRExtractor::create_and_insert_vntr(Variant& nvar)
 
         if (no_samples) bcf_update_genotypes(h, nv, gts, no_samples);
 
+        bcf_update_info_int32(h, nv, END.c_str(), &vntr.end1, 1);
         bcf_update_info_string(h, nv, MOTIF.c_str(), vntr.motif.c_str());
         bcf_update_info_string(h, nv, BASIS.c_str(), vntr.basis.c_str());
         bcf_update_info_string(h, nv, RU.c_str(), vntr.ru.c_str());
@@ -575,10 +535,11 @@ void VNTRExtractor::create_and_insert_vntr(Variant& nvar)
         bcf_update_info_int32(h, nv, TRF_SCORE.c_str(), &vntr.trf_score, 1);
 
         Variant *nvntr = new Variant(h, nv);
+//        bcf_print(h, nv);
         std::string indel = bcf_variant2string(nvar.h, nvar.v);
         nvntr->vntr.add_associated_indel(indel);
 
-        insert(nvntr);       
+        insert(nvntr);
     }
 
 }

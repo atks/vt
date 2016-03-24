@@ -195,8 +195,10 @@ class Igor : Program
     void print_stats()
     {
         std::clog << "\n";
-        std::cerr << "stats: no. of variants      " << ve->no_variants << "\n";
-        std::cerr << "       no. of VNTRs added   " << ve->no_added_vntrs << "\n";
+        std::cerr << "stats: no. of variants            " << ve->no_variants << "\n";
+        std::cerr << "       no. of indel like variants " << ve->no_indels << "\n";
+        std::cerr << "       no. of VNTRs added         " << ve->no_added_vntrs << "\n";
+        std::cerr << "       no. of duplicate VNTRs     " << ve->no_duplicate_vntrs << "\n";
         std::clog << "\n";
     }
 

@@ -520,9 +520,10 @@ class Igor : Program
         fprintf(stderr, "\n");
         fprintf(stderr, "       no. of VCF records                        : %10d\n", no_records);
         fprintf(stderr, "\n");
-        if (no_reference) fprintf(stderr, "       no. of reference records                  : %10d", no_reference);
-        if (no_classified_variants!=no_records) fprintf(stderr, "       no. of classified variants                : %10d", no_classified_variants);
-        if (no_unclassified_variants) fprintf(stderr, "       no. of unclassified variants              : %10d", no_unclassified_variants);
+        if (no_reference) fprintf(stderr, "       no. of reference records                  : %10d\n", no_reference);
+        if (no_classified_variants!=no_records) fprintf(stderr, "       no. of classified variants                : %10d\n", no_classified_variants);
+        if (no_unclassified_variants) fprintf(stderr, "       no. of unclassified variants              : %10d\n", no_unclassified_variants);
+        fprintf(stderr, "\n");
     };
 
     void print_pdf()

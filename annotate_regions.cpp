@@ -172,7 +172,7 @@ class Igor : Program
         print_str_op("             filter 2                ", fexps[1]);
         print_str_op("         [t] region INFO tag         ", REGIONS_TAG);    
         print_str_op("         [b] region INFO description ", REGIONS_TAG_DESC);
-        print_str_op("         [m] regions file        ", regions_file);
+        print_str_op("         [m] regions file            ", regions_file);
         print_num_op("         [l] left window             ", left_window);
         print_num_op("         [r] right window            ", right_window);
         print_int_op("         [i] intervals               ", intervals);

@@ -104,7 +104,9 @@ class VNTRExtractor
     //stats//
     /////////
     int32_t no_variants;
+    int32_t no_indels;
     int32_t no_added_vntrs;
+    int32_t no_duplicate_vntrs;
 
     ///////
     //tools
@@ -165,22 +167,16 @@ class VNTRExtractor
      */
     void process_exit(Variant* var);
 
-
-    /**
-     * Process overlapping variant.
-     */
-    void process_overlap(Variant& nvar, Variant&cvar);
-    
     /**
      * Copies exact VNTR features to finalized features.
      */
     void copy_exact_vntr_features_to_final_vntr_features(VNTR& vntr);
-    
+
     /**
      * Copies fuzzy VNTR features to finalized features.
      */
     void copy_fuzzy_vntr_features_to_final_vntr_features(VNTR& vntr);
-        
+
     /**
      * Creates a VNTR record based on classification schema.
      */
