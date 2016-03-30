@@ -80,6 +80,7 @@
 #include "union_variants.h"
 #include "uniq.h"
 #include "validate.h"
+#include "version.h"
 #include "view.h"
 #include "vntrize.h"
 
@@ -151,7 +152,14 @@ int main(int argc, char ** argv)
     std::string cmd(argv[1]);
 
     //primitive programs that do not require help pages and summary statistics by default
-    if (argc>1 && cmd=="view")
+    if (argc==2 && (cmd=="--version" || cmd=="-v"))
+    {
+        std::clog << "vt v" << VERSION << "\n";
+        std::clog << "The MIT license\n";
+        std::clog << "Copyright (c) 2013 Adrian Tan <atks@umich.edu>\n";
+        exit(0);
+    }
+    else if (argc>1 && cmd=="view")
     {
         print = view(argc-1, ++argv);
     }

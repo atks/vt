@@ -142,8 +142,11 @@ ${LIBPCRE2} :
 
 ${LIBSVM} :
 	cd lib/libsvm; $(MAKE) libsvm.a || exit 1; 
+
+version :
+	git rev-parse HEAD | cut -c 1-8 | awk '{print "#define VERSION \"0.5772-"$$0"\""}' > version.h;
 	
-$(TARGET) : ${LIBHTS} ${LIBRMATH} ${LIBPCRE2}  ${LIBSVM} $(TOOLOBJ)
+$(TARGET) : ${LIBHTS} ${LIBRMATH} ${LIBPCRE2}  ${LIBSVM} $(TOOLOBJ) version
 	$(CXX) $(CFLAGS) -o $@ $(TOOLOBJ) $(LIBHTS) $(LIBRMATH) ${LIBPCRE2} -lz -lpthread
 
 $(TOOLOBJ): $(HEADERSONLY)
@@ -151,7 +154,7 @@ $(TOOLOBJ): $(HEADERSONLY)
 .cpp.o :
 	$(CXX) $(CFLAGS) -o $@ -c $*.cpp
 
-.PHONY: clean cleanvt test
+.PHONY: clean cleanvt test version
 
 clean :
 	cd lib/htslib; $(MAKE) clean
