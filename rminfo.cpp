@@ -73,7 +73,7 @@ class Igor : Program
             VTOutput my; cmd.setOutput(&my);
             TCLAP::ValueArg<std::string> arg_intervals("i", "i", "intervals []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "file", cmd);
-            TCLAP::ValueArg<std::string> arg_info_tags("t", "t", "list of info tags to be removed []", true, "", "str", cmd);
+            TCLAP::ValueArg<std::string> arg_info_tags("t", "t", "list of info tags to be removed []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_format_tags("u", "u", "list of format tags to be removed []", false, "", "str", cmd);
             TCLAP::SwitchArg arg_quiet("q", "q", "do not print options and summary [false]", cmd, false);
             TCLAP::SwitchArg arg_remove_filters("x", "x", "remove filters [false]", cmd, false);
@@ -99,6 +99,12 @@ class Igor : Program
 
     void initialize()
     {
+        if (info_tags.size()==0 && format_tags.size()==0)
+        {
+            fprintf(stderr, "[%s:%d %s] At least one of -u or -t options must be specified.\n", __FILE__, __LINE__, __FUNCTION__);
+            exit(1);
+        }
+        
         //////////////////////
         //i/o initialization//
         //////////////////////

@@ -340,7 +340,7 @@ class Igor : Program
 
                dataset_info_gt_tags.push_back(bcf_hdr_append_info_with_backup_naming(odw->hdr, info_tag, "1", "String", "Status of genotype : 0/0, 0/1, 1/1", true));
             }
-            
+
             odw->write_hdr();
         }
 
@@ -397,8 +397,8 @@ class Igor : Program
 
         int32_t discordance_filter = 0;
         bool discordance_detected = false;
-        bcf1_t* nv; 
-        
+        bcf1_t* nv;
+
         while(sr->read_next_position(current_recs))
         {
             //check first variant
@@ -502,18 +502,30 @@ class Igor : Program
                 //for BROAD KB stats type of data set
                 if (dataset_types[i]==BROADKB)
                 {
+                    
+//                    std::cerr << "caught\n";
+//                    std::cerr << "\t index "  <<  i <<  " \n";
+//                        std::cerr << "\t" << presence[i] << "\n";
+                            
                     int32_t y1, y2, y;
                     std::string truth_status;
 
                     if (presence[i])
                     {
+//                        std::cerr << "caught\n";
+//                    std::cerr << "\t index "  <<  i <<  " \n";
+//                        std::cerr << "\tin presence[i]\n";
+
                         bcf_unpack(presence_bcfptr[i]->v, BCF_UN_IND);
-                        bcf_get_genotypes(presence_bcfptr[1]->h, presence_bcfptr[1]->v, &gts, &n);
+                        bcf_get_genotypes(presence_bcfptr[i]->h, presence_bcfptr[i]->v, &gts, &n);
 
                         char* ts = NULL;
                         int32_t n = 0;
-                        bcf_get_info_string(presence_bcfptr[1]->h, presence_bcfptr[1]->v, "TruthStatus", &ts, &n);
+                        bcf_get_info_string(presence_bcfptr[i]->h, presence_bcfptr[i]->v, "TruthStatus", &ts, &n);
                         truth_status.assign(ts);
+
+//                        std::cerr << truth_status << "\n";
+
                         if (n) free(ts);
 
                         y1 = bcf_gt_allele(gts[na12878_index[i]*2]);
@@ -589,7 +601,7 @@ class Igor : Program
                         int32_t yt = y<0 ? 3 : y;
                         int32_t xt = x<0 ? 3 : x;
                         ++concordance[i].geno[xt][yt];
-                        
+
                         if (xt!=yt && xt!=3 && yt!=3)
                         {
                             if (output_discordant_sites_and_genotypes)
@@ -598,16 +610,16 @@ class Igor : Program
                                 if (yt==0)
                                 {
                                     gt = "0/0";
-                                }    
+                                }
                                 else if (yt==1)
                                 {
                                     gt = "0/1";
-                                }    
+                                }
                                 else if (yt==2)
                                 {
                                     gt = "1/1";
                                 }
-                                
+
                                 bcf_update_info_string(odw->hdr, presence_bcfptr[0]->v, dataset_info_gt_tags[i].c_str(), gt.c_str());
                                 discordance_detected = true;
                             }
@@ -674,7 +686,7 @@ class Igor : Program
                         int32_t xt = x<0 ? 3 : x;
 
                         ++concordance[i].geno[xt][yt];
-                        
+
                         if (xt!=yt && xt!=3 && yt!=3)
                         {
                             if (output_discordant_sites_and_genotypes)
@@ -683,16 +695,16 @@ class Igor : Program
                                 if (yt==0)
                                 {
                                     gt = "0/0";
-                                }    
+                                }
                                 else if (yt==1)
                                 {
                                     gt = "0/1";
-                                }    
+                                }
                                 else if (yt==2)
                                 {
                                     gt = "1/1";
                                 }
-                                
+
                                 bcf_update_info_string(odw->hdr, presence_bcfptr[0]->v, dataset_info_gt_tags[i].c_str(), gt.c_str());
                                 discordance_detected = true;
                             }
@@ -705,7 +717,7 @@ class Igor : Program
                         stats[i].b_tv += tv;
                         stats[i].b_ins += ins;
                         stats[i].b_del += del;
-                        
+
                         if (output_discordant_sites_and_genotypes)
                         {
                             nv = bcf_copy_variant(odw->hdr, presence_bcfptr[i]->v);
@@ -755,7 +767,7 @@ class Igor : Program
                         int32_t xt = x<0 ? 3 : x;
 
                         ++concordance[i].geno[xt][yt];
-                        
+
                         if (xt!=yt && xt!=3 && yt!=3)
                         {
                             if (output_discordant_sites_and_genotypes)
@@ -764,16 +776,16 @@ class Igor : Program
                                 if (yt==0)
                                 {
                                     gt = "0/0";
-                                }    
+                                }
                                 else if (yt==1)
                                 {
                                     gt = "0/1";
-                                }    
+                                }
                                 else if (yt==2)
                                 {
                                     gt = "1/1";
                                 }
-                                
+
                                 bcf_update_info_string(odw->hdr, presence_bcfptr[0]->v, dataset_info_gt_tags[i].c_str(), gt.c_str());
                                 discordance_detected = true;
                             }
@@ -798,7 +810,7 @@ class Igor : Program
             }
 
             if (discordance_detected)
-            {    
+            {
                 if (presence[0])
                 {
                     odw->write(presence_bcfptr[0]->v);
@@ -807,18 +819,18 @@ class Igor : Program
                 {
                     odw->write(nv);
                     bcf_destroy(nv);
-                    nv = NULL;    
+                    nv = NULL;
                 }
-                
+
                 discordance_detected = false;
             }
             presence[0] = 0;
         }
-        
+
         if (output_discordant_sites_and_genotypes)
         {
             odw->close();
-        }        
+        }
     };
 
     void print_options()
