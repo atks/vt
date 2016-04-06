@@ -800,7 +800,6 @@ class Igor : Program
             {
                 std::string del = i->first;
                 if (!contains_non_acgt_bases(del))
-//                if (del.find_first_of("Nn")==std::string::npos)
                 {
                     E = i->second;
                     N = p.N;
@@ -833,8 +832,8 @@ class Igor : Program
         {
             for (std::map<std::string, uint32_t>::iterator i = p.I.begin(); i!=p.I.end(); ++i)
             {
-                const std::string& ins = i->first;
-                if (ins.find_first_of("Nn")==std::string::npos)
+                std::string ins = i->first;
+                if (!contains_non_acgt_bases(ins))
                 {
                     E = i->second;
                     N = p.N;
