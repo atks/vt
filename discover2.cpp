@@ -578,6 +578,23 @@ class Igor : Program
     /**
      * Write out pileupPosition as a VCF entry if it contains a variant.
      */
+    bool contains_non_acgt_bases(std::string& seq)
+    {
+        for (uint32_t i=0; i<seq.size(); ++i) 
+        {
+            char base = seq.at(i);
+            if (base!='A' && base!='C' && base!='G' && base!='T')
+            {
+                return true;
+            }    
+        }
+        
+        return false;
+    }
+
+    /**
+     * Write out pileupPosition as a VCF entry if it contains a variant.
+     */
     void write_to_vcf(uint32_t rid, uint32_t gpos1, PileupPosition& p)
     {
         int32_t gts[2] = {0x0002,0x0004};
@@ -754,8 +771,9 @@ class Igor : Program
         {
             for (std::map<std::string, uint32_t>::iterator i = p.D.begin(); i!=p.D.end(); ++i)
             {
-                const std::string& del = i->first;
-                if (del.find_first_of("Nn")==std::string::npos)
+                std::string del = i->first;
+                if (!contains_non_acgt_bases(del))
+//                if (del.find_first_of("Nn")==std::string::npos)
                 {
                     E = i->second;
                     N = p.N;
@@ -788,8 +806,9 @@ class Igor : Program
         {
             for (std::map<std::string, uint32_t>::iterator i = p.I.begin(); i!=p.I.end(); ++i)
             {
-                const std::string& ins = i->first;
-                if (ins.find_first_of("Nn")==std::string::npos)
+                std::string ins = i->first;
+                if (!contains_non_acgt_bases(ins))
+//                if (ins.find_first_of("Nn")==std::string::npos)
                 {
                     E = i->second;
                     N = p.N;
