@@ -610,7 +610,7 @@ class Igor : Program
     {
         int32_t gts[2] = {0x0002,0x0004};
 
-        if (p.R=='N' || p.R=='X')
+        if (p.R!='A' && p.R!='C' && p.R!='G' && p.R!='T') 
         {
             return;
         }

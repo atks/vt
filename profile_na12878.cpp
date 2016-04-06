@@ -184,7 +184,7 @@ class Igor : Program
             TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "file", cmd);
             TCLAP::ValueArg<std::string> arg_fexp("f", "f", "filter expression []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_ref_data_sets_list("g", "g", "file containing list of reference datasets []", false, "", "file", cmd);
-            TCLAP::SwitchArg arg_output_discordant_sites_and_genotypes("d", "d", "outputdiscordant sites and genotypes [false]", cmd, false);
+            TCLAP::SwitchArg arg_output_discordant_sites_and_genotypes("d", "d", "output discordant sites and genotypes [false]", cmd, false);
             TCLAP::ValueArg<std::string> arg_output_vcf_file("o", "o", "output VCF file [profile_na12878.bcf]", false, "profile_na12878.bcf", "file", cmd);
             TCLAP::SwitchArg arg_ignore_genotypes("a", "a", "ignore genotypes when comparing against broad's truth set [false]", cmd, false);
             TCLAP::UnlabeledValueArg<std::string> arg_input_vcf_file("<in.vcf>", "input VCF file", true, "","file", cmd);
@@ -502,11 +502,6 @@ class Igor : Program
                 //for BROAD KB stats type of data set
                 if (dataset_types[i]==BROADKB)
                 {
-                    
-//                    std::cerr << "caught\n";
-//                    std::cerr << "\t index "  <<  i <<  " \n";
-//                        std::cerr << "\t" << presence[i] << "\n";
-                            
                     int32_t y1, y2, y;
                     std::string truth_status;
 
@@ -535,9 +530,16 @@ class Igor : Program
                         {
                             y = y1+y2;
                         }
-                        else
+                        else 
                         {
-                            y = -1;
+                            if (truth_status=="FALSE_POSITIVE")
+                            {
+                                y = 0;
+                            }
+                            else
+                            {    
+                                y = -1;
+                            }
                         }
                     }
 

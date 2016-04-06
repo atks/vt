@@ -1,1 +1,1 @@
-#define VERSION "0.5772-9e2e0697"
+#define VERSION "0.5772-d00d603a"
