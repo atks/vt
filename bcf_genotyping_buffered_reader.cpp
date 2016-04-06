@@ -1288,99 +1288,139 @@ void BCFGenotypingBufferedReader::compute_snp_pl(std::vector<int32_t>& alleles, 
 {
     if (ploidy==2 && no_alleles==2)
     {
-        float pRR = 1;
-        float pRA = 1;
-        float pAA = 1;
-        float p;
+//        double pRR = 1;
+//        double pRA = 1;
+//        double pAA = 1;
+//        double p = 0;
+//
+//        for (uint32_t i=0; i<alleles.size(); ++i)
+//        {
+//            if (alleles[i]==0)
+//            {
+////                actual
+////                p = lt.pl2prob(quals[i]);
+////                pRR *= 1-p;
+////                pRA *= 0.5*(1-p+p/3);
+////                pAA *= p/3;
+//
+//                //simplified
+//                p = lt.pl2prob(quals[i]);
+//                pRR *= 1-p;
+//                p /= 3;
+//                pRA *= 0.5-p;
+//                pAA *= p;
+//            }
+//            else if (alleles[i]==1)
+//            {
+////                actual
+////                p = lt.pl2prob(quals[i]);
+////                pRR *= p/3;
+////                pRA *= 0.5*(1-p+p/3);
+////                pAA *= 1-p;
+//
+//                //simplified
+//                p = lt.pl2prob(quals[i])/3;
+//                pRR *= p;
+//                pRA *= 0.5-p;
+//                pAA *= 1-3*p;
+//            }
+//            else if (alleles[i]<=-1)
+//            {
+////                actual
+////                p = lt.pl2prob(quals[i]);
+////                pRR *= p/3;
+////                pRA *= 0.5*(2*p/3);
+////                pAA *= p/3;
+//
+//                //simplified
+////                p = lt.pl2prob(quals[i])/3;
+////                pRR *= p;
+////                pRA *= p;
+////                pAA *= p;
+//                //don't anything actually
+//            }
+//            else //deletion
+//            {
+//                //ignore this for the time being
+//            }
+//
+//            double total = pRR + pRA + pAA;
+//
+//            pRR /= total;
+//            pRA /= total;
+//            pAA /= total;
+//        }
+//
+//        pls[0] = -10*log10(pRR);
+//        pls[1] = -10*log10(pRA);
+//        pls[2] = -10*log10(pAA);
 
-        pl_offset = 0;
+
+        double pRR = 0;
+        double pRA = 0;
+        double pAA = 0;
+        double p = 0;
 
         for (uint32_t i=0; i<alleles.size(); ++i)
         {
+            if (quals[i]==0) continue;
+
             if (alleles[i]==0)
             {
                 p = lt.pl2prob(quals[i]);
-                pRR *= 1-p;
-                pRA *= 0.5*(1-p+p/3);
-                pAA *= p/3;
+                pRR += log10(1-p);
+                p /= 3;
+                pRA += log10(0.5-p);
+                pAA += log10(p);
 
-                float total = pRR + pRA + pAA;
 
-                pRR /= total;
-                pRA /= total;
-                pAA /= total;
-
-                pl_offset += log10(total);
             }
             else if (alleles[i]==1)
             {
-                p = lt.pl2prob(quals[i]);
-                pRR *= p/3;
-                pRA *= 0.5*(1-p+p/3);
-                pAA *= 1-p;
-
-                float total = pRR + pRA + pAA;
-
-                pRR /= total;
-                pRA /= total;
-                pAA /= total;
-
-                pl_offset += log10(total);
-            }
-            else if (alleles[i]<-1)
-            {
                 p = lt.pl2prob(quals[i])/3;
-                pRR *= p;
-                pRA *= 0.5*(2*p);
-                pAA *= p;
-
-                float total = pRR + pRA + pAA;
-
-                pRR /= total;
-                pRA /= total;
-                pAA /= total;
-
-                pl_offset += log10(total);
+                pRR += log10(p);
+                pRA += log10(0.5-p);
+                pAA += log10(1-3*p);
             }
-            else //deletion
+            else
             {
-                //ignore this for the time being
+                //do nothing
             }
         }
 
-        pls[0] = log10(pRR);
-        pls[1] = log10(pRA);
-        pls[2] = log10(pAA);
-    }
+        pls[0] = -10*pRR;
+        pls[1] = -10*pRA;
+        pls[2] = -10*pAA;
+  }
     else if (ploidy==2 && no_alleles>2)
     {
         int32_t no_genotypes = (no_alleles * (no_alleles+1)) >> 1;
-        
+
         float pG[no_genotypes];
-        
+
         for (uint32_t i = 0; i<no_genotypes; ++i)
         {
             pG[i] = 1;
         }
-        
+
         float p;
 
         float offset = 0;
-        
+
         //handle multiallelics
         for (uint32_t i=0; i<alleles.size(); ++i)
         {
             p = lt.pl2prob(quals[i]);
-            
+
             for (uint32_t g = 0; g<no_genotypes; ++g)
             {
 //                if ()
-                
+
                 pG[i] = 1;
-            } 
+            }
 //            pG[alleles[i]] *=  ;
-            
-         
+
+
         }
     }
     else //generic number of ploidy and alleles
