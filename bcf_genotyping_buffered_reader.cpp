@@ -679,7 +679,8 @@ void BCFGenotypingBufferedReader::flush(BCFOrderedWriter* odw, bam_hdr_t *h, bam
  * Compute SNP genotype likelihoods in PHRED scale.
  */
 
-void BCFGenotypingBufferedReader::compute_snp_pl(std::vector<int32_t>& alleles, std::vector<uint32_t>& quals, uint32_t ploidy,  std::vector<uint32_t>& pls) {
+void BCFGenotypingBufferedReader::compute_snp_pl(std::vector<int32_t>& alleles, std::vector<uint32_t>& quals, uint32_t ploidy,  std::vector<uint32_t>& pls) 
+{
 //void BCFGenotypingBufferedReader::compute_snp_pl(std::vector<int32_t>& alleles, std::vector<uint32_t>& quals, uint32_t ploidy, uint32_t no_alleles, std::vector<uint32_t>& pls) //, float& pl_offset)
     int no_alleles = 2;
     if (ploidy==2 && no_alleles==2)
@@ -759,6 +760,8 @@ void BCFGenotypingBufferedReader::compute_snp_pl(std::vector<int32_t>& alleles, 
 
         for (uint32_t i=0; i<alleles.size(); ++i)
         {
+            if (quals[i]==0) continue;
+                
             if (alleles[i]==0)
             {
                 p = lt.pl2prob(quals[i]);
@@ -823,48 +826,54 @@ void BCFGenotypingBufferedReader::compute_snp_pl(std::vector<int32_t>& alleles, 
     }
 }
 
-/*
 
-void BCFGenotypingBufferedReader::compute_snp_pl(std::vector<int32_t>& alleles, std::vector<uint32_t>& quals, uint32_t ploidy,  std::vector<uint32_t>& pls) {
-    if (ploidy==2)
-    {
-        double pRR = 1;
-        double pRA = 1;
-        double pAA = 1;
-        double p = 0;
 
-        for (uint32_t i=0; i<alleles.size(); ++i)
-        {
-            if (alleles[i]==0)
-            {
-                p = lt.pl2prob(quals[i]);
-                pRR *= 1-p;
-                pRA *= 0.5*(1-p+p/3);
-                pAA *= p;
-            }
-            else if (alleles[i]==1)
-            {
-                p = lt.pl2prob(quals[i])/3;
-                pRR *= p;
-                pRA *= 0.5*(1-p+p/3);
-                pAA *= 1-p;
-            }
-            else if (alleles[i]==-1)
-            {
-                p = lt.pl2prob(quals[i])/3;
-                pRR *= p;
-                pRA *= 0.5*(2*p/3);
-                pAA *= p;
-            }
-        }
+//void BCFGenotypingBufferedReader::compute_snp_pl(std::vector<int32_t>& alleles, std::vector<uint32_t>& quals, uint32_t ploidy,  std::vector<uint32_t>& pls) {
+//    if (ploidy==2)
+//    {
+//        double pRR = 1;
+//        double pRA = 1;
+//        double pAA = 1;
+//        double p = 0;
+//
+//        for (uint32_t i=0; i<alleles.size(); ++i)
+//        {
+//            if (quals[i]==0) continue;
+//            
+//            if (alleles[i]==0)
+//            {
+//                p = lt.pl2prob(quals[i]);
+//                pRR *= 1-p;
+//                pRA *= 0.5*(1-p+p/3);
+//                pAA *= p;
+//            }
+//            else if (alleles[i]==1)
+//            {
+//                p = lt.pl2prob(quals[i])/3;
+//                pRR *= p;
+//                pRA *= 0.5*(1-p+p/3);
+//                pAA *= 1-p;
+//            }
+//            else if (alleles[i]==-1)
+//            {
+//                p = lt.pl2prob(quals[i])/3;
+//                pRR *= p;
+//                pRA *= 0.5*(2*p/3);
+//                pAA *= p;
+//            }
+//            
+////            std::cerr << alleles[i] << " " << quals[i] <<  "\n" ;
+////            std::cerr << "\t" << -10*log10(pRR) << " " << -10*log10(pRA) << " " << -10*log10(pAA) << "\n" ;
+//        }
+//
+////        std::cerr << -10*log10(pRR) << " " << -10*log10(pRA) << " " << -10*log10(pAA) << "\n" ;
+//        pls[0] = -10*log10(pRR);
+//        pls[1] = -10*log10(pRA);
+//        pls[2] = -10*log10(pAA);
+//    }
+//}
 
-        pls[0] = -10*log10(pRR);
-        pls[1] = -10*log10(pRA);
-        pls[2] = -10*log10(pAA);
-    }
-}
 
-*/
 
 
 /**
