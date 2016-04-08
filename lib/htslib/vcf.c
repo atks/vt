@@ -53,6 +53,25 @@ uint32_t bcf_float_vector_end = 0x7F800002;
 uint8_t bcf_type_shift[] = { 0, 0, 1, 2, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 static bcf_idinfo_t bcf_idinfo_def = { .info = { 15, 15, 15 }, .hrec = { NULL, NULL, NULL}, .id = -1 };
 
+static const char *dump_char(char *buffer, char c)
+{
+    switch (c) {
+    case '\n': strcpy(buffer, "\\n"); break;
+    case '\r': strcpy(buffer, "\\r"); break;
+    case '\t': strcpy(buffer, "\\t"); break;
+    case '\'':
+    case '\"':
+    case '\\':
+        sprintf(buffer, "\\%c", c);
+        break;
+    default:
+        if (isprint_c(c)) sprintf(buffer, "%c", c);
+        else sprintf(buffer, "\\x%02X", (unsigned char) c);
+        break;
+    }
+    return buffer;
+}
+
 /*************************
  *** VCF header parser ***
  *************************/
@@ -291,7 +310,7 @@ bcf_hrec_t *bcf_hdr_parse_line(const bcf_hdr_t *h, const char *line, int *len)
     // ##INFO=<ID=PV1,Number=1,Type=Float,Description="P-value for baseQ bias">
     // ##PEDIGREE=<Name_0=G0-ID,Name_1=G1-ID,Name_3=GN-ID>
     int nopen = 1;
-    while ( *q && *q!='\n' && nopen )
+    while ( *q && *q!='\n' && nopen>0 )
     {
         p = ++q;
         while ( *q && *q==' ' ) { p++; q++; }
@@ -321,9 +340,8 @@ bcf_hrec_t *bcf_hdr_parse_line(const bcf_hdr_t *h, const char *line, int *len)
         while ( *q && *q==' ' ) { p++; q++; }
         int quoted = *p=='"' ? 1 : 0;
         if ( quoted ) p++, q++;
-        while (1)
+        while ( *q && *q != '\n' )
         {
-            if ( !*q ) break;
             if ( quoted ) { if ( *q=='"' && !is_escaped(p,q) ) break; }
             else
             {
@@ -334,10 +352,10 @@ bcf_hrec_t *bcf_hdr_parse_line(const bcf_hdr_t *h, const char *line, int *len)
             }
             q++;
         }
-        const char *r = q-1;
-        while ( *r && (*r==' ') ) r--;
-        bcf_hrec_set_val(hrec, hrec->nkeys-1, p, r-p+1, quoted);
-        if ( quoted ) q++;
+        const char *r = q;
+        while ( r > p && r[-1] == ' ' ) r--;
+        bcf_hrec_set_val(hrec, hrec->nkeys-1, p, r-p, quoted);
+        if ( quoted && *q=='"' ) q++;
         if ( *q=='>' ) { nopen--; q++; }
     }
 
@@ -400,7 +418,7 @@ int bcf_hdr_register_hrec(bcf_hdr_t *hdr, bcf_hrec_t *hrec)
         {
             char *tmp = hrec->vals[idx];
             idx = strtol(hrec->vals[idx], &tmp, 10);
-            if ( *tmp )
+            if ( *tmp || idx < 0 )
             {
                 fprintf(stderr,"[%s:%d %s] Error parsing the IDX tag, skipping.\n", __FILE__,__LINE__,__FUNCTION__);
                 return 0;
@@ -433,7 +451,7 @@ int bcf_hdr_register_hrec(bcf_hdr_t *hdr, bcf_hrec_t *hrec)
         {
             char *tmp = hrec->vals[i];
             idx = strtol(hrec->vals[i], &tmp, 10);
-            if ( *tmp )
+            if ( *tmp || idx < 0 )
             {
                 fprintf(stderr,"[%s:%d %s] Error parsing the IDX tag, skipping.\n", __FILE__,__LINE__,__FUNCTION__);
                 return 0;
@@ -583,7 +601,7 @@ void bcf_hdr_check_sanity(bcf_hdr_t *hdr)
     }
     if ( !GL_warned )
     {
-        int id = bcf_hdr_id2int(hdr, BCF_HL_FMT, "GL");
+        int id = bcf_hdr_id2int(hdr, BCF_DT_ID, "GL");
         if ( bcf_hdr_idinfo_exists(hdr,BCF_HL_FMT,id) && bcf_hdr_id2length(hdr,BCF_HL_FMT,id)!=BCF_VL_G )
         {
             if (hts_verbose >= 2) fprintf(stderr,"[W::%s] GL should be declared as Number=G\n", __func__);
@@ -1576,6 +1594,11 @@ static int vcf_parse_format(kstring_t *s, const bcf_hdr_t *h, bcf1_t *v, char *p
             if ( bcf_hdr_add_hrec((bcf_hdr_t*)h, hrec) ) bcf_hdr_sync((bcf_hdr_t*)h);
             k = kh_get(vdict, d, t);
             v->errcode = BCF_ERR_TAG_UNDEF;
+            if (k == kh_end(d)) {
+                fprintf(stderr, "[E::%s] Could not add dummy header for FORMAT '%s'\n", __func__, t);
+                v->errcode |= BCF_ERR_TAG_INVALID;
+                return -1;
+            }
         }
         fmt[j].max_l = fmt[j].max_m = fmt[j].max_g = 0;
         fmt[j].key = kh_val(d, k).id;
@@ -1671,7 +1694,7 @@ static int vcf_parse_format(kstring_t *s, const bcf_hdr_t *h, bcf1_t *v, char *p
         if ( m == bcf_hdr_nsamples(h) ) break;
 
         j = 0; // j-th format field, m-th sample
-        while ( *t )
+        while ( t < end )
         {
             fmt_aux_t *z = &fmt[j];
             if ((z->y>>4&0xf) == BCF_HT_STR) {
@@ -1718,7 +1741,7 @@ static int vcf_parse_format(kstring_t *s, const bcf_hdr_t *h, bcf1_t *v, char *p
                     if ((z->y>>4&0xf) == BCF_HT_STR) {
                         if (z->is_gt) {
                             int32_t *x = (int32_t*)(z->buf + z->size * m);
-                            x[0] = bcf_int32_missing;
+                            if (z->size) x[0] = bcf_int32_missing;
                             for (l = 1; l < z->size>>2; ++l) x[l] = bcf_int32_vector_end;
                         } else {
                             char *x = (char*)z->buf + z->size * m;
@@ -1742,8 +1765,9 @@ static int vcf_parse_format(kstring_t *s, const bcf_hdr_t *h, bcf1_t *v, char *p
                 t++;
             }
             else {
-                fprintf(stderr,"[E::%s] Invalid character '%c' in '%s' FORMAT field at %s:%d\n", __FUNCTION__, isprint_c(*t)? *t : '?', h->id[BCF_DT_ID][z->key].key, bcf_seqname(h,v), v->pos+1);
-                // TODO Set v->errcode appropriately
+                char buffer[8];
+                fprintf(stderr,"[E::%s] Invalid character '%s' in '%s' FORMAT field at %s:%d\n", __FUNCTION__, dump_char(buffer, *t), h->id[BCF_DT_ID][z->key].key, bcf_seqname(h,v), v->pos+1);
+                v->errcode |= BCF_ERR_CHAR;
                 return -1;
             }
         }
@@ -1820,6 +1844,11 @@ int vcf_parse(kstring_t *s, const bcf_hdr_t *h, bcf1_t *v)
                 if ( bcf_hdr_add_hrec((bcf_hdr_t*)h, hrec) ) bcf_hdr_sync((bcf_hdr_t*)h);
                 k = kh_get(vdict, d, p);
                 v->errcode = BCF_ERR_CTG_UNDEF;
+                if (k == kh_end(d)) {
+                    fprintf(stderr, "[E::%s] Could not add dummy header for contig '%s'\n", __func__, p);
+                    v->errcode |= BCF_ERR_CTG_INVALID;
+                    return -1;
+                }
             }
             v->rid = kh_val(d, k).id;
         } else if (i == 1) { // POS
@@ -1873,6 +1902,11 @@ int vcf_parse(kstring_t *s, const bcf_hdr_t *h, bcf1_t *v)
                         if ( bcf_hdr_add_hrec((bcf_hdr_t*)h, hrec) ) bcf_hdr_sync((bcf_hdr_t*)h);
                         k = kh_get(vdict, d, t);
                         v->errcode = BCF_ERR_TAG_UNDEF;
+                        if (k == kh_end(d)) {
+                            fprintf(stderr, "[E::%s] Could not add dummy header for FILTER '%s'\n", __func__, t);
+                            v->errcode |= BCF_ERR_TAG_INVALID;
+                            return -1;
+                        }
                     }
                     a[i++] = kh_val(d, k).id;
                 }
@@ -1910,6 +1944,11 @@ int vcf_parse(kstring_t *s, const bcf_hdr_t *h, bcf1_t *v)
                         if ( bcf_hdr_add_hrec((bcf_hdr_t*)h, hrec) ) bcf_hdr_sync((bcf_hdr_t*)h);
                         k = kh_get(vdict, d, key);
                         v->errcode = BCF_ERR_TAG_UNDEF;
+                        if (k == kh_end(d)) {
+                            fprintf(stderr, "[E::%s] Could not add dummy header for INFO '%s'\n", __func__, key);
+                            v->errcode |= BCF_ERR_TAG_INVALID;
+                            return -1;
+                        }
                     }
                     uint32_t y = kh_val(d, k).info[BCF_HL_INFO];
                     ++v->n_info;

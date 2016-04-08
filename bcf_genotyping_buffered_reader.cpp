@@ -1355,6 +1355,10 @@ void BCFGenotypingBufferedReader::compute_snp_pl(std::vector<int32_t>& alleles, 
 //        pls[1] = -10*log10(pRA);
 //        pls[2] = -10*log10(pAA);
 
+//      note, the log space calculations are used as 
+//      there appears to be some underflow issues in 
+//      some cases of per iteration normalization.
+//      todo: figure out why exactly ...
 
         double pRR = 0;
         double pRA = 0;

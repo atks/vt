@@ -29,7 +29,7 @@
 VNTRConsolidator::VNTRConsolidator(std::string& input_vcf_file, std::vector<GenomeInterval>& intervals, std::string& output_vcf_file, std::string& ref_fasta_file)
 {
     //////////////////////
-    //i/o initialization// 
+    //i/o initialization//
     //////////////////////
     this->input_vcf_file = input_vcf_file;
     this->output_vcf_file = output_vcf_file;
@@ -285,117 +285,7 @@ bool VNTRConsolidator::consolidate_multiple_overlapping_vntrs(Variant* variant)
 
         bcf1_t* vntr_v = variant->v;
 
-        char* motif = NULL;
-        int32_t n_motif = 0;
-        float* fuzzy_concordance = NULL;
-        int32_t n_fuzzy_concordance = 0;
-        int32_t* flanks = NULL;
-        int32_t n_flanks = 0;
-        int32_t* fuzzy_flanks = NULL;
-        int32_t n_fuzzy_flanks = 0;
-        if (bcf_get_info_string(odr->hdr, vntr_v, "MOTIF", &motif, &n_motif)>0 &&
-            bcf_get_info_float(odr->hdr, vntr_v, "FZ_CONCORDANCE", &fuzzy_concordance, &n_fuzzy_concordance)>0 &&
-            bcf_get_info_int32(odr->hdr, vntr_v, "FLANKS", &flanks, &n_flanks)>0 &&
-            bcf_get_info_int32(odr->hdr, vntr_v, "FZ_FLANKS", &fuzzy_flanks, &n_fuzzy_flanks)>0)
 
-        {
-//                std::cerr << "1" << ") " << motif << "\t" << fuzzy_concordance[0] << "\t" << fuzzy_flanks[0] << "," << fuzzy_flanks[1] << "\n";
-//                std::cerr << "\t" << bcf_get_ref(variant->v) << "\n";
-
-
-            if (flanks[0]==fuzzy_flanks[0]  &&
-                flanks[1]==fuzzy_flanks[1])
-            {
-                ++no_isolated_exact_vntrs;
-
-                if (fuzzy_concordance[0]==1)
-                {
-                    ++no_perfect_concordance_isolated_exact_vntrs;
-                }
-                else
-                {
-//                        std::cerr  << "################\n";
-//                        std::cerr  << "#1 isolated VNTR\n";
-//                        std::cerr  << "################\n";
-//                        std::cerr << "no overlapping SNPs   " << variant->no_overlapping_snps << "\n";
-//                        std::cerr << "no overlapping Indels " << variant->no_overlapping_indels << "\n";
-//                        std::cerr << "no overlapping VNTRs  " << variant->no_overlapping_vntrs << "\n";
-//                        std::cerr << "consolidating: " << variant->vs.size() << " alleles\n";
-
-//                        bcf_print(odw->hdr, variant->v);
-
-//                        std::cerr << "1" << ") " << motif << "\t" << fuzzy_concordance[0] << "\t" << flanks[0] << "," << flanks[1] << "\t" << fuzzy_flanks[0] << "," << fuzzy_flanks[1] << "\n";
-//                        std::cerr << "\t" << bcf_get_ref(variant->v) << "\n";
-
-                    ///////////////////////////////////////////////////////////////
-                    //large deletions OR repeat tract contains inexact repeat units
-                    ///////////////////////////////////////////////////////////////
-
-//TTTG and TTA sandwiches a perfect 4 copies of TTGTTGTTGTTG
-//20    48231646    .   TTTGTTGTTGTTGTTGTTA T   .   .   NSAMPLES=1;E=10;N=16;ESUM=10;NSUM=16;FLANKS=48231646,48231678;FZ_FLANKS=48231646,48231678;FLANKSEQ=TTTGATTGGT[TTGTTGTTGTTGTTGTTATTGTTGTTGTTGT]CGTCATTGTT;GMOTIF=GTT;TR=20:48231647:TTGTTGTTGTTGTTGTTATTGTTGTTGTTGT:<VNTR>:GTT
-//20    48231647    .   TTGTTGTTGTTGTTGTTATTGTTGTTGTTGT <VNTR>  .   .   MOTIF=GTT;RU=TTG;FUZZY;FZ_CONCORDANCE=0.969697;FZ_RL=31;FZ_LL=0;FLANKS=48231646,48231678;FZ_FLANKS=48231646,48231678;FZ_RU_COUNTS=10,11;FLANKSEQ=TTTGATTGGT[TTGTTGTTGTTGTTGTTATTGTTGTTGTTGT]CGTCATTGTT
-
-//2 copies of TTTTAG sandwiches a TTAAC.  i.e. TTTTAG[TTAAC]TTTTAG
-//20    10546879    .   GTTTTAGTTAAC    G   .   .   NSAMPLES=1;E=21;N=48;ESUM=21;NSUM=48;FLANKS=10546879,10546897;FZ_FLANKS=10546879,10546897;FLANKSEQ=ATTGCCATTG[TTTTAGTTAACTTTTAG]CACTGGGTAT;GMOTIF=AGTTTT;TR=20:10546880:TTTTAGTTAACTTTTAG:<VNTR>:AGTTTT
-//20    10546880    .   TTTTAGTTAACTTTTAG   <VNTR>  .   .   MOTIF=AGTTTT;RU=TTTTAG;FUZZY;FZ_CONCORDANCE=0.833333;FZ_RL=17;FZ_LL=0;FLANKS=10546879,10546897;FZ_FLANKS=10546879,10546897;FZ_RU_COUNTS=2,3;FLANKSEQ=ATTGCCATTG[TTTTAGTTAACTTTTAG]CACTGGGTAT
-
-                    ++no_imperfect_concordance_isolated_exact_vntrs;
-                }
-
-//                    odw->write(variant->v);
-//                    variant->v = NULL;
-//                    delete variant;
-//                    variant_buffer.pop_back();
-            }
-            else
-            {
-                //complete overlap
-                //most should have imperfect concordance
-                //those that have perfect concordance implies that the alternate allele resulted in a imperfect VNTR
-                if (flanks[0]>=fuzzy_flanks[0]  &&
-                    flanks[1]<=fuzzy_flanks[1])
-                {
-//                        std::cerr << "1" << ") " << motif << "\t" << fuzzy_concordance[0] << "\t" << flanks[0] << "," << flanks[1] << "\t" << fuzzy_flanks[0] << "," << fuzzy_flanks[1] << "\n";
-//                        std::cerr << "\t" << impurity << "\t" << bcf_get_ref(variant->v) << "\n";
-                   ++no_isolated_complete_overlap_vntrs;
-                }
-                //partial overlaps
-                //these are induced possibly by errors at the boundary of VNTRs
-                //
-                //
-                else if (flanks[0]<=fuzzy_flanks[1]  &&
-                         flanks[1]>=fuzzy_flanks[0])
-                {
-//                      std::cerr << "1" << ") " << motif << "\t" << fuzzy_concordance[0] << "\t" << flanks[0] << "," << flanks[1] << "\t" << fuzzy_flanks[0] << "," << fuzzy_flanks[1] << "\n";
-//                      std::cerr << "\t" << impurity << "\t" << bcf_get_ref(variant->v) << "\n";
-                    ++no_isolated_partial_overlap_vntrs;
-                }
-                else
-                {
-//                      std::cerr << "1" << ") " << motif << "\t" << fuzzy_concordance[0] << "\t" << flanks[0] << "," << flanks[1] << "\t" << fuzzy_flanks[0] << "," << fuzzy_flanks[1] << "\n";
-//                      std::cerr << "\t" << impurity << "\t" << bcf_get_ref(variant->v) << "\n";
-                    ++no_isolated_no_overlap_vntrs;
-                }
-
-                if (fuzzy_concordance[0]==1)
-                {
-                    ++no_perfect_concordance_isolated_inexact_vntrs;
-                }
-                else
-                {
-                    ++no_imperfect_concordance_isolated_inexact_vntrs;
-                }
-
-                ++no_perfect_concordance_isolated_inexact_vntrs;
-
-                ++no_isolated_inexact_vntrs;
-            }
-
-            free(motif);
-            free(fuzzy_concordance);
-            free(flanks);
-            free(fuzzy_flanks);
-        }
     }
     else if (variant->no_overlapping_vntrs >= 1)
     {
@@ -432,8 +322,8 @@ bool VNTRConsolidator::detect_consistent_motifs(Variant* variant)
         std::map<std::string, int32_t> basis_map;
         std::map<std::string, int32_t>::iterator it;
 
-        int32_t merged_beg1 = vntr.fuzzy_beg1+1;
-        int32_t merged_end1 = vntr.fuzzy_end1-1;
+        int32_t merged_beg1 = vntr.beg1;
+        int32_t merged_end1 = vntr.end1;
 
         std::map<std::string, int32_t> motifs;
 
@@ -445,39 +335,20 @@ bool VNTRConsolidator::detect_consistent_motifs(Variant* variant)
             bcf1_t* vntr_v = variant->vntr_vs[i];
             std::string cbasis = vntr.basis;
 
-            if (true)
-            {
-                char* motif = NULL;
-                int32_t n_motif = 0;
-                float* fuzzy_concordance = NULL;
-                int32_t n_fuzzy_concordance = 0;
-                int32_t* flanks = NULL;
-                int32_t n_flanks = 0;
-                int32_t* fuzzy_flanks = NULL;
-                int32_t n_fuzzy_flanks = 0;
+            std::string motif = bcf_get_info_str(odr->hdr, vntr_v, "MOTIF");;
+            float concordance = bcf_get_info_flt(odr->hdr, vntr_v, "CONCORDANCE");
+            std::vector<int32_t> repeat_tract = bcf_get_info_int_vec(odr->hdr, vntr_v, "REPEAT_TRACT");
 
-                if (bcf_get_info_string(odr->hdr, vntr_v, "MOTIF", &motif, &n_motif)>0 &&
-                    bcf_get_info_float(odr->hdr, vntr_v, "FZ_CONCORDANCE", &fuzzy_concordance, &n_fuzzy_concordance)>0 &&
-                    bcf_get_info_int32(odr->hdr, vntr_v, "FLANKS", &flanks, &n_flanks)>0 &&
-                    bcf_get_info_int32(odr->hdr, vntr_v, "FZ_FLANKS", &fuzzy_flanks, &n_fuzzy_flanks)>0)
-                {
-                    cbasis = vntr.get_basis(motif, n_motif);
-                    std::cerr << (i+1) << ") " << motif << " (" << cbasis << ")\t" << fuzzy_concordance[0] << "\t" << flanks[0] << "," << flanks[1] << "\t" << fuzzy_flanks[0] << "," << fuzzy_flanks[1] << "\n";
-                    std::cerr << "\t" << bcf_get_ref(vntr_v) << "\n";
-//                    bcf_print(odw->hdr, vntr_v);
+            cbasis = vntr.get_basis(motif);
+            std::cerr << (i+1) << ") " << motif << " (" << cbasis << ")\t" << concordance << "\t" << repeat_tract[0] << "," << repeat_tract[1] << "\t" << "\n";
+            std::cerr << "\t" << bcf_get_ref(vntr_v) << "\n";
+            bcf_print(odw->hdr, vntr_v);
 
-                    merged_beg1 = std::min(merged_beg1, fuzzy_flanks[0]+1);
-                    merged_end1 = std::max(merged_end1, fuzzy_flanks[1]-1);
+            merged_beg1 = std::min(merged_beg1, repeat_tract[0]);
+            merged_end1 = std::max(merged_end1, repeat_tract[1]);
 
-                    std::string current_motif(motif);
-                    motifs[current_motif] = 1;
-                }
-                else
-                {
-                    merged_beg1 = std::min(merged_beg1, (int32_t) bcf_get_pos1(vntr_v));
-                    merged_end1 = std::max(merged_end1, (int32_t) bcf_get_end1(vntr_v));
-                }
-            }
+            std::string current_motif(motif);
+            motifs[current_motif] = 1;
 
             if ((it = basis_map.find(cbasis)) != basis_map.end())
             {
@@ -515,13 +386,13 @@ bool VNTRConsolidator::detect_consistent_motifs(Variant* variant)
             std::string repeat_tract;
             refseq->fetch_seq(variant->chrom.c_str(), merged_beg1, merged_end1, repeat_tract);
 
-            std::cerr << "\n";
-            std::cerr << "\n";
-            std::cerr << "\n";
-            std::cerr << "merged VNTR\n";
-
-            bcf_print(odw->hdr, new_v);
-            std::cerr << "newly merged ref " << variant->chrom << ":" << merged_beg1 << "-" << merged_end1 << " " << repeat_tract << "\n";
+//            std::cerr << "\n";
+//            std::cerr << "\n";
+//            std::cerr << "\n";
+//            std::cerr << "merged VNTR\n";
+//
+//            bcf_print(odw->hdr, new_v);
+//            std::cerr << "newly merged ref " << variant->chrom << ":" << merged_beg1 << "-" << merged_end1 << " " << repeat_tract << "\n";
 
             //collect motifs from overlpaping records
             std::string best_motif = "";
@@ -539,10 +410,11 @@ bool VNTRConsolidator::detect_consistent_motifs(Variant* variant)
                 }
             }
 
-            fd->polish_repeat_tract_ends(repeat_tract, best_motif, true);
+//            fd->polish_repeat_tract_ends(repeat_tract, best_motif, true);
+
 
             //recompute conconcordance with polished tract
-            fd->compute_purity_score(fd->polished_repeat_tract, best_motif);
+//            fd->compute_purity_score(fd->polished_repeat_tract, best_motif);
 
             //VNTR position and sequences
             bcf_set_pos1(new_v, merged_beg1+fd->min_beg0);
@@ -559,10 +431,10 @@ bool VNTRConsolidator::detect_consistent_motifs(Variant* variant)
             bcf_update_info_string(odw->hdr, new_v, "RU", fd->ru.c_str());
 
             //VNTR characteristics
-            bcf_update_info_float(odw->hdr, new_v, "FZ_CONCORDANCE", &fd->score , 1);
-            bcf_update_info_float(odw->hdr, new_v, "FZ_RL", &fd->rl, 1);
+            bcf_update_info_float(odw->hdr, new_v, "CONCORDANCE", &fd->score , 1);
+            bcf_update_info_float(odw->hdr, new_v, "RL", &fd->rl, 1);
             int32_t new_fuzzy_flanks[2] = {merged_beg1+fd->min_beg0-1, merged_beg1+fd->min_beg0+(int32_t)fd->polished_repeat_tract.size()};
-            bcf_update_info_int32(odw->hdr, new_v, "FZ_FLANKS", &new_fuzzy_flanks, 2);
+            bcf_update_info_int32(odw->hdr, new_v, "FLANKS", &new_fuzzy_flanks, 2);
 
 //            //flank positions
 //            int32_t fuzzy_flank_pos1[2] = {vntr.fuzzy_beg1-1, vntr.fuzzy_end1+1};
