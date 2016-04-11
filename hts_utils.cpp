@@ -1178,3 +1178,11 @@ float bcf_get_info_flt(bcf_hdr_t *h, bcf1_t *v, const char* tag, float default_v
     
     return f;    
 }
+
+/**
+ * Sets an info float.
+ */
+int32_t bcf_set_info_flt(bcf_hdr_t *h, bcf1_t *v, const char* tag, float value)
+{
+    return bcf_update_info_float(h, v, tag, &value, 1);
+}

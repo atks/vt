@@ -472,6 +472,11 @@ std::vector<int32_t> bcf_get_info_int_vec(bcf_hdr_t *h, bcf1_t *v, const char* t
 float bcf_get_info_flt(bcf_hdr_t *h, bcf1_t *v, const char* tag, float default_value = 0);
 
 /**
+ * Sets an info float.
+ */
+int32_t bcf_set_info_flt(bcf_hdr_t *h, bcf1_t *v, const char* tag, float value);
+
+/**
  * Get allele
  */
 #define bcf_get_allele(v) ((v)->d.allele)

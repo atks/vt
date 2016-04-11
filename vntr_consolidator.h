@@ -38,8 +38,8 @@
  */
 typedef struct
 {
-    std::string basis; 
-    float proportion; 
+    std::string basis;
+    float proportion;
 } basis_proportion;
 
 /**
@@ -96,48 +96,41 @@ class VNTRConsolidator
     int32_t no_indels;
     int32_t no_vntrs;
     int32_t no_other_variants;
-    
+
     int32_t no_total_variants;
     int32_t no_overlap_vntrs;
     std::vector<int32_t> overlapping_vntr_hist;
     int32_t no_dropped_vntrs;
 
-    //exactness refers to purity of sequence
-    //exact   - concordance is 1
-    //inexact - concordance is <1
+    //vntrs that do not overlap with any other vntrs
+    int32_t no_isolated_vntrs;
 
-    //isolate is a relative measure and refers to a VNTR that does not overlap with any other detected VNTR.
-    //isolated  - does not overlap with another VNTR
-    //clustered - overlaps with other VNTRs
-    int32_t no_isolated_exact_vntrs;
-    int32_t no_perfect_concordance_isolated_exact_vntrs;
-    int32_t no_imperfect_concordance_isolated_exact_vntrs;
-    int32_t no_perfect_concordance_isolated_inexact_vntrs;
-    int32_t no_imperfect_concordance_isolated_inexact_vntrs;
-    int32_t no_isolated_inexact_vntrs;
-    int32_t no_isolated_complete_overlap_vntrs;
-    int32_t no_isolated_incomplete_overlap_vntrs;
-    int32_t no_isolated_partial_overlap_vntrs;
-    int32_t no_isolated_no_overlap_vntrs;
+    //vntrs that overlap but have consistent repeat units
+    int32_t no_clustered_consistent_ru_vntrs;
+    int32_t no_merged_consistent_ru_vntrs;
 
-    int32_t no_clustered_exact_vntrs;
-    int32_t no_clustered_inexact_vntrs;
+    //vntrs that overlap but have consistent bases
+    int32_t no_clustered_consistent_basis_vntrs;
+    int32_t no_merged_consistent_basis_vntrs;
+
+    //vntrs that overlap but have inconsistent repeat units and bases
+    int32_t no_clustered_inconsistent_ru_basis_vntrs;
 
     //for storing basis information
     std::priority_queue<basis_proportion, std::vector<basis_proportion>, CompareBasisProportion> ordered_basis;
-    
+
     ///////
     //tools
     ///////
     ReferenceSequence *refseq;
     CandidateMotifPicker* cmp;
     FlankDetector* fd;
-    
+
     /**
      * Constructor.
      */
-    VNTRConsolidator(std::string& input_vcf_file, std::vector<GenomeInterval>& intervals, std::string& output_vcf_file, std::string& ref_fasta_file);    
-    
+    VNTRConsolidator(std::string& input_vcf_file, std::vector<GenomeInterval>& intervals, std::string& output_vcf_file, std::string& ref_fasta_file, bool debug=false);
+
     /**
      * Update distribution of overlapping VNTRs
      */
@@ -166,11 +159,21 @@ class VNTRConsolidator
      * returns true if the multiallelic variant is good to go.
      */
     bool consolidate_multiple_overlapping_vntrs(Variant* variant);
-  
+
     /**
-     * Detects a a consistent basis motif in a chain of overlapping VNTRs.
+     * Detects VNTR overlapping class.
      */
-    bool detect_consistent_motifs(Variant* variant);
+    void detect_VNTR_overlapping_class(Variant* variant, bool& consistent_repeat_units, bool& consistent_bases);
+
+    /**
+     * Merge overlapping VNTRs with a consistent repeat unit.
+     */
+    void merge_consistent_ru_overlapping_VNTR(Variant* variant);
+
+    /**
+     * Merge overlapping VNTRs with a consistent basis.
+     */
+    void merge_consistent_basis_overlapping_VNTR(Variant* variant);
     
     /**.
      * Flush variant buffer.
@@ -181,7 +184,7 @@ class VNTRConsolidator
      * Close.
      */
     void close();
-    
+
     private:
 };
 

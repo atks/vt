@@ -90,7 +90,7 @@ class Igor : Program
         ////////////////////////
         //tools initialization//
         ////////////////////////
-        vc = new VNTRConsolidator(input_vcf_file, intervals, output_vcf_file, ref_fasta_file);
+        vc = new VNTRConsolidator(input_vcf_file, intervals, output_vcf_file, ref_fasta_file, debug);
         vm = new VariantManip();
     }
 
@@ -131,27 +131,13 @@ class Igor : Program
         std::clog << "       No. of Indels               " << vc->no_indels << "\n";
         std::clog << "       No. of VNTRs                " << vc->no_vntrs << "\n";
         std::clog << "       No. of other variant types  " << vc->no_other_variants << "\n";
-        
         std::clog << "\n";
-        std::clog << "       Number of isolated exact VNTRs      " << vc->no_isolated_exact_vntrs << "\n";
-        std::clog << "                     perfect concordance   " << vc->no_perfect_concordance_isolated_exact_vntrs << "\n";
-        std::clog << "                     imperfect concordance " << vc->no_imperfect_concordance_isolated_exact_vntrs << "\n";
-        std::clog << "       Number of isolated inexact VNTRs    " << vc->no_isolated_inexact_vntrs << "\n";
-        std::clog << "                     complete overlaps     " << vc->no_isolated_complete_overlap_vntrs << "\n";
-        std::clog << "                     partial overlaps      " << vc->no_isolated_partial_overlap_vntrs << "\n";
-        std::clog << "                     no overlaps           " << vc->no_isolated_no_overlap_vntrs << "\n";
-        std::clog << "       Number of clustered exact VNTRs     " << vc->no_clustered_exact_vntrs << "\n";
+        std::clog << "       No. of isolated VNTRs           " << vc->no_isolated_vntrs << "\n";
+        std::clog << "       No. of clustered VNTRs\n";
+        std::clog << "            consistent RUs             " << vc->no_clustered_consistent_ru_vntrs << " (" << vc->no_merged_consistent_ru_vntrs << ")\n";
+        std::clog << "            consistent bases           " << vc->no_clustered_consistent_basis_vntrs << " (" << vc->no_merged_consistent_basis_vntrs << ")\n";
+        std::clog << "            inconsistent RUs and bases " << vc->no_clustered_inconsistent_ru_basis_vntrs << "\n";
 
-        for (uint32_t i=0; i<vc->overlapping_vntr_hist.size(); ++i)
-        {
-            if (vc->overlapping_vntr_hist[i])
-            {
-                std::clog << "       " << i << "    "  << vc->overlapping_vntr_hist[i] << "\n";
-            }
-        }
-
-
-        std::clog << "       Number of clustered inexact VNTRs   " << vc->no_clustered_inexact_vntrs << "\n";
         std::clog << "\n";
     };
 
