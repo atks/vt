@@ -53,6 +53,11 @@ void split(std::vector<std::string>& vec, const char* delims, const char* str, u
 std::string join(std::vector<std::string>& vec, std::string delim);
 
 /**
+ * Joins a map with with string keys into a string - PERL style
+ */
+std::string join(std::map<std::string, int32_t>& map, std::string delim);
+
+/**
  * Casts a string into int32.  Returns true if successful.
  */
 bool str2int32(std::string& s, int32_t& i);

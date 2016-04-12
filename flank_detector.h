@@ -168,12 +168,12 @@ class FlankDetector
     void compute_purity_score(std::string& repeat_tract, std::string& motif);
     
     /**
-    * Computes composition and entropy ofrepeat tract.
+    * Computes composition and entropy of repeat tract.
     */
     void compute_composition_and_entropy(Variant& variant, int32_t amode);
 
     /**
-     * Computes composition and entropy ofrepeat tract.
+     * Computes composition and entropy of repeat tract.
      */
     void compute_composition_and_entropy(std::string& repeat_tract);
 };

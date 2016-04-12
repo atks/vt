@@ -133,6 +133,23 @@ std::string join(std::vector<std::string>& vec, std::string delim)
 }
 
 /**
+ * Joins a map with with string keys into a string - PERL style
+ */
+std::string join(std::map<std::string, int32_t>& map, std::string delim)
+{
+    std::map<std::string, int32_t>::iterator i=map.begin();
+    std::string s;
+    while (i!=map.end())
+    {
+        if (i!=map.begin()) s += delim;
+        s += i->first;
+        ++i;
+    }
+    
+    return s;
+}
+
+/**
  * Casts a string into int32.  Returns true if successful.
  */
 bool str2int32(std::string& s, int32_t& i)

@@ -1138,6 +1138,22 @@ int32_t bcf_get_info_int(bcf_hdr_t *h, bcf1_t *v, const char* tag, int32_t defau
 }
 
 /**
+ * Sets an info integer.
+ */
+int32_t bcf_set_info_int(bcf_hdr_t *h, bcf1_t *v, const char* tag, int32_t value)
+{
+    return bcf_update_info_int32(h, v, tag, &value, 1);
+}
+
+/**
+ * Sets an info integer vector.
+ */
+int32_t bcf_set_info_int(bcf_hdr_t *h, bcf1_t *v, const char* tag, std::vector<int32_t>& values)
+{
+    return bcf_update_info_int32(h, v, tag, &values[0], values.size());
+}
+
+/**
  * Gets an info int vector.
  */
 std::vector<int32_t> bcf_get_info_int_vec(bcf_hdr_t *h, bcf1_t *v, const char* tag, int32_t default_size, int32_t default_value)

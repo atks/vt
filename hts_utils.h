@@ -462,6 +462,16 @@ std::string bcf_get_info_str(bcf_hdr_t *h, bcf1_t *v, const char* tag, std::stri
 int32_t bcf_get_info_int(bcf_hdr_t *h, bcf1_t *v, const char* tag, int32_t default_value = 0);
 
 /**
+ * Sets an info integer.
+ */
+int32_t bcf_set_info_int(bcf_hdr_t *h, bcf1_t *v, const char* tag, int32_t value);
+
+/**
+ * Sets an info integer vector.
+ */
+int32_t bcf_set_info_int(bcf_hdr_t *h, bcf1_t *v, const char* tag, std::vector<int32_t>& values);
+
+/**
  * Gets an info int vector.
  */
 std::vector<int32_t> bcf_get_info_int_vec(bcf_hdr_t *h, bcf1_t *v, const char* tag, int32_t default_size=0, int32_t default_value=0);
