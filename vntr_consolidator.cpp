@@ -199,11 +199,13 @@ void VNTRConsolidator::flush_variant_buffer(Variant* var)
             {
                 if (consolidate_multiple_overlapping_vntrs(variant))
                 {
-                    odw->write(variant->v);
-                    variant->v = NULL;
-                    delete variant;
-                    variant_buffer.pop_back();
+                    
                 }
+                
+                odw->write(variant->v);
+                variant->v = NULL;
+                delete variant;
+                variant_buffer.pop_back();
             }
             else
             {
@@ -221,13 +223,11 @@ void VNTRConsolidator::flush_variant_buffer(Variant* var)
                 {
                     if (consolidate_multiple_overlapping_vntrs(variant))
                     {
-
-
+                        odw->write(variant->v);
+                        variant->v = NULL;
+                        delete variant;
+                        variant_buffer.pop_back();
                     }
-
-                    delete variant;
-                    variant_buffer.pop_back();
-
                 }
                 else
                 {
@@ -260,24 +260,20 @@ bool VNTRConsolidator::consolidate_multiple_overlapping_vntrs(Variant* variant)
 
     if (variant->no_overlapping_vntrs==0)
     {
-
-//            std::cerr  << "################\n";
-//            std::cerr  << "#1 isolated VNTR\n";
-//            std::cerr  << "################\n";
-//            std::cerr << "no overlapping SNPs   " << variant->no_overlapping_snps << "\n";
-//            std::cerr << "no overlapping Indels " << variant->no_overlapping_indels << "\n";
-//            std::cerr << "no overlapping VNTRs  " << variant->no_overlapping_vntrs << "\n";
-//            std::cerr << "consolidating: " << variant->vs.size() << " alleles\n";
-
+        if (debug)
+        {    
+            std::cerr  << "################\n";
+            std::cerr  << "#1 isolated VNTR\n";
+            std::cerr  << "################\n";
+            std::cerr << "no overlapping SNPs   " << variant->no_overlapping_snps << "\n";
+            std::cerr << "no overlapping Indels " << variant->no_overlapping_indels << "\n";
+            std::cerr << "no overlapping VNTRs  " << variant->no_overlapping_vntrs << "\n";
+            std::cerr << "consolidating: " << variant->vs.size() << " alleles\n";
+        }
 
         ++no_isolated_vntrs;
-
-//                bcf_print(odw->hdr, variant->v);
-
-
-        bcf1_t* vntr_v = variant->v;
-
-
+        
+        return true;
     }
     else if (variant->no_overlapping_vntrs>=1)
     {
@@ -300,25 +296,23 @@ bool VNTRConsolidator::consolidate_multiple_overlapping_vntrs(Variant* variant)
         if (consistent_repeat_units)
         {
             merge_consistent_ru_overlapping_VNTR(variant);
-
-
             no_clustered_consistent_ru_vntrs += variant->no_overlapping_vntrs + 1;
             ++no_merged_consistent_ru_vntrs;
-
+            return true;
         }
         else if (consistent_bases)
         {
             no_clustered_consistent_basis_vntrs += variant->no_overlapping_vntrs + 1;
             ++no_merged_consistent_basis_vntrs;
+            return true;
         }
         else
         {
             no_clustered_inconsistent_ru_basis_vntrs += variant->no_overlapping_vntrs + 1;
+            return false;
         }
-
-        return false;
     }
-
+    
     return false;
 }
 
@@ -409,12 +403,14 @@ void VNTRConsolidator::merge_consistent_ru_overlapping_VNTR(Variant* variant)
     int32_t merged_end1 = vntr.end1;
     std::map<std::string, int32_t> unique_indels;
     std::vector<std::string> splitted_indels;
+    int32_t max_dlen = 0;
+    
     //merge the regions
     for (uint32_t i=0; i<variant->vntr_vs.size(); ++i)
     {
         bcf1_t* vntr_v = variant->vntr_vs[i];
         std::vector<int32_t> repeat_tract = bcf_get_info_int_vec(odr->hdr, vntr_v, "REPEAT_TRACT");
-
+        
         if (debug)
         {
             std::string ru = bcf_get_info_str(odr->hdr, vntr_v, "RU");;
@@ -434,6 +430,10 @@ void VNTRConsolidator::merge_consistent_ru_overlapping_VNTR(Variant* variant)
         for (uint32_t j=0; j<splitted_indels.size(); ++j)
         {
             unique_indels[splitted_indels[j]] = 1;
+        
+            std::vector<std::string> vcomp;
+            split(vcomp, ":/", splitted_indels[j]);
+            max_dlen = vcomp[3].size()>vcomp[2].size() ? vcomp[3].size()-vcomp[2].size() : max_dlen;
         }
     }
 
@@ -465,8 +465,6 @@ void VNTRConsolidator::merge_consistent_ru_overlapping_VNTR(Variant* variant)
 //    std::cerr << "entropy2       : " << fd->entropy2 << "\n";
 //    std::cerr << "kl_divergence2 : " << fd->kl_divergence2 << "\n";
 
-//    //VNTR position and sequences
-    
     bcf1_t *v = variant->v;
     bcf_set_pos1(v, merged_beg1);
     kstring_t s = {0,0,0};
@@ -483,28 +481,25 @@ void VNTRConsolidator::merge_consistent_ru_overlapping_VNTR(Variant* variant)
     std::string basis = vntr.get_basis(fd->ru);
     bcf_update_info_string(h, v, "BASIS", basis.c_str());
     bcf_update_info_string(h, v, "RU", fd->ru.c_str());
-    bcf_set_info_flt(h, v, "SCORE", fd->score);
-    bcf_set_info_int(h, v, "RL", fd->rl);
-    bcf_set_info_int(h, v, "TRF_SCORE", fd->trf_score);
-
-    bcf_update_info_float(h, v, "COMP", &fd->comp[0], 4);
+    bcf_set_info_int(h, v, "MLEN", motif.size());
+    bcf_set_info_int(h, v, "BLEN", basis.size());
+    std::vector<int32_t> repeat_tract = {merged_beg1, merged_end1};
+    bcf_set_info_int(h, v, "REPEAT_TRACT", repeat_tract);
+    bcf_update_info_int32(h, v, "COMP", &fd->comp[0], 4);
     bcf_set_info_flt(h, v, "ENTROPY", fd->entropy);
     bcf_set_info_flt(h, v, "KL_DIVERGENCE", fd->kl_divergence);
     bcf_set_info_flt(h, v, "ENTROPY2", fd->entropy);
     bcf_set_info_flt(h, v, "KL_DIVERGENCE2", fd->kl_divergence);
-
+    bcf_set_info_int(h, v, "RL", fd->rl);
+    bcf_set_info_int(h, v, "LL", fd->rl+max_dlen);
+    std::vector<int32_t> ru_counts = {fd->no_perfect_ru, fd->no_ru};
+    bcf_set_info_int(h, v, "RU_COUNTS", ru_counts);
+    bcf_set_info_flt(h, v, "SCORE", fd->score);
+    bcf_set_info_int(h, v, "TRF_SCORE", fd->trf_score);
     std::string associated_indels = join(unique_indels, ",");
     bcf_update_info_string(h, v, "ASSOCIATED_INDEL", associated_indels.c_str());
-    std::vector<int32_t> repeat_tract = {merged_beg1, merged_end1};
-    std::cerr << repeat_tract[0] << "," << repeat_tract[1] << "\n";    
-        
-    bcf_set_info_int(h, v, "REPEAT_TRACT", repeat_tract);
-
-
-//END=15620677;MOTIF=AG;BASIS=AG;RU=AG;MLEN=2;BLEN=2;REPEAT_TRACT=15620555,15620677;COMP=49,1,47,3;ENTROPY=1.23;ENTROPY2=2.32;KL_DIVERGENCE=0.77;KL_DIVERGENCE2=1.68;RL=123;LL=123;RU_COUNTS=36,62;SCORE=0.77;TRF_SCORE=10;ASSOCIATED_INDEL=20:15620556:GAGA/G
-
-
-      bcf_print(h, v);
+    
+//    bcf_print(h, v);
 }
 
 /**
