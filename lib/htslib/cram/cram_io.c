@@ -1249,6 +1249,15 @@ int cram_compress_block(cram_fd *fd, cram_block *b, cram_metrics *metrics,
     size_t comp_size = 0;
     int strat;
 
+    if (b->method != RAW) {
+        // Maybe already compressed if s->block[0] was compressed and
+        // we have e.g. s->block[DS_BA] set to s->block[0] due to only
+        // one base type present and hence using E_HUFFMAN on block 0.
+        // A second explicit attempt to compress the same block then
+        // occurs.
+        return 0;
+    }
+
     if (method == -1) {
 	method = 1<<GZIP;
 	if (fd->use_bz2)
@@ -2329,6 +2338,28 @@ static int cram_populate_ref(cram_fd *fd, int id, ref_entry *r) {
 
 	    // Not fatal - we have the data already so keep going.
 	    return 0;
+	}
+
+	// Check md5sum
+	hts_md5_context *md5;
+	char unsigned md5_buf1[16];
+	char md5_buf2[33];
+
+	if (!(md5 = hts_md5_init())) {
+	    unlink(path_tmp);
+	    fclose(fp);
+	    return -1;
+	}
+	hts_md5_update(md5, r->seq, r->length);
+	hts_md5_final(md5_buf1, md5);
+	hts_md5_destroy(md5);
+	hts_md5_hex(md5_buf2, md5_buf1);
+
+	if (strncmp(tag->str+3, md5_buf2, 32) != 0) {
+	    fprintf(stderr, "[E::%s] mismatching md5sum for downloaded reference.\n", __func__);
+	    unlink(path_tmp);
+	    fclose(fp);
+	    return -1;
 	}
 
 	if (r->length != fwrite(r->seq, 1, r->length, fp)) {

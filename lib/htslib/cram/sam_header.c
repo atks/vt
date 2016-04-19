@@ -332,7 +332,7 @@ int sam_hdr_add_lines(SAM_hdr *sh, const char *lines, int len) {
 	    SAM_hdr_type *t = kh_val(sh->h, k), *p;
 	    p = t->prev;
 	    
-	    assert(p->next = t);
+	    assert(p->next == t);
 	    p->next = h_type;
 	    h_type->prev = p;
 
@@ -426,16 +426,19 @@ int sam_hdr_add(SAM_hdr *sh, const char *type, ...) {
     return sam_hdr_vadd(sh, type, args, NULL);
 }
 
+/* 
+ * sam_hdr_add with a va_list interface.
+ *
+ * Note: this function invokes va_arg at least once, making the value
+ * of ap indeterminate after the return.  The caller should call
+ * va_start/va_end before/after calling this function or use va_copy.
+ */
 int sam_hdr_vadd(SAM_hdr *sh, const char *type, va_list ap, ...) {
     va_list args;
     SAM_hdr_type *h_type;
     SAM_hdr_tag *h_tag, *last;
     int new;
     khint32_t type_i = (type[0]<<8) | type[1], k;
-
-#if defined(HAVE_VA_COPY)
-    va_list ap_local;
-#endif
 
     if (EOF == kputc_('@', &sh->text))
 	return -1;
@@ -507,11 +510,6 @@ int sam_hdr_vadd(SAM_hdr *sh, const char *type, va_list ap, ...) {
 	last = h_tag;
     }
     va_end(args);
-
-#if defined(HAVE_VA_COPY)
-    va_copy(ap_local, ap);
-#   define ap ap_local
-#endif
 
     // Plus the specified va_list params
     for (;;) {
@@ -776,7 +774,7 @@ static enum sam_sort_order sam_hdr_parse_sort_order(SAM_hdr *hdr) {
 		    so = ORDER_NAME;
 		else if (strcmp(tag->str+3, "coordinate") == 0)
 		    so = ORDER_COORD;
-		else
+		else if (strcmp(tag->str+3, "unknown") != 0)
 		    fprintf(stderr, "Unknown sort order field: %s\n",
 			    tag->str+3);
 	    }
@@ -1191,7 +1189,6 @@ const char *sam_hdr_PG_ID(SAM_hdr *sh, const char *name) {
  */
 int sam_hdr_add_PG(SAM_hdr *sh, const char *name, ...) {
     va_list args;
-    va_start(args, name);
 
     if (sh->npg_end) {
 	/* Copy ends array to avoid us looping while modifying it */
@@ -1204,6 +1201,7 @@ int sam_hdr_add_PG(SAM_hdr *sh, const char *name, ...) {
 	memcpy(end, sh->pg_end, nends * sizeof(*end));
 
 	for (i = 0; i < nends; i++) {
+	    va_start(args, name);
 	    if (-1 == sam_hdr_vadd(sh, "PG", args,
 				   "ID", sam_hdr_PG_ID(sh, name),
 				   "PN", name,
@@ -1212,15 +1210,18 @@ int sam_hdr_add_PG(SAM_hdr *sh, const char *name, ...) {
 		free(end);
 		return  -1;
 	    }
+	    va_end(args);
 	}
 
 	free(end);
     } else {
+	va_start(args, name);
 	if (-1 == sam_hdr_vadd(sh, "PG", args,
 			       "ID", sam_hdr_PG_ID(sh, name),
 			       "PN", name,
 			       NULL))
 	    return -1;
+	va_end(args);
     }
 
     //sam_hdr_dump(sh);
