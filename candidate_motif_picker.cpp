@@ -181,14 +181,14 @@ void CandidateMotifPicker::set_motif_from_info_field(Variant& variant)
 bool CandidateMotifPicker::get_indel(std::string ref, std::string alt, std::string& indel)
 {
     //trim right
-    while (ref.size()!=0 && alt.size()!=0 && ref.back()==alt.back())
+    while (ref.size()!=0 && alt.size()!=0 && ref.at(ref.size()-1)==alt.at(alt.size()-1))
     {
         ref.erase(ref.size()-1, 1);
         alt.erase(alt.size()-1, 1);
     }
 
     //trim left
-    while (ref.size()!=0 && alt.size()!=0 && ref.front()==alt.front())
+    while (ref.size()!=0 && alt.size()!=0 && ref.at(0)==alt.at(0))
     {
         ref.erase(0, 1);
         alt.erase(0, 1);
