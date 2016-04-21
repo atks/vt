@@ -1,6 +1,6 @@
 OPTFLAG = -O3
 INCLUDES = -I./lib -I. -I./lib/htslib -I./lib/Rmath -I./lib/pcre2
-CFLAGS = -pipe -std=c++0x $(OPTFLAG) $(INCLUDES) -D__STDC_LIMIT_MACROS
+CXXFLAGS = -pipe -std=c++0x $(OPTFLAG) $(INCLUDES) -D__STDC_LIMIT_MACROS
 CXX = g++
 
 SOURCESONLY =
@@ -147,12 +147,12 @@ version :
 	git rev-parse HEAD | cut -c 1-8 | awk '{print "#define VERSION \"0.5772-"$$0"\""}' > version.h;
 	
 $(TARGET) : ${LIBHTS} ${LIBRMATH} ${LIBPCRE2}  ${LIBSVM} $(TOOLOBJ) 
-	$(CXX) $(CFLAGS) -o $@ $(TOOLOBJ) $(LIBHTS) $(LIBRMATH) ${LIBPCRE2} -lz -lpthread
+	$(CXX) $(CXXFLAGS) -o $@ $(TOOLOBJ) $(LIBHTS) $(LIBRMATH) ${LIBPCRE2} -lz -lpthread
 
 $(TOOLOBJ): $(HEADERSONLY)
 
 .cpp.o :
-	$(CXX) $(CFLAGS) -o $@ -c $*.cpp
+	$(CXX) $(CXXFLAGS) -o $@ -c $*.cpp
 
 .PHONY: clean cleanvt test version
 
