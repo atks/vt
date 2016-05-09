@@ -268,7 +268,6 @@ class Igor : Program
         //tools initialization//
         ////////////////////////
         vm = new VariantManip(ref_fasta_file);
-
     };
 
     /**

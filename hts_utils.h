@@ -489,4 +489,9 @@ void bcf_set_id(bcf1_t *v, char* id);
  */
 #define bcf_set_qual(v, q) ((v)->qual = (q))
 
+std::string bam_hdr_get_sample_name(bam_hdr_t* hdr);
+
+void error(const char * msg, ...);
+void notice(const char * msg, ...);
+
 #endif

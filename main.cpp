@@ -77,6 +77,7 @@
 #include "validate.h"
 #include "view.h"
 #include "vntrize.h"
+#include "joint_genotype_sequential.h"
 
 void print_time(double t)
 {
@@ -310,6 +311,10 @@ int main(int argc, char ** argv)
     {
         paste_and_compute_features_sequential(argc-1, ++argv);
     }
+    else if (argc>1 && cmd=="joint_genotype_sequential")
+    {
+        joint_genotype_sequential(argc-1, ++argv);
+    }    
     else if (argc>1 && cmd=="milk_filter")
     {
         milk_filter(argc-1, ++argv);

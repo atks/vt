@@ -1,4 +1,5 @@
 *.o
 vt
+vt.*
 lib/Rmath/libRmath.a
 lib/pcre2/libpcre2.a

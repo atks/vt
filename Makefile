@@ -1,4 +1,4 @@
-OPTFLAG = -g -O3
+OPTFLAG = -g -O3 -fopenmp
 INCLUDES = -I./lib -I. -I./lib/htslib -I./lib/Rmath -I./lib/pcre2
 CFLAGS = -pipe -std=c++0x $(OPTFLAG) $(INCLUDES) -D__STDC_LIMIT_MACROS
 CXX = g++
@@ -47,6 +47,9 @@ SOURCES = align\
 		index\
 		interval_tree\
 		interval\
+		joint_genotype_sequential\
+		joint_genotyping_buffered_reader\
+		joint_genotyping_record\
 		lfhmm\
 		lhmm\
 		lhmm1\
@@ -67,7 +70,6 @@ SOURCES = align\
 		paste\
 		paste_genotypes\
 		paste_and_compute_features_sequential\
-		paste_genotypes\
 		pedigree\
 		peek\
 		pileup\
@@ -105,9 +107,9 @@ SOURCES = align\
 		vntr\
 		vntr_annotator\
 		vntrize\
-   	    tbx_ordered_reader\
-    	ahmm\
-        xcmp\
+		tbx_ordered_reader\
+		ahmm\
+		xcmp\
 
 SOURCESONLY = main.cpp
 
@@ -127,10 +129,10 @@ ${LIBRMATH} :
 	cd lib/Rmath; $(MAKE) libRmath.a || exit 1; 
 
 ${LIBPCRE2} :
-	cd lib/pcre2; $(MAKE) libpcre2.a || exit 1; 
-	
+	cd lib/pcre2; $(MAKE) libpcre2.a || exit 1;
+
 $(TARGET) : ${LIBHTS} ${LIBRMATH} ${LIBPCRE2} $(TOOLOBJ)
-	$(CXX) $(CFLAGS) -o $@ $(TOOLOBJ) $(LIBHTS) $(LIBRMATH) ${LIBPCRE2} -lz -lpthread
+	$(CXX) $(CFLAGS) -o $@ $(TOOLOBJ) $(LIBHTS) $(LIBRMATH) ${LIBPCRE2} -lz -lpthread -fopenmp
 
 $(TOOLOBJ): $(HEADERSONLY)
 

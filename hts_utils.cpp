@@ -23,6 +23,12 @@
 
 #include "hts_utils.h"
 
+#include <string>
+#include <cstdio>
+#include <cstdlib>
+#include <ctime>
+#include <stdarg.h>
+
 /********
  *General
  ********/
@@ -962,3 +968,69 @@ void bcf_set_id(bcf1_t *v, char* id)
 
     v->d.id = strdup(id);
 };
+
+std::string bam_hdr_get_sample_name(bam_hdr_t* hdr) {
+  if ( !hdr )
+    error("Failed to read the BAM header");
+
+  const char *p = hdr->text;
+  const char *q, *r;
+  int n = 0;
+  std::string sm;
+  while( ( q = strstr(p, "@RG" ) ) != 0 ) {
+    p = q + 3;
+    r = q = 0;
+    if ( ( q = strstr(p, "\tID:" ) ) != 0 ) q += 4;
+    if ( ( r = strstr(p, "\tSM:" ) ) != 0 ) r += 4;
+    if ( r && q ) {
+      char *u, *v;
+      for (u = (char*)q; *u && *u != '\t' && *u != '\n'; ++u);
+      for (v = (char*)r; *v && *v != '\t' && *v != '\n'; ++v);
+      *u = *v = '\0';
+      if ( sm.empty() )
+	sm = r;
+      else if ( sm.compare(r) != 0 )
+	error("Multiple sample IDs are included in one BAM file - %s, %s", sm.c_str(), r);
+    }
+    else break;
+    p = q > r ? q : r;
+    ++n;
+  }
+  if ( sm.empty() )
+    error("Sample ID information cannot be found");
+  return sm;
+}
+
+void error(const char * msg, ...)
+{
+  va_list  ap;
+
+  va_start(ap, msg);
+
+  fprintf(stderr, "\nFATAL ERROR - \n");
+  vfprintf(stderr, msg, ap);
+  fprintf(stderr, "\n\n");
+
+  va_end(ap);
+
+  abort();
+  //throw pexception;
+  //exit(EXIT_FAILURE);
+}
+
+void notice(const char * msg, ...) {
+  va_list ap;
+  va_start(ap, msg);
+
+  time_t current_time;
+  char buff[255];
+  current_time = time(NULL);
+
+  strftime(buff, 120, "%Y/%m/%d %H:%M:%S", localtime(&current_time));
+
+  fprintf(stderr,"NOTICE [%s] - ", buff);
+  vfprintf(stderr, msg, ap);
+  fprintf(stderr,"\n");
+
+  va_end(ap);
+}
