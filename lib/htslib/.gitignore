@@ -1,5 +1,7 @@
 *.o
 *.pico
+*.dSYM
+*.exe
 *-uninstalled.pc
 /version.h
 
@@ -10,6 +12,9 @@ config.log
 config.mk
 config.status
 configure
+
+hfile_*.bundle
+hfile_*.so
 
 lib*.a
 lib*.dylib
