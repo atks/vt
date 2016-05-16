@@ -193,6 +193,7 @@ void Variant::clear()
     snp_vs.clear();
     indel_vs.clear();
     vntr_vs.clear();
+    consolidated_vntr_vs.clear();
 };
 
 /**

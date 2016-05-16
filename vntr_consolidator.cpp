@@ -199,13 +199,11 @@ void VNTRConsolidator::flush_variant_buffer(Variant* var)
             {
                 if (consolidate_multiple_overlapping_vntrs(variant))
                 {
-                    
+                    odw->write(variant->v);
+                    variant->v = NULL;
+                    delete variant;
+                    variant_buffer.pop_back();
                 }
-                
-                odw->write(variant->v);
-                variant->v = NULL;
-                delete variant;
-                variant_buffer.pop_back();
             }
             else
             {
@@ -244,8 +242,6 @@ void VNTRConsolidator::flush_variant_buffer(Variant* var)
         }
     }
 }
-
-
 
 /**
  * Consolidate multiallelic variant based on associated biallelic records
@@ -304,10 +300,13 @@ bool VNTRConsolidator::consolidate_multiple_overlapping_vntrs(Variant* variant)
         {
             no_clustered_consistent_basis_vntrs += variant->no_overlapping_vntrs + 1;
             ++no_merged_consistent_basis_vntrs;
-            return true;
+            return false;
         }
         else
         {
+            
+            //check for adjacency
+            
             no_clustered_inconsistent_ru_basis_vntrs += variant->no_overlapping_vntrs + 1;
             return false;
         }
@@ -323,10 +322,13 @@ void VNTRConsolidator::detect_VNTR_overlapping_class(Variant* variant, bool& con
 {
     if (variant->vntr_vs.size()>1)
     {
-//        std::cerr << "==================================\n";
-//        std::cerr << "Running consistent motif detection\n";
-//        std::cerr << "==================================\n";
-
+        if (debug)
+        {    
+            std::cerr << "==================================\n";
+            std::cerr << "Running consistent motif detection\n";
+            std::cerr << "==================================\n";
+        }
+        
         VNTR& vntr = variant->vntr;
 
         std::map<std::string, int32_t> rus;
@@ -338,9 +340,6 @@ void VNTRConsolidator::detect_VNTR_overlapping_class(Variant* variant, bool& con
 
         std::map<std::string, int32_t> motifs;
 
-        ///////////////////
-        //merge the regions
-        ///////////////////
         for (uint32_t i=0; i<variant->vntr_vs.size(); ++i)
         {
             bcf1_t* vntr_v = variant->vntr_vs[i];

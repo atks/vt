@@ -53,6 +53,9 @@ SOURCES = align\
 		index\
 		interval_tree\
 		interval\
+		joint_genotype_sequential\
+		joint_genotyping_buffered_reader\
+		joint_genotyping_record\
 		lfhmm\
 		lhmm\
 		lhmm1\

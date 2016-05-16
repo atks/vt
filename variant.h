@@ -63,7 +63,8 @@ class Variant
     std::vector<bcf1_t*> snp_vs;
     std::vector<bcf1_t*> indel_vs;
     std::vector<bcf1_t*> vntr_vs;
-
+    std::vector<bcf1_t*> consolidated_vntr_vs;
+    
     //contains alleles
     std::vector<Allele> alleles;
 

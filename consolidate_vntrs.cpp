@@ -97,10 +97,13 @@ class Igor : Program
     void consolidate_vntrs()
     {
         bcf1_t *v = vc->odw->get_bcf1_from_pool();
-
+        bcf_hdr_t *h = vc->odr->hdr;
+        
         Variant* variant;
         while (vc->odr->read(v))
         {
+            bcf_print_liten(h,v);
+            
             variant = new Variant(vc->odw->hdr, v);
             vc->flush_variant_buffer(variant);
             vc->insert_variant_record_into_buffer(variant);

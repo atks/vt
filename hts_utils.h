@@ -78,6 +78,11 @@ bool str_ends_with(std::string& file_name, const char* ext);
 void bam_hdr_transfer_contigs_to_bcf_hdr(const bam_hdr_t *sh, bcf_hdr_t *vh);
 
 /**
+ * Gets sample names from bam header.
+ */
+std::string bam_hdr_get_sample_name(bam_hdr_t* hdr);
+    
+/**
  * Get number of sequences.
  */
 #define bam_hdr_get_n_targets(h) ((h)->n_targets)
@@ -225,7 +230,7 @@ void bcf_hdr_print(bcf_hdr_t *h);
  * Copies contigs found in bcf header to another bcf header.
  */
 void bcf_hdr_transfer_contigs(const bcf_hdr_t *sh, bcf_hdr_t *vh);
-
+    
 /**
  * Checks if a particular header type exists
  * @hdr  - header
@@ -554,5 +559,16 @@ int32_t bcf_set_info_flt(bcf_hdr_t *h, bcf1_t *v, const char* tag, float value);
  * Set qual
  */
 #define bcf_set_qual(v, q) ((v)->qual = (q))
+
+
+/**
+ * Prints a message to STDERR and abort.
+ */
+void error(const char * msg, ...);
+
+/**
+ * Gives a notice to STDERR.
+ */
+void notice(const char * msg, ...);
 
 #endif
