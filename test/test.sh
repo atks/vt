@@ -11,6 +11,9 @@ VT=${DIR}/../vt
 REF=${DIR}/ref/20.fa.gz
 TMPDIRS="";
 
+NO_TESTS=0
+PASSED_TESTS=0
+
 echo "++++++++++++++++++++++" >&2
 echo "Tests for vt normalize" >&2
 echo "++++++++++++++++++++++" >&2
@@ -24,7 +27,6 @@ TMPDIRS+=" $TMPDIR";
 #-----------------------
 echo "testing normalize"
 #-----------------------
-
 if [ "$1" == "debug" ]; then
     set -x
 fi
@@ -41,9 +43,12 @@ ERR=`diff ${CMDDIR}/01_OUT.stderr ${TMPDIR}/01_OUT.stderr`
 
 set +x
 
+((NO_TESTS++))
+
 echo -n "             output VCF file :"
 if [ "$OUT" == "" ]; then
     echo " ok"
+    ((PASSED_TESTS++))
 else
     echo " NOT OK!!!"
 fi
@@ -84,9 +89,12 @@ ERR=`diff ${CMDDIR}/01_OUT_even_length.stderr ${TMPDIR}/01_OUT_even_length.stder
 
 set +x
 
+((NO_TESTS++))
+
 echo -n "             output VCF file :"
 if [ "$OUT" == "" ]; then
     echo " ok"
+    ((PASSED_TESTS++))
 else
     echo " NOT OK!!!"
 fi
@@ -117,9 +125,12 @@ ERR=`diff ${CMDDIR}/02_OUT_uneven_length.stderr ${TMPDIR}/02_OUT_uneven_length.s
 
 set +x
 
+((NO_TESTS++))
+
 echo -n "             output VCF file :"
 if [ "$OUT" == "" ]; then
     echo " ok"
+    ((PASSED_TESTS++))
 else
     echo " NOT OK!!!"
 fi
@@ -151,9 +162,12 @@ ERR=`diff ${CMDDIR}/03_OUT_phased_even_length.stderr ${TMPDIR}/03_OUT_phased_eve
 
 set +x
 
+((NO_TESTS++))
+
 echo -n "             output VCF file :"
 if [ "$OUT" == "" ]; then
     echo " ok"
+    ((PASSED_TESTS++))
 else
     echo " NOT OK!!!"
 fi
@@ -196,9 +210,12 @@ ERR=`diff ${CMDDIR}/01_OUT_multi.stderr ${TMPDIR}/01_OUT_multi.stderr`
 
 set +x
 
+((NO_TESTS++))
+
 echo -n "             output VCF file :"
 if [ "$OUT" == "" ]; then
     echo " ok"
+    ((PASSED_TESTS++))
 else
     echo " NOT OK!!!"
 fi
@@ -211,3 +228,10 @@ else
 fi
 
 trap "rm -rf ${TMPDIRS}" EXIT KILL TERM INT HUP
+
+echo
+echo -n Passed tests :
+echo -n " "
+echo -n ${PASSED_TESTS}  
+echo -n " / "
+echo ${NO_TESTS}  

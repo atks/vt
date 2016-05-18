@@ -227,6 +227,7 @@ class Igor : Program
     
                 if (r==-1)
                 {
+                    std::cerr << "NR for depths\n";
                     r = bcf_get_format_int32(h, v, "NR", &dps, &n_dp);
     
                     if (r==-1)
