@@ -522,6 +522,7 @@ int sam_index_build2(const char *fn, const char *fnidx, int min_shift)
         idx = bam_index(fp->fp.bgzf, min_shift);
         if (idx) {
             ret = hts_idx_save_as(idx, fn, fnidx, (min_shift > 0)? HTS_FMT_CSI : HTS_FMT_BAI);
+            if (ret < 0) ret = -4;
             hts_idx_destroy(idx);
         }
         else ret = -1;
@@ -1228,7 +1229,7 @@ int sam_write1(htsFile *fp, const bam_hdr_t *h, const bam1_t *b)
  *** Auxiliary fields ***
  ************************/
 
-void bam_aux_append(bam1_t *b, const char tag[2], char type, int len, uint8_t *data)
+void bam_aux_append(bam1_t *b, const char tag[2], char type, int len, const uint8_t *data)
 {
     int ori_len = b->l_data;
     b->l_data += 3 + len;
@@ -1286,6 +1287,31 @@ int bam_aux_del(bam1_t *b, uint8_t *s)
     s = skip_aux(s);
     memmove(p, s, l_aux - (s - aux));
     b->l_data -= s - p;
+    return 0;
+}
+
+int bam_aux_update_str(bam1_t *b, const char tag[2], int len, const char *data)
+{
+    uint8_t *s = bam_aux_get(b,tag);
+    if (!s) return -1;
+    char type = *s;
+    if (type != 'Z') { fprintf(stderr,"bam_aux_update_str() called for type '%c' instead of 'Z'\n", type); abort(); }
+    bam_aux_del(b,s);
+    s -= 2;
+    int l_aux = bam_get_l_aux(b);
+    uint8_t *aux = bam_get_aux(b);
+
+    b->l_data += 3 + len;
+    if (b->m_data < b->l_data) {
+        b->m_data = b->l_data;
+        kroundup32(b->m_data);
+        b->data = (uint8_t*)realloc(b->data, b->m_data);
+    }
+    memmove(s+3+len, s, l_aux - (s - aux));
+    s[0] = tag[0];
+    s[1] = tag[1];
+    s[2] = type;
+    memmove(s+3,data,len);
     return 0;
 }
 
@@ -1787,7 +1813,7 @@ static void tweak_overlap_quality(bam1_t *a, bam1_t *b)
             if ( a_qual[a_iseq] >= b_qual[b_iseq] )
             {
                 #if DBG
-                    fprintf(stderr,"[%c/%c]",seq_nt16_str[bam_seqi(a_seq,a_iseq)],tolower(seq_nt16_str[bam_seqi(b_seq,b_iseq)]));
+                    fprintf(stderr,"[%c/%c]",seq_nt16_str[bam_seqi(a_seq,a_iseq)],tolower_c(seq_nt16_str[bam_seqi(b_seq,b_iseq)]));
                 #endif
                 a_qual[a_iseq] = 0.8 * a_qual[a_iseq];  // not so confident about a_qual anymore given the mismatch
                 b_qual[b_iseq] = 0;
@@ -1795,7 +1821,7 @@ static void tweak_overlap_quality(bam1_t *a, bam1_t *b)
             else
             {
                 #if DBG
-                    fprintf(stderr,"[%c/%c]",tolower(seq_nt16_str[bam_seqi(a_seq,a_iseq)]),seq_nt16_str[bam_seqi(b_seq,b_iseq)]);
+                    fprintf(stderr,"[%c/%c]",tolower_c(seq_nt16_str[bam_seqi(a_seq,a_iseq)]),seq_nt16_str[bam_seqi(b_seq,b_iseq)]);
                 #endif
                 b_qual[b_iseq] = 0.8 * b_qual[b_iseq];
                 a_qual[a_iseq] = 0;

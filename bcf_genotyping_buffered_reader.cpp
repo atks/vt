@@ -1142,6 +1142,297 @@ void BCFGenotypingBufferedReader::collect_sufficient_statistics(GenotypingRecord
             g->nms.push_back(as.no_mismatches);
         }
     }
+    else //any other type of variant
+    {
+        if (bcf_get_n_allele(g->v)==2)
+        {
+            if (as.beg1 <= g->beg1 && g->end1 <= as.end1)
+            {
+                bam1_t *s = as.s;
+
+                char strand = bam_is_rev(s) ? 'R' : 'F';
+                int32_t allele = 0;
+                uint32_t pos1 = bam_get_pos1(s);
+                uint8_t* seq = bam_get_seq(s);
+                uint8_t* qual = bam_get_qual(s);
+                uint32_t rlen = bam_get_l_qseq(s);
+                uint8_t mapq = bam_get_mapq(s);
+
+                int32_t dlen = g->dlen;
+                uint32_t len = g->len;
+                std::string& indel = g->indel;
+
+                uint32_t cycle = 10;
+
+                std::vector<uint32_t>& aug_cigar = as.aug_cigar;
+                std::vector<std::string>& aug_ref = as.aug_ref;
+                std::vector<std::string>& aug_alt = as.aug_alt;
+
+                int32_t vpos1 = g->pos1;
+
+                char lflank_state[3] = {'N', 'N', 'N'};
+                char rflank_state[3] = {'N', 'N', 'N'};
+                uint32_t lflank_qual[3] = {0, 0, 0};
+                uint32_t rflank_qual[3] = {0, 0, 0};
+
+                char fuzzy_lflank_state[3] = {'N', 'N', 'N'};
+                char fuzzy_rflank_state[3] = {'N', 'N', 'N'};
+                uint32_t fuzzy_lflank_qual[3] = {0, 0, 0};
+                uint32_t fuzzy_rflank_qual[3] = {0, 0, 0};
+
+                int32_t cpos1 = bam_get_pos1(s);
+                int32_t cend1 = 0;
+                int32_t rpos0 = 0;
+
+                int32_t lend1 = g->lend1;
+                int32_t lmid1 = g->lend1 - 1;
+                int32_t lbeg1 = g->lend1 - 2;
+                int32_t rbeg1 = g->rbeg1;
+                int32_t rmid1 = g->rbeg1 + 1;
+                int32_t rend1 = g->rbeg1 + 2;
+
+                int32_t abeg1 = lend1 + 1;
+                int32_t aend1 = rbeg1 - 1;
+                std::string observed_allele;
+
+                for (uint32_t i=0; i<aug_cigar.size(); ++i)
+                {
+                    uint32_t oplen = bam_cigar_oplen(aug_cigar[i]);
+                    char opchr = bam_cigar_opchr(aug_cigar[i]);
+
+                    if (opchr=='S')
+                    {
+                        rpos0 += oplen;
+                    }
+                    else if (opchr=='=')
+                    {
+                        cend1 = cpos1+oplen-1;
+
+                        //collect lflank information
+                        if (cpos1<=lend1 && lbeg1<=cend1)
+                        {
+                            if (cpos1<=lbeg1)
+                            {
+                                lflank_state[0] = '=';
+                                lflank_qual[0] = qual[rpos0+lbeg1-cpos1];
+                            }
+                            if (cpos1<=lmid1 && lmid1<=cend1)
+                            {
+                                lflank_state[1] = '=';
+                                lflank_qual[1] = qual[rpos0+lmid1-cpos1];
+                            }
+                            if (lend1<=cend1)
+                            {
+                                lflank_state[2] = '=';
+                                lflank_qual[2] = qual[rpos0+lend1-cpos1];
+                            }
+                        }
+
+                        //collect allele information
+                        if (cpos1<=aend1 && abeg1<=cend1)
+                        {
+                            int32_t copy_beg0 = rpos0 + std::max(cpos1, abeg1)-cpos1;
+                            int32_t copy_end0 = rpos0 + std::min(cend1, aend1)-cpos1;
+
+                            for (uint32_t i = copy_beg0; i<=copy_end0; ++i)
+                            {
+                                observed_allele.append(1, bam_base2char(bam_seqi(seq, i)));
+                            }
+                        }
+
+                        //collect rflank information
+                        if (cpos1<=rend1 && rbeg1<=cend1)
+                        {
+                            if (cpos1<=rbeg1)
+                            {
+                                rflank_state[0] = '=';
+                                rflank_qual[0] = qual[rpos0+rbeg1-cpos1];
+                            }
+                            if (cpos1<=rmid1 && rmid1<=cend1)
+                            {
+                                rflank_state[1] = '=';
+                                rflank_qual[1] = qual[rpos0+rmid1-cpos1];
+                            }
+                            if (rend1<=cend1)
+                            {
+                                rflank_state[2] = '=';
+                                rflank_qual[2] = qual[rpos0+rend1-cpos1];
+                            }
+                        }
+
+                        if (vpos1>=cpos1 && vpos1<=cend1)
+                        {
+                            cycle = strand == 'F' ? (rpos0+1) : (rlen - rpos0);
+                        }
+
+                        cpos1 += oplen;
+                        rpos0 += oplen;
+                    }
+                    else if (opchr=='X')
+                    {
+                        cend1 = cpos1+oplen-1;
+
+                        //collect lleft and right flank information
+                        if (cpos1==lbeg1)
+                        {
+                            lflank_state[0] = '=';
+                            lflank_qual[0] = qual[rpos0];
+                        }
+                        else if (cpos1==lmid1)
+                        {
+                            lflank_state[1] = '=';
+                            lflank_qual[1] = qual[rpos0];
+                        }
+                        else if (cpos1==lend1)
+                        {
+                            lflank_state[2] = '=';
+                            lflank_qual[2] = qual[rpos0];
+                        }
+                        else if (cpos1==rbeg1)
+                        {
+                            rflank_state[0] = '=';
+                            rflank_qual[0] = qual[rpos0];
+                        }
+                        else if (cpos1==rmid1)
+                        {
+                            rflank_state[1] = '=';
+                            rflank_qual[1] = qual[rpos0];
+                        }
+                        else if (cpos1==rend1)
+                        {
+                            rflank_state[2] = '=';
+                            rflank_qual[2] = qual[rpos0];
+                        }
+
+                        //collect allele information
+                        if (abeg1<=cend1 && cpos1<=aend1)
+                        {
+                            int32_t copy_beg0 = rpos0 + std::max(cpos1, abeg1)-cpos1;
+                            int32_t copy_end0 = rpos0 + std::min(cend1, aend1)-cpos1;
+
+                            for (uint32_t i = copy_beg0; i<=copy_end0; ++i)
+                            {
+                                observed_allele.append(1, bam_base2char(bam_seqi(seq, i)));
+                            }
+                        }
+
+                        if (cpos1-1==vpos1)
+                        {
+                            cycle = strand == 'F' ? (rpos0+1) : (rlen - rpos0);
+                        }
+
+                        ++cpos1;
+                        ++rpos0;
+                    }
+                    else if (opchr=='I')
+                    {
+    //                    std::cerr << "dlen  " << dlen << "\n";
+    //                    std::cerr << "cpos1 " << cpos1 << "\n";
+    //                    std::cerr << "vpos1 " << vpos1 << "\n";
+    //                    std::cerr << "indel " << aug_alt[i] << "\n";
+
+                        if (cpos1-1==lend1)
+                        {
+                            observed_allele.append(aug_alt[i]);
+                            cycle = strand == 'F' ? (rpos0+1) : (rlen - rpos0);
+                        }
+
+                        rpos0 += oplen;
+                    }
+                    else if (opchr=='D')
+                    {
+    //                    std::cerr << "dlen  " << dlen << "\n";
+    //                    std::cerr << "cpos1 " << cpos1 << "\n";
+    //                    std::cerr << "vpos1 " << vpos1 << "\n";
+    //                    std::cerr << "indel " << aug_ref[i] << "\n";
+
+                        if (dlen<0 && cpos1-1==vpos1)
+                        {
+                            //don't do anything to allele
+                            cycle = strand == 'F' ? (rpos0+1) : (rlen - rpos0);
+                            break;
+                        }
+
+                        cpos1 += oplen;
+                    }
+                    else
+                    {
+                        std::cerr << "unrecognized cigar state " << opchr << "\n";
+                    }
+                }
+
+
+                compute_indel_al(lflank_state, lflank_qual,
+                                 rflank_state, rflank_qual,
+                                 g->indel_alleles,
+                                 observed_allele,
+                                 g->aqs, g->als, g->dls);
+
+                //should return just the values?
+
+                if (allele==0)
+                {
+                    if (strand=='F')
+                    {
+                        ++g->depth_fwd;
+                        ++g->allele_depth_fwd[0];
+                    }
+                    else
+                    {
+                        ++g->depth_rev;
+                        ++g->allele_depth_rev[0];
+                    }
+                }
+                else //non ref
+                {
+                    ++g->no_nonref;
+
+                    if (strand=='F')
+                    {
+                        ++g->depth_fwd;
+                        ++g->allele_depth_fwd[1];
+                    }
+                    else
+                    {
+                        ++g->depth_rev;
+                        ++g->allele_depth_rev[1];
+                    }
+                }
+
+                if (allele!=0)
+                {
+                    ++g->no_nonref;
+                }
+
+                if (strand=='F')
+                {
+                    ++g->depth_fwd;
+                }
+                else
+                {
+                    ++g->depth_rev;
+                }
+
+
+                ++g->depth;
+                g->cys.push_back(cycle);
+                g->als.push_back(allele);
+                g->sts.append(1, strand);
+                g->nms.push_back(as.no_mismatches);
+            }
+            else
+            {
+                ++g->depth;
+                g->cys.push_back(-1);
+                g->als.push_back(-1);
+                g->sts.append(1, (bam_is_rev(as.s) ? 'R' : 'F'));
+                g->nms.push_back(as.no_mismatches);
+            }
+        }
+        else //multiallelic
+        {
+        }
+    }
 }
 
 /**

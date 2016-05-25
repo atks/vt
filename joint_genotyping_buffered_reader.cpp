@@ -28,21 +28,21 @@
  */
 JointGenotypingBufferedReader::JointGenotypingBufferedReader(std::string filename, std::vector<GenomeInterval>& intervals, std::string out_vcf_file_name, int32_t nsamples)
 {
-    vm = new VariantManip();  
+    vm = new VariantManip();
 
     // read input BCF files and create genotyping records for every variants
     odr = new BCFOrderedReader(filename, intervals);
-    
+
     bcf1_t* v = bcf_init();
     while( odr->read(v) ) {
       int32_t vtype = vm->classify_variant(odr->hdr, v, variant);
       //if ( (rand() % 10000) == 0 )
       //notice("foo");
       int32_t pos1 = bcf_get_pos1(v);
-      
+
       if ( ( pos1 < intervals[0].start1 ) || ( pos1 > intervals[0].end1 ) ) continue;
-	
-      if ( ( vtype != VT_VNTR ) && ( bcf_get_n_allele(v) == 2 ) ) { 
+
+      if ( ( vtype != VT_VNTR ) && ( bcf_get_n_allele(v) == 2 ) ) {
 	JointGenotypingRecord* jgr = new JointGenotypingRecord(odr->hdr, v, vtype, nsamples);
 	gRecords.push_back(jgr);
       }
@@ -74,15 +74,17 @@ JointGenotypingBufferedReader::JointGenotypingBufferedReader(std::string filenam
     sample_contams.resize(nsamples);
 }
 
-void JointGenotypingBufferedReader::flush_sample(int32_t sampleIndex) {
+void JointGenotypingBufferedReader::flush_sample(int32_t sampleIndex)
+{
   /*
   if ( sampleIndex < 0 )
     sampleIndex = currentSampleIndex;
   */
-  
-  for(int32_t i=0; i < (int)gRecords.size(); ++i) {
-    gRecords[i]->flush_sample( sampleIndex );
-  }
+
+    for(int32_t i=0; i < (int)gRecords.size(); ++i)
+    {
+        gRecords[i]->flush_sample( sampleIndex );
+    }
 }
 
 void JointGenotypingBufferedReader::set_sample(int32_t sampleIndex, const char* sampleName, double contam) {
@@ -112,7 +114,7 @@ int32_t JointGenotypingBufferedReader::process_read(bam_hdr_t *h, bam1_t *s, int
     JointGenotypingRecord* jgr;
     for(int32_t i = lastFirst; i < (int)gRecords.size(); ++i) {
       jgr = gRecords[i];
-      
+
       //same chromosome
       if (tid == jgr->rid) {
 	if (end1 < jgr->beg1) // read ends earlier than the last record to visit -- no need to investigate
@@ -144,14 +146,14 @@ int32_t JointGenotypingBufferedReader::process_read(bam_hdr_t *h, bam1_t *s, int
       else if ( tid < jgr->rid )
 	return nvisited;
       else if ( tid > jgr->rid ) {
-	++lastFirst;	
+	++lastFirst;
 	continue;
       }
       else
-	abort(); 
+	abort();
     }
     return nvisited;
-    
+
     //this means end of file
     //bcf_destroy(v);
 }
@@ -165,8 +167,8 @@ bcf1_t* JointGenotypingBufferedReader::flush_variant(int32_t variantIndex, bcf_h
 
 void JointGenotypingBufferedReader::write_header(BCFOrderedWriter* odw) {
   // contig and sample names must be added beforehand
-  
-  bcf_hdr_append(odw->hdr, "##INFO=<ID=AVGDP,Number=1,Type=Float,Description=\"Average Depth per Sample\">\n");	
+
+  bcf_hdr_append(odw->hdr, "##INFO=<ID=AVGDP,Number=1,Type=Float,Description=\"Average Depth per Sample\">\n");
   bcf_hdr_append(odw->hdr, "##INFO=<ID=AC,Number=A,Type=Integer,Description=\"Alternate Allele Counts\">\n");
   bcf_hdr_append(odw->hdr, "##INFO=<ID=AN,Number=1,Type=Integer,Description=\"Total Number Allele Counts\">\n");
   //bcf_hdr_append(odw->hdr, "##INFO=<ID=NS,Number=1,Type=Integer,Description=\"Number of Samples With Reads\">\n");
@@ -175,10 +177,10 @@ void JointGenotypingBufferedReader::write_header(BCFOrderedWriter* odw) {
   bcf_hdr_append(odw->hdr, "##INFO=<ID=GN,Number=1,Type=Integer,Description=\"Total Number of Genotypes\">\n");
   bcf_hdr_append(odw->hdr, "##INFO=<ID=HWEAF,Number=A,Type=Float,Description=\"Genotype likelihood based Allele Frequency assuming HWE\">\n");
   bcf_hdr_append(odw->hdr, "##INFO=<ID=HWDGF,Number=G,Type=Float,Description=\"Genotype likelihood based Genotype Frequency ignoring HWE\">\n");
-  bcf_hdr_append(odw->hdr, "##INFO=<ID=IBC,Number=1,Type=Float,Description=\"Inbreeding Coefficients calculated from genotype likelihoods\">\n");	
+  bcf_hdr_append(odw->hdr, "##INFO=<ID=IBC,Number=1,Type=Float,Description=\"Inbreeding Coefficients calculated from genotype likelihoods\">\n");
   bcf_hdr_append(odw->hdr, "##INFO=<ID=HWE_SLP,Number=1,Type=Float,Description=\"Signed log p-values testing  statistics based Hardy Weinberg ln(Likelihood Ratio)\">\n");
   bcf_hdr_append(odw->hdr, "##INFO=<ID=ABE,Number=1,Type=Float,Description=\"Expected allele Balance towards Reference Allele on Heterozygous Sites\">\n");
-  bcf_hdr_append(odw->hdr, "##INFO=<ID=ABZ,Number=1,Type=Float,Description=\"Average Z-scores of Allele Balance towards Reference Allele on Heterozygous Sites\">\n");	
+  bcf_hdr_append(odw->hdr, "##INFO=<ID=ABZ,Number=1,Type=Float,Description=\"Average Z-scores of Allele Balance towards Reference Allele on Heterozygous Sites\">\n");
   bcf_hdr_append(odw->hdr, "##INFO=<ID=NS_NREF,Number=1,Type=Integer,Description=\"Number of samples with non-reference reads\">\n");
   bcf_hdr_append(odw->hdr, "##INFO=<ID=BQZ,Number=1,Type=Float,Description=\"Correlation between base quality and alleles\">\n");
   //bcf_hdr_append(odw->hdr, "##INFO=<ID=MQZ,Number=1,Type=Float,Description=\"Correlation between mapping quality and alleles\">\n");
@@ -186,7 +188,7 @@ void JointGenotypingBufferedReader::write_header(BCFOrderedWriter* odw) {
   bcf_hdr_append(odw->hdr, "##INFO=<ID=STZ,Number=1,Type=Float,Description=\"Correlation between strand and alleles\">\n");
   bcf_hdr_append(odw->hdr, "##INFO=<ID=NMZ,Number=1,Type=Float,Description=\"Correlation between mismatch counts per read and alleles\">\n");
   bcf_hdr_append(odw->hdr, "##INFO=<ID=IOR,Number=1,Type=Float,Description=\"Inflated rate of observing of other alleles in log10 scale\">\n");
-  bcf_hdr_append(odw->hdr, "##INFO=<ID=NM0,Number=1,Type=Float,Description=\"Average number of mismatches in the reads with ref alleles\">\n");	
+  bcf_hdr_append(odw->hdr, "##INFO=<ID=NM0,Number=1,Type=Float,Description=\"Average number of mismatches in the reads with ref alleles\">\n");
   bcf_hdr_append(odw->hdr, "##INFO=<ID=NM1,Number=1,Type=Float,Description=\"Average number of mismatches in the reads with non-ref alleles\">\n");
   bcf_hdr_append(odw->hdr, "##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">\n");
   bcf_hdr_append(odw->hdr, "##FORMAT=<ID=GQ,Number=1,Type=Integer,Description=\"Genotype Quality\">\n");
@@ -196,7 +198,7 @@ void JointGenotypingBufferedReader::write_header(BCFOrderedWriter* odw) {
 
   bcf_hdr_append(odw->hdr, "##FILTER=<ID=overlap_snp,Description=\"Overlaps with snp\">");
   bcf_hdr_append(odw->hdr, "##FILTER=<ID=overlap_indel,Description=\"Overlaps with indel\">");
-  bcf_hdr_append(odw->hdr, "##FILTER=<ID=overlap_vntr,Description=\"Overlaps with VNTR\">");  
+  bcf_hdr_append(odw->hdr, "##FILTER=<ID=overlap_vntr,Description=\"Overlaps with VNTR\">");
 
   odw->write_hdr();
 }
