@@ -1,13 +1,17 @@
 /* The MIT License
+
    Copyright (c) 2014 Adrian Tan <atks@umich.edu>
+
    Permission is hereby granted, free of charge, to any person obtaining a copy
    of this software and associated documentation files (the "Software"), to deal
    in the Software without restriction, including without limitation the rights
    to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
    copies of the Software, and to permit persons to whom the Software is
    furnished to do so, subject to the following conditions:
+
    The above copyright notice and this permission notice shall be included in
    all copies or substantial portions of the Software.
+
    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -42,10 +46,10 @@ class GenotypingRecord
     //for SNPs, beg1=end1=pos1
     //
     //for Indels, this refers to the flanking positions
-    //   insertion 
+    //   insertion
     //        if T/TG - beg1=pos1, end1=pos1+1
     //        if T/GT - beg1=pos1-1, end1=pos1
-    //   deletion  
+    //   deletion
     //        if TG/T - beg1=pos1, end1=pos1+length(REF)
     //        if TG/G - beg1=pos1-1, end1=pos1+length(REF)-1
     int32_t beg1;
@@ -55,9 +59,9 @@ class GenotypingRecord
     ///////////////////////
     //indel specific record
     ///////////////////////
-    
+
     std::vector<std::string> indel_alleles;
-    
+
     int32_t dlen;
     uint32_t len;
     std::string indel;
@@ -65,10 +69,10 @@ class GenotypingRecord
     //repeat tract length
     int32_t lend1;
     int32_t rbeg1;
-    
+
     int32_t fuzzy_lend1;
     int32_t fuzzy_rbeg1;
-    
+
 
     //////////////////////
     //vntr specific record
@@ -80,9 +84,9 @@ class GenotypingRecord
 
     //for records that observe at least one alternate observation
     std::vector<uint32_t> bqs;  //for SNPs, store BQ, for Indels, store AQ
-    
+
     std::vector<uint32_t> aqs;  // store AQ
-    
+
     std::vector<uint32_t> mqs;   //map qualities
     std::string sts;      //strands
     std::vector<int32_t> als; //alleles
@@ -101,7 +105,7 @@ class GenotypingRecord
     //tools
     //////////////////////
     faidx_t *fai;
-    
+
     /**
      * Constructor.
      * @v - VCF record.

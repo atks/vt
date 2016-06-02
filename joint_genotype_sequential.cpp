@@ -1,6 +1,6 @@
 /* The MIT License
 
-   Copyright (c) 2014 Adrian Tan <atks@umich.edu>
+   Copyright (c) 2016 Hyun Min Kang <hmkang.umich.edu> and Adrian Tan <atks@umich.edu>
 
    Permission is hereby granted, free of charge, to any person obtaining a copy
    of this software and associated documentation files (the "Software"), to deal
@@ -243,12 +243,12 @@ class Igor : Program
             }
             std::string id = ss.substr(0, idx);
             int32_t sex = atoi(ss.substr(idx+1).c_str());
-        
+
             if ( mSex.find(id) != mSex.end() ) {
               fprintf(stderr,"ERROR: Duplicate ID %s in %s\n",id.c_str(), sex_map_file.c_str());
               exit(1);
             }
-        
+
             if ( sex == 0 ) {
               fprintf(stderr,"WARNING: Unknown sex for individual %s, assuming females\n",id.c_str());
               sex = 2;

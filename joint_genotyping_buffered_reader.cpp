@@ -1,6 +1,6 @@
 /* The MIT License
 
-   Copyright (c) 2015 Adrian Tan <atks@umich.edu>
+   Copyright (c) 2016 Hyun Min Kang <hmkang.umich.edu> and Adrian Tan <atks@umich.edu>
 
    Permission is hereby granted, free of charge, to any person obtaining a copy
    of this software and associated documentation files (the "Software"), to deal
@@ -43,8 +43,8 @@ JointGenotypingBufferedReader::JointGenotypingBufferedReader(std::string filenam
       if ( ( pos1 < intervals[0].start1 ) || ( pos1 > intervals[0].end1 ) ) continue;
 
       if ( ( vtype != VT_VNTR ) && ( bcf_get_n_allele(v) == 2 ) ) {
-	JointGenotypingRecord* jgr = new JointGenotypingRecord(odr->hdr, v, vtype, nsamples);
-	gRecords.push_back(jgr);
+    JointGenotypingRecord* jgr = new JointGenotypingRecord(odr->hdr, v, vtype, nsamples);
+    gRecords.push_back(jgr);
       }
     }
     bcf_destroy(v);
@@ -117,40 +117,40 @@ int32_t JointGenotypingBufferedReader::process_read(bam_hdr_t *h, bam1_t *s, int
 
       //same chromosome
       if (tid == jgr->rid) {
-	if (end1 < jgr->beg1) // read ends earlier than the last record to visit -- no need to investigate
-	  return nvisited;
-	else if (beg1 > jgr->end1) { // read begins later than the last record to visit -- advance the last record
-	  ++lastFirst;
-	  continue;
-	}
-	else if ((beg1 <= jgr->pos1) && (jgr->pos1 <= end1)) { // variant position is covered by the read
-	  ++nvisited;
-	  //jgr->process_read(as, currentSampleIndex, sample_contams[currentSampleIndex]);
-	  jgr->process_read(as, sampleIndex, sample_contams[sampleIndex]);
-	  //	  if (beg1 <= jgr->beg1 && jgr->end1 <= end1) {
-	  //                    std::cerr << "COMPLETE";
-	  //                }
-	  //                else
-	  //                {
-	  //drop
-	  //                    std::cerr << "PARTIAL";
+    if (end1 < jgr->beg1) // read ends earlier than the last record to visit -- no need to investigate
+      return nvisited;
+    else if (beg1 > jgr->end1) { // read begins later than the last record to visit -- advance the last record
+      ++lastFirst;
+      continue;
+    }
+    else if ((beg1 <= jgr->pos1) && (jgr->pos1 <= end1)) { // variant position is covered by the read
+      ++nvisited;
+      //jgr->process_read(as, currentSampleIndex, sample_contams[currentSampleIndex]);
+      jgr->process_read(as, sampleIndex, sample_contams[sampleIndex]);
+      //      if (beg1 <= jgr->beg1 && jgr->end1 <= end1) {
+      //                    std::cerr << "COMPLETE";
+      //                }
+      //                else
+      //                {
+      //drop
+      //                    std::cerr << "PARTIAL";
           //      }
           //  }
           //  else
           //  {
           //      //other types of overlap, just ignore
           //  }
-	  //            std::cerr << "\n";
+      //            std::cerr << "\n";
         }
       }
       else if ( tid < jgr->rid )
-	return nvisited;
+    return nvisited;
       else if ( tid > jgr->rid ) {
-	++lastFirst;
-	continue;
+    ++lastFirst;
+    continue;
       }
       else
-	abort();
+    abort();
     }
     return nvisited;
 

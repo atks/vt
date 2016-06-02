@@ -1,13 +1,17 @@
 /* The MIT License
-   Copyright (c) 2016 Hyun Min Kang <atks@umich.edu>
+
+   Copyright (c) 2016 Hyun Min Kang <hmkang.umich.edu>
+
    Permission is hereby granted, free of charge, to any person obtaining a copy
    of this software and associated documentation files (the "Software"), to deal
    in the Software without restriction, including without limitation the rights
    to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
    copies of the Software, and to permit persons to whom the Software is
    furnished to do so, subject to the following conditions:
+
    The above copyright notice and this permission notice shall be included in
    all copies or substantial portions of the Software.
+
    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -23,7 +27,7 @@
 class JointGenotypingUnit
 {
     public:
-  
+
     bcf_hdr_t *h;
     bcf1_t *v;
     int32_t rid;
@@ -32,10 +36,10 @@ class JointGenotypingUnit
     //for SNPs, beg1=end1=pos1
     //
     //for Indels, this refers to the flanking positions
-    //   insertion 
+    //   insertion
     //        if T/TG - beg1=pos1, end1=pos1+1
     //        if T/GT - beg1=pos1-1, end1=pos1
-    //   deletion  
+    //   deletion
     //        if TG/T - beg1=pos1, end1=pos1+length(REF)
     //        if TG/G - beg1=pos1-1, end1=pos1+length(REF)-1
     int32_t beg1;
@@ -89,7 +93,7 @@ class JointGenotypingUnit
     double tmp_ads[3];
 
     // temporary information to be cleared out per-sample basis
-    
+
 
     /**
      * Constructor.
@@ -105,7 +109,7 @@ class JointGenotypingUnit
     bcf1_t* flush_variant(bcf_hdr_t* hdr);
     void flush_sample( int32_t sampleIndex );
     void add_allele( double contam, int32_t allele, uint8_t mapq, bool fwd, uint32_t q, uint32_t cycle, uint32_t nm );
-    void process_read(AugmentedBAMRecord& as, int32_t sampleIndex, double contam);    
+    void process_read(AugmentedBAMRecord& as, int32_t sampleIndex, double contam);
 
     /**
      * Destructor.
@@ -125,7 +129,6 @@ class JointGenotypingUnit
       float ysd = y2/(float)n - (y1/(float)n)*(y1/(float)n);
       return ( ( xy/(float)n - x1 * y1 / (float) n / (float) n ) / sqrt( xsd * ysd + buffer ) );
     }
-    
 };
 
 #endif
