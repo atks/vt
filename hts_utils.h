@@ -34,6 +34,7 @@
 #include "htslib/faidx.h"
 #include "htslib/tbx.h"
 #include "htslib/hfile.h"
+#include "Rmath/Rmath.h"
 #include "utils.h"
 
 /**********
@@ -307,11 +308,6 @@ std::string bcf_hdr_append_info_with_backup_naming(bcf_hdr_t *h, std::string tag
 #define bcf_an2gn(n) (((n+1)*n)>>1)
 
 /**
- * n choose r.
- */
-uint32_t choose(uint32_t n, uint32_t r);
-
-/**
  * Gets number of genotypes from number of alleles and ploidy.
  */
 uint32_t bcf_ap2g(uint32_t no_allele, uint32_t no_ploidy);
@@ -327,14 +323,19 @@ void bcf_pg2a(uint32_t no_ploidy, uint32_t genotype_index, std::vector<int32_t>&
 uint32_t bcf_ag2p(uint32_t no_alleles, uint32_t no_genotypes);
 
 /**
- * Gets index from 2 alleles and 2 ploidy.
+ * Gets index of a genotype of n ploidy.
+ */
+uint32_t bcf_g2i(int32_t* g, uint32_t n);
+
+/**
+ * Gets index of a diploid genotype.
  */
 #define bcf_2g2c(i,j) ((i)+((((j)+1)*(j))>>1))
 
-/**
- * Gets number of genotypes from number of alleles and ploidy.
- */
-uint32_t bcf_g2i(std::string genotype);
+///**
+// * Gets number of genotypes from number of alleles and ploidy.
+// */
+//uint32_t bcf_g2i(std::string genotype);
 
 /**
  * Returns true if a is before b, false otherwise.

@@ -763,43 +763,6 @@ int32_t bcf_get_format_string_ro(const bcf_hdr_t *hdr, bcf1_t *line, const char 
  **********/
 
 /**
- * n choose r.
- */
-uint32_t choose(uint32_t n, uint32_t r)
-{
-    if (r>n)
-    {
-        return 0;
-    }
-    else if (r==n)
-    {
-        return 1;
-    }
-    else if (r==0)
-    {
-        return 1;
-    }
-    else
-    {
-        if (r>(n>>1))
-        {
-            r = n-r;
-        }
-
-        uint32_t num = n;
-        uint32_t denum = 1;
-
-        for (uint32_t i=1; i<r; ++i)
-        {
-            num *= n-i;
-            denum *= i+1;
-        }
-
-        return num/denum;
-    }
-}
-
-/**
  * Gets number of genotypes from number of alleles and ploidy.
  */
 uint32_t bcf_ap2g(uint32_t no_allele, uint32_t no_ploidy)
@@ -831,6 +794,7 @@ void bcf_pg2a(uint32_t no_ploidy, uint32_t genotype_index, std::vector<int32_t>&
  */
 uint32_t bcf_ag2p(uint32_t no_alleles, uint32_t no_genotypes)
 {
+    //hard code simple cases
     if (no_alleles==2 && no_genotypes==3)
     {
         return 2;
@@ -848,6 +812,7 @@ uint32_t bcf_ag2p(uint32_t no_alleles, uint32_t no_genotypes)
         return 1;
     }
 
+    //this works in general for all number of alleles and number of genotypes
     uint32_t no_ploidy = 1;
     while (true)
     {
@@ -867,7 +832,7 @@ uint32_t bcf_ag2p(uint32_t no_alleles, uint32_t no_genotypes)
 }
 
 /**
- * Gets number of genotypes from number of alleles and ploidy.
+ * Gets index of a genotype of n ploidy.
  */
 uint32_t bcf_g2i(int32_t* g, uint32_t n)
 {
@@ -888,28 +853,6 @@ uint32_t bcf_g2i(int32_t* g, uint32_t n)
         }
         return index;
     }
-}
-
-/**
- * Gets number of genotypes from number of alleles and ploidy.
- */
-uint32_t bcf_g2i(int32_t g0, int32_t g1)
-{
-    return g0 + (((g1+1)*(g1))>>1);
-}
-
-/**
- * Gets number of genotypes from number of alleles and ploidy.
- */
-uint32_t bcf_g2i(std::string genotype)
-{
-    uint32_t index = 0;
-    for (uint32_t i=0; i<genotype.size(); ++i)
-    {
-        uint32_t allele = genotype.at(i)-65;
-        index += bcf_ap2g(allele, i+1);
-    }
-    return index;
 }
 
 /**

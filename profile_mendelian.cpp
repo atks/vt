@@ -220,16 +220,18 @@ class Igor : Program
                 }
             }
 
-            if (bcf_get_n_allele(v)==2)
+            int32_t no_alleles = bcf_get_n_allele(v);
+            
+            if (no_alleles==2)
             {
                 int k = bcf_get_genotypes(h, v, &gts, &n);
                 int r = bcf_get_format_int32(h, v, "DP", &dps, &n_dp);
-    
+
                 if (r==-1)
                 {
                     std::cerr << "NR for depths\n";
                     r = bcf_get_format_int32(h, v, "NR", &dps, &n_dp);
-    
+
                     if (r==-1)
                     {
                         for (uint32_t i=0; i<nsample; ++i)
@@ -238,32 +240,32 @@ class Igor : Program
                         }
                     }
                 }
-    
+
                 bool variant_used = false;
-    
+
                 for (int32_t i =0; i< trios.size(); ++i)
                 {
                     int32_t j = trios[i].father_index;
                     int32_t f1 = bcf_gt_allele(gts[(j<<1)]);
                     int32_t f2 = bcf_gt_allele(gts[(j<<1)+1]);
                     int32_t min_dp = dps[j];
-    
+
                     j = trios[i].mother_index;
                     int32_t m1 = bcf_gt_allele(gts[(j<<1)]);
                     int32_t m2 = bcf_gt_allele(gts[(j<<1)+1]);
                     min_dp = dps[j]<min_dp ? dps[j] : min_dp;
-    
+
                     j = trios[i].child_index;
                     int32_t c1 = bcf_gt_allele(gts[(j<<1)]);
                     int32_t c2 = bcf_gt_allele(gts[(j<<1)+1]);
                     min_dp = dps[j]<min_dp ? dps[j] : min_dp;
-    
+
                     if (min_dp<min_depth)
                     {
                         ++no_failed_min_depth;
                         continue;
                     }
-    
+
                     if (!(f1<0 || f2<0 || m1<0 || m2<0 || c1<0 || c2<0))
                     {
                         if (!ignore_non_variants || (f1+f2+m1+m2+c1+c2!=0))
@@ -275,82 +277,168 @@ class Igor : Program
                 }
                 if (variant_used) ++no_variants;
             }
+            //multiallelics
             else
             {
+                
                 int k = bcf_get_genotypes(h, v, &gts, &n);
                 int r = bcf_get_format_int32(h, v, "DP", &dps, &n_dp);
-    
+
                 if (r==-1)
                 {
-                    
+
                 }
-    
+
                 bool variant_used = false;
-    
+
                 for (int32_t i =0; i< trios.size(); ++i)
                 {
                     int32_t j = trios[i].father_index;
                     int32_t f1 = bcf_gt_allele(gts[(j<<1)]);
                     int32_t f2 = bcf_gt_allele(gts[(j<<1)+1]);
                     int32_t min_dp = dps[j];
-    
+
                     j = trios[i].mother_index;
                     int32_t m1 = bcf_gt_allele(gts[(j<<1)]);
                     int32_t m2 = bcf_gt_allele(gts[(j<<1)+1]);
                     min_dp = dps[j]<min_dp ? dps[j] : min_dp;
-    
+
                     j = trios[i].child_index;
                     int32_t c1 = bcf_gt_allele(gts[(j<<1)]);
                     int32_t c2 = bcf_gt_allele(gts[(j<<1)+1]);
                     min_dp = dps[j]<min_dp ? dps[j] : min_dp;
-    
+
                     if (min_dp<min_depth)
                     {
                         ++no_failed_min_depth;
                         continue;
                     }
-    
+
                     if (!(f1<0 || f2<0 || m1<0 || m2<0 || c1<0 || c2<0))
                     {
+                        //translate to 0,1,2,3
+
+                        std::vector<int32_t> afs(no_alleles, 0);
+                        int32_t observed_no_alleles = 0;
+                        if (!afs[f1]) ++observed_no_alleles;
+                        ++afs[f1];
+                        if (!afs[f2]) ++observed_no_alleles;
+                        ++afs[f2];
+                        if (!afs[m1]) ++observed_no_alleles;
+                        ++afs[m1];
+                        if (!afs[m2]) ++observed_no_alleles;
+                        ++afs[m2];
+
+                        //translate allleles
+                        std::vector<int32_t> recode(no_alleles, 0);
+                        
+//                        std::vector<std::vector<int32_t> >;
+                        for (uint32_t i=0; i<no_alleles; ++i)
+                        {
+                            if (observed_no_alleles==1)
+                            {
+                                if (afs[0])
+                                {
+                                    recode[0] = 0;
+                                } 
+                                   
+                            }
+                            else if (observed_no_alleles==2)
+                            {
+                            }    
+                            else if (observed_no_alleles==3)
+                            {
+                            }    
+                            else if (observed_no_alleles==4)
+                            {
+                            }        
+                        }
+                       
+
+                        if (true)
+                        {                            
+                            //if reference allele is amongst parental allele
+                            
+                            if (afs[0]!=0)
+                            {
+                                                                
+                            }
+                            else
+                            {
+                            }
+                            
+                            //AA/AA => AA
+                            //RR/RR => RR
+                            //RR
+
+                            //AA/AA => AA,BB,CC,CD
+                            //AA/AA => AA,BB,CC,CD
+
+                        }
+                        else if (2==12)
+                        {
+                            //AA/BB => AA,BB,CC,CD
+                            //AA/BB => AA,BB,CC,CD
+
+                            //AB/AB => AA
+                        }
+                        else if (3==3)
+                        {
+                        }
+                        else if (3==4)
+                        {
+                            //AB/CD => AA,BB,CC,DD
+                            //AB/CD => AB,CD
+                            //AB/CD => EF
+
+
+
+
+                        }
+
+
+                       
+
+
                         if (!ignore_non_variants || (f1+f2+m1+m2+c1+c2!=0))
                         {
                             bool c1_in_dad = false;
                             bool c1_in_mom = false;
                             bool c2_in_dad = false;
                             bool c2_in_mom = false;
-                            
-                            
-                                                        
-                            //biallelic 
+
+
+
+                            //biallelic
                             //HOM HOM
                             //1. AA BB => AB              2
                             //2. AA AA => AA
-                            
+
                             //HET HET
                             //1. AB AB => AA AB BB        2
                             //2. AC AD => AA AC AD CD
-                            //3. AB CD => AC AD BC BD 
-                            
+                            //3. AB CD => AC AD BC BD
+
                             //HOM HET
                             //1. AA AB => AA AB           2
                             //2. AA BC => AB AC
-                            
-                            
-                            ++trio_genotypes[f1+f2][m1+m2][c1+c2];
+
+
+//                            ++trio_genotypes[f1+f2][m1+m2][c1+c2];
                             variant_used = true;
                         }
                     }
                 }
                 if (variant_used) ++no_variants;
-                
-                
-                
-                
-                
+
+
+
+
+
                 continue;
-                
+
             }
-            
+
 
         }
 
@@ -728,7 +816,7 @@ class Igor : Program
         std::string g2s[3] = {"R/R","R/A","A/A"};
 
         fprintf(stderr, "\n");
-        fprintf(stderr, "     Mendelian Errors\n");
+        fprintf(stderr, "     Mendelian Errors (Biallelics)");
         fprintf(stderr, "\n");
         fprintf(stderr, "     Father Mother       R/R          R/A          A/A    Error(%%) HomHet    Het(%%)\n");
         for (int32_t i=0; i<3; ++i)
@@ -788,6 +876,15 @@ class Igor : Program
         fprintf(stderr, "\n");
         fprintf(stderr, "     no. of trio-sites that fail min depth  : %d\n", no_failed_min_depth);
         fprintf(stderr, "\n");
+
+        fprintf(stderr, "\n");
+        fprintf(stderr, "     Mendelian Errors (Multiallelics)");
+        fprintf(stderr, "\n");
+
+
+
+
+
     };
 
     ~Igor()

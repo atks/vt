@@ -67,7 +67,7 @@ class Igor : Program
         //////////////////////////
         try
         {
-            std::string desc = "removes INFO tags from a VCF file";
+            std::string desc = "removes INFO/FORMAT tags from a VCF/BCF file";
 
             TCLAP::CmdLine cmd(desc, ' ', version);
             VTOutput my; cmd.setOutput(&my);
