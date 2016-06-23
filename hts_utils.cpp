@@ -794,7 +794,7 @@ void bcf_pg2a(uint32_t no_ploidy, uint32_t genotype_index, std::vector<int32_t>&
  */
 uint32_t bcf_ag2p(uint32_t no_alleles, uint32_t no_genotypes)
 {
-    //hard code simple cases
+    //hard coded simple cases
     if (no_alleles==2 && no_genotypes==3)
     {
         return 2;

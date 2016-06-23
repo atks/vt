@@ -221,7 +221,8 @@ class Igor : Program
             }
 
             int32_t no_alleles = bcf_get_n_allele(v);
-            
+
+            //biallelic
             if (no_alleles==2)
             {
                 int k = bcf_get_genotypes(h, v, &gts, &n);
@@ -243,7 +244,7 @@ class Igor : Program
 
                 bool variant_used = false;
 
-                for (int32_t i =0; i< trios.size(); ++i)
+                for (int32_t i=0; i<trios.size(); ++i)
                 {
                     int32_t j = trios[i].father_index;
                     int32_t f1 = bcf_gt_allele(gts[(j<<1)]);
@@ -280,7 +281,7 @@ class Igor : Program
             //multiallelics
             else
             {
-                
+
                 int k = bcf_get_genotypes(h, v, &gts, &n);
                 int r = bcf_get_format_int32(h, v, "DP", &dps, &n_dp);
 
@@ -331,7 +332,7 @@ class Igor : Program
 
                         //translate allleles
                         std::vector<int32_t> recode(no_alleles, 0);
-                        
+
 //                        std::vector<std::vector<int32_t> >;
                         for (uint32_t i=0; i<no_alleles; ++i)
                         {
@@ -340,33 +341,33 @@ class Igor : Program
                                 if (afs[0])
                                 {
                                     recode[0] = 0;
-                                } 
-                                   
+                                }
+
                             }
                             else if (observed_no_alleles==2)
                             {
-                            }    
+                            }
                             else if (observed_no_alleles==3)
                             {
-                            }    
+                            }
                             else if (observed_no_alleles==4)
                             {
-                            }        
+                            }
                         }
-                       
+
 
                         if (true)
-                        {                            
+                        {
                             //if reference allele is amongst parental allele
-                            
+
                             if (afs[0]!=0)
                             {
-                                                                
+
                             }
                             else
                             {
                             }
-                            
+
                             //AA/AA => AA
                             //RR/RR => RR
                             //RR
@@ -397,7 +398,7 @@ class Igor : Program
                         }
 
 
-                       
+
 
 
                         if (!ignore_non_variants || (f1+f2+m1+m2+c1+c2!=0))
