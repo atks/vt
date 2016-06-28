@@ -289,7 +289,7 @@ bcf1_t* JointGenotypingRecord::flush_variant(bcf_hdr_t* hdr)
     float fic = 0;
     n = 0;
     est->compute_gl_fic(pl, nsamples, ploidy, MLE_HWE_AF, 2, MLE_GF, fic, n);
-    if ( isnanf(fic) ) fic = 0;
+    if ( isnan((double)fic) ) fic = 0;
     if (n) {
     bcf_update_info_float(hdr, nv, "IBC", &fic, 1);
     }

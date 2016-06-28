@@ -839,10 +839,10 @@ std::vector<int32_t> bcf_ip2g(int32_t genotype_index, uint32_t no_ploidy)
     std::vector<int32_t> genotype(no_ploidy, 0);
 
     int32_t pth = no_ploidy;
-    int32_t max_allele_index = 20;
+    int32_t max_allele_index = genotype_index;
     int32_t leftover_genotype_index = genotype_index;
     
-    int d = 0;
+//    int d = 0;
     while (pth>0)
     {
 //        std::cerr << "pth: " << pth << "\n";
