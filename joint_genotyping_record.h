@@ -66,7 +66,7 @@ class JointGenotypingRecord
 
     //indel specific record
     int32_t dlen;
-    uint32_t len;
+    int32_t len;
     std::string indel;
 
     //vntr specific record
