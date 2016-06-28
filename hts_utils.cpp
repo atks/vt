@@ -134,9 +134,9 @@ std::string bam_hdr_get_sample_name(bam_hdr_t* hdr) {
       for (v = (char*)r; *v && *v != '\t' && *v != '\n'; ++v);
       *u = *v = '\0';
       if ( sm.empty() )
-	sm = r;
+    sm = r;
       else if ( sm.compare(r) != 0 )
-	error("Multiple sample IDs are included in one BAM file - %s, %s", sm.c_str(), r);
+    error("Multiple sample IDs are included in one BAM file - %s, %s", sm.c_str(), r);
     }
     else break;
     p = q > r ? q : r;
@@ -505,7 +505,7 @@ int32_t* bcf_hdr_seqlen(const bcf_hdr_t *hdr, int32_t *nseq)
  */
 void bcf_copy_info_field(bcf_hdr_t *hsrc, bcf1_t* vsrc, bcf_hdr_t *hdest, bcf1_t* vdest, const char* key, int32_t type)
 {
-    if (type==BCF_HT_FLAG) 
+    if (type==BCF_HT_FLAG)
     {
         if (bcf_get_info_flag(hsrc, vsrc, key, NULL, NULL)>0)
         {
@@ -786,7 +786,7 @@ uint32_t bcf_ap2g(uint32_t no_allele, uint32_t no_ploidy)
  */
 void bcf_pg2a(uint32_t no_ploidy, uint32_t genotype_index, std::vector<int32_t>& alleles)
 {
-    
+
 }
 
 /**
@@ -829,6 +829,53 @@ uint32_t bcf_ag2p(uint32_t no_alleles, uint32_t no_genotypes)
 
         ++no_ploidy;
     }
+}
+
+/**
+ * Gets genotype from genotype index and ploidy.
+ */
+std::vector<int32_t> bcf_ip2g(int32_t genotype_index, uint32_t no_ploidy)
+{
+    std::vector<int32_t> genotype(no_ploidy, 0);
+
+    int32_t pth = no_ploidy;
+    int32_t max_allele_index = 20;
+    int32_t leftover_genotype_index = genotype_index;
+    
+    int d = 0;
+    while (pth>0)
+    {
+//        std::cerr << "pth: " << pth << "\n";
+//        std::cerr << "  left over genotype: " << leftover_genotype_index << "\n";
+                
+        for (int32_t allele_index=0; allele_index <= max_allele_index; ++allele_index)
+        {
+//            std::cerr << "\tchoose " << (pth+allele_index-1) << " " << pth << "\n";
+                
+            int32_t i = choose(pth+allele_index-1, pth);
+
+//            std::cerr << "\tcheck " << allele_index << " " << i << " " << leftover_genotype_index <<"\n";
+
+            if (i>=leftover_genotype_index)
+            {
+                if (i>leftover_genotype_index) --allele_index;
+                leftover_genotype_index -= choose(pth+allele_index-1, pth);
+                --pth;
+                max_allele_index = allele_index;
+                genotype[pth] = allele_index;
+//                std::cerr << "\tset\t" << pth << " as " << allele_index << "\n";                
+//                std::cerr << "\tleaving for loop\n";
+                break;
+                
+            }
+        }
+//    
+//        ++d;
+//        
+//        if (d>5) exit(1);
+    }
+    
+    return genotype;
 }
 
 /**
@@ -1091,8 +1138,8 @@ std::string bcf_get_info_str(bcf_hdr_t *h, bcf1_t *v, const char* tag, std::stri
     {
         return default_value;
     }
-    
-    return str;    
+
+    return str;
 }
 
 /**
@@ -1112,8 +1159,8 @@ int32_t bcf_get_info_int(bcf_hdr_t *h, bcf1_t *v, const char* tag, int32_t defau
     {
         return default_value;
     }
-    
-    return i;    
+
+    return i;
 }
 
 /**
@@ -1149,8 +1196,8 @@ std::vector<int32_t> bcf_get_info_int_vec(bcf_hdr_t *h, bcf1_t *v, const char* t
     {
         i_vec.resize(default_size, default_value);
     }
-    
-    return i_vec;    
+
+    return i_vec;
 }
 
 /**
@@ -1170,8 +1217,8 @@ float bcf_get_info_flt(bcf_hdr_t *h, bcf1_t *v, const char* tag, float default_v
     {
         return default_value;
     }
-    
-    return f;    
+
+    return f;
 }
 
 /**
@@ -1187,15 +1234,15 @@ int32_t bcf_set_info_flt(bcf_hdr_t *h, bcf1_t *v, const char* tag, float value)
  */
 void error(const char * msg, ...)
 {
-    va_list  ap;    
+    va_list  ap;
     va_start(ap, msg);
-    
+
     fprintf(stderr, "\nFATAL ERROR - \n");
     vfprintf(stderr, msg, ap);
     fprintf(stderr, "\n\n");
-    
+
     va_end(ap);
-    
+
     abort();
     //throw pexception;
     //exit(EXIT_FAILURE);
@@ -1204,20 +1251,20 @@ void error(const char * msg, ...)
 /**
  * Prints a message to STDERR.
  */
-void notice(const char * msg, ...) 
+void notice(const char * msg, ...)
 {
     va_list ap;
     va_start(ap, msg);
-    
+
     time_t current_time;
     char buff[255];
     current_time = time(NULL);
-    
+
     strftime(buff, 120, "%Y/%m/%d %H:%M:%S", localtime(&current_time));
-    
+
     fprintf(stderr,"NOTICE [%s] - ", buff);
     vfprintf(stderr, msg, ap);
     fprintf(stderr,"\n");
-    
+
     va_end(ap);
 }

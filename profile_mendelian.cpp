@@ -66,9 +66,12 @@ class Igor : Program
     //stats//
     /////////
     uint32_t no_trios;
-    uint32_t no_variants;
+    uint32_t no_biallelic_variants;
+    uint32_t no_multiallelic_variants;
     uint32_t no_failed_min_depth;
     int32_t trio_genotypes[3][3][3];
+    std::vector<std::vector<std::vector<int32_t> > > trios_multiallelic_genotypes;
+
 
     /////////
     //tools//
@@ -151,7 +154,8 @@ class Igor : Program
         //stats initialization//
         ////////////////////////
         no_trios = 0;
-        no_variants = 0;
+        no_biallelic_variants = 0;
+        no_multiallelic_variants = 0;
         no_failed_min_depth = 0;
 
         for (int32_t i=0; i<3; ++i)
@@ -170,9 +174,22 @@ class Igor : Program
         /////////
         vm = new VariantManip();
     }
+    
+   
+    
 
     void profile_mendelian()
     {
+        
+        std::vector<int32_t> geno = bcf_ip2g(15, 3);
+        
+        for (int32_t i=0; i<geno.size(); ++i)
+        {
+            if (i) std::cerr << "/";
+            std::cerr << geno[i] ;
+        }
+        std::cerr << "\n";
+        
         bcf_hdr_t *h = odr->hdr;
         bcf1_t *v = bcf_init1();
 
@@ -276,7 +293,7 @@ class Igor : Program
                         }
                     }
                 }
-                if (variant_used) ++no_variants;
+                if (variant_used) ++no_biallelic_variants;
             }
             //multiallelics
             else
@@ -315,11 +332,11 @@ class Igor : Program
                         continue;
                     }
 
-                    if (!(f1<0 || f2<0 || m1<0 || m2<0 || c1<0 || c2<0))
+                    if (f1>=0 && f2>=0 && m1>=0 && m2>=0 && c1>=0 && c2>=0)
                     {
-                        //translate to 0,1,2,3
-
-                        std::vector<int32_t> afs(no_alleles, 0);
+                        //translate parental alleles to 0,1,2,3 and
+                        //child alleles to 0,1,2,3,4,5.
+                        std::vector<int32_t> afs(no_alleles, -1);
                         int32_t observed_no_alleles = 0;
                         if (!afs[f1]) ++observed_no_alleles;
                         ++afs[f1];
@@ -330,32 +347,36 @@ class Igor : Program
                         if (!afs[m2]) ++observed_no_alleles;
                         ++afs[m2];
 
-                        //translate allleles
                         std::vector<int32_t> recode(no_alleles, 0);
-
-//                        std::vector<std::vector<int32_t> >;
+                        int32_t new_i = 0;
                         for (uint32_t i=0; i<no_alleles; ++i)
                         {
-                            if (observed_no_alleles==1)
+                            if (afs[i])
                             {
-                                if (afs[0])
-                                {
-                                    recode[0] = 0;
-                                }
-
-                            }
-                            else if (observed_no_alleles==2)
-                            {
-                            }
-                            else if (observed_no_alleles==3)
-                            {
-                            }
-                            else if (observed_no_alleles==4)
-                            {
+                                recode[i] = new_i;
+                                ++new_i;
                             }
                         }
 
-
+                        f1 = recode[f1];
+                        f2 = recode[f1];
+                        m1 = recode[m1];
+                        m2 = recode[m2];
+                        
+                        if (recode[c1]==-1)
+                        {    
+                            recode[c1] = new_i;
+                            ++new_i;
+                        }
+                        c1 = recode[c1];
+                                               
+                        if (recode[c2]==-1)
+                        {    
+                            recode[c2] = new_i;
+                            ++new_i;
+                        }
+                        c2 = recode[c2];
+                                                
                         if (true)
                         {
                             //if reference allele is amongst parental allele
@@ -430,7 +451,7 @@ class Igor : Program
                         }
                     }
                 }
-                if (variant_used) ++no_variants;
+                if (variant_used) ++no_multiallelic_variants;
 
 
 
@@ -797,7 +818,7 @@ class Igor : Program
         fprintf(out, "\\begin{tabular}{lr}\n");
         fprintf(out, "total mendelian error & %7.3f \\%% \\\\ \n", get_error_rate(trio_genotypes, -1, -1, -1));
         fprintf(out, "no. of trios     & %d \\\\ \n", no_trios);
-        fprintf(out, "no. of variants  & %d \\\\ \n", no_variants);
+        fprintf(out, "no. of variants  & %d \\\\ \n", no_biallelic_variants);
         fprintf(out, "\n");
         fprintf(out, "\\end{tabular}}\n");
         fprintf(out, "\\end{frame}\n");
@@ -872,20 +893,20 @@ class Igor : Program
         fprintf(stderr, "\n");
         fprintf(stderr, "     total mendelian error : %7.3f%%\n", get_error_rate(trio_genotypes, -1, -1, -1));
         fprintf(stderr, "\n");
-        fprintf(stderr, "     no. of trios     : %d\n", no_trios);
-        fprintf(stderr, "     no. of variants  : %d\n", no_variants);
+        fprintf(stderr, "     no. of trios               : %d\n", no_trios);
+        fprintf(stderr, "     no. of biallelic variants  : %d\n", no_biallelic_variants);
         fprintf(stderr, "\n");
         fprintf(stderr, "     no. of trio-sites that fail min depth  : %d\n", no_failed_min_depth);
         fprintf(stderr, "\n");
-
         fprintf(stderr, "\n");
         fprintf(stderr, "     Mendelian Errors (Multiallelics)");
         fprintf(stderr, "\n");
-
-
-
-
-
+        fprintf(stderr, "\n");
+        fprintf(stderr, "     no. of trios                  : %d\n", no_trios);
+        fprintf(stderr, "     no. of multiallelic variants  : %d\n", no_multiallelic_variants);
+        fprintf(stderr, "\n");
+        fprintf(stderr, "     no. of trio-sites that fail min depth  : %d\n", no_failed_min_depth);
+        fprintf(stderr, "\n");
     };
 
     ~Igor()

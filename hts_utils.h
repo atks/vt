@@ -320,12 +320,17 @@ void bcf_pg2a(uint32_t no_ploidy, uint32_t genotype_index, std::vector<int32_t>&
 /**
  * Gets number of ploidy from number of alleles and genotypes.
  */
-uint32_t bcf_ag2p(uint32_t no_alleles, uint32_t no_genotypes);
+uint32_t bcf_ag2p(int32_t no_alleles, uint32_t no_genotypes);
 
 /**
- * Gets index of a genotype of n ploidy.
+ * Gets genotype from genotype index and ploidy.
  */
-uint32_t bcf_g2i(int32_t* g, uint32_t n);
+std::vector<int32_t> bcf_ip2g(int32_t genotype_index, uint32_t no_ploidy);
+
+/**
+ * Gets index of a genotype of p ploidy.
+ */
+uint32_t bcf_g2i(int32_t* g, uint32_t p);
 
 /**
  * Gets index of a diploid genotype.
