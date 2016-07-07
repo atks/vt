@@ -69,7 +69,6 @@ class JointGenotypingBufferedReader
     ///////////
     bool output_annotations;
     
-
     /////////
     //stats//
     /////////
@@ -90,7 +89,6 @@ class JointGenotypingBufferedReader
      * Constructor.
      */
     JointGenotypingBufferedReader(std::string in_vcf_filename, std::vector<GenomeInterval>& intervals, std::string out_vcf_filename, int32_t nsamples);
-
 
     void set_sample(int32_t sampleIndex, const char* sampleName, double contam);
     void flush_sample(int32_t sampleIndex);

@@ -440,28 +440,30 @@ class Igor : Program
     return std::equal(ending.rbegin(), ending.rend(), value.rbegin());
   }
 
-  int32_t file_type(std::string const& value) {
-    if ( ends_with(value,".vcf") || ends_with(value,".bcf") || ends_with(value,".vcf.gz") ) {
-      return 2; // BCF/VCF
+  int32_t file_type(std::string const& value)
+  {
+    if ( ends_with(value,".vcf") || ends_with(value,".bcf") || ends_with(value,".vcf.gz") )
+    {
+    return 2; // BCF/VCF
     }
     else if ( ends_with(value,".bam") || ends_with(value,".cram") || ends_with(value,".sam") ) {
-      return 1;
+    return 1;
     }
     else {
-      errno = 0;
-      char* endptr = NULL;
-      double converted = strtod(value.c_str(), &endptr);
+    errno = 0;
+    char* endptr = NULL;
+    double converted = strtod(value.c_str(), &endptr);
 
-      if ( ( *endptr == 0 ) && ( errno == 0 ) ) {
+    if ( ( *endptr == 0 ) && ( errno == 0 ) ) {
     return 0;
-      }
-      else
+    }
+    else
     return -1;
     }
   }
 
-  void joint_genotype_sequential()
-  {
+void joint_genotype_sequential()
+{
     // assume that the following features are available
     // 1. BQSUM, DPF, DPR
     // 2. GT, PL, ADF, ADR, DP, CY, ST, AL, NM
@@ -561,7 +563,7 @@ class Igor : Program
       }
     }
 
-    notice("Identified a total of %u VCF/BCF files and %u SAM/CRAM/CRAM files as input to integrate",input_vcf_files.size(), input_sam_files.size());
+    notice("Identified a total of %u VCF/BCF files and %u SAM/CRAM/CRAM files as input to integrate", input_vcf_files.size(), input_sam_files.size());
 
     if ( input_vcf_files.size() == 0 )
       error("At least one BCF/VCF files are required as input");
@@ -589,65 +591,66 @@ class Igor : Program
       std::vector<std::string> snames(nsamples);
 
 #pragma omp parallel for schedule(dynamic,1)
-      for(int32_t i=0; i < nsamples; ++i) {
-    BAMOrderedReader odr(input_sam_files[i], intervals);
-    bam_hdr_t* h = odr.hdr;
-    int64_t no_reads = 0;
-
-    snames[i] = input_sam_sample_names[i].empty() ? bam_hdr_get_sample_name(odr.hdr) : input_sam_sample_names[i];
-    jgbr.set_sample(i, snames[i].c_str(), input_sam_contams[i]);
-
-    if ( i % 100 == 0 )
-      notice("Processing %d-th sample %s", i+1, snames[i].c_str());
-
-    if ( jgbr.numVariants() > 0 ) {
-      while( odr.read(s) ) {
-        ++no_reads;
-        if ( !filter_read(odr.hdr, s) ) continue;
-
-        //jgbr.flush( h, s );
-        jgbr.process_read(h, s, i);  // process the next reads
-      }
-    }
-
-    if ( no_reads == 0 ) {
-      notice("WARNING: No read found in %d-th sample %s", i+1, snames[i].c_str());
-    }
-
-    jgbr.flush_sample(i);
-    odr.close();
-      }
-
-      bam_destroy1(s);
-      for(int32_t i=0; i < nsamples; ++i) {
-    bcf_hdr_add_sample(odw->hdr, snames[i].c_str());
-      }
-
-      bcf_hdr_add_sample(odw->hdr, NULL);
-
-      int32_t nvariants = jgbr.numVariants();
-      jgbr.write_header(odw);
-
-#pragma omp parallel for ordered schedule(static,1)
-      for(int32_t i=0; i < nvariants; ++i) {
-    bcf1_t* nv = jgbr.flush_variant(i, odw->hdr);
-
-#pragma omp ordered
+    for(int32_t i=0; i < nsamples; ++i)
     {
-      odw->write(nv);
-    }
-    bcf_destroy(nv);
-      }
-      odw->close();
-      delete odw;
-    }
+        BAMOrderedReader odr(input_sam_files[i], intervals);
+        bam_hdr_t* h = odr.hdr;
+        int64_t no_reads = 0;
+
+        snames[i] = input_sam_sample_names[i].empty() ? bam_hdr_get_sample_name(odr.hdr) : input_sam_sample_names[i];
+        jgbr.set_sample(i, snames[i].c_str(), input_sam_contams[i]);
+
+        if ( i % 100 == 0 )
+          notice("Processing %d-th sample %s", i+1, snames[i].c_str());
+
+        if ( jgbr.numVariants() > 0 ) {
+          while( odr.read(s) ) {
+            ++no_reads;
+            if ( !filter_read(odr.hdr, s) ) continue;
+
+            //jgbr.flush( h, s );
+            jgbr.process_read(h, s, i);  // process the next reads
+          }
+        }
+
+        if ( no_reads == 0 ) {
+          notice("WARNING: No read found in %d-th sample %s", i+1, snames[i].c_str());
+        }
+
+        jgbr.flush_sample(i);
+        odr.close();
+          }
+
+          bam_destroy1(s);
+          for(int32_t i=0; i < nsamples; ++i) {
+        bcf_hdr_add_sample(odw->hdr, snames[i].c_str());
+          }
+
+          bcf_hdr_add_sample(odw->hdr, NULL);
+
+          int32_t nvariants = jgbr.numVariants();
+          jgbr.write_header(odw);
+
+    #pragma omp parallel for ordered schedule(static,1)
+          for(int32_t i=0; i < nvariants; ++i) {
+        bcf1_t* nv = jgbr.flush_variant(i, odw->hdr);
+
+    #pragma omp ordered
+        {
+          odw->write(nv);
+        }
+        bcf_destroy(nv);
+          }
+          odw->close();
+          delete odw;
+        }
   }
 
-  /**
-   * Print BAM for debugging purposes.
-   */
-  void bam_print_key_values(bam_hdr_t *h, bam1_t *s)
-  {
+    /**
+     * Print BAM for debugging purposes.
+     */
+    void bam_print_key_values(bam_hdr_t *h, bam1_t *s)
+    {
         const char* chrom = bam_get_chrom(h, s);
         uint32_t pos1 = bam_get_pos1(s);
         kstring_t seq = {0,0,0};
@@ -683,9 +686,10 @@ class Igor : Program
         if (qual.m) free(qual.s);
         if (cigar_string.m) free(cigar_string.s);
         if (cigar_expanded_string.m) free(cigar_expanded_string.s);
-  }
+    }
 
-  void print_options() {
+    void print_options()
+    {
         std::clog << "genotype2 v" << version << "\n\n";
         std::clog << "options:    # input Files                       " << input_files.size() << "\n";
         std::clog << "         [o] output VCF File                      " << output_vcf_file << "\n";
@@ -698,7 +702,7 @@ class Igor : Program
         std::clog << "         [l] ignore overlapping read              " << (ignore_overlapping_read ? "true" : "false") << "\n";
         std::clog << "         [a] read flag filter                     " << std::showbase << std::hex << read_exclude_flag << std::dec << "\n";
         std::clog << "\n";
-  }
+    }
 
     void print_stats()
     {
@@ -709,7 +713,8 @@ class Igor : Program
         std::clog << "\n";
     }
 
-    ~Igor() {
+    ~Igor()
+    {
         kh_destroy(rdict, reads);
     }
 
