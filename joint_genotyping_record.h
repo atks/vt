@@ -118,7 +118,7 @@ class JointGenotypingRecord
      * Constructor.
      * @v - VCF record.
      */
-    JointGenotypingRecord(bcf_hdr_t*h, bcf1_t *v, int32_t vtype, int32_t nsamples);
+    JointGenotypingRecord(bcf_hdr_t *h, bcf1_t *v, int32_t vtype, int32_t nsamples);
 
     /**
      * Clears this record.
@@ -135,18 +135,38 @@ class JointGenotypingRecord
      */
     ~JointGenotypingRecord();
 
-    float compute_correlation(int32_t n, int32_t xy, int32_t x1, int32_t x2, int32_t y1, int32_t y2, float buffer) {
-      if ( n == 0 ) return 0;
-      float xsd = x2/(float)n - (x1/(float)n)*(x1/(float)n);
-      float ysd = y2/(float)n - (y1/(float)n)*(y1/(float)n);
-      return ( ( xy/(float)n - x1 * y1 / (float) n / (float) n ) / sqrt( xsd * ysd + buffer ) );
+    /**
+     * Compute correlation from sufficient statistics for integral observations
+     * @n  - number of observations
+     * @xy - sum of x_i * y_i
+     * @x1 - sum of x_i      
+     * @x2 - sum of x_i^2
+     * @y1 - sum of y_i      
+     * @y2 - sum of y_i^2
+     */
+    float compute_correlation(int32_t n, int32_t xy, int32_t x1, int32_t x2, int32_t y1, int32_t y2, float buffer) 
+    {
+        if ( n == 0 ) return 0;
+        float xvar = x2/(float)n - (x1/(float)n)*(x1/(float)n);
+        float yvar = y2/(float)n - (y1/(float)n)*(y1/(float)n);
+        return ( ( xy/(float)n - x1 * y1 / (float) n / (float) n ) / sqrt( xvar * yvar + buffer ) );
     }
 
-    float compute_correlation_f(int32_t n, float xy, float x1, float x2, float y1, float y2, float buffer) {
-      if ( n == 0 ) return 0;
-      float xsd = x2/(float)n - (x1/(float)n)*(x1/(float)n);
-      float ysd = y2/(float)n - (y1/(float)n)*(y1/(float)n);
-      return ( ( xy/(float)n - x1 * y1 / (float) n / (float) n ) / sqrt( xsd * ysd + buffer ) );
+    /**
+     * Compute correlation from sufficient statistics for float observations
+     * @n  - number of observations
+     * @xy - sum of x_i * y_i
+     * @x1 - sum of x_i      
+     * @x2 - sum of x_i^2
+     * @y1 - sum of y_i      
+     * @y2 - sum of y_i^2
+     */
+    float compute_correlation_f(int32_t n, float xy, float x1, float x2, float y1, float y2, float buffer) 
+    {
+        if ( n == 0 ) return 0;
+        float xvar = x2/(float)n - (x1/(float)n)*(x1/(float)n);
+        float yvar = y2/(float)n - (y1/(float)n)*(y1/(float)n);
+        return ( ( xy/(float)n - x1 * y1 / (float) n / (float) n ) / sqrt( xvar * yvar + buffer ) );
     }
 
 };

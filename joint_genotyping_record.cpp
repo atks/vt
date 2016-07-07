@@ -171,6 +171,9 @@ JointGenotypingRecord::~JointGenotypingRecord()
     if ( est ) delete est;
 }
 
+/**
+ * Destructor.
+ */
 bcf1_t* JointGenotypingRecord::flush_variant(bcf_hdr_t* hdr)
 {
     bcf1_t *nv = bcf_init();
