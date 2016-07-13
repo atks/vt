@@ -1234,7 +1234,7 @@ int32_t bcf_set_info_flt(bcf_hdr_t *h, bcf1_t *v, const char* tag, float value)
  */
 void error(const char * msg, ...)
 {
-    va_list  ap;
+    va_list ap;
     va_start(ap, msg);
 
     fprintf(stderr, "\nFATAL ERROR - \n");

@@ -45,7 +45,7 @@ JointGenotypingBufferedReader::JointGenotypingBufferedReader(std::string filenam
         
         if ( ( vtype != VT_VNTR ) && ( bcf_get_n_allele(v) == 2 ) ) 
         {
-            JointGenotypingRecord* jgr = new JointGenotypingRecord(odr->hdr, v, vtype, nsamples);
+            GenotypingRecord* jgr = new GenotypingRecord(odr->hdr, v, vtype, nsamples);
             gRecords.push_back(jgr);
         }
     }
@@ -114,7 +114,7 @@ int32_t JointGenotypingBufferedReader::process_read(bam_hdr_t *h, bam1_t *s, int
     int32_t nvisited = 0;
 
     //collect statistics for variant records that are in the buffer and overlap with the read
-    JointGenotypingRecord* jgr;
+    GenotypingRecord* jgr;
     for(int32_t i = lastFirst; i < (int)gRecords.size(); ++i) 
     {
         jgr = gRecords[i];

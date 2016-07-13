@@ -1,6 +1,6 @@
 /* The MIT License
 
-   Copyright (c) 2014 Adrian Tan <atks@umich.edu>
+   Copyright (c) 2016 Hyun Min Kang <hmkang.umich.edu> and Adrian Tan <atks@umich.edu>
 
    Permission is hereby granted, free of charge, to any person obtaining a copy
    of this software and associated documentation files (the "Software"), to deal
@@ -24,9 +24,17 @@
 #ifndef GENOTYPING_RECORD_H
 #define GENOTYPING_RECORD_H
 
-#include "hts_utils.h"
+#include "htslib/vcf.h"
+#include "htslib/faidx.h"
 #include "bcf_ordered_writer.h"
 #include "variant.h"
+#include "hts_utils.h"
+#include "augmented_bam_record.h"
+#include "estimator.h"
+
+#define FILTER_MASK_OVERLAP_SNP   0x0001
+#define FILTER_MASK_OVERLAP_INDEL 0x0002
+#define FILTER_MASK_OVERLAP_VNTR  0x0004
 
 /**
  * A generic record that holds information for genotyping a
@@ -56,32 +64,17 @@ class GenotypingRecord
     int32_t end1;
     int32_t vtype;
 
-    ///////////////////////
     //indel specific record
-    ///////////////////////
-
-    std::vector<std::string> indel_alleles;
-
     int32_t dlen;
-    uint32_t len;
+    int32_t len;
     std::string indel;
 
-    //repeat tract length
-    int32_t lend1;
-    int32_t rbeg1;
-
-    int32_t fuzzy_lend1;
-    int32_t fuzzy_rbeg1;
-
-
-    //////////////////////
     //vntr specific record
-    //////////////////////
     std::string motif;
 
-    //vntr specific record
+    std::vector<std::string> indel_alleles;
     std::vector<float> counts;
-
+        
     //for records that observe at least one alternate observation
     std::vector<uint32_t> bqs;  //for SNPs, store BQ, for Indels, store AQ
 
@@ -100,27 +93,65 @@ class GenotypingRecord
     std::vector<uint32_t> allele_depth_rev;
     uint32_t depth, depth_fwd, depth_rev;
     uint32_t base_qualities_sum;
+    
 
-    //////////////////////
-    //tools
-    //////////////////////
-    faidx_t *fai;
+    //vntr specific record
+    //std::vector<float> counts;
+
+    // sample level information
+    int32_t nsamples;
+    kstring_t alleles;
+    std::vector<std::string> v_alleles;
+    uint32_t n_filter;
+
+    uint8_t* pls;
+    uint8_t* ads;
+    Estimator* est;
+
+    // sufficient statistics for computing INFO field
+    float bqr_num, bqr_den;
+    float mqr_num, mqr_den;
+    float cyr_num, cyr_den;
+    float str_num, str_den;
+    float nmr_num, nmr_den;
+    float ior_num, ior_den;
+    float nm0_num, nm0_den;
+    float nm1_num, nm1_den;
+    float abe_num, abe_den;
+    float abz_num, abz_den;
+    float ns_nref, dp_sum, max_gq;
+
+    int32_t tmp_dp_q20;
+    int32_t tmp_dp_ra;
+    int32_t tmp_bq_s1, tmp_bq_s2;
+    int32_t tmp_mq_s1, tmp_mq_s2;
+    float tmp_cy_s1, tmp_cy_s2;
+    int32_t tmp_st_s1, tmp_st_s2;
+    int32_t tmp_al_s1, tmp_bq_al, tmp_mq_al;
+    float  tmp_cy_al;
+    int32_t tmp_st_al, tmp_nm_al;
+    int32_t tmp_nm_s1, tmp_nm_s2;
+    double tmp_oth_exp_q20, tmp_oth_obs_q20;
+    double tmp_pls[3];
+    double tmp_ads[3];
+
+    // temporary information to be cleared out per-sample basis
 
     /**
      * Constructor.
      * @v - VCF record.
      */
-    GenotypingRecord(bcf_hdr_t*h, bcf1_t *v, int32_t vtype);
-
-    /**
-     * Translates from descriptive allele to integer encoding.
-     */
-    int32_t dallele2allele(char dallele);
+    GenotypingRecord(bcf_hdr_t *h, bcf1_t *v, int32_t vtype, int32_t nsamples);
 
     /**
      * Clears this record.
      */
     void clear();
+    void clearTemp();
+    bcf1_t* flush_variant(bcf_hdr_t* hdr);
+    void flush_sample( int32_t sampleIndex );
+    void add_allele( double contam, int32_t allele, uint8_t mapq, bool fwd, uint32_t q, int32_t cycle, uint32_t nm );
+    void process_read(AugmentedBAMRecord& as, int32_t sampleIndex, double contam);
 
     /**
      * Destructor.

@@ -103,7 +103,6 @@ class Igor : Program
     /////////
     //stats//
     /////////
-
     uint32_t no_reads;
     uint32_t no_overlapping_reads;
     uint32_t no_passed_reads;
@@ -226,39 +225,51 @@ class Igor : Program
         //general use//
         ///////////////
 
-        // Read sex map if needed
-        if ( !sex_map_file.empty() ) {
-          htsFile *file = hts_open(sex_map_file.c_str(),"r");
-          if ( file == NULL ) {
-            fprintf(stderr,"ERROR: Cannot open %s\n",sex_map_file.c_str());
-            exit(1);
-          }
-          kstring_t *s = &file->line;
-          while( hts_getline(file,'\n',s) >= 0 ) {
-            std::string ss = std::string(s->s);
-            size_t idx = ss.find_first_of("\t ");
-            if ( idx == std::string::npos ) {
-              fprintf(stderr,"ERROR: Cannot parse line %s in %s\n",ss.c_str(), sex_map_file.c_str());
-              exit(1);
-            }
-            std::string id = ss.substr(0, idx);
-            int32_t sex = atoi(ss.substr(idx+1).c_str());
+        ////////////////////////
+        //Read sex map if needed
+        ////////////////////////
+        //todo:  process as a pedigree file?
+        if ( !sex_map_file.empty() )
+        {
+            htsFile *file = hts_open(sex_map_file.c_str(),"r");
 
-            if ( mSex.find(id) != mSex.end() ) {
-              fprintf(stderr,"ERROR: Duplicate ID %s in %s\n",id.c_str(), sex_map_file.c_str());
-              exit(1);
+            if ( file == NULL )
+            {
+                fprintf(stderr,"ERROR: Cannot open %s\n",sex_map_file.c_str());
+                exit(1);
             }
+            kstring_t *s = &file->line;
+            while( hts_getline(file,'\n',s) >= 0 )
+            {
+                std::string ss = std::string(s->s);
+                size_t idx = ss.find_first_of("\t ");
+                if ( idx == std::string::npos )
+                {
+                    fprintf(stderr,"ERROR: Cannot parse line %s in %s\n",ss.c_str(), sex_map_file.c_str());
+                    exit(1);
+                }
+                std::string id = ss.substr(0, idx);
+                int32_t sex = atoi(ss.substr(idx+1).c_str());
 
-            if ( sex == 0 ) {
-              fprintf(stderr,"WARNING: Unknown sex for individual %s, assuming females\n",id.c_str());
-              sex = 2;
+                if ( mSex.find(id) != mSex.end() )
+                {
+                    fprintf(stderr,"ERROR: Duplicate ID %s in %s\n",id.c_str(), sex_map_file.c_str());
+                    exit(1);
+                }
+
+                if ( sex == 0 )
+                {
+                    fprintf(stderr,"WARNING: Unknown sex for individual %s, assuming females\n",id.c_str());
+                    sex = 2;
+                }
+                else if ( sex > 2 )
+                {
+                    fprintf(stderr,"ERROR: Invalid sex %d for individual %s\n",sex,id.c_str());
+                    exit(1);
+                }
+
+                mSex[id] = sex;
             }
-            else if ( sex > 2 ) {
-              fprintf(stderr,"ERROR: Invalid sex %d for individual %s\n",sex,id.c_str());
-              exit(1);
-            }
-            mSex[id] = sex;
-          }
         }
 
         ////////////////////////
@@ -297,171 +308,207 @@ class Igor : Program
      *
      * Returns true if read is failed.
      */
-  bool filter_read(bam_hdr_t* h, bam1_t *s) {
-    khiter_t k;
-    int32_t ret;
+    bool filter_read(bam_hdr_t* h, bam1_t *s)
+    {
+        khiter_t k;
+        int32_t ret;
 
-    if (ignore_overlapping_read) {
-      //this read is part of a mate pair on the same contig
-      if (bam_get_mpos1(s) && (bam_get_tid(s)==bam_get_mtid(s))) {
-    //first mate
-    if (bam_get_mpos1(s)>bam_get_pos1(s)) {
-      //overlapping
-      if (bam_get_mpos1(s)<=(bam_get_pos1(s) + bam_get_l_qseq(s) - 1)) {
-        //add read that has overlapping
-        //duplicate the record and perform the stitching later
-        char* qname = strdup(bam_get_qname(s));
-        k = kh_put(rdict, reads, qname, &ret);
-        if (!ret) {
-          //already present
-          free(qname);
+        if (ignore_overlapping_read)
+        {
+            //this read is part of a mate pair on the same contig
+            if (bam_get_mpos1(s) && (bam_get_tid(s)==bam_get_mtid(s)))
+            {
+                //first mate
+                if (bam_get_mpos1(s)>bam_get_pos1(s))
+                {
+                    //overlapping
+                    if (bam_get_mpos1(s)<=(bam_get_pos1(s) + bam_get_l_qseq(s) - 1))
+                    {
+                        //add read that has overlapping
+                        //duplicate the record and perform the stitching later
+                        char* qname = strdup(bam_get_qname(s));
+                        k = kh_put(rdict, reads, qname, &ret);
+                        if (!ret)
+                        {
+                            //already present
+                            free(qname);
+                        }
+                        kh_val(reads, k) = {bam_get_pos1(s), bam_get_pos1(s)+bam_get_l_qseq(s)-1};
+                    }
+                }
+                else
+                {
+                    //check overlap
+                    if((k = kh_get(rdict, reads, bam_get_qname(s)))!=kh_end(reads))
+                    {
+                        if (kh_exist(reads, k))
+                        {
+                            free((char*)kh_key(reads, k));
+                            kh_del(rdict, reads, k);
+                            ++no_overlapping_reads;
+                        }
+                        //set this on to remove overlapping reads.
+                        return false;
+                    }
+                }
+            }
         }
-        kh_val(reads, k) = {bam_get_pos1(s), bam_get_pos1(s)+bam_get_l_qseq(s)-1};
-      }
-    }
-    else {
-      //check overlap
-      if((k = kh_get(rdict, reads, bam_get_qname(s)))!=kh_end(reads)) {
-        if (kh_exist(reads, k)) {
-          free((char*)kh_key(reads, k));
-          kh_del(rdict, reads, k);
-          ++no_overlapping_reads;
+
+        if(bam_get_flag(s) & read_exclude_flag)
+        {
+            //1. unmapped
+            //2. secondary alignment
+            //3. not passing QC
+            //4. PCR or optical duplicate
+            ++no_exclude_flag_reads;
+            return false;
         }
-        //set this on to remove overlapping reads.
-        return false;
-      }
-    }
-      }
-    }
 
-    if(bam_get_flag(s) & read_exclude_flag) {
-      //1. unmapped
-      //2. secondary alignment
-      //3. not passing QC
-      //4. PCR or optical duplicate
-      ++no_exclude_flag_reads;
-      return false;
-    }
-
-    if (bam_get_mapq(s) < read_mapq_cutoff) {
-      //filter short aligments and those with too many indels (?)
-      ++no_low_mapq_reads;
-      return false;
-    }
-
-    //*****************************************************************
-    //should we have an assertion on the correctness of the bam record?
-    //Is, Ds not sandwiched in M
-    //leading and trailing Is - convert to S
-    //no Ms!!!!!
-    //*****************************************************************
-    int32_t n_cigar_op = bam_get_n_cigar_op(s);
-    if (n_cigar_op) {
-      uint32_t *cigar = bam_get_cigar(s);
-      bool seenM = false;
-      int32_t last_opchr = '^';
-
-      for (int32_t i = 0; i < n_cigar_op; ++i) {
-    int32_t opchr = bam_cigar_opchr(cigar[i]);
-    int32_t oplen = bam_cigar_oplen(cigar[i]);
-    if (opchr=='S') {
-      if (i!=0 && i!=n_cigar_op-1) {
-        std::cerr << "S issue\n";
-        bam_print_key_values(h, s);
-        //++malformed_cigar;
-      }
-    }
-    else if (opchr=='M') {
-      seenM = true;
-    }
-    else if (opchr=='D') {
-      if (last_opchr!='M' || (i<=n_cigar_op && bam_cigar_opchr(cigar[i+1])!='M')) {
-        std::cerr << "D issue\n";
-        ++no_malformed_del_cigars;
-        bam_print_key_values(h, s);
-      }
-    }
-    else if (opchr=='I') {
-      if (last_opchr!='M' || (i<n_cigar_op && bam_cigar_opchr(cigar[i+1])!='M')) {
-        if (last_opchr!='M') {
-          if (last_opchr!='^' && last_opchr!='S') {
-        std::cerr << "leading I issue\n";
-        bam_print_key_values(h, s);
-        ++no_malformed_ins_cigars;
-          }
-          else {
-        ++no_salvageable_ins_cigars;
-          }
+        if (bam_get_mapq(s) < read_mapq_cutoff)
+        {
+            //filter short aligments and those with too many indels (?)
+            ++no_low_mapq_reads;
+            return false;
         }
-        else if (i==n_cigar_op-1) {
-          ++no_salvageable_ins_cigars;
+
+        //*****************************************************************
+        //should we have an assertion on the correctness of the bam record?
+        //Is, Ds not sandwiched in M
+        //leading and trailing Is - convert to S
+        //no Ms!!!!!
+        //*****************************************************************
+        int32_t n_cigar_op = bam_get_n_cigar_op(s);
+        if (n_cigar_op)
+        {
+            uint32_t *cigar = bam_get_cigar(s);
+            bool seenM = false;
+            int32_t last_opchr = '^';
+
+            for (int32_t i = 0; i < n_cigar_op; ++i)
+            {
+                int32_t opchr = bam_cigar_opchr(cigar[i]);
+                int32_t oplen = bam_cigar_oplen(cigar[i]);
+                if (opchr=='S')
+                {
+                    if (i!=0 && i!=n_cigar_op-1)
+                    {
+                        std::cerr << "S issue\n";
+                        bam_print_key_values(h, s);
+                        //++malformed_cigar;
+                    }
+                }
+                else if (opchr=='M')
+                {
+                  seenM = true;
+                }
+                else if (opchr=='D')
+                {
+                    if (last_opchr!='M' || (i<=n_cigar_op && bam_cigar_opchr(cigar[i+1])!='M'))
+                    {
+                        std::cerr << "D issue\n";
+                        ++no_malformed_del_cigars;
+                        bam_print_key_values(h, s);
+                    }
+                }
+                else if (opchr=='I') 
+                {
+                    if (last_opchr!='M' || (i<n_cigar_op && bam_cigar_opchr(cigar[i+1])!='M')) 
+                    {
+                        if (last_opchr!='M') 
+                        {
+                            if (last_opchr!='^' && last_opchr!='S')
+                            {
+                                std::cerr << "leading I issue\n";
+                                bam_print_key_values(h, s);
+                                ++no_malformed_ins_cigars;
+                            }
+                            else 
+                            {
+                                ++no_salvageable_ins_cigars;
+                            }
+                        }
+                        else if (i==n_cigar_op-1) 
+                        {
+                            ++no_salvageable_ins_cigars;
+                        }
+                        else if (i==n_cigar_op-2 && (bam_cigar_opchr(cigar[i+1])=='S')) 
+                        {
+                            ++no_salvageable_ins_cigars;
+                        }
+                        else
+                        {
+                            std::cerr << "trailing I issue\n";
+                            bam_print_key_values(h, s);
+                            ++no_malformed_ins_cigars;
+                        }
+                    }
+                }
+
+                last_opchr = opchr;
+            }
+            
+            if (!seenM) 
+            {
+                std::cerr << "NO! M issue\n";
+                bam_print_key_values(h, s);
+                ++no_unaligned_cigars;
+            }
         }
-        else if (i==n_cigar_op-2 && (bam_cigar_opchr(cigar[i+1])=='S')) {
-          ++no_salvageable_ins_cigars;
+            
+        //check to see that hash should be cleared when encountering new contig.
+        //some bams may not be properly formed and contain orphaned reads that
+        //is retained in the hash
+        if (bam_get_tid(s)!=tid)
+        {
+            for (k = kh_begin(reads); k != kh_end(reads); ++k) 
+            {
+                if (kh_exist(reads, k)) {
+                free((char*)kh_key(reads, k));
+                kh_del(rdict, reads, k);
+            }
         }
-        else {
-          std::cerr << "trailing I issue\n";
-          bam_print_key_values(h, s);
-          ++no_malformed_ins_cigars;
-        }
-      }
-    }
-
-    last_opchr = opchr;
-      }
-
-      if (!seenM) {
-    std::cerr << "NO! M issue\n";
-    bam_print_key_values(h, s);
-    ++no_unaligned_cigars;
-      }
-    }
-
-    //check to see that hash should be cleared when encountering new contig.
-    //some bams may not be properly formed and contain orphaned sequences that
-    //can be retained in the hash
-    if (bam_get_tid(s)!=tid) {
-      for (k = kh_begin(reads); k != kh_end(reads); ++k) {
-    if (kh_exist(reads, k)) {
-      free((char*)kh_key(reads, k));
-      kh_del(rdict, reads, k);
-    }
-      }
-
-      tid = bam_get_tid(s);
+        
+        tid = bam_get_tid(s);
     }
 
     return true;
-  }
+}
 
-  inline bool ends_with(std::string const & value, std::string const & ending)
-  {
+inline bool ends_with(std::string const & value, std::string const & ending)
+{
     if (ending.size() > value.size()) return false;
     return std::equal(ending.rbegin(), ending.rend(), value.rbegin());
-  }
+}
 
-  int32_t file_type(std::string const& value)
-  {
+int32_t file_type(std::string const& value)
+{
     if ( ends_with(value,".vcf") || ends_with(value,".bcf") || ends_with(value,".vcf.gz") )
     {
-    return 2; // BCF/VCF
+        return 2; // BCF/VCF
     }
-    else if ( ends_with(value,".bam") || ends_with(value,".cram") || ends_with(value,".sam") ) {
-    return 1;
+    else if ( ends_with(value,".bam") || ends_with(value,".cram") || ends_with(value,".sam") ) 
+    {
+        return 1;
     }
-    else {
-    errno = 0;
-    char* endptr = NULL;
-    double converted = strtod(value.c_str(), &endptr);
+    else 
+    {     
+        errno = 0;
+        char* endptr = NULL;
+        double converted = strtod(value.c_str(), &endptr);
+        
+        if ( ( *endptr == 0 ) && ( errno == 0 ) ) 
+        {
+            return 0;
+        }
+        else
+        {
+            return -1;
+        }
+    }
+}
 
-    if ( ( *endptr == 0 ) && ( errno == 0 ) ) {
-    return 0;
-    }
-    else
-    return -1;
-    }
-  }
 
+  
 void joint_genotype_sequential()
 {
     // assume that the following features are available
@@ -504,147 +551,175 @@ void joint_genotype_sequential()
 
     std::vector<std::string> tokens;
 
-    for(int32_t i=0; i < (int)input_files.size(); ++i) {
+    for(int32_t i=0; i < (int)input_files.size(); ++i) 
+    {
+        split(tokens, "\t\r\n ", input_files[i]);
+        
+        std::string fname;
+        std::string sname;
+        double contam = minContam;
 
-      split(tokens, "\t\r\n ", input_files[i]);
+        if ( tokens.size() == 1 ) 
+        {
+            int32_t t0 = file_type(tokens[0]);
+            if ( t0 > 0 ) 
+            {
+                fname = tokens[0];
+            }
+            else 
+            {
+                error("Cannot parse input line %s", input_files[i].c_str());
+            }
+        }
+        else if ( tokens.size() == 2 ) 
+        {
+            int32_t t0 = file_type(tokens[0]);
+            int32_t t1 = file_type(tokens[1]);
 
-      std::string fname;
-      std::string sname;
-      double contam = minContam;
-
-      if ( tokens.size() == 1 ) {
-    int32_t t0 = file_type(tokens[0]);
-    if ( t0 > 0 ) {
-      fname = tokens[0];
-    }
-    else {
-      error("Cannot parse input line %s",input_files[i].c_str());
-    }
-      }
-      else if ( tokens.size() == 2 ) {
-    int32_t t0 = file_type(tokens[0]);
-    int32_t t1 = file_type(tokens[1]);
-
-    if ( ( t0 == 1 ) && ( t1 == 0 ) ) { // SAM - NUMERIC
-      fname = tokens[0];
-      contam = ::atof(tokens[1].c_str());
-    }
-    else if ( t1 == 1 ) {  // ID - SAM
-      sname = tokens[0];
-      fname = tokens[1];
-    }
-    else
-      error("Cannot parse input line %s",input_files[i].c_str());
-      }
-      else if ( tokens.size() == 3 ) {
-    int32_t t0 = file_type(tokens[0]);
-    int32_t t1 = file_type(tokens[1]);
-    int32_t t2 = file_type(tokens[2]);
-
-    if ( ( t1 == 1 ) && ( t2 == 0 ) ) { // ID - SAM - NUMERIC
-      sname = tokens[0];
-      fname = tokens[1];
-      contam = ::atof(tokens[2].c_str());
-    }
-    else
-      error("Cannot parse input line %s",input_files[i].c_str());
-      }
-
-      if ( contam < minContam )
-    contam = minContam;
-
-      if ( file_type(fname) == 2 ) {
-    input_vcf_files.push_back(fname);
-      }
-      else {
-    input_sam_sample_names.push_back(sname);
-    input_sam_files.push_back(fname);
-    input_sam_contams.push_back(contam);
-      }
+            if ( ( t0 == 1 ) && ( t1 == 0 ) ) 
+            { // SAM - NUMERIC
+               fname = tokens[0];
+               contam = ::atof(tokens[1].c_str());
+            }
+            else if ( t1 == 1 ) 
+            {  // ID - SAM
+                sname = tokens[0];
+                fname = tokens[1];
+            }
+            else
+            {
+                error("Cannot parse input line %s",input_files[i].c_str());
+            }
+        }
+        else if ( tokens.size() == 3 ) 
+        {
+            int32_t t0 = file_type(tokens[0]);
+            int32_t t1 = file_type(tokens[1]);
+            int32_t t2 = file_type(tokens[2]);
+        
+            if ( ( t1 == 1 ) && ( t2 == 0 ) ) 
+            { // ID - SAM - NUMERIC
+                sname = tokens[0];
+                fname = tokens[1];
+                contam = ::atof(tokens[2].c_str());
+            }
+            else
+            {    
+              error("Cannot parse input line %s",input_files[i].c_str());
+            }
+        }
+        
+        if ( contam < minContam )
+        {
+            contam = minContam;
+        }
+        
+        if ( file_type(fname) == 2 ) 
+        {
+            input_vcf_files.push_back(fname);
+        }
+        else 
+        {
+            input_sam_sample_names.push_back(sname);
+            input_sam_files.push_back(fname);
+            input_sam_contams.push_back(contam);
+        }
     }
 
     notice("Identified a total of %u VCF/BCF files and %u SAM/CRAM/CRAM files as input to integrate", input_vcf_files.size(), input_sam_files.size());
 
     if ( input_vcf_files.size() == 0 )
-      error("At least one BCF/VCF files are required as input");
-    if ( ( input_vcf_files.size() > 1 ) && ( input_sam_files.size() > 0 ) )
-      error("BCF/VCF and SAM/BAM/CRAM files cannot be merged at the same time");
-
-    if ( input_sam_files.empty() ) { // BCF/VCF only
-      abort();
+    {
+        error("At least one BCF/VCF files are required as input");
     }
-    else {
-      int32_t nsamples = (int32_t)input_sam_files.size();
+    
+    if ( ( input_vcf_files.size() > 1 ) && ( input_sam_files.size() > 0 ) )
+    {
+        error("BCF/VCF and SAM/BAM/CRAM files cannot be merged at the same time");
+    }
+    
+    if ( input_sam_files.empty() ) 
+    { // BCF/VCF only
+        abort();
+    }
+    else 
+    {
+        int32_t nsamples = (int32_t)input_sam_files.size();
 
-      notice("Loading input VCF file %s in region %s", input_vcf_files[0].c_str(), intervals[0].to_string().c_str());
-      JointGenotypingBufferedReader jgbr(input_vcf_files[0], intervals, output_vcf_file, nsamples);
-
-      BCFOrderedWriter* odw = new BCFOrderedWriter(output_vcf_file);
-      bcf_hdr_transfer_contigs(jgbr.odr->hdr, odw->hdr);
-
-      bam1_t* s = bam_init1();
+        notice("Loading input VCF file %s in region %s", input_vcf_files[0].c_str(), intervals[0].to_string().c_str());
+        JointGenotypingBufferedReader jgbr(input_vcf_files[0], intervals, output_vcf_file, nsamples);
+        
+        BCFOrderedWriter* odw = new BCFOrderedWriter(output_vcf_file);
+        bcf_hdr_transfer_contigs(jgbr.odr->hdr, odw->hdr);
+        
+        bam1_t* s = bam_init1();
 
 #ifdef _OPENMP
-      notice("Running parallel jobs across %d CPUs", nThreads);
+        notice("Running parallel jobs across %d CPUs", nThreads);
 #endif
 
-      std::vector<std::string> snames(nsamples);
+        std::vector<std::string> snames(nsamples);
 
 #pragma omp parallel for schedule(dynamic,1)
-    for(int32_t i=0; i < nsamples; ++i)
-    {
-        BAMOrderedReader odr(input_sam_files[i], intervals);
-        bam_hdr_t* h = odr.hdr;
-        int64_t no_reads = 0;
-
-        snames[i] = input_sam_sample_names[i].empty() ? bam_hdr_get_sample_name(odr.hdr) : input_sam_sample_names[i];
-        jgbr.set_sample(i, snames[i].c_str(), input_sam_contams[i]);
-
-        if ( i % 100 == 0 )
-          notice("Processing %d-th sample %s", i+1, snames[i].c_str());
-
-        if ( jgbr.numVariants() > 0 ) {
-          while( odr.read(s) ) {
-            ++no_reads;
-            if ( !filter_read(odr.hdr, s) ) continue;
-
-            //jgbr.flush( h, s );
-            jgbr.process_read(h, s, i);  // process the next reads
-          }
-        }
-
-        if ( no_reads == 0 ) {
-          notice("WARNING: No read found in %d-th sample %s", i+1, snames[i].c_str());
-        }
-
-        jgbr.flush_sample(i);
-        odr.close();
-          }
-
-          bam_destroy1(s);
-          for(int32_t i=0; i < nsamples; ++i) {
-        bcf_hdr_add_sample(odw->hdr, snames[i].c_str());
-          }
-
-          bcf_hdr_add_sample(odw->hdr, NULL);
-
-          int32_t nvariants = jgbr.numVariants();
-          jgbr.write_header(odw);
-
-    #pragma omp parallel for ordered schedule(static,1)
-          for(int32_t i=0; i < nvariants; ++i) {
-        bcf1_t* nv = jgbr.flush_variant(i, odw->hdr);
-
-    #pragma omp ordered
+        for(int32_t i=0; i < nsamples; ++i)
         {
-          odw->write(nv);
+            BAMOrderedReader odr(input_sam_files[i], intervals);
+            bam_hdr_t* h = odr.hdr;
+            int64_t no_reads = 0;
+    
+            snames[i] = input_sam_sample_names[i].empty() ? bam_hdr_get_sample_name(odr.hdr) : input_sam_sample_names[i];
+            jgbr.set_sample(i, snames[i].c_str(), input_sam_contams[i]);
+    
+            if ( i % 100 == 0 )
+              notice("Processing %d-th sample %s", i+1, snames[i].c_str());
+    
+            if ( jgbr.numVariants() > 0 )
+            {
+                while( odr.read(s) )
+                {
+                    ++no_reads;
+                    if ( !filter_read(odr.hdr, s) ) continue;
+    
+                    //jgbr.flush( h, s );
+                    jgbr.process_read(h, s, i);  // process the next reads
+                }
+            }
+    
+            if ( no_reads == 0 )
+            {
+                notice("WARNING: No read found in %d-th sample %s", i+1, snames[i].c_str());
+            }
+    
+            jgbr.flush_sample(i);
+            odr.close();
         }
-        bcf_destroy(nv);
-          }
-          odw->close();
-          delete odw;
+    
+        bam_destroy1(s);
+        for(int32_t i=0; i < nsamples; ++i) 
+        {
+            bcf_hdr_add_sample(odw->hdr, snames[i].c_str());
         }
-  }
+    
+        bcf_hdr_add_sample(odw->hdr, NULL);
+    
+        int32_t nvariants = jgbr.numVariants();
+        jgbr.write_header(odw);
+
+#pragma omp parallel for ordered schedule(static,1)
+        for(int32_t i=0; i < nvariants; ++i) 
+        {
+            bcf1_t* nv = jgbr.flush_variant(i, odw->hdr);
+#pragma omp ordered
+            {
+              odw->write(nv);
+            }
+            bcf_destroy(nv);
+        }
+    
+        odw->close();
+        delete odw;
+    }
+}
 
     /**
      * Print BAM for debugging purposes.

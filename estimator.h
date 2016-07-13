@@ -172,6 +172,29 @@ class Estimator
     void compute_qual(int32_t *pls, int32_t no_samples, int32_t ploidy,
                 int32_t no_alleles, float &qual, int32_t &n);
 
+
+    /**
+     * Compute correlation from sufficient statistics for integral observations
+     * @n  - number of observations
+     * @xy - sum of x_i * y_i
+     * @x1 - sum of x_i      
+     * @x2 - sum of x_i^2
+     * @y1 - sum of y_i      
+     * @y2 - sum of y_i^2
+     */
+    static float compute_correlation(int32_t n, int32_t xy, int32_t x1, int32_t x2, int32_t y1, int32_t y2, float buffer);
+    
+    /**
+     * Compute correlation from sufficient statistics for float observations
+     * @n  - number of observations
+     * @xy - sum of x_i * y_i
+     * @x1 - sum of x_i      
+     * @x2 - sum of x_i^2
+     * @y1 - sum of y_i      
+     * @y2 - sum of y_i^2
+     */
+    static float compute_correlation_f(int32_t n, float xy, float x1, float x2, float y1, float y2, float buffer);
+
     private:
 };
 

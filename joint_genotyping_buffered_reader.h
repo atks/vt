@@ -30,7 +30,7 @@
 #include "htslib/vcf.h"
 #include "hts_utils.h"
 #include "program.h"
-#include "joint_genotyping_record.h"
+#include "genotyping_record.h"
 #include "bcf_ordered_reader.h"
 #include "variant.h"
 #include "variant_manip.h"
@@ -56,7 +56,7 @@ class JointGenotypingBufferedReader
     //////////////////
     //buffer related//
     //////////////////
-    std::vector<JointGenotypingRecord*> gRecords;
+    std::vector<GenotypingRecord*> gRecords;
     std::string chrom;
     AugmentedBAMRecord as;
     Variant variant;

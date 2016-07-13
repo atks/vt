@@ -16,7 +16,6 @@ SOURCES = align\
 		annotate_vntrs\
 		augmented_bam_record\
 		bam_ordered_reader\
-		bcf_genotyping_buffered_reader\
 		bcf_ordered_reader\
 		bcf_ordered_writer\
 		bcf_synced_reader\
@@ -46,16 +45,15 @@ SOURCES = align\
 		fuzzy_aligner\
 		gencode\
 		genome_interval\
-		genotype\
 		genotyping_record\
 		hts_utils\
 		hfilter\
+		indel_genotyping_record\
 		index\
 		interval_tree\
 		interval\
 		joint_genotype_sequential\
 		joint_genotyping_buffered_reader\
-		joint_genotyping_record\
 		lfhmm\
 		lhmm\
 		lhmm1\
@@ -99,6 +97,7 @@ SOURCES = align\
 		fuzzy_partition\
 		seq\
 		set_ref\
+		snp_genotyping_record\
 		sort\
 		subset\
 		sv_tree\
@@ -117,6 +116,7 @@ SOURCES = align\
 		vntr_annotator\
 		vntr_consolidator\
 		vntr_extractor\
+		vntr_genotyping_record\
 		vntr_tree\
 		vntrize\
    	    tbx_ordered_reader\
