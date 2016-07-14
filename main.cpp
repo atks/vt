@@ -45,9 +45,8 @@
 #include "estimate.h"
 #include "extract_vntrs.h"
 #include "fuzzy_partition.h"
-//#include "genotype.h"
+#include "genotype.h"
 #include "hfilter.h"
-#include "joint_genotype_sequential.h"
 #include "index.h"
 #include "milk_filter.h"
 #include "merge_candidate_variants.h"
@@ -307,7 +306,7 @@ int main(int argc, char ** argv)
     }
     else if (argc>1 && cmd=="genotype")
     {
-//        genotype(argc-1, ++argv);
+        genotype(argc-1, ++argv);
     }
     else if (argc>1 && cmd=="construct_probes")
     {
@@ -352,11 +351,7 @@ int main(int argc, char ** argv)
     else if (argc>1 && cmd=="paste_and_compute_features_sequential")
     {
         paste_and_compute_features_sequential(argc-1, ++argv);
-    }
-    else if (argc>1 && cmd=="joint_genotype_sequential")
-    {
-        joint_genotype_sequential(argc-1, ++argv);
-    }    
+    } 
     else if (argc>1 && cmd=="milk_filter")
     {
         milk_filter(argc-1, ++argv);
