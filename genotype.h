@@ -37,6 +37,7 @@
 #include "variant_manip.h"
 #include "estimator.h"
 #include "bcf_genotyping_buffered_reader.h"
+#include "read_filter.h"
 
 bool genotype(int argc, char ** argv);
 
