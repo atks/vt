@@ -67,7 +67,12 @@ char *faidx_fetch_uc_seq(const faidx_t *fai, const char *c_name, int p_beg_i, in
 /**
  * Checks file extension for use in writing files.
  */
-bool str_ends_with(std::string& file_name, const char* ext);
+bool str_ends_with(std::string const & value, std::string const & ending);
+
+/**
+ * Checks file extension based on filename.
+ */
+int32_t hts_filename_type(std::string const& value);
 
 /**************
  *BAM HDR UTILS

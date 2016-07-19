@@ -90,6 +90,7 @@ SOURCES = align\
 		profile_snps\
 		profile_vntrs\
 		program\
+		read_filter\
 		reference_sequence\
 		remove_overlap\
 		rfhmm\

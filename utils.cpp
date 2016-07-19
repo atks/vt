@@ -172,6 +172,17 @@ bool str2uint32(std::string& s, uint32_t& i)
 };
 
 /**
+ * Casts a string into double.  Returns true if successful.
+ */
+bool str2double(std::string& s, double& d)
+{
+    const char* start = s.c_str();
+    char *end = 0;
+    d = std::strtod(s.c_str(), &end);
+    return (end!=start);
+};
+
+/**
  * Appends cuurent working directoy to a path.
  * Returns true if successful.
  */

@@ -23,14 +23,6 @@
 
 #include "genotype.h"
 
-#include <errno.h>
-
-#ifdef _OPENMP
-#include <omp.h>
-#else
-#define omp_get_thread_num() 0
-#endif
-
 namespace
 {
 
@@ -72,14 +64,13 @@ class Igor : Program
 
     std::string sample_id;
     std::string ref_fasta_file;
-  //std::string mode;
     bool ignore_md;
     int32_t debug;
 
     //variables for keeping track of chromosome
     std::string chrom; //current chromosome
-    int32_t tid; // current sequence id in bam
-    int32_t rid; // current sequence id in bcf
+    int32_t tid;       // current sequence id in bam
+    int32_t rid;       // current sequence id in bcf
 
     //read filters
     uint32_t read_mapq_cutoff;
@@ -165,10 +156,10 @@ class Igor : Program
             TCLAP::ValueArg<uint32_t> arg_read_mapq_cutoff("m", "m", "MAPQ cutoff for alignments (>=) [0]", false, 0, "int", cmd);
             TCLAP::SwitchArg arg_ignore_overlapping_read("l", "l", "ignore overlapping reads [false]", cmd, false);
             TCLAP::ValueArg<uint32_t> arg_read_exclude_flag("a", "a", "read exclude flag [0x0704]", false, 0x0704, "int", cmd);
-        /*            TCLAP::ValueArg<std::string> arg_mode("m", "m", "mode [d]\n"
+            TCLAP::ValueArg<std::string> arg_mode("m", "m", "mode [d]\n"
                           "              p : parallel access across files (up to hundreds, less memory)\n"
                           "              s : sequential access across many files (thousands or more, with more memory)\n",
-                          false, "s", "str", cmd);*/
+                          false, "s", "str", cmd);
             TCLAP::ValueArg<std::string> arg_ref_fasta_file("r", "r", "reference FASTA file []", true, "", "string", cmd);
             TCLAP::ValueArg<uint32_t> arg_debug("d", "d", "debug [0]", false, 0, "int", cmd);
 
@@ -188,13 +179,8 @@ class Igor : Program
             const std::vector<std::string>& v = arg_input_files.getValue();
 
             print = arg_print.getValue();
-        maxBQ = arg_max_bq.getValue();
-        minContam = arg_min_contam.getValue();
-        nThreads = 1; //arg_n_thread.getValue();
-
-#ifdef _OPENMP
-        omp_set_num_threads(nThreads);
-#endif
+            maxBQ = arg_max_bq.getValue();
+            minContam = arg_min_contam.getValue();
 
             parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
             sex_map_file = arg_sex_map_file.getValue();
@@ -210,7 +196,7 @@ class Igor : Program
                 exit(1);
             }
 
-        est = new Estimator();
+
         }
         catch (TCLAP::ArgException &e)
         {
@@ -224,7 +210,7 @@ class Igor : Program
         ///////////////
         //general use//
         ///////////////
-    
+
         ////////////////////////
         //Read sex map if needed
         ////////////////////////
@@ -232,7 +218,7 @@ class Igor : Program
         if ( !sex_map_file.empty() )
         {
             htsFile *file = hts_open(sex_map_file.c_str(),"r");
-    
+
             if ( file == NULL )
             {
                 fprintf(stderr,"ERROR: Cannot open %s\n",sex_map_file.c_str());
@@ -250,13 +236,13 @@ class Igor : Program
                 }
                 std::string id = ss.substr(0, idx);
                 int32_t sex = atoi(ss.substr(idx+1).c_str());
-    
+
                 if ( mSex.find(id) != mSex.end() )
                 {
                     fprintf(stderr,"ERROR: Duplicate ID %s in %s\n",id.c_str(), sex_map_file.c_str());
                     exit(1);
                 }
-    
+
                 if ( sex == 0 )
                 {
                     fprintf(stderr,"WARNING: Unknown sex for individual %s, assuming females\n",id.c_str());
@@ -267,20 +253,14 @@ class Igor : Program
                     fprintf(stderr,"ERROR: Invalid sex %d for individual %s\n",sex,id.c_str());
                     exit(1);
                 }
-    
+
                 mSex[id] = sex;
             }
         }
-    
+
         ////////////////////////
         //stats initialization//
         ////////////////////////
-    
-        /////////
-        //tools//
-        /////////
-        vm = new VariantManip(ref_fasta_file);
-    
         no_reads = 0;
         no_overlapping_reads = 0;
         no_passed_reads = 0;
@@ -290,14 +270,22 @@ class Igor : Program
         no_malformed_del_cigars = 0;
         no_malformed_ins_cigars = 0;
         no_salvageable_ins_cigars = 0;
-    
+
         no_snps_genotyped = 0;
         no_indels_genotyped = 0;
         no_vntrs_genotyped = 0;
-    
+
+        /////////
+        //tools//
+        /////////
+        vm = new VariantManip(ref_fasta_file);
+        est = new Estimator();
+
+
+
         //for tracking overlapping reads
         reads = kh_init(rdict);
-    
+
         chrom = "";
         tid = -1;
         rid = -1;
@@ -410,11 +398,11 @@ class Igor : Program
                         bam_print_key_values(h, s);
                     }
                 }
-                else if (opchr=='I') 
+                else if (opchr=='I')
                 {
-                    if (last_opchr!='M' || (i<n_cigar_op && bam_cigar_opchr(cigar[i+1])!='M')) 
+                    if (last_opchr!='M' || (i<n_cigar_op && bam_cigar_opchr(cigar[i+1])!='M'))
                     {
-                        if (last_opchr!='M') 
+                        if (last_opchr!='M')
                         {
                             if (last_opchr!='^' && last_opchr!='S')
                             {
@@ -422,16 +410,16 @@ class Igor : Program
                                 bam_print_key_values(h, s);
                                 ++no_malformed_ins_cigars;
                             }
-                            else 
+                            else
                             {
                                 ++no_salvageable_ins_cigars;
                             }
                         }
-                        else if (i==n_cigar_op-1) 
+                        else if (i==n_cigar_op-1)
                         {
                             ++no_salvageable_ins_cigars;
                         }
-                        else if (i==n_cigar_op-2 && (bam_cigar_opchr(cigar[i+1])=='S')) 
+                        else if (i==n_cigar_op-2 && (bam_cigar_opchr(cigar[i+1])=='S'))
                         {
                             ++no_salvageable_ins_cigars;
                         }
@@ -446,66 +434,33 @@ class Igor : Program
 
                 last_opchr = opchr;
             }
-            
-            if (!seenM) 
+
+            if (!seenM)
             {
                 std::cerr << "NO! M issue\n";
                 bam_print_key_values(h, s);
                 ++no_unaligned_cigars;
             }
         }
-            
+
         //check to see that hash should be cleared when encountering new contig.
         //some bams may not be properly formed and contain orphaned reads that
         //is retained in the hash
         if (bam_get_tid(s)!=tid)
         {
-            for (k = kh_begin(reads); k != kh_end(reads); ++k) 
+            for (k = kh_begin(reads); k != kh_end(reads); ++k)
             {
-                if (kh_exist(reads, k)) 
+                if (kh_exist(reads, k))
                 {
                     free((char*)kh_key(reads, k));
                     kh_del(rdict, reads, k);
                 }
             }
-        
+
             tid = bam_get_tid(s);
         }
 
         return true;
-    }
-
-    inline bool ends_with(std::string const & value, std::string const & ending)
-    {
-        if (ending.size() > value.size()) return false;
-        return std::equal(ending.rbegin(), ending.rend(), value.rbegin());
-    }
-
-    int32_t file_type(std::string const& value)
-    {
-        if ( ends_with(value,".vcf") || ends_with(value,".bcf") || ends_with(value,".vcf.gz") )
-        {
-            return 2; // BCF/VCF
-        }
-        else if ( ends_with(value,".bam") || ends_with(value,".cram") || ends_with(value,".sam") ) 
-        {
-            return 1;
-        }
-        else 
-        {     
-            errno = 0;
-            char* endptr = NULL;
-            double converted = strtod(value.c_str(), &endptr);
-            
-            if ( ( *endptr == 0 ) && ( errno == 0 ) ) 
-            {
-                return 0;
-            }
-            else
-            {
-                return -1;
-            }
-        }
     }
 
     /**
@@ -513,18 +468,18 @@ class Igor : Program
      *
      * 1. all individuals by sequential reads of each bam file
      * 2. all or subset of individuals by simultaneous file reads
-     * 
+     *
      * With regards to mode 1.
      * Takes up alot of memory as sufficient statistics of each individual is collected and stored.
      * Requires all the individuals to be processed as features are computed for all.
      *
-     * With regards to mode 2.     
-     * Memory required for the indices of all the bams. 
+     * With regards to mode 2.
+     * Memory required for the indices of all the bams.
      * Allows for subset sets of individuals to be processed.
      * Output will be a file with incomplete features that can be combined.
      * This allows for low memory usage.
      *
-     */  
+     */
     void genotype()
     {
         // assume that the following features are available
@@ -555,183 +510,141 @@ class Igor : Program
         // Assume that either
         // BQSUM : DPF : DPR or
         // GT, PL, DP, CY, ST, NM exists
-    
+
         // classify input files by SAM/BAM/CRAM vs BCF/VCF
-    
-    
+
+
         // first, check the file format
+        // format is delmited
+        // 1. SAMPLE
+        // 2. SAM/BAM/CRAM path
+        // 3. contamination fraction estimate (optional)
         std::vector<std::string> input_vcf_files;
         std::vector<std::string> input_sam_files;
         std::vector<std::string> input_sam_sample_names;
         std::vector<double>      input_sam_contams;
-    
+
         std::vector<std::string> tokens;
-    
-        for(int32_t i=0; i < (int)input_files.size(); ++i) 
+
+        for(int32_t i=0; i < (int)input_files.size(); ++i)
         {
             split(tokens, "\t\r\n ", input_files[i]);
-            
+
             std::string fname;
             std::string sname;
-            double contam = minContam;
-    
-            if ( tokens.size() == 1 ) 
+            double contam = 0;
+
+            if (tokens.size()!=2 || tokens.size()!=3)
             {
-                int32_t t0 = file_type(tokens[0]);
-                if ( t0 > 0 ) 
-                {
-                    fname = tokens[0];
-                }
-                else 
-                {
-                    error("Cannot parse input line %s", input_files[i].c_str());
-                }
+                error("Cannot parse input line %s, 2 or 3 columns expected", input_files[i].c_str());
             }
-            else if ( tokens.size() == 2 ) 
-            {
-                int32_t t0 = file_type(tokens[0]);
-                int32_t t1 = file_type(tokens[1]);
-    
-                if ( ( t0 == 1 ) && ( t1 == 0 ) ) 
-                { // SAM - NUMERIC
-                   fname = tokens[0];
-                   contam = ::atof(tokens[1].c_str());
-                }
-                else if ( t1 == 1 ) 
-                {  // ID - SAM
-                    sname = tokens[0];
-                    fname = tokens[1];
-                }
-                else
-                {
-                    error("Cannot parse input line %s",input_files[i].c_str());
-                }
-            }
-            else if ( tokens.size() == 3 ) 
-            {
-                int32_t t0 = file_type(tokens[0]);
-                int32_t t1 = file_type(tokens[1]);
-                int32_t t2 = file_type(tokens[2]);
             
-                if ( ( t1 == 1 ) && ( t2 == 0 ) ) 
-                { // ID - SAM - NUMERIC
-                    sname = tokens[0];
-                    fname = tokens[1];
-                    contam = ::atof(tokens[2].c_str());
-                }
-                else
-                {    
-                  error("Cannot parse input line %s",input_files[i].c_str());
+            sname = tokens[0];
+            int32_t file_type = hts_filename_type(tokens[1]);    
+            if (file_type==sam || file_type==bam || file_type==cram)
+            {
+                error("SAM/CRAM/BAM file expected in second column: %s",input_files[i].c_str());
+            }
+            fname = tokens[1];
+            if (tokens.size()==3)
+            {
+                if (!str2double(tokens[2], contam))
+                {
+                    error("number expected in third column: %s",input_files[i].c_str());
+                }    
+            
+                if ( contam < minContam )
+                {
+                    contam = minContam;
                 }
             }
             
-            if ( contam < minContam )
-            {
-                contam = minContam;
-            }
-            
-            if ( file_type(fname) == 2 ) 
-            {
-                input_vcf_files.push_back(fname);
-            }
-            else 
-            {
-                input_sam_sample_names.push_back(sname);
-                input_sam_files.push_back(fname);
-                input_sam_contams.push_back(contam);
-            }
+            input_sam_sample_names.push_back(sname);
+            input_sam_files.push_back(fname);
+            input_sam_contams.push_back(contam);
         }
-    
+
         notice("Identified a total of %u VCF/BCF files and %u SAM/CRAM/CRAM files as input to integrate", input_vcf_files.size(), input_sam_files.size());
-    
+
         if ( input_vcf_files.size() == 0 )
         {
             error("At least one BCF/VCF files are required as input");
         }
-        
+
         if ( ( input_vcf_files.size() > 1 ) && ( input_sam_files.size() > 0 ) )
         {
             error("BCF/VCF and SAM/BAM/CRAM files cannot be merged at the same time");
         }
-        
-        if ( input_sam_files.empty() ) 
+
+        if ( input_sam_files.empty() )
         { // BCF/VCF only
             abort();
         }
-        else 
+        else
         {
             int32_t nsamples = (int32_t)input_sam_files.size();
-    
+
             notice("Loading input VCF file %s in region %s", input_vcf_files[0].c_str(), intervals[0].to_string().c_str());
             BCFGenotypingBufferedReader jgbr(input_vcf_files[0], intervals, output_vcf_file, nsamples);
-            
+
             BCFOrderedWriter* odw = new BCFOrderedWriter(output_vcf_file);
             bcf_hdr_transfer_contigs(jgbr.odr->hdr, odw->hdr);
-            
+
             bam1_t* s = bam_init1();
-    
-    #ifdef _OPENMP
-            notice("Running parallel jobs across %d CPUs", nThreads);
-    #endif
-    
+
             std::vector<std::string> snames(nsamples);
-    
-    #pragma omp parallel for schedule(dynamic,1)
+
             for(int32_t i=0; i < nsamples; ++i)
             {
                 BAMOrderedReader odr(input_sam_files[i], intervals);
                 bam_hdr_t* h = odr.hdr;
                 int64_t no_reads = 0;
-        
+
                 snames[i] = input_sam_sample_names[i].empty() ? bam_hdr_get_sample_name(odr.hdr) : input_sam_sample_names[i];
                 jgbr.set_sample(i, snames[i].c_str(), input_sam_contams[i]);
-        
+
                 if ( i % 100 == 0 )
                   notice("Processing %d-th sample %s", i+1, snames[i].c_str());
-        
+
                 if ( jgbr.numVariants() > 0 )
                 {
                     while( odr.read(s) )
                     {
                         ++no_reads;
                         if ( !filter_read(odr.hdr, s) ) continue;
-        
+
                         //jgbr.flush( h, s );
                         jgbr.process_read(h, s, i);  // process the next reads
                     }
                 }
-        
+
                 if ( no_reads == 0 )
                 {
                     notice("WARNING: No read found in %d-th sample %s", i+1, snames[i].c_str());
                 }
-        
+
                 jgbr.flush_sample(i);
                 odr.close();
             }
-        
+
             bam_destroy1(s);
-            for(int32_t i=0; i < nsamples; ++i) 
+            for(int32_t i=0; i < nsamples; ++i)
             {
                 bcf_hdr_add_sample(odw->hdr, snames[i].c_str());
             }
-        
+
             bcf_hdr_add_sample(odw->hdr, NULL);
-        
+
             int32_t nvariants = jgbr.numVariants();
             jgbr.write_header(odw);
-    
-    #pragma omp parallel for ordered schedule(static,1)
-            for(int32_t i=0; i < nvariants; ++i) 
+
+            for(int32_t i=0; i < nvariants; ++i)
             {
                 bcf1_t* nv = jgbr.flush_variant(i, odw->hdr);
-    #pragma omp ordered
-                {
-                  odw->write(nv);
-                }
+                odw->write(nv);
                 bcf_destroy(nv);
             }
-        
+
             odw->close();
             delete odw;
         }
@@ -781,7 +694,7 @@ class Igor : Program
 
     void print_options()
     {
-        std::clog << "genotype2 v" << version << "\n\n";
+        std::clog << "genotype v" << version << "\n\n";
         std::clog << "options:    # input Files                       " << input_files.size() << "\n";
         std::clog << "         [o] output VCF File                      " << output_vcf_file << "\n";
         std::clog << "         [r] reference FASTA File                 " << ref_fasta_file << "\n";

@@ -79,18 +79,41 @@ char *faidx_fetch_uc_seq(const faidx_t *fai, const char *c_name, int p_beg_i, in
 /**
  * Checks file extension for use in writing files.
  */
-bool str_ends_with(std::string& file_name, const char* ext)
+bool str_ends_with(std::string const & value, std::string const & ending)
 {
-    size_t len = file_name.size();
-    const char* suffix = file_name.c_str();
-    size_t ext_len = strlen(ext);
-    suffix = (len>ext_len) ? suffix + len - ext_len : suffix;
-    if (!strcmp(ext, suffix))
-    {
-        return true;
-    }
+    if (ending.size() > value.size()) return false;
+    return std::equal(ending.rbegin(), ending.rend(), value.rbegin());
+}
 
-    return false;
+/**
+ * Checks file extension based on filename.
+ */
+int32_t hts_filename_type(std::string const& value)
+{
+    if (str_ends_with(value,".vcf") || str_ends_with(value,".vcf.gz"))
+    {
+        return vcf; 
+    }
+    else if (str_ends_with(value,".bcf"))
+    {
+        return bcf; 
+    }
+     else if (str_ends_with(value,".sam")) 
+    {
+        return sam;
+    }   
+    else if (str_ends_with(value,".bam")) 
+    {
+        return bam;
+    }
+    else if (str_ends_with(value,".cram")) 
+    {
+        return cram;
+    }
+    else
+    {
+        return unknown_format;
+    }
 }
 
 /**************

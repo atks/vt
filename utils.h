@@ -68,6 +68,11 @@ bool str2int32(std::string& s, int32_t& i);
 bool str2uint32(std::string& s, uint32_t& i);
 
 /**
+ * Casts a string into double.  Returns true if successful.
+ */
+bool str2double(std::string& s, double& d);
+
+/**
  * Appends cuurent working directoy to a path.
  * Returns true if successful.
  */

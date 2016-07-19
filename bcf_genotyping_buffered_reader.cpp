@@ -37,22 +37,17 @@ BCFGenotypingBufferedReader::BCFGenotypingBufferedReader(std::string filename, s
     while(odr->read(v)) 
     {
         int32_t vtype = vm->classify_variant(odr->hdr, v, variant);
-        //if ( (rand() % 10000) == 0 )
-        //notice("foo");
         int32_t pos1 = bcf_get_pos1(v);
         
         if ( ( pos1 < intervals[0].start1 ) || ( pos1 > intervals[0].end1 ) ) continue;
         
-        if ( ( vtype != VT_VNTR ) && ( bcf_get_n_allele(v) == 2 ) ) 
-        {
-            GenotypingRecord* jgr = new GenotypingRecord(odr->hdr, v, vtype, nsamples);
-            gRecords.push_back(jgr);
-        }
+        GenotypingRecord* jgr = new GenotypingRecord(odr->hdr, v, vtype, nsamples);
+        gRecords.push_back(jgr);
     }
+    
     bcf_destroy(v);
-
-    //odr->close();
-    //delete odr;
+    odr->close();
+    delete odr;
 
     //////////////////////////
     //options initialization//
