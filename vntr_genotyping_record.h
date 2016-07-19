@@ -31,6 +31,7 @@
 #include "hts_utils.h"
 #include "augmented_bam_record.h"
 #include "estimator.h"
+#include "genotyping_record.h"
 
 #define FILTER_MASK_OVERLAP_SNP   0x0001
 #define FILTER_MASK_OVERLAP_INDEL 0x0002
@@ -43,7 +44,7 @@
  * Maintains read information and allows for additional reads
  * till VCF record can be printed out.
  */
-class VNTRGenotypingRecord
+class VNTRGenotypingRecord : GenotypingRecord
 {
     public:
     bcf_hdr_t *h;
@@ -118,7 +119,7 @@ class VNTRGenotypingRecord
      * Constructor.
      * @v - VCF record.
      */
-    VNTRGenotypingRecord(bcf_hdr_t *h, bcf1_t *v, int32_t vtype, int32_t nsamples);
+    VNTRGenotypingRecord(bcf_hdr_t *h, bcf1_t *v, int32_t vtype, int32_t nsamples, int32_t ploidy, Estimator* est);
 
     /**
      * Clears this record.

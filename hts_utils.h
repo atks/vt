@@ -308,12 +308,14 @@ std::string bcf_hdr_append_info_with_backup_naming(bcf_hdr_t *h, std::string tag
  **********/
 
 /**
- * Gets number of expected genotypehhhs from number of allelles for a ploidy of 2.
+ * Gets number of expected genotypes from number of allelles for a ploidy of 2.
  */
 #define bcf_an2gn(n) (((n+1)*n)>>1)
 
 /**
  * Gets number of genotypes from number of alleles and ploidy.
+ *
+ * Returns 0 if number of alleles and genotypes are not consistent.
  */
 uint32_t bcf_ap2g(uint32_t no_allele, uint32_t no_ploidy);
 

@@ -21,8 +21,8 @@
    THE SOFTWARE.
 */
 
-#ifndef SNP_GENOTYPING_RECORD_H
-#define SNP_GENOTYPING_RECORD_H
+#ifndef COMPLEX_GENOTYPING_RECORD_H
+#define COMPLEX_GENOTYPING_RECORD_H
 
 #include "htslib/vcf.h"
 #include "htslib/faidx.h"
@@ -40,7 +40,7 @@
  * Maintains read information and allows for additional reads
  * till VCF record can be printed out.
  */
-class SNPGenotypingRecord : GenotypingRecord
+class ComplexGenotypingRecord : GenotypingRecord
 {
     public:
     bcf_hdr_t *h;
@@ -115,13 +115,7 @@ class SNPGenotypingRecord : GenotypingRecord
      * Constructor.
      * @v - VCF record.
      */
-    SNPGenotypingRecord() {};
-
-    /**
-     * Constructor.
-     * @v - VCF record.
-     */
-    SNPGenotypingRecord(bcf_hdr_t *h, bcf1_t *v, int32_t vtype, int32_t nsamples, int32_t ploidy);
+    ComplexGenotypingRecord(bcf_hdr_t *h, bcf1_t *v, int32_t vtype, int32_t nsamples);
 
     /**
      * Clears this record.
@@ -136,7 +130,7 @@ class SNPGenotypingRecord : GenotypingRecord
     /**
      * Destructor.
      */
-    ~SNPGenotypingRecord();
+    ~ComplexGenotypingRecord();
 };
 
 #endif

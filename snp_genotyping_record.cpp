@@ -27,7 +27,7 @@
  * Constructor.
  * @v - VCF record.
  */
-SNPGenotypingRecord::SNPGenotypingRecord(bcf_hdr_t *h, bcf1_t *v, int32_t vtype, int32_t nsamples)
+SNPGenotypingRecord::SNPGenotypingRecord(bcf_hdr_t *h, bcf1_t *v, int32_t vtype, int32_t nsamples, int32_t ploidy)
 {
     clear();
 
@@ -65,64 +65,7 @@ SNPGenotypingRecord::SNPGenotypingRecord(bcf_hdr_t *h, bcf1_t *v, int32_t vtype,
         if (bcf_has_filter(h, v, const_cast<char*>("overlap_vntr"))==1)
             n_filter |= FILTER_MASK_OVERLAP_VNTR;
     }
-    else if (vtype==VT_INDEL && v_alleles.size()==2)
-    {
-        //rid = bcf_get_rid(v);
-        dlen = strlen(tmp_alleles[1])-strlen(tmp_alleles[0]);
-        len = abs(dlen);
-        
-        int32_t *flanks_pos1 = NULL;
-        int32_t n = 0;
-        
-        if (bcf_get_info_int32(h, v, "FLANKS", &flanks_pos1, &n)>0) 
-        {
-            this->beg1 = flanks_pos1[0];
-            this->end1 = flanks_pos1[1];
-            free(flanks_pos1);
-        }
-        else 
-        {
-            this->beg1 = bcf_get_pos1(v) - 3;
-            this->end1 = bcf_get_end1(v) + 3;
-        }
-
-        if (dlen>0) 
-        {
-            indel.append(&tmp_alleles[1][1]);
-        }
-        else 
-        {
-            indel.append(&tmp_alleles[0][1]);
-        }
-
-        if (bcf_has_filter(h, v, const_cast<char*>("overlap_snp"))==1)
-            n_filter |= FILTER_MASK_OVERLAP_SNP;
-        
-        if (bcf_has_filter(h, v, const_cast<char*>("overlap_indel"))==1)
-            n_filter |= FILTER_MASK_OVERLAP_INDEL;
-        
-        if (bcf_has_filter(h, v, const_cast<char*>("overlap_vntr"))==1)
-            n_filter |= FILTER_MASK_OVERLAP_VNTR;
-    }
-    else if (vtype==VT_VNTR) 
-    {
-        rid = bcf_get_rid(v);
-        beg1 = bcf_get_pos1(v) - 1;
-        end1 = bcf_get_end1(v) + 1;
-        
-        char *motif = NULL;
-        int32_t n = 0;
-        
-        if (bcf_get_info_string(h, v, "MOTIF", &motif, &n)>0) 
-        {
-            this->motif.assign(motif);
-            free(motif);
-        }
-    }
-    else 
-    {
-        return;
-    }
+    
 
     pls = (uint8_t*)calloc( nsamples*3, sizeof(uint8_t) );
     ads = (uint8_t*)calloc( nsamples*3, sizeof(uint8_t) );
@@ -146,6 +89,9 @@ void SNPGenotypingRecord::clearTemp()
     tmp_ads[0] = tmp_ads[1] = tmp_ads[2] = 0;
 }
 
+/**
+ * Clear fields.
+ */
 void SNPGenotypingRecord::clear()
 {
     vtype = -1;

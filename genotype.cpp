@@ -57,11 +57,6 @@ class Igor : Program
     bool ignore_md;
     int32_t debug;
 
-    //variables for keeping track of chromosome
-    std::string chrom; //current chromosome
-    int32_t tid;       // current sequence id in bam
-    int32_t rid;       // current sequence id in bcf
-
     //read filters
     uint32_t read_mapq_cutoff;
     uint16_t read_exclude_flag;
@@ -72,14 +67,6 @@ class Igor : Program
     ///////
     BCFOrderedReader *odr;  // for anchor VCF
     BCFOrderedWriter *odw;
-    Estimator *est;
-    ReadFilter *rf;
-
-    
-
-    ///////////////
-    //general use//
-    ///////////////
 
     /////////
     //stats//
@@ -92,9 +79,8 @@ class Igor : Program
     //tools//
     /////////
     VariantManip *vm;
-
-    // The function assumes a particular list of features in the BCF files
-    //
+    Estimator *est;
+    ReadFilter *rf;
 
     Igor(int argc, char ** argv)
     {
@@ -187,10 +173,6 @@ class Igor : Program
 
     void initialize()
     {
-        ///////////////
-        //general use//
-        ///////////////
-
         ////////////////////////
         //Read sex map if needed
         ////////////////////////
@@ -251,10 +233,6 @@ class Igor : Program
         rf = new ReadFilter(read_mapq_cutoff, read_exclude_flag, ignore_overlapping_read);
         vm = new VariantManip(ref_fasta_file);
         est = new Estimator();
-
-        chrom = "";
-        tid = -1;
-        rid = -1;
     }
 
     /**

@@ -21,15 +21,17 @@
    THE SOFTWARE.
 */
 
-#include "vntr_genotyping_record.h"
+#include "complex_genotyping_record.h"
 
 /**
  * Constructor.
  * @v - VCF record.
  */
-VNTRGenotypingRecord::VNTRGenotypingRecord(bcf_hdr_t *h, bcf1_t *v, int32_t vtype, int32_t nsamples, int32_t ploidy, Estimator* est)
+ComplexGenotypingRecord::ComplexGenotypingRecord(bcf_hdr_t *h, bcf1_t *v, int32_t vtype, int32_t nsamples)
 {
     clear();
+
+    est = new Estimator();
 
     this->h = h;
     //this->v = v;
@@ -48,20 +50,79 @@ VNTRGenotypingRecord::VNTRGenotypingRecord(bcf_hdr_t *h, bcf1_t *v, int32_t vtyp
 
     n_filter = 0;
 
-    //rid = bcf_get_rid(v);
-    beg1 = bcf_get_pos1(v);
-    end1 = beg1;
-    
-    if (bcf_has_filter(h, v, const_cast<char*>("overlap_snp"))==1)
-        n_filter |= FILTER_MASK_OVERLAP_SNP;
+    if (vtype==VT_SNP && v_alleles.size()==2)
+    {
+        //rid = bcf_get_rid(v);
+        beg1 = bcf_get_pos1(v);
+        end1 = beg1;
+        
+        if (bcf_has_filter(h, v, const_cast<char*>("overlap_snp"))==1)
+            n_filter |= FILTER_MASK_OVERLAP_SNP;
 
-    if (bcf_has_filter(h, v, const_cast<char*>("overlap_indel"))==1)
-        n_filter |= FILTER_MASK_OVERLAP_INDEL;
-    
-    if (bcf_has_filter(h, v, const_cast<char*>("overlap_vntr"))==1)
-        n_filter |= FILTER_MASK_OVERLAP_VNTR;
+        if (bcf_has_filter(h, v, const_cast<char*>("overlap_indel"))==1)
+            n_filter |= FILTER_MASK_OVERLAP_INDEL;
+        
+        if (bcf_has_filter(h, v, const_cast<char*>("overlap_vntr"))==1)
+            n_filter |= FILTER_MASK_OVERLAP_VNTR;
+    }
+    else if (vtype==VT_INDEL && v_alleles.size()==2)
+    {
+        //rid = bcf_get_rid(v);
+        dlen = strlen(tmp_alleles[1])-strlen(tmp_alleles[0]);
+        len = abs(dlen);
+        
+        int32_t *flanks_pos1 = NULL;
+        int32_t n = 0;
+        
+        if (bcf_get_info_int32(h, v, "FLANKS", &flanks_pos1, &n)>0) 
+        {
+            this->beg1 = flanks_pos1[0];
+            this->end1 = flanks_pos1[1];
+            free(flanks_pos1);
+        }
+        else 
+        {
+            this->beg1 = bcf_get_pos1(v) - 3;
+            this->end1 = bcf_get_end1(v) + 3;
+        }
 
-    
+        if (dlen>0) 
+        {
+            indel.append(&tmp_alleles[1][1]);
+        }
+        else 
+        {
+            indel.append(&tmp_alleles[0][1]);
+        }
+
+        if (bcf_has_filter(h, v, const_cast<char*>("overlap_snp"))==1)
+            n_filter |= FILTER_MASK_OVERLAP_SNP;
+        
+        if (bcf_has_filter(h, v, const_cast<char*>("overlap_indel"))==1)
+            n_filter |= FILTER_MASK_OVERLAP_INDEL;
+        
+        if (bcf_has_filter(h, v, const_cast<char*>("overlap_vntr"))==1)
+            n_filter |= FILTER_MASK_OVERLAP_VNTR;
+    }
+    else if (vtype==VT_VNTR) 
+    {
+        rid = bcf_get_rid(v);
+        beg1 = bcf_get_pos1(v) - 1;
+        end1 = bcf_get_end1(v) + 1;
+        
+        char *motif = NULL;
+        int32_t n = 0;
+        
+        if (bcf_get_info_string(h, v, "MOTIF", &motif, &n)>0) 
+        {
+            this->motif.assign(motif);
+            free(motif);
+        }
+    }
+    else 
+    {
+        return;
+    }
 
     pls = (uint8_t*)calloc( nsamples*3, sizeof(uint8_t) );
     ads = (uint8_t*)calloc( nsamples*3, sizeof(uint8_t) );
@@ -70,7 +131,7 @@ VNTRGenotypingRecord::VNTRGenotypingRecord(bcf_hdr_t *h, bcf1_t *v, int32_t vtyp
 /**
  * Clears this record.
  */
-void VNTRGenotypingRecord::clearTemp()
+void ComplexGenotypingRecord::clearTemp()
 {
     tmp_dp_q20 = 0;
     tmp_dp_ra = 0;
@@ -85,7 +146,7 @@ void VNTRGenotypingRecord::clearTemp()
     tmp_ads[0] = tmp_ads[1] = tmp_ads[2] = 0;
 }
 
-void VNTRGenotypingRecord::clear()
+void ComplexGenotypingRecord::clear()
 {
     vtype = -1;
 
@@ -108,7 +169,7 @@ void VNTRGenotypingRecord::clear()
 /**
  * Destructor.
  */
-VNTRGenotypingRecord::~VNTRGenotypingRecord()
+ComplexGenotypingRecord::~ComplexGenotypingRecord()
 {
   //if (v) bcf_destroy(v);
     if ( pls ) free(pls);
@@ -120,7 +181,7 @@ VNTRGenotypingRecord::~VNTRGenotypingRecord()
 /**
  * Destructor.
  */
-bcf1_t* VNTRGenotypingRecord::flush_variant(bcf_hdr_t* hdr)
+bcf1_t* ComplexGenotypingRecord::flush_variant(bcf_hdr_t* hdr)
 {
     bcf1_t *nv = bcf_init();
     bcf_clear(nv);
@@ -279,11 +340,11 @@ bcf1_t* VNTRGenotypingRecord::flush_variant(bcf_hdr_t* hdr)
 
     // update filter
     if ( n_filter & FILTER_MASK_OVERLAP_SNP )
-        bcf_add_filter(hdr, nv, bcf_hdr_id2int(hdr, BCF_DT_ID, "overlap_snp"));
+    bcf_add_filter(hdr, nv, bcf_hdr_id2int(hdr, BCF_DT_ID, "overlap_snp"));
     if ( n_filter & FILTER_MASK_OVERLAP_INDEL )
-        bcf_add_filter(hdr, nv, bcf_hdr_id2int(hdr, BCF_DT_ID, "overlap_indel"));
+    bcf_add_filter(hdr, nv, bcf_hdr_id2int(hdr, BCF_DT_ID, "overlap_indel"));
     if ( n_filter & FILTER_MASK_OVERLAP_VNTR )
-        bcf_add_filter(hdr, nv, bcf_hdr_id2int(hdr, BCF_DT_ID, "overlap_vntr"));
+    bcf_add_filter(hdr, nv, bcf_hdr_id2int(hdr, BCF_DT_ID, "overlap_vntr"));
 
     //bcf_update_info_int32(odw->hdr, nv, "NS_NREF", &v_ns_nrefs[k], 1);
     abe_num /= (abe_den+1e-6); bcf_update_info_float(hdr, nv, "ABE",  &abe_num, 1);
@@ -314,7 +375,7 @@ bcf1_t* VNTRGenotypingRecord::flush_variant(bcf_hdr_t* hdr)
     return nv;
 }
 
-void VNTRGenotypingRecord::flush_sample(int32_t sampleIndex)
+void ComplexGenotypingRecord::flush_sample(int32_t sampleIndex)
 {
     uint8_t* p_pls = &pls[sampleIndex*3];
     uint8_t* p_ads = &ads[sampleIndex*3];
@@ -369,7 +430,7 @@ void VNTRGenotypingRecord::flush_sample(int32_t sampleIndex)
 /**
  * Adds an allele based with collected sufficient statistics.
  */
-void VNTRGenotypingRecord::add_allele(double contam, int32_t allele, uint8_t mapq, bool fwd, uint32_t q, int32_t cycle, uint32_t nm)
+void ComplexGenotypingRecord::add_allele(double contam, int32_t allele, uint8_t mapq, bool fwd, uint32_t q, int32_t cycle, uint32_t nm)
 {
     double pe = est->lt->pl2prob(q);
     double pm = 1 - pe;
@@ -452,11 +513,11 @@ void VNTRGenotypingRecord::add_allele(double contam, int32_t allele, uint8_t map
 /**
  * Collects sufficient statistics from read for variants to be genotyped.
  */
-void VNTRGenotypingRecord::process_read(AugmentedBAMRecord& as, int32_t sampleIndex, double contam)
+void ComplexGenotypingRecord::process_read(AugmentedBAMRecord& as, int32_t sampleIndex, double contam)
 {
-    if (vtype==VT_SNP)
+    if (v_alleles.size()==2)
     {
-        if (v_alleles.size()==2)
+        if (as.beg1 <= beg1 && end1 <= as.end1)
         {
             bam1_t *s = as.s;
 
@@ -465,16 +526,18 @@ void VNTRGenotypingRecord::process_read(AugmentedBAMRecord& as, int32_t sampleIn
             //uint32_t bpos1 = bam_get_pos1(s);
             uint8_t* seq = bam_get_seq(s);
             uint8_t* qual = bam_get_qual(s);
-            int32_t rlen = bam_get_l_qseq(s);
+            uint32_t rlen = bam_get_l_qseq(s);
             uint8_t mapq = bam_get_mapq(s);
-            uint32_t q = 30;
-            int32_t cycle = 0;
+
+            uint32_t q = len*30;
+            uint32_t cycle = 10;
 
             std::vector<uint32_t>& aug_cigar = as.aug_cigar;
             std::vector<std::string>& aug_ref = as.aug_ref;
             std::vector<std::string>& aug_alt = as.aug_alt;
 
             int32_t vpos1 = pos1;
+
             int32_t cpos1 = bam_get_pos1(s);
             int32_t rpos0 = 0;
 
@@ -491,286 +554,215 @@ void VNTRGenotypingRecord::process_read(AugmentedBAMRecord& as, int32_t sampleIn
                 {
                     if (vpos1>=cpos1 && vpos1<=(cpos1+oplen-1))
                     {
-                        rpos0 += vpos1-cpos1;
-                        allele = 0;
-                        q = qual[rpos0];
-                        cycle = rpos0<(rlen>>1) ? (rpos0+1) : -(rlen - rpos0 + 1);
-                        break;
+                        cycle = strand == 'F' ? (rpos0+1) : (rlen - rpos0);
                     }
-                    else
-                    {
-                        cpos1 += oplen;
-                        rpos0 += oplen;
-                    }
+                    cpos1 += oplen;
+                    rpos0 += oplen;
                 }
                 else if (opchr=='X')
                 {
-                    if (vpos1==cpos1)
+                    if (cpos1-1==vpos1)
                     {
-                        allele = (aug_alt[i].at(0) == v_alleles[1].at(0)) ? 1 : -1;
-                        q = qual[rpos0];
-                        cycle = rpos0<(rlen>>1) ? (rpos0+1) : -(rlen - rpos0 + 1);
-                        break;
+                        cycle = strand == 'F' ? (rpos0+1) : (rlen - rpos0);
                     }
-
                     ++cpos1;
                     ++rpos0;
                 }
                 else if (opchr=='I')
                 {
+                    if (dlen>0 && cpos1-1==vpos1)
+                    {
+                        if (indel==aug_alt[i])
+                        {
+                            q = len*30;
+                            allele = 1;
+                        }
+                        else
+                        {
+                            q = abs(len-(int32_t)aug_ref[i].size())*30;
+                            allele = -1;
+                        }
+
+                        cycle = strand == 'F' ? (rpos0+1) : (rlen - rpos0);
+                        break;
+                    }
+                    else if (dlen<0 && cpos1-1==vpos1)
+                    {
+                        q = 30;
+                        allele = -3;
+                        cycle = strand == 'F' ? (rpos0+1) : (rlen - rpos0);
+                        break;
+                    }
+
                     rpos0 += oplen;
                 }
                 else if (opchr=='D')
                 {
-                    cpos1 += oplen;
+                    if (dlen<0 && cpos1-1==vpos1)
+                    {
+                        if (indel==aug_ref[i])
+                        {
+                            q = len*30;
+                            allele = 1;
+                        }
+                        else
+                        {
+                            q = abs(len-(int32_t)aug_ref[i].size())*30;
+                            allele = -1;
+                        }
+
+                        cycle = strand == 'F' ? (rpos0+1) : (rlen - rpos0);
+                        break;
+                    }
+                    else if (dlen>0 && cpos1-1==vpos1)
+                    {
+                        q = 30;
+                        allele = -2;
+
+                        cycle = strand == 'F' ? (rpos0+1) : (rlen - rpos0);
+                        break;
+                    }
+
                 }
                 else
                 {
-                    notice("unrecognized cigar state %d", opchr);
+                    std::cerr << "unrecognized cigar state " << opchr << "\n";
                 }
             }
 
-            uint32_t no_mismatches = as.no_mismatches;
-            if (allele!=0 && q<20)
-            {
-                ++no_mismatches;
-            }
-
-            if (allele!=0 && no_mismatches==0)
-            {
-                //no_mismatches = 1;
-                std::cerr << "something wrong\n";
-            }
-
-            add_allele( contam, allele, mapq, strand == 'F', q, cycle, no_mismatches );
+            add_allele( contam, allele, mapq, strand == 'F', q, rand() % 75, as.no_mismatches );
         }
-        else //multiallelic
+        else
         {
-                  //abort();
+            bam1_t *s = as.s;
+            uint8_t mapq = bam_get_mapq(s);
+
+            add_allele( contam, -1, mapq, bam_is_rev(as.s) ? false : true, 20, rand() % 75, as.no_mismatches );
         }
     }
-    else if (vtype==VT_INDEL)
+    else //multiallelic
     {
-        if (v_alleles.size()==2)
+        if (as.beg1 <= beg1 && end1 <= as.end1)
         {
-            if (as.beg1 <= beg1 && end1 <= as.end1)
+            bam1_t *s = as.s;
+
+            char strand = bam_is_rev(s) ? 'R' : 'F';
+            int32_t allele = 0;
+            //uint32_t bpos1 = bam_get_pos1(s);
+            uint8_t* seq = bam_get_seq(s);
+            uint8_t* qual = bam_get_qual(s);
+            uint32_t rlen = bam_get_l_qseq(s);
+            uint8_t mapq = bam_get_mapq(s);
+
+            uint32_t q = len*30;
+            uint32_t cycle = 10;
+
+            std::vector<uint32_t>& aug_cigar = as.aug_cigar;
+            std::vector<std::string>& aug_ref = as.aug_ref;
+            std::vector<std::string>& aug_alt = as.aug_alt;
+
+            int32_t vpos1 = pos1;
+
+            int32_t cpos1 = bam_get_pos1(s);
+            int32_t rpos0 = 0;
+
+            for (uint32_t i=0; i<aug_cigar.size(); ++i)
             {
-                bam1_t *s = as.s;
+                uint32_t oplen = bam_cigar_oplen(aug_cigar[i]);
+                char opchr = bam_cigar_opchr(aug_cigar[i]);
 
-                char strand = bam_is_rev(s) ? 'R' : 'F';
-                int32_t allele = 0;
-                //uint32_t bpos1 = bam_get_pos1(s);
-                uint8_t* seq = bam_get_seq(s);
-                uint8_t* qual = bam_get_qual(s);
-                uint32_t rlen = bam_get_l_qseq(s);
-                uint8_t mapq = bam_get_mapq(s);
-
-                uint32_t q = len*30;
-                uint32_t cycle = 10;
-
-                std::vector<uint32_t>& aug_cigar = as.aug_cigar;
-                std::vector<std::string>& aug_ref = as.aug_ref;
-                std::vector<std::string>& aug_alt = as.aug_alt;
-
-                int32_t vpos1 = pos1;
-
-                int32_t cpos1 = bam_get_pos1(s);
-                int32_t rpos0 = 0;
-
-                for (uint32_t i=0; i<aug_cigar.size(); ++i)
+                if (opchr=='S')
                 {
-                    uint32_t oplen = bam_cigar_oplen(aug_cigar[i]);
-                    char opchr = bam_cigar_opchr(aug_cigar[i]);
-
-                    if (opchr=='S')
-                    {
-                        rpos0 += oplen;
-                    }
-                    else if (opchr=='=')
-                    {
-                        if (vpos1>=cpos1 && vpos1<=(cpos1+oplen-1))
-                        {
-                            cycle = strand == 'F' ? (rpos0+1) : (rlen - rpos0);
-                        }
-                        cpos1 += oplen;
-                        rpos0 += oplen;
-                    }
-                    else if (opchr=='X')
-                    {
-                        if (cpos1-1==vpos1)
-                        {
-                            cycle = strand == 'F' ? (rpos0+1) : (rlen - rpos0);
-                        }
-                        ++cpos1;
-                        ++rpos0;
-                    }
-                    else if (opchr=='I')
-                    {
-                        if (dlen>0 && cpos1-1==vpos1)
-                        {
-                            if (indel==aug_alt[i])
-                            {
-                                q = len*30;
-                                allele = 1;
-                            }
-                            else
-                            {
-                                q = abs(len-(int32_t)aug_ref[i].size())*30;
-                                allele = -1;
-                            }
-
-                            cycle = strand == 'F' ? (rpos0+1) : (rlen - rpos0);
-                            break;
-                        }
-                        else if (dlen<0 && cpos1-1==vpos1)
-                        {
-                            q = 30;
-                            allele = -3;
-                            cycle = strand == 'F' ? (rpos0+1) : (rlen - rpos0);
-                            break;
-                        }
-
-                        rpos0 += oplen;
-                    }
-                    else if (opchr=='D')
-                    {
-                        if (dlen<0 && cpos1-1==vpos1)
-                        {
-                            if (indel==aug_ref[i])
-                            {
-                                q = len*30;
-                                allele = 1;
-                            }
-                            else
-                            {
-                                q = abs(len-(int32_t)aug_ref[i].size())*30;
-                                allele = -1;
-                            }
-
-                            cycle = strand == 'F' ? (rpos0+1) : (rlen - rpos0);
-                            break;
-                        }
-                        else if (dlen>0 && cpos1-1==vpos1)
-                        {
-                            q = 30;
-                            allele = -2;
-
-                            cycle = strand == 'F' ? (rpos0+1) : (rlen - rpos0);
-                            break;
-                        }
-
-                    }
-                    else
-                    {
-                        std::cerr << "unrecognized cigar state " << opchr << "\n";
-                    }
+                    rpos0 += oplen;
                 }
+                else if (opchr=='=')
+                {
+                    if (vpos1>=cpos1 && vpos1<=(cpos1+oplen-1))
+                    {
+                        cycle = strand == 'F' ? (rpos0+1) : (rlen - rpos0);
+                    }
+                    cpos1 += oplen;
+                    rpos0 += oplen;
+                }
+                else if (opchr=='X')
+                {
+                    if (cpos1-1==vpos1)
+                    {
+                        cycle = strand == 'F' ? (rpos0+1) : (rlen - rpos0);
+                    }
+                    ++cpos1;
+                    ++rpos0;
+                }
+                else if (opchr=='I')
+                {
+                    if (dlen>0 && cpos1-1==vpos1)
+                    {
+                        if (indel==aug_alt[i])
+                        {
+                            q = len*30;
+                            allele = 1;
+                        }
+                        else
+                        {
+                            q = abs(len-(int32_t)aug_ref[i].size())*30;
+                            allele = -1;
+                        }
 
-                add_allele( contam, allele, mapq, strand == 'F', q, rand() % 75, as.no_mismatches );
-            }
-            else
-            {
-                bam1_t *s = as.s;
-                uint8_t mapq = bam_get_mapq(s);
+                        cycle = strand == 'F' ? (rpos0+1) : (rlen - rpos0);
+                        break;
+                    }
+                    else if (dlen<0 && cpos1-1==vpos1)
+                    {
+                        q = 30;
+                        allele = -3;
+                        cycle = strand == 'F' ? (rpos0+1) : (rlen - rpos0);
+                        break;
+                    }
 
-                add_allele( contam, -1, mapq, bam_is_rev(as.s) ? false : true, 20, rand() % 75, as.no_mismatches );
+                    rpos0 += oplen;
+                }
+                else if (opchr=='D')
+                {
+                    if (dlen<0 && cpos1-1==vpos1)
+                    {
+                        if (indel==aug_ref[i])
+                        {
+                            q = len*30;
+                            allele = 1;
+                        }
+                        else
+                        {
+                            q = abs(len-(int32_t)aug_ref[i].size())*30;
+                            allele = -1;
+                        }
+
+                        cycle = strand == 'F' ? (rpos0+1) : (rlen - rpos0);
+                        break;
+                    }
+                    else if (dlen>0 && cpos1-1==vpos1)
+                    {
+                        q = 30;
+                        allele = -2;
+
+                        cycle = strand == 'F' ? (rpos0+1) : (rlen - rpos0);
+                        break;
+                    }
+
+                }
+                else
+                {
+                    std::cerr << "unrecognized cigar state " << opchr << "\n";
+                }
             }
+
+            add_allele( contam, allele, mapq, strand == 'F', q, rand() % 75, as.no_mismatches );
         }
-        else //multiallelic
+        else
         {
-            //abort();
+            bam1_t *s = as.s;
+            uint8_t mapq = bam_get_mapq(s);
+
+            add_allele( contam, -1, mapq, bam_is_rev(as.s) ? false : true, 20, rand() % 75, as.no_mismatches );
         }
-    }
-    else if (vtype==VT_VNTR)
-    {
-    //abort();
- //    bam1_t *s = as.s;
-
-//     char strand = bam_is_rev(s) ? 'R' : 'F';
-//     int32_t allele = 0;
-//     uint32_t pos1 = bam_get_pos1(s);
-//     uint8_t* seq = bam_get_seq(s);
-//     uint8_t* qual = bam_get_qual(s);
-//     uint32_t rlen = bam_get_l_qseq(s);
-//     uint8_t mapq = bam_get_mapq(s);
-
-//     std::vector<uint32_t>& aug_cigar = as.aug_cigar;
-//     std::vector<std::string>& aug_ref = as.aug_ref;
-//     std::vector<std::string>& aug_alt = as.aug_alt;
-
-//     //genomic bookend positions of VNTR
-//     int32_t vpos1 = g->beg1-1;
-//     int32_t vend1 = g->end1+1;
-
-//     //position with respect to read
-//     int32_t cpos1 = bam_get_pos1(s);
-//     int32_t rpos0 = 0;
-
-//     //genomic bookend positions of VNTR translated to read position
-//     int32_t pos0 = -1;
-//     int32_t end0 = -1;
-
-
-//     //locate repeat region on read.
-//     //translating genomic coordinates to read positions
-//     for (uint32_t i=0; i<aug_cigar.size(); ++i) {
-//       uint32_t oplen = bam_cigar_oplen(aug_cigar[i]);
-//       char opchr = bam_cigar_opchr(aug_cigar[i]);
-
-//       if (opchr=='S') {
-//  rpos0 += oplen;
-//       }
-//       else if (opchr=='=') {
-//  if (pos0==-1 && (cpos1<=vpos1 && vpos1<=(cpos1+oplen-1))) {
-//    pos0 = rpos0 + (vpos1-cpos1+1);
-//  }
-
-//  if (end0==-1 && (cpos1<=vend1 && vend1<=(cpos1+oplen-1))) {
-//    end0 = rpos0 + (vend1-cpos1+1);
-//    break;
-//  }
-
-//  cpos1 += oplen;
-//  rpos0 += oplen;
-//       }
-//       else if (opchr=='X') {
-//  if (pos0==-1 && (cpos1==vpos1)) {
-//    pos0 = rpos0;
-//  }
-
-//  if (end0==-1 && (cpos1==vend1)) {
-//    end0 = rpos0;
-//    break;
-//  }
-
-//  ++cpos1;
-//  ++rpos0;
-//       }
-//       else if (opchr=='I') {
-//  rpos0 += oplen;
-//       }
-//       else if (opchr=='D') {
-//  cpos1 += oplen;
-//       }
-//       else {
-//  std::cerr << "unrecognized cigar state " << opchr << "\n";
-//       }
-//     }
-
-//     //compute repeat tract units
-//     float counts = 0;
-
-// //        std::cerr << "pos0,end0 = " << pos0 << "," <<end0 <<  " (" << g->motif.size() <<")\n";
-
-//     if (pos0!=-1 && end0!=-1) {
-//       counts = ((float)(end0-pos0+1))/g->motif.size();
-//     }
-
-//     if (counts) {
-//       //update genotyping record
-//       ++g->depth;
-//       g->counts.push_back(counts);
-//       g->strands.append(1, strand);
-//       g->no_mismatches.push_back(as.no_mismatches);
     }
 }

@@ -5,7 +5,8 @@ CXX = g++
 
 SOURCESONLY =
 
-SOURCES = align\
+SOURCES = ahmm\
+		align\
 		allele\
 		annotate_1000g\
 		annotate_dbsnp_rsid\
@@ -25,6 +26,7 @@ SOURCES = align\
 		candidate_region_extractor\
 		cat\
 		chmm\
+		complex_genotyping_record\
 		compute_concordance\
 		compute_features\
 		compute_features2\
@@ -44,6 +46,7 @@ SOURCES = align\
 		filter\
 		flank_detector\
 		fuzzy_aligner\
+		fuzzy_partition\
 		gencode\
 		genome_interval\
 		genotype\
@@ -95,7 +98,6 @@ SOURCES = align\
 		remove_overlap\
 		rfhmm\
 		rminfo\
-		fuzzy_partition\
 		seq\
 		set_ref\
 		snp_genotyping_record\
@@ -104,6 +106,7 @@ SOURCES = align\
 		sv_tree\
 		svm_train\
 		svm_predict\
+		tbx_ordered_reader\
 		test\
 		union_variants\
 		uniq\
@@ -120,9 +123,7 @@ SOURCES = align\
 		vntr_genotyping_record\
 		vntr_tree\
 		vntrize\
-   	    tbx_ordered_reader\
-    	ahmm\
-
+   	        	
 SOURCESONLY = main.cpp
 
 TARGET = vt

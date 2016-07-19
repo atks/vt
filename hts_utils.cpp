@@ -814,6 +814,8 @@ void bcf_pg2a(uint32_t no_ploidy, uint32_t genotype_index, std::vector<int32_t>&
 
 /**
  * Gets number of ploidy from number of alleles and genotypes.
+ *
+ * Returns 0 if number of alleles and genotypes are not consistent.
  */
 uint32_t bcf_ag2p(uint32_t no_alleles, uint32_t no_genotypes)
 {
@@ -845,6 +847,7 @@ uint32_t bcf_ag2p(uint32_t no_alleles, uint32_t no_genotypes)
         {
             return no_ploidy;
         }
+        //number of alleles and genotypes are not consistent for any ploidy
         else if (k>no_genotypes)
         {
             return 0;
@@ -865,19 +868,11 @@ std::vector<int32_t> bcf_ip2g(int32_t genotype_index, uint32_t no_ploidy)
     int32_t max_allele_index = genotype_index;
     int32_t leftover_genotype_index = genotype_index;
     
-//    int d = 0;
     while (pth>0)
     {
-//        std::cerr << "pth: " << pth << "\n";
-//        std::cerr << "  left over genotype: " << leftover_genotype_index << "\n";
-                
         for (int32_t allele_index=0; allele_index <= max_allele_index; ++allele_index)
         {
-//            std::cerr << "\tchoose " << (pth+allele_index-1) << " " << pth << "\n";
-                
             int32_t i = choose(pth+allele_index-1, pth);
-
-//            std::cerr << "\tcheck " << allele_index << " " << i << " " << leftover_genotype_index <<"\n";
 
             if (i>=leftover_genotype_index)
             {
@@ -886,16 +881,10 @@ std::vector<int32_t> bcf_ip2g(int32_t genotype_index, uint32_t no_ploidy)
                 --pth;
                 max_allele_index = allele_index;
                 genotype[pth] = allele_index;
-//                std::cerr << "\tset\t" << pth << " as " << allele_index << "\n";                
-//                std::cerr << "\tleaving for loop\n";
                 break;
                 
             }
         }
-//    
-//        ++d;
-//        
-//        if (d>5) exit(1);
     }
     
     return genotype;

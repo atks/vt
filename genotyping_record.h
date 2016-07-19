@@ -77,9 +77,7 @@ class GenotypingRecord
         
     //for records that observe at least one alternate observation
     std::vector<uint32_t> bqs;  //for SNPs, store BQ, for Indels, store AQ
-
     std::vector<uint32_t> aqs;  // store AQ
-
     std::vector<uint32_t> mqs;   //map qualities
     std::string sts;      //strands
     std::vector<int32_t> als; //alleles
@@ -137,6 +135,12 @@ class GenotypingRecord
 
     // temporary information to be cleared out per-sample basis
 
+    /**
+     * Constructor.
+     * @v - VCF record.
+     */
+    GenotypingRecord() {};
+    
     /**
      * Constructor.
      * @v - VCF record.

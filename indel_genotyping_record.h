@@ -31,10 +31,7 @@
 #include "hts_utils.h"
 #include "augmented_bam_record.h"
 #include "estimator.h"
-
-#define FILTER_MASK_OVERLAP_SNP   0x0001
-#define FILTER_MASK_OVERLAP_INDEL 0x0002
-#define FILTER_MASK_OVERLAP_VNTR  0x0004
+#include "genotyping_record.h"
 
 /**
  * A generic record that holds information for genotyping a
@@ -43,7 +40,7 @@
  * Maintains read information and allows for additional reads
  * till VCF record can be printed out.
  */
-class IndelGenotypingRecord
+class IndelGenotypingRecord : GenotypingRecord
 {
     public:
     bcf_hdr_t *h;
@@ -118,16 +115,36 @@ class IndelGenotypingRecord
      * Constructor.
      * @v - VCF record.
      */
-    IndelGenotypingRecord(bcf_hdr_t *h, bcf1_t *v, int32_t vtype, int32_t nsamples);
+    IndelGenotypingRecord(bcf_hdr_t *h, bcf1_t *v, int32_t vtype, int32_t nsamples, int32_t ploidy, Estimator* est);
 
     /**
      * Clears this record.
      */
     void clear();
+    
+    /**
+     * Clears this record.
+     */
     void clearTemp();
+    
+    /**
+     * Clears this record.
+     */
     bcf1_t* flush_variant(bcf_hdr_t* hdr);
+    
+    /**
+     * Clears this record.
+     */
     void flush_sample( int32_t sampleIndex );
+    
+    /**
+     * Clears this record.
+     */
     void add_allele( double contam, int32_t allele, uint8_t mapq, bool fwd, uint32_t q, int32_t cycle, uint32_t nm );
+    
+    /**
+     * Clears this record.
+     */
     void process_read(AugmentedBAMRecord& as, int32_t sampleIndex, double contam);
 
     /**
