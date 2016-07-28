@@ -40,7 +40,8 @@
  * Maintains read information and allows for additional reads
  * till VCF record can be printed out.
  */
-class IndelGenotypingRecord : GenotypingRecord
+//class IndelGenotypingRecord : public GenotypingRecord
+class IndelGenotypingRecord 
 {
     public:
     bcf_hdr_t *h;
@@ -115,7 +116,13 @@ class IndelGenotypingRecord : GenotypingRecord
      * Constructor.
      * @v - VCF record.
      */
-    IndelGenotypingRecord(bcf_hdr_t *h, bcf1_t *v, int32_t vtype, int32_t nsamples, int32_t ploidy, Estimator* est);
+    IndelGenotypingRecord() {};
+    
+    /**
+     * Constructor.
+     * @v - VCF record.
+     */
+    IndelGenotypingRecord(bcf_hdr_t *h, bcf1_t *v, int32_t nsamples, int32_t ploidy, Estimator* est);
 
     /**
      * Clears this record.

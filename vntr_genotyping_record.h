@@ -44,7 +44,8 @@
  * Maintains read information and allows for additional reads
  * till VCF record can be printed out.
  */
-class VNTRGenotypingRecord : GenotypingRecord
+//class VNTRGenotypingRecord : GenotypingRecord
+class VNTRGenotypingRecord
 {
     public:
     bcf_hdr_t *h;
@@ -114,6 +115,12 @@ class VNTRGenotypingRecord : GenotypingRecord
     double tmp_ads[3];
 
     // temporary information to be cleared out per-sample basis
+
+    /**
+     * Constructor.
+     * @v - VCF record.
+     */
+    VNTRGenotypingRecord() {};
 
     /**
      * Constructor.

@@ -30,18 +30,29 @@ BCFGenotypingBufferedReader::BCFGenotypingBufferedReader(std::string filename, s
 {
     vm = new VariantManip();
 
-    // read input BCF files and create genotyping records for every variants
+    // read input BCF files and create genotyping records for every variant
     odr = new BCFOrderedReader(filename, intervals);
 
+    bcf_hdr_t* h = odr->hdr;
     bcf1_t* v = bcf_init();
     while(odr->read(v)) 
     {
-        int32_t vtype = vm->classify_variant(odr->hdr, v, variant);
+        int32_t vtype = vm->classify_variant(h, v, variant);
         int32_t pos1 = bcf_get_pos1(v);
         
         if ( ( pos1 < intervals[0].start1 ) || ( pos1 > intervals[0].end1 ) ) continue;
         
-        GenotypingRecord* jgr = new GenotypingRecord(odr->hdr, v, vtype, nsamples);
+        GenotypingRecord* jgr = NULL;
+        //todo: add in a file to be read that will specify the appropriate ploidy
+        //
+        //1. region based - bed
+        //2. argument based - bed format in argument line
+        int32_t ploidy = 2;
+        if (vtype==VT_SNP)
+        {    
+            jgr = new SNPGenotypingRecord(h, v, nsamples, ploidy, NULL);
+        }
+        
         gRecords.push_back(jgr);
     }
     

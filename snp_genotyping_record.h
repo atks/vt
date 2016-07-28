@@ -40,7 +40,7 @@
  * Maintains read information and allows for additional reads
  * till VCF record can be printed out.
  */
-class SNPGenotypingRecord : GenotypingRecord
+class SNPGenotypingRecord : public GenotypingRecord
 {
     public:
     bcf_hdr_t *h;
@@ -110,19 +110,24 @@ class SNPGenotypingRecord : GenotypingRecord
     double tmp_ads[3];
 
     // temporary information to be cleared out per-sample basis
+   
+    /**
+     * Constructor.
+     * @v - VCF record.
+     */
+    SNPGenotypingRecord();
 
     /**
      * Constructor.
      * @v - VCF record.
      */
-    SNPGenotypingRecord() {};
+    SNPGenotypingRecord(bcf_hdr_t *h, bcf1_t *v, int32_t nsamples, int32_t ploidy, Estimator* est);
 
     /**
-     * Constructor.
-     * @v - VCF record.
+     * Destructor.
      */
-    SNPGenotypingRecord(bcf_hdr_t *h, bcf1_t *v, int32_t vtype, int32_t nsamples, int32_t ploidy);
-
+    ~SNPGenotypingRecord();
+    
     /**
      * Clears this record.
      */
@@ -133,10 +138,6 @@ class SNPGenotypingRecord : GenotypingRecord
     void add_allele( double contam, int32_t allele, uint8_t mapq, bool fwd, uint32_t q, int32_t cycle, uint32_t nm );
     void process_read(AugmentedBAMRecord& as, int32_t sampleIndex, double contam);
 
-    /**
-     * Destructor.
-     */
-    ~SNPGenotypingRecord();
 };
 
 #endif

@@ -27,7 +27,13 @@
  * Constructor.
  * @v - VCF record.
  */
-SNPGenotypingRecord::SNPGenotypingRecord(bcf_hdr_t *h, bcf1_t *v, int32_t vtype, int32_t nsamples, int32_t ploidy)
+SNPGenotypingRecord::SNPGenotypingRecord() {};
+    
+/**
+ * Constructor.
+ * @v - VCF record.
+ */
+SNPGenotypingRecord::SNPGenotypingRecord(bcf_hdr_t *h, bcf1_t *v, int32_t nsamples, int32_t ploidy, Estimator* est)
 {
     clear();
 
@@ -37,7 +43,6 @@ SNPGenotypingRecord::SNPGenotypingRecord(bcf_hdr_t *h, bcf1_t *v, int32_t vtype,
     //this->v = v;
     this->rid = bcf_get_rid(v);
     this->pos1 = bcf_get_pos1(v);
-    this->vtype = vtype;
     this->nsamples = nsamples;
 
     this->alleles = {0,0,0};
@@ -65,10 +70,21 @@ SNPGenotypingRecord::SNPGenotypingRecord(bcf_hdr_t *h, bcf1_t *v, int32_t vtype,
         if (bcf_has_filter(h, v, const_cast<char*>("overlap_vntr"))==1)
             n_filter |= FILTER_MASK_OVERLAP_VNTR;
     }
-    
 
     pls = (uint8_t*)calloc( nsamples*3, sizeof(uint8_t) );
     ads = (uint8_t*)calloc( nsamples*3, sizeof(uint8_t) );
+}
+
+/**
+ * Destructor.
+ */
+SNPGenotypingRecord::~SNPGenotypingRecord()
+{
+  //if (v) bcf_destroy(v);
+    if ( pls ) free(pls);
+    if ( ads ) free(ads);
+    if ( alleles.l > 0 ) free(alleles.s);
+    if ( est ) delete est;
 }
 
 /**
@@ -110,18 +126,6 @@ void SNPGenotypingRecord::clear()
     abz_num = abz_den = 0;
     ns_nref = dp_sum = max_gq = 0;
     clearTemp();
-}
-
-/**
- * Destructor.
- */
-SNPGenotypingRecord::~SNPGenotypingRecord()
-{
-  //if (v) bcf_destroy(v);
-    if ( pls ) free(pls);
-    if ( ads ) free(ads);
-    if ( alleles.l > 0 ) free(alleles.s);
-    if ( est ) delete est;
 }
 
 /**
@@ -286,11 +290,11 @@ bcf1_t* SNPGenotypingRecord::flush_variant(bcf_hdr_t* hdr)
 
     // update filter
     if ( n_filter & FILTER_MASK_OVERLAP_SNP )
-    bcf_add_filter(hdr, nv, bcf_hdr_id2int(hdr, BCF_DT_ID, "overlap_snp"));
+        bcf_add_filter(hdr, nv, bcf_hdr_id2int(hdr, BCF_DT_ID, "overlap_snp"));
     if ( n_filter & FILTER_MASK_OVERLAP_INDEL )
-    bcf_add_filter(hdr, nv, bcf_hdr_id2int(hdr, BCF_DT_ID, "overlap_indel"));
+        bcf_add_filter(hdr, nv, bcf_hdr_id2int(hdr, BCF_DT_ID, "overlap_indel"));
     if ( n_filter & FILTER_MASK_OVERLAP_VNTR )
-    bcf_add_filter(hdr, nv, bcf_hdr_id2int(hdr, BCF_DT_ID, "overlap_vntr"));
+        bcf_add_filter(hdr, nv, bcf_hdr_id2int(hdr, BCF_DT_ID, "overlap_vntr"));
 
     //bcf_update_info_int32(odw->hdr, nv, "NS_NREF", &v_ns_nrefs[k], 1);
     abe_num /= (abe_den+1e-6); bcf_update_info_float(hdr, nv, "ABE",  &abe_num, 1);

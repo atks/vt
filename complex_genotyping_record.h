@@ -40,7 +40,8 @@
  * Maintains read information and allows for additional reads
  * till VCF record can be printed out.
  */
-class ComplexGenotypingRecord : GenotypingRecord
+//class ComplexGenotypingRecord : public GenotypingRecord
+class ComplexGenotypingRecord
 {
     public:
     bcf_hdr_t *h;
@@ -111,6 +112,12 @@ class ComplexGenotypingRecord : GenotypingRecord
 
     // temporary information to be cleared out per-sample basis
 
+    /**
+     * Constructor.
+     * @v - VCF record.
+     */
+    ComplexGenotypingRecord() {};
+    
     /**
      * Constructor.
      * @v - VCF record.

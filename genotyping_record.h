@@ -119,6 +119,7 @@ class GenotypingRecord
     float abz_num, abz_den;
     float ns_nref, dp_sum, max_gq;
 
+    // temporary information to be cleared out per-sample basis
     int32_t tmp_dp_q20;
     int32_t tmp_dp_ra;
     int32_t tmp_bq_s1, tmp_bq_s2;
@@ -133,34 +134,59 @@ class GenotypingRecord
     double tmp_pls[3];
     double tmp_ads[3];
 
-    // temporary information to be cleared out per-sample basis
 
     /**
      * Constructor.
-     * @v - VCF record.
      */
     GenotypingRecord() {};
     
     /**
      * Constructor.
-     * @v - VCF record.
+     *
+     * @h       - VCF header.
+     * @v       - VCF record.
+     * nsamples - number of samples.
+     * ploidy   - ploidy of this variant
+     *
+     * future todo: ploidy be an array of integers of length no_samples to allow for local copy number.
      */
-    GenotypingRecord(bcf_hdr_t *h, bcf1_t *v, int32_t vtype, int32_t nsamples);
-
-    /**
-     * Clears this record.
-     */
-    void clear();
-    void clearTemp();
-    bcf1_t* flush_variant(bcf_hdr_t* hdr);
-    void flush_sample( int32_t sampleIndex );
-    void add_allele( double contam, int32_t allele, uint8_t mapq, bool fwd, uint32_t q, int32_t cycle, uint32_t nm );
-    void process_read(AugmentedBAMRecord& as, int32_t sampleIndex, double contam);
+    GenotypingRecord(bcf_hdr_t *h, bcf1_t *v, int32_t nsamples, int32_t ploidy, Estimator* est) {};
 
     /**
      * Destructor.
      */
-    ~GenotypingRecord();
+    virtual ~GenotypingRecord() {};
+    
+    /**
+     * Clears this record.
+     */
+    virtual void clear() {};
+    
+    /**
+     * Clears the temporary variables.
+     */
+    virtual void clearTemp() {};
+    
+    /**
+     * Flushes variant. 
+     * This returns a single line BCF recordfor all the samples.
+     */
+    virtual bcf1_t* flush_variant(bcf_hdr_t* hdr) {return NULL;};
+   
+    /**
+     * Flush sample.  This is used for sequential reading of each sample.
+     */
+    virtual void flush_sample( int32_t sampleIndex ) {};
+   
+    /**
+     * Clears this record.
+     */
+    virtual void add_allele( double contam, int32_t allele, uint8_t mapq, bool fwd, uint32_t q, int32_t cycle, uint32_t nm ) {};
+    
+    /**
+     * Clears this record.
+     */
+    virtual void process_read(AugmentedBAMRecord& as, int32_t sampleIndex, double contam) {};
 };
 
 #endif
