@@ -44,7 +44,7 @@ class SNPGenotypingRecord : public GenotypingRecord
 {
     public:
     bcf_hdr_t *h;
-    //bcf1_t *v;
+    bcf1_t *v;
     int32_t rid;
     int32_t pos1; //position of variant
     //[beg1,end1] is the required overlapping of the variant against the aligned read necessary to make a genotype call.
@@ -59,8 +59,7 @@ class SNPGenotypingRecord : public GenotypingRecord
     //        if TG/G - beg1=pos1-1, end1=pos1+length(REF)-1
     int32_t beg1;
     int32_t end1;
-    int32_t vtype;
-
+   
     //indel specific record
     int32_t dlen;
     int32_t len;
@@ -95,6 +94,7 @@ class SNPGenotypingRecord : public GenotypingRecord
     float abz_num, abz_den;
     float ns_nref, dp_sum, max_gq;
 
+    // temporary information to be cleared out per-sample basis
     int32_t tmp_dp_q20;
     int32_t tmp_dp_ra;
     int32_t tmp_bq_s1, tmp_bq_s2;
@@ -109,16 +109,14 @@ class SNPGenotypingRecord : public GenotypingRecord
     double tmp_pls[3];
     double tmp_ads[3];
 
-    // temporary information to be cleared out per-sample basis
-   
     /**
      * Constructor.
-     * @v - VCF record.
      */
     SNPGenotypingRecord();
 
     /**
      * Constructor.
+     * @h - header.
      * @v - VCF record.
      */
     SNPGenotypingRecord(bcf_hdr_t *h, bcf1_t *v, int32_t nsamples, int32_t ploidy, Estimator* est);

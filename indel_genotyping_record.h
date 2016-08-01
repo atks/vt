@@ -40,8 +40,7 @@
  * Maintains read information and allows for additional reads
  * till VCF record can be printed out.
  */
-//class IndelGenotypingRecord : public GenotypingRecord
-class IndelGenotypingRecord 
+class IndelGenotypingRecord : public GenotypingRecord
 {
     public:
     bcf_hdr_t *h;

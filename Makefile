@@ -17,6 +17,7 @@ SOURCES = ahmm\
 		annotate_vntrs\
 		augmented_bam_record\
 		bcf_genotyping_buffered_reader\
+		bcf_single_genotyping_buffered_reader\
 		bam_ordered_reader\
 		bcf_ordered_reader\
 		bcf_ordered_writer\

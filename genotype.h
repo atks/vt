@@ -36,6 +36,7 @@
 #include "utils.h"
 #include "variant_manip.h"
 #include "estimator.h"
+#include "bcf_single_genotyping_buffered_reader.h"
 #include "bcf_genotyping_buffered_reader.h"
 #include "read_filter.h"
 

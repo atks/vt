@@ -44,8 +44,7 @@
  * Maintains read information and allows for additional reads
  * till VCF record can be printed out.
  */
-//class VNTRGenotypingRecord : GenotypingRecord
-class VNTRGenotypingRecord
+class VNTRGenotypingRecord : GenotypingRecord
 {
     public:
     bcf_hdr_t *h;

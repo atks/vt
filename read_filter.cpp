@@ -42,6 +42,7 @@ ReadFilter::ReadFilter(uint32_t read_mapq_cutoff, uint16_t read_exclude_flag, bo
     //stats initialization//
     ////////////////////////
     no_reads = 0;
+    no_passed_reads = 0;
     no_overlapping_reads = 0;
     no_passed_reads = 0;
     no_exclude_flag_reads = 0;

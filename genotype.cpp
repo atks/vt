@@ -35,9 +35,11 @@ class Igor : Program
     ///////////
     //options//
     ///////////
+    std::string input_vcf_file;
+    std::string output_vcf_file;
+
     std::vector<std::string> input_files;
     std::string input_files_list;
-    std::string output_vcf_file;
     bool print;
     std::vector<GenomeInterval> intervals;
 
@@ -56,6 +58,15 @@ class Igor : Program
     std::string ref_fasta_file;
     bool ignore_md;
     int32_t debug;
+
+    // d - dense
+    // s - sparse
+    // j - joint
+    /**
+     * Individual - genotypes each sample by itself and outputs a genotype file
+     * Joint      - genotypes multiple samples and outputs with features
+     */
+    std::string mode;
 
     //read filters
     uint32_t read_mapq_cutoff;
@@ -123,11 +134,13 @@ class Igor : Program
             TCLAP::SwitchArg arg_ignore_overlapping_read("l", "l", "ignore overlapping reads [false]", cmd, false);
             TCLAP::ValueArg<uint32_t> arg_read_exclude_flag("a", "a", "read exclude flag [0x0704]", false, 0x0704, "int", cmd);
             TCLAP::ValueArg<std::string> arg_mode("m", "m", "mode [d]\n"
-                          "              p : parallel access across files (up to hundreds, less memory)\n"
+                          "              d : parallel access across files (up to hundreds, less memory)\n"
+                          "              s : sequential access across many files (thousands or more, with more memory)\n"
                           "              s : sequential access across many files (thousands or more, with more memory)\n",
                           false, "s", "str", cmd);
             TCLAP::ValueArg<std::string> arg_ref_fasta_file("r", "r", "reference FASTA file []", true, "", "string", cmd);
             TCLAP::ValueArg<uint32_t> arg_debug("d", "d", "debug [0]", false, 0, "int", cmd);
+            TCLAP::UnlabeledValueArg<std::string> arg_input_vcf_file("<in.vcf>", "input VCF file", true, "","file", cmd);
 
             cmd.parse(argc, argv);
             ref_fasta_file = arg_ref_fasta_file.getValue();
@@ -137,12 +150,13 @@ class Igor : Program
             ignore_overlapping_read = arg_ignore_overlapping_read.getValue();
             read_exclude_flag = arg_read_exclude_flag.getValue();
 
-
-            //mode = arg_mode.getValue();
+            input_vcf_file = arg_input_vcf_file.getValue();
             input_files_list = arg_input_files_list.getValue();
             output_vcf_file = arg_output_vcf_file.getValue();
             parse_files(input_files, arg_input_files.getValue(), arg_input_files_list.getValue());
             const std::vector<std::string>& v = arg_input_files.getValue();
+
+            mode = arg_mode.getValue();
 
             print = arg_print.getValue();
             maxBQ = arg_max_bq.getValue();
@@ -161,8 +175,6 @@ class Igor : Program
                 fprintf(stderr, "[E:%s:%d %s] no input files.\n", __FILE__, __LINE__, __FUNCTION__);
                 exit(1);
             }
-
-
         }
         catch (TCLAP::ArgException &e)
         {
@@ -354,71 +366,107 @@ class Igor : Program
         }
         else
         {
-            int32_t nsamples = (int32_t)input_sam_files.size();
-
-            notice("Loading input VCF file %s in region %s", input_vcf_files[0].c_str(), intervals[0].to_string().c_str());
-            BCFGenotypingBufferedReader jgbr(input_vcf_files[0], intervals, output_vcf_file, nsamples);
-
-            BCFOrderedWriter* odw = new BCFOrderedWriter(output_vcf_file);
-            bcf_hdr_transfer_contigs(jgbr.odr->hdr, odw->hdr);
-
-            bam1_t* s = bam_init1();
-
-            std::vector<std::string> snames(nsamples);
-
-            for(int32_t i=0; i < nsamples; ++i)
+            if (mode=="d")
             {
-                BAMOrderedReader odr(input_sam_files[i], intervals);
-                bam_hdr_t* h = odr.hdr;
-                int64_t no_reads = 0;
-
-                snames[i] = input_sam_sample_names[i].empty() ? bam_hdr_get_sample_name(odr.hdr) : input_sam_sample_names[i];
-                jgbr.set_sample(i, snames[i].c_str(), input_sam_contams[i]);
-
-                if ( i % 100 == 0 )
-                  notice("Processing %d-th sample %s", i+1, snames[i].c_str());
-
-                if ( jgbr.numVariants() > 0 )
+                BAMOrderedReader odr(input_sam_files[0], intervals);
+                bam_hdr_t *h = odr.hdr;
+                bam1_t * s = bam_init1();
+                BCFSingleGenotypingBufferedReader bsgr(input_vcf_file, intervals, output_vcf_file);
+                
+                while (odr.read(s))
                 {
-                    while( odr.read(s) )
+                    ++rf->no_reads;
+    
+                    if (!rf->filter_read(h, s))
                     {
-                        ++no_reads;
-                        if ( !rf->filter_read(odr.hdr, s) ) continue;
-
-                        //jgbr.flush( h, s );
-                        jgbr.process_read(h, s, i);  // process the next reads
+                        continue;
+                    }
+    
+                    bsgr.process_read(h, s);
+    
+                    ++rf->no_passed_reads;
+                    if ((rf->no_reads & 0x0000FFFF) == 0)
+                    {
+                        std::cerr << bam_get_chrom(h,s) << ":" << bam_get_pos1(s) << " ("  << bsgr.buffer.size() << ")\n";
                     }
                 }
-
-                if ( no_reads == 0 )
+    
+                bsgr.flush(h, s, true);
+                
+                no_snps_genotyped = bsgr.no_snps_genotyped;
+                no_indels_genotyped = bsgr.no_indels_genotyped;
+                no_vntrs_genotyped = bsgr.no_vntrs_genotyped;
+    
+                odw->close();
+            }
+            else
+            {
+                int32_t nsamples = (int32_t)input_sam_files.size();
+    
+                notice("Loading input VCF file %s in region %s", input_vcf_files[0].c_str(), intervals[0].to_string().c_str());
+                BCFGenotypingBufferedReader jgbr(input_vcf_files[0], intervals, output_vcf_file, nsamples);
+    
+                BCFOrderedWriter* odw = new BCFOrderedWriter(output_vcf_file);
+                bcf_hdr_transfer_contigs(jgbr.odr->hdr, odw->hdr);
+    
+                bam1_t* s = bam_init1();
+    
+                std::vector<std::string> snames(nsamples);
+    
+                for(int32_t i=0; i < nsamples; ++i)
                 {
-                    notice("WARNING: No read found in %d-th sample %s", i+1, snames[i].c_str());
+                    BAMOrderedReader odr(input_sam_files[i], intervals);
+                    bam_hdr_t* h = odr.hdr;
+                    int64_t no_reads = 0;
+    
+                    snames[i] = input_sam_sample_names[i].empty() ? bam_hdr_get_sample_name(odr.hdr) : input_sam_sample_names[i];
+                    jgbr.set_sample(i, snames[i].c_str(), input_sam_contams[i]);
+    
+                    if ( i % 100 == 0 )
+                      notice("Processing %d-th sample %s", i+1, snames[i].c_str());
+    
+                    if ( jgbr.numVariants() > 0 )
+                    {
+                        while( odr.read(s) )
+                        {
+                            ++no_reads;
+                            if ( !rf->filter_read(odr.hdr, s) ) continue;
+    
+                            //jgbr.flush( h, s );
+                            jgbr.process_read(h, s, i);  // process the next reads
+                        }
+                    }
+    
+                    if ( no_reads == 0 )
+                    {
+                        notice("WARNING: No read found in %d-th sample %s", i+1, snames[i].c_str());
+                    }
+    
+                    jgbr.flush_sample(i);
+                    odr.close();
                 }
-
-                jgbr.flush_sample(i);
-                odr.close();
+    
+                bam_destroy1(s);
+                for(int32_t i=0; i < nsamples; ++i)
+                {
+                    bcf_hdr_add_sample(odw->hdr, snames[i].c_str());
+                }
+    
+                bcf_hdr_add_sample(odw->hdr, NULL);
+    
+                int32_t nvariants = jgbr.numVariants();
+                jgbr.write_header(odw);
+    
+                for(int32_t i=0; i < nvariants; ++i)
+                {
+                    bcf1_t* nv = jgbr.flush_variant(i, odw->hdr);
+                    odw->write(nv);
+                    bcf_destroy(nv);
+                }
+    
+                odw->close();
+                delete odw;
             }
-
-            bam_destroy1(s);
-            for(int32_t i=0; i < nsamples; ++i)
-            {
-                bcf_hdr_add_sample(odw->hdr, snames[i].c_str());
-            }
-
-            bcf_hdr_add_sample(odw->hdr, NULL);
-
-            int32_t nvariants = jgbr.numVariants();
-            jgbr.write_header(odw);
-
-            for(int32_t i=0; i < nvariants; ++i)
-            {
-                bcf1_t* nv = jgbr.flush_variant(i, odw->hdr);
-                odw->write(nv);
-                bcf_destroy(nv);
-            }
-
-            odw->close();
-            delete odw;
         }
     }
 
