@@ -130,10 +130,30 @@ class SNPGenotypingRecord : public GenotypingRecord
      * Clears this record.
      */
     void clear();
+            
+    /**
+     * Clears this record.
+     */
     void clearTemp();
+     
+    /**
+     * Clears this record.
+     */
     bcf1_t* flush_variant(bcf_hdr_t* hdr);
+            
+    /**
+     * Clears this record.
+     */
     void flush_sample( int32_t sampleIndex );
+            
+    /**
+     * Clears this record.
+     */
     void add_allele( double contam, int32_t allele, uint8_t mapq, bool fwd, uint32_t q, int32_t cycle, uint32_t nm );
+            
+    /**
+     * Clears this record.
+     */
     void process_read(AugmentedBAMRecord& as, int32_t sampleIndex, double contam);
 
 };
