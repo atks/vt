@@ -64,6 +64,7 @@ SOURCES = ahmm\
 		log_tool\
 		merge\
 		merge_candidate_variants\
+		merge_genotypes\
 		milk_filter\
 		motif_tree\
 		motif_map\

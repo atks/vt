@@ -25,7 +25,7 @@
 
 namespace
 {
-    
+
 class Igor : Program
 {
     public:
@@ -37,10 +37,8 @@ class Igor : Program
     ///////////
     std::string input_vcf_file;
     std::string output_vcf_file;
-
     std::vector<std::string> input_files;
     std::string input_files_list;
-    bool print;
     std::vector<GenomeInterval> intervals;
 
     int32_t maxBQ;
@@ -59,12 +57,17 @@ class Igor : Program
     bool ignore_md;
     int32_t debug;
 
-    // d - dense
-    // s - sparse
-    // j - joint
     /**
-     * Individual - genotypes each sample by itself and outputs a genotype file
-     * Joint      - genotypes multiple samples and outputs with features
+     * Joint         - genotypes multiple samples and outputs with features
+     *                 genotypic information of samples are stored in memory,
+     *                 this should be used with short genomic intervals and
+     *                 maybe parallelized thus.
+     * Hierarchical  - genotypes by subset of individuals and stores features
+     *                 temporarily in INFO fields in VCF files.  Resultant
+     *                 VCF files may be merged with vt merge_genotypes.  This 
+     *                 should applied on subsets of individuals and by large 
+     *                 genomic sequence segments - e.g. chromosome or whole 
+     *                 genome.
      */
     std::string mode;
 
@@ -114,7 +117,6 @@ class Igor : Program
             version = "0.1";
             TCLAP::CmdLine cmd(desc, ' ', version);
             VTOutput my; cmd.setOutput(&my);
-            TCLAP::SwitchArg arg_print("p", "p", "print options and summary []", cmd, false);
             TCLAP::ValueArg<std::string> arg_output_vcf_file("o", "o", "output VCF file [-]", false, "-", "", cmd);
             TCLAP::ValueArg<std::string> arg_input_files_list("L", "L", "file containing list of input SAM/BAM/CRAM/BCF/VCF files", false, "", "str", cmd);
             TCLAP::UnlabeledMultiArg<std::string> arg_input_files("<in1.vcf>...", "Multiple SAM/BAM/CRAM/BCF/VCF files",false, "files", cmd);
@@ -158,7 +160,6 @@ class Igor : Program
 
             mode = arg_mode.getValue();
 
-            print = arg_print.getValue();
             maxBQ = arg_max_bq.getValue();
             minContam = arg_min_contam.getValue();
 
@@ -248,21 +249,7 @@ class Igor : Program
     }
 
     /**
-     * Genotypes individuals in 2 different modes.
-     *
-     * 1. all individuals by sequential reads of each bam file
-     * 2. all or subset of individuals by simultaneous file reads
-     *
-     * With regards to mode 1.
-     * Takes up alot of memory as sufficient statistics of each individual is collected and stored.
-     * Requires all the individuals to be processed as features are computed for all.
-     *
-     * With regards to mode 2.
-     * Memory required for the indices of all the bams.
-     * Allows for subset sets of individuals to be processed.
-     * Output will be a file with incomplete features that can be combined.
-     * This allows for low memory usage.
-     *
+     * Genotypes individuals.
      */
     void genotype()
     {
@@ -322,9 +309,9 @@ class Igor : Program
             {
                 error("Cannot parse input line %s, 2 or 3 columns expected", input_files[i].c_str());
             }
-            
+
             sname = tokens[0];
-            int32_t file_type = hts_filename_type(tokens[1]);    
+            int32_t file_type = hts_filename_type(tokens[1]);
             if (file_type==sam || file_type==bam || file_type==cram)
             {
                 error("SAM/CRAM/BAM file expected in second column: %s",input_files[i].c_str());
@@ -335,14 +322,14 @@ class Igor : Program
                 if (!str2double(tokens[2], contam))
                 {
                     error("number expected in third column: %s",input_files[i].c_str());
-                }    
-            
+                }
+
                 if ( contam < minContam )
                 {
                     contam = minContam;
                 }
             }
-            
+
             input_sam_sample_names.push_back(sname);
             input_sam_files.push_back(fname);
             input_sam_contams.push_back(contam);
@@ -372,98 +359,98 @@ class Igor : Program
                 bam_hdr_t *h = odr.hdr;
                 bam1_t * s = bam_init1();
                 BCFSingleGenotypingBufferedReader bsgr(input_vcf_file, intervals, output_vcf_file);
-                
+
                 while (odr.read(s))
                 {
                     ++rf->no_reads;
-    
+
                     if (!rf->filter_read(h, s))
                     {
                         continue;
                     }
-    
+
                     bsgr.process_read(h, s);
-    
+
                     ++rf->no_passed_reads;
                     if ((rf->no_reads & 0x0000FFFF) == 0)
                     {
                         std::cerr << bam_get_chrom(h,s) << ":" << bam_get_pos1(s) << " ("  << bsgr.buffer.size() << ")\n";
                     }
                 }
-    
+
                 bsgr.flush(h, s, true);
-                
+
                 no_snps_genotyped = bsgr.no_snps_genotyped;
                 no_indels_genotyped = bsgr.no_indels_genotyped;
                 no_vntrs_genotyped = bsgr.no_vntrs_genotyped;
-    
+
                 odw->close();
             }
             else
             {
                 int32_t nsamples = (int32_t)input_sam_files.size();
-    
+
                 notice("Loading input VCF file %s in region %s", input_vcf_files[0].c_str(), intervals[0].to_string().c_str());
                 BCFGenotypingBufferedReader jgbr(input_vcf_files[0], intervals, output_vcf_file, nsamples);
-    
+
                 BCFOrderedWriter* odw = new BCFOrderedWriter(output_vcf_file);
                 bcf_hdr_transfer_contigs(jgbr.odr->hdr, odw->hdr);
-    
+
                 bam1_t* s = bam_init1();
-    
+
                 std::vector<std::string> snames(nsamples);
-    
+
                 for(int32_t i=0; i < nsamples; ++i)
                 {
                     BAMOrderedReader odr(input_sam_files[i], intervals);
                     bam_hdr_t* h = odr.hdr;
                     int64_t no_reads = 0;
-    
+
                     snames[i] = input_sam_sample_names[i].empty() ? bam_hdr_get_sample_name(odr.hdr) : input_sam_sample_names[i];
                     jgbr.set_sample(i, snames[i].c_str(), input_sam_contams[i]);
-    
+
                     if ( i % 100 == 0 )
                       notice("Processing %d-th sample %s", i+1, snames[i].c_str());
-    
+
                     if ( jgbr.numVariants() > 0 )
                     {
                         while( odr.read(s) )
                         {
                             ++no_reads;
                             if ( !rf->filter_read(odr.hdr, s) ) continue;
-    
+
                             //jgbr.flush( h, s );
                             jgbr.process_read(h, s, i);  // process the next reads
                         }
                     }
-    
+
                     if ( no_reads == 0 )
                     {
                         notice("WARNING: No read found in %d-th sample %s", i+1, snames[i].c_str());
                     }
-    
+
                     jgbr.flush_sample(i);
                     odr.close();
                 }
-    
+
                 bam_destroy1(s);
                 for(int32_t i=0; i < nsamples; ++i)
                 {
                     bcf_hdr_add_sample(odw->hdr, snames[i].c_str());
                 }
-    
+
                 bcf_hdr_add_sample(odw->hdr, NULL);
-    
+
                 int32_t nvariants = jgbr.numVariants();
                 jgbr.write_header(odw);
-    
+
                 for(int32_t i=0; i < nvariants; ++i)
                 {
                     bcf1_t* nv = jgbr.flush_variant(i, odw->hdr);
                     odw->write(nv);
                     bcf_destroy(nv);
                 }
-    
+
                 odw->close();
                 delete odw;
             }
@@ -488,8 +475,6 @@ class Igor : Program
 
     void print_stats()
     {
-        if (!print) return;
-
         std::clog << "genotype v" << version << "\n\n";
 
         std::clog << "\n";
@@ -519,13 +504,12 @@ class Igor : Program
 
 }
 
-bool genotype(int argc, char ** argv)
+void genotype(int argc, char ** argv)
 {
     Igor igor(argc, argv);
     igor.print_options();
     igor.initialize();
     igor.genotype();
     igor.print_stats();
-    return igor.print;
 }
 
