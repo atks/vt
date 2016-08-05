@@ -23,7 +23,7 @@
 
 #include "multiallelics_consolidator.h"
 
-MultiallelicsConsolidator::MultiallelicsConsolidator(std::string& input_vcf_file, std::vector<GenomeInterval>& intervals, std::string& output_vcf_file, std::string& fexp, std::string& ref_fasta_file)
+MultiallelicsConsolidator::MultiallelicsConsolidator(std::string& input_vcf_file, std::vector<GenomeInterval>& intervals, std::string& output_vcf_file, std::string& fexp, std::string& ref_fasta_file, int32_t window_overlap)
 {
     //////////////////////
     //i/o initialization//
@@ -56,6 +56,11 @@ MultiallelicsConsolidator::MultiallelicsConsolidator(std::string& input_vcf_file
     INVOLVED_MULTIALLELIC_VARIANT = bcf_hdr_append_info_with_backup_naming(odw->hdr, "INVOLVED_MULTIALLELIC_VARIANT", ".", "String", "Multiallelic variant that this variant is represent in.", rename);
     INVOLVED_BIALLELIC_VARIANTS = bcf_hdr_append_info_with_backup_naming(odw->hdr, "INVOLVED_BIALLELIC_VARIANTS", ".", "String", "Biallelic variant that this variant is compose of.", rename);
     odw->write_hdr();
+
+    //
+    //
+    //
+    this->window_overlap = window_overlap;
 
     /////////////////////////
     //filter initialization//
@@ -345,13 +350,13 @@ Variant* MultiallelicsConsolidator::create_or_update_multiallelic(Variant& nvar,
  */
 void MultiallelicsConsolidator::update_multiallelic_for_printing(Variant& mvar)
 {
-//    std::cerr << "===============================\n";
-//    std::cerr << "UPDATE MULTIALLELICFOR PRINTING\n";
+//    std::cerr << "================================\n";
+//    std::cerr << "UPDATE MULTIALLELICF OR PRINTING\n";
 //    std::cerr << "mvar.beg1 : " << mvar.beg1 << "\n";
 //    std::cerr << "mvar.end1 : " << mvar.end1 << "\n";
 //    bcf_print(mvar.h, mvar.v);
 //    std::cerr << "no. overlapping variants : " << mvar.vs.size() << "\n";
-//    std::cerr << "===============================\n";
+//    std::cerr << "================================\n";
 
     std::string ref;
     rs->fetch_seq(mvar.chrom, mvar.beg1, mvar.end1, ref);
@@ -359,7 +364,7 @@ void MultiallelicsConsolidator::update_multiallelic_for_printing(Variant& mvar)
     std::vector<std::string> alleles;
     alleles.push_back(ref);
     std::string biallelics = "";
-        
+
     for (uint32_t i=0; i<mvar.vs.size(); ++i)
     {
         bcf_unpack(mvar.vs[i], BCF_UN_STR);
@@ -372,8 +377,8 @@ void MultiallelicsConsolidator::update_multiallelic_for_printing(Variant& mvar)
         std::string right = ref.substr(end1-mvar.beg1+1, mvar.end1-end1);
 
         alleles.push_back(left + alt + right);
-        
-        if (biallelics.size()!=0) biallelics += ",";    
+
+        if (biallelics.size()!=0) biallelics += ",";
         biallelics +=  bcf_variant2string(odw->hdr, mvar.vs[i]);
     }
 
@@ -387,7 +392,7 @@ void MultiallelicsConsolidator::update_multiallelic_for_printing(Variant& mvar)
     std::string new_alleles = join(alleles, ",");
     bcf_update_alleles_str(mvar.h, mvar.v, new_alleles.c_str());
     bcf_update_info_string(odw->hdr, mvar.v, INVOLVED_BIALLELIC_VARIANTS.c_str(), biallelics.c_str());
-    
+
     mvar.updated_multiallelic = true;
 
     std::string multi = bcf_variant2string(odw->hdr, mvar.v);
@@ -396,11 +401,11 @@ void MultiallelicsConsolidator::update_multiallelic_for_printing(Variant& mvar)
         bcf_update_info_string(odw->hdr, mvar.vs[i], INVOLVED_MULTIALLELIC_VARIANT.c_str(), multi.c_str());
     }
 
-//    std::cerr << "===============================\n";
-//    std::cerr << "UPDATE MULTIALLELICFOR PRINTING END\n";
+//    std::cerr << "================================\n";
+//    std::cerr << "UPDATE MULTIALLELIC FOR PRINTING END\n";
 //    std::cerr << "mvar.beg1 : " << mvar.beg1 << "\n";
 //    std::cerr << "mvar.end1 : " << mvar.end1 << "\n";
 //    bcf_print(mvar.h, mvar.v);
 //    std::cerr << "no. overlapping variants : " << mvar.vs.size() << "\n";
-//    std::cerr << "=================================\n";
+//    std::cerr << "==================================\n";
 }

@@ -52,20 +52,24 @@ Variant::Variant(bcf_hdr_t* h, bcf1_t* v)
     else if (type==VT_INDEL)
     {
         beg1 = bcf_get_pos1(v);
-        end1 = bcf_get_end1(v);
+        end1 = bcf_get_info_int(h, v, "END", 0);
+
+        //annotate ends
+        if (!end1) end1 = bcf_get_end1(v);
     }
+    //complex variants
     else if (type & (VT_SNP|VT_MNP|VT_INDEL|VT_CLUMPED))
     {
-        beg1 = bcf_get_pos1(v);       
+        beg1 = bcf_get_pos1(v);
         end1 = bcf_get_info_int(h, v, "END", 0);
         if (!end1) end1 = bcf_get_end1(v);
     }
     else if (type==VT_VNTR)
     {
-        beg1 = bcf_get_pos1(v);       
+        beg1 = bcf_get_pos1(v);
         end1 = bcf_get_info_int(h, v, "END", 0);
         if (!end1) end1 = bcf_get_end1(v);
-        
+
         update_vntr_from_info_fields(h, v);
 
         vs.push_back(v);
@@ -75,15 +79,14 @@ Variant::Variant(bcf_hdr_t* h, bcf1_t* v)
     {
         beg1 = bcf_get_pos1(v);
         end1 = bcf_get_info_int(h, v, "END", 0);
-        if (!end1) end1 = strlen(bcf_get_allele(v)[0]);
+        if (!end1) end1 = bcf_get_end1(v);
     }
     else
     {
-        std::cerr <<  "unexpected type in variant construction\n";
+        std::cerr << "unexpected type in variant construction\n";
         print();
         exit(1);
     }
-      
 }
 
 /**
@@ -160,16 +163,16 @@ Variant::~Variant()
  */
 void Variant::clear()
 {
-    type = VT_REF;  
-    
+    type = VT_REF;
+
     h = NULL;
     v = NULL;
-    
+
     is_new_multiallelic = false;
     is_involved_in_a_multiallelic = false;
     associated_new_multiallelic = NULL;
     updated_multiallelic = false;
-    
+
     chrom.clear();
     rid = 0;
     pos1 = 0;
@@ -185,7 +188,7 @@ void Variant::clear()
     no_overlapping_snps = 0;
     no_overlapping_indels = 0;
     no_overlapping_vntrs = 0;
-    
+
     contains_N = false;
     alleles.clear();
     vntr.clear();
@@ -202,7 +205,7 @@ void Variant::clear()
 int32_t Variant::classify(bcf_hdr_t *h, bcf1_t *v)
 {
     clear();
-    
+
     this->h = h;
     this->v = v;
 
@@ -266,7 +269,7 @@ int32_t Variant::classify(bcf_hdr_t *h, bcf1_t *v)
                 else if (allele[i][0]=='<' && allele[i][1]=='S' && allele[i][2]=='T' && allele[i][len-1]=='>' )
                 {
                     type = VT_VNTR;
-                    
+
                     for (size_t j=3; j<len-1; ++j)
                     {
                         if ((allele[i][j]<'0' || allele[i][j]>'9') && allele[i][j]!='.')
@@ -318,7 +321,7 @@ int32_t Variant::classify(bcf_hdr_t *h, bcf1_t *v)
             {
                 contains_N = true;
             }
-            
+
             if (rlen!=alen)
             {
                 homogeneous_length = false;
@@ -480,17 +483,17 @@ int32_t Variant::classify(bcf_hdr_t *h, bcf1_t *v)
  * Updates VNTR related information from INFO fields.
  */
 void Variant::update_vntr_from_info_fields()
-{    
+{
     vntr.motif = bcf_get_rid(v);
     char** allele = bcf_get_allele(v);
 //    vntr.exact_repeat_tract.assign(allele[0]);
 //   std::string tags[16] = {"MOTIF", "RU", "BASIS", "MLEN", "BLEN", "REPEAT_TRACT", "COMP", "ENTROPY", "ENTROPY2", "KL_DIVERGENCE", "KL_DIVERGENCE2", "RL", "LL", "RU_COUNTS", "SCORE", "TRF_SCORE"};
-    
+
     vntr.motif = bcf_get_info_str(h, v, "MOTIF");
     vntr.ru = bcf_get_info_str(h, v, "RU");
     vntr.basis = bcf_get_info_str(h, v, "BASIS");
     if (vntr.basis=="") vntr.basis = VNTR::get_basis(vntr.motif);
-    vntr.mlen = vntr.motif.size();    
+    vntr.mlen = vntr.motif.size();
     vntr.blen = (int32_t) vntr.basis.size();
     std::vector<int32_t> i_vec = bcf_get_info_int_vec(h, v, "REPEAT_TRACT", 2, 0);
     vntr.beg1 = i_vec[0];
@@ -535,8 +538,8 @@ void Variant::update_vntr_from_info_fields()
     vntr.exact_no_perfect_ru = i_vec[0];
     vntr.exact_no_ru = i_vec[1];
     vntr.exact_score = bcf_get_info_flt(h, v, "EX_SCORE");
-    vntr.exact_trf_score = bcf_get_info_int(h, v, "EX_TRF_SCORE");   
-    
+    vntr.exact_trf_score = bcf_get_info_int(h, v, "EX_TRF_SCORE");
+
     vntr.fuzzy_motif = bcf_get_info_str(h, v, "FZ_MOTIF");
     vntr.fuzzy_ru = bcf_get_info_str(h, v, "FZ_RU");
     vntr.fuzzy_basis = bcf_get_info_str(h, v, "FZ_BASIS");
@@ -606,7 +609,7 @@ void Variant::update_bcf_with_vntr_info(bcf_hdr_t *h, bcf1_t *v)
     bcf_update_info_int32(h, v, "FZ_FLANKS", &fuzzy_flank_pos1, 2);
     int32_t ru_count[2] = {vntr.fuzzy_no_perfect_ru, vntr.fuzzy_no_ru};
     bcf_update_info_int32(h, v, "FZ_RU_COUNTS", &ru_count, 2);
-    
+
     if (vntr.is_large_repeat_tract) bcf_update_info_flag(h, v, "LARGE_REPEAT_REGION", NULL, 1);
 
     if (s.m) free(s.s);
@@ -619,7 +622,7 @@ void Variant::print()
 {
     std::cerr << "type  : " << vtype2string(type) << "\n";
     std::cerr << "\n";
-    if (h!=NULL && v!=NULL) bcf_print_liten(h, v); 
+    if (h!=NULL && v!=NULL) bcf_print_liten(h, v);
     std::cerr << "chrom : " << chrom << "\n";
     std::cerr << "rid   : " << rid << "\n";
     std::cerr << "beg1  : " << beg1 << "\n";
@@ -655,13 +658,13 @@ std::string Variant::get_variant_string()
         if (i) kputc('/', &var);
         kputs(bcf_get_alt(v, i), &var);
     }
-            
+
     std::string str(var.s);
-    
+
     if (var.m) free(var.s);
-    
+
     return str;
-} 
+}
 
 /**
  * Gets a string representation of the underlying VNTR by exact alignment.

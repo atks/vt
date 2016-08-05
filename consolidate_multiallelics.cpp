@@ -40,8 +40,9 @@ class Igor : Program
     std::string output_vcf_file;
     std::vector<GenomeInterval> intervals;
     std::string interval_list;
+    std::string window_overlap;
     std::string overlap_criterion;
-    std::string overlap_criterion_code;    
+    std::string overlap_criterion_code;
     bool debug;
 
     //////////
@@ -76,7 +77,7 @@ class Igor : Program
         //////////////////////////
         try
         {
-            std::string desc = "consolidates multiallelic variants from indels.";
+            std::string desc = "consolidates multiallelic variants from biallelic variants represented with their sequence explicitly.  Requires END annotation.";
 
             TCLAP::CmdLine cmd(desc, ' ', version);
             VTOutput my; cmd.setOutput(&my);
@@ -84,11 +85,11 @@ class Igor : Program
             TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_output_vcf_file("o", "o", "output VCF file [-]", false, "-", "str", cmd);
             TCLAP::ValueArg<std::string> arg_fexp("f", "f", "filter expression []", false, "", "str", cmd);
-            TCLAP::ValueArg<std::string> arg_ref_fasta_file("r", "r", "reference sequence fasta file [ref]", true, "ref", "str", cmd);
-            TCLAP::ValueArg<std::string> arg_overlap_criterion("c", "c", "overlap criterion [reference allele]"
-                                                                         "1. reference allele (ref)"
-                                                                         "2. by exact allelic region (exact)"
-                                                                         "3. by fuzzy allelic region (fuzzy)", true, "", "str", cmd);
+            TCLAP::ValueArg<std::string> arg_ref_fasta_file("r", "r", "reference sequence fasta file []", true, "", "str", cmd);
+            TCLAP::ValueArg<std::string> arg_overlap_criterion("c", "c", "overlap criterion [reference allele]\n"
+                                                           "              1. reference allele (ref)\n"
+                                                           "              2. by exact allelic region (exact)\n"
+                                                           "              3. by fuzzy allelic region (fuzzy)", true, "", "str", cmd);
             TCLAP::SwitchArg arg_debug("d", "d", "debug [false]", cmd, false);
             TCLAP::UnlabeledValueArg<std::string> arg_input_vcf_file("<in.vcf>", "input VCF file", true, "","file", cmd);
 

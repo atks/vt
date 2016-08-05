@@ -63,6 +63,7 @@ class MultiallelicsConsolidator
 
     int32_t* gts;
     int32_t buffer_window_allowance;
+    int32_t window_overlap;
 
     //////////
     //filter//
@@ -97,7 +98,7 @@ class MultiallelicsConsolidator
     /**
      * Constructor.
      */
-    MultiallelicsConsolidator(std::string& input_vcf_file, std::vector<GenomeInterval>& intervals, std::string& output_vcf_file, std::string& fexp, std::string& ref_fasta_file);
+    MultiallelicsConsolidator(std::string& input_vcf_file, std::vector<GenomeInterval>& intervals, std::string& output_vcf_file, std::string& fexp, std::string& ref_fasta_file, int32_t window_overlap=0);
 
     /**
      * Update distribution of overlapping VNTRs
