@@ -40,9 +40,7 @@ class Igor : Program
     std::string output_vcf_file;
     std::vector<GenomeInterval> intervals;
     std::string interval_list;
-    std::string window_overlap;
-    std::string overlap_criterion;
-    std::string overlap_criterion_code;
+    int32_t window_overlap;
     bool debug;
 
     //////////
@@ -86,10 +84,7 @@ class Igor : Program
             TCLAP::ValueArg<std::string> arg_output_vcf_file("o", "o", "output VCF file [-]", false, "-", "str", cmd);
             TCLAP::ValueArg<std::string> arg_fexp("f", "f", "filter expression []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_ref_fasta_file("r", "r", "reference sequence fasta file []", true, "", "str", cmd);
-            TCLAP::ValueArg<std::string> arg_overlap_criterion("c", "c", "overlap criterion [reference allele]\n"
-                                                           "              1. reference allele (ref)\n"
-                                                           "              2. by exact allelic region (exact)\n"
-                                                           "              3. by fuzzy allelic region (fuzzy)", true, "", "str", cmd);
+            TCLAP::ValueArg<int32_t> arg_window_overlap("w", "w", "window overlap for merging variants [0]", false, 0, "integer", cmd);
             TCLAP::SwitchArg arg_debug("d", "d", "debug [false]", cmd, false);
             TCLAP::UnlabeledValueArg<std::string> arg_input_vcf_file("<in.vcf>", "input VCF file", true, "","file", cmd);
 
@@ -98,7 +93,7 @@ class Igor : Program
             input_vcf_file = arg_input_vcf_file.getValue();
             output_vcf_file = arg_output_vcf_file.getValue();
             parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
-            overlap_criterion = arg_overlap_criterion.getValue();
+            window_overlap = arg_window_overlap.getValue();
             fexp = arg_fexp.getValue();
             debug = arg_debug.getValue();
             ref_fasta_file = arg_ref_fasta_file.getValue();
@@ -125,7 +120,7 @@ class Igor : Program
         //////////////////////
         //i/o initialization//
         //////////////////////
-        mc = new MultiallelicsConsolidator(input_vcf_file, intervals, output_vcf_file, fexp, ref_fasta_file);
+        mc = new MultiallelicsConsolidator(input_vcf_file, intervals, output_vcf_file, fexp, ref_fasta_file, window_overlap);
 
         ////////////////////////
         //tools initialization//
