@@ -347,6 +347,23 @@ Variant* MultiallelicsConsolidator::create_or_update_multiallelic(Variant& nvar,
 
 /**
  * Creates a new multiallelic.
+ *
+ * Each alternate allele only contains an instance of one of the alternative alleles observed.
+ *
+ * todo: to add combinations of the alternate alleles to be merged
+ *
+ * The current implementation is works fine for pure SNPs and Tandem repeats
+ *    
+ *    SNP  :   A/G  + A/T    => A/G/T
+ *    VNTR :   TG/T + T/TGGG => TG/T/TGGG
+ *
+ * But in the case of complex variants
+ *
+ *   SNP+INDEL : A/G  + A/AT  => A/G/AT
+ *
+ *  This is not sufficient as both alternate alleles may coexist
+ *   
+ *   SNP+INDEL : A/G  + A/AT  => A/G/AT/GT
  */
 void MultiallelicsConsolidator::update_multiallelic_for_printing(Variant& mvar)
 {
