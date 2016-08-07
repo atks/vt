@@ -25,6 +25,7 @@
 
 #include <algorithm>
 #include <iostream>
+#include <fstream>
 #include <string>
 
 NeedlemanWunsch::NeedlemanWunsch(bool debug)

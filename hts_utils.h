@@ -34,7 +34,6 @@
 #include "htslib/faidx.h"
 #include "htslib/tbx.h"
 #include "htslib/hfile.h"
-#include "Rmath/Rmath.h"
 #include "utils.h"
 
 /**********

@@ -332,7 +332,7 @@ class Igor : Program
     void print_options()
     {
         if (!print) return;
-
+    
         std::clog << "normalize v" << version << "\n";
         std::clog << "\n";
         std::clog << "options:     input VCF file                                  " << input_vcf_file << "\n";
@@ -395,6 +395,6 @@ bool normalize(int argc, char ** argv)
     igor.initialize();
     igor.normalize();
     igor.print_stats();
-
+    
     return igor.print;
 };

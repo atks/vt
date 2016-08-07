@@ -22,6 +22,7 @@
 */
 
 #include "hts_utils.h"
+#include "Rmath/Rmath.h"
 
 /********
  *General
