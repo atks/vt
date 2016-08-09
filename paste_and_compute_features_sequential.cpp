@@ -126,10 +126,11 @@ class Igor : Program
         //////////////////////
         // read only the first file
         odr = new BCFOrderedReader(input_vcf_files[0], intervals);
-	if ( intervals.size() > 1 ) {
-	  fprintf(stderr, "[E:%s:%d %s] Multiple intervals are not allowed\n", __FILE__, __LINE__, __FUNCTION__);
-	  exit(1);	  
-	}
+        if ( intervals.size() > 1 ) 
+        {
+            fprintf(stderr, "[E:%s:%d %s] Multiple intervals are not allowed\n", __FILE__, __LINE__, __FUNCTION__);
+            exit(1);	  
+        }
       
         //for (size_t i=0; i<input_vcf_files.size(); ++i)
         //{

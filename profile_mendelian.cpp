@@ -395,7 +395,6 @@ class Igor : Program
 
                             //AA/AA => AA,BB,CC,CD
                             //AA/AA => AA,BB,CC,CD
-
                         }
                         else if (2==12)
                         {
@@ -412,15 +411,7 @@ class Igor : Program
                             //AB/CD => AA,BB,CC,DD
                             //AB/CD => AB,CD
                             //AB/CD => EF
-
-
-
-
                         }
-
-
-
-
 
                         if (!ignore_non_variants || (f1+f2+m1+m2+c1+c2!=0))
                         {

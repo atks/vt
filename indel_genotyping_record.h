@@ -43,34 +43,11 @@
 class IndelGenotypingRecord : public GenotypingRecord
 {
     public:
-    bcf_hdr_t *h;
-    //bcf1_t *v;
-    int32_t rid;
-    int32_t pos1; //position of variant
-    //[beg1,end1] is the required overlapping of the variant against the aligned read necessary to make a genotype call.
-    //for SNPs, beg1=end1=pos1
-    //
-    //for Indels, this refers to the flanking positions
-    //   insertion
-    //        if T/TG - beg1=pos1, end1=pos1+1
-    //        if T/GT - beg1=pos1-1, end1=pos1
-    //   deletion
-    //        if TG/T - beg1=pos1, end1=pos1+length(REF)
-    //        if TG/G - beg1=pos1-1, end1=pos1+length(REF)-1
-    int32_t beg1;
-    int32_t end1;
-    int32_t vtype;
 
     //indel specific record
     int32_t dlen;
     int32_t len;
     std::string indel;
-
-    //vntr specific record
-    std::string motif;
-
-    //vntr specific record
-    //std::vector<float> counts;
 
     // sample level information
     int32_t nsamples;

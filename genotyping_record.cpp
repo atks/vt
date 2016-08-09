@@ -22,4 +22,3 @@
 */
 
 #include "genotyping_record.h"
-
