@@ -109,10 +109,30 @@ class VNTRGenotypingRecord : GenotypingRecord
      * Clears this record.
      */
     void clear();
+    
+    /**
+     * Clears the temporary variables in this record.
+     */
     void clearTemp();
+        
+    /**
+     * Prints out variant with collected features and genotype information to a bcf object.
+     */
     bcf1_t* flush_variant(bcf_hdr_t* hdr);
-    void flush_sample( int32_t sampleIndex );
-    void add_allele( double contam, int32_t allele, uint8_t mapq, bool fwd, uint32_t q, int32_t cycle, uint32_t nm );
+    
+    /**
+     * Adds information from a sample to aggregated data.
+     */
+    void flush_sample(int32_t sampleIndex);
+    
+    /**
+     * Adds an allele based with collected sufficient statistics.
+     */
+    void add_allele(double contam, int32_t allele, uint8_t mapq, bool fwd, uint32_t q, int32_t cycle, uint32_t nm);
+    
+    /**
+     * Collects sufficient statistics from read for variants to be genotyped.
+     */
     void process_read(AugmentedBAMRecord& as, int32_t sampleIndex, double contam);
 
     /**

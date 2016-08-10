@@ -61,14 +61,12 @@ VNTRGenotypingRecord::VNTRGenotypingRecord(bcf_hdr_t *h, bcf1_t *v, int32_t vtyp
     if (bcf_has_filter(h, v, const_cast<char*>("overlap_vntr"))==1)
         n_filter |= FILTER_MASK_OVERLAP_VNTR;
 
-    
-
     pls = (uint8_t*)calloc( nsamples*3, sizeof(uint8_t) );
     ads = (uint8_t*)calloc( nsamples*3, sizeof(uint8_t) );
 }
 
 /**
- * Clears this record.
+ * Clears the temporary variables in this record.
  */
 void VNTRGenotypingRecord::clearTemp()
 {
@@ -85,6 +83,9 @@ void VNTRGenotypingRecord::clearTemp()
     tmp_ads[0] = tmp_ads[1] = tmp_ads[2] = 0;
 }
 
+/**
+ * Clears this record.
+ */
 void VNTRGenotypingRecord::clear()
 {
     vtype = -1;
@@ -118,7 +119,7 @@ VNTRGenotypingRecord::~VNTRGenotypingRecord()
 }
 
 /**
- * Destructor.
+ * Prints out variant with collected features and genotype information to a bcf object.
  */
 bcf1_t* VNTRGenotypingRecord::flush_variant(bcf_hdr_t* hdr)
 {
@@ -314,6 +315,9 @@ bcf1_t* VNTRGenotypingRecord::flush_variant(bcf_hdr_t* hdr)
     return nv;
 }
 
+/**
+ * Adds information from a sample to aggregated data.
+ */
 void VNTRGenotypingRecord::flush_sample(int32_t sampleIndex)
 {
     uint8_t* p_pls = &pls[sampleIndex*3];

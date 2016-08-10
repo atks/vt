@@ -553,8 +553,94 @@ void SNPGenotypingRecord::process_read(AugmentedBAMRecord& as, int32_t sampleInd
 
         add_allele( contam, allele, mapq, strand == 'F', q, cycle, no_mismatches );
     }
-    else //multiallelic
+    else if (v_alleles.size()>2) //multiallelic
     {
-              //abort();
+        bam1_t *s = as.s;
+
+        char strand = bam_is_rev(s) ? 'R' : 'F';
+        int32_t allele = 0;
+        //uint32_t bpos1 = bam_get_pos1(s);
+        uint8_t* seq = bam_get_seq(s);
+        uint8_t* qual = bam_get_qual(s);
+        int32_t rlen = bam_get_l_qseq(s);
+        uint8_t mapq = bam_get_mapq(s);
+        uint32_t q = 30;
+        int32_t cycle = 0;
+
+        std::vector<uint32_t>& aug_cigar = as.aug_cigar;
+        std::vector<std::string>& aug_ref = as.aug_ref;
+        std::vector<std::string>& aug_alt = as.aug_alt;
+
+        int32_t vpos1 = pos1;
+        int32_t cpos1 = bam_get_pos1(s);
+        int32_t rpos0 = 0;
+
+        for (uint32_t i=0; i<aug_cigar.size(); ++i)
+        {
+            uint32_t oplen = bam_cigar_oplen(aug_cigar[i]);
+            char opchr = bam_cigar_opchr(aug_cigar[i]);
+
+            if (opchr=='S')
+            {
+                rpos0 += oplen;
+            }
+            else if (opchr=='=')
+            {
+                if (vpos1>=cpos1 && vpos1<=(cpos1+oplen-1))
+                {
+                    rpos0 += vpos1-cpos1;
+                    allele = 0;
+                    q = qual[rpos0];
+                    cycle = rpos0<(rlen>>1) ? (rpos0+1) : -(rlen - rpos0 + 1);
+                    break;
+                }
+                else
+                {
+                    cpos1 += oplen;
+                    rpos0 += oplen;
+                }
+            }
+            else if (opchr=='X')
+            {
+                if (vpos1==cpos1)
+                {
+                    allele = (aug_alt[i].at(0) == v_alleles[1].at(0)) ? 1 : -1;
+                    q = qual[rpos0];
+                    cycle = rpos0<(rlen>>1) ? (rpos0+1) : -(rlen - rpos0 + 1);
+                    break;
+                }
+
+                ++cpos1;
+                ++rpos0;
+            }
+            else if (opchr=='I')
+            {
+                rpos0 += oplen;
+            }
+            else if (opchr=='D')
+            {
+                cpos1 += oplen;
+            }
+            else
+            {
+                notice("unrecognized cigar state %d", opchr);
+            }
+        }
+
+        uint32_t no_mismatches = as.no_mismatches;
+        if (allele!=0 && q<20)
+        {
+            ++no_mismatches;
+        }
+
+        if (allele!=0 && no_mismatches==0)
+        {
+            //no_mismatches = 1;
+            std::cerr << "something wrong\n";
+        }
+
+        add_allele( contam, allele, mapq, strand == 'F', q, cycle, no_mismatches );
+
+        //abort();
     }
 }

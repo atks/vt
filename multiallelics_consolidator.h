@@ -44,7 +44,15 @@
 #define FUZZY_VNTR   7
 
 /**
- * For consolidating overlapping VNTRs.
+ * For consolidating overlapping biallelic variants.
+ * into multiallelic variants.
+ *
+ * Note that there are 2 major types of multiallelics.
+ * Alleles that can coexist and those that cannot.
+ *
+ * e.g. SNPs - cannot coexist
+ * e.g. Tandem Repeat -  cannot coexist
+ * e.g. Complex Variants - can coexist.
  */
 class MultiallelicsConsolidator
 {

@@ -71,9 +71,6 @@ class Igor : Program
     //tools//
     /////////
 
-    // The function assumes a particular list of features in the BCF files
-    //
-
     Igor(int argc, char ** argv)
     {
         //////////////////////////

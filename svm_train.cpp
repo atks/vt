@@ -146,12 +146,19 @@ class Igor : Program
 
         }
 
-        //inverse normalize covariates
-
+        //inverse normalize covariates in memory
+        
+        
+        
         //train
+        
+        
 
         //output model trained
-
+        
+        
+        //output inverse normalized features to allow for inspection
+        
     };
 
     void print_options()
@@ -169,7 +176,6 @@ class Igor : Program
         fprintf(stderr, "\n");
         fprintf(stderr, "  %s\n", "data set");
         fprintf(stderr, "\n");
-
     };
 
     ~Igor()
