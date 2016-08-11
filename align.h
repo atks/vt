@@ -31,6 +31,7 @@
 #include "lfhmm.h"
 #include "rfhmm.h"
 #include "ahmm.h"
+#include "candidate_region_extractor.h"
 
 void align(int argc, char ** argv);
     

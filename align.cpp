@@ -67,6 +67,7 @@ class Igor : Program
     float tau;
     float eta;
     float mismatch_penalty;
+    std::string ref_fasta_file;
 
     bool debug;
 
@@ -93,6 +94,7 @@ class Igor : Program
             TCLAP::ValueArg<std::string> arg_lflank("l", "l", "left flanks", false, "", "string");
             TCLAP::ValueArg<std::string> arg_ru("u", "u", "repeat unit", false, "", "string");
             TCLAP::ValueArg<std::string> arg_rflank("r", "r", "right flanks", false, "", "string");
+            TCLAP::ValueArg<std::string> arg_ref_fasta_file("r", "r", "reference sequence fasta file []", true, "", "str", cmd);
             TCLAP::ValueArg<float> arg_delta("d", "d", "delta", false, 0.0001, "float");
             TCLAP::ValueArg<float> arg_epsilon("e", "e", "epsilon", false, 0.0005, "float");
             TCLAP::ValueArg<float> arg_tau("t", "t", "tau", false, 0.01, "float");
@@ -125,6 +127,7 @@ class Igor : Program
             tau = arg_tau.getValue();
             eta = arg_eta.getValue();
             mismatch_penalty = arg_mismatch_penalty.getValue();
+            ref_fasta_file = arg_ref_fasta_file.getValue();
             debug = arg_debug.getValue();
         }
         catch (TCLAP::ArgException &e)
@@ -264,6 +267,13 @@ class Igor : Program
             lhmm1.printAlignment();
             clock_t t1 = clock();
             print_time((float)(t1-t0)/CLOCKS_PER_SEC);
+        }
+        else if (method=="exact_fuzzy")
+        {
+            debug = true;
+            CandidateRegionExtractor cre(ref_fasta_file, debug);
+            
+            
         }
     };
 
