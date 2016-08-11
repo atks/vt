@@ -201,7 +201,7 @@ void FlankDetector::detect_flanks(Variant& variant, uint32_t mode)
             //fetch sequences for modeling
             rs->fetch_seq(variant.chrom, vntr.exact_end1+1, vntr.exact_end1+5, rflank);
             rs->fetch_seq(variant.chrom, vntr.exact_end1-slen, vntr.exact_end1, seq);
-            vntr.fuzzy_ru = choose_3prime_repeat_unit(seq, vntr.fuzzy_motif);
+            vntr.fuzzy_ru = choose_fuzzy_3prime_repeat_unit(seq, vntr.fuzzy_motif);
             seq.append(rflank);
 
             rfhmm->set_model(vntr.fuzzy_ru.c_str(), rflank.c_str());
@@ -248,7 +248,7 @@ void FlankDetector::detect_flanks(Variant& variant, uint32_t mode)
             //fetch sequences for modeling
             rs->fetch_seq(variant.chrom, lflank_end1-5+1, lflank_end1, lflank);
             rs->fetch_seq(variant.chrom, lflank_end1+1, lflank_end1+slen, seq);
-            vntr.fuzzy_ru = choose_5prime_repeat_unit(seq, vntr.fuzzy_motif);
+            vntr.fuzzy_ru = choose_fuzzy_5prime_repeat_unit(seq, vntr.fuzzy_motif);
             seq =  lflank + seq;
 
             lfhmm->set_model(lflank.c_str(), vntr.fuzzy_ru.c_str());
@@ -296,6 +296,37 @@ std::string FlankDetector::shift_str(std::string& seq, uint32_t i)
 }
 
 /**
+ * Score string.
+ */
+int32_t FlankDetector::compute_score(int32_t start, int32_t len, std::string& a, std::string& b)
+{
+    if (len>b.size())
+    {
+        len = b.size();
+    }
+
+    int32_t score = 0;
+    int32_t i = start;
+    int32_t j = 0;
+    while (j<len)
+    {
+        if (a.at(i)==b.at(j))
+        {
+            score += 2;
+        }
+        else
+        {
+            score -=7;
+        }
+
+        ++i;
+        ++j;
+    }
+
+    return score;
+}
+
+/**
  * Chooses a phase of the motif that is appropriate for the alignment from the 5 prime end.
  * This differs from choose_exact_repeat_unit() where the motif is returned
  * if not suitable repeat unit is found.
@@ -304,11 +335,21 @@ std::string FlankDetector::choose_5prime_repeat_unit(std::string& seq, std::stri
 {
 //    std::cerr << "seq   : " << seq << "\n";
 //    std::cerr << "motif : " << motif << "\n";
-    
+
+    int32_t best_score = -10000;
+    std::string best_motif = motif;
+    int32_t max_score = 2*motif.size();
+
     int32_t mlen = motif.size();
     for (uint32_t i=0; i<motif.size(); ++i)
     {
         std::string smotif = shift_str(motif, i);
+
+        if (seq.compare(0, mlen, smotif)==0)
+        {
+            return smotif;
+        }
+
         if (seq.compare(0, mlen, smotif)==0)
         {
             return smotif;
@@ -321,9 +362,52 @@ std::string FlankDetector::choose_5prime_repeat_unit(std::string& seq, std::stri
         }
     }
 
+    //if no exact match, perform best fit.
+    //use a priority queue here
+
     return motif;
 }
 
+/**
+ * Chooses a phase of the motif that is appropriate for the alignment from the 5 prime end.
+ * If no exact match is available, the best possible match is returned.
+ */
+std::string FlankDetector::choose_fuzzy_5prime_repeat_unit(std::string& seq, std::string& motif)
+{
+    int32_t best_score = -10000;
+    std::string best_motif = motif;
+    int32_t max_score = 2*motif.size();
+
+    int32_t mlen = motif.size();
+    for (uint32_t i=0; i<motif.size(); ++i)
+    {
+        std::string smotif = shift_str(motif, i);
+        int32_t sscore = compute_score(0, mlen, seq, smotif);
+        if (sscore==max_score)
+        {
+            return smotif;
+        }
+        else if (sscore>best_score)
+        {
+            best_score = sscore;
+            best_motif = smotif;
+        }
+
+        std::string rc_smotif = VNTR::reverse_complement(smotif);
+        int32_t rc_score = compute_score(0, mlen, seq, rc_smotif);
+        if (rc_score==max_score)
+        {
+            return rc_smotif;
+        }
+        else if (rc_score>best_score)
+        {
+            best_score = rc_score;
+            best_motif = rc_smotif;
+        }
+    }
+
+    return best_motif;
+}
 
 /**
  * Chooses a phase of the motif that is appropriate for the alignment from the 3 prime end.
@@ -349,6 +433,47 @@ std::string FlankDetector::choose_3prime_repeat_unit(std::string& seq, std::stri
     }
 
     return motif;
+}
+
+/**
+ * Chooses a phase of the motif that is appropriate for the alignment from the 3 prime end.
+ * If no exact match is available, the best possible match is returned.
+ */
+std::string FlankDetector::choose_fuzzy_3prime_repeat_unit(std::string& seq, std::string& motif)
+{
+    int32_t best_score = -10000;
+    std::string best_motif = motif;
+    int32_t max_score = 2*motif.size();
+
+    int32_t mlen = motif.size();
+    for (uint32_t i=0; i<motif.size(); ++i)
+    {
+        std::string smotif = shift_str(motif, i);
+        int32_t sscore = compute_score(seq.size()-mlen, mlen, seq, smotif);
+        if (sscore==max_score)
+        {
+            return smotif;
+        }
+        else if (sscore>best_score)
+        {
+            best_score = sscore;
+            best_motif = smotif;
+        }
+
+        std::string rc_smotif = VNTR::reverse_complement(smotif);
+        int32_t rc_score = compute_score(seq.size()-mlen, mlen, seq, rc_smotif);
+        if (rc_score==max_score)
+        {
+            return rc_smotif;
+        }
+        else if (rc_score>best_score)
+        {
+            best_score = rc_score;
+            best_motif = rc_smotif;
+        }
+    }
+
+    return best_motif;
 }
 
 /**

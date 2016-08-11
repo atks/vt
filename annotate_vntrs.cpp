@@ -279,7 +279,6 @@ class Igor : Program
                 bcf_update_info_string(h, v, RU.c_str(), vntr.ru.c_str());
                 bcf_update_info_string(h, v, BASIS.c_str(), vntr.basis.c_str());
                 bcf_update_info_int32(h, v, BLEN.c_str(), &vntr.blen, 1);
-
             
                 int32_t repeat_tract[2] = {beg1, end1};
                 bcf_update_info_int32(h, v, REPEAT_TRACT.c_str(), &repeat_tract, 2);

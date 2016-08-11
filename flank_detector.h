@@ -127,18 +127,35 @@ class FlankDetector
     std::string shift_str(std::string& seq, uint32_t i);
 
     /**
+     * Score string.
+     */
+    int32_t compute_score(int32_t start, int32_t len, std::string& a, std::string& b);
+        
+    /**
      * Chooses a phase of the motif that is appropriate for the alignment from the 5 prime end.
      * This differs from choose_exact_repeat_unit() where the motif is returned
      * if not suitable repeat unit is found.
      */
     std::string choose_5prime_repeat_unit(std::string& seq, std::string& motif);
-    
+
+    /**
+     * Chooses a phase of the motif that is appropriate for the alignment from the 5 prime end.
+     * If no exact match is available, the best possible match is returned. 
+     */
+    std::string choose_fuzzy_5prime_repeat_unit(std::string& seq, std::string& motif);
+            
     /**
      * Chooses a phase of the motif that is appropriate for the alignment from the 3 prime end.
      * This differs from choose_exact_repeat_unit() where the motif is returned
      * if not suitable repeat unit is found.
      */
     std::string choose_3prime_repeat_unit(std::string& seq, std::string& motif);
+
+    /**
+     * Chooses a phase of the motif that is appropriate for the alignment from the 3 prime end.
+     * If no exact match is available, the best possible match is returned. 
+     */
+    std::string choose_fuzzy_3prime_repeat_unit(std::string& seq, std::string& motif);
     
     /**
      * Chooses a phase of the motif that is appropriate for the alignment.
