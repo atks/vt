@@ -29,17 +29,9 @@
 CandidateRegionExtractor::CandidateRegionExtractor(std::string& ref_fasta_file, bool debug)
 {
     vm = new VariantManip(ref_fasta_file.c_str());
-    fai = fai_load(ref_fasta_file.c_str());
-    if (fai==NULL)
-    {
-        fprintf(stderr, "[%s:%d %s] Cannot load genome index: %s\n", __FILE__, __LINE__, __FUNCTION__, ref_fasta_file.c_str());
-        exit(1);
-    }
+    rs = new ReferenceSequence(ref_fasta_file);
 
-    max_mlen = 10;
-
-   this->debug = debug;
-
+    this->debug = debug; 
 };
 
 /**
@@ -48,16 +40,7 @@ CandidateRegionExtractor::CandidateRegionExtractor(std::string& ref_fasta_file, 
 CandidateRegionExtractor::~CandidateRegionExtractor()
 {
     delete vm;
-    fai_destroy(fai);
-
-    if (factors)
-    {
-        for (size_t i=1; i<=max_len; ++i)
-        {
-            free(factors[i]);
-        }
-        free(factors);
-    }
+    delete rs;
 }
 
 /**
@@ -188,7 +171,7 @@ void CandidateRegionExtractor::extract_regions_by_exact_alignment(Variant& varia
     bcf1_t* v = variant.v;
 
     VNTR& vntr = variant.vntr;
-    const char* chrom = bcf_get_chrom(h, v);
+    const char* chrom = variant.chrom.c_str();
 
     int32_t min_beg1 = bcf_get_pos1(v);
     int32_t max_end1 = min_beg1;
@@ -218,7 +201,7 @@ void CandidateRegionExtractor::extract_regions_by_exact_alignment(Variant& varia
         max_end1 = end1>max_end1 ? end1 : max_end1;
 
         int32_t seq_len;
-        char* seq = faidx_fetch_seq(fai, chrom, min_beg1-1, max_end1-1, &seq_len);
+        char* seq = rs->fetch_seq(chrom, min_beg1-1, max_end1-1);
 
         if (debug)
         {
@@ -226,11 +209,10 @@ void CandidateRegionExtractor::extract_regions_by_exact_alignment(Variant& varia
             std::cerr << "             " << seq << "\n";
         }
 
-        if (seq_len) free(seq);
+        if (seq) free(seq);
     }
 
-    int32_t seq_len;
-    char* seq = faidx_fetch_seq(fai, chrom, min_beg1-1, max_end1-1, &seq_len);
+    char* seq = rs->fetch_seq(chrom, min_beg1-1, max_end1-1);
 
     if (debug)
     {
@@ -243,7 +225,7 @@ void CandidateRegionExtractor::extract_regions_by_exact_alignment(Variant& varia
     vntr.exact_beg1 = min_beg1;
     vntr.exact_end1 = max_end1;
 
-    if (seq_len) free(seq);
+    if (seq) free(seq);
 }
 
 /**
@@ -252,24 +234,14 @@ void CandidateRegionExtractor::extract_regions_by_exact_alignment(Variant& varia
 void CandidateRegionExtractor::left_align(const char* chrom, int32_t& pos1, std::string& ref, std::string& alt)
 {
     int32_t seq_len;
-    char* seq;
     while (ref.at(ref.size()-1)==alt.at(alt.size()-1) && pos1>1)
     {
-        seq = faidx_fetch_seq(fai, chrom, pos1-2, pos1-2, &seq_len);
-        if (seq_len)
-        {
-            ref.erase(ref.size()-1,1);
-            alt.erase(alt.size()-1,1);
-            ref.insert(0, 1, seq[0]);
-            alt.insert(0, 1, seq[0]);
-            free(seq);
-            --pos1;
-        }
-        else
-        {
-            fprintf(stderr, "[%s:%d %s] Cannot read from sequence file\n", __FILE__,__LINE__,__FUNCTION__);
-            exit(1);
-        }
+        char base = rs->fetch_base(chrom, pos1-2);
+        ref.erase(ref.size()-1,1);
+        alt.erase(alt.size()-1,1);
+        ref.insert(0, 1, base);
+        alt.insert(0, 1, base);
+        --pos1;
     }
 }
 
@@ -278,25 +250,14 @@ void CandidateRegionExtractor::left_align(const char* chrom, int32_t& pos1, std:
  */
 void CandidateRegionExtractor::right_align(const char* chrom, int32_t& pos1, std::string& ref, std::string& alt)
 {
-    int32_t seq_len;
-    char* seq;
     while (ref.at(0)==alt.at(0))
     {
-        seq = faidx_fetch_seq(fai, chrom, pos1, pos1, &seq_len);
-        if (seq_len)
-        {
-            ref.erase(0,1);
-            alt.erase(0,1);
-            ref.push_back(seq[0]);
-            alt.push_back(seq[0]);
-            free(seq);
-            ++pos1;
-        }
-        else
-        {
-            fprintf(stderr, "[%s:%d %s] Cannot read from sequence file\n", __FILE__,__LINE__,__FUNCTION__);
-            exit(1);
-        }
+        char base = rs->fetch_base(chrom, pos1);
+        ref.erase(0,1);
+        alt.erase(0,1);
+        ref.push_back(base);
+        alt.push_back(base);
+        ++pos1;
     }
 }
 
@@ -313,9 +274,7 @@ void CandidateRegionExtractor::extract_regions_by_fuzzy_alignment(Variant& varia
 
     bcf_hdr_t* h = variant.h;
     bcf1_t* v = variant.v;
-
-    VNTR& vntr = variant.vntr;
-    const char* chrom = bcf_get_chrom(h, v);
+    const char* chrom = variant.chrom.c_str();
 
     int32_t min_beg1 = bcf_get_pos1(v);
     int32_t max_end1 = min_beg1;
@@ -338,19 +297,17 @@ void CandidateRegionExtractor::extract_regions_by_fuzzy_alignment(Variant& varia
         min_beg1 = fuzzy_left_align(chrom, pos1, ref, alt, 3);
         max_end1 = fuzzy_right_align(chrom, pos1 + ref.size() - 1, ref, alt, 3);
 
-        int32_t seq_len;
-        char* seq = faidx_fetch_seq(fai, chrom, min_beg1-1, max_end1-1, &seq_len);
+        char* seq = rs->fetch_seq(chrom, min_beg1-1, max_end1-1);
         if (debug)
         {
             std::cerr << "FUZZY REGION " << min_beg1 << "-" << max_end1 << " (" << max_end1-min_beg1+1 <<") " << "\n";
             std::cerr << "             " << seq << "\n";
         }
 
-        if (seq_len) free(seq);
+        if (seq) free(seq);
     }
 
-    int32_t seq_len;
-    char* seq = faidx_fetch_seq(fai, chrom, min_beg1-1, max_end1-1, &seq_len);
+    char* seq = rs->fetch_seq(chrom, min_beg1-1, max_end1-1);
 
     if (debug)
     {
@@ -358,10 +315,11 @@ void CandidateRegionExtractor::extract_regions_by_fuzzy_alignment(Variant& varia
         std::cerr << "                   " << seq << "\n";
     }
 
-    vntr.exact_repeat_tract = seq;
+    VNTR& vntr = variant.vntr;
+    vntr.exact_repeat_tract.assign(seq);
     vntr.exact_beg1 = min_beg1;
 
-    if (seq_len) free(seq);
+    if (seq) free(seq);
 }
 
 /**
@@ -383,25 +341,14 @@ uint32_t CandidateRegionExtractor::fuzzy_left_align(const char* chrom, int32_t p
     }
 
     //std::cerr << "fuzzy left alignment: " << chrom << ":" << pos1 << ":" << ref << ":" << alt << " (" <<  penalty << ")\n";
-    int32_t seq_len;
-    char* seq;
     while (ref.at(ref.size()-1)==alt.at(alt.size()-1) && pos1>1)
     {
-        seq = faidx_fetch_seq(fai, chrom, pos1-2, pos1-2, &seq_len);
-        if (seq_len)
-        {
-            ref.erase(ref.size()-1,1);
-            alt.erase(alt.size()-1,1);
-            ref.insert(0, 1, seq[0]);
-            alt.insert(0, 1, seq[0]);
-            free(seq);
-            --pos1;
-        }
-        else
-        {
-            fprintf(stderr, "[%s:%d %s] Cannot read from sequence file\n", __FILE__,__LINE__,__FUNCTION__);
-            exit(1);
-        }
+        char base = rs->fetch_base(chrom, pos1-2);
+        ref.erase(ref.size()-1,1);
+        alt.erase(alt.size()-1,1);
+        ref.insert(0, 1, base);
+        alt.insert(0, 1, base);
+        --pos1;
     }
 
     if (penalty)
@@ -411,23 +358,15 @@ uint32_t CandidateRegionExtractor::fuzzy_left_align(const char* chrom, int32_t p
         uint32_t pos1_ins = pos1;
 
         //substitution
-        seq = faidx_fetch_seq(fai, chrom, pos1-2, pos1-2, &seq_len);
-        if (seq_len)
-        {
-            std::string new_ref = ref;
-            std::string new_alt = alt;
-            new_ref.erase(new_ref.size()-1,1);
-            new_alt.erase(new_alt.size()-1,1);
-            new_ref.insert(0, 1, seq[0]);
-            new_alt.insert(0, 1, seq[0]);
-//            std::cerr << "\tsub: " << chrom << ":" << pos1-1 << ":" << new_ref << ":" << new_alt << " (" <<  penalty-1 << ")\n";
-            pos1_sub = fuzzy_left_align(chrom, pos1-1, new_ref, new_alt, penalty-1);
-        }
-        else
-        {
-            fprintf(stderr, "[%s:%d %s] Cannot read from sequence file\n", __FILE__,__LINE__,__FUNCTION__);
-            exit(1);
-        }
+        char base = rs->fetch_base(chrom, pos1-2);
+        std::string new_ref = ref;
+        std::string new_alt = alt;
+        new_ref.erase(new_ref.size()-1,1);
+        new_alt.erase(new_alt.size()-1,1);
+        new_ref.insert(0, 1, base);
+        new_alt.insert(0, 1, base);
+//      std::cerr << "\tsub: " << chrom << ":" << pos1-1 << ":" << new_ref << ":" << new_alt << " (" <<  penalty-1 << ")\n";
+        pos1_sub = fuzzy_left_align(chrom, pos1-1, new_ref, new_alt, penalty-1);
 
         //deletion
         if (ref.size()>1)
@@ -471,25 +410,14 @@ uint32_t CandidateRegionExtractor::fuzzy_right_align(const char* chrom, int32_t 
         return pos1;
     }
 
-    int32_t seq_len;
-    char* seq;
     while (ref.at(0)==alt.at(0))
     {
-        seq = faidx_fetch_seq(fai, chrom, pos1, pos1, &seq_len);
-        if (seq_len)
-        {
-            ref.erase(0,1);
-            alt.erase(0,1);
-            ref.push_back(seq[0]);
-            alt.push_back(seq[0]);
-            free(seq);
-            ++pos1;
-        }
-        else
-        {
-            fprintf(stderr, "[%s:%d %s] Cannot read from sequence file\n", __FILE__,__LINE__,__FUNCTION__);
-            exit(1);
-        }
+        char base = rs->fetch_base(chrom, pos1);
+        ref.erase(0,1);
+        alt.erase(0,1);
+        ref.push_back(base);
+        alt.push_back(base);
+        ++pos1;
     }
 
     if (penalty)
@@ -499,23 +427,15 @@ uint32_t CandidateRegionExtractor::fuzzy_right_align(const char* chrom, int32_t 
         uint32_t pos1_ins = pos1;
 
         //substitution
-        seq = faidx_fetch_seq(fai, chrom, pos1, pos1, &seq_len);
-        if (seq_len)
-        {
-            std::string new_ref = ref;
-            std::string new_alt = alt;
-            new_ref.erase(0,1);
-            new_alt.erase(0,1);
-            new_ref.push_back(seq[0]);
-            new_alt.push_back(seq[0]);
-            //std::cerr << "\tsub: " << chrom << ":" << pos1+1 << ":" << new_ref << ":" << new_alt << " (" <<  penalty-1 << ")\n";
-            pos1_sub = fuzzy_right_align(chrom, pos1+1, new_ref, new_alt, penalty-1);
-        }
-        else
-        {
-            fprintf(stderr, "[%s:%d %s] Cannot read from sequence file\n", __FILE__,__LINE__,__FUNCTION__);
-            exit(1);
-        }
+        char base = rs->fetch_base(chrom, pos1);
+        std::string new_ref = ref;
+        std::string new_alt = alt;
+        new_ref.erase(0,1);
+        new_alt.erase(0,1);
+        new_ref.push_back(base);
+        new_alt.push_back(base);
+        //std::cerr << "\tsub: " << chrom << ":" << pos1+1 << ":" << new_ref << ":" << new_alt << " (" <<  penalty-1 << ")\n";
+        pos1_sub = fuzzy_right_align(chrom, pos1+1, new_ref, new_alt, penalty-1);
 
         //deletion
         if (ref.size()>1)
@@ -539,7 +459,6 @@ uint32_t CandidateRegionExtractor::fuzzy_right_align(const char* chrom, int32_t 
     }
 
     return pos1;
-
 }
 
 /**

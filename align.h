@@ -32,6 +32,7 @@
 #include "rfhmm.h"
 #include "ahmm.h"
 #include "candidate_region_extractor.h"
+#include "hts_utils.h"
 
 void align(int argc, char ** argv);
     

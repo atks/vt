@@ -29,6 +29,7 @@
 #include "ahmm.h"
 #include "variant_manip.h"
 #include "vntr.h"
+#include "reference_sequence.h"
 
 //modes for extracting candidate repeat region
 #define REFERENCE                   0
@@ -42,25 +43,14 @@ class CandidateRegionExtractor
 {
     public:
 
-    uint32_t max_mlen; //maximum length for motif search in the fast tree.
-
-    //model
+    //optiona
     bool debug;
-    int32_t max_len;
-    AHMM* ahmm;
-    std::string qual;
 
     ///////
     //tools
     ///////
     VariantManip *vm;
-    faidx_t* fai;
-   
-    //for retrieving sequences
-    int8_t* seq;
-
-    //factors[n][index], for determining what sub repeat units to examine
-    int32_t** factors;
+    ReferenceSequence* rs;
 
     /**
      * Constructor.

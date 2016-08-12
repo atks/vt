@@ -85,31 +85,44 @@ int32_t ReferenceSequence::fetch_seq_len(std::string& seq)
 /**
  * Get a base.
  */
-char ReferenceSequence::fetch_base(std::string& chrom, int32_t& pos1)
+char ReferenceSequence::fetch_base(const char* chrom, int32_t pos1)
 {
-
-    //check buffer and retrieve base if it is in it.
-    if (this->chrom == chrom && pos1>=gbeg1 && pos1<=gbeg1+(end0-beg0))
+    int ref_len = 0;
+    char *refseq = faidx_fetch_uc_seq(fai, chrom, pos1-1, pos1-1, &ref_len);
+    if (!refseq)
     {
-
+        fprintf(stderr, "[%s:%d %s] failure to extrac base from fasta file: %s:%d: >\n", __FILE__, __LINE__, __FUNCTION__, chrom, pos1-1);
+        exit(1);
     }
-    else
+    char base = refseq[0];
+    free(refseq);
+
+    return base;
+}
+
+/**
+ * Get a base.
+ */
+char ReferenceSequence::fetch_base(std::string& chrom, int32_t pos1)
+{
+    int ref_len = 0;
+    char *refseq = faidx_fetch_uc_seq(fai, chrom.c_str(), pos1-1, pos1-1, &ref_len);
+    if (!refseq)
     {
-        int ref_len = 0;
-        char *refseq = faidx_fetch_uc_seq(fai, chrom.c_str(), pos1-1, pos1-1, &ref_len);
-        if (!refseq)
-        {
-            fprintf(stderr, "[%s:%d %s] failure to extrac base from fasta file: %s:%d: >\n", __FILE__, __LINE__, __FUNCTION__, chrom.c_str(), pos1-1);
-            exit(1);
-        }
-        char base = refseq[0];
-        free(refseq);
-
-        return base;
-
+        fprintf(stderr, "[%s:%d %s] failure to extrac base from fasta file: %s:%d: >\n", __FILE__, __LINE__, __FUNCTION__, chrom.c_str(), pos1-1);
+        exit(1);
     }
+    char base = refseq[0];
+    free(refseq);
 
-    return 'N';
+    return base;
+
+//todo: add buffer - use as an option switch.
+//    //check buffer and retrieve base if it is in it.
+//    if (this->chrom == chrom && pos1>=gbeg1 && pos1<=gbeg1+(end0-beg0))
+//    {
+//
+//    }
 }
 
 /**

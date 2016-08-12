@@ -89,12 +89,12 @@ class Igor : Program
             TCLAP::CmdLine cmd(desc, ' ', version);
             VTOutput my; cmd.setOutput(&my);
             TCLAP::ValueArg<std::string> arg_method("m", "method", "alignment Method", true, "", "string");
-            TCLAP::ValueArg<std::string> arg_x("x", "x_seq", "X Sequence", false, "", "string");
-            TCLAP::ValueArg<std::string> arg_y("y", "y_seq", "Y Sequence", true, "", "string");
+            TCLAP::ValueArg<std::string> arg_x("x", "x", "X Sequence", false, "", "string");
+            TCLAP::ValueArg<std::string> arg_y("y", "y", "Y Sequence", true, "", "string");
             TCLAP::ValueArg<std::string> arg_lflank("l", "l", "left flanks", false, "", "string");
             TCLAP::ValueArg<std::string> arg_ru("u", "u", "repeat unit", false, "", "string");
             TCLAP::ValueArg<std::string> arg_rflank("r", "r", "right flanks", false, "", "string");
-            TCLAP::ValueArg<std::string> arg_ref_fasta_file("r", "r", "reference sequence fasta file []", true, "", "str", cmd);
+            TCLAP::ValueArg<std::string> arg_ref_fasta_file("R", "R", "reference sequence fasta file []", false, "", "str", cmd);
             TCLAP::ValueArg<float> arg_delta("d", "d", "delta", false, 0.0001, "float");
             TCLAP::ValueArg<float> arg_epsilon("e", "e", "epsilon", false, 0.0005, "float");
             TCLAP::ValueArg<float> arg_tau("t", "t", "tau", false, 0.01, "float");
@@ -139,6 +139,9 @@ class Igor : Program
 
     void align()
     {
+        
+        std::cerr << "method : " << method << "\n";
+        
         if (method=="lhmm")
         {
             LHMM lhmm;
@@ -270,6 +273,14 @@ class Igor : Program
         }
         else if (method=="exact_fuzzy")
         {
+            
+            std::cerr << "in this loiop?\n";
+            
+            if (ref_fasta_file=="")
+            {
+                error("Requires reference FASTA file");
+            }    
+            
             debug = true;
             CandidateRegionExtractor cre(ref_fasta_file, debug);
             
