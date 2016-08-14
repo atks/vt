@@ -572,7 +572,22 @@ int32_t bcf_set_info_flt(bcf_hdr_t *h, bcf1_t *v, const char* tag, float value);
  */
 #define bcf_set_qual(v, q) ((v)->qual = (q))
 
+/**
+ * Creates a dummy header with hs37d5 contigs for testing purposes.
+ */
+bcf_hdr_t* bcf_create_dummy_hdr();
 
+/**
+ * Creates a dummy bcf record representing the variant for testing purposes.
+ * 
+ * @variant - 1:123:ACT:AC/ACCCC
+ */
+bcf1_t* bcf_create_dummy_record(bcf_hdr_t* h, std::string& variant);
+
+/**********
+ *LOG UTILS
+ **********/
+ 
 /**
  * Prints a message to STDERR and abort.
  */

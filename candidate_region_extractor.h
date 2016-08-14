@@ -100,12 +100,12 @@ class CandidateRegionExtractor
     /**
      * Left align alleles.
      */
-    void left_align(const char* chrom, int32_t& pos1, std::string& ref, std::string& alt);
+    void left_align(std::string& chrom, int32_t& pos1, std::string& ref, std::string& alt);
 
     /**
      * Right align alleles.
      */
-    void right_align(const char* chrom, int32_t& pos1, std::string& ref, std::string& alt);
+    void right_align(std::string& chrom, int32_t& pos1, std::string& ref, std::string& alt);
 
     /**
      * Extract reference sequence region for motif discovery in a fuzzy fashion.
@@ -123,7 +123,7 @@ class CandidateRegionExtractor
      *
      * Returns left aligned position.
      */
-    uint32_t fuzzy_left_align(const char* chrom, int32_t pos1, std::string ref, std::string alt, uint32_t penalty);
+    uint32_t fuzzy_left_align(std::string& chrom, int32_t pos1, std::string ref, std::string alt, uint32_t penalty);
 
     /**
      * Fuzzy right align alleles allowing for mismatches and indels defined by penalty.
@@ -136,7 +136,7 @@ class CandidateRegionExtractor
      *
      * Returns right aligned position.
      */
-    uint32_t fuzzy_right_align(const char* chrom, int32_t pos1, std::string ref, std::string alt, uint32_t penalty);
+    uint32_t fuzzy_right_align(std::string& chrom, int32_t pos1, std::string ref, std::string alt, uint32_t penalty);
 
 };
 

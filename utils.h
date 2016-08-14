@@ -34,6 +34,7 @@
 #include <map>
 #include <list>
 #include <queue>
+#include "hts_utils.h"
 
 #define fix_neg_zero(f) ((f)==0?0:(f))
 
@@ -61,6 +62,11 @@ std::string join(std::map<std::string, int32_t>& map, std::string delim);
  * Casts a string into int32.  Returns true if successful.
  */
 bool str2int32(std::string& s, int32_t& i);
+    
+/**
+ * Casts a string into int32.  Aborts if unsuccessful.
+ */
+int32_t str2int32(std::string& s);    
 
 /**
  * Casts a string into uint32.  Returns true if successful.

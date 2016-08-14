@@ -70,7 +70,7 @@ std::string ReferenceSequence::fetch_iseq_name(int32_t i)
 {
     std::string s;
     s.assign(faidx_iseq(fai, i));
-    
+
     return s;
 }
 
@@ -163,14 +163,6 @@ void ReferenceSequence::fetch_seq(const char* chrom, int32_t beg1, int32_t end1,
 /**
  * Fetches sequence chrom:beg1-end1.
  */
-char* ReferenceSequence::fetch_seq(char* chrom, int32_t beg1, int32_t end1)
-{
-    return fetch_seq(const_cast<const char*>(chrom), beg1, end1);
-}
-
-/**
- * Fetches sequence chrom:beg1-end1.
- */
 char* ReferenceSequence::fetch_seq(const char* chrom, int32_t beg1, int32_t end1)
 {
     char* seq = NULL;
@@ -188,6 +180,22 @@ char* ReferenceSequence::fetch_seq(const char* chrom, int32_t beg1, int32_t end1
     }
 
     return seq;
+};
+
+/**
+ * Fetches sequence chrom:beg1-end1.
+ */
+char* ReferenceSequence::fetch_seq(char* chrom, int32_t beg1, int32_t end1)
+{
+    return fetch_seq(const_cast<const char*>(chrom), beg1, end1);
+}
+
+/**
+ * Fetches sequence chrom:beg1-end1.
+ */
+char* ReferenceSequence::fetch_seq(std::string& chrom, int32_t beg1, int32_t end1)
+{
+    return fetch_seq(chrom.c_str(), beg1, end1);
 };
 
 /**

@@ -273,9 +273,6 @@ class Igor : Program
         }
         else if (method=="exact_fuzzy")
         {
-            
-            std::cerr << "in this loiop?\n";
-            
             if (ref_fasta_file=="")
             {
                 error("Requires reference FASTA file");
@@ -283,6 +280,10 @@ class Igor : Program
             
             debug = true;
             CandidateRegionExtractor cre(ref_fasta_file, debug);
+            
+            bcf_hdr_t* h = bcf_create_dummy_hdr();
+            std::string var = "2:";
+            bcf1_t* v = bcf_create_dummy_record(h, var);
             
             
         }

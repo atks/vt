@@ -161,6 +161,22 @@ bool str2int32(std::string& s, int32_t& i)
 };
 
 /**
+ * Casts a string into int32.  Aborts if unsuccessful.
+ */
+int32_t str2int32(std::string& s)
+{
+    const char* start = s.c_str();
+    char *end = 0;
+    int32_t i = std::strtol(s.c_str(), &end, 10);
+    if (end==start)
+    {
+        error("[%s:%d %s] Cannot convert %s to int32_t\n", __FILE__, __LINE__, __FUNCTION__, s.c_str());
+    }    
+
+    return i;
+};
+
+/**
  * Casts a string into uint32.  Returns true if successful.
  */
 bool str2uint32(std::string& s, uint32_t& i)

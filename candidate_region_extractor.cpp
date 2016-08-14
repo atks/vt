@@ -171,7 +171,7 @@ void CandidateRegionExtractor::extract_regions_by_exact_alignment(Variant& varia
     bcf1_t* v = variant.v;
 
     VNTR& vntr = variant.vntr;
-    const char* chrom = variant.chrom.c_str();
+    std::string& chrom = variant.chrom;
 
     int32_t min_beg1 = bcf_get_pos1(v);
     int32_t max_end1 = min_beg1;
@@ -231,7 +231,7 @@ void CandidateRegionExtractor::extract_regions_by_exact_alignment(Variant& varia
 /**
  * Left align alleles.
  */
-void CandidateRegionExtractor::left_align(const char* chrom, int32_t& pos1, std::string& ref, std::string& alt)
+void CandidateRegionExtractor::left_align(std::string& chrom, int32_t& pos1, std::string& ref, std::string& alt)
 {
     int32_t seq_len;
     while (ref.at(ref.size()-1)==alt.at(alt.size()-1) && pos1>1)
@@ -248,7 +248,7 @@ void CandidateRegionExtractor::left_align(const char* chrom, int32_t& pos1, std:
 /**
  * Right align alleles.
  */
-void CandidateRegionExtractor::right_align(const char* chrom, int32_t& pos1, std::string& ref, std::string& alt)
+void CandidateRegionExtractor::right_align(std::string& chrom, int32_t& pos1, std::string& ref, std::string& alt)
 {
     while (ref.at(0)==alt.at(0))
     {
@@ -274,7 +274,7 @@ void CandidateRegionExtractor::extract_regions_by_fuzzy_alignment(Variant& varia
 
     bcf_hdr_t* h = variant.h;
     bcf1_t* v = variant.v;
-    const char* chrom = variant.chrom.c_str();
+    std::string&  chrom = variant.chrom;
 
     int32_t min_beg1 = bcf_get_pos1(v);
     int32_t max_end1 = min_beg1;
@@ -333,7 +333,7 @@ void CandidateRegionExtractor::extract_regions_by_fuzzy_alignment(Variant& varia
  *
  * Returns left aligned position.
  */
-uint32_t CandidateRegionExtractor::fuzzy_left_align(const char* chrom, int32_t pos1, std::string ref, std::string alt, uint32_t penalty)
+uint32_t CandidateRegionExtractor::fuzzy_left_align(std::string& chrom, int32_t pos1, std::string ref, std::string alt, uint32_t penalty)
 {
     if (ref==alt)
     {
@@ -403,7 +403,7 @@ uint32_t CandidateRegionExtractor::fuzzy_left_align(const char* chrom, int32_t p
  *
  * Returns right aligned position.
  */
-uint32_t CandidateRegionExtractor::fuzzy_right_align(const char* chrom, int32_t pos1, std::string ref, std::string alt, uint32_t penalty)
+uint32_t CandidateRegionExtractor::fuzzy_right_align(std::string& chrom, int32_t pos1, std::string ref, std::string alt, uint32_t penalty)
 {
     if (ref==alt)
     {

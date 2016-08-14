@@ -1243,6 +1243,74 @@ int32_t bcf_set_info_flt(bcf_hdr_t *h, bcf1_t *v, const char* tag, float value)
 }
 
 /**
+ * Creates a dummy header with hs37d5 contigs for testing purposes.
+ */
+bcf_hdr_t* bcf_create_dummy_hdr()
+{
+    bcf_hdr_t* h = bcf_hdr_init("r");
+    bcf_hdr_append(h, "##fileformat=VCFv4.1");
+    bcf_hdr_append(h, "##FILTER=<ID=PASS,Description=\"All filters passed\">");
+    bcf_hdr_append(h, "##contig=<ID=1,assembly=b37,length=249250621>");
+    bcf_hdr_append(h, "##contig=<ID=2,assembly=b37,length=243199373>");
+    bcf_hdr_append(h, "##contig=<ID=3,assembly=b37,length=198022430>");
+    bcf_hdr_append(h, "##contig=<ID=4,assembly=b37,length=191154276>");
+    bcf_hdr_append(h, "##contig=<ID=5,assembly=b37,length=180915260>");
+    bcf_hdr_append(h, "##contig=<ID=6,assembly=b37,length=171115067>");
+    bcf_hdr_append(h, "##contig=<ID=7,assembly=b37,length=159138663>");
+    bcf_hdr_append(h, "##contig=<ID=8,assembly=b37,length=146364022>");
+    bcf_hdr_append(h, "##contig=<ID=9,assembly=b37,length=141213431>");
+    bcf_hdr_append(h, "##contig=<ID=10,assembly=b37,length=135534747>");
+    bcf_hdr_append(h, "##contig=<ID=11,assembly=b37,length=135006516>");
+    bcf_hdr_append(h, "##contig=<ID=12,assembly=b37,length=133851895>");
+    bcf_hdr_append(h, "##contig=<ID=13,assembly=b37,length=115169878>");
+    bcf_hdr_append(h, "##contig=<ID=14,assembly=b37,length=107349540>");
+    bcf_hdr_append(h, "##contig=<ID=15,assembly=b37,length=102531392>");
+    bcf_hdr_append(h, "##contig=<ID=16,assembly=b37,length=90354753>");
+    bcf_hdr_append(h, "##contig=<ID=17,assembly=b37,length=81195210>");
+    bcf_hdr_append(h, "##contig=<ID=18,assembly=b37,length=78077248>");
+    bcf_hdr_append(h, "##contig=<ID=19,assembly=b37,length=59128983>");
+    bcf_hdr_append(h, "##contig=<ID=20,assembly=b37,length=63025520>");
+    bcf_hdr_append(h, "##contig=<ID=21,assembly=b37,length=48129895>");
+    bcf_hdr_append(h, "##contig=<ID=22,assembly=b37,length=51304566>");
+    bcf_hdr_append(h, "##contig=<ID=X,assembly=b37,length=155270560>");
+    bcf_hdr_append(h, "##contig=<ID=Y,assembly=b37,length=59373566>");
+    bcf_hdr_append(h, "##contig=<ID=MT,assembly=b37,length=16569>");
+    
+    return h;
+}
+
+/**
+ * Creates a dummy bcf record representing the variant for testing purposes.
+ * 
+ * @variant - 1:123:ACT:AC/ACCCC
+ */
+bcf1_t* bcf_create_dummy_record(bcf_hdr_t* h, std::string& variant)
+{
+    bcf1_t* v = bcf_init1();
+    
+    std::vector<std::string> var;
+    split(var, ":", variant);
+        
+    bcf_set_rid(v, bcf_hdr_name2id(h, var[0].c_str()));
+    bcf_set_pos1(v, str2int32(var[1]));
+    
+    std::vector<std::string> alleles;
+    split(alleles, ":", var[3]);
+    
+    std::string new_alleles = var[2];
+    
+    for (uint32_t i=0; i<alleles.size(); ++i)
+    {
+        new_alleles.append(1, ',');
+        new_alleles.append(alleles[i]);
+    }    
+    
+    bcf_update_alleles_str(h, v, new_alleles.c_str());   
+    
+    return v;   
+}
+
+/**
  * Prints a message to STDERR and abort.
  */
 void error(const char * msg, ...)

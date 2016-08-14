@@ -108,7 +108,7 @@ class ReferenceSequence
      * Get a base.
      */
     char fetch_base(std::string& chrom, int32_t pos1);
-        
+
     /**
      * Fetches sequence chrom:beg1-end1.
      *
@@ -129,12 +129,17 @@ class ReferenceSequence
     /**
      * Fetches sequence chrom:beg1-end1.
      */
+    char* fetch_seq(const char* chrom, int32_t beg1, int32_t end1);
+
+    /**
+     * Fetches sequence chrom:beg1-end1.
+     */
     char* fetch_seq(char* chrom, int32_t beg1, int32_t end1);
 
     /**
      * Fetches sequence chrom:beg1-end1.
      */
-    char* fetch_seq(const char* chrom, int32_t beg1, int32_t end1);
+    char* fetch_seq(std::string& chrom, int32_t beg1, int32_t end1);
 
     private:
 
