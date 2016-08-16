@@ -282,8 +282,14 @@ class Igor : Program
             CandidateRegionExtractor cre(ref_fasta_file, debug);
             
             bcf_hdr_t* h = bcf_create_dummy_hdr();
-            std::string var = "2:";
+            std::string var = "6:44140054:T:TGGCTGCC";
             bcf1_t* v = bcf_create_dummy_record(h, var);
+            Variant variant(h, v);
+            
+            cre.extract_regions_by_exact_alignment(variant);
+            
+            cre.extract_regions_by_fuzzy_alignment(variant);
+            
             
             
         }
@@ -303,6 +309,7 @@ class Igor : Program
         std::clog << "         [e] epsilon  " << epsilon << "\n";
         std::clog << "         [t] tau      " << tau << "\n";
         std::clog << "         [n] eta      " << eta << "\n";
+        std::clog << "         [p] p        " << mismatch_penalty << "\n";
         std::clog << "         [p] p        " << mismatch_penalty << "\n";
         std::clog << "\n";
     }
