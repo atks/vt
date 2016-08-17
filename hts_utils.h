@@ -86,7 +86,7 @@ void bam_hdr_transfer_contigs_to_bcf_hdr(const bam_hdr_t *sh, bcf_hdr_t *vh);
  * Gets sample names from bam header.
  */
 std::string bam_hdr_get_sample_name(bam_hdr_t* hdr);
-    
+
 /**
  * Get number of sequences.
  */
@@ -235,7 +235,7 @@ void bcf_hdr_print(bcf_hdr_t *h);
  * Copies contigs found in bcf header to another bcf header.
  */
 void bcf_hdr_transfer_contigs(const bcf_hdr_t *sh, bcf_hdr_t *vh);
-    
+
 /**
  * Checks if a particular header type exists
  * @hdr  - header
@@ -259,7 +259,7 @@ int32_t* bcf_hdr_seqlen(const bcf_hdr_t *hdr, int32_t *nseq);
  * @key   - the key name
  */
 void bcf_copy_info_field(bcf_hdr_t *hsrc, bcf1_t* vsrc, bcf_hdr_t *hdest, bcf1_t* vdest, const char* key, int32_t type);
- 
+
 /**
  * Get samples from bcf header
  */
@@ -301,6 +301,16 @@ int bcf_hdr_subset_samples(const bcf_hdr_t *h, bcf1_t *v, std::vector<int32_t>& 
  * Returns the tag that was inserted or updated.
  */
 std::string bcf_hdr_append_info_with_backup_naming(bcf_hdr_t *h, std::string tag, std::string number, std::string type, std::string description, bool rename);
+
+/**
+ * Translates BCF_VL types to string.
+ */
+std::string bcf_hdr_vl2str(int32_t id);
+
+/**
+ * Translates BCF_BT types to string.
+ */
+std::string bcf_hdr_bt2str(int32_t id);
 
 /**********
  *BCF UTILS
@@ -579,7 +589,7 @@ bcf_hdr_t* bcf_create_dummy_hdr();
 
 /**
  * Creates a dummy bcf record representing the variant for testing purposes.
- * 
+ *
  * @variant - 1:123:ACT:AC/ACCCC
  */
 bcf1_t* bcf_create_dummy_record(bcf_hdr_t* h, std::string& variant);
@@ -587,7 +597,7 @@ bcf1_t* bcf_create_dummy_record(bcf_hdr_t* h, std::string& variant);
 /**********
  *LOG UTILS
  **********/
- 
+
 /**
  * Prints a message to STDERR and abort.
  */

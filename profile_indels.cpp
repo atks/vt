@@ -366,7 +366,6 @@ class Igor : Program
         //generate file
         int32_t ret = mkdir(output_tabulate_dir.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
 
-
         std::string filepath = output_tabulate_dir + "/tabulate.tex";
         FILE *out = fopen(filepath.c_str(), "w");
 

@@ -159,6 +159,11 @@ class Program
     void print_int_op(const char* option_line, std::vector<GenomeInterval>& intervals);
 
     /**
+     * Print string vector.
+     */
+    void print_strvec(const char* option_line, std::vector<std::string>& vec);
+        
+    /**
      * Print input files.
      */
     void print_ifiles(const char* option_line, std::vector<std::string>& files);

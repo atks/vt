@@ -34,7 +34,7 @@ class Igor : Program
     //options//
     ///////////
     std::string input_vcf_file;
-    std::string output_vcf_file;
+    std::string output_text_file;
     std::vector<GenomeInterval> intervals;
     std::string ref_fasta_file;
     std::vector<std::string> info_tags;
@@ -44,7 +44,6 @@ class Igor : Program
     //i/o//
     ///////
     BCFOrderedReader *odr;
-    BCFOrderedWriter *odw;
 
     //////////
     //filter//
@@ -57,10 +56,6 @@ class Igor : Program
     //stats//
     /////////
     uint32_t no_variants;
-    uint32_t new_no_variants;
-    uint32_t no_biallelic;
-    uint32_t no_multiallelic;
-    uint32_t no_additional_biallelic;
 
     /////////
     //tools//
@@ -82,8 +77,8 @@ class Igor : Program
             VTOutput my; cmd.setOutput(&my);
             TCLAP::ValueArg<std::string> arg_intervals("i", "i", "intervals []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "file", cmd);
-            TCLAP::ValueArg<std::string> arg_output_vcf_file("o", "o", "output VCF file [-]", false, "-", "str", cmd);
-            TCLAP::ValueArg<std::string> arg_info_tags("t", "t", "list of info tags to be removed []", false, "", "str", cmd);
+            TCLAP::ValueArg<std::string> arg_output_text_file("o", "o", "output tab delimited file [-]", false, "-", "str", cmd);
+            TCLAP::ValueArg<std::string> arg_info_tags("t", "t", "list of info tags to be removed []", true, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_fexp("f", "f", "filter expression []", false, "", "str", cmd);
             TCLAP::SwitchArg arg_debug("d", "d", "debug [false]", cmd, false);
             TCLAP::SwitchArg arg_smart("s", "s", "smart decomposition [false]", cmd, false);
@@ -92,7 +87,7 @@ class Igor : Program
             cmd.parse(argc, argv);
 
             input_vcf_file = arg_input_vcf_file.getValue();
-            output_vcf_file = arg_output_vcf_file.getValue();
+            output_text_file = arg_output_text_file.getValue();
             fexp = arg_fexp.getValue();
             parse_string_list(info_tags, arg_info_tags.getValue());
             debug = arg_debug.getValue();
@@ -112,12 +107,6 @@ class Igor : Program
         //////////////////////
         odr = new BCFOrderedReader(input_vcf_file, intervals);
 
-        odw = new BCFOrderedWriter(output_vcf_file);
-        odw->link_hdr(odr->hdr);
-        //bcf_hdr_append_info_with_backup_naming(odw->hdr, "OLD_MULTIALLELIC", "1", "String", "Original chr:pos:ref:alt encoding", false);
-        bcf_hdr_append(odw->hdr, "##INFO=<ID=OLD_MULTIALLELIC,Number=1,Type=String,Description=\"Original chr:pos:ref:alt encoding\">\n");
-        odw->write_hdr();
-
         /////////////////////////
         //filter initialization//
         /////////////////////////
@@ -128,10 +117,6 @@ class Igor : Program
         //stats initialization//
         ////////////////////////
         no_variants = 0;
-        no_biallelic = 0;
-        no_multiallelic = 0;
-
-        no_additional_biallelic = 0;
 
         ////////////////////////
         //tools initialization//
@@ -144,6 +129,51 @@ class Igor : Program
         bcf_hdr_t* h = odr->hdr;
         bcf1_t* v = bcf_init();
         Variant variant;
+
+        FILE *out = fopen(output_text_file.c_str(), "w");
+
+//            fprintf(out, "\n");
+//            fprintf(out, "\\begin{frame}{Data set summary}\n");
+//            fprintf(out, "\\resizebox{\\linewidth}{!}{\n");
+//            fprintf(out, "\\rowcolors{2}{blue!25}{blue!10}\n");
+//            fprintf(out, "\\begin{tabular}{rrrrr}\n");
+//            fprintf(out, "\\rowcolor{blue!50}\n");
+//            fprintf(out, "%s & no. indels & ins/del & ins & del\\\\ \n", dataset_labels[i].c_str());
+//            fprintf(out, "A-B & %d & %.1f & %d & %d\\\\ \n",  stats[i].a, (float)stats[i].a_ins/(stats[i].a_del), stats[i].a_ins, stats[i].a_del);
+//            fprintf(out, "A\\&B & %d & %.1f & %d & %d\\\\ \n",  stats[i].ab, (float)stats[i].ab_ins/(stats[i].ab_del), stats[i].ab_ins, stats[i].ab_del);
+//            fprintf(out, "B-A & %d & %.1f & %d & %d\\\\ \n",  stats[i].b, (float)stats[i].b_ins/(stats[i].b_del), stats[i].b_ins, stats[i].b_del);
+//            fprintf(out, " &  &  & &  \\\\ \n");
+//            fprintf(out, " Precision & %.2f\\%% &  &  & \\\\ \n", 100*(float)stats[i].ab/(stats[i].a+stats[i].ab));
+//            fprintf(out, " Sensitivity & %.2f\\%% &  &  &  \\\\ \n", 100*(float)stats[i].ab/(stats[i].b+stats[i].ab));
+//            fprintf(out, "\\end{tabular}}\n");
+//            fprintf(out, "\\end{frame}\n");
+
+        //get the types of each info field
+        std::vector<std::string> info_tag_str;
+        std::vector<int32_t> info_tag_id;
+        std::vector<int32_t> info_tag_vlen;
+        std::vector<int32_t> info_tag_type;
+        std::vector<int32_t> info_tag_num;
+            
+        for (uint32_t i=0; i<info_tags.size(); ++i)
+        {
+            int32_t id = bcf_hdr_id2int(h, BCF_DT_ID, info_tags[i].c_str());
+            int32_t vlen = bcf_hdr_id2length(h, BCF_HL_INFO, info_tag_id[i]);
+            int32_t type = bcf_hdr_id2type(h, BCF_HL_INFO, info_tag_id[i]);
+            int32_t num = bcf_hdr_id2number(h, BCF_HL_INFO, info_tag_id[i]);               
+       
+            if (vlen==BCF_VL_FIXED && num!=1)
+            {
+                info_tag_id.push_back(id);
+                info_tag_vlen.push_back(vlen);
+                info_tag_type.push_back(type);
+                info_tag_num.push_back(num);        
+            }    
+            else
+            {
+                notice("info2tab does not support id:%s, vlen=%s, type=%s, num=%d", bcf_hdr_vl2str(id).c_str(), bcf_hdr_vl2str(id).c_str(), bcf_hdr_vl2str(id).c_str(), num);
+            }
+        }
 
         while (odr->read(v))
         {
@@ -158,21 +188,95 @@ class Igor : Program
                 }
             }
 
-
             int32_t ret = 0;
-            for (uint32_t i=0; i<info_tags.size(); ++i)
+            for (uint32_t i=0; i<info_tag_str.size(); ++i)
             {
-                ret += bcf_update_info(h, v, info_tags[i].c_str(), NULL, 0, 0);
+                if (i)
+                {
+                    fprintf(out, "\t");
+                }
+                
+                int32_t id = info_tag_id[i];
+                int32_t vlen = info_tag_vlen[i];
+                int32_t type = info_tag_type[i];
+                int32_t num = info_tag_num[i];
+
+                if (vlen==BCF_VL_G)
+                {
+                    if (type==BCF_BT_INT8||type==BCF_BT_INT16||type==BCF_BT_INT32)
+                    {
+                        //to be implemented
+                    }
+                    else if (type==BCF_BT_FLOAT)
+                    {
+                        //to be implemented
+                    }
+                    else if (type==BCF_BT_CHAR)
+                    {
+                        //to be implemented
+                    }
+                }
+                else if (vlen == BCF_VL_A)
+                {
+                    if (type==BCF_BT_INT8||type==BCF_BT_INT16||type==BCF_BT_INT32)
+                    {
+                        
+                    }
+                    else if (type==BCF_BT_FLOAT)
+                    {
+                       
+                    }
+                    else if (type==BCF_BT_CHAR)
+                    {
+                        //to be implemented
+                    }
+                }
+                else if (vlen == BCF_VL_R)
+                {
+                    if (type==BCF_BT_INT8||type==BCF_BT_INT16||type==BCF_BT_INT32)
+                    {
+                     
+                    }
+                    else if (type==BCF_BT_FLOAT)
+                    {
+                
+                    }
+                    else if (type==BCF_BT_CHAR)
+                    {
+                        //to be implemented
+                    }
+                }
+                else if (vlen == BCF_VL_FIXED)
+                {
+                    
+                }
+                else if (vlen == BCF_VL_VAR)
+                {
+                    
+                }
+                
+                if (type==BCF_BT_INT8||type==BCF_BT_INT16||type==BCF_BT_INT32)
+                {
+                 
+                }
+                else if (type==BCF_BT_FLOAT)
+                {
+            
+                }
+                else if (type==BCF_BT_CHAR)
+                {
+                    //to be implemented
+                }
+                
+                                    
             }
 
             ++no_variants;
 
-            odw->write(v);
-            v = odw->get_bcf1_from_pool();
         }
 
+        fclose(out);
         odr->close();
-        odw->close();
     };
 
     void print_options()
@@ -180,7 +284,8 @@ class Igor : Program
         std::clog << "info2tab v" << version << "\n";
         std::clog << "\n";
         std::clog << "options:     input VCF file        " << input_vcf_file << "\n";
-        std::clog << "         [o] output text file       " << output_vcf_file << "\n";
+        std::clog << "         [o] output text file      " << output_text_file << "\n";
+        print_strvec("         [t] info tags                        ", info_tags);
         print_int_op("         [i] intervals             ", intervals);
         std::clog << "\n";
     }
@@ -189,11 +294,6 @@ class Igor : Program
     {
         std::clog << "\n";
         std::clog << "stats: no. variants                 : " << no_variants << "\n";
-        std::clog << "       no. biallelic variants       : " << no_biallelic << "\n";
-        std::clog << "       no. multiallelic variants    : " << no_multiallelic << "\n";
-        std::clog << "\n";
-        std::clog << "       no. additional biallelics    : " << no_additional_biallelic << "\n";
-        std::clog << "       total no. of biallelics      : " << no_additional_biallelic + no_variants << "\n";
         std::clog << "\n";
     };
 

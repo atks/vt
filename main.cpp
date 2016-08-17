@@ -269,6 +269,10 @@ int main(int argc, char ** argv)
     {
         fuzzy_partition(argc-1, ++argv);
     }
+    else if (argc>1 && cmd=="info2tab")
+    {
+        info2tab(argc-1, ++argv);
+    }
     else if (argc>1 && cmd=="svm_train")
     {
         svm_train(argc-1, ++argv);

@@ -165,10 +165,11 @@ class Igor : Program
 
         std::clog << "rminfo v" << version << "\n";
         std::clog << "\n";
-        std::clog << "options:     input VCF file                                  " << input_vcf_file << "\n";
-        std::clog << "         [o] output VCF file                                 " << output_vcf_file << "\n";
-        std::clog << "         [q] quiet                                           " << (!print ? "true" : "false") << "\n";
-        print_int_op("         [i] intervals                                       ", intervals);
+        std::clog << "options:     input VCF file                   " << input_vcf_file << "\n";
+        std::clog << "         [o] output VCF file                  " << output_vcf_file << "\n";
+        std::clog << "         [q] quiet                            " << (!print ? "true" : "false") << "\n";
+        print_strvec("         [t] info tags                        ", info_tags);
+        print_int_op("         [i] intervals                        ", intervals);
         std::clog << "\n";
     }
 

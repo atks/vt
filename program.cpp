@@ -334,6 +334,26 @@ void Program::print_int_op(const char* option_line, std::vector<GenomeInterval>&
 }
 
 /**
+ * Print string vector.
+ */
+void Program::print_strvec(const char* option_line, std::vector<std::string>& vec)
+{
+    if (vec.size()!=0)
+    {
+        std::clog << option_line;
+        for (size_t i=0; i<std::min((uint32_t)vec.size(),(uint32_t)2); ++i)
+        {
+            if (i) std::clog << ",";
+            std::clog << vec[i];
+        }
+        if (vec.size()>2)
+        {
+            std::clog << " and " << (vec.size()-2) <<  " other files\n";
+        }
+    }
+}
+
+/**
  * Print input files.
  */
 void Program::print_ifiles(const char* option_line, std::vector<std::string>& files)

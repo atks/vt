@@ -519,6 +519,77 @@ int32_t* bcf_hdr_seqlen(const bcf_hdr_t *hdr, int32_t *nseq)
 }
 
 /**
+ * Translates BCF_VL types to string.
+ */
+std::string bcf_hdr_vl2str(int32_t id)
+{
+    if (id==BCF_VL_FIXED)
+    {
+        return "BCF_VL_FIXED";
+    }    
+    else if (id==BCF_VL_VAR)
+    {
+        return "BCF_VL_VAR";
+    }
+    else if (id==BCF_VL_A)
+    {
+        return "BCF_VL_A";
+    }
+    else if (id==BCF_VL_G)
+    {
+        return "BCF_VL_G";
+    }
+    else if (id==BCF_VL_R)
+    {
+        return "BCF_VL_R";
+    }
+    else
+    {
+        return "UNRECOGNIZED BCF_VL_* TYPE";
+    }
+}
+
+/**
+ * Translates BCF_BT types to string.
+ */
+std::string bcf_hdr_bt2str(int32_t id)
+{
+    if (id==BCF_BT_NULL)
+    {
+        return "BCF_BT_NULL";
+    }    
+    else if (id==BCF_BT_INT8)
+    {
+        return "BCF_BT_INT8";
+    }
+    else if (id==BCF_BT_INT16)
+    {
+        return "BCF_BT_INT16";
+    }
+    else if (id==BCF_BT_INT32)
+    {
+        return "BCF_BT_INT32";
+    }
+    else if (id==BCF_BT_FLOAT)
+    {
+        return "BCF_BT_FLOAT";
+    }
+    else if (id==BCF_BT_CHAR)
+    {
+        return "BCF_BT_CHAR";
+    }
+    else
+    {
+        return "UNRECOGNIZED BCF_BT_* TYPE";
+    }
+}
+
+
+/**********
+ *BCF UTILS
+ **********/
+
+/**
  * Copies an info fields from one record to another
  * @hsrc  - source header
  * @vsrc  - source bcf1_t
