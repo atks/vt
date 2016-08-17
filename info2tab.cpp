@@ -38,6 +38,7 @@ class Igor : Program
     std::vector<GenomeInterval> intervals;
     std::string ref_fasta_file;
     std::vector<std::string> info_tags;
+    bool print_variant;
     bool debug;
 
     ///////
@@ -81,7 +82,7 @@ class Igor : Program
             TCLAP::ValueArg<std::string> arg_info_tags("t", "t", "list of info tags to be extracted []", true, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_fexp("f", "f", "filter expression []", false, "", "str", cmd);
             TCLAP::SwitchArg arg_debug("d", "d", "debug [false]", cmd, false);
-            TCLAP::SwitchArg arg_smart("s", "s", "smart decomposition [false]", cmd, false);
+            TCLAP::SwitchArg arg_print_variant("v", "v", "print variant CHROM,POS,REF,ALT [false]", cmd, false);
             TCLAP::UnlabeledValueArg<std::string> arg_input_vcf_file("<in.vcf>", "input VCF file", true, "","file", cmd);
 
             cmd.parse(argc, argv);
@@ -90,6 +91,7 @@ class Igor : Program
             output_text_file = arg_output_text_file.getValue();
             fexp = arg_fexp.getValue();
             parse_string_list(info_tags, arg_info_tags.getValue());
+            print_variant = arg_print_variant.getValue();
             debug = arg_debug.getValue();
             parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
         }
@@ -154,29 +156,42 @@ class Igor : Program
         std::vector<int32_t> info_tag_vlen;
         std::vector<int32_t> info_tag_type;
         std::vector<int32_t> info_tag_num;
-            
+
         for (uint32_t i=0; i<info_tags.size(); ++i)
         {
-            std::cerr << info_tags[i] << "\n";
-            
+//            std::cerr << info_tags[i] << "\n";
+
             int32_t id = bcf_hdr_id2int(h, BCF_DT_ID, info_tags[i].c_str());
             int32_t vlen = bcf_hdr_id2length(h, BCF_HL_INFO, id);
             int32_t type = bcf_hdr_id2type(h, BCF_HL_INFO, id);
-            int32_t num = bcf_hdr_id2number(h, BCF_HL_INFO, id);               
-       
-            if (vlen==BCF_VL_FIXED && num==1)
+            int32_t num = bcf_hdr_id2number(h, BCF_HL_INFO, id);
+
+            if (vlen==BCF_VL_FIXED)
             {
+                info_tag_str.push_back(info_tags[i]);
                 info_tag_id.push_back(id);
                 info_tag_vlen.push_back(vlen);
                 info_tag_type.push_back(type);
-                info_tag_num.push_back(num);        
-            }    
+                info_tag_num.push_back(num);
+
+                notice("Adding id:%s, vlen=%s, type=%s, num=%d",
+                               info_tag_str[i].c_str(), bcf_hdr_vl2str(vlen).c_str(), bcf_hdr_ht2str(type).c_str(), num);
+
+                for (uint32_t j=0; j<num; ++j)
+                {
+                    if (info_tag_str.size()!=1 || j!=0) fprintf(out, "\t");
+                    
+                    fprintf(out, "%s_%d", info_tags[i].c_str(), j+1);
+                }
+            }
             else
             {
-                notice("info2tab does not support id:%s, vlen=%s, type=%s, num=%d", 
-                               info_tags[i].c_str(), bcf_hdr_vl2str(vlen).c_str(), bcf_hdr_bt2str(type).c_str(), num);
+                notice("info2tab does not support id:%s, vlen=%s, type=%s, num=%d",
+                               info_tags[i].c_str(), bcf_hdr_vl2str(vlen).c_str(), bcf_hdr_ht2str(type).c_str(), num);
             }
         }
+
+        fprintf(out, "\n");
 
         while (odr->read(v))
         {
@@ -190,92 +205,87 @@ class Igor : Program
                     continue;
                 }
             }
+            
+            
+            if (print_variant)
+            {
+                fprintf(out, "%s\t%d\t", bcf_get_chrom(h, v), bcf_get_pos1(v));
+            }    
+            
 
-            int32_t ret = 0;
+//            bcf_print(h, v);
+
             for (uint32_t i=0; i<info_tag_str.size(); ++i)
             {
                 if (i)
                 {
                     fprintf(out, "\t");
                 }
-                
+
                 int32_t id = info_tag_id[i];
                 int32_t vlen = info_tag_vlen[i];
                 int32_t type = info_tag_type[i];
                 int32_t num = info_tag_num[i];
 
-                if (vlen==BCF_VL_G)
+//                notice("processing id:%s, vlen=%s, type=%s, num=%d",
+//                               info_tag_str[i].c_str(), bcf_hdr_vl2str(vlen).c_str(), bcf_hdr_ht2str(type).c_str(), num);
+
+                if (vlen==BCF_VL_FIXED)
                 {
-                    if (type==BCF_BT_INT8||type==BCF_BT_INT16||type==BCF_BT_INT32)
+                    if (type==BCF_HT_INT)
                     {
-                        //to be implemented
+                        for (uint32_t j=0; j<num; ++j)
+                        {
+                            if (j) fprintf(out, "\t");
+
+                            int32_t val = bcf_get_info_int(h, v, info_tag_str[i].c_str());
+
+//                            std::cerr << val << "\n";
+                            fprintf(out, "%d", val);
+                        }
                     }
-                    else if (type==BCF_BT_FLOAT)
+                    else if (type==BCF_HT_REAL)
                     {
-                        //to be implemented
+                        for (uint32_t j=0; j<num; ++j)
+                        {
+                            if (j) fprintf(out, "\t");
+
+                            float val = bcf_get_info_flt(h, v, info_tag_str[i].c_str());
+                            fprintf(out, "%f", val);
+
+//                            std::cerr << val << "\n";
+                        }
                     }
-                    else if (type==BCF_BT_CHAR)
+                    else if (type==BCF_HT_STR)
                     {
-                        //to be implemented
+                        for (uint32_t j=0; j<num; ++j)
+                        {
+                            if (j) fprintf(out, "\t");
+
+                            std::string val = bcf_get_info_str(h, v, info_tag_str[i].c_str());
+                            fprintf(out, "%s", val.c_str());
+
+//                            std::cerr << val << "\n";
+                        }
                     }
-                }
-                else if (vlen == BCF_VL_A)
-                {
-                    if (type==BCF_BT_INT8||type==BCF_BT_INT16||type==BCF_BT_INT32)
-                    {
-                        
-                    }
-                    else if (type==BCF_BT_FLOAT)
-                    {
-                       
-                    }
-                    else if (type==BCF_BT_CHAR)
-                    {
-                        //to be implemented
-                    }
-                }
-                else if (vlen == BCF_VL_R)
-                {
-                    if (type==BCF_BT_INT8||type==BCF_BT_INT16||type==BCF_BT_INT32)
-                    {
-                     
-                    }
-                    else if (type==BCF_BT_FLOAT)
-                    {
-                
-                    }
-                    else if (type==BCF_BT_CHAR)
-                    {
-                        //to be implemented
-                    }
-                }
-                else if (vlen == BCF_VL_FIXED)
-                {
-                    
                 }
                 else if (vlen == BCF_VL_VAR)
                 {
-                    
+                }
+                else if (vlen==BCF_VL_G)
+                {
+                }
+                else if (vlen == BCF_VL_A)
+                {
+                }
+                else if (vlen == BCF_VL_R)
+                {
                 }
                 
-                if (type==BCF_BT_INT8||type==BCF_BT_INT16||type==BCF_BT_INT32)
-                {
-                 
-                }
-                else if (type==BCF_BT_FLOAT)
-                {
-            
-                }
-                else if (type==BCF_BT_CHAR)
-                {
-                    //to be implemented
-                }
-                
-                                    
+                fprintf(out, "\n");
             }
 
             ++no_variants;
-
         }
 
         fclose(out);
@@ -288,7 +298,7 @@ class Igor : Program
         std::clog << "\n";
         std::clog << "options:     input VCF file        " << input_vcf_file << "\n";
         std::clog << "         [o] output text file      " << output_text_file << "\n";
-        print_strvec("         [t] info tags                        ", info_tags);
+        print_strvec("         [t] info tags             ", info_tags);
         print_int_op("         [i] intervals             ", intervals);
         std::clog << "\n";
     }

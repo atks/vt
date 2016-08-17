@@ -552,37 +552,29 @@ std::string bcf_hdr_vl2str(int32_t id)
 }
 
 /**
- * Translates BCF_BT types to string.
+ * Translates BCF_HT types to string.
  */
-std::string bcf_hdr_bt2str(int32_t id)
+std::string bcf_hdr_ht2str(int32_t id)
 {
-    if (id==BCF_BT_NULL)
+    if (id==BCF_HT_FLAG)
     {
-        return "BCF_BT_NULL";
+        return "BCF_HT_FLAG";
     }    
-    else if (id==BCF_BT_INT8)
+    else if (id==BCF_HT_INT)
     {
-        return "BCF_BT_INT8";
+        return "BCF_HT_INT";
     }
-    else if (id==BCF_BT_INT16)
+    else if (id==BCF_HT_REAL)
     {
-        return "BCF_BT_INT16";
+        return "BCF_HT_REAL";
     }
-    else if (id==BCF_BT_INT32)
+    else if (id==BCF_HT_STR)
     {
-        return "BCF_BT_INT32";
-    }
-    else if (id==BCF_BT_FLOAT)
-    {
-        return "BCF_BT_FLOAT";
-    }
-    else if (id==BCF_BT_CHAR)
-    {
-        return "BCF_BT_CHAR";
+        return "BCF_HT_STR";
     }
     else
     {
-        return "UNRECOGNIZED BCF_BT_* TYPE";
+        return "UNRECOGNIZED BCF_HT_* TYPE";
     }
 }
 

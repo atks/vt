@@ -310,7 +310,7 @@ std::string bcf_hdr_vl2str(int32_t id);
 /**
  * Translates BCF_BT types to string.
  */
-std::string bcf_hdr_bt2str(int32_t id);
+std::string bcf_hdr_ht2str(int32_t id);
 
 /**********
  *BCF UTILS
