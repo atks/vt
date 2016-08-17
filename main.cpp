@@ -48,6 +48,7 @@
 #include "genotype.h"
 #include "hfilter.h"
 #include "index.h"
+#include "info2tab.h"
 #include "milk_filter.h"
 #include "merge_candidate_variants.h"
 #include "merge.h"

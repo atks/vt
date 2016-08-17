@@ -56,6 +56,7 @@ SOURCES = ahmm\
 		hfilter\
 		indel_genotyping_record\
 		index\
+		info2tab\
 		interval_tree\
 		interval\
 		lfhmm\
