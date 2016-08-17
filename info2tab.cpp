@@ -78,7 +78,7 @@ class Igor : Program
             TCLAP::ValueArg<std::string> arg_intervals("i", "i", "intervals []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "file", cmd);
             TCLAP::ValueArg<std::string> arg_output_text_file("o", "o", "output tab delimited file [-]", false, "-", "str", cmd);
-            TCLAP::ValueArg<std::string> arg_info_tags("t", "t", "list of info tags to be removed []", true, "", "str", cmd);
+            TCLAP::ValueArg<std::string> arg_info_tags("t", "t", "list of info tags to be extracted []", true, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_fexp("f", "f", "filter expression []", false, "", "str", cmd);
             TCLAP::SwitchArg arg_debug("d", "d", "debug [false]", cmd, false);
             TCLAP::SwitchArg arg_smart("s", "s", "smart decomposition [false]", cmd, false);
@@ -157,12 +157,14 @@ class Igor : Program
             
         for (uint32_t i=0; i<info_tags.size(); ++i)
         {
+            std::cerr << info_tags[i] << "\n";
+            
             int32_t id = bcf_hdr_id2int(h, BCF_DT_ID, info_tags[i].c_str());
-            int32_t vlen = bcf_hdr_id2length(h, BCF_HL_INFO, info_tag_id[i]);
-            int32_t type = bcf_hdr_id2type(h, BCF_HL_INFO, info_tag_id[i]);
-            int32_t num = bcf_hdr_id2number(h, BCF_HL_INFO, info_tag_id[i]);               
+            int32_t vlen = bcf_hdr_id2length(h, BCF_HL_INFO, id);
+            int32_t type = bcf_hdr_id2type(h, BCF_HL_INFO, id);
+            int32_t num = bcf_hdr_id2number(h, BCF_HL_INFO, id);               
        
-            if (vlen==BCF_VL_FIXED && num!=1)
+            if (vlen==BCF_VL_FIXED && num==1)
             {
                 info_tag_id.push_back(id);
                 info_tag_vlen.push_back(vlen);
@@ -171,7 +173,8 @@ class Igor : Program
             }    
             else
             {
-                notice("info2tab does not support id:%s, vlen=%s, type=%s, num=%d", bcf_hdr_vl2str(id).c_str(), bcf_hdr_vl2str(id).c_str(), bcf_hdr_vl2str(id).c_str(), num);
+                notice("info2tab does not support id:%s, vlen=%s, type=%s, num=%d", 
+                               info_tags[i].c_str(), bcf_hdr_vl2str(vlen).c_str(), bcf_hdr_bt2str(type).c_str(), num);
             }
         }
 

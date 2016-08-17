@@ -523,6 +523,8 @@ int32_t* bcf_hdr_seqlen(const bcf_hdr_t *hdr, int32_t *nseq)
  */
 std::string bcf_hdr_vl2str(int32_t id)
 {
+    std::cerr << "vl id: " << id << "\n";
+    
     if (id==BCF_VL_FIXED)
     {
         return "BCF_VL_FIXED";
