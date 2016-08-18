@@ -93,21 +93,21 @@ int32_t hts_filename_type(std::string const& value)
 {
     if (str_ends_with(value,".vcf") || str_ends_with(value,".vcf.gz"))
     {
-        return vcf; 
+        return vcf;
     }
     else if (str_ends_with(value,".bcf"))
     {
-        return bcf; 
+        return bcf;
     }
-     else if (str_ends_with(value,".sam")) 
+     else if (str_ends_with(value,".sam"))
     {
         return sam;
-    }   
-    else if (str_ends_with(value,".bam")) 
+    }
+    else if (str_ends_with(value,".bam"))
     {
         return bam;
     }
-    else if (str_ends_with(value,".cram")) 
+    else if (str_ends_with(value,".cram"))
     {
         return cram;
     }
@@ -524,11 +524,11 @@ int32_t* bcf_hdr_seqlen(const bcf_hdr_t *hdr, int32_t *nseq)
 std::string bcf_hdr_vl2str(int32_t id)
 {
     std::cerr << "vl id: " << id << "\n";
-    
+
     if (id==BCF_VL_FIXED)
     {
         return "BCF_VL_FIXED";
-    }    
+    }
     else if (id==BCF_VL_VAR)
     {
         return "BCF_VL_VAR";
@@ -559,7 +559,7 @@ std::string bcf_hdr_ht2str(int32_t id)
     if (id==BCF_HT_FLAG)
     {
         return "BCF_HT_FLAG";
-    }    
+    }
     else if (id==BCF_HT_INT)
     {
         return "BCF_HT_INT";
@@ -933,7 +933,7 @@ std::vector<int32_t> bcf_ip2g(int32_t genotype_index, uint32_t no_ploidy)
     int32_t pth = no_ploidy;
     int32_t max_allele_index = genotype_index;
     int32_t leftover_genotype_index = genotype_index;
-    
+
     while (pth>0)
     {
         for (int32_t allele_index=0; allele_index <= max_allele_index; ++allele_index)
@@ -948,11 +948,11 @@ std::vector<int32_t> bcf_ip2g(int32_t genotype_index, uint32_t no_ploidy)
                 max_allele_index = allele_index;
                 genotype[pth] = allele_index;
                 break;
-                
+
             }
         }
     }
-    
+
     return genotype;
 }
 
@@ -1200,24 +1200,19 @@ void bcf_set_id(bcf1_t *v, char* id)
 };
 
 /**
- * Gets an info string.
+ * Gets an info flag.
  */
-std::string bcf_get_info_str(bcf_hdr_t *h, bcf1_t *v, const char* tag, std::string default_value)
+bool bcf_get_info_flg(bcf_hdr_t *h, bcf1_t *v, const char* tag)
 {
-    std::string str = "";
-    char* s = NULL;
-    int32_t n = 0;
-    if (bcf_get_info_string(h, v, tag, &s, &n)>0)
-    {
-        str.assign(s);
-        free(s);
-    }
-    else
-    {
-        return default_value;
-    }
+    return (bcf_get_info_flag(h, v, tag, 0, 0) ? true : false);
+}
 
-    return str;
+/**
+ * Sets an info flag.
+ */
+void bcf_set_info_flg(bcf_hdr_t *h, bcf1_t *v, const char* tag, bool value)
+{
+    bcf_update_info_flag(h, v, tag, "", (value ? 1 : 0));
 }
 
 /**
@@ -1340,39 +1335,60 @@ bcf_hdr_t* bcf_create_dummy_hdr()
     bcf_hdr_append(h, "##contig=<ID=X,assembly=b37,length=155270560>");
     bcf_hdr_append(h, "##contig=<ID=Y,assembly=b37,length=59373566>");
     bcf_hdr_append(h, "##contig=<ID=MT,assembly=b37,length=16569>");
-    
+
     return h;
 }
 
 /**
+ * Gets an info string.
+ */
+std::string bcf_get_info_str(bcf_hdr_t *h, bcf1_t *v, const char* tag, std::string default_value)
+{
+    std::string str = "";
+    char* s = NULL;
+    int32_t n = 0;
+    if (bcf_get_info_string(h, v, tag, &s, &n)>0)
+    {
+        str.assign(s);
+        free(s);
+    }
+    else
+    {
+        return default_value;
+    }
+
+    return str;
+}
+
+/**
  * Creates a dummy bcf record representing the variant for testing purposes.
- * 
+ *
  * @variant - 1:123:ACT:AC/ACCCC
  */
 bcf1_t* bcf_create_dummy_record(bcf_hdr_t* h, std::string& variant)
 {
     bcf1_t* v = bcf_init1();
-    
+
     std::vector<std::string> var;
     split(var, ":", variant);
-        
+
     bcf_set_rid(v, bcf_hdr_name2id(h, var[0].c_str()));
     bcf_set_pos1(v, str2int32(var[1]));
-    
+
     std::vector<std::string> alleles;
     split(alleles, ":", var[3]);
-    
+
     std::string new_alleles = var[2];
-    
+
     for (uint32_t i=0; i<alleles.size(); ++i)
     {
         new_alleles.append(1, ',');
         new_alleles.append(alleles[i]);
-    }    
-    
-    bcf_update_alleles_str(h, v, new_alleles.c_str());   
-    
-    return v;   
+    }
+
+    bcf_update_alleles_str(h, v, new_alleles.c_str());
+
+    return v;
 }
 
 /**

@@ -341,14 +341,19 @@ void Program::print_strvec(const char* option_line, std::vector<std::string>& ve
     if (vec.size()!=0)
     {
         std::clog << option_line;
-        for (size_t i=0; i<std::min((uint32_t)vec.size(),(uint32_t)2); ++i)
+        for (size_t i=0; i<std::min((uint32_t)vec.size(),(uint32_t)4); ++i)
         {
             if (i) std::clog << ",";
             std::clog << vec[i];
         }
-        if (vec.size()>2)
+        
+        if (vec.size()>4)
         {
-            std::clog << " and " << (vec.size()-2) <<  " other files\n";
+            std::clog << " and " << (vec.size()-4) <<  " other values\n";
+        }
+        else
+        {
+            std::clog << "\n";
         }
     }
 }
@@ -369,6 +374,10 @@ void Program::print_ifiles(const char* option_line, std::vector<std::string>& fi
         if (files.size()>2)
         {
             std::clog << " and " << (files.size()-2) <<  " other files\n";
+        }
+        else
+        {
+            std::clog << "\n";
         }
     }
 }

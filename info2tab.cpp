@@ -90,6 +90,7 @@ class Igor : Program
             input_vcf_file = arg_input_vcf_file.getValue();
             output_text_file = arg_output_text_file.getValue();
             fexp = arg_fexp.getValue();
+            std::cerr << arg_info_tags.getValue() << "\n";
             parse_string_list(info_tags, arg_info_tags.getValue());
             print_variant = arg_print_variant.getValue();
             debug = arg_debug.getValue();
@@ -132,24 +133,16 @@ class Igor : Program
         bcf1_t* v = bcf_init();
         Variant variant;
 
-        FILE *out = fopen(output_text_file.c_str(), "w");
-
-//            fprintf(out, "\n");
-//            fprintf(out, "\\begin{frame}{Data set summary}\n");
-//            fprintf(out, "\\resizebox{\\linewidth}{!}{\n");
-//            fprintf(out, "\\rowcolors{2}{blue!25}{blue!10}\n");
-//            fprintf(out, "\\begin{tabular}{rrrrr}\n");
-//            fprintf(out, "\\rowcolor{blue!50}\n");
-//            fprintf(out, "%s & no. indels & ins/del & ins & del\\\\ \n", dataset_labels[i].c_str());
-//            fprintf(out, "A-B & %d & %.1f & %d & %d\\\\ \n",  stats[i].a, (float)stats[i].a_ins/(stats[i].a_del), stats[i].a_ins, stats[i].a_del);
-//            fprintf(out, "A\\&B & %d & %.1f & %d & %d\\\\ \n",  stats[i].ab, (float)stats[i].ab_ins/(stats[i].ab_del), stats[i].ab_ins, stats[i].ab_del);
-//            fprintf(out, "B-A & %d & %.1f & %d & %d\\\\ \n",  stats[i].b, (float)stats[i].b_ins/(stats[i].b_del), stats[i].b_ins, stats[i].b_del);
-//            fprintf(out, " &  &  & &  \\\\ \n");
-//            fprintf(out, " Precision & %.2f\\%% &  &  & \\\\ \n", 100*(float)stats[i].ab/(stats[i].a+stats[i].ab));
-//            fprintf(out, " Sensitivity & %.2f\\%% &  &  &  \\\\ \n", 100*(float)stats[i].ab/(stats[i].b+stats[i].ab));
-//            fprintf(out, "\\end{tabular}}\n");
-//            fprintf(out, "\\end{frame}\n");
-
+        FILE *out = NULL;
+        if (output_text_file=="-")
+        {
+            out = stdout;
+        }
+        else
+        {    
+            out = fopen(output_text_file.c_str(), "w");
+        }
+            
         //get the types of each info field
         std::vector<std::string> info_tag_str;
         std::vector<int32_t> info_tag_id;
@@ -157,14 +150,31 @@ class Igor : Program
         std::vector<int32_t> info_tag_type;
         std::vector<int32_t> info_tag_num;
 
+        if (print_variant)
+        {
+            fprintf(out, "CHROM\tPOS\tREF\tALT\tN_ALLELE\t");
+        }
+
         for (uint32_t i=0; i<info_tags.size(); ++i)
         {
 //            std::cerr << info_tags[i] << "\n";
 
             int32_t id = bcf_hdr_id2int(h, BCF_DT_ID, info_tags[i].c_str());
+
+            if (id==-1)
+            {
+                notice("%s info tag does not exist", info_tags[i].c_str());
+                continue;
+            }    
+            
             int32_t vlen = bcf_hdr_id2length(h, BCF_HL_INFO, id);
             int32_t type = bcf_hdr_id2type(h, BCF_HL_INFO, id);
             int32_t num = bcf_hdr_id2number(h, BCF_HL_INFO, id);
+
+//            std::cerr << info_tags[i] << "\n";
+//
+//            notice("Adding id:%s, vlen=%s, type=%s, num=%d",
+//                               info_tags[i].c_str(), bcf_hdr_vl2str(vlen).c_str(), bcf_hdr_ht2str(type).c_str(), num);
 
             if (vlen==BCF_VL_FIXED)
             {
@@ -174,14 +184,29 @@ class Igor : Program
                 info_tag_type.push_back(type);
                 info_tag_num.push_back(num);
 
-                notice("Adding id:%s, vlen=%s, type=%s, num=%d",
-                               info_tag_str[i].c_str(), bcf_hdr_vl2str(vlen).c_str(), bcf_hdr_ht2str(type).c_str(), num);
+//                notice("Adding id:%s, vlen=%s, type=%s, num=%d",
+//                               info_tag_str[i].c_str(), bcf_hdr_vl2str(vlen).c_str(), bcf_hdr_ht2str(type).c_str(), num);
 
-                for (uint32_t j=0; j<num; ++j)
+                if (type==BCF_HT_FLAG)
                 {
-                    if (info_tag_str.size()!=1 || j!=0) fprintf(out, "\t");
-                    
-                    fprintf(out, "%s_%d", info_tags[i].c_str(), j+1);
+                    if (info_tag_str.size()>0) fprintf(out, "\t");
+                    fprintf(out, "%s", info_tags[i].c_str());                        
+                }                
+                else if (type==BCF_HT_INT)
+                {
+                    for (uint32_t j=0; j<num; ++j)
+                    {
+                        if (info_tag_str.size()!=1 || j!=0) fprintf(out, "\t");
+                        
+                        if (num>1)
+                        {
+                            fprintf(out, "%s_%d", info_tags[i].c_str(), j+1);
+                        }
+                        else
+                        {
+                            fprintf(out, "%s", info_tags[i].c_str());
+                        }
+                    }
                 }
             }
             else
@@ -206,13 +231,20 @@ class Igor : Program
                 }
             }
             
-            
             if (print_variant)
             {
                 fprintf(out, "%s\t%d\t", bcf_get_chrom(h, v), bcf_get_pos1(v));
+                char** alleles = bcf_get_allele(v);
+                fprintf(out, "\t%s", alleles[0]);
+                int32_t no_alleles = bcf_get_n_allele(v); 
+                for (uint32_t i=1; i<no_alleles; ++i)
+                {
+                    fprintf(out, "%c", i==1?'\t':',');
+                    fprintf(out, "%s", alleles[i]);
+                }
+                fprintf(out, "\t");
             }    
             
-
 //            bcf_print(h, v);
 
             for (uint32_t i=0; i<info_tag_str.size(); ++i)
@@ -232,7 +264,12 @@ class Igor : Program
 
                 if (vlen==BCF_VL_FIXED)
                 {
-                    if (type==BCF_HT_INT)
+                    if (type==BCF_HT_FLAG)
+                    {
+                        bool present = bcf_get_info_flg(h, v, info_tag_str[i].c_str());
+                        fprintf(out, "%d", (present ? 1 : 0));
+                    }
+                    else if (type==BCF_HT_INT)
                     {
                         for (uint32_t j=0; j<num; ++j)
                         {
@@ -282,13 +319,17 @@ class Igor : Program
                 {
                 }
                 
-                fprintf(out, "\n");
+                
             }
 
+            fprintf(out, "\n");
             ++no_variants;
         }
 
-        fclose(out);
+        if (output_text_file!="-")
+        {
+            fclose(out);
+        }
         odr->close();
     };
 
