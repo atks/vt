@@ -81,7 +81,7 @@ class Igor : Program
             TCLAP::ValueArg<std::string> arg_info_tags("t", "t", "list of info tags to be extracted []", true, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_fexp("f", "f", "filter expression []", false, "", "str", cmd);
             TCLAP::SwitchArg arg_debug("d", "d", "debug [false]", cmd, false);
-            TCLAP::SwitchArg arg_print_variant("v", "v", "print variant CHROM,POS,REF,ALT [false]", cmd, false);
+            TCLAP::SwitchArg arg_print_variant("v", "v", "print variant CHROM,POS,REF,ALT,N_ALLELE [false]", cmd, false);
             TCLAP::UnlabeledValueArg<std::string> arg_input_vcf_file("<in.vcf>", "input VCF file", true, "","file", cmd);
 
             cmd.parse(argc, argv);
@@ -225,7 +225,7 @@ class Igor : Program
 
             if (print_variant)
             {
-                fprintf(out, "%s\t%d\t", bcf_get_chrom(h, v), bcf_get_pos1(v));
+                fprintf(out, "%s\t%d", bcf_get_chrom(h, v), bcf_get_pos1(v));
                 char** alleles = bcf_get_allele(v);
                 fprintf(out, "\t%s", alleles[0]);
                 int32_t no_alleles = bcf_get_n_allele(v);
@@ -234,7 +234,8 @@ class Igor : Program
                     fprintf(out, "%c", i==1?'\t':',');
                     fprintf(out, "%s", alleles[i]);
                 }
-                fprintf(out, "\t");
+                fprintf(out, "\t%d\t", no_alleles);
+                
             }
 
 //            bcf_print(h, v);
@@ -304,8 +305,6 @@ class Igor : Program
                 else if (vlen == BCF_VL_R)
                 {
                 }
-
-
             }
 
             fprintf(out, "\n");
