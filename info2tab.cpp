@@ -36,7 +36,6 @@ class Igor : Program
     std::string input_vcf_file;
     std::string output_text_file;
     std::vector<GenomeInterval> intervals;
-    std::string ref_fasta_file;
     std::vector<std::string> info_tags;
     bool print_variant;
     bool debug;
@@ -139,10 +138,10 @@ class Igor : Program
             out = stdout;
         }
         else
-        {    
+        {
             out = fopen(output_text_file.c_str(), "w");
         }
-            
+
         //get the types of each info field
         std::vector<std::string> info_tag_str;
         std::vector<int32_t> info_tag_id;
@@ -157,24 +156,17 @@ class Igor : Program
 
         for (uint32_t i=0; i<info_tags.size(); ++i)
         {
-//            std::cerr << info_tags[i] << "\n";
-
             int32_t id = bcf_hdr_id2int(h, BCF_DT_ID, info_tags[i].c_str());
 
             if (id==-1)
             {
                 notice("%s info tag does not exist", info_tags[i].c_str());
                 continue;
-            }    
-            
+            }
+
             int32_t vlen = bcf_hdr_id2length(h, BCF_HL_INFO, id);
             int32_t type = bcf_hdr_id2type(h, BCF_HL_INFO, id);
             int32_t num = bcf_hdr_id2number(h, BCF_HL_INFO, id);
-
-//            std::cerr << info_tags[i] << "\n";
-//
-//            notice("Adding id:%s, vlen=%s, type=%s, num=%d",
-//                               info_tags[i].c_str(), bcf_hdr_vl2str(vlen).c_str(), bcf_hdr_ht2str(type).c_str(), num);
 
             if (vlen==BCF_VL_FIXED)
             {
@@ -190,14 +182,14 @@ class Igor : Program
                 if (type==BCF_HT_FLAG)
                 {
                     if (info_tag_str.size()>0) fprintf(out, "\t");
-                    fprintf(out, "%s", info_tags[i].c_str());                        
-                }                
+                    fprintf(out, "%s", info_tags[i].c_str());
+                }
                 else if (type==BCF_HT_INT)
                 {
                     for (uint32_t j=0; j<num; ++j)
                     {
                         if (info_tag_str.size()!=1 || j!=0) fprintf(out, "\t");
-                        
+
                         if (num>1)
                         {
                             fprintf(out, "%s_%d", info_tags[i].c_str(), j+1);
@@ -230,21 +222,21 @@ class Igor : Program
                     continue;
                 }
             }
-            
+
             if (print_variant)
             {
                 fprintf(out, "%s\t%d\t", bcf_get_chrom(h, v), bcf_get_pos1(v));
                 char** alleles = bcf_get_allele(v);
                 fprintf(out, "\t%s", alleles[0]);
-                int32_t no_alleles = bcf_get_n_allele(v); 
+                int32_t no_alleles = bcf_get_n_allele(v);
                 for (uint32_t i=1; i<no_alleles; ++i)
                 {
                     fprintf(out, "%c", i==1?'\t':',');
                     fprintf(out, "%s", alleles[i]);
                 }
                 fprintf(out, "\t");
-            }    
-            
+            }
+
 //            bcf_print(h, v);
 
             for (uint32_t i=0; i<info_tag_str.size(); ++i)
@@ -276,8 +268,6 @@ class Igor : Program
                             if (j) fprintf(out, "\t");
 
                             int32_t val = bcf_get_info_int(h, v, info_tag_str[i].c_str());
-
-//                            std::cerr << val << "\n";
                             fprintf(out, "%d", val);
                         }
                     }
@@ -289,8 +279,6 @@ class Igor : Program
 
                             float val = bcf_get_info_flt(h, v, info_tag_str[i].c_str());
                             fprintf(out, "%f", val);
-
-//                            std::cerr << val << "\n";
                         }
                     }
                     else if (type==BCF_HT_STR)
@@ -301,8 +289,6 @@ class Igor : Program
 
                             std::string val = bcf_get_info_str(h, v, info_tag_str[i].c_str());
                             fprintf(out, "%s", val.c_str());
-
-//                            std::cerr << val << "\n";
                         }
                     }
                 }
@@ -318,18 +304,15 @@ class Igor : Program
                 else if (vlen == BCF_VL_R)
                 {
                 }
-                
-                
+
+
             }
 
             fprintf(out, "\n");
             ++no_variants;
         }
 
-        if (output_text_file!="-")
-        {
-            fclose(out);
-        }
+        if (output_text_file!="-") fclose(out);
         odr->close();
     };
 
@@ -339,6 +322,7 @@ class Igor : Program
         std::clog << "\n";
         std::clog << "options:     input VCF file        " << input_vcf_file << "\n";
         std::clog << "         [o] output text file      " << output_text_file << "\n";
+        print_boo_op("         [v] print variant         ", print_variant);
         print_strvec("         [t] info tags             ", info_tags);
         print_int_op("         [i] intervals             ", intervals);
         std::clog << "\n";
