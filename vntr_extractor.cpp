@@ -430,12 +430,26 @@ void VNTRExtractor::create_and_insert_vntr(Variant& nvar)
     else if (vntr_classification==WILLEMS2014)
     {
         if ((vntr.mlen==1 && vntr.rl>=6) ||
-                (vntr.mlen==2 && vntr.rl>=11) ||
-                (vntr.mlen==3 && vntr.rl>=14) ||
-                (vntr.mlen==4 && vntr.rl>=14) ||
-                (vntr.mlen==5 && vntr.rl>=16) ||
-                (vntr.mlen==6 && vntr.rl>=17) ||
-                (vntr.mlen>=7 && vntr.rl>=vntr.mlen*2))
+            (vntr.mlen==2 && vntr.rl>=11) ||
+            (vntr.mlen==3 && vntr.rl>=14) ||
+            (vntr.mlen==4 && vntr.rl>=14) ||
+            (vntr.mlen==5 && vntr.rl>=16) ||
+            (vntr.mlen==6 && vntr.rl>=17) ||
+            (vntr.mlen>=7 && vntr.rl>=vntr.mlen*2))
+        {
+            insert_vntr = true;
+        }
+    }
+    else if (vntr_classification==MONTGOMERY2014)
+    {
+        if ((vntr.mlen==1 && vntr.rl>=6) ||
+            (vntr.mlen==2 && vntr.rl>=9) ||
+            (vntr.mlen==3 && vntr.rl>=11) ||
+            (vntr.mlen==4 && vntr.rl>=13) ||
+            (vntr.mlen==5 && vntr.rl>=14) ||
+            (vntr.mlen==6 && vntr.rl>=16) ||
+            (vntr.mlen==7 && vntr.rl>=18) ||
+            (vntr.mlen>=7 && vntr.rl>=18))
         {
             insert_vntr = true;
         }
@@ -443,12 +457,12 @@ void VNTRExtractor::create_and_insert_vntr(Variant& nvar)
     else if (vntr_classification==ANANDA2013)
     {
         if ((vntr.mlen==1 && vntr.rl>=2) ||
-                (vntr.mlen==2 && vntr.rl>=4) ||
-                (vntr.mlen==3 && vntr.rl>=6) ||
-                (vntr.mlen==4 && vntr.rl>=8) ||
-                (vntr.mlen==5 && vntr.rl>=10) ||
-                (vntr.mlen==6 && vntr.rl>=12) ||
-                (vntr.mlen>=7 && vntr.rl>=vntr.mlen*2))
+            (vntr.mlen==2 && vntr.rl>=4) ||
+            (vntr.mlen==3 && vntr.rl>=6) ||
+            (vntr.mlen==4 && vntr.rl>=8) ||
+            (vntr.mlen==5 && vntr.rl>=10) ||
+            (vntr.mlen==6 && vntr.rl>=12) ||
+            (vntr.mlen>=7 && vntr.rl>=vntr.mlen*2))
         {
             insert_vntr = true;
         }
@@ -456,11 +470,11 @@ void VNTRExtractor::create_and_insert_vntr(Variant& nvar)
     else if (vntr_classification==FONDON2012)
     {
         if ((vntr.mlen==1 && vntr.rl>=6) ||
-                (vntr.mlen==2 && vntr.rl>=13) ||
-                (vntr.mlen==3 && vntr.rl>=20) ||
-                (vntr.mlen==4 && vntr.rl>=23) ||
-                (vntr.mlen==5 && vntr.rl>=27) ||
-                (vntr.mlen==6 && vntr.rl>=27))
+            (vntr.mlen==2 && vntr.rl>=13) ||
+            (vntr.mlen==3 && vntr.rl>=20) ||
+            (vntr.mlen==4 && vntr.rl>=23) ||
+            (vntr.mlen==5 && vntr.rl>=27) ||
+            (vntr.mlen==6 && vntr.rl>=27))
         {
             insert_vntr = true;
         }
@@ -468,12 +482,12 @@ void VNTRExtractor::create_and_insert_vntr(Variant& nvar)
     else if (vntr_classification==KELKAR2008)
     {
         if ((vntr.mlen==1 && vntr.rl>=6) ||
-                (vntr.mlen==2 && vntr.rl>=10) ||
-                (vntr.mlen==3 && vntr.rl>=6) ||
-                (vntr.mlen==4 && vntr.rl>=8) ||
-                (vntr.mlen==5 && vntr.rl>=10) ||
-                (vntr.mlen==6 && vntr.rl>=12) ||
-                (vntr.mlen>=7 && vntr.rl>=vntr.mlen*2))
+            (vntr.mlen==2 && vntr.rl>=10) ||
+            (vntr.mlen==3 && vntr.rl>=6) ||
+            (vntr.mlen==4 && vntr.rl>=8) ||
+            (vntr.mlen==5 && vntr.rl>=10) ||
+            (vntr.mlen==6 && vntr.rl>=12) ||
+            (vntr.mlen>=7 && vntr.rl>=vntr.mlen*2))
         {
             insert_vntr = true;
         }
@@ -481,12 +495,12 @@ void VNTRExtractor::create_and_insert_vntr(Variant& nvar)
     else if (vntr_classification==LAI2003)
     {
         if ((vntr.mlen==1 && vntr.rl>=6) ||
-                (vntr.mlen==2 && vntr.rl>=8) ||
-                (vntr.mlen==3 && vntr.rl>=12) ||
-                (vntr.mlen==4 && vntr.rl>=16) ||
-                (vntr.mlen==5 && vntr.rl>=20) ||
-                (vntr.mlen==6 && vntr.rl>=24) ||
-                (vntr.mlen>=7 && vntr.rl>=vntr.mlen*2))
+            (vntr.mlen==2 && vntr.rl>=8) ||
+            (vntr.mlen==3 && vntr.rl>=12) ||
+            (vntr.mlen==4 && vntr.rl>=16) ||
+            (vntr.mlen==5 && vntr.rl>=20) ||
+            (vntr.mlen==6 && vntr.rl>=24) ||
+            (vntr.mlen>=7 && vntr.rl>=vntr.mlen*2))
         {
             insert_vntr = true;
         }

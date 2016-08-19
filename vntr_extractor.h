@@ -34,14 +34,15 @@
 #include "flank_detector.h"
 #include "filter.h"
 
-#define LAI2003      0
-#define KELKAR2008   1
-#define FONDON2012   2
-#define ANANDA2013   3
-#define WILLEMS2014  4
-#define TAN_KANG2015 5
-#define EXACT_VNTR   6
-#define FUZZY_VNTR   7
+#define LAI2003         0
+#define KELKAR2008      1
+#define FONDON2012      2
+#define ANANDA2013      3
+#define WILLEMS2014     4
+#define MONTGOMERY2014  5
+#define TAN_KANG2015    6
+#define EXACT_VNTR      7
+#define FUZZY_VNTR      8
 
 /**
  * For consolidating overlapping VNTRs.

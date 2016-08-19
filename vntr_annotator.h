@@ -28,17 +28,6 @@
 #include "candidate_motif_picker.h"
 #include "flank_detector.h"
 
-//definition of STRs
-#define LAI_2003_STR       1
-#define KELKAR_2008_STR    2
-#define FONDON_2012_STR    3
-#define ANANDA_2013_STR    4
-#define WILLEMS_2014_STR   5
-#define TAN_KANG_2015_VNTR 6
-
-//VNTR annotation modes
-#define REPEAT_TRACT_FEATURES  0 // compute composition, entropy, score, trf_score, 
-
 /**
  * Class for determining basic traits of an indel
  * motifs, flanks and VNTR type statistics.
