@@ -81,7 +81,7 @@ class Igor : Program
             TCLAP::ValueArg<std::string> arg_info_tags("t", "t", "list of info tags to be extracted []", true, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_fexp("f", "f", "filter expression []", false, "", "str", cmd);
             TCLAP::SwitchArg arg_debug("d", "d", "debug [false]", cmd, false);
-            TCLAP::SwitchArg arg_print_variant("v", "v", "print variant CHROM,POS,REF,ALT,N_ALLELE [false]", cmd, false);
+            TCLAP::SwitchArg arg_print_variant("v", "v", "suppress printing of variant information : CHROM,POS,REF,ALT,N_ALLELE [true]", cmd, true);
             TCLAP::UnlabeledValueArg<std::string> arg_input_vcf_file("<in.vcf>", "input VCF file", true, "","file", cmd);
 
             cmd.parse(argc, argv);
@@ -175,9 +175,6 @@ class Igor : Program
                 info_tag_vlen.push_back(vlen);
                 info_tag_type.push_back(type);
                 info_tag_num.push_back(num);
-
-//                notice("Adding id:%s, vlen=%s, type=%s, num=%d",
-//                               info_tag_str[i].c_str(), bcf_hdr_vl2str(vlen).c_str(), bcf_hdr_ht2str(type).c_str(), num);
 
                 if (type==BCF_HT_FLAG)
                 {
@@ -295,15 +292,116 @@ class Igor : Program
                 }
                 else if (vlen == BCF_VL_VAR)
                 {
+                    //print as comma delimited in one column
+                    
                 }
                 else if (vlen==BCF_VL_G)
                 {
+                    //seems like the assumption here depends very much on ploidy.  
+                    //does not really seem reasonable to use in INFO field.
+                    int32_t no_alleles = bcf_get_n_allele(v);
+                    int32_t no_genotypes = no_alleles;
+                    
+                    if (type==BCF_HT_INT)
+                    {
+                        for (uint32_t j=0; j<num; ++j)
+                        {
+//                            if (j) fprintf(out, "\t");
+//
+//                            int32_t val = bcf_get_info_int(h, v, info_tag_str[i].c_str());
+//                            fprintf(out, "%d", val);
+                        }
+                    }
+                    else if (type==BCF_HT_REAL)
+                    {
+                        for (uint32_t j=0; j<num; ++j)
+                        {
+                            if (j) fprintf(out, "\t");
+
+                            float val = bcf_get_info_flt(h, v, info_tag_str[i].c_str());
+                            fprintf(out, "%f", val);
+                        }
+                    }
+                    else if (type==BCF_HT_STR)
+                    {
+                        for (uint32_t j=0; j<num; ++j)
+                        {
+                            if (j) fprintf(out, "\t");
+
+                            std::string val = bcf_get_info_str(h, v, info_tag_str[i].c_str());
+                            fprintf(out, "%s", val.c_str());
+                        }
+                    }
                 }
                 else if (vlen == BCF_VL_A)
                 {
+                    int32_t no_alt_alleles = bcf_get_n_allele(v) - 1;
+                    
+                    if (type==BCF_HT_INT)
+                    {
+                        for (uint32_t j=0; j<no_alt_alleles; ++j)
+                        {
+//                            if (j) fprintf(out, "\t");
+//
+//                            int32_t val = bcf_get_info_int(h, v, info_tag_str[i].c_str());
+//                            fprintf(out, "%d", val);
+                        }
+                    }
+                    else if (type==BCF_HT_REAL)
+                    {
+                        for (uint32_t j=0; j<no_alt_alleles; ++j)
+                        {
+                            if (j) fprintf(out, "\t");
+
+                            float val = bcf_get_info_flt(h, v, info_tag_str[i].c_str());
+                            fprintf(out, "%f", val);
+                        }
+                    }
+                    else if (type==BCF_HT_STR)
+                    {
+                        for (uint32_t j=0; j<no_alt_alleles; ++j)
+                        {
+                            if (j) fprintf(out, "\t");
+
+                            std::string val = bcf_get_info_str(h, v, info_tag_str[i].c_str());
+                            fprintf(out, "%s", val.c_str());
+                        }
+                    }
                 }
                 else if (vlen == BCF_VL_R)
                 {
+                    int32_t no_alleles = bcf_get_n_allele(v);
+                    
+                    if (type==BCF_HT_INT)
+                    {
+                        for (uint32_t j=0; j<no_alleles; ++j)
+                        {
+//                            if (j) fprintf(out, "\t");
+//
+//                            int32_t val = bcf_get_info_int(h, v, info_tag_str[i].c_str());
+//                            fprintf(out, "%d", val);
+                        }
+                    }
+                    else if (type==BCF_HT_REAL)
+                    {
+                        for (uint32_t j=0; j<no_alleles; ++j)
+                        {
+                            if (j) fprintf(out, "\t");
+
+                            float val = bcf_get_info_flt(h, v, info_tag_str[i].c_str());
+                            fprintf(out, "%f", val);
+                        }
+                    }
+                    else if (type==BCF_HT_STR)
+                    {
+                        for (uint32_t j=0; j<no_alleles; ++j)
+                        {
+                            if (j) fprintf(out, "\t");
+
+                            std::string val = bcf_get_info_str(h, v, info_tag_str[i].c_str());
+                            fprintf(out, "%s", val.c_str());
+                        }
+                    }
                 }
             }
 
