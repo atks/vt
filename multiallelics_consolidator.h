@@ -34,15 +34,6 @@
 #include "flank_detector.h"
 #include "filter.h"
 
-#define LAI2003      0
-#define KELKAR2008   1
-#define FONDON2012   2
-#define ANANDA2013   3
-#define WILLEMS2014  4
-#define TAN_KANG2015 5
-#define EXACT_VNTR   6
-#define FUZZY_VNTR   7
-
 /**
  * For consolidating overlapping biallelic variants.
  * into multiallelic variants.

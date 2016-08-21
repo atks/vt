@@ -555,5 +555,51 @@ void VNTRExtractor::create_and_insert_vntr(Variant& nvar)
 
         insert(nvntr);
     }
+}
 
+
+/**
+ * Converts VNTR classification to string
+ */
+std::string VNTRExtractor::vntr_code_2_str(int32_t code)
+{
+    //convert all indels into their corresponding VNTR representation using exact parameters
+    if (vntr_classification==EXACT_VNTR)
+    {
+        return "EXACT_VNTR";
+    }
+    else if (vntr_classification==FUZZY_VNTR)
+    {
+        return "FUZZY_VNTR";
+    }
+    else if (vntr_classification==TAN_KANG2015)
+    {
+        return "TAN_KANG2015";
+    }
+    else if (vntr_classification==WILLEMS2014)
+    {
+        return "WILLEMS2014";
+    }
+    else if (vntr_classification==MONTGOMERY2014)
+    {
+        return "MONTGOMERY2014";
+    }
+    else if (vntr_classification==ANANDA2013)
+    {
+        return "ANANDA2013";
+    }
+    else if (vntr_classification==FONDON2012)
+    {
+        return "FONDON2012";
+    }
+    else if (vntr_classification==KELKAR2008)
+    {
+        return "KELKAR2008";
+    }
+    else if (vntr_classification==LAI2003)
+    {
+        return "LAI2003";
+    }
+    
+    return "UNRECOGNIZED_CLASSIFICATION";
 }

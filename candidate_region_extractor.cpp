@@ -192,7 +192,12 @@ void CandidateRegionExtractor::extract_regions_by_exact_alignment(Variant& varia
         trim(pos1, ref, alt);
 
         int32_t end1 = pos1 + ref.size() - 1;
+        std::cerr << end1 << " " << ref << "  " << alt << "\n";
+        
         right_align(chrom, end1, ref, alt);
+
+        std::cerr << end1 << " " << ref << "  " << alt << "\n";
+        
 
         int32_t beg1 = end1 - ref.size() + 1;
         left_align(chrom, beg1, ref, alt);
@@ -201,7 +206,7 @@ void CandidateRegionExtractor::extract_regions_by_exact_alignment(Variant& varia
         max_end1 = end1>max_end1 ? end1 : max_end1;
 
         int32_t seq_len;
-        char* seq = rs->fetch_seq(chrom, min_beg1-1, max_end1-1);
+        char* seq = rs->fetch_seq(chrom, min_beg1, max_end1);
 
         if (debug)
         {
@@ -212,7 +217,7 @@ void CandidateRegionExtractor::extract_regions_by_exact_alignment(Variant& varia
         if (seq) free(seq);
     }
 
-    char* seq = rs->fetch_seq(chrom, min_beg1-1, max_end1-1);
+    char* seq = rs->fetch_seq(chrom, min_beg1, max_end1);
 
     if (debug)
     {
@@ -252,7 +257,7 @@ void CandidateRegionExtractor::right_align(std::string& chrom, int32_t& pos1, st
 {
     while (ref.at(0)==alt.at(0))
     {
-        char base = rs->fetch_base(chrom, pos1);
+        char base = rs->fetch_base(chrom, pos1+1);
         ref.erase(0,1);
         alt.erase(0,1);
         ref.push_back(base);

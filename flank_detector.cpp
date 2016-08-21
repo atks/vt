@@ -449,7 +449,7 @@ std::string FlankDetector::choose_fuzzy_3prime_repeat_unit(std::string& seq, std
     for (uint32_t i=0; i<motif.size(); ++i)
     {
         std::string smotif = shift_str(motif, i);
-        int32_t sscore = compute_score(seq.size()-mlen, mlen, seq, smotif);
+        int32_t sscore = compute_score(seq.size()-mlen+1, mlen, seq, smotif);
         if (sscore==max_score)
         {
             return smotif;
@@ -461,7 +461,7 @@ std::string FlankDetector::choose_fuzzy_3prime_repeat_unit(std::string& seq, std
         }
 
         std::string rc_smotif = VNTR::reverse_complement(smotif);
-        int32_t rc_score = compute_score(seq.size()-mlen, mlen, seq, rc_smotif);
+        int32_t rc_score = compute_score(seq.size()-mlen+1, mlen, seq, rc_smotif);
         if (rc_score==max_score)
         {
             return rc_smotif;

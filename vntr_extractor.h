@@ -183,6 +183,11 @@ class VNTRExtractor
      */
     void create_and_insert_vntr(Variant& nvar);
 
+    /**
+     * Converts VNTR classification to string
+     */
+    std::string vntr_code_2_str(int32_t code); 
+
     private:
 };
 
