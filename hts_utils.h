@@ -496,17 +496,17 @@ int32_t bcf_get_info_int(bcf_hdr_t *h, bcf1_t *v, const char* tag, int32_t defau
 /**
  * Sets an info integer.
  */
-int32_t bcf_set_info_int(bcf_hdr_t *h, bcf1_t *v, const char* tag, int32_t value);
+void bcf_set_info_int(bcf_hdr_t *h, bcf1_t *v, const char* tag, int32_t value);
+
+/**
+ * Gets an info integer vector.
+ */
+std::vector<int32_t> bcf_get_info_int_vec(bcf_hdr_t *h, bcf1_t *v, const char* tag, int32_t default_size=0, int32_t default_value=0);
 
 /**
  * Sets an info integer vector.
  */
-int32_t bcf_set_info_int(bcf_hdr_t *h, bcf1_t *v, const char* tag, std::vector<int32_t>& values);
-
-/**
- * Gets an info int vector.
- */
-std::vector<int32_t> bcf_get_info_int_vec(bcf_hdr_t *h, bcf1_t *v, const char* tag, int32_t default_size=0, int32_t default_value=0);
+void bcf_set_info_int_vec(bcf_hdr_t *h, bcf1_t *v, const char* tag, std::vector<int32_t>& values);
 
 /**
  * Gets an info float.
@@ -516,12 +516,37 @@ float bcf_get_info_flt(bcf_hdr_t *h, bcf1_t *v, const char* tag, float default_v
 /**
  * Sets an info float.
  */
-int32_t bcf_set_info_flt(bcf_hdr_t *h, bcf1_t *v, const char* tag, float value);
+void bcf_set_info_flt(bcf_hdr_t *h, bcf1_t *v, const char* tag, float value);
+
+/**
+ * Gets an info integer vector.
+ */
+std::vector<float> bcf_get_info_flt_vec(bcf_hdr_t *h, bcf1_t *v, const char* tag, int32_t default_size=0, float default_value=0);
+
+/**
+ * Sets an info float vector.
+ */
+void bcf_set_info_flt_vec(bcf_hdr_t *h, bcf1_t *v, const char* tag, std::vector<float>& values);
 
 /**
  * Gets an info string.
  */
 std::string bcf_get_info_str(bcf_hdr_t *h, bcf1_t *v, const char* tag, std::string default_value = "");
+
+/**
+ * Sets an info string.
+ */
+void bcf_set_info_str(bcf_hdr_t *h, bcf1_t *v, const char* tag, std::string default_value = "");
+
+/**
+ * Gets an info string vector.
+ */
+std::vector<std::string> bcf_get_info_str_vec(bcf_hdr_t *h, bcf1_t *v, const char* tag, std::string default_value = "");
+
+/**
+ * Sets an info string vector.
+ */
+void bcf_set_info_str_vec(bcf_hdr_t *h, bcf1_t *v, const char* tag, std::vector<std::string> values);
 
 /**
  * Get allele

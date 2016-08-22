@@ -316,7 +316,7 @@ class Igor : Program
                     {
                         for (uint32_t j=0; j<num; ++j)
                         {
-                            if (j) fprintf(out, "\t");
+                            if (j) fprintf(out, ",");
 
                             float val = bcf_get_info_flt(h, v, info_tag_str[i].c_str());
                             fprintf(out, "%f", val);
@@ -326,7 +326,7 @@ class Igor : Program
                     {
                         for (uint32_t j=0; j<num; ++j)
                         {
-                            if (j) fprintf(out, "\t");
+                            if (j) fprintf(out, ",");
 
                             std::string val = bcf_get_info_str(h, v, info_tag_str[i].c_str());
                             fprintf(out, "%s", val.c_str());

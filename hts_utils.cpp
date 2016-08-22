@@ -1239,21 +1239,13 @@ int32_t bcf_get_info_int(bcf_hdr_t *h, bcf1_t *v, const char* tag, int32_t defau
 /**
  * Sets an info integer.
  */
-int32_t bcf_set_info_int(bcf_hdr_t *h, bcf1_t *v, const char* tag, int32_t value)
+void bcf_set_info_int(bcf_hdr_t *h, bcf1_t *v, const char* tag, int32_t value)
 {
-    return bcf_update_info_int32(h, v, tag, &value, 1);
+    bcf_update_info_int32(h, v, tag, &value, 1);
 }
 
 /**
- * Sets an info integer vector.
- */
-int32_t bcf_set_info_int(bcf_hdr_t *h, bcf1_t *v, const char* tag, std::vector<int32_t>& values)
-{
-    return bcf_update_info_int32(h, v, tag, &values[0], values.size());
-}
-
-/**
- * Gets an info int vector.
+ * Gets an info integer vector.
  */
 std::vector<int32_t> bcf_get_info_int_vec(bcf_hdr_t *h, bcf1_t *v, const char* tag, int32_t default_size, int32_t default_value)
 {
@@ -1271,6 +1263,22 @@ std::vector<int32_t> bcf_get_info_int_vec(bcf_hdr_t *h, bcf1_t *v, const char* t
     }
 
     return i_vec;
+}
+
+/**
+ * Sets an info integer vector.
+ */
+void bcf_set_info_int_vec(bcf_hdr_t *h, bcf1_t *v, const char* tag, std::vector<int32_t>& values)
+{
+    bcf_update_info_int32(h, v, tag, &values[0], values.size());
+}
+
+/**
+ * Sets an info integer vector.
+ */
+void bcf_set_info_int(bcf_hdr_t *h, bcf1_t *v, const char* tag, std::vector<int32_t>& values)
+{
+    bcf_update_info_int32(h, v, tag, &values[0], values.size());
 }
 
 /**
@@ -1297,9 +1305,70 @@ float bcf_get_info_flt(bcf_hdr_t *h, bcf1_t *v, const char* tag, float default_v
 /**
  * Sets an info float.
  */
-int32_t bcf_set_info_flt(bcf_hdr_t *h, bcf1_t *v, const char* tag, float value)
+void bcf_set_info_flt(bcf_hdr_t *h, bcf1_t *v, const char* tag, float value)
 {
-    return bcf_update_info_float(h, v, tag, &value, 1);
+    bcf_update_info_float(h, v, tag, &value, 1);
+}
+
+/**
+ * Gets an info integer vector.
+ */
+std::vector<float> bcf_get_info_flt_vec(bcf_hdr_t *h, bcf1_t *v, const char* tag, int32_t default_size, float default_value)
+{
+    std::vector<float> vec;
+
+    return vec;
+}
+
+/**
+ * Sets an info float vector.
+ */
+void bcf_set_info_flt_vec(bcf_hdr_t *h, bcf1_t *v, const char* tag, std::vector<float>& values)
+{
+}
+
+/**
+ * Gets an info string.
+ */
+std::string bcf_get_info_str(bcf_hdr_t *h, bcf1_t *v, const char* tag, std::string default_value)
+{
+    std::string str = "";
+    char* s = NULL;
+    int32_t n = 0;
+    if (bcf_get_info_string(h, v, tag, &s, &n)>0)
+    {
+        str.assign(s);
+        free(s);
+    }
+    else
+    {
+        return default_value;
+    }
+
+    return str;
+}
+
+/**
+ * Sets an info string.
+ */
+void bcf_set_info_str(bcf_hdr_t *h, bcf1_t *v, const char* tag, std::string default_value)
+{
+}
+
+/**
+ * Gets an info string vector.
+ */
+std::vector<std::string> bcf_get_info_str_vec(bcf_hdr_t *h, bcf1_t *v, const char* tag, std::string default_value)
+{
+    std::vector<std::string> vec;
+
+    return vec;
+}
+/**
+ * Sets an info string vector.
+ */
+void bcf_set_info_str_vec(bcf_hdr_t *h, bcf1_t *v, const char* tag, std::vector<std::string> values)
+{
 }
 
 /**
@@ -1337,27 +1406,6 @@ bcf_hdr_t* bcf_create_dummy_hdr()
     bcf_hdr_append(h, "##contig=<ID=MT,assembly=b37,length=16569>");
 
     return h;
-}
-
-/**
- * Gets an info string.
- */
-std::string bcf_get_info_str(bcf_hdr_t *h, bcf1_t *v, const char* tag, std::string default_value)
-{
-    std::string str = "";
-    char* s = NULL;
-    int32_t n = 0;
-    if (bcf_get_info_string(h, v, tag, &s, &n)>0)
-    {
-        str.assign(s);
-        free(s);
-    }
-    else
-    {
-        return default_value;
-    }
-
-    return str;
 }
 
 /**

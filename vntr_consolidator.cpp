@@ -483,7 +483,7 @@ void VNTRConsolidator::merge_consistent_ru_overlapping_VNTR(Variant* variant)
     bcf_set_info_int(h, v, "MLEN", motif.size());
     bcf_set_info_int(h, v, "BLEN", basis.size());
     std::vector<int32_t> repeat_tract = {merged_beg1, merged_end1};
-    bcf_set_info_int(h, v, "REPEAT_TRACT", repeat_tract);
+    bcf_set_info_int_vec(h, v, "REPEAT_TRACT", repeat_tract);
     bcf_update_info_int32(h, v, "COMP", &fd->comp[0], 4);
     bcf_set_info_flt(h, v, "ENTROPY", fd->entropy);
     bcf_set_info_flt(h, v, "KL_DIVERGENCE", fd->kl_divergence);
@@ -492,7 +492,7 @@ void VNTRConsolidator::merge_consistent_ru_overlapping_VNTR(Variant* variant)
     bcf_set_info_int(h, v, "RL", fd->rl);
     bcf_set_info_int(h, v, "LL", fd->rl+max_dlen);
     std::vector<int32_t> ru_counts = {fd->no_perfect_ru, fd->no_ru};
-    bcf_set_info_int(h, v, "RU_COUNTS", ru_counts);
+    bcf_set_info_int_vec(h, v, "RU_COUNTS", ru_counts);
     bcf_set_info_flt(h, v, "SCORE", fd->score);
     bcf_set_info_int(h, v, "TRF_SCORE", fd->trf_score);
     std::string associated_indels = join(unique_indels, ",");
