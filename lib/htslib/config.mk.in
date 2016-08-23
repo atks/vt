@@ -1,6 +1,6 @@
 #  Optional configure Makefile overrides for htslib.
 #
-#    Copyright (C) 2015 Genome Research Ltd.
+#    Copyright (C) 2015, 2016 Genome Research Ltd.
 #
 #    Author: John Marshall <jm18@sanger.ac.uk>
 #
@@ -55,34 +55,7 @@ noplugin_LIBS =
 
 # ifeq/.../endif, +=, and target-specific variables are GNU Make-specific.
 # If you don't have GNU Make, comment out this conditional and note that
-# to enable iRODS you will need to implement the following elsewhere.
-ifeq "iRODS-@irods@" "iRODS-enabled"
-
-@define_IRODS_HOME@
-
-IRODS_CPPFLAGS = \
-	-I$(IRODS_HOME)/lib/api/include \
-	-I$(IRODS_HOME)/lib/core/include \
-	-I$(IRODS_HOME)/lib/md5/include \
-	-I$(IRODS_HOME)/lib/sha1/include \
-	-I$(IRODS_HOME)/server/core/include \
-	-I$(IRODS_HOME)/server/drivers/include \
-	-I$(IRODS_HOME)/server/icat/include
-
-IRODS_LDFLAGS = -L$(IRODS_HOME)/lib/core/obj
-IRODS_LIBS = -lRodsAPIs -lgssapi_krb5
-
-plugin_OBJS += hfile_irods.o
-
-hfile_irods.o hfile_irods.pico: CPPFLAGS += $(IRODS_CPPFLAGS)
-hfile_irods$(PLUGIN_EXT): LDFLAGS += $(IRODS_LDFLAGS)
-hfile_irods$(PLUGIN_EXT): LIBS += $(IRODS_LIBS)
-
-noplugin_LDFLAGS += $(IRODS_LDFLAGS)
-noplugin_LIBS += $(IRODS_LIBS)
-
-endif
-
+# to enable libcurl you will need to implement the following elsewhere.
 ifeq "libcurl-@libcurl@" "libcurl-enabled"
 
 LIBCURL_LIBS = -lcurl @CRYPTO_LIBS@
@@ -104,6 +77,9 @@ LIBHTS_OBJS += plugin.o
 PLUGIN_OBJS += $(plugin_OBJS)
 
 plugin.o plugin.pico: CPPFLAGS += -DPLUGINPATH=\"$(pluginpath)\"
+
+# When built as separate plugins, these record their version themselves.
+hfile_libcurl.o hfile_libcurl.pico: version.h
 
 # Windows DLL plugins depend on the import library, built as a byproduct.
 $(plugin_OBJS:.o=.cygdll): cyghts-$(LIBHTS_SOVERSION).dll
