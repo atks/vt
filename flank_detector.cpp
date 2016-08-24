@@ -300,6 +300,12 @@ std::string FlankDetector::shift_str(std::string& seq, uint32_t i)
  */
 int32_t FlankDetector::compute_score(int32_t start, int32_t len, std::string& a, std::string& b)
 {
+    
+    std::cerr << a << "\n";
+    std::cerr << b << "\n";
+    std::cerr << start << "\n";
+    std::cerr << len << "\n";
+    
     if (len>b.size())
     {
         len = b.size();

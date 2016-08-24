@@ -126,6 +126,7 @@ SOURCES = ahmm\
 		vntr_genotyping_record\
 		vntr_tree\
 		vntrize\
+		wdp_ahmm\
    	        	
 SOURCESONLY = main.cpp
 
