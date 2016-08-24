@@ -218,17 +218,17 @@ void CHMM::initialize_structures()
     moves[W][Z] = &CHMM::move_W_Z;
     moves[Z][Z] = &CHMM::move_Z_Z;
 }
-    
+
 /**
  * Initialize transition matrix based on parameters.
  */
 void CHMM::initialize_T()
 {
-        float delta = par.delta;
+    float delta = par.delta;
     float epsilon = par.epsilon;
     float tau = par.tau;
     float eta = par.eta;
-    
+
     for (size_t i=S; i<=Z; ++i)
     {
         for (size_t j=S; j<=Z; ++j)
@@ -316,7 +316,7 @@ void CHMM::initialize_T()
  */
 void CHMM::initialize_UV()
 {
-        //used for back tracking, this points to the state prior to the alignment for subsequence (i,j)
+    //used for back tracking, this points to the state prior to the alignment for subsequence (i,j)
     //that ends with the corresponding state
 
     int32_t t=0;
@@ -533,7 +533,7 @@ void CHMM::set_model(const char* lflank, const char* motif, const char* rflank)
     if (model[LFLANK]) free(model[LFLANK]);
     if (model[MOTIF]) free(model[MOTIF]);
     if (model[RFLANK]) free(model[RFLANK]);
-    
+
     model[LFLANK] = strdup(lflank);
     model[MOTIF] = strdup(motif);
     model[RFLANK] = strdup(rflank);
@@ -541,7 +541,6 @@ void CHMM::set_model(const char* lflank, const char* motif, const char* rflank)
     lflen = strlen(model[LFLANK]);
     mlen = strlen(model[MOTIF]);
     rflen = strlen(model[RFLANK]);
-
 }
 
 /**
@@ -925,7 +924,7 @@ void CHMM::align(const char* read, const char* qual, bool debug)
         std::cerr << "\n";
 
         std::cerr << "\n";
-        std::cerr << "Emission log odds\n";    
+        std::cerr << "Emission log odds\n";
         std::cerr << "K = " << 'K' << " " << log10_emission_odds('A', 'A', 'K'-33) << " " << log10_emission_odds('A', 'G', 'K'-33)  << "\n";
         std::cerr << "\n";
     }
@@ -963,7 +962,7 @@ void CHMM::trace_path()
             optimal_state = Z;
             optimal_probe_len = i;
         }
-        
+
         if (V[MR][c]>=optimal_score)
         {
             optimal_score = V[MR][c];
@@ -971,7 +970,7 @@ void CHMM::trace_path()
             optimal_state = MR;
             optimal_probe_len = i;
         }
-        
+
     }
 
     //trace path
@@ -1477,7 +1476,7 @@ void CHMM::print_alignment()
 void CHMM::print_alignment(std::string& pad)
 {
     if (debug) print_T();
-    
+
     if (!optimal_path_traced)
     {
         std::cerr << "path not traced\n";
@@ -1595,7 +1594,7 @@ void CHMM::print_alignment(std::string& pad)
         }
         ++path;
     }
-    std::cerr << "\n";        
+    std::cerr << "\n";
 };
 
 /**
