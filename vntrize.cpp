@@ -148,7 +148,6 @@ class Igor : Program
      */
     void update_joint_allele_dist(int32_t no_indel_alleles, int32_t no_tandem_repeat_alleles)
     {
-//
 //        std::cerr << "updating " << no_indel_alleles << " " << no_tandem_repeat_alleles << "\n";
 //        std::cerr << joint_allele_dist.size() <<  " => ";
         if (joint_allele_dist.size()<=no_indel_alleles)

@@ -29,10 +29,6 @@
 #define T 8
 #define N 15
 
-//
-
-
-
 /**
  * Constructor.
  */
@@ -85,12 +81,7 @@ LargeMotifTree::LargeMotifTree()
         }
         
         //for the len - extract base
-        
-        
-        
         uint32_t c = canonical(seq);
-        
-        
     }
 
 };
@@ -110,9 +101,6 @@ void LargeMotifTree::set_sequence(char* sequence)
 {
     //translate sequence to binary form
     uint32_t len = strlen(sequence);
-
-
-
 };
 
 /**

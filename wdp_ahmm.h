@@ -20,42 +20,18 @@
    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
    THE SOFTWARE.
 */
-#ifndef WDP_WDP_AHMM_H
-#define WDP_WDP_AHMM_H
+#ifndef WDP_AHMM_H
+#define WDP_AHMM_H
 
 #include "hts_utils.h"
 #include "utils.h"
 #include "log_tool.h"
 
-#define MAXLEN 1024
-#define MAXLEN_NBITS 10
-
-#define S       0
-#define M       1
-#define D       2
-#define I       3
-#define E       4
-#define N       5
-#define TBD     6
 #define NSTATES 6
 
-#define MOTIF     1
-#define UNMODELED 3
-#define UNCERTAIN 4
-
-//match type
-#define MODEL 0
-#define READ  1
-#define MATCH 2
-
-/*for indexing single array*/
-#define index(i,j) (((i)<<MAXLEN_NBITS)+(j))
-
-//[N|!|0|0]
-#define NULL_TRACK  0x7C000000
-//[N|l|0|0]
-#define START_TRACK 0x78000000
-
+/**
+ * Parameters for WDP_AHMM
+ */
 class WDP_AHMMParameters
 {
     public: 
@@ -76,6 +52,9 @@ class WDP_AHMMParameters
     };
 };
 
+/**
+ * Wrap around Dynamic Programming implementation of AHMM
+ */
 class WDP_AHMM
 {
     public:
@@ -88,7 +67,8 @@ class WDP_AHMM
     //model variables
     char *motif;
     int32_t mlen;
-
+    int32_t rlen;
+    
     /*result variables*/
     int32_t motif_start[2], motif_end[2];
     int32_t motif_count, exact_motif_count, motif_m, motif_xid;
@@ -326,41 +306,6 @@ class WDP_AHMM
      * Prints track.
      */
     void print_track(int32_t t);
-
-    /**
-     * move_A_B(int32_t t, int32_t j)
-     *
-     * A - source state
-     * B - destination state
-     * t - source track (model position)
-     * j - source read position
-     */
-
 };
-
-
-#undef index
-
-#undef MAXLEN
-#undef MAXLEN_NBITS
-#undef S
-#undef M
-#undef I
-#undef D
-#undef E
-#undef N
-#undef TBD
-#undef NSTATES
-
-#undef MOTIF
-#undef UNMODELED
-#undef UNCERTAIN
-
-#undef READ
-#undef MODEL
-#undef MATCH
-
-#undef NULL_TRACK
-#undef START_TRACK
 
 #endif

@@ -30,10 +30,8 @@
 #define M       1
 #define D       2
 #define I       3
-#define Z       4
 #define E       5
 #define N       6
-#define TBD     7
 #define NSTATES 6
 
 /*for indexing single array*/
@@ -151,9 +149,6 @@ void WDP_AHMM::initialize_UV()
         for (size_t j=0; j<MAXLEN; ++j)
         {
             size_t c = index(i,j);
-
-           
-           
         }
     }
 
@@ -288,7 +283,7 @@ void WDP_AHMM::align(const char* read, const char* qual)
 //    this->read = read;
 //    this->qual = qual;
 //    rlen = strlen(read);
-//    
+//
 //    if (rlen>=MAXLEN)
 //    {
 //        fprintf(stderr, "[%s:%d %s] Sequence to be aligned is greater than %d currently supported, subsetting string to first 1023 characters: %d\n", __FILE__, __LINE__, __FUNCTION__, MAXLEN, rlen);
@@ -530,8 +525,8 @@ void WDP_AHMM::collect_statistics(int32_t src_t, int32_t des_t, int32_t j)
 //        trf_score -= 7;
 //        ++motif_discordance[track_get_c(des_t)];
 //    }
-//    
-//    frac_no_repeats = motif_count - (mlen-last_motif_pos)/((float)mlen);        
+//
+//    frac_no_repeats = motif_count - (mlen-last_motif_pos)/((float)mlen);
 };
 
 /**
@@ -603,38 +598,39 @@ float WDP_AHMM::log10_emission_odds(char probe_base, char read_base, uint32_t pl
  */
 std::string WDP_AHMM::state2string(int32_t state)
 {
-    if (state==S)
-    {
-        return "S";
-    }
-    else if (state==M)
-    {
-        return "M";
-    }
-    else if (state==D)
-    {
-        return "D";
-    }
-    else if (state==I)
-    {
-        return "I";
-    }
-    else if (state==E)
-    {
-        return "E";
-    }
-    else if (state==N)
-    {
-        return "N";
-    }
-    else if (state==TBD)
-    {
-        return "*";
-    }
-    else
-    {
-        return "!";
-    }
+//    if (state==S)
+//    {
+//        return "S";
+//    }
+//    else if (state==M)
+//    {
+//        return "M";
+//    }
+//    else if (state==D)
+//    {
+//        return "D";
+//    }
+//    else if (state==I)
+//    {
+//        return "I";
+//    }
+//    else if (state==E)
+//    {
+//        return "E";
+//    }
+//    else if (state==N)
+//    {
+//        return "N";
+//    }
+//    else if (state==TBD)
+//    {
+//        return "*";
+//    }
+//    else
+//    {
+//        return "!";
+//    }
+    return "";
 }
 
 /**
@@ -665,10 +661,6 @@ std::string WDP_AHMM::state2cigarstring(int32_t state)
     else if (state==N)
     {
         return "N";
-    }
-    else if (state==TBD)
-    {
-        return "*";
     }
     else
     {
@@ -802,16 +794,15 @@ void WDP_AHMM::print_alignment(std::string& pad)
         std::cerr << "path not traced\n";
     }
 
-//    std::cerr << "=================================\n";
-//    std::cerr << "WDP_AHMM\n";
-//    std::cerr << "*********************************\n";
-//    std::cerr << "repeat motif : " << model[MOTIF] << "\n";
-//    std::cerr << "lflen        : " << lflen << "\n";
-//    std::cerr << "mlen         : " << mlen << "\n";
+    std::cerr << "=================================\n";
+    std::cerr << "WDP_AHMM\n";
+    std::cerr << "*********************************\n";
+    std::cerr << "repeat motif : " << motif << "\n";
+    std::cerr << "mlen         : " << mlen << "\n";
 //    std::cerr << "plen         : " << plen << "\n";
 //    std::cerr << "\n";
-//    std::cerr << "read         : " << read << "\n";
-//    std::cerr << "rlen         : " << rlen << "\n";
+    std::cerr << "read         : " << read << "\n";
+    std::cerr << "rlen         : " << rlen << "\n";
 //    std::cerr << "\n";
 //    std::cerr << "optimal score: " << optimal_score << "\n";
 //    std::cerr << "optimal state: " << state2string(optimal_state) << "\n";
@@ -835,13 +826,13 @@ void WDP_AHMM::print_alignment(std::string& pad)
 //    for (int32_t k=1; k<=motif_count; ++k)
 //    {
 //        std::cerr << motif_discordance[k] << (k==motif_count?"\n":"|");
-//    }    
+//    }
 //    std::cerr << "fractional no. repeat units : " << frac_no_repeats << "\n";
 //    std::cerr << "repeat tract length         : " << rlen << "\n";
 //    std::cerr << "TRF Score                   : " << trf_score << "\n";
-//    
+//
 //    std::cerr << "\n";
-//            
+//
 //    //print path
 //    int32_t* path;
 //    path = optimal_path_ptr;
@@ -951,30 +942,30 @@ void WDP_AHMM::print(int32_t *v, size_t plen, size_t rlen)
  */
 void WDP_AHMM::print_T()
 {
-    std::cerr << "\t";
-    for (size_t j=S; j<=Z; ++j)
-    {
-        std::cerr << std::setw(8) << std::setprecision(2) << std::fixed << state2string(j);
-    }
-    std::cerr << "\n";
-
-    for (size_t i=S; i<=Z; ++i)
-    {
-        std::cerr << "\t";
-        for (size_t j=S; j<=Z; ++j)
-        {
-            if (j)
-            {
-                std::cerr << std::setw(8) << std::setprecision(2) << std::fixed << T[i][j];
-            }
-            else
-            {
-                std::cerr << state2string(i) << std::setw(8) << std::setprecision(2) << std::fixed << T[i][j];
-            }
-        }
-        std::cerr << "\n";
-    }
-    std::cerr << "\n";
+//    std::cerr << "\t";
+//    for (size_t j=S; j<=Z; ++j)
+//    {
+//        std::cerr << std::setw(8) << std::setprecision(2) << std::fixed << state2string(j);
+//    }
+//    std::cerr << "\n";
+//
+//    for (size_t i=S; i<=Z; ++i)
+//    {
+//        std::cerr << "\t";
+//        for (size_t j=S; j<=Z; ++j)
+//        {
+//            if (j)
+//            {
+//                std::cerr << std::setw(8) << std::setprecision(2) << std::fixed << T[i][j];
+//            }
+//            else
+//            {
+//                std::cerr << state2string(i) << std::setw(8) << std::setprecision(2) << std::fixed << T[i][j];
+//            }
+//        }
+//        std::cerr << "\n";
+//    }
+//    std::cerr << "\n";
 };
 
 /**
@@ -1037,39 +1028,11 @@ void WDP_AHMM::print_track(int32_t t)
 #undef MAXLEN
 #undef MAXLEN_NBITS
 #undef S
-#undef ML
 #undef M
 #undef I
 #undef D
-#undef Z
 #undef E
 #undef N
-#undef TBD
 #undef NSTATES
 
-#undef LFLANK
-#undef MOTIF
-#undef RFLANK
-#undef UNMODELED
-#undef UNCERTAIN
-
-#undef READ
-#undef MODEL
-#undef MATCH
-
 #undef index
-#undef track_get_u
-#undef track_get_d
-#undef track_get_d
-#undef track_get_c
-#undef track_get_p
-#undef track_get_base
-#undef track_valid
-#undef track_set_u
-#undef track_set_d
-#undef track_set_c
-#undef track_set_p
-#undef make_track
-
-#undef NULL_TRACK
-#undef START_TRACK
