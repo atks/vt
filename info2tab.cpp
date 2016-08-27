@@ -293,7 +293,39 @@ class Igor : Program
                 else if (vlen == BCF_VL_VAR)
                 {
                     //print as comma delimited in one column
-                    
+                    if (type==BCF_HT_INT)
+                    {
+                        std::vector<int32_t> vals = bcf_get_info_int_vec(h, v, info_tag_str[i].c_str());
+                                                        
+                        for (uint32_t j=0; j<vals.size(); ++j)
+                        {
+                            if (j) fprintf(out, "\t");
+
+                            fprintf(out, "%d", vals[j]);
+                        }
+                    }
+                    else if (type==BCF_HT_REAL)
+                    {
+                        std::vector<float> vals = bcf_get_info_flt_vec(h, v, info_tag_str[i].c_str());
+                        
+                        for (uint32_t j=0; j<vals.size(); ++j)
+                        {
+                            if (j) fprintf(out, ",");
+
+                            fprintf(out, "%f", vals[j]);
+                        }
+                    }
+                    else if (type==BCF_HT_STR)
+                    {
+                        std::vector<std::string> vals = bcf_get_info_str_vec(h, v, info_tag_str[i].c_str());
+                        
+                        for (uint32_t j=0; j<vals.size(); ++j)
+                        {
+                            if (j) fprintf(out, ",");
+
+                            fprintf(out, "%s", vals[j].c_str());
+                        }
+                    }
                 }
                 else if (vlen==BCF_VL_G)
                 {
@@ -304,32 +336,35 @@ class Igor : Program
                     
                     if (type==BCF_HT_INT)
                     {
-                        for (uint32_t j=0; j<num; ++j)
+                        std::vector<int32_t> vals = bcf_get_info_int_vec(h, v, info_tag_str[i].c_str());
+                                                        
+                        for (uint32_t j=0; j<vals.size(); ++j)
                         {
-//                            if (j) fprintf(out, "\t");
-//
-//                            int32_t val = bcf_get_info_int(h, v, info_tag_str[i].c_str());
-//                            fprintf(out, "%d", val);
+                            if (j) fprintf(out, "%c", i==1?'\t':',');
+
+                            fprintf(out, "%d", vals[j]);
                         }
                     }
                     else if (type==BCF_HT_REAL)
                     {
-                        for (uint32_t j=0; j<num; ++j)
+                        std::vector<float> vals = bcf_get_info_flt_vec(h, v, info_tag_str[i].c_str());
+                        
+                        for (uint32_t j=0; j<vals.size(); ++j)
                         {
-                            if (j) fprintf(out, ",");
+                            if (j) fprintf(out, "%c", i==1?'\t':',');
 
-                            float val = bcf_get_info_flt(h, v, info_tag_str[i].c_str());
-                            fprintf(out, "%f", val);
+                            fprintf(out, "%f", vals[j]);
                         }
                     }
                     else if (type==BCF_HT_STR)
                     {
-                        for (uint32_t j=0; j<num; ++j)
+                        std::vector<std::string> vals = bcf_get_info_str_vec(h, v, info_tag_str[i].c_str());
+                        
+                        for (uint32_t j=0; j<vals.size(); ++j)
                         {
-                            if (j) fprintf(out, ",");
+                            if (j) fprintf(out, "%c", i==1?'\t':',');
 
-                            std::string val = bcf_get_info_str(h, v, info_tag_str[i].c_str());
-                            fprintf(out, "%s", val.c_str());
+                            fprintf(out, "%s", vals[j].c_str());
                         }
                     }
                 }
@@ -339,19 +374,20 @@ class Igor : Program
                     
                     if (type==BCF_HT_INT)
                     {
-                        for (uint32_t j=0; j<no_alt_alleles; ++j)
+                        std::vector<int32_t> vals = bcf_get_info_int_vec(h, v, info_tag_str[i].c_str());
+                                                        
+                        for (uint32_t j=0; j<vals.size(); ++j)
                         {
-//                            if (j) fprintf(out, "\t");
-//
-//                            int32_t val = bcf_get_info_int(h, v, info_tag_str[i].c_str());
-//                            fprintf(out, "%d", val);
+                            if (j) fprintf(out, "%c", i==1?'\t':',');
+
+                            fprintf(out, "%d", vals[j]);
                         }
                     }
                     else if (type==BCF_HT_REAL)
                     {
                         for (uint32_t j=0; j<no_alt_alleles; ++j)
                         {
-                            if (j) fprintf(out, "\t");
+                            if (j) fprintf(out, "%c", i==1?'\t':',');
 
                             float val = bcf_get_info_flt(h, v, info_tag_str[i].c_str());
                             fprintf(out, "%f", val);
@@ -361,7 +397,7 @@ class Igor : Program
                     {
                         for (uint32_t j=0; j<no_alt_alleles; ++j)
                         {
-                            if (j) fprintf(out, "\t");
+                            if (j) fprintf(out, "%c", i==1?'\t':',');
 
                             std::string val = bcf_get_info_str(h, v, info_tag_str[i].c_str());
                             fprintf(out, "%s", val.c_str());
@@ -374,19 +410,20 @@ class Igor : Program
                     
                     if (type==BCF_HT_INT)
                     {
-                        for (uint32_t j=0; j<no_alleles; ++j)
+                        std::vector<int32_t> vals = bcf_get_info_int_vec(h, v, info_tag_str[i].c_str());
+                                                        
+                        for (uint32_t j=0; j<vals.size(); ++j)
                         {
-//                            if (j) fprintf(out, "\t");
-//
-//                            int32_t val = bcf_get_info_int(h, v, info_tag_str[i].c_str());
-//                            fprintf(out, "%d", val);
+                            if (j) fprintf(out, "%c", i==1?'\t':',');
+
+                            fprintf(out, "%d", vals[j]);
                         }
                     }
                     else if (type==BCF_HT_REAL)
                     {
                         for (uint32_t j=0; j<no_alleles; ++j)
                         {
-                            if (j) fprintf(out, "\t");
+                            if (j) fprintf(out, "%c", i==1?'\t':',');
 
                             float val = bcf_get_info_flt(h, v, info_tag_str[i].c_str());
                             fprintf(out, "%f", val);
@@ -396,7 +433,7 @@ class Igor : Program
                     {
                         for (uint32_t j=0; j<no_alleles; ++j)
                         {
-                            if (j) fprintf(out, "\t");
+                            if (j) fprintf(out, "%c", i==1?'\t':',');
 
                             std::string val = bcf_get_info_str(h, v, info_tag_str[i].c_str());
                             fprintf(out, "%s", val.c_str());

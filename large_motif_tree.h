@@ -145,7 +145,6 @@ class LargeMotifTree
      */
     uint32_t get_child(uint32_t index);
     
-
     private:
 
     /**
