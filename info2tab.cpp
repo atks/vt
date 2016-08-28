@@ -299,8 +299,7 @@ class Igor : Program
                                                         
                         for (uint32_t j=0; j<vals.size(); ++j)
                         {
-                            if (j) fprintf(out, "\t");
-
+                            fprintf(out, "\t");
                             fprintf(out, "%d", vals[j]);
                         }
                     }
@@ -310,8 +309,7 @@ class Igor : Program
                         
                         for (uint32_t j=0; j<vals.size(); ++j)
                         {
-                            if (j) fprintf(out, ",");
-
+                            fprintf(out, ",");
                             fprintf(out, "%f", vals[j]);
                         }
                     }
@@ -321,8 +319,7 @@ class Igor : Program
                         
                         for (uint32_t j=0; j<vals.size(); ++j)
                         {
-                            if (j) fprintf(out, ",");
-
+                            fprintf(out, ",");
                             fprintf(out, "%s", vals[j].c_str());
                         }
                     }
@@ -340,8 +337,7 @@ class Igor : Program
                                                         
                         for (uint32_t j=0; j<vals.size(); ++j)
                         {
-                            if (j) fprintf(out, "%c", i==1?'\t':',');
-
+                            fprintf(out, "%c", j==0?'\t':',');
                             fprintf(out, "%d", vals[j]);
                         }
                     }
@@ -351,8 +347,7 @@ class Igor : Program
                         
                         for (uint32_t j=0; j<vals.size(); ++j)
                         {
-                            if (j) fprintf(out, "%c", i==1?'\t':',');
-
+                            fprintf(out, "%c", j==0?'\t':',');
                             fprintf(out, "%f", vals[j]);
                         }
                     }
@@ -362,8 +357,7 @@ class Igor : Program
                         
                         for (uint32_t j=0; j<vals.size(); ++j)
                         {
-                            if (j) fprintf(out, "%c", i==1?'\t':',');
-
+                            fprintf(out, "%c", j==0?'\t':',');
                             fprintf(out, "%s", vals[j].c_str());
                         }
                     }
@@ -378,29 +372,28 @@ class Igor : Program
                                                         
                         for (uint32_t j=0; j<vals.size(); ++j)
                         {
-                            if (j) fprintf(out, "%c", i==1?'\t':',');
-
+                            fprintf(out, "%c", j==0?'\t':',');
                             fprintf(out, "%d", vals[j]);
                         }
                     }
                     else if (type==BCF_HT_REAL)
                     {
-                        for (uint32_t j=0; j<no_alt_alleles; ++j)
+                        std::vector<float> vals = bcf_get_info_flt_vec(h, v, info_tag_str[i].c_str());
+                        
+                        for (uint32_t j=0; j<vals.size(); ++j)
                         {
-                            if (j) fprintf(out, "%c", i==1?'\t':',');
-
-                            float val = bcf_get_info_flt(h, v, info_tag_str[i].c_str());
-                            fprintf(out, "%f", val);
+                            fprintf(out, "%c", j==0?'\t':',');
+                            fprintf(out, "%f", vals[j]);
                         }
                     }
                     else if (type==BCF_HT_STR)
                     {
-                        for (uint32_t j=0; j<no_alt_alleles; ++j)
+                        std::vector<std::string> vals = bcf_get_info_str_vec(h, v, info_tag_str[i].c_str());
+                       
+                        for (uint32_t j=0; j<vals.size(); ++j)
                         {
-                            if (j) fprintf(out, "%c", i==1?'\t':',');
-
-                            std::string val = bcf_get_info_str(h, v, info_tag_str[i].c_str());
-                            fprintf(out, "%s", val.c_str());
+                            fprintf(out, "%c", j==0?'\t':',');
+                            fprintf(out, "%s", vals[j].c_str());
                         }
                     }
                 }
@@ -414,29 +407,28 @@ class Igor : Program
                                                         
                         for (uint32_t j=0; j<vals.size(); ++j)
                         {
-                            if (j) fprintf(out, "%c", i==1?'\t':',');
-
+                            fprintf(out, "%c", j==0?'\t':',');
                             fprintf(out, "%d", vals[j]);
                         }
                     }
                     else if (type==BCF_HT_REAL)
                     {
-                        for (uint32_t j=0; j<no_alleles; ++j)
+                        std::vector<float> vals = bcf_get_info_flt_vec(h, v, info_tag_str[i].c_str());
+                        
+                        for (uint32_t j=0; j<vals.size(); ++j)
                         {
-                            if (j) fprintf(out, "%c", i==1?'\t':',');
-
-                            float val = bcf_get_info_flt(h, v, info_tag_str[i].c_str());
-                            fprintf(out, "%f", val);
+                            fprintf(out, "%c", j==0?'\t':',');
+                            fprintf(out, "%f", vals[j]);
                         }
                     }
                     else if (type==BCF_HT_STR)
                     {
-                        for (uint32_t j=0; j<no_alleles; ++j)
+                        std::vector<std::string> vals = bcf_get_info_str_vec(h, v, info_tag_str[i].c_str());
+                       
+                        for (uint32_t j=0; j<vals.size(); ++j)
                         {
-                            if (j) fprintf(out, "%c", i==1?'\t':',');
-
-                            std::string val = bcf_get_info_str(h, v, info_tag_str[i].c_str());
-                            fprintf(out, "%s", val.c_str());
+                            fprintf(out, "%c", j==0?'\t':',');
+                            fprintf(out, "%s", vals[j].c_str());
                         }
                     }
                 }
