@@ -52,6 +52,7 @@ SOURCES = ahmm\
 		genome_interval\
 		genotype\
 		genotyping_record\
+		ghmm\
 		hts_utils\
 		hfilter\
 		indel_genotyping_record\
