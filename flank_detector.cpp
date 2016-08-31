@@ -296,15 +296,14 @@ std::string FlankDetector::shift_str(std::string& seq, uint32_t i)
 }
 
 /**
- * Score string.
+ * Score a string based on complete alignment.
  */
 int32_t FlankDetector::compute_score(int32_t start, int32_t len, std::string& a, std::string& b)
-{
-    
-    std::cerr << a << "\n";
-    std::cerr << b << "\n";
-    std::cerr << start << "\n";
-    std::cerr << len << "\n";
+{    
+//    std::cerr << "a: " << a << "\n";
+//    std::cerr << "b: " << b << "\n";
+//    std::cerr << "start: " << start << "\n";
+//    std::cerr << "len: " << len << "\n";
     
     if (len>b.size())
     {
@@ -455,7 +454,7 @@ std::string FlankDetector::choose_fuzzy_3prime_repeat_unit(std::string& seq, std
     for (uint32_t i=0; i<motif.size(); ++i)
     {
         std::string smotif = shift_str(motif, i);
-        int32_t sscore = compute_score(seq.size()-mlen+1, mlen, seq, smotif);
+        int32_t sscore = compute_score(seq.size()-mlen, mlen, seq, smotif);
         if (sscore==max_score)
         {
             return smotif;
@@ -467,7 +466,7 @@ std::string FlankDetector::choose_fuzzy_3prime_repeat_unit(std::string& seq, std
         }
 
         std::string rc_smotif = VNTR::reverse_complement(smotif);
-        int32_t rc_score = compute_score(seq.size()-mlen+1, mlen, seq, rc_smotif);
+        int32_t rc_score = compute_score(seq.size()-mlen, mlen, seq, rc_smotif);
         if (rc_score==max_score)
         {
             return rc_smotif;

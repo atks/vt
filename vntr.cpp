@@ -34,10 +34,23 @@ VNTR::VNTR(){};
 void VNTR::clear()
 {
     rid = -1;
+    
     motif.clear();
     ru.clear();
     mlen = 0;
-
+    repeat_tract.clear();
+    beg1 = 0;
+    end1 = 0;
+    lflank.clear();
+    rflank.clear();
+    score = 0;
+    rl = 0;
+    no_perfect_ru = 0;
+    no_ru = 0;
+    
+    exact_motif.clear();
+    exact_ru.clear();
+    exact_mlen = 0;
     exact_repeat_tract.clear();
     exact_beg1 = 0;
     exact_end1 = 0;
@@ -50,6 +63,9 @@ void VNTR::clear()
 
     exact_ru_ambiguous = false;
 
+    fuzzy_motif.clear();
+    fuzzy_ru.clear();
+    fuzzy_mlen = 0;
     fuzzy_repeat_tract.clear();
     fuzzy_beg1 = 0;
     fuzzy_end1 = 0;
