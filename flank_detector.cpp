@@ -297,6 +297,8 @@ std::string FlankDetector::shift_str(std::string& seq, uint32_t i)
 
 /**
  * Score a string based on complete alignment.
+ * This is for the purpose of computing a motif score.
+ * It might make sense to incorporate alignment in a limited sense.
  */
 int32_t FlankDetector::compute_score(int32_t start, int32_t len, std::string& a, std::string& b)
 {    

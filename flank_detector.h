@@ -105,17 +105,6 @@ class FlankDetector
      */
     ~FlankDetector();
 
-//    /**
-//     * Computes purity score of a sequence with respect to a motif.
-//     */
-//    void compute_purity_score(Variant& variant, int32_t amode);
-//
-//    /**
-//     * Computes purity score of a sequence with respect to a motif.
-//     */
-//    void detect_flanks(std::string& repeat_tract, std::string& motif);
-//        
-
     /**
      * Detect repeat region.
      */
@@ -127,10 +116,12 @@ class FlankDetector
     std::string shift_str(std::string& seq, uint32_t i);
 
     /**
-     * Score string.
+     * Score a string based on complete alignment.
+     * This is for the purpose of computing a motif score.
+     * It might make sense to incorporate alignment in a limited sense.
      */
     int32_t compute_score(int32_t start, int32_t len, std::string& a, std::string& b);
-        
+
     /**
      * Chooses a phase of the motif that is appropriate for the alignment from the 5 prime end.
      * This differs from choose_exact_repeat_unit() where the motif is returned
@@ -140,10 +131,10 @@ class FlankDetector
 
     /**
      * Chooses a phase of the motif that is appropriate for the alignment from the 5 prime end.
-     * If no exact match is available, the best possible match is returned. 
+     * If no exact match is available, the best possible match is returned.
      */
     std::string choose_fuzzy_5prime_repeat_unit(std::string& seq, std::string& motif);
-            
+
     /**
      * Chooses a phase of the motif that is appropriate for the alignment from the 3 prime end.
      * This differs from choose_exact_repeat_unit() where the motif is returned
@@ -153,10 +144,10 @@ class FlankDetector
 
     /**
      * Chooses a phase of the motif that is appropriate for the alignment from the 3 prime end.
-     * If no exact match is available, the best possible match is returned. 
+     * If no exact match is available, the best possible match is returned.
      */
     std::string choose_fuzzy_3prime_repeat_unit(std::string& seq, std::string& motif);
-    
+
     /**
      * Chooses a phase of the motif that is appropriate for the alignment.
      * This returns the empty string if the motif does not have an exact
@@ -183,7 +174,7 @@ class FlankDetector
      * Computes purity score of a sequence with respect to a motif.
      */
     void compute_purity_score(std::string& repeat_tract, std::string& motif);
-    
+
     /**
     * Computes composition and entropy of repeat tract.
     */
