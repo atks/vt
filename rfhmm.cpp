@@ -811,7 +811,6 @@ void RFHMM::collect_statistics(int32_t src_t, int32_t des_t, int32_t j)
             lflank_end[MODEL] = track_get_p(des_t);
             lflank_end[READ] = j;
         }
-
     }
     else if (src_u==Y)
     {

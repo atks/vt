@@ -774,13 +774,17 @@ void LFHMM::collect_statistics(int32_t src_t, int32_t des_t, int32_t j)
         }
         else if (des_u==M || des_u==D || des_u==I)
         {
-            rflank_start[MODEL] = NAN;
-            rflank_start[READ] = NAN;
-            rflank_end[MODEL] = INT32_MAX;
-            rflank_end[READ] = INT32_MAX;
+//            rflank_start[MODEL] = NAN;
+//            rflank_start[READ] = NAN;
+//            rflank_end[MODEL] = INT32_MAX;
+//            rflank_end[READ] = INT32_MAX;
+
+            rflank_start[MODEL] = 0;
+            rflank_start[READ] = j;
+            rflank_end[MODEL] = 0;
+            rflank_end[READ] = j;
 
 //            std::cerr << "SET TO INFINITY " << rflank_end[READ] << "\n";
-
 //            std::cerr << std::setprecision(1) << std::fixed;
 //            std::cerr << std::setw(8) << std::setprecision(2) << std::fixed  << ((float)rflank_start[MODEL]) << " " <<  ((float)rflank_end[MODEL]) << "\n";
 
@@ -1206,10 +1210,11 @@ void LFHMM::print_alignment(std::string& pad)
     std::cerr << "\n";
 
     std::cerr << "model: " << "(" << lflank_start[MODEL] << "~" << lflank_end[MODEL] << ") "
-                          << "[" << motif_start[MODEL] << "~" << motif_end[MODEL] << "]\n";
+                          << "[" << motif_start[MODEL] << "~" << motif_end[MODEL] << "] "
+                          << "(" << rflank_start[MODEL] << "~" << rflank_end[MODEL] << ") \n";
     std::cerr << "read : " << "(" << lflank_start[READ] << "~" << lflank_end[READ] << ") "
-                          << "[" << motif_start[READ] << "~" << motif_end[READ] << "]"
-                          << "[" << rflank_start[READ] << "~" << rflank_end[READ] << "]\n";
+                          << "[" << motif_start[READ] << "~" << motif_end[READ] << "] "
+                          << "(" << rflank_start[READ] << "~" << rflank_end[READ] << ") \n";
     std::cerr << "\n";
     std::cerr << "motif #           : " << motif_count << " [" << motif_start[READ] << "," << motif_end[READ] << "]\n";
 
