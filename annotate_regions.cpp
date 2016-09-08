@@ -215,6 +215,15 @@ class Igor : Program
             {
                 if (orom_regions->overlaps_with(chrom, start1-left_window, end1+right_window))
                 {
+                    std::vector<Interval>& regs = orom_regions->overlapping_regions;
+                    for (int32_t i=0; i<regs.size(); ++i)
+                    {
+                        if (start1>=regs[i].beg1-left_window && start1<=regs[i].end1+right_window)
+                        {
+                            
+                        }    
+                    }                    
+                    
                     bcf_update_info_flag(odr->hdr, v, REGIONS_TAG.c_str(), "", 1);
                     ++no_variants_annotated;
                 }

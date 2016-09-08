@@ -40,11 +40,12 @@ OrderedRegionOverlapMatcher::OrderedRegionOverlapMatcher(std::string& file)
 OrderedRegionOverlapMatcher::~OrderedRegionOverlapMatcher() {};
 
 /**
- * Returns true if chrom:start1-end1 overlaps with a region in the file.
+ * Returns true if chrom:beg1-end1 overlaps with a region in the file.
  */
-bool OrderedRegionOverlapMatcher::overlaps_with(std::string& chrom, int32_t start1, int32_t end1)
+bool OrderedRegionOverlapMatcher::overlaps_with(std::string& chrom, int32_t beg1, int32_t end1)
 {
     bool overlaps = false;
+    overlapping_regions.clear();
 
     //moves to new chromosome
     if (current_interval.seq!=chrom)
@@ -55,10 +56,15 @@ bool OrderedRegionOverlapMatcher::overlaps_with(std::string& chrom, int32_t star
         while (todr->read(&s))
         {
             BEDRecord br(&s);
-            if (br.end1<start1) continue;
-            overlaps = overlaps || (br.start1<=end1);
+            if (br.end1<beg1) continue;
+            overlaps = overlaps || (br.beg1<=end1);
+            if (br.beg1<=end1)
+            {
+                Interval region(br.beg1, br.end1);
+                overlapping_regions.push_back(region);
+            }
             buffer.push_back(br);
-            if (br.start1>end1) break;
+            if (br.beg1>end1) break;
         }
     }
     else
@@ -67,27 +73,32 @@ bool OrderedRegionOverlapMatcher::overlaps_with(std::string& chrom, int32_t star
         std::list<BEDRecord>::iterator i = buffer.begin();
         while (i!=buffer.end())
         {
-            if ((*i).end1<start1)
+            if ((*i).end1<beg1)
             {
                 i = buffer.erase(i);
                 continue;
             }
 
-            overlaps = ((*i).start1<=end1);
+            overlaps = ((*i).beg1<=end1);
             break;
         }
-        
-        if (!overlaps)        
+
+        if (!overlaps)
         {
             if (buffer.empty())
-            {    
+            {
                 while (todr->read(&s))
                 {
                     BEDRecord br(&s);
-                    if (br.end1<start1) continue;
-                    overlaps = overlaps || (br.start1<=end1);
+                    if (br.end1<beg1) continue;
+                    overlaps = overlaps || (br.beg1<=end1);
+                    if (br.beg1<=end1)
+                    {
+                        Interval region(br.beg1, br.end1);
+                        overlapping_regions.push_back(region);
+                    }
                     buffer.push_back(br);
-                    if (br.start1>end1) break;
+                    if (br.beg1>end1) break;
                 }
             }
         }

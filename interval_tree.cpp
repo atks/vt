@@ -58,8 +58,8 @@ IntervalTreeNode::~IntervalTreeNode()
 void IntervalTreeNode::insert(Interval* interval)
 {
     intervals.push_back(interval);
-    max = std::max(interval->end, max);
-    min = std::min(interval->start, min);
+    max = std::max(interval->end1, max);
+    min = std::min(interval->beg1, min);
 };
 
 /**
@@ -239,15 +239,15 @@ IntervalTreeNode* IntervalTree::simple_insert(Interval* interval)
     IntervalTreeNode* y = NULL;
     IntervalTreeNode* x = root;
 
-    int32_t start = interval->start;
+    int32_t start = interval->beg1;
 
     //search for leaf node to append z
     while (x!=NULL)
     {
         y = x;
 
-        x->max = std::max(x->max, interval->end);
-        x->min = std::min(x->min, interval->start);
+        x->max = std::max(x->max, interval->end1);
+        x->min = std::min(x->min, interval->beg1);
 
         if (start < x->start)
         {
@@ -273,9 +273,9 @@ IntervalTreeNode* IntervalTree::simple_insert(Interval* interval)
     else
     {
         IntervalTreeNode* z = new IntervalTreeNode(interval);
-        z->start = interval->start;
-        z->max = interval->end;
-        z->min = interval->start;
+        z->start = interval->beg1;
+        z->max = interval->end1;
+        z->min = interval->beg1;
 
         z->parent = y;
 
@@ -313,7 +313,7 @@ void IntervalTree::search_iter_brute(int32_t start, int32_t end, std::vector<Int
         for (uint32_t i=0; i<x->intervals.size(); ++i)
         {
             //overlap
-            if (x->intervals[i]->end >= start)
+            if (x->intervals[i]->end1 >= start)
             {
                 intervals.push_back(x->intervals[i]);
             }
@@ -342,7 +342,7 @@ void IntervalTree::search_iter(int32_t start, int32_t end, std::vector<Interval*
         for (uint32_t i=0; i<x->intervals.size(); ++i)
         {
             //overlap
-            if (x->intervals[i]->end >= start)
+            if (x->intervals[i]->end1 >= start)
             {
                 intervals.push_back(x->intervals[i]);
             }
@@ -377,7 +377,7 @@ void IntervalTree::print_iter(IntervalTreeNode* x)
         std::cerr << ",(" << x->start << ",";
         for (uint32_t i=0; i<x->intervals.size(); ++i)
         {
-            std::cerr << x->intervals[i]->end << (i==x->intervals.size()-1 ? "" : ":");
+            std::cerr << x->intervals[i]->end1 << (i==x->intervals.size()-1 ? "" : ":");
         }
         std::cerr << "," << x->max << "," << x->color << "),";
         print_iter(x->right);
@@ -426,26 +426,26 @@ void IntervalTree::validate_iter(IntervalTreeNode* x, uint32_t depth)
         for (uint32_t i=0; i<x->intervals.size(); ++i)
         {
             //overlap
-            if (x->intervals[i]->end > x->max)
+            if (x->intervals[i]->end1 > x->max)
             {
                 std::cerr << "CENTER Max violation\n";
-                std::cerr << "intervals[" << i << "]->end : " <<  x->intervals[i]->end<< "\n";
+                std::cerr << "intervals[" << i << "]->end : " <<  x->intervals[i]->end1<< "\n";
                 std::cerr << "this->max: " <<  x->max << "\n";
             }
 
             //overlap
-            if (x->intervals[i]->start < x->min)
+            if (x->intervals[i]->beg1 < x->min)
             {
                 std::cerr << "CENTER Min violation\n";
-                std::cerr << "intervals[" << i << "]->start : " <<  x->intervals[i]->start<< "\n";
+                std::cerr << "intervals[" << i << "]->beg1 : " <<  x->intervals[i]->beg1 << "\n";
                 std::cerr << "this->min: " <<  x->min << "\n";
             }
 
             //incorrect value
-            if (x->intervals[i]->start != x->start)
+            if (x->intervals[i]->beg1 != x->start)
             {
                 std::cerr << "VALUE violation\n";
-                std::cerr << "intervals[" << i << "]->start : " <<  x->intervals[i]->start<< "\n";
+                std::cerr << "intervals[" << i << "]->beg1 : " <<  x->intervals[i]->beg1 << "\n";
                 std::cerr << "this->start: " <<  x->start << "\n";
             }
 

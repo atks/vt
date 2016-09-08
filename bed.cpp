@@ -32,7 +32,7 @@ BEDRecord::BEDRecord(kstring_t *s)
     split(fields, "\t", s->s);
 
     chrom = fields[0];
-    str2int32(fields[1], start1);
+    str2int32(fields[1], beg1);
     str2int32(fields[2], end1);
 };
 
@@ -45,7 +45,7 @@ BEDRecord::BEDRecord(char *s)
     split(fields, "\t", s);
 
     chrom = fields[0];
-    str2int32(fields[1], start1);
+    str2int32(fields[1], beg1);
     str2int32(fields[2], end1);
 };
 
@@ -58,17 +58,17 @@ BEDRecord::BEDRecord(std::string& s)
     split(fields, "\t", s.c_str());
 
     chrom = fields[0];
-    str2int32(fields[1], start1);
+    str2int32(fields[1], beg1);
     str2int32(fields[2], end1);
 };
 
 /**
  * Constructor.
  */
-BEDRecord::BEDRecord(std::string& chrom, int32_t start1, int32_t end1)
+BEDRecord::BEDRecord(std::string& chrom, int32_t beg1, int32_t end1)
 {
     this->chrom = chrom;
-    this->start1 = start1;
+    this->beg1 = beg1;
     this->end1 = end1;
 };
 
@@ -77,7 +77,7 @@ BEDRecord::BEDRecord(std::string& chrom, int32_t start1, int32_t end1)
  */
 void BEDRecord::print()
 {
-    std::cerr << this->chrom << ":" << this->start1 << "-" <<this->end1 << "\n";
+    std::cerr << this->chrom << ":" << this->beg1 << "-" <<this->end1 << "\n";
 };
 
 /**
@@ -89,7 +89,7 @@ std::string BEDRecord::to_string()
 
     kputs(this->chrom.c_str(), &s);
     kputc(':', &s);
-    kputw(this->start1, &s);
+    kputw(this->beg1, &s);
     kputc('-', &s);
     kputw(this->end1, &s);
 

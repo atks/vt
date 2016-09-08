@@ -21,4 +21,21 @@
    THE SOFTWARE.
 */
 
-#include "interval_tree.h"
+#include "interval.h"
+
+/**
+ * Constructor.
+ */
+Interval::Interval(int32_t beg1, int32_t end1)
+{
+    this->beg1 = beg1;
+    this->end1 = end1;
+}
+
+/**
+ * Returns true if overlapping.
+ */
+bool Interval::overlaps_with(int32_t beg1, int32_t end1)
+{
+    return beg1<=this->end1 && end1>=this->beg1;
+}

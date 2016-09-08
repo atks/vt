@@ -28,11 +28,11 @@
 #include "utils.h"
 #include "interval.h"
 
-class BEDRecord : public Interval
+class BEDRecord
 {
     public:
     std::string chrom;
-    int32_t start1, end1;
+    int32_t beg1, end1;
     
     /**
      * Constructor.
@@ -52,7 +52,7 @@ class BEDRecord : public Interval
     /**
      * Constructor.
      */
-    BEDRecord(std::string& chrom, int32_t start1, int32_t end1);
+    BEDRecord(std::string& chrom, int32_t beg1, int32_t end1);
 
     /**
      * Prints this BED record to STDERR.

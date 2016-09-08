@@ -24,19 +24,28 @@
 #ifndef INTERVAL_H
 #define INTERVAL_H
 
+#include "utils.h"
+
 class Interval
 {
     public:
-    int32_t start;
-    int32_t end;
+    int32_t beg1;
+    int32_t end1;
+
+    /**
+     * Constructor.
+     */
+    Interval(){};
     
     /**
-     * Returns true if overlap
+     * Constructor.
      */
-    bool overlaps_with(int32_t a, int32_t b)
-    {
-        return a<=end && b>=start;
-    };    
+    Interval(int32_t beg1, int32_t end1);
+    
+    /**
+     * Returns true if overlapping.
+     */
+    bool overlaps_with(int32_t beg1, int32_t end1);
 };
 
 #endif

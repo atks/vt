@@ -175,7 +175,7 @@ class Igor : Program
 
         FLANKSEQ = bcf_hdr_append_info_with_backup_naming(odw->hdr, "FLANKSEQ", "1", "String", "Flanking sequence 10bp on either side of REF.", rename);
 
-              ////////////////////////
+        ////////////////////////
         //stats initialization//
         ////////////////////////
         no_vntrs_annotated = 0;
@@ -267,19 +267,19 @@ class Igor : Program
             if (vtype==VT_VNTR)
             {
                 VNTR& vntr = variant.vntr;
-                
+
                 int32_t beg1 = bcf_get_pos1(v);
                 int32_t end1 = bcf_get_end1(v);
-                
-                va->annotate(variant, FINAL);  
+
+                va->annotate(variant, FINAL);
                 //assumes MOTIF is present
                 bcf_update_info_int32(h, v, MLEN.c_str(), &vntr.mlen, 1);
-                
+
                 bcf_update_info_int32(h, v, END.c_str(), &variant.end1, 1);
                 bcf_update_info_string(h, v, RU.c_str(), vntr.ru.c_str());
                 bcf_update_info_string(h, v, BASIS.c_str(), vntr.basis.c_str());
                 bcf_update_info_int32(h, v, BLEN.c_str(), &vntr.blen, 1);
-            
+
                 int32_t repeat_tract[2] = {beg1, end1};
                 bcf_update_info_int32(h, v, REPEAT_TRACT.c_str(), &repeat_tract, 2);
                 bcf_update_info_int32(h, v, COMP.c_str(), &vntr.comp[0], 4);

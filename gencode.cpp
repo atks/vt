@@ -30,8 +30,8 @@ GENCODERecord::GENCODERecord(std::string& chrom, int32_t start, int32_t end, cha
           int32_t level)
 {
     this->chrom = chrom;
-    this->start = start;
-    this->end = end;
+    this->beg1 = start;
+    this->end1 = end;
     this->strand = strand;
     this->gene = gene;
     this->feature = feature;
@@ -57,7 +57,7 @@ bool is_synonymous(int32_t pos1, char base)
  */
 void GENCODERecord::print()
 {
-    std::cerr << "chrom   : " << chrom << ":" << start << "-" << end << "\n";
+    std::cerr << "chrom   : " << chrom << ":" << beg1 << "-" << end1 << "\n";
     std::cerr << "strand                    : " << strand << "\n";
     std::cerr << "gene                      : " << gene << "\n";
     kstring_t s = {0,0,0};

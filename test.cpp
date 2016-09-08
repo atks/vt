@@ -421,7 +421,7 @@ class Igor : Program
             }    
         
             int ref_len = 0;
-            char* seq = faidx_fetch_uc_seq(fai, br.chrom.c_str(), br.start1-1, br.end1-1, &ref_len);
+            char* seq = faidx_fetch_uc_seq(fai, br.chrom.c_str(), br.beg1-1, br.end1-1, &ref_len);
             //std::cerr << seq << " (" << ref_len <<")\n";
         
             for (uint32_t i=0; i<ref_len; ++i)

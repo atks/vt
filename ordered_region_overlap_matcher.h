@@ -52,6 +52,7 @@ class OrderedRegionOverlapMatcher
 
     GenomeInterval current_interval;
     std::list<BEDRecord> buffer;
+    std::vector<Interval> overlapping_regions;
     bool end_of_file;
     int32_t no_regions;
 
@@ -66,9 +67,9 @@ class OrderedRegionOverlapMatcher
     ~OrderedRegionOverlapMatcher();
 
     /**
-     * Returns true if chrom:start1-end1 overlaps with a region in the file.
+     * Returns true if chrom:beg1-end1 overlaps with a region in the file.
      */
-    bool overlaps_with(std::string& chrom, int32_t start1, int32_t end1);
+    bool overlaps_with(std::string& chrom, int32_t beg1, int32_t end1);
 
     private:
 };
