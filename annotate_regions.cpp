@@ -43,6 +43,10 @@ class Igor : Program
     std::string regions_file;
     std::string REGIONS_TAG;
     std::string REGIONS_TAG_DESC;
+    std::string REGIONS_LEFT_TAG;
+    std::string REGIONS_LEFT_TAG_DESC;
+    std::string REGIONS_RIGHT_TAG;
+    std::string REGIONS_RIGHT_TAG_DESC;
     uint32_t left_window; 
     uint32_t right_window;
     bool use_bed;
@@ -107,7 +111,9 @@ class Igor : Program
             left_window = arg_left_window.getValue();
             right_window = arg_right_window.getValue();
             REGIONS_TAG = arg_REGIONS_TAG.getValue();
-            REGIONS_TAG_DESC = arg_REGIONS_TAG_DESC.getValue();            
+            REGIONS_TAG_DESC = arg_REGIONS_TAG_DESC.getValue();
+            REGIONS_LEFT_TAG = REGIONS_TAG + "_LEFT";        
+            REGIONS_RIGHT_TAG = REGIONS_TAG + "_RIGHT";        
         }
         catch (TCLAP::ArgException &e)
         {
@@ -129,7 +135,17 @@ class Igor : Program
 
         std::string hrec = "##INFO=<ID=" + REGIONS_TAG + ",Number=0,Type=Flag,Description=\"" + REGIONS_TAG_DESC + "\">";
         bcf_hdr_append(odw->hdr, hrec.c_str());
-
+        if (left_window)
+        {
+            std::string hrec = "##INFO=<ID=" + REGIONS_LEFT_TAG + ",Number=0,Type=Flag,Description=\"" + REGIONS_TAG_DESC + " (Left window)\">";
+            bcf_hdr_append(odw->hdr, hrec.c_str());
+        }
+        if (right_window)
+        {
+            std::string hrec = "##INFO=<ID=" + REGIONS_RIGHT_TAG + ",Number=0,Type=Flag,Description=\"" + REGIONS_TAG_DESC + " (Right window)\">";
+            bcf_hdr_append(odw->hdr, hrec.c_str());
+        }
+        
         /////////////////////////
         //filter initialization//
         /////////////////////////
@@ -208,20 +224,27 @@ class Igor : Program
             }
            
             std::string chrom = bcf_get_chrom(odr->hdr,v);
-            int32_t start1 = bcf_get_pos1(v);
+            int32_t beg1 = bcf_get_pos1(v);
             int32_t end1 = bcf_get_end1(v);
 
             if (use_bed)
             {
-                if (orom_regions->overlaps_with(chrom, start1-left_window, end1+right_window))
+                if (orom_regions->overlaps_with(chrom, beg1-left_window, end1+right_window))
                 {
-                    std::vector<Interval>& regs = orom_regions->overlapping_regions;
-                    for (int32_t i=0; i<regs.size(); ++i)
-                    {
-                        if (start1>=regs[i].beg1-left_window && start1<=regs[i].end1+right_window)
+                    if (left_window+right_window)
+                    {    
+                        std::vector<Interval>& regs = orom_regions->overlapping_regions;
+                        for (int32_t i=0; i<regs.size(); ++i)
                         {
-                            
-                        }    
+                            if (beg1>=regs[i].beg1-left_window && beg1<=regs[i].beg1+right_window)
+                            {
+                                bcf_update_info_flag(odr->hdr, v, REGIONS_LEFT_TAG.c_str(), "", 1);
+                            }    
+                            else if (end1>=regs[i].end1-right_window && end1<=regs[i].end1+right_window)
+                            {
+                                bcf_update_info_flag(odr->hdr, v, REGIONS_RIGHT_TAG.c_str(), "", 1);
+                            }
+                        }
                     }                    
                     
                     bcf_update_info_flag(odr->hdr, v, REGIONS_TAG.c_str(), "", 1);
@@ -230,7 +253,7 @@ class Igor : Program
             }
             else
             {
-                if (obom_regions->overlaps_with(chrom, start1-left_window, end1+right_window))
+                if (obom_regions->overlaps_with(chrom, beg1-left_window, end1+right_window))
                 {
                     bcf_update_info_flag(odr->hdr, v, REGIONS_TAG.c_str(), "", 1);
                     ++no_variants_annotated;
