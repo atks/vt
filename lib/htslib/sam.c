@@ -506,13 +506,16 @@ err:
     return NULL;
 }
 
-int sam_index_build2(const char *fn, const char *fnidx, int min_shift)
+int sam_index_build3(const char *fn, const char *fnidx, int min_shift, int nthreads)
 {
     hts_idx_t *idx;
     htsFile *fp;
     int ret = 0;
 
     if ((fp = hts_open(fn, "r")) == 0) return -2;
+    if (nthreads)
+        hts_set_threads(fp, nthreads);
+
     switch (fp->format.format) {
     case cram:
         ret = cram_index_build(fp->fp.cram, fn, fnidx);
@@ -537,9 +540,14 @@ int sam_index_build2(const char *fn, const char *fnidx, int min_shift)
     return ret;
 }
 
+int sam_index_build2(const char *fn, const char *fnidx, int min_shift)
+{
+    return sam_index_build3(fn, fnidx, min_shift, 0);
+}
+
 int sam_index_build(const char *fn, int min_shift)
 {
-    return sam_index_build2(fn, NULL, min_shift);
+    return sam_index_build3(fn, NULL, min_shift, 0);
 }
 
 // Provide bam_index_build() symbol for binary compability with earlier HTSlib
@@ -1304,17 +1312,16 @@ int bam_aux_update_str(bam1_t *b, const char tag[2], int len, const char *data)
     bam_aux_del(b,s);
     s -= 2;
     int l_aux = bam_get_l_aux(b);
-    uint8_t *aux = bam_get_aux(b);
 
     b->l_data += 3 + len;
     if (b->m_data < b->l_data) {
-        ptrdiff_t s_offset = (ptrdiff_t) (s - b->m_data);
+        ptrdiff_t s_offset = s - b->data;
         b->m_data = b->l_data;
         kroundup32(b->m_data);
         b->data = (uint8_t*)realloc(b->data, b->m_data);
-        s = (uint8_t *) (b->m_data + s_offset);
+        s = b->data + s_offset;
     }
-    memmove(s+3+len, s, l_aux - (s - aux));
+    memmove(s+3+len, s, l_aux - (s - bam_get_aux(b)));
     s[0] = tag[0];
     s[1] = tag[1];
     s[2] = type;

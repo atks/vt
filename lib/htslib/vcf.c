@@ -668,7 +668,7 @@ void bcf_hdr_remove(bcf_hdr_t *hdr, int type, const char *key)
             if ( type==BCF_HL_FLT || type==BCF_HL_INFO || type==BCF_HL_FMT || type== BCF_HL_CTG )
             {
                 int j = bcf_hrec_find_key(hdr->hrec[i], "ID");
-                if ( j>0 )
+                if ( j>=0 )
                 {
                     vdict_t *d = type==BCF_HL_CTG ? (vdict_t*)hdr->dict[BCF_DT_CTG] : (vdict_t*)hdr->dict[BCF_DT_ID];
                     khint_t k = kh_get(vdict, d, hdr->hrec[i]->vals[j]);
@@ -1618,8 +1618,14 @@ static int vcf_parse_format(kstring_t *s, const bcf_hdr_t *h, bcf1_t *v, char *p
         return -1;
     }
 
-    // get format information from the dictionary
     v->n_fmt = 0;
+    if ( p[0]=='.' && p[1]==0 ) // FORMAT field is empty "."
+    {
+        v->n_sample = bcf_hdr_nsamples(h);
+        return 0;
+    }
+
+    // get format information from the dictionary
     for (j = 0, t = kstrtok(p, ":", &aux1); t; t = kstrtok(0, 0, &aux1), ++j) {
         if (j >= MAX_N_FMT) {
             v->errcode |= BCF_ERR_LIMITS;
@@ -1630,6 +1636,12 @@ static int vcf_parse_format(kstring_t *s, const bcf_hdr_t *h, bcf1_t *v, char *p
         *(char*)aux1.p = 0;
         k = kh_get(vdict, d, t);
         if (k == kh_end(d) || kh_val(d, k).info[BCF_HL_FMT] == 15) {
+            if ( t[0]=='.' && t[1]==0 )
+            {
+                fprintf(stderr, "[E::%s] Invalid FORMAT tag name '.'\n", __func__);
+                v->errcode |= BCF_ERR_TAG_INVALID;
+                return -1;
+            }
             if (hts_verbose >= 2) fprintf(stderr, "[W::%s] FORMAT '%s' is not defined in the header, assuming Type=String\n", __func__, t);
             kstring_t tmp = {0,0,0};
             int l;
@@ -2345,13 +2357,15 @@ hts_idx_t *bcf_index_load2(const char *fn, const char *fnidx)
     return fnidx? hts_idx_load2(fn, fnidx) : bcf_index_load(fn);
 }
 
-int bcf_index_build2(const char *fn, const char *fnidx, int min_shift)
+int bcf_index_build3(const char *fn, const char *fnidx, int min_shift, int n_threads)
 {
     htsFile *fp;
     hts_idx_t *idx;
     tbx_t *tbx;
     int ret;
     if ((fp = hts_open(fn, "rb")) == 0) return -2;
+    if (n_threads)
+        hts_set_threads(fp, n_threads);
     if ( fp->format.compression!=bgzf ) { hts_close(fp); return -3; }
     switch (fp->format.format) {
         case bcf:
@@ -2380,9 +2394,14 @@ int bcf_index_build2(const char *fn, const char *fnidx, int min_shift)
     return ret;
 }
 
+int bcf_index_build2(const char *fn, const char *fnidx, int min_shift)
+{
+    return bcf_index_build3(fn, fnidx, min_shift, 0);
+}
+
 int bcf_index_build(const char *fn, int min_shift)
 {
-    return bcf_index_build2(fn, NULL, min_shift);
+    return bcf_index_build3(fn, NULL, min_shift, 0);
 }
 
 /*****************
