@@ -1,6 +1,6 @@
 /* The MIT License
 
-   Copyright (c) 2016 Hyun Min Kang <hmkang.umich.edu> and Adrian Tan <atks@umich.edu>
+   Copyright (c) 2015 Adrian Tan <atks@umich.edu>
 
    Permission is hereby granted, free of charge, to any person obtaining a copy
    of this software and associated documentation files (the "Software"), to deal
@@ -24,17 +24,9 @@
 #ifndef BCF_GENOTYPING_BUFFERED_READER_H
 #define BCF_GENOTYPING_BUFFERED_READER_H
 
-#include <string>
-#include <vector>
-#include "htslib/kseq.h"
-#include "htslib/vcf.h"
 #include "hts_utils.h"
-#include "program.h"
+#include "utils.h"
 #include "genotyping_record.h"
-#include "snp_genotyping_record.h"
-#include "indel_genotyping_record.h"
-#include "vntr_genotyping_record.h"
-#include "complex_genotyping_record.h"
 #include "bcf_ordered_reader.h"
 #include "variant.h"
 #include "variant_manip.h"
@@ -55,31 +47,27 @@ class BCFGenotypingBufferedReader
     ///////
     //i/o//
     ///////
-    BCFOrderedReader* odr; // anchor VCF
+    BCFOrderedReader* odr;
 
     //////////////////
     //buffer related//
     //////////////////
-    std::vector<GenotypingRecord*> gRecords;
+    std::list<GenotypingRecord*> buffer;
     std::string chrom;
     AugmentedBAMRecord as;
-    Variant variant;
 
-    int32_t lastFirst;
-    //int32_t currentSampleIndex;
+    Variant variant;
 
     ///////////
     //options//
     ///////////
     bool output_annotations;
-    
+
     /////////
     //stats//
     /////////
     uint32_t no_snps_genotyped;
-    uint32_t no_multiallelic_snps_genotyped;
     uint32_t no_indels_genotyped;
-    uint32_t no_multiallelic_indels_genotyped;
     uint32_t no_vntrs_genotyped;
 
     /////////
@@ -87,44 +75,61 @@ class BCFGenotypingBufferedReader
     /////////
     VariantManip *vm;
     LogTool lt;
-
-    std::vector<std::string> sample_names;
-    std::vector<double> sample_contams;
+    faidx_t *fai;
 
     /**
      * Constructor.
      */
-    BCFGenotypingBufferedReader(std::string in_vcf_filename, std::vector<GenomeInterval>& intervals, std::string out_vcf_filename, int32_t nsamples);
+    BCFGenotypingBufferedReader(std::string filename, std::vector<GenomeInterval>& intervals, std::string ref_fasta_file);
 
     /**
      * Collects sufficient statistics from read for variants to be genotyped.
      */
-    void set_sample(int32_t sampleIndex, const char* sampleName, double contam);
-    
-    /**
-     * Collects sufficient statistics from read for variants to be genotyped.
-     */
-    void flush_sample(int32_t sampleIndex);
-    
-    /**
-     * Collects sufficient statistics from read for variants to be genotyped.
-     */
-    int32_t process_read(bam_hdr_t *h, bam1_t *s, int32_t sampleIndex);
+    void process_read(bam_hdr_t *h, bam1_t *s);
 
     /**
-     * Collects sufficient statistics from read for variants to be genotyped.
+     * Compute SNP genotype likelihoods in PHRED scale.
      */
-    inline int32_t numVariants() { return (int32_t)gRecords.size(); }
-    
+    void compute_snp_pl(std::vector<int32_t>& alleles, 
+                        std::vector<uint32_t>& quals, 
+                        uint32_t ploidy, uint32_t no_alleles, 
+                        std::vector<uint32_t>& pls,
+                        float& pl_offset);
+
+    /**
+     * Compute Indel genotype likelihoods in PHRED scale.
+     */
+    void compute_indel_pl(std::vector<int32_t>& alleles, 
+                          std::vector<uint32_t>& quals, 
+                          uint32_t ploidy, uint32_t no_alleles, 
+                          std::vector<uint32_t>& pls);
+
+    /**
+     * Compute Indel allele likelihoods in PHRED scale.
+     */
+    void compute_indel_al(char lflank_state[], uint32_t lflank_qual[], 
+                          char rflank_state[], uint32_t rflank_qual[],
+                          std::vector<std::string>& alleles,
+                          std::string& obs_indel,
+                          std::vector<uint32_t>& aqs,
+                          std::vector<int32_t>& als,
+                          std::string& dls);
+                        
     /**
      * Collects sufficient statistics from read for variants to be genotyped.
      */
-    bcf1_t* flush_variant(int32_t variantIndex, bcf_hdr_t* hdr);
-    
+    void collect_sufficient_statistics(GenotypingRecord *g,  AugmentedBAMRecord& as);
+
     /**
-     * Collects sufficient statistics from read for variants to be genotyped.
+     * Flush records.
      */
-    void write_header(BCFOrderedWriter* odw);
+    void flush(BCFOrderedWriter* odw, bam_hdr_t *h, bam1_t *s, bool flush_all=false);
+
+    /**
+     * Genotype variant and print to odw.
+     */
+    void genotype_and_print(BCFOrderedWriter* odw, GenotypingRecord* g);
+
 };
 
 #endif
