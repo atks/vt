@@ -291,14 +291,14 @@ class Igor : Program
         sumPLs[2] += pls[idx * 3 + 2];
       }
     }
-    return ( (float)log(priors[0] * est->lt->pl2prob(sumPLs[0]) + priors[1] * est->lt->pl2prob(sumPLs[1]) + priors[2] * est->lt->pl2prob(sumPLs[2])) );
+    return ( (float)log(priors[0] * LogTool::pl2prob(sumPLs[0]) + priors[1] * LogTool::pl2prob(sumPLs[1]) + priors[2] * LogTool::pl2prob(sumPLs[2])) );
       }
       else { // don't merge dups and treat them as independent samples
     float logSum = 0;
     for(int i=0; i < (int)pPerson->samples.size(); ++i) {
       int idx = pPerson->samples[i]->index;
       if ( idx >= 0 ) {
-        logSum += log(priors[0] * est->lt->pl2prob(pls[idx * 3]) + priors[1] * est->lt->pl2prob(pls[idx * 3 + 1]) + priors[2] * est->lt->pl2prob(pls[idx * 3 + 2]) );
+        logSum += log(priors[0] * LogTool::pl2prob(pls[idx * 3]) + priors[1] * LogTool::pl2prob(pls[idx * 3 + 1]) + priors[2] * LogTool::pl2prob(pls[idx * 3 + 2]) );
       }
     }
     return ( logSum );
@@ -522,8 +522,8 @@ class Igor : Program
           // this does not change the overall likelihood, so just skip it
         }
         else if ( vSex[i] == 1 ) { // haploid male
-          llkMaleDipl += (float)log( (1.-hweAF) * (1.-hweAF) * est->lt->pl2prob(p_pl[3*i]) + 2 * hweAF * (1.-hweAF) * est->lt->pl2prob(p_pl[3*i+1]) + hweAF * hweAF * est->lt->pl2prob(p_pl[3*i+2]) );
-          llkMaleHapl += (float)log( (1.-hweAF) * est->lt->pl2prob(p_pl[3*i]) + hweAF * est->lt->pl2prob(p_pl[3*i+2]) );
+          llkMaleDipl += (float)log( (1.-hweAF) * (1.-hweAF) * LogTool::pl2prob(p_pl[3*i]) + 2 * hweAF * (1.-hweAF) * LogTool::pl2prob(p_pl[3*i+1]) + hweAF * hweAF * LogTool::pl2prob(p_pl[3*i+2]) );
+          llkMaleHapl += (float)log( (1.-hweAF) * LogTool::pl2prob(p_pl[3*i]) + hweAF * LogTool::pl2prob(p_pl[3*i+2]) );
         }
         else {
           fprintf(stderr, "[E:%s:%d %s] Unexpected sex %d is observed in individual index %d\n", __FILE__, __LINE__, __FUNCTION__, vSex[i], i);
@@ -572,8 +572,8 @@ class Igor : Program
     float lud = 0;
 
     for(i=0; i < ns; ++i) {
-      lue += log( est->lt->pl2prob(p_pl_ns[3*i]) * MLE_HWE_GF[0] + est->lt->pl2prob(p_pl_ns[3*i+1]) * MLE_HWE_GF[1]  + est->lt->pl2prob(p_pl_ns[3*i+2]) * MLE_HWE_GF[2] );
-      lud += log( est->lt->pl2prob(p_pl_ns[3*i]) * MLE_HWD_GF[0] + est->lt->pl2prob(p_pl_ns[3*i+1]) * MLE_HWD_GF[1]  + est->lt->pl2prob(p_pl_ns[3*i+2]) * MLE_HWD_GF[2] );
+      lue += log( LogTool::pl2prob(p_pl_ns[3*i]) * MLE_HWE_GF[0] + LogTool::pl2prob(p_pl_ns[3*i+1]) * MLE_HWE_GF[1]  + LogTool::pl2prob(p_pl_ns[3*i+2]) * MLE_HWE_GF[2] );
+      lud += log( LogTool::pl2prob(p_pl_ns[3*i]) * MLE_HWD_GF[0] + LogTool::pl2prob(p_pl_ns[3*i+1]) * MLE_HWD_GF[1]  + LogTool::pl2prob(p_pl_ns[3*i+2]) * MLE_HWD_GF[2] );
     }
 
     // expected probability of offspring genotypes given parents' genotypes

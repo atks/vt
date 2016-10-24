@@ -37,10 +37,10 @@
 class LogTool
 {
     private:
-    std::vector<double> PL;
-    std::vector<double> PL_one_minus_p;
-    std::vector<double> LOG10_VARP;
-    std::vector<double> LOG10FACT;
+    static std::vector<double> PL;
+    static std::vector<double> PL_one_minus_p;
+    static std::vector<double> LOG10_VARP;
+    static std::vector<double> LOG10FACT;
 
     public:
     LogTool () {};
@@ -48,52 +48,52 @@ class LogTool
     /**
      * Convert -10log(p) to p.
      */
-    double pl2prob(uint32_t PL);
+    static double pl2prob(uint32_t PL);
     
     /**
      * Convert -10log(p) to -10log(1-p).
      */
-    double pl2pl_one_minus_p(uint32_t pl);
+    static double pl2pl_one_minus_p(uint32_t pl);
 
     /**
      * Convert -10log(p) to log10(sqrt(e(1-e))).
      */
-    double pl2log10_varp(uint32_t PL);
+    static double pl2log10_varp(uint32_t PL);
 
     /**
      * Convert probabilities to PHRED score.
      */
-    uint32_t prob2pl(double x);
+    static uint32_t prob2pl(double x);
 
     /**
      * Compute log(x)
      */
-    double log10(double x);
+    static double log10(double x);
 
     /**
      * Compute log(xy)
      */
-    double log10prod(double x, double y);
+    static double log10prod(double x, double y);
 
     /**
      * Compute log(x+y)
      */
-    double log10sum(double x, double y);
+    static double log10sum(double x, double y);
 
     /**
      * Compute log10 factorial x.
      */
-    double log10fact(uint32_t x);
+    static double log10fact(uint32_t x);
 
     /**
      * Compute log10 nCr
      */
-    double log10choose(uint32_t n, uint32_t r);
+    static double log10choose(uint32_t n, uint32_t r);
 
     /**
      * Round a value
      */
-    double round(double x);
+    static double round(double x);
 };
 
 #endif

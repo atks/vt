@@ -35,15 +35,13 @@
 class Estimator
 {
     public:
-    //log tool for log space computations.
-    LogTool *lt;
-
+    
     /**
      * Constructor.
      */
     Estimator()
     {
-        lt = new LogTool();
+//        lt = new LogTool();
     };
 
     /**
@@ -51,7 +49,7 @@ class Estimator
      */
     Estimator(LogTool *lt)
     {
-        this->lt = lt;
+//        this->lt = lt;
     };
 
     /**
@@ -69,7 +67,7 @@ class Estimator
      * @GF         - genotype frequency
      * @NS         - number of samples with data
      */
-    void compute_af(int32_t *gts, int32_t no_samples, int32_t ploidy,
+    static void compute_af(int32_t *gts, int32_t no_samples, int32_t ploidy,
                     int32_t no_alleles, int32_t *AC, int32_t& AN, float *AF,
                     int32_t *GC,  int32_t& GN, float *GF, int32_t& NS);
 
@@ -86,7 +84,7 @@ class Estimator
      * @n          - effective sample size
      * @e          - error
      */
-    void compute_gl_af_hwe(int32_t *pls, int32_t no_samples, int32_t ploidy,
+    static void compute_gl_af_hwe(int32_t *pls, int32_t no_samples, int32_t ploidy,
                     int32_t no_alleles, float *MLE_HWE_AF, float *MLE_HWE_GF, int32_t& n,
                     double e);
 
@@ -102,7 +100,7 @@ class Estimator
      * @n          - effective sample size
      * @e          - error
      */
-    void compute_gl_af(int32_t *pls, int32_t nsamples, int32_t ploidy,
+    static void compute_gl_af(int32_t *pls, int32_t nsamples, int32_t ploidy,
                     int32_t n_allele, float *MLE_AF, float *MLE_GF, int32_t& n,
                     double e);
 
@@ -121,7 +119,7 @@ class Estimator
      * @df         - degrees of freedom
      *
      */
-    void compute_hwe_lrt(int32_t *pls, int32_t no_samples, int32_t ploidy,
+    static void compute_hwe_lrt(int32_t *pls, int32_t no_samples, int32_t ploidy,
                 int32_t no_alleles, float *MLE_HWE_GF, float *MLE_GF, int32_t& n,
                 float& lr, float& logp, int32_t& df);
 
@@ -137,7 +135,7 @@ class Estimator
      * @F          - estimated inbreeding coefficient
      * @n          - effective sample size
      */
-    void compute_gl_fic(int32_t * pls, int32_t no_samples, int32_t ploidy,
+    static void compute_gl_fic(int32_t * pls, int32_t no_samples, int32_t ploidy,
                                    float* HWE_AF, int32_t no_alleles, float* GF,
                                    float& F, int32_t& n);
 
@@ -153,11 +151,10 @@ class Estimator
      * @ab         - estimate of allele balance
      * @n          - effective sample size
      */
-    void compute_gl_ab(int32_t *pls, int32_t no_samples, int32_t ploidy,
+    static void compute_gl_ab(int32_t *pls, int32_t no_samples, int32_t ploidy,
                     int32_t *dps,
                     float* GF, int32_t no_alleles,
                     float& ab, int32_t& n);
-
 
     /**
      * Computes the phred scaled QUAL for a variant.
@@ -169,9 +166,8 @@ class Estimator
      * @n          - effective sample size
      * @qual       - PHRED scaled QUAL
      */
-    void compute_qual(int32_t *pls, int32_t no_samples, int32_t ploidy,
+    static void compute_qual(int32_t *pls, int32_t no_samples, int32_t ploidy,
                 int32_t no_alleles, float &qual, int32_t &n);
-
 
     /**
      * Compute correlation from sufficient statistics for integral observations

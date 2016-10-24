@@ -225,9 +225,9 @@ void Estimator::compute_gl_af_hwe(int32_t *pls, int32_t no_samples, int32_t ploi
             {
                 size_t offset = imap[i]*3;
 
-                float prob_data = (gf_indiv[0] = gf[0]*lt->pl2prob(pls[offset]));
-                prob_data += (gf_indiv[1] = gf[1]*lt->pl2prob(pls[offset+1]));
-                prob_data += (gf_indiv[2] = gf[2]*lt->pl2prob(pls[offset+2]));
+                float prob_data = (gf_indiv[0] = gf[0]*LogTool::pl2prob(pls[offset]));
+                prob_data += (gf_indiv[1] = gf[1]*LogTool::pl2prob(pls[offset+1]));
+                prob_data += (gf_indiv[2] = gf[2]*LogTool::pl2prob(pls[offset+2]));
 
                 gf_indiv[0] /= prob_data;
                 gf_indiv[1] /= prob_data;
@@ -302,7 +302,7 @@ void Estimator::compute_gl_af_hwe(int32_t *pls, int32_t no_samples, int32_t ploi
                 float prob_data = 0;
                 for (size_t i=0; i<no_genotypes; ++i)
                 {
-                    prob_data += (gf_indiv[i] = gf[i]*lt->pl2prob(pls[offset+i]));
+                    prob_data += (gf_indiv[i] = gf[i]*LogTool::pl2prob(pls[offset+i]));
                 }
 
                 for (size_t i=0; i<no_genotypes; ++i)
@@ -402,9 +402,9 @@ void Estimator::compute_gl_af(int32_t *pls, int32_t nsamples, int32_t ploidy,
             {
                 size_t offset = imap[i]*3;
 
-                float prob_data = (gf_indiv[0] = gf[0]*lt->pl2prob(pls[offset]));
-                prob_data += (gf_indiv[1] = gf[1]*lt->pl2prob(pls[offset+1]));
-                prob_data += (gf_indiv[2] = gf[2]*lt->pl2prob(pls[offset+2]));
+                float prob_data = (gf_indiv[0] = gf[0]*LogTool::pl2prob(pls[offset]));
+                prob_data += (gf_indiv[1] = gf[1]*LogTool::pl2prob(pls[offset+1]));
+                prob_data += (gf_indiv[2] = gf[2]*LogTool::pl2prob(pls[offset+2]));
 
                 MLE_GF[0] += (gf_indiv[0] /= prob_data);
                 MLE_GF[1] += (gf_indiv[1] /= prob_data);
@@ -476,7 +476,7 @@ void Estimator::compute_gl_af(int32_t *pls, int32_t nsamples, int32_t ploidy,
                 float prob_data = 0;
                 for (size_t j=0; j<no_genotypes; ++j)
                 {
-                    prob_data += (gf_indiv[j] = gf[j]*lt->pl2prob(pls[offset+j]));
+                    prob_data += (gf_indiv[j] = gf[j]*LogTool::pl2prob(pls[offset+j]));
                 }
 
                 for (size_t j=0; j<no_genotypes; ++j)
@@ -523,7 +523,6 @@ void Estimator::compute_gl_af(int32_t *pls, int32_t nsamples, int32_t ploidy,
  * @lr         - log10 likelihood ratio
  * @logp       - likelihood ratio test log p-value
  * @df         - degrees of freedom
- *
  */
 void Estimator::compute_hwe_lrt(int32_t *pls, int32_t no_samples, int32_t ploidy,
             int32_t no_alleles, float *MLE_HWE_GF, float *MLE_GF, int32_t& n,
@@ -545,13 +544,13 @@ void Estimator::compute_hwe_lrt(int32_t *pls, int32_t no_samples, int32_t ploidy
 
                 ++n;
 
-                float p = lt->pl2prob(pls[offset]);
+                float p = LogTool::pl2prob(pls[offset]);
                 float l0i = MLE_HWE_GF[0] * p;
                 float lai = MLE_GF[0] * p;
-                p = lt->pl2prob(pls[offset+1]);
+                p = LogTool::pl2prob(pls[offset+1]);
                 l0i += MLE_HWE_GF[1] * p;
                 lai += MLE_GF[1] * p;
-                p = lt->pl2prob(pls[offset+2]);
+                p = LogTool::pl2prob(pls[offset+2]);
                 l0i += MLE_HWE_GF[2] * p;
                 lai += MLE_GF[2] * p;
 
@@ -582,7 +581,7 @@ void Estimator::compute_hwe_lrt(int32_t *pls, int32_t no_samples, int32_t ploidy
                 float l0i=0, lai=0;
                 for (size_t j=0; j<no_genotypes; ++j)
                 {
-                    float p = lt->pl2prob(pls[offset+j]);
+                    float p = LogTool::pl2prob(pls[offset+j]);
                     l0i += MLE_HWE_GF[j]*p;
                     lai += MLE_GF[j]*p;
                 }
@@ -645,15 +644,15 @@ void Estimator::compute_gl_fic(int32_t * pls, int32_t no_samples, int32_t ploidy
 
             ++n;
 
-            float o_het_sum = lt->pl2prob(pls[offset+1])*GF[1];
-            float o_sum = lt->pl2prob(pls[offset])*GF[0];
+            float o_het_sum = LogTool::pl2prob(pls[offset+1])*GF[1];
+            float o_sum = LogTool::pl2prob(pls[offset])*GF[0];
             o_sum += o_het_sum;
-            o_sum += lt->pl2prob(pls[offset+2])*GF[2];
+            o_sum += LogTool::pl2prob(pls[offset+2])*GF[2];
 
-            float e_het_sum = lt->pl2prob(pls[offset+1])*HWE_GF[1];
-            float e_sum = lt->pl2prob(pls[offset])*HWE_GF[0];
+            float e_het_sum = LogTool::pl2prob(pls[offset+1])*HWE_GF[1];
+            float e_sum = LogTool::pl2prob(pls[offset])*HWE_GF[0];
             e_sum += e_het_sum;
-            e_sum += lt->pl2prob(pls[offset+2])*HWE_GF[2];
+            e_sum += LogTool::pl2prob(pls[offset+2])*HWE_GF[2];
 
             num += o_het_sum/o_sum;
             denum += e_het_sum/e_sum;
@@ -699,7 +698,7 @@ void Estimator::compute_gl_fic(int32_t * pls, int32_t no_samples, int32_t ploidy
             {
                 for (size_t j=0; j<i; ++j)
                 {
-                    float p = lt->pl2prob(pls[offset+gt_index]);
+                    float p = LogTool::pl2prob(pls[offset+gt_index]);
                     o_het_sum += p * GF[gt_index];
                     o_sum += p * GF[gt_index];
 
@@ -710,8 +709,8 @@ void Estimator::compute_gl_fic(int32_t * pls, int32_t no_samples, int32_t ploidy
                 }
 
                 //for homozygote
-                o_sum += lt->pl2prob(pls[offset+gt_index]) * GF[gt_index];
-                e_sum += lt->pl2prob(pls[offset+gt_index]) * HWE_GF[gt_index];
+                o_sum += LogTool::pl2prob(pls[offset+gt_index]) * GF[gt_index];
+                e_sum += LogTool::pl2prob(pls[offset+gt_index]) * HWE_GF[gt_index];
                 ++gt_index;
             }
 
@@ -755,10 +754,10 @@ void Estimator::compute_gl_ab(int32_t *pls, int32_t no_samples, int32_t ploidy,
                 float nrefnum = pls[offset+2]-pls[offset+0];
                 float nrefdenum = pls[offset]+pls[offset+2]-2*pls[offset+1] +6*dps[k];
                 float nref = 0.5*dps[k]*(1+(nrefdenum?nrefnum/nrefdenum:0));
-                float phet = lt->pl2prob(pls[offset+1])*GF[1] /
-                             ( lt->pl2prob(pls[offset])*GF[0]
-                              +lt->pl2prob(pls[offset+1])*GF[1]
-                              +lt->pl2prob(pls[offset+2])*GF[2]);
+                float phet = LogTool::pl2prob(pls[offset+1])*GF[1] /
+                             ( LogTool::pl2prob(pls[offset])*GF[0]
+                              +LogTool::pl2prob(pls[offset+1])*GF[1]
+                              +LogTool::pl2prob(pls[offset+2])*GF[2]);
 
                 num += phet*nref;
                 denum += phet*dps[k];
@@ -788,10 +787,10 @@ void Estimator::compute_gl_ab(int32_t *pls, int32_t no_samples, int32_t ploidy,
                     float nrefdenum = pls[offset]+pls[offset+homalt_index]-2*pls[offset+het_index] +6*dps[k];
                     float nref = 0.5*dps[k]*(1+(nrefdenum?nrefnum/nrefdenum:0));
 
-                    float n = lt->pl2prob(pls[offset+het_index])*GF[het_index] ;
-                    float d = (lt->pl2prob(pls[offset])*GF[0]
+                    float n = LogTool::pl2prob(pls[offset+het_index])*GF[het_index] ;
+                    float d = (LogTool::pl2prob(pls[offset])*GF[0]
                                +n
-                               +lt->pl2prob(pls[offset+homalt_index])*GF[homalt_index]);
+                               +LogTool::pl2prob(pls[offset+homalt_index])*GF[homalt_index]);
                     float phet = d?n/d:0.333;
                     num += phet*nref;
                     denum += phet*dps[k];
@@ -834,13 +833,13 @@ void Estimator::compute_qual(int32_t *pls, int32_t no_samples, int32_t ploidy,
 
                 ++n;
 
-                qual += lt->log10((1-lt->pl2prob(pls[offset])/(lt->pl2prob(pls[offset])+lt->pl2prob(pls[offset+1])+lt->pl2prob(pls[offset+2]))));
+                qual += LogTool::log10((1-LogTool::pl2prob(pls[offset])/(LogTool::pl2prob(pls[offset])+LogTool::pl2prob(pls[offset+1])+LogTool::pl2prob(pls[offset+2]))));
 
             }
 
             if (!n) return;
 
-            qual = lt->round(-qual*10);
+            qual = LogTool::round(-qual*10);
         }
         else
         {
@@ -860,15 +859,15 @@ void Estimator::compute_qual(int32_t *pls, int32_t no_samples, int32_t ploidy,
                 float denom = 0;
                 for (size_t j=0; j<no_genotypes; ++j)
                 {
-                    denom += lt->pl2prob(pls[offset]);
+                    denom += LogTool::pl2prob(pls[offset]);
                 }
 
-                qual += lt->log10((1-lt->pl2prob(pls[offset])/denom));
+                qual += LogTool::log10((1-LogTool::pl2prob(pls[offset])/denom));
             }
 
             if (!n) return;
 
-            qual = lt->round(-qual*10);
+            qual = LogTool::round(-qual*10);
         }
     }
 };

@@ -23,6 +23,11 @@
 
 #include <log_tool.h>
 
+std::vector<double> LogTool::PL;
+std::vector<double> LogTool::PL_one_minus_p;
+std::vector<double> LogTool::LOG10_VARP;
+std::vector<double> LogTool::LOG10FACT;
+
 /**
  * Round a value
  */
@@ -44,15 +49,15 @@ double LogTool::pl2prob(uint32_t pl)
             pl = 3236;
         }
 
-        for (uint32_t i=PL.size(); i<=pl; ++i)
+        for (uint32_t i=LogTool::PL.size(); i<=pl; ++i)
         {
             double p = std::pow(10, -((double) i)/10.0);
-            PL.push_back(p);
-            PL_one_minus_p.push_back(-10*std::log10(1-p));
+            LogTool::PL.push_back(p);
+            LogTool::PL_one_minus_p.push_back(-10*std::log10(1-p));
         }
     }
 
-    return PL[pl];
+    return LogTool::PL[pl];
 }
 
 /**

@@ -124,7 +124,11 @@ void BCFGenotypingBufferedReader::process_read(bam_hdr_t *h, bam1_t *s)
     while (odr->read(v))
     {
         int32_t vtype = vm->classify_variant(odr->hdr, v, variant);
-        g = new GenotypingRecord(odr->hdr, v, vtype);
+        
+        if (vtype==VT_INDEL)
+        {    
+            g = new GenotypingRecord(odr->hdr, v, 10, 2);
+        }
         buffer.push_back(g);
 
         if (tid==g->rid)
@@ -915,15 +919,15 @@ void BCFGenotypingBufferedReader::collect_sufficient_statistics(GenotypingRecord
                 int32_t cend1 = 0;
                 int32_t rpos0 = 0;
 
-                int32_t lend1 = g->lend1;
-                int32_t lmid1 = g->lend1 - 1;
-                int32_t lbeg1 = g->lend1 - 2;
-                int32_t rbeg1 = g->rbeg1;
-                int32_t rmid1 = g->rbeg1 + 1;
-                int32_t rend1 = g->rbeg1 + 2;
+                int32_t end1 = g->end1;
+                int32_t lmid1 = g->end1 - 1;
+                int32_t lbeg1 = g->end1 - 2;
+                int32_t beg1 = g->beg1;
+                int32_t rmid1 = g->beg1 + 1;
+                int32_t rend1 = g->beg1 + 2;
 
-                int32_t abeg1 = lend1 + 1;
-                int32_t aend1 = rbeg1 - 1;
+                int32_t abeg1 = end1 + 1;
+                int32_t aend1 = beg1 - 1;
                 std::string observed_allele;
 
                 for (uint32_t i=0; i<aug_cigar.size(); ++i)
@@ -940,7 +944,7 @@ void BCFGenotypingBufferedReader::collect_sufficient_statistics(GenotypingRecord
                         cend1 = cpos1+oplen-1;
 
                         //collect lflank information
-                        if (cpos1<=lend1 && lbeg1<=cend1)
+                        if (cpos1<=end1 && lbeg1<=cend1)
                         {
                             if (cpos1<=lbeg1)
                             {
@@ -952,10 +956,10 @@ void BCFGenotypingBufferedReader::collect_sufficient_statistics(GenotypingRecord
                                 lflank_state[1] = '=';
                                 lflank_qual[1] = qual[rpos0+lmid1-cpos1];
                             }
-                            if (lend1<=cend1)
+                            if (end1<=cend1)
                             {
                                 lflank_state[2] = '=';
-                                lflank_qual[2] = qual[rpos0+lend1-cpos1];
+                                lflank_qual[2] = qual[rpos0+end1-cpos1];
                             }
                         }
 
@@ -972,12 +976,12 @@ void BCFGenotypingBufferedReader::collect_sufficient_statistics(GenotypingRecord
                         }
 
                         //collect rflank information
-                        if (cpos1<=rend1 && rbeg1<=cend1)
+                        if (cpos1<=rend1 && beg1<=cend1)
                         {
-                            if (cpos1<=rbeg1)
+                            if (cpos1<=beg1)
                             {
                                 rflank_state[0] = '=';
-                                rflank_qual[0] = qual[rpos0+rbeg1-cpos1];
+                                rflank_qual[0] = qual[rpos0+beg1-cpos1];
                             }
                             if (cpos1<=rmid1 && rmid1<=cend1)
                             {
@@ -1014,12 +1018,12 @@ void BCFGenotypingBufferedReader::collect_sufficient_statistics(GenotypingRecord
                             lflank_state[1] = '=';
                             lflank_qual[1] = qual[rpos0];
                         }
-                        else if (cpos1==lend1)
+                        else if (cpos1==end1)
                         {
                             lflank_state[2] = '=';
                             lflank_qual[2] = qual[rpos0];
                         }
-                        else if (cpos1==rbeg1)
+                        else if (cpos1==beg1)
                         {
                             rflank_state[0] = '=';
                             rflank_qual[0] = qual[rpos0];
@@ -1062,7 +1066,7 @@ void BCFGenotypingBufferedReader::collect_sufficient_statistics(GenotypingRecord
     //                    std::cerr << "vpos1 " << vpos1 << "\n";
     //                    std::cerr << "indel " << aug_alt[i] << "\n";
 
-                        if (cpos1-1==lend1)
+                        if (cpos1-1==end1)
                         {
                             observed_allele.append(aug_alt[i]);
                             cycle = strand == 'F' ? (rpos0+1) : (rlen - rpos0);
@@ -1200,15 +1204,15 @@ void BCFGenotypingBufferedReader::collect_sufficient_statistics(GenotypingRecord
                 int32_t cend1 = 0;
                 int32_t rpos0 = 0;
 
-                int32_t lend1 = g->lend1;
-                int32_t lmid1 = g->lend1 - 1;
-                int32_t lbeg1 = g->lend1 - 2;
-                int32_t rbeg1 = g->rbeg1;
-                int32_t rmid1 = g->rbeg1 + 1;
-                int32_t rend1 = g->rbeg1 + 2;
+                int32_t end1 = g->end1;
+                int32_t lmid1 = g->end1 - 1;
+                int32_t lbeg1 = g->end1 - 2;
+                int32_t beg1 = g->beg1;
+                int32_t rmid1 = g->beg1 + 1;
+                int32_t rend1 = g->beg1 + 2;
 
-                int32_t abeg1 = lend1 + 1;
-                int32_t aend1 = rbeg1 - 1;
+                int32_t abeg1 = end1 + 1;
+                int32_t aend1 = beg1 - 1;
                 std::string observed_allele;
 
                 for (uint32_t i=0; i<aug_cigar.size(); ++i)
@@ -1225,7 +1229,7 @@ void BCFGenotypingBufferedReader::collect_sufficient_statistics(GenotypingRecord
                         cend1 = cpos1+oplen-1;
 
                         //collect lflank information
-                        if (cpos1<=lend1 && lbeg1<=cend1)
+                        if (cpos1<=end1 && lbeg1<=cend1)
                         {
                             if (cpos1<=lbeg1)
                             {
@@ -1237,10 +1241,10 @@ void BCFGenotypingBufferedReader::collect_sufficient_statistics(GenotypingRecord
                                 lflank_state[1] = '=';
                                 lflank_qual[1] = qual[rpos0+lmid1-cpos1];
                             }
-                            if (lend1<=cend1)
+                            if (end1<=cend1)
                             {
                                 lflank_state[2] = '=';
-                                lflank_qual[2] = qual[rpos0+lend1-cpos1];
+                                lflank_qual[2] = qual[rpos0+end1-cpos1];
                             }
                         }
 
@@ -1257,12 +1261,12 @@ void BCFGenotypingBufferedReader::collect_sufficient_statistics(GenotypingRecord
                         }
 
                         //collect rflank information
-                        if (cpos1<=rend1 && rbeg1<=cend1)
+                        if (cpos1<=rend1 && beg1<=cend1)
                         {
-                            if (cpos1<=rbeg1)
+                            if (cpos1<=beg1)
                             {
                                 rflank_state[0] = '=';
-                                rflank_qual[0] = qual[rpos0+rbeg1-cpos1];
+                                rflank_qual[0] = qual[rpos0+beg1-cpos1];
                             }
                             if (cpos1<=rmid1 && rmid1<=cend1)
                             {
@@ -1299,12 +1303,12 @@ void BCFGenotypingBufferedReader::collect_sufficient_statistics(GenotypingRecord
                             lflank_state[1] = '=';
                             lflank_qual[1] = qual[rpos0];
                         }
-                        else if (cpos1==lend1)
+                        else if (cpos1==end1)
                         {
                             lflank_state[2] = '=';
                             lflank_qual[2] = qual[rpos0];
                         }
-                        else if (cpos1==rbeg1)
+                        else if (cpos1==beg1)
                         {
                             rflank_state[0] = '=';
                             rflank_qual[0] = qual[rpos0];
@@ -1347,7 +1351,7 @@ void BCFGenotypingBufferedReader::collect_sufficient_statistics(GenotypingRecord
     //                    std::cerr << "vpos1 " << vpos1 << "\n";
     //                    std::cerr << "indel " << aug_alt[i] << "\n";
 
-                        if (cpos1-1==lend1)
+                        if (cpos1-1==end1)
                         {
                             observed_allele.append(aug_alt[i]);
                             cycle = strand == 'F' ? (rpos0+1) : (rlen - rpos0);
@@ -1592,10 +1596,10 @@ void BCFGenotypingBufferedReader::collect_sufficient_statistics(GenotypingRecord
                 int32_t cend1 = 0;
                 int32_t rpos0 = 0;
 
-                int32_t lend1 = g->end1;
+                int32_t end1 = g->end1;
                 int32_t lmid1 = g->end1 - 1;
                 int32_t lbeg1 = g->end1 - 2;
-                int32_t rbeg1 = g->beg1;
+                int32_t beg1 = g->beg1;
                 int32_t rmid1 = g->beg1 + 1;
                 int32_t rend1 = g->beg1 + 2;
 
@@ -1617,7 +1621,7 @@ void BCFGenotypingBufferedReader::collect_sufficient_statistics(GenotypingRecord
                         cend1 = cpos1+oplen-1;
 
                         //collect lflank information
-                        if (cpos1<=lend1 && lbeg1<=cend1)
+                        if (cpos1<=end1 && lbeg1<=cend1)
                         {
                             if (cpos1<=lbeg1)
                             {
@@ -1629,10 +1633,10 @@ void BCFGenotypingBufferedReader::collect_sufficient_statistics(GenotypingRecord
                                 lflank_state[1] = '=';
                                 lflank_qual[1] = qual[rpos0+lmid1-cpos1];
                             }
-                            if (lend1<=cend1)
+                            if (end1<=cend1)
                             {
                                 lflank_state[2] = '=';
-                                lflank_qual[2] = qual[rpos0+lend1-cpos1];
+                                lflank_qual[2] = qual[rpos0+end1-cpos1];
                             }
                         }
 
@@ -1649,12 +1653,12 @@ void BCFGenotypingBufferedReader::collect_sufficient_statistics(GenotypingRecord
                         }
 
                         //collect rflank information
-                        if (cpos1<=rend1 && rbeg1<=cend1)
+                        if (cpos1<=rend1 && beg1<=cend1)
                         {
-                            if (cpos1<=rbeg1)
+                            if (cpos1<=beg1)
                             {
                                 rflank_state[0] = '=';
-                                rflank_qual[0] = qual[rpos0+rbeg1-cpos1];
+                                rflank_qual[0] = qual[rpos0+beg1-cpos1];
                             }
                             if (cpos1<=rmid1 && rmid1<=cend1)
                             {
@@ -1691,12 +1695,12 @@ void BCFGenotypingBufferedReader::collect_sufficient_statistics(GenotypingRecord
                             lflank_state[1] = '=';
                             lflank_qual[1] = qual[rpos0];
                         }
-                        else if (cpos1==lend1)
+                        else if (cpos1==end1)
                         {
                             lflank_state[2] = '=';
                             lflank_qual[2] = qual[rpos0];
                         }
-                        else if (cpos1==rbeg1)
+                        else if (cpos1==beg1)
                         {
                             rflank_state[0] = '=';
                             rflank_qual[0] = qual[rpos0];
@@ -1739,7 +1743,7 @@ void BCFGenotypingBufferedReader::collect_sufficient_statistics(GenotypingRecord
     //                    std::cerr << "vpos1 " << vpos1 << "\n";
     //                    std::cerr << "indel " << aug_alt[i] << "\n";
 
-                        if (cpos1-1==lend1)
+                        if (cpos1-1==end1)
                         {
                             observed_allele.append(aug_alt[i]);
                             cycle = strand == 'F' ? (rpos0+1) : (rlen - rpos0);
@@ -1855,7 +1859,11 @@ void BCFGenotypingBufferedReader::flush(BCFOrderedWriter* odw, bam_hdr_t *h, bam
         while (odr->read(v))
         {
             int32_t vtype = vm->classify_variant(odr->hdr, v, variant);
-            GenotypingRecord* g = new GenotypingRecord(odr->hdr, v, vtype);
+            GenotypingRecord* g;
+            if (vtype==VT_INDEL)
+            {
+                g = new IndelGenotypingRecord(odr->hdr, v, 10, 2);
+            }
             buffer.push_back(g);
             v = bcf_init();
         }

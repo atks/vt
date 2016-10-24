@@ -27,12 +27,13 @@
 #include "hts_utils.h"
 #include "utils.h"
 #include "genotyping_record.h"
+#include "indel_genotyping_record.h"
 #include "bcf_ordered_reader.h"
 #include "variant.h"
 #include "variant_manip.h"
 #include "log_tool.h"
 #include "augmented_bam_record.h"
-
+#
 /**
  * Wrapper for BCFOrderedReader.
  *

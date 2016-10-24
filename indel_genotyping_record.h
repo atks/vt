@@ -57,7 +57,6 @@ class IndelGenotypingRecord : public GenotypingRecord
 
     uint8_t* pls;
     uint8_t* ads;
-    Estimator* est;
 
     // sufficient statistics for computing INFO field
     float bqr_num, bqr_den;
@@ -98,7 +97,7 @@ class IndelGenotypingRecord : public GenotypingRecord
      * Constructor.
      * @v - VCF record.
      */
-    IndelGenotypingRecord(bcf_hdr_t *h, bcf1_t *v, int32_t nsamples, int32_t ploidy, Estimator* est);
+    IndelGenotypingRecord(bcf_hdr_t *h, bcf1_t *v, int32_t nsamples, int32_t ploidy);
 
     /**
      * Clears this record.

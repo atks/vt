@@ -104,7 +104,6 @@ class GenotypingRecord
 
     uint8_t* pls;
     uint8_t* ads;
-    Estimator* est;
 
     // sufficient statistics for computing INFO field
     float bqr_num, bqr_den;
@@ -134,7 +133,6 @@ class GenotypingRecord
     double tmp_pls[3];
     double tmp_ads[3];
 
-
     /**
      * Constructor.
      */
@@ -150,7 +148,7 @@ class GenotypingRecord
      *
      * future todo: ploidy be an array of integers of length no_samples to allow for local copy number.
      */
-    GenotypingRecord(bcf_hdr_t *h, bcf1_t *v, int32_t nsamples, int32_t ploidy, Estimator* est) {};
+    GenotypingRecord(bcf_hdr_t *h, bcf1_t *v, int32_t nsamples, int32_t ploidy) {};
 
     /**
      * Destructor.

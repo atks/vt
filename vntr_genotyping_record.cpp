@@ -163,13 +163,13 @@ bcf1_t* VNTRGenotypingRecord::flush_variant(bcf_hdr_t* hdr)
     for(int32_t i=0; i < nsamples; ++i) 
     {
         int32_t* pli = &pl[ i * 3 ];
-        max_gp = gp_sum = gp = ( est->lt->pl2prob(pli[0]) * MLE_HWE_AF[0] * MLE_HWE_AF[0] );
+        max_gp = gp_sum = gp = ( LogTool::pl2prob(pli[0]) * MLE_HWE_AF[0] * MLE_HWE_AF[0] );
         best_gt = 0; best_a1 = 0; best_a2 = 0;
         for(size_t l=1; l < 2; ++l) 
         {
             for(size_t m=0; m <= l; ++m) 
             {
-                gp = ( est->lt->pl2prob(pli[ l*(l+1)/2 + m]) * MLE_HWE_AF[l] * MLE_HWE_AF[m] * (l == m ? 1 : 2) );
+                gp = ( LogTool::pl2prob(pli[ l*(l+1)/2 + m]) * MLE_HWE_AF[l] * MLE_HWE_AF[m] * (l == m ? 1 : 2) );
                 gp_sum += gp;
                 if ( max_gp < gp ) 
                 {
@@ -198,7 +198,7 @@ bcf1_t* VNTRGenotypingRecord::flush_variant(bcf_hdr_t* hdr)
             prob = 1;
         }
         
-        gq[i] = (int32_t)est->lt->prob2pl(prob);
+        gq[i] = (int32_t)LogTool::prob2pl(prob);
     
         if ( ( best_gt > 0 ) && ( max_gq < gq[i] ) )
         {
@@ -326,7 +326,7 @@ void VNTRGenotypingRecord::flush_sample(int32_t sampleIndex)
     int32_t imax = ( tmp_pls[0] > tmp_pls[1] ) ? ( tmp_pls[0] > tmp_pls[2] ? 0 : 2 ) : ( tmp_pls[1] > tmp_pls[2] ? 1 : 2);
     for(int32_t i=0; i < 3; ++i) 
     {
-        uint32_t l = est->lt->prob2pl(tmp_pls[i]/tmp_pls[imax]);
+        uint32_t l = LogTool::prob2pl(tmp_pls[i]/tmp_pls[imax]);
         p_pls[i] = ((l > 255) ? 255 : l);
         p_ads[i] = ((tmp_ads[i] > 255) ? 255 : (uint8_t)tmp_ads[i]);
     }
@@ -375,7 +375,7 @@ void VNTRGenotypingRecord::flush_sample(int32_t sampleIndex)
  */
 void VNTRGenotypingRecord::add_allele(double contam, int32_t allele, uint8_t mapq, bool fwd, uint32_t q, int32_t cycle, uint32_t nm)
 {
-    double pe = est->lt->pl2prob(q);
+    double pe = LogTool::pl2prob(q);
     double pm = 1 - pe;
 
     if (q>40)
@@ -410,7 +410,7 @@ void VNTRGenotypingRecord::add_allele(double contam, int32_t allele, uint8_t map
     {
         if ( q > 20 )
         {
-          tmp_oth_exp_q20 += (est->lt->pl2prob(q) * 2. / 3.);
+          tmp_oth_exp_q20 += (LogTool::pl2prob(q) * 2. / 3.);
           ++tmp_dp_q20;
         }
 
@@ -446,7 +446,7 @@ void VNTRGenotypingRecord::add_allele(double contam, int32_t allele, uint8_t map
     {
         if (q>20)
         {
-          tmp_oth_exp_q20 += (est->lt->pl2prob(q) * 2. / 3.);
+          tmp_oth_exp_q20 += (LogTool::pl2prob(q) * 2. / 3.);
           ++tmp_oth_obs_q20;
           ++tmp_dp_q20;
         }
