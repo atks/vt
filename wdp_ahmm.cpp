@@ -42,7 +42,6 @@
  */
 WDP_AHMM::WDP_AHMM(bool debug)
 {
-    lt = new LogTool();
     this->debug = debug;
     initialize();
 };
@@ -52,7 +51,6 @@ WDP_AHMM::WDP_AHMM(bool debug)
  */
 WDP_AHMM::WDP_AHMM(LogTool *lt, bool debug)
 {
-    this->lt = lt;
     this->debug = debug;
     initialize();
 };

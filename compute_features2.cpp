@@ -68,7 +68,6 @@ class Igor : Program
     //tools//
     /////////
     VariantManip *vm;
-    Estimator *est;
 
     Igor(int argc, char ** argv)
     {
@@ -109,8 +108,7 @@ class Igor : Program
     void initialize()
     {
         //convert to paste like set up
-        
-        
+                
         //////////////////////
         //i/o initialization//
         //////////////////////
@@ -165,7 +163,6 @@ class Igor : Program
         //tool initialization//
         ///////////////////////
         vm = new VariantManip("");
-        est = new Estimator();
     }
 
     void compute_features()
@@ -213,7 +210,7 @@ class Igor : Program
 
             float qual = 0;
             int32_t n = 0;
-            est->compute_qual(pls, no_samples, ploidy, no_alleles, qual, n);
+            Estimator::compute_qual(pls, no_samples, ploidy, no_alleles, qual, n);
             if (n)
             {
                 bcf_set_qual(v, qual);
@@ -231,7 +228,7 @@ class Igor : Program
             int32_t GN=0;
             float GF[no_genotypes];
             
-            est->compute_af(gts, no_samples, ploidy, no_alleles, AC, AN, AF, GC, GN, GF, NS);
+            Estimator::compute_af(gts, no_samples, ploidy, no_alleles, AC, AN, AF, GC, GN, GF, NS);
 
             if (NS)
             {
@@ -252,7 +249,7 @@ class Igor : Program
             float MLE_HWE_AF[no_alleles];
             float MLE_HWE_GF[no_genotypes];
             n = 0;
-            est->compute_gl_af_hwe(pls, no_samples, ploidy,no_alleles, MLE_HWE_AF, MLE_HWE_GF,  n, 1e-20);
+            Estimator::compute_gl_af_hwe(pls, no_samples, ploidy,no_alleles, MLE_HWE_AF, MLE_HWE_GF,  n, 1e-20);
             if (n)
             {
                 float* MLE_HWE_AF_PTR = &MLE_HWE_AF[1];
@@ -263,7 +260,7 @@ class Igor : Program
             float MLE_AF[no_alleles];
             float MLE_GF[no_genotypes];
             n = 0;
-            est->compute_gl_af(pls, no_samples, ploidy,no_alleles, MLE_AF, MLE_GF,  n, 1e-20);
+            Estimator::compute_gl_af(pls, no_samples, ploidy,no_alleles, MLE_AF, MLE_GF,  n, 1e-20);
             if (n)
             {
                 float* MLE_AF_PTR = &MLE_AF[1];
@@ -275,7 +272,7 @@ class Igor : Program
             float logp;
             int32_t df;
             n = 0;
-            est->compute_hwe_lrt(pls, no_samples, ploidy,
+            Estimator::compute_hwe_lrt(pls, no_samples, ploidy,
                                  no_alleles, MLE_HWE_GF, MLE_GF, n,
                                  lrts, logp, df);
             if (n)
@@ -287,7 +284,7 @@ class Igor : Program
 
             float f;
             n = 0;
-            est->compute_gl_fic(pls, no_samples, ploidy,
+            Estimator::compute_gl_fic(pls, no_samples, ploidy,
                                MLE_HWE_AF, no_alleles, MLE_GF,
                                f, n);
             if (n)
@@ -300,7 +297,7 @@ class Igor : Program
             {
                 float ab;
                 n = 0;
-                est->compute_gl_ab(pls, no_samples, ploidy,
+                Estimator::compute_gl_ab(pls, no_samples, ploidy,
                                    dps, MLE_GF, no_alleles, 
                                    ab, n);
                                    

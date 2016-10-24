@@ -69,7 +69,6 @@ class Igor : Program
     /////////
     //tools//
     /////////
-    LogTool *lt;
     VariantManip * vm;
 
     Igor(int argc, char ** argv)
@@ -163,7 +162,6 @@ Each VCF file is required to have the FORMAT flags E and N and should have exact
         /////////
         //tools//
         /////////
-        lt = new LogTool();
         vm = new VariantManip();
     }
 

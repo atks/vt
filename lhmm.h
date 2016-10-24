@@ -90,7 +90,6 @@ class LHMM
 
     uint32_t noBasesAligned;
 
-    LogTool *lt;
 
     /**
      * Constructor.

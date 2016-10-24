@@ -37,8 +37,6 @@ SNPGenotypingRecord::SNPGenotypingRecord(bcf_hdr_t *h, bcf1_t *v, int32_t nsampl
 {
     clear();
 
-    est = new Estimator();
-
     this->h = h;
     //this->v = v;
     this->rid = bcf_get_rid(v);
@@ -84,7 +82,6 @@ SNPGenotypingRecord::~SNPGenotypingRecord()
     if ( pls ) free(pls);
     if ( ads ) free(ads);
     if ( alleles.l > 0 ) free(alleles.s);
-    if ( est ) delete est;
 }
 
 /**
@@ -168,7 +165,7 @@ bcf1_t* SNPGenotypingRecord::flush_variant(bcf_hdr_t* hdr)
 
     int32_t n = 0;
     int32_t adSumHet[2] = {0,0};
-    est->compute_gl_af_hwe(pl, nsamples, ploidy, 2, MLE_HWE_AF, MLE_HWE_GF, n, 1e-20);
+    Estimator::compute_gl_af_hwe(pl, nsamples, ploidy, 2, MLE_HWE_AF, MLE_HWE_GF, n, 1e-20);
 
     for(int32_t i=0; i < nsamples; ++i) 
     {
@@ -254,7 +251,7 @@ bcf1_t* SNPGenotypingRecord::flush_variant(bcf_hdr_t* hdr)
     float MLE_AF[2];
     float MLE_GF[3];
     n = 0;
-    est->compute_gl_af(pl, nsamples, ploidy, 2, MLE_AF, MLE_GF,  n, 1e-20);
+    Estimator::compute_gl_af(pl, nsamples, ploidy, 2, MLE_AF, MLE_GF,  n, 1e-20);
     if (n) 
     {
         //float* MLE_AF_PTR = &MLE_AF[1];
@@ -264,7 +261,7 @@ bcf1_t* SNPGenotypingRecord::flush_variant(bcf_hdr_t* hdr)
 
     float fic = 0;
     n = 0;
-    est->compute_gl_fic(pl, nsamples, ploidy, MLE_HWE_AF, 2, MLE_GF, fic, n);
+    Estimator::compute_gl_fic(pl, nsamples, ploidy, MLE_HWE_AF, 2, MLE_GF, fic, n);
     if ( std::isnan((double)fic) ) fic = 0;
     if (n) 
     {
@@ -276,7 +273,7 @@ bcf1_t* SNPGenotypingRecord::flush_variant(bcf_hdr_t* hdr)
     float logp;
     int32_t df;
     n = 0;
-    est->compute_hwe_lrt(pl, nsamples, ploidy, 2, MLE_HWE_GF, MLE_GF, n, lrts, logp, df);
+    Estimator::compute_hwe_lrt(pl, nsamples, ploidy, 2, MLE_HWE_GF, MLE_GF, n, lrts, logp, df);
     if (n) 
     {
         if ( fic < 0 ) logp = 0-logp;
@@ -319,7 +316,6 @@ bcf1_t* SNPGenotypingRecord::flush_variant(bcf_hdr_t* hdr)
     free(pls); pls = NULL;
     free(ads); ads = NULL;
 
-    delete est;
     free(alleles.s);
 
     return nv;

@@ -79,7 +79,6 @@ class SNPGenotypingRecord : public GenotypingRecord
 
     uint8_t* pls;
     uint8_t* ads;
-    Estimator* est;
 
     // sufficient statistics for computing INFO field
     float bqr_num, bqr_den;

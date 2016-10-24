@@ -77,17 +77,6 @@
  */
 RFHMM::RFHMM(bool debug)
 {
-    lt = new LogTool();
-    this-> debug = debug;
-    initialize();
-};
-
-/**
- * Constructor.
- */
-RFHMM::RFHMM(LogTool *lt, bool debug)
-{
-    this->lt = lt;
     this-> debug = debug;
     initialize();
 };
@@ -892,11 +881,11 @@ float RFHMM::log10_emission_odds(char probe_base, char read_base, uint32_t pl)
 
     if (read_base!=probe_base)
     {
-        return lt->pl2log10_varp(pl) - par.mismatch_penalty;
+        return LogTool::pl2log10_varp(pl) - par.mismatch_penalty;
     }
     else
     {
-        return -(lt->pl2log10_varp(pl));
+        return -(LogTool::pl2log10_varp(pl));
     }
 };
 

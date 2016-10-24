@@ -149,8 +149,6 @@ class RFHMM
     float **V;
     int32_t **U;
 
-    LogTool *lt;
-
     typedef int32_t (RFHMM::*move) (int32_t t, int32_t j);
     move **moves;
 
@@ -160,12 +158,7 @@ class RFHMM
      * Constructor.
      */
     RFHMM(bool debug=false);
-
-    /**
-     * Constructor.
-     */
-    RFHMM(LogTool *lt, bool debug=false);
-
+    
     /**
      * Destructor.
      */

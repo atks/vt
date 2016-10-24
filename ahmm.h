@@ -136,8 +136,6 @@ class AHMM
     float **V;
     int32_t **U;
 
-    LogTool *lt;
-
     typedef int32_t (AHMM::*move) (int32_t t, int32_t j);
     move **moves;
 
@@ -147,11 +145,6 @@ class AHMM
      * Constructor.
      */
     AHMM(bool debug=false);
-
-    /**
-     * Constructor.
-     */
-    AHMM(LogTool *lt, bool debug=false);
 
     /**
      * Destructor.

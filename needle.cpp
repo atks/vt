@@ -30,13 +30,6 @@
 
 NeedlemanWunsch::NeedlemanWunsch(bool debug)
 {
-    lt = new LogTool();
-    this->debug = debug;
-}
-
-NeedlemanWunsch::NeedlemanWunsch(LogTool *lt, bool debug)
-{
-    this->lt = lt;
     this->debug = debug;
 }
 

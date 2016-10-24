@@ -55,7 +55,6 @@ class Igor : Program
     BCFOrderedReader *odr;
     BCFOrderedWriter *odw;
     NuclearPedigree  *ped;
-    Estimator *est;
 
     std::map<std::string,int> mSex;
 
@@ -127,8 +126,6 @@ class Igor : Program
             mtLabel = arg_mtLabel.getValue();
             xStart = arg_xStart.getValue();
             xStop = arg_xStop.getValue();
-
-            est = new Estimator();
         }
         catch (TCLAP::ArgException &e)
         {
@@ -549,8 +546,8 @@ class Igor : Program
     int32_t ploidy = 2; // temporarily constant
     int32_t n1 = 0;
     int32_t n2 = 0;
-    est->compute_gl_af_hwe(p_pl_ns, ns, ploidy, 2, MLE_HWE_AF, MLE_HWE_GF, n1, 1e-20);
-    est->compute_gl_af(p_pl_ns, ns, ploidy, 2, MLE_HWD_AF, MLE_HWD_GF, n2, 1e-20);
+    Estimator::compute_gl_af_hwe(p_pl_ns, ns, ploidy, 2, MLE_HWE_AF, MLE_HWE_GF, n1, 1e-20);
+    Estimator::compute_gl_af(p_pl_ns, ns, ploidy, 2, MLE_HWD_AF, MLE_HWD_GF, n2, 1e-20);
 
     // minimum genotype frequency is set to 1e-10 to reduce outlier effects and underflow
     for(int i=0; i < 2; ++i) {

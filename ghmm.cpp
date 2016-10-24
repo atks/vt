@@ -29,13 +29,6 @@
 
 GHMM::GHMM(bool debug)
 {
-    lt = new LogTool();
-    this->debug = debug;
-}
-
-GHMM::GHMM(LogTool *lt, bool debug)
-{
-    this->lt = lt;
     this->debug = debug;
 }
 

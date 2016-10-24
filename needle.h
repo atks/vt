@@ -23,8 +23,7 @@
 #ifndef NEEDLE_H
 #define NEEDLE_H
 
-#include <vector>
-#include "log_tool.h"
+#include "utils.h"
 
 class NWParameters
 {
@@ -56,8 +55,6 @@ class NeedlemanWunsch
     std::vector<Traceback> matrix;
     std::vector<Traceback> trace;
 
-    LogTool *lt;
-
     NWParameters params;
 
     /**
@@ -65,12 +62,8 @@ class NeedlemanWunsch
      */
     NeedlemanWunsch(bool debug=false);
 
-    /**
-     * Constructor.
-     */
-    NeedlemanWunsch(LogTool *lt, bool debug=false);
-
-    void set_read(const char * read) {
+    void set_read(const char * read) 
+    {
         this->read = read;
     }
 

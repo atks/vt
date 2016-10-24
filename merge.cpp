@@ -66,7 +66,6 @@ class Igor : Program
     /////////
     //tools//
     /////////
-    LogTool *lt;
     VariantManip * vm;
 
     Igor(int argc, char ** argv)
@@ -138,7 +137,6 @@ class Igor : Program
         /////////
         //tools//
         /////////
-        lt = new LogTool();
         vm = new VariantManip();
     }
 

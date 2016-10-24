@@ -40,16 +40,6 @@
 LHMM::LHMM()
 {
     initialize();
-    lt = new LogTool();
-};
-
-/**
- * Constructor.
- */
-LHMM::LHMM(LogTool *lt)
-{
-    initialize();
-    this->lt = lt;
 };
 
 /**
@@ -100,7 +90,7 @@ void LHMM::initialize()
     transition[M][D] = log10(delta/(1-eta));
     transition[D][D] = log10(epsilon/(1-eta));
 
-    transition[M][I] = transition[M][D]; //log10(delta/(1-eta));
+    transition[M][I] = transition[M][D]; //log10(delta::/(1-eta));
     transition[I][I] = transition[D][D]; //log10(epsilon/(1-eta));
 
     transition[M][W] = log10(tau/eta); //log10((tau*(1-eta))/(eta*(1-eta)));
@@ -272,7 +262,7 @@ void LHMM::align(double& llk, const char* x, const char* y, const char* qual, bo
                 maxPath = 'D';
             }
 
-            scoreM[i*MAXLEN+j] = max + log10_emission_odds(x[i-1], y[j-1], lt->pl2prob((uint32_t) qual[j-1]-33));
+            scoreM[i*MAXLEN+j] = max + log10_emission_odds(x[i-1], y[j-1], LogTool::pl2prob((uint32_t) qual[j-1]-33));
             pathM[i*MAXLEN+j] = maxPath;
 
             //D

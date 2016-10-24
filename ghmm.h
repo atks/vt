@@ -56,8 +56,6 @@ class GHMM
     std::vector<Traceback> matrix;
     std::vector<Traceback> trace;
 
-    LogTool *lt;
-
     GHMMParameters params;
 
     /**
@@ -98,4 +96,4 @@ class GHMM
     void print_alignment(std::string const & pad);
 };
 
-#endif  // ifndef NEEDLE_H
+#endif

@@ -787,7 +787,7 @@ void LHMM1::computeLogLikelihood(double& llk, std::string& _path, const char* qu
         if (state=='M')
         {
             q = pl2prob((uint32_t) qual[yIndex]-33);
-            llk = lt.log10prod(llk, logEmission(x[xIndex], y[yIndex], q));
+            llk = LogTool::log10prod(llk, logEmission(x[xIndex], y[yIndex], q));
             //compute for perfect fit
 
             if (x[xIndex]== y[yIndex])
@@ -801,15 +801,15 @@ void LHMM1::computeLogLikelihood(double& llk, std::string& _path, const char* qu
 
             if (lastState=='M')
             {
-                llk = lt.log10prod(llk, tMM);
+                llk = LogTool::log10prod(llk, tMM);
             }
             else if (lastState=='D')
             {
-                llk = lt.log10prod(llk, tDM);
+                llk = LogTool::log10prod(llk, tDM);
             }
             else if (lastState=='I')
             {
-                llk = lt.log10prod(llk, tIM);
+                llk = LogTool::log10prod(llk, tIM);
             }
 
             //std::cerr << "M) "<< lastState << " "  << llk << " " << x[xIndex] << " " <<  y[yIndex] << " " << pl2prob((uint32_t) qual[yIndex]-33) << " "<< qual[yIndex-1]-33 << "\n";
@@ -821,11 +821,11 @@ void LHMM1::computeLogLikelihood(double& llk, std::string& _path, const char* qu
         {
             if (lastState=='M')
             {
-                llk = lt.log10prod(llk, tMD);
+                llk = LogTool::log10prod(llk, tMD);
             }
             else if (lastState=='D')
             {
-                llk = lt.log10prod(llk, tDD);
+                llk = LogTool::log10prod(llk, tDD);
             }
 
             //std::cerr << "D) " << lastState << " " << llk << " " << x[xIndex] << " " <<  y[yIndex] << "\n";
@@ -836,11 +836,11 @@ void LHMM1::computeLogLikelihood(double& llk, std::string& _path, const char* qu
         {
             if (lastState=='M')
             {
-                llk = lt.log10prod(llk, tMI);
+                llk = LogTool::log10prod(llk, tMI);
             }
             else if (lastState=='I')
             {
-                llk = lt.log10prod(llk, tII);
+                llk = LogTool::log10prod(llk, tII);
             }
 
             //std::cerr << "I) " << lastState << " " << llk << " " << x[xIndex] << " " <<  y[yIndex] << "\n";
@@ -894,9 +894,9 @@ void LHMM1::computeLogLikelihood(double& llk, double& perfectllk, std::string& _
         if (state=='M')
         {
             q = pl2prob((uint32_t) qual[yIndex]-33);
-            llk = lt.log10prod(llk, logEmission(x[xIndex], y[yIndex], q));
+            llk = LogTool::log10prod(llk, logEmission(x[xIndex], y[yIndex], q));
             //compute for perfect fit
-            perfectllk = lt.log10prod(perfectllk, logEmission(x[xIndex], x[xIndex], q));
+            perfectllk = LogTool::log10prod(perfectllk, logEmission(x[xIndex], x[xIndex], q));
 
             if (x[xIndex]== y[yIndex])
             {
@@ -909,18 +909,18 @@ void LHMM1::computeLogLikelihood(double& llk, double& perfectllk, std::string& _
 
             if (lastState=='M')
             {
-                llk = lt.log10prod(llk, tMM);
+                llk = LogTool::log10prod(llk, tMM);
             }
             else if (lastState=='D')
             {
-                llk = lt.log10prod(llk, tDM);
+                llk = LogTool::log10prod(llk, tDM);
             }
             else if (lastState=='I')
             {
-                llk = lt.log10prod(llk, tIM);
+                llk = LogTool::log10prod(llk, tIM);
             }
 
-            perfectllk = lt.log10prod(llk, tMM);
+            perfectllk = LogTool::log10prod(llk, tMM);
 
             //std::cerr << "M) "<< lastState << " "  << llk << " " << x[xIndex] << " " <<  y[yIndex] << " " << pl2prob((uint32_t) qual[yIndex]-33) << " "<< qual[yIndex-1]-33 << "\n";
 
@@ -931,11 +931,11 @@ void LHMM1::computeLogLikelihood(double& llk, double& perfectllk, std::string& _
         {
             if (lastState=='M')
             {
-                llk = lt.log10prod(llk, tMD);
+                llk = LogTool::log10prod(llk, tMD);
             }
             else if (lastState=='D')
             {
-                llk = lt.log10prod(llk, tDD);
+                llk = LogTool::log10prod(llk, tDD);
             }
 
            // std::cerr << "D) " << lastState << " " << llk << " " << x[xIndex] << " " <<  y[yIndex] << "\n";
@@ -946,11 +946,11 @@ void LHMM1::computeLogLikelihood(double& llk, double& perfectllk, std::string& _
         {
             if (lastState=='M')
             {
-                llk = lt.log10prod(llk, tMI);
+                llk = LogTool::log10prod(llk, tMI);
             }
             else if (lastState=='I')
             {
-                llk = lt.log10prod(llk, tII);
+                llk = LogTool::log10prod(llk, tII);
             }
 
             // std::cerr << "I) " << lastState << " " << llk << " " << x[xIndex] << " " <<  y[yIndex] << "\n";
@@ -996,18 +996,18 @@ void LHMM1::computeLogLikelihood(double& llk, const char* qual)
 
         if (state=='M')
         {
-            llk = lt.log10prod(llk, logEmission(x[xIndex], y[yIndex], pl2prob((uint32_t) qual[yIndex-1]-33)));
+            llk = LogTool::log10prod(llk, logEmission(x[xIndex], y[yIndex], pl2prob((uint32_t) qual[yIndex-1]-33)));
             if (lastState=='M')
             {
-                llk = lt.log10prod(llk, tMM);
+                llk = LogTool::log10prod(llk, tMM);
             }
             else if (lastState=='D')
             {
-                llk = lt.log10prod(llk, tDM);
+                llk = LogTool::log10prod(llk, tDM);
             }
             else if (lastState=='I')
             {
-                llk = lt.log10prod(llk, tIM);
+                llk = LogTool::log10prod(llk, tIM);
             }
 
             ++xIndex;
@@ -1017,11 +1017,11 @@ void LHMM1::computeLogLikelihood(double& llk, const char* qual)
         {
             if (lastState=='M')
             {
-                llk = lt.log10prod(llk, tMD);
+                llk = LogTool::log10prod(llk, tMD);
             }
             else if (lastState=='D')
             {
-                llk = lt.log10prod(llk, tDD);
+                llk = LogTool::log10prod(llk, tDD);
             }
             ++xIndex;
         }
@@ -1029,11 +1029,11 @@ void LHMM1::computeLogLikelihood(double& llk, const char* qual)
         {
             if (lastState=='M')
             {
-                llk = lt.log10prod(llk, tMI);
+                llk = LogTool::log10prod(llk, tMI);
             }
             else if (lastState=='I')
             {
-                llk = lt.log10prod(llk, tII);
+                llk = LogTool::log10prod(llk, tII);
             }
             ++yIndex;
         }

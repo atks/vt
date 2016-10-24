@@ -146,8 +146,6 @@ class LFHMM
     float **V;
     int32_t **U;
 
-    LogTool *lt;
-
     typedef int32_t (LFHMM::*move) (int32_t t, int32_t j);
     move **moves;
 
@@ -157,11 +155,6 @@ class LFHMM
      * Constructor.
      */
     LFHMM(bool debug=false);
-
-    /**
-     * Constructor.
-     */
-    LFHMM(LogTool *lt, bool debug=false);
 
     /**
      * Destructor.

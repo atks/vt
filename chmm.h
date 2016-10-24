@@ -145,8 +145,6 @@ class CHMM
 
     bool debug;
 
-    LogTool *lt;
-
     typedef int32_t (CHMM::*move) (int32_t t, int32_t j);
     move **moves;
            
@@ -154,11 +152,6 @@ class CHMM
      * Constructor.
      */
     CHMM(bool debug=false);
-
-    /**
-     * Constructor.
-     */
-    CHMM(LogTool *lt, bool debug=false);
 
     /**
      * Destructor.

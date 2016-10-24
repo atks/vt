@@ -124,8 +124,6 @@ class LHMM1
 
     uint32_t noBasesAligned;
 
-    LogTool lt;
-
     /*Constructor*/
     LHMM1();
 
