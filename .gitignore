@@ -2,3 +2,4 @@
 vt
 lib/Rmath/libRmath.a
 lib/pcre2/libpcre2.a
+lib/libsvm/libsvm.a
