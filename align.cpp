@@ -235,6 +235,33 @@ class Igor : Program
             clock_t t1 = clock();
             print_time((float)(t1-t0)/CLOCKS_PER_SEC);
         }
+        else if (method=="rfhmm_x")
+        {
+            float delta = 0.0000001;
+            float epsilon = 0.001;
+            float tau = 0.01;
+            float eta = 0.01;
+            float mismatch_penalty = 5;
+            
+            RFHMM_X hmm(debug);
+            std::string qual;
+            for (int32_t i=0; i<y.size(); ++i)
+            {
+                qual += 'K';
+            }
+            clock_t t0 = clock();
+            hmm.set_model(ru.c_str(), rflank.c_str());
+            hmm.set_delta(delta);
+            hmm.set_epsilon(epsilon);
+            hmm.set_tau(tau);
+            hmm.set_eta(eta);
+            hmm.set_mismatch_penalty(mismatch_penalty);
+            hmm.initialize_T();
+            hmm.align(y.c_str(), qual.c_str());
+            hmm.print_alignment();
+            clock_t t1 = clock();
+            print_time((float)(t1-t0)/CLOCKS_PER_SEC);
+        }
         else if (method=="ahmm")
         {
             AHMM hmm(debug);

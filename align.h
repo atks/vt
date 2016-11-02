@@ -30,6 +30,7 @@
 #include "chmm.h"
 #include "lfhmm.h"
 #include "rfhmm.h"
+#include "rfhmm_x.h"
 #include "ahmm.h"
 #include "wdp_ahmm.h"
 #include "candidate_region_extractor.h"

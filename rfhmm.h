@@ -98,7 +98,7 @@ class RFHMMParameters
         eta = 0.01;
         mismatch_penalty = 5;
     };
-    
+
     void print()
     {
         std::cerr << "delta            : " << delta << "\n";
@@ -158,7 +158,7 @@ class RFHMM
      * Constructor.
      */
     RFHMM(bool debug=false);
-    
+
     /**
      * Destructor.
      */
@@ -432,7 +432,7 @@ class RFHMM
 
         return NULL_TRACK;
     }
-    
+
     int32_t move_Y_M(int32_t t, int32_t j)
     {
         int32_t p;

@@ -101,6 +101,7 @@ SOURCES = ahmm\
 		reference_sequence\
 		remove_overlap\
 		rfhmm\
+		rfhmm_x\
 		rminfo\
 		seq\
 		set_ref\
