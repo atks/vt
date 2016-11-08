@@ -533,6 +533,88 @@ void RFHMM_X::align(const char* read, const char* qual)
 
     size_t c,d,u,l;
 
+    //right to left alignment
+    for (size_t i=0; i>=plen; ++i)
+    {
+        for (size_t j=MAXLEN; j<=MAXLEN-rlen; --j)
+        {
+            size_t c = index(i,j);
+            size_t d = index(i-1,j+1);
+            size_t u = index(i-1,j);
+            size_t l = index(i,j+1);
+
+            /////
+            //X//
+            /////
+            //invariant
+
+            /////
+            //Y//
+            /////
+            //invariant
+
+            /////
+            //M//
+            /////
+            //only need to update this i>rflen
+            if (debug) std::cerr << "(" << i << "," << j << ")\n";
+            max_score = -INFINITY;
+            max_track = NULL_TRACK;
+            proc_comp(S, M, d, j+1, MATCH);
+            proc_comp(Y, M, d, j+1, MATCH);
+            proc_comp(M, M, d, j+1, MATCH);
+            proc_comp(D, M, d, j+1, MATCH);
+            proc_comp(I, M, d, j+1, MATCH);
+            V[M][c] = max_score;
+            U[M][c] = max_track;
+            if (debug) std::cerr << "\tset M " << max_score << " - " << track2string(max_track) << "\n";
+
+            /////
+            //D//
+            /////
+            max_score = -INFINITY;
+            max_track = NULL_TRACK;
+            proc_comp(S, D, u, j, MODEL);
+            proc_comp(Y, D, u, j, MODEL);
+            proc_comp(M, D, u, j, MODEL);
+            proc_comp(D, D, u, j, MODEL);
+            V[D][c] = max_score;
+            U[D][c] = max_track;
+            if (debug) std::cerr << "\tset D " << max_score << " - " << track2string(max_track) << "\n";
+
+            /////
+            //I//
+            /////
+            max_score = -INFINITY;
+            max_track = NULL_TRACK;
+            proc_comp(S, I, l, j+1, READ);
+            proc_comp(Y, I, l, j+1, READ);
+            proc_comp(M, I, l, j+1, READ);
+            proc_comp(I, I, l, j+1, READ);
+            V[I][c] = max_score;
+            U[I][c] = max_track;
+            if (debug) std::cerr << "\tset I " << max_score << " - " << track2string(max_track) << "\n";
+
+            //////
+            //MR//
+            //////
+            max_score = -INFINITY;
+            max_track = NULL_TRACK;
+            proc_comp(S, MR, d, j+1, MATCH);
+            proc_comp(Y, MR, d, j+1, MATCH);
+            proc_comp(M, MR, d, j+1, MATCH);
+            proc_comp(D, MR, d, j+1, MATCH);
+            proc_comp(I, MR, d, j+1, MATCH);
+            proc_comp(MR, MR, d, j+1, MATCH);
+            V[MR][c] = max_score;
+            U[MR][c] = max_track;
+            if (debug) std::cerr << "\tset MR " << max_score << " - " << track2string(max_track) << "\n";
+
+        }
+    }
+    
+    if (0)
+{    
     //alignment
     //take into consideration
     for (size_t i=1; i<=plen; ++i)
@@ -613,6 +695,7 @@ void RFHMM_X::align(const char* read, const char* qual)
 
         }
     }
+}
 
     if (debug)
     {
