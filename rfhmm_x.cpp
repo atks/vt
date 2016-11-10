@@ -511,7 +511,19 @@ void RFHMM_X::proc_comp(int32_t A, int32_t B, int32_t index1, int32_t j, int32_t
 }
 
 /**
- * Align read against model.
+ * Align model against read.
+ *
+ * This implements the dynamic programming algorithm in a 
+ * right to left fashion, this allows the repeat units to 
+ * end naturally in partial units when trailing on the left
+ * hand side.
+ *
+ *   R E A D
+ * M 
+ * O 
+ * D
+ * E
+ * L
  */
 void RFHMM_X::align(const char* read, const char* qual)
 {
