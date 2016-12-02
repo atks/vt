@@ -25,7 +25,7 @@
 
 namespace
 {
-    
+
 void print_time(float t)
 {
     if (t<60)
@@ -139,9 +139,9 @@ class Igor : Program
 
     void align()
     {
-        
+
         std::cerr << "method : " << method << "\n";
-        
+
         if (method=="lhmm")
         {
             LHMM lhmm;
@@ -159,6 +159,21 @@ class Igor : Program
         }
         else if (method=="chmm")
         {
+            if (lflank=="")
+            {
+                error("lflank not defined");
+            } 
+            
+            if (ru=="")
+            {
+                error("ru not defined");
+            } 
+            
+            if (rflank=="")
+            {
+                error("rflank not defined");
+            } 
+            
             CHMM hmm(debug);
             double llk;
             std::string qual;
@@ -182,12 +197,22 @@ class Igor : Program
         }
         else if (method=="lfhmm")
         {
+            if (lflank=="")
+            {
+                error("lflank not defined");
+            } 
+            
+            if (ru=="")
+            {
+                error("ru not defined");
+            } 
+            
             float delta = 0.0000001;
             float epsilon = 0.001;
             float tau = 0.01;
             float eta = 0.01;
             float mismatch_penalty = 5;
-            
+
             LFHMM hmm(debug);
             double llk;
             std::string qual;
@@ -210,12 +235,22 @@ class Igor : Program
         }
         else if (method=="rfhmm")
         {
+            if (rflank=="")
+            {
+                error("rflank not defined");
+            } 
+            
+            if (ru=="")
+            {
+                error("ru not defined");
+            } 
+            
             float delta = 0.0000001;
             float epsilon = 0.001;
             float tau = 0.01;
             float eta = 0.01;
             float mismatch_penalty = 5;
-            
+
             RFHMM hmm(debug);
             std::string qual;
             for (int32_t i=0; i<y.size(); ++i)
@@ -237,12 +272,22 @@ class Igor : Program
         }
         else if (method=="rfhmm_x")
         {
+            if (rflank=="")
+            {
+                error("rflank not defined");
+            }    
+            
+            if (ru=="")
+            {
+                error("ru not defined");
+            } 
+            
             float delta = 0.0000001;
             float epsilon = 0.001;
             float tau = 0.01;
             float eta = 0.01;
             float mismatch_penalty = 5;
-            
+
             RFHMM_X hmm(debug);
             std::string qual;
             for (int32_t i=0; i<y.size(); ++i)
@@ -264,6 +309,11 @@ class Igor : Program
         }
         else if (method=="ahmm")
         {
+            if (ru=="")
+            {
+                error("ru not defined");
+            } 
+            
             AHMM hmm(debug);
             std::string qual;
             for (int32_t i=0; i<y.size(); ++i)
@@ -303,25 +353,26 @@ class Igor : Program
             if (ref_fasta_file=="")
             {
                 error("Requires reference FASTA file");
-            }    
-            
+            }
+
             debug = true;
             CandidateRegionExtractor cre(ref_fasta_file, debug);
-            
+
             bcf_hdr_t* h = bcf_create_dummy_hdr();
             std::string var = "6:44140054:T:TGGCTGCC";
             bcf1_t* v = bcf_create_dummy_record(h, var);
             Variant variant(h, v);
-            
+
             cre.extract_regions_by_exact_alignment(variant);
-            
             cre.extract_regions_by_fuzzy_alignment(variant);
-            
-            
-            
         }
         else if (method=="wdp_ahmm")
         {
+            if (ru=="")
+            {
+                error("ru not defined");
+            } 
+            
             WDP_AHMM hmm(debug);
             std::string qual;
             for (int32_t i=0; i<y.size(); ++i)
@@ -340,7 +391,7 @@ class Igor : Program
             hmm.print_alignment();
             clock_t t1 = clock();
             print_time((float)(t1-t0)/CLOCKS_PER_SEC);
-            
+
         }
     };
 

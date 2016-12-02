@@ -348,7 +348,7 @@ void RFHMM_X::set_eta(float eta)
 {
     par.eta = eta;
 }
-
+ 
 /**
  * Sets mismatch penalty.
  */
