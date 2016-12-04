@@ -367,7 +367,7 @@ class Igor : Program
         
         try
         {
-            std::string desc = "analyse_mdust  -m detect_motif -s ACTGACT \n";
+            std::string desc = "analyse_mdust -m detect_motif -s ACTGACT \n";
 
             std::string version = "0.5";
             TCLAP::CmdLine cmd(desc, ' ', version);

@@ -23,7 +23,6 @@
 
 #include "allele.h"
 
-
 /**
  * Constructor for explicit sequence variant.
  */

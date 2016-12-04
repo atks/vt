@@ -30,8 +30,8 @@
 #define M       1
 #define D       2
 #define I       3
-#define E       5
-#define N       6
+#define E       4
+#define N       5
 #define NSTATES 6
 
 /*for indexing single array*/
