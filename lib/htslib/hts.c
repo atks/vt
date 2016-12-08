@@ -45,14 +45,6 @@ DEALINGS IN THE SOFTWARE.  */
 #include "htslib/kseq.h"
 #include "htslib/ksort.h"
 
-#define KS_BGZF 1
-#if KS_BGZF
-    // bgzf now supports gzip-compressed files, the gzFile branch can be removed
-    KSTREAM_INIT2(, BGZF*, bgzf_read, 65536)
-#else
-    KSTREAM_INIT2(, gzFile, gzread, 16384)
-#endif
-
 KHASH_INIT2(s2i,, kh_cstr_t, int64_t, 1, kh_str_hash_func, kh_str_hash_equal)
 
 int hts_verbose = 3;
@@ -111,6 +103,9 @@ static enum htsFormatCategory format_category(enum htsExactFormat fmt)
 
     case bed:
         return region_list;
+
+    case json:
+        return unknown_category;
 
     case unknown_format:
     case binary_format:
@@ -179,6 +174,20 @@ parse_version(htsFormat *fmt, const unsigned char *u, const unsigned char *ulim)
         else
             fmt->version.minor = 0;
     }
+}
+
+static int
+cmp_nonblank(const char *key, const unsigned char *u, const unsigned char *ulim)
+{
+    const unsigned char *ukey = (const unsigned char *) key;
+
+    while (*ukey)
+        if (u >= ulim) return +1;
+        else if (isspace_c(*u)) u++;
+        else if (*u != *ukey) return (*ukey < *u)? -1 : +1;
+        else u++, ukey++;
+
+    return 0;
 }
 
 int hts_detect_format(hFILE *hfile, htsFormat *fmt)
@@ -272,6 +281,12 @@ int hts_detect_format(hFILE *hfile, htsFormat *fmt)
             fmt->version.major = 1, fmt->version.minor = -1;
         return 0;
     }
+    else if (cmp_nonblank("{\"", s, &s[len]) == 0) {
+        fmt->category = unknown_category;
+        fmt->format = json;
+        fmt->version.major = fmt->version.minor = -1;
+        return 0;
+    }
     else {
         // Various possibilities for tab-delimited text:
         // .crai   (gzipped tab-delimited six columns: seqid 5*number)
@@ -309,6 +324,7 @@ char *hts_format_description(const htsFormat *format)
     case crai:  kputs("CRAI", &str); break;
     case csi:   kputs("CSI", &str); break;
     case tbi:   kputs("Tabix", &str); break;
+    case json:  kputs("JSON", &str); break;
     default:    kputs("unknown", &str); break;
     }
 
@@ -355,6 +371,7 @@ char *hts_format_description(const htsFormat *format)
         case crai:
         case vcf:
         case bed:
+        case json:
             kputs(" text", &str);
             break;
 
@@ -730,8 +747,9 @@ static int hts_process_opts(htsFile *fp, const char *opts) {
 }
 
 
-htsFile *hts_hopen(struct hFILE *hfile, const char *fn, const char *mode)
+htsFile *hts_hopen(hFILE *hfile, const char *fn, const char *mode)
 {
+    hFILE *hfile_orig = hfile;
     htsFile *fp = (htsFile*)calloc(1, sizeof(htsFile));
     char simple_mode[101], *cp, *opts;
     simple_mode[100] = '\0';
@@ -753,6 +771,15 @@ htsFile *hts_hopen(struct hFILE *hfile, const char *fn, const char *mode)
 
     if (strchr(simple_mode, 'r')) {
         if (hts_detect_format(hfile, &fp->format) < 0) goto error;
+
+        if (fp->format.format == json) {
+            hFILE *hfile2 = hopen_json_redirect(hfile, simple_mode);
+            if (hfile2 == NULL) goto error;
+
+            // Build fp against the result of the redirection
+            hfile = hfile2;
+            if (hts_detect_format(hfile, &fp->format) < 0) goto error;
+        }
     }
     else if (strchr(simple_mode, 'w') || strchr(simple_mode, 'a')) {
         htsFormat *fmt = &fp->format;
@@ -782,7 +809,7 @@ htsFile *hts_hopen(struct hFILE *hfile, const char *fn, const char *mode)
         fmt->compression_level = -1;
         fmt->specific = NULL;
     }
-    else goto error;
+    else { errno = EINVAL; goto error; }
 
     switch (fp->format.format) {
     case binary_format:
@@ -790,7 +817,7 @@ htsFile *hts_hopen(struct hFILE *hfile, const char *fn, const char *mode)
     case bcf:
         fp->fp.bgzf = bgzf_hopen(hfile, simple_mode);
         if (fp->fp.bgzf == NULL) goto error;
-        fp->is_bin = 1;
+        fp->is_bin = fp->is_bgzf = 1;
         break;
 
     case cram:
@@ -804,37 +831,35 @@ htsFile *hts_hopen(struct hFILE *hfile, const char *fn, const char *mode)
     case text_format:
     case sam:
     case vcf:
-        if (!fp->is_write) {
-        #if KS_BGZF
-            BGZF *gzfp = bgzf_hopen(hfile, simple_mode);
-        #else
-            // TODO Implement gzip hFILE adaptor
-            hclose(hfile); // This won't work, especially for stdin
-            gzFile gzfp = strcmp(fn, "-")? gzopen(fn, "rb") : gzdopen(fileno(stdin), "rb");
-        #endif
-            if (gzfp) fp->fp.voidp = ks_init(gzfp);
-            else goto error;
-        }
-        else if (fp->format.compression != no_compression) {
+        if (fp->format.compression != no_compression) {
             fp->fp.bgzf = bgzf_hopen(hfile, simple_mode);
             if (fp->fp.bgzf == NULL) goto error;
+            fp->is_bgzf = 1;
         }
         else
             fp->fp.hfile = hfile;
         break;
 
     default:
+        errno = ENOEXEC;
         goto error;
     }
 
     if (opts)
         hts_process_opts(fp, opts);
 
+    // If redirecting, close the original hFILE now (pedantically we would
+    // instead close it in hts_close(), but this a simplifying optimisation)
+    if (hfile != hfile_orig) hclose_abruptly(hfile_orig);
+
     return fp;
 
 error:
     if (hts_verbose >= 2)
         fprintf(stderr, "[E::%s] fail to open file '%s'\n", __func__, fn);
+
+    // If redirecting, close the failed redirection hFILE that we have opened
+    if (hfile != hfile_orig) hclose_abruptly(hfile);
 
     if (fp) {
         free(fp->fn);
@@ -872,17 +897,7 @@ int hts_close(htsFile *fp)
     case text_format:
     case sam:
     case vcf:
-        if (!fp->is_write) {
-        #if KS_BGZF
-            BGZF *gzfp = ((kstream_t*)fp->fp.voidp)->f;
-            ret = bgzf_close(gzfp);
-        #else
-            gzFile gzfp = ((kstream_t*)fp->fp.voidp)->f;
-            ret = gzclose(gzfp);
-        #endif
-            ks_destroy((kstream_t*)fp->fp.voidp);
-        }
-        else if (fp->format.compression != no_compression)
+        if (fp->format.compression != no_compression)
             ret = bgzf_close(fp->fp.bgzf);
         else
             ret = hclose(fp->fp.hfile);
@@ -1015,68 +1030,75 @@ int hts_set_fai_filename(htsFile *fp, const char *fn_aux)
 // future is uncertain. Things will probably have to change with hFILE...
 BGZF *hts_get_bgzfp(htsFile *fp)
 {
-    if ( fp->is_bin  || fp->is_write )
+    if (fp->is_bgzf)
         return fp->fp.bgzf;
     else
-        return ((kstream_t*)fp->fp.voidp)->f;
+        return NULL;
 }
 int hts_useek(htsFile *fp, long uoffset, int where)
 {
-    if ( fp->is_bin )
+    if (fp->is_bgzf)
         return bgzf_useek(fp->fp.bgzf, uoffset, where);
     else
-    {
-        ks_rewind((kstream_t*)fp->fp.voidp);
-        ((kstream_t*)fp->fp.voidp)->seek_pos = uoffset;
-        return bgzf_useek(((kstream_t*)fp->fp.voidp)->f, uoffset, where);
-    }
+        return (hseek(fp->fp.hfile, uoffset, SEEK_SET) >= 0)? 0 : -1;
 }
 long hts_utell(htsFile *fp)
 {
-    if ( fp->is_bin )
+    if (fp->is_bgzf)
         return bgzf_utell(fp->fp.bgzf);
     else
-        return ((kstream_t*)fp->fp.voidp)->seek_pos;
+        return htell(fp->fp.hfile);
 }
 
 int hts_getline(htsFile *fp, int delimiter, kstring_t *str)
 {
-    int ret, dret;
-    ret = ks_getuntil((kstream_t*)fp->fp.voidp, delimiter, str, &dret);
+    int ret;
+    if (! (delimiter == KS_SEP_LINE || delimiter == '\n')) {
+        fprintf(stderr, "[hts_getline] unexpected delimiter %d\n", delimiter);
+        abort();
+    }
+
+    switch (fp->format.compression) {
+    case no_compression:
+        str->l = 0;
+        ret = kgetline(str, (kgets_func *) hgets, fp->fp.hfile);
+        if (ret >= 0) ret = str->l;
+        else if (herrno(fp->fp.hfile)) ret = -2, errno = herrno(fp->fp.hfile);
+        else ret = -1;
+        break;
+
+    case gzip:
+    case bgzf:
+        ret = bgzf_getline(fp->fp.bgzf, '\n', str);
+        break;
+
+    default:
+        abort();
+    }
+
     ++fp->lineno;
     return ret;
 }
 
 char **hts_readlist(const char *string, int is_file, int *_n)
 {
-    int m = 0, n = 0, dret;
+    int m = 0, n = 0;
     char **s = 0;
     if ( is_file )
     {
-#if KS_BGZF
         BGZF *fp = bgzf_open(string, "r");
-#else
-        gzFile fp = gzopen(string, "r");
-#endif
         if ( !fp ) return NULL;
 
-        kstream_t *ks;
         kstring_t str;
         str.s = 0; str.l = str.m = 0;
-        ks = ks_init(fp);
-        while (ks_getuntil(ks, KS_SEP_LINE, &str, &dret) >= 0)
+        while (bgzf_getline(fp, '\n', &str) >= 0)
         {
             if (str.l == 0) continue;
             n++;
             hts_expand(char*,n,m,s);
             s[n-1] = strdup(str.s);
         }
-        ks_destroy(ks);
-#if KS_BGZF
         bgzf_close(fp);
-#else
-        gzclose(fp);
-#endif
         free(str.s);
     }
     else
@@ -1103,19 +1125,13 @@ char **hts_readlist(const char *string, int is_file, int *_n)
 
 char **hts_readlines(const char *fn, int *_n)
 {
-    int m = 0, n = 0, dret;
+    int m = 0, n = 0;
     char **s = 0;
-#if KS_BGZF
     BGZF *fp = bgzf_open(fn, "r");
-#else
-    gzFile fp = gzopen(fn, "r");
-#endif
     if ( fp ) { // read from file
-        kstream_t *ks;
         kstring_t str;
         str.s = 0; str.l = str.m = 0;
-        ks = ks_init(fp);
-        while (ks_getuntil(ks, KS_SEP_LINE, &str, &dret) >= 0) {
+        while (bgzf_getline(fp, '\n', &str) >= 0) {
             if (str.l == 0) continue;
             if (m == n) {
                 m = m? m<<1 : 16;
@@ -1123,12 +1139,7 @@ char **hts_readlines(const char *fn, int *_n)
             }
             s[n++] = strdup(str.s);
         }
-        ks_destroy(ks);
-        #if KS_BGZF
-            bgzf_close(fp);
-        #else
-            gzclose(fp);
-        #endif
+        bgzf_close(fp);
         s = (char**)realloc(s, n * sizeof(char*));
         free(str.s);
     } else if (*fn == ':') { // read from string
@@ -2172,4 +2183,53 @@ hts_idx_t *hts_idx_load2(const char *fn, const char *fnidx)
     }
 
     return hts_idx_load_local(fnidx);
+}
+
+
+
+/**********************
+ ***     Memory     ***
+ **********************/
+
+/* For use with hts_expand macros *only* */
+size_t hts_realloc_or_die(size_t n, size_t m, size_t m_sz, size_t size,
+                          int clear, void **ptr, const char *func) {
+    /* If new_m and size are both below this limit, multiplying them
+       together can't overflow */
+    const size_t safe = (size_t) 1 << (sizeof(size_t) * 4);
+    void *new_ptr;
+    size_t bytes, new_m;
+
+    new_m = n;
+    kroundup_size_t(new_m);
+
+    bytes = size * new_m;
+
+    /* Check for overflow.  Both ensure that new_m will fit in m (we make the
+       pessimistic assumption that m is signed), and that bytes has not
+       wrapped around. */
+    if (new_m > ((1 << (m_sz * 8 - 1)) - 1)
+        || ((size > safe || new_m > safe)
+            && bytes / new_m != size)) {
+        errno = ENOMEM;
+        goto die;
+    }
+
+    new_ptr = realloc(*ptr, bytes);
+    if (new_ptr == NULL) goto die;
+
+    if (clear) {
+        if (new_m > m) {
+            memset((char *) new_ptr + m * size, 0, (new_m - m) * size);
+        }
+    }
+
+    *ptr = new_ptr;
+
+    return new_m;
+
+ die:
+    if (hts_verbose > 1)
+        fprintf(stderr, "[E::%s] %s\n", func, strerror(errno));
+    exit(1);
 }

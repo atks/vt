@@ -44,6 +44,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <math.h>
+#include <stdint.h>
 
 #include "cram/cram.h"
 #include "cram/os.h"
@@ -151,6 +152,11 @@ cram_block_compression_hdr *cram_decode_compression_header(cram_fd *fd,
 	cp += safe_itf8_get(cp, endp, &hdr->ref_seq_span);
 	cp += safe_itf8_get(cp, endp, &hdr->num_records);
 	cp += safe_itf8_get(cp, endp, &hdr->num_landmarks);
+        if ((hdr->num_landmarks < 0 ||
+             hdr->num_landmarks >= SIZE_MAX / sizeof(int32_t))) {
+            free(hdr);
+	    return NULL;
+        }
 	if (!(hdr->landmark = malloc(hdr->num_landmarks * sizeof(int32_t)))) {
 	    free(hdr);
 	    return NULL;
@@ -189,7 +195,7 @@ cram_block_compression_hdr *cram_decode_compression_header(cram_fd *fd,
 	khint_t k;
 	int r;
 
-	if (endp - cp < 2) {
+	if (endp - cp < 3) {
 	    cram_free_compression_header(hdr);
 	    return NULL;
 	}
@@ -2294,6 +2300,7 @@ int cram_decode_slice(cram_fd *fd, cram_container *c, cram_slice *s,
 	    pthread_mutex_lock(&fd->ref_lock);
 	    pthread_mutex_lock(&fd->refs->lock);
 	    if ((fd->required_fields & SAM_SEQ) &&
+                ref_id < fd->refs->nref &&
 		s->ref_end > fd->refs->ref_id[ref_id]->length) {
 		s->ref_end = fd->refs->ref_id[ref_id]->length;
 	    }

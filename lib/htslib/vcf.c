@@ -26,7 +26,6 @@ DEALINGS IN THE SOFTWARE.  */
 
 #include <config.h>
 
-#include <zlib.h>
 #include <stdio.h>
 #include <assert.h>
 #include <string.h>
@@ -46,7 +45,6 @@ KHASH_MAP_INIT_STR(vdict, bcf_idinfo_t)
 typedef khash_t(vdict) vdict_t;
 
 #include "htslib/kseq.h"
-KSTREAM_DECLARE(gzFile, gzread)
 
 uint32_t bcf_float_missing    = 0x7F800001;
 uint32_t bcf_float_vector_end = 0x7F800002;
@@ -1296,6 +1294,7 @@ int bcf_write(htsFile *hfp, bcf_hdr_t *h, bcf1_t *v)
 bcf_hdr_t *vcf_hdr_read(htsFile *fp)
 {
     kstring_t txt, *s = &fp->line;
+    int ret;
     bcf_hdr_t *h;
     h = bcf_hdr_init("r");
     if (!h) {
@@ -1303,44 +1302,42 @@ bcf_hdr_t *vcf_hdr_read(htsFile *fp)
         return NULL;
     }
     txt.l = txt.m = 0; txt.s = 0;
-    while (hts_getline(fp, KS_SEP_LINE, s) >= 0) {
+    while ((ret = hts_getline(fp, KS_SEP_LINE, s)) >= 0) {
         if (s->l == 0) continue;
         if (s->s[0] != '#') {
             if (hts_verbose >= 2)
                 fprintf(stderr, "[E::%s] no sample line\n", __func__);
-            free(txt.s);
-            bcf_hdr_destroy(h);
-            return NULL;
+            goto error;
         }
         if (s->s[1] != '#' && fp->fn_aux) { // insert contigs here
-            int dret;
-            gzFile f;
-            kstream_t *ks;
-            kstring_t tmp;
-            tmp.l = tmp.m = 0; tmp.s = 0;
-            f = gzopen(fp->fn_aux, "r");
-            ks = ks_init(f);
-            while (ks_getuntil(ks, 0, &tmp, &dret) >= 0) {
-                int c;
-                kputs("##contig=<ID=", &txt); kputs(tmp.s, &txt);
-                ks_getuntil(ks, 0, &tmp, &dret);
-                kputs(",length=", &txt); kputw(atol(tmp.s), &txt);
+            kstring_t tmp = { 0, 0, NULL };
+            hFILE *f = hopen(fp->fn_aux, "r");
+            if (f == NULL) {
+                fprintf(stderr, "[E::%s] couldn't open \"%s\"\n", __func__, fp->fn_aux);
+                goto error;
+            }
+            while (tmp.l = 0, kgetline(&tmp, (kgets_func *) hgets, f) >= 0) {
+                char *tab = strchr(tmp.s, '\t');
+                if (tab == NULL) continue;
+                kputs("##contig=<ID=", &txt); kputsn(tmp.s, tab - tmp.s, &txt);
+                kputs(",length=", &txt); kputl(atol(tab), &txt);
                 kputsn(">\n", 2, &txt);
-                if (dret != '\n')
-                    while ((c = ks_getc(ks)) != '\n' && c != -1); // skip the rest of the line
             }
             free(tmp.s);
-            ks_destroy(ks);
-            gzclose(f);
+            if (hclose(f) != 0) {
+                if (hts_verbose >= 2)
+                    fprintf(stderr, "[W::%s] closing \"%s\" failed\n", __func__, fp->fn_aux);
+            }
         }
         kputsn(s->s, s->l, &txt);
         kputc('\n', &txt);
         if (s->s[1] != '#') break;
     }
+    if ( ret < -1 ) goto error;
     if ( !txt.s )
     {
         fprintf(stderr,"[%s:%d %s] Could not read the header\n", __FILE__,__LINE__,__FUNCTION__);
-        return NULL;
+        goto error;
     }
     bcf_hdr_parse(h, txt.s);
 
@@ -1368,6 +1365,11 @@ bcf_hdr_t *vcf_hdr_read(htsFile *fp)
     }
     free(txt.s);
     return h;
+
+ error:
+    free(txt.s);
+    if (h) bcf_hdr_destroy(h);
+    return NULL;
 }
 
 int bcf_hdr_set(bcf_hdr_t *hdr, const char *fname)
@@ -2069,7 +2071,7 @@ int vcf_read(htsFile *fp, const bcf_hdr_t *h, bcf1_t *v)
 {
     int ret;
     ret = hts_getline(fp, KS_SEP_LINE, &fp->line);
-    if (ret < 0) return -1;
+    if (ret < 0) return ret;
     return vcf_parse1(&fp->line, h, v);
 }
 

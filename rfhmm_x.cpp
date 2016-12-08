@@ -224,8 +224,6 @@ void RFHMM_X::initialize_UV()
     {
         for (size_t j=0; j<MAXLEN; ++j)
         {
-            
-            
             size_t c = index(i,j);
 
             V[S][c] = -INFINITY;
