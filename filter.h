@@ -160,6 +160,11 @@ class Filter
      * Attempts to simplify the expression tree by collapsing nodes that can be precomputed.
      */
     void simplify();
+    
+    /**
+     * Resets filter.
+     */
+    void reset();
 
     private:
 

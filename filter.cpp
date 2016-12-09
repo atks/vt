@@ -1028,16 +1028,9 @@ void Filter::parse(const char* exp, bool debug)
             }    
         }
         
-        if (tree!=NULL)
-        {
-            delete tree;
-            tree = NULL;
-        }
-        else
-        {
-            tree = new Node();
-            parse(exp_no_space.c_str(), exp_no_space.size(), tree, debug);
-        }
+        reset();
+        tree = new Node();
+        parse(exp_no_space.c_str(), exp_no_space.size(), tree, debug);
 
         if (!tree->type&VT_BOOL)
         {
@@ -1076,6 +1069,25 @@ bool Filter::apply(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug) //recu
     else
     {
         return false;
+    }
+}
+
+/**
+ * Attempts to simplify the expression tree by collapsing nodes that can be precomputed.
+ */
+void Filter::simplify()
+{
+}
+    
+/**
+ * Resets filter.
+ */
+void Filter::reset()
+{
+    if (tree!=NULL)
+    {
+        delete tree;
+        tree = NULL;
     }
 }
 

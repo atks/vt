@@ -32,6 +32,18 @@
 /**
  * Class for PERL regular expressions.
  * Wrapper for pcre2.
+ *
+ * Usage
+ *
+ * //using C++ strings
+ * std::string regex = "abc";
+ * pregex.set(regex);
+ * std::string target = "aabcc";
+ * bool b = pregex.match(target);
+ *
+ * //using C strings
+ * pregex.set(regex.s);
+ * bool b = pregex.match(target.s);
  */
 class PERLregex
 {
@@ -69,7 +81,7 @@ class PERLregex
      * Destructor.
      */
     ~PERLregex();
-    
+
     /**
      * Sets the regular expression amd compiles it for matching later.
      */
@@ -79,16 +91,16 @@ class PERLregex
      * Sets the regular expression amd compiles it for matching later.
      */
     void set(char* regex);
-        
+
     /**
      * Matches a text against a regular expression that has been compiled in set().
      */
     bool match(std::string& text);
-        
+
     /**
      * Matches a text against a regular expression that has been compiled in set().
      */
-    bool match(char* text);    
+    bool match(char* text);
 };
 
 #endif
