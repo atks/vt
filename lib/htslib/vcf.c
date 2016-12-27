@@ -31,6 +31,8 @@ DEALINGS IN THE SOFTWARE.  */
 #include <string.h>
 #include <stdlib.h>
 #include <limits.h>
+#include <stdint.h>
+#include <errno.h>
 
 #include "htslib/vcf.h"
 #include "htslib/bgzf.h"
@@ -308,7 +310,7 @@ bcf_hrec_t *bcf_hdr_parse_line(const bcf_hdr_t *h, const char *line, int *len)
         hrec->value = (char*) malloc((q-p+1)*sizeof(char));
         memcpy(hrec->value, p, q-p);
         hrec->value[q-p] = 0;
-        *len = q-line+1;
+        *len = q - line + (*q ? 1 : 0); // Skip \n but not \0
         return hrec;
     }
 
@@ -337,7 +339,7 @@ bcf_hrec_t *bcf_hdr_parse_line(const bcf_hdr_t *h, const char *line, int *len)
             kputsn(line,q-line,&tmp);
             fprintf(stderr,"Could not parse the header line: \"%s\"\n", tmp.s);
             free(tmp.s);
-            *len = q-line+1;
+            *len = q - line + (*q ? 1 : 0);
             bcf_hrec_destroy(hrec);
             return NULL;
         }
@@ -368,7 +370,7 @@ bcf_hrec_t *bcf_hdr_parse_line(const bcf_hdr_t *h, const char *line, int *len)
     // Skip trailing spaces
     while ( *q && *q==' ' ) { q++; }
 
-    *len = q-line+1;
+    *len = q - line + (*q ? 1 : 0);
     return hrec;
 }
 
@@ -805,6 +807,7 @@ void bcf_hdr_destroy(bcf_hdr_t *h)
 {
     int i;
     khint_t k;
+    if (!h) return;
     for (i = 0; i < 3; ++i) {
         vdict_t *d = (vdict_t*)h->dict[i];
         if (d == 0) continue;
@@ -851,12 +854,16 @@ bcf_hdr_t *bcf_hdr_read(htsFile *hfp)
         bcf_hdr_destroy(h);
         return NULL;
     }
-    uint32_t hlen;
+    uint8_t buf[4];
+    size_t hlen;
     char *htxt = NULL;
-    if (bgzf_read(fp, &hlen, 4) != 4) goto fail;
-    htxt = (char*)malloc(hlen);
+    if (bgzf_read(fp, buf, 4) != 4) goto fail;
+    hlen = buf[0] | (buf[1] << 8) | (buf[2] << 16) | (buf[3] << 24);
+    if (hlen >= SIZE_MAX) { errno = ENOMEM; goto fail; }
+    htxt = (char*)malloc(hlen + 1);
     if (!htxt) goto fail;
     if (bgzf_read(fp, htxt, hlen) != hlen) goto fail;
+    htxt[hlen] = '\0'; // Ensure htxt is terminated
     bcf_hdr_parse(h, htxt);  // FIXME: Does this return anything meaningful?
     free(htxt);
     return h;
@@ -944,6 +951,7 @@ void bcf_empty(bcf1_t *v)
 
 void bcf_destroy(bcf1_t *v)
 {
+    if (!v) return;
     bcf_empty1(v);
     free(v);
 }
@@ -958,8 +966,8 @@ static inline int bcf_read1_core(BGZF *fp, bcf1_t *v)
     }
     bcf_clear1(v);
     x[0] -= 24; // to exclude six 32-bit integers
-    ks_resize(&v->shared, x[0]);
-    ks_resize(&v->indiv, x[1]);
+    if (ks_resize(&v->shared, x[0]) != 0) return -2;
+    if (ks_resize(&v->indiv, x[1]) != 0) return -2;
     memcpy(v, x + 2, 16);
     v->n_allele = x[6]>>16; v->n_info = x[6]&0xffff;
     v->n_fmt = x[7]>>24; v->n_sample = x[7]&0xffffff;
@@ -967,8 +975,8 @@ static inline int bcf_read1_core(BGZF *fp, bcf1_t *v)
     // silent fix of broken BCFs produced by earlier versions of bcf_subset, prior to and including bd6ed8b4
     if ( (!v->indiv.l || !v->n_sample) && v->n_fmt ) v->n_fmt = 0;
 
-    if (bgzf_read(fp, v->shared.s, v->shared.l) != v->shared.l) return -1;
-    if (bgzf_read(fp, v->indiv.s, v->indiv.l) != v->indiv.l) return -1;
+    if (bgzf_read(fp, v->shared.s, v->shared.l) != v->shared.l) return -2;
+    if (bgzf_read(fp, v->indiv.s, v->indiv.l) != v->indiv.l) return -2;
     return 0;
 }
 
@@ -976,6 +984,198 @@ static inline int bcf_read1_core(BGZF *fp, bcf1_t *v)
 #define bit_array_set(a,i)   ((a)[(i)/8] |=   1 << ((i)%8))
 #define bit_array_clear(a,i) ((a)[(i)/8] &= ~(1 << ((i)%8)))
 #define bit_array_test(a,i)  ((a)[(i)/8] &   (1 << ((i)%8)))
+
+static int bcf_dec_typed_int1_safe(uint8_t *p, uint8_t *end, uint8_t **q,
+                                   int32_t *val) {
+    uint32_t v;
+    uint32_t t;
+    if (end - p < 2) return -1;
+    t = *p++ & 0xf;
+    /* Use if .. else if ... else instead of switch to force order.  Assumption
+       is that small integers are more frequent than big ones. */
+    if (t == BCF_BT_INT8) {
+        *q = p + 1;
+        *val = *(int8_t *) p;
+    } else if (t == BCF_BT_INT16) {
+        if (end - p < 2) return -1;
+        *q = p + 2;
+        v = p[0] | (p[1] << 8);
+        *val = v < 0x8000 ? v : -((int32_t) (0xffff - v)) - 1;
+    } else if (t == BCF_BT_INT32) {
+        if (end - p < 4) return -1;
+        *q = p + 4;
+        v = p[0] | (p[1] << 8) | (p[2] << 16) | (p[3] << 24);
+        *val = v < 0x80000000UL ? v : -((int32_t) (0xffffffffUL - v)) - 1;
+    } else {
+        return -1;
+    }
+    return 0;
+}
+
+static int bcf_dec_size_safe(uint8_t *p, uint8_t *end, uint8_t **q,
+                             int *num, int *type) {
+    int r;
+    if (p >= end) return -1;
+    *type = *p & 0xf;
+    if (*p>>4 != 15) {
+        *q = p + 1;
+        *num = *p >> 4;
+        return 0;
+    }
+    r = bcf_dec_typed_int1_safe(p + 1, end, q, num);
+    if (r) return r;
+    return *num >= 0 ? 0 : -1;
+}
+
+static void report_bad_id(const char *func, const char *rectype, int badval) {
+    if (hts_verbose > 1) {
+        fprintf(stderr, "[W::%s] Bad BCF record: Invalid %s id %d\n",
+                func, rectype, badval);
+    }
+}
+
+static void report_bad_type(const char *func, const char *rectype, int type) {
+    const char *types[9] = {
+        "null", "int (8-bit)", "int (16 bit)", "int (32 bit)",
+        "unknown", "float", "unknown", "char", "unknown"
+    };
+    int t = (type >= 0 && type < 8) ? type : 8;
+    if (hts_verbose > 1) {
+        fprintf(stderr, "[W::%s] Bad BCF record: Invalid %s type %d (%s)\n",
+                func, rectype, type, types[t]);
+    }
+}
+
+static int bcf_record_check(const bcf_hdr_t *hdr, bcf1_t *rec) {
+    uint8_t *ptr, *end;
+    size_t bytes;
+    uint32_t err = 0;
+    int type = 0;
+    int num  = 0;
+    uint32_t i, reports;
+    const uint32_t is_integer = ((1 << BCF_BT_INT8)  |
+                                 (1 << BCF_BT_INT16) |
+                                 (1 << BCF_BT_INT32));
+    const uint32_t is_valid_type = (is_integer          |
+                                    (1 << BCF_BT_NULL)  |
+                                    (1 << BCF_BT_FLOAT) |
+                                    (1 << BCF_BT_CHAR));
+
+
+    // Check for valid contig ID
+    if (rec->rid < 0 || rec->rid >= hdr->n[BCF_DT_CTG]) {
+        report_bad_id(__func__, "CONTIG", rec->rid);
+        err |= BCF_ERR_CTG_INVALID;
+    }
+
+    // Check ID
+    ptr = (uint8_t *) rec->shared.s;
+    end = ptr + rec->shared.l;
+    if (bcf_dec_size_safe(ptr, end, &ptr, &num, &type) != 0) goto bad_shared;
+    if (type != BCF_BT_CHAR) {
+        report_bad_type(__func__, "ID", type);
+        err |= BCF_ERR_TAG_INVALID;
+    }
+    bytes = (size_t) num << bcf_type_shift[type];
+    if (end - ptr < bytes) goto bad_shared;
+    ptr += bytes;
+
+    // Check REF and ALT
+    reports = 0;
+    for (i = 0; i < rec->n_allele; i++) {
+        if (bcf_dec_size_safe(ptr, end, &ptr, &num, &type) != 0) goto bad_shared;
+        if (type != BCF_BT_CHAR) {
+            if (!reports++ || hts_verbose > 5)
+                report_bad_type(__func__, "REF/ALT", type);
+            err |= BCF_ERR_CHAR;
+        }
+        bytes = (size_t) num << bcf_type_shift[type];
+        if (end - ptr < bytes) goto bad_shared;
+        ptr += bytes;
+    }
+
+    // Check FILTER
+    if (bcf_dec_size_safe(ptr, end, &ptr, &num, &type) != 0) goto bad_shared;
+    if (num > 0) {
+        if (((1 << type) & is_integer) == 0) {
+            report_bad_type(__func__, "FILTER", type);
+            err |= BCF_ERR_TAG_INVALID;
+        }
+        bytes = (size_t) num << bcf_type_shift[type];
+        if (end - ptr < bytes) goto bad_shared;
+        reports = 0;
+        for (i = 0; i < num; i++) {
+            int32_t key = bcf_dec_int1(ptr, type, &ptr);
+            if (key < 0 || key >= hdr->n[BCF_DT_ID]) {
+                if (!reports++ || hts_verbose > 5)
+                    report_bad_id(__func__, "FILTER", key);
+                err |= BCF_ERR_TAG_UNDEF;
+            }
+        }
+    }
+
+    // Check INFO
+    reports = 0;
+    for (i = 0; i < rec->n_info; i++) {
+        int32_t key = -1;
+        if (bcf_dec_typed_int1_safe(ptr, end, &ptr, &key) != 0) goto bad_shared;
+        if (key < 0 || key >= hdr->n[BCF_DT_ID]) {
+            if (!reports++ || hts_verbose > 5)
+                report_bad_id(__func__, "INFO", key);
+            err |= BCF_ERR_TAG_UNDEF;
+        }
+        if (bcf_dec_size_safe(ptr, end, &ptr, &num, &type) != 0) goto bad_shared;
+        if (((1 << type) & is_valid_type) == 0) {
+            if (!reports++ || hts_verbose > 5)
+                report_bad_type(__func__, "INFO", type);
+            err |= BCF_ERR_TAG_INVALID;
+        }
+        bytes = (size_t) num << bcf_type_shift[type];
+        if (end - ptr < bytes) goto bad_shared;
+        ptr += bytes;
+    }
+
+    // Check FORMAT and individual information
+    ptr = (uint8_t *) rec->indiv.s;
+    end = ptr + rec->indiv.l;
+    reports = 0;
+    for (i = 0; i < rec->n_fmt; i++) {
+        int32_t key = -1;
+        if (bcf_dec_typed_int1_safe(ptr, end, &ptr, &key) != 0) goto bad_indiv;
+        if (key < 0 || key >= hdr->n[BCF_DT_ID]) {
+            if (!reports++ || hts_verbose > 5)
+                report_bad_id(__func__, "FORMAT", key);
+            err |= BCF_ERR_TAG_UNDEF;
+        }
+        if (bcf_dec_size_safe(ptr, end, &ptr, &num, &type) != 0) goto bad_indiv;
+        if (((1 << type) & is_valid_type) == 0) {
+            if (!reports++ || hts_verbose > 5)
+                report_bad_type(__func__, "FORMAT", type);
+            err |= BCF_ERR_TAG_INVALID;
+        }
+        bytes = ((size_t) num << bcf_type_shift[type]) * rec->n_sample;
+        if (end - ptr < bytes) goto bad_indiv;
+        ptr += bytes;
+    }
+
+    rec->errcode |= err;
+
+    return err ? -1 : 0;
+
+ bad_shared:
+    if (hts_verbose > 1) {
+        fprintf(stderr, "[E::%s] Bad BCF record - shared section malformed or too short\n",
+                __func__);
+    }
+    return -1;
+
+ bad_indiv:
+    if (hts_verbose > 1) {
+        fprintf(stderr, "[E::%s] Bad BCF record - individuals section malformed or too short\n",
+                __func__);
+    }
+    return -1;
+}
 
 static inline uint8_t *bcf_unpack_fmt_core1(uint8_t *ptr, int n_sample, bcf_fmt_t *fmt);
 int bcf_subset_format(const bcf_hdr_t *hdr, bcf1_t *rec)
@@ -1023,6 +1223,7 @@ int bcf_read(htsFile *fp, const bcf_hdr_t *h, bcf1_t *v)
 {
     if (fp->format.format == vcf) return vcf_read(fp,h,v);
     int ret = bcf_read1_core(fp->fp.bgzf, v);
+    if (ret == 0) ret = bcf_record_check(h, v);
     if ( ret!=0 || !h->keep_samples ) return ret;
     return bcf_subset_format(h,v);
 }
@@ -2320,10 +2521,11 @@ int bcf_hdr_id2int(const bcf_hdr_t *h, int which, const char *id)
 hts_idx_t *bcf_index(htsFile *fp, int min_shift)
 {
     int n_lvls, i;
-    bcf1_t *b;
-    hts_idx_t *idx;
+    bcf1_t *b = NULL;
+    hts_idx_t *idx = NULL;
     bcf_hdr_t *h;
     int64_t max_len = 0, s;
+    int r;
     h = bcf_hdr_read(fp);
     if ( !h ) return NULL;
     int nids = 0;
@@ -2337,21 +2539,25 @@ hts_idx_t *bcf_index(htsFile *fp, int min_shift)
     max_len += 256;
     for (n_lvls = 0, s = 1<<min_shift; max_len > s; ++n_lvls, s <<= 3);
     idx = hts_idx_init(nids, HTS_FMT_CSI, bgzf_tell(fp->fp.bgzf), min_shift, n_lvls);
+    if (!idx) goto fail;
     b = bcf_init1();
-    while (bcf_read1(fp,h, b) >= 0) {
+    if (!b) goto fail;
+    while ((r = bcf_read1(fp,h, b)) >= 0) {
         int ret;
         ret = hts_idx_push(idx, b->rid, b->pos, b->pos + b->rlen, bgzf_tell(fp->fp.bgzf), 1);
-        if (ret < 0)
-        {
-            bcf_destroy1(b);
-            hts_idx_destroy(idx);
-            return NULL;
-        }
+        if (ret < 0) goto fail;
     }
+    if (r < -1) goto fail;
     hts_idx_finish(idx, bgzf_tell(fp->fp.bgzf));
     bcf_destroy1(b);
     bcf_hdr_destroy(h);
     return idx;
+
+ fail:
+    hts_idx_destroy(idx);
+    bcf_destroy1(b);
+    bcf_hdr_destroy(h);
+    return NULL;
 }
 
 hts_idx_t *bcf_index_load2(const char *fn, const char *fnidx)
