@@ -131,11 +131,12 @@ class Igor : Program
     {
         std::clog << "consolidate_multiallelics v" << version << "\n";
         std::clog << "\n";
-        std::clog << "options:     input VCF file(s)        " << input_vcf_file << "\n";
-        std::clog << "         [o] output VCF file          " << output_vcf_file << "\n";
-        print_boo_op("         [d] debug                    ", debug);
-        print_ref_op("         [r] ref FASTA file           ", ref_fasta_file);
-        print_int_op("         [i] intervals                ", intervals);
+        std::clog << "options:     input VCF file(s)                    " << input_vcf_file << "\n";
+        std::clog << "         [o] output VCF file                      " << output_vcf_file << "\n";
+        print_boo_op("         [d] debug                                ", debug);
+        print_num_op("         [w] window overlap for merging variants  ", window_overlap);
+        print_ref_op("         [r] ref FASTA file                       ", ref_fasta_file);
+        print_int_op("         [i] intervals                            ", intervals);
         std::clog << "\n";
     }
 

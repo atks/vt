@@ -478,7 +478,31 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
     {
         value_exists = true;
 
-        if (type==VT_QUAL)
+        if (type==VT_REF_COL)
+        {
+            s.l = 0;
+            char* ref = bcf_get_ref(v);
+            kputs(ref, &s);
+        }
+        else if (type==VT_ALT)
+        {
+            int32_t no_allele = bcf_get_n_allele(v);
+            if (no_allele)
+            {
+                s.l = 0;
+                char** allele = bcf_get_allele(v);
+                for (int32_t i=1; i<v->n_allele; ++i)
+                {
+                    if (i>1) kputc(',', &s);
+                    kputs(allele[i], &s);
+                }
+            }
+            else
+            {
+                s.l = 0;
+            }
+        }
+        else if (type==VT_QUAL)
         {
             if (bcf_float_is_missing(bcf_get_qual(v)))
             {
@@ -1301,6 +1325,20 @@ void Filter::parse_literal(const char* exp, int32_t len, Node * node, bool debug
         node->type = VT_FILTER;
         kputsn(exp, len, &node->tag);
         if (debug) std::cerr << "\tis filter_op\n";
+        return;
+    }
+    else if (strncmp(exp, "REF", 3)==0)
+    {
+        node->type = VT_REF_COL;
+        exp += 3;
+        if (debug) std::cerr << "\tis ref_op\n";
+        return;
+    }
+    else if (strncmp(exp, "ALT", 3)==0)
+    {
+        node->type = VT_ALT;
+        exp += 3;
+        if (debug) std::cerr << "\tis alt_op\n";
         return;
     }
     else if (strncmp(exp, "QUAL", 4)==0)

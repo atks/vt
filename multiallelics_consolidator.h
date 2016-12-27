@@ -80,8 +80,8 @@ class MultiallelicsConsolidator
     //INFO fields
     /////////////
     std::string END;
-    std::string INVOLVED_MULTIALLELIC_VARIANT;
-    std::string INVOLVED_BIALLELIC_VARIANTS;
+    std::string MERGED_NEW_MULTIALLELIC_VARIANT;
+    std::string CONSTITUENT_VARIANTS;
 
     /////////
     //stats//

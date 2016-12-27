@@ -72,6 +72,8 @@
 #define VT_FILTER              (39|VT_BCF_OP|VT_BOOL)
 #define VT_N_FILTER            (40|VT_INT|VT_BCF_OP)
 #define VT_INFO                (41|VT_BCF_OP)
+#define VT_REF_COL             (42|VT_BCF_OP|VT_STR)
+#define VT_ALT                 (43|VT_BCF_OP|VT_STR)
 
 //problems will arise once you pass 63.
 #define VT_UNKNOWN -1

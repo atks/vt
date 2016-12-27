@@ -53,8 +53,8 @@ MultiallelicsConsolidator::MultiallelicsConsolidator(std::string& input_vcf_file
     ////////////////////////////////////////////
     bool rename = false;
     END = bcf_hdr_append_info_with_backup_naming(odw->hdr, "END", "1", "Integer", "End position of the variant.", rename);
-    INVOLVED_MULTIALLELIC_VARIANT = bcf_hdr_append_info_with_backup_naming(odw->hdr, "INVOLVED_MULTIALLELIC_VARIANT", ".", "String", "Multiallelic variant that this variant is represent in.", rename);
-    INVOLVED_BIALLELIC_VARIANTS = bcf_hdr_append_info_with_backup_naming(odw->hdr, "INVOLVED_BIALLELIC_VARIANTS", ".", "String", "Biallelic variant that this variant is compose of.", rename);
+    MERGED_NEW_MULTIALLELIC_VARIANT = bcf_hdr_append_info_with_backup_naming(odw->hdr, "MERGED_NEW_MULTIALLELIC_VARIANT", ".", "String", "New multiallelic variant that this variant is merged into.", rename);
+    CONSTITUENT_VARIANTS = bcf_hdr_append_info_with_backup_naming(odw->hdr, "CONSTITUENT_VARIANTS", ".", "String", "Variants that are merged into this multiallelic variant.", rename);
     odw->write_hdr();
 
     //
@@ -408,14 +408,14 @@ void MultiallelicsConsolidator::update_multiallelic_for_printing(Variant& mvar)
     bcf_update_info_int32(odw->hdr, mvar.v, "END", &mvar.end1, 1);
     std::string new_alleles = join(alleles, ",");
     bcf_update_alleles_str(mvar.h, mvar.v, new_alleles.c_str());
-    bcf_update_info_string(odw->hdr, mvar.v, INVOLVED_BIALLELIC_VARIANTS.c_str(), biallelics.c_str());
+    bcf_update_info_string(odw->hdr, mvar.v, CONSTITUENT_VARIANTS.c_str(), biallelics.c_str());
 
     mvar.updated_multiallelic = true;
 
     std::string multi = bcf_variant2string(odw->hdr, mvar.v);
     for  (uint32_t i=0; i<mvar.vs.size(); ++i)
     {
-        bcf_update_info_string(odw->hdr, mvar.vs[i], INVOLVED_MULTIALLELIC_VARIANT.c_str(), multi.c_str());
+        bcf_update_info_string(odw->hdr, mvar.vs[i], MERGED_NEW_MULTIALLELIC_VARIANT.c_str(), multi.c_str());
     }
 
 //    std::cerr << "================================\n";
