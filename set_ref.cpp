@@ -80,7 +80,7 @@ class Igor : Program
         //////////////////////////
         try
         {
-            std::string desc = "annotates indels with VNTR information and adds a VNTR record.";
+            std::string desc = "Modifies the REF sequence or adds an END tag to represent the end of the allelic region of a variant.";
 
             TCLAP::CmdLine cmd(desc, ' ', version);
             VTOutput my; cmd.setOutput(&my);

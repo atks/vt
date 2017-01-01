@@ -1,4 +1,4 @@
-/* The MIT License
+/* The MIT Licensem
 
    Copyright (c) 2013 Adrian Tan <atks@umich.edu>
 
