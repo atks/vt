@@ -26,6 +26,7 @@
 
 #include "program.h"
 #include "libsvm/svm.h"
+#include "Rmath/Rmath.h"
 
 void svm_train(int argc, char ** argv);
 

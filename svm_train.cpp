@@ -78,8 +78,8 @@ class Igor : Program
             VTOutput my; cmd.setOutput(&my);
             TCLAP::ValueArg<std::string> arg_intervals("i", "i", "intervals []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "file", cmd);
-            TCLAP::ValueArg<std::string> arg_positive_training_set_vcf_file("p", "p", "file containing list of reference datasets []", false, "", "file", cmd);
-            TCLAP::ValueArg<std::string> arg_negative_training_set_vcf_file("p", "p", "file containing list of reference datasets []", false, "", "file", cmd);
+            TCLAP::ValueArg<std::string> arg_positive_training_set_vcf_file("p", "p", "positive training data set []", false, "", "file", cmd);
+            TCLAP::ValueArg<std::string> arg_negative_training_set_vcf_file("n", "n", "negative training data set []", false, "", "file", cmd);
             TCLAP::ValueArg<std::string> arg_fexp("f", "f", "filter expression []", false, "VTYPE==SNP", "str", cmd);
             TCLAP::UnlabeledValueArg<std::string> arg_input_vcf_file("<in.vcf>", "input VCF file", true, "","file", cmd);
 
@@ -126,39 +126,127 @@ class Igor : Program
         //stats initialization//
         ////////////////////////
         no_snps = 0;
+        no_variants = 0;
+    }
+
+    /**
+     * Inverse normalizes a set of values.
+     */
+    void inverse_normalize(std::vector<float>& raw, std::vector<float>& normalized)
+    {
+        //sort vector
+        std::vector<float*> raw_ptr(raw.size());
+        for (int32_t i=0; i<raw.size(); ++i)
+        {
+            raw_ptr[i] = &raw[i];
+        }
+
+        struct
+        {
+            bool operator()(float *a, float *b)
+            {
+                return *a < *b;
+            }
+        } ptr_compare;
+
+        //print unsorted values
+        std::cout << "Unsorted Values\n";
+        for (int32_t i=1; i<raw_ptr.size(); ++i)
+        {
+            std::cerr << *raw_ptr[i] << "\n";
+        }
+
+        std::sort(raw_ptr.begin(), raw_ptr.end(), ptr_compare);
+
+        //print sorted values
+        std::cout << "Sorted Values\n";
+        for (int32_t i=1; i<raw_ptr.size(); ++i)
+        {
+            std::cerr << *raw_ptr[i] << "\n";
+        }
+
+        //count unique values
+        int32_t no_uniq_values = raw_ptr.size()==0 ? 0 : 1;
+        for (int32_t i=1; i<raw.size(); ++i)
+        {
+            if (*raw_ptr[i]!=*raw_ptr[i-1])
+            {
+                ++no_uniq_values;
+            }
+        }
+
+        std::cout << "No of unique values : " << no_uniq_values << "\n";
+
+        //inverse normalize values
+        //update values
+        float* offset = &raw[0];
+        float step = 0.9999999/(float)no_uniq_values;
+        float c_p = step;
+        normalized.resize(raw.size());
+        int32_t pos = (raw_ptr[0]-offset);
+        std::cerr << "updating position " << pos << "\n";
+        normalized[pos] = qnorm(c_p, 0, 1, 1, 0);
+        for (int32_t i=1; i<raw_ptr.size(); ++i)
+        {
+            if (*raw_ptr[i]!=*raw_ptr[i-1])
+            {
+                c_p += step;
+            }
+
+            pos = (raw_ptr[i]-offset);
+            std::cerr << "updating position " << pos << "\n";
+
+            normalized[pos] = qnorm(c_p, 0, 1, 1, 0);
+        }
+
 
     }
 
     void svm_train()
     {
+
+
         //extract common variants with training sets
            //store covariates
-        std::vector<bcfptr*> current_recs;
-        std::vector<Interval*> overlaps;
-        Variant variant;
-
-        while(sr->read_next_position(current_recs))
-        {
-            //check first variant
-            bcf1_t *v = current_recs[0]->v;
-            bcf_hdr_t *h = current_recs[0]->h;
-            int32_t vtype = vm->classify_variant(h, v, variant);
-
-        }
+//        std::vector<bcfptr*> current_recs;
+//        std::vector<Interval*> overlaps;
+//        Variant variant;
+//
+//        while(sr->read_next_position(current_recs))
+//        {
+//            //check first variant
+//            bcf1_t *v = current_recs[0]->v;
+//            bcf_hdr_t *h = current_recs[0]->h;
+//            int32_t vtype = vm->classify_variant(h, v, variant);
+//
+//        }
 
         //inverse normalize covariates in memory
-        
-        
-        
+        std::vector<float> raw;
+        std::vector<float> normalized;
+
+        for (int32_t i=0; i<10; ++i)
+        {
+            raw.push_back(runif(-100, 100));
+        }
+
+        inverse_normalize(raw, normalized);
+
+        for (int32_t i=0; i<10; ++i)
+        {
+            printf("%.4f\t%.4f\n", raw[i], normalized[i]);
+        }
+
+
         //train
-        
-        
+
+
 
         //output model trained
-        
-        
+
+
         //output inverse normalized features to allow for inspection
-        
+
     };
 
     void print_options()
