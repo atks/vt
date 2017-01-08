@@ -134,6 +134,8 @@ class Igor : Program
      */
     void inverse_normalize(std::vector<float>& raw, std::vector<float>& normalized)
     {
+        bool debug = false;
+        
         //sort vector
         std::vector<float*> raw_ptr(raw.size());
         for (int32_t i=0; i<raw.size(); ++i)
@@ -149,22 +151,29 @@ class Igor : Program
             }
         } ptr_compare;
 
+        
         //print unsorted values
-        std::cout << "Unsorted Values\n";
-        for (int32_t i=1; i<raw_ptr.size(); ++i)
+        if (debug)
         {
-            std::cerr << *raw_ptr[i] << "\n";
+            std::cout << "Unsorted Values\n";
+            for (int32_t i=1; i<raw_ptr.size(); ++i)
+            {
+                std::cerr << *raw_ptr[i] << "\n";
+            }
         }
-
+            
         std::sort(raw_ptr.begin(), raw_ptr.end(), ptr_compare);
 
         //print sorted values
-        std::cout << "Sorted Values\n";
-        for (int32_t i=1; i<raw_ptr.size(); ++i)
+        if (debug)
         {
-            std::cerr << *raw_ptr[i] << "\n";
+            std::cout << "Sorted Values\n";
+            for (int32_t i=1; i<raw_ptr.size(); ++i)
+            {
+                std::cerr << *raw_ptr[i] << "\n";
+            }
         }
-
+        
         //count unique values
         int32_t no_uniq_values = raw_ptr.size()==0 ? 0 : 1;
         for (int32_t i=1; i<raw.size(); ++i)
@@ -175,16 +184,19 @@ class Igor : Program
             }
         }
 
-        std::cout << "No of unique values : " << no_uniq_values << "\n";
-
+        if (debug)
+        {    
+            std::cout << "No of unique values : " << no_uniq_values << "\n";
+        }
+    
         //inverse normalize values
         //update values
         float* offset = &raw[0];
-        float step = 0.9999999/(float)no_uniq_values;
+        float step = 1/(float)(no_uniq_values+1);
         float c_p = step;
         normalized.resize(raw.size());
         int32_t pos = (raw_ptr[0]-offset);
-        std::cerr << "updating position " << pos << "\n";
+        if (debug) std::cerr << "updating position " << pos << "\n";
         normalized[pos] = qnorm(c_p, 0, 1, 1, 0);
         for (int32_t i=1; i<raw_ptr.size(); ++i)
         {
@@ -194,18 +206,14 @@ class Igor : Program
             }
 
             pos = (raw_ptr[i]-offset);
-            std::cerr << "updating position " << pos << "\n";
+            if (debug) std::cerr << "updating position " << pos << "\n";
 
             normalized[pos] = qnorm(c_p, 0, 1, 1, 0);
         }
-
-
     }
 
     void svm_train()
     {
-
-
         //extract common variants with training sets
            //store covariates
 //        std::vector<bcfptr*> current_recs;
