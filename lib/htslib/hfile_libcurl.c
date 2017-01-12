@@ -1,6 +1,6 @@
 /*  hfile_libcurl.c -- libcurl backend for low-level file streams.
 
-    Copyright (C) 2015, 2016 Genome Research Ltd.
+    Copyright (C) 2015-2017 Genome Research Ltd.
 
     Author: John Marshall <jm18@sanger.ac.uk>
 
@@ -573,27 +573,52 @@ static hFILE *hopen_libcurl(const char *url, const char *modes)
     return libcurl_open(url, modes, NULL);
 }
 
-static hFILE *vhopen_libcurl(const char *url, const char *modes, va_list args)
+static int parse_va_list(struct curl_slist **headers, va_list args)
 {
-    struct curl_slist *headers = NULL;
     const char *argtype;
 
     while ((argtype = va_arg(args, const char *)) != NULL)
         if (strcmp(argtype, "httphdr:v") == 0) {
             const char **hdr;
             for (hdr = va_arg(args, const char **); *hdr; hdr++) {
-                struct curl_slist *list = curl_slist_append(headers, *hdr);
-                if (list) headers = list; else goto slist_error;
+                struct curl_slist *list = curl_slist_append(*headers, *hdr);
+                if (list) *headers = list; else return -1;
             }
         }
-        else { errno = EINVAL; return NULL; }
+        else if (strcmp(argtype, "httphdr:l") == 0) {
+            const char *hdr;
+            while ((hdr = va_arg(args, const char *)) != NULL) {
+                struct curl_slist *list = curl_slist_append(*headers, hdr);
+                if (list) *headers = list; else return -1;
+            }
+        }
+        else if (strcmp(argtype, "httphdr") == 0) {
+            const char *hdr = va_arg(args, const char *);
+            if (hdr) {
+                struct curl_slist *list = curl_slist_append(*headers, hdr);
+                if (list) *headers = list; else return -1;
+            }
+        }
+        else if (strcmp(argtype, "va_list") == 0) {
+            va_list *args2 = va_arg(args, va_list *);
+            if (args2) {
+                if (parse_va_list(headers, *args2) < 0) return -1;
+            }
+        }
+        else { errno = EINVAL; return -1; }
+
+    return 0;
+}
+
+static hFILE *vhopen_libcurl(const char *url, const char *modes, va_list args)
+{
+    struct curl_slist *headers = NULL;
+    if (parse_va_list(&headers, args) < 0) {
+        if (headers) curl_slist_free_all(headers);
+        return NULL;
+    }
 
     return libcurl_open(url, modes, headers);
-
-slist_error:
-    if (headers) curl_slist_free_all(headers);
-    errno = ENOMEM;
-    return NULL;
 }
 
 int PLUGIN_GLOBAL(hfile_plugin_init,_libcurl)(struct hFILE_plugin *self)
@@ -866,6 +891,7 @@ add_s3_settings(hFILE_libcurl *fp, const char *s3url, kstring_t *message)
     kstring_t profile = { 0, 0, NULL };
     kstring_t id = { 0, 0, NULL };
     kstring_t secret = { 0, 0, NULL };
+    kstring_t host_base = { 0, 0, NULL };
     kstring_t token = { 0, 0, NULL };
     kstring_t token_hdr = { 0, 0, NULL };
     kstring_t auth_hdr = { 0, 0, NULL };
@@ -924,17 +950,6 @@ add_s3_settings(hFILE_libcurl *fp, const char *s3url, kstring_t *message)
         else kputs("default", &profile);
     }
 
-    // Use virtual hosted-style access if possible, otherwise path-style.
-    if (is_dns_compliant(bucket, path)) {
-        kputsn(bucket, path - bucket, &url);
-        kputs(".s3.amazonaws.com", &url);
-    }
-    else {
-        kputs("s3.amazonaws.com/", &url);
-        kputsn(bucket, path - bucket, &url);
-    }
-    kputs(path, &url);
-
     if (id.l == 0) {
         const char *v = getenv("AWS_SHARED_CREDENTIALS_FILE");
         parse_ini(v? v : "~/.aws/credentials", profile.s,
@@ -943,9 +958,25 @@ add_s3_settings(hFILE_libcurl *fp, const char *s3url, kstring_t *message)
     }
     if (id.l == 0)
         parse_ini("~/.s3cfg", profile.s, "access_key", &id,
-                  "secret_key", &secret, "access_token", &token, NULL);
+                  "secret_key", &secret, "access_token", &token,
+                  "host_base", &host_base, NULL);
     if (id.l == 0)
         parse_simple("~/.awssecret", &id, &secret);
+
+    if (host_base.l == 0)
+        kputs("s3.amazonaws.com", &host_base);
+    // Use virtual hosted-style access if possible, otherwise path-style.
+    if (is_dns_compliant(bucket, path)) {
+        kputsn(bucket, path - bucket, &url);
+        kputc('.', &url);
+        kputs(host_base.s, &url);
+    }
+    else {
+        kputs(host_base.s, &url);
+        kputc('/', &url);
+        kputsn(bucket, path - bucket, &url);
+    }
+    kputs(path, &url);
 
     if (token.l > 0) {
         kputs("x-amz-security-token:", message);
@@ -989,6 +1020,7 @@ free_and_return:
     free(profile.s);
     free(id.s);
     free(secret.s);
+    free(host_base.s);
     free(token.s);
     free(token_hdr.s);
     free(auth_hdr.s);
