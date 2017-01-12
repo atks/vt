@@ -45,6 +45,7 @@ SOURCES = ahmm\
 		estimator\
 		extract_vntrs\
 		filter\
+		filter_overlap\
 		flank_detector\
 		fuzzy_aligner\
 		fuzzy_partition\
@@ -99,7 +100,6 @@ SOURCES = ahmm\
 		program\
 		read_filter\
 		reference_sequence\
-		remove_overlap\
 		rfhmm\
 		rfhmm_x\
 		rminfo\

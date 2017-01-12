@@ -21,7 +21,7 @@
    THE SOFTWARE.
 */
 
-#include "remove_overlap.h"
+#include "filter_overlap.h"
 
 KHASH_MAP_INIT_STR(xdict, bcf1_t*);
 
@@ -37,6 +37,7 @@ class Igor : Program
     ///////////
     std::string input_vcf_file;
     std::string output_vcf_file;
+    int32_t window_overlap;
     std::vector<GenomeInterval> intervals;
     bool merge_by_pos;
 
@@ -51,8 +52,8 @@ class Igor : Program
     //stats//
     /////////
     int32_t no_total_variants;
-    int32_t no_nonoverlap_variants; 
-    int32_t no_overlap_variants; 
+    int32_t no_nonoverlap_variants;
+    int32_t no_overlap_variants;
 
     /////////
     //tools//
@@ -68,19 +69,21 @@ class Igor : Program
         //////////////////////////
         try
         {
-            std::string desc = "Removes overlapping variants in a VCF file by tagging such variants with the FILTER flag overlap.";
+            std::string desc = "Tags overlapping variants in a VCF file with the FILTER flag overlap.";
 
             TCLAP::CmdLine cmd(desc, ' ', version);
             VTOutput my;
             cmd.setOutput(&my);
             TCLAP::ValueArg<std::string> arg_intervals("i", "i", "intervals []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "file", cmd);
+            TCLAP::ValueArg<int32_t> arg_window_overlap("w", "w", "window overlap for variants [0]", false, 0, "integer", cmd);
             TCLAP::ValueArg<std::string> arg_output_vcf_file("o", "o", "output VCF file [-]", false, "-", "str", cmd);
             TCLAP::UnlabeledValueArg<std::string> arg_input_vcf_file("<in.vcf>", "input VCF file", true, "","file", cmd);
 
             cmd.parse(argc, argv);
 
             input_vcf_file = arg_input_vcf_file.getValue();
+            window_overlap = arg_window_overlap.getValue();
             output_vcf_file = arg_output_vcf_file.getValue();
             parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
         }
@@ -99,17 +102,17 @@ class Igor : Program
         odr = new BCFOrderedReader(input_vcf_file, intervals);
         odw = new BCFOrderedWriter(output_vcf_file, 0);
         odw->link_hdr(odr->hdr);
-        
+
         bcf_hdr_append(odw->hdr, "##FILTER=<ID=PASS,Description=\"Passed variant\">");
         bcf_hdr_append(odw->hdr, "##FILTER=<ID=overlap,Description=\"Overlapping variant\">");
-        
+
         odw->write_hdr();
-                
+
         ////////////////////////
         //stats initialization//
         ////////////////////////
         no_total_variants = 0;
-        no_nonoverlap_variants = 0; 
+        no_nonoverlap_variants = 0;
         no_overlap_variants = 0;
 
         ////////////////////////
@@ -117,53 +120,53 @@ class Igor : Program
         ////////////////////////
     }
 
-    void remove_overlap()
+    void filter_overlap()
     {
         kstring_t variant = {0, 0, 0};
 
         int32_t crid = -1;
-        int32_t cpos1 = -1;
-        int32_t cepos1 = -1;
+        int32_t cbeg1 = -1;
+        int32_t cend1 = -1;
         bcf1_t* cv = NULL;
-        
+
         bcf1_t *v = odw->get_bcf1_from_pool();
-        
+
         int32_t tpass_id = bcf_hdr_id2int(odw->hdr, BCF_DT_ID, "PASS");
         int32_t overlap_id = bcf_hdr_id2int(odw->hdr, BCF_DT_ID, "overlap");
-     
+
         while (odr->read(v))
         {
             bcf_unpack(v, BCF_UN_STR);
             int32_t rid = bcf_get_rid(v);
-            int32_t pos1 = bcf_get_pos1(v);
-            int32_t epos1 = bcf_get_end1(v);
+            int32_t beg1 = bcf_get_pos1(v);
+            int32_t end1 = bcf_get_end1(v);
 
-            //does this overlap            
-            if (crid==rid && cepos1>=pos1 && cpos1<=epos1)
+            //does this overlap
+            if (crid==rid && cend1+window_overlap>=beg1 && cbeg1-window_overlap<=end1)
             {
                 //update overlap range
-                cpos1 = std::min(cpos1, pos1);
-                cepos1 = std::max(cepos1, epos1);
-                
+                cbeg1 = std::min(cbeg1, beg1);
+                cend1 = std::max(cend1, end1);
+
                 if (cv)
                 {
                     ++no_overlap_variants;
                     bcf_add_filter(odw->hdr, cv, overlap_id);
                     odw->write(cv);
                     cv = NULL;
-                }    
-                
-                ++no_overlap_variants;       
+                }
+
+                ++no_overlap_variants;
             }
             else
             {
                 crid = rid;
-                cpos1 = pos1;
-                cepos1 = epos1;
-                
+                cbeg1 = beg1;
+                cend1 = end1;
+
                 if (cv)
-                {    
-                    bcf_add_filter(odw->hdr, cv, tpass_id);
+                {
+//                    bcf_add_filter(odw->hdr, cv, tpass_id);
                     odw->write(cv);
                     ++no_nonoverlap_variants;
                 }
@@ -173,15 +176,15 @@ class Igor : Program
 
             ++no_total_variants;
         }
-        
+
         //the last non overlapping variant
         if (cv)
-        {    
-            bcf_add_filter(odw->hdr, cv, tpass_id);
+        {
+//            bcf_add_filter(odw->hdr, cv, tpass_id);
             odw->write(cv);
             ++no_nonoverlap_variants;
         }
-        
+
         odr->close();
         odw->close();
     };
@@ -192,11 +195,8 @@ class Igor : Program
 
         std::clog << "options:     input VCF file        " << input_vcf_file << "\n";
         std::clog << "         [o] output VCF file       " << output_vcf_file << "\n";
-        if (intervals.size()!=0)
-        {
-            std::clog << "         [i] intervals             " << intervals.size() <<  " intervals\n";
-        }
-        std::clog << "\n";
+        std::clog << "         [w] window overlap        " << window_overlap <<  "\n";
+        print_int_op("         [i] intervals             ", intervals);
     }
 
     void print_stats()
@@ -215,11 +215,11 @@ class Igor : Program
 
 }
 
-void remove_overlap(int argc, char ** argv)
+void filter_overlap(int argc, char ** argv)
 {
     Igor igor(argc, argv);
     igor.print_options();
     igor.initialize();
-    igor.remove_overlap();
+    igor.filter_overlap();
     igor.print_stats();
 };

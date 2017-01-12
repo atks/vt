@@ -21,11 +21,11 @@
    THE SOFTWARE.
 */
 
-#ifndef REMOVE_OVERLAP_H
-#define REMOVE_OVERLAP_H
+#ifndef FILTER_OVERLAP_H
+#define FILTER_OVERLAP_H
 
 #include "program.h"
 
-void remove_overlap(int argc, char **argv);
-    
+void filter_overlap(int argc, char **argv);
+
 #endif

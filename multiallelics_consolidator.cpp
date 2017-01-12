@@ -112,7 +112,7 @@ void MultiallelicsConsolidator::insert(Variant* var)
         {
             if (nvar.beg1 <= cvar.beg1 + buffer_window_allowance)
             {
-                if (nvar.beg1 <= cvar.end1 && nvar.end1>=cvar.beg1)
+                if ((nvar.beg1-window_overlap) <= cvar.end1 && (nvar.end1+window_overlap)>=cvar.beg1)
                 {
                     mvar = create_or_update_multiallelic(nvar, cvar);
                     break;
@@ -130,8 +130,10 @@ void MultiallelicsConsolidator::insert(Variant* var)
     }
 
     vbuffer.push_front(var);
+    //a multiallelic variant is created
     if (mvar)
     {
+        
         if (mvar->vs.size()>1) vbuffer.remove(mvar);
         vbuffer.push_front(mvar);
     }
@@ -263,7 +265,6 @@ Variant* MultiallelicsConsolidator::create_or_update_multiallelic(Variant& nvar,
     //create new multiallelic
     if (!cvar.is_new_multiallelic && !cvar.is_involved_in_a_multiallelic)
     {
-        //create multiallelic
         Variant *mvar = new Variant();
         mvar->h = nvar.h;
         mvar->v = bcf_init();

@@ -44,6 +44,7 @@
 #include "discover.h"
 #include "estimate.h"
 #include "extract_vntrs.h"
+#include "filter_overlap.h"
 #include "fuzzy_partition.h"
 #include "genotype.h"
 #include "hfilter.h"
@@ -70,7 +71,6 @@
 #include "profile_na12878.h"
 #include "profile_snps.h"
 #include "profile_vntrs.h"
-#include "remove_overlap.h"
 #include "rminfo.h"
 #include "seq.h"
 #include "set_ref.h"
@@ -253,9 +253,9 @@ int main(int argc, char ** argv)
     {
         set_ref(argc-1, ++argv);
     }
-    else if (argc>1 && cmd=="remove_overlap")
+    else if (argc>1 && cmd=="filter_overlap")
     {
-        remove_overlap(argc-1, ++argv);
+        filter_overlap(argc-1, ++argv);
     }
     else if (argc>1 && cmd=="peek")
     {
