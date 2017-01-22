@@ -129,7 +129,7 @@ SOURCES = ahmm\
 		vntr_tree\
 		vntrize\
 		wdp_ahmm\
-   	        	
+
 SOURCESONLY = main.cpp
 
 TARGET = vt
@@ -156,7 +156,7 @@ ${LIBSVM} :
 
 version :
 	git rev-parse HEAD | cut -c 1-8 | awk '{print "#define VERSION \"0.5772-"$$0"\""}' > version.h;
-	
+
 $(TARGET) : ${LIBHTS} ${LIBRMATH} ${LIBPCRE2}  ${LIBSVM} $(TOOLOBJ) 
 	$(CXX) $(CXXFLAGS) -o $@ $(TOOLOBJ) $(LIBHTS) $(LIBRMATH) ${LIBPCRE2} -lz -lpthread
 
@@ -179,6 +179,6 @@ cleanvt :
 
 test : vt
 	test/test.sh
-	
+
 debug : vt
 	test/test.sh debug
