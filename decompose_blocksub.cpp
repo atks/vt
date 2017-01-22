@@ -162,8 +162,7 @@ class Igor : Program
             char** allele = bcf_get_allele(v);
 
             size_t ref_len = strlen(allele[0]);
-            size_t alt_len = strlen(allele[1]);
-            if (aggressive_mode && (ref_len!=alt_len) && (ref_len!=1) && (alt_len!=1))
+            if (aggressive_mode && (n_allele > 1 && ref_len != strlen(allele[1])) && (ref_len!=1) && (strlen(allele[1]) != 1))
             {
                 // Use alignment for decomposition of substitutions where REF
                 // and ALT have different lengths and the variant is not an
