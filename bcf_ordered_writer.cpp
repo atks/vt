@@ -53,11 +53,11 @@ BCFOrderedWriter::BCFOrderedWriter(std::string output_vcf_file_name, int32_t win
             if (compression!=6 && compression!=-1)
             {
                 kputw(compression, &mode);
-            }  
+            }
             else if (compression==-1)
             {
                 kputw(0, &mode);
-            }              
+            }
         }
         else if (str_ends_with(file_name, ".bcf"))
         {
@@ -65,11 +65,11 @@ BCFOrderedWriter::BCFOrderedWriter(std::string output_vcf_file_name, int32_t win
             if (compression!=6 && compression!=-1)
             {
                 kputw(compression, &mode);
-            } 
+            }
             else if (compression==-1)
             {
                 kputc('u', &mode);
-            }    
+            }
         }
         else if (str_ends_with(file_name, ".ubcf"))
         {
@@ -158,7 +158,17 @@ void BCFOrderedWriter::write(bcf1_t *v)
                     int32_t cutoff_pos1 =  std::max(bcf_get_pos1(buffer.front())-window,1);
                     if (bcf_get_pos1(v)<cutoff_pos1)
                     {
-                        fprintf(stderr, "[%s:%d %s] Might not be sorted for window size %d at current record %s:%d < %d (%d [last record] - %d), please increase window size to at least %d.\n", __FILE__,__LINE__,__FUNCTION__, window, bcf_get_chrom(hdr, v), bcf_get_pos1(v), cutoff_pos1, bcf_get_pos1(buffer.front()), window, bcf_get_pos1(buffer.front())-bcf_get_pos1(v)+1);
+                        fprintf(stderr, "[%s:%d %s] Might not be sorted for window size %d at current record %s:%d < %d (%d [last record] - %d), please increase window size to at least %d.\n",
+                                          __FILE__,
+                                          __LINE__,
+                                          __FUNCTION__,
+                                          window,
+                                          bcf_get_chrom(hdr, v),
+                                          bcf_get_pos1(v),
+                                          cutoff_pos1,
+                                          bcf_get_pos1(buffer.front()),
+                                          window,
+                                          bcf_get_pos1(buffer.front())-bcf_get_pos1(v)+1);
                     }
                 }
 
