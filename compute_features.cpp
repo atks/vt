@@ -128,7 +128,7 @@ class Igor : Program
         bcf_hdr_append(odw->hdr, "##INFO=<ID=GC,Number=G,Type=Integer,Description=\"Genotype Counts\">\n");
         bcf_hdr_append(odw->hdr, "##INFO=<ID=GN,Number=1,Type=Integer,Description=\"Total Number of Genotypes Counts\">\n");
         bcf_hdr_append(odw->hdr, "##INFO=<ID=GF,Number=G,Type=Float,Description=\"Genotype Frequency\">\n");
-        
+
         bcf_hdr_append(odw->hdr, "##INFO=<ID=HWEAF,Number=A,Type=Float,Description=\"Genotype likelihood based MLE Allele Frequency assuming HWE\">\n");
         bcf_hdr_append(odw->hdr, "##INFO=<ID=HWEGF,Number=G,Type=Float,Description=\"Genotype likelihood based MLE Genotype Frequency assuming HWE\">\n");
         bcf_hdr_append(odw->hdr, "##INFO=<ID=MLEAF,Number=A,Type=Float,Description=\"Genotype likelihood based MLE Allele Frequency\">\n");
@@ -138,7 +138,7 @@ class Igor : Program
         bcf_hdr_append(odw->hdr, "##INFO=<ID=HWE_DF,Number=1,Type=Integer,Description=\"Degrees of freedom for Genotype likelihood based Hardy Weinberg Likelihood Ratio Test Statistic\">\n");
         bcf_hdr_append(odw->hdr, "##INFO=<ID=FIC,Number=1,Type=Float,Description=\"Genotype likelihood based Inbreeding Coefficient\">\n");
         bcf_hdr_append(odw->hdr, "##INFO=<ID=AB,Number=1,Type=Float,Description=\"Genotype likelihood based Allele Balance\">\n");
-        
+
         /////////////////////////
         //filter initialization//
         /////////////////////////
@@ -156,7 +156,7 @@ class Igor : Program
             fprintf(stderr, "[%s:%d %s] No samples in VCF file: %s\n", __FILE__, __LINE__, __FUNCTION__, input_vcf_file.c_str());
             exit(1);
         }
-        
+
         ///////////////////////
         //tool initialization//
         ///////////////////////
@@ -192,12 +192,12 @@ class Igor : Program
             bcf_unpack(v, BCF_UN_ALL);
             int32_t ploidy = bcf_get_genotypes(odr->hdr, v, &gts, &n_gts);
             ploidy /= no_samples;
-            
+
             if (!n_gts)
             {
                 continue;
             }
-        
+
             bcf_get_format_int32(odr->hdr, v, "PL", &pls, &n_pls);
             int32_t no_alleles = bcf_get_n_allele(v);
 
@@ -213,7 +213,7 @@ class Igor : Program
             {
                 bcf_set_qual(v, qual);
             }
-            
+
             int32_t g[ploidy];
             for (int32_t i=0; i<ploidy; ++i) g[i]=0;
             int32_t AC[no_alleles];
@@ -225,7 +225,7 @@ class Igor : Program
             int32_t GC[no_genotypes];
             int32_t GN=0;
             float GF[no_genotypes];
-            
+
             Estimator::compute_af(gts, no_samples, ploidy, no_alleles, AC, AN, AF, GC, GN, GF, NS);
 
             if (NS)
@@ -235,7 +235,7 @@ class Igor : Program
                 bcf_update_info_int32(odw->hdr, v, "AN", &AN, 1);
                 float* AF_PTR = &AF[1];
                 bcf_update_info_float(odw->hdr, v, "AF", AF_PTR, no_alleles-1);
-                if (GN)            
+                if (GN)
                 {
                     bcf_update_info_int32(odw->hdr, v, "GC", GC, no_genotypes);
                     bcf_update_info_int32(odw->hdr, v, "GN", &GN, 1);
@@ -243,7 +243,7 @@ class Igor : Program
                 }
                 bcf_update_info_int32(odw->hdr, v, "NS", &NS, 1);
             }
- 
+
             float MLE_HWE_AF[no_alleles];
             float MLE_HWE_GF[no_genotypes];
             n = 0;
@@ -296,15 +296,15 @@ class Igor : Program
                 float ab;
                 n = 0;
                 Estimator::compute_gl_ab(pls, no_samples, ploidy,
-                                   dps, MLE_GF, no_alleles, 
+                                   dps, MLE_GF, no_alleles,
                                    ab, n);
-                                   
+
                 if (n)
                 {
                     bcf_update_info_float(odw->hdr, v, "AB", &ab, 1);
                 }
             }
-            
+
             if (print_sites_only)
             {
                 bcf_subset(odw->hdr, v, 0, 0);
@@ -317,7 +317,7 @@ class Igor : Program
         if(n_gts) free(gts);
         if(n_pls) free(pls);
         if(n_dps) free(dps);
-            
+
         odw->close();
     };
 

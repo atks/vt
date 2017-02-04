@@ -323,7 +323,6 @@ class Igor : Program
         {
             variant.clear();
             bool printed = false;
-
             int32_t vtype = vm->classify_variant(h, v, variant);
             if (filter_exists && !filter.apply(h,v,&variant))
             {
@@ -340,22 +339,33 @@ class Igor : Program
                 continue;
             }    
 
+            
             bcf_unpack(v, BCF_UN_ALL);
             int32_t ploidy = bcf_get_genotypes(odr->hdr, v, &gts, &n_gts);
             ploidy /= no_samples;
 
-            if (!n_gts)
-            {
-                continue;
-            }
+//            if (!n_gts)
+//            {
+//                for (int32_t i=0; i<NO_EST; ++i)
+//                {
+//                    compute_estimate[i] = 0;
+//                }
+//                
+//                ++no_variants_missing_dependencies;            
+//            }
 
             bcf_get_format_int32(odr->hdr, v, "PL", &pls, &n_pls);
             int32_t no_alleles = bcf_get_n_allele(v);
 
-            if (!n_pls)
-            {
-                continue;
-            }
+//            if (!n_pls)
+//            {
+//                if (compute_estimate[EST_MLEAF])
+//                {
+//                    fprintf(stderr, "[%s:%d %s] No PL informationamples in VCF file: %s\n", __FILE__, __LINE__, __FUNCTION__, input_vcf_file.c_str());
+//                    exit(1);
+//                }
+//                compute_estimate[i] = 0;
+//            }
 
             float qual = 0;
             int32_t n = 0;
@@ -372,31 +382,38 @@ class Igor : Program
 
             if (compute_estimate[EST_AF])
             {
-                int32_t g[ploidy];
-                for (int32_t i=0; i<ploidy; ++i) g[i]=0;
-                int32_t AC[no_alleles];
-                float AF[no_alleles];
-                for (int32_t i=0; i<no_alleles; ++i) {AF[i]=0;AC[i]=0;}
-                int32_t AN=0;
-                int32_t NS=0;
-
-                int32_t GC[no_genotypes];
-                int32_t GN=0;
-                float GF[no_genotypes];
-                Estimator::compute_af(gts, no_samples, ploidy, no_alleles, AC, AN, AF, GC, GN, GF, NS);
-
-                int32_t* AC_PTR = &AC[1];
-                bcf_update_info_int32(odw->hdr, v, "AC", AC_PTR, no_alleles-1);
-                bcf_update_info_int32(odw->hdr, v, "AN", &AN, 1);
-                float* AF_PTR = &AF[1];
-                bcf_update_info_float(odw->hdr, v, "AF", AF_PTR, no_alleles-1);
-                if (GN)
+                if (!n_gts)
                 {
-                    bcf_update_info_int32(odw->hdr, v, "GC", GC, no_genotypes);
-                    bcf_update_info_int32(odw->hdr, v, "GN", &GN, 1);
-                    bcf_update_info_float(odw->hdr, v, "GF", GF, no_genotypes);
+                    ++no_variants_missing_dependencies;
+                }    
+                else
+                {
+                    int32_t g[ploidy];
+                    for (int32_t i=0; i<ploidy; ++i) g[i]=0;
+                    int32_t AC[no_alleles];
+                    float AF[no_alleles];
+                    for (int32_t i=0; i<no_alleles; ++i) {AF[i]=0;AC[i]=0;}
+                    int32_t AN=0;
+                    int32_t NS=0;
+    
+                    int32_t GC[no_genotypes];
+                    int32_t GN=0;
+                    float GF[no_genotypes];
+                    Estimator::compute_af(gts, no_samples, ploidy, no_alleles, AC, AN, AF, GC, GN, GF, NS);
+    
+                    int32_t* AC_PTR = &AC[1];
+                    bcf_update_info_int32(odw->hdr, v, "AC", AC_PTR, no_alleles-1);
+                    bcf_update_info_int32(odw->hdr, v, "AN", &AN, 1);
+                    float* AF_PTR = &AF[1];
+                    bcf_update_info_float(odw->hdr, v, "AF", AF_PTR, no_alleles-1);
+                    if (GN)
+                    {
+                        bcf_update_info_int32(odw->hdr, v, "GC", GC, no_genotypes);
+                        bcf_update_info_int32(odw->hdr, v, "GN", &GN, 1);
+                        bcf_update_info_float(odw->hdr, v, "GF", GF, no_genotypes);
+                    }
+                    bcf_update_info_int32(odw->hdr, v, "NS", &NS, 1);
                 }
-                bcf_update_info_int32(odw->hdr, v, "NS", &NS, 1);
             }
             
             if (compute_estimate[EST_GF])
@@ -407,14 +424,20 @@ class Igor : Program
             float MLE_HWE_GF[no_genotypes];
             if (compute_estimate[EST_HWEAF])
             {
-                
-                n = 0;
-                Estimator::compute_gl_af_hwe(pls, no_samples, ploidy,no_alleles, MLE_HWE_AF, MLE_HWE_GF,  n, 1e-20);
-                if (n)
+                if (!n_pls)
                 {
-                    float* MLE_HWE_AF_PTR = &MLE_HWE_AF[1];
-                    bcf_update_info_float(odw->hdr, v, "HWEAF", MLE_HWE_AF_PTR, no_alleles-1);
-                    bcf_update_info_float(odw->hdr, v, "HWEGF", &MLE_HWE_GF, no_genotypes);
+                    ++no_variants_missing_dependencies;
+                }  
+                else
+                {    
+                    n = 0;
+                    Estimator::compute_gl_af_hwe(pls, no_samples, ploidy,no_alleles, MLE_HWE_AF, MLE_HWE_GF,  n, 1e-20);
+                    if (n)
+                    {
+                        float* MLE_HWE_AF_PTR = &MLE_HWE_AF[1];
+                        bcf_update_info_float(odw->hdr, v, "HWEAF", MLE_HWE_AF_PTR, no_alleles-1);
+                        bcf_update_info_float(odw->hdr, v, "HWEGF", &MLE_HWE_GF, no_genotypes);
+                    }
                 }
             }
             
@@ -422,51 +445,80 @@ class Igor : Program
             float MLE_GF[no_genotypes];
             if (compute_estimate[EST_MLEAF])
             {
-                n = 0;
-                Estimator::compute_gl_af(pls, no_samples, ploidy,no_alleles, MLE_AF, MLE_GF,  n, 1e-20);
-                if (n)
+                if (!n_pls)
                 {
-                    float* MLE_AF_PTR = &MLE_AF[1];
-                    bcf_update_info_float(odw->hdr, v, "MLEAF", MLE_AF_PTR, no_alleles-1);
-                    bcf_update_info_float(odw->hdr, v, "MLEGF", &MLE_GF, no_genotypes);
+                    ++no_variants_missing_dependencies;
+                    continue;
+                }
+                else
+                {
+                    n = 0;
+                    Estimator::compute_gl_af(pls, no_samples, ploidy,no_alleles, MLE_AF, MLE_GF,  n, 1e-20);
+                    if (n)
+                    {
+                        float* MLE_AF_PTR = &MLE_AF[1];
+                        bcf_update_info_float(odw->hdr, v, "MLEAF", MLE_AF_PTR, no_alleles-1);
+                        bcf_update_info_float(odw->hdr, v, "MLEGF", &MLE_GF, no_genotypes);
+                    }
                 }
             }
 
             if (compute_estimate[EST_HWE])
             {
-                float lrts;
-                float logp;
-                int32_t df;
-                n = 0;
-                Estimator::compute_hwe_lrt(pls, no_samples, ploidy,
-                                     no_alleles, MLE_HWE_GF, MLE_GF, n,
-                                     lrts, logp, df);
-                if (n)
+                if (!n_pls)
                 {
-                    bcf_update_info_float(odw->hdr, v, "HWE_LLR", &lrts, 1);
-                    bcf_update_info_float(odw->hdr, v, "HWE_LPVAL", &logp, 1);
-                    bcf_update_info_int32(odw->hdr, v, "HWE_DF", &df, 1);
+                    ++no_variants_missing_dependencies;
+                    continue;
+                }
+                else
+                {
+                    float lrts;
+                    float logp;
+                    int32_t df;
+                    n = 0;
+                    Estimator::compute_hwe_lrt(pls, no_samples, ploidy,
+                                         no_alleles, MLE_HWE_GF, MLE_GF, n,
+                                         lrts, logp, df);
+                    if (n)
+                    {
+                        bcf_update_info_float(odw->hdr, v, "HWE_LLR", &lrts, 1);
+                        bcf_update_info_float(odw->hdr, v, "HWE_LPVAL", &logp, 1);
+                        bcf_update_info_int32(odw->hdr, v, "HWE_DF", &df, 1);
+                    }
                 }
             }
 
             if (compute_estimate[EST_FIC])
             {
-                float f;
-                n = 0;
-                Estimator::compute_gl_fic(pls, no_samples, ploidy,
-                                   MLE_HWE_AF, no_alleles, MLE_GF,
-                                   f, n);
-                if (n)
+                if (!n_pls)
                 {
-                    bcf_update_info_float(odw->hdr, v, "FIC", &f, 1);
+                    ++no_variants_missing_dependencies;
+                    continue;
+                }
+                else
+                {    
+                    float f;
+                    n = 0;
+                    Estimator::compute_gl_fic(pls, no_samples, ploidy,
+                                       MLE_HWE_AF, no_alleles, MLE_GF,
+                                       f, n);
+                    if (n)
+                    {
+                        bcf_update_info_float(odw->hdr, v, "FIC", &f, 1);
+                    }
                 }
             }
 
             if (compute_estimate[EST_AB])
             { 
                 bcf_get_format_int32(odr->hdr, v, "DP", &dps, &n_dps);
-                if (n_dps)
+                
+                if (!n_pls || !n_dps)
                 {
+                    ++no_variants_missing_dependencies;
+                }
+                else 
+                {                    
                     float ab;
                     n = 0;
                     Estimator::compute_gl_ab(pls, no_samples, ploidy,
