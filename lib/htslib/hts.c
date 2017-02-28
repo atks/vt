@@ -33,11 +33,13 @@ DEALINGS IN THE SOFTWARE.  */
 #include <fcntl.h>
 #include <errno.h>
 #include <sys/stat.h>
+#include <assert.h>
 
 #include "htslib/hts.h"
 #include "htslib/bgzf.h"
 #include "cram/cram.h"
 #include "htslib/hfile.h"
+#include "htslib/hts_endian.h"
 #include "version.h"
 #include "hts_internal.h"
 
@@ -1247,7 +1249,7 @@ struct __hts_idx_t {
     uint64_t n_no_coor;
     bidx_t **bidx;
     lidx_t *lidx;
-    uint8_t *meta;
+    uint8_t *meta; // MUST have a terminating NUL on the end
     struct {
         uint32_t last_bin, save_bin;
         int last_coor, last_tid, save_tid, finished;
@@ -1773,8 +1775,11 @@ static hts_idx_t *hts_idx_load_local(const char *fn)
         if (bgzf_read(fp, x, 12) != 12) goto fail;
         if (is_be) for (i = 0; i < 3; ++i) ed_swap_4p(&x[i]);
         if (x[2]) {
-            if ((meta = (uint8_t*)malloc(x[2])) == NULL) goto fail;
+            if (SIZE_MAX - x[2] < 1) goto fail; // Prevent possible overflow
+            if ((meta = (uint8_t*)malloc((size_t) x[2] + 1)) == NULL) goto fail;
             if (bgzf_read(fp, meta, x[2]) != x[2]) goto fail;
+            // Prevent possible strlen past the end in tbx_index_load2
+            meta[x[2]] = '\0';
         }
         if (bgzf_read(fp, &n, 4) != 4) goto fail;
         if (is_be) ed_swap_4p(&n);
@@ -1785,14 +1790,23 @@ static hts_idx_t *hts_idx_load_local(const char *fn)
         if (hts_idx_load_core(idx, fp, HTS_FMT_CSI) < 0) goto fail;
     }
     else if (memcmp(magic, "TBI\1", 4) == 0) {
-        uint32_t x[8];
-        if (bgzf_read(fp, x, 32) != 32) goto fail;
-        if (is_be) for (i = 0; i < 8; ++i) ed_swap_4p(&x[i]);
-        if ((idx = hts_idx_init(x[0], HTS_FMT_TBI, 0, 14, 5)) == NULL) goto fail;
-        idx->l_meta = 28 + x[7];
-        if ((idx->meta = (uint8_t*)malloc(idx->l_meta)) == NULL) goto fail;
-        memcpy(idx->meta, &x[1], 28);
-        if (bgzf_read(fp, idx->meta + 28, x[7]) != x[7]) goto fail;
+        uint8_t x[8 * 4];
+        uint32_t n;
+        // Read file header
+        if (bgzf_read(fp, x, sizeof(x)) != sizeof(x)) goto fail;
+        n = le_to_u32(&x[0]); // location of n_ref
+        if ((idx = hts_idx_init(n, HTS_FMT_TBI, 0, 14, 5)) == NULL) goto fail;
+        n = le_to_u32(&x[7*4]); // location of l_nm
+        if (n > UINT32_MAX - 29) goto fail; // Prevent possible overflow
+        idx->l_meta = 28 + n;
+        if ((idx->meta = (uint8_t*)malloc(idx->l_meta + 1)) == NULL) goto fail;
+        // copy format, col_seq, col_beg, col_end, meta, skip, l_nm
+        // N.B. left in little-endian byte order.
+        memcpy(idx->meta, &x[1*4], 28);
+        // Read in sequence names.
+        if (bgzf_read(fp, idx->meta + 28, n) != n) goto fail;
+        // Prevent possible strlen past the end in tbx_index_load2
+        idx->meta[idx->l_meta] = '\0';
         if (hts_idx_load_core(idx, fp, HTS_FMT_TBI) < 0) goto fail;
     }
     else if (memcmp(magic, "BAI\1", 4) == 0) {
@@ -1814,17 +1828,29 @@ fail:
     return NULL;
 }
 
-void hts_idx_set_meta(hts_idx_t *idx, int l_meta, uint8_t *meta, int is_copy)
+int hts_idx_set_meta(hts_idx_t *idx, uint32_t l_meta, uint8_t *meta,
+                      int is_copy)
 {
+    uint8_t *new_meta = meta;
+    if (is_copy) {
+        size_t l = l_meta;
+        if (l > SIZE_MAX - 1) {
+            errno = ENOMEM;
+            return -1;
+        }
+        new_meta = malloc(l + 1);
+        if (!new_meta) return -1;
+        memcpy(new_meta, meta, l);
+        // Prevent possible strlen past the end in tbx_index_load2
+        meta[l + 1] = '\0';
+    }
     if (idx->meta) free(idx->meta);
     idx->l_meta = l_meta;
-    if (is_copy) {
-        idx->meta = (uint8_t*)malloc(l_meta);
-        memcpy(idx->meta, meta, l_meta);
-    } else idx->meta = meta;
+    idx->meta = new_meta;
+    return 0;
 }
 
-uint8_t *hts_idx_get_meta(hts_idx_t *idx, int *l_meta)
+uint8_t *hts_idx_get_meta(hts_idx_t *idx, uint32_t *l_meta)
 {
     *l_meta = idx->l_meta;
     return idx->meta;
@@ -2002,7 +2028,11 @@ hts_itr_t *hts_itr_query(const hts_idx_t *idx, int tid, int beg, int end, hts_re
     for (i = n_off = 0; i < iter->bins.n; ++i)
         if ((k = kh_get(bin, bidx, iter->bins.a[i])) != kh_end(bidx))
             n_off += kh_value(bidx, k).n;
-    if (n_off == 0) return iter;
+    if (n_off == 0) {
+        // No overlapping bins means the iterator has already finished.
+        iter->finished = 1;
+        return iter;
+    }
     off = (hts_pair64_t*)calloc(n_off, sizeof(hts_pair64_t));
     for (i = n_off = 0; i < iter->bins.n; ++i) {
         if ((k = kh_get(bin, bidx, iter->bins.a[i])) != kh_end(bidx)) {
@@ -2014,7 +2044,9 @@ hts_itr_t *hts_itr_query(const hts_idx_t *idx, int tid, int beg, int end, hts_re
         }
     }
     if (n_off == 0) {
-        free(off); return iter;
+        free(off);
+        iter->finished = 1;
+        return iter;
     }
     ks_introsort(_off, n_off, off);
     // resolve completely contained adjacent blocks
@@ -2153,7 +2185,8 @@ int hts_itr_next(BGZF *fp, hts_itr_t *iter, void *r, void *data)
         iter->curr_end = end;
         return ret;
     }
-    if (iter->off == 0) return -1;
+    // A NULL iter->off should always be accompanied by iter->finished.
+    assert(iter->off != NULL);
     for (;;) {
         if (iter->curr_off == 0 || iter->curr_off >= iter->off[iter->i].v) { // then jump to the next chunk
             if (iter->i == iter->n_off - 1) { ret = -1; break; } // no more chunks
