@@ -75,83 +75,83 @@ class Igor : Program
         
     };
 
-    /**
-     * n choose r.
-     */
-    uint32_t choose(uint32_t n, uint32_t r)
-    {
-        if (r>n)
-        {
-            return 0;
-        }
-        else if (r==n)
-        {
-            return 1;
-        }
-        else if (r==0)
-        {
-            return 1;
-        }
-        else
-        {
-            if (r>(n>>1))
-            {
-                r = n-r;
-            }
-
-            uint32_t num = n;
-            uint32_t denum = 1;
-
-            for (uint32_t i=1; i<r; ++i)
-            {
-                num *= n-i;
-                denum *= i+1;
-            }
-
-            return num/denum;
-        }
-    }
-
-    
-    /**
-     * Gets number of genotypes from number of alleles and ploidy.
-     */
-    uint32_t bcf_ap2g(uint32_t no_allele, uint32_t no_ploidy)
-    {
-        return choose(no_ploidy+no_allele-1, no_allele-1);
-    }
-
-    /**
-     * Gets number of genotypes from number of alleles and ploidy.
-     */
-    uint32_t bcf_g2i(std::string genotype)
-    {
-        uint32_t index = 0;
-        for (uint32_t i=0; i<genotype.size(); ++i)
-        {
-            uint32_t allele = genotype.at(i)-65;
-            index += bcf_ap2g(allele, i+1);
-        }
-        return index;
-    }
-
-    void print_genotypes(uint32_t A, uint32_t P, std::string genotype)
-    {
-        if (genotype.size()==P)
-        {
-            std::cerr << no << ") " << genotype << " " << bcf_g2i(genotype) << "\n";
-            ++no;
-        }
-        else
-        {
-            for (uint32_t a=0; a<A; ++a)
-            {
-                std::string s(1,(char)(a+65));
-                s.append(genotype);
-                print_genotypes(a+1, P, s);
-            }
-        }
-    }
+//    /**
+//     * n choose r.
+//     */
+//    uint32_t choose(uint32_t n, uint32_t r)
+//    {
+//        if (r>n)
+//        {
+//            return 0;
+//        }
+//        else if (r==n)
+//        {
+//            return 1;
+//        }
+//        else if (r==0)
+//        {
+//            return 1;
+//        }
+//        else
+//        {
+//            if (r>(n>>1))
+//            {
+//                r = n-r;
+//            }
+//
+//            uint32_t num = n;
+//            uint32_t denum = 1;
+//
+//            for (uint32_t i=1; i<r; ++i)
+//            {
+//                num *= n-i;
+//                denum *= i+1;
+//            }
+//
+//            return num/denum;
+//        }
+//    }
+//
+//    
+//    /**
+//     * Gets number of genotypes from number of alleles and ploidy.
+//     */
+//    uint32_t bcf_ap2g(uint32_t no_allele, uint32_t no_ploidy)
+//    {
+//        return choose(no_ploidy+no_allele-1, no_allele-1);
+//    }
+//
+//    /**
+//     * Gets number of genotypes from number of alleles and ploidy.
+//     */
+//    uint32_t bcf_g2i(std::string genotype)
+//    {
+//        uint32_t index = 0;
+//        for (uint32_t i=0; i<genotype.size(); ++i)
+//        {
+//            uint32_t allele = genotype.at(i)-65;
+//            index += bcf_ap2g(allele, i+1);
+//        }
+//        return index;
+//    }
+//
+//    void print_genotypes(uint32_t A, uint32_t P, std::string genotype)
+//    {
+//        if (genotype.size()==P)
+//        {
+//            std::cerr << no << ") " << genotype << " " << bcf_g2i(genotype) << "\n";
+//            ++no;
+//        }
+//        else
+//        {
+//            for (uint32_t a=0; a<A; ++a)
+//            {
+//                std::string s(1,(char)(a+65));
+//                s.append(genotype);
+//                print_genotypes(a+1, P, s);
+//            }
+//        }
+//    }
 
     /**
      * Computes composition and entropy ofrepeat tract.
@@ -274,9 +274,7 @@ class Igor : Program
         }
             
     }
-    
-    
-    
+        
     void test(int argc, char ** argv)
     {   
         version = "0.5";
@@ -601,6 +599,39 @@ class Igor : Program
     };
     
 
+    void test_ip2g(int argc, char ** argv)
+    {   
+        printf("allele\tploidy\tindex\tverified\n");
+        
+        for (int32_t no_allele=2; no_allele<=6; ++no_allele)
+        {
+            for (int32_t no_ploidy=2; no_ploidy<=6; ++no_ploidy)
+            {
+                int32_t max_index = bcf_ap2g(no_allele, no_ploidy);
+                
+                for (int32_t index=0; index<=max_index; ++index)
+                {
+                    fprintf(stderr, "%d\t%d\t%d\t", no_allele, no_ploidy, index);
+                    
+                    
+                    std::vector<int32_t> genotypes = bcf_ip2g(index, no_ploidy);
+                    
+                    for (int32_t j=0; j<no_ploidy; ++j)
+                    {
+                        if (j) printf("/");
+                        printf("%d", genotypes[j]);
+                    }
+                    
+                    uint32_t i = bcf_g2i(genotypes);  
+                
+                    std::string v = (i==index) ? "correct" : "wrong";
+                    
+                    printf("\t%s\n", v.c_str());
+                    
+                }
+            }
+        }
+    };
     ~Igor() {};
 
     private:
@@ -613,7 +644,7 @@ void test(int argc, char ** argv)
     Igor igor(argc, argv);
     
     
-    igor.test(argc, argv);
+    igor.test_ip2g(argc, argv);
 //    printf ("std::isnan(0.0)       : %d\n",std::isnan(0.0));
 //    printf ("std::isnan(1.0/0.0)   : %d\n",std::isnan(1.0/0.0));
 //    printf ("std::isnan(-1.0/0.0)  : %d\n",std::isnan(-1.0/0.0));

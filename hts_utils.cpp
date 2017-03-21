@@ -925,6 +925,11 @@ uint32_t bcf_ag2p(uint32_t no_alleles, uint32_t no_genotypes)
 
 /**
  * Gets genotype from genotype index and ploidy.
+ *
+ * The genotype index is computed by a summation of a series which is 
+ * monotonically decreasing.  This allows you to compute the inverse function
+ * from index to the ordered genotypes by using a "water rapids algorithm" with
+ * decreasing height of each mini water fall.
  */
 std::vector<int32_t> bcf_ip2g(int32_t genotype_index, uint32_t no_ploidy)
 {
@@ -933,22 +938,23 @@ std::vector<int32_t> bcf_ip2g(int32_t genotype_index, uint32_t no_ploidy)
     int32_t pth = no_ploidy;
     int32_t max_allele_index = genotype_index;
     int32_t leftover_genotype_index = genotype_index;
-
+    
     while (pth>0)
     {
+        int32_t old_pth = pth;
+        
         for (int32_t allele_index=0; allele_index <= max_allele_index; ++allele_index)
         {
             int32_t i = choose(pth+allele_index-1, pth);
 
-            if (i>=leftover_genotype_index)
+            if (i>=leftover_genotype_index || allele_index==max_allele_index)
             {
                 if (i>leftover_genotype_index) --allele_index;
                 leftover_genotype_index -= choose(pth+allele_index-1, pth);
                 --pth;
                 max_allele_index = allele_index;
-                genotype[pth] = allele_index;
+                genotype[pth] = allele_index;                
                 break;
-
             }
         }
     }
@@ -961,6 +967,32 @@ std::vector<int32_t> bcf_ip2g(int32_t genotype_index, uint32_t no_ploidy)
  */
 uint32_t bcf_g2i(int32_t* g, uint32_t n)
 {
+    if (n==1)
+    {
+        return g[0];
+    }
+    if (n==2)
+    {
+        return g[0] + (((g[1]+1)*(g[1]))>>1);
+    }
+    else
+    {
+        uint32_t index = 0;
+        for (uint32_t i=0; i<n; ++i)
+        {
+            index += bcf_ap2g(g[i], i+1);
+        }
+        return index;
+    }
+}
+
+/**
+ * Gets index of a genotype of n ploidy.
+ */
+uint32_t bcf_g2i(std::vector<int32_t>& g)
+{
+    int32_t n = g.size();
+    
     if (n==1)
     {
         return g[0];

@@ -349,6 +349,11 @@ std::vector<int32_t> bcf_ip2g(int32_t genotype_index, uint32_t no_ploidy);
 uint32_t bcf_g2i(int32_t* g, uint32_t p);
 
 /**
+ * Gets index of a genotype of n ploidy.
+ */
+uint32_t bcf_g2i(std::vector<int32_t>& g);
+
+/**
  * Gets index of a diploid genotype.
  */
 #define bcf_2g2c(i,j) ((i)+((((j)+1)*(j))>>1))
