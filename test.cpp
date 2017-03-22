@@ -607,7 +607,7 @@ class Igor : Program
         {
             for (int32_t no_ploidy=2; no_ploidy<=6; ++no_ploidy)
             {
-                int32_t max_index = bcf_ap2g(no_allele, no_ploidy);
+                int32_t max_index = bcf_ap2g(no_allele, no_ploidy)-1;
                 
                 for (int32_t index=0; index<=max_index; ++index)
                 {

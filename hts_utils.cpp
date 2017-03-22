@@ -856,7 +856,11 @@ int32_t bcf_get_format_string_ro(const bcf_hdr_t *hdr, bcf1_t *line, const char 
  */
 uint32_t bcf_ap2g(uint32_t no_allele, uint32_t no_ploidy)
 {
-    if (no_ploidy==1)
+    if (!no_ploidy || !no_allele)
+    {
+        return 0;
+    }
+    else if (no_ploidy==1)
     {
         return no_allele;
     }
@@ -941,8 +945,6 @@ std::vector<int32_t> bcf_ip2g(int32_t genotype_index, uint32_t no_ploidy)
     
     while (pth>0)
     {
-        int32_t old_pth = pth;
-        
         for (int32_t allele_index=0; allele_index <= max_allele_index; ++allele_index)
         {
             int32_t i = choose(pth+allele_index-1, pth);
