@@ -90,15 +90,15 @@ int32_t VariantManip::is_not_ref_consistent(bcf_hdr_t *h, bcf1_t *v)
             }
         }
     }
-    
+
     if (is_not_consistent)
     {
-       fprintf(stderr, "[%s:%d %s] reference bases not consistent: %s:%d-%d  %s(REF) vs %s(FASTA)\n", __FILE__, __LINE__, __FUNCTION__, 
-                                                                                chrom, pos0, pos0+rlen-1, vcf_ref, ref);       
-    }    
+       fprintf(stderr, "[%s:%d %s] reference bases not consistent: %s:%d-%d  %s(REF) vs %s(FASTA)\n", __FILE__, __LINE__, __FUNCTION__,
+                                                                                chrom, pos0, pos0+rlen-1, vcf_ref, ref);
+    }
 
     if (ref_len) free(ref);
-   
+
     return is_not_consistent;
 }
 
@@ -585,33 +585,41 @@ void VariantManip::right_trim_or_left_extend(std::vector<std::string>& alleles, 
 /**
  * Left trims a variant.
  */
-void VariantManip::left_trim(std::vector<std::string>& alleles, int32_t& pos1, int32_t& left_trimmed)
-{
-    bool to_left_trim =  true;
+void VariantManip::left_trim(std::vector<std::string>& alleles, int32_t& pos1, int32_t& left_trimmed) {
+  bool to_left_trim = true;
 
-    while (to_left_trim)
-    {
-        //checks if left trimmable.
-        for (size_t i=0; i<alleles.size(); ++i)
-        {
-            if (alleles[i].size()==1 || alleles[i].at(0)!=alleles[0].at(0))
-            {
-                to_left_trim = false;
-                break;
-            }
-        }
-
-        if (to_left_trim)
-        {
-            for (size_t i=0; i<alleles.size(); ++i)
-            {
-                alleles[i].erase(0, 1);
-            }
-
-            ++pos1;
-            ++left_trimmed;
-        }
+  while (to_left_trim) {
+    // Checks if left trimmable.
+    for (size_t i = 0; i < alleles.size(); ++i) {
+      if (alleles[i].size() == 1 || alleles[i].at(0) != alleles[0].at(0)) {
+        to_left_trim = false;
+        break;
+      }
     }
+
+    // The above rule does not prevent the trimming of complex alleles, e.g., CAT -> CG.
+    // Correct that in the case of two alleles. If allele lengths are different, require that
+    // they share at least one common base.
+    if (alleles.size() == 2) {
+match:
+      for (size_t i = 0; i < alleles[0].length() and to_left_trim; ++i) {
+        for (size_t j = 0; j < alleles[1].length() and to_left_trim; ++j) {
+          if (alleles[0].at(i) == alleles[0].at(j)) {
+            to_left_trim = false;
+          }
+        }
+      }
+    }
+
+    if (to_left_trim) {
+      for (size_t i = 0; i < alleles.size(); ++i) {
+        alleles[i].erase(0, 1);
+      }
+
+      ++pos1;
+      ++left_trimmed;
+    }
+  }
 };
 
 /**
