@@ -601,7 +601,6 @@ void VariantManip::left_trim(std::vector<std::string>& alleles, int32_t& pos1, i
     // Correct that in the case of two alleles. If allele lengths are different, require that
     // they share at least one common base.
     if (alleles.size() == 2) {
-match:
       for (size_t i = 0; i < alleles[0].length() and to_left_trim; ++i) {
         for (size_t j = 0; j < alleles[1].length() and to_left_trim; ++j) {
           if (alleles[0].at(i) == alleles[0].at(j)) {
