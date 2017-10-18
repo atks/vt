@@ -26,6 +26,7 @@ DEALINGS IN THE SOFTWARE.  */
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <stddef.h>
 #include <string.h>
 #include <errno.h>
 #include <limits.h>
@@ -175,6 +176,36 @@ static ssize_t refill_buffer(hFILE *fp)
 
     fp->end += n;
     return n;
+}
+
+/*
+ * Changes the buffer size for an hFILE.  Ideally this is done
+ * immediately after opening.  If performed later, this function may
+ * fail if we are reducing the buffer size and the current offset into
+ * the buffer is beyond the new capacity.
+ *
+ * Returns 0 on success;
+ *        -1 on failure.
+ */
+int hfile_set_blksize(hFILE *fp, size_t bufsiz) {
+    char *buffer;
+    ptrdiff_t curr_used;
+    if (!fp) return -1;
+    curr_used = (fp->begin > fp->end ? fp->begin : fp->end) - fp->buffer;
+    if (bufsiz == 0) bufsiz = 32768;
+
+    // Ensure buffer resize will not erase live data
+    if (bufsiz < curr_used)
+        return -1;
+
+    if (!(buffer = (char *) realloc(fp->buffer, bufsiz))) return -1;
+
+    fp->begin  = buffer + (fp->begin - fp->buffer);
+    fp->end    = buffer + (fp->end   - fp->buffer);
+    fp->buffer = buffer;
+    fp->limit  = &fp->buffer[bufsiz];
+
+    return 0;
 }
 
 /* Called only from hgetc(), when our buffer is empty.  */
@@ -495,6 +526,18 @@ static ssize_t fd_write(hFILE *fpv, const void *buffer, size_t nbytes)
         n = fp->is_socket?  send(fp->fd, buffer, nbytes, 0)
                          : write(fp->fd, buffer, nbytes);
     } while (n < 0 && errno == EINTR);
+#ifdef _WIN32
+        // On windows we have no SIGPIPE.  Instead write returns
+        // EINVAL.  We check for this and our fd being a pipe.
+        // If so, we raise SIGTERM instead of SIGPIPE.  It's not
+        // ideal, but I think the only alternative is extra checking
+        // in every single piece of code.
+        if (n < 0 && errno == EINVAL &&
+            GetLastError() == ERROR_NO_DATA &&
+            GetFileType((HANDLE)_get_osfhandle(fp->fd)) == FILE_TYPE_PIPE) {
+            raise(SIGTERM);
+        }
+#endif
     return n;
 }
 
@@ -506,12 +549,13 @@ static off_t fd_seek(hFILE *fpv, off_t offset, int whence)
 
 static int fd_flush(hFILE *fpv)
 {
-    hFILE_fd *fp = (hFILE_fd *) fpv;
-    int ret;
+    int ret = 0;
     do {
 #ifdef HAVE_FDATASYNC
+        hFILE_fd *fp = (hFILE_fd *) fpv;
         ret = fdatasync(fp->fd);
-#else
+#elif defined(HAVE_FSYNC)
+        hFILE_fd *fp = (hFILE_fd *) fpv;
         ret = fsync(fp->fd);
 #endif
         // Ignore invalid-for-fsync(2) errors due to being, e.g., a pipe,
@@ -587,6 +631,11 @@ static hFILE *hopen_fd_fileuri(const char *url, const char *mode)
     if (strncmp(url, "file://localhost/", 17) == 0) url += 16;
     else if (strncmp(url, "file:///", 8) == 0) url += 7;
     else { errno = EPROTONOSUPPORT; return NULL; }
+
+#ifdef _WIN32
+    // For cases like C:/foo
+    if (url[0] == '/' && url[2] == ':' && url[3] == '/') url++;
+#endif
 
     return hopen_fd(url, mode);
 }
@@ -845,7 +894,8 @@ static const struct hFILE_scheme_handler *find_scheme_handler(const char *s)
         else if (s[i] == ':') break;
         else return NULL;
 
-    if (i == 0 || i >= sizeof scheme) return NULL;
+    // 1 byte schemes are likely windows C:/foo pathnames
+    if (i <= 1 || i >= sizeof scheme) return NULL;
     scheme[i] = '\0';
 
     pthread_mutex_lock(&plugins_lock);

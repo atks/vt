@@ -50,6 +50,7 @@
 #include "hfilter.h"
 #include "index.h"
 #include "info2tab.h"
+#include "info2tab_x.h"
 #include "milk_filter.h"
 #include "merge_candidate_variants.h"
 #include "merge.h"
@@ -272,6 +273,10 @@ int main(int argc, char ** argv)
     else if (argc>1 && cmd=="info2tab")
     {
         info2tab(argc-1, ++argv);
+    }
+    else if (argc>1 && cmd=="info2tab+")
+    {
+        info2tab_x(argc-1, ++argv);
     }
     else if (argc>1 && cmd=="svm_train")
     {
