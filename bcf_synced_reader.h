@@ -176,7 +176,7 @@ class BCFSyncedReader
     //empty records that can be reused
     std::list<bcf1_t *> pool;
     //contains the most recent position to process
-    std::priority_queue<bcfptr *, std::vector<bcfptr *>, CompareBCFPtr> pq;
+    std::priority_queue<bcfptr, std::vector<bcfptr *>, CompareBCFPtr> pq;
 
     //useful stuff
 
