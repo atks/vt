@@ -46,6 +46,7 @@ BEDRecord::BEDRecord(char *s)
 
     chrom = fields[0];
     str2int32(fields[1], beg1);
+    ++beg1; //BED interval is 0 based half open
     str2int32(fields[2], end1);
 };
 
@@ -59,6 +60,7 @@ BEDRecord::BEDRecord(std::string& s)
 
     chrom = fields[0];
     str2int32(fields[1], beg1);
+    ++beg1; //BED interval is 0 based half open
     str2int32(fields[2], end1);
 };
 
