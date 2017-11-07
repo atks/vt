@@ -58,6 +58,13 @@ class Igor : Program
     std::vector<int32_t> file_types;
     kstring_t variant;
 
+    //////////
+    //filter//
+    //////////
+    std::string fexp;
+    Filter filter;
+    bool filter_exists;
+    
     /////////
     //stats//
     /////////
@@ -90,6 +97,7 @@ Extracts only the naive genotypes based on best guess genotypes.";
             TCLAP::ValueArg<std::string> arg_output_vcf_file("o", "o", "output VCF file [-]", false, "-", "", cmd);
             TCLAP::ValueArg<std::string> arg_candidate_sites_vcf_file("c", "c", "candidate sites VCF file with annotation []", true, "-", "", cmd);
             TCLAP::ValueArg<std::string> arg_input_vcf_file_list("L", "L", "file containing list of input VCF files", true, "", "str", cmd);
+            TCLAP::ValueArg<std::string> arg_fexp("f", "f", "filter expression (applied to candidate sites file)[]", false, "", "str", cmd);
             TCLAP::UnlabeledMultiArg<std::string> arg_input_vcf_files("<in1.vcf>...", "Multiple VCF files",false, "files", cmd);
 
             cmd.parse(argc, argv);
@@ -97,6 +105,7 @@ Extracts only the naive genotypes based on best guess genotypes.";
             parse_files(input_vcf_files, arg_input_vcf_files.getValue(), arg_input_vcf_file_list.getValue());
             candidate_sites_vcf_file = arg_candidate_sites_vcf_file.getValue();
             output_vcf_file = arg_output_vcf_file.getValue();
+            fexp = arg_fexp.getValue();
             parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
         }
         catch (TCLAP::ArgException &e)
@@ -107,7 +116,13 @@ Extracts only the naive genotypes based on best guess genotypes.";
     };
 
     void initialize()
-    {
+    {        
+        /////////////////////////
+        //filter initialization//
+        /////////////////////////
+        filter.parse(fexp.c_str(), false);
+        filter_exists = fexp=="" ? false : true;
+
         //////////////////////
         //i/o initialization//
         //////////////////////
@@ -248,7 +263,6 @@ Extracts only the naive genotypes based on best guess genotypes.";
                 
         while(sr->read_next_position(current_recs))
         {
-//            std::cerr << "no recs " << current_recs.size() << "\n";
             gt.resize(0);
             pl.resize(0);
             ad.resize(0);
@@ -258,7 +272,14 @@ Extracts only the naive genotypes based on best guess genotypes.";
             bcf_clear(nv);
             int32_t vtype;
 
-//            printf("in synced reading\n");
+            if (filter_exists)
+            {
+                vm->classify_variant(current_recs[0]->h, current_recs[0]->v, var);
+                if (!filter.apply(current_recs[0]->h, current_recs[0]->v, &var, false))
+                {
+                    continue;
+                }
+            }
 
             //for each file
             for (uint32_t i=0; i<current_recs.size(); ++i)
@@ -270,8 +291,7 @@ Extracts only the naive genotypes based on best guess genotypes.";
 
 //                printf("\tfile index: %d\n", file_index);
 //                bcf_print(h, v);
-                
-                
+               
 
                 //candidate sites file, populate info fields
                 if (!file_index) 
@@ -287,24 +307,6 @@ Extracts only the naive genotypes based on best guess genotypes.";
     
                     if (vtype==VT_SNP)
                     {
-//                        printf("\t\tupdating info fields for merged record\n");
-                        /**
- * Copies an info fields from one record to another
- * @hsrc  - source header
- * @vsrc  - source bcf1_t
- * @hdest - destination header
- * @vdest - destination bcf1_t
- * @type  - BCF_HT_FLAG, BCF_HT_INT, BCF_HT_REAL, BCF_HT_STR
- * @key   - the key name
- */
-//void bcf_copy_info_field(bcf_hdr_t *hsrc, bcf1_t* vsrc, bcf_hdr_t *hdest, bcf1_t* vdest, const char* key, int32_t type);
-//EX_MOTIF=AATGG;EX_MLEN=5;EX_RU=TCCAT;EX_BASIS=AGT;EX_BLEN=3;EX_REPEAT_TRACT=60292,60320;
-//EX_COMP=21,41,0,38;EX_ENTROPY=1.53;EX_ENTROPY2=2.32;EX_KL_DIVERGENCE=0.47;EX_KL_DIVERGENCE2=1.68;EX_REF=5.8;EX_RL=29;EX_LL=39;
-//
-//EX_RU_COUNTS=5,5;EX_SCORE=1;EX_TRF_SCORE=58;
-//FZ_MOTIF=AATGG;FZ_MLEN=5;FZ_RU=TTCCA;FZ_BASIS=ACT;FZ_BLEN=3;FZ_REPEAT_TRACT=60226,60355;FZ_COMP=18,45,2,35;FZ_ENTROPY=1.58;FZ_ENTROPY2=2.86;
-//FZ_KL_DIVERGENCE=0.42;FZ_KL_DIVERGENCE2=1.14;FZ_REF=26;FZ_RL=130;FZ_LL=140;FZ_RU_COUNTS=13,26;FZ_SCORE=0.87;FZ_TRF_SCORE=113
-
                         bcf_copy_info_field(h, v, odw->hdr, nv, "FLANKSEQ", BCF_HT_STR);
                     }
                     else if (vtype==VT_INDEL)
@@ -347,10 +349,6 @@ Extracts only the naive genotypes based on best guess genotypes.";
                    
                         bcf_copy_info_field(h, v, odw->hdr, nv, "EXACT_RU_AMBIGUOUS", BCF_HT_FLAG);
                         bcf_copy_info_field(h, v, odw->hdr, nv, "LARGE_REPEAT_REGION", BCF_HT_FLAG);
-                        
-//                        bcf_hdr_append(odw->hdr, "##FILTER=<ID=overlap_vntr,Description=\"Overlaps with VNTR\">");
-//                        bcf_hdr_append(odw->hdr, "##FILTER=<ID=overlap_indel
-                   
                     }
                     else if (vtype==VT_VNTR)
                     {
@@ -551,8 +549,6 @@ Extracts only the naive genotypes based on best guess genotypes.";
                 bcf_update_format_int32(odw->hdr, nv, "DP", &dp[0], dp.size());
                 bcf_update_format_int32(odw->hdr, nv, "AD", &ad[0], ad.size());
                 
-                
-                
                 ++no_indels;
             }
             else if (vtype==VT_VNTR)
@@ -573,7 +569,8 @@ Extracts only the naive genotypes based on best guess genotypes.";
             vtype = VT_UNDEFINED;
             
             int32_t no_variants = no_snps+no_indels+no_vntrs;
-            if ((no_variants&0x0FFF)==0x0600)
+//            if ((no_variants&0x0FFF)==0x0600)
+            if ((no_variants%100)==0)
             {
                 fprintf(stderr, "[I:%s:%d %s] Merged %d rows\n", __FILE__, __LINE__, __FUNCTION__, no_variants);
             }    
@@ -589,10 +586,11 @@ Extracts only the naive genotypes based on best guess genotypes.";
     void print_options()
     {
         std::clog << "merge_genotypes v" << version << "\n\n";
-        std::clog << "options: [L] input VCF file list         " << input_vcf_file_list << " (" << input_vcf_files.size() << " files)\n";
-        std::clog << "         [c] candidate sites VCF file    " << candidate_sites_vcf_file << "\n";
-        std::clog << "         [o] output VCF file             " << output_vcf_file << "\n";
-        print_int_op("         [i] intervals                   ", intervals);
+        std::clog << "options: [L] input VCF file list                      " << input_vcf_file_list << " (" << input_vcf_files.size() << " files)\n";
+        std::clog << "         [c] candidate sites VCF file                 " << candidate_sites_vcf_file << "\n";
+        std::clog << "         [o] output VCF file                          " << output_vcf_file << "\n";
+        print_str_op("         [f] filter (applied to candidate sites file) ", fexp);
+        print_int_op("         [i] intervals                                ", intervals);
         std::clog << "\n";
     }
 
