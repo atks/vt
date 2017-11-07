@@ -193,8 +193,7 @@ class Igor : Program
             }
             else
             {
-                fprintf(stderr, "[E:%s:%d %s] Reference data set type %s not recognized\n", __FILE__, __LINE__, __FUNCTION__, vec[1].c_str());
-                exit(1);
+                std::cerr << "Reference data set type: \"" << vec[1] << "\" not recognised and is ignored\n";
             }
         }
         hts_close(hts);

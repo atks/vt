@@ -197,8 +197,7 @@ class Igor : Program
             }
             else
             {
-                std::cerr << "Reference data set type: \"" << vec[1] << "\" not recognised\n";
-                exit(1);
+                std::cerr << "Reference data set type: \"" << vec[1] << "\" not recognised and is ignored\n";
             }
         }
         hts_close(hts);

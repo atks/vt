@@ -52,6 +52,7 @@
 #include "info2tab.h"
 #include "milk_filter.h"
 #include "merge_candidate_variants.h"
+#include "merge_genotypes.h"
 #include "merge.h"
 #include "multi_partition.h"
 #include "normalize.h"
@@ -304,6 +305,10 @@ int main(int argc, char ** argv)
     else if (argc>1 && cmd=="merge_candidate_variants")
     {
         merge_candidate_variants(argc-1, ++argv);
+    }
+    else if (argc>1 && cmd=="merge_genotypes")
+    {
+        merge_genotypes(argc-1, ++argv);
     }
     else if (argc>1 && cmd=="union_variants")
     {

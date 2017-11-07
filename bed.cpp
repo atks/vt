@@ -87,7 +87,7 @@ void BEDRecord::print()
  */
 std::string BEDRecord::to_string()
 {
-    kstring_t s = {0,0,0};
+    kstring_t s = {0,0,0}; 
 
     kputs(this->chrom.c_str(), &s);
     kputc(':', &s);

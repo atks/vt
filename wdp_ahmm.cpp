@@ -24,6 +24,7 @@
 #include "wdp_ahmm.h"
 
 #define MAXLEN 1024
+#define MAX_MOTIF_LEN 20
 #define MAXLEN_NBITS 10
 
 #define S       0
@@ -101,8 +102,8 @@ void WDP_AHMM::initialize_structures()
 //    moves = new move*[NSTATES];
     for (size_t state=S; state<=E; ++state)
     {
-        V[state] = new float[MAXLEN*MAXLEN];
-        U[state] = new int32_t[MAXLEN*MAXLEN];
+        V[state] = new float[MAX_MOTIF_LEN*MAXLEN];
+        U[state] = new int32_t[MAX_MOTIF_LEN*MAXLEN];
     }
 };
 
@@ -276,19 +277,19 @@ uint32_t WDP_AHMM::get_motif_count()
  */
 void WDP_AHMM::align(const char* read, const char* qual)
 {
-//    clear_statistics();
-//    optimal_path_traced = false;
-//    this->read = read;
-//    this->qual = qual;
-//    rlen = strlen(read);
-//
-//    if (rlen>=MAXLEN)
-//    {
-//        fprintf(stderr, "[%s:%d %s] Sequence to be aligned is greater than %d currently supported, subsetting string to first 1023 characters: %d\n", __FILE__, __LINE__, __FUNCTION__, MAXLEN, rlen);
-//        rlen = 1023;
-//    }
+    clear_statistics();
+    optimal_path_traced = false;
+    this->read = read;
+    this->qual = qual;
+    rlen = strlen(read);
+
+    if (rlen>=MAXLEN)
+    {
+        fprintf(stderr, "[%s:%d %s] Sequence to be aligned is greater than %d currently supported, subsetting string to first 1023 characters: %d\n", __FILE__, __LINE__, __FUNCTION__, MAXLEN, rlen);
+        rlen = MAXLEN - 1;
+    }
 //    plen = rlen;
-//
+
 //    float max = 0;
 //    char maxPath = 'X';
 //
@@ -1024,6 +1025,7 @@ void WDP_AHMM::print_track(int32_t t)
 }
 
 #undef MAXLEN
+#undef MAX_MOTIF_LEN
 #undef MAXLEN_NBITS
 #undef S
 #undef M
