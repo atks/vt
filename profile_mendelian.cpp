@@ -72,7 +72,6 @@ class Igor : Program
     int32_t trio_genotypes[3][3][3];
     std::vector<std::vector<std::vector<int32_t> > > trios_multiallelic_genotypes;
 
-
     /////////
     //tools//
     /////////
@@ -175,9 +174,6 @@ class Igor : Program
         vm = new VariantManip();
     }
     
-   
-    
-
     void profile_mendelian()
     {
         
