@@ -87,7 +87,7 @@ Extracts only the naive genotypes based on best guess genotypes.";
             TCLAP::ValueArg<std::string> arg_intervals("i", "i", "intervals", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_output_vcf_file("o", "o", "output VCF file [-]", false, "-", "", cmd);
-            TCLAP::ValueArg<std::string> arg_candidate_sites_vcf_file("c", "c", "candidate sites VCF file with annotation [-]", false, "-", "", cmd);
+            TCLAP::ValueArg<std::string> arg_candidate_sites_vcf_file("c", "c", "candidate sites VCF file with annotation []", true, "-", "", cmd);
             TCLAP::ValueArg<std::string> arg_input_vcf_file_list("L", "L", "file containing list of input VCF files", true, "", "str", cmd);
             TCLAP::UnlabeledMultiArg<std::string> arg_input_vcf_files("<in1.vcf>...", "Multiple VCF files",false, "files", cmd);
 
@@ -113,7 +113,7 @@ Extracts only the naive genotypes based on best guess genotypes.";
         input_vcf_files.insert(input_vcf_files.begin(), candidate_sites_vcf_file);
         sr = new BCFSyncedReader(input_vcf_files, intervals, false);
 
-        fprintf(stderr, "[I:%s:%d %s] Initializaing %zd VCF files ...\n", __FILE__, __LINE__, __FUNCTION__, input_vcf_files.size());
+        fprintf(stderr, "[I:%s:%d %s] Initializing %zd VCF files ...\n", __FILE__, __LINE__, __FUNCTION__, input_vcf_files.size());
 
         odw = new BCFOrderedWriter(output_vcf_file, 0);
         bcf_hdr_append(odw->hdr, "##fileformat=VCFv4.2");
@@ -123,14 +123,15 @@ Extracts only the naive genotypes based on best guess genotypes.";
         //add samples to output merged file
         for (int32_t i=1; i<sr->hdrs.size(); ++i)
         {
+//            printf("adding sample = %s\n",  bcf_hdr_get_sample_name(sr->hdrs[i], 0));
             bcf_hdr_add_sample(odw->hdr, bcf_hdr_get_sample_name(sr->hdrs[i], 0) );
         }
-
+       
         ///////////////
         //general use//
         ///////////////
         variant = {0,0,0};
-        no_samples = sr->nfiles;
+        no_samples = sr->nfiles - 1;
 
         ////////////////////////
         //stats initialization//
@@ -163,15 +164,30 @@ Extracts only the naive genotypes based on best guess genotypes.";
         int32_t no_BQSUM = 0;
         int32_t no_DP = 0;
 
+        std::vector<int32_t> gt;
+        std::vector<int32_t> pl;
+        std::vector<int32_t> ad;
+        std::vector<int32_t> adf;
+        std::vector<int32_t> adr;
+        std::vector<int32_t> dp;
+
         bcf1_t* nv = bcf_init();
         Variant var;
         std::vector<bcfptr*> current_recs;
-
+                
         while(sr->read_next_position(current_recs))
         {
+//            std::cerr << "no recs " << current_recs.size() << "\n";
+            gt.resize(0);
+            pl.resize(0);
+            adf.resize(0);
+            adr.resize(0);
+            dp.resize(0);
+
+            bcf_clear(nv);
             int32_t vtype;
 
-//            std::cerr << "no recs " << current_recs.size() << "\n";
+            printf("in synced reading\n");
 
             //for each file
             for (uint32_t i=0; i<current_recs.size(); ++i)
@@ -180,43 +196,70 @@ Extracts only the naive genotypes based on best guess genotypes.";
                 bcf1_t *v = current_recs[i]->v;
                 bcf_hdr_t *h = current_recs[i]->h;
 
-//                bcf_print(h, v);
 
-                if (i==0)
+                printf("\tfile index: %d\n", file_index);
+//                bcf_print(h, v);
+                
+                //candidate sites file
+                if (vtype==VT_UNDEFINED)
                 {
                     //update variant information
-                    bcf_clear(nv);
                     bcf_set_chrom(odw->hdr, nv, bcf_get_chrom(h, v));
                     bcf_set_pos1(nv, bcf_get_pos1(v));
                     bcf_update_alleles(odw->hdr, nv, const_cast<const char**>(bcf_get_allele(v)), bcf_get_n_allele(v));
-                    vtype = vm->classify_variant(odw->hdr, nv, var);
+                    bcf_set_n_sample(nv, no_samples);
+                    vtype = vm->classify_variant(h, v, var);
                 }
 
-                float variant_score = bcf_get_qual(v);
-
-                if (bcf_float_is_missing(variant_score))
+                //candidate sites file, populate info fields
+                if (!file_index) 
                 {
-                    variant_score = 0;
+                    continue;
                 }
-
+                
                 if (vtype==VT_SNP)
                 {
+                    int32_t no_gt = bcf_get_genotypes(h, v, &GT, &no_GT);
+                    int32_t no_pl = bcf_get_format_int32(h, v, "PL", &PL, &no_PL);
+                    int32_t no_dp = bcf_get_format_int32(h, v, "DP", &DP, &no_DP); 
+                    int32_t no_adf = bcf_get_format_int32(h, v, "ADF", &ADF, &no_ADF); 
+                    int32_t no_adr = bcf_get_format_int32(h, v, "ADR", &ADR, &no_ADR);
+                    int32_t no_bqsum = bcf_get_format_int32(h, v, "BQSUM", &BQSUM, &no_BQSUM); 
+                    
+//                    printf("GT: %d\n", no_gt);
+//                    printf("PL: %d\n", no_pl);
+//                    printf("DP: %d\n", no_dp);
+//                    printf("ADF: %d\n", no_adf);
+//                    printf("ADR: %d\n", no_adr);
+//                    printf("BQSUM: %d\n", no_bqsum);
+                          
                     //GT:PL:DP:AD:ADF:ADR:BQ:MQ:CY:ST:AL:NM
-                    if (bcf_get_format_int32(h, v, "GT", &GT, &no_GT) > 0 &&
-                        bcf_get_format_int32(h, v, "PL", &PL, &no_PL) > 0 &&
-                        bcf_get_format_int32(h, v, "DP", &DP, &no_DP) > 0 &&
-                        bcf_get_format_int32(h, v, "ADF", &ADF, &no_ADF) > 0 &&
-                        bcf_get_format_int32(h, v, "ADR", &ADR, &no_ADR) > 0)
+                    if (no_gt > 0 &&
+                        no_pl > 0 &&
+                        no_dp > 0 &&
+                        no_adf > 0 &&
+                        no_adr > 0)
                     {
+                          gt.push_back(GT[0]);
+                          gt.push_back(GT[1]);
+
+
+//                          printf("GT: %d\n", no_GT);
+//                          printf("PL: %d\n", no_PL);
+//                          printf("DP: %d\n", no_DP);
+//                          printf("ADF: %d\n", no_ADF);
+//                          printf("ADR: %d\n", no_ADR);
 
                     }
                     //GT:BQSUM:DP
-                    else if (bcf_get_format_int32(h, v, "GT", &GT, &no_GT) < 0 ||
-                             bcf_get_format_int32(h, v, "BQSUM", &BQSUM, &no_BQSUM) < 0 ||
-                             bcf_get_format_int32(h, v, "DP", &DP, &no_DP) < 0)
+                    else if (no_gt > 0 &&
+                             no_bqsum > 0 &&
+                             no_dp > 0)
                     {
-                        fprintf(stderr, "[E:%s:%d %s] cannot get format values GT, BQSUM, DP from %s\n", __FILE__, __LINE__, __FUNCTION__, sr->file_names[file_index].c_str());
-                        exit(1);
+                          gt.push_back(GT[0]);
+                          gt.push_back(GT[1]);
+
+
                     }
                     else
                     {
@@ -227,20 +270,28 @@ Extracts only the naive genotypes based on best guess genotypes.";
                 }
                 else if (vtype == VT_INDEL)
                 {
-
+                    continue;
                 }
                 else if (vtype == VT_VNTR)
                 {
-
+                    continue;
                 }
                 else
                 {
                     continue;
                 }
-            }
 
-//            if (max_variant_score_gt_cutoff)
-//            {
+            }//end processing each file
+
+            //write to merged record
+            if (vtype==VT_SNP)
+            {
+                printf("updating genotypes %zd\n", gt.size());
+                
+                bcf_update_genotypes(odw->hdr, nv, &gt[0], gt.size());
+
+
+
 //                bcf_update_info_int32(odw->hdr, nv, "NSAMPLES", &no_samples, 1);
 //                bcf_update_info_string(odw->hdr, nv, "SAMPLES", samples.c_str());
 //                bcf_update_info_int32(odw->hdr, nv, "E", &e[0], no_samples);
@@ -249,21 +300,15 @@ Extracts only the naive genotypes based on best guess genotypes.";
 //                bcf_update_info_int32(odw->hdr, nv, "NSUM", &nsum, 1);
 //                bcf_set_qual(nv, max_variant_score);
 //
-//                odw->write(nv);
-//
-////                bcf_print(odw->hdr, nv);
-//
-//                if (vtype == VT_SNP)
-//                {
-//                    ++no_candidate_snps;
-//                }
-//                else if (vtype == VT_INDEL)
-//                {
-//                    ++no_candidate_indels;
-//                }
-//            }
+                odw->write(nv);
+                bcf_print(odw->hdr, nv);
 
-//            exit(1);
+            }
+            //this acts as a flag to initialize a newly merged record
+            vtype = VT_UNDEFINED;
+            
+            exit(1);
+//
         }
 
         sr->close();
@@ -274,7 +319,7 @@ Extracts only the naive genotypes based on best guess genotypes.";
     {
         std::clog << "merge_candidate_variants v" << version << "\n\n";
         std::clog << "options: [L] input VCF file list         " << input_vcf_file_list << " (" << input_vcf_files.size() << " files)\n";
-        std::clog << "         [c] candidate sites VCF file  " << candidate_sites_vcf_file << "\n";
+        std::clog << "         [c] candidate sites VCF file    " << candidate_sites_vcf_file << "\n";
         std::clog << "         [o] output VCF file             " << output_vcf_file << "\n";
         print_int_op("         [i] intervals                   ", intervals);
         std::clog << "\n";

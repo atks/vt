@@ -95,18 +95,25 @@ class CompareBCFPtr
                 if (a->alleles.l!=0 && b->alleles.l!=0)
                 {
                     int32_t d = strcmp(a->alleles.s, b->alleles.s);
-                    return d>=0;
+                    
+                    if (d==0)
+                    {
+                        return a->file_index>b->file_index;
+                    }   
+                     
+                    return d>0;
                 }
-                else
+                else //this should result in an error
                 {
-                    return true;
+                    fprintf(stderr, "[E:%s:%d %s] alleles not defined in VCF record.\n", __FILE__, __LINE__, __FUNCTION__);
+                    exit(1);
                 }
             }
 
-            return a->pos1 >= b->pos1;
+            return a->pos1 > b->pos1;
         }
-
-        return a->rid >= b->rid;
+                    
+        return a->rid > b->rid;
     }
 };
 
