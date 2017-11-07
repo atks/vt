@@ -589,8 +589,8 @@ std::string bcf_hdr_ht2str(int32_t id)
  * @vsrc  - source bcf1_t
  * @hdest - destination header
  * @vdest - destination bcf1_t
- * @type  - BCF_HT_FLAG, BCF_HT_INT, BCF_HT_REAL, BCF_HT_STR
  * @key   - the key name
+ * @type  - BCF_HT_FLAG, BCF_HT_INT, BCF_HT_REAL, BCF_HT_STR
  */
 void bcf_copy_info_field(bcf_hdr_t *hsrc, bcf1_t* vsrc, bcf_hdr_t *hdest, bcf1_t* vdest, const char* key, int32_t type)
 {
@@ -930,7 +930,7 @@ uint32_t bcf_ag2p(uint32_t no_alleles, uint32_t no_genotypes)
 /**
  * Gets genotype from genotype index and ploidy.
  *
- * The genotype index is computed by a summation of a series which is 
+ * The genotype index is computed by a summation of a series which is
  * monotonically decreasing.  This allows you to compute the inverse function
  * from index to the ordered genotypes by using a "water rapids algorithm" with
  * decreasing height of each mini water fall.
@@ -942,7 +942,7 @@ std::vector<int32_t> bcf_ip2g(int32_t genotype_index, uint32_t no_ploidy)
     int32_t pth = no_ploidy;
     int32_t max_allele_index = genotype_index;
     int32_t leftover_genotype_index = genotype_index;
-    
+
     while (pth>0)
     {
         for (int32_t allele_index=0; allele_index <= max_allele_index; ++allele_index)
@@ -955,7 +955,7 @@ std::vector<int32_t> bcf_ip2g(int32_t genotype_index, uint32_t no_ploidy)
                 leftover_genotype_index -= choose(pth+allele_index-1, pth);
                 --pth;
                 max_allele_index = allele_index;
-                genotype[pth] = allele_index;                
+                genotype[pth] = allele_index;
                 break;
             }
         }
@@ -994,7 +994,7 @@ uint32_t bcf_g2i(int32_t* g, uint32_t n)
 uint32_t bcf_g2i(std::vector<int32_t>& g)
 {
     int32_t n = g.size();
-    
+
     if (n==1)
     {
         return g[0];

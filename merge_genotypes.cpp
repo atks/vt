@@ -62,8 +62,9 @@ class Igor : Program
     //stats//
     /////////
     uint32_t no_samples;
-    uint32_t no_candidate_snps;
-    uint32_t no_candidate_indels;
+    uint32_t no_snps;
+    uint32_t no_indels;
+    uint32_t no_vntrs;
 
     /////////
     //tools//
@@ -110,16 +111,18 @@ Extracts only the naive genotypes based on best guess genotypes.";
         //////////////////////
         //i/o initialization//
         //////////////////////
+        fprintf(stderr, "[I:%s:%d %s] Initializing %zd VCF files ...", __FILE__, __LINE__, __FUNCTION__, input_vcf_files.size());
         input_vcf_files.insert(input_vcf_files.begin(), candidate_sites_vcf_file);
         sr = new BCFSyncedReader(input_vcf_files, intervals, false);
-
-        fprintf(stderr, "[I:%s:%d %s] Initializing %zd VCF files ...\n", __FILE__, __LINE__, __FUNCTION__, input_vcf_files.size());
+        fprintf(stderr, " done.\n");
 
         odw = new BCFOrderedWriter(output_vcf_file, 0);
         bcf_hdr_append(odw->hdr, "##fileformat=VCFv4.2");
         bcf_hdr_transfer_contigs(sr->hdrs[0], odw->hdr);
         bool rename = true;
-        //exact alignment related statisitcs
+
+//        odw->link_hdr(sr->hdrs[0]);
+//        //exact alignment related statisitcs
         std::string EX_MOTIF = bcf_hdr_append_info_with_backup_naming(odw->hdr, "EX_MOTIF", "1", "String", "Canonical motif in a VNTR.", rename);
         std::string EX_RU = bcf_hdr_append_info_with_backup_naming(odw->hdr, "EX_RU", "1", "String", "Repeat unit in the reference sequence.", rename);
         std::string EX_BASIS = bcf_hdr_append_info_with_backup_naming(odw->hdr, "EX_BASIS", "1", "String", "Basis nucleotides in the motif.", rename);
@@ -160,6 +163,17 @@ Extracts only the naive genotypes based on best guess genotypes.";
         std::string FLANKSEQ = bcf_hdr_append_info_with_backup_naming(odw->hdr, "FLANKSEQ", "1", "String", "Flanking sequence 10bp on either side of REF.", rename);
         std::string EXACT_RU_AMBIGUOUS = bcf_hdr_append_info_with_backup_naming(odw->hdr, "EXACT_RU_AMBIGUOUS", "0", "Flag", "Exact motif is ambiguous.", rename);
 
+        std::string MOTIF = bcf_hdr_append_info_with_backup_naming(odw->hdr, "MOTIF", "1", "String", "Canonical motif in a VNTR.", rename);
+        std::string RU = bcf_hdr_append_info_with_backup_naming(odw->hdr, "RU", "1", "String", "Repeat unit in the reference sequence.", rename);
+        std::string FLANKS = bcf_hdr_append_info_with_backup_naming(odw->hdr, "FLANKS", "2", "Integer", "Exact left and right flank positions of the Indel.", rename);
+        std::string FZ_FLANKS = bcf_hdr_append_info_with_backup_naming(odw->hdr, "FZ_FLANKS", "2", "Integer", "Fuzzy left and right flank positions of the Indel.", rename);
+       
+       
+        bcf_hdr_append(odw->hdr, "##INFO=<ID=LARGE_REPEAT_REGION,Number=0,Type=Flag,Description=\"Very large repeat region, vt only detects up to 1000bp long regions.\">");
+        bcf_hdr_append(odw->hdr, "##INFO=<ID=FLANKSEQ,Number=1,Type=String,Description=\"Flanking sequence 10bp on either side of detected repeat region.\">");
+        bcf_hdr_append(odw->hdr, "##FILTER=<ID=overlap_vntr,Description=\"Overlaps with VNTR\">");
+        bcf_hdr_append(odw->hdr, "##FILTER=<ID=overlap_indel,Description=\"Overlaps with indel\">");
+
         //COMMON
         bcf_hdr_append(odw->hdr, "##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">");
         bcf_hdr_append(odw->hdr, "##FORMAT=<ID=PL,Number=G,Type=Integer,Description=\"PHRED scaled genotype likelihoods\">");
@@ -167,6 +181,9 @@ Extracts only the naive genotypes based on best guess genotypes.";
         bcf_hdr_append(odw->hdr, "##FORMAT=<ID=ADF,Number=A,Type=Integer,Description=\"Allele Depth (Forward strand)\">");
         bcf_hdr_append(odw->hdr, "##FORMAT=<ID=ADR,Number=A,Type=Integer,Description=\"Allele Depth (Reverse strand)\">");
         bcf_hdr_append(odw->hdr, "##FORMAT=<ID=DP,Number=1,Type=Integer,Description=\"Depth\">");
+
+        //VNTR
+        bcf_hdr_append(odw->hdr, "##FORMAT=<ID=CG,Number=.,Type=Float,Description=\"Repeat count genotype\">");
 
         odw->write_hdr();
 
@@ -176,6 +193,7 @@ Extracts only the naive genotypes based on best guess genotypes.";
 //            printf("adding sample = %s\n",  bcf_hdr_get_sample_name(sr->hdrs[i], 0));
             bcf_hdr_add_sample(odw->hdr, bcf_hdr_get_sample_name(sr->hdrs[i], 0) );
         }
+        bcf_hdr_sync(odw->hdr);
        
         ///////////////
         //general use//
@@ -186,8 +204,9 @@ Extracts only the naive genotypes based on best guess genotypes.";
         ////////////////////////
         //stats initialization//
         ////////////////////////
-        no_candidate_snps = 0;
-        no_candidate_indels = 0;
+        no_snps = 0;
+        no_indels = 0;
+        no_vntrs = 0;
 
         /////////
         //tools//
@@ -206,6 +225,8 @@ Extracts only the naive genotypes based on best guess genotypes.";
         int32_t *ADR = NULL;
         int32_t *BQSUM = NULL;
         int32_t *DP = NULL;
+        float *CG = NULL;
+        
         int32_t no_GT = 0;
         int32_t no_PL = 0;
         int32_t no_AD = 0;
@@ -213,13 +234,13 @@ Extracts only the naive genotypes based on best guess genotypes.";
         int32_t no_ADR = 0;
         int32_t no_BQSUM = 0;
         int32_t no_DP = 0;
+        int32_t no_CG = 0;
 
         std::vector<int32_t> gt;
         std::vector<int32_t> pl;
         std::vector<int32_t> ad;
-        std::vector<int32_t> adf;
-        std::vector<int32_t> adr;
         std::vector<int32_t> dp;
+        std::vector<float> cg;
 
         bcf1_t* nv = bcf_init();
         Variant var;
@@ -230,14 +251,14 @@ Extracts only the naive genotypes based on best guess genotypes.";
 //            std::cerr << "no recs " << current_recs.size() << "\n";
             gt.resize(0);
             pl.resize(0);
-            adf.resize(0);
-            adr.resize(0);
+            ad.resize(0);
             dp.resize(0);
+            cg.resize(0);
 
             bcf_clear(nv);
             int32_t vtype;
 
-            printf("in synced reading\n");
+//            printf("in synced reading\n");
 
             //for each file
             for (uint32_t i=0; i<current_recs.size(); ++i)
@@ -247,8 +268,8 @@ Extracts only the naive genotypes based on best guess genotypes.";
                 bcf_hdr_t *h = current_recs[i]->h;
 
 
-                printf("\tfile index: %d\n", file_index);
-                bcf_print(h, v);
+//                printf("\tfile index: %d\n", file_index);
+//                bcf_print(h, v);
                 
                 
 
@@ -256,34 +277,104 @@ Extracts only the naive genotypes based on best guess genotypes.";
                 if (!file_index) 
                 {
                     vtype = vm->classify_variant(h, v, var); 
+                    
+//                    bcf_copy(v, nv);
+                    
                     bcf_set_chrom(odw->hdr, nv, bcf_get_chrom(h, v));
                     bcf_set_pos1(nv, bcf_get_pos1(v));
                     bcf_update_alleles(odw->hdr, nv, const_cast<const char**>(bcf_get_allele(v)), bcf_get_n_allele(v));
-                    printf("\t\tset no samples : %d\n", no_samples);
                     bcf_set_n_sample(nv, no_samples);
     
                     if (vtype==VT_SNP)
                     {
-                        printf("\t\tupdating info fields for merged record\n");
-                 
-//                        bcf_print(h, v);
-                     
-                       
-    //                    bcf_set_chrom(odw->hdr, nv, bcf_get_chrom(h, v));
-    //                    bcf_set_pos1(nv, bcf_get_pos1(v));
-    //                    bcf_update_alleles(odw->hdr, nv, const_cast<const char**>(bcf_get_allele(v)), bcf_get_n_allele(v));
-    //                    printf("\t\tset no samples : %d\n", no_samples);
-    //                    
-//                        bcf_unpack(nv, BCF_UN_ALL);
+//                        printf("\t\tupdating info fields for merged record\n");
+                        /**
+ * Copies an info fields from one record to another
+ * @hsrc  - source header
+ * @vsrc  - source bcf1_t
+ * @hdest - destination header
+ * @vdest - destination bcf1_t
+ * @type  - BCF_HT_FLAG, BCF_HT_INT, BCF_HT_REAL, BCF_HT_STR
+ * @key   - the key name
+ */
+//void bcf_copy_info_field(bcf_hdr_t *hsrc, bcf1_t* vsrc, bcf_hdr_t *hdest, bcf1_t* vdest, const char* key, int32_t type);
+//EX_MOTIF=AATGG;EX_MLEN=5;EX_RU=TCCAT;EX_BASIS=AGT;EX_BLEN=3;EX_REPEAT_TRACT=60292,60320;
+//EX_COMP=21,41,0,38;EX_ENTROPY=1.53;EX_ENTROPY2=2.32;EX_KL_DIVERGENCE=0.47;EX_KL_DIVERGENCE2=1.68;EX_REF=5.8;EX_RL=29;EX_LL=39;
+//
+//EX_RU_COUNTS=5,5;EX_SCORE=1;EX_TRF_SCORE=58;
+//FZ_MOTIF=AATGG;FZ_MLEN=5;FZ_RU=TTCCA;FZ_BASIS=ACT;FZ_BLEN=3;FZ_REPEAT_TRACT=60226,60355;FZ_COMP=18,45,2,35;FZ_ENTROPY=1.58;FZ_ENTROPY2=2.86;
+//FZ_KL_DIVERGENCE=0.42;FZ_KL_DIVERGENCE2=1.14;FZ_REF=26;FZ_RL=130;FZ_LL=140;FZ_RU_COUNTS=13,26;FZ_SCORE=0.87;FZ_TRF_SCORE=113
+
+                        bcf_copy_info_field(h, v, odw->hdr, nv, "FLANKSEQ", BCF_HT_STR);
+                    }
+                    else if (vtype==VT_INDEL)
+                    {
+                        bcf_copy_info_field(h, v, odw->hdr, nv, "EX_MOTIF", BCF_HT_STR);
+                        bcf_copy_info_field(h, v, odw->hdr, nv, "EX_MLEN", BCF_HT_INT);
+                        bcf_copy_info_field(h, v, odw->hdr, nv, "EX_RU", BCF_HT_STR);
+                        bcf_copy_info_field(h, v, odw->hdr, nv, "EX_BASIS", BCF_HT_STR);
+                        bcf_copy_info_field(h, v, odw->hdr, nv, "EX_BLEN", BCF_HT_INT);
+                        bcf_copy_info_field(h, v, odw->hdr, nv, "EX_REPEAT_TRACT", BCF_HT_INT);
+                        bcf_copy_info_field(h, v, odw->hdr, nv, "EX_COMP", BCF_HT_INT);
+                        bcf_copy_info_field(h, v, odw->hdr, nv, "EX_ENTROPY", BCF_HT_REAL);
+                        bcf_copy_info_field(h, v, odw->hdr, nv, "EX_ENTROPY2", BCF_HT_REAL);
+                        bcf_copy_info_field(h, v, odw->hdr, nv, "EX_KL_DIVERGENCE", BCF_HT_REAL);
+                        bcf_copy_info_field(h, v, odw->hdr, nv, "EX_KL_DIVERGENCE2", BCF_HT_REAL);
+                        bcf_copy_info_field(h, v, odw->hdr, nv, "EX_REF", BCF_HT_REAL);
+                        bcf_copy_info_field(h, v, odw->hdr, nv, "EX_RL", BCF_HT_INT);
+                        bcf_copy_info_field(h, v, odw->hdr, nv, "EX_LL", BCF_HT_INT);
+                        bcf_copy_info_field(h, v, odw->hdr, nv, "EX_RU_COUNTS", BCF_HT_INT);
+                        bcf_copy_info_field(h, v, odw->hdr, nv, "EX_SCORE", BCF_HT_REAL);
+                        bcf_copy_info_field(h, v, odw->hdr, nv, "EX_TRF_SCORE", BCF_HT_INT);
                         
+                        bcf_copy_info_field(h, v, odw->hdr, nv, "FZ_MOTIF", BCF_HT_STR);
+                        bcf_copy_info_field(h, v, odw->hdr, nv, "FZ_MLEN", BCF_HT_INT);
+                        bcf_copy_info_field(h, v, odw->hdr, nv, "FZ_RU", BCF_HT_STR);
+                        bcf_copy_info_field(h, v, odw->hdr, nv, "FZ_BASIS", BCF_HT_STR);
+                        bcf_copy_info_field(h, v, odw->hdr, nv, "FZ_BLEN", BCF_HT_INT);
+                        bcf_copy_info_field(h, v, odw->hdr, nv, "FZ_REPEAT_TRACT", BCF_HT_INT);
+                        bcf_copy_info_field(h, v, odw->hdr, nv, "FZ_COMP", BCF_HT_INT);
+                        bcf_copy_info_field(h, v, odw->hdr, nv, "FZ_ENTROPY", BCF_HT_REAL);
+                        bcf_copy_info_field(h, v, odw->hdr, nv, "FZ_ENTROPY2", BCF_HT_REAL);
+                        bcf_copy_info_field(h, v, odw->hdr, nv, "FZ_KL_DIVERGENCE", BCF_HT_REAL);
+                        bcf_copy_info_field(h, v, odw->hdr, nv, "FZ_KL_DIVERGENCE2", BCF_HT_REAL);
+                        bcf_copy_info_field(h, v, odw->hdr, nv, "FZ_REF", BCF_HT_REAL);
+                        bcf_copy_info_field(h, v, odw->hdr, nv, "FZ_RL", BCF_HT_INT);
+                        bcf_copy_info_field(h, v, odw->hdr, nv, "FZ_LL", BCF_HT_INT);
+                        bcf_copy_info_field(h, v, odw->hdr, nv, "FZ_RU_COUNTS", BCF_HT_INT);
+                        bcf_copy_info_field(h, v, odw->hdr, nv, "FZ_SCORE", BCF_HT_REAL);
+                        bcf_copy_info_field(h, v, odw->hdr, nv, "FZ_TRF_SCORE", BCF_HT_INT);
+                   
+                        bcf_copy_info_field(h, v, odw->hdr, nv, "EXACT_RU_AMBIGUOUS", BCF_HT_FLAG);
+                        bcf_copy_info_field(h, v, odw->hdr, nv, "LARGE_REPEAT_REGION", BCF_HT_FLAG);
+                        
+//                        bcf_hdr_append(odw->hdr, "##FILTER=<ID=overlap_vntr,Description=\"Overlaps with VNTR\">");
+//                        bcf_hdr_append(odw->hdr, "##FILTER=<ID=overlap_indel
+                   
                     }
-                    else if (vtype==VT_INDEL)
+                    else if (vtype==VT_VNTR)
                     {
-//                         bcf_copy(nv, v);
-                     
+//                        printf("\t\tis a VNTR\n");
+//                        printf("\t\t\tcopying info fields\n");
+//                        bcf_print(h, v);
+                        
+//                        bcf_copy_info_field(h, v, odw->hdr, nv, "MOTIF", BCF_HT_STR);
+//                        bcf_copy_info_field(h, v, odw->hdr, nv, "RU", BCF_HT_STR);
+                        bcf_copy_info_field(h, v, odw->hdr, nv, "FZ_RL", BCF_HT_INT);
+                        bcf_copy_info_field(h, v, odw->hdr, nv, "FLANKS", BCF_HT_INT);
+                        bcf_copy_info_field(h, v, odw->hdr, nv, "FZ_FLANKS", BCF_HT_INT);
                     }
-                    else if (vtype==VT_INDEL)
+                    
+                    if (bcf_has_filter(h, v, const_cast<char*>("overlap_indel"))==1)
                     {
+                        int32_t overlap_indel_filter_id = bcf_hdr_id2int(odw->hdr, BCF_DT_ID, const_cast<char*>("overlap_indel"));
+                        bcf_update_filter(odw->hdr, nv, &overlap_indel_filter_id, 1);
+                    }
+                    
+                    if (bcf_has_filter(h, v, const_cast<char*>("overlap_vntr"))==1)
+                    {
+                        int32_t overlap_indel_filter_id = bcf_hdr_id2int(odw->hdr, BCF_DT_ID, const_cast<char*>("overlap_vntr"));
+                        bcf_update_filter(odw->hdr, nv, &overlap_indel_filter_id, 1);
                     }
                     
                     continue;
@@ -291,7 +382,7 @@ Extracts only the naive genotypes based on best guess genotypes.";
                                 
                 if (vtype==VT_SNP)
                 {
-                    printf("\t\tis a SNP\n");
+//                    printf("\t\tis a SNP\n");
                     
                     int32_t no_gt = bcf_get_genotypes(h, v, &GT, &no_GT);
                     int32_t no_pl = bcf_get_format_int32(h, v, "PL", &PL, &no_PL);
@@ -314,12 +405,17 @@ Extracts only the naive genotypes based on best guess genotypes.";
                         no_adf > 0 &&
                         no_adr > 0)
                     {
-                        printf("\t\tupdating genotypes for GT,PL\n");
-                        printf("\t\t\tno_GT %d\n", no_GT);
-                        printf("\t\t\t%d %d\n", GT[0], GT[1]);
+//                        printf("\t\tupdating genotypes for GT,PL\n");
+//                        printf("\t\t\tno_GT %d\n", no_GT);
+//                        printf("\t\t\t%d %d\n", GT[0], GT[1]);
                           gt.push_back(GT[0]);
                           gt.push_back(GT[1]);
-
+                          pl.push_back(PL[0]);
+                          pl.push_back(PL[1]);
+                          pl.push_back(PL[2]);
+                          dp.push_back(DP[0]);
+                          ad.push_back(ADF[0]+ADR[0]);
+                          ad.push_back(ADF[1]+ADR[1]);
 
 //                          printf("GT: %d\n", no_GT);
 //                          printf("PL: %d\n", no_PL);
@@ -333,32 +429,103 @@ Extracts only the naive genotypes based on best guess genotypes.";
                              no_bqsum > 0 &&
                              no_dp > 0)
                     {
-                          printf("\t\tupdating genotypes for GT,BQSUM\n");
-                          printf("\t\t\tno_GT %d\n", no_GT);
-                          printf("\t\t\t%d %d\n", GT[0], GT[1]);
+//                          printf("\t\tupdating genotypes for GT,BQSUM\n");
+//                          printf("\t\t\tno_GT %d\n", no_GT);
+//                          printf("\t\t\t%d %d\n", GT[0], GT[1]);
                           gt.push_back(GT[0]);
                           gt.push_back(GT[1]);
-
-
+                          pl.push_back(0);
+                          pl.push_back(BQSUM[0]/3);
+                          pl.push_back(BQSUM[0]);
+                          dp.push_back(DP[0]);
+                          ad.push_back(DP[0]);
+                          ad.push_back(0);                          
                     }
                     else
                     {
                         fprintf(stderr, "[E:%s:%d %s] cannot get format values GT:PL:DP:ADF:ADR or GT:BQSUM:DP from %s\n", __FILE__, __LINE__, __FUNCTION__, sr->file_names[file_index].c_str());
                         exit(1);
-
                     }
                 }
                 else if (vtype == VT_INDEL)
                 {
-                    continue;
+//                    printf("\t\tis an INDEL\n");
+                    
+                    int32_t no_gt = bcf_get_genotypes(h, v, &GT, &no_GT);
+                    int32_t no_pl = bcf_get_format_int32(h, v, "PL", &PL, &no_PL);
+                    int32_t no_dp = bcf_get_format_int32(h, v, "DP", &DP, &no_DP); 
+                    int32_t no_adf = bcf_get_format_int32(h, v, "ADF", &ADF, &no_ADF); 
+                    int32_t no_adr = bcf_get_format_int32(h, v, "ADR", &ADR, &no_ADR);
+                    int32_t no_bqsum = bcf_get_format_int32(h, v, "BQSUM", &BQSUM, &no_BQSUM); 
+                    
+                    if (no_gt > 0 &&
+                        no_pl > 0 &&
+                        no_dp > 0 &&
+                        no_adf > 0 &&
+                        no_adr > 0)
+                    {
+//                        printf("\t\tupdating genotypes for GT,PL\n");
+//                        printf("\t\t\tno_GT %d\n", no_GT);
+//                        printf("\t\t\t%d %d\n", GT[0], GT[1]);
+                          gt.push_back(GT[0]);
+                          gt.push_back(GT[1]);
+                          pl.push_back(PL[0]);
+                          pl.push_back(PL[1]);
+                          pl.push_back(PL[2]);
+                          dp.push_back(DP[0]);
+                          ad.push_back(ADF[0]+ADR[0]);
+                          ad.push_back(ADF[1]+ADR[1]);
+
+//                          printf("GT: %d\n", no_GT);
+//                          printf("PL: %d\n", no_PL);
+//                          printf("DP: %d\n", no_DP);
+//                          printf("ADF: %d\n", no_ADF);
+//                          printf("ADR: %d\n", no_ADR);
+
+                    }
+                    //GT:BQSUM:DP
+                    else if (no_gt > 0 &&
+                             no_bqsum > 0 &&
+                             no_dp > 0)
+                    {
+//                          printf("\t\tupdating genotypes for GT,BQSUM\n");
+//                          printf("\t\t\tno_GT %d\n", no_GT);
+//                          printf("\t\t\t%d %d\n", GT[0], GT[1]);
+                          gt.push_back(GT[0]);
+                          gt.push_back(GT[1]);
+                          pl.push_back(0);
+                          pl.push_back(BQSUM[0]/3);
+                          pl.push_back(BQSUM[0]);
+                          dp.push_back(DP[0]);
+                          ad.push_back(DP[0]);
+                          ad.push_back(0);                          
+                    }
+                    else
+                    {
+                        fprintf(stderr, "[E:%s:%d %s] cannot get format values GT:PL:DP:ADF:ADR or GT:BQSUM:DP from %s\n", __FILE__, __LINE__, __FUNCTION__, sr->file_names[file_index].c_str());
+                        exit(1);
+                    }
                 }
                 else if (vtype == VT_VNTR)
                 {
-                    continue;
-                }
-                else
-                {
-                    continue;
+//                    printf("\t\tis a VNTR\n");
+//                    bcf_print(h, v);
+//                    
+                    int32_t no_cg = bcf_get_format_float(h, v, "CG", &CG, &no_CG); 
+                    
+                    //CG
+                    if (no_cg > 0)
+                    {
+//                          printf("\t\tupdating genotypes for CG\n");
+//                          printf("\t\t\tno_CG %d\n", no_CG);
+//                          printf("\t\t\t%f %f\n", CG[0], CG[1]);
+                          cg.push_back(CG[0]);
+                          cg.push_back(CG[1]);
+                    }
+                    else
+                    {
+                        fprintf(stderr, "[E:%s:%d %s] cannot get format values CG from %s\n", __FILE__, __LINE__, __FUNCTION__, sr->file_names[file_index].c_str());
+                    }
                 }
 
             }//end processing each file
@@ -366,39 +533,62 @@ Extracts only the naive genotypes based on best guess genotypes.";
             //write to merged record
             if (vtype==VT_SNP)
             {
-                printf("\tupdating genotypes %zd\n", gt.size());
-                printf("\tn_samples %zd\n", nv->n_sample);
-          bcf_print(odw->hdr, nv);                
-                bcf_update_genotypes(odw->hdr, nv, &gt[0], 6);
-
-          bcf_print(odw->hdr, nv);
-
-//                bcf_update_info_int32(odw->hdr, nv, "NSAMPLES", &no_samples, 1);
-//                bcf_update_info_string(odw->hdr, nv, "SAMPLES", samples.c_str());
-//                bcf_update_info_int32(odw->hdr, nv, "E", &e[0], no_samples);
-//                bcf_update_info_int32(odw->hdr, nv, "N", &n[0], no_samples);
-//                bcf_update_info_int32(odw->hdr, nv, "ESUM", &esum, 1);
-//                bcf_update_info_int32(odw->hdr, nv, "NSUM", &nsum, 1);
-//                bcf_set_qual(nv, max_variant_score);
-//
-                odw->write(nv);
-                bcf_print(odw->hdr, nv);
-
+//                printf("\tupdating genotypes %zd\n", gt.size());
+//                printf("\tn_samples %zd\n", nv->n_sample);
+                bcf_update_genotypes(odw->hdr, nv, &gt[0], gt.size());
+                bcf_update_format_int32(odw->hdr, nv, "PL", &pl[0], pl.size());
+                bcf_update_format_int32(odw->hdr, nv, "DP", &dp[0], dp.size());
+                bcf_update_format_int32(odw->hdr, nv, "AD", &ad[0], ad.size());
+            
+                ++no_snps;
             }
+            else if (vtype==VT_INDEL)
+            {
+//                printf("\tupdating genotypes %zd\n", gt.size());
+//                printf("\tn_samples %zd\n", nv->n_sample);
+                bcf_update_genotypes(odw->hdr, nv, &gt[0], gt.size());
+                bcf_update_format_int32(odw->hdr, nv, "PL", &pl[0], pl.size());
+                bcf_update_format_int32(odw->hdr, nv, "DP", &dp[0], dp.size());
+                bcf_update_format_int32(odw->hdr, nv, "AD", &ad[0], ad.size());
+                
+                
+                
+                ++no_indels;
+            }
+            else if (vtype==VT_VNTR)
+            {
+//                printf("\tupdating genotypes %zd\n", gt.size());
+//                printf("\tn_samples %zd\n", nv->n_sample);
+                bcf_update_format_float(odw->hdr, nv, "CG", &cg[0], cg.size());
+                
+                ++no_vntrs;
+                
+//                bcf_print(odw->hdr, nv);
+            }
+            
+            odw->write(nv);
+//            bcf_print(odw->hdr, nv);
+
             //this acts as a flag to initialize a newly merged record
             vtype = VT_UNDEFINED;
             
-            exit(1);
-//
+            int32_t no_variants = no_snps+no_indels+no_vntrs;
+            if ((no_variants&0x0FFF)==0x0600)
+            {
+                fprintf(stderr, "[I:%s:%d %s] Merged %d rows\n", __FILE__, __LINE__, __FUNCTION__, no_variants);
+            }    
+            
         }
 
         sr->close();
         odw->close();
+        
+        
     };
 
     void print_options()
     {
-        std::clog << "merge_candidate_variants v" << version << "\n\n";
+        std::clog << "merge_genotypes v" << version << "\n\n";
         std::clog << "options: [L] input VCF file list         " << input_vcf_file_list << " (" << input_vcf_files.size() << " files)\n";
         std::clog << "         [c] candidate sites VCF file    " << candidate_sites_vcf_file << "\n";
         std::clog << "         [o] output VCF file             " << output_vcf_file << "\n";
@@ -409,8 +599,9 @@ Extracts only the naive genotypes based on best guess genotypes.";
     void print_stats()
     {
         std::clog << "\n";
-        std::clog << "stats: Total Number of Candidate SNPs                 " << no_candidate_snps << "\n";
-        std::clog << "       Total Number of Candidate Indels               " << no_candidate_indels << "\n";
+        std::clog << "stats: Total no. of SNPs                 " << no_snps << "\n";
+        std::clog << "       Total no. of Indels               " << no_indels << "\n";
+        std::clog << "       Total no. of VNTRs                " << no_vntrs << "\n";
         std::clog << "\n";
     };
 
