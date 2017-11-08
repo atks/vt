@@ -40,11 +40,29 @@ class PEDRecord
     std::string mother;
     int32_t individual_sex;
 
+    /**
+     * Constructs and initialize a PEDRecord object.
+     */
     PEDRecord(std::string pedigree,
               std::vector<std::string>& individual,
               std::string father,
               std::string mother,
               int32_t individual_sex);
+
+    /**
+     * Returns true if record is representative of a trio, false otherwise.
+     */
+    bool is_trio();
+
+    /**
+     * Returns true if record contains duplicates, false otherwise.
+     */
+    bool is_duplicated();
+
+    /**
+     * Prints the contents of this record.
+     */
+    void print();
 
     private:
 };

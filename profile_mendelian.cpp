@@ -66,6 +66,7 @@ class Igor : Program
     //stats//
     /////////
     uint32_t no_trios;
+    uint32_t no_dups;
     uint32_t no_biallelic_variants;
     uint32_t no_multiallelic_variants;
     uint32_t no_failed_min_depth;
@@ -191,21 +192,58 @@ class Igor : Program
         Variant variant;
 
         std::vector<Trio> trios;
-
-        for (size_t i=0; i<pedigree->recs.size(); ++i)
+        std::vector<Duplicate> dups;
+    
+        std::vector<PEDRecord>& recs =  pedigree->recs;
+    
+        for (size_t i=0; i<recs.size(); ++i)
         {
-            int32_t c = bcf_hdr_id2int(h, BCF_DT_SAMPLE, pedigree->recs[i].individual[0].c_str());
-            int32_t f = bcf_hdr_id2int(h, BCF_DT_SAMPLE, pedigree->recs[i].father.c_str());
-            int32_t m = bcf_hdr_id2int(h, BCF_DT_SAMPLE, pedigree->recs[i].mother.c_str());
-
-            if (f>=0 && m>=0 && c>=0)
+            recs[i].print();
+            
+            if (recs[i].is_trio())
             {
-                Trio trio(c, f, m, pedigree->recs[i].individual_sex);                
-                trios.push_back(trio);
+                int32_t individual_index = bcf_hdr_id2int(h, BCF_DT_SAMPLE, recs[i].individual[0].c_str());
+                int32_t father_index = bcf_hdr_id2int(h, BCF_DT_SAMPLE, recs[i].father.c_str());
+                int32_t mother_index = bcf_hdr_id2int(h, BCF_DT_SAMPLE, recs[i].mother.c_str());
+    
+                if (individual_index>=0 && father_index>=0 && mother_index>=0)
+                {
+                    Trio trio(individual_index, father_index, mother_index, recs[i].individual_sex);                
+                    trios.push_back(trio);
+                    
+                    std::cerr << "1 trio added\n";
+                }
+            }
+            
+            if (recs[i].is_duplicated())
+            {
+                PEDRecord& rec = recs[i];
+                int32_t no_pairs_added = 0;
+                
+                int32_t individual_sex = rec.individual_sex;
+                
+                for (size_t a=0; a<rec.individual.size()-1; ++a)
+                {
+                    int32_t individual_index = bcf_hdr_id2int(h, BCF_DT_SAMPLE, rec.individual[a].c_str());
+                        
+                    for (size_t b=a+1; b<rec.individual.size(); ++b)
+                    {
+                        int32_t duplicate_index = bcf_hdr_id2int(h, BCF_DT_SAMPLE, rec.individual[b].c_str());
+                        
+                        Duplicate dup(individual_index, duplicate_index, individual_sex);                
+                        dups.push_back(dup);
+                        ++no_pairs_added;
+                    }
+                }
+                
+                std::cerr << no_pairs_added << " pairs added\n";
             }
         }
 
         no_trios = trios.size();
+        no_dups = trios.size();
+
+        exit(1);
 
         int32_t missing = 0;
         int32_t mendel_homalt_err = 0;

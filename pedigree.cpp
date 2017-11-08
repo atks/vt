@@ -23,6 +23,9 @@ THE SOFTWARE.
 
 #include "pedigree.h"
 
+/**
+ * Constructs and initialize a PEDRecord object.
+ */
 PEDRecord::PEDRecord(std::string pedigree, std::vector<std::string>& individual, 
                      std::string father, std::string mother, int32_t individual_sex)
 {
@@ -33,6 +36,40 @@ PEDRecord::PEDRecord(std::string pedigree, std::vector<std::string>& individual,
     this->individual_sex = individual_sex;
 };
 
+/**
+ * Returns true if record is representative of a trio, false otherwise.
+ */
+bool PEDRecord::is_trio()
+{
+    return this->father!="" && this->mother!= "";
+};
+
+/**
+ * Returns true if record contains duplicates, false otherwise.
+ */
+bool PEDRecord::is_duplicated()
+{
+    return this->individual.size()>1;
+};
+
+/**
+ * Prints the contents of this record.
+ */
+void PEDRecord::print()
+{
+    fprintf(stderr, "================================\n");
+    fprintf(stderr, "Family ID      : %s\n", pedigree.c_str());
+    fprintf(stderr, "\n");
+    fprintf(stderr, "Individual ID  : %s (%zd)\n", individual[0].c_str(), individual.size());
+    fprintf(stderr, "Father ID      : %s\n", father.c_str());
+    fprintf(stderr, "Mother ID      : %s\n", mother.c_str());
+    fprintf(stderr, "Sex            : %s\n", (individual_sex==1?"male":(individual_sex==2?"female":"other")));
+    fprintf(stderr, "================================\n");
+};
+    
+/**
+ * Constructs and initialize a Pedigree object.
+ */
 Pedigree::Pedigree(std::string& ped_file)
 {
     htsFile *hts = hts_open(ped_file.c_str(), "r");

@@ -102,7 +102,8 @@ Extracts only the naive genotypes based on best guess genotypes.";
 
             cmd.parse(argc, argv);
 
-            parse_files(input_vcf_files, arg_input_vcf_files.getValue(), arg_input_vcf_file_list.getValue());
+            input_vcf_file_list = arg_input_vcf_file_list.getValue();
+            parse_files(input_vcf_files, arg_input_vcf_files.getValue(), input_vcf_file_list);
             candidate_sites_vcf_file = arg_candidate_sites_vcf_file.getValue();
             output_vcf_file = arg_output_vcf_file.getValue();
             fexp = arg_fexp.getValue();
@@ -200,8 +201,6 @@ Extracts only the naive genotypes based on best guess genotypes.";
         //VNTR
         bcf_hdr_append(odw->hdr, "##FORMAT=<ID=CG,Number=.,Type=Float,Description=\"Repeat count genotype\">");
 
-        odw->write_hdr();
-
         //add samples to output merged file
         for (int32_t i=1; i<sr->hdrs.size(); ++i)
         {
@@ -209,7 +208,9 @@ Extracts only the naive genotypes based on best guess genotypes.";
             bcf_hdr_add_sample(odw->hdr, bcf_hdr_get_sample_name(sr->hdrs[i], 0) );
         }
         bcf_hdr_sync(odw->hdr);
-       
+
+        odw->write_hdr();
+               
         ///////////////
         //general use//
         ///////////////
@@ -267,8 +268,25 @@ Extracts only the naive genotypes based on best guess genotypes.";
             {
                 std::string variant = bcf_variant2string(current_recs[0]->h, current_recs[0]->v);
                 
-                fprintf(stderr, "[W:%s:%d %s] %d variants expected but %zd is observed for %s.  Variant skipped.\n", __FILE__, __LINE__, __FUNCTION__, no_samples+1, current_recs.size(), variant.c_str());
-                continue;
+                if (current_recs.size()<no_samples+1)
+                {
+                    fprintf(stderr, "[W:%s:%d %s] %d variants expected but %zd is observed for %s.  Variant skipped.\n", __FILE__, __LINE__, __FUNCTION__, no_samples+1, current_recs.size(), variant.c_str());
+                    continue;   
+                }  
+                else if (current_recs.size()>no_samples+1)
+                {  
+                    int32_t m = current_recs.size()/(no_samples+1);
+                    
+                    if (m*(no_samples+1)==current_recs.size())
+                    {
+                        fprintf(stderr, "[W:%s:%d %s] %d variants expected but %zd is observed for %s.  Seems like a duplicate variant.  Will attempt to process anyway.\n", __FILE__, __LINE__, __FUNCTION__, no_samples+1, current_recs.size(), variant.c_str());
+                    }
+                    else
+                    {
+                        fprintf(stderr, "[W:%s:%d %s] %d variants expected but %zd is observed for %s.  Variant skipped.\n", __FILE__, __LINE__, __FUNCTION__, no_samples+1, current_recs.size(), variant.c_str());
+                        continue;   
+                    }    
+                }
             }
             
             gt.resize(0);
@@ -289,8 +307,12 @@ Extracts only the naive genotypes based on best guess genotypes.";
                 }
             }
             
-            if (current_recs.size())
-
+            std::vector<bool> file_processed(no_samples+1, false);
+            int32_t files_processed = 0;
+            
+//            file_processed.resize(0);
+//            file_processed.resize(no_samples+1, false);
+            
             //for each file
             for (uint32_t i=0; i<current_recs.size(); ++i)
             {
@@ -298,7 +320,17 @@ Extracts only the naive genotypes based on best guess genotypes.";
                 bcf1_t *v = current_recs[i]->v;
                 bcf_hdr_t *h = current_recs[i]->h;
 
-
+                if (file_processed[file_index])
+                {
+                    //duplicate variant from the same file, skip
+                    continue;
+                }   
+                else
+                {
+                    ++files_processed;
+                    file_processed[file_index] = true;
+                }
+                
 //                printf("\tfile index: %d\n", file_index);
 //                bcf_print(h, v);
                
@@ -572,6 +604,13 @@ Extracts only the naive genotypes based on best guess genotypes.";
 //                bcf_print(odw->hdr, nv);
             }
             
+            //check to make sure correct number of records are processed.
+            if (files_processed!=file_processed.size())
+            {
+                fprintf(stderr, "[I:%s:%d %s] Lesser than expected number of files processed : %d\n", __FILE__, __LINE__, __FUNCTION__, files_processed);
+                exit(1);
+            }  
+            
             odw->write(nv);
 //            bcf_print(odw->hdr, nv);
 
@@ -587,9 +626,8 @@ Extracts only the naive genotypes based on best guess genotypes.";
             
         }
 
-        sr->close();
         odw->close();
-        
+        sr->close();
         
     };
 
