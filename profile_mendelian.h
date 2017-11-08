@@ -26,6 +26,8 @@
 
 #include "program.h"
 #include "pedigree.h"
+#include "trio.h"
+#include "duplicate.h"
 
 void profile_mendelian(int argc, char ** argv);
 

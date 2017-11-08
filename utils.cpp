@@ -128,7 +128,7 @@ std::string join(std::vector<std::string>& vec, std::string delim)
         if (i) s += delim;
         s += vec[i];
     }
-    
+
     return s;
 }
 
@@ -145,7 +145,7 @@ std::string join(std::map<std::string, int32_t>& map, std::string delim)
         s += i->first;
         ++i;
     }
-    
+
     return s;
 }
 
@@ -171,7 +171,7 @@ int32_t str2int32(std::string& s)
     if (end==start)
     {
         error("[%s:%d %s] Cannot convert %s to int32_t\n", __FILE__, __LINE__, __FUNCTION__, s.c_str());
-    }    
+    }
 
     return i;
 };
@@ -199,7 +199,28 @@ bool str2double(std::string& s, double& d)
 };
 
 /**
- * Appends cuurent working directoy to a path.
+ * Returns a string in lower case.
+ */
+std::string to_lower(std::string& s)
+{
+    std::string lc;
+    for (int32_t i=0; i<s.size(); ++i)
+    {
+        if (isgraph(s.at(i)))
+        {
+            lc.push_back(toupper(s.at(i)));
+        }
+        else
+        {
+            lc.push_back(s.at(i));
+        }
+    }
+
+    return lc;
+}
+
+/**
+ * Appends current working directoy to a path.
  * Returns true if successful.
  */
 bool append_cwd(std::string& path)

@@ -1,6 +1,6 @@
 /* The MIT License
 
-   Copyright (c) 2014 Adrian Tan <atks@umich.edu>
+   Copyright (c) 2017 Adrian Tan <atks@umich.edu>
 
    Permission is hereby granted, free of charge, to any person obtaining a copy
    of this software and associated documentation files (the "Software"), to deal
@@ -21,13 +21,25 @@
    THE SOFTWARE.
 */
 
-#ifndef ANNOTATE_MENDELIAN_H
-#define ANNOTATE_MENDELIAN_H
+#ifndef TRIO_H
+#define TRIO_H
 
-#include "program.h"
 #include "pedigree.h"
-#include "trio.h"
 
-void annotate_mendelian(int argc, char** argv);
+class Trio
+{
+    public:
+    int32_t child_index;
+    int32_t father_index;
+    int32_t mother_index;
+    int32_t child_sex;    
+        
+    Trio(int32_t child_index,
+         int32_t father_index,
+         int32_t mother_index,
+         int32_t child_sex);
+    
+    private:
+};
 
 #endif

@@ -41,6 +41,7 @@ SOURCES = ahmm\
 		decompose2\
 		decompose_blocksub\
 		discover\
+		duplicate\
 		estimate\
 		estimator\
 		extract_vntrs\
@@ -113,6 +114,7 @@ SOURCES = ahmm\
 		svm_predict\
 		tbx_ordered_reader\
 		test\
+		trio\
 		union_variants\
 		uniq\
 		utils\

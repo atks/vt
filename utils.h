@@ -79,7 +79,12 @@ bool str2uint32(std::string& s, uint32_t& i);
 bool str2double(std::string& s, double& d);
 
 /**
- * Appends cuurent working directoy to a path.
+ * Returns a string in lower case.
+ */
+std::string to_lower(std::string& s);
+    
+/**
+ * Appends current working directoy to a path.
  * Returns true if successful.
  */
 bool append_cwd(std::string& path);

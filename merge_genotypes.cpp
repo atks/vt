@@ -265,8 +265,10 @@ Extracts only the naive genotypes based on best guess genotypes.";
         {
             if (current_recs.size()!=no_samples+1)
             {
-                fprintf(stderr, "[E:%s:%d %s] %d variants expected but %zd is observed.\n", __FILE__, __LINE__, __FUNCTION__, no_samples+1, current_recs.size());
-                exit(1);
+                std::string variant = bcf_variant2string(current_recs[0]->h, current_recs[0]->v);
+                
+                fprintf(stderr, "[W:%s:%d %s] %d variants expected but %zd is observed for %s.  Variant skipped.\n", __FILE__, __LINE__, __FUNCTION__, no_samples+1, current_recs.size(), variant.c_str());
+                continue;
             }
             
             gt.resize(0);

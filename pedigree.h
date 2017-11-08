@@ -27,23 +27,24 @@
 #include "utils.h"
 #include "hts_utils.h"
 
-#define PED_UNKNOWN_SEX -1
-#define PED_MALE 0
-#define PED_FEMALE  1
+#define PED_MALE     0
+#define PED_FEMALE   1
+#define PED_OTHER    2
 
-class Trio
+class PEDRecord
 {
     public:
     std::string pedigree;
+    std::vector<std::string> individual;
     std::string father;
     std::string mother;
-    std::string child;
-    int32_t father_index;
-    int32_t mother_index;
-    int32_t child_index;
-    int32_t child_sex;    
-    
-    Trio(std::string pedigree, std::string father, std::string mother, std::string child, int32_t child_sex);
+    int32_t individual_sex;
+
+    PEDRecord(std::string pedigree,
+              std::vector<std::string>& individual,
+              std::string father,
+              std::string mother,
+              int32_t individual_sex);
 
     private:
 };
@@ -51,9 +52,9 @@ class Trio
 class Pedigree
 {
     public:
-    std::vector<Trio> trios;
+    std::vector<PEDRecord> recs;
     std::string ped_file;
-    
+
     /**
      * Constructs and initialize a Pedigree object.
      */

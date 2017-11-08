@@ -180,18 +180,16 @@ class Igor : Program
 
         std::vector<Trio> trios;
 
-        for (size_t i=0; i<pedigree->trios.size(); ++i)
+        for (size_t i=0; i<pedigree->recs.size(); ++i)
         {
-            int32_t f = bcf_hdr_id2int(h, BCF_DT_SAMPLE, pedigree->trios[i].father.c_str());
-            int32_t m = bcf_hdr_id2int(h, BCF_DT_SAMPLE, pedigree->trios[i].mother.c_str());
-            int32_t c = bcf_hdr_id2int(h, BCF_DT_SAMPLE, pedigree->trios[i].child.c_str());
-
+            int32_t c = bcf_hdr_id2int(h, BCF_DT_SAMPLE, pedigree->recs[i].individual[0].c_str());
+            int32_t f = bcf_hdr_id2int(h, BCF_DT_SAMPLE, pedigree->recs[i].father.c_str());
+            int32_t m = bcf_hdr_id2int(h, BCF_DT_SAMPLE, pedigree->recs[i].mother.c_str());
+           
             if (f>=0 && m>=0 && c>=0)
             {
-                pedigree->trios[i].father_index = f;
-                pedigree->trios[i].mother_index = m;
-                pedigree->trios[i].child_index = c;
-                trios.push_back(pedigree->trios[i]);
+                Trio trio(c, f, m, pedigree->recs[i].individual_sex);                
+                trios.push_back(trio);
             }
         }
 

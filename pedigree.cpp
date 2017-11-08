@@ -23,13 +23,14 @@ THE SOFTWARE.
 
 #include "pedigree.h"
 
-Trio::Trio(std::string pedigree, std::string father, std::string mother, std::string child, int32_t child_sex)
+PEDRecord::PEDRecord(std::string pedigree, std::vector<std::string>& individual, 
+                     std::string father, std::string mother, int32_t individual_sex)
 {
     this->pedigree = pedigree;
+    this->individual = individual;
     this->father = father;
     this->mother = mother;
-    this->child = child;
-    this->child_sex = child_sex;
+    this->individual_sex = individual_sex;
 };
 
 Pedigree::Pedigree(std::string& ped_file)
@@ -46,21 +47,31 @@ Pedigree::Pedigree(std::string& ped_file)
         split(vec, "\t ", line);
 
         std::string& pedigree = vec[0];
+        std::string& individual = vec[1];
         std::string& father = vec[2];
         std::string& mother = vec[3];
-        std::string& child = vec[1];
-        int32_t child_sex = PED_UNKNOWN_SEX;
-        if (vec[4] == "Male")
+        int32_t individual_sex = PED_OTHER;
+        
+        vec[4] = to_lower(vec[4]);
+        
+        if (vec[4]=="male" || vec[4]=="1")
         {
-            child_sex = PED_MALE;
+            individual_sex = PED_MALE;
         }
-        else if (vec[4] == "Female")
+        else if (vec[4] == "female"|| vec[4]=="2")
         {
-            child_sex = PED_FEMALE;
+            individual_sex = PED_FEMALE;
         }
-
-        Trio trio(pedigree, father, mother, child, child_sex);
-        trios.push_back(trio);
+        else if (vec[4] == "other")
+        {
+            individual_sex = PED_OTHER;
+        }
+        
+        vec.resize(0);
+        split(vec, ",", individual);
+        
+        PEDRecord rec(pedigree, vec, father, mother, individual_sex);
+        recs.push_back(rec);
     }
     hts_close(hts);
     if (s.m) free(s.s);
