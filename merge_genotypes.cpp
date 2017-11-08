@@ -263,6 +263,12 @@ Extracts only the naive genotypes based on best guess genotypes.";
                 
         while(sr->read_next_position(current_recs))
         {
+            if (current_recs.size()!=no_samples+1)
+            {
+                fprintf(stderr, "[E:%s:%d %s] %d variants expected but %zd is observed.\n", __FILE__, __LINE__, __FUNCTION__, no_samples+1, current_recs.size());
+                exit(1);
+            }
+            
             gt.resize(0);
             pl.resize(0);
             ad.resize(0);
@@ -280,6 +286,8 @@ Extracts only the naive genotypes based on best guess genotypes.";
                     continue;
                 }
             }
+            
+            if (current_recs.size())
 
             //for each file
             for (uint32_t i=0; i<current_recs.size(); ++i)
