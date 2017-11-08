@@ -83,10 +83,10 @@ Pedigree::Pedigree(std::string& ped_file)
         std::string line(s.s);
         split(vec, "\t ", line);
 
-        std::string& pedigree = vec[0];
-        std::string& individual = vec[1];
-        std::string& father = vec[2];
-        std::string& mother = vec[3];
+        std::string pedigree = vec[0];
+        std::string individual = vec[1];
+        std::string father = vec[2];
+        std::string mother = vec[3];
         int32_t individual_sex = PED_OTHER;
         
         vec[4] = to_lower(vec[4]);

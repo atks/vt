@@ -64,7 +64,7 @@ class Igor : Program
     std::string fexp;
     Filter filter;
     bool filter_exists;
-    
+
     /////////
     //stats//
     /////////
@@ -117,7 +117,7 @@ Extracts only the naive genotypes based on best guess genotypes.";
     };
 
     void initialize()
-    {        
+    {
         /////////////////////////
         //filter initialization//
         /////////////////////////
@@ -150,32 +150,32 @@ Extracts only the naive genotypes based on best guess genotypes.";
         std::string EX_ENTROPY2 = bcf_hdr_append_info_with_backup_naming(odw->hdr, "EX_ENTROPY2", "1", "Float", "Dinucleotide entropy measure of an exact repeat tract [0,4].", rename);
         std::string EX_KL_DIVERGENCE = bcf_hdr_append_info_with_backup_naming(odw->hdr, "EX_KL_DIVERGENCE", "1", "Float", "Kullback-Leibler Divergence of an exact repeat tract.", rename);
         std::string EX_KL_DIVERGENCE2 = bcf_hdr_append_info_with_backup_naming(odw->hdr, "EX_KL_DIVERGENCE2", "1", "Float", "Dinucleotide Kullback-Leibler Divergence of an exact repeat tract.", rename);
-        std::string EX_REF = bcf_hdr_append_info_with_backup_naming(odw->hdr, "EX_REF", ".", "Float", "Allele lengths in repeat units from exact alignment.", rename); 
+        std::string EX_REF = bcf_hdr_append_info_with_backup_naming(odw->hdr, "EX_REF", ".", "Float", "Allele lengths in repeat units from exact alignment.", rename);
         std::string EX_RL = bcf_hdr_append_info_with_backup_naming(odw->hdr, "EX_RL", "1", "Integer", "Reference exact repeat tract length in bases.", rename);
         std::string EX_LL = bcf_hdr_append_info_with_backup_naming(odw->hdr, "EX_LL", "1", "Integer", "Longest exact repeat tract length in bases.", rename);
         std::string EX_RU_COUNTS = bcf_hdr_append_info_with_backup_naming(odw->hdr, "EX_RU_COUNTS", "2", "Integer", "Number of exact repeat units and total number of repeat units in exact repeat tract.", rename);
         std::string EX_SCORE = bcf_hdr_append_info_with_backup_naming(odw->hdr, "EX_SCORE", "1", "Float", "Score of repeat unit in exact repeat tract.", rename);
         std::string EX_TRF_SCORE = bcf_hdr_append_info_with_backup_naming(odw->hdr, "EX_TRF_SCORE", "1", "Integer", "TRF Score for M/I/D as 2/-7/-7 in exact repeat tract.", rename);
-        
+
         //fuzzy alignment related statisitcs
         std::string FZ_MOTIF = bcf_hdr_append_info_with_backup_naming(odw->hdr, "FZ_MOTIF", "1", "String", "Canonical motif in a VNTR.", rename);
         std::string FZ_RU = bcf_hdr_append_info_with_backup_naming(odw->hdr, "FZ_RU", "1", "String", "Repeat unit in the reference sequence.", rename);
         std::string FZ_BASIS = bcf_hdr_append_info_with_backup_naming(odw->hdr, "FZ_BASIS", "1", "String", "Basis nucleotides in the motif.", rename);
         std::string FZ_MLEN = bcf_hdr_append_info_with_backup_naming(odw->hdr, "FZ_MLEN", "1", "Integer", "Motif length.", rename);
         std::string FZ_BLEN = bcf_hdr_append_info_with_backup_naming(odw->hdr, "FZ_BLEN", "1", "Integer", "Basis length.", rename);
-        std::string FZ_REPEAT_TRACT = bcf_hdr_append_info_with_backup_naming(odw->hdr, "FZ_REPEAT_TRACT", "2", "Integer", "Boundary of the repeat tract detected by fuzzy alignment.", rename);                      
-        std::string FZ_COMP = bcf_hdr_append_info_with_backup_naming(odw->hdr, "FZ_COMP", "4", "Integer", "Composition(%) of bases in a fuzzy repeat tract.", rename);                                              
-        std::string FZ_ENTROPY = bcf_hdr_append_info_with_backup_naming(odw->hdr, "FZ_ENTROPY", "1", "Float", "Entropy measure of a fuzzy repeat tract (0-2).", rename);                                                  
-        std::string FZ_ENTROPY2 = bcf_hdr_append_info_with_backup_naming(odw->hdr, "FZ_ENTROPY2", "1", "Float", "Dinucleotide entropy measure of a fuzzy repeat tract (0-2).", rename);                                                  
+        std::string FZ_REPEAT_TRACT = bcf_hdr_append_info_with_backup_naming(odw->hdr, "FZ_REPEAT_TRACT", "2", "Integer", "Boundary of the repeat tract detected by fuzzy alignment.", rename);
+        std::string FZ_COMP = bcf_hdr_append_info_with_backup_naming(odw->hdr, "FZ_COMP", "4", "Integer", "Composition(%) of bases in a fuzzy repeat tract.", rename);
+        std::string FZ_ENTROPY = bcf_hdr_append_info_with_backup_naming(odw->hdr, "FZ_ENTROPY", "1", "Float", "Entropy measure of a fuzzy repeat tract (0-2).", rename);
+        std::string FZ_ENTROPY2 = bcf_hdr_append_info_with_backup_naming(odw->hdr, "FZ_ENTROPY2", "1", "Float", "Dinucleotide entropy measure of a fuzzy repeat tract (0-2).", rename);
         std::string FZ_KL_DIVERGENCE = bcf_hdr_append_info_with_backup_naming(odw->hdr, "FZ_KL_DIVERGENCE", "1", "Float", "Kullback-Leibler Divergence of a fuzzyt repeat tract.", rename);
         std::string FZ_KL_DIVERGENCE2 = bcf_hdr_append_info_with_backup_naming(odw->hdr, "FZ_KL_DIVERGENCE2", "1", "Float", "Dinucleotide Kullback-Leibler Divergence of a fuzzy repeat tract.", rename);
-        std::string FZ_REF = bcf_hdr_append_info_with_backup_naming(odw->hdr, "FZ_REF", ".", "Float", "Allele lengths in repeat units from fuzzy alignment.", rename);                                                      
-        std::string FZ_RL = bcf_hdr_append_info_with_backup_naming(odw->hdr, "FZ_RL", "1", "Integer", "Reference fuzzy repeat tract length in bases.", rename);                                                      
-        std::string FZ_LL = bcf_hdr_append_info_with_backup_naming(odw->hdr, "FZ_LL", "1", "Integer", "Longest fuzzy repeat tract length in bases.", rename);                                                        
-        std::string FZ_RU_COUNTS = bcf_hdr_append_info_with_backup_naming(odw->hdr, "FZ_RU_COUNTS", "2", "Integer", "Number of exact repeat units and total number of repeat units in fuzzy repeat tract.", rename); 
-        std::string FZ_SCORE = bcf_hdr_append_info_with_backup_naming(odw->hdr, "FZ_SCORE", "1", "Float", "Score of repeat unit in fuzzy repeat tract.", rename);                                                    
-        std::string FZ_TRF_SCORE = bcf_hdr_append_info_with_backup_naming(odw->hdr, "FZ_TRF_SCORE", "1", "Integer", "TRF Score for M/I/D as 2/-7/-7 in fuzzy repeat tract.", rename);                                 
-                                                                                                                                                                                                         
+        std::string FZ_REF = bcf_hdr_append_info_with_backup_naming(odw->hdr, "FZ_REF", ".", "Float", "Allele lengths in repeat units from fuzzy alignment.", rename);
+        std::string FZ_RL = bcf_hdr_append_info_with_backup_naming(odw->hdr, "FZ_RL", "1", "Integer", "Reference fuzzy repeat tract length in bases.", rename);
+        std::string FZ_LL = bcf_hdr_append_info_with_backup_naming(odw->hdr, "FZ_LL", "1", "Integer", "Longest fuzzy repeat tract length in bases.", rename);
+        std::string FZ_RU_COUNTS = bcf_hdr_append_info_with_backup_naming(odw->hdr, "FZ_RU_COUNTS", "2", "Integer", "Number of exact repeat units and total number of repeat units in fuzzy repeat tract.", rename);
+        std::string FZ_SCORE = bcf_hdr_append_info_with_backup_naming(odw->hdr, "FZ_SCORE", "1", "Float", "Score of repeat unit in fuzzy repeat tract.", rename);
+        std::string FZ_TRF_SCORE = bcf_hdr_append_info_with_backup_naming(odw->hdr, "FZ_TRF_SCORE", "1", "Integer", "TRF Score for M/I/D as 2/-7/-7 in fuzzy repeat tract.", rename);
+
         std::string FLANKSEQ = bcf_hdr_append_info_with_backup_naming(odw->hdr, "FLANKSEQ", "1", "String", "Flanking sequence 10bp on either side of REF.", rename);
         std::string EXACT_RU_AMBIGUOUS = bcf_hdr_append_info_with_backup_naming(odw->hdr, "EXACT_RU_AMBIGUOUS", "0", "Flag", "Exact motif is ambiguous.", rename);
 
@@ -183,8 +183,8 @@ Extracts only the naive genotypes based on best guess genotypes.";
         std::string RU = bcf_hdr_append_info_with_backup_naming(odw->hdr, "RU", "1", "String", "Repeat unit in the reference sequence.", rename);
         std::string FLANKS = bcf_hdr_append_info_with_backup_naming(odw->hdr, "FLANKS", "2", "Integer", "Exact left and right flank positions of the Indel.", rename);
         std::string FZ_FLANKS = bcf_hdr_append_info_with_backup_naming(odw->hdr, "FZ_FLANKS", "2", "Integer", "Fuzzy left and right flank positions of the Indel.", rename);
-       
-       
+
+
         bcf_hdr_append(odw->hdr, "##INFO=<ID=LARGE_REPEAT_REGION,Number=0,Type=Flag,Description=\"Very large repeat region, vt only detects up to 1000bp long regions.\">");
         bcf_hdr_append(odw->hdr, "##INFO=<ID=FLANKSEQ,Number=1,Type=String,Description=\"Flanking sequence 10bp on either side of detected repeat region.\">");
         bcf_hdr_append(odw->hdr, "##FILTER=<ID=overlap_vntr,Description=\"Overlaps with VNTR\">");
@@ -210,7 +210,7 @@ Extracts only the naive genotypes based on best guess genotypes.";
         bcf_hdr_sync(odw->hdr);
 
         odw->write_hdr();
-               
+
         ///////////////
         //general use//
         ///////////////
@@ -242,7 +242,7 @@ Extracts only the naive genotypes based on best guess genotypes.";
         int32_t *BQSUM = NULL;
         int32_t *DP = NULL;
         float *CG = NULL;
-        
+
         int32_t no_GT = 0;
         int32_t no_PL = 0;
         int32_t no_AD = 0;
@@ -261,22 +261,22 @@ Extracts only the naive genotypes based on best guess genotypes.";
         bcf1_t* nv = bcf_init();
         Variant var;
         std::vector<bcfptr*> current_recs;
-                
+
         while(sr->read_next_position(current_recs))
         {
             if (current_recs.size()!=no_samples+1)
             {
                 std::string variant = bcf_variant2string(current_recs[0]->h, current_recs[0]->v);
-                
+
                 if (current_recs.size()<no_samples+1)
                 {
                     fprintf(stderr, "[W:%s:%d %s] %d variants expected but %zd is observed for %s.  Variant skipped.\n", __FILE__, __LINE__, __FUNCTION__, no_samples+1, current_recs.size(), variant.c_str());
-                    continue;   
-                }  
+                    continue;
+                }
                 else if (current_recs.size()>no_samples+1)
-                {  
+                {
                     int32_t m = current_recs.size()/(no_samples+1);
-                    
+
                     if (m*(no_samples+1)==current_recs.size())
                     {
                         fprintf(stderr, "[W:%s:%d %s] %d variants expected but %zd is observed for %s.  Seems like a duplicate variant.  Will attempt to process anyway.\n", __FILE__, __LINE__, __FUNCTION__, no_samples+1, current_recs.size(), variant.c_str());
@@ -284,11 +284,11 @@ Extracts only the naive genotypes based on best guess genotypes.";
                     else
                     {
                         fprintf(stderr, "[W:%s:%d %s] %d variants expected but %zd is observed for %s.  Variant skipped.\n", __FILE__, __LINE__, __FUNCTION__, no_samples+1, current_recs.size(), variant.c_str());
-                        continue;   
-                    }    
+                        continue;
+                    }
                 }
             }
-            
+
             gt.resize(0);
             pl.resize(0);
             ad.resize(0);
@@ -306,13 +306,13 @@ Extracts only the naive genotypes based on best guess genotypes.";
                     continue;
                 }
             }
-            
+
             std::vector<bool> file_processed(no_samples+1, false);
             int32_t files_processed = 0;
-            
+
 //            file_processed.resize(0);
 //            file_processed.resize(no_samples+1, false);
-            
+
             //for each file
             for (uint32_t i=0; i<current_recs.size(); ++i)
             {
@@ -324,29 +324,29 @@ Extracts only the naive genotypes based on best guess genotypes.";
                 {
                     //duplicate variant from the same file, skip
                     continue;
-                }   
+                }
                 else
                 {
                     ++files_processed;
                     file_processed[file_index] = true;
                 }
-                
+
 //                printf("\tfile index: %d\n", file_index);
 //                bcf_print(h, v);
-               
+
 
                 //candidate sites file, populate info fields
-                if (!file_index) 
+                if (!file_index)
                 {
-                    vtype = vm->classify_variant(h, v, var); 
-                    
+                    vtype = vm->classify_variant(h, v, var);
+
 //                    bcf_copy(v, nv);
-                    
+
                     bcf_set_chrom(odw->hdr, nv, bcf_get_chrom(h, v));
                     bcf_set_pos1(nv, bcf_get_pos1(v));
                     bcf_update_alleles(odw->hdr, nv, const_cast<const char**>(bcf_get_allele(v)), bcf_get_n_allele(v));
                     bcf_set_n_sample(nv, no_samples);
-    
+
                     if (vtype==VT_SNP)
                     {
                         bcf_copy_info_field(h, v, odw->hdr, nv, "FLANKSEQ", BCF_HT_STR);
@@ -370,7 +370,7 @@ Extracts only the naive genotypes based on best guess genotypes.";
                         bcf_copy_info_field(h, v, odw->hdr, nv, "EX_RU_COUNTS", BCF_HT_INT);
                         bcf_copy_info_field(h, v, odw->hdr, nv, "EX_SCORE", BCF_HT_REAL);
                         bcf_copy_info_field(h, v, odw->hdr, nv, "EX_TRF_SCORE", BCF_HT_INT);
-                        
+
                         bcf_copy_info_field(h, v, odw->hdr, nv, "FZ_MOTIF", BCF_HT_STR);
                         bcf_copy_info_field(h, v, odw->hdr, nv, "FZ_MLEN", BCF_HT_INT);
                         bcf_copy_info_field(h, v, odw->hdr, nv, "FZ_RU", BCF_HT_STR);
@@ -388,7 +388,7 @@ Extracts only the naive genotypes based on best guess genotypes.";
                         bcf_copy_info_field(h, v, odw->hdr, nv, "FZ_RU_COUNTS", BCF_HT_INT);
                         bcf_copy_info_field(h, v, odw->hdr, nv, "FZ_SCORE", BCF_HT_REAL);
                         bcf_copy_info_field(h, v, odw->hdr, nv, "FZ_TRF_SCORE", BCF_HT_INT);
-                   
+
                         bcf_copy_info_field(h, v, odw->hdr, nv, "EXACT_RU_AMBIGUOUS", BCF_HT_FLAG);
                         bcf_copy_info_field(h, v, odw->hdr, nv, "LARGE_REPEAT_REGION", BCF_HT_FLAG);
                     }
@@ -397,47 +397,47 @@ Extracts only the naive genotypes based on best guess genotypes.";
 //                        printf("\t\tis a VNTR\n");
 //                        printf("\t\t\tcopying info fields\n");
 //                        bcf_print(h, v);
-                        
-//                        bcf_copy_info_field(h, v, odw->hdr, nv, "MOTIF", BCF_HT_STR);
-//                        bcf_copy_info_field(h, v, odw->hdr, nv, "RU", BCF_HT_STR);
+
+                        bcf_copy_info_field(h, v, odw->hdr, nv, "MOTIF", BCF_HT_STR);
+                        bcf_copy_info_field(h, v, odw->hdr, nv, "RU", BCF_HT_STR);
                         bcf_copy_info_field(h, v, odw->hdr, nv, "FZ_RL", BCF_HT_INT);
                         bcf_copy_info_field(h, v, odw->hdr, nv, "FLANKS", BCF_HT_INT);
                         bcf_copy_info_field(h, v, odw->hdr, nv, "FZ_FLANKS", BCF_HT_INT);
                     }
-                    
+
                     if (bcf_has_filter(h, v, const_cast<char*>("overlap_indel"))==1)
                     {
                         int32_t overlap_indel_filter_id = bcf_hdr_id2int(odw->hdr, BCF_DT_ID, const_cast<char*>("overlap_indel"));
                         bcf_update_filter(odw->hdr, nv, &overlap_indel_filter_id, 1);
                     }
-                    
+
                     if (bcf_has_filter(h, v, const_cast<char*>("overlap_vntr"))==1)
                     {
                         int32_t overlap_indel_filter_id = bcf_hdr_id2int(odw->hdr, BCF_DT_ID, const_cast<char*>("overlap_vntr"));
                         bcf_update_filter(odw->hdr, nv, &overlap_indel_filter_id, 1);
                     }
-                    
+
                     continue;
                 }
-                                
+
                 if (vtype==VT_SNP)
                 {
 //                    printf("\t\tis a SNP\n");
-                    
+
                     int32_t no_gt = bcf_get_genotypes(h, v, &GT, &no_GT);
                     int32_t no_pl = bcf_get_format_int32(h, v, "PL", &PL, &no_PL);
-                    int32_t no_dp = bcf_get_format_int32(h, v, "DP", &DP, &no_DP); 
-                    int32_t no_adf = bcf_get_format_int32(h, v, "ADF", &ADF, &no_ADF); 
+                    int32_t no_dp = bcf_get_format_int32(h, v, "DP", &DP, &no_DP);
+                    int32_t no_adf = bcf_get_format_int32(h, v, "ADF", &ADF, &no_ADF);
                     int32_t no_adr = bcf_get_format_int32(h, v, "ADR", &ADR, &no_ADR);
-                    int32_t no_bqsum = bcf_get_format_int32(h, v, "BQSUM", &BQSUM, &no_BQSUM); 
-                    
+                    int32_t no_bqsum = bcf_get_format_int32(h, v, "BQSUM", &BQSUM, &no_BQSUM);
+
 //                    printf("GT: %d\n", no_gt);
 //                    printf("PL: %d\n", no_pl);
 //                    printf("DP: %d\n", no_dp);
 //                    printf("ADF: %d\n", no_adf);
 //                    printf("ADR: %d\n", no_adr);
 //                    printf("BQSUM: %d\n", no_bqsum);
-                          
+
                     //GT:PL:DP:AD:ADF:ADR:BQ:MQ:CY:ST:AL:NM
                     if (no_gt > 0 &&
                         no_pl > 0 &&
@@ -479,7 +479,7 @@ Extracts only the naive genotypes based on best guess genotypes.";
                           pl.push_back(BQSUM[0]);
                           dp.push_back(DP[0]);
                           ad.push_back(DP[0]);
-                          ad.push_back(0);                          
+                          ad.push_back(0);
                     }
                     else
                     {
@@ -490,14 +490,14 @@ Extracts only the naive genotypes based on best guess genotypes.";
                 else if (vtype == VT_INDEL)
                 {
 //                    printf("\t\tis an INDEL\n");
-                    
+
                     int32_t no_gt = bcf_get_genotypes(h, v, &GT, &no_GT);
                     int32_t no_pl = bcf_get_format_int32(h, v, "PL", &PL, &no_PL);
-                    int32_t no_dp = bcf_get_format_int32(h, v, "DP", &DP, &no_DP); 
-                    int32_t no_adf = bcf_get_format_int32(h, v, "ADF", &ADF, &no_ADF); 
+                    int32_t no_dp = bcf_get_format_int32(h, v, "DP", &DP, &no_DP);
+                    int32_t no_adf = bcf_get_format_int32(h, v, "ADF", &ADF, &no_ADF);
                     int32_t no_adr = bcf_get_format_int32(h, v, "ADR", &ADR, &no_ADR);
-                    int32_t no_bqsum = bcf_get_format_int32(h, v, "BQSUM", &BQSUM, &no_BQSUM); 
-                    
+                    int32_t no_bqsum = bcf_get_format_int32(h, v, "BQSUM", &BQSUM, &no_BQSUM);
+
                     if (no_gt > 0 &&
                         no_pl > 0 &&
                         no_dp > 0 &&
@@ -538,7 +538,7 @@ Extracts only the naive genotypes based on best guess genotypes.";
                           pl.push_back(BQSUM[0]);
                           dp.push_back(DP[0]);
                           ad.push_back(DP[0]);
-                          ad.push_back(0);                          
+                          ad.push_back(0);
                     }
                     else
                     {
@@ -550,9 +550,9 @@ Extracts only the naive genotypes based on best guess genotypes.";
                 {
 //                    printf("\t\tis a VNTR\n");
 //                    bcf_print(h, v);
-//                    
-                    int32_t no_cg = bcf_get_format_float(h, v, "CG", &CG, &no_CG); 
-                    
+//
+                    int32_t no_cg = bcf_get_format_float(h, v, "CG", &CG, &no_CG);
+
                     //CG
                     if (no_cg > 0)
                     {
@@ -579,7 +579,7 @@ Extracts only the naive genotypes based on best guess genotypes.";
                 bcf_update_format_int32(odw->hdr, nv, "PL", &pl[0], pl.size());
                 bcf_update_format_int32(odw->hdr, nv, "DP", &dp[0], dp.size());
                 bcf_update_format_int32(odw->hdr, nv, "AD", &ad[0], ad.size());
-            
+
                 ++no_snps;
             }
             else if (vtype==VT_INDEL)
@@ -590,7 +590,7 @@ Extracts only the naive genotypes based on best guess genotypes.";
                 bcf_update_format_int32(odw->hdr, nv, "PL", &pl[0], pl.size());
                 bcf_update_format_int32(odw->hdr, nv, "DP", &dp[0], dp.size());
                 bcf_update_format_int32(odw->hdr, nv, "AD", &ad[0], ad.size());
-                
+
                 ++no_indels;
             }
             else if (vtype==VT_VNTR)
@@ -598,36 +598,38 @@ Extracts only the naive genotypes based on best guess genotypes.";
 //                printf("\tupdating genotypes %zd\n", gt.size());
 //                printf("\tn_samples %zd\n", nv->n_sample);
                 bcf_update_format_float(odw->hdr, nv, "CG", &cg[0], cg.size());
-                
+
                 ++no_vntrs;
-                
+
 //                bcf_print(odw->hdr, nv);
             }
-            
+
             //check to make sure correct number of records are processed.
             if (files_processed!=file_processed.size())
             {
                 fprintf(stderr, "[I:%s:%d %s] Lesser than expected number of files processed : %d\n", __FILE__, __LINE__, __FUNCTION__, files_processed);
                 exit(1);
-            }  
-            
+            }
+
             odw->write(nv);
 //            bcf_print(odw->hdr, nv);
 
             //this acts as a flag to initialize a newly merged record
             vtype = VT_UNDEFINED;
-            
+
             int32_t no_variants = no_snps+no_indels+no_vntrs;
 //            if ((no_variants&0x0FFF)==0x0600)
             if ((no_variants%100)==0)
             {
                 fprintf(stderr, "[I:%s:%d %s] Merged %d rows\n", __FILE__, __LINE__, __FUNCTION__, no_variants);
-            }    
-            
+            }
+
         }
 
         odw->close();
+        fprintf(stderr, "[I:%s:%d %s] Synced reader closing ...", __FILE__, __LINE__, __FUNCTION__);    
         sr->close();
+        fprintf(stderr, " closed\n");    
         
     };
 

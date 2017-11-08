@@ -176,16 +176,7 @@ class Igor : Program
     }
     
     void profile_mendelian()
-    {
-        std::vector<int32_t> geno = bcf_ip2g(15, 3);
-        
-//        for (int32_t i=0; i<geno.size(); ++i)
-//        {
-//            if (i) std::cerr << "/";
-//            std::cerr << geno[i] ;
-//        }
-//        std::cerr << "\n";
-        
+    {       
         bcf_hdr_t *h = odr->hdr;
         bcf1_t *v = bcf_init1();
 
@@ -198,8 +189,6 @@ class Igor : Program
     
         for (size_t i=0; i<recs.size(); ++i)
         {
-            recs[i].print();
-            
             if (recs[i].is_trio())
             {
                 int32_t individual_index = bcf_hdr_id2int(h, BCF_DT_SAMPLE, recs[i].individual[0].c_str());
@@ -210,8 +199,6 @@ class Igor : Program
                 {
                     Trio trio(individual_index, father_index, mother_index, recs[i].individual_sex);                
                     trios.push_back(trio);
-                    
-                    std::cerr << "1 trio added\n";
                 }
             }
             
@@ -235,15 +222,13 @@ class Igor : Program
                         ++no_pairs_added;
                     }
                 }
-                
-                std::cerr << no_pairs_added << " pairs added\n";
             }
         }
 
         no_trios = trios.size();
         no_dups = trios.size();
 
-        exit(1);
+//        exit(1);
 
         int32_t missing = 0;
         int32_t mendel_homalt_err = 0;
@@ -329,157 +314,36 @@ class Igor : Program
             else
             {
 
-                int k = bcf_get_genotypes(h, v, &gts, &n);
-                int r = bcf_get_format_int32(h, v, "DP", &dps, &n_dp);
-
-                if (r==-1)
-                {
-
-                }
-
-                bool variant_used = false;
-
-                for (int32_t i =0; i< trios.size(); ++i)
-                {
-                    int32_t j = trios[i].father_index;
-                    int32_t f1 = bcf_gt_allele(gts[(j<<1)]);
-                    int32_t f2 = bcf_gt_allele(gts[(j<<1)+1]);
-                    int32_t min_dp = dps[j];
-
-                    j = trios[i].mother_index;
-                    int32_t m1 = bcf_gt_allele(gts[(j<<1)]);
-                    int32_t m2 = bcf_gt_allele(gts[(j<<1)+1]);
-                    min_dp = dps[j]<min_dp ? dps[j] : min_dp;
-
-                    j = trios[i].child_index;
-                    int32_t c1 = bcf_gt_allele(gts[(j<<1)]);
-                    int32_t c2 = bcf_gt_allele(gts[(j<<1)+1]);
-                    min_dp = dps[j]<min_dp ? dps[j] : min_dp;
-
-                    if (min_dp<min_depth)
-                    {
-                        ++no_failed_min_depth;
-                        continue;
-                    }
-
-                    if (f1>=0 && f2>=0 && m1>=0 && m2>=0 && c1>=0 && c2>=0)
-                    {
-                        //translate parental alleles to 0,1,2,3 and
-                        //child alleles to 0,1,2,3,4,5.
-                        std::vector<int32_t> afs(no_alleles, -1);
-                        int32_t observed_no_alleles = 0;
-                        if (!afs[f1]) ++observed_no_alleles;
-                        ++afs[f1];
-                        if (!afs[f2]) ++observed_no_alleles;
-                        ++afs[f2];
-                        if (!afs[m1]) ++observed_no_alleles;
-                        ++afs[m1];
-                        if (!afs[m2]) ++observed_no_alleles;
-                        ++afs[m2];
-
-                        std::vector<int32_t> recode(no_alleles, 0);
-                        int32_t new_i = 0;
-                        for (uint32_t i=0; i<no_alleles; ++i)
-                        {
-                            if (afs[i])
-                            {
-                                recode[i] = new_i;
-                                ++new_i;
-                            }
-                        }
-
-                        f1 = recode[f1];
-                        f2 = recode[f1];
-                        m1 = recode[m1];
-                        m2 = recode[m2];
-                        
-                        if (recode[c1]==-1)
-                        {    
-                            recode[c1] = new_i;
-                            ++new_i;
-                        }
-                        c1 = recode[c1];
-                                               
-                        if (recode[c2]==-1)
-                        {    
-                            recode[c2] = new_i;
-                            ++new_i;
-                        }
-                        c2 = recode[c2];
-                                                
-                        if (true)
-                        {
-                            //if reference allele is amongst parental allele
-
-                            if (afs[0]!=0)
-                            {
-
-                            }
-                            else
-                            {
-                            }
-
-                            //AA/AA => AA
-                            //RR/RR => RR
-                            //RR
-
-                            //AA/AA => AA,BB,CC,CD
-                            //AA/AA => AA,BB,CC,CD
-                        }
-                        else if (2==12)
-                        {
-                            //AA/BB => AA,BB,CC,CD
-                            //AA/BB => AA,BB,CC,CD
-
-                            //AB/AB => AA
-                        }
-                        else if (3==3)
-                        {
-                        }
-                        else if (3==4)
-                        {
-                            //AB/CD => AA,BB,CC,DD
-                            //AB/CD => AB,CD
-                            //AB/CD => EF
-                        }
-
-                        if (!ignore_non_variants || (f1+f2+m1+m2+c1+c2!=0))
-                        {
-                            bool c1_in_dad = false;
-                            bool c1_in_mom = false;
-                            bool c2_in_dad = false;
-                            bool c2_in_mom = false;
+                //implement 2 versions
+             
+                //1. based on fixed genotypes
+                //2. based on genotype likelihoods
+                
+                //mendelian error estimates based on hard counts.
+                //HOM HOM
+                //AA BB => AB
+                //BB CC => BC
+                //CC DD => CD
+                //HET HET
+                //AB AB => AA AB BB
+                //AC AD => AA AC AD CD
+                //AB CD => AC AD BC BD 
+                //HOM HET
+                //AA AB => AA AB
+                //AA BC => AB AC
+                
+                //compute bayes factor
+                //
+                
+                //how to test on proportions?
+                //
+                
+                
+                
 
 
 
-                            //biallelic
-                            //HOM HOM
-                            //1. AA BB => AB              2
-                            //2. AA AA => AA
-
-                            //HET HET
-                            //1. AB AB => AA AB BB        2
-                            //2. AC AD => AA AC AD CD
-                            //3. AB CD => AC AD BC BD
-
-                            //HOM HET
-                            //1. AA AB => AA AB           2
-                            //2. AA BC => AB AC
-
-
-//                            ++trio_genotypes[f1+f2][m1+m2][c1+c2];
-                            variant_used = true;
-                        }
-                    }
-                }
-                if (variant_used) ++no_multiallelic_variants;
-
-
-
-
-
-                continue;
-
+                
             }
 
 
