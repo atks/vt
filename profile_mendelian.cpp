@@ -37,6 +37,7 @@ class Igor : Program
     ///////////
     std::string input_vcf_file;
     std::string input_ped_file;
+    std::string output_vcf_file;
     std::string output_tabulate_dir;
     std::string output_pdf_file;
     std::vector<GenomeInterval> intervals;
@@ -49,6 +50,7 @@ class Igor : Program
     //i/o//
     ///////
     BCFOrderedReader *odr;
+    BCFOrderedWriter *odw;
 
     ///////////////
     //general use//
@@ -70,7 +72,12 @@ class Igor : Program
     uint32_t no_biallelic_variants;
     uint32_t no_multiallelic_variants;
     uint32_t no_failed_min_depth;
+    
+    //for biallelics
     int32_t trio_genotypes[3][3][3];
+    int32_t duplicate_genotypes[3][3];
+        
+    //for multiallelics
     std::vector<std::vector<std::vector<int32_t> > > trios_multiallelic_genotypes;
 
     /////////
@@ -95,8 +102,11 @@ class Igor : Program
             TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_input_ped_file("p", "p", "pedigree file", true, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_fexp("f", "f", "filter expression []", false, "", "str", cmd);
+            
             TCLAP::ValueArg<std::string> arg_output_tabulate_dir("x", "x", "output latex directory [tabulate_mendelian]", false, "tabulate_mendelian", "str", cmd);
             TCLAP::ValueArg<std::string> arg_output_pdf_file("y", "y", "output pdf file [mendelian.pdf]", false, "mendelian.pdf", "str", cmd);
+            
+            TCLAP::ValueArg<std::string> arg_output_vcf_file("o", "o", "output VCF file annotated with site error statistics []", false, "mendelian.pdf", "str", cmd);
             TCLAP::ValueArg<int32_t> arg_min_depth("d", "d", "minimum depth", false, 0, "str", cmd);
             TCLAP::ValueArg<float> arg_min_gq("q", "q", "minimum genotype quality", false, 2, "str", cmd);
             TCLAP::SwitchArg arg_ignore_non_variants("n", "n", "ignore non variants", cmd, false);
@@ -106,6 +116,7 @@ class Igor : Program
 
             input_vcf_file = arg_input_vcf_file.getValue();
             input_ped_file = arg_input_ped_file.getValue();
+            output_vcf_file = arg_output_vcf_file.getValue();
             fexp = arg_fexp.getValue();
             output_tabulate_dir = arg_output_tabulate_dir.getValue();
             output_pdf_file = arg_output_pdf_file.getValue();
@@ -134,6 +145,29 @@ class Igor : Program
             exit(1);
         }
 
+        ///////////////////////////
+        //output VCF file        //
+        ///////////////////////////
+        odw = new BCFOrderedWriter(output_vcf_file, 0);
+        odw->set_hdr(odr->hdr);
+
+//     Parental            R/R          R/A          A/A    Error(%) HomHet    Het(%)
+//     HOM    HOM        31506          713         9767     1.72      -nan   -nan
+//     HOM    HET        17871        23148         5837     0.13      1.02  49.47
+//     HET    HET         2926         7051         2870     0.00      0.82  54.88
+//     HOMREF HOMALT        78         6260           52     2.03      -nan   -nan
+     
+//        M2I - mendelian informative parental biallelic sites
+//        M2I - mendelian informative parental biallelic sites
+//        
+//        M2I - mendelian informative parental sites
+//        AN2_INFORMATIVE_SITES
+        
+        //COMMON
+        bcf_hdr_append(odw->hdr, "##INFO=<ID=,Number=1,Type=Integer,Description=\"\">");
+        bcf_hdr_append(odw->hdr, "##INFO=<ID=,Number=1,Type=Integer,Description=\"\">");
+
+        
         ///////////////////////////
         //ped file initialization//
         ///////////////////////////
@@ -182,6 +216,9 @@ class Igor : Program
 
         Variant variant;
 
+        ///////////////////////
+        //initializing pedigree
+        ///////////////////////
         std::vector<Trio> trios;
         std::vector<Duplicate> dups;
     
@@ -227,8 +264,6 @@ class Igor : Program
 
         no_trios = trios.size();
         no_dups = trios.size();
-
-//        exit(1);
 
         int32_t missing = 0;
         int32_t mendel_homalt_err = 0;
@@ -276,6 +311,97 @@ class Igor : Program
 
                 bool variant_used = false;
 
+                //mendelian concordance checking
+                for (int32_t i=0; i<trios.size(); ++i)
+                {
+                    int32_t j = trios[i].father_index;
+                    int32_t f1 = bcf_gt_allele(gts[(j<<1)]);
+                    int32_t f2 = bcf_gt_allele(gts[(j<<1)+1]);
+                    int32_t min_dp = dps[j];
+
+                    j = trios[i].mother_index;
+                    int32_t m1 = bcf_gt_allele(gts[(j<<1)]);
+                    int32_t m2 = bcf_gt_allele(gts[(j<<1)+1]);
+                    min_dp = dps[j]<min_dp ? dps[j] : min_dp;
+
+                    j = trios[i].child_index;
+                    int32_t c1 = bcf_gt_allele(gts[(j<<1)]);
+                    int32_t c2 = bcf_gt_allele(gts[(j<<1)+1]);
+                    min_dp = dps[j]<min_dp ? dps[j] : min_dp;
+
+                    if (min_dp<min_depth)
+                    {
+                        ++no_failed_min_depth;
+                        continue;
+                    }
+
+                    if (!(f1<0 || f2<0 || m1<0 || m2<0 || c1<0 || c2<0))
+                    {
+                        if (!ignore_non_variants || (f1+f2+m1+m2+c1+c2!=0))
+                        {
+                            
+                            
+                            
+                            ++trio_genotypes[f1+f2][m1+m2][c1+c2];
+                            variant_used = true;
+                        }
+                    }
+                }
+                if (variant_used) ++no_biallelic_variants;
+                    
+                //duplicate concordance
+                for (int32_t i=0; i<dups.size(); ++i)
+                {
+                    int32_t j = dups[i].individual_index;
+                    int32_t a1 = bcf_gt_allele(gts[(j<<1)]);
+                    int32_t a2 = bcf_gt_allele(gts[(j<<1)+1]);
+                    int32_t min_dp = dps[j];
+
+                    j = dups[i].duplicate_index;
+                    int32_t b1 = bcf_gt_allele(gts[(j<<1)]);
+                    int32_t b2 = bcf_gt_allele(gts[(j<<1)+1]);
+                    min_dp = dps[j]<min_dp ? dps[j] : min_dp;
+
+                    if (min_dp<min_depth)
+                    {
+                        ++no_failed_min_depth;
+                        continue;
+                    }
+
+                    if (!(a1<0 || a2<0 || b1<0 || b2<0))
+                    {
+                        if (!ignore_non_variants || (a1+a2+b1+b2!=0))
+                        {
+                            ++duplicate_genotypes[a1+a2][b1+b2];
+                            variant_used = true;
+                        }
+                    }
+                }
+                if (variant_used) ++no_biallelic_variants;    
+                    
+            }
+            //multiallelics
+            else
+            {
+                int k = bcf_get_genotypes(h, v, &gts, &n);
+                int r = bcf_get_format_int32(h, v, "DP", &dps, &n_dp);
+
+                if (r==-1)
+                {
+                    //support platypus calls
+                    r = bcf_get_format_int32(h, v, "NR", &dps, &n_dp);
+
+                    if (r==-1)
+                    {
+                        for (uint32_t i=0; i<nsample; ++i)
+                        {
+                            dps[i] = min_depth;
+                        }
+                    }
+                }
+
+                bool variant_used = false;
+
                 for (int32_t i=0; i<trios.size(); ++i)
                 {
                     int32_t j = trios[i].father_index;
@@ -305,40 +431,41 @@ class Igor : Program
                         {
                             ++trio_genotypes[f1+f2][m1+m2][c1+c2];
                             variant_used = true;
+                
+//                            a. HOMREF HOMREF
+//                               HET HET         
+                        
+                        //informative parental alleles
+                        
+                        //uninformative parental alleles
+                        
+        
+                        //implement 2 versions
+                     
+                        //1. based on fixed genotypes
+                        //2. based on genotype likelihoods
+                        
+                        //mendelian error estimates based on hard counts.
+                        //HOM HOM
+                        //AA BB => AB
+                        //BB CC => BC
+                        //CC DD => CD
+                        
+                        //HET HET
+                        //AB AB => AA AB BB  - can have errors
+                        //AC AD => AA AC AD CD = can have 
+                        //AB CD => AC AD BC BD 
+                        
+                        
+                        
+                        //HOM HET
+                        //AA AB => AA AB
+                        //AA BC => AB AC
+                        
                         }
                     }
                 }
                 if (variant_used) ++no_biallelic_variants;
-            }
-            //multiallelics
-            else
-            {
-
-                //implement 2 versions
-             
-                //1. based on fixed genotypes
-                //2. based on genotype likelihoods
-                
-                //mendelian error estimates based on hard counts.
-                //HOM HOM
-                //AA BB => AB
-                //BB CC => BC
-                //CC DD => CD
-                //HET HET
-                //AB AB => AA AB BB
-                //AC AD => AA AC AD CD
-                //AB CD => AC AD BC BD 
-                //HOM HET
-                //AA AB => AA AB
-                //AA BC => AB AC
-                
-                //compute bayes factor
-                //
-                
-                //how to test on proportions?
-                //
-                
-                
                 
 
 
