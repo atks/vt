@@ -25,7 +25,6 @@
 #include "annotate_1000g.h"
 #include "annotate_dbsnp_rsid.h"
 #include "annotate_indels.h"
-#include "annotate_mendelian.h"
 #include "annotate_regions.h"
 #include "annotate_variants.h"
 #include "annotate_vntrs.h"
@@ -218,10 +217,6 @@ int main(int argc, char ** argv)
     {
         consolidate_multiallelics(argc-1, ++argv);
     }    
-    else if (argc>1 && cmd=="annotate_mendelian")
-    {
-        annotate_mendelian(argc-1, ++argv);
-    }
     else if (argc>1 && cmd=="normalize")
     {
         print = normalize(argc-1, ++argv);
