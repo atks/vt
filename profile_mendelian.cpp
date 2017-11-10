@@ -76,6 +76,7 @@ class Igor : Program
 
     //for biallelics
     int32_t trio_genotypes[3][3][3];
+    int32_t trio_multiallelic_genotypes[4][2];  //number of distinct parental alleles (4) vs mendelian error or not
     int32_t duplicate_genotypes[3][3];
 
     //for multiallelics
@@ -154,8 +155,8 @@ class Igor : Program
         ///////////////////////////
         //output VCF file        //
         ///////////////////////////
-        odw = new BCFOrderedWriter(output_vcf_file, 0);
-        odw->set_hdr(odr->hdr);
+//        odw = new BCFOrderedWriter(output_vcf_file, 0);
+//        odw->set_hdr(odr->hdr);
 
 //     Parental            R/R          R/A          A/A    Error(%) HomHet    Het(%)
 //     HOM    HOM        31506          713         9767     1.72      -nan   -nan
@@ -163,16 +164,9 @@ class Igor : Program
 //     HET    HET         2926         7051         2870     0.00      0.82  54.88
 //     HOMREF HOMALT        78         6260           52     2.03      -nan   -nan
 
-//        M2I - mendelian informative parental biallelic sites
-//        M2I - mendelian informative parental biallelic sites
-//
-//        M2I - mendelian informative parental sites
-//        AN2_INFORMATIVE_SITES
-
         //COMMON
-        bcf_hdr_append(odw->hdr, "##INFO=<ID=,Number=1,Type=Integer,Description=\"\">");
-        bcf_hdr_append(odw->hdr, "##INFO=<ID=,Number=1,Type=Integer,Description=\"\">");
-
+//        bcf_hdr_append(odw->hdr, "##INFO=<ID=,Number=1,Type=Integer,Description=\"\">");
+//        bcf_hdr_append(odw->hdr, "##INFO=<ID=,Number=1,Type=Integer,Description=\"\">");
 
         ///////////////////////////
         //ped file initialization//
@@ -215,6 +209,14 @@ class Igor : Program
             for (int32_t b=0; b<3; ++b)
             {
                 duplicate_genotypes[a][b] = 0;
+            }
+        }
+        
+        for (int32_t a=0; a<4; ++a)
+        {
+            for (int32_t b=0; b<2; ++b)
+            {
+                trio_multiallelic_genotypes[a][b] = 0;
             }
         }
 
@@ -280,6 +282,9 @@ class Igor : Program
         no_trios = trios.size();
         no_dups = dups.size();
 
+        std::cerr << "No. of trios detected: " << trios.size() << "\n";
+        std::cerr << "No. of duplicates detected: " << dups.size() << "\n";
+        
         int32_t missing = 0;
         int32_t mendel_homalt_err = 0;
 
@@ -366,39 +371,40 @@ class Igor : Program
                 ///////////////////////
                 //duplicate concordance
                 ///////////////////////
-                no_biallelic_variants_dups = 0;
-                
-                for (int32_t i=0; i<dups.size(); ++i)
+                if (dups.size()>0)
                 {
-                    int32_t j = dups[i].individual_index;
-                    int32_t a1 = bcf_gt_allele(gts[(j<<1)]);
-                    int32_t a2 = bcf_gt_allele(gts[(j<<1)+1]);
-                    int32_t min_dp = dps[j];
-
-                    j = dups[i].duplicate_index;
-                    int32_t b1 = bcf_gt_allele(gts[(j<<1)]);
-                    int32_t b2 = bcf_gt_allele(gts[(j<<1)+1]);
-                    min_dp = dps[j]<min_dp ? dps[j] : min_dp;
-
-                    if (min_dp<min_depth)
+                    no_biallelic_variants_dups = 0;
+                
+                    for (int32_t i=0; i<dups.size(); ++i)
                     {
-                        ++no_failed_min_depth;
-                        continue;
+                        int32_t j = dups[i].individual_index;
+                        int32_t a1 = bcf_gt_allele(gts[(j<<1)]);
+                        int32_t a2 = bcf_gt_allele(gts[(j<<1)+1]);
+                        int32_t min_dp = dps[j];
+    
+                        j = dups[i].duplicate_index;
+                        int32_t b1 = bcf_gt_allele(gts[(j<<1)]);
+                        int32_t b2 = bcf_gt_allele(gts[(j<<1)+1]);
+                        min_dp = dps[j]<min_dp ? dps[j] : min_dp;
+    
+                        if (min_dp<min_depth)
+                        {
+                            ++no_failed_min_depth;
+                            continue;
+                        }
+    
+                        if (!(a1<0 || a2<0 || b1<0 || b2<0))
+                        {
+                            ++duplicate_genotypes[a1+a2][b1+b2];
+                            variant_used = true;
+                        }
                     }
-
-                    if (!(a1<0 || a2<0 || b1<0 || b2<0))
-                    {
-                        ++duplicate_genotypes[a1+a2][b1+b2];
-                        variant_used = true;
-                    }
+                    ++no_biallelic_variants_dups;
                 }
-                ++no_biallelic_variants_dups;
-
             }
             //multiallelics
             else
-            {
-                
+            {   
                 int k = bcf_get_genotypes(h, v, &gts, &n);
                 int r = bcf_get_format_int32(h, v, "DP", &dps, &n_dp);
 
@@ -445,18 +451,38 @@ class Igor : Program
                     {
                         if (!ignore_non_variants || (f1+f2+m1+m2+c1+c2!=0))
                         {
-                            ++trio_genotypes[f1+f2][m1+m2][c1+c2];
                             variant_used = true;
 
-//                            a. HOMREF HOMREF
-//                               HET HET
-
-                        //informative parental alleles
-                        //uninformative parental alleles
+                            //count number of distinct parental alleles
+                            std::map<int32_t, int32_t> distinct_alleles;
+                            distinct_alleles[f1] = 0;
+                            distinct_alleles[f2] = 0;
+                            distinct_alleles[m1] = 0;
+                            distinct_alleles[m2] = 0;
+                            int32_t no_distinct_parental_alleles = distinct_alleles.size();
+                            
+                           
+                            //check if transmission is possible
+                            if (((c1==f1||c1==f2) && (c2==m1||c2==m2)) ||
+                                ((c2==f1||c2==f2) && (c1==m1||c1==m2)))
+                            {
+                                ++trio_multiallelic_genotypes[no_distinct_parental_alleles-1][0];
+                            }
+                            else
+                            {
+                                ++trio_multiallelic_genotypes[no_distinct_parental_alleles-1][1];
+                                
+//                                if (no_distinct_parental_alleles==4)
+//                                {
+//                                    std::cerr << "==========================================\n";
+//                                    std::cerr << f1 << " " << f2 << " " << m1 << " " << m2 << "\n";
+//                                    std::cerr << c1 << " " << c2 << "\n";
+//                                        
+//                                }
+                            }
 
                         //implement 2 versions
                         //1. based on fixed genotypes
-                        //2. based on genotype likelihoods
 
                         //mendelian error estimates based on hard counts.
                         //HOM HOM
@@ -475,8 +501,8 @@ class Igor : Program
 
                         }
                     }
-                }
-                if (variant_used) ++no_biallelic_variants;
+                }//end procesing trios
+                if (variant_used) ++no_multiallelic_variants;
 
             }
         }
@@ -484,6 +510,7 @@ class Igor : Program
         free(gts);
         if (dps) free(dps);
         odr->close();
+//        odw->clo®se();
     };
 
     void print_options()
@@ -974,6 +1001,30 @@ class Igor : Program
         fprintf(stderr, "\n");
         fprintf(stderr, "     Mendelian Errors (Multiallelics)");
         fprintf(stderr, "\n");
+        fprintf(stderr, "     No. of distinct               Transmitted      Not transmitted    Error(%%)\n");
+        fprintf(stderr, "     parental alleles                                   \n");
+        fprintf(stderr, "            1                       %10d           %10d   %6.2f\n", 
+                                trio_multiallelic_genotypes[0][0],
+                                trio_multiallelic_genotypes[0][1],
+                                (100*(float) trio_multiallelic_genotypes[0][1] /((float)trio_multiallelic_genotypes[0][0]+trio_multiallelic_genotypes[0][1])));
+        fprintf(stderr, "            2                       %10d           %10d   %6.2f\n", 
+                                trio_multiallelic_genotypes[1][0],
+                                trio_multiallelic_genotypes[1][1],
+                                (100*(float) trio_multiallelic_genotypes[1][1] /((float)trio_multiallelic_genotypes[1][0]+trio_multiallelic_genotypes[1][1])));
+        fprintf(stderr, "            3                       %10d           %10d   %6.2f\n", 
+                                trio_multiallelic_genotypes[2][0],
+                                trio_multiallelic_genotypes[2][1],
+                                (100*(float) trio_multiallelic_genotypes[2][1] /((float)trio_multiallelic_genotypes[2][0]+trio_multiallelic_genotypes[2][1])));
+        fprintf(stderr, "            4                       %10d           %10d   %6.2f\n", 
+                                trio_multiallelic_genotypes[3][0],
+                                trio_multiallelic_genotypes[3][1],
+                                (100*(float) trio_multiallelic_genotypes[3][1] /((float)trio_multiallelic_genotypes[3][0]+trio_multiallelic_genotypes[3][1])));
+        
+        fprintf(stderr, "\n");
+        
+        int32_t errors = trio_multiallelic_genotypes[0][1] + trio_multiallelic_genotypes[1][1] + trio_multiallelic_genotypes[2][1] + trio_multiallelic_genotypes[3][1];
+        int32_t nonerrors = trio_multiallelic_genotypes[0][0] + trio_multiallelic_genotypes[1][0] + trio_multiallelic_genotypes[2][0] + trio_multiallelic_genotypes[3][0];
+        fprintf(stderr, "     total mendelian error : %7.3f%%\n", ((float)errors/(errors+nonerrors)));
         fprintf(stderr, "\n");
         fprintf(stderr, "     no. of trios                  : %d\n", no_trios);
         fprintf(stderr, "     no. of multiallelic variants  : %d\n", no_multiallelic_variants);
