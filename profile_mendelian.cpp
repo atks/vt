@@ -70,13 +70,14 @@ class Igor : Program
     uint32_t no_trios;
     uint32_t no_dups;
     uint32_t no_biallelic_variants;
+    uint32_t no_biallelic_variants_dups;
     uint32_t no_multiallelic_variants;
     uint32_t no_failed_min_depth;
-    
+
     //for biallelics
     int32_t trio_genotypes[3][3][3];
     int32_t duplicate_genotypes[3][3];
-        
+
     //for multiallelics
     std::vector<std::vector<std::vector<int32_t> > > trios_multiallelic_genotypes;
 
@@ -102,11 +103,11 @@ class Igor : Program
             TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_input_ped_file("p", "p", "pedigree file", true, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_fexp("f", "f", "filter expression []", false, "", "str", cmd);
-            
+
             TCLAP::ValueArg<std::string> arg_output_tabulate_dir("x", "x", "output latex directory [tabulate_mendelian]", false, "tabulate_mendelian", "str", cmd);
             TCLAP::ValueArg<std::string> arg_output_pdf_file("y", "y", "output pdf file [mendelian.pdf]", false, "mendelian.pdf", "str", cmd);
-            
-            TCLAP::ValueArg<std::string> arg_output_vcf_file("o", "o", "output VCF file annotated with site error statistics []", false, "mendelian.pdf", "str", cmd);
+
+            TCLAP::ValueArg<std::string> arg_output_vcf_file("o", "o", "output VCF file annotated with site error statistics []", true, "", "str", cmd);
             TCLAP::ValueArg<int32_t> arg_min_depth("d", "d", "minimum depth", false, 0, "str", cmd);
             TCLAP::ValueArg<float> arg_min_gq("q", "q", "minimum genotype quality", false, 2, "str", cmd);
             TCLAP::SwitchArg arg_ignore_non_variants("n", "n", "ignore non variants", cmd, false);
@@ -117,6 +118,11 @@ class Igor : Program
             input_vcf_file = arg_input_vcf_file.getValue();
             input_ped_file = arg_input_ped_file.getValue();
             output_vcf_file = arg_output_vcf_file.getValue();
+            if (output_vcf_file=="")
+            {
+//                output_vcf_file = "mendeleian_dups_errors_annotated." + input_vcf_file;
+            }
+
             fexp = arg_fexp.getValue();
             output_tabulate_dir = arg_output_tabulate_dir.getValue();
             output_pdf_file = arg_output_pdf_file.getValue();
@@ -156,18 +162,18 @@ class Igor : Program
 //     HOM    HET        17871        23148         5837     0.13      1.02  49.47
 //     HET    HET         2926         7051         2870     0.00      0.82  54.88
 //     HOMREF HOMALT        78         6260           52     2.03      -nan   -nan
-     
+
 //        M2I - mendelian informative parental biallelic sites
 //        M2I - mendelian informative parental biallelic sites
-//        
+//
 //        M2I - mendelian informative parental sites
 //        AN2_INFORMATIVE_SITES
-        
+
         //COMMON
         bcf_hdr_append(odw->hdr, "##INFO=<ID=,Number=1,Type=Integer,Description=\"\">");
         bcf_hdr_append(odw->hdr, "##INFO=<ID=,Number=1,Type=Integer,Description=\"\">");
 
-        
+
         ///////////////////////////
         //ped file initialization//
         ///////////////////////////
@@ -189,6 +195,7 @@ class Igor : Program
         ////////////////////////
         no_trios = 0;
         no_biallelic_variants = 0;
+        no_biallelic_variants_dups = 0;
         no_multiallelic_variants = 0;
         no_failed_min_depth = 0;
 
@@ -203,14 +210,22 @@ class Igor : Program
             }
         }
 
+        for (int32_t a=0; a<3; ++a)
+        {
+            for (int32_t b=0; b<3; ++b)
+            {
+                duplicate_genotypes[a][b] = 0;
+            }
+        }
+
         /////////
         //tools//
         /////////
         vm = new VariantManip();
     }
-    
+
     void profile_mendelian()
-    {       
+    {
         bcf_hdr_t *h = odr->hdr;
         bcf1_t *v = bcf_init1();
 
@@ -221,9 +236,9 @@ class Igor : Program
         ///////////////////////
         std::vector<Trio> trios;
         std::vector<Duplicate> dups;
-    
+
         std::vector<PEDRecord>& recs =  pedigree->recs;
-    
+
         for (size_t i=0; i<recs.size(); ++i)
         {
             if (recs[i].is_trio())
@@ -231,30 +246,30 @@ class Igor : Program
                 int32_t individual_index = bcf_hdr_id2int(h, BCF_DT_SAMPLE, recs[i].individual[0].c_str());
                 int32_t father_index = bcf_hdr_id2int(h, BCF_DT_SAMPLE, recs[i].father.c_str());
                 int32_t mother_index = bcf_hdr_id2int(h, BCF_DT_SAMPLE, recs[i].mother.c_str());
-    
+
                 if (individual_index>=0 && father_index>=0 && mother_index>=0)
                 {
-                    Trio trio(individual_index, father_index, mother_index, recs[i].individual_sex);                
+                    Trio trio(individual_index, father_index, mother_index, recs[i].individual_sex);
                     trios.push_back(trio);
                 }
             }
-            
+
             if (recs[i].is_duplicated())
             {
                 PEDRecord& rec = recs[i];
                 int32_t no_pairs_added = 0;
-                
+
                 int32_t individual_sex = rec.individual_sex;
-                
+
                 for (size_t a=0; a<rec.individual.size()-1; ++a)
                 {
                     int32_t individual_index = bcf_hdr_id2int(h, BCF_DT_SAMPLE, rec.individual[a].c_str());
-                        
+
                     for (size_t b=a+1; b<rec.individual.size(); ++b)
                     {
                         int32_t duplicate_index = bcf_hdr_id2int(h, BCF_DT_SAMPLE, rec.individual[b].c_str());
-                        
-                        Duplicate dup(individual_index, duplicate_index, individual_sex);                
+
+                        Duplicate dup(individual_index, duplicate_index, individual_sex);
                         dups.push_back(dup);
                         ++no_pairs_added;
                     }
@@ -263,7 +278,7 @@ class Igor : Program
         }
 
         no_trios = trios.size();
-        no_dups = trios.size();
+        no_dups = dups.size();
 
         int32_t missing = 0;
         int32_t mendel_homalt_err = 0;
@@ -311,7 +326,9 @@ class Igor : Program
 
                 bool variant_used = false;
 
-                //mendelian concordance checking
+                ///////////////////////
+                //mendelian concordance
+                ///////////////////////
                 for (int32_t i=0; i<trios.size(); ++i)
                 {
                     int32_t j = trios[i].father_index;
@@ -339,17 +356,18 @@ class Igor : Program
                     {
                         if (!ignore_non_variants || (f1+f2+m1+m2+c1+c2!=0))
                         {
-                            
-                            
-                            
                             ++trio_genotypes[f1+f2][m1+m2][c1+c2];
                             variant_used = true;
                         }
                     }
                 }
                 if (variant_used) ++no_biallelic_variants;
-                    
+
+                ///////////////////////
                 //duplicate concordance
+                ///////////////////////
+                no_biallelic_variants_dups = 0;
+                
                 for (int32_t i=0; i<dups.size(); ++i)
                 {
                     int32_t j = dups[i].individual_index;
@@ -370,19 +388,17 @@ class Igor : Program
 
                     if (!(a1<0 || a2<0 || b1<0 || b2<0))
                     {
-                        if (!ignore_non_variants || (a1+a2+b1+b2!=0))
-                        {
-                            ++duplicate_genotypes[a1+a2][b1+b2];
-                            variant_used = true;
-                        }
+                        ++duplicate_genotypes[a1+a2][b1+b2];
+                        variant_used = true;
                     }
                 }
-                if (variant_used) ++no_biallelic_variants;    
-                    
+                ++no_biallelic_variants_dups;
+
             }
             //multiallelics
             else
             {
+                
                 int k = bcf_get_genotypes(h, v, &gts, &n);
                 int r = bcf_get_format_int32(h, v, "DP", &dps, &n_dp);
 
@@ -431,49 +447,38 @@ class Igor : Program
                         {
                             ++trio_genotypes[f1+f2][m1+m2][c1+c2];
                             variant_used = true;
-                
+
 //                            a. HOMREF HOMREF
-//                               HET HET         
-                        
+//                               HET HET
+
                         //informative parental alleles
-                        
                         //uninformative parental alleles
-                        
-        
+
                         //implement 2 versions
-                     
                         //1. based on fixed genotypes
                         //2. based on genotype likelihoods
-                        
+
                         //mendelian error estimates based on hard counts.
                         //HOM HOM
                         //AA BB => AB
                         //BB CC => BC
                         //CC DD => CD
-                        
+
                         //HET HET
                         //AB AB => AA AB BB  - can have errors
-                        //AC AD => AA AC AD CD = can have 
-                        //AB CD => AC AD BC BD 
-                        
-                        
-                        
+                        //AC AD => AA AC AD CD = can have
+                        //AB CD => AC AD BC BD
+
                         //HOM HET
                         //AA AB => AA AB
                         //AA BC => AB AC
-                        
+
                         }
                     }
                 }
                 if (variant_used) ++no_biallelic_variants;
-                
 
-
-
-                
             }
-
-
         }
 
         free(gts);
@@ -486,6 +491,7 @@ class Igor : Program
         std::clog << "profile_mendelian v" << version << "\n\n";
         std::clog << "options:     input VCF file            " << input_vcf_file << "\n";
         std::clog << "         [p] input PED file            " << input_ped_file << "\n";
+        std::clog << "         [o] output VCF file           " << output_vcf_file << "\n";
         std::clog << "         [d] minimum depth             " << min_depth << "\n";
         print_str_op("         [f] filter                    ", fexp);
         print_str_op("         [x] output tabulate directory ", output_tabulate_dir);
@@ -736,6 +742,61 @@ class Igor : Program
         return ((het+hom)==0 ? (0.0/0.0) : het/(hom+het)*100);
     };
 
+    float get_dups_error_rate(int32_t gt[3][3], int32_t a, int32_t b)
+    {
+        float total = 0;
+        float error_count = 0;
+
+        //total error
+        if (a==-1 && b==-1)
+        {
+            total += gt[a][0] + gt[a][1] + gt[a][2];
+            for (a=0; a<3; ++a)
+            {
+               for (int32_t b=0; b<3; ++b)
+                {
+                    if (a!=b)
+                    {
+                        error_count += gt[a][b];
+                    }
+                    
+                    total += gt[a][b];
+                }
+            }
+        }
+        else if (b==-1)
+        {
+            total += gt[a][0] + gt[a][1] + gt[a][2];
+            for (int32_t b=0; b<3; ++b)
+            {
+                if (a!=b)
+                {
+                    error_count += gt[a][b];
+                }
+            }
+        }
+        else if (a==-1)
+        {
+            total += gt[0][b] + gt[1][b] + gt[2][b];
+            for (int32_t a=0; a<3; ++a)
+            {
+                if (a!=b)
+                {
+                    error_count += gt[a][b];
+                }
+            }
+        }
+
+        if (total!=0)
+        {
+            return error_count/total*100;
+        }
+        else
+        {
+            return (0.0/0.0);
+        }
+    };
+
     void print_pdf()
     {
         append_cwd(output_tabulate_dir);
@@ -845,7 +906,7 @@ class Igor : Program
         int32_t sys_ret = system(cmd.c_str());
     };
 
-    void print_stats()
+    void print_trio_stats()
     {
         std::string g2s[3] = {"R/R","R/A","A/A"};
 
@@ -921,6 +982,49 @@ class Igor : Program
         fprintf(stderr, "\n");
     };
 
+    void print_duplicate_stats()
+    {
+        std::string g2s[3] = {"R/R","R/A","A/A"};
+
+        fprintf(stderr, "\n");
+        fprintf(stderr, "     Duplicate Errors (Biallelics)");
+        fprintf(stderr, "\n");
+        fprintf(stderr, "                                     Duplicate\n");
+        fprintf(stderr, "     Individual            R/R          R/A          A/A    Error(%%)\n");
+        fprintf(stderr, "     R/R             %10d  %10d   %10d   %6.2f     \n",
+                                duplicate_genotypes[0][0],
+                                duplicate_genotypes[0][1],
+                                duplicate_genotypes[0][2],
+                                get_dups_error_rate(duplicate_genotypes, 0, -1));
+        fprintf(stderr, "     R/A             %10d  %10d   %10d   %6.2f     \n",
+                                duplicate_genotypes[1][0],
+                                duplicate_genotypes[1][1],
+                                duplicate_genotypes[1][2],
+                                get_dups_error_rate(duplicate_genotypes, 1, -1));
+        fprintf(stderr, "     A/A             %10d  %10d   %10d   %6.2f     \n",
+                                duplicate_genotypes[2][0],
+                                duplicate_genotypes[2][1],
+                                duplicate_genotypes[2][2],
+                                get_dups_error_rate(duplicate_genotypes, 2, -1));
+        int32_t rr = duplicate_genotypes[0][0] + duplicate_genotypes[1][0] + duplicate_genotypes[2][0];
+        int32_t ra = duplicate_genotypes[0][1] + duplicate_genotypes[1][1] + duplicate_genotypes[2][1];
+        int32_t aa = duplicate_genotypes[0][2] + duplicate_genotypes[1][2] + duplicate_genotypes[2][2];
+        fprintf(stderr, "   Error(%%)              %6.2f      %6.2f       %6.2f   %6.2f     \n",
+                                get_dups_error_rate(duplicate_genotypes, -1, 0),
+                                get_dups_error_rate(duplicate_genotypes, -1, 1),
+                                get_dups_error_rate(duplicate_genotypes, -1, 2),
+                                get_dups_error_rate(duplicate_genotypes, -1, -1));
+        
+        fprintf(stderr, "\n");
+        fprintf(stderr, "     total duplicate error : %7.3f%%\n", get_dups_error_rate(duplicate_genotypes, -1, -1));
+        fprintf(stderr, "\n");
+        fprintf(stderr, "     no. of duplicate comparisons    : %d\n", no_dups);
+        fprintf(stderr, "     no. of biallelic variants       : %d\n", no_biallelic_variants_dups);
+        fprintf(stderr, "\n");
+        fprintf(stderr, "     no. of duplicate-site pairs that fail min depth  : %d\n", no_failed_min_depth);
+        fprintf(stderr, "\n");
+        fprintf(stderr, "\n");
+    };
     ~Igor()
     {
     };
@@ -936,7 +1040,9 @@ void profile_mendelian(int argc, char ** argv)
     igor.print_options();
     igor.initialize();
     igor.profile_mendelian();
-    igor.print_stats();
-    igor.print_pdf();
+    igor.print_trio_stats();
+    igor.print_duplicate_stats();
+
+//    igor.print_pdf();
 }
 
