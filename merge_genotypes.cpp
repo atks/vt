@@ -405,18 +405,24 @@ Extracts only the naive genotypes based on best guess genotypes.";
                         bcf_copy_info_field(h, v, odw->hdr, nv, "FZ_FLANKS", BCF_HT_INT);
                     }
 
+                    std::vector<int32_t> filter_ids;
+
                     if (bcf_has_filter(h, v, const_cast<char*>("overlap_indel"))==1)
                     {
-                        int32_t overlap_indel_filter_id = bcf_hdr_id2int(odw->hdr, BCF_DT_ID, const_cast<char*>("overlap_indel"));
-                        bcf_update_filter(odw->hdr, nv, &overlap_indel_filter_id, 1);
+                        filter_ids.push_back(bcf_hdr_id2int(odw->hdr, BCF_DT_ID, const_cast<char*>("overlap_indel")));
+//                        int32_t overlap_indel_filter_id = bcf_hdr_id2int(odw->hdr, BCF_DT_ID, const_cast<char*>("overlap_indel"));
+//                        bcf_update_filter(odw->hdr, nv, &overlap_indel_filter_id, 1);
                     }
 
                     if (bcf_has_filter(h, v, const_cast<char*>("overlap_vntr"))==1)
                     {
-                        int32_t overlap_indel_filter_id = bcf_hdr_id2int(odw->hdr, BCF_DT_ID, const_cast<char*>("overlap_vntr"));
-                        bcf_update_filter(odw->hdr, nv, &overlap_indel_filter_id, 1);
+                        filter_ids.push_back(bcf_hdr_id2int(odw->hdr, BCF_DT_ID, const_cast<char*>("overlap_vntr")));
+//                        int32_t overlap_indel_filter_id = bcf_hdr_id2int(odw->hdr, BCF_DT_ID, const_cast<char*>("overlap_vntr"));
+//                        bcf_update_filter(odw->hdr, nv, &overlap_indel_filter_id, 1);
                     }
 
+                    bcf_update_filter(odw->hdr, nv, &filter_ids[0], filter_ids.size());
+                    
                     continue;
                 }
 
