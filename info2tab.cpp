@@ -36,6 +36,7 @@ class Igor : Program
     std::string input_vcf_file;
     std::string output_text_file;
     std::vector<GenomeInterval> intervals;
+    std::vector<std::string> filter_tags;
     std::vector<std::string> info_tags;
     bool print_variant;
     bool debug;
@@ -79,6 +80,7 @@ class Igor : Program
             TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "file", cmd);
             TCLAP::ValueArg<std::string> arg_output_text_file("o", "o", "output tab delimited file [-]", false, "-", "str", cmd);
             TCLAP::ValueArg<std::string> arg_info_tags("t", "t", "list of info tags to be extracted []", true, "", "str", cmd);
+            TCLAP::ValueArg<std::string> arg_filter_tags("u", "u", "list of filter tags to be extracted []", true, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_fexp("f", "f", "filter expression []", false, "", "str", cmd);
             TCLAP::SwitchArg arg_debug("d", "d", "debug [false]", cmd, false);
             TCLAP::SwitchArg arg_print_variant("v", "v", "suppress printing of variant information : CHROM,POS,REF,ALT,N_ALLELE [true]", cmd, true);
@@ -91,6 +93,7 @@ class Igor : Program
             fexp = arg_fexp.getValue();
             std::cerr << arg_info_tags.getValue() << "\n";
             parse_string_list(info_tags, arg_info_tags.getValue());
+            parse_string_list(filter_tags, arg_filter_tags.getValue());
             print_variant = arg_print_variant.getValue();
             debug = arg_debug.getValue();
             parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
@@ -142,18 +145,27 @@ class Igor : Program
             out = fopen(output_text_file.c_str(), "w");
         }
 
+        if (print_variant)
+        {
+            fprintf(out, "CHROM\tPOS\tREF\tALT\tN_ALLELE");
+        }
+
+        std::vector<std::string> filter_tag_str;
+        for (uint32_t i=0; i<filter_tags.size(); ++i)
+        {
+            filter_tag_str.push_back(filter_tags[i]);
+            fprintf(out, "\t%s", filter_tags[i].c_str());
+        }
+
+        if (info_tags.size()!=0) fprintf(out, "\t");
+
         //get the types of each info field
         std::vector<std::string> info_tag_str;
         std::vector<int32_t> info_tag_id;
         std::vector<int32_t> info_tag_vlen;
         std::vector<int32_t> info_tag_type;
         std::vector<int32_t> info_tag_num;
-
-        if (print_variant)
-        {
-            fprintf(out, "CHROM\tPOS\tREF\tALT\tN_ALLELE\t");
-        }
-
+            
         for (uint32_t i=0; i<info_tags.size(); ++i)
         {
             int32_t id = bcf_hdr_id2int(h, BCF_DT_ID, info_tags[i].c_str());
@@ -272,9 +284,29 @@ class Igor : Program
 
 //            bcf_print(h, v);
 
-            for (uint32_t i=0; i<info_tag_str.size(); ++i)
+            for (uint32_t i=0; i<filter_tag_str.size(); ++i)
             {
                 if (i)
+                {
+                    fprintf(out, "\t");
+                }
+/**
+ *  Returns 1 if present, 0 if absent, or -1 if filter does not exist. "PASS" and "." can be used interchangeably.
+ *   int bcf_has_filter(const bcf_hdr_t *hdr, bcf1_t *line, char *filter);
+ */                   
+                if (bcf_has_filter(h, v, const_cast<char*>(filter_tag_str[i].c_str()))==1)
+                {
+                    fprintf(out, "%d",  1);
+                }
+                else
+                {
+                    fprintf(out, "%d",  0); 
+                }
+            }
+                
+            for (uint32_t i=0; i<info_tag_str.size(); ++i)
+            {
+                if (i || filter_tag_str.size()!=0)
                 {
                     fprintf(out, "\t");
                 }
