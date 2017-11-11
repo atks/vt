@@ -117,8 +117,8 @@ class Igor : Program
         imap = (int32_t*) malloc(sizeof(int32_t)*nsamples);
         odw->link_hdr(bcf_hdr_subset(odr->hdr, nsamples, samples, imap));
 
-        bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_AC,Number=A,Type=Integer,Description=\"Allele count in genotypes, for each ALT allele, in the same order as listed\">\n");
-        bcf_hdr_append(odw->hdr, "##INFO=<ID=VT_AN,Number=1,Type=Integer,Description=\"Total number of alleles in called genotypes\">\n");
+        bcf_hdr_append(odw->hdr, "##INFO=<ID=AC,Number=A,Type=Integer,Description=\"Allele count in genotypes, for each ALT allele, in the same order as listed\">\n");
+        bcf_hdr_append(odw->hdr, "##INFO=<ID=AN,Number=1,Type=Integer,Description=\"Total number of alleles in called genotypes\">\n");
 
         /////////////////////////
         //filter initialization//
@@ -196,8 +196,8 @@ class Igor : Program
                 if (AC[0]<AN)
                 {
                     int32_t* AC_PTR = &AC[1];
-                    bcf_update_info_int32(odw->hdr,v,"VT_AC",AC_PTR,n_allele-1);
-                    bcf_update_info_int32(odw->hdr,v,"VT_AN",&AN,1);
+                    bcf_update_info_int32(odw->hdr,v,"AC",AC_PTR,n_allele-1);
+                    bcf_update_info_int32(odw->hdr,v,"AN",&AN,1);
                     odw->write(v);
                     ++no_subset_variants;
                 }

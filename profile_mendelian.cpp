@@ -768,7 +768,7 @@ class Igor : Program
             }
             else if (f==1 && m==1)//1/1
             {
-                total = gt[f][m][0] + gt[f][m][1] + gt[f][m][2];
+                //total = gt[f][m][0] + gt[f][m][1] + gt[f][m][2];
                 error_count = 0;
             }
 
