@@ -197,6 +197,41 @@ class Igor : Program
                         }
                     }
                 }
+                else if (type==BCF_HT_REAL)
+                {
+                    for (uint32_t j=0; j<num; ++j)
+                    {
+                        if (info_tag_str.size()!=1 || j!=0) fprintf(out, "\t");
+
+                        if (num>1)
+                        {
+                            fprintf(out, "%s_%d", info_tags[i].c_str(), j+1);
+                        }
+                        else
+                        {
+                            fprintf(out, "%s", info_tags[i].c_str());
+                        }
+                    }
+                }
+            }
+            else if (vlen==BCF_VL_VAR)
+            {
+                info_tag_str.push_back(info_tags[i]);
+                info_tag_id.push_back(id);
+                info_tag_vlen.push_back(vlen);
+                info_tag_type.push_back(type);
+                info_tag_num.push_back(num);
+
+                if (info_tag_str.size()!=1) fprintf(out, "\t");
+        
+                if (type==BCF_HT_INT)
+                {
+                    fprintf(out, "%s", info_tags[i].c_str());
+                }
+                else if (type==BCF_HT_STR)
+                {
+                    fprintf(out, "%s", info_tags[i].c_str());
+                }
             }
             else
             {
@@ -276,7 +311,7 @@ class Igor : Program
                             if (j) fprintf(out, "\t");
 
                             float val = bcf_get_info_flt(h, v, info_tag_str[i].c_str());
-                            fprintf(out, "%f", val);
+                            fprintf(out, "%.2f", val);
                         }
                     }
                     else if (type==BCF_HT_STR)
@@ -310,7 +345,7 @@ class Igor : Program
                         for (uint32_t j=0; j<vals.size(); ++j)
                         {
                             fprintf(out, ",");
-                            fprintf(out, "%f", vals[j]);
+                            fprintf(out, "%.2f", vals[j]);
                         }
                     }
                     else if (type==BCF_HT_STR)
