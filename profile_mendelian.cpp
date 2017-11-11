@@ -45,6 +45,7 @@ class Igor : Program
     int32_t min_depth;
     float min_gq;
     bool ignore_non_variants;
+    bool output_sites;
 
     ///////
     //i/o//
@@ -110,7 +111,7 @@ class Igor : Program
             TCLAP::ValueArg<std::string> arg_output_tabulate_dir("x", "x", "output latex directory [tabulate_mendelian]", false, "tabulate_mendelian", "str", cmd);
             TCLAP::ValueArg<std::string> arg_output_pdf_file("y", "y", "output pdf file [mendelian.pdf]", false, "mendelian.pdf", "str", cmd);
 
-            TCLAP::ValueArg<std::string> arg_output_vcf_file("o", "o", "output VCF file annotated with site error statistics []", true, "", "str", cmd);
+            TCLAP::ValueArg<std::string> arg_output_vcf_file("o", "o", "output VCF file annotated with site error statistics [\"\"]", false, "", "str", cmd);
             TCLAP::ValueArg<int32_t> arg_min_depth("d", "d", "minimum depth", false, 0, "str", cmd);
             TCLAP::ValueArg<float> arg_min_gq("q", "q", "minimum genotype quality", false, 2, "str", cmd);
             TCLAP::SwitchArg arg_ignore_non_variants("n", "n", "ignore non variants", cmd, false);
@@ -121,11 +122,7 @@ class Igor : Program
             input_vcf_file = arg_input_vcf_file.getValue();
             input_ped_file = arg_input_ped_file.getValue();
             output_vcf_file = arg_output_vcf_file.getValue();
-            if (output_vcf_file=="")
-            {
-//                output_vcf_file = "mendeleian_dups_errors_annotated." + input_vcf_file;
-            }
-
+            output_sites = output_vcf_file=="" ? false : true;
             fexp = arg_fexp.getValue();
             output_tabulate_dir = arg_output_tabulate_dir.getValue();
             output_pdf_file = arg_output_pdf_file.getValue();
@@ -157,19 +154,21 @@ class Igor : Program
         ///////////////////////////
         //output VCF file        //
         ///////////////////////////
-//        odw = new BCFOrderedWriter(output_vcf_file, 0);
-//        odw->set_hdr(odr->hdr);
-
-//     Parental            R/R          R/A          A/A    Error(%) HomHet    Het(%)
-//     HOM    HOM        31506          713         9767     1.72      -nan   -nan
-//     HOM    HET        17871        23148         5837     0.13      1.02  49.47
-//     HET    HET         2926         7051         2870     0.00      0.82  54.88
-//     HOMREF HOMALT        78         6260           52     2.03      -nan   -nan
-
-        //COMMON
-//        bcf_hdr_append(odw->hdr, "##INFO=<ID=,Number=1,Type=Integer,Description=\"\">");
-//        bcf_hdr_append(odw->hdr, "##INFO=<ID=,Number=1,Type=Integer,Description=\"\">");
-
+        if (output_sites)
+        {    
+            odw = new BCFOrderedWriter(output_vcf_file, 0);
+            bcf_hdr_t *hdr = bcf_hdr_subset(odr->hdr, 0, 0, 0);
+            odw->set_hdr(hdr);
+            bcf_hdr_destroy(hdr);
+            bcf_hdr_append(odw->hdr, "##INFO=<ID=MEN_DISC,Number=1,Type=Integer,Description=\"No. of sites with mendelian discordance.\">");
+            bcf_hdr_append(odw->hdr, "##INFO=<ID=MEN_INF,Number=1,Type=Integer,Description=\"No. of mendelian informative sites. For biallelics, excludes HOMREF trios and HET parents.\">");
+            bcf_hdr_append(odw->hdr, "##INFO=<ID=MEN_TOT,Number=1,Type=Integer,Description=\"No. of mendelian sample-site pairs.\">");
+            bcf_hdr_append(odw->hdr, "##INFO=<ID=DUP_DISC,Number=1,Type=Integer,Description=\"No. of sites with duplicate discordance.\">");
+            bcf_hdr_append(odw->hdr, "##INFO=<ID=DUP_TOT,Number=1,Type=Integer,Description=\"No. of duplicates sample-site pairs.\">");
+            bcf_hdr_sync(odw->hdr);
+            odw->write_hdr();
+        }
+        
         ///////////////////////////
         //ped file initialization//
         ///////////////////////////
@@ -343,6 +342,9 @@ class Igor : Program
                     ///////////////////////
                     //mendelian concordance
                     ///////////////////////
+                    int32_t no_mendelian_discordance = 0;
+                    int32_t no_mendelian_informative_sites = 0;
+                    int32_t no_mendelian_sample_site_pairs = 0;
                     for (int32_t i=0; i<trios.size(); ++i)
                     {
                         int32_t j = trios[i].father_index;
@@ -366,22 +368,47 @@ class Igor : Program
                             continue;
                         }
 
-                        if (!(f1<0 || f2<0 || m1<0 || m2<0 || c1<0 || c2<0))
+                        if (!(c1<0 || c2<0 || f1<0 || f2<0 || m1<0 || m2<0))
                         {
-                            if (!ignore_non_variants || (f1+f2+m1+m2+c1+c2!=0))
+                            if (!ignore_non_variants || (c1+c2+f1+f2+m1+m2!=0))
                             {
                                 ++trio_genotypes[f1+f2][m1+m2][c1+c2];
                                 variant_used = true;
+                                
+                                if (is_mendelian_discordant(c1, c2, f1, f2, m1, m2))
+                                {
+                                    ++no_mendelian_discordance;
+                                }
+                                
+                                if (!(c1+c2+f1+f2+m1+m2==0) && !(f1==1&&f2==1&&m1==1&&m2==1))
+                                {
+                                    ++no_mendelian_informative_sites;
+                                }
+                                ++no_mendelian_sample_site_pairs;
                             }
                         }
                     }
-                    if (variant_used) ++no_biallelic_variants;
+                    if (variant_used)
+                    {
+                        ++no_biallelic_variants;
+                    }
+                    
+                    if (output_sites)
+                    {    
+//                        bcf_set_n_sample(v, 0);
+                        bcf_update_info_int32(odw->hdr, v, "MEN_DISC", &no_mendelian_discordance, 1); 
+                        bcf_update_info_int32(odw->hdr, v, "MEN_INF", &no_mendelian_informative_sites, 1); 
+                        bcf_update_info_int32(odw->hdr, v, "MEN_TOT", &no_mendelian_sample_site_pairs, 1); 
+                    }
 
                     ///////////////////////
                     //duplicate concordance
                     ///////////////////////
                     if (dups.size()>0)
                     {
+                        int32_t no_duplicate_discordance = 0;
+                        int32_t no_duplicate_sample_site_pairs = 0;
+                        
                         for (int32_t i=0; i<dups.size(); ++i)
                         {
                             int32_t j = dups[i].individual_index;
@@ -404,9 +431,27 @@ class Igor : Program
                             {
                                 ++duplicate_genotypes[a1+a2][b1+b2];
                                 variant_used = true;
+                                
+                                if (is_duplicate_discordant(a1, a2, b1, b2))
+                                {    
+                                    ++no_duplicate_discordance;
+                                }
+                                ++no_duplicate_sample_site_pairs;
                             }
                         }
                         ++no_biallelic_variants_dups;
+                        
+                        if (output_sites)
+                        {    
+                            bcf_update_info_int32(odw->hdr, v, "DUP_DISC", &no_duplicate_discordance, 1); 
+                            bcf_update_info_int32(odw->hdr, v, "DUP_TOT", &no_duplicate_sample_site_pairs, 1); 
+                        }
+                    }// end of iterating through dups
+                    
+                    if (output_sites)
+                    { 
+                        bcf_subset(odw->hdr, v, 0, 0);
+                        odw->write(v);
                     }
                 }
                 else //VNTR
@@ -629,7 +674,11 @@ class Igor : Program
         free(gts);
         if (dps) free(dps);
         odr->close();
-//        odw->clo®se();
+        if (output_sites)
+        {    
+            odw->close();
+        }
+
     };
 
     void print_options()
@@ -646,6 +695,17 @@ class Igor : Program
         std::clog << "\n";
     }
 
+    bool is_mendelian_discordant(int32_t c1, int32_t c2, int32_t f1, int32_t f2, int32_t m1, int32_t m2)
+    {
+        return !(((c1==f1||c1==f2) && (c2==m1||c2==m2)) ||
+                 ((c2==f1||c2==f2) && (c1==m1||c1==m2)));
+    }
+
+    bool is_duplicate_discordant(int32_t a1, int32_t a2, int32_t b1, int32_t b2)
+    {
+        return !((a1==b1&&a2==b2) || (a1==b2||a2==b1));
+    }
+                                        
     float get_error_rate(int32_t gt[3][3][3], int32_t f, int32_t m, int32_t collapse)
     {
         if (collapse==-1) //ALL
