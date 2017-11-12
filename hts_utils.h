@@ -536,17 +536,17 @@ void bcf_set_info_flt_vec(bcf_hdr_t *h, bcf1_t *v, const char* tag, std::vector<
 /**
  * Gets an info string.
  */
-std::string bcf_get_info_str(bcf_hdr_t *h, bcf1_t *v, const char* tag, std::string default_value = "");
+std::string bcf_get_info_str(bcf_hdr_t *h, bcf1_t *v, const char* tag, std::string default_value = ".");
 
 /**
  * Sets an info string.
  */
-void bcf_set_info_str(bcf_hdr_t *h, bcf1_t *v, const char* tag, std::string default_value = "");
+void bcf_set_info_str(bcf_hdr_t *h, bcf1_t *v, const char* tag, std::string default_value = ".");
 
 /**
  * Gets an info string vector.
  */
-std::vector<std::string> bcf_get_info_str_vec(bcf_hdr_t *h, bcf1_t *v, const char* tag, std::string default_value = "");
+std::vector<std::string> bcf_get_info_str_vec(bcf_hdr_t *h, bcf1_t *v, const char* tag, std::string default_value = ".");
 
 /**
  * Sets an info string vector.

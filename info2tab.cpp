@@ -79,8 +79,8 @@ class Igor : Program
             TCLAP::ValueArg<std::string> arg_intervals("i", "i", "intervals []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "file", cmd);
             TCLAP::ValueArg<std::string> arg_output_text_file("o", "o", "output tab delimited file [-]", false, "-", "str", cmd);
-            TCLAP::ValueArg<std::string> arg_info_tags("t", "t", "list of info tags to be extracted []", true, "", "str", cmd);
-            TCLAP::ValueArg<std::string> arg_filter_tags("u", "u", "list of filter tags to be extracted []", true, "", "str", cmd);
+            TCLAP::ValueArg<std::string> arg_info_tags("t", "t", "list of info tags to be extracted []", false, "", "str", cmd);
+            TCLAP::ValueArg<std::string> arg_filter_tags("u", "u", "list of filter tags to be extracted []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_fexp("f", "f", "filter expression []", false, "", "str", cmd);
             TCLAP::SwitchArg arg_debug("d", "d", "debug [false]", cmd, false);
             TCLAP::SwitchArg arg_print_variant("v", "v", "suppress printing of variant information : CHROM,POS,REF,ALT,N_ALLELE [true]", cmd, true);
@@ -92,8 +92,13 @@ class Igor : Program
             output_text_file = arg_output_text_file.getValue();
             fexp = arg_fexp.getValue();
             std::cerr << arg_info_tags.getValue() << "\n";
-            parse_string_list(info_tags, arg_info_tags.getValue());
             parse_string_list(filter_tags, arg_filter_tags.getValue());
+            parse_string_list(info_tags, arg_info_tags.getValue());
+            if (filter_tags.size()==0 && info_tags.size()==0)
+            {
+                notice("no filter or info tags specified\n");
+                exit(1);
+            }    
             print_variant = arg_print_variant.getValue();
             debug = arg_debug.getValue();
             parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
@@ -150,9 +155,14 @@ class Igor : Program
             fprintf(out, "CHROM\tPOS\tREF\tALT\tN_ALLELE");
         }
 
+        /////////////////////////
+        //headers for filter tags
+        /////////////////////////
         std::vector<std::string> filter_tag_str;
         for (uint32_t i=0; i<filter_tags.size(); ++i)
         {
+            //filter tag is not examined to ensure it is 
+            //described in the header for VCF compatibility
             filter_tag_str.push_back(filter_tags[i]);
             fprintf(out, "\t%s", filter_tags[i].c_str());
         }
@@ -165,7 +175,10 @@ class Igor : Program
         std::vector<int32_t> info_tag_vlen;
         std::vector<int32_t> info_tag_type;
         std::vector<int32_t> info_tag_num;
-            
+        
+        ///////////////////////
+        //headers for info tags
+        ///////////////////////    
         for (uint32_t i=0; i<info_tags.size(); ++i)
         {
             int32_t id = bcf_hdr_id2int(h, BCF_DT_ID, info_tags[i].c_str());
@@ -383,10 +396,10 @@ class Igor : Program
                     else if (type==BCF_HT_STR)
                     {
                         std::vector<std::string> vals = bcf_get_info_str_vec(h, v, info_tag_str[i].c_str());
-                        
+                       
                         for (uint32_t j=0; j<vals.size(); ++j)
                         {
-                            fprintf(out, ",");
+                            if (j) fprintf(out, ",");
                             fprintf(out, "%s", vals[j].c_str());
                         }
                     }
@@ -516,6 +529,7 @@ class Igor : Program
         std::clog << "options:     input VCF file        " << input_vcf_file << "\n";
         std::clog << "         [o] output text file      " << output_text_file << "\n";
         print_boo_op("         [v] print variant         ", print_variant);
+        print_strvec("         [u] filter tags           ", filter_tags);
         print_strvec("         [t] info tags             ", info_tags);
         print_int_op("         [i] intervals             ", intervals);
         std::clog << "\n";

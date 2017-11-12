@@ -1395,6 +1395,20 @@ void bcf_set_info_str(bcf_hdr_t *h, bcf1_t *v, const char* tag, std::string defa
 std::vector<std::string> bcf_get_info_str_vec(bcf_hdr_t *h, bcf1_t *v, const char* tag, std::string default_value)
 {
     std::vector<std::string> vec;
+    std::string str = "";
+    char* s = NULL;
+    int32_t n = 0;
+    int32_t ret = 0;
+    if ((ret=bcf_get_info_string(h, v, tag, &s, &n))>0)
+    {
+        str.assign(s);
+        free(s);
+        vec.push_back(str);
+    }
+    else
+    {
+        vec.push_back(default_value);
+    }
 
     return vec;
 }
