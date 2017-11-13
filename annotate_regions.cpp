@@ -168,7 +168,7 @@ class Igor : Program
         else
         {
             fprintf(stderr, "[%s:%d %s] Need to at least specify either a bed or bcf file\n", __FILE__, __LINE__, __FUNCTION__);
-         exit(1);
+            exit(1);
         }
         
         ////////////////////////

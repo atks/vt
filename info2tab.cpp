@@ -38,7 +38,6 @@ class Igor : Program
     std::vector<GenomeInterval> intervals;
     std::vector<std::string> filter_tags;
     std::vector<std::string> info_tags;
-    bool print_variant;
     bool debug;
 
     ///////
@@ -83,7 +82,6 @@ class Igor : Program
             TCLAP::ValueArg<std::string> arg_filter_tags("u", "u", "list of filter tags to be extracted []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_fexp("f", "f", "filter expression []", false, "", "str", cmd);
             TCLAP::SwitchArg arg_debug("d", "d", "debug [false]", cmd, false);
-            TCLAP::SwitchArg arg_print_variant("v", "v", "suppress printing of variant information : CHROM,POS,REF,ALT,N_ALLELE [true]", cmd, true);
             TCLAP::UnlabeledValueArg<std::string> arg_input_vcf_file("<in.vcf>", "input VCF file", true, "","file", cmd);
 
             cmd.parse(argc, argv);
@@ -98,8 +96,7 @@ class Igor : Program
             {
                 notice("no filter or info tags specified\n");
                 exit(1);
-            }    
-            print_variant = arg_print_variant.getValue();
+            }
             debug = arg_debug.getValue();
             parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
         }
@@ -150,10 +147,7 @@ class Igor : Program
             out = fopen(output_text_file.c_str(), "w");
         }
 
-        if (print_variant)
-        {
-            fprintf(out, "CHROM\tPOS\tREF\tALT\tN_ALLELE");
-        }
+        fprintf(out, "CHROM\tPOS\tREF\tALT\tN_ALLELE");
 
         /////////////////////////
         //headers for filter tags
@@ -161,7 +155,7 @@ class Igor : Program
         std::vector<std::string> filter_tag_str;
         for (uint32_t i=0; i<filter_tags.size(); ++i)
         {
-            //filter tag is not examined to ensure it is 
+            //filter tag is not examined to ensure it is
             //described in the header for VCF compatibility
             filter_tag_str.push_back(filter_tags[i]);
             fprintf(out, "\t%s", filter_tags[i].c_str());
@@ -175,10 +169,10 @@ class Igor : Program
         std::vector<int32_t> info_tag_vlen;
         std::vector<int32_t> info_tag_type;
         std::vector<int32_t> info_tag_num;
-        
+
         ///////////////////////
         //headers for info tags
-        ///////////////////////    
+        ///////////////////////
         for (uint32_t i=0; i<info_tags.size(); ++i)
         {
             int32_t id = bcf_hdr_id2int(h, BCF_DT_ID, info_tags[i].c_str());
@@ -248,7 +242,7 @@ class Igor : Program
                 info_tag_num.push_back(num);
 
                 if (info_tag_str.size()!=1) fprintf(out, "\t");
-        
+
                 if (type==BCF_HT_INT)
                 {
                     fprintf(out, "%s", info_tags[i].c_str());
@@ -280,20 +274,17 @@ class Igor : Program
                 }
             }
 
-            if (print_variant)
+            //print variant information
+            fprintf(out, "%s\t%d", bcf_get_chrom(h, v), bcf_get_pos1(v));
+            char** alleles = bcf_get_allele(v);
+            fprintf(out, "\t%s", alleles[0]);
+            int32_t no_alleles = bcf_get_n_allele(v);
+            for (uint32_t i=1; i<no_alleles; ++i)
             {
-                fprintf(out, "%s\t%d", bcf_get_chrom(h, v), bcf_get_pos1(v));
-                char** alleles = bcf_get_allele(v);
-                fprintf(out, "\t%s", alleles[0]);
-                int32_t no_alleles = bcf_get_n_allele(v);
-                for (uint32_t i=1; i<no_alleles; ++i)
-                {
-                    fprintf(out, "%c", i==1?'\t':',');
-                    fprintf(out, "%s", alleles[i]);
-                }
-                fprintf(out, "\t%d\t", no_alleles);
-                
+                fprintf(out, "%c", i==1?'\t':',');
+                fprintf(out, "%s", alleles[i]);
             }
+            fprintf(out, "\t%d\t", no_alleles);
 
 //            bcf_print(h, v);
 
@@ -306,17 +297,17 @@ class Igor : Program
 /**
  *  Returns 1 if present, 0 if absent, or -1 if filter does not exist. "PASS" and "." can be used interchangeably.
  *   int bcf_has_filter(const bcf_hdr_t *hdr, bcf1_t *line, char *filter);
- */                   
+ */
                 if (bcf_has_filter(h, v, const_cast<char*>(filter_tag_str[i].c_str()))==1)
                 {
                     fprintf(out, "%d",  1);
                 }
                 else
                 {
-                    fprintf(out, "%d",  0); 
+                    fprintf(out, "%d",  0);
                 }
             }
-                
+
             for (uint32_t i=0; i<info_tag_str.size(); ++i)
             {
                 if (i || filter_tag_str.size()!=0)
@@ -376,7 +367,7 @@ class Igor : Program
                     if (type==BCF_HT_INT)
                     {
                         std::vector<int32_t> vals = bcf_get_info_int_vec(h, v, info_tag_str[i].c_str());
-                                                        
+
                         for (uint32_t j=0; j<vals.size(); ++j)
                         {
                             fprintf(out, "\t");
@@ -386,7 +377,7 @@ class Igor : Program
                     else if (type==BCF_HT_REAL)
                     {
                         std::vector<float> vals = bcf_get_info_flt_vec(h, v, info_tag_str[i].c_str());
-                        
+
                         for (uint32_t j=0; j<vals.size(); ++j)
                         {
                             fprintf(out, ",");
@@ -396,7 +387,7 @@ class Igor : Program
                     else if (type==BCF_HT_STR)
                     {
                         std::vector<std::string> vals = bcf_get_info_str_vec(h, v, info_tag_str[i].c_str());
-                       
+
                         for (uint32_t j=0; j<vals.size(); ++j)
                         {
                             if (j) fprintf(out, ",");
@@ -406,15 +397,15 @@ class Igor : Program
                 }
                 else if (vlen==BCF_VL_G)
                 {
-                    //seems like the assumption here depends very much on ploidy.  
+                    //seems like the assumption here depends very much on ploidy.
                     //does not really seem reasonable to use in INFO field.
                     int32_t no_alleles = bcf_get_n_allele(v);
                     int32_t no_genotypes = no_alleles;
-                    
+
                     if (type==BCF_HT_INT)
                     {
                         std::vector<int32_t> vals = bcf_get_info_int_vec(h, v, info_tag_str[i].c_str());
-                                                        
+
                         for (uint32_t j=0; j<vals.size(); ++j)
                         {
                             fprintf(out, "%c", j==0?'\t':',');
@@ -424,7 +415,7 @@ class Igor : Program
                     else if (type==BCF_HT_REAL)
                     {
                         std::vector<float> vals = bcf_get_info_flt_vec(h, v, info_tag_str[i].c_str());
-                        
+
                         for (uint32_t j=0; j<vals.size(); ++j)
                         {
                             fprintf(out, "%c", j==0?'\t':',');
@@ -434,7 +425,7 @@ class Igor : Program
                     else if (type==BCF_HT_STR)
                     {
                         std::vector<std::string> vals = bcf_get_info_str_vec(h, v, info_tag_str[i].c_str());
-                        
+
                         for (uint32_t j=0; j<vals.size(); ++j)
                         {
                             fprintf(out, "%c", j==0?'\t':',');
@@ -445,11 +436,11 @@ class Igor : Program
                 else if (vlen == BCF_VL_A)
                 {
                     int32_t no_alt_alleles = bcf_get_n_allele(v) - 1;
-                    
+
                     if (type==BCF_HT_INT)
                     {
                         std::vector<int32_t> vals = bcf_get_info_int_vec(h, v, info_tag_str[i].c_str());
-                                                        
+
                         for (uint32_t j=0; j<vals.size(); ++j)
                         {
                             fprintf(out, "%c", j==0?'\t':',');
@@ -459,7 +450,7 @@ class Igor : Program
                     else if (type==BCF_HT_REAL)
                     {
                         std::vector<float> vals = bcf_get_info_flt_vec(h, v, info_tag_str[i].c_str());
-                        
+
                         for (uint32_t j=0; j<vals.size(); ++j)
                         {
                             fprintf(out, "%c", j==0?'\t':',');
@@ -469,7 +460,7 @@ class Igor : Program
                     else if (type==BCF_HT_STR)
                     {
                         std::vector<std::string> vals = bcf_get_info_str_vec(h, v, info_tag_str[i].c_str());
-                       
+
                         for (uint32_t j=0; j<vals.size(); ++j)
                         {
                             fprintf(out, "%c", j==0?'\t':',');
@@ -480,11 +471,11 @@ class Igor : Program
                 else if (vlen == BCF_VL_R)
                 {
                     int32_t no_alleles = bcf_get_n_allele(v);
-                    
+
                     if (type==BCF_HT_INT)
                     {
                         std::vector<int32_t> vals = bcf_get_info_int_vec(h, v, info_tag_str[i].c_str());
-                                                        
+
                         for (uint32_t j=0; j<vals.size(); ++j)
                         {
                             fprintf(out, "%c", j==0?'\t':',');
@@ -494,7 +485,7 @@ class Igor : Program
                     else if (type==BCF_HT_REAL)
                     {
                         std::vector<float> vals = bcf_get_info_flt_vec(h, v, info_tag_str[i].c_str());
-                        
+
                         for (uint32_t j=0; j<vals.size(); ++j)
                         {
                             fprintf(out, "%c", j==0?'\t':',');
@@ -504,7 +495,7 @@ class Igor : Program
                     else if (type==BCF_HT_STR)
                     {
                         std::vector<std::string> vals = bcf_get_info_str_vec(h, v, info_tag_str[i].c_str());
-                       
+
                         for (uint32_t j=0; j<vals.size(); ++j)
                         {
                             fprintf(out, "%c", j==0?'\t':',');
@@ -528,7 +519,6 @@ class Igor : Program
         std::clog << "\n";
         std::clog << "options:     input VCF file        " << input_vcf_file << "\n";
         std::clog << "         [o] output text file      " << output_text_file << "\n";
-        print_boo_op("         [v] print variant         ", print_variant);
         print_strvec("         [u] filter tags           ", filter_tags);
         print_strvec("         [t] info tags             ", info_tags);
         print_int_op("         [i] intervals             ", intervals);
