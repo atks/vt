@@ -71,7 +71,7 @@ class Igor : Program
         //////////////////////////
         try
         {
-            std::string desc = "extracts info fields to a tab delimited file.";
+            std::string desc = "extracts INFO and FILTER fields to a tab delimited file.";
 
             TCLAP::CmdLine cmd(desc, ' ', version);
             VTOutput my; cmd.setOutput(&my);

@@ -28,7 +28,7 @@
  *
  * @hts_file   name of the input file
  */
-TBXOrderedReader::TBXOrderedReader(std::string& hts_file)
+TBXOrderedReader::TBXOrderedReader(std::string& hts_file, bool require_index)
 {
     this->hts_file = hts_file;
     interval_index = 0;
@@ -46,6 +46,14 @@ TBXOrderedReader::TBXOrderedReader(std::string& hts_file)
     {
         index_loaded = true;
     }
+    else
+    {
+        if (require_index)
+        {
+            fprintf(stderr, "[E:%s] index is required but cannot be loaded for %s\n", __FUNCTION__, hts_file.c_str());
+            exit(1);
+        }
+    }    
 
     random_access_enabled = index_loaded;
 };
@@ -56,7 +64,7 @@ TBXOrderedReader::TBXOrderedReader(std::string& hts_file)
  * @hts_file   -  name of the input file
  * @intervals  -  list of intervals, if empty, all records are selected.
  */
-TBXOrderedReader::TBXOrderedReader(std::string& hts_file, std::vector<GenomeInterval>& intervals)
+TBXOrderedReader::TBXOrderedReader(std::string& hts_file, std::vector<GenomeInterval>& intervals, bool require_index)
 {
     this->hts_file = hts_file;
     this->intervals = intervals;
@@ -78,7 +86,7 @@ TBXOrderedReader::TBXOrderedReader(std::string& hts_file, std::vector<GenomeInte
     }
     else
     {
-        if (intervals_present)
+        if (intervals_present || require_index)
         {
             fprintf(stderr, "[E:%s] index cannot be loaded for %s\n", __FUNCTION__, hts_file.c_str());
             exit(1);

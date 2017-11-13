@@ -28,7 +28,7 @@
  */
 OrderedRegionOverlapMatcher::OrderedRegionOverlapMatcher(std::string& file)
 {
-    todr = new TBXOrderedReader(file);
+    todr = new TBXOrderedReader(file, true);
     s = {0,0,0};
     no_regions = 0;
     current_interval.seq = "";

@@ -79,8 +79,9 @@ class TBXOrderedReader
      * Initialize files and intervals.
      *
      * @hts              name of the input file
+     * @require_index
      */
-    TBXOrderedReader(std::string& hts_file);
+    TBXOrderedReader(std::string& hts_file, bool require_index=false);
    
     /**
      * Initialize files and intervals.
@@ -88,7 +89,7 @@ class TBXOrderedReader
      * @hts              name of the input file
      * @intervals        list of intervals, if empty, all records are selected.
      */
-    TBXOrderedReader(std::string& hts_file, std::vector<GenomeInterval>& intervals);
+    TBXOrderedReader(std::string& hts_file, std::vector<GenomeInterval>& intervals, bool require_index=false);
 
     /**
      * Jump to interval. Returns false if not successful.
