@@ -126,7 +126,7 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
                 b = false;
                 return;
             }
-            
+
             if ((left->type&VT_INT))
             {
                 if ((right->type&VT_INT))
@@ -181,7 +181,7 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
                 b = false;
                 return;
             }
-            
+
             if ((left->type&VT_STR) && (right->type&VT_STR))
             {
                 if (debug)
@@ -210,7 +210,7 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
                 b = false;
                 return;
             }
-            
+
             if ((left->type&VT_STR) && (right->type&VT_STR))
             {
                 if (debug)
@@ -233,7 +233,7 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
         else if (type==VT_NE)
         {
             //fprintf(stderr, "[%s:%d %s] check: %s %s: !=\n", __FILE__, __LINE__, __FUNCTION__, type2string(left->type).c_str(), type2string(right->type).c_str());
-            
+
             //if an INFO field is involved and does not exist, then we evaluate as false
             if (!left->value_exists || !right->value_exists)
             {
@@ -286,7 +286,7 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
                 b = false;
                 return;
             }
-            
+
             if ((left->type&VT_INT))
             {
                 if ((right->type&VT_INT))
@@ -332,7 +332,7 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
                 b = false;
                 return;
             }
-            
+
             if ((left->type&VT_INT))
             {
                 if ((right->type&VT_INT))
@@ -377,7 +377,7 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
                 b = false;
                 return;
             }
-            
+
             if ((left->type&VT_INT))
             {
                 if ((right->type&VT_INT))
@@ -422,14 +422,14 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
                 b = false;
                 return;
             }
-            
+
             if ((left->type&VT_INT))
             {
                 if ((right->type&VT_INT))
                 {
                     if (debug)
                         std::cerr << "\tVT_LT "   <<  left->i << "<" << right->i    <<  " \n";
-                        
+
                     b = (left->i<right->i);
                     return;
                 }
@@ -437,7 +437,7 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
                 {
                     if (debug)
                         std::cerr << "\tVT_LT "   <<  left->i << "<" << right->f    <<  " \n";
-                            
+
                     b = (left->i<right->f);
                     return;
                 }
@@ -448,7 +448,7 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
                 {
                     if (debug)
                         std::cerr << "\tVT_LT "   <<  left->f << "<" << right->i    <<  " \n";
-                            
+
                     b = (left->f<right->i);
                     return;
                 }
@@ -456,7 +456,7 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
                 {
                     if (debug)
                         std::cerr << "\tVT_LT "   <<  left->f << "<" << right->f    <<  " \n";
-                            
+
                     b = (left->f<right->f);
                     return;
                 }
@@ -465,7 +465,7 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
             {
                 if (debug)
                         std::cerr << "\tVT_LT "   <<  left->s.s << "<" << right->s.s    <<  " \n";
-                            
+
                 b = strcmp(left->s.s, right->s.s)<0 ? true : false;
                 return;
             }
@@ -542,9 +542,12 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
                 exit(1);
             }
 
-            int32_t info_type = bcf_hdr_id2type(h, BCF_HL_INFO, bcf_hdr_id2int(h, BCF_DT_ID, tag.s));
+            int32_t int_id = bcf_hdr_id2int(h, BCF_DT_ID, tag.s);
+            int32_t info_type = bcf_hdr_id2type(h, BCF_HL_INFO, int_id);
+            var_length = bcf_hdr_id2length(h, BCF_HL_INFO, int_id);
+            number = bcf_hdr_id2number(h, BCF_HL_INFO, int_id);
             bcf_unpack(v, BCF_UN_INFO);
-             
+
             if (info_type==BCF_HT_FLAG)
             {
                 type |= VT_FLG;
@@ -564,20 +567,56 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
             else if (info_type==BCF_HT_INT)
             {
                 type |= VT_INT;
-                int32_t ns = 0;
-                int32_t *is = NULL;
-                if (bcf_get_info_int32(h, v, tag.s, &is, &ns)>0)
-                {
-                    i = is[0];
-                    f = (float)is[0];
-                }
-                else
-                {
-                    b = false;
-                    value_exists = false;
-                }
 
-                if (ns) free(is);
+                if (var_length==BCF_VL_FIXED)
+                {
+                    if (number==1)
+                    {
+                        int32_t ns = 0;
+                        int32_t *is = NULL;
+                        if (bcf_get_info_int32(h, v, tag.s, &is, &ns)>0)
+                        {
+                            i = is[0];
+                            f = (float)is[0];
+                        }
+                        else
+                        {
+                            b = false;
+                            value_exists = false;
+                        }
+
+                        if (ns) free(is);
+                    }
+                    else if (number>1)
+                    {
+//                        std::cerr << "1) updating initial record\n";
+                        int32_t ns = 0;
+                        int32_t *is = NULL;
+                        if (bcf_get_info_int32(h, v, tag.s, &is, &ns)>0)
+                        {
+                            ivec.resize(0);
+                            fvec.resize(0);
+                            for (int32_t i=0; i<ns; ++i)
+                            {
+                                ivec.push_back(is[i]);
+                                fvec.push_back(is[i]);
+                            }
+                            i = is[index-1];
+                            f = (float)is[index-1];
+                        }
+                        else
+                        {
+                            b = false;
+                            value_exists = false;
+                        }
+
+                        if (ns) free(is);
+                    }
+                    else
+                    {
+                        //hmmmmm.....
+                    }
+                }
             }
             else if (info_type==BCF_HT_REAL)
             {
@@ -618,22 +657,64 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
         }
         else if (type==(VT_INFO|VT_INT))
         {
-            int32_t *data = NULL;
-            int32_t n=0;
-
-            if (bcf_get_info_int32(h, v, tag.s, &data, &n)>0)
+//            std::cerr << "2) updating next recordxxx\n";
+            
+            
+//            std::cerr << "\tvar length: " << var_length << "\n";
+            if (var_length==BCF_VL_FIXED)
             {
-                b = true;
-                i = data[0];
-                f = (float) i;
-            }
-            else
-            {
-                b = false;
-                value_exists = false;
-            }
+//                std::cerr << "\t\tnumber: " << number << "\n";
+                if (number==1)
+                {
+                    int32_t n = 0;
+                    int32_t *data = NULL;
+                    if (bcf_get_info_int32(h, v, tag.s, &data, &n)>0)
+                    {
+                        b = true;
+                        i = data[0];
+                        f = (float)data[0];
+                    }
+                    else
+                    {
+                        b = false;
+                        value_exists = false;
+                    }
 
-            if (n) free(data);
+                    if (data) free(data);
+                }
+                else if (number>1)
+                {
+//                    std::cerr << "2) updating next record\n";
+//                        std::cerr << "\t\t\tindex : " << index << "\n";
+                    int32_t n = 0;
+                    int32_t *data = NULL;
+                    if (bcf_get_info_int32(h, v, tag.s, &data, &n)>0)
+                    {
+                        ivec.resize(0);
+                        fvec.resize(0);
+                        for (int32_t i=0; i<n; ++i)
+                        {
+                            ivec.push_back(data[i]);
+                            fvec.push_back(data[i]);
+                        }
+//                        std::cerr << "\t\t\tvalue : " << data[index-1] << "\n";
+                        b = true;
+                        i = data[index-1];
+                        f = (float)data[index-1];
+                    }
+                    else
+                    {
+                        b = false;
+                        value_exists = false;
+                    }
+
+                    if (n) free(data);
+                }
+                else
+                {
+                    //hmmmmm.....
+                }
+            }
         }
         else if (type==(VT_INFO|VT_FLT))
         {
@@ -641,7 +722,7 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
             int32_t n = 0;
 
             if (bcf_get_info_float(h, v, tag.s, &data, &n)>0)
-            {   
+            {
                 b = true;
                 i = (int32_t) data[0];
                 f = data[0];
@@ -708,7 +789,7 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
         {
             if (debug)
                 std::cerr << "\tVARIANT_CONTAINS_N "   <<  variant->contains_N <<  " \n";
-            
+
             bcf_unpack(v, BCF_UN_FLT);
             b = variant->contains_N;
         }
@@ -1049,9 +1130,9 @@ void Filter::parse(const char* exp, bool debug)
             if (!isspace(exp[i]))
             {
                 exp_no_space.append(1, exp[i]);
-            }    
+            }
         }
-        
+
         reset();
         tree = new Node();
         parse(exp_no_space.c_str(), exp_no_space.size(), tree, debug);
@@ -1102,7 +1183,7 @@ bool Filter::apply(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug) //recu
 void Filter::simplify()
 {
 }
-    
+
 /**
  * Resets filter.
  */
@@ -1314,6 +1395,60 @@ bool Filter::is_literal(const char* exp, int32_t len, bool debug)
 }
 
 /**
+ * Detect index width.
+ * e.g. AC[1] => 3
+ * e.g. EVIDENCE[12] => 4
+ *
+ * Populated index with the index queried.
+ */
+int32_t Filter::get_index_width(const char *exp, int32_t n, int32_t *index)
+{
+    if (n<=3) return 0;
+
+    int32_t width = 0;
+    bool end_bracket = false;
+    bool in_digits = false;
+    bool beg_bracket = false;
+    int32_t current_index = 0;
+    int32_t index_weight = 1;
+
+    //check end bracket and digit next to square bracket
+    if (exp[n-1]==']' && exp[n-2]>=48&&exp[n-2]<=57)
+    {
+        in_digits = true;
+        width = 2;
+        current_index += exp[n-2]-48;
+        index_weight *= 10;
+    }
+    else
+    {
+        *index = 0;
+        return 0;
+    }
+
+    //check digits in square brackets
+    for (int32_t i=n-3; i>=0; --i)
+    {
+        //check if digit
+        if (exp[i]>=48&&exp[i]<=57)
+        {
+            //all is good, continue
+            ++width;
+            current_index += (exp[i]-48)*index_weight;
+            index_weight *= 10;
+        }
+        else if (exp[i]=='[')
+        {
+            *index = current_index;
+            return width+1;
+        }
+    }
+
+    *index = 0;
+    return 0;
+}
+
+/**
  * Parse literals.
  */
 void Filter::parse_literal(const char* exp, int32_t len, Node * node, bool debug)
@@ -1366,7 +1501,9 @@ void Filter::parse_literal(const char* exp, int32_t len, Node * node, bool debug
     {
         node->type = VT_INFO;
         exp += 5;
-        kputsn(exp, len-5, &node->tag);
+        //detect index access e.g. AC[1]
+        int32_t index_width = get_index_width(exp, len-5, &node->index);
+        kputsn(exp, len-5-index_width, &node->tag);
         if (debug) std::cerr << "\tis info_op\n";
         return;
     }

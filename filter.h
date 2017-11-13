@@ -89,15 +89,39 @@ class Node
     Node* left;
     Node* right;
 
-    int32_t type;      // data type
-    kstring_t tag; // store the INFO tag of a BCF type
-
+//VT_LOGIC_OP  2048
+//VT_MATH_CMP  4096
+//VT_MATH_OP   8192
+//VT_BCF_OP    16384
+//
+//VT_BOOL     64
+//VT_INT      128
+//VT_FLT      256
+//VT_STR      512
+//#define VT_FLG      1024
+    int32_t type;  // data type
+//BCF_VL_FIXED 0  - implemented this
+//BCF_VL_VAR   1  todo: implement?
+//BCF_VL_A     2  todo: implement
+//BCF_VL_G     3  todo: implement
+//BCF_VL_R     4  todo: implement
+    int32_t var_length;     //variable length
+    int32_t number; //actual length
+    kstring_t tag;  //store the INFO tag of a BCF type
+    int32_t index;  //store index value of interest
+    
     bool value_exists; // if value exists
 
     kstring_t s;   // string value
     bool b;        // boolean value
     int32_t i;     // integer value
     float f;       // float value
+
+    //for cases of fix multiple values
+    std::vector<std::string> svec;  
+    std::vector<bool> bvec; 
+    std::vector<int32_t> ivec;    
+    std::vector<float> fvec;      
 
     PERLregex pregex;
     bool regex_set;
@@ -189,6 +213,15 @@ class Filter
      * Checks is expression is bracketed.
      */
     bool is_bracketed_expression(const char* exp, int32_t len, bool debug);
+
+    /**
+     * Detect index width. 
+     * e.g. AC[1] => 3
+     * e.g. EVIDENCE[12] => 4
+     *
+     * Populated index with the index queried.
+     */
+    int32_t get_index_width(const char *exp, int32_t n, int32_t *index);
 
     /**
      * Parse literals.
