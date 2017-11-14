@@ -56,6 +56,7 @@ SOURCES = ahmm\
 		ghmm\
 		hts_utils\
 		hfilter\
+		indel_annotator\
 		indel_genotyping_record\
 		index\
 		info2tab\
