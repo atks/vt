@@ -472,8 +472,11 @@ class Igor : Program
 
             if (!seenM)
             {
-                std::cerr << "NO! M issue\n";
-                bam_print_key_values(odr->hdr, s);
+//                if (debug>=3)
+//                {
+//                    std::cerr << "NO! M issue\n";
+//                    bam_print_key_values(odr->hdr, s);
+//                }
                 ++no_unaligned_cigars;
             }
         }
@@ -504,34 +507,6 @@ class Igor : Program
      */
     float compute_snp_variant_score(std::vector<uint32_t>& REF_Q, std::vector<uint32_t>& ALT_Q)
     {
-//        double pRR = 1;
-//        double pRA = 1;
-//        double pAA = 1;
-//        double p;
-//        double theta = 0.001;
-//
-//        for (uint32_t i=0; i<REF_Q.size(); ++i)
-//        {
-//            p = lt.pl2prob(REF_Q[i]);
-//            pRR *= 1-p;
-//            pRA *= 0.5;
-//            pAA *= p;
-//        }
-//
-//        for (uint32_t i=0; i<ALT_Q.size(); ++i)
-//        {
-//            p = lt.pl2prob(ALT_Q[i]);
-//            pRR *= p;
-//            pRA *= 0.5;
-//            pAA *= 1-p;
-//        }
-//
-//        double ln_lr = log10(pRR/((1-theta)*pRR+0.33*theta*pRA+0.67*theta*pAA));
-//        ln_lr = ln_lr>0 ? 0 : ln_lr;
-//
-//        return (float) (-10 * ln_lr);
-        
-        ///////
         float lg_theta = -3; // theta = 0.001;
         float lg_one_minus_theta = -0.0004345118; // 1-theta = 0.999;
         float lg_0_5 = -0.30103;
@@ -548,14 +523,14 @@ class Igor : Program
             lg_pRA += lg_0_5;
             lg_pAA += REF_Q[i]/-10.0;
         }
-        
+
         for (uint32_t i=0; i<ALT_Q.size(); ++i)
         {
             lg_pRR += ALT_Q[i]/-10.0;
             lg_pRA += lg_0_5;
             lg_pAA += lt.pl2pl_one_minus_p(ALT_Q[i])/-10.0;
         }
-        
+
         float lg_lr = lg_one_minus_theta + lg_pRR;
         lg_lr = lt.log10sum(lg_lr, lg_one_third+lg_theta+lg_pRA);
         lg_lr = lt.log10sum(lg_lr, lg_two_thirds+lg_theta+lg_pAA);
@@ -564,7 +539,7 @@ class Igor : Program
         if (lg_lr>0)
         {
             return 0;
-        }    
+        }
         else
         {
             return -10 * lg_lr;
@@ -581,7 +556,7 @@ class Igor : Program
         float ln_one_third = -1.098612;
         float ln_two_thirds = -0.4054651;
         float ln_0_001 = -6.907755;   //equivalent to QUAL=30
-        float ln_0_999 = -0.0010005; 
+        float ln_0_999 = -0.0010005;
         float ln_0_5 = -0.6931472;
 
         float ln_pRR = (n-e) * ln_0_999 + e * ln_0_001;
@@ -596,7 +571,7 @@ class Igor : Program
         if (ln_lr>0)
         {
             return 0;
-        }    
+        }
         else
         {
             return -10 * ln_lr * 0.4342945;
@@ -608,15 +583,15 @@ class Igor : Program
      */
     bool contains_non_acgt_bases(std::string& seq)
     {
-        for (uint32_t i=0; i<seq.size(); ++i) 
+        for (uint32_t i=0; i<seq.size(); ++i)
         {
             char base = seq.at(i);
             if (base!='A' && base!='C' && base!='G' && base!='T')
             {
                 return true;
-            }    
+            }
         }
-        
+
         return false;
     }
 
@@ -627,13 +602,14 @@ class Igor : Program
     {
         int32_t gts[2] = {0x0002,0x0004};
 
-        if (p.R!='A' && p.R!='C' && p.R!='G' && p.R!='T') 
+        if (p.R!='A' && p.R!='C' && p.R!='G' && p.R!='T')
         {
             return;
         }
 
-        if (p.X[1]+p.X[2]+p.X[4]+p.X[8]+p.X[15]>p.E+p.N ||
-           p.D.size()+p.I.size()>p.N)
+        if (debug>=3 &&
+            (p.X[1]+p.X[2]+p.X[4]+p.X[8]+p.X[15]>p.E+p.N ||
+             p.D.size()+p.I.size()>p.N))
         {
             std::cerr << "*******************\n";
             std::cerr << "Evidence count ISSUES\n";
@@ -1510,11 +1486,11 @@ class Igor : Program
             if (debug>=3) pileup.print_state();
             ++no_passed_reads;
 
-            //if (no_passed_reads==1) break;
-
             if ((no_reads & 0x0000FFFF) == 0)
             {
-                std::cerr << pileup.get_chrom() << ":" << pileup.get_gbeg1() << "\n";
+                fprintf(stderr, "[I:%s:%d %s] processing pileup at %s:%d\n",
+                               __FILE__, __LINE__, __FUNCTION__,
+                               pileup.get_chrom().c_str(), pileup.get_gbeg1());
             }
         }
         flush();
