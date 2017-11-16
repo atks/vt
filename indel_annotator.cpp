@@ -59,7 +59,7 @@ IndelAnnotator::~IndelAnnotator()
  *       - f for fuzzy alignment annotation
  *       -
  */
-void IndelAnnotator::annotate(Variant& variant, int32_t amode)
+void IndelAnnotator::annotate(Variant& variant)
 {
     VNTR& vntr = variant.vntr;
 
@@ -103,6 +103,10 @@ void IndelAnnotator::annotate(Variant& variant, int32_t amode)
         
         if (debug) std::cerr << "============================================\n";
         if (debug) std::cerr << "ANNOTATING INDEL\n";
+
+
+
+
 
         //1. selects candidate region by fuzzy left and right alignment
         cre->pick_candidate_region(variant, EXACT_LEFT_RIGHT_ALIGNMENT, EXACT);

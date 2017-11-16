@@ -11,6 +11,7 @@ SOURCES = ahmm\
 		annotate_1000g\
 		annotate_dbsnp_rsid\
 		annotate_indels\
+		annotate_indels2\
 		annotate_regions\
 		annotate_variants\
 		annotate_vntrs\

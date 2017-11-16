@@ -118,7 +118,6 @@ class IndelAnnotator
     //finite state machine
     int32_t state;
 
-
     /**
      * Constructor.
      */
@@ -131,6 +130,7 @@ class IndelAnnotator
 
     /**
      * Annotates VNTR characteristics.
+     *
      * @mode
      *   e - determine by exact alignment
      *   f - determine by fuzzy alignment
@@ -138,7 +138,7 @@ class IndelAnnotator
      *   h - using HMMs
      *   x - integrated models
      */
-    void annotate(Variant& variant, int32_t amode);
+    void annotate(Variant& variant);
 };
 
 #endif

@@ -1137,7 +1137,7 @@ void Filter::parse(const char* exp, bool debug)
         tree = new Node();
         parse(exp_no_space.c_str(), exp_no_space.size(), tree, debug);
 
-        if (!tree->type&VT_BOOL)
+        if (!(tree->type&VT_BOOL))
         {
             fprintf(stderr, "[%s:%d %s] filter expression not boolean %s\n", __FILE__, __LINE__, __FUNCTION__, exp);
             exit(1);
