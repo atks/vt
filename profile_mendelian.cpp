@@ -26,6 +26,18 @@
 namespace
 {
 
+class HetStats
+{
+    public:
+
+    std::string sample_id;
+    int32_t no_non_pseudoautosomal_variants;
+    int32_t no_het;
+    int32_t no_hom_ref;
+    int32_t no_hom_alt;
+    float heterozygosity;
+};
+
 class Igor : Program
 {
     public:
@@ -84,6 +96,9 @@ class Igor : Program
 
     //for multiallelics
     std::vector<std::vector<std::vector<int32_t> > > trios_multiallelic_genotypes;
+
+    //for male non pseudoautosomal variants
+    std::vector<HetStats> hetStats;
 
     /////////
     //tools//
