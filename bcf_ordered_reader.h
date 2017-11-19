@@ -72,6 +72,10 @@ class BCFOrderedReader
     bool index_loaded;
     bool random_access_enabled;
 
+    //for checks
+    int32_t last_rid;
+    int32_t last_pos1;
+    
     //list of intervals
     std::vector<GenomeInterval> intervals;
     uint32_t interval_index;

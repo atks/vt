@@ -38,6 +38,9 @@ BCFOrderedReader::BCFOrderedReader(std::string file_name, std::vector<GenomeInte
     tbx = NULL;
     itr = NULL;
 
+    last_rid = -1;
+    last_pos1 = 0;
+
     this->intervals = intervals;
     interval_index = 0;
     index_loaded = false;
@@ -257,6 +260,19 @@ bool BCFOrderedReader::read(bcf1_t *v)
     {
         if (bcf_read(file, hdr, v)==0)
         {
+            //checks for orderedness
+            //warns about unorderedness
+//            if (v->rid < last_rid || 
+//               (v->rid == last_rid && (v->pos+1)<last_pos1))
+//            {
+//                fprintf(stderr, "[W:%s] %s is unordered.\n", __FUNCTION__, file_name.c_str());
+//            }
+//            else
+//            {
+//                last_rid = bcf_get_rid(v);
+//                last_pos1 = bcf_get_pos1(v);
+//            }    
+            
             return true;
         }
         else

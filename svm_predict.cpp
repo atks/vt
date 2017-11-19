@@ -72,7 +72,7 @@ class Igor : Program
         //////////////////////////
         try
         {
-            std::string desc = "profile SNPs";
+            std::string desc = "svm_predict";
 
             version = "0.5";
             TCLAP::CmdLine cmd(desc, ' ', version);

@@ -198,6 +198,11 @@ Extracts only the naive genotypes based on best guess genotypes.";
         bcf_hdr_append(odw->hdr, "##FORMAT=<ID=ADR,Number=A,Type=Integer,Description=\"Allele Depth (Reverse strand)\">");
         bcf_hdr_append(odw->hdr, "##FORMAT=<ID=DP,Number=1,Type=Integer,Description=\"Depth\">");
 
+        //compute following stats for SNP filtering
+        //update from topmed freeze 3 calling pipeline
+        
+
+
         //VNTR
         bcf_hdr_append(odw->hdr, "##FORMAT=<ID=CG,Number=.,Type=Float,Description=\"Repeat count genotype\">");
 
