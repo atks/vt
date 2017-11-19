@@ -30,8 +30,9 @@ class HetStats
 {
     public:
 
-    std::string sample_id;
-    int32_t no_non_pseudoautosomal_variants;
+    std::string individual_id;
+    int32_t individual_index;
+    int32_t no_non_pseudoautosomal_variant_sites;
     int32_t no_het;
     int32_t no_hom_ref;
     int32_t no_hom_alt;
@@ -97,8 +98,9 @@ class Igor : Program
     //for multiallelics
     std::vector<std::vector<std::vector<int32_t> > > trios_multiallelic_genotypes;
 
-    //for male non pseudoautosomal variants
-    std::vector<HetStats> hetStats;
+    //for non pseudoautosomal variants
+    std::vector<HetStats> males;
+    std::vector<HetStats> females;
 
     /////////
     //tools//
@@ -170,7 +172,7 @@ class Igor : Program
         //output VCF file        //
         ///////////////////////////
         if (output_sites)
-        {    
+        {
             odw = new BCFOrderedWriter(output_vcf_file, 0);
             bcf_hdr_t *hdr = bcf_hdr_subset(odr->hdr, 0, 0, 0);
             odw->set_hdr(hdr);
@@ -180,10 +182,16 @@ class Igor : Program
             bcf_hdr_append(odw->hdr, "##INFO=<ID=MEN_TOT,Number=1,Type=Integer,Description=\"No. of mendelian sample-site pairs.\">");
             bcf_hdr_append(odw->hdr, "##INFO=<ID=DUP_DISC,Number=1,Type=Integer,Description=\"No. of sites with duplicate discordance.\">");
             bcf_hdr_append(odw->hdr, "##INFO=<ID=DUP_TOT,Number=1,Type=Integer,Description=\"No. of duplicates sample-site pairs.\">");
+            bcf_hdr_append(odw->hdr, "##INFO=<ID=NPAR_M_HOMREF,Number=1,Type=Integer,Description=\"No. of non pseudoautosomal region variants with homozygous reference genotypes for males.\">");
+            bcf_hdr_append(odw->hdr, "##INFO=<ID=NPAR_M_HET,Number=1,Type=Integer,Description=\"No. of non pseudoautosomal region variants with heterozygous genotypes for males.\">");
+            bcf_hdr_append(odw->hdr, "##INFO=<ID=NPAR_M_HOMALT,Number=1,Type=Integer,Description=\"No. of non pseudoautosomal region variants with homozygous alternate genotypes for males.\">");
+            bcf_hdr_append(odw->hdr, "##INFO=<ID=NPAR_F_HOMREF,Number=1,Type=Integer,Description=\"No. of non pseudoautosomal region variants with homozygous reference genotypes for females.\">");
+            bcf_hdr_append(odw->hdr, "##INFO=<ID=NPAR_F_HET,Number=1,Type=Integer,Description=\"No. of non pseudoautosomal region variants with heterozygous genotypes for females.\">");
+            bcf_hdr_append(odw->hdr, "##INFO=<ID=NPAR_F_HOMALT,Number=1,Type=Integer,Description=\"No. of non pseudoautosomal region variants with homozygous alternate genotypes for females.\">");
             bcf_hdr_sync(odw->hdr);
             odw->write_hdr();
         }
-        
+
         ///////////////////////////
         //ped file initialization//
         ///////////////////////////
@@ -295,6 +303,24 @@ class Igor : Program
                     }
                 }
             }
+
+            HetStats stats;
+            stats.individual_id = recs[i].individual[0];
+            stats.individual_index = bcf_hdr_id2int(h, BCF_DT_SAMPLE, recs[i].individual[0].c_str());;
+            stats.no_non_pseudoautosomal_variant_sites = 0;
+            stats.no_het = 0;
+            stats.no_hom_ref = 0;
+            stats.no_hom_alt = 0;
+            stats.heterozygosity = 0;
+
+            if (recs[i].is_female())
+            {
+                females.push_back(stats);
+            }
+            else
+            {
+                males.push_back(stats);
+            }
         }
 
         no_trios = trios.size();
@@ -389,12 +415,12 @@ class Igor : Program
                             {
                                 ++trio_genotypes[f1+f2][m1+m2][c1+c2];
                                 variant_used = true;
-                                
+
                                 if (is_mendelian_discordant(c1, c2, f1, f2, m1, m2))
                                 {
                                     ++no_mendelian_discordance;
                                 }
-                                
+
                                 if (!(c1+c2+f1+f2+m1+m2==0) && !(f1==1&&f2==1&&m1==1&&m2==1))
                                 {
                                     ++no_mendelian_informative_sites;
@@ -407,13 +433,13 @@ class Igor : Program
                     {
                         ++no_biallelic_variants;
                     }
-                    
+
                     if (output_sites)
-                    {    
+                    {
 //                        bcf_set_n_sample(v, 0);
-                        bcf_update_info_int32(odw->hdr, v, "MEN_DISC", &no_mendelian_discordance, 1); 
-                        bcf_update_info_int32(odw->hdr, v, "MEN_INF", &no_mendelian_informative_sites, 1); 
-                        bcf_update_info_int32(odw->hdr, v, "MEN_TOT", &no_mendelian_sample_site_pairs, 1); 
+                        bcf_update_info_int32(odw->hdr, v, "MEN_DISC", &no_mendelian_discordance, 1);
+                        bcf_update_info_int32(odw->hdr, v, "MEN_INF", &no_mendelian_informative_sites, 1);
+                        bcf_update_info_int32(odw->hdr, v, "MEN_TOT", &no_mendelian_sample_site_pairs, 1);
                     }
 
                     ///////////////////////
@@ -423,7 +449,7 @@ class Igor : Program
                     {
                         int32_t no_duplicate_discordance = 0;
                         int32_t no_duplicate_sample_site_pairs = 0;
-                        
+
                         for (int32_t i=0; i<dups.size(); ++i)
                         {
                             int32_t j = dups[i].individual_index;
@@ -446,25 +472,25 @@ class Igor : Program
                             {
                                 ++duplicate_genotypes[a1+a2][b1+b2];
                                 variant_used = true;
-                                
+
                                 if (is_duplicate_discordant(a1, a2, b1, b2))
-                                {    
+                                {
                                     ++no_duplicate_discordance;
                                 }
                                 ++no_duplicate_sample_site_pairs;
                             }
                         }
                         ++no_biallelic_variants_dups;
-                        
+
                         if (output_sites)
-                        {    
-                            bcf_update_info_int32(odw->hdr, v, "DUP_DISC", &no_duplicate_discordance, 1); 
-                            bcf_update_info_int32(odw->hdr, v, "DUP_TOT", &no_duplicate_sample_site_pairs, 1); 
+                        {
+                            bcf_update_info_int32(odw->hdr, v, "DUP_DISC", &no_duplicate_discordance, 1);
+                            bcf_update_info_int32(odw->hdr, v, "DUP_TOT", &no_duplicate_sample_site_pairs, 1);
                         }
                     }// end of iterating through dups
-                    
+
                     if (output_sites)
-                    { 
+                    {
                         bcf_subset(odw->hdr, v, 0, 0);
                         odw->write(v);
                     }
@@ -684,13 +710,111 @@ class Igor : Program
                 if (variant_used) ++no_multiallelic_variants;
 
             }
+
+            //ignores actual ploidy
+            //this analysis assumes that the
+            //sites are of ploidy one and that
+            //the genotyper for that site assumes
+            //that it is a diploid.
+            //we want to cosider multiallelics here too.
+            if (bcf_get_info_flag(odr->hdr, v, "PSEUDOAUTOSOMAL", 0, 0))
+            {
+                //extract genotype array
+                int k = bcf_get_genotypes(h, v, &gts, &n);
+                int r = bcf_get_format_int32(h, v, "DP", &dps, &n_dp);
+
+                if (r==-1)
+                {
+                    r = bcf_get_format_int32(h, v, "NR", &dps, &n_dp);
+
+                    if (r==-1)
+                    {
+                        for (uint32_t i=0; i<nsample; ++i)
+                        {
+                            dps[i] = min_depth;
+                        }
+                    }
+                }
+
+                //site statistics
+                int32_t no_npar_male_homref = 0;
+                int32_t no_npar_male_het = 0;
+                int32_t no_npar_male_homalt = 0;
+                int32_t no_npar_female_homref = 0;
+                int32_t no_npar_female_het = 0;
+                int32_t no_npar_female_homalt = 0;
+                
+                for (int32_t i=0; i<males.size(); ++i)
+                {
+                    int32_t j = males[i].individual_index;
+                    int32_t j1 = bcf_gt_allele(gts[(j<<1)]);
+                    int32_t j2 = bcf_gt_allele(gts[(j<<1)+1]);
+                    int32_t min_dp = dps[j]<min_dp ? dps[j] : min_dp;
+
+                    if (j1!=-1 && j2!=-1)
+                    {
+                        if (j1+j2==0)
+                        {
+                            ++males[i].no_hom_ref;
+                            ++no_npar_male_homref;
+                        }
+                        else if (j1!=j2)
+                        {
+                            ++males[i].no_het;
+                            ++no_npar_male_het;
+                        }
+                        else if (j1==j2)
+                        {
+                            ++males[i].no_hom_alt;
+                            ++no_npar_male_homalt;
+                        }
+                    }
+                }
+                
+                for (int32_t i=0; i<females.size(); ++i)
+                {
+                    int32_t j = females[i].individual_index;
+                    int32_t j1 = bcf_gt_allele(gts[(j<<1)]);
+                    int32_t j2 = bcf_gt_allele(gts[(j<<1)+1]);
+                    int32_t min_dp = dps[j]<min_dp ? dps[j] : min_dp;
+
+                    if (j1!=-1 && j2!=-1)
+                    {
+                        if (j1+j2==0)
+                        {
+                            ++females[i].no_hom_ref;
+                            ++no_npar_female_homref;
+                        }
+                        else if (j1!=j2)
+                        {
+                            ++females[i].no_het;
+                            ++no_npar_female_het;
+                        }
+                        else if (j1==j2)
+                        {
+                            ++females[i].no_hom_alt;
+                            ++no_npar_female_homalt;
+                        }
+                    }
+                }
+                
+                if (output_sites)
+                {
+                    bcf_update_info_int32(odw->hdr, v, "NPAR_M_HOMREF", &no_npar_male_homref, 1);
+                    bcf_update_info_int32(odw->hdr, v, "NPAR_M_HET", &no_npar_male_het, 1);
+                    bcf_update_info_int32(odw->hdr, v, "NPAR_M_HOMALT", &no_npar_male_homalt, 1);            
+                    bcf_update_info_int32(odw->hdr, v, "NPAR_F_HOMREF", &no_npar_male_homref, 1);
+                    bcf_update_info_int32(odw->hdr, v, "NPAR_F_HET", &no_npar_male_het, 1);
+                    bcf_update_info_int32(odw->hdr, v, "NPAR_F_HOMALT", &no_npar_male_homalt, 1);            
+                }
+            }
         }
 
         free(gts);
         if (dps) free(dps);
         odr->close();
         if (output_sites)
-        {    
+        {
             odw->close();
         }
 
@@ -720,7 +844,7 @@ class Igor : Program
     {
         return !((a1==b1&&a2==b2) || (a1==b2||a2==b1));
     }
-                                        
+
     float get_error_rate(int32_t gt[3][3][3], int32_t f, int32_t m, int32_t collapse)
     {
         if (collapse==-1) //ALL
@@ -1307,6 +1431,29 @@ class Igor : Program
         fprintf(stderr, "\n");
     };
 
+    void print_nonpseudoautosomal_sites_stats()
+    {
+        if (no_dups==0 || no_biallelic_variants==0) return;
+
+        //average site heterozygosty for males
+        //average site het for females
+        //hom ref stats
+        //hom alt stats
+
+        fprintf(stderr, "\n");
+        fprintf(stderr, "     Non pseudo autosomal (Biallelics)");
+        fprintf(stderr, "\n");
+        fprintf(stderr, "                                     Duplicate\n");
+        fprintf(stderr, "     Individual            Average   Standard deviation  Max Min\n");
+        fprintf(stderr, "     Male Heterozygosity  %10d  %10d   %10d   %6.2f     \n",
+                                duplicate_genotypes[0][0],
+                                duplicate_genotypes[0][1],
+                                duplicate_genotypes[0][2],
+                                get_dups_error_rate(duplicate_genotypes, 0, -1));
+        fprintf(stderr, "\n");
+        fprintf(stderr, "\n");
+    };
+    
     ~Igor()
     {
     };

@@ -60,6 +60,16 @@ class PEDRecord
     bool is_duplicated();
 
     /**
+     * Returns true if individual is male.
+     */
+    bool is_male();
+
+    /**
+     * Returns true if individual is female.
+     */
+    bool is_female();
+    
+    /**
      * Prints the contents of this record.
      */
     void print();

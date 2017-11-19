@@ -53,6 +53,22 @@ bool PEDRecord::is_duplicated()
 };
 
 /**
+ * Returns true if individual is male.
+ */
+bool PEDRecord::is_male()
+{
+    return individual_sex==PED_MALE;
+};
+
+/**
+ * Returns true if individual is male.
+ */
+bool PEDRecord::is_female()
+{
+    return individual_sex==PED_FEMALE;
+};
+
+/**
  * Prints the contents of this record.
  */
 void PEDRecord::print()
