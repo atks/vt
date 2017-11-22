@@ -47,10 +47,11 @@ class Igor : Program
     std::string REGIONS_LEFT_TAG_DESC;
     std::string REGIONS_RIGHT_TAG;
     std::string REGIONS_RIGHT_TAG_DESC;
-    uint32_t left_window; 
+    uint32_t left_window;
     uint32_t right_window;
+    bool without_regions;
     bool use_bed;
-    
+
     ///////
     //i/o//
     ///////
@@ -63,7 +64,7 @@ class Igor : Program
     std::vector<std::string> fexps;
     Filter filter;
     bool filter_exists;
-    
+
     /////////
     //stats//
     /////////
@@ -99,6 +100,7 @@ class Igor : Program
             TCLAP::ValueArg<std::string> arg_fexp("f", "f", "filter expression []", false, "", "str", cmd);
             TCLAP::ValueArg<uint32_t> arg_left_window("l", "l", "left window size for overlap []", false, 0, "int", cmd);
             TCLAP::ValueArg<uint32_t> arg_right_window("r", "r", "right window size for overlap []", false, 0, "int", cmd);
+            TCLAP::SwitchArg arg_without_regions("w", "w", "outside of (without) regions", cmd, false);
             TCLAP::UnlabeledValueArg<std::string> arg_input_vcf_file("<in.vcf>", "input VCF file", true, "","file", cmd);
 
             cmd.parse(argc, argv);
@@ -110,10 +112,11 @@ class Igor : Program
             regions_file = arg_regions_file.getValue();
             left_window = arg_left_window.getValue();
             right_window = arg_right_window.getValue();
+            without_regions = arg_without_regions.getValue();
             REGIONS_TAG = arg_REGIONS_TAG.getValue();
             REGIONS_TAG_DESC = arg_REGIONS_TAG_DESC.getValue();
-            REGIONS_LEFT_TAG = REGIONS_TAG + "_LEFT";        
-            REGIONS_RIGHT_TAG = REGIONS_TAG + "_RIGHT";        
+            REGIONS_LEFT_TAG = REGIONS_TAG + "_LEFT";
+            REGIONS_RIGHT_TAG = REGIONS_TAG + "_RIGHT";
         }
         catch (TCLAP::ArgException &e)
         {
@@ -145,23 +148,23 @@ class Igor : Program
             std::string hrec = "##INFO=<ID=" + REGIONS_RIGHT_TAG + ",Number=0,Type=Flag,Description=\"" + REGIONS_TAG_DESC + " (Right window)\">";
             bcf_hdr_append(odw->hdr, hrec.c_str());
         }
-        
+
         /////////////////////////
         //filter initialization//
         /////////////////////////
         filter.parse(fexps[0].c_str(), false);
         filter_exists = fexps[0]=="" ? false : true;
-            
+
         ///////////////////////
         //tool initialization//
         ///////////////////////
         if (str_ends_with(regions_file, ".bed") || str_ends_with(regions_file, ".bed.gz"))
-        {    
+        {
             use_bed = true;
             orom_regions = new OrderedRegionOverlapMatcher(regions_file);
         }
         else if (str_ends_with(regions_file, ".vcf") || str_ends_with(regions_file, ".vcf.gz") ||  str_ends_with(regions_file, ".bcf"))
-        {    
+        {
             use_bed = false;
             obom_regions = new OrderedBCFOverlapMatcher(regions_file, intervals, fexps[1]);
         }
@@ -170,7 +173,7 @@ class Igor : Program
             fprintf(stderr, "[%s:%d %s] Need to at least specify either a bed or bcf file\n", __FILE__, __LINE__, __FUNCTION__);
             exit(1);
         }
-        
+
         ////////////////////////
         //stats initialization//
         ////////////////////////
@@ -186,9 +189,10 @@ class Igor : Program
         std::clog << "         [o] output VCF file         " << output_vcf_file << "\n";
         print_str_op("         [f] filter 1                ", fexps[0]);
         print_str_op("             filter 2                ", fexps[1]);
-        print_str_op("         [t] region INFO tag         ", REGIONS_TAG);    
-        print_str_op("         [b] region INFO description ", REGIONS_TAG_DESC);
-        print_str_op("         [m] regions file            ", regions_file);
+        print_str_op("         [t] region INFO tag         ", REGIONS_TAG);
+        print_str_op("         [d] region INFO description ", REGIONS_TAG_DESC);
+        print_str_op("         [b] regions file            ", regions_file);
+        print_boo_op("         [w] without regions         ", without_regions);
         print_num_op("         [l] left window             ", left_window);
         print_num_op("         [r] right window            ", right_window);
         print_int_op("         [i] intervals               ", intervals);
@@ -222,38 +226,52 @@ class Igor : Program
                     continue;
                 }
             }
-           
+
             std::string chrom = bcf_get_chrom(odr->hdr,v);
             int32_t beg1 = bcf_get_pos1(v);
             int32_t end1 = bcf_get_end1(v);
 
             if (use_bed)
             {
-                if (orom_regions->overlaps_with(chrom, beg1-left_window, end1+right_window))
+                bool overlaps = orom_regions->overlaps_with(chrom, beg1-left_window, end1+right_window);
+
+                if (!without_regions && overlaps)
                 {
                     if (left_window+right_window)
-                    {    
+                    {
                         std::vector<Interval>& regs = orom_regions->overlapping_regions;
                         for (int32_t i=0; i<regs.size(); ++i)
                         {
                             if (beg1>=regs[i].beg1-left_window && beg1<=regs[i].beg1+right_window)
                             {
                                 bcf_update_info_flag(odr->hdr, v, REGIONS_LEFT_TAG.c_str(), "", 1);
-                            }    
+                            }
                             else if (end1>=regs[i].end1-right_window && end1<=regs[i].end1+right_window)
                             {
                                 bcf_update_info_flag(odr->hdr, v, REGIONS_RIGHT_TAG.c_str(), "", 1);
                             }
                         }
-                    }                    
-                    
+                    }
+
+                    bcf_update_info_flag(odr->hdr, v, REGIONS_TAG.c_str(), "", 1);
+                    ++no_variants_annotated;
+                }
+                else if (without_regions && !overlaps)
+                {
                     bcf_update_info_flag(odr->hdr, v, REGIONS_TAG.c_str(), "", 1);
                     ++no_variants_annotated;
                 }
             }
             else
             {
-                if (obom_regions->overlaps_with(chrom, beg1-left_window, end1+right_window))
+                bool overlaps = orom_regions->overlaps_with(chrom, beg1-left_window, end1+right_window);
+
+                if (!without_regions && overlaps)
+                {
+                    bcf_update_info_flag(odr->hdr, v, REGIONS_TAG.c_str(), "", 1);
+                    ++no_variants_annotated;
+                }
+                else if (without_regions && !overlaps)
                 {
                     bcf_update_info_flag(odr->hdr, v, REGIONS_TAG.c_str(), "", 1);
                     ++no_variants_annotated;

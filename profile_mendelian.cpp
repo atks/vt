@@ -328,6 +328,8 @@ class Igor : Program
 
         std::cerr << "No. of trios detected: " << trios.size() << "\n";
         std::cerr << "No. of duplicates detected: " << dups.size() << "\n";
+        std::cerr << "No. of males detected: " << males.size() << "\n";
+        std::cerr << "No. of females detected: " << females.size() << "\n";
 
         int32_t missing = 0;
         int32_t mendel_homalt_err = 0;
