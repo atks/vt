@@ -39,7 +39,7 @@ class Igor : Program
     std::string output_vcf_file;
     std::vector<GenomeInterval> intervals;
     std::string interval_list;
-    std::string arg_sample_list;
+    std::string sample_list_file;
     char** samples;
     int32_t *imap;
     int32_t nsamples;
@@ -86,7 +86,7 @@ class Igor : Program
             cmd.setOutput(&my);
             TCLAP::ValueArg<std::string> arg_intervals("i", "intervals", "Intervals", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_interval_list("I", "interval-list", "file containing list of intervals", false, "", "file", cmd);
-            TCLAP::ValueArg<std::string> arg_sample_list("s", "s", "file containing list of samples []", true, "", "file", cmd);
+            TCLAP::ValueArg<std::string> arg_sample_list_file("s", "s", "file containing list of samples []", true, "", "file", cmd);
             TCLAP::ValueArg<std::string> arg_fexp("f", "f", "filter expression []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_output_vcf_file("o", "o", "output VCF/VCF.GZ/BCF file [-]", false, "-", "str", cmd);
             TCLAP::UnlabeledValueArg<std::string> arg_input_vcf_file("<in.vcf>", "input VCF file", true, "","file", cmd);
@@ -95,7 +95,8 @@ class Igor : Program
 
             input_vcf_file = arg_input_vcf_file.getValue();
             output_vcf_file = arg_output_vcf_file.getValue();
-            samples = read_sample_list(nsamples, arg_sample_list.getValue());
+            sample_list_file = arg_sample_list_file.getValue();
+            samples = read_sample_list(nsamples, sample_list_file);
             parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
             fexp = arg_fexp.getValue();
         }
@@ -114,6 +115,7 @@ class Igor : Program
         odr = new BCFOrderedReader(input_vcf_file, intervals);
         odw = new BCFOrderedWriter(output_vcf_file);
 
+        imap = NULL;
         imap = (int32_t*) malloc(sizeof(int32_t)*nsamples);
         odw->link_hdr(bcf_hdr_subset(odr->hdr, nsamples, samples, imap));
 
@@ -142,6 +144,18 @@ class Igor : Program
 
     void subset()
     {
+        if (nsamples==0)
+        {    
+            fprintf(stderr, "[%s:%d %s] No samples read from sample file %s\n", __FILE__, __LINE__, __FUNCTION__, sample_list_file.c_str());
+            exit(1);
+        }
+        
+        if (no_subset_samples==0)
+        {
+            fprintf(stderr, "[%s:%d %s] No common samples between sample list and VCF file\n", __FILE__, __LINE__, __FUNCTION__);
+            exit(1);
+        }
+        
         bcf1_t *v = odw->get_bcf1_from_pool();
         bcf_hdr_t *h = odr->hdr;
         Variant variant;
@@ -164,47 +178,44 @@ class Igor : Program
                 }
             }
 
-            if (no_subset_samples)
+            bcf_subset(odw->hdr, v, nsamples, imap);
+
+            //update AC
+            bcf_unpack(v, BCF_UN_ALL);
+            int32_t ploidy = bcf_get_genotypes(odw->hdr, v, &gts, &n)/no_subset_samples;
+            int32_t n_allele = bcf_get_n_allele(v);
+
+            int32_t g[ploidy];
+            for (int32_t i=0; i<ploidy; ++i) g[i]=0;
+            int32_t AC[n_allele];
+            for (int32_t i=0; i<n_allele; ++i) AC[i]=0;
+            int32_t AN=0;
+
+            for (int32_t i=0; i<no_subset_samples; ++i)
             {
-                bcf_subset(odw->hdr, v, nsamples, imap);
-
-                //update AC
-                bcf_unpack(v, BCF_UN_ALL);
-                int32_t ploidy = bcf_get_genotypes(odw->hdr, v, &gts, &n)/no_subset_samples;
-                int32_t n_allele = bcf_get_n_allele(v);
-
-                int32_t g[ploidy];
-                for (int32_t i=0; i<ploidy; ++i) g[i]=0;
-                int32_t AC[n_allele];
-                for (int32_t i=0; i<n_allele; ++i) AC[i]=0;
-                int32_t AN=0;
-
-                for (int32_t i=0; i<no_subset_samples; ++i)
+                for (int32_t j=0; j<ploidy; ++j)
                 {
-                    for (int32_t j=0; j<ploidy; ++j)
-                    {
-                        g[j] = bcf_gt_allele(gts[i*ploidy+j]);
+                    g[j] = bcf_gt_allele(gts[i*ploidy+j]);
 
-                        if (g[j]>=0)
-                        {
-                            ++AC[g[j]];
-                            ++AN;
-                        }
+                    if (g[j]>=0)
+                    {
+                        ++AC[g[j]];
+                        ++AN;
                     }
                 }
-
-                if (AC[0]<AN)
-                {
-                    int32_t* AC_PTR = &AC[1];
-                    bcf_update_info_int32(odw->hdr,v,"AC",AC_PTR,n_allele-1);
-                    bcf_update_info_int32(odw->hdr,v,"AN",&AN,1);
-                    odw->write(v);
-                    ++no_subset_variants;
-                }
-
-                //check if the alleles used are a subset of the report alleles in shared data
-                //reduce observed alleles
             }
+
+            if (AC[0]<AN)
+            {
+                int32_t* AC_PTR = &AC[1];
+                bcf_update_info_int32(odw->hdr,v,"AC",AC_PTR,n_allele-1);
+                bcf_update_info_int32(odw->hdr,v,"AN",&AN,1);
+                odw->write(v);
+                ++no_subset_variants;
+            }
+
+            //check if the alleles used are a subset of the report alleles in shared data
+            //reduce observed alleles
         }
 
         odw->close();
@@ -231,7 +242,8 @@ class Igor : Program
 
     ~Igor()
     {
-
+        if (samples) free(samples);
+        if (imap) free(imap);
     };
 
     private:
