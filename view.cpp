@@ -48,6 +48,7 @@ class Igor : Program
     bool print_header_only;
     bool print_sites_only;
     bool print;
+    bool debug;
     int32_t no_subset_samples;
 
     ///////
@@ -95,11 +96,12 @@ class Igor : Program
             TCLAP::ValueArg<int32_t> arg_compression_level("c", "c", "compression level 0-9, 0 and -1 denotes uncompressed with the former being wrapped in bgzf.[6]", false, 6, "int", cmd);
             TCLAP::ValueArg<uint32_t> arg_left_window("l", "l", "left window size for overlap []", false, 0, "int", cmd);
             TCLAP::ValueArg<uint32_t> arg_right_window("r", "r", "right window size for overlap []", false, 0, "int", cmd);
-            TCLAP::SwitchArg arg_print("p", "p", "print options and summary []", cmd, false);
+            TCLAP::SwitchArg arg_print("p", "p", "print options and summary [false]", cmd, false);
             TCLAP::SwitchArg arg_print_header("h", "h", "omit header, this option is honored only for STDOUT [false]", cmd, false);
             TCLAP::SwitchArg arg_print_header_only("H", "H", "print header only, this option is honored only for STDOUT [false]", cmd, false);
             TCLAP::SwitchArg arg_print_sites_only("s", "s", "print site information only without genotypes [false]", cmd, false);
             TCLAP::ValueArg<uint32_t> arg_sort_window_size("w", "w", "local sorting window size [0]", false, 0, "int", cmd);
+            TCLAP::SwitchArg arg_debug("d", "d", "debug [false]", cmd, false);
             //TCLAP::ValueArg<std::string> arg_sample_list("s", "s", "file containing list of sample []", false, "", "file", cmd);
             TCLAP::ValueArg<std::string> arg_fexp("f", "f", "filter expression []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_output_vcf_file("o", "o", "output VCF/VCF.GZ/BCF file [-]", false, "-", "str", cmd);
@@ -120,6 +122,7 @@ class Igor : Program
             no_subset_samples = arg_print_sites_only.getValue() ? 0 : -1;
             print = arg_print.getValue();
             sort_window_size = arg_sort_window_size.getValue();
+            debug = arg_debug.getValue();
         }
         catch (TCLAP::ArgException &e)
         {
@@ -154,7 +157,7 @@ class Igor : Program
         /////////////////////////
         //filter initialization//
         /////////////////////////
-        filter.parse(fexp.c_str(), false);
+        filter.parse(fexp.c_str(), debug);
         filter_exists = fexp=="" ? false : true;
 
         ////////////////////////
@@ -205,7 +208,7 @@ class Igor : Program
             if (filter_exists)
             {
                 vm->classify_variant(h, v, variant);
-                if (!filter.apply(h, v, &variant, false))
+                if (!filter.apply(h, v, &variant, debug))
                 {
                     continue;
                 }

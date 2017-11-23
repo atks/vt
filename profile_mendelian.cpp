@@ -489,13 +489,7 @@ class Igor : Program
                             bcf_update_info_int32(odw->hdr, v, "DUP_DISC", &no_duplicate_discordance, 1);
                             bcf_update_info_int32(odw->hdr, v, "DUP_TOT", &no_duplicate_sample_site_pairs, 1);
                         }
-                    }// end of iterating through dups
-
-                    if (output_sites)
-                    {
-                        bcf_subset(odw->hdr, v, 0, 0);
-                        odw->write(v);
-                    }
+                    }// end of iterating through dups                    
                 }
                 else //VNTR
                 {
@@ -719,7 +713,7 @@ class Igor : Program
             //the genotyper for that site assumes
             //that it is a diploid.
             //we want to cosider multiallelics here too.
-            if (bcf_get_info_flag(odr->hdr, v, "PSEUDOAUTOSOMAL", 0, 0))
+            if (bcf_get_info_flag(odr->hdr, v, "NPAR", 0, 0))
             {
                 //extract genotype array
                 int k = bcf_get_genotypes(h, v, &gts, &n);
@@ -800,15 +794,35 @@ class Igor : Program
                     }
                 }
                 
+//                std::cerr << "======================== \n";
+//                std::cerr << "m_homref " << no_npar_male_homref << "\n";
+//                std::cerr << "m_het " << no_npar_male_het << "\n";
+//                std::cerr << "m_homalt " << no_npar_male_homalt << "\n";
+//                std::cerr << "f_homref " << no_npar_female_homref << "\n";
+//                std::cerr << "f_het " << no_npar_female_het << "\n";
+//                std::cerr << "f_homalt " << no_npar_female_homalt << "\n";
+        
+                
                 if (output_sites)
                 {
                     bcf_update_info_int32(odw->hdr, v, "NPAR_M_HOMREF", &no_npar_male_homref, 1);
                     bcf_update_info_int32(odw->hdr, v, "NPAR_M_HET", &no_npar_male_het, 1);
                     bcf_update_info_int32(odw->hdr, v, "NPAR_M_HOMALT", &no_npar_male_homalt, 1);            
-                    bcf_update_info_int32(odw->hdr, v, "NPAR_F_HOMREF", &no_npar_male_homref, 1);
-                    bcf_update_info_int32(odw->hdr, v, "NPAR_F_HET", &no_npar_male_het, 1);
-                    bcf_update_info_int32(odw->hdr, v, "NPAR_F_HOMALT", &no_npar_male_homalt, 1);            
+                    bcf_update_info_int32(odw->hdr, v, "NPAR_F_HOMREF", &no_npar_female_homref, 1);
+                    bcf_update_info_int32(odw->hdr, v, "NPAR_F_HET", &no_npar_female_het, 1);
+                    bcf_update_info_int32(odw->hdr, v, "NPAR_F_HOMALT", &no_npar_female_homalt, 1);            
+                
+//                bcf_subset(odw->hdr, v, 0, 0);
+//                bcf_print(odw->hdr, v);
                 }
+                
+                
+            }
+            
+            if (output_sites)
+            {
+                bcf_subset(odw->hdr, v, 0, 0);
+                odw->write(v);
             }
         }
 
