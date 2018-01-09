@@ -662,26 +662,29 @@ static int wait_perform(hFILE_libcurl *fp)
     long timeout;
     CURLMcode errm;
 
-    FD_ZERO(&rd);
-    FD_ZERO(&wr);
-    FD_ZERO(&ex);
-    if (curl_multi_fdset(fp->multi, &rd, &wr, &ex, &maxfd) != CURLM_OK)
-        maxfd = -1, timeout = 1000;
-    else if (maxfd < 0)
-        timeout = 100;  // as recommended by curl_multi_fdset(3)
-    else {
-        if (curl_multi_timeout(fp->multi, &timeout) != CURLM_OK)
-            timeout = 1000;
-        else if (timeout < 0)
-            timeout = 10000;  // as recommended by curl_multi_timeout(3)
-    }
+    if (!fp->perform_again) {
+        FD_ZERO(&rd);
+        FD_ZERO(&wr);
+        FD_ZERO(&ex);
+        if (curl_multi_fdset(fp->multi, &rd, &wr, &ex, &maxfd) != CURLM_OK)
+            maxfd = -1, timeout = 1000;
+        else {
+            if (curl_multi_timeout(fp->multi, &timeout) != CURLM_OK)
+                timeout = 1000;
+            else if (timeout < 0) {
+                timeout = 10000;  // as recommended by curl_multi_timeout(3)
+            }
+        }
+        if (maxfd < 0 && timeout > 100)
+            timeout = 100; // as recommended by curl_multi_fdset(3)
 
-    if (timeout > 0 && ! fp->perform_again) {
-        struct timeval tval;
-        tval.tv_sec  = (timeout / 1000);
-        tval.tv_usec = (timeout % 1000) * 1000;
+        if (timeout > 0) {
+            struct timeval tval;
+            tval.tv_sec  = (timeout / 1000);
+            tval.tv_usec = (timeout % 1000) * 1000;
 
-        if (select(maxfd + 1, &rd, &wr, &ex, &tval) < 0) return -1;
+            if (select(maxfd + 1, &rd, &wr, &ex, &tval) < 0) return -1;
+        }
     }
 
     errm = curl_multi_perform(fp->multi, &nrunning);
@@ -1031,6 +1034,10 @@ libcurl_open(const char *url, const char *modes, http_headers *headers)
     // Make a route to the hFILE_libcurl* given just a CURL* easy handle
     err = curl_easy_setopt(fp->easy, CURLOPT_PRIVATE, fp);
 
+    // Avoid many repeated CWD calls with FTP, instead requesting the filename
+    // by full path (as done in knet, but not strictly compliant with RFC1738).
+    err |= curl_easy_setopt(fp->easy, CURLOPT_FTP_FILEMETHOD, CURLFTPMETHOD_NOCWD);
+
     if (mode == 'r') {
         err |= curl_easy_setopt(fp->easy, CURLOPT_WRITEFUNCTION, recv_callback);
         err |= curl_easy_setopt(fp->easy, CURLOPT_WRITEDATA, fp);
@@ -1048,7 +1055,12 @@ libcurl_open(const char *url, const char *modes, http_headers *headers)
 
     err |= curl_easy_setopt(fp->easy, CURLOPT_SHARE, curl.share);
     err |= curl_easy_setopt(fp->easy, CURLOPT_URL, url);
-    err |= curl_easy_setopt(fp->easy, CURLOPT_CAINFO, getenv("CURL_CA_BUNDLE"));
+    {
+        char* env_curl_ca_bundle = getenv("CURL_CA_BUNDLE");
+        if (env_curl_ca_bundle) {
+            err |= curl_easy_setopt(fp->easy, CURLOPT_CAINFO, env_curl_ca_bundle);
+        }
+    }
     err |= curl_easy_setopt(fp->easy, CURLOPT_USERAGENT, curl.useragent.s);
     if (fp->headers.callback) {
         if (add_callback_headers(fp) != 0) goto error;
