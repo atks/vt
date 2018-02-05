@@ -1,6 +1,6 @@
 /*  sam.c -- SAM and BAM file I/O and manipulation.
 
-    Copyright (C) 2008-2010, 2012-2017 Genome Research Ltd.
+    Copyright (C) 2008-2010, 2012-2018 Genome Research Ltd.
     Copyright (C) 2010, 2012, 2013 Broad Institute.
 
     Author: Heng Li <lh3@sanger.ac.uk>
@@ -653,6 +653,9 @@ static int cram_readrec(BGZF *ignored, void *fpv, void *bv, int *tid, int *beg, 
     htsFile *fp = fpv;
     bam1_t *b = bv;
     int ret = cram_get_bam_seq(fp->fp.cram, &b);
+    if (ret < 0)
+        return cram_eof(fp->fp.cram) ? -1 : -2;
+
     if (bam_tag2cigar(b, 1, 1) < 0)
         return -2;
 
@@ -660,9 +663,7 @@ static int cram_readrec(BGZF *ignored, void *fpv, void *bv, int *tid, int *beg, 
     *beg = b->core.pos;
     *end = bam_endpos(b);
 
-    return ret >= 0
-        ? ret
-        : (cram_eof(fp->fp.cram) ? -1 : -2);
+    return ret;
 }
 
 static int cram_pseek(void *fp, int64_t offset, int whence)
@@ -730,11 +731,12 @@ static int sam_bam_cram_readrec(BGZF *bgzfp, void *fpv, void *bv, int *tid, int 
     case bam:   return bam_read1(bgzfp, b);
     case cram: {
         int ret = cram_get_bam_seq(fp->fp.cram, &b);
+        if (ret < 0)
+            return cram_eof(fp->fp.cram) ? -1 : -2;
+
         if (bam_tag2cigar(b, 1, 1) < 0)
             return -2;
-        return ret >= 0
-            ? ret
-            : (cram_eof(fp->fp.cram) ? -1 : -2);
+        return ret;
     }
     default:
         // TODO Need headers available to implement this for SAM files
@@ -1088,6 +1090,78 @@ int sam_hdr_write(htsFile *fp, const bam_hdr_t *h)
     return 0;
 }
 
+int sam_hdr_change_HD(bam_hdr_t *h, const char *key, const char *val)
+{
+    char *p, *q, *beg = NULL, *end = NULL, *newtext;
+    if (!h || !key)
+        return -1;
+
+    if (h->l_text > 3) {
+        if (strncmp(h->text, "@HD", 3) == 0) { //@HD line exists
+            if ((p = strchr(h->text, '\n')) == 0) return -1;
+            *p = '\0'; // for strstr call
+
+            char tmp[5] = { '\t', key[0], key[0] ? key[1] : '\0', ':', '\0' };
+
+            if ((q = strstr(h->text, tmp)) != 0) { // key exists
+                *p = '\n'; // change back
+
+                // mark the key:val
+                beg = q;
+                for (q += 4; *q != '\n' && *q != '\t'; ++q);
+                end = q;
+
+                if (val && (strncmp(beg + 4, val, end - beg - 4) == 0)
+                    && strlen(val) == end - beg - 4)
+                     return 0; // val is the same, no need to change
+
+            } else {
+                beg = end = p;
+                *p = '\n';
+            }
+        }
+    }
+    if (beg == NULL) { // no @HD
+        if (h->l_text > UINT32_MAX - strlen(SAM_FORMAT_VERSION) - 9)
+            return -1;
+        h->l_text += strlen(SAM_FORMAT_VERSION) + 8;
+        if (val) {
+            if (h->l_text > UINT32_MAX - strlen(val) - 5)
+                return -1;
+            h->l_text += strlen(val) + 4;
+        }
+        newtext = (char*)malloc(h->l_text + 1);
+        if (!newtext) return -1;
+
+        if (val)
+            snprintf(newtext, h->l_text + 1,
+                    "@HD\tVN:%s\t%s:%s\n%s", SAM_FORMAT_VERSION, key, val, h->text);
+        else
+            snprintf(newtext, h->l_text + 1,
+                    "@HD\tVN:%s\n%s", SAM_FORMAT_VERSION, h->text);
+    } else { // has @HD but different or no key
+        h->l_text = (beg - h->text) + (h->text + h->l_text - end);
+        if (val) {
+            if (h->l_text > UINT32_MAX - strlen(val) - 5)
+                return -1;
+            h->l_text += strlen(val) + 4;
+        }
+        newtext = (char*)malloc(h->l_text + 1);
+        if (!newtext) return -1;
+
+        if (val) {
+            snprintf(newtext, h->l_text + 1, "%.*s\t%s:%s%s",
+                    (int) (beg - h->text), h->text, key, val, end);
+        } else { //delete key
+            snprintf(newtext, h->l_text + 1, "%.*s%s",
+                    (int) (beg - h->text), h->text, end);
+        }
+    }
+    free(h->text);
+    h->text = newtext;
+    return 0;
+}
+
 /**********************
  *** SAM record I/O ***
  **********************/
@@ -1344,10 +1418,12 @@ int sam_read1(htsFile *fp, bam_hdr_t *h, bam1_t *b)
 
     case cram: {
         int ret = cram_get_bam_seq(fp->fp.cram, &b);
-        bam_tag2cigar(b, 1, 1);
-        return ret >= 0
-            ? ret
-            : (cram_eof(fp->fp.cram) ? -1 : -2);
+        if (ret < 0)
+            return cram_eof(fp->fp.cram) ? -1 : -2;
+
+        if (bam_tag2cigar(b, 1, 1) < 0)
+            return -2;
+        return ret;
     }
 
     case sam: {

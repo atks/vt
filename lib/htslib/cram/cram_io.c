@@ -2036,7 +2036,7 @@ static int cram_populate_ref(cram_fd *fd, int id, ref_entry *r) {
 	 * If we have no ref path, we use the EBI server.
 	 * However to avoid spamming it we require a local ref cache too.
 	 */
-	ref_path = "http://www.ebi.ac.uk:80/ena/cram/md5/%s";
+	ref_path = "https://www.ebi.ac.uk/ena/cram/md5/%s";
 	if (!local_cache || *local_cache == '\0') {
 	    const char *extra;
 	    const char *base = get_cache_basedir(&extra);
@@ -2257,7 +2257,7 @@ static void cram_ref_decr_locked(refs_t *r, int id) {
 		RP("%d FREE REF %d (%p)\n", gettid(),
 		   r->last_id, r->ref_id[r->last_id]->seq);
 		ref_entry_free_seq(r->ref_id[r->last_id]);
-		r->ref_id[r->last_id]->length = 0;
+		if (r->ref_id[r->last_id]->is_md5) r->ref_id[r->last_id]->length = 0;
 	    }
 	}
 	r->last_id = id;
@@ -3132,7 +3132,8 @@ static int cram_flush_result(cram_fd *fd) {
 
 	cram_free_container(c);
 
-	ret |= hflush(fd->fp) == 0 ? 0 : -1;
+	if (fd->mode == 'w')
+	    ret |= hflush(fd->fp) == 0 ? 0 : -1;
 
 	hts_tpool_delete_result(r, 1);
     }
@@ -4133,6 +4134,8 @@ int cram_seek(cram_fd *fd, off_t offset, int whence) {
 
     fd->ooc = 0;
 
+    cram_drain_rqueue(fd);
+
     if (hseek(fd->fp, offset, whence) >= 0) {
         return 0;
     }
@@ -4193,17 +4196,21 @@ int cram_close(cram_fd *fd) {
 	    return -1;
     }
 
+    if (fd->mode != 'w')
+	cram_drain_rqueue(fd);
+
     if (fd->pool && fd->eof >= 0) {
 	hts_tpool_process_flush(fd->rqueue);
 
 	if (0 != cram_flush_result(fd))
 	    return -1;
 
+	if (fd->mode == 'w')
+	    fd->ctr = NULL; // prevent double freeing
+
 	pthread_mutex_destroy(&fd->metrics_lock);
 	pthread_mutex_destroy(&fd->ref_lock);
 	pthread_mutex_destroy(&fd->bam_list_lock);
-
-	fd->ctr = NULL; // prevent double freeing
 
 	//fprintf(stderr, "CRAM: destroy queue %p\n", fd->rqueue);
 
@@ -4403,8 +4410,7 @@ int cram_set_voption(cram_fd *fd, enum hts_fmt_option opt, va_list args) {
 	break;
 
     case CRAM_OPT_RANGE:
-	fd->range = *va_arg(args, cram_range *);
-	return cram_seek_to_refpos(fd, &fd->range);
+	return cram_seek_to_refpos(fd, va_arg(args, cram_range *));
 
     case CRAM_OPT_REFERENCE:
 	return cram_load_reference(fd, va_arg(args, char *));
@@ -4443,6 +4449,7 @@ int cram_set_voption(cram_fd *fd, enum hts_fmt_option opt, va_list args) {
 	    fd->rqueue = hts_tpool_process_init(fd->pool, nthreads*2, 0);
 	    pthread_mutex_init(&fd->metrics_lock, NULL);
 	    pthread_mutex_init(&fd->ref_lock, NULL);
+	    pthread_mutex_init(&fd->range_lock, NULL);
 	    pthread_mutex_init(&fd->bam_list_lock, NULL);
 	    fd->shared_ref = 1;
 	    fd->own_pool = 1;
@@ -4459,6 +4466,7 @@ int cram_set_voption(cram_fd *fd, enum hts_fmt_option opt, va_list args) {
 						0);
 	    pthread_mutex_init(&fd->metrics_lock, NULL);
 	    pthread_mutex_init(&fd->ref_lock, NULL);
+	    pthread_mutex_init(&fd->range_lock, NULL);
 	    pthread_mutex_init(&fd->bam_list_lock, NULL);
 	}
 	fd->shared_ref = 1; // Needed to avoid clobbering ref between threads
