@@ -44,6 +44,7 @@ test_command($opts,cmd=>'test-bcf-translate -',out=>'test-bcf-translate.out');
 test_convert_padded_header($opts);
 test_rebgzip($opts);
 test_logging($opts);
+test_realn($opts);
 
 print "\nNumber of tests:\n";
 printf "    total   .. %d\n", $$opts{nok}+$$opts{nfailed};
@@ -369,12 +370,52 @@ sub test_vcf_various
         cmd => "$$opts{bin}/htsfile -c $$opts{path}/formatmissing.vcf");
 }
 
+sub write_multiblock_bgzf {
+    my ($name, $frags) = @_;
+
+    my $tmp = "$name.tmp";
+    open(my $out, '>', $name) || die "Couldn't open $name $!\n";
+    for (my $i = 0; $i < @$frags; $i++) {
+	local $/;
+	open(my $f, '>', $tmp) || die "Couldn't open $tmp : $!\n";
+	print $f $frags->[$i];
+	close($f) || die "Error writing to $tmp: $!\n";
+	open(my $bgz, '-|', "$$opts{bin}/bgzip -c $tmp")
+	    || die "Couldn't open pipe to bgzip: $!\n";
+	my $compressed = <$bgz>;
+	close($bgz) || die "Error running bgzip\n";
+	if ($i < $#$frags) {
+	    # Strip EOF block
+	    $compressed =~ s/\x1f\x8b\x08\x04\x00{5}\xff\x06\x00\x42\x43\x02\x00\x1b\x00\x03\x00{9}$//;
+	}
+	print $out $compressed;
+    }
+    close($out) || die "Error writing to $name: $!\n";
+    unlink($tmp);
+}
+
 sub test_rebgzip
 {
     my ($opts, %args) = @_;
 
-    test_cmd($opts, %args, out => "bgziptest.txt.gz",
-        cmd => "$$opts{bin}/bgzip -I $$opts{path}/bgziptest.txt.gz.gzi -c -g $$opts{path}/bgziptest.txt");
+    # Write a file that should match the one we ship
+    my @frags = qw(1 22 333 4444 55555);
+    my $mb = "$$opts{path}/bgziptest.txt.tmp.gz";
+    write_multiblock_bgzf($mb, \@frags);
+
+    # See if it really does match
+    my ($ret, $out) = _cmd("diff -q $mb $$opts{path}/bgziptest.txt.gz");
+
+    if (!$ret && $out eq '') { # If it does, use the original
+	test_cmd($opts, %args, out => "bgziptest.txt.gz",
+		 cmd => "$$opts{bin}/bgzip -I $$opts{path}/bgziptest.txt.gz.gzi -c -g $$opts{path}/bgziptest.txt");
+    } else {
+	# Otherwise index the one we just made and test that
+	print "test_rebgzip: Alternate zlib/deflate library detected\n";
+	cmd("$$opts{bin}/bgzip -I $mb.gzi -r $mb");
+	test_cmd($opts, %args, out => "bgziptest.txt.tmp.gz",
+		 cmd => "$$opts{bin}/bgzip -I $mb.gzi -c -g $$opts{path}/bgziptest.txt");
+    }
 }
 
 sub test_convert_padded_header
@@ -425,4 +466,30 @@ sub test_logging
   my ($ret,$out) = _cmd($cmd);
   if ( $ret ) { failed($opts,$test); }
   else { passed($opts,$test); }
+}
+
+sub test_realn {
+    my ($opts) = @_;
+
+    my $test_realn = "$$opts{path}/test_realn";
+    # Calculate BAQ
+    test_cmd($opts, cmd => "$test_realn -f $$opts{path}/realn01.fa -i $$opts{path}/realn01.sam -o -", out => "realn01_exp.sam");
+    test_cmd($opts, cmd => "$test_realn -f $$opts{path}/realn02.fa -i $$opts{path}/realn02.sam -o -", out => "realn02_exp.sam");
+
+    # Calculate and apply BAQ
+    test_cmd($opts, cmd => "$test_realn -a -f $$opts{path}/realn01.fa -i $$opts{path}/realn01.sam -o -", out => "realn01_exp-a.sam");
+    test_cmd($opts, cmd => "$test_realn -a -f $$opts{path}/realn02.fa -i $$opts{path}/realn02.sam -o -", out => "realn02_exp-a.sam");
+
+    # Calculate extended BAQ
+    test_cmd($opts, cmd => "$test_realn -e -f $$opts{path}/realn01.fa -i $$opts{path}/realn01.sam -o -", out => "realn01_exp-e.sam");
+    test_cmd($opts, cmd => "$test_realn -e -f $$opts{path}/realn02.fa -i $$opts{path}/realn02.sam -o -", out => "realn02_exp-e.sam");
+
+    # Recalculate BAQ
+    test_cmd($opts, cmd => "$test_realn -r -f $$opts{path}/realn02.fa -i $$opts{path}/realn02-r.sam -o -", out => "realn02_exp.sam");
+
+    # Apply from existing BQ tags
+    test_cmd($opts, cmd => "$test_realn -a -f $$opts{path}/realn02.fa -i $$opts{path}/realn02_exp.sam -o -", out => "realn02_exp-a.sam");
+
+    # Revert quality values (using data in ZQ tags)
+    test_cmd($opts, cmd => "$test_realn -f $$opts{path}/realn02.fa -i $$opts{path}/realn02_exp-a.sam -o -", out => "realn02_exp.sam");
 }
