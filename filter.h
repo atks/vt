@@ -109,7 +109,7 @@ class Node
     int32_t number; //actual length
     kstring_t tag;  //store the INFO tag of a BCF type
     int32_t index;  //store index value of interest
-    
+
     bool value_exists; // if value exists
 
     kstring_t s;   // string value
@@ -118,10 +118,10 @@ class Node
     float f;       // float value
 
     //for cases of fix multiple values
-    std::vector<std::string> svec;  
-    std::vector<bool> bvec; 
-    std::vector<int32_t> ivec;    
-    std::vector<float> fvec;      
+    std::vector<std::string> svec;
+    std::vector<bool> bvec;
+    std::vector<int32_t> ivec;
+    std::vector<float> fvec;
 
     PERLregex pregex;
     bool regex_set;
@@ -186,7 +186,7 @@ class Filter
      * Attempts to simplify the expression tree by collapsing nodes that can be precomputed.
      */
     void simplify();
-    
+
     /**
      * Resets filter.
      */
@@ -215,7 +215,7 @@ class Filter
     bool is_bracketed_expression(const char* exp, int32_t len, bool debug);
 
     /**
-     * Detect index width. 
+     * Detect index width.
      * e.g. AC[1] => 3
      * e.g. EVIDENCE[12] => 4
      *

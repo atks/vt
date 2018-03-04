@@ -21,7 +21,7 @@
    THE SOFTWARE.
 */
 
-#include "profile_na12878.h"
+#include "profile_chm1.h"
 
 namespace
 {
