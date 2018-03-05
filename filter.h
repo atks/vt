@@ -31,18 +31,20 @@
 #include "pregex.h"
 
 //TYPES
-#define VT_LOGIC_OP  2048
-#define VT_MATH_CMP  4096
-#define VT_MATH_OP   8192
-#define VT_BCF_OP    16384
+//this is defined from the 7th to 13th bit by setting the bit
+#define VT_LOGIC_OP  2048   //0x1000
+#define VT_MATH_CMP  4096   //0x2000
+#define VT_MATH_OP   8192   //0x4000
+#define VT_BCF_OP    16384  //0x8000
 
-#define VT_BOOL     64
-#define VT_INT      128
-#define VT_FLT      256
-#define VT_STR      512
-#define VT_FLG      1024
+#define VT_BOOL     64      //0x0040
+#define VT_INT      128     //0x0080 
+#define VT_FLT      256     //0x0100
+#define VT_STR      512     //0x0200
+#define VT_FLG      1024    //0x0400
 
 //common unary and binary ops (ordered by precedence level)
+//this is identified over the first 6 bits which gives 64 possible operations
 #define VT_NOT      (0|VT_LOGIC_OP|VT_BOOL)
 #define VT_AND      (1|VT_LOGIC_OP|VT_BOOL)
 #define VT_OR       (2|VT_LOGIC_OP|VT_BOOL)

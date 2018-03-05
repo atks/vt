@@ -474,8 +474,12 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
             exit(1);
         }
     }
+    //this is
     else if (type&VT_BCF_OP)
     {
+
+//        std::cerr << "\tprocessing BCF OPT for the first time\n";
+
         value_exists = true;
 
         if (type==VT_REF_COL)
@@ -534,7 +538,11 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
             b = true;
             value_exists = true;
         }
-        else if (type==VT_INFO) //figure out type
+        //figure out type
+        //this should only be invoked once so that we can short circuit
+        //the type checking in subsequent applications of the filter
+        //expression
+        else if (type==VT_INFO)
         {
             if (!bcf_hdr_idinfo_exists(h, BCF_HL_INFO, bcf_hdr_id2int(h, BCF_DT_ID, tag.s)))
             {
@@ -547,6 +555,8 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
             var_length = bcf_hdr_id2length(h, BCF_HL_INFO, int_id);
             number = bcf_hdr_id2number(h, BCF_HL_INFO, int_id);
             bcf_unpack(v, BCF_UN_INFO);
+
+//            std::cerr << "\tprocessing BCF_OPT|VT_INFO for the first time\n";
 
             if (info_type==BCF_HT_FLAG)
             {
@@ -566,16 +576,24 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
             }
             else if (info_type==BCF_HT_INT)
             {
+//                std::cerr << "\tadd INT to VT_INFO type\n";
+
+
                 type |= VT_INT;
 
                 if (var_length==BCF_VL_FIXED)
                 {
+//                    std::cerr << "\tFIXED length\n";
+
+//                    std::cerr << "\tnumber : " << number << "\n";
                     if (number==1)
                     {
                         int32_t ns = 0;
                         int32_t *is = NULL;
                         if (bcf_get_info_int32(h, v, tag.s, &is, &ns)>0)
                         {
+//                            std::cerr << "\tupdating field i\n";
+
                             i = is[0];
                             f = (float)is[0];
                         }
@@ -589,6 +607,7 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
                     }
                     else if (number>1)
                     {
+//                        std::cerr << "\tnumber > 1 "  << "\n";
 //                        std::cerr << "1) updating initial record\n";
                         int32_t ns = 0;
                         int32_t *is = NULL;
@@ -614,8 +633,89 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
                     }
                     else
                     {
+                        std::cerr << "\thmmmmmm "  << "\n";
                         //hmmmmm.....
                     }
+                }
+                else if (var_length==BCF_VL_R || var_length==BCF_VL_A || var_length==BCF_VL_G)
+                {
+                    int32_t no_alleles = bcf_get_n_allele(v);
+          
+                    if (var_length==BCF_VL_R)
+                    {    
+//                        std::cerr << "\tR length\n";
+                        number = no_alleles;
+                    }
+                    else if (var_length==BCF_VL_A)
+                    {   
+//                        std::cerr << "\tA length\n";
+                        number = no_alleles-1;
+                    }
+                    else if (var_length==BCF_VL_G)
+                    {   
+//                        std::cerr << "\tG length\n";
+                        //assume ploidy is too for the time being
+                        //usage is not determinable for info fields because
+                        //ploidy is individual dependent
+                        number = bcf_ap2g(no_alleles, 2);
+                    }
+                    
+//                    std::cerr << "\tnumber : " << number << "\n";
+                    if (number==1)
+                    {
+                        int32_t ns = 0;
+                        int32_t *is = NULL;
+                        if (bcf_get_info_int32(h, v, tag.s, &is, &ns)>0)
+                        {
+//                            std::cerr << "\tupdating field i\n";
+
+                            i = is[0];
+                            f = (float)is[0];
+                        }
+                        else
+                        {
+                            b = false;
+                            value_exists = false;
+                        }
+
+                        if (ns) free(is);
+                    }
+                    else if (number>1)
+                    {
+                        std::cerr << "\tnumber > 1 "  << "\n";
+//                        std::cerr << "1) updating initial record\n";
+                        int32_t ns = 0;
+                        int32_t *is = NULL;
+                        if (bcf_get_info_int32(h, v, tag.s, &is, &ns)>0)
+                        {
+                            ivec.resize(0);
+                            fvec.resize(0);
+                            for (int32_t i=0; i<ns; ++i)
+                            {
+                                ivec.push_back(is[i]);
+                                fvec.push_back(is[i]);
+                            }
+                            i = is[index-1];
+                            f = (float)is[index-1];
+                        }
+                        else
+                        {
+                            b = false;
+                            value_exists = false;
+                        }
+
+                        if (ns) free(is);
+                    }
+                    else
+                    {
+                        std::cerr << "\thmmmmmm "  << "\n";
+
+                        //hmmmmm.....
+                    }
+                }
+                else if (var_length==BCF_VL_VAR)
+                {
+                    std::cerr << "\tvariable length, should we treat as a blob?\n";
                 }
             }
             else if (info_type==BCF_HT_REAL)
@@ -655,11 +755,12 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
                 }
             }
         }
+        //fast lane for INFO-TYPEs
         else if (type==(VT_INFO|VT_INT))
         {
 //            std::cerr << "2) updating next recordxxx\n";
-            
-            
+
+
 //            std::cerr << "\tvar length: " << var_length << "\n";
             if (var_length==BCF_VL_FIXED)
             {
@@ -712,6 +813,82 @@ void Node::evaluate(bcf_hdr_t *h, bcf1_t *v, Variant *variant, bool debug)
                 }
                 else
                 {
+                    //hmmmmm.....
+                }
+            }
+            else if (var_length==BCF_VL_R || var_length==BCF_VL_A || var_length==BCF_VL_G)
+            {
+                int32_t no_alleles = bcf_get_n_allele(v);
+      
+                if (var_length==BCF_VL_R)
+                {    
+//                    std::cerr << "\tR length\n";
+                    number = no_alleles;
+                }
+                else if (var_length==BCF_VL_A)
+                {   
+//                    std::cerr << "\tA length\n";
+                    number = no_alleles-1;
+                }
+                else if (var_length==BCF_VL_G)
+                {   
+//                    std::cerr << "\tG length\n";
+                    //assume ploidy is too for the time being
+                    //usage is not determinable for info fields because
+                    //ploidy is individual dependent
+                    number = bcf_ap2g(no_alleles, 2);
+                }
+                
+//                std::cerr << "\tnumber : " << number << "\n";
+                if (number==1)
+                {
+                    int32_t ns = 0;
+                    int32_t *is = NULL;
+                    if (bcf_get_info_int32(h, v, tag.s, &is, &ns)>0)
+                    {
+//                        std::cerr << "\tupdating field i\n";
+
+                        i = is[0];
+                        f = (float)is[0];
+                    }
+                    else
+                    {
+                        b = false;
+                        value_exists = false;
+                    }
+
+                    if (ns) free(is);
+                }
+                else if (number>1)
+                {
+                    std::cerr << "\tnumber > 1 "  << "\n";
+//                        std::cerr << "1) updating initial record\n";
+                    int32_t ns = 0;
+                    int32_t *is = NULL;
+                    if (bcf_get_info_int32(h, v, tag.s, &is, &ns)>0)
+                    {
+                        ivec.resize(0);
+                        fvec.resize(0);
+                        for (int32_t i=0; i<ns; ++i)
+                        {
+                            ivec.push_back(is[i]);
+                            fvec.push_back(is[i]);
+                        }
+                        i = is[index-1];
+                        f = (float)is[index-1];
+                    }
+                    else
+                    {
+                        b = false;
+                        value_exists = false;
+                    }
+
+                    if (ns) free(is);
+                }
+                else
+                {
+                    std::cerr << "\thmmmmmm "  << "\n";
+
                     //hmmmmm.....
                 }
             }
