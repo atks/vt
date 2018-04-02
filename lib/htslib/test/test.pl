@@ -128,7 +128,8 @@ sub _cmd
     else
     {
 	# Example of how to embed Valgrind into the testing framework.
-	# $cmd = "valgrind --leak-check=full --suppressions=$ENV{HOME}/valgrind.supp $cmd";
+	# TEST_PRECMD="valgrind --leak-check=full --suppressions=$ENV{HOME}/valgrind.supp" make check
+	$cmd = "$ENV{TEST_PRECMD} $cmd" if exists $ENV{TEST_PRECMD};
 
         # child
         exec('bash', '-o','pipefail','-c', $cmd) or error("Cannot execute the command [/bin/sh -o pipefail -c $cmd]: $!");
@@ -164,7 +165,7 @@ sub test_cmd
         open(my $fh,'>',"$$opts{path}/$args{out}") or error("$$opts{path}/$args{out}: $!");
         print $fh $out;
         close($fh);
-        my ($ret,$out) = _cmd("diff -q $$opts{path}/$args{out} $$opts{path}/$args{out}.old");
+        my ($ret,$out) = _cmd("cmp $$opts{path}/$args{out} $$opts{path}/$args{out}.old");
         if ( !$ret && $out eq '' ) { unlink("$$opts{path}/$args{out}.old"); }
         else
         {
@@ -306,6 +307,9 @@ sub test_view
 
         # CRAM2 -> CRAM3
         testv $opts, "./test_view $tv_args -t $ref -C -o VERSION=3.0 $cram.cram > $cram";
+
+	# CRAM3 -> CRAM3 + multi-slice
+	testv $opts, "./test_view $tv_args -t $ref -C -o VERSION=3.0 -o seqs_per_slice=7 -o slices_per_container=5 $cram.cram > $cram";
         testv $opts, "./test_view $tv_args $cram > $cram.sam_";
         testv $opts, "./compare_sam.pl $md $sam $cram.sam_";
 
@@ -404,7 +408,7 @@ sub test_rebgzip
     write_multiblock_bgzf($mb, \@frags);
 
     # See if it really does match
-    my ($ret, $out) = _cmd("diff -q $mb $$opts{path}/bgziptest.txt.gz");
+    my ($ret, $out) = _cmd("cmp $mb $$opts{path}/bgziptest.txt.gz");
 
     if (!$ret && $out eq '') { # If it does, use the original
 	test_cmd($opts, %args, out => "bgziptest.txt.gz",

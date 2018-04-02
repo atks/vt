@@ -317,7 +317,7 @@ std::string bcf_hdr_ht2str(int32_t id);
  **********/
 
 /**
- * Gets number of expected genotypes from number of allelles for a ploidy of 2.
+ * Gets number of expected genotypes from number of alleles for a ploidy of 2.
  */
 #define bcf_an2gn(n) (((n+1)*n)>>1)
 
