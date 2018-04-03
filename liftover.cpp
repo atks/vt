@@ -117,7 +117,6 @@ class Igor : Program
         //////////////////////
         //i/o initialization//
         //////////////////////
-
         odr = new BCFOrderedReader(input_vcf_file, intervals);
         odw = new BCFOrderedWriter(output_vcf_file, sort_window_size, compression_level);
         if (no_subset_samples==-1)
@@ -128,6 +127,59 @@ class Igor : Program
         {
             odw->link_hdr(bcf_hdr_subset(odr->hdr, 0, 0, 0));
         }
+
+        ////////////////////////////////////////////////////////
+        //scan through chain file for chromosomal name changes//
+        ////////////////////////////////////////////////////////
+//chain 20851231461 1 249250621 + 10000 249240621 chr1 248956422 + 10000 248946422 2
+//167376  50041   80290
+//40302   253649  288020
+//1044699 1       2
+//3716    0       3
+//1134    4       18
+//3377    0       1
+//7258    1       1
+//27      1       1
+//1275    1680    5595
+//
+//score -- chain score
+//tName -- chromosome (reference sequence)
+//tSize -- chromosome size (reference sequence)
+//tStrand -- strand (reference sequence)
+//tStart -- alignment start position (reference sequence)
+//tEnd -- alignment end position (reference sequence)
+//qName -- chromosome (query sequence)
+//qSize -- chromosome size (query sequence)
+//qStrand -- strand (query sequence)
+//qStart -- alignment start position (query sequence)
+//qEnd -- alignment end position (query sequence)
+//id -- chain ID
+//
+//
+//size -- the size of the ungapped alignment
+//dt -- the difference between the end of this block and the beginning of the next block (reference sequence)
+//dq -- the difference between the end of this block and the beginning of the next block (query sequence)
+
+        //update chromosomes from target genome reference sequence
+        //read from .fai file.
+        
+        //store into memory - files generally less than 1mb
+        //alignments are not ordered, there is overlapping
+        //    store into a map by chromosome that points to multiple arrays containing the alignments
+        //    update alignments into base 1 positions
+        //maybe create a program specific data structure for this
+        
+        //mapping will be performed by searching through the data structure
+        
+        //secondary alignments?  multiple to maps
+        
+        //output variants as is, those that are unmapped or mapped to multiple locations will be
+        //have to be output into a different VCF file
+        //    1. MULTIPLE_ALIGNMENTS
+        //    2. UNMAPPED
+        //  CHROM = UNMAPPED ?
+        
+
 
         /////////////////////////
         //filter initialization//
@@ -158,16 +210,38 @@ class Igor : Program
         {
 //            bcf_print(h,v);
 
+
+        //mapping will be performed by searching through the data structure
+        //  check for corresponding chromosome
+        //  search through each alignment
+        //     double check for overlapping alignments within a chromosome
+        //
+        //data structure
+        //     use structs in this case
+        //     arrays (rid) => arrays (alignment id) => arrays (aligned segments)          
+        
+        //secondary alignments?  multiple to maps
+        
+        //output variants as is, those that are unmapped or mapped to multiple locations will be
+        //have to be output into a different VCF file
+        //    1. MULTIPLE_ALIGNMENTS
+        //    2. UNMAPPED
+        //  CHROM = UNMAPPED ?
+        
+
             if (stream_selection)
             {
                 bcf_unpack(v, BCF_UN_STR);
                 std::string chrom = bcf_get_chrom(odr->hdr,v);
                 int32_t start1 = bcf_get_pos1(v);
                 int32_t end1 = bcf_get_end1(v);
-
-                
             }
 
+
+       //should we keep a filter?
+       //usually you want every record, better to allow such selection to be performed
+       //by a preceding view step that allows for filtering
+       
             if (filter_exists)
             {
                 vm->classify_variant(h, v, variant);
@@ -190,7 +264,11 @@ class Igor : Program
             ++no_variants;
         }
 
-
+        //testing 
+        //check against picard liftovervcf and UCSC chain tool.
+        
+        //issues with picard is that it attempts to sort too and that fails in the sorting step for large VCF files.
+        //UCSC liftover works only with BED files.
 
 
     };
