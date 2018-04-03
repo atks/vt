@@ -2746,11 +2746,21 @@ void cram_free_container(cram_container *c) {
     if (c->comp_hdr_block)
 	cram_free_block(c->comp_hdr_block);
 
+    // Free the slices; filled out by encoder only
     if (c->slices) {
-	for (i = 0; i < c->max_slice; i++)
-	    if (c->slices[i])
-		cram_free_slice(c->slices[i]);
-	free(c->slices);
+        for (i = 0; i < c->max_slice; i++) {
+            if (c->slices[i])
+                cram_free_slice(c->slices[i]);
+            if (c->slices[i] == c->slice)
+                c->slice = NULL;
+        }
+        free(c->slices);
+    }
+
+    // Free the current slice; set by both encoder & decoder
+    if (c->slice) {
+	cram_free_slice(c->slice);
+	c->slice = NULL;
     }
 
     for (id = DS_RN; id < DS_TN; id++)
@@ -2885,6 +2895,7 @@ cram_container *cram_read_container(cram_fd *fd) {
 
     c->offset = rd;
     c->slices = NULL;
+    c->slice = NULL;
     c->curr_slice = 0;
     c->max_slice = c->num_landmarks;
     c->slice_rec = 0;
@@ -3128,15 +3139,22 @@ static int cram_flush_result(cram_fd *fd) {
 	    if (0 != cram_flush_container2(fd, c))
 		return -1;
 
-	/* Free the container */
-	for (i = 0; i < c->max_slice; i++) {
-	    if (c->slices && c->slices[i]) {
-		cram_free_slice(c->slices[i]);
+	// Free the slices; filled out by encoder only
+	if (c->slices) {
+	    for (i = 0; i < c->max_slice; i++) {
+		if (c->slices[i])
+		    cram_free_slice(c->slices[i]);
+		if (c->slices[i] == c->slice)
+		    c->slice = NULL;
 		c->slices[i] = NULL;
 	    }
 	}
 
-	c->slice = NULL;
+	// Free the current slice; set by both encoder & decoder
+	if (c->slice) {
+	    cram_free_slice(c->slice);
+	    c->slice = NULL;
+	}
 	c->curr_slice = 0;
 
 	// Our jobs will be in order, so we free the last
