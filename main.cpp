@@ -49,6 +49,7 @@
 #include "hfilter.h"
 #include "index.h"
 #include "info2tab.h"
+#include "liftover.h"
 #include "milk_filter.h"
 #include "merge_candidate_variants.h"
 #include "merge_genotypes.h"
@@ -408,6 +409,10 @@ int main(int argc, char ** argv)
     else if (argc>1 && cmd=="filter")
     {
         hfilter(argc-1, ++argv);
+    }
+    else if (argc>1 && cmd=="liftover")
+    {
+        liftover(argc-1, ++argv);
     }
     else if (argc>1 && cmd=="test")
     {

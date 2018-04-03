@@ -66,6 +66,7 @@ SOURCES = ahmm\
 		lfhmm\
 		lhmm\
 		lhmm1\
+		liftover\
 		log_tool\
 		merge\
 		merge_candidate_variants\
