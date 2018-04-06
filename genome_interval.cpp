@@ -39,6 +39,16 @@ GenomeInterval::GenomeInterval(std::string& seq, int32_t start1, int32_t end1)
  * e.g X:2000-4000   position 2000 to 4000 on chromosome X
  *     Y:2000        position 2000 on chromosome Y
  *     Y             the entirety of chromosome Y
+ *
+ *
+ *  todo:  X:4000-      position 4000 to the end of the chromosome
+ *
+ *         X:4000+5000  only beginning coordinates that overlap with positions 2000to5000
+ *         X:4000=5000  only beginning coordinates that overlap with positions 2000to5000
+ *
+ *         should the implementation of this be performed from programs like view itself?
+ *         -requires substantial change at every single program.
+ *       
  */
 GenomeInterval::GenomeInterval(std::string interval)
 {

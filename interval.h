@@ -36,12 +36,12 @@ class Interval
      * Constructor.
      */
     Interval(){};
-    
+
     /**
      * Constructor.
      */
     Interval(int32_t beg1, int32_t end1);
-    
+
     /**
      * Returns true if overlapping.
      */

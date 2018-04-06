@@ -27,7 +27,20 @@
  * Initialize files and intervals.
  *
  * @input_vcf_file_name     name of the input VCF file
- * @intervals          list of intervals, if empty, all records are selected.
+ * @intervals               list of intervals, if empty, all records are selected.
+ * 
+ * todo: add option for comparing if only beg1 overlaps with the interval
+ *       this allows a mechanism such that cut up files do not contain 
+ *       a variant that straddles across a boundary in 2 separate files
+ *       resulting in duplicates when you concatenate the files again.
+ *
+ *       might be a good idea to implement this only in a specifc program that
+ *       cuts up such files but it is also common to perform the cutting up by
+ *       selection via index.  
+ *
+ *       option1 : chr1:2000-3000 is a pure overlap 
+ *                 chr1:2000+3000 considers only start positions?
+ *
  */
 BCFOrderedReader::BCFOrderedReader(std::string file_name, std::vector<GenomeInterval>& intervals)
 {
