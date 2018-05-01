@@ -48,7 +48,7 @@ GenomeInterval::GenomeInterval(std::string& seq, int32_t start1, int32_t end1)
  *
  *         should the implementation of this be performed from programs like view itself?
  *         -requires substantial change at every single program.
- *       
+ *
  */
 GenomeInterval::GenomeInterval(std::string interval)
 {
@@ -72,7 +72,7 @@ void GenomeInterval::set(std::string interval)
 {
     std::vector<std::string> v;
     split(v, ":-\t", interval);
-   
+
     if (v.size()==1)
     {
         seq = v[0];
@@ -112,6 +112,8 @@ void GenomeInterval::set(std::string interval)
 void GenomeInterval::chromosomify()
 {
     start1 = 1;
+    //todo: might be better to ensure the end is the actual chromosome end.  
+    //      Can possibly subsume GenomeInterval into a Genome object.
     end1 = (1<<29) - 1;
 }
 
