@@ -447,8 +447,12 @@ class Igor : Program
                                 int32_t var_len = bcf_hdr_id2length(hdr,BCF_HL_INFO,key);
                                 int32_t type = info[j].type;
 
+                                
                                 if (var_len==BCF_VL_G)
                                 {
+                                
+//                                std::cerr << "tag : "<< tag << "\n";
+
                                     if (type==BCF_BT_INT8||type==BCF_BT_INT16||type==BCF_BT_INT32)
                                     {
                                         int32_t n = 0;
@@ -464,13 +468,17 @@ class Igor : Program
 
                                             gs[0] = g[0];
                                             uint32_t index = 0;
+//                                            std::cerr << "no of genotypes : " << n_genotype2 << "\n";
+//                                            std::cerr << "allele : "<< i << "\n";
                                             for (uint32_t k = 1; k<n_genotype2; ++k)
                                             {
                                                 index += choose(ploidy-(k-1)+i-1,i-1);
+//                                                std::cerr << index << "\n";
+                                                
                                                 gs[k] = g[index];
                                             }
 
-                                            bcf_update_info_int32(odw->hdr, nv, tag, gs, no_samples*n_genotype2);
+                                            bcf_update_info_int32(odw->hdr, nv, tag, gs, n_genotype2);
                                             free(gs);
                                             free(g);
                                         }
