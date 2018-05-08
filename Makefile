@@ -139,6 +139,7 @@ SOURCESONLY = main.cpp
 TARGET = vt
 TOOLSRC = $(SOURCES:=.cpp) $(SOURCESONLY)
 TOOLOBJ = $(TOOLSRC:.cpp=.o)
+LIBDEFLATE = lib/libdeflate/libdeflate.a
 LIBHTS = lib/htslib/libhts.a
 LIBRMATH = lib/Rmath/libRmath.a
 LIBPCRE2 = lib/pcre2/libpcre2.a
@@ -146,8 +147,13 @@ LIBSVM = lib/libsvm/libsvm.a
 
 all : $(TARGET)
 
-${LIBHTS} :
-	cd lib/htslib; $(MAKE) libhts.a || exit 1; 
+${LIBDEFLATE} :
+	cd lib/libdeflate; $(MAKE) || exit 1; 
+	
+${LIBHTS} : ${LIBDEFLATE}
+	export LDFLAGS=-L/net/fantasia/home/atks/dev/vt/lib/libdeflate 
+	export CPPFLAGS=-I/net/fantasia/home/atks/dev/vt/lib/libdeflate
+	cd lib/htslib ; autoheader ; autoconf ; ./configure ; $(MAKE) libhts.a || exit 1; 
 
 ${LIBRMATH} :
 	cd lib/Rmath; $(MAKE) libRmath.a || exit 1; 
@@ -162,7 +168,7 @@ version :
 	git rev-parse HEAD | cut -c 1-8 | awk '{print "#define VERSION \"0.5772-"$$0"\""}' > version.h;
 
 $(TARGET) : ${LIBHTS} ${LIBRMATH} ${LIBPCRE2}  ${LIBSVM} $(TOOLOBJ) 
-	$(CXX) $(CXXFLAGS) -o $@ $(TOOLOBJ) $(LIBHTS) $(LIBRMATH) ${LIBPCRE2} -lz -lpthread -lbz2 -llzma -lcurl -lcrypto
+	$(CXX) $(CXXFLAGS) -o $@ $(TOOLOBJ) $(LIBHTS) $(LIBRMATH) ${LIBPCRE2} ${LIBDEFLATE} -lz -lpthread -lbz2 -llzma -lcurl -lcrypto
 
 $(TOOLOBJ): $(HEADERSONLY)
 
@@ -172,6 +178,7 @@ $(TOOLOBJ): $(HEADERSONLY)
 .PHONY: clean cleanvt test version
 
 clean :
+	cd lib/libdeflate; $(MAKE) clean
 	cd lib/htslib; $(MAKE) clean
 	cd lib/Rmath; $(MAKE) clean
 	cd lib/pcre2; $(MAKE) clean
