@@ -151,9 +151,7 @@ ${LIBDEFLATE} :
 	cd lib/libdeflate; $(MAKE) || exit 1; 
 	
 ${LIBHTS} : ${LIBDEFLATE}
-	export LDFLAGS=-L${PWD}/lib/libdeflate 
-	export CPPFLAGS=-I${PWD}/lib/libdeflate
-	cd lib/htslib; autoheader; autoconf; ./configure; $(MAKE) libhts.a || exit 1; 
+	export LDFLAGS=-L${PWD}/lib/libdeflate;	export CPPFLAGS=-I${PWD}/lib/libdeflate; cd lib/htslib; autoheader; autoconf; ./configure; $(MAKE) libhts.a || exit 1; 
 
 ${LIBRMATH} :
 	cd lib/Rmath; $(MAKE) libRmath.a || exit 1; 
