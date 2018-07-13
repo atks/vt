@@ -66,7 +66,7 @@ int32_t VariantManip::is_not_ref_consistent(bcf_hdr_t *h, bcf1_t *v)
     uint32_t rlen = strlen(vcf_ref);
 
     int32_t ref_len = 0;
-    char *ref = faidx_fetch_uc_seq(fai, chrom, pos0, pos0+rlen-1, &ref_len);
+    char *ref = faidx_fetch_seq(fai, chrom, pos0, pos0+rlen-1, &ref_len);
     if (!ref)
     {
         fprintf(stderr, "[%s:%d %s] failure to extract base from fasta file: %s:%d-%d\n", __FILE__, __LINE__, __FUNCTION__, chrom, pos0, pos0+rlen-1);
