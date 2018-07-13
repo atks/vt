@@ -758,7 +758,7 @@ void LFHMM::collect_statistics(int32_t src_t, int32_t des_t, int32_t j)
     {
         if (des_u==Z)
         {
-            rflank_end[MODEL] = NAN;
+            rflank_end[MODEL] = -1;
             rflank_end[READ] = j+1;
         }
         else if (des_u==M || des_u==D || des_u==I)
@@ -865,23 +865,24 @@ void LFHMM::collect_statistics(int32_t src_t, int32_t des_t, int32_t j)
  */
 void LFHMM::clear_statistics()
 {
-    lflank_start[MODEL] = NAN;
-    lflank_start[READ] = NAN;
-    lflank_end[MODEL] = NAN;
-    lflank_end[READ] = NAN;
-    motif_start[MODEL] = NAN;
-    motif_start[READ] = NAN;
-    motif_end[MODEL] = NAN;
-    motif_end[READ] = NAN;
-    motif_count = NAN;
-    exact_motif_count = NAN;
-    motif_m = NAN;
-    motif_xid = NAN;
-    motif_concordance = NAN;
-    rflank_start[MODEL] = NAN;
-    rflank_start[READ] = NAN;
-    rflank_end[MODEL] = NAN;
-    rflank_end[READ] = NAN;
+    lflank_start[MODEL] = -1;
+    lflank_start[READ] = -1;
+    lflank_end[MODEL] = -1;
+    lflank_end[READ] = -1;
+    motif_start[MODEL] = -1;
+    motif_start[READ] = -1;
+    motif_end[MODEL] = -1;
+    motif_end[READ] = -1;
+    rflank_start[MODEL] = -1;
+    rflank_start[READ] = -1;
+    rflank_end[MODEL] = -1;
+    rflank_end[READ] = -1;
+    motif_count = 0;
+    exact_motif_count = 0;
+    motif_m = -1;
+    motif_xid = -1;
+    motif_concordance = 0;
+    maxLogOdds = 0;
 }
 
 /**
