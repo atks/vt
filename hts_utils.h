@@ -47,13 +47,6 @@ typedef struct {
 
 KHASH_MAP_INIT_STR(s, faidx1_t)
 
-struct __faidx_t {
-    BGZF *bgzf;
-    int n, m;
-    char **name;
-    khash_t(s) *hash;
-};
-
 /**
  * An alternate sequence fetcher for upper case sequence.
  */
