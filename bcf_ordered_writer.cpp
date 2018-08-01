@@ -125,7 +125,14 @@ void BCFOrderedWriter::link_hdr(bcf_hdr_t *hdr)
  */
 void BCFOrderedWriter::write_hdr()
 {
-    bcf_hdr_write(file, hdr);
+    if (bcf_hdr_write(file, hdr))
+    {
+        fprintf(stderr, "[%s:%d %s] writing of header failed.\n",
+                                          __FILE__,
+                                          __LINE__,
+                                          __FUNCTION__);
+        exit(1);
+    }
 }
 
 /**
@@ -191,7 +198,14 @@ void BCFOrderedWriter::write(bcf1_t *v)
     else
     {
         //todo:  add a mechanism to populate header similar to vcf_parse in vcf_format which is called by bcf_write
-        bcf_write(file, hdr, v);
+        if (bcf_write(file, hdr, v))
+        {
+            fprintf(stderr, "[%s:%d %s] writing of VCF record failed.\n",
+                                              __FILE__,
+                                              __LINE__,
+                                              __FUNCTION__);
+            exit(1);
+        }
     }
 }
 
@@ -241,7 +255,14 @@ void BCFOrderedWriter::flush(bool force)
     {
         while (!buffer.empty())
         {
-            bcf_write(file, hdr, buffer.back());
+            if (bcf_write(file, hdr, buffer.back()))
+            {
+                fprintf(stderr, "[%s:%d %s] writing of VCF record failed.\n",
+                                                  __FILE__,
+                                                  __LINE__,
+                                                  __FUNCTION__);
+                exit(1);
+            }
             bcf_destroy(buffer.back());
             //store_bcf1_into_pool(buffer.back());
             buffer.pop_back();
@@ -257,7 +278,14 @@ void BCFOrderedWriter::flush(bool force)
             {
                 if (bcf_get_pos1(buffer.back())<=cutoff_pos1)
                 {
-                    bcf_write(file, hdr, buffer.back());
+                    if (bcf_write(file, hdr, buffer.back()))
+                    {
+                        fprintf(stderr, "[%s:%d %s] writing of VCF record failed.\n",
+                                                          __FILE__,
+                                                          __LINE__,
+                                                          __FUNCTION__);
+                        exit(1);
+                    }
                     bcf_destroy(buffer.back());
                     //store_bcf1_into_pool(buffer.back());
                     buffer.pop_back();
