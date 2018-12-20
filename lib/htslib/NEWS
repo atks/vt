@@ -1,6 +1,45 @@
 Noteworthy changes in release a.b
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+* Incompatible changes:  Several functions and data types have been changed
+  in this release, and the shared library soversion has been bumped.
+
+  - An extra field has been added to the kbitset_t struct so bitsets can
+    be made smaller (and later enlarged) without involving memory allocation.
+
+  - A new field has been added to the bam_pileup1_t structure to keep track
+    of which CIGAR operator is being processed.  This is used by a new
+    bam_plp_insertion() function which can be used to return the sequence of
+    any inserted bases at a given pileup location.  If the alignment includes
+    CIGAR P operators, the returned sequence will include pads.
+
+* SAM format reading and writing is now much faster.  Compared to revision 1.9,
+  reading uncompressed SAM may be up to 100% faster; writing up to 80%.  The
+  exact improvement depends on which compiler options are used and the
+  nature of the SAM file itself.
+
+  The results of parsing invalid SAM files may change due to this update.
+  For example some records where the QUAL string is shorter than SEQ
+  may report "invalid QUAL character" instead of "SEQ and QUAL are of
+  different length".
+
+* Fixed bug where some 8 or 16-bit negative integers were stored using values
+  reserved by the BCF specification.  These numbers are now promoted to the
+  next size up, so -121 to -128 are stored using at least 16 bits, and -32761
+  to -32768 are stored using 32 bits.
+
+  Note that while BCF files affected by this bug are technically incorrect,
+  it is still possible to read them.  When converting to VCF format,
+  HTSlib (and therefore bcftools) will interpret the values as intended
+  and write out the correct negative numbers. (#766, thanks to John Marshall)
+
+* Pileup now correctly reports alignments that begin with a reference skip (N)
+  operation.  This fixes a bug where pileup data structures could be left
+  in an inconsistent state when trying to process such an alignment.
+
+* Fixed bug where alignments starting 0M could cause an invalid memory access
+  in sam_prob_realn().
+
 Noteworthy changes in release 1.9 (18th July 2018)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

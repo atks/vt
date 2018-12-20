@@ -1731,7 +1731,7 @@ int vcf_hdr_write(htsFile *fp, const bcf_hdr_t *h)
 
 void bcf_enc_vint(kstring_t *s, int n, int32_t *a, int wsize)
 {
-    int32_t max = INT32_MIN + 1, min = INT32_MAX;
+    int32_t max = INT32_MIN, min = INT32_MAX;
     int i;
     if (n <= 0) bcf_enc_size(s, 0, BCF_BT_NULL);
     else if (n == 1) bcf_enc_int1(s, a[0]);
@@ -1742,13 +1742,13 @@ void bcf_enc_vint(kstring_t *s, int n, int32_t *a, int wsize)
             if (max < a[i]) max = a[i];
             if (min > a[i]) min = a[i];
         }
-        if (max <= INT8_MAX && min > bcf_int8_vector_end) {
+        if (max <= BCF_MAX_BT_INT8 && min >= BCF_MIN_BT_INT8) {
             bcf_enc_size(s, wsize, BCF_BT_INT8);
             for (i = 0; i < n; ++i)
                 if ( a[i]==bcf_int32_vector_end ) kputc(bcf_int8_vector_end, s);
                 else if ( a[i]==bcf_int32_missing ) kputc(bcf_int8_missing, s);
                 else kputc(a[i], s);
-        } else if (max <= INT16_MAX && min > bcf_int16_vector_end) {
+        } else if (max <= BCF_MAX_BT_INT16 && min >= BCF_MIN_BT_INT16) {
             uint8_t *p;
             bcf_enc_size(s, wsize, BCF_BT_INT16);
             ks_resize(s, s->l + n * sizeof(int16_t));
@@ -3271,6 +3271,8 @@ static void bcf_set_variant_types(bcf1_t *b)
     }
     int i;
     b->d.var_type = 0;
+    d->var[0].type = VCF_REF;
+    d->var[0].n    = 0;
     for (i=1; i<b->n_allele; i++)
     {
         bcf_set_variant_type(d->allele[0],d->allele[i], &d->var[i]);

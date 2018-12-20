@@ -1,33 +1,52 @@
 # Control file for continuous integration testing at http://travis-ci.org/
 
 language: c
-compiler:
-  - clang
-  - gcc
-
-os:
-  - linux
-  - osx
-
-env:
-  - USE_CONFIG=no
-  - USE_CONFIG=yes
 
 matrix:
   include:
-  - compiler: gcc
+  - compiler: gcc-8
     os: linux
-    env: USE_CONFIG=yes USE_LIBDEFLATE=yes
+    env: USE_CONFIG=yes CC=gcc-8 AR=gcc-ar-8
+    addons:
+      apt:
+        sources:
+          - ubuntu-toolchain-r-test
+        packages:
+          - gcc-8
+
+  - compiler: gcc-8
+    os: linux
+    env: USE_CONFIG=yes USE_LIBDEFLATE=yes CC=gcc-8 AR=gcc-ar-8
+    addons:
+      apt:
+        sources:
+          - ubuntu-toolchain-r-test
+        packages:
+          - gcc-8
+
+  - compiler: clang
+    os: osx
+    env: USE_CONFIG=no
+
+  - compiler: clang
+    os: osx
+    env: USE_CONFIG=yes
+
   - compiler: clang
     os: osx
     env: USE_CONFIG=yes USE_LIBDEFLATE=yes
 
-# For linux systems
-addons:
-  apt:
-    packages:
-    - liblzma-dev
-    - libbz2-dev
+  - compiler: gcc
+    os: linux
+    env: USE_CONFIG=no
+
+  - compiler: gcc
+    os: linux
+    env: USE_CONFIG=yes
+
+  - compiler: clang
+    os: linux
+    env: USE_CONFIG=yes
 
 # For MacOSX systems
 before_install:
@@ -38,4 +57,4 @@ before_script:
 
 script:
   - if test "x$USE_LIBDEFLATE" = "xyes" ; then CONFIG_OPTS='CPPFLAGS="-I$HOME/libdeflate" LDFLAGS="-L$HOME/libdeflate" --with-libdeflate' ; else CONFIG_OPTS='--without-libdeflate' ; fi
-  - if test "$USE_CONFIG" = "yes" ; then autoreconf && eval ./configure $CONFIG_OPTS || { cat config.log ; false ; } ; fi && make -j 2 -e && make test
+  - if test "$USE_CONFIG" = "yes" ; then autoreconf && eval ./configure --enable-werror $CONFIG_OPTS CFLAGS=\"-g -O3\" || { cat config.log ; false ; } ; fi && make -j 2 -e && make test
