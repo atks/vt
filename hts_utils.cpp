@@ -402,7 +402,11 @@ void bam_print(bam_hdr_t *h, bam1_t *s)
  */
 void bcf_hdr_print(bcf_hdr_t *h)
 {
-    if ( h->dirty ) bcf_hdr_sync(h);
+    if (h->dirty && bcf_hdr_sync(h)<0) 
+    {
+        fprintf(stderr, "[%s:%d %s] Cannot update header\n", __FILE__, __LINE__, __FUNCTION__);
+        exit(1);
+    }
     kstring_t htxt = {0,0,0};
     bcf_hdr_format(h, 0, &htxt);
     std::cerr << htxt.s;

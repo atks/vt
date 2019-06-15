@@ -150,8 +150,12 @@ class Igor : Program
         bcf_hdr_append_info_with_backup_naming(odr->hdr, "EXACT_OVERLAPS", "1", "Integer", "Number of exact overlapping variants with this variant.", true);
         bcf_hdr_append_info_with_backup_naming(odr->hdr, "FUZZY_OVERLAPS", "1", "Integer", "Number of fuzzy overlapping variants with this variant.", true);
         bcf_hdr_append_info_with_backup_naming(odr->hdr, "OVERLAPPING_VARIANTS", ".", "String", "Overlapping variants with this variant.", true);
-        bcf_hdr_sync(odr->hdr);
-
+        if (bcf_hdr_sync(odr->hdr)<0) 
+        {
+            fprintf(stderr, "[%s:%d %s] Cannot update header\n", __FILE__, __LINE__, __FUNCTION__);
+            exit(1);
+        }
+    
         a_odw = NULL;
         b_odw = NULL;
         if (write_partition)

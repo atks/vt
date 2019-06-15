@@ -212,8 +212,12 @@ Extracts only the naive genotypes based on best guess genotypes.";
 //            printf("adding sample = %s\n",  bcf_hdr_get_sample_name(sr->hdrs[i], 0));
             bcf_hdr_add_sample(odw->hdr, bcf_hdr_get_sample_name(sr->hdrs[i], 0) );
         }
-        bcf_hdr_sync(odw->hdr);
-
+        if (bcf_hdr_sync(odw->hdr)<0) 
+        {
+            fprintf(stderr, "[%s:%d %s] Cannot update header\n", __FILE__, __LINE__, __FUNCTION__);
+            exit(1);
+        }
+    
         odw->write_hdr();
 
         ///////////////

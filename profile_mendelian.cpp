@@ -188,7 +188,11 @@ class Igor : Program
             bcf_hdr_append(odw->hdr, "##INFO=<ID=NPAR_F_HOMREF,Number=1,Type=Integer,Description=\"No. of non pseudoautosomal region variants with homozygous reference genotypes for females.\">");
             bcf_hdr_append(odw->hdr, "##INFO=<ID=NPAR_F_HET,Number=1,Type=Integer,Description=\"No. of non pseudoautosomal region variants with heterozygous genotypes for females.\">");
             bcf_hdr_append(odw->hdr, "##INFO=<ID=NPAR_F_HOMALT,Number=1,Type=Integer,Description=\"No. of non pseudoautosomal region variants with homozygous alternate genotypes for females.\">");
-            bcf_hdr_sync(odw->hdr);
+            if (bcf_hdr_sync(odw->hdr)<0) 
+            {
+                fprintf(stderr, "[%s:%d %s] Cannot update header\n", __FILE__, __LINE__, __FUNCTION__);
+                exit(1);
+            }
             odw->write_hdr();
         }
 

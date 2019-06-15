@@ -31,7 +31,11 @@ OrderedBCFOverlapMatcher::OrderedBCFOverlapMatcher(std::string& file, std::vecto
     odr = new BCFOrderedReader(file, intervals);
     bcf_hdr_append_info_with_backup_naming(odr->hdr, "EXACT_OVERLAPS", "1", "Integer", "Number of exact overlapping variants with this variant.", true);
     bcf_hdr_append_info_with_backup_naming(odr->hdr, "FUZZY_OVERLAPS", "1", "Integer", "Number of fuzzy overlapping variants with this variant.", true);
-    bcf_hdr_sync(odr->hdr);
+    if (bcf_hdr_sync(odr->hdr)<0) 
+    {
+        fprintf(stderr, "[%s:%d %s] Cannot update header\n", __FILE__, __LINE__, __FUNCTION__);
+        exit(1);
+    }
     
     no_regions = 0;
     current_interval.seq = "";
@@ -49,7 +53,11 @@ OrderedBCFOverlapMatcher::OrderedBCFOverlapMatcher(std::string& file, std::vecto
     odr = new BCFOrderedReader(file, intervals);
     bcf_hdr_append_info_with_backup_naming(odr->hdr, "EXACT_OVERLAPS", "1", "Integer", "Number of exact overlapping variants with this variant.", true);
     bcf_hdr_append_info_with_backup_naming(odr->hdr, "FUZZY_OVERLAPS", "1", "Integer", "Number of fuzzy overlapping variants with this variant.", true);
-    bcf_hdr_sync(odr->hdr);
+    if (bcf_hdr_sync(odr->hdr)<0) 
+    {
+        fprintf(stderr, "[%s:%d %s] Cannot update header\n", __FILE__, __LINE__, __FUNCTION__);
+        exit(1);
+    }
 
     filter.parse(fexp.c_str());
     filter_exists = true;
