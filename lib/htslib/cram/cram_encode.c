@@ -35,6 +35,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
+#include <strings.h>
 #include <zlib.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -942,7 +943,7 @@ static int cram_encode_slice(cram_fd *fd, cram_container *c,
     if (CRAM_MAJOR_VERS(fd->version) == 1) {
         if (h->codecs[DS_TN]->codec == E_EXTERNAL) {
             if (!(s->block[DS_TN] = cram_new_block(EXTERNAL,DS_TN))) return -1;
-            h->codecs[DS_TN]->external.content_id = DS_TN;
+            h->codecs[DS_TN]->u.external.content_id = DS_TN;
         } else {
             s->block[DS_TN] = s->block[0];
         }
@@ -970,34 +971,34 @@ static int cram_encode_slice(cram_fd *fd, cram_container *c,
             case E_EXTERNAL:
                 if (!(s->block[id] = cram_new_block(EXTERNAL, id)))
                     return -1;
-                h->codecs[id]->external.content_id = id;
+                h->codecs[id]->u.external.content_id = id;
                 break;
 
             case E_BYTE_ARRAY_STOP:
                 if (!(s->block[id] = cram_new_block(EXTERNAL, id)))
                     return -1;
-                h->codecs[id]->byte_array_stop.content_id = id;
+                h->codecs[id]->u.byte_array_stop.content_id = id;
                 break;
 
             case E_BYTE_ARRAY_LEN: {
                 cram_codec *cc;
 
-                cc = h->codecs[id]->e_byte_array_len.len_codec;
+                cc = h->codecs[id]->u.e_byte_array_len.len_codec;
                 if (cc->codec == E_EXTERNAL) {
-                    int eid = cc->external.content_id;
+                    int eid = cc->u.external.content_id;
                     if (!(s->block[eid] = cram_new_block(EXTERNAL, eid)))
                         return -1;
-                    cc->external.content_id = eid;
+                    cc->u.external.content_id = eid;
                     cc->out = s->block[eid];
                 }
 
-                cc = h->codecs[id]->e_byte_array_len.val_codec;
+                cc = h->codecs[id]->u.e_byte_array_len.val_codec;
                 if (cc->codec == E_EXTERNAL) {
-                    int eid = cc->external.content_id;
+                    int eid = cc->u.external.content_id;
                     if (!s->block[eid])
                         if (!(s->block[eid] = cram_new_block(EXTERNAL, eid)))
                             return -1;
-                    cc->external.content_id = eid;
+                    cc->u.external.content_id = eid;
                     cc->out = s->block[eid];
                 }
                 break;
@@ -2272,7 +2273,7 @@ static char *cram_encode_aux(cram_fd *fd, bam_seq_t *b, cram_container *c,
             if (!tm->blk) {
                 if (!(tm->blk = cram_new_block(EXTERNAL, key)))
                     return NULL;
-                codec->e_byte_array_len.val_codec->out = tm->blk;
+                codec->u.e_byte_array_len.val_codec->out = tm->blk;
             }
 
             aux+=3;
@@ -2286,7 +2287,7 @@ static char *cram_encode_aux(cram_fd *fd, bam_seq_t *b, cram_container *c,
             if (!tm->blk) {
                 if (!(tm->blk = cram_new_block(EXTERNAL, key)))
                     return NULL;
-                codec->e_byte_array_len.val_codec->out = tm->blk;
+                codec->u.e_byte_array_len.val_codec->out = tm->blk;
             }
 
             aux+=3;
@@ -2299,7 +2300,7 @@ static char *cram_encode_aux(cram_fd *fd, bam_seq_t *b, cram_container *c,
             if (!tm->blk) {
                 if (!(tm->blk = cram_new_block(EXTERNAL, key)))
                     return NULL;
-                codec->e_byte_array_len.val_codec->out = tm->blk;
+                codec->u.e_byte_array_len.val_codec->out = tm->blk;
             }
 
             aux+=3;
@@ -2312,7 +2313,7 @@ static char *cram_encode_aux(cram_fd *fd, bam_seq_t *b, cram_container *c,
             if (!tm->blk) {
                 if (!(tm->blk = cram_new_block(EXTERNAL, key)))
                     return NULL;
-                codec->e_byte_array_len.val_codec->out = tm->blk;
+                codec->u.e_byte_array_len.val_codec->out = tm->blk;
             }
 
             aux+=3; //*tmp++=*aux++; *tmp++=*aux++; *tmp++=*aux++;
@@ -2346,8 +2347,8 @@ static char *cram_encode_aux(cram_fd *fd, bam_seq_t *b, cram_container *c,
             if (!tm->blk) {
                 if (!(tm->blk = cram_new_block(EXTERNAL, key)))
                     return NULL;
-                codec->e_byte_array_len.len_codec->out = tm->blk;
-                codec->e_byte_array_len.val_codec->out = tm->blk;
+                codec->u.e_byte_array_len.len_codec->out = tm->blk;
+                codec->u.e_byte_array_len.val_codec->out = tm->blk;
             }
 
             // skip TN field
@@ -2520,6 +2521,44 @@ static cram_container *cram_next_container(cram_fd *fd, bam_seq_t *b) {
 }
 
 /*
+ * Convert a nibble encoded BAM sequence to a string of bases.
+ *
+ * We do this 2 bp at a time for speed. Equiv to:
+ *
+ * for (i = 0; i < len; i++)
+ *    seq[i] = seq_nt16_str[bam_seqi(nib, i)];
+ */
+static void nibble2base(uint8_t *nib, char *seq, int len) {
+    static const char code2base[512] =
+        "===A=C=M=G=R=S=V=T=W=Y=H=K=D=B=N"
+        "A=AAACAMAGARASAVATAWAYAHAKADABAN"
+        "C=CACCCMCGCRCSCVCTCWCYCHCKCDCBCN"
+        "M=MAMCMMMGMRMSMVMTMWMYMHMKMDMBMN"
+        "G=GAGCGMGGGRGSGVGTGWGYGHGKGDGBGN"
+        "R=RARCRMRGRRRSRVRTRWRYRHRKRDRBRN"
+        "S=SASCSMSGSRSSSVSTSWSYSHSKSDSBSN"
+        "V=VAVCVMVGVRVSVVVTVWVYVHVKVDVBVN"
+        "T=TATCTMTGTRTSTVTTTWTYTHTKTDTBTN"
+        "W=WAWCWMWGWRWSWVWTWWWYWHWKWDWBWN"
+        "Y=YAYCYMYGYRYSYVYTYWYYYHYKYDYBYN"
+        "H=HAHCHMHGHRHSHVHTHWHYHHHKHDHBHN"
+        "K=KAKCKMKGKRKSKVKTKWKYKHKKKDKBKN"
+        "D=DADCDMDGDRDSDVDTDWDYDHDKDDDBDN"
+        "B=BABCBMBGBRBSBVBTBWBYBHBKBDBBBN"
+        "N=NANCNMNGNRNSNVNTNWNYNHNKNDNBNN";
+
+    int i, len2 = len/2;
+    seq[0] = 0;
+
+    for (i = 0; i < len2; i++)
+        // Note size_t cast helps gcc optimiser.
+        memcpy(&seq[i*2], &code2base[(size_t)nib[i]*2], 2);
+
+    if ((i *= 2) < len)
+        seq[i] = seq_nt16_str[bam_seqi(nib, i)];
+}
+
+/*
  * Converts a single bam record into a cram record.
  * Possibly used within a thread.
  *
@@ -2588,60 +2627,11 @@ static int process_one_read(cram_fd *fd, cram_container *c,
     cr->qual        = BLOCK_SIZE(s->qual_blk);
     BLOCK_GROW(s->seqs_blk, cr->len+1);
     BLOCK_GROW(s->qual_blk, cr->len);
+
+    // Convert BAM nibble encoded sequence to string of base pairs
     seq = cp = (char *)BLOCK_END(s->seqs_blk);
-
     *seq = 0;
-#if HTS_ALLOW_UNALIGNED != 0
-    {
-        // Convert seq 2 bases at a time for speed.
-        static const uint16_t code2base[256] = {
-            15677, 16701, 17213, 19773, 18237, 21053, 21309, 22077,
-            21565, 22333, 22845, 18493, 19261, 17469, 16957, 20029,
-            15681, 16705, 17217, 19777, 18241, 21057, 21313, 22081,
-            21569, 22337, 22849, 18497, 19265, 17473, 16961, 20033,
-            15683, 16707, 17219, 19779, 18243, 21059, 21315, 22083,
-            21571, 22339, 22851, 18499, 19267, 17475, 16963, 20035,
-            15693, 16717, 17229, 19789, 18253, 21069, 21325, 22093,
-            21581, 22349, 22861, 18509, 19277, 17485, 16973, 20045,
-            15687, 16711, 17223, 19783, 18247, 21063, 21319, 22087,
-            21575, 22343, 22855, 18503, 19271, 17479, 16967, 20039,
-            15698, 16722, 17234, 19794, 18258, 21074, 21330, 22098,
-            21586, 22354, 22866, 18514, 19282, 17490, 16978, 20050,
-            15699, 16723, 17235, 19795, 18259, 21075, 21331, 22099,
-            21587, 22355, 22867, 18515, 19283, 17491, 16979, 20051,
-            15702, 16726, 17238, 19798, 18262, 21078, 21334, 22102,
-            21590, 22358, 22870, 18518, 19286, 17494, 16982, 20054,
-            15700, 16724, 17236, 19796, 18260, 21076, 21332, 22100,
-            21588, 22356, 22868, 18516, 19284, 17492, 16980, 20052,
-            15703, 16727, 17239, 19799, 18263, 21079, 21335, 22103,
-            21591, 22359, 22871, 18519, 19287, 17495, 16983, 20055,
-            15705, 16729, 17241, 19801, 18265, 21081, 21337, 22105,
-            21593, 22361, 22873, 18521, 19289, 17497, 16985, 20057,
-            15688, 16712, 17224, 19784, 18248, 21064, 21320, 22088,
-            21576, 22344, 22856, 18504, 19272, 17480, 16968, 20040,
-            15691, 16715, 17227, 19787, 18251, 21067, 21323, 22091,
-            21579, 22347, 22859, 18507, 19275, 17483, 16971, 20043,
-            15684, 16708, 17220, 19780, 18244, 21060, 21316, 22084,
-            21572, 22340, 22852, 18500, 19268, 17476, 16964, 20036,
-            15682, 16706, 17218, 19778, 18242, 21058, 21314, 22082,
-            21570, 22338, 22850, 18498, 19266, 17474, 16962, 20034,
-            15694, 16718, 17230, 19790, 18254, 21070, 21326, 22094,
-            21582, 22350, 22862, 18510, 19278, 17486, 16974, 20046
-        };
-
-        int l2 = cr->len / 2;
-        unsigned char *from = (unsigned char *)bam_seq(b);
-        uint16_t *cpi = (uint16_t *)cp;
-        cp[0] = 0;
-        for (i = 0; i < l2; i++)
-            cpi[i] = le_int2(code2base[from[i]]);
-        if ((i *= 2) < cr->len)
-            cp[i] = seq_nt16_str[bam_seqi(bam_seq(b), i)];
-    }
-#else
-    for (i = 0; i < cr->len; i++)
-        cp[i] = seq_nt16_str[bam_seqi(bam_seq(b), i)];
-#endif
+    nibble2base(bam_seq(b), cp, cr->len);
     BLOCK_SIZE(s->seqs_blk) += cr->len;
 
     qual = cp = (char *)bam_qual(b);
@@ -2772,14 +2762,14 @@ static int process_one_read(cram_fd *fd, cram_container *c,
                 break;
 
             case BAM_CDEL:
-		if (MD && ref) {
+                if (MD && ref) {
                     kputuw(apos - MD_last, MD);
-		    if (apos < c->ref_end) {
+                    if (apos < c->ref_end) {
                         kputc_('^', MD);
                         kputsn(&ref[apos], MIN(c->ref_end - apos, cig_len), MD);
-		    }
-		}
-		NM += cig_len;
+                    }
+                }
+                NM += cig_len;
 
                 if (cram_add_deletion(c, s, cr, spos, cig_len, &seq[spos]))
                     return -1;

@@ -147,7 +147,7 @@ static int multi_is_subset(var_t *avar, var_t *bvar)
     }
     return 0;
 }
-int32_t pairing_score(sr_sort_t *srt, int ivset, int jvset)
+static uint32_t pairing_score(sr_sort_t *srt, int ivset, int jvset)
 {
     varset_t *iv = &srt->vset[ivset];
     varset_t *jv = &srt->vset[jvset];
@@ -185,9 +185,9 @@ int32_t pairing_score(sr_sort_t *srt, int ivset, int jvset)
     for (i=0; i<iv->nvar; i++) cnt += srt->var[iv->var[i]].nvcf;
     for (j=0; j<jv->nvar; j++) cnt += srt->var[jv->var[j]].nvcf;
 
-    return (1<<(28+min)) + cnt;
+    return (1u<<(28+min)) + cnt;
 }
-void remove_vset(sr_sort_t *srt, int jvset)
+static void remove_vset(sr_sort_t *srt, int jvset)
 {
     if ( jvset+1 < srt->nvset )
     {
@@ -202,7 +202,7 @@ void remove_vset(sr_sort_t *srt, int jvset)
     }
     srt->nvset--;
 }
-int merge_vsets(sr_sort_t *srt, int ivset, int jvset)
+static int merge_vsets(sr_sort_t *srt, int ivset, int jvset)
 {
     int i,j;
     if ( ivset > jvset ) { i = ivset; ivset = jvset; jvset = i; }
@@ -226,7 +226,8 @@ int merge_vsets(sr_sort_t *srt, int ivset, int jvset)
 
     return ivset;
 }
-void push_vset(sr_sort_t *srt, int ivset)
+
+static int push_vset(sr_sort_t *srt, int ivset)
 {
     varset_t *iv = &srt->vset[ivset];
     int i,j;
@@ -248,6 +249,7 @@ void push_vset(sr_sort_t *srt, int ivset)
         }
     }
     remove_vset(srt, ivset);
+    return 0; // FIXME: check for errs in this function
 }
 
 static int cmpstringp(const void *p1, const void *p2)
@@ -293,7 +295,7 @@ void debug_vbuf(sr_sort_t *srt)
 }
 #endif
 
-char *grp_create_key(sr_sort_t *srt)
+static char *grp_create_key(sr_sort_t *srt)
 {
     if ( !srt->str.l ) return strdup("");
     int i;
@@ -319,16 +321,16 @@ int bcf_sr_sort_set_active(sr_sort_t *srt, int idx)
     hts_expand(int,idx+1,srt->mactive,srt->active);
     srt->nactive = 1;
     srt->active[srt->nactive - 1] = idx;
-    return 0;
+    return 0; // FIXME: check for errs in this function
 }
 int bcf_sr_sort_add_active(sr_sort_t *srt, int idx)
 {
     hts_expand(int,idx+1,srt->mactive,srt->active);
     srt->nactive++;
     srt->active[srt->nactive - 1] = idx;
-    return 0;
+    return 0; // FIXME: check for errs in this function
 }
-static void bcf_sr_sort_set(bcf_srs_t *readers, sr_sort_t *srt, const char *chr, int min_pos)
+static int bcf_sr_sort_set(bcf_srs_t *readers, sr_sort_t *srt, const char *chr, int min_pos)
 {
     if ( !srt->grp_str2int )
     {
@@ -456,7 +458,7 @@ static void bcf_sr_sort_set(bcf_srs_t *readers, sr_sort_t *srt, const char *chr,
     {
         if ( kbs_resize(&srt->var[ivar].mask, srt->ngrp) < 0 )
         {
-            fprintf(stderr, "[%s:%d %s] kbs_resize failed\n", __FILE__,__LINE__,__FUNCTION__);
+            fprintf(stderr, "[%s:%d %s] kbs_resize failed\n", __FILE__,__LINE__,__func__);
             exit(1);
         }
         kbs_clear(srt->var[ivar].mask);
@@ -484,7 +486,7 @@ static void bcf_sr_sort_set(bcf_srs_t *readers, sr_sort_t *srt, const char *chr,
         vset->cnt   = var->nvcf;
         if ( kbs_resize(&vset->mask, srt->ngrp) < 0 )
         {
-            fprintf(stderr, "[%s:%d %s] kbs_resize failed\n", __FILE__,__LINE__,__FUNCTION__);
+            fprintf(stderr, "[%s:%d %s] kbs_resize failed\n", __FILE__,__LINE__,__func__);
             exit(1);
         }
         kbs_clear(vset->mask);
@@ -550,6 +552,8 @@ static void bcf_sr_sort_set(bcf_srs_t *readers, sr_sort_t *srt, const char *chr,
 
     srt->chr = chr;
     srt->pos = min_pos;
+
+    return 0;  // FIXME: check for errs in this function
 }
 
 int bcf_sr_sort_next(bcf_srs_t *readers, sr_sort_t *srt, const char *chr, int min_pos)

@@ -48,6 +48,11 @@ struct cram_fd;
 
 char *hts_idx_getfn(const char *fn, const char *ext);
 
+// Used for on-the-fly indexing.  See the comments in hts.c.
+void hts_idx_amend_last(hts_idx_t *idx, uint64_t offset);
+
+int hts_idx_fmt(hts_idx_t *idx);
+
 // The CRAM implementation stores the loaded index within the cram_fd rather
 // than separately as is done elsewhere in htslib.  So if p is a pointer to
 // an hts_idx_t with p->fmt == HTS_FMT_CRAI, then it actually points to an
@@ -77,6 +82,15 @@ const char *hts_path_itr_next(struct hts_path_itr *itr);
 void *load_plugin(void **pluginp, const char *filename, const char *symbol);
 void *plugin_sym(void *plugin, const char *name, const char **errmsg);
 void close_plugin(void *plugin);
+
+/*
+ * Buffers up arguments to hts_idx_push for later use, once we've written all bar
+ * this block.  This is necessary when multiple blocks are in flight (threading).
+ *
+ * Returns 0 on success,
+ *        -1 on failure
+ */
+int bgzf_idx_push(BGZF *fp, hts_idx_t *hidx, int tid, int beg, int end, uint64_t offset, int is_mapped);
 
 #ifdef __cplusplus
 }

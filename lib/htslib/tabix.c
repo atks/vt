@@ -1,7 +1,7 @@
 /*  tabix.c -- Generic indexer for TAB-delimited genome position files.
 
     Copyright (C) 2009-2011 Broad Institute.
-    Copyright (C) 2010-2012, 2014-2018 Genome Research Ltd.
+    Copyright (C) 2010-2012, 2014-2019 Genome Research Ltd.
 
     Author: Heng Li <lh3@sanger.ac.uk>
 
@@ -79,6 +79,15 @@ int file_type(const char *fname)
     else if (l>=4 && strcasecmp(fname+l-5, ".cram") == 0) return IS_CRAM;
 
     htsFile *fp = hts_open(fname,"r");
+    if (!fp) {
+        if (errno == ENOEXEC) {
+            // hts_open() uses this to report that it didn't understand the
+            // file format.
+            error("Couldn't understand format of \"%s\"\n", fname);
+        } else {
+            error("Couldn't open \"%s\" : %s\n", fname, strerror(errno));
+        }
+    }
     enum htsExactFormat format = fp->format.format;
     hts_close(fp);
     if ( format == bcf ) return IS_BCF;
@@ -447,7 +456,7 @@ int main(int argc, char *argv[])
             case 1:
                 printf(
 "tabix (htslib) %s\n"
-"Copyright (C) 2018 Genome Research Ltd.\n", hts_version());
+"Copyright (C) 2019 Genome Research Ltd.\n", hts_version());
                 return EXIT_SUCCESS;
             case 2:
                 return usage(stdout, EXIT_SUCCESS);
@@ -520,6 +529,7 @@ int main(int argc, char *argv[])
     }
     free(idx_fname);
 
+    int ret;
     if ( ftype==IS_CRAM )
     {
         if ( bam_index_build(fname, min_shift)!=0 ) error("bam_index_build failed: %s\n", fname);
@@ -537,12 +547,29 @@ int main(int argc, char *argv[])
             if ( bam_index_build(fname, min_shift)!=0 ) error("bam_index_build failed: %s\n", fname);
             return 0;
         }
-        if ( tbx_index_build(fname, min_shift, &conf)!=0 ) error("tbx_index_build failed: %s\n", fname);
-        return 0;
+
+        switch (ret = tbx_index_build(fname, min_shift, &conf))
+        {
+            case 0:
+                return 0;
+            case -2:
+                error("[tabix] the compression of '%s' is not BGZF\n", fname);
+            default:
+                error("tbx_index_build failed: %s\n", fname);
+        }
     }
     else    // TBI index
     {
-        if ( tbx_index_build(fname, min_shift, &conf) ) error("tbx_index_build failed: %s\n", fname);
-        return 0;
+        switch (ret = tbx_index_build(fname, min_shift, &conf))
+        {
+            case 0:
+                return 0;
+            case -2:
+                error("[tabix] the compression of '%s' is not BGZF\n", fname);
+            default:
+                error("tbx_index_build failed: %s\n", fname);
+        }
     }
+
+    return 0;
 }

@@ -13,6 +13,35 @@ Noteworthy changes in release a.b
     any inserted bases at a given pileup location.  If the alignment includes
     CIGAR P operators, the returned sequence will include pads.
 
+  - The hts_itr_t and hts_itr_multi_t structures have been merged and can be
+    used interchangeably.  Extra fields have been added to hts_itr_t to support
+    this.  hts_itr_multi_t is now a typedef for hts_itr_t; sam_itr_multi_next()
+    is now an alias for sam_itr_next() and hts_itr_multi_destroy() is an alias
+    for hts_itr_destroy().
+
+  - Elements in the hts_reglist_t structure have been reordered slightly
+    so that they pack together better.
+
+  - bgzf_utell() and bgzf_useek() now use type off_t instead of long for
+    the offset.  This allows them to work correctly on files longer than
+    2G bytes on Windows and 32-bit Linux.
+
+  - A number of functions that used to return void now return int so that
+    they can report problems like memory allocation failures.  Callers
+    should take care to check the return values from these functions.
+    The affected functions are:
+       ksort.h:             ks_introsort(), ks_mergesort()
+       sam.h:               bam_mplp_init_overlaps()
+       synced_bcf_reader.h: bcf_sr_regions_flush()
+       vcf.h:               bcf_format_gt(), bcf_fmt_array(),
+			    bcf_enc_int1(), bcf_enc_size(),
+                            bcf_enc_vchar(), bcf_enc_vfloat(), bcf_enc_vint(),
+			    bcf_hdr_set_version(), bcf_hrec_format()
+       vcfutils.h:          bcf_remove_alleles()
+
+  - bcf_set_variant_type() now outputs VCF_OVERLAP for spanning
+    deletions (ALT=*).
+
 * SAM format reading and writing is now much faster.  Compared to revision 1.9,
   reading uncompressed SAM may be up to 100% faster; writing up to 80%.  The
   exact improvement depends on which compiler options are used and the
@@ -22,6 +51,53 @@ Noteworthy changes in release a.b
   For example some records where the QUAL string is shorter than SEQ
   may report "invalid QUAL character" instead of "SEQ and QUAL are of
   different length".
+
+* New API functions hts_reglist_create() and sam_itr_regarray() are added
+  to create hts_reglist_t region lists from `chr:<from>-<to>` type region
+  specifiers.
+
+* An improved region parsing function hts_parse_region() is added.  This
+  is designed to help deal with ambiguities that arise when reference names
+  contain colons followed by numbers.  It does this by checking possible
+  names against the known list of references in the input file.  When even
+  this method fails (for example when names "chr1" and "chr1:100-200" both
+  exist) the reference name part can be quoted using curly braces.  Thus
+  "{chr1}:100-200" and "{chr1:100-200}" disambiguate the above example.
+
+  Specialisations of this function sam_parse_region() and fai_parse_region()
+  are also added for SAM/BAM/CRAM files and fasta/fastq files respectively.
+  HTSlib iterator functions that accept a region specifier have been
+  upgraded to use the new interface.
+
+* hts_idx_load() and hts_open() have been changed to support indexes
+  which are not stored in the same location as the indexed file.  This works
+  by appending a delimiter '##idx##' and the index file location to the
+  normal file name.  hts_open() opens the file in the part before the
+  delimiter; hts_idx_load() opens the index in the part after it.  So for
+  example, "/path1/my_data.bam##idx##/path2/my_index.csi" will open bam file
+  "/path1/my_data.bam" and index file "/path2/my_index.csi".
+
+* Changes to hfile_s3, which provides support for the AWS S3 API.
+
+  - hfile_s3 now uses version 4 signatures by default.  Attempting to write to
+    an S3 bucket will also now work correctly.  It is possible to force
+    version 2 signatures by creating environment variable HTS_S3_V2 (the exact
+    value does not matter, it just has to exist).  Note that writing depends
+    on features that need version 4 signatures, so forcing version 2 will
+    disable writes.
+
+  - hfile_s3 will automatically retry requests where the region endpoint
+    was not specified correctly, either by following the 301 redirect (when
+    using path-style requests) or reading the 400 response (when using
+    virtual-hosted style requests and version 4 signatures).  The first
+    region to try can be set by using the AWS_DEFAULT_REGION environment
+    variable, by setting "region" in ".aws/credentials" or by setting
+    "bucket_location" in ".s3cfg".
+
+  - hfile_s3 now percent-escapes the path component of s3:// URLs.  For
+    backwards-compatibility it will ignore any paths that have already
+    been escaped (detected by looking for '%' followed by two hexadecimal
+    digits.)
 
 * Fixed bug where some 8 or 16-bit negative integers were stored using values
   reserved by the BCF specification.  These numbers are now promoted to the

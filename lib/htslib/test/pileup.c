@@ -40,6 +40,8 @@ samtools mpileup -B -Q 0 in.bam | perl -lane \
 
  */
 
+#include <config.h>
+
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
@@ -80,7 +82,7 @@ static int print_pileup_seq(const bam_pileup1_t *p, int n) {
 
         if (p->is_head)
             putchar('^'), putchar('!'+MIN(p->b->core.qual,93));
-        
+
         if (p->is_del)
             putchar(p->is_refskip ? (is_rev ? '<' : '>') : '*');
         else {

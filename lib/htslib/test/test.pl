@@ -33,6 +33,13 @@ use IO::Handle;
 
 my $opts = parse_params();
 
+test_bgzip($opts, 0);
+test_bgzip($opts, 4);
+
+ce_fa_to_md5_cache($opts);
+test_index($opts, 0);
+test_index($opts, 4);
+
 test_view($opts,0);
 test_view($opts,4);
 
@@ -108,8 +115,8 @@ sub parse_params
     $$opts{bin}  = $FindBin::RealBin;
     $$opts{bin}  =~ s{/test/?$}{};
     if ($^O =~ /^msys/) {
-	$$opts{path} = cygpath($$opts{path});
-	$$opts{bin}  = cygpath($$opts{bin});
+        $$opts{path} = cygpath($$opts{path});
+        $$opts{bin}  = cygpath($$opts{bin});
     }
 
     return $opts;
@@ -129,9 +136,9 @@ sub _cmd
     }
     else
     {
-	# Example of how to embed Valgrind into the testing framework.
-	# TEST_PRECMD="valgrind --leak-check=full --suppressions=$ENV{HOME}/valgrind.supp" make check
-	$cmd = "$ENV{TEST_PRECMD} $cmd" if exists $ENV{TEST_PRECMD};
+        # Example of how to embed Valgrind into the testing framework.
+        # TEST_PRECMD="valgrind --leak-check=full --suppressions=$ENV{HOME}/valgrind.supp" make check
+        $cmd = "$ENV{TEST_PRECMD} $cmd" if exists $ENV{TEST_PRECMD};
 
         # child
         exec('bash', '-o','pipefail','-c', $cmd) or error("Cannot execute the command [/bin/sh -o pipefail -c $cmd]: $!");
@@ -206,6 +213,60 @@ sub test_cmd
     }
     passed($opts,$test);
 }
+
+# Run cmd, producing file out, and compare contents against exp
+sub test_compare
+{
+    my ($opts,$cmd,$exp_fn,$out_fn, %args) = @_;
+    my ($package, $filename, $line, $test)=caller(1);
+    $test =~ s/^.+:://;
+
+    print "$test:\n\t$cmd\n";
+
+    my ($ret,$stdout) = _cmd($cmd);
+    if ( $ret ) { failed($opts,$test); return; }
+
+    local $/;
+    my ($exp,$out) = ("","");
+    if ( exists($args{"gz"}) ) {
+        if ( open(my $fh,'-|',"$$opts{bin}/bgzip -d < $exp_fn") ) {
+            $exp = <$fh>;
+            close($fh);
+        } else {
+            failed($opts,$test,"bgzip -d < $exp_fn $!"); return;
+        }
+    } else {
+        if ( open(my $fh,'<',$exp_fn) ) {
+            $exp = <$fh>;
+            close($fh);
+        } else {
+            failed($opts,$test,"$exp_fn $!"); return;
+        }
+    }
+
+    if ( exists($args{"gz"}) ) {
+        if ( open(my $fh,'-|',"$$opts{bin}/bgzip -d < $out_fn") ) {
+            $out = <$fh>;
+            close($fh);
+        } else {
+            failed($opts,$test,"bgzip -d < $out_fn $!"); return;
+        }
+    } else {
+        if ( open(my $fh,'<',$out_fn) ) {
+            $out = <$fh>;
+            close($fh);
+        } else {
+            failed($opts,$test,"$out_fn $!"); return;
+        }
+    }
+
+    if ( $exp ne $out )
+    {
+        failed($opts,$test,"The outputs differ:\n\t\t$exp_fn\n\t\t$out_fn");
+        return;
+    }
+    passed($opts,$test);
+}
 sub failed
 {
     my ($opts,$test,$reason) = @_;
@@ -234,8 +295,145 @@ sub is_file_newer
     return 0;
 }
 
+sub ce_fa_to_md5_cache {
+    my ($opts) = @_;
+
+    # These should really be worked out from the file contents, but
+    # pre-calculating them avoids a dependency on Digest::MD5
+    my %csums = (CHROMOSOME_I     => '8ede36131e0dbf3417807e48f77f3ebd',
+                 CHROMOSOME_II    => '8e7993f7a93158587ee897d7287948ec',
+                 CHROMOSOME_III   => '3adcb065e1cf74fafdbba1e8c352b323',
+                 CHROMOSOME_IV    => '251af66a69ee589c9f3757340ec2de6f',
+                 CHROMOSOME_V     => 'cf200a65fb754836dcc56b24b3170ee8',
+                 CHROMOSOME_X     => '6f9368fd2192c89c613718399d2d31fc',
+                 CHROMOSOME_MtDNA => 'cd05857ece6411f40257a565ccfe15bb');
+
+    my $m5_dir = "$$opts{tmp}/md5";
+    if (!-d $m5_dir) {
+        mkdir($m5_dir) || die "Couldn't make directory $m5_dir\n";
+    }
+    my $out;
+    open(my $fa, '<', "$$opts{path}/ce.fa")
+        || die "Couldn't open $$opts{path}/ce.fa : $!\n";
+    my $name = '';
+    while (<$fa>) {
+        chomp;
+        if (/^>(\S+)/) {
+            if ($out) {
+                close($out) || die "Error closing $m5_dir/$csums{$name} : $!\n";
+            }
+            $name = $1;
+            if (!exists($csums{$name})) {
+                die "Unexpected fasta entry : $name\n";
+            }
+            open($out, '>', "$m5_dir/$csums{$name}")
+        } else {
+            if (!$out) {
+                die "$$opts{path}/ce.fa : Got data before fasta header\n";
+            }
+            $_ = uc($_);
+            s/\s+//g;
+            print $out $_;
+        }
+    }
+    if ($out) {
+        close($out) || die "Error closing $m5_dir/$csums{$name} : $!\n";
+    }
+    close($fa) || die "Error reading $$opts{path}/ce.fa : $!\n";
+    $$opts{m5_dir} = $m5_dir;
+}
+
 
 # The tests --------------------------
+
+sub test_bgzip {
+    my ($opts, $threads) = @_;
+
+    my $at = $threads ? "-@ $threads" : '';
+    my $data = "$$opts{path}/ce.fa";
+    my $compressed = "$$opts{tmp}/ce.fa.$threads.gz";
+    my $compressed_copy = "$$opts{tmp}/ce.fa.$threads.copy.gz";
+    my $uncompressed = "$$opts{tmp}/ce.fa.$threads.uncomp";
+    my $offset = 1055584; # Start of MT in ce.fa
+    my $uncompressed_part = "$$opts{tmp}/ce.fa.$threads.part";
+    my $uncompressed_part2 = "$$opts{tmp}/ce.fa.$threads.part2";
+    my $expected_part = "$$opts{tmp}/ce.fa.$threads.tail";
+    my $index = "${compressed}.gzi";
+    my $test = sprintf('%s %2s threads', 'bgzip round-trip',
+                       $threads ? $threads : 'no');
+
+    # Round-trip test
+    print "$test: ";
+    my $c = "$$opts{bin}/bgzip $at -i -I '$index' < '$data' > '$compressed'";
+    my ($ret, $out) = _cmd($c);
+    if ($ret) {
+        failed($opts, $test, "non-zero exit from $c");
+        return;
+    }
+    $c = "$$opts{bin}/bgzip $at -d < '$compressed' > '$uncompressed'";
+    ($ret, $out) = _cmd($c);
+    if ($ret) {
+        failed($opts, $test, "non-zero exit from $c");
+        return;
+    }
+    $c = "cmp '$data' '$uncompressed'";
+    ($ret, $out) = _cmd($c);
+    if ($ret) {
+        failed($opts, $test, $out ? $out : "'$data' '$uncompressed' differ");
+        return;
+    }
+    passed($opts,$test);
+
+    # Extract from an offset
+    $test = sprintf('%s %2s threads', 'bgzip -b',
+                    $threads ? $threads : 'no');
+    print "$test: ";
+    $c = sprintf("tail -c +%d '%s' > '%s'", $offset + 1, $data, $expected_part);
+    ($ret, $out) = _cmd($c);
+    if ($ret) {
+        failed($opts, $test, "non-zero exit from $c");
+        return;
+    }
+    $c = "$$opts{bin}/bgzip $at -b $offset -d '$compressed' > $uncompressed_part";
+    ($ret, $out) = _cmd($c);
+    if ($ret) {
+        failed($opts, $test, "non-zero exit from $c");
+        return;
+    }
+    $c = "cmp '$expected_part' '$uncompressed_part'";
+    ($ret, $out) = _cmd($c);
+    if ($ret) {
+        failed($opts, $test,
+               $out ? $out : "'$expected_part' '$uncompressed_part' differ");
+        return;
+    }
+    passed($opts,$test);
+
+    # Extract from an offset with named index
+    $test = sprintf('%s %2s threads', 'bgzip -b -I',
+                    $threads ? $threads : 'no');
+    print "$test: ";
+    $c = "cp '$compressed' '$compressed_copy'";
+    ($ret, $out) = _cmd($c);
+    if ($ret) {
+        failed($opts, $test, "non-zero exit from $c");
+        return;
+    }
+    $c = "$$opts{bin}/bgzip $at -b $offset -d -I '$index' '$compressed_copy' > $uncompressed_part2";
+    ($ret, $out) = _cmd($c);
+    if ($ret) {
+        failed($opts, $test, "non-zero exit from $c");
+        return;
+    }
+    $c = "cmp '$expected_part' '$uncompressed_part2'";
+    ($ret, $out) = _cmd($c);
+    if ($ret) {
+        failed($opts, $test,
+               $out ? $out : "'$expected_part' '$uncompressed_part2' differ");
+        return;
+    }
+    passed($opts,$test);
+}
 
 my $test_view_failures;
 sub testv {
@@ -315,8 +513,8 @@ sub test_view
         # CRAM2 -> CRAM3
         testv $opts, "./test_view $tv_args -t $ref -C -o VERSION=3.0 $cram.cram > $cram";
 
-	# CRAM3 -> CRAM3 + multi-slice
-	testv $opts, "./test_view $tv_args -t $ref -C -o VERSION=3.0 -o seqs_per_slice=7 -o slices_per_container=5 $cram.cram > $cram";
+        # CRAM3 -> CRAM3 + multi-slice
+        testv $opts, "./test_view $tv_args -t $ref -C -o VERSION=3.0 -o seqs_per_slice=7 -o slices_per_container=5 $cram.cram > $cram";
         testv $opts, "./test_view $tv_args $cram > $cram.sam_";
         testv $opts, "./compare_sam.pl $md $sam $cram.sam_";
 
@@ -355,9 +553,9 @@ sub test_view
     testv $opts, "./compare_sam.pl range.tmp range.out";
 
     if ($test_view_failures == 0) {
-	passed($opts, "range.cram tests");
+        passed($opts, "range.cram tests");
     } else {
-	failed($opts, "range.cram tests", "$test_view_failures subtests failed");
+        failed($opts, "range.cram tests", "$test_view_failures subtests failed");
     }
 }
 
@@ -378,46 +576,95 @@ sub test_MD
         $test_view_failures = 0;
         $cram = "$base.tmp.cram";
 
-	# Forcibly store MD and NM and don't auto-generate.
-	# ALL NM/MD should match and be present only when originally present
+        # Forcibly store MD and NM and don't auto-generate.
+        # ALL NM/MD should match and be present only when originally present
         testv $opts, "./test_view -o store_nm=1 -o store_md=1 -t $ref -C $sam > $cram";
         testv $opts, "./test_view -i decode_md=0 -D $cram > $cram.sam_";
         testv $opts, "./compare_sam.pl $sam $cram.sam_";
 
         # Skip auto-MD generation; check MD iff in output file.
-	# (NB this does not check that all erroneous values are stored.)
+        # (NB this does not check that all erroneous values are stored.)
         testv $opts, "./test_view -t $ref -C $sam > $cram";
         testv $opts, "./test_view -i decode_md=0 -D $cram > $cram.sam_";
         testv $opts, "./compare_sam.pl -partialmd=2 $sam $cram.sam_";
 
-	# Also check we haven't added NM or MD needlessly for xx#MD.sam.
-	# This file has no errors so without auto-generation there must be
-	# no NM or MD records.
-	if ($sam eq "xx#MD.sam") {
-	    print "  Checking for MD/NM in $sam\n";
-	    open(my $fh, "<$cram.sam_") || die;
-	    while (<$fh>) {
-		if (/(MD|NM):/) {
-		    print STDERR "Failed\nLine contains MD/NM:\n$_";
-		    $test_view_failures++;
-		    last;
-		}
-	    }
-	    close($fh);
-	}
+        # Also check we haven't added NM or MD needlessly for xx#MD.sam.
+        # This file has no errors so without auto-generation there must be
+        # no NM or MD records.
+        if ($sam eq "xx#MD.sam") {
+            print "  Checking for MD/NM in $sam\n";
+            open(my $fh, "<$cram.sam_") || die;
+            while (<$fh>) {
+                if (/(MD|NM):/) {
+                    print STDERR "Failed\nLine contains MD/NM:\n$_";
+                    $test_view_failures++;
+                    last;
+                }
+            }
+            close($fh);
+        }
 
-	# Force auto-MD generation; check MD iff in input file.
-	# This will ensure any erroneous values have been round-tripped.
+        # Force auto-MD generation; check MD iff in input file.
+        # This will ensure any erroneous values have been round-tripped.
         testv $opts, "./test_view -t $ref -C $sam > $cram";
         testv $opts, "./test_view -i decode_md=1 -D $cram > $cram.sam_";
         testv $opts, "./compare_sam.pl -partialmd=1 $sam $cram.sam_";
 
-	if ($test_view_failures == 0) {
-	    passed($opts, "$sam MD tests");
-	} else {
-	    failed($opts, "$sam MD tests", "$test_view_failures subtests failed");
-	}
+        if ($test_view_failures == 0) {
+            passed($opts, "$sam MD tests");
+        } else {
+            failed($opts, "$sam MD tests", "$test_view_failures subtests failed");
+        }
     }
+}
+
+sub test_index
+{
+    my ($opts, $nthreads) = @_;
+    $nthreads = $nthreads ? "-\@$nthreads" : "";
+
+    # BAM
+    test_compare($opts,"$$opts{path}/test_view $nthreads -l 0 -b -m 14 -x $$opts{tmp}/index.bam.csi $$opts{path}/index.sam > $$opts{tmp}/index.bam", "$$opts{tmp}/index.bam.csi", "$$opts{path}/index.bam.csi", gz=>1);
+    unlink("$$opts{tmp}/index.bam.csi");
+    test_compare($opts,"$$opts{path}/test_index -c $$opts{tmp}/index.bam", "$$opts{tmp}/index.bam.csi", "$$opts{path}/index.bam.csi", gz=>1);
+    test_compare($opts,"$$opts{path}/test_view $nthreads -l 0 -b -m 0 -x $$opts{tmp}/index.bam.bai $$opts{path}/index.sam > $$opts{tmp}/index.bam", "$$opts{tmp}/index.bam.bai", "$$opts{path}/index.bam.bai");
+    unlink("$$opts{tmp}/index.bam.bai");
+    test_compare($opts,"$$opts{path}/test_index -b $$opts{tmp}/index.bam", "$$opts{tmp}/index.bam.bai", "$$opts{path}/index.bam.bai");
+
+    # SAM
+    test_compare($opts,"$$opts{path}/test_view $nthreads -l 0 -z -m 14 -x $$opts{tmp}/index.sam.gz.csi $$opts{path}/index.sam > $$opts{tmp}/index.sam.gz", "$$opts{tmp}/index.sam.gz.csi", "$$opts{path}/index.sam.gz.csi", gz=>1);
+    unlink("$$opts{tmp}/index.bam.bai");
+    test_compare($opts,"$$opts{path}/test_index -c $$opts{tmp}/index.sam.gz", "$$opts{tmp}/index.sam.gz.csi", "$$opts{path}/index.sam.gz.csi", gz=>1);
+    test_compare($opts,"$$opts{path}/test_view $nthreads -l 0 -z -m 0 -x $$opts{tmp}/index.sam.gz.bai $$opts{path}/index.sam > $$opts{tmp}/index.sam.gz", "$$opts{tmp}/index.sam.gz.bai", "$$opts{path}/index.sam.gz.bai");
+    unlink("$$opts{tmp}/index.sam.gz.bai");
+    test_compare($opts,"$$opts{path}/test_index -b $$opts{tmp}/index.sam.gz", "$$opts{tmp}/index.sam.gz.bai", "$$opts{path}/index.sam.gz.bai");
+
+    # CRAM
+    local $ENV{REF_PATH} = $$opts{m5_dir};
+    test_compare($opts,"$$opts{path}/test_view $nthreads -l 0 -C -x $$opts{tmp}/index.cram.crai $$opts{path}/index.sam > $$opts{tmp}/index.cram", "$$opts{tmp}/index.cram.crai", "$$opts{path}/index.cram.crai", gz=>1);
+    unlink("$$opts{tmp}/index.cram.crai");
+    test_compare($opts,"$$opts{path}/test_index $$opts{tmp}/index.cram", "$$opts{tmp}/index.cram.crai", "$$opts{path}/index.cram.crai", gz=>1);
+
+    # BCF
+    test_compare($opts,"$$opts{path}/test_view $nthreads -l 0 -b -m 14 -x $$opts{tmp}/index.bcf.csi $$opts{path}/index.vcf > $$opts{tmp}/index.bcf", "$$opts{tmp}/index.bcf.csi", "$$opts{path}/index.bcf.csi", gz=>1);
+    unlink("$$opts{tmp}/index.bcf.csi");
+    test_compare($opts,"$$opts{path}/test_index -c $$opts{tmp}/index.bcf", "$$opts{tmp}/index.bcf.csi", "$$opts{path}/index.bcf.csi", gz=>1);
+
+    # VCF
+    test_compare($opts,"$$opts{path}/test_view $nthreads -l 0 -z -m 14 -x $$opts{tmp}/index.vcf.gz.csi $$opts{path}/index.vcf > $$opts{tmp}/index.vcf.gz", "$$opts{tmp}/index.vcf.gz.csi", "$$opts{path}/index.vcf.gz.csi", gz=>1);
+    unlink("$$opts{tmp}/index.vcf.gz.csi");
+    test_compare($opts,"$$opts{path}/test_index -c $$opts{tmp}/index.vcf.gz", "$$opts{tmp}/index.vcf.gz.csi", "$$opts{path}/index.vcf.gz.csi", gz=>1);
+    test_compare($opts,"$$opts{path}/test_view $nthreads -l 0 -z -m 0 -x $$opts{tmp}/index.vcf.gz.tbi $$opts{path}/index.vcf > $$opts{tmp}/index.vcf.gz", "$$opts{tmp}/index.vcf.gz.tbi", "$$opts{path}/index.vcf.gz.tbi", gz=>1);
+    unlink("$$opts{tmp}/index.vcf.gz.tbi");
+    test_compare($opts,"$$opts{path}/test_index -t $$opts{tmp}/index.vcf.gz", "$$opts{tmp}/index.vcf.gz.tbi", "$$opts{path}/index.vcf.gz.tbi", gz=>1);
+
+    # Tabix and custom index names
+    _cmd("$$opts{bin}/tabix -fp vcf $$opts{tmp}/index.vcf.gz");
+    my $wtmp = $$opts{tmp};
+    if ($^O =~ /^msys/) {
+        $wtmp =~ s/\//\\\\/g;
+    }
+    test_cmd($opts,out=>'tabix.out',cmd=>"$$opts{bin}/tabix $wtmp/index.vcf.gz##idx##$wtmp/index.vcf.gz.tbi 1:10000060-10000060");
 }
 
 sub test_vcf_api
@@ -455,19 +702,19 @@ sub write_multiblock_bgzf {
     my $tmp = "$name.tmp";
     open(my $out, '>', $name) || die "Couldn't open $name $!\n";
     for (my $i = 0; $i < @$frags; $i++) {
-	local $/;
-	open(my $f, '>', $tmp) || die "Couldn't open $tmp : $!\n";
-	print $f $frags->[$i];
-	close($f) || die "Error writing to $tmp: $!\n";
-	open(my $bgz, '-|', "$$opts{bin}/bgzip -c $tmp")
-	    || die "Couldn't open pipe to bgzip: $!\n";
-	my $compressed = <$bgz>;
-	close($bgz) || die "Error running bgzip\n";
-	if ($i < $#$frags) {
-	    # Strip EOF block
-	    $compressed =~ s/\x1f\x8b\x08\x04\x00{5}\xff\x06\x00\x42\x43\x02\x00\x1b\x00\x03\x00{9}$//;
-	}
-	print $out $compressed;
+        local $/;
+        open(my $f, '>', $tmp) || die "Couldn't open $tmp : $!\n";
+        print $f $frags->[$i];
+        close($f) || die "Error writing to $tmp: $!\n";
+        open(my $bgz, '-|', "$$opts{bin}/bgzip -c $tmp")
+            || die "Couldn't open pipe to bgzip: $!\n";
+        my $compressed = <$bgz>;
+        close($bgz) || die "Error running bgzip\n";
+        if ($i < $#$frags) {
+            # Strip EOF block
+            $compressed =~ s/\x1f\x8b\x08\x04\x00{5}\xff\x06\x00\x42\x43\x02\x00\x1b\x00\x03\x00{9}$//;
+        }
+        print $out $compressed;
     }
     close($out) || die "Error writing to $name: $!\n";
     unlink($tmp);
@@ -486,14 +733,14 @@ sub test_rebgzip
     my ($ret, $out) = _cmd("cmp $mb $$opts{path}/bgziptest.txt.gz");
 
     if (!$ret && $out eq '') { # If it does, use the original
-	test_cmd($opts, %args, out => "bgziptest.txt.gz",
-		 cmd => "$$opts{bin}/bgzip -I $$opts{path}/bgziptest.txt.gz.gzi -c -g $$opts{path}/bgziptest.txt");
+        test_cmd($opts, %args, out => "bgziptest.txt.gz",
+                 cmd => "$$opts{bin}/bgzip -I $$opts{path}/bgziptest.txt.gz.gzi -c -g $$opts{path}/bgziptest.txt");
     } else {
-	# Otherwise index the one we just made and test that
-	print "test_rebgzip: Alternate zlib/deflate library detected\n";
-	cmd("$$opts{bin}/bgzip -I $mb.gzi -r $mb");
-	test_cmd($opts, %args, out => "bgziptest.txt.tmp.gz",
-		 cmd => "$$opts{bin}/bgzip -I $mb.gzi -c -g $$opts{path}/bgziptest.txt");
+        # Otherwise index the one we just made and test that
+        print "test_rebgzip: Alternate zlib/deflate library detected\n";
+        cmd("$$opts{bin}/bgzip -I $mb.gzi -r $mb");
+        test_cmd($opts, %args, out => "bgziptest.txt.tmp.gz",
+                 cmd => "$$opts{bin}/bgzip -I $mb.gzi -c -g $$opts{path}/bgziptest.txt");
     }
 }
 

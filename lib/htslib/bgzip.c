@@ -1,7 +1,7 @@
 /* bgzip.c -- Block compression/decompression utility.
 
    Copyright (C) 2008, 2009 Broad Institute / Massachusetts Institute of Technology
-   Copyright (C) 2010, 2013-2018 Genome Research Ltd.
+   Copyright (C) 2010, 2013-2019 Genome Research Ltd.
 
    Permission is hereby granted, free of charge, to any person obtaining a copy
    of this software and associated documentation files (the "Software"), to deal
@@ -137,7 +137,7 @@ int main(int argc, char **argv)
         case 1:
             printf(
 "bgzip (htslib) %s\n"
-"Copyright (C) 2018 Genome Research Ltd.\n", hts_version());
+"Copyright (C) 2019 Genome Research Ltd.\n", hts_version());
             return EXIT_SUCCESS;
         case 'h': return bgzip_main_usage(stdout, EXIT_SUCCESS);
         case '?': return bgzip_main_usage(stderr, EXIT_FAILURE);
@@ -216,10 +216,10 @@ int main(int argc, char **argv)
             return 1;
         }
 
+        if ( index ) bgzf_index_build_init(fp);
         if (threads > 1)
             bgzf_mt(fp, threads, 256);
 
-        if ( index ) bgzf_index_build_init(fp);
         buffer = malloc(WINDOW_SIZE);
 #ifdef _WIN32
         _setmode(f_src, O_BINARY);
@@ -342,15 +342,26 @@ int main(int argc, char **argv)
             return 1;
         }
 
-        if (threads > 1)
-            bgzf_mt(fp, threads, 256);
-
         buffer = malloc(WINDOW_SIZE);
         if ( start>0 )
         {
-            if ( bgzf_index_load(fp, argv[optind], ".gzi") < 0 ) error("Could not load index: %s.gzi\n", argv[optind]);
+            if (index_fname) {
+                if ( bgzf_index_load(fp, index_fname, NULL) < 0 )
+                    error("Could not load index: %s\n", index_fname);
+            } else {
+                if (optind >= argc) {
+                    error("The -b option requires -I when reading from stdin "
+                          "(and stdin must be seekable)\n");
+                }
+                if ( bgzf_index_load(fp, argv[optind], ".gzi") < 0 )
+                    error("Could not load index: %s.gzi\n", argv[optind]);
+            }
             if ( bgzf_useek(fp, start, SEEK_SET) < 0 ) error("Could not seek to %d-th (uncompressd) byte\n", start);
         }
+
+        if (threads > 1)
+            bgzf_mt(fp, threads, 256);
+
 #ifdef _WIN32
         _setmode(f_dst, O_BINARY);
 #endif
@@ -370,7 +381,7 @@ int main(int argc, char **argv)
         }
         free(buffer);
         if (bgzf_close(fp) < 0) error("Close failed: Error %d\n",fp->errcode);
-        if (!pstdout && !test) unlink(argv[optind]);
+        if (argc > optind && !pstdout && !test) unlink(argv[optind]);
         return 0;
     }
 }

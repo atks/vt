@@ -104,6 +104,7 @@ static int hts_tpool_add_result(hts_tpool_job *j, void *data) {
 
     r->next = NULL;
     r->data = data;
+    r->result_cleanup = j->result_cleanup;
     r->serial = j->serial;
 
     q->n_output++;
@@ -362,6 +363,7 @@ hts_tpool_process *hts_tpool_process_init(hts_tpool *p, int qsize, int in_only) 
     q->output_tail = NULL;
     q->next_serial = 0;
     q->curr_serial = 0;
+    q->no_more_input = 0;
     q->n_input     = 0;
     q->n_output    = 0;
     q->n_processing= 0;
@@ -387,6 +389,14 @@ void hts_tpool_process_destroy(hts_tpool_process *q) {
 
     if (!q)
         return;
+
+    // Prevent dispatch from queuing up any more jobs.
+    // We want to reset (and flush) the queue here, before
+    // we set the shutdown flag, but we need to avoid races
+    // with queue more input during reset.
+    pthread_mutex_lock(&q->p->pool_m);
+    q->no_more_input = 1;
+    pthread_mutex_unlock(&q->p->pool_m);
 
     // Ensure it's fully drained before destroying the queue
     hts_tpool_process_reset(q, 0);
@@ -722,7 +732,7 @@ int hts_tpool_size(hts_tpool *p) {
  */
 int hts_tpool_dispatch(hts_tpool *p, hts_tpool_process *q,
                     void *(*func)(void *arg), void *arg) {
-    return hts_tpool_dispatch2(p, q, func, arg, 0);
+    return hts_tpool_dispatch3(p, q, func, arg, NULL, NULL, 0);
 }
 
 /*
@@ -733,7 +743,15 @@ int hts_tpool_dispatch(hts_tpool *p, hts_tpool_process *q,
  * nonblock -1 => add task regardless of whether queue is full (over-size)
  */
 int hts_tpool_dispatch2(hts_tpool *p, hts_tpool_process *q,
-                     void *(*func)(void *arg), void *arg, int nonblock) {
+                        void *(*func)(void *arg), void *arg, int nonblock) {
+    return hts_tpool_dispatch3(p, q, func, arg, NULL, NULL, nonblock);
+}
+
+int hts_tpool_dispatch3(hts_tpool *p, hts_tpool_process *q,
+                        void *(*exec_func)(void *arg), void *arg,
+                        void (*job_cleanup)(void *arg),
+                        void (*result_cleanup)(void *data),
+                        int nonblock) {
     hts_tpool_job *j;
 
     pthread_mutex_lock(&p->pool_m);
@@ -741,7 +759,7 @@ int hts_tpool_dispatch2(hts_tpool *p, hts_tpool_process *q,
     DBG_OUT(stderr, "Dispatching job for queue %p, serial %"PRId64"\n",
             q, q->curr_serial);
 
-    if (q->n_input >= q->qsize && nonblock == 1) {
+    if ((q->no_more_input || q->n_input >= q->qsize) && nonblock == 1) {
         pthread_mutex_unlock(&p->pool_m);
         errno = EAGAIN;
         return -1;
@@ -751,17 +769,21 @@ int hts_tpool_dispatch2(hts_tpool *p, hts_tpool_process *q,
         pthread_mutex_unlock(&p->pool_m);
         return -1;
     }
-    j->func = func;
+    j->func = exec_func;
     j->arg = arg;
+    j->job_cleanup = job_cleanup;
+    j->result_cleanup = result_cleanup;
     j->next = NULL;
     j->p = p;
     j->q = q;
     j->serial = q->curr_serial++;
 
     if (nonblock == 0) {
-        while (q->n_input >= q->qsize && !q->shutdown && !q->wake_dispatch)
+        while ((q->no_more_input || q->n_input >= q->qsize) &&
+               !q->shutdown && !q->wake_dispatch) {
             pthread_cond_wait(&q->input_not_full_c, &q->p->pool_m);
-        if (q->shutdown) {
+        }
+        if (q->no_more_input || q->shutdown) {
             free(j);
             pthread_mutex_unlock(&p->pool_m);
             return -1;
@@ -821,39 +843,39 @@ void hts_tpool_wake_dispatch(hts_tpool_process *q) {
  *        -1 on failure
  */
 int hts_tpool_process_flush(hts_tpool_process *q) {
-     int i;
-     hts_tpool *p = q->p;
+    int i;
+    hts_tpool *p = q->p;
 
-     DBG_OUT(stderr, "Flushing pool %p\n", p);
+    DBG_OUT(stderr, "Flushing pool %p\n", p);
 
-     // Drains the queue
-     pthread_mutex_lock(&p->pool_m);
+    // Drains the queue
+    pthread_mutex_lock(&p->pool_m);
 
-     // Wake up everything for the final sprint!
-     for (i = 0; i < p->tsize; i++)
-         if (p->t_stack[i])
-             pthread_cond_signal(&p->t[i].pending_c);
+    // Wake up everything for the final sprint!
+    for (i = 0; i < p->tsize; i++)
+        if (p->t_stack[i])
+            pthread_cond_signal(&p->t[i].pending_c);
 
-     // Ensure there is room for the final sprint.
-     // Shouldn't be possible to get here, but just incase.
-     if (q->qsize < q->n_output + q->n_input + q->n_processing)
-         q->qsize = q->n_output + q->n_input + q->n_processing;
+    // Ensure there is room for the final sprint.
+    // Shouldn't be possible to get here, but just incase.
+    if (q->qsize < q->n_output + q->n_input + q->n_processing)
+        q->qsize = q->n_output + q->n_input + q->n_processing;
 
-     // Wait for n_input and n_processing to hit zero.
-     while (q->n_input || q->n_processing) {
-         while (q->n_input)
-             pthread_cond_wait(&q->input_empty_c, &p->pool_m);
-         if (q->shutdown) break;
-         while (q->n_processing)
-             pthread_cond_wait(&q->none_processing_c, &p->pool_m);
-         if (q->shutdown) break;
+    // Wait for n_input and n_processing to hit zero.
+    while (q->n_input || q->n_processing) {
+        while (q->n_input)
+            pthread_cond_wait(&q->input_empty_c, &p->pool_m);
+        if (q->shutdown) break;
+        while (q->n_processing)
+            pthread_cond_wait(&q->none_processing_c, &p->pool_m);
+        if (q->shutdown) break;
     }
 
-     pthread_mutex_unlock(&p->pool_m);
+    pthread_mutex_unlock(&p->pool_m);
 
-     DBG_OUT(stderr, "Flushed complete for pool %p, queue %p\n", p, q);
+    DBG_OUT(stderr, "Flushed complete for pool %p, queue %p\n", p, q);
 
-     return 0;
+    return 0;
 }
 
 /*
@@ -869,30 +891,42 @@ int hts_tpool_process_flush(hts_tpool_process *q) {
  *        -1 on failure
  */
 int hts_tpool_process_reset(hts_tpool_process *q, int free_results) {
+    hts_tpool_job *j, *jn, *j_head;
+    hts_tpool_result *r, *rn, *r_head;
+
     pthread_mutex_lock(&q->p->pool_m);
     // prevent next_result from returning data during our flush
     q->next_serial = INT_MAX;
 
-    // Purge any queued input not yet being acted upon
-    hts_tpool_job *j, *jn;
-    for (j = q->input_head; j; j = jn) {
-        //fprintf(stderr, "Discard input %d\n", j->serial);
-        jn = j->next;
-        free(j);
-    }
+    // Remove any queued input not yet being acted upon
+    j_head = q->input_head;
     q->input_head = q->input_tail = NULL;
     q->n_input = 0;
 
-    // Purge any queued output, thus ensuring we have room to flush.
-    hts_tpool_result *r, *rn;
-    for (r = q->output_head; r; r = rn) {
-        //fprintf(stderr, "Discard output %d\n", r->serial);
-        rn = r->next;
-        hts_tpool_delete_result(r, free_results);
-    }
+    // Remove any queued output, thus ensuring we have room to flush.
+    r_head = q->output_head;
     q->output_head = q->output_tail = NULL;
     q->n_output = 0;
     pthread_mutex_unlock(&q->p->pool_m);
+
+    // Release memory.  This can be done unlocked now the lists have been
+    // removed from the queue
+    for (j = j_head; j; j = jn) {
+        //fprintf(stderr, "Discard input %d\n", j->serial);
+        jn = j->next;
+        if (j->job_cleanup) j->job_cleanup(j->arg);
+        free(j);
+    }
+
+    for (r = r_head; r; r = rn) {
+        //fprintf(stderr, "Discard output %d\n", r->serial);
+        rn = r->next;
+        if (r->result_cleanup) {
+            r->result_cleanup(r->data);
+            r->data = NULL;
+        }
+        hts_tpool_delete_result(r, free_results);
+    }
 
     // Wait for any jobs being processed to complete.
     // (TODO: consider how to cancel any currently processing jobs.
@@ -900,13 +934,9 @@ int hts_tpool_process_reset(hts_tpool_process *q, int free_results) {
     if (hts_tpool_process_flush(q) != 0)
         return -1;
 
-    // Discard any new output.
+    // Remove any new output.
     pthread_mutex_lock(&q->p->pool_m);
-    for (r = q->output_head; r; r = rn) {
-        //fprintf(stderr, "Discard output %d\n", r->serial);
-        rn = r->next;
-        hts_tpool_delete_result(r, free_results);
-    }
+    r_head = q->output_head;
     q->output_head = q->output_tail = NULL;
     q->n_output = 0;
 
@@ -914,6 +944,17 @@ int hts_tpool_process_reset(hts_tpool_process *q, int free_results) {
     q->next_serial = q->curr_serial = 0;
     pthread_cond_signal(&q->input_not_full_c);
     pthread_mutex_unlock(&q->p->pool_m);
+
+    // Discard unwanted output
+    for (r = r_head; r; r = rn) {
+        //fprintf(stderr, "Discard output %d\n", r->serial);
+        rn = r->next;
+        if (r->result_cleanup) {
+            r->result_cleanup(r->data);
+            r->data = NULL;
+        }
+        hts_tpool_delete_result(r, free_results);
+    }
 
     return 0;
 }

@@ -1,6 +1,6 @@
 # Makefile for htslib, a C library for high-throughput sequencing data formats.
 #
-#    Copyright (C) 2013-2018 Genome Research Ltd.
+#    Copyright (C) 2013-2019 Genome Research Ltd.
 #
 #    Author: John Marshall <jm18@sanger.ac.uk>
 #
@@ -32,7 +32,7 @@ htslib_default_libs = -lz -lm -lbz2 -llzma
 CPPFLAGS =
 # TODO: probably update cram code to make it compile cleanly with -Wc++-compat
 # For testing strict C99 support add -std=c99 -D_XOPEN_SOURCE=600
-#CFLAGS   = -g -Wall -O2 -pedantic -std=c99 -D_XOPEN_SOURCE=600 -D__FUNCTION__=__func__
+#CFLAGS   = -g -Wall -O2 -pedantic -std=c99 -D_XOPEN_SOURCE=600
 CFLAGS   = -g -Wall -O2
 EXTRA_CFLAGS_PIC = -fpic
 LDFLAGS  =
@@ -77,11 +77,13 @@ BUILT_TEST_PROGRAMS = \
 	test/test_realn \
 	test/test-regidx \
 	test/test_view \
+	test/test_index \
 	test/test-vcf-api \
 	test/test-vcf-sweep \
 	test/test-bcf-sr \
 	test/fuzz/hts_open_fuzzer.o \
-	test/test-bcf-translate
+	test/test-bcf-translate \
+	test/test-parse-reg
 
 BUILT_THRASH_PROGRAMS = \
 	test/thrash_threads1 \
@@ -103,7 +105,7 @@ PACKAGE_VERSION := $(shell ./version.sh)
 
 # Increment this for each ABI breaking change until ABI version 3 becomes
 # stable
-TWO_TO_THREE_TRANSITION_COUNT = 2
+TWO_TO_THREE_TRANSITION_COUNT = 7
 LIBHTS_SOVERSION = 2to3part$(TWO_TO_THREE_TRANSITION_COUNT)
 MACH_O_COMPATIBILITY_VERSION = 2.$(TWO_TO_THREE_TRANSITION_COUNT)
 
@@ -150,6 +152,7 @@ LIBHTS_OBJS = \
 	probaln.o \
 	realn.o \
 	regidx.o \
+	region.o \
 	sam.o \
 	synced_bcf_reader.o \
 	vcf_sweep.o \
@@ -166,7 +169,6 @@ LIBHTS_OBJS = \
 	cram/cram_io.o \
 	cram/cram_samtools.o \
 	cram/cram_stats.o \
-	cram/files.o \
 	cram/mFILE.o \
 	cram/open_trace_file.o \
 	cram/pooled_alloc.o \
@@ -179,7 +181,7 @@ PLUGIN_OBJS =
 
 cram_h = cram/cram.h $(cram_samtools_h) $(cram_sam_header_h) $(cram_structs_h) $(cram_io_h) cram/cram_encode.h cram/cram_decode.h cram/cram_stats.h cram/cram_codecs.h cram/cram_index.h $(htslib_cram_h)
 cram_io_h = cram/cram_io.h $(cram_misc_h)
-cram_misc_h = cram/misc.h $(cram_os_h)
+cram_misc_h = cram/misc.h
 cram_os_h = cram/os.h $(htslib_hts_endian_h)
 cram_sam_header_h = cram/sam_header.h cram/string_alloc.h cram/pooled_alloc.h $(htslib_khash_h) $(htslib_kstring_h)
 cram_samtools_h = cram/cram_samtools.h $(htslib_sam_h) $(cram_sam_header_h)
@@ -306,10 +308,11 @@ hfile.o hfile.pico: hfile.c config.h $(htslib_hfile_h) $(hfile_internal_h) $(hts
 hfile_gcs.o hfile_gcs.pico: hfile_gcs.c config.h $(htslib_hts_h) $(htslib_kstring_h) $(hfile_internal_h)
 hfile_libcurl.o hfile_libcurl.pico: hfile_libcurl.c config.h $(hfile_internal_h) $(htslib_hts_h) $(htslib_kstring_h) $(htslib_khash_h)
 hfile_net.o hfile_net.pico: hfile_net.c config.h $(hfile_internal_h) $(htslib_knetfile_h)
+hfile_s3_write.o hfile_s3_write.pico: hfile_s3_write.c config.h $(hfile_internal_h) $(htslib_hts_h) $(htslib_kstring_h)
 hfile_s3.o hfile_s3.pico: hfile_s3.c config.h $(hfile_internal_h) $(htslib_hts_h) $(htslib_kstring_h)
-hts.o hts.pico: hts.c config.h $(htslib_hts_h) $(htslib_bgzf_h) $(cram_h) $(htslib_hfile_h) $(htslib_hts_endian_h) version.h $(hts_internal_h) $(hfile_internal_h) $(htslib_hts_os_h) $(htslib_khash_h) $(htslib_kseq_h) $(htslib_ksort_h)
+hts.o hts.pico: hts.c config.h $(htslib_hts_h) $(htslib_bgzf_h) $(cram_h) $(htslib_hfile_h) $(htslib_hts_endian_h) version.h $(hts_internal_h) $(hfile_internal_h) $(htslib_hts_os_h) $(htslib_khash_h) $(htslib_kseq_h) $(htslib_ksort_h) $(htslib_tbx_h)
 hts_os.o hts_os.pico: hts_os.c config.h os/rand.c
-vcf.o vcf.pico: vcf.c config.h $(htslib_vcf_h) $(htslib_bgzf_h) $(htslib_tbx_h) $(htslib_hfile_h) $(hts_internal_h) $(htslib_khash_str2int_h) $(htslib_kstring_h) $(htslib_khash_h) $(htslib_kseq_h) $(htslib_hts_endian_h)
+vcf.o vcf.pico: vcf.c config.h $(htslib_vcf_h) $(htslib_bgzf_h) $(htslib_tbx_h) $(htslib_hfile_h) $(hts_internal_h) $(htslib_khash_str2int_h) $(htslib_kstring_h) $(htslib_sam_h) $(htslib_khash_h) $(htslib_kseq_h) $(htslib_hts_endian_h)
 sam.o sam.pico: sam.c config.h $(htslib_sam_h) $(htslib_bgzf_h) $(cram_h) $(hts_internal_h) $(htslib_hfile_h) $(htslib_khash_h) $(htslib_kseq_h) $(htslib_kstring_h) $(htslib_hts_endian_h)
 tbx.o tbx.pico: tbx.c config.h $(htslib_tbx_h) $(htslib_bgzf_h) $(htslib_hts_endian_h) $(hts_internal_h) $(htslib_khash_h)
 faidx.o faidx.pico: faidx.c config.h $(htslib_bgzf_h) $(htslib_faidx_h) $(htslib_hfile_h) $(htslib_khash_h) $(htslib_kstring_h) $(hts_internal_h)
@@ -319,6 +322,7 @@ vcf_sweep.o vcf_sweep.pico: vcf_sweep.c config.h $(htslib_vcf_sweep_h) $(htslib_
 vcfutils.o vcfutils.pico: vcfutils.c config.h $(htslib_vcfutils_h) $(htslib_kbitset_h)
 kfunc.o kfunc.pico: kfunc.c config.h $(htslib_kfunc_h)
 regidx.o regidx.pico: regidx.c config.h $(htslib_hts_h) $(htslib_kstring_h) $(htslib_kseq_h) $(htslib_khash_str2int_h) $(htslib_regidx_h) $(hts_internal_h)
+region.o region.pico: region.c config.h $(htslib_hts_h) $(htslib_khash_h)
 md5.o md5.pico: md5.c config.h $(htslib_hts_h) $(htslib_hts_endian_h)
 multipart.o multipart.pico: multipart.c config.h $(htslib_kstring_h) $(hts_internal_h) $(hfile_internal_h)
 plugin.o plugin.pico: plugin.c config.h $(hts_internal_h) $(htslib_kstring_h)
@@ -334,7 +338,6 @@ cram/cram_index.o cram/cram_index.pico: cram/cram_index.c config.h $(htslib_bgzf
 cram/cram_io.o cram/cram_io.pico: cram/cram_io.c config.h os/lzma_stub.h $(cram_h) $(cram_os_h) $(htslib_hts_h) $(cram_open_trace_file_h) cram/rANS_static.h $(htslib_hfile_h) $(htslib_bgzf_h) $(htslib_faidx_h) $(hts_internal_h)
 cram/cram_samtools.o cram/cram_samtools.pico: cram/cram_samtools.c config.h $(cram_h) $(htslib_sam_h)
 cram/cram_stats.o cram/cram_stats.pico: cram/cram_stats.c config.h $(cram_h) $(cram_os_h)
-cram/files.o cram/files.pico: cram/files.c config.h $(cram_misc_h)
 cram/mFILE.o cram/mFILE.pico: cram/mFILE.c config.h $(htslib_hts_log_h) $(cram_os_h) cram/mFILE.h
 cram/open_trace_file.o cram/open_trace_file.pico: cram/open_trace_file.c config.h $(cram_os_h) $(cram_open_trace_file_h) $(cram_misc_h) $(htslib_hfile_h) $(htslib_hts_log_h)
 cram/pooled_alloc.o cram/pooled_alloc.pico: cram/pooled_alloc.c config.h cram/pooled_alloc.h $(cram_misc_h)
@@ -357,6 +360,12 @@ bgzip.o: bgzip.c config.h $(htslib_bgzf_h) $(htslib_hts_h)
 htsfile.o: htsfile.c config.h $(htslib_hfile_h) $(htslib_hts_h) $(htslib_sam_h) $(htslib_vcf_h)
 tabix.o: tabix.c config.h $(htslib_tbx_h) $(htslib_sam_h) $(htslib_vcf_h) $(htslib_kseq_h) $(htslib_bgzf_h) $(htslib_hts_h) $(htslib_regidx_h)
 
+# Maintainer source code checks
+# - copyright boilerplate presence
+# - tab and trailing space detection
+maintainer-check:
+	test/maintainer/check_copyright.pl .
+	test/maintainer/check_spaces.pl .
 
 # For tests that might use it, set $REF_PATH explicitly to use only reference
 # areas within the test suite (or set it to ':' to use no reference areas).
@@ -369,6 +378,7 @@ check test: $(BUILT_PROGRAMS) $(BUILT_TEST_PROGRAMS)
 	test/fieldarith test/fieldarith.sam
 	test/hfile
 	test/test_bgzf test/bgziptest.txt
+	test/test-parse-reg -t test/colons.bam
 	cd test/tabix && ./test-tabix.sh tabix.tst
 	cd test/mpileup && ./test-pileup.sh mpileup.tst
 	REF_PATH=: test/sam test/ce.fa test/faidx.fa test/fastqs.fq
@@ -388,7 +398,7 @@ test/hfile: test/hfile.o libhts.a
 	$(CC) $(LDFLAGS) -o $@ test/hfile.o libhts.a $(LIBS) -lpthread
 
 test/pileup: test/pileup.o libhts.a
-	$(CC) -pthread $(LDFLAGS) -o $@ test/pileup.o libhts.a $(LIBS) -lpthread
+	$(CC) $(LDFLAGS) -o $@ test/pileup.o libhts.a $(LIBS) -lpthread
 
 test/sam: test/sam.o libhts.a
 	$(CC) $(LDFLAGS) -o $@ test/sam.o libhts.a $(LIBS) -lpthread
@@ -405,8 +415,14 @@ test/test_realn: test/test_realn.o libhts.a
 test/test-regidx: test/test-regidx.o libhts.a
 	$(CC) $(LDFLAGS) -o $@ test/test-regidx.o libhts.a $(LIBS) -lpthread
 
+test/test-parse-reg: test/test-parse-reg.o libhts.a
+	$(CC) $(LDFLAGS) -o $@ test/test-parse-reg.o libhts.a $(LIBS) -lpthread
+
 test/test_view: test/test_view.o libhts.a
 	$(CC) $(LDFLAGS) -o $@ test/test_view.o libhts.a $(LIBS) -lpthread
+
+test/test_index: test/test_index.o libhts.a
+	$(CC) $(LDFLAGS) -o $@ test/test_index.o libhts.a $(LIBS) -lpthread
 
 test/test-vcf-api: test/test-vcf-api.o libhts.a
 	$(CC) $(LDFLAGS) -o $@ test/test-vcf-api.o libhts.a $(LIBS) -lpthread
@@ -424,13 +440,15 @@ test/hts_endian.o: test/hts_endian.c config.h $(htslib_hts_endian_h)
 test/fuzz/hts_open_fuzzer.o: test/fuzz/hts_open_fuzzer.c config.h $(htslib_hfile_h) $(htslib_hts_h) $(htslib_sam_h) $(htslib_vcf_h)
 test/fieldarith.o: test/fieldarith.c config.h $(htslib_sam_h)
 test/hfile.o: test/hfile.c config.h $(htslib_hfile_h) $(htslib_hts_defs_h) $(htslib_kstring_h)
-test/pileup.o: test/pileup.c $(htslib_sam_h) $(htslib_kstring_h)
+test/pileup.o: test/pileup.c config.h $(htslib_sam_h) $(htslib_kstring_h)
 test/sam.o: test/sam.c config.h $(htslib_hts_defs_h) $(htslib_sam_h) $(htslib_faidx_h) $(htslib_kstring_h)
 test/test_bgzf.o: test/test_bgzf.c config.h $(htslib_bgzf_h) $(htslib_hfile_h) $(hfile_internal_h)
-test/test_kstring.o: test/test_kstring.c $(htslib_kstring_h)
+test/test_kstring.o: test/test_kstring.c config.h $(htslib_kstring_h)
+test/test-parse-reg.o: test/test-parse-reg.c $(htslib_hts_h) $(htslib_sam_h)
 test/test-realn.o: test/test_realn.c config.h $(htslib_hts_h) $(htslib_sam_h) $(htslib_faidx_h)
 test/test-regidx.o: test/test-regidx.c config.h $(htslib_regidx_h) $(hts_internal_h)
-test/test_view.o: test/test_view.c config.h $(cram_h) $(htslib_sam_h)
+test/test_view.o: test/test_view.c config.h $(cram_h) $(htslib_sam_h) $(htslib_vcf_h)
+test/test_index.o: test/test_index.c config.h $(htslib_sam_h) $(htslib_vcf_h)
 test/test-vcf-api.o: test/test-vcf-api.c config.h $(htslib_hts_h) $(htslib_vcf_h) $(htslib_kstring_h) $(htslib_kseq_h)
 test/test-vcf-sweep.o: test/test-vcf-sweep.c config.h $(htslib_vcf_sweep_h)
 test/test-bcf-sr.o: test/test-bcf-sr.c config.h $(htslib_synced_bcf_reader_h)

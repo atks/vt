@@ -42,6 +42,7 @@ extern "C" {
 typedef struct BGZF BGZF;
 #define HTS_BGZF_TYPEDEF
 #endif
+struct bam_hdr_t;
 struct cram_fd;
 struct hFILE;
 struct hts_tpool;
@@ -60,7 +61,7 @@ typedef struct kstring_t {
 
 /**
  * @hideinitializer
- * Macro to expand a dynamic array of a given type
+ * Deprecated macro to expand a dynamic array of a given type
  *
  * @param         type_t The type of the array elements
  * @param[in]     n      Requested number of elements of type type_t
@@ -68,9 +69,12 @@ typedef struct kstring_t {
  * @param[in,out] ptr    Pointer to the array
  *
  * @discussion
+ * Do not use this macro.  Use hts_resize() instead as allows allocation
+ * failures to be handled more gracefully.
+ *
  * The array *ptr will be expanded if necessary so that it can hold @p n
  * or more elements.  If the array is expanded then the new size will be
- * written to @p m and the value in @ptr may change.
+ * written to @p m and the value in @p ptr may change.
  *
  * It must be possible to take the address of @p ptr and @p m must be usable
  * as an lvalue.
@@ -99,6 +103,9 @@ typedef struct kstring_t {
  * @param[in,out] ptr    Pointer to the array
  *
  * @discussion
+ * Do not use this macro.  Use hts_resize() instead as allows allocation
+ * failures to be handled more gracefully.
+ *
  * As for hts_expand(), except the bytes that make up the array elements
  * between the old and new values of @p m are set to zero using memset().
  *
@@ -117,6 +124,46 @@ typedef struct kstring_t {
                                      (void **)&(ptr), __func__);        \
         }                                                               \
     } while (0)
+
+int hts_resize_array_(size_t, size_t, size_t, void *, void **, int,
+                      const char *);
+
+#define HTS_RESIZE_CLEAR 1
+
+/**
+ * @hideinitializer
+ * Macro to expand a dynamic array of a given type
+ *
+ * @param         type_t    The type of the array elements
+ * @param[in]     num       Requested number of elements of type type_t
+ * @param[in,out] size_ptr  Pointer to where the size (in elements) of the
+                            array is stored.
+ * @param[in,out] ptr       Location of the pointer to the array
+ * @param[in]     flags     Option flags
+ *
+ * @discussion
+ * The array *ptr will be expanded if necessary so that it can hold @p num
+ * or more elements.  If the array is expanded then the new size will be
+ * written to @p *size_ptr and the value in @p *ptr may change.
+ *
+ * If ( @p flags & HTS_RESIZE_CLEAR ) is set, any newly allocated memory will
+ * be cleared.
+ */
+
+#define hts_resize(type_t, num, size_ptr, ptr, flags)       \
+    ((num) > (*(size_ptr))                                  \
+     ? hts_resize_array_(sizeof(type_t), (num),             \
+                         sizeof(*(size_ptr)), (size_ptr),   \
+                         (void **)(ptr), (flags), __func__) \
+     : 0)
+
+/**
+ * Wrapper function for free(). Enables memory deallocation across DLL
+ * boundary. Should be used by all applications, which are compiled
+ * with a different standard library than htslib and call htslib
+ * methods that return dynamically allocated data.
+ */
+void hts_free(void *ptr);
 
 /************
  * File I/O *
@@ -157,6 +204,9 @@ typedef struct htsFormat {
     void *specific;  // format specific options; see struct hts_opt.
 } htsFormat;
 
+struct __hts_idx_t;
+typedef struct __hts_idx_t hts_idx_t;
+
 // Maintainers note htsFile cannot be an opaque structure because some of its
 // fields are part of libhts.so's ABI (hence these fields must not be moved):
 //  - fp is used in the public sam_itr_next()/etc macros
@@ -175,6 +225,9 @@ typedef struct {
         struct hFILE *hfile;
     } fp;
     htsFormat format;
+    hts_idx_t *idx;
+    const char *fnidx;
+    struct bam_hdr_t *bam_header;
 } htsFile;
 
 // A combined thread pool and queue allocation size.
@@ -255,6 +308,12 @@ typedef struct hts_opt {
 } hts_opt;
 
 #define HTS_FILE_OPTS_INIT {{0},0}
+
+/*
+ * Explicit index file name delimiter, see below
+ */
+#define HTS_IDX_DELIM "##idx##"
+
 
 /**********************
  * Exported functions *
@@ -345,7 +404,9 @@ char *hts_format_description(const htsFormat *format);
 
 /*!
   @abstract       Open a SAM/BAM/CRAM/VCF/BCF/etc file
-  @param fn       The file name or "-" for stdin/stdout
+  @param fn       The file name or "-" for stdin/stdout. For indexed files
+                  with a non-standard naming, the file name can include the
+                  name of the index file delimited with HTS_IDX_DELIM
   @param mode     Mode matching / [rwa][bceguxz0-9]* /
   @discussion
       With 'r' opens for reading; any further format mode letters are ignored
@@ -509,9 +570,6 @@ When REST or NONE is used, idx is also ignored and may be NULL.
 #define HTS_FMT_TBI 2
 #define HTS_FMT_CRAI 3
 
-struct __hts_idx_t;
-typedef struct __hts_idx_t hts_idx_t;
-
 typedef struct {
     uint32_t beg, end;
 } hts_pair32_t;
@@ -527,8 +585,8 @@ typedef struct {
 
 typedef struct {
     const char *reg;
-    int tid;
     hts_pair32_t *intervals;
+    int tid;
     uint32_t count;
     uint32_t min_beg, max_end;
 } hts_reglist_t;
@@ -538,12 +596,15 @@ typedef int hts_seek_func(void *fp, int64_t offset, int where);
 typedef int64_t hts_tell_func(void *fp);
 
 typedef struct {
-    uint32_t read_rest:1, finished:1, is_cram:1, dummy:29;
-    int tid, beg, end, n_off, i;
-    int curr_tid, curr_beg, curr_end;
-    uint64_t curr_off;
-    hts_pair64_t *off;
+    uint32_t read_rest:1, finished:1, is_cram:1, nocoor:1, multi:1, dummy:27;
+    int tid, beg, end, n_off, i, n_reg;
+    hts_reglist_t *reg_list;
+    int curr_tid, curr_beg, curr_end, curr_reg, curr_intv;
+    uint64_t curr_off, nocoor_off;
+    hts_pair64_max_t *off;
     hts_readrec_func *readrec;
+    hts_seek_func *seek;
+    hts_tell_func *tell;
     struct {
         int n, m;
         int *a;
@@ -555,26 +616,65 @@ typedef struct {
     uint64_t min_off, max_off;
 } aux_key_t;
 
-typedef struct {
-    uint32_t read_rest:1, finished:1, is_cram:1, nocoor:1, dummy:28;
-    hts_reglist_t *reg_list;
-    int n_reg, i;
-    int curr_tid, curr_intv, curr_beg, curr_end, curr_reg;
-    hts_pair64_max_t *off;
-    int n_off;
-    uint64_t curr_off, nocoor_off;
-    hts_readrec_func *readrec;
-    hts_seek_func *seek;
-    hts_tell_func *tell;
-} hts_itr_multi_t;
+typedef hts_itr_t hts_itr_multi_t;
 
     #define hts_bin_first(l) (((1<<(((l)<<1) + (l))) - 1) / 7)
     #define hts_bin_parent(l) (((l) - 1) >> 3)
 
-    hts_idx_t *hts_idx_init(int n, int fmt, uint64_t offset0, int min_shift, int n_lvls);
-    void hts_idx_destroy(hts_idx_t *idx);
-    int hts_idx_push(hts_idx_t *idx, int tid, int beg, int end, uint64_t offset, int is_mapped);
-    void hts_idx_finish(hts_idx_t *idx, uint64_t final_offset);
+///////////////////////////////////////////////////////////
+// Low-level API for building indexes.
+
+/// Create a BAI/CSI/TBI type index structure
+/** @param n          Initial number of targets
+    @param fmt        Format, one of HTS_FMT_CSI, HTS_FMT_BAI or HTS_FMT_TBI
+    @param offset0    Initial file offset
+    @param min_shift  Number of bits for the minimal interval
+    @param n_lvls     Number of levels in the binning index
+    @return An initialised hts_idx_t struct on success; NULL on failure
+*/
+hts_idx_t *hts_idx_init(int n, int fmt, uint64_t offset0, int min_shift, int n_lvls);
+
+/// Free a BAI/CSI/TBI type index
+/** @param idx   Index structure to free
+ */
+void hts_idx_destroy(hts_idx_t *idx);
+
+/// Push an index entry
+/** @param idx        Index
+    @param tid        Target id
+    @param beg        Range start (zero-based)
+    @param end        Range end (zero-based, half-open)
+    @param offset     File offset
+    @param is_mapped  Range corresponds to a mapped read
+    @return 0 on success; -1 on failure
+
+The @p is_mapped parameter is used to update the n_mapped / n_unmapped counts
+stored in the meta-data bin.
+ */
+int hts_idx_push(hts_idx_t *idx, int tid, int beg, int end, uint64_t offset, int is_mapped);
+
+/// Finish building an index
+/** @param idx          Index
+    @param final_offset Last file offset
+    @return 0 on success; non-zero on failure.
+*/
+int hts_idx_finish(hts_idx_t *idx, uint64_t final_offset);
+
+/// Returns index format
+/** @param idx   Index
+    @return One of HTS_FMT_CSI, HTS_FMT_BAI or HTS_FMT_TBI
+*/
+int hts_idx_fmt(hts_idx_t *idx);
+
+/// Add name to TBI index meta-data
+/** @param idx   Index
+    @param tid   Target identifier
+    @param name  Target name
+    @return Index number of name in names list on success; -1 on failure.
+*/
+int hts_idx_tbi_name(hts_idx_t *idx, int tid, const char *name);
+
+// Index loading and saving
 
 /// Save an index to a file
 /** @param idx  Index to be written
@@ -595,7 +695,9 @@ int hts_idx_save_as(const hts_idx_t *idx, const char *fn, const char *fnidx, int
 
 /// Load an index file
 /** @param fn   BAM/BCF/etc filename, to which .bai/.csi/etc will be added or
-                the extension substituted, to search for an existing index file
+                the extension substituted, to search for an existing index file.
+                In case of a non-standard naming, the file name can include the
+                name of the index file delimited with HTS_IDX_DELIM.
     @param fmt  One of the HTS_FMT_* index formats
     @return  The index, or NULL if an error occurred.
 */
@@ -608,6 +710,8 @@ hts_idx_t *hts_idx_load(const char *fn, int fmt);
 */
 hts_idx_t *hts_idx_load2(const char *fn, const char *fnidx);
 
+///////////////////////////////////////////////////////////
+// Functions for accessing meta-data stored in indexes
 
 /// Get extra index meta-data
 /** @param idx    The index
@@ -636,11 +740,37 @@ uint8_t *hts_idx_get_meta(hts_idx_t *idx, uint32_t *l_meta);
 */
 int hts_idx_set_meta(hts_idx_t *idx, uint32_t l_meta, uint8_t *meta, int is_copy);
 
-    int hts_idx_get_stat(const hts_idx_t* idx, int tid, uint64_t* mapped, uint64_t* unmapped);
-    uint64_t hts_idx_get_n_no_coor(const hts_idx_t* idx);
+/// Get number of mapped and unmapped reads from an index
+/** @param      idx      Index
+    @param      tid      Target ID
+    @param[out] mapped   Location to store number of mapped reads
+    @param[out] unmapped Location to store number of unmapped reads
+    @return 0 on success; -1 on failure (data not available)
 
+    BAI and CSI indexes store information on the number of reads for each
+    target that were mapped or unmapped (unmapped reads will generally have
+    a paired read that is mapped to the target).  This function returns this
+    infomation if it is available.
+
+    @note Cram CRAI indexes do not include this information.
+*/
+int hts_idx_get_stat(const hts_idx_t* idx, int tid, uint64_t* mapped, uint64_t* unmapped);
+
+/// Return the number of unplaced reads from an index
+/** @param idx    Index
+    @return Unplaced reads count
+
+    Unplaced reads are not linked to any reference (e.g. RNAME is '*' in SAM
+    files).
+*/
+uint64_t hts_idx_get_n_no_coor(const hts_idx_t* idx);
+
+///////////////////////////////////////////////////////////
+// Region parsing
 
 #define HTS_PARSE_THOUSANDS_SEP 1  ///< Ignore ',' separators within numbers
+#define HTS_PARSE_ONE_COORD     2  ///< chr:pos means chr:pos-pos and not chr:pos-end
+#define HTS_PARSE_LIST          4  ///< Expect a comma separated list of regions. (Disables HTS_PARSE_THOUSANDS_SEP)
 
 /// Parse a numeric string
 /** The number may be expressed in scientific notation, and optionally may
@@ -663,30 +793,179 @@ long long hts_parse_decimal(const char *str, char **strend, int flags);
     @return  Pointer to the colon or '\0' after the reference sequence name,
              or NULL if @a str could not be parsed.
 */
+
+typedef int (*hts_name2id_f)(void*, const char*);
+typedef const char *(*hts_id2name_f)(void*, int);
+
 const char *hts_parse_reg(const char *str, int *beg, int *end);
 
-    hts_itr_t *hts_itr_query(const hts_idx_t *idx, int tid, int beg, int end, hts_readrec_func *readrec);
-    void hts_itr_destroy(hts_itr_t *iter);
+/// Parse a "CHR:START-END"-style region string
+/** @param str   String to be parsed
+    @param tid   Set on return (if not NULL) to be reference index (-1 if invalid)
+    @param beg   Set on return to the 0-based start of the region
+    @param end   Set on return to the 1-based end of the region
+    @param getid Function pointer.  Called if not NULL to set tid.
+    @param hdr   Caller data passed to getid.
+    @param flags Bitwise HTS_PARSE_* flags listed above.
+    @return      Pointer to the byte after the end of the entire region
+                 specifier (including any trailing comma) on success,
+                 or NULL if @a str could not be parsed.
 
-    typedef int (*hts_name2id_f)(void*, const char*);
-    typedef const char *(*hts_id2name_f)(void*, int);
-    typedef hts_itr_t *hts_itr_query_func(const hts_idx_t *idx, int tid, int beg, int end, hts_readrec_func *readrec);
+    A variant of hts_parse_reg which is reference-id aware.  It uses
+    the iterator name2id callbacks to validate the region tokenisation works.
 
-    hts_itr_t *hts_itr_querys(const hts_idx_t *idx, const char *reg, hts_name2id_f getid, void *hdr, hts_itr_query_func *itr_query, hts_readrec_func *readrec);
-    int hts_itr_next(BGZF *fp, hts_itr_t *iter, void *r, void *data) HTS_RESULT_USED;
-    const char **hts_idx_seqnames(const hts_idx_t *idx, int *n, hts_id2name_f getid, void *hdr); // free only the array, not the values
+    This is necessary due to GRCh38 HLA additions which have reference names
+    like "HLA-DRB1*12:17".
+
+    To work around ambiguous parsing issues, eg both "chr1" and "chr1:100-200"
+    are reference names, quote using curly braces.
+    Thus "{chr1}:100-200" and "{chr1:100-200}" disambiguate the above example.
+
+    Flags are used to control how parsing works, and can be one of the below.
+
+    HTS_PARSE_THOUSANDS_SEP:
+        Ignore commas in numbers.  For example with this flag 1,234,567
+        is interpreted as 1234567.
+
+    HTS_PARSE_LIST:
+        If present, the region is assmed to be a comma separated list and
+        position parsing will not contain commas (this implicitly
+        clears HTS_PARSE_THOUSANDS_SEP in the call to hts_parse_decimal).
+        On success the return pointer will be the start of the next region, ie
+        the character after the comma.  (If *ret != '\0' then the caller can
+        assume another region is present in the list.)
+
+        If not set then positions may contain commas.  In this case the return
+        value should point to the end of the string, or NULL on failure.
+
+    HTS_PARSE_ONE_COORD:
+        If present, X:100 is treated as the single base pair region X:100-100.
+        In this case X:-100 is shorthand for X:1-100 and X:100- is X:100-<end>.
+        (This is the standard bcftools region convention.)
+
+        When not set X:100 is considered to be X:100-<end> where <end> is
+        the end of chromosome X (set to INT_MAX here).  X:100- and X:-100 are
+        invalid.
+        (This is the standard samtools region convention.)
+
+    Note the supplied string expects 1 based inclusive coordinates, but the
+    returned coordinates start from 0 and are half open, so pos0 is valid
+    for use in e.g. "for (pos0 = beg; pos0 < end; pos0++) {...}"
+*/
+const char *hts_parse_region(const char *str, int *tid, int64_t *beg, int64_t *end,
+                             hts_name2id_f getid, void *hdr, int flags);
+
+
+///////////////////////////////////////////////////////////
+// Generic iterators
+//
+// These functions provide the low-level infrastructure for iterators.
+// Wrappers around these are used to make iterators for specific file types.
+// See:
+//     htslib/sam.h  for SAM/BAM/CRAM iterators
+//     htslib/vcf.h  for VCF/BCF iterators
+//     htslib/tbx.h  for files indexed by tabix
+
+/// Create a single-region iterator
+/** @param idx      Index
+    @param tid      Target ID
+    @param beg      Start of region
+    @param end      End of region
+    @param readrec  Callback to read a record from the input file
+    @return An iterator on success; NULL on failure
+ */
+hts_itr_t *hts_itr_query(const hts_idx_t *idx, int tid, int beg, int end, hts_readrec_func *readrec);
+
+/// Free an iterator
+/** @param iter   Iterator to free
+ */
+void hts_itr_destroy(hts_itr_t *iter);
+
+typedef hts_itr_t *hts_itr_query_func(const hts_idx_t *idx, int tid, int beg, int end, hts_readrec_func *readrec);
+
+/// Create a single-region iterator from a text region specification
+/** @param idx       Index
+    @param reg       Region specifier
+    @param getid     Callback function to return the target ID for a name
+    @param hdr       Input file header
+    @param itr_query Callback function returning an iterator for a numeric tid,
+                     start and end position
+    @param readrec   Callback to read a record from the input file
+    @return An iterator on success; NULL on error
+ */
+hts_itr_t *hts_itr_querys(const hts_idx_t *idx, const char *reg, hts_name2id_f getid, void *hdr, hts_itr_query_func *itr_query, hts_readrec_func *readrec);
+
+/// Return the next record from an iterator
+/** @param fp      Input file handle
+    @param iter    Iterator
+    @param r       Pointer to record placeholder
+    @param data    Data passed to the readrec callback
+    @return >= 0 on success, -1 when there is no more data, < -1 on error
+ */
+int hts_itr_next(BGZF *fp, hts_itr_t *iter, void *r, void *data) HTS_RESULT_USED;
+
+/// Return a list of target names from an index
+/** @param      idx    Index
+    @param[out] n      Location to store the number of targets
+    @param      getid  Callback function to get the name for a target ID
+    @param      hdr    Header from indexed file
+    @return An array of pointers to the names on success; NULL on failure
+
+    @note The names are pointers into the header data structure.  When cleaning
+    up, only the array should be freed, not the names.
+ */
+const char **hts_idx_seqnames(const hts_idx_t *idx, int *n, hts_id2name_f getid, void *hdr); // free only the array, not the values
 
 /**********************************
  * Iterator with multiple regions *
  **********************************/
 
-typedef hts_itr_multi_t *hts_itr_multi_query_func(const hts_idx_t *idx, hts_itr_multi_t *itr);
-hts_itr_multi_t *hts_itr_multi_bam(const hts_idx_t *idx, hts_itr_multi_t *iter);
-hts_itr_multi_t *hts_itr_multi_cram(const hts_idx_t *idx, hts_itr_multi_t *iter);
-hts_itr_multi_t *hts_itr_regions(const hts_idx_t *idx, hts_reglist_t *reglist, int count, hts_name2id_f getid, void *hdr, hts_itr_multi_query_func *itr_specific, hts_readrec_func *readrec, hts_seek_func *seek, hts_tell_func *tell);
-int hts_itr_multi_next(htsFile *fd, hts_itr_multi_t *iter, void *r);
+typedef int hts_itr_multi_query_func(const hts_idx_t *idx, hts_itr_t *itr);
+int hts_itr_multi_bam(const hts_idx_t *idx, hts_itr_t *iter);
+int hts_itr_multi_cram(const hts_idx_t *idx, hts_itr_t *iter);
+
+/// Create a multi-region iterator from a region list
+/** @param idx          Index
+    @param reglist      Region list
+    @param count        Number of items in region list
+    @param getid        Callback to convert names to target IDs
+    @param hdr          Indexed file header (passed to getid)
+    @param itr_specific Filetype-specific callback function
+    @param readrec      Callback to read an input file record
+    @param seek         Callback to seek in the input file
+    @param tell         Callback to return current input file location
+    @return An iterator on success; NULL on failure
+ */
+hts_itr_t *hts_itr_regions(const hts_idx_t *idx, hts_reglist_t *reglist, int count, hts_name2id_f getid, void *hdr, hts_itr_multi_query_func *itr_specific, hts_readrec_func *readrec, hts_seek_func *seek, hts_tell_func *tell);
+
+/// Return the next record from an iterator
+/** @param fp      Input file handle
+    @param iter    Iterator
+    @param r       Pointer to record placeholder
+    @return >= 0 on success, -1 when there is no more data, < -1 on error
+ */
+int hts_itr_multi_next(htsFile *fd, hts_itr_t *iter, void *r);
+
+/// Create a region list from a char array
+/** @param argv      Char array of target:interval elements, e.g. chr1:2500-3600, chr1:5100, chr2
+    @param argc      Number of items in the array
+    @param r_count   Pointer to the number of items in the resulting region list
+    @param hdr       Header for the sam/bam/cram file
+    @param getid     Callback to convert target names to target ids.
+    @return  A region list on success, NULL on failure
+ */
+hts_reglist_t *hts_reglist_create(char **argv, int argc, int *r_count, void *hdr,  hts_name2id_f getid);
+
+/// Free a region list
+/** @param reglist    Region list
+    @param count      Number of items in the list
+ */
 void hts_reglist_free(hts_reglist_t *reglist, int count);
-void hts_itr_multi_destroy(hts_itr_multi_t *iter);
+
+/// Free a multi-region iterator
+/** @param iter   Iterator to free
+ */
+#define hts_itr_multi_destroy(iter) hts_itr_destroy(iter)
 
 
     /**

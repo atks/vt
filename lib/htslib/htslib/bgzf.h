@@ -155,6 +155,15 @@ typedef struct BGZF BGZF;
     ssize_t bgzf_block_write(BGZF *fp, const void *data, size_t length);
 
     /**
+     * Returns the next byte in the file without consuming it.
+     * @param fp     BGZF file handler
+     * @return       -1 on EOF,
+     *               -2 on error,
+     *               otherwise the unsigned byte value.
+     */
+    int bgzf_peek(BGZF *fp);
+
+    /**
      * Read up to _length_ bytes directly from the underlying stream without
      * decompressing.  Bypasses BGZF blocking, so must be used with care in
      * specialised circumstances only.
@@ -201,6 +210,9 @@ typedef struct BGZF BGZF;
      * @param pos    virtual file offset returned by bgzf_tell()
      * @param whence must be SEEK_SET
      * @return       0 on success and -1 on error
+     *
+     * @note It is not permitted to seek on files open for writing,
+     * or files compressed with gzip (as opposed to bgzip).
      */
     int64_t bgzf_seek(BGZF *fp, int64_t pos, int whence) HTS_RESULT_USED;
 
@@ -317,11 +329,14 @@ typedef struct BGZF BGZF;
      *
      *  @param fp           BGZF file handler; must be opened for reading
      *  @param uoffset      file offset in the uncompressed data
-     *  @param where        SEEK_SET supported atm
+     *  @param where        must be SEEK_SET
      *
      *  Returns 0 on success and -1 on error.
+     *
+     *  @note It is not permitted to seek on files open for writing,
+     *  or files compressed with gzip (as opposed to bgzip).
      */
-    int bgzf_useek(BGZF *fp, long uoffset, int where) HTS_RESULT_USED;
+    int bgzf_useek(BGZF *fp, off_t uoffset, int where) HTS_RESULT_USED;
 
     /**
      *  Position in uncompressed BGZF
@@ -330,7 +345,7 @@ typedef struct BGZF BGZF;
      *
      *  Returns the current offset on success and -1 on error.
      */
-    long bgzf_utell(BGZF *fp);
+    off_t bgzf_utell(BGZF *fp);
 
     /**
      * Tell BGZF to build index while compressing.
@@ -338,6 +353,11 @@ typedef struct BGZF BGZF;
      * @param fp          BGZF file handler; can be opened for reading or writing.
      *
      * Returns 0 on success and -1 on error.
+     *
+     * @note This function must be called before any data has been read or
+     * written, and in particular before calling bgzf_mt() on the same
+     * file handle (as threads may start reading data before the index
+     * has been set up).
      */
     int bgzf_index_build_init(BGZF *fp);
 

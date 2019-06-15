@@ -100,6 +100,7 @@ HTSLIB_ALL = \
 	$(HTSDIR)/probaln.c \
 	$(HTSDIR)/realn.c \
 	$(HTSDIR)/regidx.c \
+	$(HTSDIR)/region.c \
 	$(HTSDIR)/sam.c \
 	$(HTSDIR)/synced_bcf_reader.c \
 	$(HTSDIR)/tbx.c \
@@ -127,7 +128,6 @@ HTSLIB_ALL = \
 	$(HTSDIR)/cram/cram_stats.c \
 	$(HTSDIR)/cram/cram_stats.h \
 	$(HTSDIR)/cram/cram_structs.h \
-	$(HTSDIR)/cram/files.c \
 	$(HTSDIR)/cram/mFILE.c \
 	$(HTSDIR)/cram/mFILE.h \
 	$(HTSDIR)/cram/misc.h \
@@ -152,7 +152,7 @@ $(HTSDIR)/config.h:
 $(HTSDIR)/libhts.a: $(HTSLIB_ALL)
 	+cd $(HTSDIR) && $(MAKE) lib-static
 
-$(HTSDIR)/libhts.so $(HTSDIR)/libhts.dylib: $(HTSLIB_ALL)
+$(HTSDIR)/libhts.so $(HTSDIR)/libhts.dylib $(HTSDIR)/libhts.dll.a $(HTSDIR)/hts.dll.a: $(HTSLIB_ALL)
 	+cd $(HTSDIR) && $(MAKE) lib-shared
 
 $(HTSDIR)/bgzip: $(HTSDIR)/bgzip.c $(HTSLIB_PUBLIC_HEADERS)

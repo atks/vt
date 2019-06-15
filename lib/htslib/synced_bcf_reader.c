@@ -60,7 +60,7 @@ typedef struct
 }
 aux_t;
 
-static void _regions_add(bcf_sr_regions_t *reg, const char *chr, int start, int end);
+static int _regions_add(bcf_sr_regions_t *reg, const char *chr, int start, int end);
 static bcf_sr_regions_t *_regions_init_string(const char *str);
 static int _regions_match_alleles(bcf_sr_regions_t *reg, int als_idx, bcf1_t *rec);
 
@@ -376,7 +376,7 @@ void bcf_sr_remove_reader(bcf_srs_t *files, int i)
     files->nreaders--;
 }
 
-
+#if DEBUG_SYNCED_READER
 void debug_buffer(FILE *fp, bcf_sr_t *reader)
 {
     int j;
@@ -400,6 +400,7 @@ void debug_buffers(FILE *fp, bcf_srs_t *files)
     }
     fprintf(fp,"\n");
 }
+#endif
 
 static inline int has_filter(bcf_sr_t *reader, bcf1_t *line)
 {
@@ -479,13 +480,13 @@ static int _readers_next_region(bcf_srs_t *files)
 /*
  *  _reader_fill_buffer() - buffers all records with the same coordinate
  */
-static void _reader_fill_buffer(bcf_srs_t *files, bcf_sr_t *reader)
+static int _reader_fill_buffer(bcf_srs_t *files, bcf_sr_t *reader)
 {
     // Return if the buffer is full: the coordinate of the last buffered record differs
-    if ( reader->nbuffer && reader->buffer[reader->nbuffer]->pos != reader->buffer[1]->pos ) return;
+    if ( reader->nbuffer && reader->buffer[reader->nbuffer]->pos != reader->buffer[1]->pos ) return 0;
 
     // No iterator (sequence not present in this file) and not streaming
-    if ( !reader->itr && !files->streaming ) return;
+    if ( !reader->itr && !files->streaming ) return 0;
 
     // Fill the buffer with records starting at the same position
     int i, ret = 0;
@@ -555,6 +556,7 @@ static void _reader_fill_buffer(bcf_srs_t *files, bcf_sr_t *reader)
         tbx_itr_destroy(reader->itr);
         reader->itr = NULL;
     }
+    return 0; // FIXME: Check for more errs in this function
 }
 
 /*
@@ -576,7 +578,7 @@ static void _reader_shift_buffer(bcf_sr_t *reader)
         reader->nbuffer = 0;    // no other line
 }
 
-int _reader_next_line(bcf_srs_t *files)
+static int next_line(bcf_srs_t *files)
 {
     int i, min_pos = INT_MAX;
     const char *chr = NULL;
@@ -635,11 +637,11 @@ int _reader_next_line(bcf_srs_t *files)
 int bcf_sr_next_line(bcf_srs_t *files)
 {
     if ( !files->targets_als )
-        return _reader_next_line(files);
+        return next_line(files);
 
     while (1)
     {
-        int i, ret = _reader_next_line(files);
+        int i, ret = next_line(files);
         if ( !ret ) return ret;
 
         for (i=0; i<files->nreaders; i++)
@@ -764,7 +766,7 @@ int bcf_sr_set_samples(bcf_srs_t *files, const char *fname, int is_file)
 
 // Add a new region into a list sorted by start,end. On input the coordinates
 // are 1-based, stored 0-based, inclusive.
-static void _regions_add(bcf_sr_regions_t *reg, const char *chr, int start, int end)
+static int _regions_add(bcf_sr_regions_t *reg, const char *chr, int start, int end)
 {
     if ( start==-1 && end==-1 )
     {
@@ -812,6 +814,8 @@ static void _regions_add(bcf_sr_regions_t *reg, const char *chr, int start, int 
         creg->regs[max].end   = end;
         creg->nregs++;
     }
+
+    return 0; // FIXME: check for errs in this function
 }
 
 // File name or a list of genomic locations. If file name, NULL is returned.
@@ -1219,10 +1223,10 @@ int bcf_sr_regions_overlap(bcf_sr_regions_t *reg, const char *seq, int start, in
     return -1;  // no overlap
 }
 
-void bcf_sr_regions_flush(bcf_sr_regions_t *reg)
+int bcf_sr_regions_flush(bcf_sr_regions_t *reg)
 {
-    if ( !reg->missed_reg_handler || reg->prev_seq==-1 ) return;
+    if ( !reg->missed_reg_handler || reg->prev_seq==-1 ) return 0;
     while ( !bcf_sr_regions_next(reg) ) reg->missed_reg_handler(reg, reg->missed_reg_data);
-    return;
+    return 0; // FIXME: check for errs in this function
 }
 

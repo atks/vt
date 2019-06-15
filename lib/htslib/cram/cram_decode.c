@@ -152,8 +152,9 @@ cram_block_compression_hdr *cram_decode_compression_header(cram_fd *fd,
         cp += safe_itf8_get(cp, endp, &hdr->ref_seq_span);
         cp += safe_itf8_get(cp, endp, &hdr->num_records);
         cp += safe_itf8_get(cp, endp, &hdr->num_landmarks);
-        if ((hdr->num_landmarks < 0 ||
-             hdr->num_landmarks >= SIZE_MAX / sizeof(int32_t))) {
+        if (hdr->num_landmarks < 0 ||
+            hdr->num_landmarks >= SIZE_MAX / sizeof(int32_t) ||
+            endp - cp < hdr->num_landmarks) {
             free(hdr);
             return NULL;
         }
@@ -352,10 +353,10 @@ cram_block_compression_hdr *cram_decode_compression_header(cram_fd *fd,
         char *key = cp;
         int32_t encoding = E_NULL;
         int32_t size = 0;
-        cram_map *m = malloc(sizeof(*m)); // FIXME: use pooled_alloc
+        ptrdiff_t offset;
+        cram_map *m;
 
-        if (!m || endp - cp < 4) {
-            free(m);
+        if (endp - cp < 4) {
             cram_free_compression_header(hdr);
             return NULL;
         }
@@ -364,18 +365,12 @@ cram_block_compression_hdr *cram_decode_compression_header(cram_fd *fd,
         cp += safe_itf8_get(cp, endp, &encoding);
         cp += safe_itf8_get(cp, endp, &size);
 
-        // Fill out cram_map purely for cram_dump to dump out.
-        m->key = (key[0]<<8)|key[1];
-        m->encoding = encoding;
-        m->size     = size;
-        m->offset   = cp - (char *)b->data;
-        m->codec = NULL;
+        offset = cp - (char *)b->data;
 
-        if (m->encoding == E_NULL)
+        if (encoding == E_NULL)
             continue;
 
         if (size < 0 || endp - cp < size) {
-            free(m);
             cram_free_compression_header(hdr);
             return NULL;
         }
@@ -609,6 +604,18 @@ cram_block_compression_hdr *cram_decode_compression_header(cram_fd *fd,
         }
 
         cp += size;
+
+        // Fill out cram_map purely for cram_dump to dump out.
+        m = malloc(sizeof(*m));
+        if (!m) {
+            cram_free_compression_header(hdr);
+            free(m);
+        }
+        m->key = (key[0]<<8)|key[1];
+        m->encoding = encoding;
+        m->size     = size;
+        m->offset   = offset;
+        m->codec = NULL;
 
         m->next = hdr->rec_encoding_map[CRAM_MAP(key[0], key[1])];
         hdr->rec_encoding_map[CRAM_MAP(key[0], key[1])] = m;
@@ -1791,23 +1798,28 @@ static int cram_decode_seq(cram_fd *fd, cram_container *c, cram_slice *s,
                     if (ref_pos + cr->len-seq_pos +1 > s->ref_end)
                         goto beyond_slice;
                     if (decode_md || decode_nm) {
-                        int i;
-                        for (i = 0; i < cr->len - seq_pos + 1; i++) {
-                            // FIXME: not N, but nt16 lookup == 15?
-                            char base = s->ref[ref_pos - s->ref_start + 1 + i];
-                            if (base == 'N') {
-                                add_md_char(s, decode_md,
-                                            s->ref[ref_pos - s->ref_start + 1 + i],
-                                            &md_dist);
-                                nm++;
-                            } else {
-                                md_dist++;
+                        int i, j = ref_pos - s->ref_start + 1;
+                        // FIXME: Update this to match spec once we're also
+                        // ready to update samtools calmd. (N vs any ambig)
+                        if (memchr(&s->ref[j], 'N', cr->len - (seq_pos-1))) {
+                            for (i = seq_pos-1, j -= i; i < cr->len; i++) {
+                                char base = s->ref[j+i];
+                                if (base == 'N') {
+                                    add_md_char(s, decode_md, 'N', &md_dist);
+                                    nm++;
+                                } else {
+                                    md_dist++;
+                                }
+                                seq[i] = base;
                             }
-                            seq[seq_pos-1+i] = base;
+                        } else {
+                            // faster than above code
+                            memcpy(&seq[seq_pos-1], &s->ref[j], cr->len - (seq_pos-1));
+                            md_dist += cr->len - (seq_pos-1);
                         }
                     } else {
                         memcpy(&seq[seq_pos-1], &s->ref[ref_pos - s->ref_start +1],
-                               cr->len - seq_pos + 1);
+                               cr->len - (seq_pos-1));
                     }
                 }
                 ref_pos += cr->len - seq_pos + 1;
@@ -1896,13 +1908,27 @@ static int cram_decode_seq(cram_fd *fd, cram_container *c, cram_slice *s,
 
     if (decode_nm) {
         char buf[7];
-        buf[0] = 'N'; buf[1] = 'M'; buf[2] = 'I';
-        buf[3] = (nm>> 0) & 0xff;
-        buf[4] = (nm>> 8) & 0xff;
-        buf[5] = (nm>>16) & 0xff;
-        buf[6] = (nm>>24) & 0xff;
-        BLOCK_APPEND(s->aux_blk, buf, 7);
-        cr->aux_size += 7;
+        size_t buf_size;
+        buf[0] = 'N'; buf[1] = 'M';
+        if (nm <= UINT8_MAX) {
+            buf_size = 4;
+            buf[2] = 'C';
+            buf[3] = (nm>> 0) & 0xff;
+        } else if (nm <= UINT16_MAX) {
+            buf_size = 5;
+            buf[2] = 'S';
+            buf[3] = (nm>> 0) & 0xff;
+            buf[4] = (nm>> 8) & 0xff;
+        } else {
+            buf_size = 7;
+            buf[2] = 'I';
+            buf[3] = (nm>> 0) & 0xff;
+            buf[4] = (nm>> 8) & 0xff;
+            buf[5] = (nm>>16) & 0xff;
+            buf[6] = (nm>>24) & 0xff;
+        }
+        BLOCK_APPEND(s->aux_blk, buf, buf_size);
+        cr->aux_size += buf_size;
     }
 
     return r;
@@ -2458,13 +2484,17 @@ int cram_decode_slice(cram_fd *fd, cram_container *c, cram_slice *s,
                         }
 
                         pthread_mutex_lock(&fd->range_lock);
-                        int discard_last_ref = (!fd->unsorted &&
-                                                last_ref_id >= 0 &&
+                        int discard_last_ref = (last_ref_id >= 0 &&
                                                 refs[last_ref_id] &&
                                                 (fd->range.refid == -2 ||
                                                  last_ref_id == fd->range.refid));
                         pthread_mutex_unlock(&fd->range_lock);
-                        if  (discard_last_ref) {
+                        if (discard_last_ref) {
+                            pthread_mutex_lock(&fd->ref_lock);
+                            discard_last_ref = !fd->unsorted;
+                            pthread_mutex_unlock(&fd->ref_lock);
+                        }
+                        if (discard_last_ref) {
                             cram_ref_decr(fd->refs, last_ref_id);
                             refs[last_ref_id] = NULL;
                         }
@@ -2951,6 +2981,9 @@ static cram_container *cram_first_slice(cram_fd *fd) {
     cram_container *c;
 
     do {
+        if (fd->ctr)
+            cram_free_container(fd->ctr);
+
         if (!(c = fd->ctr = cram_read_container(fd)))
             return NULL;
         c->curr_slice_mt = c->curr_slice;
@@ -3127,9 +3160,13 @@ static cram_slice *cram_next_slice(cram_fd *fd, cram_container **cp) {
             }
 
             if (c_next->num_records == 0) {
-                cram_free_container(c_next);
+                if (fd->ctr == c_next)
+                    fd->ctr = NULL;
+                if (c_curr == c_next)
+                    c_curr = NULL;
                 if (fd->ctr_mt == c_next)
                     fd->ctr_mt = NULL;
+                cram_free_container(c_next);
                 c_next = NULL;
                 goto empty_container;
             }
