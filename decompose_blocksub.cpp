@@ -49,7 +49,9 @@ class Igor : Program
     //options//
     ///////////
     bool aggressive_mode;
+    bool keep_mnv;
     bool output_phased_genotypes;
+    int max_mnv_dist = 2;
     std::string input_vcf_file;
     std::string output_vcf_file;
     std::vector<GenomeInterval> intervals;
@@ -65,6 +67,7 @@ class Igor : Program
     kstring_t s;
     kstring_t new_alleles;
     kstring_t old_alleles;
+    kstring_t ref_mnv, alt_mnv;
 
     /////////
     //stats//
@@ -96,6 +99,7 @@ class Igor : Program
             TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "file", cmd);
             TCLAP::ValueArg<std::string> arg_output_vcf_file("o", "o", "output VCF file [-]", false, "-", "str", cmd);
             TCLAP::SwitchArg arg_aggressive("a", "a", "enable aggressive/alignment mode [false]", cmd, false);
+            TCLAP::SwitchArg arg_mnv("m", "m", "keep MNVs (multi-nucleotide variants) [false]", cmd, false);
             TCLAP::SwitchArg arg_output_phased_genotypes("p", "p", "Output phased genotypes and PS tags for decomposed variants [false]", cmd, false);
             TCLAP::UnlabeledValueArg<std::string> arg_input_vcf_file("<in.vcf>", "input VCF file", true, "","file", cmd);
 
@@ -104,6 +108,7 @@ class Igor : Program
             input_vcf_file = arg_input_vcf_file.getValue();
             output_vcf_file = arg_output_vcf_file.getValue();
             aggressive_mode = arg_aggressive.getValue();
+            keep_mnv = arg_mnv.getValue();
             output_phased_genotypes = arg_output_phased_genotypes.getValue();
             parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
         }
@@ -135,6 +140,8 @@ class Igor : Program
         s = {0,0,0};
         old_alleles = {0,0,0};
         new_alleles = {0,0,0};
+        ref_mnv = {0,0,0};
+        alt_mnv = {0,0,0};
 
         ////////////////////////
         //stats initialization//
@@ -147,6 +154,22 @@ class Igor : Program
         ////////////////////////
         //tools initialization//
         ////////////////////////
+    }
+
+    void print_decomposed_var(bcf1_t *v, int pos, char* ref, char *alt, BCFOrderedWriter *odw) {
+        bcf1_t *nv = odw->get_bcf1_from_pool();
+        bcf_copy(nv, v);
+        bcf_unpack(nv, BCF_UN_ALL);
+
+        bcf_set_pos1(nv, pos);
+        new_alleles.l=0;
+        kputs(ref, &new_alleles);
+        kputc(',', &new_alleles);
+        kputs(alt, &new_alleles);
+
+        bcf_update_alleles_str(odw->hdr, nv, new_alleles.s);
+        bcf_update_info_string(odw->hdr, nv, "OLD_CLUMPED", old_alleles.s);
+        odw->write(nv);
     }
 
     void decompose_blocksub()
@@ -289,54 +312,102 @@ class Igor : Program
                 char** allele = bcf_get_allele(v);
                 char* ref = strdup(allele[0]);
                 char* alt = strdup(allele[1]);
+                int prev_snv_pos = -1;
+                int mnv_start_pos = -1;
 
                 old_alleles.l = 0;
                 bcf_variant2string(odw->hdr, v, &old_alleles);
-
                 for (size_t i=0; i<ref_len; ++i)
                 {
                     if (ref[i]!=alt[i])
                     {
-                        start_pos_of_phased_block.resize(no_samples, pos1 + i);
+                        if(keep_mnv) {
+                            if(prev_snv_pos == -1 || i - prev_snv_pos <= max_mnv_dist) {
+                                prev_snv_pos = i;
+                                // Remember the pos of first SNP in the MNV
+                                if(mnv_start_pos == -1) {
+                                    mnv_start_pos = i;
+                                }
+                                kputc(ref[i], &ref_mnv);
+                                kputc(alt[i], &alt_mnv);
+                                //std::clog << "PREV_MNV_POS: " << prev_snv_pos << "\n";
+                            }
+                            //std::clog << "I: " << i << ", PREV_SNV_POS: " << prev_snv_pos << ", MNV_START_POS: " << mnv_start_pos << "\n";
+                        } else {
+                            start_pos_of_phased_block.resize(no_samples, pos1 + i);
                         
-                        bcf1_t *nv = odw->get_bcf1_from_pool();
-                        bcf_copy(nv, v);
-                        bcf_unpack(nv, BCF_UN_ALL);
+                            bcf1_t *nv = odw->get_bcf1_from_pool();
+                            bcf_copy(nv, v);
+                            bcf_unpack(nv, BCF_UN_ALL);
 
-                        bcf_set_pos1(nv, pos1+i);
-                        new_alleles.l=0;
-                        kputc(ref[i], &new_alleles);
-                        kputc(',', &new_alleles);
-                        kputc(alt[i], &new_alleles);
+                            bcf_set_pos1(nv, pos1+i);
+                            new_alleles.l=0;
+                            kputc(ref[i], &new_alleles);
+                            kputc(',', &new_alleles);
+                            kputc(alt[i], &new_alleles);
 
-                        bcf_update_alleles_str(odw->hdr, nv, new_alleles.s);
-                        bcf_update_info_string(odw->hdr, nv, "OLD_CLUMPED", old_alleles.s);
+                            bcf_update_alleles_str(odw->hdr, nv, new_alleles.s);
+                            bcf_update_info_string(odw->hdr, nv, "OLD_CLUMPED", old_alleles.s);
 
-                        if (output_phased_genotypes)
-                        {
-                            // Update genotypes with '|' to represent phased blocks, and add PS tag with pos of first
-                            // decomposed variant as block ID.
-                            bcf_update_format_int32(odw->hdr, nv, "PS", &start_pos_of_phased_block[0], no_samples);
-
-                            int* gts = NULL; 
-                            int n_gts = 0;
-                            int ploidy = bcf_get_genotypes(odw->hdr, nv, &gts, &n_gts);
-
-                            for (int32_t igt=0; igt < n_gts; ++igt)
+                            if (output_phased_genotypes)
                             {
-                                gts[igt] = bcf_gt_phased(bcf_gt_allele(gts[igt]));
+                                // Update genotypes with '|' to represent phased blocks, and add PS tag with pos of first
+                                // decomposed variant as block ID.
+                                bcf_update_format_int32(odw->hdr, nv, "PS", &start_pos_of_phased_block[0], no_samples);
+
+                                int* gts = NULL; 
+                                int n_gts = 0;
+                                int ploidy = bcf_get_genotypes(odw->hdr, nv, &gts, &n_gts);
+
+                                for (int32_t igt=0; igt < n_gts; ++igt)
+                                {
+                                    gts[igt] = bcf_gt_phased(bcf_gt_allele(gts[igt]));
+                                }
+
+                                bcf_update_genotypes(odw->hdr, nv, gts, n_gts);
+                                free(gts);
                             }
 
-                            bcf_update_genotypes(odw->hdr, nv, gts, n_gts);
-                            free(gts);
+                            odw->write(nv);
                         }
-
-                        odw->write(nv);
-
+                        
+                        
+                        // FIXME: we should move these somewhere else
                         ++new_no_variants;
                         ++no_additional_snps;
+                    } else if(keep_mnv) {
+                        if(prev_snv_pos != -1 && i - prev_snv_pos < max_mnv_dist) {
+                            kputc(ref[i], &ref_mnv);
+                            kputc(alt[i], &alt_mnv);
+                        // We have a record to print!
+                        } else if(prev_snv_pos != -1) {
+                            // Remove last nucleotides that are similare between alt and ref
+                            ref_mnv.s[prev_snv_pos - mnv_start_pos + 1] = '\0';
+                            alt_mnv.s[prev_snv_pos - mnv_start_pos + 1] = '\0';
+
+                            // Print MNV record
+                            print_decomposed_var(v, pos1 + mnv_start_pos, ref_mnv.s, alt_mnv.s, odw);
+
+                            // Reset MNV variables
+                            prev_snv_pos = -1;
+                            mnv_start_pos = -1;
+                            ref_mnv.l=0;
+                            alt_mnv.l=0;
+                        }
                     }
                 }
+                
+                if(keep_mnv && prev_snv_pos != -1) {
+                    // Remove last nucleotides that are similare between alt and ref
+                    ref_mnv.s[prev_snv_pos - mnv_start_pos + 1] = '\0';
+                    alt_mnv.s[prev_snv_pos - mnv_start_pos + 1] = '\0';
+                    // print MNV record !
+                    print_decomposed_var(v, pos1 + mnv_start_pos, ref_mnv.s, alt_mnv.s, odw);
+                }
+
+                // Reset MNV variables
+                ref_mnv.l=0;
+                alt_mnv.l=0;
 
                 free(ref);
                 free(alt);
@@ -365,6 +436,7 @@ class Igor : Program
         std::clog << "         [o] output VCF file         " << output_vcf_file << "\n";
         print_int_op("         [i] intervals               ", intervals);
         print_boo_op("         [a] align/aggressive mode   ", aggressive_mode);
+        print_boo_op("         [m] keep MNVs (Multi-Nucleotide Variants)   ", keep_mnv);
         print_boo_op("         [p] output phased genotypes ", output_phased_genotypes);
         std::clog << "\n";
     }
