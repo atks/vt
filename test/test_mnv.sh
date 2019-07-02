@@ -14,11 +14,11 @@ run simple_mnv ${VT} decompose_blocksub -m ${DIR}/decompose_blocksub/mnv/simple_
 assert_exit_code 0
 assert_in_stdout "1	159030	.	TA	CG"
 
-run 1bp_dist_mnv ${VT} decompose_blocksub -m ${DIR}/decompose_blocksub/mnv/1bp_dist_mnv.vcf
+run one_bp_dist_mnv ${VT} decompose_blocksub -m ${DIR}/decompose_blocksub/mnv/1bp_dist_mnv.vcf
 assert_exit_code 0
 assert_in_stdout "1	159030	.	TAA	GAT"
 
-run 2bp_dist_mnv ${VT} decompose_blocksub -m ${DIR}/decompose_blocksub/mnv/2bp_dist_mnv.vcf
+run two_bp_dist_mnv ${VT} decompose_blocksub -m ${DIR}/decompose_blocksub/mnv/2bp_dist_mnv.vcf
 assert_exit_code 0
 assert_in_stdout "1	159030	.	T	G"
 assert_in_stdout "1	159033	.	C	T"

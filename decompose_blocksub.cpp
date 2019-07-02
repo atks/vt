@@ -51,7 +51,7 @@ class Igor : Program
     bool aggressive_mode;
     bool keep_mnv;
     bool output_phased_genotypes;
-    int max_mnv_dist = 2;
+    int max_mnv_dist;
     std::string input_vcf_file;
     std::string output_vcf_file;
     std::vector<GenomeInterval> intervals;
@@ -98,6 +98,7 @@ class Igor : Program
             TCLAP::ValueArg<std::string> arg_intervals("i", "i", "intervals []", false, "", "str", cmd);
             TCLAP::ValueArg<std::string> arg_interval_list("I", "I", "file containing list of intervals []", false, "", "file", cmd);
             TCLAP::ValueArg<std::string> arg_output_vcf_file("o", "o", "output VCF file [-]", false, "-", "str", cmd);
+            TCLAP::ValueArg<int>  arg_max_mnv_dist("d", "d", "MNVs max distance (when -m option is used) [2]", false, 2, "int", cmd);
             TCLAP::SwitchArg arg_aggressive("a", "a", "enable aggressive/alignment mode [false]", cmd, false);
             TCLAP::SwitchArg arg_mnv("m", "m", "keep MNVs (multi-nucleotide variants) [false]", cmd, false);
             TCLAP::SwitchArg arg_output_phased_genotypes("p", "p", "Output phased genotypes and PS tags for decomposed variants [false]", cmd, false);
@@ -109,6 +110,7 @@ class Igor : Program
             output_vcf_file = arg_output_vcf_file.getValue();
             aggressive_mode = arg_aggressive.getValue();
             keep_mnv = arg_mnv.getValue();
+            max_mnv_dist = arg_max_mnv_dist.getValue();
             output_phased_genotypes = arg_output_phased_genotypes.getValue();
             parse_intervals(intervals, arg_interval_list.getValue(), arg_intervals.getValue());
         }
@@ -437,6 +439,7 @@ class Igor : Program
         print_int_op("         [i] intervals               ", intervals);
         print_boo_op("         [a] align/aggressive mode   ", aggressive_mode);
         print_boo_op("         [m] keep MNVs (Multi-Nucleotide Variants)   ", keep_mnv);
+        print_boo_op("         [d] MNVs max distance (when -m option is used)   ", max_mnv_dist);
         print_boo_op("         [p] output phased genotypes ", output_phased_genotypes);
         std::clog << "\n";
     }
