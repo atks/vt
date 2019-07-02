@@ -42,6 +42,22 @@ Noteworthy changes in release a.b
   - bcf_set_variant_type() now outputs VCF_OVERLAP for spanning
     deletions (ALT=*).
 
+  - A new field (hrecs) has been added to the bam_hdr_t structure for
+    use by the new header API.  The old sdict field is now not used and
+    marked as deprecated.  The l_text field has been changed from uint32_t
+    to size_t, to allow for very large headers in SAM files.  The text
+    and l_text fields have been left for backwards compatibility, but
+    should not be accessed directly in code that uses the new header API.
+    To access the header text, the new functions bam_hdr_length() and
+    bam_hdr_str() should be used instead.
+
+  - bcf_index_load() no longer tries the '.tbi' suffix when looking for
+    BCF index files (.tbi indexes are for text files, not binary BCF).
+
+* A new header API has been added to HTSlib, allowing header data to
+  be updated without having to parse or rewrite large parts of the header
+  text.  See htslib/sam.h for function definitions and documentation.
+
 * SAM format reading and writing is now much faster.  Compared to revision 1.9,
   reading uncompressed SAM may be up to 100% faster; writing up to 80%.  The
   exact improvement depends on which compiler options are used and the
@@ -76,6 +92,16 @@ Noteworthy changes in release a.b
   delimiter; hts_idx_load() opens the index in the part after it.  So for
   example, "/path1/my_data.bam##idx##/path2/my_index.csi" will open bam file
   "/path1/my_data.bam" and index file "/path2/my_index.csi".
+
+* New API functions hts_idx_load3(), sam_index_load3(), tbx_index_load3()
+  and bcf_index_load3() have been added.  These allow control of whether
+  remote indexes should be cached locally, and allow the error message
+  printed when the index does not exist to be suppressed.
+
+* hts_idx_load() now checks locally for all possible index names before
+  attempting to download a remote index.  It also checks that the remote
+  file it downloads is actually an index before trying to save and use
+  it.  (https://github.com/samtools/samtools/issues/1045)
 
 * Changes to hfile_s3, which provides support for the AWS S3 API.
 
