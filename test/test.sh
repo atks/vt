@@ -179,7 +179,9 @@ else
     echo " NOT OK!!!"
 fi
 
-trap "rm -rf ${TMPDIRS}" EXIT KILL TERM INT HUP
+if [ "$1" != "debug" ]; then
+    trap "rm -rf ${TMPDIRS}" EXIT KILL TERM INT HUP
+fi
 
 echo "++++++++++++++++++++++" >&2
 echo "Tests for vt decompose" >&2
@@ -227,7 +229,9 @@ else
     echo " NOT OK!!!"
 fi
 
-trap "rm -rf ${TMPDIRS}" EXIT KILL TERM INT HUP
+if [ "$1" != "debug" ]; then
+    trap "rm -rf ${TMPDIRS}" EXIT KILL TERM INT HUP
+fi
 
 echo
 echo -n Passed tests :

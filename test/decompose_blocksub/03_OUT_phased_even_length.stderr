@@ -3,6 +3,8 @@ decompose_blocksub v0.5
 options:     input VCF file <stripped>
          [o] output VCF file <stripped>
          [a] align/aggressive mode   false
+         [m] keep MNVs (Multi-Nucleotide Variants)   false
+         [d] MNVs max distance (when -m option is used)   true
          [p] output phased genotypes true
 
 
