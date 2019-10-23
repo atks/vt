@@ -188,6 +188,7 @@ cleanvt :
 
 test : vt
 	test/test.sh
+	test/test_mnv.sh
 
 debug : vt
 	test/test.sh debug
