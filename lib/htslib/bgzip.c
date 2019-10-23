@@ -26,6 +26,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <strings.h>
 #include <stdio.h>
 #include <fcntl.h>
 #include <unistd.h>
@@ -33,7 +34,6 @@
 #include <stdarg.h>
 #include <getopt.h>
 #include <inttypes.h>
-#include <sys/stat.h>
 #include "htslib/bgzf.h"
 #include "htslib/hts.h"
 
@@ -53,19 +53,53 @@ static void error(const char *format, ...)
     exit(EXIT_FAILURE);
 }
 
+static int ask_yn()
+{
+    char line[1024];
+    if (fgets(line, sizeof line, stdin) == NULL)
+        return 0;
+    return line[0] == 'Y' || line[0] == 'y';
+}
+
 static int confirm_overwrite(const char *fn)
 {
     int save_errno = errno;
     int ret = 0;
 
     if (isatty(STDIN_FILENO)) {
-        char c;
         fprintf(stderr, "[bgzip] %s already exists; do you wish to overwrite (y or n)? ", fn);
-        if (scanf("%c", &c) == 1 && (c == 'Y' || c == 'y')) ret = 1;
+        if (ask_yn()) ret = 1;
     }
 
     errno = save_errno;
     return ret;
+}
+
+static int known_extension(const char *ext)
+{
+    static const char *known[] = {
+        "gz", "bgz", "bgzf",
+        NULL
+    };
+
+    const char **p;
+    for (p = known; *p; p++)
+        if (strcasecmp(ext, *p) == 0) return 1;
+    return 0;
+}
+
+static int confirm_filename(int *is_forced, const char *name, const char *ext)
+{
+    if (*is_forced) {
+        (*is_forced)--;
+        return 1;
+    }
+
+    if (!isatty(STDIN_FILENO))
+        return 0;
+
+    fprintf(stderr, "[bgzip] .%s is not a known extension; do you wish to decompress to %s (y or n)? ", ext, name);
+    return ask_yn();
 }
 
 static int bgzip_main_usage(FILE *fp, int status)
@@ -126,7 +160,7 @@ int main(int argc, char **argv)
         case 'c': pstdout = 1; break;
         case 'b': start = atol(optarg); compress = 0; pstdout = 1; break;
         case 's': size = atol(optarg); pstdout = 1; break;
-        case 'f': is_forced = 1; break;
+        case 'f': is_forced++; break;
         case 'i': index = 1; break;
         case 'I': index_fname = optarg; break;
         case 'l': compress_level = atol(optarg); break;
@@ -149,7 +183,6 @@ int main(int argc, char **argv)
         return 1;
     }
     if (compress == 1) {
-        struct stat sbuf;
         int f_src = fileno(stdin);
         char out_mode[3] = "w\0";
         char out_mode_exclusive[4] = "wx\0";
@@ -165,12 +198,6 @@ int main(int argc, char **argv)
 
         if ( argc>optind )
         {
-            if ( stat(argv[optind],&sbuf)<0 )
-            {
-                fprintf(stderr, "[bgzip] %s: %s\n", strerror(errno), argv[optind]);
-                return 1;
-            }
-
             if ((f_src = open(argv[optind], O_RDONLY)) < 0) {
                 fprintf(stderr, "[bgzip] %s: %s\n", strerror(errno), argv[optind]);
                 return 1;
@@ -284,26 +311,18 @@ int main(int argc, char **argv)
     }
     else
     {
-        struct stat sbuf;
         int f_dst;
 
         if ( argc>optind )
         {
-            if ( stat(argv[optind],&sbuf)<0 )
-            {
-                fprintf(stderr, "[bgzip] %s: %s\n", strerror(errno), argv[optind]);
-                return 1;
-            }
-            char *name;
-            int len = strlen(argv[optind]);
-            if ( strcmp(argv[optind]+len-3,".gz") && !test)
-            {
-                fprintf(stderr, "[bgzip] %s: unknown suffix -- ignored\n", argv[optind]);
-                return 1;
-            }
             fp = bgzf_open(argv[optind], "r");
             if (fp == NULL) {
-                fprintf(stderr, "[bgzip] Could not open file: %s\n", argv[optind]);
+                fprintf(stderr, "[bgzip] Could not open %s: %s\n", argv[optind], strerror(errno));
+                return 1;
+            }
+            if (bgzf_compression(fp) == no_compression) {
+                fprintf(stderr, "[bgzip] %s: not a compressed file -- ignored\n", argv[optind]);
+                bgzf_close(fp);
                 return 1;
             }
 
@@ -312,8 +331,24 @@ int main(int argc, char **argv)
             }
             else {
                 const int wrflags = O_WRONLY | O_CREAT | O_TRUNC;
+                char *name = argv[optind], *ext;
+                size_t pos;
+                for (pos = strlen(name); pos > 0; --pos)
+                    if (name[pos] == '.' || name[pos] == '/') break;
+                if (pos == 0 || name[pos] != '.') {
+                    fprintf(stderr, "[bgzip] can't remove an extension from %s -- please rename\n", argv[optind]);
+                    bgzf_close(fp);
+                    return 1;
+                }
                 name = strdup(argv[optind]);
-                name[strlen(name) - 3] = '\0';
+                name[pos] = '\0';
+                ext = &name[pos+1];
+                if (! (known_extension(ext) || confirm_filename(&is_forced, name, ext))) {
+                    fprintf(stderr, "[bgzip] unknown extension .%s -- declining to decompress to %s\n", ext, name);
+                    bgzf_close(fp);
+                    free(name);
+                    return 1;
+                }
                 f_dst = open(name, is_forced? wrflags : wrflags|O_EXCL, 0666);
                 if (f_dst < 0 && errno == EEXIST && confirm_overwrite(name))
                     f_dst = open(name, wrflags, 0666);
@@ -335,11 +370,11 @@ int main(int argc, char **argv)
                 fprintf(stderr, "[bgzip] Could not read from stdin: %s\n", strerror(errno));
                 return 1;
             }
-        }
-
-        if (!fp->is_compressed) {
-            fprintf(stderr, "[bgzip] Expected compressed file -- ignored\n");
-            return 1;
+            if (bgzf_compression(fp) == no_compression) {
+                fprintf(stderr, "[bgzip] stdin is not compressed -- ignored\n");
+                bgzf_close(fp);
+                return 1;
+            }
         }
 
         buffer = malloc(WINDOW_SIZE);

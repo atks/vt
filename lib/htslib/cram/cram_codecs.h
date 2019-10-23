@@ -28,10 +28,10 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef _CRAM_ENCODINGS_H_
-#define _CRAM_ENCODINGS_H_
+#ifndef CRAM_CODECS_H
+#define CRAM_CODECS_H
 
-#include <inttypes.h>
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -49,7 +49,7 @@ struct cram_codec;
  * appears.
  */
 typedef struct {
-    int32_t symbol;
+    int64_t symbol;
     int32_t p; // next code start value, minus index to codes[]
     int32_t code;
     int32_t len;
@@ -65,6 +65,7 @@ typedef struct {
     cram_huffman_code *codes;
     int nvals;
     int val2code[MAX_HUFF+1]; // value to code lookup for small values
+    int option;
 } cram_huffman_encoder;
 
 typedef struct {
@@ -192,4 +193,4 @@ int cram_codec_decoder2encoder(cram_fd *fd, cram_codec *c);
 }
 #endif
 
-#endif /* _CRAM_ENCODINGS_H_ */
+#endif /* CRAM_CODECS_H */

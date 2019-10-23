@@ -453,7 +453,7 @@ class Igor : Program
     bcf_unpack(nv, BCF_UN_ALL);
 
     if ( (nread + 1) % 1000 == 0 )
-      fprintf(stderr,"Processing %d variants at %s:%d\n", nread + 1, bcf_seqname(odw->hdr,nv), nv->pos);
+      fprintf(stderr,"Processing %d variants at %s:%d\n", nread + 1, bcf_seqname(odw->hdr,nv), (int32_t) nv->pos);
 
     // get GT fields
     if ( bcf_get_genotypes(odr->hdr, v, &p_gt, &np_gt) < 0 ) {

@@ -38,6 +38,10 @@ DEALINGS IN THE SOFTWARE.  */
 #include "htslib/sam.h"
 #include "htslib/vcf.h"
 
+#ifndef EFTYPE
+#define EFTYPE ENOEXEC
+#endif
+
 enum { identify, view_headers, view_all, copy } mode = identify;
 int show_headers = 1;
 int verbose = 0;
@@ -68,7 +72,7 @@ static htsFile *dup_stdout(const char *mode)
 static void view_sam(samFile *in, const char *filename)
 {
     bam1_t *b = NULL;
-    bam_hdr_t *hdr = NULL;
+    sam_hdr_t *hdr = NULL;
     samFile *out = NULL;
 
     hdr = sam_hdr_read(in);
@@ -104,7 +108,7 @@ static void view_sam(samFile *in, const char *filename)
     }
 
  clean:
-    bam_hdr_destroy(hdr);
+    sam_hdr_destroy(hdr);
     bam_destroy1(b);
     if (out) hts_close(out);
 }
@@ -312,7 +316,7 @@ int main(int argc, char **argv)
                 if (hts_close(hts) < 0) error("closing \"%s\" failed", argv[i]);
                 fp = NULL;
             }
-            else if (errno == ENOEXEC && verbose)
+            else if ((errno == EFTYPE || errno == ENOEXEC) && verbose)
                 view_raw(fp, argv[i]);
             else
                 error("can't view \"%s\"", argv[i]);

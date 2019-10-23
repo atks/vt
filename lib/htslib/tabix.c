@@ -88,7 +88,7 @@ int file_type(const char *fname)
             error("Couldn't open \"%s\" : %s\n", fname, strerror(errno));
         }
     }
-    enum htsExactFormat format = fp->format.format;
+    enum htsExactFormat format = hts_get_format(fp)->format;
     hts_close(fp);
     if ( format == bcf ) return IS_BCF;
     if ( format == bam ) return IS_BAM;
@@ -120,11 +120,11 @@ static char **parse_regions(char *regions_fname, char **argv, int argc, int *nre
         for (iseq=0; iseq<nseq; iseq++)
         {
             regitr_t itr;
-            regidx_overlap(idx, seqs[iseq], 0, UINT32_MAX, &itr);
+            regidx_overlap(idx, seqs[iseq], 0, HTS_POS_MAX, &itr);
             while ( itr.i < itr.n )
             {
                 str.l = 0;
-                ksprintf(&str, "%s:%d-%d", seqs[iseq], REGITR_START(itr)+1, REGITR_END(itr)+1);
+                ksprintf(&str, "%s:%"PRIhts_pos"-%"PRIhts_pos, seqs[iseq], REGITR_START(itr)+1, REGITR_END(itr)+1);
                 regs[ireg++] = strdup(str.s);
                 itr.i++;
             }
@@ -191,7 +191,7 @@ static int query_regions(args_t *args, char *fname, char **regs, int nregs, int 
         bcf_hdr_destroy(hdr);
         hts_idx_destroy(idx);
     }
-    else if ( format==vcf || format==sam || format==unknown_format )
+    else if ( format==vcf || format==sam || format==bed || format==text_format || format==unknown_format )
     {
         tbx_t *tbx = tbx_index_load3(fname, NULL, download ? HTS_IDX_SAVE_REMOTE : 0);
         if ( !tbx ) error("Could not load .tbi/.csi index of %s\n", fname);

@@ -89,7 +89,6 @@ AC_ARG_ENABLE([gcs],
   [], [enable_gcs=check])
 
 AC_SYS_LARGEFILE
-AC_FUNC_FSEEKO
 
 AC_ARG_ENABLE([libcurl],
   [AS_HELP_STRING([--enable-libcurl],
@@ -275,9 +274,10 @@ fi
 AS_IF([test "x$with_libdeflate" != "xno"],
   [libdeflate=ok
    AC_CHECK_HEADER([libdeflate.h],[],[libdeflate='missing header'],[;])
-   AC_CHECK_LIB([deflate], [libdeflate_deflate_compress],[],[libdeflate='missing library'])
+   AC_CHECK_LIB([deflate], [libdeflate_deflate_compress],[:],[libdeflate='missing library'])
    AS_IF([test "$libdeflate" = "ok"],
     [AC_DEFINE([HAVE_LIBDEFLATE], 1, [Define if libdeflate is available.])
+     LIBS="-ldeflate $LIBS"
      private_LIBS="$private_LIBS -ldeflate"
      static_LIBS="$static_LIBS -ldeflate"],
     [AS_IF([test "x$with_libdeflate" != "xcheck"],

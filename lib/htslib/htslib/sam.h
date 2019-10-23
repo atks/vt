@@ -37,16 +37,16 @@ extern "C" {
 /// Highest SAM format version supported by this library
 #define SAM_FORMAT_VERSION "1.6"
 
-/**********************
+/***************************
  *** SAM/BAM/CRAM header ***
- **********************/
+ ***************************/
 
 /*! @typedef
  * @abstract Header extension structure, grouping a collection
  *  of hash tables that contain the parsed header data.
  */
 
-typedef struct sam_hdr bam_hrecs_t;
+typedef struct sam_hrecs_t sam_hrecs_t;
 
 /*! @typedef
  @abstract Structure for the alignment header.
@@ -63,21 +63,26 @@ typedef struct sam_hdr bam_hrecs_t;
  @note The text and l_text fields are included for backwards compatibility.
  These fields may be set to NULL and zero respectively as a side-effect
  of calling some header API functions.  New code that needs to access the
- header text should use the bam_hdr_str() and bam_hdr_length() functions
+ header text should use the sam_hdr_str() and sam_hdr_length() functions
  instead of these fields.
  */
 
-typedef struct bam_hdr_t {
+typedef struct sam_hdr_t {
     int32_t n_targets, ignore_sam_err;
     size_t l_text;
     uint32_t *target_len;
-    int8_t *cigar_tab;
+    const int8_t *cigar_tab HTS_DEPRECATED("Use bam_cigar_table[] instead");
     char **target_name;
     char *text;
-    void *sdict HTS_DEPRECATED("Unused since 1.10");
-    bam_hrecs_t *hrecs;
+    void *sdict;
+    sam_hrecs_t *hrecs;
     uint32_t ref_count;
-} bam_hdr_t;
+} sam_hdr_t;
+
+/*! @typedef
+ * @abstract Old name for compatibility with existing code.
+ */
+typedef sam_hdr_t bam_hdr_t;
 
 /****************************
  *** CIGAR related macros ***
@@ -98,6 +103,12 @@ typedef struct bam_hdr_t {
 #define BAM_CIGAR_SHIFT 4
 #define BAM_CIGAR_MASK  0xf
 #define BAM_CIGAR_TYPE  0x3C1A7
+
+/*! @abstract Table for converting a CIGAR operator character to BAM_CMATCH etc.
+Result is operator code or -1. Be sure to cast the index if it is a plain char:
+    int op = bam_cigar_table[(unsigned char) ch];
+*/
+extern const int8_t bam_cigar_table[256];
 
 #define bam_cigar_op(c) ((c)&BAM_CIGAR_MASK)
 #define bam_cigar_oplen(c) ((c)>>BAM_CIGAR_SHIFT)
@@ -158,42 +169,60 @@ typedef struct bam_hdr_t {
  *** Alignment records ***
  *************************/
 
+/*
+ * Assumptions made here.  While pos can be 64-bit, no sequence
+ * itself is that long, but due to ref skip CIGAR fields it
+ * may span more than that.  (CIGAR itself is 28-bit len + 4 bit
+ * type, but in theory we can combine multiples together.)
+ *
+ * Mate position and insert size also need to be 64-bit, but
+ * we won't accept more than 32-bit for tid.
+ *
+ * The bam_core_t structure is the *in memory* layout and not
+ * the same as the on-disk format.  64-bit changes here permit
+ * SAM to work with very long chromosomes and permit BAM and CRAM
+ * to seamlessly update in the future without further API/ABI
+ * revisions.
+ */
+
 /*! @typedef
  @abstract Structure for core alignment information.
- @field  tid     chromosome ID, defined by bam_hdr_t
  @field  pos     0-based leftmost coordinate
+ @field  tid     chromosome ID, defined by sam_hdr_t
  @field  bin     bin calculated by bam_reg2bin()
  @field  qual    mapping quality
- @field  l_qname length of the query name
- @field  flag    bitwise flag
  @field  l_extranul length of extra NULs between qname & cigar (for alignment)
+ @field  flag    bitwise flag
+ @field  l_qname length of the query name
  @field  n_cigar number of CIGAR operations
  @field  l_qseq  length of the query sequence (read)
- @field  mtid    chromosome ID of next read in template, defined by bam_hdr_t
+ @field  mtid    chromosome ID of next read in template, defined by sam_hdr_t
  @field  mpos    0-based leftmost coordinate of next read in template
+ @field  isize   observed template length ("insert size")
  */
 typedef struct {
+    hts_pos_t pos;
     int32_t tid;
-    int32_t pos;
-    uint16_t bin;
+    uint16_t bin; // NB: invalid on 64-bit pos
     uint8_t qual;
-    uint8_t l_qname;
-    uint16_t flag;
-    uint8_t unused1;
     uint8_t l_extranul;
+    uint16_t flag;
+    uint16_t l_qname;
     uint32_t n_cigar;
     int32_t l_qseq;
     int32_t mtid;
-    int32_t mpos;
-    int32_t isize;
+    hts_pos_t mpos;
+    hts_pos_t isize;
 } bam1_core_t;
 
 /*! @typedef
  @abstract Structure for one alignment.
  @field  core       core information about the alignment
+ @field  id
+ @field  data       all variable-length data, concatenated; structure: qname-cigar-seq-qual-aux
  @field  l_data     current length of bam1_t::data
  @field  m_data     maximum length of bam1_t::data
- @field  data       all variable-length data, concatenated; structure: qname-cigar-seq-qual-aux
+ @field  mempolicy  memory handling policy, see bam_set_mempolicy()
 
  @discussion Notes:
 
@@ -212,12 +241,11 @@ typedef struct {
  */
 typedef struct {
     bam1_core_t core;
+    uint64_t id;
+    uint8_t *data;
     int l_data;
     uint32_t m_data;
-    uint8_t *data;
-#ifndef BAM_NO_ID
-    uint64_t id;
-#endif
+    uint32_t mempolicy:2, :30 /* Reserved */;
 } bam1_t;
 
 /*! @function
@@ -300,7 +328,7 @@ typedef struct {
  *
  * @return  A valid pointer to new header on success, NULL on failure
  */
-bam_hdr_t *bam_hdr_init(void);
+sam_hdr_t *sam_hdr_init(void);
 
 /// Read the header from a BAM compressed file.
 /*!
@@ -310,7 +338,7 @@ bam_hdr_t *bam_hdr_init(void);
  * This function only works with BAM files.  It is usually better to use
  * sam_hdr_read(), which works on SAM, BAM and CRAM files.
  */
-bam_hdr_t *bam_hdr_read(BGZF *fp);
+sam_hdr_t *bam_hdr_read(BGZF *fp);
 
 /// Writes the header to a BAM file.
 /*!
@@ -321,18 +349,25 @@ bam_hdr_t *bam_hdr_read(BGZF *fp);
  * This function only works with BAM files.  Use sam_hdr_write() to
  * write in any of the SAM, BAM or CRAM formats.
  */
-int bam_hdr_write(BGZF *fp, const bam_hdr_t *h) HTS_RESULT_USED;
+int bam_hdr_write(BGZF *fp, const sam_hdr_t *h) HTS_RESULT_USED;
 
 /*!
  * Frees the resources associated with a header.
  */
-void bam_hdr_destroy(bam_hdr_t *h);
+void sam_hdr_destroy(sam_hdr_t *h);
 
 /// Duplicate a header structure.
 /*!
  * @return  A valid pointer to new header on success, NULL on failure
  */
-bam_hdr_t* bam_hdr_dup(const bam_hdr_t *h0);
+sam_hdr_t *sam_hdr_dup(const sam_hdr_t *h0);
+
+/*!
+ * @abstract Old names for compatibility with existing code.
+ */
+static inline sam_hdr_t *bam_hdr_init(void) { return sam_hdr_init(); }
+static inline void bam_hdr_destroy(sam_hdr_t *h) { sam_hdr_destroy(h); }
+static inline sam_hdr_t *bam_hdr_dup(const sam_hdr_t *h0) { return sam_hdr_dup(h0); }
 
 typedef htsFile samFile;
 
@@ -340,18 +375,18 @@ typedef htsFile samFile;
 /*!
  * @param l_text    Length of text
  * @param text      Header text
- * @return A populated bam_hdr_t structure on success; NULL on failure.
+ * @return A populated sam_hdr_t structure on success; NULL on failure.
  * @note The text field of the returned header will be NULL, and the l_text
  * field will be zero.
  */
-bam_hdr_t *sam_hdr_parse(size_t l_text, const char *text);
+sam_hdr_t *sam_hdr_parse(size_t l_text, const char *text);
 
 /// Read a header from a SAM, BAM or CRAM file.
 /*!
  * @param fp    Pointer to a SAM, BAM or CRAM file handle
- * @return  A populated bam_hdr_t struct on success; NULL on failure.
+ * @return  A populated sam_hdr_t struct on success; NULL on failure.
  */
-bam_hdr_t *sam_hdr_read(samFile *fp);
+sam_hdr_t *sam_hdr_read(samFile *fp);
 
 /// Write a header to a SAM, BAM or CRAM file.
 /*!
@@ -359,13 +394,13 @@ bam_hdr_t *sam_hdr_read(samFile *fp);
  * @param h     Header structure to write
  * @return  0 on success; -1 on failure
  */
-int sam_hdr_write(samFile *fp, const bam_hdr_t *h) HTS_RESULT_USED;
+int sam_hdr_write(samFile *fp, const sam_hdr_t *h) HTS_RESULT_USED;
 
 /// Returns the current length of the header text.
 /*!
- * @return  >= 0 on success, -1 on failure
+ * @return  >= 0 on success, SIZE_MAX on failure
  */
-size_t bam_hdr_length(bam_hdr_t *bh);
+size_t sam_hdr_length(sam_hdr_t *h);
 
 /// Returns the text representation of the header.
 /*!
@@ -377,13 +412,13 @@ size_t bam_hdr_length(bam_hdr_t *bh);
  *
  * The caller should not attempt to free or realloc this pointer.
  */
-const char *bam_hdr_str(bam_hdr_t *bh);
+const char *sam_hdr_str(sam_hdr_t *h);
 
 /// Returns the number of references in the header.
 /*!
  * @return  >= 0 on success, -1 on failure
  */
-int bam_hdr_nref(const bam_hdr_t *bh);
+int sam_hdr_nref(const sam_hdr_t *h);
 
 /* ==== Line level methods ==== */
 
@@ -400,12 +435,12 @@ int bam_hdr_nref(const bam_hdr_t *bh);
  * The lines will be appended to the end of the existing header
  * (apart from HD, which always comes first).
  */
-int bam_hdr_add_lines(bam_hdr_t *bh, const char *lines, size_t len);
+int sam_hdr_add_lines(sam_hdr_t *h, const char *lines, size_t len);
 
 /// Adds a single line to an existing header.
 /*!
  * Specify type and one or more key,value pairs, ending with the NULL key.
- * Eg. bam_hdr_add_line(h, "SQ", "ID", "foo", "LN", "100", NULL).
+ * Eg. sam_hdr_add_line(h, "SQ", "ID", "foo", "LN", "100", NULL).
  *
  * @param type  Type of the added line. Eg. "SQ"
  * @return      0 on success, -1 on failure
@@ -415,7 +450,7 @@ int bam_hdr_add_lines(bam_hdr_t *bh, const char *lines, size_t len);
  * given type currently exist.  The exception is HD lines, which always
  * come first.  If an HD line already exists, it will be replaced.
  */
-int bam_hdr_add_line(bam_hdr_t *bh, const char *type, ...);
+int sam_hdr_add_line(sam_hdr_t *h, const char *type, ...);
 
 /// Returns a complete line of formatted text for a given type and ID.
 /*!
@@ -433,7 +468,7 @@ int bam_hdr_add_line(bam_hdr_t *bh, const char *type, ...);
  *
  * Any existing content in @p ks will be overwritten.
  */
-int bam_hdr_find_line_id(bam_hdr_t *bh, const char *type,
+int sam_hdr_find_line_id(sam_hdr_t *h, const char *type,
                       const char *ID_key, const char *ID_val, kstring_t *ks);
 
 /// Returns a complete line of formatted text for a given type and index.
@@ -450,7 +485,7 @@ int bam_hdr_find_line_id(bam_hdr_t *bh, const char *type,
  *
  * Any existing content in @p ks will be overwritten.
  */
-int bam_hdr_find_line_pos(bam_hdr_t *bh, const char *type,
+int sam_hdr_find_line_pos(sam_hdr_t *h, const char *type,
                           int pos, kstring_t *ks);
 
 /// Remove a line with given type / id from a header
@@ -466,15 +501,15 @@ int bam_hdr_find_line_pos(bam_hdr_t *bh, const char *type,
  * \@SQ line is uniquely identified by the SN tag.
  * \@RG line is uniquely identified by the ID tag.
  * \@PG line is uniquely identified by the ID tag.
- * Eg. bam_hdr_remove_line_key(bh, "SQ", "SN", "ref1")
+ * Eg. sam_hdr_remove_line_id(h, "SQ", "SN", "ref1")
  *
  * If no key:value pair is specified, the type MUST be followed by a NULL argument and
  * the first line of the type will be removed, if any.
- * Eg. bam_hdr_remove_line_key(bh, "SQ", NULL, NULL)
+ * Eg. sam_hdr_remove_line_id(h, "SQ", NULL, NULL)
  *
  * @note Removing \@PG lines is currently unsupported.
  */
-int bam_hdr_remove_line_id(bam_hdr_t *bh, const char *type, const char *ID_key, const char *ID_value);
+int sam_hdr_remove_line_id(sam_hdr_t *h, const char *type, const char *ID_key, const char *ID_value);
 
 /// Remove nth line of a given type from a header
 /*!
@@ -485,7 +520,7 @@ int bam_hdr_remove_line_id(bam_hdr_t *bh, const char *type, const char *ID_key, 
  * Remove a line from the header by specifying the position in the type
  * group, i.e. 3rd @SQ line.
  */
-int bam_hdr_remove_line_pos(bam_hdr_t *bh, const char *type, int position);
+int sam_hdr_remove_line_pos(sam_hdr_t *h, const char *type, int position);
 
 /// Add or update tag key,value pairs in a header line.
 /*!
@@ -499,12 +534,22 @@ int bam_hdr_remove_line_pos(bam_hdr_t *bh, const char *type, int position);
  * @HD line.
  *
  * Specify multiple key,value pairs ending in NULL. Eg.
- * bam_hdr_update_line(bh, "RG", "ID", "rg1", "DS", "description", "PG", "samtools", NULL)
+ * sam_hdr_update_line(h, "RG", "ID", "rg1", "DS", "description", "PG", "samtools", NULL)
+ *
+ * Attempting to update the record name (i.e. @SQ SN or @RG ID) will
+ * work as long as the new name is not already in use, however doing this
+ * on a file opened for reading may produce unexpected results.
+ *
+ * Renaming an @RG record in this way will only change the header.  Alignment
+ * records written later will not be updated automatically even if they
+ * reference the old read group name.
+ *
+ * Attempting to change an @PG ID tag is not permitted.
  */
-int bam_hdr_update_line(bam_hdr_t *bh, const char *type,
+int sam_hdr_update_line(sam_hdr_t *h, const char *type,
         const char *ID_key, const char *ID_value, ...);
 
-/// Remove all lines of a given type from a header, except one matching an ID
+/// Remove all lines of a given type from a header, except the one matching an ID
 /*!
  * @param type      Type of the searched line. Eg. "SQ"
  * @param ID_key    Tag key defining the line. Eg. "SN"
@@ -513,28 +558,76 @@ int bam_hdr_update_line(bam_hdr_t *bh, const char *type,
  *
  * Remove all lines of type <type> from the header, except the one
  * specified by tag:value, i.e. the @SQ line containing "SN:ref1".
+ *
+ * If no line matches the key:value ID, all lines of the given type are removed.
+ * To remove all lines of a given type, use NULL for both ID_key and ID_value.
  */
-int bam_hdr_keep_line(bam_hdr_t *bh, const char *type, const char *ID_key, const char *ID_value);
+int sam_hdr_remove_except(sam_hdr_t *h, const char *type, const char *ID_key, const char *ID_value);
 
 /// Remove header lines of a given type, except those in a given ID set
 /*!
  * @param type  Type of the searched line. Eg. "RG"
  * @param id    Tag key defining the line. Eg. "ID"
- * @param h     Hash set initialised by the caller with the values to be kept.
+ * @param rh    Hash set initialised by the caller with the values to be kept.
+ *              See description for how to create this. If @p rh is NULL, all
+ *              lines of this type will be removed.
  * @return      0 on success, -1 on failure
  *
- * Remove all lines of type <type> from the header, except the one
- * specified in the hash set rh.
+ * Remove all lines of type @p type from the header, except the ones
+ * specified in the hash set @p rh. If @p rh is NULL, all lines of
+ * this type will be removed.
+ * Declaration of @p rh is done using KHASH_SET_INIT_STR macro. Eg.
+ * @code{.c}
+ *              #include "htslib/khash.h"
+ *              KHASH_SET_INIT_STR(keep)
+ *              typedef khash_t(keep) *keephash_t;
+ *
+ *              void your_method() {
+ *                  samFile *sf = sam_open("alignment.bam", "r");
+ *                  sam_hdr_t *h = sam_hdr_read(sf);
+ *                  keephash_t rh = kh_init(keep);
+ *                  int ret = 0;
+ *                  kh_put(keep, rh, strdup("chr2"), &ret);
+ *                  kh_put(keep, rh, strdup("chr3"), &ret);
+ *                  if (sam_hdr_remove_lines(h, "SQ", "SN", rh) == -1)
+ *                      fprintf(stderr, "Error removing lines\n");
+ *                  khint_t k;
+ *                  for (k = 0; k < kh_end(rh); ++k)
+ *                     if (kh_exist(rh, k)) free((char*)kh_key(rh, k));
+ *                  kh_destroy(keep, rh);
+ *                  sam_hdr_destroy(h);
+ *                  sam_close(sf);
+ *              }
+ * @endcode
+ *
  */
-int bam_hdr_remove_lines(bam_hdr_t *bh, const char *type, const char *id, void *h);
+int sam_hdr_remove_lines(sam_hdr_t *h, const char *type, const char *id, void *rh);
 
 /// Count the number of lines for a given header type
 /*!
- * @param bh    BAM header
+ * @param h     BAM header
  * @param type  Header type to count. Eg. "RG"
  * @return  Number of lines of this type on success; -1 on failure
  */
-int bam_hdr_count_lines(bam_hdr_t *bh, const char *type);
+int sam_hdr_count_lines(sam_hdr_t *h, const char *type);
+
+/// Index of the line for the types that have dedicated look-up tables (SQ, RG, PG)
+/*!
+ * @param h     BAM header
+ * @param type  Type of the searched line. Eg. "RG"
+ * @param key   The value of the identifying key. Eg. "rg1"
+ * @return  0-based index on success; -1 if line does not exist; -2 on failure
+ */
+int sam_hdr_line_index(sam_hdr_t *bh, const char *type, const char *key);
+
+/// Id key of the line for the types that have dedicated look-up tables (SQ, RG, PG)
+/*!
+ * @param h     BAM header
+ * @param type  Type of the searched line. Eg. "RG"
+ * @param pos   Zero-based index inside the type group. Eg. 2 (for the third RG line)
+ * @return  Valid key string on success; NULL on failure
+ */
+const char *sam_hdr_line_name(sam_hdr_t *bh, const char *type, int pos);
 
 /* ==== Key:val level methods ==== */
 
@@ -554,7 +647,7 @@ int bam_hdr_count_lines(bam_hdr_t *bh, const char *type);
  * and ID_value parameters.  Any pre-existing content in @p ks will be
  * overwritten.
  */
-int bam_hdr_find_tag_id(bam_hdr_t *bh, const char *type, const char *ID_key, const char *ID_value, const char *key, kstring_t *ks);
+int sam_hdr_find_tag_id(sam_hdr_t *h, const char *type, const char *ID_key, const char *ID_value, const char *key, kstring_t *ks);
 
 /// Return the value associated with a key for a header line identified by position
 /*!
@@ -571,7 +664,7 @@ int bam_hdr_find_tag_id(bam_hdr_t *bh, const char *type, const char *ID_key, con
  * and @p position parameters.  Any pre-existing content in @p ks will be
  * overwritten.
  */
-int bam_hdr_find_tag_pos(bam_hdr_t *bh, const char *type, int pos, const char *key, kstring_t *ks);
+int sam_hdr_find_tag_pos(sam_hdr_t *h, const char *type, int pos, const char *key, kstring_t *ks);
 
 /// Remove the key from the line identified by type, ID_key and ID_value.
 /*!
@@ -581,7 +674,7 @@ int bam_hdr_find_tag_pos(bam_hdr_t *bh, const char *type, int pos, const char *k
  * @param key       Key of the targeted tag. Eg. "M5"
  * @return          1 if the key was removed; 0 if it was not present; -1 on error
  */
-int bam_hdr_remove_tag_id(bam_hdr_t *bh, const char *type, const char *ID_key, const char *ID_value, const char *key);
+int sam_hdr_remove_tag_id(sam_hdr_t *h, const char *type, const char *ID_key, const char *ID_value, const char *key);
 
 /// Get the target id for a given reference sequence name
 /*!
@@ -593,16 +686,36 @@ int bam_hdr_remove_tag_id(bam_hdr_t *bh, const char *type, const char *ID_key, c
  * Looks up a reference sequence by name in the reference hash table
  * and returns the numerical target id.
  */
-int bam_hdr_name2ref(bam_hdr_t *bh, const char *ref);
+int sam_hdr_name2tid(sam_hdr_t *h, const char *ref);
 
-/// Alias of bam_hdr_name2ref(), for backwards compatibility.
+/// Get the reference sequence name from a target index
+/*!
+ * @param tid  Target index
+ * @return     Valid reference name on success, NULL on failure
+ *
+ * Fetch the reference sequence name from the target name array,
+ * using the numerical target id.
+ */
+const char *sam_hdr_tid2name(const sam_hdr_t *h, int tid);
+
+/// Get the reference sequence length from a target index
+/*!
+ * @param tid  Target index
+ * @return     Strictly positive value on success, 0 on failure
+ *
+ * Fetch the reference sequence length from the target length array,
+ * using the numerical target id.
+ */
+hts_pos_t sam_hdr_tid2len(const sam_hdr_t *h, int tid);
+
+/// Alias of sam_hdr_name2tid(), for backwards compatibility.
 /*!
  * @param ref  Reference name
  * @return     Positive value on success,
  *             -1 if unknown reference,
  *             -2 if the header could not be parsed
  */
-static inline int bam_name2id(bam_hdr_t *h, const char *ref) { return bam_hdr_name2ref(h, ref); }
+static inline int bam_name2id(sam_hdr_t *h, const char *ref) { return sam_hdr_name2tid(h, ref); }
 
 /// Generate a unique \@PG ID: value
 /*!
@@ -613,56 +726,245 @@ static inline int bam_name2id(bam_hdr_t *h, const char *ref) { return bam_hdr_na
  * valid until the next call to this function, or the header is destroyed.
  * The caller should not attempt to free() or realloc() it.
  */
-const char *bam_hdr_pg_id(bam_hdr_t *bh, const char *name);
+const char *sam_hdr_pg_id(sam_hdr_t *h, const char *name);
 
 /// Add an \@PG line.
 /*!
  * @param name  Name of the program. Eg. samtools
  * @return      0 on success, -1 on failure
  *
- * If we wish complete control over this use bam_hdr_add_line() directly. This
+ * If we wish complete control over this use sam_hdr_add_line() directly. This
  * function uses that, but attempts to do a lot of tedious house work for
  * you too.
  *
  * - It will generate a suitable ID if the supplied one clashes.
  * - It will generate multiple \@PG records if we have multiple PG chains.
  *
- * Call it as per bam_hdr_add_line() with a series of key,value pairs ending
+ * Call it as per sam_hdr_add_line() with a series of key,value pairs ending
  * in NULL.
  */
-int bam_hdr_add_pg(bam_hdr_t *bh, const char *name, ...);
+int sam_hdr_add_pg(sam_hdr_t *h, const char *name, ...);
+
+/*!
+ * A function to help with construction of CL tags in @PG records.
+ * Takes an argc, argv pair and returns a single space-separated string.
+ * This string should be deallocated by the calling function.
+ *
+ * @return
+ * Returns malloced char * on success;
+ *         NULL on failure
+ */
+char *stringify_argv(int argc, char *argv[]);
 
 /// Increments the reference count on a header
 /*!
  * This permits multiple files to share the same header, all calling
- * bam_hdr_destroy when done, without causing errors for other open files.
+ * sam_hdr_destroy when done, without causing errors for other open files.
  */
-void bam_hdr_incr_ref(bam_hdr_t *bh);
+void sam_hdr_incr_ref(sam_hdr_t *h);
 
 /*
  * Macros for changing the \@HD line. They eliminate the need to use NULL method arguments.
  */
 
 /// Returns the SAM formatted text of the \@HD header line
-#define bam_hdr_find_hd(h, ks) bam_hdr_find_line_id((h), "HD", NULL, NULL, (ks))
+#define sam_hdr_find_hd(h, ks) sam_hdr_find_line_id((h), "HD", NULL, NULL, (ks))
 /// Returns the value associated with a given \@HD line tag
-#define bam_hdr_find_tag_hd(h, key, ks) bam_hdr_find_tag_id((h), "HD", NULL, NULL, (key), (ks))
+#define sam_hdr_find_tag_hd(h, key, ks) sam_hdr_find_tag_id((h), "HD", NULL, NULL, (key), (ks))
 /// Adds or updates tags on the header \@HD line
-#define bam_hdr_update_hd(h, ...) bam_hdr_update_line((h), "HD", NULL, NULL, __VA_ARGS__, NULL)
+#define sam_hdr_update_hd(h, ...) sam_hdr_update_line((h), "HD", NULL, NULL, __VA_ARGS__, NULL)
 /// Removes the \@HD line tag with the given key
-#define bam_hdr_remove_tag_hd(h, key) bam_hdr_remove_tag_id((h), "HD", NULL, NULL, (key))
+#define sam_hdr_remove_tag_hd(h, key) sam_hdr_remove_tag_id((h), "HD", NULL, NULL, (key))
 
 /* Alignment */
 
+/// Create a new bam1_t alignment structure
+/**
+   @return An empty bam1_t structure on success, NULL on failure
+ */
 bam1_t *bam_init1(void);
+
+/// Destory a bam1_t structure
+/**
+   @param b  structure to destroy
+
+   Does nothing if @p b is NULL.  If not, all memory associated with @p b
+   will be freed, along with the structure itself.  @p b should not be
+   accessed after calling this function.
+ */
 void bam_destroy1(bam1_t *b);
+
+#define BAM_USER_OWNS_STRUCT 1
+#define BAM_USER_OWNS_DATA   2
+
+/// Set alignment record memory policy
+/**
+   @param b       Alignment record
+   @param policy  Desired policy
+
+   Allows the way HTSlib reallocates and frees bam1_t data to be
+   changed.  @policy can be set to the bitwise-or of the following
+   values:
+
+   \li \c BAM_USER_OWNS_STRUCT
+   If this is set then bam_destroy1() will not try to free the bam1_t struct.
+
+   \li \c BAM_USER_OWNS_DATA
+   If this is set, bam_destroy1() will not free the bam1_t::data pointer.
+   Also, functions which need to expand bam1_t::data memory will change
+   behaviour.  Instead of calling realloc() on the pointer, they will
+   allocate a new data buffer and copy any existing content in to it.
+   The existing memory will \b not be freed.  bam1_t::data will be
+   set to point to the new memory and the BAM_USER_OWNS_DATA flag will be
+   cleared.
+
+   BAM_USER_OWNS_STRUCT allows bam_destroy1() to be called on bam1_t
+   structures that are members of an array.
+
+   BAM_USER_OWNS_DATA can be used by applications that want more control
+   over where the variable-length parts of the bam record will be stored.
+   By preventing calls to free() and realloc(), it allows bam1_t::data
+   to hold pointers to memory that cannot be passed to those functions.
+
+   Example:  Read a block of alignment records, storing the variable-length
+   data in a single buffer and the records in an array.  Stop when either
+   the array or the buffer is full.
+
+   \code{.c}
+   #define MAX_RECS 1000
+   #define REC_LENGTH 400  // Average length estimate, to get buffer size
+   size_t bufsz = MAX_RECS * REC_LENGTH, nrecs, buff_used = 0;
+   bam1_t *recs = calloc(MAX_RECS, sizeof(bam1_t));
+   uint8_t *buffer = malloc(bufsz);
+   int res = 0, result = EXIT_FAILURE;
+   uint32_t new_m_data;
+
+   if (!recs || !buffer) goto cleanup;
+   for (nrecs = 0; nrecs < MAX_RECS; nrecs++) {
+      bam_set_mempolicy(BAM_USER_OWNS_STRUCT|BAM_USER_OWNS_DATA);
+
+      // Set data pointer to unused part of buffer
+      recs[nrecs].data = &buffer[buff_used];
+
+      // Set m_data to size of unused part of buffer.  On 64-bit platforms it
+      // will be necessary to limit this to UINT32_MAX due to the size of
+      // bam1_t::m_data (not done here as our buffer is only 400K).
+      recs[nrecs].m_data = bufsz - buff_used;
+
+      // Read the record
+      res = sam_read1(file_handle, header, &recs[nrecs]);
+      if (res <= 0) break; // EOF or error
+
+      // Check if the record data didn't fit - if not, stop reading
+      if ((bam_get_mempolicy(&recs[nrecs]) & BAM_USER_OWNS_DATA) == 0) {
+         nrecs++; // Include last record in count
+         break;
+      }
+
+      // Adjust m_data to the space actually used.  If space is available,
+      // round up to eight bytes so the next record aligns nicely.
+      new_m_data = ((uint32_t) recs[nrecs].l_data + 7) & (~7U);
+      if (new_m_data < recs[nrecs].m_data) recs[nrecs].m_data = new_m_data;
+
+      buff_used += recs[nrecs].m_data;
+   }
+   if (res < 0) goto cleanup;
+   result = EXIT_SUCCESS;
+
+   // ... use data ...
+
+ cleanup:
+   for (size_t i = 0; i < nrecs; i++)
+     bam_destroy1(i);
+   free(buffer);
+   free(recs);
+
+   \endcode
+*/
+static inline void bam_set_mempolicy(bam1_t *b, uint32_t policy) {
+    b->mempolicy = policy;
+}
+
+/// Get alignment record memory policy
+/** @param b    Alignment record
+
+    See bam_set_mempolicy()
+ */
+static inline uint32_t bam_get_mempolicy(bam1_t *b) {
+    return b->mempolicy;
+}
+
+/// Read a BAM format alignment record
+/**
+   @param fp   BGZF file being read
+   @param b    Destination for the alignment data
+   @return number of bytes read on success
+           -1 at end of file
+           < -1 on failure
+
+   This function can only read BAM format files.  Most code should use
+   sam_read1() instead, which can be used with BAM, SAM and CRAM formats.
+*/
 int bam_read1(BGZF *fp, bam1_t *b) HTS_RESULT_USED;
+
+/// Write a BAM format alignment record
+/**
+   @param fp  BGZF file being written
+   @param b   Alignment record to write
+   @return number of bytes written on success
+           -1 on error
+
+   This function can only write BAM format files.  Most code should use
+   sam_write1() instead, which can be used with BAM, SAM and CRAM formats.
+*/
 int bam_write1(BGZF *fp, const bam1_t *b) HTS_RESULT_USED;
-bam1_t *bam_copy1(bam1_t *bdst, const bam1_t *bsrc);
+
+/// Copy alignment record data
+/**
+   @param bdst  Destination alignment record
+   @param bsrc  Source alignment record
+   @return bdst on success; NULL on failure
+ */
+bam1_t *bam_copy1(bam1_t *bdst, const bam1_t *bsrc) HTS_RESULT_USED;
+
+/// Create a duplicate alignment record
+/**
+   @param bsrc  Source alignment record
+   @return Pointer to a new alignment record on success; NULL on failure
+ */
 bam1_t *bam_dup1(const bam1_t *bsrc);
 
+/// Calculate query length from CIGAR data
+/**
+   @param n_cigar   Number of items in @p cigar
+   @param cigar     CIGAR data
+   @return Query length
+
+   CIGAR data is stored as in the BAM format, i.e. (op_len << 4) | op
+   where op_len is the length in bases and op is a value between 0 and 8
+   representing one of the operations "MIDNSHP=X" (M = 0; X = 8)
+
+   This function returns the sum of the lengths of the M, I, S, = and X
+   operations in @p cigar (these are the operations that "consume" query
+   bases).  All other operations (including invalid ones) are ignored.
+ */
 int bam_cigar2qlen(int n_cigar, const uint32_t *cigar);
-int bam_cigar2rlen(int n_cigar, const uint32_t *cigar);
+
+/// Calculate reference length from CIGAR data
+/**
+   @param n_cigar   Number of items in @p cigar
+   @param cigar     CIGAR data
+   @return Reference length
+
+   CIGAR data is stored as in the BAM format, i.e. (op_len << 4) | op
+   where op_len is the length in bases and op is a value between 0 and 8
+   representing one of the operations "MIDNSHP=X" (M = 0; X = 8)
+
+   This function returns the sum of the lengths of the M, D, N, = and X
+   operations in @p cigar (these are the operations that "consume" reference
+   bases).  All other operations (including invalid ones) are ignored.
+ */
+hts_pos_t bam_cigar2rlen(int n_cigar, const uint32_t *cigar);
 
 /*!
       @abstract Calculate the rightmost base position of an alignment on the
@@ -675,10 +977,17 @@ int bam_cigar2rlen(int n_cigar, const uint32_t *cigar);
       For an unmapped read (either according to its flags or if it has no cigar
       string), we return b->core.pos + 1 by convention.
  */
-int32_t bam_endpos(const bam1_t *b);
+hts_pos_t bam_endpos(const bam1_t *b);
 
 int   bam_str2flag(const char *str);    /** returns negative value on error */
 char *bam_flag2str(int flag);   /** The string must be freed by the user */
+
+/*! @function
+ @abstract  Set the name of the query
+ @param  b  pointer to an alignment
+ @return    0 on success, -1 on failure
+ */
+int bam_set_qname(bam1_t *b, const char *qname);
 
 /*************************
  *** BAM/CRAM indexing ***
@@ -707,7 +1016,7 @@ char *bam_flag2str(int flag);   /** The string must be freed by the user */
     @note This must be called after the header has been written, but before
           any other data.
 */
-int sam_idx_init(htsFile *fp, bam_hdr_t *h, int min_shift, const char *fnidx);
+int sam_idx_init(htsFile *fp, sam_hdr_t *h, int min_shift, const char *fnidx);
 
 /// Writes the index initialised with sam_idx_init to disk.
 /** @param fp        File handle for the data file being written.
@@ -800,7 +1109,7 @@ When using one of these values, @p beg and @p end are ignored.
 
 When using HTS_IDX_REST or HTS_IDX_NONE, NULL can be passed in to @p idx.
  */
-hts_itr_t *sam_itr_queryi(const hts_idx_t *idx, int tid, int beg, int end);
+hts_itr_t *sam_itr_queryi(const hts_idx_t *idx, int tid, hts_pos_t beg, hts_pos_t end);
 
 /// Create a SAM/BAM/CRAM iterator
 /** @param idx     Index
@@ -824,7 +1133,7 @@ The form `REF:` should be used when the reference name itself contains a colon.
 
 Note that SAM files must be bgzf-compressed for iterators to work.
  */
-hts_itr_t *sam_itr_querys(const hts_idx_t *idx, bam_hdr_t *hdr, const char *region);
+hts_itr_t *sam_itr_querys(const hts_idx_t *idx, sam_hdr_t *hdr, const char *region);
 
 /// Create a multi-region iterator
 /** @param idx       Index
@@ -840,7 +1149,7 @@ in.
 The iterator will return all reads overlapping the given regions.  If a read
 overlaps more than one region, it will only be returned once.
  */
-hts_itr_t *sam_itr_regions(const hts_idx_t *idx, bam_hdr_t *hdr, hts_reglist_t *reglist, unsigned int regcount);
+hts_itr_t *sam_itr_regions(const hts_idx_t *idx, sam_hdr_t *hdr, hts_reglist_t *reglist, unsigned int regcount);
 
 /// Create a multi-region iterator
 /** @param idx       Index
@@ -866,7 +1175,7 @@ The form `REF:` should be used when the reference name itself contains a colon.
 The iterator will return all reads overlapping the given regions.  If a read
 overlaps more than one region, it will only be returned once.
  */
-hts_itr_t *sam_itr_regarray(const hts_idx_t *idx, bam_hdr_t *hdr, char **regarray, unsigned int regcount);
+hts_itr_t *sam_itr_regarray(const hts_idx_t *idx, sam_hdr_t *hdr, char **regarray, unsigned int regcount);
 
 /// Get the next read from a SAM/BAM/CRAM iterator
 /** @param htsfp       Htsfile pointer for the input file
@@ -898,7 +1207,7 @@ static inline int sam_itr_next(htsFile *htsfp, hts_itr_t *itr, bam1_t *r) {
  */
 #define sam_itr_multi_next(htsfp, itr, r) sam_itr_next(htsfp, itr, r)
 
-const char *sam_parse_region(bam_hdr_t *h, const char *s, int *tid, int64_t *beg, int64_t *end, int flags);
+const char *sam_parse_region(sam_hdr_t *h, const char *s, int *tid, int64_t *beg, int64_t *end, int flags);
 
     /***************
      *** SAM I/O ***
@@ -917,10 +1226,10 @@ const char *sam_parse_region(bam_hdr_t *h, const char *s, int *tid, int64_t *beg
                              const char *mode,
                              const char *format);
 
-    int sam_hdr_change_HD(bam_hdr_t *h, const char *key, const char *val);
+    int sam_hdr_change_HD(sam_hdr_t *h, const char *key, const char *val);
 
-    int sam_parse1(kstring_t *s, bam_hdr_t *h, bam1_t *b) HTS_RESULT_USED;
-    int sam_format1(const bam_hdr_t *h, const bam1_t *b, kstring_t *str) HTS_RESULT_USED;
+    int sam_parse1(kstring_t *s, sam_hdr_t *h, bam1_t *b) HTS_RESULT_USED;
+    int sam_format1(const sam_hdr_t *h, const bam1_t *b, kstring_t *str) HTS_RESULT_USED;
 
 /// sam_read1 - Read a record from a file
 /** @param fp   Pointer to the source file
@@ -928,14 +1237,14 @@ const char *sam_parse_region(bam_hdr_t *h, const char *s, int *tid, int64_t *beg
  *  @param b    Pointer to the record placeholder
  *  @return >= 0 on successfully reading a new record, -1 on end of stream, < -1 on error
  */
-    int sam_read1(samFile *fp, bam_hdr_t *h, bam1_t *b) HTS_RESULT_USED;
+    int sam_read1(samFile *fp, sam_hdr_t *h, bam1_t *b) HTS_RESULT_USED;
 /// sam_write1 - Write a record to a file
 /** @param fp    Pointer to the destination file
  *  @param h     Pointer to the header structure previously read
  *  @param b     Pointer to the record to be written
  *  @return >= 0 on successfully writing the record, -1 on error
  */
-    int sam_write1(samFile *fp, const bam_hdr_t *h, const bam1_t *b) HTS_RESULT_USED;
+    int sam_write1(samFile *fp, const sam_hdr_t *h, const bam1_t *b) HTS_RESULT_USED;
 
     /*************************************
      *** Manipulating auxiliary fields ***
@@ -1201,6 +1510,8 @@ typedef struct __bam_mplp_t *bam_mplp_t;
     int bam_plp_push(bam_plp_t iter, const bam1_t *b);
     const bam_pileup1_t *bam_plp_next(bam_plp_t iter, int *_tid, int *_pos, int *_n_plp);
     const bam_pileup1_t *bam_plp_auto(bam_plp_t iter, int *_tid, int *_pos, int *_n_plp);
+    const bam_pileup1_t *bam_plp64_next(bam_plp_t iter, int *_tid, hts_pos_t *_pos, int *_n_plp);
+    const bam_pileup1_t *bam_plp64_auto(bam_plp_t iter, int *_tid, hts_pos_t *_pos, int *_n_plp);
     void bam_plp_set_maxcnt(bam_plp_t iter, int maxcnt);
     void bam_plp_reset(bam_plp_t iter);
 
@@ -1249,6 +1560,7 @@ typedef struct __bam_mplp_t *bam_mplp_t;
     void bam_mplp_destroy(bam_mplp_t iter);
     void bam_mplp_set_maxcnt(bam_mplp_t iter, int maxcnt);
     int bam_mplp_auto(bam_mplp_t iter, int *_tid, int *_pos, int *n_plp, const bam_pileup1_t **plp);
+    int bam_mplp64_auto(bam_mplp_t iter, int *_tid, hts_pos_t *_pos, int *n_plp, const bam_pileup1_t **plp);
     void bam_mplp_reset(bam_mplp_t iter);
     void bam_mplp_constructor(bam_mplp_t iter,
                               int (*func)(void *data, const bam1_t *b, bam_pileup_cd *cd));
@@ -1262,7 +1574,7 @@ typedef struct __bam_mplp_t *bam_mplp_t;
  * BAQ calculation and realignment *
  ***********************************/
 
-int sam_cap_mapq(bam1_t *b, const char *ref, int ref_len, int thres);
+int sam_cap_mapq(bam1_t *b, const char *ref, hts_pos_t ref_len, int thres);
 
 /// Calculate BAQ scores
 /** @param b   BAM record
@@ -1304,7 +1616,7 @@ Depending on what previous processing happened, this may or may not be the
 correct thing to do.  It would be wise to avoid this situation if possible.
 */
 
-int sam_prob_realn(bam1_t *b, const char *ref, int ref_len, int flag);
+int sam_prob_realn(bam1_t *b, const char *ref, hts_pos_t ref_len, int flag);
 
 #ifdef __cplusplus
 }

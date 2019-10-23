@@ -36,6 +36,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "cram/cram.h"
 #include "htslib/sam.h"
+#include "../sam_internal.h"
 
 /*---------------------------------------------------------------------------
  * Samtools compatibility portion
@@ -44,13 +45,13 @@ int bam_construct_seq(bam_seq_t **bp, size_t extra_len,
                       const char *qname, size_t qname_len,
                       int flag,
                       int rname,      // Ref ID
-                      int pos,
-                      int end,        // aligned start/end coords
+                      int64_t pos,
+                      int64_t end,        // aligned start/end coords
                       int mapq,
                       uint32_t ncigar, const uint32_t *cigar,
                       int mrnm,       // Mate Ref ID
-                      int mpos,
-                      int isize,
+                      int64_t mpos,
+                      int64_t isize,
                       int len,
                       const char *seq,
                       const char *qual) {
@@ -79,16 +80,9 @@ int bam_construct_seq(bam_seq_t **bp, size_t extra_len,
     //b->l_aux = extra_len; // we fill this out later
 
     qname_nuls = 4 - qname_len%4;
-    if (qname_len + qname_nuls > 255) // Check for core.l_qname overflow
-        return -1;
     bam_len = qname_len + qname_nuls + ncigar*4 + (len+1)/2 + len + extra_len;
-    if (b->m_data < bam_len) {
-        b->m_data = bam_len;
-        kroundup32(b->m_data);
-        b->data = (uint8_t*)realloc(b->data, b->m_data);
-        if (!b->data)
-            return -1;
-    }
+    if (realloc_bam_data(b, bam_len) < 0)
+        return -1;
     b->l_data = bam_len;
 
     b->core.tid     = rname;

@@ -26,7 +26,7 @@
 # See htslib.mk for details.
 
 htslib_bgzf_h = $(HTSPREFIX)htslib/bgzf.h $(htslib_hts_defs_h)
-htslib_cram_h = $(HTSPREFIX)htslib/cram.h $(htslib_hts_h)
+htslib_cram_h = $(HTSPREFIX)htslib/cram.h $(htslib_hts_h) $(htslib_sam_h)
 htslib_faidx_h = $(HTSPREFIX)htslib/faidx.h $(htslib_hts_defs_h)
 htslib_hfile_h = $(HTSPREFIX)htslib/hfile.h $(htslib_hts_defs_h)
 htslib_hts_h = $(HTSPREFIX)htslib/hts.h $(htslib_hts_defs_h) $(htslib_hts_log_h)
@@ -36,14 +36,14 @@ htslib_hts_log_h = $(HTSPREFIX)htslib/hts_log.h $(htslib_hts_defs_h)
 htslib_hts_os_h = $(HTSPREFIX)htslib/hts_os.h
 htslib_kbitset_h = $(HTSPREFIX)htslib/kbitset.h
 htslib_kfunc_h = $(HTSPREFIX)htslib/kfunc.h
-htslib_khash_h = $(HTSPREFIX)htslib/khash.h
+htslib_khash_h = $(HTSPREFIX)htslib/khash.h $(htslib_kstring_h)
 htslib_khash_str2int_h = $(HTSPREFIX)htslib/khash_str2int.h $(htslib_khash_h)
 htslib_klist_h = $(HTSPREFIX)htslib/klist.h
 htslib_knetfile_h = $(HTSPREFIX)htslib/knetfile.h
 htslib_kseq_h = $(HTSPREFIX)htslib/kseq.h
 htslib_ksort_h = $(HTSPREFIX)htslib/ksort.h
 htslib_kstring_h = $(HTSPREFIX)htslib/kstring.h
-htslib_regidx_h = $(HTSPREFIX)htslib/regidx.h
+htslib_regidx_h = $(HTSPREFIX)htslib/regidx.h $(htslib_hts_h)
 htslib_sam_h = $(HTSPREFIX)htslib/sam.h $(htslib_hts_h)
 htslib_synced_bcf_reader_h = $(HTSPREFIX)htslib/synced_bcf_reader.h $(htslib_hts_h) $(htslib_vcf_h) $(htslib_tbx_h)
 htslib_tbx_h = $(HTSPREFIX)htslib/tbx.h $(htslib_hts_h)

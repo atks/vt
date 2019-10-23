@@ -39,11 +39,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * - Reference sequence handling
  */
 
-/*
- * TODO: BLOCK_GROW, BLOCK_RESIZE, BLOCK_APPEND and itf8_put_blk all need
- * a way to return errors for when malloc fails.
- */
-
 #include <config.h>
 
 #include <stdio.h>
@@ -204,6 +199,11 @@ int itf8_decode_crc(cram_fd *fd, int32_t *val_p, uint32_t *crc) {
     int i = nbytes[val>>4];
     val &= nbits[val>>4];
 
+    if (i > 0) {
+        if (hread(fd->fp, &c[1], i) < i)
+            return -1;
+    }
+
     switch(i) {
     case 0:
         *val_p = val;
@@ -211,22 +211,22 @@ int itf8_decode_crc(cram_fd *fd, int32_t *val_p, uint32_t *crc) {
         return 1;
 
     case 1:
-        val = (val<<8) | (c[1]=hgetc(fd->fp));
+        val = (val<<8) | c[1];
         *val_p = val;
         *crc = crc32(*crc, c, 2);
         return 2;
 
     case 2:
-        val = (val<<8) | (c[1]=hgetc(fd->fp));
-        val = (val<<8) | (c[2]=hgetc(fd->fp));
+        val = (val<<8) | c[1];
+        val = (val<<8) | c[2];
         *val_p = val;
         *crc = crc32(*crc, c, 3);
         return 3;
 
     case 3:
-        val = (val<<8) | (c[1]=hgetc(fd->fp));
-        val = (val<<8) | (c[2]=hgetc(fd->fp));
-        val = (val<<8) | (c[3]=hgetc(fd->fp));
+        val = (val<<8) | c[1];
+        val = (val<<8) | c[2];
+        val = (val<<8) | c[3];
         *val_p = val;
         *crc = crc32(*crc, c, 4);
         return 4;
@@ -234,11 +234,12 @@ int itf8_decode_crc(cram_fd *fd, int32_t *val_p, uint32_t *crc) {
     case 4: // really 3.5 more, why make it different?
         {
             uint32_t uv = val;
-            uv = (uv<<8) |   (c[1]=hgetc(fd->fp));
-            uv = (uv<<8) |   (c[2]=hgetc(fd->fp));
-            uv = (uv<<8) |   (c[3]=hgetc(fd->fp));
-            uv = (uv<<4) | (((c[4]=hgetc(fd->fp))) & 0x0f);
-            *val_p = uv < 0x80000000UL ? uv : -((int32_t) (0xffffffffUL - uv)) - 1;
+            uv = (uv<<8) |  c[1];
+            uv = (uv<<8) |  c[2];
+            uv = (uv<<8) |  c[3];
+            uv = (uv<<4) | (c[4] & 0x0f);
+            // Avoid implementation-defined behaviour on negative values
+            *val_p = uv < 0x80000000UL ? (int32_t) uv : -((int32_t) (0xffffffffUL - uv)) - 1;
             *crc = crc32(*crc, c, 5);
         }
     }
@@ -372,8 +373,8 @@ int ltf8_decode(cram_fd *fd, int64_t *val_p) {
 
 int ltf8_decode_crc(cram_fd *fd, int64_t *val_p, uint32_t *crc) {
     unsigned char c[9];
-    int64_t val = (unsigned char)hgetc(fd->fp);
-    if (val == -1)
+    int64_t val = hgetc(fd->fp);
+    if (val < 0)
         return -1;
 
     c[0] = val;
@@ -384,79 +385,99 @@ int ltf8_decode_crc(cram_fd *fd, int64_t *val_p, uint32_t *crc) {
         return 1;
 
     } else if (val < 0xc0) {
-        val = (val<<8) | (c[1]=hgetc(fd->fp));;
+        int v = hgetc(fd->fp);
+        if (v < 0)
+            return -1;
+        val = (val<<8) | (c[1]=v);
         *val_p = val & (((1LL<<(6+8)))-1);
         *crc = crc32(*crc, c, 2);
         return 2;
 
     } else if (val < 0xe0) {
-        val = (val<<8) | (c[1]=hgetc(fd->fp));;
-        val = (val<<8) | (c[2]=hgetc(fd->fp));;
+        if (hread(fd->fp, &c[1], 2) < 2)
+            return -1;
+        val = (val<<8) | c[1];
+        val = (val<<8) | c[2];
         *val_p = val & ((1LL<<(5+2*8))-1);
         *crc = crc32(*crc, c, 3);
         return 3;
 
     } else if (val < 0xf0) {
-        val = (val<<8) | (c[1]=hgetc(fd->fp));;
-        val = (val<<8) | (c[2]=hgetc(fd->fp));;
-        val = (val<<8) | (c[3]=hgetc(fd->fp));;
+        if (hread(fd->fp, &c[1], 3) < 3)
+            return -1;
+        val = (val<<8) | c[1];
+        val = (val<<8) | c[2];
+        val = (val<<8) | c[3];
         *val_p = val & ((1LL<<(4+3*8))-1);
         *crc = crc32(*crc, c, 4);
         return 4;
 
     } else if (val < 0xf8) {
-        val = (val<<8) | (c[1]=hgetc(fd->fp));;
-        val = (val<<8) | (c[2]=hgetc(fd->fp));;
-        val = (val<<8) | (c[3]=hgetc(fd->fp));;
-        val = (val<<8) | (c[4]=hgetc(fd->fp));;
+        if (hread(fd->fp, &c[1], 4) < 4)
+            return -1;
+        val = (val<<8) | c[1];
+        val = (val<<8) | c[2];
+        val = (val<<8) | c[3];
+        val = (val<<8) | c[4];
         *val_p = val & ((1LL<<(3+4*8))-1);
         *crc = crc32(*crc, c, 5);
         return 5;
 
     } else if (val < 0xfc) {
-        val = (val<<8) | (c[1]=hgetc(fd->fp));;
-        val = (val<<8) | (c[2]=hgetc(fd->fp));;
-        val = (val<<8) | (c[3]=hgetc(fd->fp));;
-        val = (val<<8) | (c[4]=hgetc(fd->fp));;
-        val = (val<<8) | (c[5]=hgetc(fd->fp));;
+        if (hread(fd->fp, &c[1], 5) < 5)
+            return -1;
+        val = (val<<8) | c[1];
+        val = (val<<8) | c[2];
+        val = (val<<8) | c[3];
+        val = (val<<8) | c[4];
+        val = (val<<8) | c[5];
         *val_p = val & ((1LL<<(2+5*8))-1);
         *crc = crc32(*crc, c, 6);
         return 6;
 
     } else if (val < 0xfe) {
-        val = (val<<8) | (c[1]=hgetc(fd->fp));;
-        val = (val<<8) | (c[2]=hgetc(fd->fp));;
-        val = (val<<8) | (c[3]=hgetc(fd->fp));;
-        val = (val<<8) | (c[4]=hgetc(fd->fp));;
-        val = (val<<8) | (c[5]=hgetc(fd->fp));;
-        val = (val<<8) | (c[6]=hgetc(fd->fp));;
+        if (hread(fd->fp, &c[1], 6) < 6)
+            return -1;
+        val = (val<<8) | c[1];
+        val = (val<<8) | c[2];
+        val = (val<<8) | c[3];
+        val = (val<<8) | c[4];
+        val = (val<<8) | c[5];
+        val = (val<<8) | c[6];
         *val_p = val & ((1LL<<(1+6*8))-1);
         *crc = crc32(*crc, c, 7);
         return 7;
 
     } else if (val < 0xff) {
-        val = (val<<8) | (c[1]=hgetc(fd->fp));;
-        val = (val<<8) | (c[2]=hgetc(fd->fp));;
-        val = (val<<8) | (c[3]=hgetc(fd->fp));;
-        val = (val<<8) | (c[4]=hgetc(fd->fp));;
-        val = (val<<8) | (c[5]=hgetc(fd->fp));;
-        val = (val<<8) | (c[6]=hgetc(fd->fp));;
-        val = (val<<8) | (c[7]=hgetc(fd->fp));;
-        *val_p = val & ((1LL<<(7*8))-1);
+        uint64_t uval = val;
+        if (hread(fd->fp, &c[1], 7) < 7)
+            return -1;
+        uval = (uval<<8) | c[1];
+        uval = (uval<<8) | c[2];
+        uval = (uval<<8) | c[3];
+        uval = (uval<<8) | c[4];
+        uval = (uval<<8) | c[5];
+        uval = (uval<<8) | c[6];
+        uval = (uval<<8) | c[7];
+        *val_p = uval & ((1ULL<<(7*8))-1);
         *crc = crc32(*crc, c, 8);
         return 8;
 
     } else {
-        val = (val<<8) | (c[1]=hgetc(fd->fp));;
-        val = (val<<8) | (c[2]=hgetc(fd->fp));;
-        val = (val<<8) | (c[3]=hgetc(fd->fp));;
-        val = (val<<8) | (c[4]=hgetc(fd->fp));;
-        val = (val<<8) | (c[5]=hgetc(fd->fp));;
-        val = (val<<8) | (c[6]=hgetc(fd->fp));;
-        val = (val<<8) | (c[7]=hgetc(fd->fp));;
-        val = (val<<8) | (c[8]=hgetc(fd->fp));;
+        uint64_t uval;
+        if (hread(fd->fp, &c[1], 8) < 8)
+            return -1;
+        uval =             c[1];
+        uval = (uval<<8) | c[2];
+        uval = (uval<<8) | c[3];
+        uval = (uval<<8) | c[4];
+        uval = (uval<<8) | c[5];
+        uval = (uval<<8) | c[6];
+        uval = (uval<<8) | c[7];
+        uval = (uval<<8) | c[8];
         *crc = crc32(*crc, c, 9);
-        *val_p = val;
+        // Avoid implementation-defined behaviour on negative values
+        *val_p = c[1] < 0x80 ? (int64_t) uval : -((int64_t) (0xffffffffffffffffULL - uval)) - 1;
     }
 
     return 9;
@@ -469,13 +490,28 @@ int ltf8_decode_crc(cram_fd *fd, int64_t *val_p, uint32_t *crc) {
  *
  * Returns the number of bytes written
  */
-int itf8_put_blk(cram_block *blk, int val) {
+int itf8_put_blk(cram_block *blk, int32_t val) {
     char buf[5];
     int sz;
 
     sz = itf8_put(buf, val);
     BLOCK_APPEND(blk, buf, sz);
     return sz;
+
+ block_err:
+    return -1;
+}
+
+int ltf8_put_blk(cram_block *blk, int64_t val) {
+    char buf[9];
+    int sz;
+
+    sz = ltf8_put(buf, val);
+    BLOCK_APPEND(blk, buf, sz);
+    return sz;
+
+ block_err:
+    return -1;
 }
 
 /*
@@ -512,11 +548,13 @@ int int32_get_blk(cram_block *b, int32_t *val) {
     if (b->uncomp_size - BLOCK_SIZE(b) < 4)
         return -1;
 
-    *val =
-         b->data[b->byte  ]        |
-        (b->data[b->byte+1] <<  8) |
-        (b->data[b->byte+2] << 16) |
-        (b->data[b->byte+3] << 24);
+    uint32_t v =
+         ((uint32_t) b->data[b->byte  ])        |
+        (((uint32_t) b->data[b->byte+1]) <<  8) |
+        (((uint32_t) b->data[b->byte+2]) << 16) |
+        (((uint32_t) b->data[b->byte+3]) << 24);
+    // Avoid implementation-defined behaviour on negative values
+    *val = v < 0x80000000U ? (int32_t) v : -((int32_t) (0xffffffffU - v)) - 1;
     BLOCK_SIZE(b) += 4;
     return 4;
 }
@@ -524,13 +562,17 @@ int int32_get_blk(cram_block *b, int32_t *val) {
 /* As int32_decoded/encode, but from/to blocks instead of cram_fd */
 int int32_put_blk(cram_block *b, int32_t val) {
     unsigned char cp[4];
-    cp[0] = ( val      & 0xff);
-    cp[1] = ((val>>8)  & 0xff);
-    cp[2] = ((val>>16) & 0xff);
-    cp[3] = ((val>>24) & 0xff);
+    uint32_t v = val;
+    cp[0] = ( v      & 0xff);
+    cp[1] = ((v>>8)  & 0xff);
+    cp[2] = ((v>>16) & 0xff);
+    cp[3] = ((v>>24) & 0xff);
 
     BLOCK_APPEND(b, cp, 4);
-    return b->data ? 0 : -1;
+    return 0;
+
+ block_err:
+    return -1;
 }
 
 /* ----------------------------------------------------------------------
@@ -1642,7 +1684,7 @@ static BGZF *bgzf_open_ref(char *fn, char *mode, int is_md5) {
  * Returns the refs_t struct on success (maybe newly allocated);
  *         NULL on failure
  */
-static refs_t *refs_load_fai(refs_t *r_orig, char *fn, int is_err) {
+static refs_t *refs_load_fai(refs_t *r_orig, const char *fn, int is_err) {
     struct stat sb;
     FILE *fp = NULL;
     char fai_fn[PATH_MAX];
@@ -1794,7 +1836,7 @@ static void sanitise_SQ_lines(cram_fd *fd) {
         return;
 
     for (i = 0; i < fd->header->hrecs->nref; i++) {
-        char *name = fd->header->hrecs->ref[i].name;
+        const char *name = fd->header->hrecs->ref[i].name;
         khint_t k = kh_get(refs, fd->refs->h_meta, name);
         ref_entry *r;
 
@@ -1811,7 +1853,7 @@ static void sanitise_SQ_lines(cram_fd *fd) {
 
             // Should we also check MD5sums here to ensure the correct
             // reference was given?
-            hts_log_warning("Header @SQ length mismatch for ref %s, %d vs %d",
+            hts_log_warning("Header @SQ length mismatch for ref %s, %"PRIhts_pos" vs %d",
                             r->name, fd->header->hrecs->ref[i].len, (int)r->length);
 
             // Fixing the parsed @SQ header will make MD:Z: strings work
@@ -1828,9 +1870,9 @@ static void sanitise_SQ_lines(cram_fd *fd) {
  * Returns 0 on success
  *        -1 on failure
  */
-int refs2id(refs_t *r, bam_hdr_t *bh) {
+int refs2id(refs_t *r, sam_hdr_t *hdr) {
     int i;
-    bam_hrecs_t *h = bh->hrecs;
+    sam_hrecs_t *h = hdr->hrecs;
 
     if (r->ref_id)
         free(r->ref_id);
@@ -1867,12 +1909,12 @@ static int refs_from_header(cram_fd *fd) {
     if (!r)
         return -1;
 
-    bam_hdr_t *h = fd->header;
+    sam_hdr_t *h = fd->header;
     if (!h)
         return 0;
 
     if (!h->hrecs) {
-        if (-1 == bam_hdr_parse(h))
+        if (-1 == sam_hdr_fill_hrecs(h))
             return -1;
     }
 
@@ -1882,14 +1924,16 @@ static int refs_from_header(cram_fd *fd) {
     //fprintf(stderr, "refs_from_header for %p mode %c\n", fd, fd->mode);
 
     /* Existing refs are fine, as long as they're compatible with the hdr. */
-    if (!(r->ref_id = realloc(r->ref_id, (r->nref + h->hrecs->nref) * sizeof(*r->ref_id))))
+    ref_entry **new_ref_id = realloc(r->ref_id, (r->nref + h->hrecs->nref) * sizeof(*r->ref_id));
+    if (!new_ref_id)
         return -1;
+    r->ref_id = new_ref_id;
 
     int i, j;
     /* Copy info from h->ref[i] over to r */
     for (i = 0, j = r->nref; i < h->hrecs->nref; i++) {
-        bam_hrec_type_t *ty;
-        bam_hrec_tag_t *tag;
+        sam_hrec_type_t *ty;
+        sam_hrec_tag_t *tag;
         khint_t k;
         int n;
 
@@ -1905,11 +1949,12 @@ static int refs_from_header(cram_fd *fd) {
             return -1;
 
         r->ref_id[j]->name = string_dup(r->pool, h->hrecs->ref[i].name);
+        if (!r->ref_id[j]->name) return -1;
         r->ref_id[j]->length = 0; // marker for not yet loaded
 
         /* Initialise likely filename if known */
-        if ((ty = bam_hrecs_find_type_id(h->hrecs, "SQ", "SN", h->hrecs->ref[i].name))) {
-            if ((tag = bam_hrecs_find_key(ty, "M5", NULL))) {
+        if ((ty = sam_hrecs_find_type_id(h->hrecs, "SQ", "SN", h->hrecs->ref[i].name))) {
+            if ((tag = sam_hrecs_find_key(ty, "M5", NULL))) {
                 r->ref_id[j]->fn = string_dup(r->pool, tag->str+3);
                 //fprintf(stderr, "Tagging @SQ %s / %s\n", r->ref_id[h]->name, r->ref_id[h]->fn);
             }
@@ -1934,21 +1979,21 @@ static int refs_from_header(cram_fd *fd) {
  * we have a header already constructed (eg from a file we've read
  * in).
  */
-int cram_set_header2(cram_fd *fd, const bam_hdr_t *hdr) {
+int cram_set_header2(cram_fd *fd, const sam_hdr_t *hdr) {
     if (!fd || !hdr )
         return -1;
 
     if (fd->header != hdr) {
         if (fd->header)
-            bam_hdr_destroy(fd->header);
-        fd->header = bam_hdr_dup(hdr);
+            sam_hdr_destroy(fd->header);
+        fd->header = sam_hdr_dup(hdr);
         if (!fd->header)
             return -1;
     }
     return refs_from_header(fd);
 }
 
-int cram_set_header(cram_fd *fd, bam_hdr_t *hdr) {
+int cram_set_header(cram_fd *fd, sam_hdr_t *hdr) {
     return cram_set_header2(fd, hdr);
 }
 
@@ -1966,7 +2011,7 @@ static int is_directory(char *fn) {
  * in directory with the filename and %[0-9]+s with portions of the filename
  * Any remaining parts of filename are added to the end with /%s.
  */
-static int expand_cache_path(char *path, char *dir, char *fn) {
+static int expand_cache_path(char *path, char *dir, const char *fn) {
     char *cp, *start = path;
     size_t len;
     size_t sz = PATH_MAX;
@@ -2098,8 +2143,8 @@ static unsigned get_int_threadid() {
  */
 static int cram_populate_ref(cram_fd *fd, int id, ref_entry *r) {
     char *ref_path = getenv("REF_PATH");
-    bam_hrec_type_t *ty;
-    bam_hrec_tag_t *tag;
+    sam_hrec_type_t *ty;
+    sam_hrec_tag_t *tag;
     char path[PATH_MAX], path_tmp[PATH_MAX + 64];
     char cache[PATH_MAX], cache_root[PATH_MAX];
     char *local_cache = getenv("REF_CACHE");
@@ -2129,10 +2174,10 @@ static int cram_populate_ref(cram_fd *fd, int id, ref_entry *r) {
     if (!r->name)
         return -1;
 
-    if (!(ty = bam_hrecs_find_type_id(fd->header->hrecs, "SQ", "SN", r->name)))
+    if (!(ty = sam_hrecs_find_type_id(fd->header->hrecs, "SQ", "SN", r->name)))
         return -1;
 
-    if (!(tag = bam_hrecs_find_key(ty, "M5", NULL)))
+    if (!(tag = sam_hrecs_find_key(ty, "M5", NULL)))
         goto no_M5;
 
     hts_log_info("Querying ref %s", tag->str+3);
@@ -2196,11 +2241,11 @@ static int cram_populate_ref(cram_fd *fd, int id, ref_entry *r) {
         r->is_md5 = 1;
     } else {
         refs_t *refs;
-        char *fn;
+        const char *fn;
 
     no_M5:
         /* Failed to find in search path or M5 cache, see if @SQ UR: tag? */
-        if (!(tag = bam_hrecs_find_key(ty, "UR", NULL)))
+        if (!(tag = sam_hrecs_find_key(ty, "UR", NULL)))
             return -1;
 
         fn = (strncmp(tag->str+3, "file:", 5) == 0)
@@ -2460,6 +2505,9 @@ ref_entry *cram_ref_load(refs_t *r, int id, int is_md5) {
         }
     }
 
+    if (!r->fn)
+        return NULL;
+
     /* Open file if it's not already the current open reference */
     if (strcmp(r->fn, e->fn) || r->fp == NULL) {
         if (r->fp)
@@ -2661,7 +2709,7 @@ char *cram_get_ref(cram_fd *fd, int id, int start, int end) {
      */
 
     /* Unmapped ref ID */
-    if (id < 0) {
+    if (id < 0 || !fd->refs->fn) {
         if (fd->ref_free) {
             free(fd->ref_free);
             fd->ref_free = NULL;
@@ -2704,7 +2752,7 @@ char *cram_get_ref(cram_fd *fd, int id, int start, int end) {
     pthread_mutex_unlock(&fd->refs->lock);
     pthread_mutex_unlock(&fd->ref_lock);
 
-    return seq + ostart - start;
+    return seq ? seq + ostart - start : NULL;
 }
 
 /*
@@ -2855,10 +2903,12 @@ void cram_free_container(cram_container *c) {
                 continue;
 
             cram_tag_map *tm = (cram_tag_map *)kh_val(c->tags_used, k);
-            cram_codec *c = tm->codec;
+            if (tm) {
+                cram_codec *c = tm->codec;
 
-            if (c) c->free(c);
-            free(tm);
+                if (c) c->free(c);
+                free(tm);
+            }
         }
 
         kh_destroy(m_tagmap, c->tags_used);
@@ -2906,8 +2956,26 @@ cram_container *cram_read_container(cram_fd *fd) {
         crc = crc32(0L, (unsigned char *)&len, 4);
     }
     if ((s = itf8_decode_crc(fd, &c2.ref_seq_id, &crc))   == -1) return NULL; else rd+=s;
-    if ((s = itf8_decode_crc(fd, &c2.ref_seq_start, &crc))== -1) return NULL; else rd+=s;
-    if ((s = itf8_decode_crc(fd, &c2.ref_seq_span, &crc)) == -1) return NULL; else rd+=s;
+/*
+ * LARGE_POS used in this code is purely a debugging mechanism for testing
+ * whether the htslib API can cope with 64-bit quantities.  These are
+ * possible in SAM, but not *yet* in BAM or CRAM.
+ *
+ * DO NOT ENABLE LARGE_POS for anything other than debugging / testing.
+ *
+ * At some point it is expected these ifdefs will become a version check
+ * instead.
+ */
+#ifdef LARGE_POS
+    if ((s = ltf8_decode_crc(fd, &c2.ref_seq_start, &crc))== -1) return NULL; else rd+=s;
+    if ((s = ltf8_decode_crc(fd, &c2.ref_seq_span, &crc)) == -1) return NULL; else rd+=s;
+#else
+    int32_t i32;
+    if ((s = itf8_decode_crc(fd, &i32, &crc))== -1) return NULL; else rd+=s;
+    c2.ref_seq_start = i32;
+    if ((s = itf8_decode_crc(fd, &i32, &crc)) == -1) return NULL; else rd+=s;
+    c2.ref_seq_span = i32;
+#endif
     if ((s = itf8_decode_crc(fd, &c2.num_records, &crc))  == -1) return NULL; else rd+=s;
 
     if (CRAM_MAJOR_VERS(fd->version) == 1) {
@@ -2944,8 +3012,7 @@ cram_container *cram_read_container(cram_fd *fd) {
 
     *c = c2;
 
-    if (!(c->landmark = malloc(c->num_landmarks * sizeof(int32_t))) &&
-        c->num_landmarks) {
+    if (c->num_landmarks && !(c->landmark = malloc(c->num_landmarks * sizeof(int32_t)))) {
         fd->err = errno;
         cram_free_container(c);
         return NULL;
@@ -3033,8 +3100,13 @@ int cram_store_container(cram_fd *fd, cram_container *c, char *dat, int *size)
         cp += itf8_put((char*)cp, 0);
     } else {
         cp += itf8_put((char*)cp, c->ref_seq_id);
+#ifdef LARGE_POS
+        cp += ltf8_put((char*)cp, c->ref_seq_start);
+        cp += ltf8_put((char*)cp, c->ref_seq_span);
+#else
         cp += itf8_put((char*)cp, c->ref_seq_start);
         cp += itf8_put((char*)cp, c->ref_seq_span);
+#endif
     }
     cp += itf8_put((char*)cp, c->num_records);
     if (CRAM_MAJOR_VERS(fd->version) == 2) {
@@ -3092,8 +3164,13 @@ int cram_write_container(cram_fd *fd, cram_container *c) {
         cp += itf8_put((char*)cp, 0);
     } else {
         cp += itf8_put((char*)cp, c->ref_seq_id);
+#ifdef LARGE_POS
+        cp += ltf8_put((char*)cp, c->ref_seq_start);
+        cp += ltf8_put((char*)cp, c->ref_seq_span);
+#else
         cp += itf8_put((char*)cp, c->ref_seq_start);
         cp += itf8_put((char*)cp, c->ref_seq_span);
+#endif
     }
     cp += itf8_put((char*)cp, c->num_records);
     if (CRAM_MAJOR_VERS(fd->version) == 2) {
@@ -3418,6 +3495,8 @@ void cram_free_slice(cram_slice *s) {
 
         if (s->hdr) {
             for (i = 0; i < s->hdr->num_blocks; i++) {
+                if (i > 0 && s->block[i] == s->block[0])
+                    continue;
                 cram_free_block(s->block[i]);
             }
         }
@@ -3692,10 +3771,10 @@ void cram_free_file_def(cram_file_def *def) {
  * Returns SAM hdr ptr on success
  *         NULL on failure
  */
-bam_hdr_t *cram_read_SAM_hdr(cram_fd *fd) {
+sam_hdr_t *cram_read_SAM_hdr(cram_fd *fd) {
     int32_t header_len;
     char *header;
-    bam_hdr_t *hdr;
+    sam_hdr_t *hdr;
 
     /* 1.1 onwards stores the header in the first block of a container */
     if (CRAM_MAJOR_VERS(fd->version) == 1) {
@@ -3799,15 +3878,15 @@ bam_hdr_t *cram_read_SAM_hdr(cram_fd *fd) {
     }
 
     /* Parse */
-    hdr = bam_hdr_init();
+    hdr = sam_hdr_init();
     if (!hdr) {
         free(header);
         return NULL;
     }
 
-    if (-1 == bam_hdr_add_lines(hdr, header, header_len)) {
+    if (-1 == sam_hdr_add_lines(hdr, header, header_len)) {
         free(header);
-        bam_hdr_destroy(hdr);
+        sam_hdr_destroy(hdr);
         return NULL;
     }
 
@@ -3852,7 +3931,7 @@ static void full_path(char *out, char *in) {
  * Returns 0 on success
  *        -1 on failure
  */
-int cram_write_SAM_hdr(cram_fd *fd, bam_hdr_t *hdr) {
+int cram_write_SAM_hdr(cram_fd *fd, sam_hdr_t *hdr) {
     size_t header_len;
     int blank_block = (CRAM_MAJOR_VERS(fd->version) >= 3);
 
@@ -3866,8 +3945,8 @@ int cram_write_SAM_hdr(cram_fd *fd, bam_hdr_t *hdr) {
 
     /* 1.0 requires an UNKNOWN read-group */
     if (CRAM_MAJOR_VERS(fd->version) == 1) {
-        if (!bam_hrecs_find_rg(hdr->hrecs, "UNKNOWN"))
-            if (bam_hdr_add_line(hdr, "RG",
+        if (!sam_hrecs_find_rg(hdr->hrecs, "UNKNOWN"))
+            if (sam_hdr_add_line(hdr, "RG",
                             "ID", "UNKNOWN", "SM", "UNKNOWN", NULL))
                 return -1;
     }
@@ -3876,13 +3955,13 @@ int cram_write_SAM_hdr(cram_fd *fd, bam_hdr_t *hdr) {
     if (fd->refs && !fd->no_ref) {
         int i;
         for (i = 0; i < hdr->hrecs->nref; i++) {
-            bam_hrec_type_t *ty;
+            sam_hrec_type_t *ty;
             char *ref;
 
-            if (!(ty = bam_hrecs_find_type_id(hdr->hrecs, "SQ", "SN", hdr->hrecs->ref[i].name)))
+            if (!(ty = sam_hrecs_find_type_id(hdr->hrecs, "SQ", "SN", hdr->hrecs->ref[i].name)))
                 return -1;
 
-            if (!bam_hrecs_find_key(ty, "M5", NULL)) {
+            if (!sam_hrecs_find_key(ty, "M5", NULL)) {
                 char unsigned buf[16];
                 char buf2[33];
                 int rlen;
@@ -3905,21 +3984,21 @@ int cram_write_SAM_hdr(cram_fd *fd, bam_hdr_t *hdr) {
                 cram_ref_decr(fd->refs, i);
 
                 hts_md5_hex(buf2, buf);
-                if (bam_hdr_update_line(hdr, "SQ", "SN", hdr->hrecs->ref[i].name, "M5", buf2, NULL))
+                if (sam_hdr_update_line(hdr, "SQ", "SN", hdr->hrecs->ref[i].name, "M5", buf2, NULL))
                     return -1;
             }
 
             if (fd->ref_fn) {
                 char ref_fn[PATH_MAX];
                 full_path(ref_fn, fd->ref_fn);
-                if (bam_hdr_update_line(hdr, "SQ", "SN", hdr->hrecs->ref[i].name, "UR", ref_fn, NULL))
+                if (sam_hdr_update_line(hdr, "SQ", "SN", hdr->hrecs->ref[i].name, "UR", ref_fn, NULL))
                     return -1;
             }
         }
     }
 
     /* Length */
-    header_len = bam_hdr_length(hdr);
+    header_len = sam_hdr_length(hdr);
     if (header_len > INT32_MAX) {
         hts_log_error("Header is too long for CRAM format");
         return -1;
@@ -3929,7 +4008,7 @@ int cram_write_SAM_hdr(cram_fd *fd, bam_hdr_t *hdr) {
             return -1;
 
         /* Text data */
-        if (header_len != hwrite(fd->fp, bam_hdr_str(hdr), header_len))
+        if (header_len != hwrite(fd->fp, sam_hdr_str(hdr), header_len))
             return -1;
     } else {
         /* Create block(s) inside a container */
@@ -3945,14 +4024,16 @@ int cram_write_SAM_hdr(cram_fd *fd, bam_hdr_t *hdr) {
             return -1;
         }
 
-        int32_put_blk(b, header_len);
+        if (int32_put_blk(b, header_len) < 0)
+            return -1;
         if (header_len)
-            BLOCK_APPEND(b, bam_hdr_str(hdr), header_len);
+            BLOCK_APPEND(b, sam_hdr_str(hdr), header_len);
         BLOCK_UPLEN(b);
 
         // Compress header block if V3.0 and above
         if (CRAM_MAJOR_VERS(fd->version) >= 3)
-            cram_compress_block(fd, b, NULL, -1, -1);
+            if (cram_compress_block(fd, b, NULL, -1, -1) < 0)
+                return -1;
 
         if (blank_block) {
             c->length = b->comp_size + 2 + 4*is_cram_3 +
@@ -4041,6 +4122,9 @@ int cram_write_SAM_hdr(cram_fd *fd, bam_hdr_t *hdr) {
     RP("=== Finishing saving header ===\n");
 
     return 0;
+
+ block_err:
+    return -1;
 }
 
 /* ----------------------------------------------------------------------
@@ -4251,10 +4335,12 @@ cram_fd *cram_dopen(hFILE *fp, const char *filename, const char *mode) {
     fd->use_rans = (CRAM_MAJOR_VERS(fd->version) >= 3);
     fd->use_lzma = 0;
     fd->multi_seq = -1;
+    fd->multi_seq_user = -1;
     fd->unsorted   = 0;
     fd->shared_ref = 0;
     fd->store_md = 0;
     fd->store_nm = 0;
+    fd->last_RI_count = 0;
 
     fd->index       = NULL;
     fd->own_pool    = 0;
@@ -4264,8 +4350,11 @@ cram_fd *cram_dopen(hFILE *fp, const char *filename, const char *mode) {
     fd->ooc         = 0;
     fd->required_fields = INT_MAX;
 
-    for (i = 0; i < DS_END; i++)
+    for (i = 0; i < DS_END; i++) {
         fd->m[i] = cram_new_metrics();
+        if (!fd->m[i])
+            goto err;
+    }
 
     if (!(fd->tags_used = kh_init(m_metrics)))
         goto err;
@@ -4425,7 +4514,7 @@ int cram_close(cram_fd *fd) {
         cram_free_file_def(fd->file_def);
 
     if (fd->header)
-        bam_hdr_destroy(fd->header);
+        sam_hdr_destroy(fd->header);
 
     free(fd->prefix);
 
@@ -4616,7 +4705,7 @@ int cram_set_voption(cram_fd *fd, enum hts_fmt_option opt, va_list args) {
     }
 
     case CRAM_OPT_MULTI_SEQ_PER_SLICE:
-        fd->multi_seq = va_arg(args, int);
+        fd->multi_seq_user = fd->multi_seq = va_arg(args, int);
         break;
 
     case CRAM_OPT_NTHREADS: {

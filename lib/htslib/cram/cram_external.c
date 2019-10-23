@@ -47,8 +47,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *-----------------------------------------------------------------------------
  * cram_fd
  */
-bam_hdr_t *cram_fd_get_header(cram_fd *fd) { return fd->header; }
-void cram_fd_set_header(cram_fd *fd, bam_hdr_t *hdr) { fd->header = hdr; }
+sam_hdr_t *cram_fd_get_header(cram_fd *fd) { return fd->header; }
+void cram_fd_set_header(cram_fd *fd, sam_hdr_t *hdr) { fd->header = hdr; }
 
 int cram_fd_get_version(cram_fd *fd) { return fd->version; }
 void cram_fd_set_version(cram_fd *fd, int vers) { fd->version = vers; }
@@ -211,7 +211,10 @@ void cram_block_set_size(cram_block *b, int32_t size) { BLOCK_SIZE(b) = size; }
 
 int cram_block_append(cram_block *b, const void *data, int size) {
     BLOCK_APPEND(b, data, size);
-    return BLOCK_DATA(b) ? 0 : -1; // It'll do for now...
+    return 0;
+
+ block_err:
+    return -1;
 }
 void cram_block_update_size(cram_block *b) { BLOCK_UPLEN(b); }
 

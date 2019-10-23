@@ -40,6 +40,9 @@ ce_fa_to_md5_cache($opts);
 test_index($opts, 0);
 test_index($opts, 4);
 
+test_multi_ref($opts,0);
+test_multi_ref($opts,4);
+
 test_view($opts,0);
 test_view($opts,4);
 
@@ -260,6 +263,11 @@ sub test_compare
         }
     }
 
+    if (exists($args{fix_newlines})) {
+        $exp =~ s/\015\012/\n/g;
+        $out =~ s/\015\012/\n/g;
+    }
+
     if ( $exp ne $out )
     {
         failed($opts,$test,"The outputs differ:\n\t\t$exp_fn\n\t\t$out_fn");
@@ -451,6 +459,60 @@ sub testv {
     }
 }
 
+sub fake_multi_ref_data
+{
+    open(SAM, ">multi_ref.tmp.sam") || die;
+    for (my $r=0;$r<1000;$r++) {
+        print SAM "\@SQ\tSN:c$r\tLN:10000\n";
+    }
+
+    # Single ref
+    my $rnum=0;
+    for (my $p=1;$p<1000;$p++) {
+        print SAM "X\t0\tc$rnum\t$p\t40\t10M\t*\t0\t0\tCCTAGCCCTA\tB?8B?BACCD\n";
+    }
+
+    # Multi ref; 1 seq per ref
+    for (my $r=1;$r<300;$r++) {
+        print SAM "X\t0\tc$rnum\t1\t40\t10M\t*\t0\t0\tCCTAGCCCTA\tB?8B?BACCD\n";
+        $rnum++;
+    }
+
+    # Single ref again
+    for (my $p=1;$p<1000;$p++) {
+        print SAM "X\t0\tc$rnum\t$p\t40\t10M\t*\t0\t0\tCCTAGCCCTA\tB?8B?BACCD\n";
+    }
+
+    # Multi ref; 1 seq per ref
+    for (my $r=1;$r<300;$r++) {
+        print SAM "X\t0\tc$rnum\t1\t40\t10M\t*\t0\t0\tCCTAGCCCTA\tB?8B?BACCD\n";
+        $rnum++;
+    }
+    close(SAM);
+}
+
+sub test_multi_ref
+{
+    my ($opts, $nthreads) = @_;
+    my $tv_args = $nthreads ? "-\@$nthreads" : "";
+
+    fake_multi_ref_data;
+    print "test_view testing multi-ref CRAM modes:\n";
+    $test_view_failures = 0;
+
+    for (my $mf = -1; $mf <= 1; $mf++) {
+        testv $opts, "./test_view $tv_args -o seqs_per_slice=100 -o no_ref=1 -o multi_seq_per_slice=$mf -S -C multi_ref.tmp.sam > multi_ref.tmp.cram";
+        testv $opts, "./test_view $tv_args multi_ref.tmp.cram > multi_ref.tmp.sam_";
+        testv $opts, "./compare_sam.pl multi_ref.tmp.sam multi_ref.tmp.sam_";
+    }
+
+    if ($test_view_failures == 0) {
+        passed($opts, "multi-ref conversions");
+    } else {
+        failed($opts, "multi-ref conversions", "$test_view_failures subtests failed");
+    }
+}
+
 sub test_view
 {
     my ($opts, $nthreads) = @_;
@@ -556,6 +618,59 @@ sub test_view
         passed($opts, "range.cram tests");
     } else {
         failed($opts, "range.cram tests", "$test_view_failures subtests failed");
+    }
+
+    # Test BAM files with references in targets list but no corresponding @SQ
+    # lines in the text header.
+    print "test_view testing BAM files with absent \@SQ lines:\n";
+    $test_view_failures = 0;
+    testv $opts, "./test_view $tv_args -p no_hdr_sq_1.tmp.sam no_hdr_sq_1.bam";
+    testv $opts, "./compare_sam.pl no_hdr_sq_1.tmp.sam no_hdr_sq_1.expected.sam";
+
+    # Try a range query to ensure id <-> name mapping works
+    # Input only has reads from CHROMOSOME_I, so same "expected" file is used
+    testv $opts, "./test_view $tv_args -p no_hdr_sq_1.chr1.tmp.sam no_hdr_sq_1.bam CHROMOSOME_I";
+    testv $opts, "./compare_sam.pl no_hdr_sq_1.chr1.tmp.sam no_hdr_sq_1.expected.sam";
+    if ($test_view_failures == 0) {
+        passed($opts, "no_hdr_sq tests");
+    } else {
+        failed($opts, "no_hdr_sq tests", "$test_view_failures subtests failed");
+    }
+
+    # File with large (> 2Gbases) positions
+    # Only works for SAM at the moment, but we can still round-trip it.
+    print "test_view testing large (> 2Gbases) positions:\n";
+    $test_view_failures = 0;
+    testv $opts, "./test_view $tv_args -z -p longrefs/longref.tmp.sam.gz -x longrefs/longref.tmp.sam.gz.csi.otf -m 14 longrefs/longref.sam";
+    testv $opts, "./test_view $tv_args -p longrefs/longref.tmp.sam_ longrefs/longref.tmp.sam.gz";
+    testv $opts, "./compare_sam.pl longrefs/longref.sam longrefs/longref.tmp.sam_";
+
+    # Build index and compare with on-the-fly one made earlier.
+    test_compare $opts, "$$opts{path}/test_index -c longrefs/longref.tmp.sam.gz", "longrefs/longref.tmp.sam.gz.csi.otf", "longrefs/longref.tmp.sam.gz.csi", gz=>1;
+
+    # Large position iterator tests
+    testv $opts, "./test_view $tv_args -p longrefs/longref_itr.tmp.sam longrefs/longref.tmp.sam.gz CHROMOSOME_I:10000000000-10000000003";
+    testv $opts, "./compare_sam.pl longrefs/longref_itr.expected.sam longrefs/longref_itr.tmp.sam";
+    testv $opts, "./test_view $tv_args -M -p longrefs/longref_multi.tmp.sam longrefs/longref.tmp.sam.gz CHROMOSOME_I:10000000000-10000000003 CHROMOSOME_I:10000000100-10000000110";
+    testv $opts, "./compare_sam.pl longrefs/longref_multi.expected.sam longrefs/longref_multi.tmp.sam";
+
+    # VCF round trip
+    unlink("longrefs/index.tmp.vcf.gz.csi"); # To stop vcf_hdr_read from reading a stale index
+    testv $opts, "./test_view $tv_args -z -p longrefs/index.tmp.vcf.gz -x longrefs/index.tmp.vcf.gz.csi.otf -m 14 longrefs/index.vcf";
+    testv $opts, "./test_view $tv_args -p longrefs/index.tmp.vcf_ longrefs/index.tmp.vcf.gz";
+    testv $opts, "cmp longrefs/index.vcf longrefs/index.tmp.vcf_";
+
+    # Build index and compare with on-the-fly one made earlier.
+    test_compare $opts, "$$opts{path}/test_index -c longrefs/index.tmp.vcf.gz", "longrefs/index.tmp.vcf.gz.csi.otf", "longrefs/index.tmp.vcf.gz.csi", gz=>1;
+
+    # test_view can't do indexed look-ups on vcf, but we can use tabix
+    test_compare $opts, "$$opts{bin}/tabix longrefs/index.tmp.vcf.gz 1:10010000100-10010000105 > longrefs/index.tmp.tabix1.vcf", "longrefs/index.expected1.vcf", "longrefs/index.tmp.tabix1.vcf", fix_newlines => 1;
+    test_compare $opts, "$$opts{bin}/tabix longrefs/index.tmp.vcf.gz 1:10010000120-10010000130 > longrefs/index.tmp.tabix2.vcf", "longrefs/index.expected2.vcf", "longrefs/index.tmp.tabix2.vcf", fix_newlines => 1;
+
+    if ($test_view_failures == 0) {
+        passed($opts, "large position tests");
+    } else {
+        failed($opts, "large position tests", "$test_view_failures subtests failed");
     }
 }
 
@@ -790,7 +905,10 @@ sub test_logging
   print "$test:\n";
   print "\t$cmd\n";
   my ($ret,$out) = _cmd($cmd);
-  if ( $ret ) { failed($opts,$test); }
+  if ( $ret ) {
+      print $out;
+      failed($opts,$test);
+  }
   else { passed($opts,$test); }
 }
 

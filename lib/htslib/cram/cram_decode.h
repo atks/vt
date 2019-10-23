@@ -38,8 +38,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * cram_codecs.[ch] for the actual encoding functions themselves.
  */
 
-#ifndef _CRAM_READ_H_
-#define _CRAM_READ_H_
+#ifndef CRAM_DECODE_H
+#define CRAM_DECODE_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -102,7 +102,7 @@ cram_block_slice_hdr *cram_decode_slice_header(cram_fd *fd, cram_block *b);
  *        -1 on failure
  */
 int cram_decode_slice(cram_fd *fd, cram_container *c, cram_slice *s,
-                      bam_hdr_t *hdr);
+                      sam_hdr_t *hdr);
 
 
 /*

@@ -111,12 +111,12 @@ std::string bam_hdr_get_sample_name(bam_hdr_t* hdr);
 /**
  * Gets the 1 based start position of the first mapped base in the read.
  */
-#define bam_get_pos1(s) ((s)->core.pos + 1)
+#define bam_get_pos1(s) ((int32_t)(s)->core.pos + 1)
 
 /**
  * Gets the 0 based start position of the first mapped base in the read.
  */
-#define bam_get_pos0(s) ((s)->core.pos)
+#define bam_get_pos0(s) ((int32_t)(s)->core.pos)
 
 /**
  * Gets the end position of the last mapped base in the read.
@@ -444,7 +444,7 @@ bool bcf_is_passed(bcf_hdr_t *h, bcf1_t *v);
 /**
  * Get 0-based position
  */
-#define bcf_get_pos0(v) ((v)->pos)
+#define bcf_get_pos0(v) ((int32_t)(v)->pos)
 
 /**
  * Set 0-based position
@@ -454,12 +454,12 @@ bool bcf_is_passed(bcf_hdr_t *h, bcf1_t *v);
 /**
  * Get 1-based position
  */
-#define bcf_get_pos1(v) ((v)->pos+1)
+#define bcf_get_pos1(v) ((int32_t)(v)->pos+1)
 
 /**
  * Get 1-based end position
  */
-#define bcf_get_end1(v) ((v)->pos + strlen((v)->d.allele[0]))
+#define bcf_get_end1(v) ((int32_t)(v)->pos + strlen((v)->d.allele[0]))
 
 /**
  * Set 1-based position

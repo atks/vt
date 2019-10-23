@@ -140,8 +140,8 @@ static inline int ks_resize(kstring_t *s, size_t size)
 		char *tmp;
 		kroundup_size_t(size);
 		tmp = (char*)realloc(s->s, size);
-		if (!tmp)
-			return -1;
+		if (!tmp && size)
+		    return -1;
 		s->s = tmp;
 		s->m = size;
 	}
@@ -235,7 +235,7 @@ static inline int kputc(int c, kstring_t *s)
 		return EOF;
 	s->s[s->l++] = c;
 	s->s[s->l] = 0;
-	return c;
+	return (unsigned char)c;
 }
 
 static inline int kputc_(int c, kstring_t *s)
@@ -249,7 +249,7 @@ static inline int kputc_(int c, kstring_t *s)
 static inline int kputsn_(const void *p, size_t l, kstring_t *s)
 {
 	size_t new_sz = s->l + l;
-	if (new_sz < s->l || ks_resize(s, new_sz) < 0)
+	if (new_sz < s->l || ks_resize(s, new_sz ? new_sz : 1) < 0)
 		return EOF;
 	memcpy(s->s + s->l, p, l);
 	s->l += l;
@@ -354,11 +354,11 @@ static inline int kputw(int c, kstring_t *s)
     return kputuw(x, s);
 }
 
-static inline int kputl(long c, kstring_t *s)
+static inline int kputll(long long c, kstring_t *s)
 {
 	char buf[32];
 	int i, l = 0;
-	unsigned long x = c;
+	unsigned long long x = c;
 	if (c < 0) x = -x;
 	do { buf[l++] = x%10 + '0'; x /= 10; } while (x > 0);
 	if (c < 0) buf[l++] = '-';
@@ -367,6 +367,10 @@ static inline int kputl(long c, kstring_t *s)
 	for (i = l - 1; i >= 0; --i) s->s[s->l++] = buf[i];
 	s->s[s->l] = 0;
 	return 0;
+}
+
+static inline int kputl(long c, kstring_t *s) {
+    return kputll(c, s);
 }
 
 /*

@@ -162,7 +162,7 @@ void BCFOrderedWriter::write(bcf1_t *v)
 
                 if (i==buffer.end())
                 {
-                    int32_t cutoff_pos1 =  std::max(bcf_get_pos1(buffer.front())-window,1);
+                    int32_t cutoff_pos1 =  std::max((int32_t) bcf_get_pos1(buffer.front())-window,1);
                     if (bcf_get_pos1(v)<cutoff_pos1)
                     {
                         fprintf(stderr, "[%s:%d %s] Might not be sorted for window size %d at current record %s:%d < %d (%d [last record] - %d), please increase window size to at least %d.\n",
@@ -172,10 +172,10 @@ void BCFOrderedWriter::write(bcf1_t *v)
                                           window,
                                           bcf_get_chrom(hdr, v),
                                           bcf_get_pos1(v),
-                                          cutoff_pos1,
-                                          bcf_get_pos1(buffer.front()),
-                                          window,
-                                          bcf_get_pos1(buffer.front())-bcf_get_pos1(v)+1);
+                                          (int32_t) cutoff_pos1,
+                                          (int32_t) bcf_get_pos1(buffer.front()),
+                                          (int32_t) window,
+                                          ((int32_t) bcf_get_pos1(buffer.front()))-bcf_get_pos1(v)+1);
                     }
                 }
 
@@ -272,7 +272,7 @@ void BCFOrderedWriter::flush(bool force)
     {
         if (buffer.size()>1)
         {
-            int32_t cutoff_pos1 =  std::max(bcf_get_pos1(buffer.front())-window,1);
+            int32_t cutoff_pos1 =  std::max((int32_t) bcf_get_pos1(buffer.front())-window,1);
 
             while (buffer.size()>1)
             {
