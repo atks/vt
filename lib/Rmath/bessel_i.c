@@ -488,8 +488,8 @@ L230:
 	    /* No need to check for underflow */
 	    halfx = .5 * *x;
 #else
-	    if (*x > enmten_BESS) */
-		halfx = .5 * *x;
+	    if (*x > enmten_BESS) 
+			halfx = .5 * *x;
 	    else
 	    	halfx = 0.;
 #endif
