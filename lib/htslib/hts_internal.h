@@ -1,6 +1,6 @@
 /*  hts_internal.h -- internal functions; not part of the public API.
 
-    Copyright (C) 2015-2016 Genome Research Ltd.
+    Copyright (C) 2015-2016, 2018-2019 Genome Research Ltd.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -46,8 +46,20 @@ struct hts_json_token {
 
 struct cram_fd;
 
+/*
+ * Check the existence of a local index file using part of the alignment file name.
+ * The order is alignment.bam.csi, alignment.csi, alignment.bam.bai, alignment.bai
+ * @param fn    - pointer to the file name
+ * @param fnidx - pointer to the index file name placeholder
+ * @return        1 for success, 0 for failure
+ */
+int hts_idx_check_local(const char *fn, int fmt, char **fnidx);
+
 // Retrieve the name of the index file and also download it, if it is remote
 char *hts_idx_getfn(const char *fn, const char *ext);
+
+// Retrieve the name of the index file, but do not download it, if it is remote
+char *hts_idx_locatefn(const char *fn, const char *ext);
 
 // Used for on-the-fly indexing.  See the comments in hts.c.
 void hts_idx_amend_last(hts_idx_t *idx, uint64_t offset);
@@ -95,6 +107,18 @@ void close_plugin(void *plugin);
  *        -1 on failure
  */
 int bgzf_idx_push(BGZF *fp, hts_idx_t *hidx, int tid, hts_pos_t beg, hts_pos_t end, uint64_t offset, int is_mapped);
+
+/*
+ * bgzf analogue to hts_idx_amend_last.
+ *
+ * This is needed when multi-threading and writing indices on the fly.
+ * At the point of writing a record we know the virtual offset for start
+ * and end, but that end virtual offset may be the end of the current
+ * block.  In standard indexing our end virtual offset becomes the start
+ * of the next block.  Thus to ensure bit for bit compatibility we
+ * detect this boundary case and fix it up here.
+ */
+void bgzf_idx_amend_last(BGZF *fp, hts_idx_t *hidx, uint64_t offset);
 
 #ifdef __cplusplus
 }

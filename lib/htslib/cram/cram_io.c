@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2012-2016 Genome Research Ltd.
+Copyright (c) 2012-2019 Genome Research Ltd.
 Author: James Bonfield <jkb@sanger.ac.uk>
 
 Redistribution and use in source and binary forms, with or without
@@ -39,6 +39,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * - Reference sequence handling
  */
 
+#define HTS_BUILDING_LIBRARY // Enables HTSLIB_EXPORT, see htslib/hts_defs.h
 #include <config.h>
 
 #include <stdio.h>
@@ -536,8 +537,8 @@ static int int32_decode(cram_fd *fd, int32_t *val) {
  *         -1 on failure
  */
 static int int32_encode(cram_fd *fd, int32_t val) {
-    val = le_int4(val);
-    if (4 != hwrite(fd->fp, &val, 4))
+    uint32_t v = le_int4(val);
+    if (4 != hwrite(fd->fp, &v, 4))
         return -1;
 
     return 4;
@@ -574,6 +575,95 @@ int int32_put_blk(cram_block *b, int32_t val) {
  block_err:
     return -1;
 }
+
+#ifdef HAVE_LIBDEFLATE
+/* ----------------------------------------------------------------------
+ * libdeflate compression code, with interface to match
+ * zlib_mem_{in,de}flate for simplicity elsewhere.
+ */
+
+// Named the same as the version that uses zlib as we always use libdeflate for
+// decompression when available.
+char *zlib_mem_inflate(char *cdata, size_t csize, size_t *size) {
+    struct libdeflate_decompressor *z = libdeflate_alloc_decompressor();
+    if (!z) {
+        hts_log_error("Call to libdeflate_alloc_decompressor failed");
+        return NULL;
+    }
+
+    uint8_t *data = NULL, *new_data;
+    if (!*size)
+        *size = csize*2;
+    for(;;) {
+        new_data = realloc(data, *size);
+        if (!new_data) {
+            hts_log_error("Memory allocation failure");
+            goto fail;
+        }
+        data = new_data;
+
+        int ret = libdeflate_gzip_decompress(z, cdata, csize, data, *size, size);
+
+        // Auto grow output buffer size if needed and try again.
+        // Fortunately for all bar one call of this we know the size already.
+        if (ret == LIBDEFLATE_INSUFFICIENT_SPACE) {
+            (*size) *= 1.5;
+            continue;
+        }
+
+        if (ret != LIBDEFLATE_SUCCESS) {
+            hts_log_error("Inflate operation failed: %d", ret);
+            goto fail;
+        } else {
+            break;
+        }
+    }
+
+    libdeflate_free_decompressor(z);
+    return (char *)data;
+
+ fail:
+    libdeflate_free_decompressor(z);
+    free(data);
+    return NULL;
+}
+
+// Named differently as we use both zlib/libdeflate for compression.
+static char *libdeflate_deflate(char *data, size_t size, size_t *cdata_size,
+                                int level, int strat) {
+    level = level > 0 ? level : 6; // libdeflate doesn't honour -1 as default
+    level *= 1.2; // NB levels go up to 12 here; 5 onwards is +1
+    if (level >= 8) level += level/8; // 8->10, 9->12
+    if (level > 12) level = 12;
+
+    struct libdeflate_compressor *z = libdeflate_alloc_compressor(level);
+    if (!z) {
+        hts_log_error("Call to libdeflate_alloc_compressor failed");
+        return NULL;
+    }
+
+    unsigned char *cdata = NULL; /* Compressed output */
+    size_t cdata_alloc;
+    cdata = malloc(cdata_alloc = size*1.05+100);
+    if (!cdata) {
+        hts_log_error("Memory allocation failure");
+        libdeflate_free_compressor(z);
+        return NULL;
+    }
+
+    *cdata_size = libdeflate_gzip_compress(z, data, size, cdata, cdata_alloc);
+    libdeflate_free_compressor(z);
+
+    if (*cdata_size == 0) {
+        hts_log_error("Call to libdeflate_gzip_compress failed");
+        free(cdata);
+        return NULL;
+    }
+
+    return (char *)cdata;
+}
+
+#else
 
 /* ----------------------------------------------------------------------
  * zlib compression code - from Gap5's tg_iface_g.c
@@ -642,6 +732,7 @@ char *zlib_mem_inflate(char *cdata, size_t csize, size_t *size) {
     *size = s.total_out;
     return (char *)data;
 }
+#endif
 
 static char *zlib_mem_deflate(char *data, size_t size, size_t *cdata_size,
                               int level, int strat) {
@@ -884,13 +975,10 @@ cram_block *cram_read_block(cram_fd *fd) {
             return NULL;
         }
 
-        crc = crc32(crc, b->data ? b->data : (uc *)"", b->alloc);
-        if (crc != b->crc32) {
-            hts_log_error("Block CRC32 failure");
-            free(b->data);
-            free(b);
-            return NULL;
-        }
+        b->crc32_checked = fd->ignore_md5;
+        b->crc_part = crc;
+    } else {
+        b->crc32_checked = 1; // CRC not present
     }
 
     b->orig_method = b->method;
@@ -991,6 +1079,15 @@ int cram_uncompress_block(cram_block *b) {
     char *uncomp;
     size_t uncomp_size = 0;
 
+    if (b->crc32_checked == 0) {
+        uint32_t crc = crc32(b->crc_part, b->data ? b->data : (uc *)"", b->alloc);
+        b->crc32_checked = 1;
+        if (crc != b->crc32) {
+            hts_log_error("Block CRC32 failure");
+            return -1;
+        }
+    }
+
     if (b->uncomp_size == 0) {
         // blank block
         b->method = RAW;
@@ -1003,7 +1100,9 @@ int cram_uncompress_block(cram_block *b) {
         return 0;
 
     case GZIP:
+        uncomp_size = b->uncomp_size;
         uncomp = zlib_mem_inflate((char *)b->data, b->comp_size, &uncomp_size);
+
         if (!uncomp)
             return -1;
         if (uncomp_size != b->uncomp_size) {
@@ -1087,12 +1186,25 @@ int cram_uncompress_block(cram_block *b) {
 }
 
 static char *cram_compress_by_method(char *in, size_t in_size,
-                                     size_t *out_size,
+                                     int content_id, size_t *out_size,
                                      enum cram_block_method method,
                                      int level, int strat) {
     switch (method) {
     case GZIP:
+        // Read names bizarrely benefit from zlib over libdeflate for
+        // mid-range compression levels.  Focusing purely of ratio or
+        // speed, libdeflate still wins.  It also seems to win for
+        // other data series too.
+        //
+        // Eg RN at level 5;  libdeflate=55.9MB  zlib=51.6MB
+#ifdef HAVE_LIBDEFLATE
+        if (content_id == DS_RN && level >= 4 && level <= 7)
+            return zlib_mem_deflate(in, in_size, out_size, level, strat);
+        else
+            return libdeflate_deflate(in, in_size, out_size, level, strat);
+#else
         return zlib_mem_deflate(in, in_size, out_size, level, strat);
+#endif
 
     case BZIP2: {
 #ifdef HAVE_LIBBZ2
@@ -1228,7 +1340,7 @@ int cram_compress_block(cram_fd *fd, cram_block *b, cram_metrics *metrics,
 
             if (method & (1<<GZIP_RLE)) {
                 c = cram_compress_by_method((char *)b->data, b->uncomp_size,
-                                            &sz_gz_rle, GZIP, 1, Z_RLE);
+                                            b->content_id, &sz_gz_rle, GZIP, 1, Z_RLE);
                 if (c && sz_best > sz_gz_rle) {
                     sz_best = sz_gz_rle;
                     method_best = GZIP_RLE;
@@ -1246,7 +1358,7 @@ int cram_compress_block(cram_fd *fd, cram_block *b, cram_metrics *metrics,
 
             if (method & (1<<GZIP)) {
                 c = cram_compress_by_method((char *)b->data, b->uncomp_size,
-                                            &sz_gz_def, GZIP, level,
+                                            b->content_id, &sz_gz_def, GZIP, level,
                                             Z_FILTERED);
                 if (c && sz_best > sz_gz_def) {
                     sz_best = sz_gz_def;
@@ -1265,7 +1377,7 @@ int cram_compress_block(cram_fd *fd, cram_block *b, cram_metrics *metrics,
 
             if (method & (1<<RANS0)) {
                 c = cram_compress_by_method((char *)b->data, b->uncomp_size,
-                                            &sz_rans0, RANS0, 0, 0);
+                                            b->content_id, &sz_rans0, RANS0, 0, 0);
                 if (c && sz_best > sz_rans0) {
                     sz_best = sz_rans0;
                     method_best = RANS0;
@@ -1281,7 +1393,7 @@ int cram_compress_block(cram_fd *fd, cram_block *b, cram_metrics *metrics,
 
             if (method & (1<<RANS1)) {
                 c = cram_compress_by_method((char *)b->data, b->uncomp_size,
-                                            &sz_rans1, RANS1, 0, 0);
+                                            b->content_id, &sz_rans1, RANS1, 0, 0);
                 if (c && sz_best > sz_rans1) {
                     sz_best = sz_rans1;
                     method_best = RANS1;
@@ -1297,7 +1409,7 @@ int cram_compress_block(cram_fd *fd, cram_block *b, cram_metrics *metrics,
 
             if (method & (1<<BZIP2)) {
                 c = cram_compress_by_method((char *)b->data, b->uncomp_size,
-                                            &sz_bzip2, BZIP2, level, 0);
+                                            b->content_id, &sz_bzip2, BZIP2, level, 0);
                 if (c && sz_best > sz_bzip2) {
                     sz_best = sz_bzip2;
                     method_best = BZIP2;
@@ -1313,7 +1425,7 @@ int cram_compress_block(cram_fd *fd, cram_block *b, cram_metrics *metrics,
 
             if (method & (1<<LZMA)) {
                 c = cram_compress_by_method((char *)b->data, b->uncomp_size,
-                                            &sz_lzma, LZMA, level, 0);
+                                            b->content_id, &sz_lzma, LZMA, level, 0);
                 if (c && sz_best > sz_lzma) {
                     sz_best = sz_lzma;
                     method_best = LZMA;
@@ -1463,7 +1575,7 @@ int cram_compress_block(cram_fd *fd, cram_block *b, cram_metrics *metrics,
 
             pthread_mutex_unlock(&fd->metrics_lock);
             comp = cram_compress_by_method((char *)b->data, b->uncomp_size,
-                                           &comp_size, method,
+                                           b->content_id, &comp_size, method,
                                            level, strat);
             if (!comp)
                 return -1;
@@ -1476,7 +1588,7 @@ int cram_compress_block(cram_fd *fd, cram_block *b, cram_metrics *metrics,
     } else {
         // no cached metrics, so just do zlib?
         comp = cram_compress_by_method((char *)b->data, b->uncomp_size,
-                                       &comp_size, GZIP, level, Z_FILTERED);
+                                       b->content_id, &comp_size, GZIP, level, Z_FILTERED);
         if (!comp) {
             hts_log_error("Compression failed");
             return -1;
@@ -1652,7 +1764,7 @@ static refs_t *refs_create(void) {
 static BGZF *bgzf_open_ref(char *fn, char *mode, int is_md5) {
     BGZF *fp;
 
-    if (!is_md5) {
+    if (!is_md5 && !hisremote(fn)) {
         char fai_file[PATH_MAX];
 
         snprintf(fai_file, PATH_MAX, "%s.fai", fn);
@@ -1685,8 +1797,7 @@ static BGZF *bgzf_open_ref(char *fn, char *mode, int is_md5) {
  *         NULL on failure
  */
 static refs_t *refs_load_fai(refs_t *r_orig, const char *fn, int is_err) {
-    struct stat sb;
-    FILE *fp = NULL;
+    hFILE *fp = NULL;
     char fai_fn[PATH_MAX];
     char line[8192];
     refs_t *r = r_orig;
@@ -1699,41 +1810,46 @@ static refs_t *refs_load_fai(refs_t *r_orig, const char *fn, int is_err) {
         if (!(r = refs_create()))
             goto err;
 
-    /* Open reference, for later use */
-    if (stat(fn, &sb) != 0) {
-        if (is_err)
-            perror(fn);
-        goto err;
-    }
-
     if (r->fp)
         if (bgzf_close(r->fp) != 0)
             goto err;
     r->fp = NULL;
 
-    if (!(r->fn = string_dup(r->pool, fn)))
+    /* Look for a FASTA##idx##FAI format */
+    char *fn_delim = strstr(fn, HTS_IDX_DELIM);
+    if (fn_delim) {
+        if (!(r->fn = string_ndup(r->pool, fn, fn_delim - fn)))
+            goto err;
+        fn_delim += strlen(HTS_IDX_DELIM);
+        snprintf(fai_fn, PATH_MAX, "%s", fn_delim);
+    } else {
+        /* An index file was provided, instead of the actual reference file */
+        if (fn_l > 4 && strcmp(&fn[fn_l-4], ".fai") == 0) {
+            if (!r->fn) {
+                if (!(r->fn = string_ndup(r->pool, fn, fn_l-4)))
+                    goto err;
+            }
+            snprintf(fai_fn, PATH_MAX, "%s", fn);
+        } else {
+        /* Only the reference file provided. Get the index file name from it */
+            if (!(r->fn = string_dup(r->pool, fn)))
+                goto err;
+            sprintf(fai_fn, "%.*s.fai", PATH_MAX-5, fn);
+        }
+    }
+
+    if (!(r->fp = bgzf_open_ref(r->fn, "r", 0))) {
+        hts_log_error("Failed to open reference file '%s'", r->fn);
         goto err;
+    }
 
-    if (fn_l > 4 && strcmp(&fn[fn_l-4], ".fai") == 0)
-        r->fn[fn_l-4] = 0;
-
-    if (!(r->fp = bgzf_open_ref(r->fn, "r", 0)))
-        goto err;
-
-    /* Parse .fai file and load meta-data */
-    sprintf(fai_fn, "%.*s.fai", PATH_MAX-5, r->fn);
-
-    if (stat(fai_fn, &sb) != 0) {
+    if (!(fp = hopen(fai_fn, "r"))) {
+        hts_log_error("Failed to open index file '%s'", fai_fn);
         if (is_err)
             perror(fai_fn);
         goto err;
     }
-    if (!(fp = fopen(fai_fn, "r"))) {
-        if (is_err)
-            perror(fai_fn);
-        goto err;
-    }
-    while (fgets(line, 8192, fp) != NULL) {
+    while (hgets(line, 8192, fp) != NULL) {
         ref_entry *e = malloc(sizeof(*e));
         char *cp;
         int n;
@@ -1810,12 +1926,13 @@ static refs_t *refs_load_fai(refs_t *r_orig, const char *fn, int is_err) {
         r->nref = ++id;
     }
 
-    fclose(fp);
+    if(hclose(fp) < 0)
+        goto err;
     return r;
 
  err:
     if (fp)
-        fclose(fp);
+        hclose_abruptly(fp);
 
     if (!r_orig)
         refs_free(r);
@@ -2353,7 +2470,9 @@ static int cram_populate_ref(cram_fd *fd, int id, ref_entry *r) {
 }
 
 static void cram_ref_incr_locked(refs_t *r, int id) {
-    RP("%d INC REF %d, %d %p\n", gettid(), id, (int)(id>=0?r->ref_id[id]->count+1:-999), id>=0?r->ref_id[id]->seq:(char *)1);
+    RP("%d INC REF %d, %d %p\n", gettid(), id,
+       (int)(id>=0 && r->ref_id[id]?r->ref_id[id]->count+1:-999),
+       id>=0 && r->ref_id[id]?r->ref_id[id]->seq:(char *)1);
 
     if (id < 0 || !r->ref_id[id] || !r->ref_id[id]->seq)
         return;
@@ -2371,10 +2490,11 @@ void cram_ref_incr(refs_t *r, int id) {
 }
 
 static void cram_ref_decr_locked(refs_t *r, int id) {
-    RP("%d DEC REF %d, %d %p\n", gettid(), id, (int)(id>=0?r->ref_id[id]->count-1:-999), id>=0?r->ref_id[id]->seq:(char *)1);
+    RP("%d DEC REF %d, %d %p\n", gettid(), id,
+       (int)(id>=0 && r->ref_id[id]?r->ref_id[id]->count-1:-999),
+       id>=0 && r->ref_id[id]?r->ref_id[id]->seq:(char *)1);
 
     if (id < 0 || !r->ref_id[id] || !r->ref_id[id]->seq) {
-        assert(r->ref_id[id]->count >= 0);
         return;
     }
 
@@ -2526,7 +2646,7 @@ ref_entry *cram_ref_load(refs_t *r, int id, int is_md5) {
 
     RP("%d Loaded ref %d (%d..%d) = %p\n", gettid(), id, start, end, seq);
 
-    RP("%d INC REF %d, %d\n", gettid(), id, (int)(e->count+1));
+    RP("%d INC REF %d, %"PRId64"\n", gettid(), id, (e->count+1));
     e->seq = seq;
     e->mf = NULL;
     e->count++;
@@ -2535,7 +2655,7 @@ ref_entry *cram_ref_load(refs_t *r, int id, int is_md5) {
      * Also keep track of last used ref so incr/decr loops on the same
      * sequence don't cause load/free loops.
      */
-    RP("%d cram_ref_load INCR %d => %d\n", gettid(), id, e->count+1);
+    RP("%d cram_ref_load INCR %d => %"PRId64"\n", gettid(), id, e->count+1);
     r->last = e;
     e->count++;
 
@@ -2826,7 +2946,7 @@ cram_container *cram_new_container(int nrec, int nslice) {
 
     c->bams = NULL;
 
-    if (!(c->slices = (cram_slice **)calloc(nslice, sizeof(cram_slice *))))
+    if (!(c->slices = calloc(nslice != 0 ? nslice : 1, sizeof(cram_slice *))))
         goto err;
     c->slice = NULL;
 
@@ -3355,8 +3475,69 @@ static int cram_flush_result(cram_fd *fd) {
     return ret;
 }
 
+// Note: called while metrics_lock is held.
+// Will be left in this state too, but may temporarily unlock.
+void reset_metrics(cram_fd *fd) {
+    int i;
+
+    if (fd->pool) {
+        // If multi-threaded we have multiple blocks being
+        // compressed already and several on the to-do list
+        // (fd->rqueue->pending).  It's tricky to reset the
+        // metrics exactly the correct point, so instead we
+        // just flush the pool, reset, and then continue again.
+
+        // Don't bother starting a new trial before then though.
+        for (i = 0; i < DS_END; i++) {
+            cram_metrics *m = fd->m[i];
+            if (!m)
+                continue;
+            m->next_trial = 999;
+        }
+
+        pthread_mutex_unlock(&fd->metrics_lock);
+        hts_tpool_process_flush(fd->rqueue);
+        pthread_mutex_lock(&fd->metrics_lock);
+    }
+
+    for (i = 0; i < DS_END; i++) {
+        cram_metrics *m = fd->m[i];
+        if (!m)
+            continue;
+
+        m->trial = NTRIALS;
+        m->next_trial = TRIAL_SPAN;
+        m->revised_method = 0;
+
+        m->sz_gz_rle = 0;
+        m->sz_gz_def = 0;
+        m->sz_rans0  = 0;
+        m->sz_rans1  = 0;
+        m->sz_bzip2  = 0;
+        m->sz_lzma   = 0;
+    }
+}
+
 int cram_flush_container_mt(cram_fd *fd, cram_container *c) {
     cram_job *j;
+
+    // At the junction of mapped to unmapped data the compression
+    // methods may need to change due to very different statistical
+    // properties; particularly BA if minhash sorted.
+    //
+    // However with threading we'll have several in-flight blocks
+    // arriving out of order.
+    //
+    // So we do one trial reset of NThreads to last for NThreads
+    // duration to get us over this transition period, followed
+    // by another retrial of the usual ntrials & trial span.
+    pthread_mutex_lock(&fd->metrics_lock);
+    if (c->n_mapped < 0.3*c->curr_rec &&
+        fd->last_mapped > 0.7*c->max_rec) {
+        reset_metrics(fd);
+    }
+    fd->last_mapped = c->n_mapped * (c->max_rec+1)/(c->curr_rec+1) ;
+    pthread_mutex_unlock(&fd->metrics_lock);
 
     if (!fd->pool)
         return cram_flush_container(fd, c);
@@ -3671,9 +3852,9 @@ cram_slice *cram_read_slice(cram_fd *fd) {
     for (i = 0; i < n; i++) {
         if (s->block[i]->content_type != EXTERNAL)
             continue;
-        int v = s->block[i]->content_id;
-        if (v < 0 || v >= 256)
-            v = 256 + (v > 0 ? v % 251 : (-v) % 251);
+        uint32_t v = s->block[i]->content_id;
+        if (v >= 256)
+            v = 256 + v % 251;
         s->block_by_id[v] = s->block[i];
     }
 
@@ -3903,6 +4084,15 @@ sam_hdr_t *cram_read_SAM_hdr(cram_fd *fd) {
  */
 static void full_path(char *out, char *in) {
     size_t in_l = strlen(in);
+    if (hisremote(in)) {
+        if (in_l > PATH_MAX) {
+            hts_log_error("Reference path is longer than %d", PATH_MAX);
+            return;
+        }
+        strncpy(out, in, PATH_MAX-1);
+        out[PATH_MAX-1] = 0;
+        return;
+    }
     if (*in == '/' ||
         // Windows paths
         (in_l > 3 && toupper_c(*in) >= 'A'  && toupper_c(*in) <= 'Z' &&

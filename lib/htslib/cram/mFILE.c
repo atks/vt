@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2005-2006, 2008-2009, 2013 Genome Research Ltd.
+Copyright (c) 2005-2006, 2008-2009, 2013, 2015, 2017-2019 Genome Research Ltd.
 Author: James Bonfield <jkb@sanger.ac.uk>
 
 Redistribution and use in source and binary forms, with or without
@@ -28,6 +28,7 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+#define HTS_BUILDING_LIBRARY // Enables HTSLIB_EXPORT, see htslib/hts_defs.h
 #include <config.h>
 
 #include <stdio.h>

@@ -2,7 +2,7 @@
 
    Copyright (c) 2008 Broad Institute / Massachusetts Institute of Technology
                  2011, 2012 Attractive Chaos <attractor@live.co.uk>
-   Copyright (C) 2009, 2013-2017 Genome Research Ltd
+   Copyright (C) 2009, 2013-2019 Genome Research Ltd
 
    Permission is hereby granted, free of charge, to any person obtaining a copy
    of this software and associated documentation files (the "Software"), to deal
@@ -23,6 +23,7 @@
    THE SOFTWARE.
 */
 
+#define HTS_BUILDING_LIBRARY // Enables HTSLIB_EXPORT, see htslib/hts_defs.h
 #include <config.h>
 
 #include <stdio.h>
@@ -34,6 +35,7 @@
 #include <pthread.h>
 #include <sys/types.h>
 #include <inttypes.h>
+#include <zlib.h>
 
 #ifdef HAVE_LIBDEFLATE
 #include <libdeflate.h>
@@ -222,6 +224,40 @@ int bgzf_idx_push(BGZF *fp, hts_idx_t *hidx, int tid, hts_pos_t beg, hts_pos_t e
     pthread_mutex_unlock(&mt->idx_m);
 
     return 0;
+}
+
+/*
+ * bgzf analogue to hts_idx_amend_last.
+ *
+ * This is needed when multi-threading and writing indices on the fly.
+ * At the point of writing a record we know the virtual offset for start
+ * and end, but that end virtual offset may be the end of the current
+ * block.  In standard indexing our end virtual offset becomes the start
+ * of the next block.  Thus to ensure bit for bit compatibility we
+ * detect this boundary case and fix it up here.
+ *
+ * In theory this has no behavioural change, but it also works around
+ * a bug elsewhere which causes bgzf_read to return 0 when our offset
+ * is the end of a block rather than the start of the next.
+ */
+void bgzf_idx_amend_last(BGZF *fp, hts_idx_t *hidx, uint64_t offset) {
+    mtaux_t *mt = fp->mt;
+    if (!mt) {
+        hts_idx_amend_last(hidx, offset);
+        return;
+    }
+
+    pthread_mutex_lock(&mt->idx_m);
+    hts_idx_cache_t *ic = &mt->idx_cache;
+    if (ic->nentries > 0) {
+        hts_idx_cache_entry *e = &ic->e[ic->nentries-1];
+        if ((offset & 0xffff) == 0 && e->offset != 0) {
+            // bumped to next block number
+            e->offset = 0;
+            e->block_number++;
+        }
+    }
+    pthread_mutex_unlock(&mt->idx_m);
 }
 
 static int bgzf_idx_flush(BGZF *fp) {
@@ -1119,7 +1155,21 @@ ssize_t bgzf_read(BGZF *fp, void *data, size_t length)
                 return -1;
             }
             available = fp->block_length - fp->block_offset;
-            if (available <= 0) break;
+            if (available == 0) {
+                if (fp->block_length == 0)
+                    break; // EOF
+
+                // Offset was at end of block (see commit e9863a0)
+                fp->block_address = bgzf_htell(fp);
+                fp->block_offset = fp->block_length = 0;
+                continue;
+            } else if (available < 0) {
+                // Block offset was set to an invalid coordinate
+                hts_log_error("BGZF block offset %d set beyond block size %d",
+                              fp->block_offset, fp->block_length);
+                fp->errcode |= BGZF_ERR_MISUSE;
+                return -1;
+            }
         }
         copy_length = length - bytes_read < available? length - bytes_read : available;
         buffer = (uint8_t*)fp->uncompressed_block;

@@ -1,6 +1,6 @@
 /*  hfile_internal.h -- internal parts of low-level input/output streams.
 
-    Copyright (C) 2013-2016 Genome Research Ltd.
+    Copyright (C) 2013-2016, 2019 Genome Research Ltd.
 
     Author: John Marshall <jm18@sanger.ac.uk>
 
@@ -27,6 +27,7 @@ DEALINGS IN THE SOFTWARE.  */
 
 #include <stdarg.h>
 
+#include "htslib/hts_defs.h"
 #include "htslib/hfile.h"
 
 #include "textutils_internal.h"
@@ -157,6 +158,7 @@ struct hFILE_plugin {
 #define PLUGIN_GLOBAL(identifier,suffix) identifier
 
 /* Plugins must define an entry point with this signature.  */
+HTSLIB_EXPORT
 extern int hfile_plugin_init(struct hFILE_plugin *self);
 
 #else

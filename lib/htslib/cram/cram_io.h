@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2012-2014 Genome Research Ltd.
+Copyright (c) 2012-2019 Genome Research Ltd.
 Author: James Bonfield <jkb@sanger.ac.uk>
 
 Redistribution and use in source and binary forms, with or without
@@ -477,10 +477,11 @@ char *cram_content_type2str(enum cram_content_type t);
 
 static inline cram_block *cram_get_block_by_id(cram_slice *slice, int id) {
   //fprintf(stderr, "%d\t%p\n", id, slice->block_by_id);
-    if (slice->block_by_id && id >= 0 && id < 256) {
-        return slice->block_by_id[id];
+    uint32_t v = id;
+    if (slice->block_by_id && v < 256) {
+        return slice->block_by_id[v];
     } else {
-        int v = 256 + (id > 0 ? id % 251 : (-id) % 251);
+        v = 256 + v % 251;
         if (slice->block_by_id &&
             slice->block_by_id[v] &&
             slice->block_by_id[v]->content_id == id)

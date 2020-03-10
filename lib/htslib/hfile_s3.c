@@ -22,6 +22,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.  */
 
+#define HTS_BUILDING_LIBRARY // Enables HTSLIB_EXPORT, see htslib/hts_defs.h
 #include <config.h>
 
 #include <stdarg.h>
@@ -431,7 +432,7 @@ static int is_escaped(const char *str) {
 
     while (*c != '\0') {
         if (*c == '%' && c[1] != '\0' && c[2] != '\0') {
-            if (isxdigit(c[1]) && isxdigit(c[2])) {
+            if (isxdigit_c(c[1]) && isxdigit_c(c[2])) {
                 escaped = 1;
                 c += 3;
                 continue;
@@ -464,7 +465,7 @@ static int redirect_endpoint_callback(void *auth, long response,
         new_region += strlen("x-amz-bucket-region: ");
         end = new_region;
 
-        while (isalnum(*end) || ispunct(*end)) end++;
+        while (isalnum_c(*end) || ispunct_c(*end)) end++;
 
         *end = 0;
 
@@ -889,19 +890,19 @@ static int query_cmp(const void *p1, const void *p2) {
 /* Query strings must be in alphabetical order for authorisation */
 
 static int order_query_string(kstring_t *qs) {
-    int *query_offset;
+    int *query_offset = NULL;
     int num_queries, i;
-    char **queries;
+    char **queries = NULL;
     kstring_t ordered = {0, 0, NULL};
-    char *escaped;
+    char *escaped = NULL;
+    int ret = -1;
 
     if ((query_offset = ksplit(qs, '&', &num_queries)) == NULL) {
         return -1;
     }
 
-    if ((queries = malloc(num_queries * sizeof(char*))) == NULL) {
-        return -1;
-    }
+    if ((queries = malloc(num_queries * sizeof(char*))) == NULL)
+        goto err;
 
     for (i = 0; i < num_queries; i++) {
         queries[i] = qs->s + query_offset[i];
@@ -917,19 +918,20 @@ static int order_query_string(kstring_t *qs) {
         kputs(queries[i], &ordered);
     }
 
-    if ((escaped = escape_query(ordered.s)) == NULL) {
-        return -1;
-    }
+    if ((escaped = escape_query(ordered.s)) == NULL)
+        goto err;
 
     qs->l = 0;
     kputs(escaped, qs);
 
+    ret = 0;
+ err:
     free(ordered.s);
     free(queries);
     free(query_offset);
     free(escaped);
 
-    return 0;
+    return ret;
 }
 
 
@@ -1243,7 +1245,7 @@ int PLUGIN_GLOBAL(hfile_plugin_init,_s3)(struct hFILE_plugin *self)
 
 #ifdef ENABLE_PLUGINS
     // Embed version string for examination via strings(1) or what(1)
-    static const char id[] = "@(#)hfile_s3 plugin (htslib)\t" HTS_VERSION;
+    static const char id[] = "@(#)hfile_s3 plugin (htslib)\t" HTS_VERSION_TEXT;
     if (hts_verbose >= 9)
         fprintf(stderr, "[M::hfile_s3.init] version %s\n", strchr(id, '\t')+1);
 #endif

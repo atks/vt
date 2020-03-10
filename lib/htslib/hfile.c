@@ -1,6 +1,6 @@
 /*  hfile.c -- buffered low-level input/output streams.
 
-    Copyright (C) 2013-2018 Genome Research Ltd.
+    Copyright (C) 2013-2019 Genome Research Ltd.
 
     Author: John Marshall <jm18@sanger.ac.uk>
 
@@ -22,6 +22,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.  */
 
+#define HTS_BUILDING_LIBRARY // Enables HTSLIB_EXPORT, see htslib/hts_defs.h
 #include <config.h>
 
 #include <stdio.h>
@@ -32,6 +33,13 @@ DEALINGS IN THE SOFTWARE.  */
 #include <limits.h>
 
 #include <pthread.h>
+
+#ifdef ENABLE_PLUGINS
+#if defined(_WIN32) || defined(__CYGWIN__) || defined(__MSYS__)
+#define USING_WINDOWS_PLUGIN_DLLS
+#include <dlfcn.h>
+#endif
+#endif
 
 #include "htslib/hfile.h"
 #include "hfile_internal.h"
@@ -93,7 +101,7 @@ for seek():
    abcdefghijkLMNOPQRSTUVWXYZ------
    ^buffer    ^begin         ^end  ^limit
 */
-
+HTSLIB_EXPORT
 hFILE *hfile_init(size_t struct_size, const char *mode, size_t capacity)
 {
     hFILE *fp = (hFILE *) malloc(struct_size);
@@ -141,6 +149,7 @@ hFILE *hfile_init_fixed(size_t struct_size, const char *mode,
 
 static const struct hFILE_backend mem_backend;
 
+HTSLIB_EXPORT
 void hfile_destroy(hFILE *fp)
 {
     int save = errno;
@@ -190,6 +199,7 @@ static ssize_t refill_buffer(hFILE *fp)
  * Returns 0 on success;
  *        -1 on failure.
  */
+HTSLIB_EXPORT
 int hfile_set_blksize(hFILE *fp, size_t bufsiz) {
     char *buffer;
     ptrdiff_t curr_used;
@@ -212,6 +222,7 @@ int hfile_set_blksize(hFILE *fp, size_t bufsiz) {
 }
 
 /* Called only from hgetc(), when our buffer is empty.  */
+HTSLIB_EXPORT
 int hgetc2(hFILE *fp)
 {
     return (refill_buffer(fp) > 0)? (unsigned char) *(fp->begin++) : EOF;
@@ -293,6 +304,7 @@ ssize_t hpeek(hFILE *fp, void *buffer, size_t nbytes)
 
 /* Called only from hread(); when called, our buffer is empty and nread bytes
    have already been placed in the destination buffer.  */
+HTSLIB_EXPORT
 ssize_t hread2(hFILE *fp, void *destv, size_t nbytes, size_t nread)
 {
     const size_t capacity = fp->limit - fp->buffer;
@@ -362,6 +374,7 @@ int hflush(hFILE *fp)
 }
 
 /* Called only from hputc(), when our buffer is already full.  */
+HTSLIB_EXPORT
 int hputc2(int c, hFILE *fp)
 {
     if (flush_buffer(fp) < 0) return EOF;
@@ -373,6 +386,7 @@ int hputc2(int c, hFILE *fp)
    full and ncopied bytes from the source have already been copied to our
    buffer; or completely empty, ncopied is zero and totalbytes is greater than
    the buffer size.  */
+HTSLIB_EXPORT
 ssize_t hwrite2(hFILE *fp, const void *srcv, size_t totalbytes, size_t ncopied)
 {
     const char *src = (const char *) srcv;
@@ -400,6 +414,7 @@ ssize_t hwrite2(hFILE *fp, const void *srcv, size_t totalbytes, size_t ncopied)
 }
 
 /* Called only from hputs(), when our buffer is already full.  */
+HTSLIB_EXPORT
 int hputs2(const char *text, size_t totalbytes, size_t ncopied, hFILE *fp)
 {
     return (hwrite2(fp, text, totalbytes, ncopied) >= 0)? 0 : EOF;
@@ -704,6 +719,7 @@ static hFILE *hopen_fd_stdinout(const char *mode)
     return hdopen(fd, mode);
 }
 
+HTSLIB_EXPORT
 int hfile_oflags(const char *mode)
 {
     int rdwr = 0, flags = 0;
@@ -897,10 +913,54 @@ static inline int priority(const struct hFILE_scheme_handler *handler)
     return handler->priority % 1000;
 }
 
+#ifdef USING_WINDOWS_PLUGIN_DLLS
+/*
+ * Work-around for Windows plug-in dlls where the plug-in could be
+ * using a different HTSlib library to the executable (for example
+ * because the latter was build against a static libhts.a).  When this
+ * happens, the plug-in can call the wrong copy of hfile_add_scheme_handler().
+ * If this is detected, it calls this function which attempts to fix the
+ * problem by redirecting to the hfile_add_scheme_handler() in the main
+ * executable.
+ */
+static int try_exe_add_scheme_handler(const char *scheme,
+                                      const struct hFILE_scheme_handler *handler)
+{
+    static void (*add_scheme_handler)(const char *scheme,
+                                      const struct hFILE_scheme_handler *handler);
+    if (!add_scheme_handler) {
+        // dlopen the main executable and resolve hfile_add_scheme_handler
+        void *exe_handle = dlopen(NULL, RTLD_LAZY);
+        if (!exe_handle) return -1;
+        *(void **) (&add_scheme_handler) = dlsym(exe_handle, "hfile_add_scheme_handler");
+        dlclose(exe_handle);
+    }
+    // Check that the symbol was obtained and isn't the one in this copy
+    // of the library (to avoid infinite recursion)
+    if (!add_scheme_handler || add_scheme_handler == hfile_add_scheme_handler)
+        return -1;
+    add_scheme_handler(scheme, handler);
+    return 0;
+}
+#else
+static int try_exe_add_scheme_handler(const char *scheme,
+                                      const struct hFILE_scheme_handler *handler)
+{
+    return -1;
+}
+#endif
+
+HTSLIB_EXPORT
 void hfile_add_scheme_handler(const char *scheme,
                               const struct hFILE_scheme_handler *handler)
 {
     int absent;
+    if (!schemes) {
+        if (try_exe_add_scheme_handler(scheme, handler) != 0) {
+            hts_log_warning("Couldn't register scheme handler for %s", scheme);
+        }
+        return;
+    }
     khint_t k = kh_put(scheme_string, schemes, scheme, &absent);
     if (absent || priority(handler) > priority(kh_value(schemes, k))) {
         kh_value(schemes, k) = handler;
@@ -1043,7 +1103,10 @@ hFILE *hopen(const char *fname, const char *mode, ...)
     else return hopen_fd(fname, mode);
 }
 
+HTSLIB_EXPORT
 int hfile_always_local (const char *fname) { return 0; }
+
+HTSLIB_EXPORT
 int hfile_always_remote(const char *fname) { return 1; }
 
 int hisremote(const char *fname)
@@ -1072,7 +1135,8 @@ char *haddextension(struct kstring_t *buffer, const char *filename,
 
     if (find_scheme_handler(filename)) {
         // URL, so alter extensions before any trailing query or fragment parts
-        trailing = filename + strcspn(filename, "?#");
+        // Allow # symbols in s3 URLs
+        trailing = filename + ((strncmp(filename, "s3://", 5) && strncmp(filename, "s3+http://", 10) && strncmp(filename, "s3+https://", 11))  ? strcspn(filename, "?#") : strcspn(filename, "?"));
     }
     else {
         // Local path, so alter extensions at the end of the filename

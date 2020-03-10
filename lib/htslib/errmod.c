@@ -1,7 +1,7 @@
 /*  errmod.c -- revised MAQ error model.
 
     Copyright (C) 2010 Broad Institute.
-    Copyright (C) 2012, 2013, 2016 Genome Research Ltd.
+    Copyright (C) 2012, 2013, 2016-2017, 2019 Genome Research Ltd.
 
     Author: Heng Li <lh3@sanger.ac.uk>
 
@@ -23,6 +23,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.  */
 
+#define HTS_BUILDING_LIBRARY // Enables HTSLIB_EXPORT, see htslib/hts_defs.h
 #include <config.h>
 
 #include <math.h>

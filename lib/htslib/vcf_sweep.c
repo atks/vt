@@ -1,6 +1,6 @@
 /*  vcf_sweep.c -- forward/reverse sweep API.
 
-    Copyright (C) 2013 Genome Research Ltd.
+    Copyright (C) 2013-2014, 2019 Genome Research Ltd.
 
     Author: Petr Danecek <pd3@sanger.ac.uk>
 
@@ -22,6 +22,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.  */
 
+#define HTS_BUILDING_LIBRARY // Enables HTSLIB_EXPORT, see htslib/hts_defs.h
 #include <config.h>
 
 #include "htslib/vcf_sweep.h"

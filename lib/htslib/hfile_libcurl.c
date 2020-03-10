@@ -22,6 +22,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.  */
 
+#define HTS_BUILDING_LIBRARY // Enables HTSLIB_EXPORT, see htslib/hts_defs.h
 #include <config.h>
 
 #include <stdarg.h>
@@ -699,8 +700,19 @@ static int wait_perform(hFILE_libcurl *fp)
                 timeout = 10000;  // as recommended by curl_multi_timeout(3)
             }
         }
-        if (maxfd < 0 && timeout > 100)
-            timeout = 100; // as recommended by curl_multi_fdset(3)
+        if (maxfd < 0) {
+            if (timeout > 100)
+                timeout = 100; // as recommended by curl_multi_fdset(3)
+#ifdef _WIN32
+            /* Windows ignores the first argument of select, so calling select
+             * with maxfd=-1 does not give the expected result of sleeping for
+             * timeout milliseconds in the conditional block below.
+             * So sleep here and skip the next block.
+             */
+            Sleep(timeout);
+            timeout = 0;
+#endif
+        }
 
         if (timeout > 0) {
             struct timeval tval;
@@ -1435,7 +1447,8 @@ int PLUGIN_GLOBAL(hfile_plugin_init,_libcurl)(struct hFILE_plugin *self)
 
 #ifdef ENABLE_PLUGINS
     // Embed version string for examination via strings(1) or what(1)
-    static const char id[] = "@(#)hfile_libcurl plugin (htslib)\t" HTS_VERSION;
+    static const char id[] =
+        "@(#)hfile_libcurl plugin (htslib)\t" HTS_VERSION_TEXT;
     const char *version = strchr(id, '\t')+1;
 #else
     const char *version = hts_version();

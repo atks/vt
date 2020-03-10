@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2012-2013 Genome Research Ltd.
+Copyright (c) 2012-2019 Genome Research Ltd.
 Author: James Bonfield <jkb@sanger.ac.uk>
 
 Redistribution and use in source and binary forms, with or without
@@ -28,6 +28,7 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+#define HTS_BUILDING_LIBRARY // Enables HTSLIB_EXPORT, see htslib/hts_defs.h
 #include <config.h>
 
 #include <stdio.h>
@@ -44,6 +45,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "cram/cram.h"
 #include "cram/os.h"
+#include "sam_internal.h" // for nibble2base
 #include "htslib/hts.h"
 #include "htslib/hts_endian.h"
 
@@ -546,7 +548,8 @@ cram_block *cram_encode_slice_header(cram_fd *fd, cram_slice *s) {
     if (!b)
         return NULL;
 
-    if (NULL == (cp = buf = malloc(16+5*(8+s->hdr->num_blocks)))) {
+    cp = buf = malloc(16+5*(8+s->hdr->num_blocks));
+    if (NULL == buf) {
         cram_free_block(b);
         return NULL;
     }
@@ -893,10 +896,9 @@ static int cram_compress_slice(cram_fd *fd, cram_container *c, cram_slice *s) {
     }
 
     // NAME: best is generally xz, bzip2, zlib then rans1
-    // It benefits well from a little bit extra compression level.
     if (cram_compress_block(fd, s->block[DS_RN], fd->m[DS_RN],
                             method & ~(1<<RANS0 | 1<<GZIP_RLE),
-                            MIN(9,level)))
+                            level))
         return -1;
 
     // NS shows strong local correlation as rearrangements are localised
@@ -1774,11 +1776,7 @@ int cram_encode_container(cram_fd *fd, cram_container *c) {
         h->ref_seq_start = c->ref_seq_start;
         h->ref_seq_span  = c->ref_seq_span;
         h->num_records   = c->num_records;
-
-        h->mapped_qs_included = 0;   // fixme
-        h->unmapped_qs_included = 0; // fixme
         h->AP_delta = c->pos_sorted;
-        // h->...  fixme
         memcpy(h->substitution_matrix, CRAM_SUBST_MATRIX, 20);
 
         if (!(c_hdr = cram_encode_compression_header(fd, c, h)))
@@ -2633,13 +2631,9 @@ static cram_container *cram_next_container(cram_fd *fd, bam_seq_t *b) {
                      c->ref_seq_start + c->ref_seq_span -1);
 
         /* Encode slices */
-        if (fd->pool) {
-            if (-1 == cram_flush_container_mt(fd, c))
-                return NULL;
-        } else {
-            if (-1 == cram_flush_container(fd, c))
-                return NULL;
-
+        if (-1 == cram_flush_container_mt(fd, c))
+            return NULL;
+        if (!fd->pool) {
             // Move to sep func, as we need cram_flush_container for
             // the closing phase to flush the partial container.
             for (i = 0; i < c->max_slice; i++) {
@@ -2683,46 +2677,9 @@ static cram_container *cram_next_container(cram_fd *fd, bam_seq_t *b) {
 
     c->curr_rec = 0;
     c->s_num_bases = 0;
+    c->n_mapped = 0;
 
     return c;
-}
-
-/*
- * Convert a nibble encoded BAM sequence to a string of bases.
- *
- * We do this 2 bp at a time for speed. Equiv to:
- *
- * for (i = 0; i < len; i++)
- *    seq[i] = seq_nt16_str[bam_seqi(nib, i)];
- */
-static void nibble2base(uint8_t *nib, char *seq, int len) {
-    static const char code2base[512] =
-        "===A=C=M=G=R=S=V=T=W=Y=H=K=D=B=N"
-        "A=AAACAMAGARASAVATAWAYAHAKADABAN"
-        "C=CACCCMCGCRCSCVCTCWCYCHCKCDCBCN"
-        "M=MAMCMMMGMRMSMVMTMWMYMHMKMDMBMN"
-        "G=GAGCGMGGGRGSGVGTGWGYGHGKGDGBGN"
-        "R=RARCRMRGRRRSRVRTRWRYRHRKRDRBRN"
-        "S=SASCSMSGSRSSSVSTSWSYSHSKSDSBSN"
-        "V=VAVCVMVGVRVSVVVTVWVYVHVKVDVBVN"
-        "T=TATCTMTGTRTSTVTTTWTYTHTKTDTBTN"
-        "W=WAWCWMWGWRWSWVWTWWWYWHWKWDWBWN"
-        "Y=YAYCYMYGYRYSYVYTYWYYYHYKYDYBYN"
-        "H=HAHCHMHGHRHSHVHTHWHYHHHKHDHBHN"
-        "K=KAKCKMKGKRKSKVKTKWKYKHKKKDKBKN"
-        "D=DADCDMDGDRDSDVDTDWDYDHDKDDDBDN"
-        "B=BABCBMBGBRBSBVBTBWBYBHBKBDBBBN"
-        "N=NANCNMNGNRNSNVNTNWNYNHNKNDNBNN";
-
-    int i, len2 = len/2;
-    seq[0] = 0;
-
-    for (i = 0; i < len2; i++)
-        // Note size_t cast helps gcc optimiser.
-        memcpy(&seq[i*2], &code2base[(size_t)nib[i]*2], 2);
-
-    if ((i *= 2) < len)
-        seq[i] = seq_nt16_str[bam_seqi(nib, i)];
 }
 
 /*
@@ -3428,6 +3385,7 @@ int cram_put_bam_seq(cram_fd *fd, bam_seq_t *b) {
     c->curr_rec++;
     c->curr_c_rec++;
     c->s_num_bases += bam_seq_len(b);
+    c->n_mapped += (bam_flag(b) & BAM_FUNMAP) ? 0 : 1;
     fd->record_counter++;
 
     return 0;

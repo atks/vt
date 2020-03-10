@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2013-2018 Genome Research Ltd.
+Copyright (c) 2013-2019 Genome Research Ltd.
 Authors: James Bonfield <jkb@sanger.ac.uk>, Valeriu Ohan <vo2@sanger.ac.uk>
 
 Redistribution and use in source and binary forms, with or without
@@ -53,7 +53,12 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 extern "C" {
 #endif
 
-#define TYPEKEY(a) (((a)[0]<<8)|((a)[1]))
+/*! Make a single integer out of a two-letter type code */
+static inline khint32_t TYPEKEY(const char *type) {
+    unsigned int u0 = (unsigned char) type[0];
+    unsigned int u1 = (unsigned char) type[1];
+    return (u0 << 8) | u1;
+}
 
 /*
  * Proposed new SAM header parsing

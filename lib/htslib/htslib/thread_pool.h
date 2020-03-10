@@ -1,7 +1,7 @@
 /// @file htslib/thread_pool.h
 /// Thread pool for multi-threading applications.
 /*
-    Copyright (c) 2013-2017 Genome Research Ltd.
+    Copyright (c) 2013-2017, 2019 Genome Research Ltd.
 
     Author: James Bonfield <jkb@sanger.ac.uk>
 
@@ -46,6 +46,8 @@ DEALINGS IN THE SOFTWARE.  */
 
 #ifndef HTSLIB_THREAD_POOL_H
 #define HTSLIB_THREAD_POOL_H
+
+#include "hts_defs.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -98,13 +100,18 @@ typedef struct hts_tpool_result hts_tpool_result;
  *
  * Returns pool pointer on success;
  *         NULL on failure
+ *
+ * The hts_tpool struct returned by a successful call should be freed
+ * via hts_tpool_destroy() when it is no longer needed.
  */
+HTSLIB_EXPORT
 hts_tpool *hts_tpool_init(int n);
 
 
 /*
  * Returns the number of requested threads for a pool.
  */
+HTSLIB_EXPORT
 int hts_tpool_size(hts_tpool *p);
 
 
@@ -118,6 +125,7 @@ int hts_tpool_size(hts_tpool *p);
  *        -1 on failure
  */
 // FIXME: should this drop the hts_tpool*p argument? It's just q->p
+HTSLIB_EXPORT
 int hts_tpool_dispatch(hts_tpool *p, hts_tpool_process *q,
                        void *(*func)(void *arg), void *arg);
 
@@ -139,6 +147,7 @@ int hts_tpool_dispatch(hts_tpool *p, hts_tpool_process *q,
  * If @p nonblock is +1 and the queue is full, -1 will be returned and
  * `errno` is set to `EAGAIN`.
  */
+HTSLIB_EXPORT
 int hts_tpool_dispatch2(hts_tpool *p, hts_tpool_process *q,
                         void *(*func)(void *arg), void *arg, int nonblock);
 
@@ -181,6 +190,7 @@ int hts_tpool_dispatch2(hts_tpool *p, hts_tpool_process *q,
  * exec_func() and / or consumers of any results to do any cleaning up
  * necessary.
  */
+HTSLIB_EXPORT
 int hts_tpool_dispatch3(hts_tpool *p, hts_tpool_process *q,
                         void *(*exec_func)(void *arg), void *arg,
                         void (*job_cleanup)(void *arg),
@@ -191,6 +201,7 @@ int hts_tpool_dispatch3(hts_tpool *p, hts_tpool_process *q,
  * Wakes up a single thread stuck in dispatch and make it return with
  * errno EAGAIN.
  */
+HTSLIB_EXPORT
 void hts_tpool_wake_dispatch(hts_tpool_process *q);
 
 /*
@@ -204,6 +215,7 @@ void hts_tpool_wake_dispatch(hts_tpool_process *q);
  * Returns 0 on success;
  *        -1 on failure
  */
+HTSLIB_EXPORT
 int hts_tpool_process_flush(hts_tpool_process *q);
 
 /*
@@ -218,9 +230,11 @@ int hts_tpool_process_flush(hts_tpool_process *q);
  * Returns 0 on success;
  *        -1 on failure
  */
+HTSLIB_EXPORT
 int hts_tpool_process_reset(hts_tpool_process *q, int free_results);
 
 /* Returns the process queue size */
+HTSLIB_EXPORT
 int hts_tpool_process_qsize(hts_tpool_process *q);
 
 
@@ -228,12 +242,14 @@ int hts_tpool_process_qsize(hts_tpool_process *q);
  * Destroys a thread pool.  The threads are joined into the main
  * thread so they will finish their current work load.
  */
+HTSLIB_EXPORT
 void hts_tpool_destroy(hts_tpool *p);
 
 /*
  * Destroys a thread pool without waiting on jobs to complete.
  * Use hts_tpool_kill(p) to quickly exit after a fatal error.
  */
+HTSLIB_EXPORT
 void hts_tpool_kill(hts_tpool *p);
 
 /*
@@ -246,6 +262,7 @@ void hts_tpool_kill(hts_tpool *p);
  * Returns hts_tpool_result pointer if a result is ready.
  *         NULL if not.
  */
+HTSLIB_EXPORT
 hts_tpool_result *hts_tpool_next_result(hts_tpool_process *q);
 
 /*
@@ -258,18 +275,21 @@ hts_tpool_result *hts_tpool_next_result(hts_tpool_process *q);
  * Returns hts_tpool_result pointer if a result is ready.
  *         NULL on error or during shutdown.
  */
+HTSLIB_EXPORT
 hts_tpool_result *hts_tpool_next_result_wait(hts_tpool_process *q);
 
 /*
  * Frees a result 'r' and if free_data is true also frees
  * the internal r->data result too.
  */
+HTSLIB_EXPORT
 void hts_tpool_delete_result(hts_tpool_result *r, int free_data);
 
 /*
  * Returns the data portion of a hts_tpool_result, corresponding
  * to the actual "result" itself.
  */
+HTSLIB_EXPORT
 void *hts_tpool_result_data(hts_tpool_result *r);
 
 /*
@@ -281,30 +301,38 @@ void *hts_tpool_result_data(hts_tpool_result *r);
  *
  * Results hts_tpool_process pointer on success;
  *         NULL on failure
+ *
+ * The hts_tpool_process struct returned by a successful call should be freed
+ * via hts_tpool_process_destroy() when it is no longer needed.
  */
+HTSLIB_EXPORT
 hts_tpool_process *hts_tpool_process_init(hts_tpool *p, int qsize, int in_only);
 
 
 /* Deallocates memory for a thread process-queue.
  * Must be called before the thread pool is destroyed.
  */
+HTSLIB_EXPORT
 void hts_tpool_process_destroy(hts_tpool_process *q);
 
 /*
  * Returns true if there are no items in the process results queue and
  * also none still pending.
  */
+HTSLIB_EXPORT
 int hts_tpool_process_empty(hts_tpool_process *q);
 
 /*
  * Returns the number of completed jobs in the process results queue.
  */
+HTSLIB_EXPORT
 int hts_tpool_process_len(hts_tpool_process *q);
 
 /*
  * Returns the number of completed jobs in the process results queue plus the
  * number running and queued up to run.
  */
+HTSLIB_EXPORT
 int hts_tpool_process_sz(hts_tpool_process *q);
 
 /*
@@ -313,6 +341,7 @@ int hts_tpool_process_sz(hts_tpool_process *q);
  * This sets the shutdown flag and wakes any threads waiting on process
  * condition variables.
  */
+HTSLIB_EXPORT
 void hts_tpool_process_shutdown(hts_tpool_process *q);
 
 /*
@@ -323,7 +352,10 @@ void hts_tpool_process_shutdown(hts_tpool_process *q);
  * to temporarily detach if we wish to stop running jobs on a specific
  * process while permitting other process to continue.
  */
+HTSLIB_EXPORT
 void hts_tpool_process_attach(hts_tpool *p, hts_tpool_process *q);
+
+HTSLIB_EXPORT
 void hts_tpool_process_detach(hts_tpool *p, hts_tpool_process *q);
 
 /*
@@ -332,7 +364,10 @@ void hts_tpool_process_detach(hts_tpool *p, hts_tpool_process *q);
  * threads, eg "main" and a "reader", this permits each end to
  * decrement its use of the process-queue independently.
  */
+HTSLIB_EXPORT
 void hts_tpool_process_ref_incr(hts_tpool_process *q);
+
+HTSLIB_EXPORT
 void hts_tpool_process_ref_decr(hts_tpool_process *q);
 
 #ifdef __cplusplus

@@ -1,6 +1,6 @@
 #!/usr/bin/env perl
 #
-#    Copyright (C) 2012-2013 Genome Research Ltd.
+#    Copyright (C) 2012-2019 Genome Research Ltd.
 #
 #    Author: Petr Danecek <pd3@sanger.ac.uk>
 #
@@ -49,6 +49,7 @@ test_view($opts,4);
 test_MD($opts);
 
 test_vcf_api($opts,out=>'test-vcf-api.out');
+test_bcf2vcf($opts);
 test_vcf_sweep($opts,out=>'test-vcf-sweep.out');
 test_vcf_various($opts);
 test_bcf_sr_sort($opts);
@@ -645,6 +646,12 @@ sub test_view
     testv $opts, "./test_view $tv_args -p longrefs/longref.tmp.sam_ longrefs/longref.tmp.sam.gz";
     testv $opts, "./compare_sam.pl longrefs/longref.sam longrefs/longref.tmp.sam_";
 
+    # CRAM disabled for now as the positions cannot be 32-bit.  (These tests are useful for
+    # checking SQ headers only.)
+    # testv $opts, "./test_view $tv_args -C -o no_ref -p longrefs/longref.tmp.cram longrefs/longref.sam";
+    # testv $opts, "./test_view $tv_args -p longrefs/longref.tmp.sam_ longrefs/longref.tmp.cram";
+    # testv $opts, "./compare_sam.pl longrefs/longref.sam longrefs/longref.tmp.sam_";
+
     # Build index and compare with on-the-fly one made earlier.
     test_compare $opts, "$$opts{path}/test_index -c longrefs/longref.tmp.sam.gz", "longrefs/longref.tmp.sam.gz.csi.otf", "longrefs/longref.tmp.sam.gz.csi", gz=>1;
 
@@ -654,18 +661,19 @@ sub test_view
     testv $opts, "./test_view $tv_args -M -p longrefs/longref_multi.tmp.sam longrefs/longref.tmp.sam.gz CHROMOSOME_I:10000000000-10000000003 CHROMOSOME_I:10000000100-10000000110";
     testv $opts, "./compare_sam.pl longrefs/longref_multi.expected.sam longrefs/longref_multi.tmp.sam";
 
-    # VCF round trip
-    unlink("longrefs/index.tmp.vcf.gz.csi"); # To stop vcf_hdr_read from reading a stale index
-    testv $opts, "./test_view $tv_args -z -p longrefs/index.tmp.vcf.gz -x longrefs/index.tmp.vcf.gz.csi.otf -m 14 longrefs/index.vcf";
-    testv $opts, "./test_view $tv_args -p longrefs/index.tmp.vcf_ longrefs/index.tmp.vcf.gz";
-    testv $opts, "cmp longrefs/index.vcf longrefs/index.tmp.vcf_";
-
-    # Build index and compare with on-the-fly one made earlier.
-    test_compare $opts, "$$opts{path}/test_index -c longrefs/index.tmp.vcf.gz", "longrefs/index.tmp.vcf.gz.csi.otf", "longrefs/index.tmp.vcf.gz.csi", gz=>1;
-
-    # test_view can't do indexed look-ups on vcf, but we can use tabix
-    test_compare $opts, "$$opts{bin}/tabix longrefs/index.tmp.vcf.gz 1:10010000100-10010000105 > longrefs/index.tmp.tabix1.vcf", "longrefs/index.expected1.vcf", "longrefs/index.tmp.tabix1.vcf", fix_newlines => 1;
-    test_compare $opts, "$$opts{bin}/tabix longrefs/index.tmp.vcf.gz 1:10010000120-10010000130 > longrefs/index.tmp.tabix2.vcf", "longrefs/index.expected2.vcf", "longrefs/index.tmp.tabix2.vcf", fix_newlines => 1;
+    # 64-bit positions are currently not compiled in by default for VCF
+    #   # VCF round trip
+    #   unlink("longrefs/index.tmp.vcf.gz.csi"); # To stop vcf_hdr_read from reading a stale index
+    #   testv $opts, "./test_view $tv_args -z -p longrefs/index.tmp.vcf.gz -x longrefs/index.tmp.vcf.gz.csi.otf -m 14 longrefs/index.vcf";
+    #   testv $opts, "./test_view $tv_args -p longrefs/index.tmp.vcf_ longrefs/index.tmp.vcf.gz";
+    #   testv $opts, "cmp longrefs/index.vcf longrefs/index.tmp.vcf_";
+    #
+    #   # Build index and compare with on-the-fly one made earlier.
+    #   test_compare $opts, "$$opts{path}/test_index -c longrefs/index.tmp.vcf.gz", "longrefs/index.tmp.vcf.gz.csi.otf", "longrefs/index.tmp.vcf.gz.csi", gz=>1;
+    #
+    #   # test_view can't do indexed look-ups on vcf, but we can use tabix
+    #   test_compare $opts, "$$opts{bin}/tabix longrefs/index.tmp.vcf.gz 1:10010000100-10010000105 > longrefs/index.tmp.tabix1.vcf", "longrefs/index.expected1.vcf", "longrefs/index.tmp.tabix1.vcf", fix_newlines => 1;
+    #   test_compare $opts, "$$opts{bin}/tabix longrefs/index.tmp.vcf.gz 1:10010000120-10010000130 > longrefs/index.tmp.tabix2.vcf", "longrefs/index.expected2.vcf", "longrefs/index.tmp.tabix2.vcf", fix_newlines => 1;
 
     if ($test_view_failures == 0) {
         passed($opts, "large position tests");
@@ -780,6 +788,14 @@ sub test_index
         $wtmp =~ s/\//\\\\/g;
     }
     test_cmd($opts,out=>'tabix.out',cmd=>"$$opts{bin}/tabix $wtmp/index.vcf.gz##idx##$wtmp/index.vcf.gz.tbi 1:10000060-10000060");
+}
+
+sub test_bcf2vcf
+{
+    my ($opts) = @_;
+    test_cmd($opts,
+             out => "tabix/vcf_file.vcf",
+             cmd => "$$opts{path}/test_view $$opts{path}/tabix/vcf_file.bcf");
 }
 
 sub test_vcf_api

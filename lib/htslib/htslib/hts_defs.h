@@ -1,6 +1,6 @@
 /*  hts_defs.h -- Miscellaneous definitions.
 
-    Copyright (C) 2013-2015,2017 Genome Research Ltd.
+    Copyright (C) 2013-2015,2017, 2019 Genome Research Ltd.
 
     Author: John Marshall <jm18@sanger.ac.uk>
 
@@ -93,6 +93,20 @@ DEALINGS IN THE SOFTWARE.  */
 #define HTS_FORMAT(type, idx, first) __attribute__((__format__ (type, idx, first)))
 #else
 #define HTS_FORMAT(type, idx, first)
+#endif
+
+#if defined(_WIN32) || defined(__CYGWIN__)
+#if defined(HTS_BUILDING_LIBRARY)
+#define HTSLIB_EXPORT __declspec(dllexport)
+#else
+#define HTSLIB_EXPORT
+#endif
+#elif HTS_COMPILER_HAS(__visibility__) || HTS_GCC_AT_LEAST(4,0)
+#define HTSLIB_EXPORT __attribute__((__visibility__("default")))
+#elif defined(__SUNPRO_C) && __SUNPRO_C >= 0x550
+#define HTSLIB_EXPORT __global
+#else
+#define HTSLIB_EXPORT
 #endif
 
 #endif

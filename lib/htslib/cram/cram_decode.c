@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2012-2014 Genome Research Ltd.
+Copyright (c) 2012-2019 Genome Research Ltd.
 Author: James Bonfield <jkb@sanger.ac.uk>
 
 Redistribution and use in source and binary forms, with or without
@@ -33,6 +33,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * - Iterator for reading CRAM record by record.
  */
 
+#define HTS_BUILDING_LIBRARY // Enables HTSLIB_EXPORT, see htslib/hts_defs.h
 #include <config.h>
 
 #include <stdio.h>
@@ -208,10 +209,6 @@ cram_block_compression_hdr *cram_decode_compression_header(cram_fd *fd,
     }
 
     /* Initialise defaults for preservation map */
-    hdr->mapped_qs_included = 0;
-    hdr->unmapped_qs_included = 0;
-    hdr->unmapped_placed = 0;
-    hdr->qs_included = 0;
     hdr->read_names_included = 0;
     hdr->AP_delta = 1;
     memcpy(hdr->substitution_matrix, "CGTNAGTNACTNACGNACGT", 20);
@@ -230,40 +227,10 @@ cram_block_compression_hdr *cram_decode_compression_header(cram_fd *fd,
         }
         cp += 2;
         switch(CRAM_KEY(cp[-2],cp[-1])) {
-        case CRAM_KEY('M','I'):
+        case CRAM_KEY('M','I'): // was mapped QS included in V1.0
+        case CRAM_KEY('U','I'): // was unmapped QS included in V1.0
+        case CRAM_KEY('P','I'): // was unmapped placed in V1.0
             hd.i = *cp++;
-            k = kh_put(map, hdr->preservation_map, "MI", &r);
-            if (-1 == r) {
-                cram_free_compression_header(hdr);
-                return NULL;
-            }
-
-            kh_val(hdr->preservation_map, k) = hd;
-            hdr->mapped_qs_included = hd.i;
-            break;
-
-        case CRAM_KEY('U','I'):
-            hd.i = *cp++;
-            k = kh_put(map, hdr->preservation_map, "UI", &r);
-            if (-1 == r) {
-                cram_free_compression_header(hdr);
-                return NULL;
-            }
-
-            kh_val(hdr->preservation_map, k) = hd;
-            hdr->unmapped_qs_included = hd.i;
-            break;
-
-        case CRAM_KEY('P','I'):
-            hd.i = *cp++;
-            k = kh_put(map, hdr->preservation_map, "PI", &r);
-            if (-1 == r) {
-                cram_free_compression_header(hdr);
-                return NULL;
-            }
-
-            kh_val(hdr->preservation_map, k) = hd;
-            hdr->unmapped_placed = hd.i;
             break;
 
         case CRAM_KEY('R','N'):
@@ -1020,6 +987,12 @@ cram_block_slice_hdr *cram_decode_slice_header(cram_fd *fd, cram_block *b) {
         cp += safe_itf8_get((char *)cp,  (char *)cp_end, &i32);
         hdr->ref_seq_span = i32;
 #endif
+        if (hdr->ref_seq_start < 0 || hdr->ref_seq_span < 0) {
+            free(hdr);
+            hts_log_error("Negative values not permitted for header "
+                          "sequence start or span fields");
+            return NULL;
+        }
     }
     cp += safe_itf8_get((char *)cp,  (char *)cp_end, &hdr->num_records);
     hdr->record_counter = 0;
@@ -1178,7 +1151,7 @@ static int cram_decode_seq(cram_fd *fd, cram_container *c, cram_slice *s,
 
         if (ncigar+2 >= cigar_alloc) {
             cigar_alloc = cigar_alloc ? cigar_alloc*2 : 1024;
-            if (!(cigar = realloc(cigar, cigar_alloc * sizeof(*cigar))))
+            if (!(cigar = realloc(s->cigar, cigar_alloc * sizeof(*cigar))))
                 return -1;
             s->cigar = cigar;
         }
@@ -1757,7 +1730,7 @@ static int cram_decode_seq(cram_fd *fd, cram_container *c, cram_slice *s,
 
         if (ncigar+1 >= cigar_alloc) {
             cigar_alloc = cigar_alloc ? cigar_alloc*2 : 1024;
-            if (!(cigar = realloc(cigar, cigar_alloc * sizeof(*cigar))))
+            if (!(cigar = realloc(s->cigar, cigar_alloc * sizeof(*cigar))))
                 return -1;
             s->cigar = cigar;
         }
@@ -1787,7 +1760,7 @@ static int cram_decode_seq(cram_fd *fd, cram_container *c, cram_slice *s,
     if (cig_len) {
         if (ncigar >= cigar_alloc) {
             cigar_alloc = cigar_alloc ? cigar_alloc*2 : 1024;
-            if (!(cigar = realloc(cigar, cigar_alloc * sizeof(*cigar))))
+            if (!(cigar = realloc(s->cigar, cigar_alloc * sizeof(*cigar))))
                 return -1;
             s->cigar = cigar;
         }
@@ -1812,12 +1785,10 @@ static int cram_decode_seq(cram_fd *fd, cram_container *c, cram_slice *s,
     if ((ds & CRAM_QS) && (cf & CRAM_FLAG_PRESERVE_QUAL_SCORES)) {
         int32_t out_sz2 = cr->len;
 
-        if (ds & CRAM_QS) {
-            if (!c->comp_hdr->codecs[DS_QS]) return -1;
-            r |= c->comp_hdr->codecs[DS_QS]
-                            ->decode(s, c->comp_hdr->codecs[DS_QS], blk,
-                                     qual, &out_sz2);
-        }
+        if (!c->comp_hdr->codecs[DS_QS]) return -1;
+        r |= c->comp_hdr->codecs[DS_QS]
+            ->decode(s, c->comp_hdr->codecs[DS_QS], blk,
+                     qual, &out_sz2);
     }
 
     s->cigar = cigar;
@@ -1911,9 +1882,8 @@ static int cram_decode_aux_1_0(cram_container *c, cram_slice *s,
         r |= c->comp_hdr->codecs[DS_TN]->decode(s, c->comp_hdr->codecs[DS_TN],
                                                 blk, (char *)&id, &out_sz);
         if (out_sz == 3) {
-            tag_data[0] = ((char *)&id)[0];
-            tag_data[1] = ((char *)&id)[1];
-            tag_data[2] = ((char *)&id)[2];
+            // Tag name stored as 3 chars instead of an int?
+            memcpy(tag_data, &id, 3);
         } else {
             tag_data[0] = (id>>16) & 0xff;
             tag_data[1] = (id>>8)  & 0xff;

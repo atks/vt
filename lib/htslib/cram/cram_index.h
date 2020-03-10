@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2013 Genome Research Ltd.
+Copyright (c) 2013, 2018 Genome Research Ltd.
 Author: James Bonfield <jkb@sanger.ac.uk>
 
 Redistribution and use in source and binary forms, with or without
@@ -51,8 +51,9 @@ void cram_index_free(cram_fd *fd);
  * Returns the cram_index pointer on sucess
  *         NULL on failure
  */
-cram_index *cram_index_query(cram_fd *fd, int refid, int pos, cram_index *frm);
+cram_index *cram_index_query(cram_fd *fd, int refid, hts_pos_t pos, cram_index *frm);
 cram_index *cram_index_last(cram_fd *fd, int refid, cram_index *from);
+cram_index *cram_index_query_last(cram_fd *fd, int refid, hts_pos_t end);
 
 /*
  * Skips to a container overlapping the start coordinate listed in

@@ -1,7 +1,7 @@
 /*  vcf.c -- VCF/BCF API functions.
 
     Copyright (C) 2012, 2013 Broad Institute.
-    Copyright (C) 2012-2017 Genome Research Ltd.
+    Copyright (C) 2012-2020 Genome Research Ltd.
     Portions copyright (C) 2014 Intel Corporation.
 
     Author: Heng Li <lh3@sanger.ac.uk>
@@ -24,6 +24,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.  */
 
+#define HTS_BUILDING_LIBRARY // Enables HTSLIB_EXPORT, see htslib/hts_defs.h
 #include <config.h>
 
 #include <stdio.h>
@@ -51,11 +52,32 @@ KHASH_MAP_INIT_STR(vdict, bcf_idinfo_t)
 typedef khash_t(vdict) vdict_t;
 
 #include "htslib/kseq.h"
-
+HTSLIB_EXPORT
 uint32_t bcf_float_missing    = 0x7F800001;
+
+HTSLIB_EXPORT
 uint32_t bcf_float_vector_end = 0x7F800002;
-uint8_t bcf_type_shift[] = { 0, 0, 1, 2, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+
+HTSLIB_EXPORT
+uint8_t bcf_type_shift[] = { 0, 0, 1, 2, 3, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+
 static bcf_idinfo_t bcf_idinfo_def = { .info = { 15, 15, 15 }, .hrec = { NULL, NULL, NULL}, .id = -1 };
+
+/*
+    Partial support for 64-bit POS and Number=1 INFO tags.
+    Notes:
+     - the support for 64-bit values is motivated by POS and INFO/END for large genomes
+     - the use of 64-bit values does not conform to the specification
+     - cannot output 64-bit BCF and if it does, it is not compatible with anything
+     - experimental, use at your risk
+*/
+#ifdef VCF_ALLOW_INT64
+    #define BCF_MAX_BT_INT64 (0x7fffffffffffffff)       /* INT64_MAX, for internal use only */
+    #define BCF_MIN_BT_INT64 -9223372036854775800LL     /* INT64_MIN + 8, for internal use only */
+#endif
+
+#define BCF_IS_64BIT (1<<30)
+
 
 static const char *dump_char(char *buffer, char c)
 {
@@ -501,7 +523,7 @@ static int bcf_hdr_register_hrec(bcf_hdr_t *hdr, bcf_hrec_t *hrec)
     // contig
     int i, ret, replacing = 0;
     khint_t k;
-    char *str;
+    char *str = NULL;
 
     if ( !strcmp(hrec->key, "contig") )
     {
@@ -526,7 +548,7 @@ static int bcf_hdr_register_hrec(bcf_hdr_t *hdr, bcf_hrec_t *hrec)
         vdict_t *d = (vdict_t*)hdr->dict[BCF_DT_CTG];
         khint_t k = kh_get(vdict, d, str);
         if ( k != kh_end(d) ) { // already present
-            free(str);
+            free(str); str=NULL;
             if (kh_val(d, k).hrec[0] != NULL) // and not removed
                 return 0;
             replacing = 1;
@@ -936,19 +958,26 @@ void bcf_hdr_remove(bcf_hdr_t *hdr, int type, const char *key)
 
 int bcf_hdr_printf(bcf_hdr_t *hdr, const char *fmt, ...)
 {
+    char tmp[256], *line = tmp;
     va_list ap;
     va_start(ap, fmt);
-    int n = vsnprintf(NULL, 0, fmt, ap) + 2;
+    int n = vsnprintf(line, sizeof(tmp), fmt, ap);
     va_end(ap);
 
-    char *line = (char*)malloc(n);
-    va_start(ap, fmt);
-    vsnprintf(line, n, fmt, ap);
-    va_end(ap);
+    if (n >= sizeof(tmp)) {
+        n++; // For trailing NUL
+        line = (char*)malloc(n);
+        if (!line)
+            return -1;
+
+        va_start(ap, fmt);
+        vsnprintf(line, n, fmt, ap);
+        va_end(ap);
+    }
 
     int ret = bcf_hdr_append(hdr, line);
 
-    free(line);
+    if (line != tmp) free(line);
     return ret;
 }
 
@@ -1186,27 +1215,30 @@ void bcf_destroy(bcf1_t *v)
 
 static inline int bcf_read1_core(BGZF *fp, bcf1_t *v)
 {
-    union {
-        uint32_t i;
-        float f;
-    } x[8];
+    uint8_t x[32];
     ssize_t ret;
+    uint32_t shared_len, indiv_len;
     if ((ret = bgzf_read(fp, x, 32)) != 32) {
         if (ret == 0) return -1;
         return -2;
     }
     bcf_clear1(v);
-    if (x[0].i < 24) return -2;
-    x[0].i -= 24; // to exclude six 32-bit integers
-    if (ks_resize(&v->shared, x[0].i) != 0) return -2;
-    if (ks_resize(&v->indiv, x[1].i) != 0) return -2;
-    v->rid  = x[2].i;
-    v->pos  = x[3].i;
-    v->rlen = x[4].i;
-    v->qual = x[5].f;
-    v->n_allele = x[6].i>>16; v->n_info = x[6].i&0xffff;
-    v->n_fmt = x[7].i>>24; v->n_sample = x[7].i&0xffffff;
-    v->shared.l = x[0].i, v->indiv.l = x[1].i;
+    shared_len = le_to_u32(x);
+    if (shared_len < 24) return -2;
+    shared_len -= 24; // to exclude six 32-bit integers
+    if (ks_resize(&v->shared, shared_len) != 0) return -2;
+    indiv_len = le_to_u32(x + 4);
+    if (ks_resize(&v->indiv, indiv_len) != 0) return -2;
+    v->rid  = le_to_i32(x + 8);
+    v->pos  = le_to_u32(x + 12);
+    v->rlen = le_to_u32(x + 16);
+    v->qual = le_to_float(x + 20);
+    v->n_info = le_to_u16(x + 24);
+    v->n_allele = le_to_u16(x + 26);
+    v->n_sample = le_to_u32(x + 28) & 0xffffff;
+    v->n_fmt = x[31];
+    v->shared.l = shared_len;
+    v->indiv.l = indiv_len;
     // silent fix of broken BCFs produced by earlier versions of bcf_subset, prior to and including bd6ed8b4
     if ( (!v->indiv.l || !v->n_sample) && v->n_fmt ) v->n_fmt = 0;
 
@@ -1238,6 +1270,14 @@ static int bcf_dec_typed_int1_safe(uint8_t *p, uint8_t *end, uint8_t **q,
         if (end - p < 4) return -1;
         *q = p + 4;
         *val = le_to_i32(p);
+#ifdef VCF_ALLOW_INT64
+    } else if (t == BCF_BT_INT64) {
+        // This case should never happen because there should be no 64-bit BCFs
+        // at all, definitely not coming from htslib
+        if (end - p < 8) return -1;
+        *q = p + 8;
+        *val = le_to_i64(p);
+#endif
     } else {
         return -1;
     }
@@ -1277,6 +1317,9 @@ static int bcf_record_check(const bcf_hdr_t *hdr, bcf1_t *rec) {
     uint32_t i, reports;
     const uint32_t is_integer = ((1 << BCF_BT_INT8)  |
                                  (1 << BCF_BT_INT16) |
+#ifdef VCF_ALLOW_INT64
+                                 (1 << BCF_BT_INT64) |
+#endif
                                  (1 << BCF_BT_INT32));
     const uint32_t is_valid_type = (is_integer          |
                                     (1 << BCF_BT_NULL)  |
@@ -1715,19 +1758,23 @@ int bcf_write(htsFile *hfp, bcf_hdr_t *h, bcf1_t *v)
     }
     bcf1_sync(v);   // check if the BCF record was modified
 
+    if ( v->unpacked & BCF_IS_64BIT )
+    {
+        hts_log_error("Data contains 64-bit values not representable in BCF.  Please use VCF instead");
+        return -1;
+    }
+
     BGZF *fp = hfp->fp.bgzf;
-    union {
-        uint32_t i;
-        float f;
-    } x[8];
-    x[0].i = v->shared.l + 24; // to include six 32-bit integers
-    x[1].i = v->indiv.l;
-    x[2].i = v->rid;
-    x[3].i = v->pos;
-    x[4].i = v->rlen;
-    x[5].f = v->qual;
-    x[6].i = (uint32_t)v->n_allele<<16 | v->n_info;
-    x[7].i = (uint32_t)v->n_fmt<<24 | v->n_sample;
+    uint8_t x[32];
+    u32_to_le(v->shared.l + 24, x); // to include six 32-bit integers
+    u32_to_le(v->indiv.l, x + 4);
+    i32_to_le(v->rid, x + 8);
+    u32_to_le(v->pos, x + 12);
+    u32_to_le(v->rlen, x + 16);
+    float_to_le(v->qual, x + 20);
+    u16_to_le(v->n_info, x + 24);
+    u16_to_le(v->n_allele, x + 26);
+    u32_to_le((uint32_t)v->n_fmt<<24 | (v->n_sample & 0xffffff), x + 28);
     if ( bgzf_write(fp, x, 32) != 32 ) return -1;
     if ( bgzf_write(fp, v->shared.s, v->shared.l) != v->shared.l ) return -1;
     if ( bgzf_write(fp, v->indiv.s, v->indiv.l) != v->indiv.l ) return -1;
@@ -2027,6 +2074,7 @@ int bcf_enc_vint(kstring_t *s, int n, int32_t *a, int wsize)
     return 0; // FIXME: check for errs in this function
 }
 
+#ifdef VCF_ALLOW_INT64
 static int bcf_enc_long1(kstring_t *s, int64_t x) {
     uint32_t e = 0;
     if (x <= BCF_MAX_BT_INT32 && x >= BCF_MIN_BT_INT32)
@@ -2044,6 +2092,7 @@ static int bcf_enc_long1(kstring_t *s, int64_t x) {
     }
     return e == 0 ? 0 : -1;
 }
+#endif
 
 static inline int serialize_float_array(kstring_t *s, size_t n, const float *a) {
     uint8_t *p;
@@ -2156,6 +2205,7 @@ static int vcf_parse_format(kstring_t *s, const bcf_hdr_t *h, bcf1_t *v, char *p
 {
     if ( !bcf_hdr_nsamples(h) ) return 0;
 
+    static int extreme_int_warned = 0;
     char *r, *t;
     int j, l, m, g;
     khint_t k;
@@ -2321,11 +2371,20 @@ static int vcf_parse_format(kstring_t *s, const bcf_hdr_t *h, bcf1_t *v, char *p
                 if (z->is_gt) { // genotypes
                     int32_t is_phased = 0, *x = (int32_t*)(z->buf + z->size * m);
                     for (l = 0;; ++t) {
-                        if (*t == '.') ++t, x[l++] = is_phased;
-                        else x[l++] = (strtol(t, &t, 10) + 1) << 1 | is_phased;
-#if THOROUGH_SANITY_CHECKS
-                        assert( 0 );    // success of strtol,strtod not checked
-#endif
+                        if (*t == '.') {
+                            ++t, x[l++] = is_phased;
+                        } else {
+                            char *tt = t;
+                            errno = 0;
+                            long val = strtol(t, &t, 10);
+                            if (errno == ERANGE || val > (INT32_MAX>>1)-1 || val < 0) {
+                                hts_log_error("Unsupported value:'%s' (too large or negative)", tt);
+                                return -1;
+                            } else {
+                                x[l] = (val + 1) << 1 | is_phased;
+                                l++;
+                            }
+                        }
                         is_phased = (*t == '|');
                         if (*t != '|' && *t != '/') break;
                     }
@@ -2340,7 +2399,23 @@ static int vcf_parse_format(kstring_t *s, const bcf_hdr_t *h, bcf1_t *v, char *p
                 int32_t *x = (int32_t*)(z->buf + z->size * m);
                 for (l = 0;; ++t) {
                     if (*t == '.') x[l++] = bcf_int32_missing, ++t; // ++t to skip "."
-                    else x[l++] = strtol(t, &t, 10);
+                    else
+                    {
+                        errno = 0;
+                        char *te;
+                        long int tmp_val = strtol(t, &te, 10);
+                        if ( te==t || errno!=0 || tmp_val<BCF_MIN_BT_INT32 || tmp_val>BCF_MAX_BT_INT32 )
+                        {
+                            if ( !extreme_int_warned )
+                            {
+                                hts_log_warning("Extreme FORMAT/%s value encountered and set to missing at %s:%"PRIhts_pos,h->id[BCF_DT_ID][fmt[j-1].key].key,bcf_seqname(h,v), v->pos+1);
+                                extreme_int_warned = 1;
+                            }
+                            tmp_val = bcf_int32_missing;
+                        }
+                        x[l++] = tmp_val;
+                        t = te;
+                    }
                     if (*t != ',') break;
                 }
                 if ( !l ) x[l++] = bcf_int32_missing;
@@ -2447,6 +2522,7 @@ static int vcf_parse_format(kstring_t *s, const bcf_hdr_t *h, bcf1_t *v, char *p
 
 int vcf_parse(kstring_t *s, const bcf_hdr_t *h, bcf1_t *v)
 {
+    static int extreme_int_warned = 0, negative_rlen_warned = 0;
     int i = 0;
     char *p, *q, *r, *t;
     kstring_t *str;
@@ -2496,7 +2572,16 @@ int vcf_parse(kstring_t *s, const bcf_hdr_t *h, bcf1_t *v)
             }
             v->rid = kh_val(d, k).id;
         } else if (i == 1) { // POS
-            v->pos = strtoll(p, NULL, 10) - 1;
+            errno = 0;
+            v->pos = strtoll(p, NULL, 10);
+            if (errno == ERANGE || v->pos == INT64_MIN) {
+                hts_log_error("Position value '%s' is too large", p);
+                goto err;
+            } else {
+                v->pos -= 1;
+            }
+            if (v->pos >= INT32_MAX)
+                v->unpacked |= BCF_IS_64BIT;
         } else if (i == 2) { // ID
             if (strcmp(p, ".")) bcf_enc_vchar(str, q - p, p);
             else bcf_enc_size(str, 0, BCF_BT_CHAR);
@@ -2643,31 +2728,77 @@ int vcf_parse(kstring_t *s, const bcf_hdr_t *h, bcf1_t *v)
                             val_a = z;
                         }
                         if ((y>>4&0xf) == BCF_HT_INT) {
-                            // Allow first value only to be 64 bit
-                            // (for large END value)
-                            int64_t v64 = strtoll(val, &te, 10);
-                            if ( te==val ) { // conversion failed
-                                val_a[0] = bcf_int32_missing;
-                                v64 = bcf_int64_missing;
-                            } else {
-                                val_a[0] = v64 >= BCF_MIN_BT_INT32 && v64 <= BCF_MAX_BT_INT32 ? v64 : bcf_int32_missing;
-                            }
-                            for (t = te; *t && *t != ','; t++);
-                            if (*t == ',') ++t;
-                            for (i = 1; i < n_val; ++i, ++t)
+                            i = 0, t = val;
+                            int64_t val1;
+#ifdef VCF_ALLOW_INT64
+                            int is_int64 = 0;
+                            if ( n_val==1 )
                             {
-                                val_a[i] = strtol(t, &te, 10);
-                                if ( te==t ) // conversion failed
-                                    val_a[i] = bcf_int32_missing;
+                                errno = 0;
+                                long long int tmp_val = strtoll(val, &te, 10);
+                                if ( te==val ) tmp_val = bcf_int32_missing;
+                                else if ( te==val || errno!=0 || tmp_val<BCF_MIN_BT_INT64 || tmp_val>BCF_MAX_BT_INT64 )
+                                {
+                                    if ( !extreme_int_warned )
+                                    {
+                                        hts_log_warning("Extreme INFO/%s value encountered and set to missing at %s:%"PRIhts_pos,key,bcf_seqname(h,v), v->pos+1);
+                                        extreme_int_warned = 1;
+                                    }
+                                    tmp_val = bcf_int32_missing;
+                                }
+                                else
+                                    is_int64 = 1;
+                                val1 = tmp_val;
+                                t = te;
+                                i = 1;  // this is just to avoid adding another nested block...
+                            }
+#endif
+                            for (; i < n_val; ++i, ++t)
+                            {
+                                errno = 0;
+                                long int tmp_val = strtol(t, &te, 10);
+                                if ( te==t ) tmp_val = bcf_int32_missing;
+                                else if ( errno!=0 || tmp_val<BCF_MIN_BT_INT32 || tmp_val>BCF_MAX_BT_INT32 )
+                                {
+                                    if ( !extreme_int_warned )
+                                    {
+                                        hts_log_warning("Extreme INFO/%s value encountered and set to missing at %s:%"PRIhts_pos,key,bcf_seqname(h,v), v->pos+1);
+                                        extreme_int_warned = 1;
+                                    }
+                                    tmp_val = bcf_int32_missing;
+                                }
+                                val_a[i] = tmp_val;
                                 for (t = te; *t && *t != ','; t++);
                             }
                             if (n_val == 1) {
-                                bcf_enc_long1(str, v64);
+#ifdef VCF_ALLOW_INT64
+                                if ( is_int64 )
+                                {
+                                    v->unpacked |= BCF_IS_64BIT;
+                                    bcf_enc_long1(str, val1);
+                                }
+                                else
+                                    bcf_enc_int1(str, (int32_t)val1);
+#else
+                                val1 = val_a[0];
+                                bcf_enc_int1(str, (int32_t)val1);
+#endif
                             } else {
                                 bcf_enc_vint(str, n_val, val_a, -1);
                             }
-                            if (strcmp(key, "END") == 0)
-                                v->rlen = v64 - v->pos;
+                            if (n_val==1 && strcmp(key, "END") == 0)
+                            {
+                                if ( val1 <= v->pos )
+                                {
+                                    if ( !negative_rlen_warned )
+                                    {
+                                        hts_log_warning("INFO/END=%"PRIhts_pos" is smaller than POS at %s:%"PRIhts_pos,val1,bcf_seqname(h,v),v->pos+1);
+                                        negative_rlen_warned = 1;
+                                    }
+                                }
+                                else
+                                    v->rlen = val1 - v->pos;
+                            }
                         } else if ((y>>4&0xf) == BCF_HT_REAL) {
                             float *val_f = (float *)val_a;
                             for (i = 0, t = val; i < n_val; ++i, ++t)
@@ -3424,8 +3555,8 @@ int bcf_translate(const bcf_hdr_t *dst_hdr, bcf_hdr_t *src_hdr, bcf1_t *line)
         {
             uint8_t *p = line->d.fmt[i].p - line->d.fmt[i].p_off;    // pointer to the vector size (4bits) and BT type (4bits)
             if ( dst_size==BCF_BT_INT8 ) { p[1] = dst_id; }
-            else if ( dst_size==BCF_BT_INT16 ) { uint8_t *x = (uint8_t*) &dst_id; p[1] = x[0]; p[2] = x[1]; }
-            else { uint8_t *x = (uint8_t*) &dst_id; p[1] = x[0]; p[2] = x[1]; p[3] = x[2]; p[4] = x[3]; }
+            else if ( dst_size==BCF_BT_INT16 ) { i16_to_le(dst_id, p + 1); }
+            else { i32_to_le(dst_id, p + 1); }
         }
         else    // must realloc
         {
@@ -3470,6 +3601,7 @@ bcf_hdr_t *bcf_hdr_subset(const bcf_hdr_t *h0, int n, char *const* samples, int 
     bcf_hdr_t *h = bcf_hdr_init("w");
     if (!h) {
         hts_log_error("Failed to allocate bcf header");
+        khash_str2int_destroy(names_hash);
         return NULL;
     }
     bcf_hdr_format(h0, 1, &htxt);
@@ -3806,6 +3938,7 @@ int bcf_update_info(const bcf_hdr_t *hdr, bcf1_t *line, const char *key, const v
         else
             bcf_enc_vchar(&str, strlen((char*)values), (char*)values);
     }
+#ifdef VCF_ALLOW_INT64
     else if ( type==BCF_HT_LONG )
     {
         if (n != 1) {
@@ -3814,6 +3947,7 @@ int bcf_update_info(const bcf_hdr_t *hdr, bcf1_t *line, const char *key, const v
         }
         bcf_enc_long1(&str, *(int64_t *) values);
     }
+#endif
     else
     {
         hts_log_error("The type %d not implemented yet", type);
@@ -3928,6 +4062,7 @@ int bcf_update_format(const bcf_hdr_t *hdr, bcf1_t *line, const char *key, const
     // Encode the values and determine the size required to accommodate the values
     kstring_t str = {0,0,0};
     bcf_enc_int1(&str, fmt_id);
+    assert(values != NULL);
     if ( type==BCF_HT_INT )
         bcf_enc_vint(&str, n, (int32_t*)values, nps);
     else if ( type==BCF_HT_REAL )
@@ -4078,6 +4213,7 @@ static inline int _bcf1_sync_alleles(const bcf_hdr_t *hdr, bcf1_t *line, int nal
 }
 int bcf_update_alleles(const bcf_hdr_t *hdr, bcf1_t *line, const char **alleles, int nals)
 {
+    if ( !(line->unpacked & BCF_UN_STR) ) bcf_unpack(line, BCF_UN_STR);
     kstring_t tmp = {0,0,0};
     char *free_old = NULL;
 
@@ -4105,6 +4241,7 @@ int bcf_update_alleles(const bcf_hdr_t *hdr, bcf1_t *line, const char **alleles,
 
 int bcf_update_alleles_str(const bcf_hdr_t *hdr, bcf1_t *line, const char *alleles_string)
 {
+    if ( !(line->unpacked & BCF_UN_STR) ) bcf_unpack(line, BCF_UN_STR);
     kstring_t tmp;
     tmp.l = 0; tmp.s = line->d.als; tmp.m = line->d.m_als;
     kputs(alleles_string, &tmp);
@@ -4122,6 +4259,7 @@ int bcf_update_alleles_str(const bcf_hdr_t *hdr, bcf1_t *line, const char *allel
 
 int bcf_update_id(const bcf_hdr_t *hdr, bcf1_t *line, const char *id)
 {
+    if ( !(line->unpacked & BCF_UN_STR) ) bcf_unpack(line, BCF_UN_STR);
     kstring_t tmp;
     tmp.l = 0; tmp.s = line->d.id; tmp.m = line->d.m_id;
     if ( id )
@@ -4136,6 +4274,7 @@ int bcf_update_id(const bcf_hdr_t *hdr, bcf1_t *line, const char *id)
 int bcf_add_id(const bcf_hdr_t *hdr, bcf1_t *line, const char *id)
 {
     if ( !id ) return 0;
+    if ( !(line->unpacked & BCF_UN_STR) ) bcf_unpack(line, BCF_UN_STR);
 
     kstring_t tmp;
     tmp.l = 0; tmp.s = line->d.id; tmp.m = line->d.m_id;

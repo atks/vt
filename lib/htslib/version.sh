@@ -3,7 +3,7 @@
 #
 #     Author : James Bonfield <jkb@sanger.ac.uk>
 #
-#     Copyright (C) 2017 Genome Research Ltd.
+#     Copyright (C) 2017-2018 Genome Research Ltd.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -24,7 +24,7 @@
 # DEALINGS IN THE SOFTWARE.
 
 # Master version, for use in tarballs or non-git source copies
-VERSION=1.9
+VERSION=1.10.2
 
 # If we have a git clone, then check against the current tag
 if [ -e .git ]

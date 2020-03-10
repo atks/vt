@@ -1,6 +1,6 @@
 /*  hts.c -- format-neutral I/O, indexing, and iterator API functions.
 
-    Copyright (C) 2008, 2009, 2012-2017 Genome Research Ltd.
+    Copyright (C) 2008, 2009, 2012-2019 Genome Research Ltd.
     Copyright (C) 2012, 2013 Broad Institute.
 
     Author: Heng Li <lh3@sanger.ac.uk>
@@ -23,6 +23,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.  */
 
+#define HTS_BUILDING_LIBRARY // Enables HTSLIB_EXPORT, see htslib/hts_defs.h
 #include <config.h>
 
 #include <zlib.h>
@@ -60,13 +61,15 @@ DEALINGS IN THE SOFTWARE.  */
 
 KHASH_INIT2(s2i,, kh_cstr_t, int64_t, 1, kh_str_hash_func, kh_str_hash_equal)
 
+HTSLIB_EXPORT
 int hts_verbose = HTS_LOG_WARNING;
 
 const char *hts_version()
 {
-    return HTS_VERSION;
+    return HTS_VERSION_TEXT;
 }
 
+HTSLIB_EXPORT
 const unsigned char seq_nt16_table[256] = {
     15,15,15,15, 15,15,15,15, 15,15,15,15, 15,15,15,15,
     15,15,15,15, 15,15,15,15, 15,15,15,15, 15,15,15,15,
@@ -87,8 +90,10 @@ const unsigned char seq_nt16_table[256] = {
     15,15,15,15, 15,15,15,15, 15,15,15,15, 15,15,15,15
 };
 
+HTSLIB_EXPORT
 const char seq_nt16_str[] = "=ACMGRSVTWYHKDBN";
 
+HTSLIB_EXPORT
 const int seq_nt16_int[] = { 4, 0, 1, 4, 2, 4, 4, 4, 3, 4, 4, 4, 4, 4, 4, 4 };
 
 /**********************
@@ -236,7 +241,8 @@ secondline_is_bases(const unsigned char *u, const unsigned char *ulim)
 //     i: integer, s: strand sign, C: CIGAR, O: SAM optional field, Z: anything
 static int
 parse_tabbed_text(char *columns, int column_len,
-                  const unsigned char *u, const unsigned char *ulim)
+                  const unsigned char *u, const unsigned char *ulim,
+                  int *complete)
 {
     const char *str  = (const char *) u;
     const char *slim = (const char *) ulim;
@@ -245,6 +251,7 @@ parse_tabbed_text(char *columns, int column_len,
 
     enum { digit = 1, leading_sign = 2, cigar_operator = 4, other = 8 };
     unsigned seen = 0;
+    *complete = 0;
 
     for (s = str; s < slim; s++)
         if (*s >= ' ') {
@@ -273,7 +280,10 @@ parse_tabbed_text(char *columns, int column_len,
             else type = 'Z';
 
             columns[ncolumns++] = type;
-            if (*s != '\t' || ncolumns >= column_len - 1) break;
+            if (*s != '\t' || ncolumns >= column_len - 1) {
+                *complete = 1; // finished the line or more columns than needed
+                break;
+            }
 
             str = s + 1;
             seen = 0;
@@ -301,6 +311,7 @@ int hts_detect_format(hFILE *hfile, htsFormat *fmt)
 {
     char columns[24];
     unsigned char s[1024];
+    int complete = 0;
     ssize_t len = hpeek(hfile, s, 18);
     if (len < 0) return -1;
 
@@ -424,8 +435,13 @@ int hts_detect_format(hFILE *hfile, htsFormat *fmt)
         fmt->format = fastq_format;
         return 0;
     }
-    else if (parse_tabbed_text(columns, sizeof columns, s, &s[len]) > 0) {
-        if (colmatch(columns, "ZiZiiCZiiZZOOOOOOOOOOOOOOOOOOOO+") >= 11) {
+    else if (parse_tabbed_text(columns, sizeof columns, s,
+                               &s[len], &complete) > 0) {
+        // A complete SAM line is at least 11 columns.  On unmapped long reads may
+        // be missing two.  (On mapped long reads we must have an @ header so long
+        // CIGAR is irrelevant.)
+        if (colmatch(columns, "ZiZiiCZiiZZOOOOOOOOOOOOOOOOOOOO+")
+            >= 9 + 2*complete) {
             fmt->category = sequence_data;
             fmt->format = sam;
             fmt->version.major = 1, fmt->version.minor = -1;
@@ -1380,8 +1396,8 @@ int hts_getline(htsFile *fp, int delimiter, kstring_t *str)
 
 char **hts_readlist(const char *string, int is_file, int *_n)
 {
-    int m = 0, n = 0;
-    char **s = 0;
+    unsigned int m = 0, n = 0;
+    char **s = 0, **s_new;
     if ( is_file )
     {
         BGZF *fp = bgzf_open(string, "r");
@@ -1392,9 +1408,12 @@ char **hts_readlist(const char *string, int is_file, int *_n)
         while (bgzf_getline(fp, '\n', &str) >= 0)
         {
             if (str.l == 0) continue;
+            if (hts_resize(char*, n + 1, &m, &s, 0) < 0)
+                goto err;
+            s[n] = strdup(str.s);
+            if (!s[n])
+                goto err;
             n++;
-            hts_expand(char*,n,m,s);
-            s[n-1] = strdup(str.s);
         }
         bgzf_close(fp);
         free(str.s);
@@ -1406,57 +1425,83 @@ char **hts_readlist(const char *string, int is_file, int *_n)
         {
             if (*p == ',' || *p == 0)
             {
-                n++;
-                hts_expand(char*,n,m,s);
-                s[n-1] = (char*)calloc(p - q + 1, 1);
-                strncpy(s[n-1], q, p - q);
+                if (hts_resize(char*, n + 1, &m, &s, 0) < 0)
+                    goto err;
+                s[n] = (char*)calloc(p - q + 1, 1);
+                if (!s[n])
+                    goto err;
+                strncpy(s[n++], q, p - q);
                 q = p + 1;
             }
             if ( !*p ) break;
             p++;
         }
     }
-    s = (char**)realloc(s, n * sizeof(char*));
+    // Try to shrink s to the minimum size needed
+    s_new = (char**)realloc(s, n * sizeof(char*));
+    if (!s_new)
+        goto err;
+
+    s = s_new;
+    assert(n < INT_MAX); // hts_resize() should ensure this
     *_n = n;
     return s;
+
+ err:
+    for (m = 0; m < n; m++)
+        free(s[m]);
+    free(s);
+    return NULL;
 }
 
 char **hts_readlines(const char *fn, int *_n)
 {
-    int m = 0, n = 0;
-    char **s = 0;
+    unsigned int m = 0, n = 0;
+    char **s = 0, **s_new;
     BGZF *fp = bgzf_open(fn, "r");
     if ( fp ) { // read from file
         kstring_t str;
         str.s = 0; str.l = str.m = 0;
         while (bgzf_getline(fp, '\n', &str) >= 0) {
             if (str.l == 0) continue;
-            if (m == n) {
-                m = m? m<<1 : 16;
-                s = (char**)realloc(s, m * sizeof(char*));
-            }
-            s[n++] = strdup(str.s);
+            if (hts_resize(char *, n + 1, &m, &s, 0) < 0)
+                goto err;
+            s[n] = strdup(str.s);
+            if (!s[n])
+                goto err;
+            n++;
         }
         bgzf_close(fp);
-        s = (char**)realloc(s, n * sizeof(char*));
         free(str.s);
     } else if (*fn == ':') { // read from string
         const char *q, *p;
         for (q = p = fn + 1;; ++p)
             if (*p == ',' || *p == 0) {
-                if (m == n) {
-                    m = m? m<<1 : 16;
-                    s = (char**)realloc(s, m * sizeof(char*));
-                }
+                if (hts_resize(char *, n + 1, &m, &s, 0) < 0)
+                    goto err;
                 s[n] = (char*)calloc(p - q + 1, 1);
+                if (!s[n])
+                    goto err;
                 strncpy(s[n++], q, p - q);
                 q = p + 1;
                 if (*p == 0) break;
             }
     } else return 0;
-    s = (char**)realloc(s, n * sizeof(char*));
+    // Try to shrink s to the minimum size needed
+    s_new = (char**)realloc(s, n * sizeof(char*));
+    if (!s_new)
+        goto err;
+
+    s = s_new;
+    assert(n < INT_MAX); // hts_resize() should ensure this
     *_n = n;
     return s;
+
+ err:
+    for (m = 0; m < n; m++)
+        free(s[m]);
+    free(s);
+    return NULL;
 }
 
 // DEPRECATED: To be removed in a future HTSlib release
@@ -2017,6 +2062,7 @@ static int hts_idx_save_core(const hts_idx_t *idx, BGZF *fp, int fmt)
 int hts_idx_save(const hts_idx_t *idx, const char *fn, int fmt)
 {
     int ret, save;
+    if (idx == NULL || fn == NULL) { errno = EINVAL; return -1; }
     char *fnidx = (char*)calloc(1, strlen(fn) + 5);
     if (fnidx == NULL) return -1;
 
@@ -2107,8 +2153,10 @@ static int idx_read_core(hts_idx_t *idx, BGZF *fp, int fmt)
         }
         if (fmt != HTS_FMT_CSI) { // load linear index
             int j;
-            if (bgzf_read(fp, &l->n, 4) != 4) return -1;
-            if (is_be) ed_swap_4p(&l->n);
+            uint32_t x;
+            if (bgzf_read(fp, &x, 4) != 4) return -1;
+            if (is_be) ed_swap_4p(&x);
+            l->n = x;
             if (l->n < 0) return -3;
             if ((size_t) l->n > SIZE_MAX / sizeof(uint64_t)) return -2;
             l->m = l->n;
@@ -2118,7 +2166,7 @@ static int idx_read_core(hts_idx_t *idx, BGZF *fp, int fmt)
             if (is_be) for (j = 0; j < l->n; ++j) ed_swap_8p(&l->offset[j]);
             for (j = 1; j < l->n; ++j) // fill missing values; may happen given older samtools and tabix
                 if (l->offset[j] == 0) l->offset[j] = l->offset[j-1];
-            update_loff(idx, i, 1);
+            update_loff(idx, i, 0);
         }
     }
     if (bgzf_read(fp, &idx->n_no_coor, 8) != 8) idx->n_no_coor = 0;
@@ -2294,7 +2342,7 @@ static inline int reg2bins(int64_t beg, int64_t end, hts_itr_t *itr, int min_shi
     return itr->bins.n;
 }
 
-static inline int reg2intervals(hts_itr_t *iter, const hts_idx_t *idx, int tid, int64_t beg, int64_t end, uint64_t min_off, uint64_t max_off, int min_shift, int n_lvls)
+static inline int reg2intervals(hts_itr_t *iter, const hts_idx_t *idx, int tid, int64_t beg, int64_t end, uint32_t interval, uint64_t min_off, uint64_t max_off, int min_shift, int n_lvls)
 {
     int l, t, s;
     int i, j;
@@ -2302,6 +2350,7 @@ static inline int reg2intervals(hts_itr_t *iter, const hts_idx_t *idx, int tid, 
     hts_pair64_max_t *off;
     bidx_t *bidx;
     khint_t k;
+    int start_n_off = iter->n_off;
 
     if (!iter || !idx || (bidx = idx->bidx[tid]) == NULL || beg >= end)
         return -1;
@@ -2318,22 +2367,43 @@ static inline int reg2intervals(hts_itr_t *iter, const hts_idx_t *idx, int tid, 
                 bins_t *p = &kh_value(bidx, k);
 
                 if (p->n) {
-                    off = (hts_pair64_max_t*)realloc(iter->off, (iter->n_off + p->n) * sizeof(hts_pair64_max_t));
+                    off = realloc(iter->off, (iter->n_off + p->n) * sizeof(*off));
                     if (!off)
                         return -2;
 
                     iter->off = off;
                     for (j = 0; j < p->n; ++j) {
                         if (p->list[j].v > min_off && p->list[j].u < max_off) {
-                            iter->off[iter->n_off].u = p->list[j].u;
-                            iter->off[iter->n_off].v = p->list[j].v;
-                            iter->off[iter->n_off].max = ((uint64_t)tid<<32) | (end+1);
+                            iter->off[iter->n_off].u = min_off > p->list[j].u
+                                ? min_off : p->list[j].u;
+                            iter->off[iter->n_off].v = max_off < p->list[j].v
+                                ? max_off : p->list[j].v;
+                            // hts_pair64_max_t::max is now used to link
+                            // file offsets to region list entries.
+                            // The iterator can use this to decide if it
+                            // can skip some file regions.
+                            iter->off[iter->n_off].max = ((uint64_t) tid << 32) | interval;
                             iter->n_off++;
                         }
                     }
                 }
             }
         }
+    }
+
+    if (iter->n_off - start_n_off > 1) {
+        ks_introsort(_off_max, iter->n_off - start_n_off, iter->off + start_n_off);
+        for (i = start_n_off, j = start_n_off + 1; j < iter->n_off; j++) {
+            if (iter->off[i].v >= iter->off[j].u) {
+                if (iter->off[i].v < iter->off[j].v)
+                    iter->off[i].v = iter->off[j].v;
+            } else {
+                i++;
+                if (i < j)
+                    iter->off[i] = iter->off[j];
+            }
+        }
+        iter->n_off = i + 1;
     }
 
     return iter->n_off;
@@ -2462,6 +2532,10 @@ hts_itr_t *hts_itr_query(const hts_idx_t *idx, int tid, hts_pos_t beg, hts_pos_t
             } while (bin);
             if (bin == 0) k = kh_get(bin, bidx, bin);
             min_off = k != kh_end(bidx)? kh_val(bidx, k).loff : 0;
+            if (idx->lidx[tid].offset
+                && beg>>idx->min_shift < idx->lidx[tid].n
+                && min_off < idx->lidx[tid].offset[beg>>idx->min_shift])
+                min_off = idx->lidx[tid].offset[beg>>idx->min_shift];
 
             // compute max_off: a virtual offset from a bin to the right of end
             bin = hts_bin_first(idx->n_lvls) + ((end-1) >> idx->min_shift) + 1;
@@ -2488,15 +2562,22 @@ hts_itr_t *hts_itr_query(const hts_idx_t *idx, int tid, hts_pos_t beg, hts_pos_t
                 iter->finished = 1;
                 return iter;
             }
-            off = (hts_pair64_max_t*)calloc(n_off, sizeof(hts_pair64_max_t));
+            off = calloc(n_off, sizeof(*off));
             for (i = n_off = 0; i < iter->bins.n; ++i) {
                 if ((k = kh_get(bin, bidx, iter->bins.a[i])) != kh_end(bidx)) {
                     int j;
                     bins_t *p = &kh_value(bidx, k);
                     for (j = 0; j < p->n; ++j)
                         if (p->list[j].v > min_off && p->list[j].u < max_off) {
-                            off[n_off].u = p->list[j].u;
-                            off[n_off].v = p->list[j].v;
+                            off[n_off].u = min_off > p->list[j].u
+                                ? min_off : p->list[j].u;
+                            off[n_off].v = max_off < p->list[j].v
+                                ? max_off : p->list[j].v;
+                            // hts_pair64_max_t::max is now used to link
+                            // file offsets to region list entries.
+                            // The iterator can use this to decide if it
+                            // can skip some file regions.
+                            off[n_off].max = ((uint64_t) tid << 32) | j;
                             n_off++;
                         }
                 }
@@ -2530,8 +2611,7 @@ hts_itr_t *hts_itr_query(const hts_idx_t *idx, int tid, hts_pos_t beg, hts_pos_t
 
 int hts_itr_multi_bam(const hts_idx_t *idx, hts_itr_t *iter)
 {
-    int i, j, l, n_off = 0, bin;
-    hts_pair64_max_t *off = NULL;
+    int i, j, bin;
     khint_t k;
     bidx_t *bidx;
     uint64_t min_off, max_off, t_off = (uint64_t)-1;
@@ -2594,6 +2674,12 @@ int hts_itr_multi_bam(const hts_idx_t *idx, hts_itr_t *iter)
                 if (bin == 0)
                     k = kh_get(bin, bidx, bin);
                 min_off = k != kh_end(bidx)? kh_val(bidx, k).loff : 0;
+                // min_off can be calculated more accurately if the
+                // linear index is available
+                if (idx->lidx[tid].offset
+                    && beg>>idx->min_shift < idx->lidx[tid].n
+                    && min_off < idx->lidx[tid].offset[beg>>idx->min_shift])
+                    min_off = idx->lidx[tid].offset[beg>>idx->min_shift];
 
                 // compute max_off: a virtual offset from a bin to the right of end
                 bin = hts_bin_first(idx->n_lvls) + ((end-1) >> idx->min_shift) + 1;
@@ -2613,40 +2699,19 @@ int hts_itr_multi_bam(const hts_idx_t *idx, hts_itr_t *iter)
                 }
 
                 //convert coordinates to file offsets
-                reg2intervals(iter, idx, tid, beg, end, min_off, max_off, idx->min_shift, idx->n_lvls);
+                if (reg2intervals(iter, idx, tid, beg, end, j,
+                                  min_off, max_off,
+                                  idx->min_shift, idx->n_lvls) < 0) {
+                    return -1;
+                }
             }
         }
     }
 
-    off = iter->off;
-    n_off = iter->n_off;
+    if (iter->n_off > 1)
+        ks_introsort(_off_max, iter->n_off, iter->off);
 
-    if (n_off) {
-        ks_introsort(_off_max, n_off, off);
-        // resolve completely contained adjacent blocks
-        for (i = 1, l = 0; i < n_off; ++i) {
-            if (off[l].v < off[i].v) {
-                off[++l] = off[i];
-            } else {
-                off[l].max = (off[i].max > off[l].max ? off[i].max : off[l].max);
-            }
-        }
-        n_off = l + 1;
-        // resolve overlaps between adjacent blocks; this may happen due to the merge in indexing
-        for (i = 1; i < n_off; ++i)
-            if (off[i-1].v >= off[i].u) off[i-1].v = off[i].u;
-        // merge adjacent blocks
-        for (i = 1, l = 0; i < n_off; ++i) {
-            if (off[l].v>>16 == off[i].u>>16) {
-                off[l].v = off[i].v;
-                off[l].max = (off[i].max > off[l].max ? off[i].max : off[l].max);
-            } else off[++l] = off[i];
-        }
-        n_off = l + 1;
-        iter->n_off = n_off; iter->off = off;
-    }
-
-    if(!n_off && !iter->nocoor)
+    if(!iter->n_off && !iter->nocoor)
         iter->finished = 1;
 
     return 0;
@@ -2655,11 +2720,12 @@ int hts_itr_multi_bam(const hts_idx_t *idx, hts_itr_t *iter)
 int hts_itr_multi_cram(const hts_idx_t *idx, hts_itr_t *iter)
 {
     const hts_cram_idx_t *cidx = (const hts_cram_idx_t *) idx;
-    int tid, i, j, l, n_off = 0;
+    int tid, i, n_off = 0;
+    uint32_t j;
     hts_pos_t beg, end;
     hts_reglist_t *curr_reg;
     hts_pair32_t *curr_intv;
-    hts_pair64_max_t *off = NULL;
+    hts_pair64_max_t *off = NULL, *tmp;
     cram_index *e = NULL;
 
     if (!cidx || !iter || !iter->multi)
@@ -2678,9 +2744,10 @@ int hts_itr_multi_cram(const hts_idx_t *idx, hts_itr_t *iter)
         tid = curr_reg->tid;
 
         if (tid >= 0) {
-            off = (hts_pair64_max_t*)realloc(off, (n_off + curr_reg->count) * sizeof(hts_pair64_max_t));
-            if (!off)
-                return -1;
+            tmp = realloc(off, (n_off + curr_reg->count) * sizeof(*off));
+            if (!tmp)
+                goto err;
+            off = tmp;
 
             for (j=0; j < curr_reg->count; j++) {
                 curr_intv = &curr_reg->intervals[j];
@@ -2698,17 +2765,20 @@ int hts_itr_multi_cram(const hts_idx_t *idx, hts_itr_t *iter)
                 e = cram_index_query(cidx->cram, tid, beg+1, NULL);
                 if (e) {
                     off[n_off].u = e->offset;
+                    // hts_pair64_max_t::max is now used to link
+                    // file offsets to region list entries.
+                    // The iterator can use this to decide if it
+                    // can skip some file regions.
+                    off[n_off].max = ((uint64_t) tid << 32) | j;
 
-                    if (end == INT_MAX) {
+                    if (end >= HTS_POS_MAX) {
                        e = cram_index_last(cidx->cram, tid, NULL);
                     } else {
-                       e = cram_index_query(cidx->cram, tid, end+1, NULL);
+                       e = cram_index_query_last(cidx->cram, tid, end+1);
                     }
 
                     if (e) {
-                        off[n_off].v = e->offset + e->slice + e->len;
-                        off[n_off].max = (uint64_t)tid<<32 | end;
-                        n_off++;
+                        off[n_off++].v = e->offset + e->slice + e->len;
                     } else {
                         hts_log_warning("Could not set offset end for region %d:%"PRIhts_pos"-%"PRIhts_pos". Skipping", tid, beg, end);
                     }
@@ -2731,10 +2801,12 @@ int hts_itr_multi_cram(const hts_idx_t *idx, hts_itr_t *iter)
                     e = cram_index_query(cidx->cram, tid, 1, NULL);
                     if (e) {
                         iter->read_rest = 1;
-                        off = (hts_pair64_max_t*)realloc(off, sizeof(hts_pair64_max_t));
+                        tmp = realloc(off, sizeof(*off));
+                        if (!tmp)
+                            goto err;
+                        off = tmp;
                         off[0].u = e->offset;
                         off[0].v = 0;
-                        off[0].max = 0;
                         n_off=1;
                     } else {
                         hts_log_warning("No index entries");
@@ -2753,26 +2825,6 @@ int hts_itr_multi_cram(const hts_idx_t *idx, hts_itr_t *iter)
 
     if (n_off) {
         ks_introsort(_off_max, n_off, off);
-        // resolve completely contained adjacent blocks
-        for (i = 1, l = 0; i < n_off; ++i) {
-            if (off[l].v < off[i].v) {
-                off[++l] = off[i];
-            } else {
-                off[l].max = (off[i].max > off[l].max ? off[i].max : off[l].max);
-            }
-        }
-        n_off = l + 1;
-        // resolve overlaps between adjacent blocks; this may happen due to the merge in indexing
-        for (i = 1; i < n_off; ++i)
-            if (off[i-1].v >= off[i].u) off[i-1].v = off[i].u;
-        // merge adjacent blocks
-        for (i = 1, l = 0; i < n_off; ++i) {
-            if (off[l].v>>16 == off[i].u>>16) {
-                off[l].v = off[i].v;
-                off[l].max = (off[i].max > off[l].max ? off[i].max : off[l].max);
-            } else off[++l] = off[i];
-        }
-        n_off = l + 1;
         iter->n_off = n_off; iter->off = off;
     }
 
@@ -2780,15 +2832,20 @@ int hts_itr_multi_cram(const hts_idx_t *idx, hts_itr_t *iter)
         iter->finished = 1;
 
     return 0;
+
+ err:
+    free(off);
+    return -1;
 }
 
 void hts_itr_destroy(hts_itr_t *iter)
 {
     if (iter) {
-        if (iter->multi)
+        if (iter->multi) {
             hts_reglist_free(iter->reg_list, iter->n_reg);
-        else
+        } else {
             free(iter->bins.a);
+        }
 
         if (iter->off)
             free(iter->off);
@@ -2898,8 +2955,8 @@ static void *hts_memrchr(const void *s, int c, size_t n) {
  *     (This is the standard bcftools region convention.)
  *
  *     When not set X:100 is considered to be X:100-<end> where <end> is
- *     the end of chromosome X (set to INT_MAX here).  X:100- and X:-100 are
- *     invalid.
+ *     the end of chromosome X (set to HTS_POS_MAX here).  X:100- and X:-100
+ *     are invalid.
  *     (This is the standard samtools region convention.)
  *
  * Note the supplied string expects 1 based inclusive coordinates, but the
@@ -2911,8 +2968,9 @@ static void *hts_memrchr(const void *s, int c, size_t n) {
  *            beg & end will be set.
  * On failure NULL is returned.
  */
-const char *hts_parse_region(const char *s, int *tid, int64_t *beg, int64_t *end,
-                             hts_name2id_f getid, void *hdr, int flags)
+const char *hts_parse_region(const char *s, int *tid, hts_pos_t *beg,
+                             hts_pos_t *end, hts_name2id_f getid, void *hdr,
+                             int flags)
 {
     if (!s || !tid || !beg || !end || !getid)
         return NULL;
@@ -3031,7 +3089,7 @@ const char *hts_parse_region(const char *s, int *tid, int64_t *beg, int64_t *end
     char *hyphen;
     *beg = hts_parse_decimal(colon+1, &hyphen, flags) - 1;
     if (*beg < 0) {
-        if (isdigit(*hyphen) || *hyphen == '\0' || *hyphen == ',') {
+        if (isdigit_c(*hyphen) || *hyphen == '\0' || *hyphen == ',') {
             // interpret chr:-100 as chr:1-100
             *end = *beg==-1 ? HTS_POS_MAX : -(*beg+1);
             *beg = 0;
@@ -3089,7 +3147,7 @@ const char *hts_parse_reg64(const char *s, hts_pos_t *beg, hts_pos_t *end)
 
 const char *hts_parse_reg(const char *s, int *beg, int *end)
 {
-    int64_t beg64 = 0, end64 = 0;
+    hts_pos_t beg64 = 0, end64 = 0;
     const char *colon = hts_parse_reg64(s, &beg64, &end64);
     if (beg64 > INT_MAX) {
         hts_log_error("Position %"PRId64" too large", beg64);
@@ -3141,7 +3199,6 @@ hts_itr_t *hts_itr_regions(const hts_idx_t *idx, hts_reglist_t *reglist, int cou
         itr->finished = 0;
         itr->nocoor = 0;
         itr->multi = 1;
-
 
         for (i = 0; i < itr->n_reg; i++) {
             if (itr->reg_list[i].reg) {
@@ -3261,8 +3318,31 @@ int hts_itr_multi_next(htsFile *fd, hts_itr_t *iter, void *r)
     assert(iter->off != NULL || iter->nocoor != 0);
 
     for (;;) {
-        if (iter->curr_off == 0 || iter->curr_off >= iter->off[iter->i].v) { // then jump to the next chunk
-            if (iter->i == iter->n_off - 1) { // no more chunks, except NOCOORs
+        // Note that due to the way bam indexing works, iter->off may contain
+        // file chunks that are not actually needed as they contain data
+        // beyond the end of the requested region.  These are filtered out
+        // by comparing the tid and index into hts_reglist_t::intervals
+        // (packed for reasons of convenience into iter->off[iter->i].max)
+        // associated with the file region with iter->curr_tid and
+        // iter->curr_intv.
+
+        if (iter->curr_off == 0
+            || iter->i >= iter->n_off
+            || iter->curr_off >= iter->off[iter->i].v
+            || (iter->off[iter->i].max >> 32 == iter->curr_tid
+                && (iter->off[iter->i].max & 0xffffffff) < iter->curr_intv)) {
+
+            // Jump to the next chunk.  It may be necessary to skip more
+            // than one as the iter->off list can include overlapping entries.
+
+            do {
+                iter->i++;
+            } while (iter->i < iter->n_off
+                     && (iter->curr_off >= iter->off[iter->i].v
+                         || (iter->off[iter->i].max >> 32 == iter->curr_tid
+                             && (iter->off[iter->i].max & 0xffffffff) < iter->curr_intv)));
+
+            if (iter->i >= iter->n_off) { // no more chunks, except NOCOORs
                 if (iter->nocoor) {
                     if (iter->seek(fp, iter->nocoor_off, SEEK_SET) < 0) {
                         hts_log_error("Seek at offset %" PRIu64 " failed.", iter->nocoor_off);
@@ -3289,11 +3369,15 @@ int hts_itr_multi_next(htsFile *fd, hts_itr_t *iter, void *r)
                 } else {
                     ret = -1; break;
                 }
-            } else if (iter->i < iter->n_off - 1) {
-                iter->curr_off = iter->off[++iter->i].u;
-                if (iter->seek(fp, iter->curr_off, SEEK_SET) < 0) {
-                    hts_log_error("Seek at offset %" PRIu64 " failed.", iter->curr_off);
-                    return -1;
+            } else if (iter->i < iter->n_off) {
+                // New chunk may overlap the last one, so ensure we
+                // only seek forwards.
+                if (iter->curr_off < iter->off[iter->i].u) {
+                    iter->curr_off = iter->off[iter->i].u;
+                    if (iter->seek(fp, iter->curr_off, SEEK_SET) < 0) {
+                        hts_log_error("Seek at offset %" PRIu64 " failed.", iter->curr_off);
+                        return -1;
+                    }
                 }
             }
         }
@@ -3320,13 +3404,6 @@ int hts_itr_multi_next(htsFile *fd, hts_itr_t *iter, void *r)
         cr = iter->curr_reg;
         ci = iter->curr_intv;
 
-        if (beg >  iter->off[iter->i].max) {
-            iter->curr_off = iter->off[iter->i].v;
-            continue;
-        }
-        if (beg >  iter->reg_list[cr].max_end)
-            continue;
-
         for (i = ci; i < iter->reg_list[cr].count; i++) {
             if (end > iter->reg_list[cr].intervals[i].beg && iter->reg_list[cr].intervals[i].end > beg) {
                 iter->curr_beg = beg;
@@ -3335,6 +3412,15 @@ int hts_itr_multi_next(htsFile *fd, hts_itr_t *iter, void *r)
 
                 return ret;
             }
+
+            // Check if the read starts beyond intervals[i].end
+            // If so, the interval is finished so move on to the next.
+            if (beg > iter->reg_list[cr].intervals[i].end)
+                iter->curr_intv = i + 1;
+
+            // No need to keep searching if the read ends before intervals[i].beg
+            if (end < iter->reg_list[cr].intervals[i].beg)
+                break;
         }
     }
     iter->finished = 1;
@@ -3364,8 +3450,8 @@ static int idx_test_and_fetch(const char *fn, const char **local_fn, int *local_
         const int buf_size = 1 * 1024 * 1024;
         int l;
         const char *p, *e;
-        // Ignore ?# params: eg any file.fmt?param=val
-        e = fn + strcspn(fn, "?#");
+        // Ignore ?# params: eg any file.fmt?param=val, except for S3 URLs
+        e = fn + ((strncmp(fn, "s3://", 5) && strncmp(fn, "s3+http://", 10) && strncmp(fn, "s3+https://", 11)) ? strcspn(fn, "?#") : strcspn(fn, "?"));
         // Find the previous slash from there.
         p = e;
         while (p > fn && *p != '/') p--;
@@ -3378,6 +3464,7 @@ static int idx_test_and_fetch(const char *fn, const char **local_fn, int *local_
             fclose(local_fp);
             free(s.s);
             *local_fn = p;
+            *local_len = e-p;
             return 0;
         }
 
@@ -3391,13 +3478,14 @@ static int idx_test_and_fetch(const char *fn, const char **local_fn, int *local_
             hts_log_error("Failed to detect format of index file '%s'", fn);
             goto fail;
         }
-        if (fmt.category != index_file || (fmt.format != bai &&  fmt.format != csi && fmt.format != tbi)) {
+        if (fmt.category != index_file || (fmt.format != bai &&  fmt.format != csi && fmt.format != tbi
+                && fmt.format != crai && fmt.format != fai_format)) {
             hts_log_error("Format of index file '%s' is not supported", fn);
             goto fail;
         }
 
         if (download) {
-            if ((local_fp = fopen(s.s, "w")) == 0) {
+            if ((local_fp = fopen(s.s, "wb")) == 0) {
                 hts_log_error("Failed to create file %s in the working directory", p);
                 goto fail;
             }
@@ -3465,13 +3553,15 @@ static int idx_test_and_fetch(const char *fn, const char **local_fn, int *local_
  * @param fnidx - pointer to the index file name placeholder
  * @return        1 for success, 0 for failure
  */
-static int idx_check_local(const char *fn, int fmt, char **fnidx) {
+int hts_idx_check_local(const char *fn, int fmt, char **fnidx) {
     int i, l_fn, l_ext;
     const char *fn_tmp = NULL;
     char *fnidx_tmp;
     char *csi_ext = ".csi";
     char *bai_ext = ".bai";
     char *tbi_ext = ".tbi";
+    char *crai_ext = ".crai";
+    char *fai_ext = ".fai";
 
     if (!fn)
         return 0;
@@ -3496,7 +3586,7 @@ static int idx_check_local(const char *fn, int fmt, char **fnidx) {
 
     if (!fn_tmp) return 0;
     hts_log_info("Using alignment file '%s'", fn_tmp);
-    l_fn = strlen(fn_tmp); l_ext = 4;
+    l_fn = strlen(fn_tmp); l_ext = 5;
     fnidx_tmp = (char*)calloc(l_fn + l_ext + 1, 1);
     if (!fnidx_tmp) return 0;
 
@@ -3535,7 +3625,7 @@ static int idx_check_local(const char *fn, int fmt, char **fnidx) {
                     break;
                 }
         }
-    } else { // Or .tbi
+    } else if (fmt == HTS_FMT_TBI) { // Or .tbi
         strcpy(fnidx_tmp, fn_tmp); strcpy(fnidx_tmp + l_fn, tbi_ext);
         if(stat(fnidx_tmp, &sbuf) == 0) {
             *fnidx = fnidx_tmp;
@@ -3551,6 +3641,29 @@ static int idx_check_local(const char *fn, int fmt, char **fnidx) {
                     break;
                 }
         }
+    } else if (fmt == HTS_FMT_CRAI) { // Or .crai
+        strcpy(fnidx_tmp, fn_tmp); strcpy(fnidx_tmp + l_fn, crai_ext);
+        if(stat(fnidx_tmp, &sbuf) == 0) {
+            *fnidx = fnidx_tmp;
+            return 1;
+        } else {
+            for (i = l_fn - 1; i > 0; --i)
+                if (fnidx_tmp[i] == '.') {
+                    strcpy(fnidx_tmp + i, crai_ext);
+                    if(stat(fnidx_tmp, &sbuf) == 0) {
+                        *fnidx = fnidx_tmp;
+                        return 1;
+                    }
+                    break;
+                }
+        }
+    } else if (fmt == HTS_FMT_FAI) { // Or .fai
+        strcpy(fnidx_tmp, fn_tmp); strcpy(fnidx_tmp + l_fn, fai_ext);
+        *fnidx = fnidx_tmp;
+        if(stat(fnidx_tmp, &sbuf) == 0)
+            return 1;
+        else
+            return 0;
     }
 
     free(fnidx_tmp);
@@ -3589,7 +3702,12 @@ static char *idx_filename(const char *fn, const char *ext, int download) {
 
 char *hts_idx_getfn(const char *fn, const char *ext)
 {
-    return idx_filename(fn, ext, 1);
+    return idx_filename(fn, ext, HTS_IDX_SAVE_REMOTE);
+}
+
+char *hts_idx_locatefn(const char *fn, const char *ext)
+{
+    return idx_filename(fn, ext, 0);
 }
 
 static hts_idx_t *idx_find_and_load(const char *fn, int fmt, int flags)
@@ -3605,12 +3723,12 @@ static hts_idx_t *idx_find_and_load(const char *fn, int fmt, int flags)
         }
         fn2[fnidx - fn] = '\0';
         fnidx += strlen(HTS_IDX_DELIM);
-        idx = hts_idx_load2(fn2, fnidx);
+        idx = hts_idx_load3(fn2, fnidx, fmt, flags);
         free(fn2);
         return idx;
     }
 
-    if (idx_check_local(fn, fmt, &fnidx) == 0 && hisremote(fn)) {
+    if (hts_idx_check_local(fn, fmt, &fnidx) == 0 && hisremote(fn)) {
         if (flags & HTS_IDX_SAVE_REMOTE) {
             fnidx = hts_idx_getfn(fn, ".csi");
             if (!fnidx) {
@@ -3700,6 +3818,7 @@ hts_idx_t *hts_idx_load3(const char *fn, const char *fnidx, int fmt, int flags)
  **********************/
 
 /* For use with hts_expand macros *only* */
+HTSLIB_EXPORT
 size_t hts_realloc_or_die(size_t n, size_t m, size_t m_sz, size_t size,
                           int clear, void **ptr, const char *func) {
     /* If new_m and size are both below this limit, multiplying them

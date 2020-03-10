@@ -1,6 +1,6 @@
 /*  faidx.c -- FASTA and FASTQ random access.
 
-    Copyright (C) 2008, 2009, 2013-2018 Genome Research Ltd.
+    Copyright (C) 2008, 2009, 2013-2019 Genome Research Ltd.
     Portions copyright (C) 2011 Broad Institute.
 
     Author: Heng Li <lh3@sanger.ac.uk>
@@ -23,6 +23,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.  */
 
+#define HTS_BUILDING_LIBRARY // Enables HTSLIB_EXPORT, see htslib/hts_defs.h
 #include <config.h>
 
 #include <ctype.h>
@@ -743,7 +744,7 @@ static int fai_get_val(const faidx_t *fai, const char *str,
     khiter_t iter;
     khash_t(s) *h;
     int id;
-    int64_t beg, end;
+    hts_pos_t beg, end;
 
     if (!fai_parse_region(fai, str, &id, &beg, &end, 0)) {
         hts_log_warning("Reference %s not found in FASTA file, returning empty sequence", str);
@@ -912,7 +913,43 @@ int faidx_has_seq(const faidx_t *fai, const char *seq)
 }
 
 const char *fai_parse_region(const faidx_t *fai, const char *s,
-                             int *tid, int64_t *beg, int64_t *end, int flags)
+                             int *tid, hts_pos_t *beg, hts_pos_t *end,
+                             int flags)
 {
     return hts_parse_region(s, tid, beg, end, (hts_name2id_f)fai_name2id, (void *)fai, flags);
+}
+
+void fai_set_cache_size(faidx_t *fai, int cache_size) {
+    bgzf_set_cache_size(fai->bgzf, cache_size);
+}
+
+char *fai_path(const char *fa) {
+    char *fai = NULL;
+    if (!fa) {
+        hts_log_error("No reference file specified");
+    } else {
+        char *fai_tmp = strstr(fa, HTS_IDX_DELIM);
+        if (fai_tmp) {
+            fai_tmp += strlen(HTS_IDX_DELIM);
+            fai = strdup(fai_tmp);
+            if (!fai)
+                hts_log_error("Failed to allocate memory");
+        } else {
+            if (hisremote(fa)) {
+                fai = hts_idx_locatefn(fa, ".fai");       // get the remote fai file name, if any, but do not download the file
+                if (!fai)
+                    hts_log_error("Failed to locate index file for remote reference file '%s'", fa);
+            } else{
+                if (hts_idx_check_local(fa, HTS_FMT_FAI, &fai) == 0 && fai) {
+                    if (fai_build3(fa, fai, NULL) == -1) {      // create local fai file by indexing local fasta
+                        hts_log_error("Failed to build index file for reference file '%s'", fa);
+                        free(fai);
+                        fai = NULL;
+                    }
+                }
+            }
+        }
+    }
+
+    return fai;
 }

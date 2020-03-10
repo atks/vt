@@ -23,6 +23,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.  */
 
+#define HTS_BUILDING_LIBRARY // Enables HTSLIB_EXPORT, see htslib/hts_defs.h
 #include <config.h>
 
 #include <strings.h>
@@ -63,6 +64,7 @@ KHASH_DECLARE(s2i, kh_cstr_t, int64_t)
  *** BAM header I/O ***
  **********************/
 
+HTSLIB_EXPORT
 const int8_t bam_cigar_table[256] = {
     // 0 .. 47
     -1, -1, -1, -1,  -1, -1, -1, -1,  -1, -1, -1, -1,  -1, -1, -1, -1,
@@ -129,6 +131,33 @@ void sam_hdr_destroy(sam_hdr_t *bh)
     free(bh);
 }
 
+// Copy the sam_hdr_t::sdict hash, used to store the real lengths of long
+// references before sam_hdr_t::hrecs is populated
+int sam_hdr_dup_sdict(const sam_hdr_t *h0, sam_hdr_t *h)
+{
+    const khash_t(s2i) *src_long_refs = (khash_t(s2i) *) h0->sdict;
+    khash_t(s2i) *dest_long_refs = kh_init(s2i);
+    int i;
+    if (!dest_long_refs) return -1;
+
+    for (i = 0; i < h->n_targets; i++) {
+        int ret;
+        khiter_t ksrc, kdest;
+        if (h->target_len[i] < UINT32_MAX) continue;
+        ksrc = kh_get(s2i, src_long_refs, h->target_name[i]);
+        if (ksrc == kh_end(src_long_refs)) continue;
+        kdest = kh_put(s2i, dest_long_refs, h->target_name[i], &ret);
+        if (ret < 0) {
+            kh_destroy(s2i, dest_long_refs);
+            return -1;
+        }
+        kh_val(dest_long_refs, kdest) = kh_val(src_long_refs, ksrc);
+    }
+
+    h->sdict = dest_long_refs;
+    return 0;
+}
+
 sam_hdr_t *sam_hdr_dup(const sam_hdr_t *h0)
 {
     if (h0 == NULL) return NULL;
@@ -155,6 +184,10 @@ sam_hdr_t *sam_hdr_dup(const sam_hdr_t *h0)
         }
         h->n_targets = i;
         if (i < h0->n_targets) goto fail;
+
+        if (h0->sdict) {
+            if (sam_hdr_dup_sdict(h0, h) < 0) goto fail;
+        }
     }
 
     if (h0->hrecs) {
@@ -359,7 +392,8 @@ int bam_hdr_write(BGZF *fp, const sam_hdr_t *h)
     return 0;
 }
 
-const char *sam_parse_region(sam_hdr_t *h, const char *s, int *tid, int64_t *beg, int64_t *end, int flags) {
+const char *sam_parse_region(sam_hdr_t *h, const char *s, int *tid,
+                             hts_pos_t *beg, hts_pos_t *end, int flags) {
     return hts_parse_region(s, tid, beg, end, (hts_name2id_f)bam_name2id, h, flags);
 }
 
@@ -437,7 +471,8 @@ bam1_t *bam_dup1(const bam1_t *bsrc)
     return bdst;
 }
 
-void bam_cigar2rqlens(int n_cigar, const uint32_t *cigar, int *rlen, int *qlen)
+static void bam_cigar2rqlens(int n_cigar, const uint32_t *cigar,
+                             hts_pos_t *rlen, hts_pos_t *qlen)
 {
     int k;
     *rlen = *qlen = 0;
@@ -449,9 +484,10 @@ void bam_cigar2rqlens(int n_cigar, const uint32_t *cigar, int *rlen, int *qlen)
     }
 }
 
-int bam_cigar2qlen(int n_cigar, const uint32_t *cigar)
+hts_pos_t bam_cigar2qlen(int n_cigar, const uint32_t *cigar)
 {
-    int k, l;
+    int k;
+    hts_pos_t l;
     for (k = l = 0; k < n_cigar; ++k)
         if (bam_cigar_type(bam_cigar_op(cigar[k]))&1)
             l += bam_cigar_oplen(cigar[k]);
@@ -607,7 +643,7 @@ int bam_read1(BGZF *fp, bam1_t *b)
         return -4;
 
     if (c->n_cigar > 0) { // recompute "bin" and check CIGAR-qlen consistency
-        int rlen, qlen;
+        hts_pos_t rlen, qlen;
         bam_cigar2rqlens(c->n_cigar, bam_get_cigar(b), &rlen, &qlen);
         if ((b->core.flag & BAM_FUNMAP)) rlen=1;
         b->core.bin = hts_reg2bin(b->core.pos, b->core.pos + rlen, 14, 5);
@@ -664,10 +700,19 @@ int bam_write1(BGZF *fp, const bam1_t *b)
     } else { // with long CIGAR, insert a fake CIGAR record and move the real CIGAR to the CG:B,I tag
         uint8_t buf[8];
         uint32_t cigar_st, cigar_en, cigar[2];
+        hts_pos_t cigreflen = bam_cigar2rlen(c->n_cigar, bam_get_cigar(b));
+        if (cigreflen >= (1<<28)) {
+            // Length of reference covered is greater than the biggest
+            // CIGAR operation currently allowed.
+            hts_log_error("Record %s with %d CIGAR ops and ref length %"PRIhts_pos
+                          " cannot be written in BAM.  Try writing SAM or CRAM instead.\n",
+                          bam_get_qname(b), c->n_cigar, cigreflen);
+            return -1;
+        }
         cigar_st = (uint8_t*)bam_get_cigar(b) - b->data;
         cigar_en = cigar_st + c->n_cigar * 4;
         cigar[0] = (uint32_t)c->l_qseq << 4 | BAM_CSOFT_CLIP;
-        cigar[1] = (uint32_t)bam_cigar2rlen(c->n_cigar, bam_get_cigar(b)) << 4 | BAM_CREF_SKIP;
+        cigar[1] = (uint32_t)cigreflen << 4 | BAM_CREF_SKIP;
         u32_to_le(cigar[0], buf);
         u32_to_le(cigar[1], buf + 4);
         if (ok) ok = (bgzf_write(fp, buf, 8) >= 0); // write cigar: <read_length>S<ref_length>N
@@ -695,6 +740,8 @@ static int bam_write_idx1(htsFile *fp, const sam_hdr_t *h, const bam1_t *b) {
         return -1;
     if (!bfp->mt)
         hts_idx_amend_last(fp->idx, bgzf_tell(bfp));
+    else
+        bgzf_idx_amend_last(bfp, fp->idx, bgzf_tell(bfp));
 
     int ret = bam_write1(bfp, b);
     if (ret < 0)
@@ -803,7 +850,7 @@ int sam_index_build3(const char *fn, const char *fnidx, int min_shift, int nthre
 
     case bam:
     case sam:
-        if (!fp->is_bgzf) {
+        if (fp->format.compression != bgzf) {
             hts_log_error("%s file \"%s\" not BGZF compressed",
                           fp->format.format == bam ? "BAM" : "SAM", fn);
             ret = -1;
@@ -1139,7 +1186,7 @@ hts_itr_t *sam_itr_regarray(const hts_idx_t *idx, sam_hdr_t *hdr, char **regarra
 
     hts_itr_t *itr = NULL;
     if (cidx->fmt == HTS_FMT_CRAI) {
-        r_list = hts_reglist_create(regarray, regcount, &r_count, hdr, cram_name2id);
+        r_list = hts_reglist_create(regarray, regcount, &r_count, cidx->cram, cram_name2id);
         if (!r_list)
             return NULL;
         itr = hts_itr_regions(idx, r_list, r_count, cram_name2id, cidx->cram,
@@ -1298,7 +1345,7 @@ static sam_hdr_t *sam_hdr_create(htsFile* fp) {
                     }
                     sn = (char*)calloc(r - q + 1, 1);
                     if (!sn)
-                    goto error;
+                        goto error;
 
                     strncpy(sn, q, r - q);
                     q = r;
@@ -1357,7 +1404,7 @@ static sam_hdr_t *sam_hdr_create(htsFile* fp) {
         if (kputc('\n', &str) < 0)
             goto error;
 
-        if (fp->format.compression == bgzf) {
+        if (fp->is_bgzf) {
             next_c = bgzf_peek(fp->fp.bgzf);
         } else {
             unsigned char nc;
@@ -1375,7 +1422,14 @@ static sam_hdr_t *sam_hdr_create(htsFile* fp) {
 
     if (!has_SQ && fp->fn_aux) {
         kstring_t line = { 0, 0, NULL };
-        hFILE* f = hopen(fp->fn_aux, "r");
+
+        /* The reference index (.fai) is actually needed here */
+        char *fai_fn = fp->fn_aux;
+        char *fn_delim = strstr(fp->fn_aux, HTS_IDX_DELIM);
+        if (fn_delim)
+            fai_fn = fn_delim + strlen(HTS_IDX_DELIM);
+
+        hFILE* f = hopen(fai_fn, "r");
         int e = 0, absent;
         if (f == NULL)
             goto error;
@@ -1434,7 +1488,7 @@ static sam_hdr_t *sam_hdr_create(htsFile* fp) {
 
         ks_free(&line);
         if (hclose(f) != 0) {
-            hts_log_error("Error on closing %s", fp->fn_aux);
+            hts_log_error("Error on closing %s", fai_fn);
             e = 1;
         }
         if (e)
@@ -1478,6 +1532,10 @@ static sam_hdr_t *sam_hdr_create(htsFile* fp) {
     return fp->bam_header;
 
  error:
+    if (h && d && (!h->target_name || !h->target_len)) {
+        for (k = kh_begin(d); k != kh_end(d); ++k)
+            if (kh_exist(d, k)) free((void *)kh_key(d, k));
+    }
     sam_hdr_destroy(h);
     ks_free(&str);
     kh_destroy(s2i, d);
@@ -1568,7 +1626,7 @@ int sam_hdr_write(htsFile *fp, const sam_hdr_t *h)
             l_text = h->l_text;
         }
 
-        if (fp->format.compression == bgzf) {
+        if (fp->is_bgzf) {
             bytes = bgzf_write(fp->fp.bgzf, text, l_text);
         } else {
             bytes = hwrite(fp->fp.hfile, text, l_text);
@@ -1589,7 +1647,7 @@ int sam_hdr_write(htsFile *fp, const sam_hdr_t *h)
                 if (r != 0)
                     return -1;
 
-                if (fp->format.compression == bgzf) {
+                if (fp->is_bgzf) {
                     bytes = bgzf_write(fp->fp.bgzf, fp->line.s, fp->line.l);
                 } else {
                     bytes = hwrite(fp->fp.hfile, fp->line.s, fp->line.l);
@@ -1598,7 +1656,7 @@ int sam_hdr_write(htsFile *fp, const sam_hdr_t *h)
                     return -1;
             }
         }
-        if (fp->format.compression == bgzf) {
+        if (fp->is_bgzf) {
             if (bgzf_flush(fp->fp.bgzf) != 0) return -1;
         } else {
             if (hflush(fp->fp.hfile) != 0) return -1;
@@ -1710,56 +1768,151 @@ int sam_hdr_change_HD(sam_hdr_t *h, const char *key, const char *val)
  *** SAM record I/O ***
  **********************/
 
-/* Custom strtol for aux tags, always base 10 */
-static inline int64_t STRTOL64(const char *v, char **rv, int b) {
-    int64_t n = 0;
-    int neg = 1;
-    switch(*v) {
-    case '-':
-        neg=-1;
-        break;
-    case '+':
-        break;
-    case '0': case '1': case '2': case '3': case '4':
-    case '5': case '6': case '7': case '8': case '9':
-        n = *v - '0';
-        break;
-    default:
-        *rv = (char *)v;
+static int sam_parse_B_vals(char type, uint32_t n, char *in, char **end,
+                            char *r, bam1_t *b)
+{
+    int orig_l = b->l_data;
+    char *q = in;
+    int32_t size;
+    size_t bytes;
+    int overflow = 0;
+
+    size = aux_type2size(type);
+    if (size <= 0 || size > 4) {
+        hts_log_error("Unrecognized type B:%c", type);
+        return -1;
+    }
+
+    // Ensure space for type + values
+    bytes = (size_t) n * (size_t) size;
+    if (bytes / size != n
+        || possibly_expand_bam_data(b, bytes + 2 + sizeof(uint32_t))) {
+        hts_log_error("Out of memory");
+        return -1;
+    }
+
+    b->data[b->l_data++] = 'B';
+    b->data[b->l_data++] = type;
+    i32_to_le(n, b->data + b->l_data);
+    b->l_data += sizeof(uint32_t);
+    // This ensures that q always ends up at the next comma after
+    // reading a number even if it's followed by junk.  It
+    // prevents the possibility of trying to read more than n items.
+#define skip_to_comma_(q) do { while (*(q) > '\t' && *(q) != ',') (q)++; } while (0)
+    if (type == 'c') {
+        while (q < r) {
+            *(b->data + b->l_data) = hts_str2int(q + 1, &q, 8, &overflow);
+            b->l_data++;
+            skip_to_comma_(q);
+        }
+    } else if (type == 'C') {
+        while (q < r) {
+            if (*q != '-') {
+                *(b->data + b->l_data) = hts_str2uint(q + 1, &q, 8, &overflow);
+                b->l_data++;
+            } else {
+                overflow = 1;
+            }
+            skip_to_comma_(q);
+        }
+    } else if (type == 's') {
+        while (q < r) {
+            i16_to_le(hts_str2int(q + 1, &q, 16, &overflow), b->data + b->l_data);
+            b->l_data += 2;
+            skip_to_comma_(q);
+        }
+    } else if (type == 'S') {
+        while (q < r) {
+            if (*q != '-') {
+                u16_to_le(hts_str2uint(q + 1, &q, 16, &overflow), b->data + b->l_data);
+                b->l_data += 2;
+            } else {
+                overflow = 1;
+            }
+            skip_to_comma_(q);
+        }
+    } else if (type == 'i') {
+        while (q < r) {
+            i32_to_le(hts_str2int(q + 1, &q, 32, &overflow), b->data + b->l_data);
+            b->l_data += 4;
+            skip_to_comma_(q);
+        }
+    } else if (type == 'I') {
+        while (q < r) {
+            if (*q != '-') {
+                u32_to_le(hts_str2uint(q + 1, &q, 32, &overflow), b->data + b->l_data);
+                b->l_data += 4;
+            } else {
+                overflow = 1;
+            }
+            skip_to_comma_(q);
+        }
+    } else if (type == 'f') {
+        while (q < r) {
+            float_to_le(strtod(q + 1, &q), b->data + b->l_data);
+            b->l_data += 4;
+            skip_to_comma_(q);
+        }
+    } else {
+        hts_log_error("Unrecognized type B:%c", type);
+        return -1;
+    }
+
+    if (!overflow) {
+        *end = q;
         return 0;
+    } else {
+        int64_t max = 0, min = 0, val;
+        // Given type was incorrect.  Try to rescue the situation.
+        q = in;
+        overflow = 0;
+        b->l_data = orig_l;
+        // Find out what range of values is present
+        while (q < r) {
+            val = hts_str2int(q + 1, &q, 64, &overflow);
+            if (max < val) max = val;
+            if (min > val) min = val;
+            skip_to_comma_(q);
+        }
+        // Retry with appropriate type
+        if (!overflow) {
+            if (min < 0) {
+                if (min >= INT8_MIN && max <= INT8_MAX) {
+                    return sam_parse_B_vals('c', n, in, end, r, b);
+                } else if (min >= INT16_MIN && max <= INT16_MAX) {
+                    return sam_parse_B_vals('s', n, in, end, r, b);
+                } else if (min >= INT32_MIN && max <= INT32_MAX) {
+                    return sam_parse_B_vals('i', n, in, end, r, b);
+                }
+            } else {
+                if (max < UINT8_MAX) {
+                    return sam_parse_B_vals('C', n, in, end, r, b);
+                } else if (max <= UINT16_MAX) {
+                    return sam_parse_B_vals('S', n, in, end, r, b);
+                } else if (max <= UINT32_MAX) {
+                    return sam_parse_B_vals('I', n, in, end, r, b);
+                }
+            }
+        }
+        // If here then at least one of the values is too big to store
+        hts_log_error("Numeric value in B array out of allowed range");
+        return -1;
     }
-
-    v++;
-
-    while (*v>='0' && *v<='9') {
-        int digit = *v++ - '0';
-        n = n*10 + digit;
-    }
-    *rv = (char *)v;
-    return neg*n;
+#undef skip_to_comma_
 }
 
-static inline uint64_t STRTOUL64(const char *v, char **rv, int b) {
-    uint64_t n = 0;
-    if (*v == '+')
-        v++;
-
-    while (*v>='0' && *v<='9') {
-        int digit = *v++ - '0';
-        n = n*10 + digit;
-    }
-    *rv = (char *)v;
-    return n;
-}
-
-static inline unsigned int parse_sam_flag(char *v, char **rv) {
+static inline unsigned int parse_sam_flag(char *v, char **rv, int *overflow) {
     if (*v >= '1' && *v <= '9') {
-        return STRTOUL64(v, rv, 10);
+        return hts_str2uint(v, rv, 16, overflow);
     }
     else if (*v == '0') {
         // handle single-digit "0" directly; otherwise it's hex or octal
         if (v[1] == '\t') { *rv = v+1; return 0; }
-        else return strtoul(v, rv, 0);
+        else {
+            unsigned long val = strtoul(v, rv, 0);
+            if (val > 65535) { *overflow = 1; return 65535; }
+            return val;
+        }
     }
     else {
         // TODO implement symbolic flag letters
@@ -1814,7 +1967,8 @@ int sam_parse1(kstring_t *s, sam_hdr_t *h, bam1_t *b)
     uint8_t *t;
 
     char *p = s->s, *q;
-    int i;
+    int i, overflow = 0;
+    hts_pos_t cigreflen;
     bam1_core_t *c = &b->core;
 
     b->l_data = 0;
@@ -1836,7 +1990,7 @@ int sam_parse1(kstring_t *s, sam_hdr_t *h, bam1_t *b)
     c->l_qname = p - q + c->l_extranul;
 
     // flag
-    c->flag = parse_sam_flag(p, &p);
+    c->flag = parse_sam_flag(p, &p, &overflow);
     if (*p++ != '\t') goto err_ret; // malformated flag
 
     // chr
@@ -1849,7 +2003,7 @@ int sam_parse1(kstring_t *s, sam_hdr_t *h, bam1_t *b)
     } else c->tid = -1;
 
     // pos
-    c->pos = STRTOL64(p, &p, 10) - 1;
+    c->pos = hts_str2uint(p, &p, 63, &overflow) - 1;
     if (*p++ != '\t') goto err_ret;
     if (c->pos < 0 && c->tid >= 0) {
         _parse_warn(1, "mapped query cannot have zero coordinate; treated as unmapped");
@@ -1858,7 +2012,7 @@ int sam_parse1(kstring_t *s, sam_hdr_t *h, bam1_t *b)
     if (c->tid < 0) c->flag |= BAM_FUNMAP;
 
     // mapq
-    c->qual = STRTOL64(p, &p, 10);
+    c->qual = hts_str2uint(p, &p, 8, &overflow);
     if (*p++ != '\t') goto err_ret;
     // cigar
     if (*p != '*') {
@@ -1873,20 +2027,22 @@ int sam_parse1(kstring_t *s, sam_hdr_t *h, bam1_t *b)
         _get_mem(uint32_t, &cigar, b, c->n_cigar * sizeof(uint32_t));
         for (i = 0; i < c->n_cigar; ++i) {
             int op;
-            cigar[i] = STRTOL64(q, &q, 10)<<BAM_CIGAR_SHIFT;
+            cigar[i] = hts_str2uint(q, &q, 28, &overflow)<<BAM_CIGAR_SHIFT;
             op = bam_cigar_table[(unsigned char)*q++];
             _parse_err(op < 0, "unrecognized CIGAR operator");
             cigar[i] |= op;
         }
         // can't use bam_endpos() directly as some fields not yet set up
-        i = (!(c->flag&BAM_FUNMAP))? bam_cigar2rlen(c->n_cigar, cigar) : 1;
+        cigreflen = (!(c->flag&BAM_FUNMAP))? bam_cigar2rlen(c->n_cigar, cigar) : 1;
     } else {
         _parse_warn(!(c->flag&BAM_FUNMAP), "mapped query must have a CIGAR; treated as unmapped");
         c->flag |= BAM_FUNMAP;
         q = _read_token(p);
-        i = 1;
+        cigreflen = 1;
     }
-    c->bin = hts_reg2bin(c->pos, c->pos + i, 14, 5);
+    _parse_err(HTS_POS_MAX - cigreflen <= c->pos,
+               "read ends beyond highest supported position");
+    c->bin = hts_reg2bin(c->pos, c->pos + cigreflen, 14, 5);
     // mate chr
     q = _read_token(p);
     if (strcmp(q, "=") == 0) {
@@ -1899,22 +2055,22 @@ int sam_parse1(kstring_t *s, sam_hdr_t *h, bam1_t *b)
         _parse_warn(c->mtid < 0, "urecognized mate reference name; treated as unmapped");
     }
     // mpos
-    c->mpos = STRTOL64(p, &p, 10) - 1;
+    c->mpos = hts_str2uint(p, &p, 63, &overflow) - 1;
     if (*p++ != '\t') goto err_ret;
     if (c->mpos < 0 && c->mtid >= 0) {
         _parse_warn(1, "mapped mate cannot have zero coordinate; treated as unmapped");
         c->mtid = -1;
     }
     // tlen
-    c->isize = STRTOL64(p, &p, 10);
+    c->isize = hts_str2int(p, &p, 64, &overflow);
     if (*p++ != '\t') goto err_ret;
     // seq
     q = _read_token(p);
     if (strcmp(q, "*")) {
         _parse_err(p - q - 1 > INT32_MAX, "read sequence is too long");
         c->l_qseq = p - q - 1;
-        i = bam_cigar2qlen(c->n_cigar, (uint32_t*)(b->data + c->l_qname));
-        _parse_err(c->n_cigar && i != c->l_qseq, "CIGAR and query sequence are of different length");
+        hts_pos_t ql = bam_cigar2qlen(c->n_cigar, (uint32_t*)(b->data + c->l_qname));
+        _parse_err(c->n_cigar && ql != c->l_qseq, "CIGAR and query sequence are of different length");
         i = (c->l_qseq + 1) >> 1;
         _get_mem(uint8_t, &t, b, i);
 
@@ -1960,7 +2116,7 @@ int sam_parse1(kstring_t *s, sam_hdr_t *h, bam1_t *b)
             b->data[b->l_data++] = *q++;
         } else if (type == 'i' || type == 'I') {
             if (*q == '-') {
-                long x = STRTOL64(q, &q, 10);
+                int32_t x = hts_str2int(q, &q, 32, &overflow);
                 if (x >= INT8_MIN) {
                     b->data[b->l_data++] = 'c';
                     b->data[b->l_data++] = x;
@@ -1974,7 +2130,7 @@ int sam_parse1(kstring_t *s, sam_hdr_t *h, bam1_t *b)
                     b->l_data += 4;
                 }
             } else {
-                unsigned long x = STRTOUL64(q, &q, 10);
+                uint32_t x = hts_str2uint(q, &q, 32, &overflow);
                 if (x <= UINT8_MAX) {
                     b->data[b->l_data++] = 'C';
                     b->data[b->l_data++] = x;
@@ -2008,48 +2164,25 @@ int sam_parse1(kstring_t *s, sam_hdr_t *h, bam1_t *b)
             b->data[b->l_data++] = '\0';
             q = end;
         } else if (type == 'B') {
-            int32_t n, size;
-            size_t bytes;
+            uint32_t n;
             char *r;
             type = *q++; // q points to the first ',' following the typing byte
-            size = aux_type2size(type);
-            _parse_err_param(size <= 0 || size > 4,
-                             "unrecognized type B:%c", type);
             _parse_err(*q && *q != ',' && *q != '\t',
                        "B aux field type not followed by ','");
 
             for (r = q, n = 0; *r > '\t'; ++r)
                 if (*r == ',') ++n;
 
-            // Ensure space for type + values
-            bytes = (size_t) n * (size_t) size;
-            _parse_err(bytes / size != n
-                       || possibly_expand_bam_data(b, bytes + 2 + sizeof(uint32_t)) < 0,
-                       "out of memory");
-            b->data[b->l_data++] = 'B';
-            b->data[b->l_data++] = type;
-            i32_to_le(n, b->data + b->l_data);
-            b->l_data += sizeof(uint32_t);
-
-            // This ensures that q always ends up at the next comma after
-            // reading a number even if it's followed by junk.  It
-            // prevents the possibility of trying to read more than n items.
-#define skip_to_comma_(q) do { while (*(q) > '\t' && *(q) != ',') (q)++; } while (0)
-            if (type == 'c')      while (q < r) { *(b->data + b->l_data) = STRTOL64(q + 1, &q, 0); b->l_data++; skip_to_comma_(q); }
-            else if (type == 'C') while (q < r) { *(b->data + b->l_data) = STRTOUL64(q + 1, &q, 0); b->l_data++; skip_to_comma_(q); }
-            else if (type == 's') while (q < r) { i16_to_le(STRTOL64(q + 1, &q, 0), b->data + b->l_data); b->l_data += 2; skip_to_comma_(q); }
-            else if (type == 'S') while (q < r) { u16_to_le(STRTOUL64(q + 1, &q, 0), b->data + b->l_data); b->l_data += 2; skip_to_comma_(q); }
-            else if (type == 'i') while (q < r) { i32_to_le(STRTOL64(q + 1, &q, 0), b->data + b->l_data); b->l_data += 4; skip_to_comma_(q); }
-            else if (type == 'I') while (q < r) { u32_to_le(STRTOUL64(q + 1, &q, 0), b->data + b->l_data); b->l_data += 4; skip_to_comma_(q); }
-            else if (type == 'f') while (q < r) { float_to_le(strtod(q + 1, &q), b->data + b->l_data); b->l_data += 4; skip_to_comma_(q); }
-            else _parse_err_param(1, "unrecognized type B:%c", type);
-#undef skip_to_comma_
-
+            if (sam_parse_B_vals(type, n, q, &q, r, b) < 0)
+                goto err_ret;
         } else _parse_err_param(1, "unrecognized type %c", type);
 
         while (*q > '\t') { q++; } // Skip any junk to next tab
         q++;
     }
+
+    _parse_err(overflow != 0, "numeric value out of allowed range");
+
     if (bam_tag2cigar(b, 1, 1) < 0)
         return -2;
     return 0;
@@ -2331,7 +2464,7 @@ static void *sam_parse_worker(void *arg) {
         // However this is an API change so for now we copy.
 
         char *nl = strchr(cp, '\n');
-        nl = nl ? nl : cp_end;
+        if (!nl)  nl = cp_end;
         if (*nl) *nl++ = '\0';
         kstring_t ks = {nl-cp, gl->alloc, cp};
         if (sam_parse1(&ks, fd->h, &b[i]) < 0) {
@@ -2386,6 +2519,11 @@ static void *sam_dispatcher_read(void *vp) {
     int line_frag = 0;
     SAM_state *fd = fp->state;
     sp_lines *l = NULL;
+
+    // Pre-allocate buffer for left-over bits of line (exact size doesn't
+    // matter as it will grow if necessary).
+    if (ks_resize(&line, 1000) < 0)
+        goto err;
 
     for (;;) {
         // Check for command
@@ -2560,7 +2698,7 @@ static void *sam_dispatcher_write(void *vp) {
                 if (i < gl->data_size)
                     i++;
 
-                if (fp->format.compression == bgzf) {
+                if (fp->is_bgzf) {
                     if (bgzf_write(fp->fp.bgzf, &gl->data[j], i-j) != i-j)
                         goto err;
                 } else {
@@ -2599,7 +2737,7 @@ static void *sam_dispatcher_write(void *vp) {
             gl->bams = NULL;
             pthread_mutex_unlock(&fd->lines_m);
         } else {
-            if (fp->format.compression == bgzf) {
+            if (fp->is_bgzf) {
                 if (bgzf_write(fp->fp.bgzf, gl->data, gl->data_size) != gl->data_size)
                     goto err;
             } else {
@@ -2900,22 +3038,21 @@ static int sam_format1_append(const bam_hdr_t *h, const bam1_t *b, kstring_t *st
         uint8_t *s = bam_get_seq(b);
         if (ks_resize(str, str->l+2+2*c->l_qseq) < 0) goto mem_err;
         char *cp = str->s + str->l;
-        int lq2 = c->l_qseq / 2;
-        for (i = 0; i < lq2; i++) {
-            uint8_t b = s[i];
-            cp[i*2+0] = "=ACMGRSVTWYHKDBN"[b>>4];
-            cp[i*2+1] = "=ACMGRSVTWYHKDBN"[b&0xf];
-        }
-        for (i *= 2; i < c->l_qseq; ++i)
-            cp[i] = "=ACMGRSVTWYHKDBN"[bam_seqi(s, i)];
-        cp[i++] = '\t';
-        cp += i;
+
+        // Sequence, 2 bases at a time
+        nibble2base(s, cp, c->l_qseq);
+        cp[c->l_qseq] = '\t';
+        cp += c->l_qseq+1;
+
+        // Quality
         s = bam_get_qual(b);
         i = 0;
         if (s[0] == 0xff) {
             cp[i++] = '*';
         } else {
-            for (i = 0; i < c->l_qseq; ++i)
+            // local copy of c->l_qseq to aid unrolling
+            uint32_t lqseq = c->l_qseq;
+            for (i = 0; i < lqseq; ++i)
                 cp[i]=s[i]+33;
         }
         cp[i] = 0;
@@ -3152,7 +3289,7 @@ int sam_write1(htsFile *fp, const sam_hdr_t *h, const bam1_t *b)
         } else {
             if (sam_format1(h, b, &fp->line) < 0) return -1;
             kputc('\n', &fp->line);
-            if (fp->format.compression == bgzf) {
+            if (fp->is_bgzf) {
                 if ( bgzf_write(fp->fp.bgzf, fp->line.s, fp->line.l) != fp->line.l ) return -1;
             } else {
                 if ( hwrite(fp->fp.hfile, fp->line.s, fp->line.l) != fp->line.l ) return -1;
@@ -4547,7 +4684,7 @@ int bam_mplp64_auto(bam_mplp_t iter, int *_tid, hts_pos_t *_pos, int *n_plp, con
             if (iter->tid[i] < new_min_tid) {
                 new_min_tid = iter->tid[i];
                 new_min_pos = iter->pos[i];
-            } else if (iter->pos[i] < new_min_pos) {
+            } else if (iter->tid[i] == new_min_tid && iter->pos[i] < new_min_pos) {
                 new_min_pos = iter->pos[i];
             }
         }

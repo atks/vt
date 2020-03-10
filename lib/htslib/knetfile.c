@@ -1,6 +1,6 @@
 /* The MIT License
 
-   Copyright (c) 2008 by Genome Research Ltd (GRL).
+   Copyright (c) 2008, 2012-2014, 2017 Genome Research Ltd (GRL).
                  2010 by Attractive Chaos <attractor@live.co.uk>
 
    Permission is hereby granted, free of charge, to any person obtaining
@@ -28,6 +28,7 @@
    therefore I decide to heavily annotate this file, for Linux and
    Windows as well.  -ac */
 
+#define HTS_BUILDING_LIBRARY // Enables HTSLIB_EXPORT, see htslib/hts_defs.h
 #include <config.h>
 
 #include <time.h>

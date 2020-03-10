@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2018 Genome Research Ltd.
+Copyright (c) 2018-2019 Genome Research Ltd.
 Authors: James Bonfield <jkb@sanger.ac.uk>, Valeriu Ohan <vo2@sanger.ac.uk>
 
 Redistribution and use in source and binary forms, with or without
@@ -28,6 +28,7 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+#define HTS_BUILDING_LIBRARY // Enables HTSLIB_EXPORT, see htslib/hts_defs.h
 #include <config.h>
 
 #include <string.h>
@@ -135,10 +136,10 @@ static void sam_hrecs_remove_ref_altnames(sam_hrecs_t *hrecs, int expected, cons
  *        -1 on failure
  */
 static int sam_hrecs_update_hashes(sam_hrecs_t *hrecs,
-                                   int type,
+                                   khint32_t type,
                                    sam_hrec_type_t *h_type) {
     /* Add to reference hash? */
-    if ((type>>8) == 'S' && (type&0xff) == 'Q') {
+    if (type == TYPEKEY("SQ")) {
         sam_hrec_tag_t *tag = h_type->tag;
         int nref = hrecs->nref;
         const char *name = NULL;
@@ -176,6 +177,7 @@ static int sam_hrecs_update_hashes(sam_hrecs_t *hrecs,
         k = kh_get(m_s2i, hrecs->ref_hash, name);
         if (k < kh_end(hrecs->ref_hash)) {
             nref = kh_val(hrecs->ref_hash, k);
+            int ref_changed_flag = 0;
 
             // Check for hash entry added by sam_hrecs_refs_from_targets_array()
             if (hrecs->ref[nref].ty == NULL) {
@@ -188,41 +190,46 @@ static int sam_hrecs_update_hashes(sam_hrecs_t *hrecs,
                              hrecs->ref[nref].len);
                     if (sam_hrecs_update(hrecs, h_type, "LN", tmp, NULL) < 0)
                         return -1;
+                    ref_changed_flag = 1;
                 }
                 if (sam_hrecs_add_ref_altnames(hrecs, nref, altnames) < 0)
                     return -1;
 
-                if (hrecs->refs_changed < 0 || hrecs->refs_changed > nref)
+                if (ref_changed_flag && (hrecs->refs_changed < 0 || hrecs->refs_changed > nref))
                     hrecs->refs_changed = nref;
                 return 0;
             }
 
             // Check to see if an existing entry is being updated
             if (hrecs->ref[nref].ty == h_type) {
-                hrecs->ref[nref].len = len;
-                hrecs->ref[nref].name = name;
+                if (hrecs->ref[nref].len != len) {
+                    hrecs->ref[nref].len = len;
+                    ref_changed_flag = 1;
+                }
+                if (!hrecs->ref[nref].name || strcmp(hrecs->ref[nref].name, name)) {
+                    hrecs->ref[nref].name = name;
+                    ref_changed_flag = 1;
+                }
                 if (sam_hrecs_add_ref_altnames(hrecs, nref, altnames) < 0)
                     return -1;
 
-                if (hrecs->refs_changed < 0 || hrecs->refs_changed > nref)
+                if (ref_changed_flag && (hrecs->refs_changed < 0 || hrecs->refs_changed > nref))
                     hrecs->refs_changed = nref;
                 return 0;
             }
 
             // If here, the name is a duplicate.
-            // Check to see if it matches the SN: tag from the earlier
-            // record.  If it does, drop this and keep the existing one.
+            // Check to see if it matches the SN: tag from the earlier record.
             if (strcmp(hrecs->ref[nref].name, name) == 0) {
-                hts_log_warning("Duplicate entry \"%s\" in sam header",
+                hts_log_error("Duplicate entry \"%s\" in sam header",
                                 name);
-                return 0;
+                return -1;
             }
 
             // Clash with an already-seen altname
             // As SN: should be preferred to AN: add this as a new
             // record and update the hash entry to point to it.
-            hts_log_warning("Duplicate entry AN:\"%s\" in "
-                            "sam header", name);
+            hts_log_warning("Ref name SN:\"%s\" is a duplicate of an existing AN key", name);
             nref = hrecs->nref;
         }
 
@@ -252,7 +259,7 @@ static int sam_hrecs_update_hashes(sam_hrecs_t *hrecs,
     }
 
     /* Add to read-group hash? */
-    if ((type>>8) == 'R' && (type&0xff) == 'G') {
+    if (type == TYPEKEY("RG")) {
         sam_hrec_tag_t *tag = sam_hrecs_find_key(h_type, "ID", NULL);
         int nrg = hrecs->nrg, r;
         khint_t k;
@@ -300,7 +307,7 @@ static int sam_hrecs_update_hashes(sam_hrecs_t *hrecs,
     }
 
     /* Add to program hash? */
-    if ((type>>8) == 'P' && (type&0xff) == 'G') {
+    if (type == TYPEKEY("PG")) {
         sam_hrec_tag_t *tag;
         sam_hrec_pg_t *new_pg;
         int npg = hrecs->npg;
@@ -385,7 +392,7 @@ static int sam_hrecs_update_hashes(sam_hrecs_t *hrecs,
     return 0;
 }
 
-static int sam_hrecs_remove_hash_entry(sam_hrecs_t *hrecs, int type, sam_hrec_type_t *h_type) {
+static int sam_hrecs_remove_hash_entry(sam_hrecs_t *hrecs, khint32_t type, sam_hrec_type_t *h_type) {
     if (!hrecs || !h_type)
         return -1;
 
@@ -394,7 +401,7 @@ static int sam_hrecs_remove_hash_entry(sam_hrecs_t *hrecs, int type, sam_hrec_ty
     khint_t k;
 
     /* Remove name and any alternative names from reference hash */
-    if ((type>>8) == 'S' && (type&0xff) == 'Q') {
+    if (type == TYPEKEY("SQ")) {
         const char *altnames = NULL;
 
         tag = h_type->tag;
@@ -434,7 +441,7 @@ static int sam_hrecs_remove_hash_entry(sam_hrecs_t *hrecs, int type, sam_hrec_ty
     }
 
     /* Remove from read-group hash */
-    if ((type>>8) == 'R' && (type&0xff) == 'G') {
+    if (type == TYPEKEY("RG")) {
         tag = h_type->tag;
 
         while (tag) {
@@ -475,7 +482,7 @@ static int sam_hrecs_remove_hash_entry(sam_hrecs_t *hrecs, int type, sam_hrec_ty
 static void sam_hrecs_global_list_add(sam_hrecs_t *hrecs,
                                       sam_hrec_type_t *h_type,
                                       sam_hrec_type_t *after) {
-    const khint32_t hd_type = 'H' << 8 | 'D';
+    const khint32_t hd_type = TYPEKEY("HD");
     int update_first_line = 0;
 
     // First line seen
@@ -529,7 +536,7 @@ static int sam_hrecs_vadd(sam_hrecs_t *hrecs, const char *type, va_list ap, ...)
     sam_hrec_type_t *h_type;
     sam_hrec_tag_t *h_tag, *last=NULL;
     int new;
-    khint32_t type_i = (type[0]<<8) | type[1], k;
+    khint32_t type_i = TYPEKEY(type), k;
 
     if (!strncmp(type, "HD", 2) && (h_type = sam_hrecs_find_type_id(hrecs, "HD", NULL, NULL)))
         return sam_hrecs_vupdate(hrecs, h_type, ap);
@@ -641,8 +648,7 @@ static int sam_hrecs_vadd(sam_hrecs_t *hrecs, const char *type, va_list ap, ...)
         last = h_tag;
     }
 
-    int itype = (type[0]<<8) | type[1];
-    if (-1 == sam_hrecs_update_hashes(hrecs, itype, h_type))
+    if (-1 == sam_hrecs_update_hashes(hrecs, TYPEKEY(type), h_type))
         return -1;
 
     if (!strncmp(type, "PG", 2))
@@ -680,7 +686,7 @@ static int sam_hrecs_remove_line(sam_hrecs_t *hrecs, const char *type_name, sam_
     if (!hrecs || !type_name || !type_found)
         return -1;
 
-    int itype = (type_name[0]<<8) | type_name[1];
+    khint32_t itype = TYPEKEY(type_name);
     khint_t k = kh_get(sam_hrecs_t, hrecs->h, itype);
     if (k == kh_end(hrecs->h))
         return -1;
@@ -779,12 +785,12 @@ static int sam_hrecs_parse_lines(sam_hrecs_t *hrecs, const char *hdr, size_t len
             return -1;
         }
 
-        type = (((uint8_t) hdr[i+1])<<8) | (uint8_t) hdr[i+2];
         if (!isalpha_c(hdr[i+1]) || !isalpha_c(hdr[i+2])) {
             sam_hrecs_error("Header line does not have a two character key",
                           &hdr[l_start], len - l_start, lno);
             return -1;
         }
+        type = TYPEKEY(&hdr[i+1]);
 
         i += 3;
         if (i == len || hdr[i] == '\n')
@@ -820,7 +826,7 @@ static int sam_hrecs_parse_lines(sam_hrecs_t *hrecs, const char *hdr, size_t len
 
         // Parse the tags on this line
         last = NULL;
-        if ((type>>8) == 'C' && (type&0xff) == 'O') {
+        if (type == TYPEKEY("CO")) {
             size_t j;
 
             if (i == len || hdr[i] != '\t') {
@@ -917,6 +923,8 @@ int sam_hdr_update_target_arrays(sam_hdr_t *bh, const sam_hrecs_t *hrecs,
     // hrecs->refs_changed is the first ref that has been updated, so ones
     // before that can be skipped.
     int i;
+    khint_t k;
+    khash_t(s2i) *long_refs = (khash_t(s2i) *) bh->sdict;
     for (i = refs_changed; i < hrecs->nref; i++) {
         if (i >= bh->n_targets
             || strcmp(bh->target_name[i], hrecs->ref[i].name) != 0) {
@@ -928,13 +936,40 @@ int sam_hdr_update_target_arrays(sam_hdr_t *bh, const sam_hrecs_t *hrecs,
         }
         if (hrecs->ref[i].len < UINT32_MAX) {
             bh->target_len[i] = hrecs->ref[i].len;
+
+            if (!long_refs)
+                continue;
+
+            // Check if we have an old length, if so remove it.
+            k = kh_get(s2i, long_refs, bh->target_name[i]);
+            if (k < kh_end(long_refs))
+                kh_del(s2i, long_refs, k);
         } else {
             bh->target_len[i] = UINT32_MAX;
+            if (bh->hrecs != hrecs) {
+                // Called from sam_hdr_dup; need to add sdict entries
+                if (!long_refs) {
+                    if (!(bh->sdict = long_refs = kh_init(s2i)))
+                        return -1;
+                }
+
+                // Add / update length
+                int absent;
+                k = kh_put(s2i, long_refs, bh->target_name[i], &absent);
+                if (absent < 0)
+                    return -1;
+                kh_val(long_refs, k) = hrecs->ref[i].len;
+            }
         }
     }
 
     // Free up any names that have been removed
     for (; i < bh->n_targets; i++) {
+        if (long_refs) {
+            k = kh_get(s2i, long_refs, bh->target_name[i]);
+            if (k < kh_end(long_refs))
+                kh_del(s2i, long_refs, k);
+        }
         free(bh->target_name[i]);
     }
 
@@ -1015,8 +1050,9 @@ static int sam_hrecs_refs_from_targets_array(sam_hrecs_t *hrecs,
         k = kh_put(m_s2i, hrecs->ref_hash, hrecs->ref[tid].name, &r);
         if (r < 0) goto fail;
         if (r == 0) {
-            hts_log_warning("Duplicate entry \"%s\" in target list",
+            hts_log_error("Duplicate entry \"%s\" in target list",
                             hrecs->ref[tid].name);
+            return -1;
         } else {
             kh_val(hrecs->ref_hash, k) = tid;
         }
@@ -1062,8 +1098,13 @@ static int add_stub_ref_sq_lines(sam_hrecs_t *hrecs) {
                               "SN", hrecs->ref[tid].name,
                               "LN", len, NULL) != 0)
                 return -1;
-            // This should be true after adding the new line
-            assert(hrecs->ref[tid].ty != NULL);
+
+            // Check that the stub has actually been filled
+            if(hrecs->ref[tid].ty == NULL) {
+                hts_log_error("Reference stub with tid=%d, name=\"%s\", len=%"PRIhts_pos" could not be filled",
+                        tid, hrecs->ref[tid].name, hrecs->ref[tid].len);
+                return -1;
+            }
         }
     }
     return 0;
@@ -1582,8 +1623,7 @@ int sam_hdr_remove_except(sam_hdr_t *bh, const char *type, const char *ID_key, c
 
     sam_hrec_type_t *type_found = sam_hrecs_find_type_id(hrecs, type, ID_key, ID_value);
     if (!type_found) { // remove all line of this type
-        int itype = (type[0]<<8)|(type[1]);
-        khint_t k = kh_get(sam_hrecs_t, hrecs->h, itype);
+        khint_t k = kh_get(sam_hrecs_t, hrecs->h, TYPEKEY(type));
         if (k == kh_end(hrecs->h))
             return 0;
         type_found =  kh_val(hrecs->h, k);
@@ -1608,9 +1648,9 @@ int sam_hdr_remove_except(sam_hdr_t *bh, const char *type, const char *ID_key, c
     return 0;
 }
 
-int sam_hdr_remove_lines(sam_hdr_t *bh, const char *type, const char *id, void *h) {
+int sam_hdr_remove_lines(sam_hdr_t *bh, const char *type, const char *id, void *vrh) {
     sam_hrecs_t *hrecs;
-    rmhash_t *rh = (rmhash_t *)h;
+    rmhash_t *rh = (rmhash_t *)vrh;
 
     if (!bh || !type)
         return -1;
@@ -1625,8 +1665,7 @@ int sam_hdr_remove_lines(sam_hdr_t *bh, const char *type, const char *id, void *
         hrecs = bh->hrecs;
     }
 
-    int itype = (type[0]<<8)|(type[1]);
-    khint_t k = kh_get(sam_hrecs_t, hrecs->h, itype);
+    khint_t k = kh_get(sam_hrecs_t, hrecs->h, TYPEKEY(type));
     if (k == kh_end(hrecs->h)) // nothing to remove from
         return 0;
 
@@ -1944,7 +1983,7 @@ int sam_hdr_name2tid(sam_hdr_t *bh, const char *ref) {
 const char *sam_hdr_tid2name(const sam_hdr_t *h, int tid) {
     sam_hrecs_t *hrecs;
 
-    if (!h)
+    if (!h || tid < 0)
         return NULL;
 
     if ((hrecs = h->hrecs) != NULL && tid < hrecs->nref) {
@@ -1960,7 +1999,7 @@ const char *sam_hdr_tid2name(const sam_hdr_t *h, int tid) {
 hts_pos_t sam_hdr_tid2len(const sam_hdr_t *h, int tid) {
     sam_hrecs_t *hrecs;
 
-    if (!h)
+    if (!h || tid < 0)
         return 0;
 
     if ((hrecs = h->hrecs) != NULL && tid < hrecs->nref) {
@@ -2369,7 +2408,6 @@ sam_hrec_type_t *sam_hrecs_find_type_id(sam_hrecs_t *hrecs, const char *type,
     if (!hrecs || !type)
         return NULL;
     sam_hrec_type_t *t1, *t2;
-    int itype = (type[0]<<8)|(type[1]);
     khint_t k;
 
     /* Special case for types we have prebuilt hashes on */
@@ -2402,7 +2440,7 @@ sam_hrec_type_t *sam_hrecs_find_type_id(sam_hrecs_t *hrecs, const char *type,
         }
     }
 
-    k = kh_get(sam_hrecs_t, hrecs->h, itype);
+    k = kh_get(sam_hrecs_t, hrecs->h, TYPEKEY(type));
     if (k == kh_end(hrecs->h))
         return NULL;
 

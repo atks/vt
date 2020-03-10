@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2010 Genome Research Ltd.
+Copyright (c) 2010, 2013, 2018-2019 Genome Research Ltd.
 Author: Andrew Whitwham <aw7@sanger.ac.uk>
 
 Redistribution and use in source and binary forms, with or without
@@ -36,6 +36,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
    Andrew Whitwham, September 2010.
 */
 
+#define HTS_BUILDING_LIBRARY // Enables HTSLIB_EXPORT, see htslib/hts_defs.h
 #include <config.h>
 
 #include <string.h>

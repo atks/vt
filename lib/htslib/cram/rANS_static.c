@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014 Genome Research Ltd.
+ * Copyright (c) 2014-2019 Genome Research Ltd.
  * Author(s): James Bonfield
  *
  * Redistribution and use in source and binary forms, with or without
@@ -35,6 +35,7 @@
  * Author: James Bonfield, Wellcome Trust Sanger Institute. 2014
  */
 
+#define HTS_BUILDING_LIBRARY // Enables HTSLIB_EXPORT, see htslib/hts_defs.h
 #include <config.h>
 
 #include <stdint.h>
@@ -841,6 +842,7 @@ int main(int argc, char **argv) {
     if (optind < argc) {
         if (!(outfp = fopen(argv[optind], "wb"))) {
             perror(argv[optind]);
+            fclose(infp);
             return 1;
         }
         optind++;
@@ -898,6 +900,10 @@ int main(int argc, char **argv) {
             tv2.tv_usec - tv1.tv_usec,
             (double)bytes / ((long)(tv2.tv_sec - tv1.tv_sec)*1000000 +
                              tv2.tv_usec - tv1.tv_usec));
+
+    if (infp  != stdin)  fclose(infp);
+    if (outfp != stdout) fclose(outfp);
+
     return 0;
 }
 #endif

@@ -1,6 +1,7 @@
 /* The MIT License
 
    Copyright (C) 2003-2006, 2008-2010 by Heng Li <lh3lh3@live.co.uk>
+   Copyright (C) 2016-2017 Genome Research Ltd.
 
    Permission is hereby granted, free of charge, to any person obtaining
    a copy of this software and associated documentation files (the
@@ -23,6 +24,7 @@
    SOFTWARE.
 */
 
+#define HTS_BUILDING_LIBRARY // Enables HTSLIB_EXPORT, see htslib/hts_defs.h
 #include <config.h>
 
 #include <stdlib.h>

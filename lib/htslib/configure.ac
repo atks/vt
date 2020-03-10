@@ -30,6 +30,7 @@ AC_CONFIG_SRCDIR(hts.c)
 AC_CONFIG_HEADERS(config.h)
 
 m4_include([m4/hts_prog_cc_warnings.m4])
+m4_include([m4/hts_hide_dynamic_syms.m4])
 
 dnl Copyright notice to be copied into the generated configure script
 AC_COPYRIGHT([Portions copyright (C) 2018 Genome Research Ltd.
@@ -166,9 +167,13 @@ esac
 AC_MSG_RESULT([$host_result])
 AC_SUBST([PLATFORM])
 
+dnl Try to get more control over which symbols are exported in the shared
+dnl library.
+HTS_HIDE_DYNAMIC_SYMBOLS
+
 dnl FIXME This pulls in dozens of standard header checks
 AC_FUNC_MMAP
-AC_CHECK_FUNCS([gmtime_r fsync drand48])
+AC_CHECK_FUNCS([gmtime_r fsync drand48 srand48_deterministic])
 
 # Darwin has a dubious fdatasync() symbol, but no declaration in <unistd.h>
 AC_CHECK_DECL([fdatasync(int)], [AC_CHECK_FUNCS(fdatasync)])
@@ -179,9 +184,12 @@ if test $enable_plugins != no; then
 
 Plugin support requires dynamic linking facilities from the operating system.
 Either configure with --disable-plugins or resolve this error to build HTSlib.])])
+  # Check if the compiler understands -rdynamic 
   # TODO Test whether this is required and/or needs tweaking per-platform
-  LDFLAGS="$LDFLAGS -rdynamic"
-  static_LDFLAGS="$static_LDFLAGS -rdynamic"
+  HTS_TEST_CC_C_LD_FLAG([-rdynamic],[rdynamic_flag])
+  AS_IF([test x"$rdynamic_flag" != "xno"],
+    [LDFLAGS="$LDFLAGS $rdynamic_flag"
+     static_LDFLAGS="$static_LDFLAGS $rdynamic_flag"])
   case "$ac_cv_search_dlopen" in
     -l*) static_LIBS="$static_LIBS $ac_cv_search_dlopen" ;;
   esac

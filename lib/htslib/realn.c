@@ -1,6 +1,6 @@
 /*  realn.c -- BAQ calculation and realignment.
 
-    Copyright (C) 2009-2011, 2014-2015 Genome Research Ltd.
+    Copyright (C) 2009-2011, 2014-2016, 2018 Genome Research Ltd.
     Portions copyright (C) 2009-2011 Broad Institute.
 
     Author: Heng Li <lh3@sanger.ac.uk>
@@ -23,6 +23,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.  */
 
+#define HTS_BUILDING_LIBRARY // Enables HTSLIB_EXPORT, see htslib/hts_defs.h
 #include <config.h>
 
 #include <stdlib.h>

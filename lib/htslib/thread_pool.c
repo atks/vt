@@ -1,6 +1,6 @@
 /*  thread_pool.c -- A pool of generic worker threads
 
-    Copyright (c) 2013-2017 Genome Research Ltd.
+    Copyright (c) 2013-2019 Genome Research Ltd.
 
     Author: James Bonfield <jkb@sanger.ac.uk>
 
@@ -23,6 +23,7 @@ FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.  */
 
 #ifndef TEST_MAIN
+#define HTS_BUILDING_LIBRARY // Enables HTSLIB_EXPORT, see htslib/hts_defs.h
 #include <config.h>
 #endif
 
@@ -56,10 +57,11 @@ static int worker_id(hts_tpool *p) {
     return -1;
 }
 
-int DBG_OUT(FILE *fp, char *fmt, ...) {
+void DBG_OUT(FILE *fp, char *fmt, ...) {
     va_list args;
     va_start(args, fmt);
-    return vfprintf(fp, fmt, args);
+    vfprintf(fp, fmt, args);
+    va_end(args);
 }
 #else
 #define DBG_OUT(...) do{}while(0)
@@ -616,6 +618,7 @@ static void *tpool_worker(void *arg) {
 }
 
 static void wake_next_worker(hts_tpool_process *q, int locked) {
+    if (!q) return;
     hts_tpool *p = q->p;
     if (!locked)
         pthread_mutex_lock(&p->pool_m);
@@ -640,7 +643,7 @@ static void wake_next_worker(hts_tpool_process *q, int locked) {
 
     int running = p->tsize - p->nwaiting;
     int sig = p->t_stack_top >= 0 && p->njobs > p->tsize - p->nwaiting
-        && (!q || q->n_processing < q->qsize - q->n_output);
+        && (q->n_processing < q->qsize - q->n_output);
 
 //#define AVG_USAGE
 #ifdef AVG_USAGE

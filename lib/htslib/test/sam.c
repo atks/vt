@@ -1,6 +1,6 @@
 /*  test/sam.c -- SAM/BAM/CRAM API test cases.
 
-    Copyright (C) 2014-2017 Genome Research Ltd.
+    Copyright (C) 2014-2019 Genome Research Ltd.
 
     Author: John Marshall <jm18@sanger.ac.uk>
 
@@ -46,6 +46,13 @@ DEALINGS IN THE SOFTWARE.  */
 
 KHASH_SET_INIT_STR(keep)
 typedef khash_t(keep) *keephash_t;
+
+#ifndef HTS_VERSION
+#error HTS_VERSION not defined
+#endif
+#if HTS_VERSION < 100900
+#error HTS_VERSION comparison incorrect
+#endif
 
 int status;
 
@@ -1219,6 +1226,23 @@ static void samrecord_layout(void)
                          "test/sam_alignment.tmp.sam_", "w", NULL);
 }
 
+static int check_ref_lengths(const sam_hdr_t *header,
+                             const hts_pos_t *expected_lengths,
+                             int num_refs, const char *hdr_name)
+{
+    int i;
+    for (i = 0; i < num_refs; i++) {
+        hts_pos_t ln = sam_hdr_tid2len(header, i);
+        if (ln != expected_lengths[i]) {
+            fail("Wrong length for %s ref %d : "
+                 "expected %"PRIhts_pos" got %"PRIhts_pos"\n",
+                 hdr_name, i, expected_lengths[i], ln);
+            return -1;
+        }
+    }
+    return 0;
+}
+
 static void check_big_ref(int parse_header)
 {
     static const char sam_text[] = "data:,"
@@ -1250,7 +1274,7 @@ static void check_big_ref(int parse_header)
         -1, -1, -1, 9223372034707292150LL - 1, 1LL - 1, -1
     };
     samFile *in = NULL, *out = NULL;
-    sam_hdr_t *header = NULL;
+    sam_hdr_t *header = NULL, *dup_header = NULL;
     bam1_t *aln = bam_init1();
     const int num_refs = sizeof(expected_lengths) / sizeof(expected_lengths[0]);
     const int num_align = sizeof(expected_tids) / sizeof(expected_tids[0]);
@@ -1281,21 +1305,33 @@ static void check_big_ref(int parse_header)
         goto cleanup;
     }
     if (parse_header) {
-        // This will force the reader to be parsed
+        // This will force the header to be parsed
         if (sam_hdr_count_lines(header, "SQ") != num_refs) {
             fail("Wrong number of SQ lines in header");
             goto cleanup;
         }
     }
-    for (i = 0; i < num_refs; i++) {
-        hts_pos_t ln = sam_hdr_tid2len(header, i);
-        if (ln != expected_lengths[i]) {
-            fail("Wrong length for ref %d : "
-                 "expected %"PRIhts_pos" got %"PRIhts_pos"\n",
-                 i, expected_lengths[i], ln);
-            goto cleanup;
-        }
+    if (check_ref_lengths(header, expected_lengths, num_refs, "header") < 0)
+        goto cleanup;
+
+    dup_header = sam_hdr_dup(header);
+    if (!dup_header) {
+        fail("Failed to duplicate header");
     }
+
+    if (check_ref_lengths(dup_header, expected_lengths,
+                          num_refs, "duplicate header") < 0)
+        goto cleanup;
+
+    if (sam_hdr_count_lines(dup_header, "SQ") != num_refs) {
+        fail("Wrong number of SQ lines in duplicate header");
+        goto cleanup;
+    }
+
+    if (check_ref_lengths(dup_header, expected_lengths,
+                          num_refs, "parsed duplicate header") < 0)
+        goto cleanup;
+
     if (sam_hdr_write(out, header) < 0) {
         fail("Failed to write SAM header");
         goto cleanup;
@@ -1372,6 +1408,7 @@ static void check_big_ref(int parse_header)
  cleanup:
     bam_destroy1(aln);
     sam_hdr_destroy(header);
+    sam_hdr_destroy(dup_header);
     if (in) sam_close(in);
     if (out) sam_close(out);
     if (inf) fclose(inf);
@@ -1514,7 +1551,7 @@ static int generator(const char *name)
     }
 
     if (fputs("@HD\tVN:1.4\n", f) < 0) goto cleanup;
-    if (fprintf(f, "@SQ\tSN:ref1\tLN:%u\n", MAX_RECS + SEQ_LEN) < 0)
+    if (fprintf(f, "@SQ\tSN:ref1\tLN:%d\n", MAX_RECS + SEQ_LEN) < 0)
         goto cleanup;
     for (i = 0; i < MAX_RECS; i++) {
         if (fprintf(f, "read%zu\t0\tref1\t%zu\t64\t100M\t*\t0\t0\t%.*s\t%.*s\n",

@@ -63,6 +63,7 @@ uploads and abandon the upload process.
 Andrew Whitwham, January 2019
 */
 
+#define HTS_BUILDING_LIBRARY // Enables HTSLIB_EXPORT, see htslib/hts_defs.h
 #include <config.h>
 
 #include <stdarg.h>
@@ -170,13 +171,12 @@ static int get_entry(char *in, char *start_tag, char *end_tag, kstring_t *out) {
     }
 
     start = strstr(in, start_tag);
+    if (!start) return EOF;
 
-    if (start) {
-        start += strlen(start_tag);
-        end = strstr(start, end_tag);
-    }
+    start += strlen(start_tag);
+    end = strstr(start, end_tag);
 
-    if (!start || !end) return EOF;
+    if (!end) return EOF;
 
     return kputsn(start, end - start, out);
 }
@@ -841,7 +841,8 @@ int PLUGIN_GLOBAL(hfile_plugin_init,_s3_write)(struct hFILE_plugin *self) {
 
 #ifdef ENABLE_PLUGINS
     // Embed version string for examination via strings(1) or what(1)
-    static const char id[] = "@(#)hfile_s3_write plugin (htslib)\t" HTS_VERSION;
+    static const char id[] =
+        "@(#)hfile_s3_write plugin (htslib)\t" HTS_VERSION_TEXT;
     const char *version = strchr(id, '\t') + 1;
 
     if (hts_verbose >= 9)

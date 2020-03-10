@@ -1,7 +1,7 @@
 /// @file hts_os.h
 /// Operating System specific tweaks, for compatibility with POSIX.
 /*
-   Copyright (C) 2017 Genome Research Ltd.
+   Copyright (C) 2017, 2019 Genome Research Ltd.
 
     Author: James Bonfield <jkb@sanger.ac.uk>
 
@@ -26,14 +26,28 @@ DEALINGS IN THE SOFTWARE.  */
 #ifndef HTSLIB_HTS_OS_H
 #define HTSLIB_HTS_OS_H
 
+#include "hts_defs.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-extern void hts_srand48(long seed);
-extern double hts_erand48(unsigned short xseed[3]);
-extern double hts_drand48(void);
-extern long hts_lrand48(void);
+/* This is srand48_deterministic() on platforms that provide it, or srand48()
+   otherwise (or our own POSIX srand48() on platforms that provide neither).
+   Hence calling hts_srand48() will always set up the same POSIX-determined
+   sequence of pseudo-random numbers on any platform, while calling srand48()
+   may (e.g., on OpenBSD) set up a different non-deterministic sequence. */
+HTSLIB_EXPORT
+void hts_srand48(long seed);
+
+HTSLIB_EXPORT
+double hts_erand48(unsigned short xseed[3]);
+
+HTSLIB_EXPORT
+double hts_drand48(void);
+
+HTSLIB_EXPORT
+long hts_lrand48(void);
 
 #if defined(_WIN32) && !defined(__CYGWIN__)
 // Windows usually lacks *rand48(), but cygwin provides them.

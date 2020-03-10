@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2013-2014 Genome Research Ltd.
+Copyright (c) 2013-2019 Genome Research Ltd.
 Author: James Bonfield <jkb@sanger.ac.uk>
 
 Redistribution and use in source and binary forms, with or without
@@ -48,6 +48,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * binary search to find the first range which overlaps any given coordinate.
  */
 
+#define HTS_BUILDING_LIBRARY // Enables HTSLIB_EXPORT, see htslib/hts_defs.h
 #include <config.h>
 
 #include <stdio.h>
@@ -142,7 +143,8 @@ static int kget_int64(kstring_t *k, size_t *pos, int64_t *val_p) {
  *        -1 for failure
  */
 int cram_index_load(cram_fd *fd, const char *fn, const char *fn_idx) {
-    char *fn2 = NULL;
+
+    char *tfn_idx = NULL;
     char buf[65536];
     ssize_t len;
     kstring_t kstr = {0};
@@ -172,15 +174,18 @@ int cram_index_load(cram_fd *fd, const char *fn, const char *fn_idx) {
     idx_stack[idx_stack_ptr] = idx;
 
     if (!fn_idx) {
-        fn2 = hts_idx_getfn(fn, ".crai");
-        if (!fn2)
-            goto fail;
+        if (hts_idx_check_local(fn, HTS_FMT_CRAI, &tfn_idx) == 0 && hisremote(fn))
+            tfn_idx = hts_idx_getfn(fn, ".crai");
 
-        fn_idx = fn2;
+        if (!tfn_idx) {
+            hts_log_error("Could not retrieve index file for '%s'", fn);
+            goto fail;
+        }
+        fn_idx = tfn_idx;
     }
 
     if (!(fp = hopen(fn_idx, "r"))) {
-        perror(fn_idx);
+        hts_log_error("Could not open index file '%s'", fn_idx);
         goto fail;
     }
 
@@ -198,7 +203,7 @@ int cram_index_load(cram_fd *fd, const char *fn, const char *fn_idx) {
 
     // Uncompress if required
     if (kstr.s[0] == 31 && (uc)kstr.s[1] == 139) {
-        size_t l;
+        size_t l = 0;
         char *s = zlib_mem_inflate(kstr.s, kstr.l, &l);
         if (!s)
             goto fail;
@@ -301,7 +306,7 @@ int cram_index_load(cram_fd *fd, const char *fn, const char *fn_idx) {
 
     free(idx_stack);
     free(kstr.s);
-    free(fn2);
+    free(tfn_idx);
 
     // dump_index(fd);
 
@@ -310,7 +315,7 @@ int cram_index_load(cram_fd *fd, const char *fn, const char *fn_idx) {
  fail:
     free(kstr.s);
     free(idx_stack);
-    free(fn2);
+    free(tfn_idx);
     cram_index_free(fd); // Also sets fd->index = NULL
     return -1;
 }
@@ -356,7 +361,7 @@ void cram_index_free(cram_fd *fd) {
  * Returns the cram_index pointer on success
  *         NULL on failure
  */
-cram_index *cram_index_query(cram_fd *fd, int refid, int pos,
+cram_index *cram_index_query(cram_fd *fd, int refid, hts_pos_t pos,
                              cram_index *from) {
     int i, j, k;
     cram_index *e;
@@ -457,6 +462,26 @@ cram_index *cram_index_last(cram_fd *fd, int refid, cram_index *from) {
     slice = fd->index[refid+1].nslice - 1;
 
     return &from->e[slice];
+}
+
+cram_index *cram_index_query_last(cram_fd *fd, int refid, hts_pos_t end) {
+    cram_index *first = cram_index_query(fd, refid, end, NULL);
+    cram_index *last =  cram_index_last(fd, refid, NULL);
+    if (!first || !last)
+        return NULL;
+
+    while (first < last && (first+1)->start <= end)
+        first++;
+
+    while (first->e) {
+        int count = 0;
+        int nslices = first->nslice;
+        first = first->e;
+        while (++count < nslices && (first+1)->start <= end)
+            first++;
+    }
+
+    return first;
 }
 
 /*

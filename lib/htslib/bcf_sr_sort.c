@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2017 Genome Research Ltd.
+    Copyright (C) 2017-2019 Genome Research Ltd.
 
     Author: Petr Danecek <pd3@sanger.ac.uk>
 
@@ -22,6 +22,7 @@
     THE SOFTWARE.
 */
 
+#define HTS_BUILDING_LIBRARY // Enables HTSLIB_EXPORT, see htslib/hts_defs.h
 #include <config.h>
 
 #include <strings.h>
