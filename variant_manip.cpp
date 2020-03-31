@@ -77,9 +77,9 @@ int32_t VariantManip::is_not_ref_consistent(bcf_hdr_t *h, bcf1_t *v)
     int32_t is_not_consistent = 0;
     for (uint32_t i=0; i<ref_len; ++i)
     {
-        if (toupper(vcf_ref[i]) != ref[i])
+        if (toupper(vcf_ref[i]) != toupper(ref[i]))
         {
-            if (ref[i]=='N' || toupper(vcf_ref[i])=='N')
+            if (toupper(ref[i])=='N' || toupper(vcf_ref[i])=='N')
             {
                 is_not_consistent = 1;
             }
