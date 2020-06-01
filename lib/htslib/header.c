@@ -1244,8 +1244,10 @@ int sam_hdr_rebuild(sam_hdr_t *bh) {
     if (!hrecs->dirty)
         return 0;
 
-    if (hrecs->pgs_changed)
-        sam_hdr_link_pg(bh);
+    if (hrecs->pgs_changed && sam_hdr_link_pg(bh) < 0) {
+        hts_log_error("Linking @PG lines has failed");
+        return -1;
+    }
 
     kstring_t ks = KS_INITIALIZE;
     if (sam_hrecs_rebuild_text(hrecs, &ks) != 0) {
@@ -2049,7 +2051,7 @@ static int sam_hdr_link_pg(sam_hdr_t *bh) {
         hrecs = bh->hrecs;
     }
 
-    if (!hrecs->pgs_changed)
+    if (!hrecs->pgs_changed || !hrecs->npg)
         return 0;
 
     hrecs->npg_end_alloc = hrecs->npg;
@@ -2057,6 +2059,9 @@ static int sam_hdr_link_pg(sam_hdr_t *bh) {
     if (!new_pg_end)
         return -1;
     hrecs->pg_end = new_pg_end;
+    int *chain_size = calloc(hrecs->npg, sizeof(int));
+    if (!chain_size)
+        return -1;
 
     for (i = 0; i < hrecs->npg; i++)
         hrecs->pg_end[i] = i;
@@ -2078,24 +2083,33 @@ static int sam_hdr_link_pg(sam_hdr_t *bh) {
         k = kh_get(m_s2i, hrecs->pg_hash, tag->str+3);
 
         if (k == kh_end(hrecs->pg_hash)) {
-            ret = -1;
+            hts_log_warning("PG line with PN:%s has a PP link to missing program '%s'",
+                    hrecs->pg[i].name, tag->str+3);
             continue;
         }
 
         hrecs->pg[i].prev_id = hrecs->pg[kh_val(hrecs->pg_hash, k)].id;
         hrecs->pg_end[kh_val(hrecs->pg_hash, k)] = -1;
+        chain_size[i] = chain_size[kh_val(hrecs->pg_hash, k)]+1;
     }
 
     for (i = j = 0; i < hrecs->npg; i++) {
-        if (hrecs->pg_end[i] != -1)
+        if (hrecs->pg_end[i] != -1 && chain_size[i] > 0)
             hrecs->pg_end[j++] = hrecs->pg_end[i];
     }
+    /* Only leafs? Choose the last one! */
+    if (!j && hrecs->npg_end > 0) {
+        hrecs->pg_end[0] = hrecs->pg_end[hrecs->npg_end-1];
+        j = 1;
+    }
+
     hrecs->npg_end = j;
     hrecs->pgs_changed = 0;
 
     /* mark as dirty or empty for rebuild */
     hrecs->dirty = 1;
     redact_header_text(bh);
+    free(chain_size);
 
     return ret;
 }
@@ -2168,6 +2182,12 @@ int sam_hdr_add_pg(sam_hdr_t *bh, const char *name, ...) {
         if (sam_hdr_fill_hrecs(bh) != 0)
             return -1;
         hrecs = bh->hrecs;
+    }
+
+    bh->hrecs->pgs_changed = 1;
+    if (sam_hdr_link_pg(bh) < 0) {
+        hts_log_error("Error linking @PG lines");
+        return -1;
     }
 
     va_list args;

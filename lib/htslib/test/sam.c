@@ -35,14 +35,14 @@ DEALINGS IN THE SOFTWARE.  */
 #include <unistd.h>
 
 // Suppress message for faidx_fetch_nseq(), which we're intentionally testing
-#include "htslib/hts_defs.h"
+#include "../htslib/hts_defs.h"
 #undef HTS_DEPRECATED
 #define HTS_DEPRECATED(message)
 
-#include "htslib/sam.h"
-#include "htslib/faidx.h"
-#include "htslib/khash.h"
-#include "htslib/hts_log.h"
+#include "../htslib/sam.h"
+#include "../htslib/faidx.h"
+#include "../htslib/khash.h"
+#include "../htslib/hts_log.h"
 
 KHASH_SET_INIT_STR(keep)
 typedef khash_t(keep) *keephash_t;
@@ -908,7 +908,8 @@ static void test_header_pg_lines(void) {
     hts_set_log_level(old_log_level);
     // End failing tests
 
-    if (strcmp(text, expected) != 0) {
+    text = sam_hdr_str(header);
+    if (!text || strcmp(text, expected) != 0) {
         fail("edited header does not match expected version");
         fprintf(stderr,
                 "---------- Expected:\n%s\n"

@@ -33,24 +33,11 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <limits.h>
+#include <errno.h>
 #include <sys/types.h>
 
 #include "hts_defs.h"
-
-#ifndef kroundup32
-#define kroundup32(x) (--(x), (x)|=(x)>>1, (x)|=(x)>>2, (x)|=(x)>>4, (x)|=(x)>>8, (x)|=(x)>>16, ++(x))
-#endif
-
-#ifndef kroundup_size_t
-#define kroundup_size_t(x) (--(x),                                       \
-                            (x)|=(x)>>(sizeof(size_t)/8), /*  0 or  1 */ \
-                            (x)|=(x)>>(sizeof(size_t)/4), /*  1 or  2 */ \
-                            (x)|=(x)>>(sizeof(size_t)/2), /*  2 or  4 */ \
-                            (x)|=(x)>>(sizeof(size_t)),   /*  4 or  8 */ \
-                            (x)|=(x)>>(sizeof(size_t)*2), /*  8 or 16 */ \
-                            (x)|=(x)>>(sizeof(size_t)*4), /* 16 or 32 */ \
-                            ++(x))
-#endif
+#include "kroundup.h"
 
 #if defined __GNUC__ && (__GNUC__ > 2 || (__GNUC__ == 2 && __GNUC_MINOR__ > 4))
 #ifdef __MINGW_PRINTF_FORMAT
@@ -157,15 +144,9 @@ static inline void ks_initialize(kstring_t *s)
 /// Resize a kstring to a given capacity
 static inline int ks_resize(kstring_t *s, size_t size)
 {
-	if (s->m < size) {
-		char *tmp;
-		kroundup_size_t(size);
-		tmp = (char*)realloc(s->s, size);
-		if (!tmp && size)
-		    return -1;
-		s->s = tmp;
-		s->m = size;
-	}
+	extern HTSLIB_EXPORT int ks_resize2(kstring_t *s, size_t size);
+
+	if (s->m < size) return ks_resize2(s, size);
 	return 0;
 }
 

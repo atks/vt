@@ -35,7 +35,6 @@ DEALINGS IN THE SOFTWARE.  */
 
 #include <stdint.h>
 #include <limits.h>
-#include <assert.h>
 #include <errno.h>
 #include "hts.h"
 #include "kstring.h"
@@ -789,6 +788,14 @@ set to one of BCF_ERR* codes and must be checked before calling bcf_write().
      *  The @p string in bcf_update_info_flag() is optional,
      *  @p n indicates whether the flag is set or removed.
      *
+     *  Note that updating an END info tag will cause line->rlen to be
+     *  updated as a side-effect (removing the tag will set it to the
+     *  string length of the REF allele). If line->pos is being changed as
+     *  well, it is important that this is done before calling
+     *  bcf_update_info_int32() to update the END tag, otherwise rlen will be
+     *  set incorrectly.  If the new END value is less than or equal to
+     *  line->pos, a warning will be printed and line->rlen will be set to
+     *  the length of the REF allele.
      */
     #define bcf_update_info_int32(hdr,line,key,values,n)   bcf_update_info((hdr),(line),(key),(values),(n),BCF_HT_INT)
     #define bcf_update_info_float(hdr,line,key,values,n)   bcf_update_info((hdr),(line),(key),(values),(n),BCF_HT_REAL)
@@ -1039,8 +1046,26 @@ set to one of BCF_ERR* codes and must be checked before calling bcf_write().
      *  bcf_hdr_id2name() - Translates numeric ID to sequence name
      */
     static inline int bcf_hdr_name2id(const bcf_hdr_t *hdr, const char *id) { return bcf_hdr_id2int(hdr, BCF_DT_CTG, id); }
-    static inline const char *bcf_hdr_id2name(const bcf_hdr_t *hdr, int rid) { return hdr->id[BCF_DT_CTG][rid].key; }
-    static inline const char *bcf_seqname(const bcf_hdr_t *hdr, bcf1_t *rec) { return hdr->id[BCF_DT_CTG][rec->rid].key; }
+    static inline const char *bcf_hdr_id2name(const bcf_hdr_t *hdr, int rid)
+    {
+        if ( !hdr || rid<0 || rid>=hdr->n[BCF_DT_CTG] ) return NULL;
+        return hdr->id[BCF_DT_CTG][rid].key;
+    }
+    static inline const char *bcf_seqname(const bcf_hdr_t *hdr, bcf1_t *rec) {
+        return bcf_hdr_id2name(hdr, rec ? rec->rid : -1);
+    }
+
+    /** Return CONTIG name, or "(unknown)"
+
+        Like bcf_seqname(), but this function will never return NULL.  If
+        the contig name cannot be found (either because @p hdr was not
+        supplied or rec->rid was out of range) it returns the string
+        "(unknown)".
+    */
+    static inline const char *bcf_seqname_safe(const bcf_hdr_t *hdr, bcf1_t *rec) {
+        const char *name = bcf_seqname(hdr, rec);
+        return name ? name : "(unknown)";
+    }
 
     /**
      *  bcf_hdr_id2*() - Macros for accessing bcf_idinfo_t

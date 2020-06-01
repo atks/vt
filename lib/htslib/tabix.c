@@ -25,6 +25,7 @@ DEALINGS IN THE SOFTWARE.  */
 
 #include <config.h>
 
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -47,7 +48,7 @@ DEALINGS IN THE SOFTWARE.  */
 typedef struct
 {
     char *regions_fname, *targets_fname;
-    int print_header, header_only;
+    int print_header, header_only, cache_megs;
 }
 args_t;
 
@@ -74,6 +75,8 @@ HTS_FORMAT(HTS_PRINTF_FMT, 1, 2) static void error_errno(const char *format, ...
     }
     if (eno) {
         fprintf(stderr, "%s%s\n", format ? ": " : "", strerror(eno));
+    } else {
+        fprintf(stderr, "\n");
     }
     fflush(stderr);
     exit(EXIT_FAILURE);
@@ -198,6 +201,9 @@ static int query_regions(args_t *args, char *fname, char **regs, int nregs, int 
     if ( !fp ) error_errno("Could not open \"%s\"", fname);
     enum htsExactFormat format = hts_get_format(fp)->format;
 
+    if (args->cache_megs)
+        hts_set_cache_size(fp, args->cache_megs * 1048576);
+
     regidx_t *reg_idx = NULL;
     if ( args->targets_fname )
     {
@@ -233,7 +239,16 @@ static int query_regions(args_t *args, char *fname, char **regs, int nregs, int 
                 if (!itr) continue;
                 while ((ret = bcf_itr_next(fp, itr, rec)) >=0 )
                 {
-                    if ( reg_idx && !regidx_overlap(reg_idx, bcf_seqname(hdr,rec),rec->pos,rec->pos+rec->rlen-1, NULL) ) continue;
+                    if ( reg_idx )
+                    {
+                        const char *chr = bcf_seqname(hdr,rec);
+                        if (!chr) {
+                            error("Bad BCF record in \"%s\" : "
+                                  "Invalid CONTIG id %d\n",
+                                  fname, rec->rid);
+                        }
+                        if ( !regidx_overlap(reg_idx,chr,rec->pos,rec->pos+rec->rlen-1, NULL) ) continue;
+                    }
                     if ( bcf_write(out,hdr,rec)!=0 ) {
                         error_errno("Failed to write to stdout");
                     }
@@ -456,6 +471,7 @@ static int usage(FILE *fp, int status)
     fprintf(fp, "   -R, --regions FILE         restrict to regions listed in the file\n");
     fprintf(fp, "   -T, --targets FILE         similar to -R but streams rather than index-jumps\n");
     fprintf(fp, "   -D                         do not download the index file\n");
+    fprintf(fp, "       --cache INT            set cache size to INT megabytes (0 disables) [10]\n");
     fprintf(fp, "       --verbosity INT        set verbosity [3]\n");
     fprintf(fp, "\n");
     return status;
@@ -468,6 +484,7 @@ int main(int argc, char *argv[])
     char *reheader = NULL;
     args_t args;
     memset(&args,0,sizeof(args_t));
+    args.cache_megs = 10;
 
     static const struct option loptions[] =
     {
@@ -490,6 +507,7 @@ int main(int argc, char *argv[])
         {"reheader", required_argument, NULL, 'r'},
         {"version", no_argument, NULL, 1},
         {"verbosity", required_argument, NULL, 3},
+        {"cache", required_argument, NULL, 4},
         {NULL, 0, NULL, 0}
     };
 
@@ -558,6 +576,14 @@ int main(int argc, char *argv[])
                 hts_set_log_level(v);
                 break;
             }
+            case 4:
+                args.cache_megs = atoi(optarg);
+                if (args.cache_megs < 0) {
+                    args.cache_megs = 0;
+                } else if (args.cache_megs >= INT_MAX / 1048576) {
+                    args.cache_megs = INT_MAX / 1048576;
+                }
+                break;
             default: return usage(stderr, EXIT_FAILURE);
         }
     }

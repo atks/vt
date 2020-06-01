@@ -958,6 +958,9 @@ int bgzf_read_block(BGZF *fp)
 
         if (j->errcode) {
             fp->errcode = j->errcode;
+            hts_log_error("BGZF decode jobs returned error %d "
+                          "for block offset %"PRId64,
+                          j->errcode, j->block_address);
             return -1;
         }
 
@@ -1025,6 +1028,9 @@ int bgzf_read_block(BGZF *fp)
         count = hread(fp->fp, fp->uncompressed_block, BGZF_MAX_BLOCK_SIZE);
         if (count < 0)  // Error
         {
+            hts_log_error("Failed to read uncompressed data "
+                          "at offset %"PRId64"%s%s",
+                          block_address, errno ? ": " : "", strerror(errno));
             fp->errcode |= BGZF_ERR_IO;
             return -1;
         }
@@ -1045,6 +1051,8 @@ int bgzf_read_block(BGZF *fp)
         count = inflate_gzip_block(fp);
         if ( count<0 )
         {
+            hts_log_error("Reading GZIP stream failed at offset %"PRId64,
+                          block_address);
             fp->errcode |= BGZF_ERR_ZLIB;
             return -1;
         }
@@ -1066,10 +1074,13 @@ int bgzf_read_block(BGZF *fp)
             fp->block_length = 0;
             return 0;
         }
-        int ret;
+        int ret = 0;
         if ( count != sizeof(header) || (ret=check_header(header))==-2 )
         {
             fp->errcode |= BGZF_ERR_HEADER;
+            hts_log_error("%s BGZF header at offset %"PRId64,
+                          ret ? "Invalid" : "Failed to read",
+                          block_address);
             return -1;
         }
         if ( ret==-1 )
@@ -1094,6 +1105,8 @@ int bgzf_read_block(BGZF *fp)
             count = inflate_gzip_block(fp);
             if ( count<0 )
             {
+                hts_log_error("Reading GZIP stream failed at offset %"PRId64,
+                              block_address);
                 fp->errcode |= BGZF_ERR_ZLIB;
                 return -1;
             }
@@ -1106,6 +1119,8 @@ int bgzf_read_block(BGZF *fp)
         block_length = unpackInt16((uint8_t*)&header[16]) + 1; // +1 because when writing this number, we used "-1"
         if (block_length < BLOCK_HEADER_LENGTH)
         {
+            hts_log_error("Invalid BGZF block length at offset %"PRId64,
+                          block_address);
             fp->errcode |= BGZF_ERR_HEADER;
             return -1;
         }
@@ -1114,17 +1129,23 @@ int bgzf_read_block(BGZF *fp)
         remaining = block_length - BLOCK_HEADER_LENGTH;
         count = hread(fp->fp, &compressed_block[BLOCK_HEADER_LENGTH], remaining);
         if (count != remaining) {
+            hts_log_error("Failed to read BGZF block data at offset %"PRId64
+                          " expected %d bytes; hread returned %d",
+                          block_address, remaining, count);
             fp->errcode |= BGZF_ERR_IO;
             return -1;
         }
         size += count;
         if ((count = inflate_block(fp, block_length)) < 0) {
-            hts_log_debug("Inflate block operation failed: %s", bgzf_zerr(count, NULL));
+            hts_log_debug("Inflate block operation failed for "
+                          "block at offset %"PRId64": %s",
+                          block_address, bgzf_zerr(count, NULL));
             fp->errcode |= BGZF_ERR_ZLIB;
             return -1;
         }
         fp->last_block_eof = (count == 0);
         if ( count ) break;     // otherwise an empty bgzf block
+        block_address = bgzf_htell(fp); // update for new block start
     }
     if (fp->block_length != 0) fp->block_offset = 0; // Do not reset offset if this read follows a seek.
     fp->block_address = block_address;
@@ -2152,10 +2173,6 @@ int bgzf_getc(BGZF *fp)
     return c;
 }
 
-#ifndef kroundup32
-#define kroundup32(x) (--(x), (x)|=(x)>>1, (x)|=(x)>>2, (x)|=(x)>>4, (x)|=(x)>>8, (x)|=(x)>>16, ++(x))
-#endif
-
 int bgzf_getline(BGZF *fp, int delim, kstring_t *str)
 {
     int l, state = 0;
@@ -2169,11 +2186,7 @@ int bgzf_getline(BGZF *fp, int delim, kstring_t *str)
         for (l = fp->block_offset; l < fp->block_length && buf[l] != delim; ++l);
         if (l < fp->block_length) state = 1;
         l -= fp->block_offset;
-        if (str->l + l + 1 >= str->m) {
-            str->m = str->l + l + 2;
-            kroundup32(str->m);
-            str->s = (char*)realloc(str->s, str->m);
-        }
+        if (ks_expand(str, l + 2) < 0) { state = -3; break; }
         memcpy(str->s + str->l, buf + fp->block_offset, l);
         str->l += l;
         fp->block_offset += l + 1;

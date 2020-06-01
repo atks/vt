@@ -43,7 +43,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define CRAM_IO_H
 
 #include <stdint.h>
-#include <cram/misc.h>
+
+#include "misc.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -293,7 +294,7 @@ static inline int safe_itf8_get(const char *cp, const char *endp,
         return 4;
     } else {
         uint32_t uv = (((uint32_t)up[0] & 0x0f)<<28) | (up[1]<<20) | (up[2]<<12) | (up[3]<<4) | (up[4] & 0x0f);
-        *val_p = uv < 0x80000000UL ? uv : -((int32_t) (0xffffffffUL - uv)) - 1;
+        *val_p = uv < 0x80000000UL ? (int32_t) uv : -((int32_t) (0xffffffffUL - uv)) - 1;
         return 5;
     }
 }
