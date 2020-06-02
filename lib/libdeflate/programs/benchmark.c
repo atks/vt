@@ -25,9 +25,7 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <zlib.h> /* for comparison purposes */
-
-#include "prog_util.h"
+#include "test_util.h"
 
 static const tchar *const optstring = T("1::2::3::4::5::6::7::8::9::C:D:ghs:VYZz");
 
@@ -505,7 +503,7 @@ tmain(int argc, tchar *argv[])
 	int i;
 	int ret;
 
-	program_invocation_name = get_filename(argv[0]);
+	begin_program(argv);
 
 	while ((opt_char = tgetopt(argc, argv, optstring)) != -1) {
 		switch (opt_char) {

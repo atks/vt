@@ -7,32 +7,33 @@
 
 #include <stdlib.h>
 #include <time.h>
-#include <zlib.h>
 
-#include "prog_util.h"
+#include "test_util.h"
 
 static unsigned int rng_seed;
-
-static void
-assertion_failed(const char *file, int line)
-{
-	fprintf(stderr, "Assertion failed at %s:%d\n", file, line);
-	fprintf(stderr, "RNG seed was %u\n", rng_seed);
-	abort();
-}
-
-#define ASSERT(expr) if (!(expr)) assertion_failed(__FILE__, __LINE__);
 
 typedef u32 (*cksum_fn_t)(u32, const void *, size_t);
 
 static u32
-zlib_adler32(u32 adler, const void *buf, size_t len)
+adler32_libdeflate(u32 adler, const void *buf, size_t len)
+{
+	return libdeflate_adler32(adler, buf, len);
+}
+
+static u32
+crc32_libdeflate(u32 crc, const void *buf, size_t len)
+{
+	return libdeflate_crc32(crc, buf, len);
+}
+
+static u32
+adler32_zlib(u32 adler, const void *buf, size_t len)
 {
 	return adler32(adler, buf, len);
 }
 
 static u32
-zlib_crc32(u32 crc, const void *buf, size_t len)
+crc32_zlib(u32 crc, const void *buf, size_t len)
 {
 	return crc32(crc, buf, len);
 }
@@ -62,7 +63,7 @@ static void
 test_initial_values(cksum_fn_t cksum, u32 expected)
 {
 	ASSERT(cksum(0, NULL, 0) == expected);
-	if (cksum != zlib_adler32) /* broken */
+	if (cksum != adler32_zlib) /* broken */
 		ASSERT(cksum(0, NULL, 1) == expected);
 	ASSERT(cksum(0, NULL, 1234) == expected);
 	ASSERT(cksum(1234, NULL, 0) == expected);
@@ -111,47 +112,61 @@ static void
 test_crc32(const void *buffer, size_t size, u32 initial_value)
 {
 	test_checksums(buffer, size, "CRC-32",
-		       libdeflate_crc32, zlib_crc32, initial_value);
+		       crc32_libdeflate, crc32_zlib, initial_value);
 }
 
 static void
 test_adler32(const void *buffer, size_t size, u32 initial_value)
 {
 	test_checksums(buffer, size, "Adler-32",
-		       libdeflate_adler32, zlib_adler32, initial_value);
+		       adler32_libdeflate, adler32_zlib, initial_value);
 }
 
-static void test_random_buffers(u8 *buffer, size_t limit, u32 num_iter)
+static void test_random_buffers(u8 *buffer, u8 *guarded_buf_end,
+				size_t limit, u32 num_iter)
 {
 	for (u32 i = 0; i < num_iter; i++) {
 		size_t start = rand() % limit;
 		size_t len = rand() % (limit - start);
+		u32 a0 = select_initial_adler();
+		u32 c0 = select_initial_crc();
 
 		for (size_t j = start; j < start + len; j++)
 			buffer[j] = rand();
 
-		test_adler32(&buffer[start], len, select_initial_adler());
-		test_crc32(&buffer[start], len, select_initial_crc());
+		/* Test with chosen size and alignment */
+		test_adler32(&buffer[start], len, a0);
+		test_crc32(&buffer[start], len, c0);
+
+		/* Test with chosen size, with guard page after input buffer */
+		memcpy(guarded_buf_end - len, &buffer[start], len);
+		test_adler32(guarded_buf_end - len, len, a0);
+		test_crc32(guarded_buf_end - len, len, c0);
 	}
 }
 
 int
 tmain(int argc, tchar *argv[])
 {
-	u8 *buffer = malloc(32768);
+	u8 *buffer = xmalloc(32768);
+	u8 *guarded_buf_start, *guarded_buf_end;
+
+	begin_program(argv);
+
+	alloc_guarded_buffer(32768, &guarded_buf_start, &guarded_buf_end);
 
 	rng_seed = time(NULL);
 	srand(rng_seed);
 
-	test_initial_values(libdeflate_adler32, 1);
-	test_initial_values(zlib_adler32, 1);
-	test_initial_values(libdeflate_crc32, 0);
-	test_initial_values(zlib_crc32, 0);
+	test_initial_values(adler32_libdeflate, 1);
+	test_initial_values(adler32_zlib, 1);
+	test_initial_values(crc32_libdeflate, 0);
+	test_initial_values(crc32_zlib, 0);
 
 	/* Test different buffer sizes and alignments */
-	test_random_buffers(buffer, 256, 5000);
-	test_random_buffers(buffer, 1024, 500);
-	test_random_buffers(buffer, 32768, 50);
+	test_random_buffers(buffer, guarded_buf_end, 256, 5000);
+	test_random_buffers(buffer, guarded_buf_end, 1024, 500);
+	test_random_buffers(buffer, guarded_buf_end, 32768, 50);
 
 	/*
 	 * Test Adler-32 overflow cases.  For example, given all 0xFF bytes and
@@ -178,5 +193,6 @@ tmain(int argc, tchar *argv[])
 	printf("Adler-32 and CRC-32 checksum tests passed!\n");
 
 	free(buffer);
+	free_guarded_buffer(guarded_buf_start, guarded_buf_end);
 	return 0;
 }

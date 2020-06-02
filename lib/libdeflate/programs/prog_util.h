@@ -39,13 +39,34 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "common_defs.h"
+#include "../common/common_defs.h"
 
 #ifdef __GNUC__
 # define _printf(str_idx, args_idx)	\
 		__attribute__((format(printf, str_idx, args_idx)))
 #else
 # define _printf(str_idx, args_idx)
+#endif
+
+#ifdef _MSC_VER
+/*
+ * Old versions (e.g. VS2010) of MSC have stdint.h but not the C99 header
+ * inttypes.h.  Work around this by defining the PRI* macros ourselves.
+ */
+# define PRIu8  "hhu"
+# define PRIu16 "hu"
+# define PRIu32 "u"
+# define PRIu64 "llu"
+# define PRIi8  "hhi"
+# define PRIi16 "hi"
+# define PRIi32 "i"
+# define PRIi64 "lli"
+# define PRIx8  "hhx"
+# define PRIx16 "hx"
+# define PRIx32 "x"
+# define PRIx64 "llx"
+#else
+# include <inttypes.h>
 #endif
 
 #ifdef _WIN32
@@ -57,7 +78,7 @@
  */
 
 #include <wchar.h>
-extern int wmain(int argc, wchar_t **argv);
+int wmain(int argc, wchar_t **argv);
 #  define	tmain		wmain
 #  define	tchar		wchar_t
 #  define	_T(text)	L##text
@@ -68,7 +89,6 @@ extern int wmain(int argc, wchar_t **argv);
 #  define	topen		_wopen
 #  define	tstrchr		wcschr
 #  define	tstrcmp		wcscmp
-#  define	tstrcpy		wcscpy
 #  define	tstrlen		wcslen
 #  define	tstrrchr	wcsrchr
 #  define	tstrtoul	wcstoul
@@ -100,7 +120,6 @@ extern int wmain(int argc, wchar_t **argv);
 #  define	topen		open
 #  define	tstrchr		strchr
 #  define	tstrcmp		strcmp
-#  define	tstrcpy		strcpy
 #  define	tstrlen		strlen
 #  define	tstrrchr	strrchr
 #  define	tstrtoul	strtoul
@@ -116,16 +135,12 @@ extern int wmain(int argc, wchar_t **argv);
 
 extern const tchar *program_invocation_name;
 
-extern void _printf(1, 2) msg(const char *fmt, ...);
-extern void _printf(1, 2) msg_errno(const char *fmt, ...);
+void _printf(1, 2) msg(const char *fmt, ...);
+void _printf(1, 2) msg_errno(const char *fmt, ...);
 
-extern void *xmalloc(size_t size);
+void *xmalloc(size_t size);
 
-extern u64 timer_ticks(void);
-extern u64 timer_ticks_to_ms(u64 ticks);
-extern u64 timer_MB_per_s(u64 bytes, u64 ticks);
-
-extern const tchar *get_filename(const tchar *path);
+void begin_program(tchar *argv[]);
 
 struct file_stream {
 	int fd;
@@ -136,27 +151,26 @@ struct file_stream {
 	size_t mmap_size;
 };
 
-extern int xopen_for_read(const tchar *path, bool symlink_ok,
-			  struct file_stream *strm);
-extern int xopen_for_write(const tchar *path, bool force,
-			   struct file_stream *strm);
-extern int map_file_contents(struct file_stream *strm, u64 size);
+int xopen_for_read(const tchar *path, bool symlink_ok,
+		   struct file_stream *strm);
+int xopen_for_write(const tchar *path, bool force, struct file_stream *strm);
+int map_file_contents(struct file_stream *strm, u64 size);
 
-extern ssize_t xread(struct file_stream *strm, void *buf, size_t count);
-extern int full_write(struct file_stream *strm, const void *buf, size_t count);
+ssize_t xread(struct file_stream *strm, void *buf, size_t count);
+int full_write(struct file_stream *strm, const void *buf, size_t count);
 
-extern int xclose(struct file_stream *strm);
+int xclose(struct file_stream *strm);
 
-extern int parse_compression_level(tchar opt_char, const tchar *arg);
+int parse_compression_level(tchar opt_char, const tchar *arg);
 
-extern struct libdeflate_compressor *alloc_compressor(int level);
-extern struct libdeflate_decompressor *alloc_decompressor(void);
+struct libdeflate_compressor *alloc_compressor(int level);
+struct libdeflate_decompressor *alloc_decompressor(void);
 
 /* tgetopt.c */
 
 extern tchar *toptarg;
 extern int toptind, topterr, toptopt;
 
-extern int tgetopt(int argc, tchar *argv[], const tchar *optstring);
+int tgetopt(int argc, tchar *argv[], const tchar *optstring);
 
 #endif /* PROGRAMS_PROG_UTIL_H */

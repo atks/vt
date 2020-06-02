@@ -21,12 +21,13 @@
 #define X86_CPU_FEATURE_AVX		0x00000004
 #define X86_CPU_FEATURE_AVX2		0x00000008
 #define X86_CPU_FEATURE_BMI2		0x00000010
+#define X86_CPU_FEATURE_AVX512BW	0x00000020
 
 #define X86_CPU_FEATURES_KNOWN		0x80000000
 
 extern volatile u32 _cpu_features;
 
-extern void setup_cpu_features(void);
+void setup_cpu_features(void);
 
 static inline u32 get_cpu_features(void)
 {

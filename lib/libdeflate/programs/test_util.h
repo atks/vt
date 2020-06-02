@@ -1,7 +1,5 @@
 /*
- * aligned_malloc.c - aligned memory allocation
- *
- * Originally public domain; changes after 2016-09-07 are copyrighted.
+ * test_util.h - utility functions for test programs
  *
  * Copyright 2016 Eric Biggers
  *
@@ -27,31 +25,43 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
-/*
- * This file provides portable aligned memory allocation functions that only
- * use malloc() and free().  This avoids portability problems with
- * posix_memalign(), aligned_alloc(), etc.
- */
+#ifndef PROGRAMS_TEST_UTIL_H
+#define PROGRAMS_TEST_UTIL_H
 
-#include <stdlib.h>
+#include "prog_util.h"
 
-#include "aligned_malloc.h"
+#include <zlib.h> /* for comparison purposes */
 
-void *
-aligned_malloc(size_t alignment, size_t size)
-{
-	void *ptr = malloc(sizeof(void *) + alignment - 1 + size);
-	if (ptr) {
-		void *orig_ptr = ptr;
-		ptr = (void *)ALIGN((uintptr_t)ptr + sizeof(void *), alignment);
-		((void **)ptr)[-1] = orig_ptr;
-	}
-	return ptr;
-}
+#ifdef __GNUC__
+# define _noreturn __attribute__((noreturn))
+#else
+# define _noreturn
+#endif
 
-void
-aligned_free(void *ptr)
-{
-	if (ptr)
-		free(((void **)ptr)[-1]);
-}
+void _noreturn
+assertion_failed(const char *expr, const char *file, int line);
+
+#define ASSERT(expr) { if (unlikely(!(expr))) \
+	assertion_failed(#expr, __FILE__, __LINE__); }
+
+void begin_performance_test(void);
+
+void alloc_guarded_buffer(size_t size, u8 **start_ret, u8 **end_ret);
+void free_guarded_buffer(u8 *start, u8 *end);
+
+u64 timer_ticks(void);
+u64 timer_ticks_to_ms(u64 ticks);
+u64 timer_MB_per_s(u64 bytes, u64 ticks);
+u64 timer_KB_per_s(u64 bytes, u64 ticks);
+
+struct output_bitstream {
+	machine_word_t bitbuf;
+	int bitcount;
+	u8 *next;
+	u8 *end;
+};
+
+bool put_bits(struct output_bitstream *os, machine_word_t bits, int num_bits);
+bool flush_bits(struct output_bitstream *os);
+
+#endif /* PROGRAMS_TEST_UTIL_H */
