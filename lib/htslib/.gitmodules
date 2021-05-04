@@ -1,4 +1,0 @@
-[submodule "htscodecs"]
-	path = htscodecs
-	url = https://github.com/samtools/htscodecs.git
-	fetchRecurseSubmodules = true

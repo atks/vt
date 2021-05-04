@@ -1,0 +1,40 @@
+Release 1.0: 23rd Feb 2021
+--------------------------
+
+This marks the first non-beta release of htscodecs, following a
+perioid of integration with Htslib and automated fuzzing by Google's
+OSS-Fuzz program.
+
+[Note this testing only applies to the C implementation.  The
+JavaScript code should still be considered as examples of the codecs,
+more for purposes of understanding and clarity than as a fully
+optimised and tested release.]
+
+Since the last release (0.5) the key changes are:
+
+- Improved support for big endian platforms
+
+- Speed improvements to CRAM 3.0 4x8 rANS order-1 encoding.
+  It's between 10 and 50% faster at encoding, based on input data.
+
+- Improved autoconf bzip2 checks and tidy up "make test" output.
+
+- Added some more files into "make install", so that "make distcheck"
+  now passes.
+
+- Replaced Travis with Cirrus-CI testing.
+
+- Removed various C undefined behaviour, such as left shifting of
+  negative values and integer overflows.  As far as we know these were
+  currently harmless on the supported platforms, but may break future
+  compiler optimisations.
+
+- Fixed numerous OSS-Fuzz identified flaws.  Some of these were
+  potential security issues such as small buffer overruns.
+
+- Tidied up some code to prevent warnings.
+
+- The name tokeniser now has a limit on the size of data it can encode
+  (10 million records).  This may still be too high given the memory
+  it will require, so it may be reduced again.
+
