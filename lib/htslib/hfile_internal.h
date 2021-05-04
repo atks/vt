@@ -57,6 +57,11 @@ struct BGZF;
  */
 struct hFILE *bgzf_hfile(struct BGZF *fp);
 
+/*!
+  @abstract Closes all hFILE plugins that have been loaded
+*/
+void hfile_shutdown(int do_close_plugin);
+
 struct hFILE_backend {
     /* As per read(2), returning the number of bytes read (possibly 0) or
        negative (and setting errno) on errors.  Front-end code will call this
@@ -173,9 +178,6 @@ extern int hfile_plugin_init_libcurl(struct hFILE_plugin *self);
 extern int hfile_plugin_init_s3(struct hFILE_plugin *self);
 extern int hfile_plugin_init_s3_write(struct hFILE_plugin *self);
 #endif
-
-/* This one is never built as a separate plugin.  */
-extern int hfile_plugin_init_net(struct hFILE_plugin *self);
 
 // Callback to allow headers to be set in http connections.  Currently used
 // to allow s3 to renew tokens when seeking.  Kept internal for now,

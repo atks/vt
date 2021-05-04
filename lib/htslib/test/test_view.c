@@ -1,7 +1,7 @@
 /*  test/test_view.c -- simple view tool, purely for use in a test harness.
 
     Copyright (C) 2012 Broad Institute.
-    Copyright (C) 2013-2019 Genome Research Ltd.
+    Copyright (C) 2013-2020 Genome Research Ltd.
 
     Author: Heng Li <lh3@sanger.ac.uk>
 
@@ -29,7 +29,6 @@ DEALINGS IN THE SOFTWARE.  */
 #include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
-#include <getopt.h>
 #include <stdint.h>
 
 #include "../cram/cram.h"
@@ -57,7 +56,9 @@ enum test_op {
     READ_CRAM          = 4,
     WRITE_CRAM         = 8,
     WRITE_UNCOMPRESSED = 16,
-    WRITE_COMPRESSED   = 32, // eg vcf.gz, sam.gz
+    WRITE_COMPRESSED   = 32, // eg vcf.gz, sam.gz, fastq.gz
+    WRITE_FASTQ        = 64,
+    WRITE_FASTA        = 128,
 };
 
 int sam_loop(int argc, char **argv, int optind, struct opts *opts, htsFile *in, htsFile *out) {
@@ -295,7 +296,7 @@ int main(int argc, char *argv[])
     opts.index = NULL;
     opts.min_shift = 0;
 
-    while ((c = getopt(argc, argv, "DSIt:i:bzCul:o:N:BZ:@:Mx:m:p:v")) >= 0) {
+    while ((c = getopt(argc, argv, "DSIt:i:bzCfFul:o:N:BZ:@:Mx:m:p:v")) >= 0) {
         switch (c) {
         case 'D': opts.flag |= READ_CRAM; break;
         case 'S': opts.flag |= READ_COMPRESSED; break;
@@ -305,6 +306,8 @@ int main(int argc, char *argv[])
         case 'b': opts.flag |= WRITE_BINARY_COMP; break;
         case 'z': opts.flag |= WRITE_COMPRESSED; break;
         case 'C': opts.flag |= WRITE_CRAM; break;
+        case 'f': opts.flag |= WRITE_FASTQ; break;
+        case 'F': opts.flag |= WRITE_FASTA; break;
         case 'u': opts.flag |= WRITE_UNCOMPRESSED; break; // eg u-BAM not SAM
         case 'l': opts.clevel = atoi(optarg); break;
         case 'o': if (hts_opt_add(&out_opts, optarg)) return 1; break;
@@ -325,12 +328,13 @@ int main(int argc, char *argv[])
         fprintf(stderr, "-D: read CRAM format (mode 'c')\n");
         fprintf(stderr, "-S: read compressed BCF, BAM, FAI (mode 'b')\n");
         fprintf(stderr, "-I: ignore SAM parsing errors\n");
-        fprintf(stderr, "-t: fn_ref: load CRAM references from the specificed fasta file instead of @SQ headers when writing a CRAM file\n");
+        fprintf(stderr, "-t: fn_ref: load CRAM references from the specified fasta file instead of @SQ headers when writing a CRAM file\n");
         fprintf(stderr, "-i: option=value: set an option for CRAM input\n");
         fprintf(stderr, "\n");
         fprintf(stderr, "-b: write binary compressed BCF, BAM, FAI (mode 'b')\n");
-        fprintf(stderr, "-z: write text compressed VCF.gz, SAM.gz (mode 'z')\n");
+        fprintf(stderr, "-z: write text compressed VCF.gz, SAM.gz or FASTQ.gz (mode 'z')\n");
         fprintf(stderr, "-C: write CRAM format (mode 'c')\n");
+        fprintf(stderr, "-f: write FASTQ format (mode 'f')\n");
         fprintf(stderr, "-l 0-9: set zlib compression level\n");
         fprintf(stderr, "-o option=value: set an option for CRAM output\n");
         fprintf(stderr, "-N: num_reads: limit the output to the first num_reads reads\n");
@@ -362,6 +366,8 @@ int main(int argc, char *argv[])
     else if (opts.flag & WRITE_BINARY_COMP) strcat(modew, "b");
     else if (opts.flag & WRITE_COMPRESSED) strcat(modew, "z");
     else if (opts.flag & WRITE_UNCOMPRESSED) strcat(modew, "bu");
+    if (opts.flag & WRITE_FASTQ) strcat(modew, "f");
+    else if (opts.flag & WRITE_FASTA) strcat(modew, "F");
     out = hts_open(out_fn, modew);
     if (out == NULL) {
         fprintf(stderr, "Error opening standard output\n");

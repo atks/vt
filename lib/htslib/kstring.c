@@ -1,7 +1,7 @@
 /* The MIT License
 
    Copyright (C) 2011 by Attractive Chaos <attractor@live.co.uk>
-   Copyright (C) 2013-2018 Genome Research Ltd.
+   Copyright (C) 2013-2018, 2020-2021 Genome Research Ltd.
 
    Permission is hereby granted, free of charge, to any person obtaining
    a copy of this software and associated documentation files (the
@@ -34,19 +34,6 @@
 #include <stdint.h>
 #include <math.h>
 #include "htslib/kstring.h"
-
-HTSLIB_EXPORT
-int ks_resize2(kstring_t *s, size_t size)
-{
-	char *tmp;
-	kroundup_size_t(size);
-	tmp = (char*)realloc(s->s, size);
-	if (!tmp && size)
-		return -1;
-	s->s = tmp;
-	s->m = size;
-	return 0;
-}
 
 int kputd(double d, kstring_t *s) {
 	int len = 0;
@@ -164,6 +151,15 @@ int kvsprintf(kstring_t *s, const char *fmt, va_list ap)
 		l = kputd(d, s);
 		va_end(args);
 		return l;
+	}
+
+	if (!s->s) {
+		const size_t sz = 64;
+		s->s = malloc(sz);
+		if (!s->s)
+			return -1;
+		s->m = sz;
+		s->l = 0;
 	}
 
 	l = vsnprintf(s->s + s->l, s->m - s->l, fmt, args); // This line does not work with glibc 2.0. See `man snprintf'.
@@ -292,8 +288,19 @@ int kgetline2(kstring_t *s, kgets_func2 *fgets_fn, void *fp)
 
 	while (s->l == l0 || s->s[s->l-1] != '\n') {
 		if (s->m - s->l < 200) {
-			if (ks_resize(s, s->m + 200) < 0)
+			// We return EOF for both EOF and error and the caller
+			// needs to check for errors in fp, and we haven't
+			// even got there yet.
+			//
+			// The only way of propagating memory errors is to
+			// deliberately call something that we know triggers
+			// and error so fp is also set.  This works for
+			// hgets, but not for gets where reading <= 0 bytes
+			// isn't an error.
+			if (ks_resize(s, s->m + 200) < 0) {
+				fgets_fn(s->s + s->l, 0, fp);
 				return EOF;
+			}
 		}
 		ssize_t len = fgets_fn(s->s + s->l, s->m - s->l, fp);
 		if (len <= 0) break;

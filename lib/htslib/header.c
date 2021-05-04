@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2018-2019 Genome Research Ltd.
+Copyright (c) 2018-2020 Genome Research Ltd.
 Authors: James Bonfield <jkb@sanger.ac.uk>, Valeriu Ohan <vo2@sanger.ac.uk>
 
 Redistribution and use in source and binary forms, with or without
@@ -330,9 +330,14 @@ static int sam_hrecs_update_hashes(sam_hrecs_t *hrecs,
 
         while (tag) {
             if (tag->str[0] == 'I' && tag->str[1] == 'D') {
-                assert(tag->len >= 3);
-                hrecs->pg[npg].name = tag->str + 3;
-                hrecs->pg[npg].name_len = tag->len - 3;
+                /* Avoid duplicate ID tags coming from other applications */
+                if (!hrecs->pg[npg].name) {
+                    assert(tag->len >= 3);
+                    hrecs->pg[npg].name = tag->str + 3;
+                    hrecs->pg[npg].name_len = tag->len - 3;
+                } else {
+                    hts_log_warning("PG line with multiple ID tags. The first encountered was preferred - ID:%s", hrecs->pg[npg].name);
+                }
             } else if (tag->str[0] == 'P' && tag->str[1] == 'P') {
                 // Resolve later if needed
                 khint_t k;
@@ -2027,7 +2032,7 @@ hts_pos_t sam_hdr_tid2len(const sam_hdr_t *h, int tid) {
 
 /*
  * Fixes any PP links in @PG headers.
- * If the entries are in order then this doesn't need doing, but incase
+ * If the entries are in order then this doesn't need doing, but in case
  * our header is out of order this goes through the hrecs->pg[] array
  * setting the prev_id field.
  *

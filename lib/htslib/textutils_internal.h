@@ -52,7 +52,7 @@ size_t hts_base64_decoded_length(size_t len);
 /// Decode base64-encoded data
 /** On input, _dest_ should be a sufficient buffer (see `hts_base64_length()`),
     and may be equal to _s_ to decode in place.  On output, the number of
-    bytes writen is stored in _destlen_.
+    bytes written is stored in _destlen_.
 */
 int hts_decode_base64(char *dest, size_t *destlen, const char *s);
 
@@ -70,7 +70,7 @@ hts_json_token *hts_json_alloc_token(void);
 /// Free a JSON token
 void hts_json_free_token(hts_json_token *token);
 
-/// Accessor funtion to get JSON token type
+/// Accessor function to get JSON token type
 /** @param  token Pointer to JSON token
     @return Character indicating the token type
 
@@ -87,7 +87,7 @@ as follows:
 */
 char hts_json_token_type(hts_json_token *token);
 
-/// Accessor funtion to get JSON token in string form
+/// Accessor function to get JSON token in string form
 /** @param  token Pointer to JSON token
     @return String representation of the JSON token; NULL if unset
 
@@ -355,7 +355,7 @@ static inline double hts_str2dbl(const char *in, char **end, int *failed) {
 
     case '0':
         if (v[1] != 'x' && v[1] != 'X') break;
-        // else fall through (hex number)
+        // else fall through - hex number
 
     default:
         // Non numbers, like NaN, Inf

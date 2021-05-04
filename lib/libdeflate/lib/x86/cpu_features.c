@@ -25,6 +25,7 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
+#include "../cpu_features_common.h" /* must be included first */
 #include "cpu_features.h"
 
 #if X86_CPU_FEATURES_ENABLED
@@ -34,7 +35,7 @@ volatile u32 _cpu_features = 0;
 /* With old GCC versions we have to manually save and restore the x86_32 PIC
  * register (ebx).  See: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=47602  */
 #if defined(__i386__) && defined(__PIC__)
-#  define EBX_CONSTRAINT "=r"
+#  define EBX_CONSTRAINT "=&r"
 #else
 #  define EBX_CONSTRAINT "=b"
 #endif
@@ -75,6 +76,15 @@ read_xcr(u32 index)
 #define IS_SET(reg, nr)		((reg) & BIT(nr))
 #define IS_ALL_SET(reg, mask)	(((reg) & (mask)) == (mask))
 
+static const struct cpu_feature x86_cpu_feature_table[] = {
+	{X86_CPU_FEATURE_SSE2,		"sse2"},
+	{X86_CPU_FEATURE_PCLMUL,	"pclmul"},
+	{X86_CPU_FEATURE_AVX,		"avx"},
+	{X86_CPU_FEATURE_AVX2,		"avx2"},
+	{X86_CPU_FEATURE_BMI2,		"bmi2"},
+	{X86_CPU_FEATURE_AVX512BW,	"avx512bw"},
+};
+
 /* Initialize _cpu_features with bits for interesting processor features. */
 void setup_cpu_features(void)
 {
@@ -97,7 +107,7 @@ void setup_cpu_features(void)
 		features |= X86_CPU_FEATURE_SSE2;
 
 	if (IS_SET(features_2, 1))
-		features |= X86_CPU_FEATURE_PCLMULQDQ;
+		features |= X86_CPU_FEATURE_PCLMUL;
 
 	if (IS_SET(features_2, 27)) { /* OSXSAVE set? */
 		u64 xcr0 = read_xcr(0);
@@ -133,6 +143,9 @@ void setup_cpu_features(void)
 		features |= X86_CPU_FEATURE_AVX512BW;
 
 out:
+	disable_cpu_features_for_testing(&features, x86_cpu_feature_table,
+					 ARRAY_LEN(x86_cpu_feature_table));
+
 	_cpu_features = features | X86_CPU_FEATURES_KNOWN;
 }
 

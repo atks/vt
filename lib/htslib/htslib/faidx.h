@@ -1,7 +1,7 @@
 /// @file htslib/faidx.h
 /// FASTA random access.
 /*
-   Copyright (C) 2008, 2009, 2013, 2014, 2016, 2017-2019 Genome Research Ltd.
+   Copyright (C) 2008, 2009, 2013, 2014, 2016, 2017-2020 Genome Research Ltd.
 
    Author: Heng Li <lh3@sanger.ac.uk>
 
@@ -66,9 +66,9 @@ extern "C" {
     wrapped in the same way.
  */
 
-struct __faidx_t;
+struct faidx_t;
 /// Opaque structure representing FASTA index
-typedef struct __faidx_t faidx_t;
+typedef struct faidx_t faidx_t;
 
 /// File format to be dealing with.
 enum fai_format_options {
@@ -294,7 +294,7 @@ int faidx_seq_len(const faidx_t *fai, const char *seq);
     @param  beg   Returns the start of the region (0 based)
     @param  end   Returns the one past last of the region (0 based)
     @param  flags Parsing method, see HTS_PARSE_* in hts.h.
-    @return      pointer to end of parsed s if success, NULL if not.
+    @return       Pointer to end of parsed s if successful, NULL if not.
 
     To work around ambiguous parsing issues, eg both "chr1" and "chr1:100-200"
     are reference names, quote using curly braces.

@@ -1,7 +1,7 @@
 /// @file htslib/cram.h
 /// CRAM format-specific API functions.
 /*
-    Copyright (C) 2015, 2016, 2018-2019 Genome Research Ltd.
+    Copyright (C) 2015, 2016, 2018-2020 Genome Research Ltd.
 
     Author: James Bonfield <jkb@sanger.ac.uk>
 
@@ -47,17 +47,36 @@ DEALINGS IN THE SOFTWARE.  */
 extern "C" {
 #endif
 
+// see cram/cram_structs.h for an internal more complete copy of this enum
+
+// Htslib 1.11 had these listed without any hts prefix, and included
+// some internal values such as RANS1 and GZIP_RLE (which shouldn't have ever
+// been public).
+//
+// We can't find evidence of these being used and the data type occurs
+// nowhere in functions or structures meaning using it would be pointless.
+// However for safety, if you absolute need the API to not change then
+// define HTS_COMPAT to 101100 (XYYYZZ for X.Y[.Z], meaning 1.11).
+#if defined(HTS_COMPAT) && HTS_COMPAT <= 101100
 enum cram_block_method {
+    // Public methods as defined in the CRAM spec.
     BM_ERROR = -1,
+
+    // CRAM 2.x and 3.0
     RAW      = 0,
     GZIP     = 1,
     BZIP2    = 2,
     LZMA     = 3,
-    RANS     = 4,  // Generic; either order
+    RANS     = 4,
+
+    // NB: the subsequent numbers may change.  They're simply here for
+    // compatibility with the old API, but may have no bearing on the
+    // internal way htslib works.  DO NOT USE
     RANS0    = 4,
-    RANS1    = 10, // Not externalised; stored as RANS (generic)
-    GZIP_RLE = 11, // NB: not externalised in CRAM
+    RANS1    = 10,
+    GZIP_RLE = 11,
 };
+#endif
 
 enum cram_content_type {
     CT_ERROR           = -1,
@@ -196,7 +215,7 @@ uint32_t cram_block_size(cram_block *b);
  * the container, meaning multiple compression headers to manipulate.
  * Changing RG may change the size of the compression header and
  * therefore the length field in the container.  Hence we rewrite all
- * blocks just incase and also emit the adjusted container.
+ * blocks just in case and also emit the adjusted container.
  *
  * The current implementation can only cope with renumbering a single
  * RG (and only then if it is using HUFFMAN or BETA codecs).  In
@@ -306,6 +325,9 @@ int cram_uncompress_block(cram_block *b);
 HTSLIB_EXPORT
 int cram_compress_block(cram_fd *fd, cram_block *b, cram_metrics *metrics,
                         int method, int level);
+int cram_compress_block2(cram_fd *fd, cram_slice *s,
+                         cram_block *b, cram_metrics *metrics,
+                         int method, int level);
 
 /**@}*/
 /**@{ ----------------------------------------------------------------------
@@ -470,7 +492,7 @@ int cram_set_header(cram_fd *fd, sam_hdr_t *hdr);
  *         2 if the file is a stream and thus unseekable
  *         1 if the file contains an EOF block
  *         0 if the file does not contain an EOF block
- *        -1 if an error occured whilst reading the file or we could not seek back to where we were
+ *        -1 if an error occurred whilst reading the file or we could not seek back to where we were
  *
  */
 HTSLIB_EXPORT

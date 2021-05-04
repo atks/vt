@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2015, 2018-2019 Genome Research Ltd.
+Copyright (c) 2015, 2018-2020 Genome Research Ltd.
 Author: James Bonfield <jkb@sanger.ac.uk>
 
 Redistribution and use in source and binary forms, with or without
@@ -282,7 +282,7 @@ int cram_copy_slice(cram_fd *in, cram_fd *out, int32_t num_slice) {
  * the container, meaning multiple compression headers to manipulate.
  * Changing RG may change the size of the compression header and
  * therefore the length field in the container.  Hence we rewrite all
- * blocks just incase and also emit the adjusted container.
+ * blocks just in case and also emit the adjusted container.
  *
  * The current implementation can only cope with renumbering a single
  * RG (and only then if it is using HUFFMAN or BETA codecs).  In
@@ -316,7 +316,8 @@ int cram_transcode_rg(cram_fd *in, cram_fd *out,
     ch = cram_decode_compression_header(in, o_blk);
     if (cram_block_compression_hdr_set_rg(ch, new_rg) != 0)
         return -1;
-    cram_block_compression_hdr_decoder2encoder(in, ch);
+    if (cram_block_compression_hdr_decoder2encoder(in, ch) != 0)
+        return -1;
     n_blk = cram_encode_compression_header(in, c, ch);
     cram_free_compression_header(ch);
 
@@ -332,15 +333,17 @@ int cram_transcode_rg(cram_fd *in, cram_fd *out,
     char *op = cp;
     char *endp = cp + cram_block_get_uncomp_size(o_blk);
     //fprintf(stderr, "sz = %d\n", (int)(endp-cp));
-    int32_t i32;
+    int32_t i32, err = 0;
 
-    cp += safe_itf8_get(cp, endp, &i32);
+    i32 = in->vv.varint_get32(&cp, endp, &err);
     cp += i32;
-    cp += safe_itf8_get(cp, endp, &i32);
+    i32 = in->vv.varint_get32(&cp, endp, &err);
     cp += i32;
     op = cp;
-    cp += safe_itf8_get(cp, endp, &i32);
+    i32 = in->vv.varint_get32(&cp, endp, &err);
     i32 += (cp-op);
+    if (err)
+        return -2;
 
     //fprintf(stderr, "remaining %d bytes\n", i32);
     cram_block_set_size(n_blk, cram_block_get_size(n_blk)-2);

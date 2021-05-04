@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2013-2019 Genome Research Ltd.
+Copyright (c) 2013-2020 Genome Research Ltd.
 Author: James Bonfield <jkb@sanger.ac.uk>
 
 Redistribution and use in source and binary forms, with or without
@@ -480,6 +480,34 @@ cram_index *cram_index_query_last(cram_fd *fd, int refid, hts_pos_t end) {
         while (++count < nslices && (first+1)->start <= end)
             first++;
     }
+
+    // Compute the start location of next container.
+    //
+    // This is useful for stitching containers together in the multi-region
+    // iterator.  Sadly we can't compute this from the single index line.
+    //
+    // Note we can have neighbouring index entries at the same location
+    // for when we have multi-reference mode and/or multiple slices per
+    // container.
+    cram_index *next = first;
+    do {
+        if (next >= last) {
+            // Next non-empty reference
+            while (++refid+1 < fd->index_sz)
+                if (fd->index[refid+1].nslice)
+                    break;
+            if (refid+1 >= fd->index_sz) {
+                next = NULL;
+            } else {
+                next = fd->index[refid+1].e;
+                last = fd->index[refid+1].e + fd->index[refid+1].nslice;
+            }
+        } else {
+            next++;
+        }
+    } while (next && next->offset == first->offset);
+
+    first->next = next ? next->offset : 0;
 
     return first;
 }

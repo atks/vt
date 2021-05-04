@@ -3,6 +3,9 @@
 #
 # Define V=1 to enable "verbose" mode, showing all executed commands.
 #
+# Define USE_SHARED_LIB to link the binaries to the shared library version of
+# libdeflate rather than to the static library version.
+#
 # Define DECOMPRESSION_ONLY to omit all compression code, building a
 # decompression-only library.  If doing this, you must also build a specific
 # library target such as 'libdeflate.a', as the programs will no longer compile.
@@ -30,7 +33,7 @@
 # doesn't link to any libc functions like malloc(), free(), and memcpy().
 # All users will need to call libdeflate_set_memory_allocator().
 #
-# You can also specify custom CFLAGS, CPPFLAGS, and/or LDFLAGS.
+# You can also specify a custom CC, CFLAGS, CPPFLAGS, and/or LDFLAGS.
 #
 ##############################################################################
 
@@ -45,19 +48,25 @@ cc-option = $(shell if $(CC) $(1) -c -x c /dev/null -o /dev/null \
 	      1>&2 2>/dev/null; then echo $(1); fi)
 
 override CFLAGS :=							\
-	-O2 -fomit-frame-pointer $(CFLAGS) -std=c99 -I.			\
-	-Wall -Wundef							\
+	-O2 -fomit-frame-pointer -std=c99 -I. -Wall -Wundef		\
 	$(call cc-option,-Wpedantic)					\
 	$(call cc-option,-Wdeclaration-after-statement)			\
 	$(call cc-option,-Wmissing-prototypes)				\
 	$(call cc-option,-Wstrict-prototypes)				\
 	$(call cc-option,-Wvla)						\
-	$(call cc-option,-Wimplicit-fallthrough)
+	$(call cc-option,-Wimplicit-fallthrough)			\
+	$(CFLAGS)
 
 FREESTANDING :=
 ifdef FREESTANDING
 override CPPFLAGS += -DFREESTANDING
 LIB_CFLAGS += -ffreestanding -nostdlib
+endif
+
+# Don't use this option except for testing; it isn't a stable interface.
+TEST_SUPPORT__DO_NOT_USE :=
+ifdef TEST_SUPPORT__DO_NOT_USE
+override CPPFLAGS += -DTEST_SUPPORT__DO_NOT_USE
 endif
 
 ##############################################################################
@@ -129,6 +138,26 @@ endif
 
 ##############################################################################
 
+# Rebuild if a user-specified setting that affects the build changed.
+.build-config: FORCE
+	@flags=$$(							\
+		echo 'USE_SHARED_LIB=$(USE_SHARED_LIB)';		\
+		echo 'DECOMPRESSION_ONLY=$(DECOMPRESSION_ONLY)';	\
+		echo 'DISABLE_GZIP=$(DISABLE_GZIP)';			\
+		echo 'DISABLE_ZLIB=$(DISABLE_ZLIB)';			\
+		echo 'FREESTANDING=$(FREESTANDING)';			\
+		echo 'CC=$(CC)';					\
+		echo 'CFLAGS=$(CFLAGS)';				\
+		echo 'CPPFLAGS=$(CPPFLAGS)';				\
+		echo 'LDFLAGS=$(LDFLAGS)';				\
+	);								\
+	if [ "$$flags" != "`cat $@ 2>/dev/null`" ]; then		\
+		[ -e $@ ] && echo "Rebuilding due to new settings";	\
+		echo "$$flags" > $@;					\
+	fi
+
+##############################################################################
+
 COMMON_HEADERS := $(wildcard common/*.h) libdeflate.h
 DEFAULT_TARGETS :=
 
@@ -168,11 +197,11 @@ STATIC_LIB_OBJ := $(LIB_SRC:.c=.o)
 SHARED_LIB_OBJ := $(LIB_SRC:.c=.shlib.o)
 
 # Compile static library object files
-$(STATIC_LIB_OBJ): %.o: %.c $(LIB_HEADERS) $(COMMON_HEADERS) .lib-cflags
+$(STATIC_LIB_OBJ): %.o: %.c $(LIB_HEADERS) $(COMMON_HEADERS) .build-config
 	$(QUIET_CC) $(CC) -o $@ -c $(CPPFLAGS) $(LIB_CFLAGS) $<
 
 # Compile shared library object files
-$(SHARED_LIB_OBJ): %.shlib.o: %.c $(LIB_HEADERS) $(COMMON_HEADERS) .lib-cflags
+$(SHARED_LIB_OBJ): %.shlib.o: %.c $(LIB_HEADERS) $(COMMON_HEADERS) .build-config
 	$(QUIET_CC) $(CC) -o $@ -c $(CPPFLAGS) $(LIB_CFLAGS) \
 		$(SHARED_LIB_CFLAGS) -DLIBDEFLATE_DLL $<
 
@@ -195,14 +224,6 @@ $(SHARED_LIB_SYMLINK):$(SHARED_LIB)
 	$(QUIET_LN) ln -sf $+ $@
 DEFAULT_TARGETS += $(SHARED_LIB_SYMLINK)
 endif
-
-# Rebuild if CC, LIB_CFLAGS, or CPPFLAGS changed
-.lib-cflags: FORCE
-	@flags='$(CC):$(LIB_CFLAGS):$(CPPFLAGS)'; \
-	if [ "$$flags" != "`cat $@ 2>/dev/null`" ]; then \
-		[ -e $@ ] && echo "Rebuilding library due to new compiler flags"; \
-		echo "$$flags" > $@; \
-	fi
 
 ##############################################################################
 
@@ -237,12 +258,12 @@ ALL_PROG_OBJ	     := $(PROG_COMMON_OBJ) $(NONTEST_PROG_OBJ) \
 			$(TEST_PROG_COMMON_OBJ) $(TEST_PROG_OBJ)
 
 # Generate autodetected configuration header
-programs/config.h:programs/detect.sh .prog-cflags
+programs/config.h:scripts/detect.sh .build-config
 	$(QUIET_GEN) CC="$(CC)" CFLAGS="$(PROG_CFLAGS)" $< > $@
 
 # Compile program object files
 $(ALL_PROG_OBJ): %.o: %.c $(ALL_PROG_COMMON_HEADERS) $(COMMON_HEADERS) \
-			.prog-cflags
+			.build-config
 	$(QUIET_CC) $(CC) -o $@ -c $(CPPFLAGS) $(PROG_CFLAGS) $<
 
 # Link the programs.
@@ -250,12 +271,17 @@ $(ALL_PROG_OBJ): %.o: %.c $(ALL_PROG_COMMON_HEADERS) $(COMMON_HEADERS) \
 # Note: the test programs are not compiled by default.  One reason is that the
 # test programs must be linked with zlib for doing comparisons.
 
-$(NONTEST_PROGRAMS): %$(PROG_SUFFIX): programs/%.o $(PROG_COMMON_OBJ) \
-			$(STATIC_LIB)
+ifdef USE_SHARED_LIB
+LIB := $(SHARED_LIB)
+else
+LIB := $(STATIC_LIB)
+endif
+
+$(NONTEST_PROGRAMS): %$(PROG_SUFFIX): programs/%.o $(PROG_COMMON_OBJ) $(LIB)
 	$(QUIET_CCLD) $(CC) -o $@ $(LDFLAGS) $(PROG_CFLAGS) $+
 
 $(TEST_PROGRAMS): %$(PROG_SUFFIX): programs/%.o $(PROG_COMMON_OBJ) \
-			$(TEST_PROG_COMMON_OBJ) $(STATIC_LIB)
+			$(TEST_PROG_COMMON_OBJ) $(LIB)
 	$(QUIET_CCLD) $(CC) -o $@ $(LDFLAGS) $(PROG_CFLAGS) $+ -lz
 
 ifdef HARD_LINKS
@@ -270,14 +296,6 @@ endif
 
 DEFAULT_TARGETS += gunzip$(PROG_SUFFIX)
 
-# Rebuild if CC, PROG_CFLAGS, or CPPFLAGS changed
-.prog-cflags: FORCE
-	@flags='$(CC):$(PROG_CFLAGS):$(CPPFLAGS)'; \
-	if [ "$$flags" != "`cat $@ 2>/dev/null`" ]; then \
-		[ -e $@ ] && echo "Rebuilding programs due to new compiler flags"; \
-		echo "$$flags" > $@; \
-	fi
-
 ##############################################################################
 
 all:$(DEFAULT_TARGETS)
@@ -288,28 +306,43 @@ install:all
 	install -d $(DESTDIR)$(LIBDIR) $(DESTDIR)$(INCDIR) $(DESTDIR)$(BINDIR)
 	install -m644 $(STATIC_LIB) $(DESTDIR)$(LIBDIR)
 	install -m755 $(SHARED_LIB) $(DESTDIR)$(LIBDIR)
-	ln -sf $(SHARED_LIB) $(DESTDIR)$(LIBDIR)/libdeflate.so
 	install -m644 libdeflate.h $(DESTDIR)$(INCDIR)
-	install -m755 gzip $(DESTDIR)$(BINDIR)/libdeflate-gzip
-	ln -f $(DESTDIR)$(BINDIR)/libdeflate-gzip $(DESTDIR)$(BINDIR)/libdeflate-gunzip
+	install -m755 gzip$(PROG_SUFFIX) \
+		$(DESTDIR)$(BINDIR)/libdeflate-gzip$(PROG_SUFFIX)
+	ln -f $(DESTDIR)$(BINDIR)/libdeflate-gzip$(PROG_SUFFIX)		\
+	      $(DESTDIR)$(BINDIR)/libdeflate-gunzip$(PROG_SUFFIX)
+	if [ -n "$(SHARED_LIB_SYMLINK)" ]; then				\
+		ln -sf $(SHARED_LIB)					\
+		       $(DESTDIR)$(LIBDIR)/$(SHARED_LIB_SYMLINK);	\
+	fi
 
 uninstall:
-	rm -f $(DESTDIR)$(LIBDIR)/$(STATIC_LIB) \
-		$(DESTDIR)$(LIBDIR)/$(SHARED_LIB) \
-		$(DESTDIR)$(LIBDIR)/libdeflate.so \
-		$(DESTDIR)$(INCDIR)/libdeflate.h \
-		$(DESTDIR)$(BINDIR)/libdeflate-gzip \
-		$(DESTDIR)$(BINDIR)/libdeflate-gunzip
+	rm -f $(DESTDIR)$(LIBDIR)/$(STATIC_LIB)				\
+	      $(DESTDIR)$(LIBDIR)/$(SHARED_LIB)				\
+	      $(DESTDIR)$(INCDIR)/libdeflate.h				\
+	      $(DESTDIR)$(BINDIR)/libdeflate-gzip$(PROG_SUFFIX)		\
+	      $(DESTDIR)$(BINDIR)/libdeflate-gunzip$(PROG_SUFFIX)
+	if [ -n "$(SHARED_LIB_SYMLINK)" ]; then				\
+		rm -f $(DESTDIR)$(LIBDIR)/$(SHARED_LIB_SYMLINK);	\
+	fi
 
 test_programs:$(TEST_PROGRAMS)
 
 # A minimal 'make check' target.  This only runs some quick tests;
-# use tools/run_tests.sh if you want to run the full tests.
+# use scripts/run_tests.sh if you want to run the full tests.
 check:test_programs
-	./benchmark$(PROG_SUFFIX) < ./benchmark$(PROG_SUFFIX)
+	LD_LIBRARY_PATH=. ./benchmark$(PROG_SUFFIX) < ./benchmark$(PROG_SUFFIX)
 	for prog in test_*; do		\
-		./$$prog || exit 1;	\
+		LD_LIBRARY_PATH=. ./$$prog || exit 1;	\
 	done
+
+# Run the clang static analyzer.
+scan-build:
+	scan-build --status-bugs make all test_programs
+
+# Run shellcheck on all shell scripts.
+shellcheck:
+	shellcheck scripts/*.sh
 
 help:
 	@echo "Available targets:"
@@ -319,20 +352,21 @@ help:
 	done
 
 clean:
-	rm -f *.a *.dll *.exe *.exp *.so \
+	rm -f *.a *.dll *.exe *.exp *.dylib *.so \
 		lib/*.o lib/*/*.o \
 		lib/*.obj lib/*/*.obj \
 		lib/*.dllobj lib/*/*.dllobj \
 		programs/*.o programs/*.obj \
 		$(DEFAULT_TARGETS) $(TEST_PROGRAMS) programs/config.h \
 		libdeflate.lib libdeflate.def libdeflatestatic.lib \
-		.lib-cflags .prog-cflags
+		.build-config
 
 realclean: clean
-	rm -f tags cscope* run_tests.log
+	rm -f tags cscope*
 
 FORCE:
 
-.PHONY: all install uninstall test_programs help clean realclean
+.PHONY: all install uninstall test_programs check scan-build shellcheck help \
+	clean realclean
 
 .DEFAULT_GOAL = all

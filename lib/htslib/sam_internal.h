@@ -1,6 +1,6 @@
 /*  sam_internal.h -- internal functions; not part of the public API.
 
-    Copyright (C) 2019 Genome Research Ltd.
+    Copyright (C) 2019-2020 Genome Research Ltd.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -35,6 +35,10 @@ extern "C" {
 int sam_state_destroy(samFile *fp);
 int sam_set_thread_pool(htsFile *fp, htsThreadPool *p);
 int sam_set_threads(htsFile *fp, int nthreads);
+
+// Fastq state
+int fastq_state_set(samFile *fp, enum hts_fmt_option opt, ...);
+void fastq_state_destroy(samFile *fp);
 
 // bam1_t data (re)allocation
 int sam_realloc_bam_data(bam1_t *b, size_t desired);

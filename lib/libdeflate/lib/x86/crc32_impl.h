@@ -25,6 +25,9 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
+#ifndef LIB_X86_CRC32_IMPL_H
+#define LIB_X86_CRC32_IMPL_H
+
 #include "cpu_features.h"
 
 /*
@@ -74,14 +77,16 @@ arch_select_crc32_func(void)
 	u32 features = get_cpu_features();
 
 #ifdef DISPATCH_PCLMUL_AVX
-	if ((features & X86_CPU_FEATURE_PCLMULQDQ) &&
+	if ((features & X86_CPU_FEATURE_PCLMUL) &&
 	    (features & X86_CPU_FEATURE_AVX))
 		return crc32_pclmul_avx;
 #endif
 #ifdef DISPATCH_PCLMUL
-	if (features & X86_CPU_FEATURE_PCLMULQDQ)
+	if (features & X86_CPU_FEATURE_PCLMUL)
 		return crc32_pclmul;
 #endif
 	return NULL;
 }
 #endif /* DISPATCH */
+
+#endif /* LIB_X86_CRC32_IMPL_H */

@@ -1,6 +1,6 @@
 /*  vcfutils.c -- allele-related utility functions.
 
-    Copyright (C) 2012-2018 Genome Research Ltd.
+    Copyright (C) 2012-2018, 2020 Genome Research Ltd.
 
     Author: Petr Danecek <pd3@sanger.ac.uk>
 
@@ -455,7 +455,7 @@ int bcf_remove_allele_set(const bcf_hdr_t *header, bcf1_t *line, const struct kb
         {
             if ( nret!=nG_ori )
             {
-                hts_log_error("Unexpected number of values in INFO/%s at %s:%"PRIhts_pos"; expected Number=R=%d, but found %d",
+                hts_log_error("Unexpected number of values in INFO/%s at %s:%"PRIhts_pos"; expected Number=G=%d, but found %d",
                     bcf_hdr_int2id(header,BCF_DT_ID,info->key), bcf_seqname_safe(header,line), line->pos+1, nG_ori, nret);
                 goto err;
             }

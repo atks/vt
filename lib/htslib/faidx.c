@@ -1,6 +1,6 @@
 /*  faidx.c -- FASTA and FASTQ random access.
 
-    Copyright (C) 2008, 2009, 2013-2019 Genome Research Ltd.
+    Copyright (C) 2008, 2009, 2013-2020 Genome Research Ltd.
     Portions copyright (C) 2011 Broad Institute.
 
     Author: Heng Li <lh3@sanger.ac.uk>
@@ -52,7 +52,7 @@ typedef struct {
 } faidx1_t;
 KHASH_MAP_INIT_STR(s, faidx1_t)
 
-struct __faidx_t {
+struct faidx_t {
     BGZF *bgzf;
     int n, m;
     char **name;

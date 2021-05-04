@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2012-2014, 2016, 2018 Genome Research Ltd.
+Copyright (c) 2012-2014, 2016, 2018, 2020 Genome Research Ltd.
 Author: James Bonfield <jkb@sanger.ac.uk>
 
 Redistribution and use in source and binary forms, with or without
@@ -148,8 +148,8 @@ enum cram_encoding cram_stats_encoding(cram_fd *fd, cram_stats *st) {
             int *vals_tmp  = realloc(vals,  vals_alloc * sizeof(int));
             int *freqs_tmp = realloc(freqs, vals_alloc * sizeof(int));
             if (!vals_tmp || !freqs_tmp) {
-                if (vals)  free(vals);
-                if (freqs) free(freqs);
+                free(vals_tmp  ? vals_tmp  : vals);
+                free(freqs_tmp ? freqs_tmp : freqs);
                 return E_HUFFMAN; // Cannot do much else atm
             }
             vals = vals_tmp;
@@ -175,8 +175,8 @@ enum cram_encoding cram_stats_encoding(cram_fd *fd, cram_stats *st) {
                 int *vals_tmp  = realloc(vals,  vals_alloc * sizeof(int));
                 int *freqs_tmp = realloc(freqs, vals_alloc * sizeof(int));
                 if (!vals_tmp || !freqs_tmp) {
-                    if (vals)  free(vals);
-                    if (freqs) free(freqs);
+                    free(vals_tmp  ? vals_tmp  : vals);
+                    free(freqs_tmp ? freqs_tmp : freqs);
                     return E_HUFFMAN; // Cannot do much else atm
                 }
                 vals = vals_tmp;
@@ -193,6 +193,8 @@ enum cram_encoding cram_stats_encoding(cram_fd *fd, cram_stats *st) {
     }
 
     st->nvals = nvals;
+    st->min_val = min_val;
+    st->max_val = max_val;
     assert(ntot == st->nsamp);
 
     free(vals);
@@ -202,7 +204,19 @@ enum cram_encoding cram_stats_encoding(cram_fd *fd, cram_stats *st) {
      * Simple policy that everything is external unless it can be
      * encoded using zero bits as a unary item huffman table.
      */
-    return nvals <= 1 ? E_HUFFMAN : E_EXTERNAL;
+    if (CRAM_MAJOR_VERS(fd->version) >= 4) {
+        // Note, we're assuming integer data here as we don't have the
+        // type passed in.  Cram_encoder_init does know the type and
+        // will convert to E_CONST_BYTE or E_EXTERNAL as appropriate.
+        if (nvals == 1)
+            return E_CONST_INT;
+        else if (nvals == 0 || min_val < 0)
+            return E_VARINT_SIGNED;
+        else
+            return E_VARINT_UNSIGNED;
+    } else {
+        return nvals <= 1 ? E_HUFFMAN : E_EXTERNAL;
+    }
 }
 
 void cram_stats_free(cram_stats *st) {

@@ -1,6 +1,6 @@
 /*  hts_defs.h -- Miscellaneous definitions.
 
-    Copyright (C) 2013-2015,2017, 2019 Genome Research Ltd.
+    Copyright (C) 2013-2015,2017, 2019-2020 Genome Research Ltd.
 
     Author: John Marshall <jm18@sanger.ac.uk>
 
@@ -44,6 +44,12 @@ DEALINGS IN THE SOFTWARE.  */
 #endif
 #ifndef HTS_GCC_AT_LEAST
 #define HTS_GCC_AT_LEAST(major, minor) 0
+#endif
+
+#if HTS_COMPILER_HAS(__nonstring__) || HTS_GCC_AT_LEAST(8,1)
+#define HTS_NONSTRING __attribute__ ((__nonstring__))
+#else
+#define HTS_NONSTRING
 #endif
 
 #if HTS_COMPILER_HAS(__noreturn__) || HTS_GCC_AT_LEAST(3,0)

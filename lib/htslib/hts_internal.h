@@ -1,6 +1,6 @@
 /*  hts_internal.h -- internal functions; not part of the public API.
 
-    Copyright (C) 2015-2016, 2018-2019 Genome Research Ltd.
+    Copyright (C) 2015-2016, 2018-2020 Genome Research Ltd.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -27,8 +27,9 @@ DEALINGS IN THE SOFTWARE.  */
 #include <ctype.h>
 
 #include "htslib/hts.h"
-
 #include "textutils_internal.h"
+
+#define HTS_MAX_EXT_LEN 9
 
 #ifdef __cplusplus
 extern "C" {
@@ -66,6 +67,9 @@ void hts_idx_amend_last(hts_idx_t *idx, uint64_t offset);
 
 int hts_idx_fmt(hts_idx_t *idx);
 
+// Construct a unique filename based on fname and open it.
+struct hFILE *hts_open_tmpfile(const char *fname, const char *mode, kstring_t *tmpname);
+
 // Check that index is capable of storing items in range beg..end
 int hts_idx_check_range(hts_idx_t *idx, int tid, hts_pos_t beg, hts_pos_t end);
 
@@ -95,9 +99,12 @@ void hts_path_itr_setup(struct hts_path_itr *itr, const char *path,
 
 const char *hts_path_itr_next(struct hts_path_itr *itr);
 
-void *load_plugin(void **pluginp, const char *filename, const char *symbol);
+typedef void plugin_void_func(void);
+plugin_void_func *load_plugin(void **pluginp, const char *filename, const char *symbol);
 void *plugin_sym(void *plugin, const char *name, const char **errmsg);
+plugin_void_func *plugin_func(void *plugin, const char *name, const char **errmsg);
 void close_plugin(void *plugin);
+const char *hts_plugin_path(void);
 
 /*
  * Buffers up arguments to hts_idx_push for later use, once we've written all bar
@@ -119,6 +126,24 @@ int bgzf_idx_push(BGZF *fp, hts_idx_t *hidx, int tid, hts_pos_t beg, hts_pos_t e
  * detect this boundary case and fix it up here.
  */
 void bgzf_idx_amend_last(BGZF *fp, hts_idx_t *hidx, uint64_t offset);
+
+static inline int find_file_extension(const char *fn, char ext_out[static HTS_MAX_EXT_LEN])
+{
+    const char *delim = fn ? strstr(fn, HTS_IDX_DELIM) : NULL, *ext;
+    if (!fn) return -1;
+    if (!delim) delim = fn + strlen(fn);
+    for (ext = delim; ext > fn && *ext != '.' && *ext != '/'; --ext) {}
+    if (*ext == '.' &&
+        ((delim - ext == 3 && ext[1] == 'g' && ext[2] == 'z') || // permit .sam.gz as a valid file extension
+        (delim - ext == 4 && ext[1] == 'b' && ext[2] == 'g' && ext[3] == 'z'))) // permit .vcf.bgz as a valid file extension
+    {
+        for (ext--; ext > fn && *ext != '.' && *ext != '/'; --ext) {}
+    }
+    if (*ext != '.' || delim - ext > HTS_MAX_EXT_LEN || delim - ext < 4) return -1;
+    memcpy(ext_out, ext + 1, delim - ext - 1);
+    ext_out[delim - ext - 1] = '\0';
+    return 0;
+}
 
 #ifdef __cplusplus
 }

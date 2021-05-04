@@ -54,14 +54,14 @@
 #endif
 
 /* The invocation name of the program (filename component only) */
-const tchar *program_invocation_name;
+const tchar *prog_invocation_name;
 
 static void
 do_msg(const char *format, bool with_errno, va_list va)
 {
 	int saved_errno = errno;
 
-	fprintf(stderr, "%"TS": ", program_invocation_name);
+	fprintf(stderr, "%"TS": ", prog_invocation_name);
 	vfprintf(stderr, format, va);
 	if (with_errno)
 		fprintf(stderr, ": %s\n", strerror(saved_errno));
@@ -129,7 +129,7 @@ get_filename(const tchar *path)
 void
 begin_program(tchar *argv[])
 {
-	program_invocation_name = get_filename(argv[0]);
+	prog_invocation_name = get_filename(argv[0]);
 
 #ifdef FREESTANDING
 	/* This allows testing freestanding library builds. */
@@ -186,7 +186,7 @@ xopen_for_read(const tchar *path, bool symlink_ok, struct file_stream *strm)
 	}
 
 #if defined(HAVE_POSIX_FADVISE) && (O_SEQUENTIAL == 0)
-	posix_fadvise(strm->fd, 0, 0, POSIX_FADV_SEQUENTIAL);
+	(void)posix_fadvise(strm->fd, 0, 0, POSIX_FADV_SEQUENTIAL);
 #endif
 
 	return 0;
@@ -233,7 +233,7 @@ retry:
 			}
 			fprintf(stderr, "%"TS": %"TS" already exists; "
 				"overwrite? (y/n) ",
-				program_invocation_name, strm->name);
+				prog_invocation_name, strm->name);
 			if (getchar() != 'y') {
 				msg("Not overwriting.");
 				goto err;
@@ -347,7 +347,7 @@ map_file_contents(struct file_stream *strm, u64 size)
 	}
 
 #ifdef HAVE_POSIX_MADVISE
-	posix_madvise(strm->mmap_mem, size, POSIX_MADV_SEQUENTIAL);
+	(void)posix_madvise(strm->mmap_mem, size, POSIX_MADV_SEQUENTIAL);
 #endif
 	strm->mmap_token = strm; /* anything that's not NULL */
 
@@ -433,27 +433,39 @@ xclose(struct file_stream *strm)
 
 /*
  * Parse the compression level given on the command line, returning the
- * compression level on success or 0 on error
+ * compression level on success or -1 on error
  */
 int
 parse_compression_level(tchar opt_char, const tchar *arg)
 {
-	unsigned long level = opt_char - '0';
-	const tchar *p;
+	int level;
 
 	if (arg == NULL)
 		arg = T("");
 
-	for (p = arg; *p >= '0' && *p <= '9'; p++)
-		level = (level * 10) + (*p - '0');
+	if (opt_char < '0' || opt_char > '9')
+		goto invalid;
+	level = opt_char - '0';
 
-	if (level < 1 || level > 12 || *p != '\0') {
-		msg("Invalid compression level: \"%"TC"%"TS"\".  "
-		    "Must be an integer in the range [1, 12].", opt_char, arg);
-		return 0;
+	if (arg[0] != '\0') {
+		if (arg[0] < '0' || arg[0] > '9')
+			goto invalid;
+		if (arg[1] != '\0')	/* Levels are at most 2 digits */
+			goto invalid;
+		if (level == 0)		/* Don't allow arguments like "-01" */
+			goto invalid;
+		level = (level * 10) + (arg[0] - '0');
 	}
 
+	if (level < 0 || level > 12)
+		goto invalid;
+
 	return level;
+
+invalid:
+	msg("Invalid compression level: \"%"TC"%"TS"\".  "
+	    "Must be an integer in the range [0, 12].", opt_char, arg);
+	return -1;
 }
 
 /* Allocate a new DEFLATE compressor */

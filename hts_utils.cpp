@@ -307,7 +307,7 @@ void bam_get_base_and_qual_and_read_and_qual(bam1_t *srec, uint32_t pos, char& b
             kputw(bam_cigar_oplen(cigar[i]), &str);
             char* stop;
             uint32_t len = strtol(str.s, &stop, 10);
-            assert(stop);
+            //assert(stop);
 
             if (op=='M')
             {

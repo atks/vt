@@ -1,5 +1,3 @@
-[![Build Status](https://travis-ci.org/ebiggers/libdeflate.svg?branch=master)](https://travis-ci.org/ebiggers/libdeflate)
-
 # Overview
 
 libdeflate is a library for fast, whole-buffer DEFLATE-based compression and
@@ -24,6 +22,22 @@ use this library are also provided:
   yet support very large files
 * benchmark, a program for benchmarking in-memory compression and decompression
 
+## Table of Contents
+
+- [Building](#building)
+  - [For UNIX](#for-unix)
+  - [For macOS](#for-macos)
+  - [For Windows](#for-windows)
+    - [Using Cygwin](#using-cygwin)
+    - [Using MSYS2](#using-msys2)
+- [API](#api)
+- [Bindings for other programming languages](#bindings-for-other-programming-languages)
+- [DEFLATE vs. zlib vs. gzip](#deflate-vs-zlib-vs-gzip)
+- [Compression levels](#compression-levels)
+- [Motivation](#motivation)
+- [License](#license)
+
+
 # Building
 
 ## For UNIX
@@ -40,6 +54,14 @@ display the available build targets.
 There are also many options which can be set on the `make` command line, e.g. to
 omit library features or to customize the directories into which `make install`
 installs files.  See the Makefile for details.
+
+## For macOS
+
+Prebuilt macOS binaries can be installed with [Homebrew](https://brew.sh):
+
+    brew install libdeflate
+
+But if you need to build the binaries yourself, see the section for UNIX above.
 
 ## For Windows
 
@@ -163,6 +185,24 @@ Windows developers: note that the calling convention of libdeflate.dll is
 non-C/C++ language, or dynamically using LoadLibrary(), make sure to use the
 stdcall convention.  Using the wrong convention may crash your application.
 (Note: older versions of libdeflate used the "cdecl" convention instead.)
+
+# Bindings for other programming languages
+
+The libdeflate project itself only provides a C library.  If you need to use
+libdeflate from a programming language other than C or C++, consider using the
+following bindings:
+
+* C#: [LibDeflate.NET](https://github.com/jzebedee/LibDeflate.NET)
+* Go: [go-libdeflate](https://github.com/4kills/go-libdeflate)
+* Java: [libdeflate-java](https://github.com/astei/libdeflate-java)
+* Julia: [LibDeflate.jl](https://github.com/jakobnissen/LibDeflate.jl)
+* Python: [deflate](https://github.com/dcwatson/deflate)
+* Ruby: [libdeflate-ruby](https://github.com/kaorimatz/libdeflate-ruby)
+* Rust: [libdeflater](https://github.com/adamkewley/libdeflater)
+
+Note: these are third-party projects which haven't necessarily been vetted by
+the authors of libdeflate.  Please direct all questions, bugs, and improvements
+for these bindings to their authors.
 
 # DEFLATE vs. zlib vs. gzip
 

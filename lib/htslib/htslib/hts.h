@@ -1,7 +1,7 @@
 /// @file htslib/hts.h
 /// Format-neutral I/O, indexing, and iterator API functions.
 /*
-    Copyright (C) 2012-2019 Genome Research Ltd.
+    Copyright (C) 2012-2020 Genome Research Ltd.
     Copyright (C) 2010, 2012 Broad Institute.
     Portions copyright (C) 2003-2006, 2008-2010 by Heng Li <lh3@live.co.uk>
 
@@ -161,6 +161,16 @@ int hts_resize_array_(size_t, size_t, size_t, void *, void **, int,
                          (void **)(ptr), (flags), __func__) \
      : 0)
 
+/// Release resources when dlclosing a dynamically loaded HTSlib
+/** @discussion
+ *  Normally HTSlib cleans up automatically when your program exits,
+ *  whether that is via exit(3) or returning from main(). However if you
+ *  have dlopen(3)ed HTSlib and wish to close it before your main program
+ *  exits, you must call hts_lib_shutdown() before dlclose(3).
+*/
+HTSLIB_EXPORT
+void hts_lib_shutdown(void);
+
 /**
  * Wrapper function for free(). Enables memory deallocation across DLL
  * boundary. Should be used by all applications, which are compiled
@@ -199,7 +209,7 @@ enum htsExactFormat {
 };
 
 enum htsCompression {
-    no_compression, gzip, bgzf, custom, bzip2_compression,
+    no_compression, gzip, bgzf, custom, bzip2_compression, razf_compression,
     compression_maximum = 32767
 };
 
@@ -212,10 +222,17 @@ typedef struct htsFormat {
     void *specific;  // format specific options; see struct hts_opt.
 } htsFormat;
 
-struct __hts_idx_t;
-typedef struct __hts_idx_t hts_idx_t;
+struct hts_idx_t;
+typedef struct hts_idx_t hts_idx_t;
+struct hts_filter_t;
 
-// Maintainers note htsFile cannot be an opaque structure because some of its
+/**
+ * @brief File handle returned by hts_open() etc.
+ * This structure should be considered opaque by end users. There should be
+ * no need to access most fields directly in user code, and in cases where
+ * it is desirable accessor functions such as hts_get_format() are provided.
+ */
+// Maintainers note htsFile cannot be an incomplete struct because some of its
 // fields are part of libhts.so's ABI (hence these fields must not be moved):
 //  - fp is used in the public sam_itr_next()/etc macros
 //  - is_bin is used directly in samtools <= 1.1 and bcftools <= 1.1
@@ -225,7 +242,7 @@ typedef struct __hts_idx_t hts_idx_t;
 //  - is_bgzf and is_cram flags indicate which fp union member to use.
 //    Note is_bgzf being set does not indicate the flag is BGZF compressed,
 //    nor even whether it is compressed at all (eg on naked BAMs).
-typedef struct {
+typedef struct htsFile {
     uint32_t is_bin:1, is_write:1, is_be:1, is_cram:1, is_bgzf:1, dummy:27;
     int64_t lineno;
     kstring_t line;
@@ -240,6 +257,7 @@ typedef struct {
     hts_idx_t *idx;
     const char *fnidx;
     struct sam_hdr_t *bam_header;
+    struct hts_filter_t *filter;
 } htsFile;
 
 // A combined thread pool and queue allocation size.
@@ -249,7 +267,7 @@ typedef struct {
 // Reasons for explicitly setting it could be where many more file
 // descriptors are in use than threads, so keeping memory low is
 // important.
-typedef struct {
+typedef struct htsThreadPool {
     struct hts_tpool *pool; // The shared thread pool itself
     int qsize;    // Size of I/O queue to use for this fp
 } htsThreadPool;
@@ -297,6 +315,11 @@ enum hts_fmt_option {
     CRAM_OPT_BASES_PER_SLICE,
     CRAM_OPT_STORE_MD,
     CRAM_OPT_STORE_NM,
+    CRAM_OPT_RANGE_NOSEEK, // CRAM_OPT_RANGE minus the seek
+    CRAM_OPT_USE_TOK,
+    CRAM_OPT_USE_FQZ,
+    CRAM_OPT_USE_ARITH,
+    CRAM_OPT_POS_DELTA,  // force delta for AP, even on non-pos sorted data
 
     // General purpose
     HTS_OPT_COMPRESSION_LEVEL = 100,
@@ -304,6 +327,47 @@ enum hts_fmt_option {
     HTS_OPT_THREAD_POOL,
     HTS_OPT_CACHE_SIZE,
     HTS_OPT_BLOCK_SIZE,
+    HTS_OPT_FILTER,
+    HTS_OPT_PROFILE,
+
+    // Fastq
+
+    // Boolean.
+    // Read / Write CASAVA 1.8 format.
+    // See https://emea.support.illumina.com/content/dam/illumina-support/documents/documentation/software_documentation/bcl2fastq/bcl2fastq_letterbooklet_15038058brpmi.pdf
+    //
+    // The CASAVA tag matches \d:[YN]:\d+:[ACGTN]+
+    // The first \d is read 1/2 (1 or 2), [YN] is QC-PASS/FAIL flag,
+    // \d+ is a control number, and the sequence at the end is
+    // for barcode sequence.  Barcodes are read into the aux tag defined
+    // by FASTQ_OPT_BARCODE ("BC" by default).
+    FASTQ_OPT_CASAVA = 1000,
+
+    // String.
+    // Whether to read / write extra SAM format aux tags from the fastq
+    // identifier line.  For reading this can simply be "1" to request
+    // decoding aux tags.  For writing it is a comma separated list of aux
+    // tag types to be written out.
+    FASTQ_OPT_AUX,
+
+    // Boolean.
+    // Whether to add /1 and /2 to read identifiers when writing FASTQ.
+    // These come from the BAM_FREAD1 or BAM_FREAD2 flags.
+    // (Detecting the /1 and /2 is automatic when reading fastq.)
+    FASTQ_OPT_RNUM,
+
+    // Two character string.
+    // Barcode aux tag for CASAVA; defaults to "BC".
+    FASTQ_OPT_BARCODE,
+};
+
+// Profile options for encoding; primarily used at present in CRAM
+// but also usable in BAM as a synonym for deflate compression levels.
+enum hts_profile_option {
+    HTS_PROFILE_FAST,
+    HTS_PROFILE_NORMAL,
+    HTS_PROFILE_SMALL,
+    HTS_PROFILE_ARCHIVE,
 };
 
 // For backwards compatibility
@@ -415,7 +479,48 @@ const char *hts_version(void);
 // Immediately after release, bump ZZ to 90 to distinguish in-development
 // Git repository builds from the release; you may wish to increment this
 // further when significant features are merged.
-#define HTS_VERSION 101090
+#define HTS_VERSION 101290
+
+/*! @abstract Introspection on the features enabled in htslib
+ *
+ * @return a bitfield of HTS_FEATURE_* macros.
+ */
+HTSLIB_EXPORT
+unsigned int hts_features(void);
+
+HTSLIB_EXPORT
+const char *hts_test_feature(unsigned int id);
+
+/*! @abstract Introspection on the features enabled in htslib, string form
+ *
+ * @return a string describing htslib build features
+ */
+HTSLIB_EXPORT
+const char *hts_feature_string(void);
+
+// Whether ./configure was used or vanilla Makefile
+#define HTS_FEATURE_CONFIGURE    1
+
+// Whether --enable-plugins was used
+#define HTS_FEATURE_PLUGINS      2
+
+// Transport specific
+#define HTS_FEATURE_LIBCURL      (1u<<10)
+#define HTS_FEATURE_S3           (1u<<11)
+#define HTS_FEATURE_GCS          (1u<<12)
+
+// Compression options
+#define HTS_FEATURE_LIBDEFLATE   (1u<<20)
+#define HTS_FEATURE_LZMA         (1u<<21)
+#define HTS_FEATURE_BZIP2        (1u<<22)
+#define HTS_FEATURE_HTSCODECS    (1u<<23) // htscodecs library version
+
+// Build params
+#define HTS_FEATURE_CC           (1u<<27)
+#define HTS_FEATURE_CFLAGS       (1u<<28)
+#define HTS_FEATURE_CPPFLAGS     (1u<<29)
+#define HTS_FEATURE_LDFLAGS      (1u<<30)
+
 
 /*!
   @abstract    Determine format by peeking at the start of a file
@@ -440,7 +545,7 @@ char *hts_format_description(const htsFormat *format);
   @param fn       The file name or "-" for stdin/stdout. For indexed files
                   with a non-standard naming, the file name can include the
                   name of the index file delimited with HTS_IDX_DELIM
-  @param mode     Mode matching / [rwa][bceguxz0-9]* /
+  @param mode     Mode matching / [rwa][bcefFguxz0-9]* /
   @discussion
       With 'r' opens for reading; any further format mode letters are ignored
       as the format is detected by checking the first few bytes or BGZF blocks
@@ -448,6 +553,8 @@ char *hts_format_description(const htsFormat *format);
       specifier letters:
         b  binary format (BAM, BCF, etc) rather than text (SAM, VCF, etc)
         c  CRAM format
+        f  FASTQ format
+        F  FASTA format
         g  gzip compressed
         u  uncompressed
         z  bgzf compressed
@@ -526,8 +633,17 @@ const char *hts_format_file_extension(const htsFormat *format);
 HTSLIB_EXPORT
 int hts_set_opt(htsFile *fp, enum hts_fmt_option opt, ...);
 
+/*!
+  @abstract         Read a line (and its \n or \r\n terminator) from a file
+  @param fp         The file handle
+  @param delimiter  Unused, but must be '\n' (or KS_SEP_LINE)
+  @param str        The line (not including the terminator) is written here
+  @return           Length of the string read;
+                    -1 on end-of-file; <= -2 on error
+*/
 HTSLIB_EXPORT
 int hts_getline(htsFile *fp, int delimiter, kstring_t *str);
+
 HTSLIB_EXPORT
 char **hts_readlines(const char *fn, int *_n);
 /*!
@@ -582,6 +698,15 @@ int hts_set_fai_filename(htsFile *fp, const char *fn_aux);
 
 
 /*!
+  @abstract  Sets a filter expression
+  @return    0 for success, negative on failure
+  @discussion
+      To clear an existing filter, specifying expr as NULL.
+*/
+HTSLIB_EXPORT
+int hts_set_filter_expression(htsFile *fp, const char *expr);
+
+/*!
   @abstract  Determine whether a given htsFile contains a valid EOF block
   @return    3 for a non-EOF checkable filetype;
              2 for an unseekable file type where EOF cannot be checked;
@@ -634,22 +759,22 @@ typedef int64_t hts_pos_t;
 // #define PRIhts_pos PRId32
 // typedef int32_t hts_pos_t;
 
-typedef struct {
+typedef struct hts_pair_pos_t {
    hts_pos_t beg, end;
 } hts_pair_pos_t;
 
 typedef hts_pair_pos_t hts_pair32_t;  // For backwards compatibility
 
-typedef struct {
+typedef struct hts_pair64_t {
     uint64_t u, v;
 } hts_pair64_t;
 
-typedef struct {
+typedef struct hts_pair64_max_t {
     uint64_t u, v;
     uint64_t max;
 } hts_pair64_max_t;
 
-typedef struct {
+typedef struct hts_reglist_t {
     const char *reg;
     hts_pair_pos_t *intervals;
     int tid;
@@ -661,7 +786,46 @@ typedef int hts_readrec_func(BGZF *fp, void *data, void *r, int *tid, hts_pos_t 
 typedef int hts_seek_func(void *fp, int64_t offset, int where);
 typedef int64_t hts_tell_func(void *fp);
 
-typedef struct {
+/**
+ * @brief File iterator that can handle multiple target regions.
+ * This structure should be considered opaque by end users.
+ * It does both the stepping inside the file and the filtering of alignments.
+ * It can operate in single or multi-region mode, and depending on this,
+ * it uses different fields.
+ *
+ * read_rest (1) - read everything from the current offset, without filtering
+ * finished  (1) - no more iterations
+ * is_cram   (1) - current file has CRAM format
+ * nocoor    (1) - read all unmapped reads
+ *
+ * multi     (1) - multi-region moode
+ * reg_list  - List of target regions
+ * n_reg     - Size of the above list
+ * curr_reg  - List index of the current region of search
+ * curr_intv - Interval index inside the current region; points to a (beg, end)
+ * end       - Used for CRAM files, to preserve the max end coordinate
+ *
+ * multi     (0) - single-region mode
+ * tid       - Reference id of the target region
+ * beg       - Start position of the target region
+ * end       - End position of the target region
+ *
+ * Common fields:
+ * off        - List of file offsets computed from the index
+ * n_off      - Size of the above list
+ * i          - List index of the current file offset
+ * curr_off   - File offset for the next file read
+ * curr_tid   - Reference id of the current alignment
+ * curr_beg   - Start position of the current alignment
+ * curr_end   - End position of the current alignment
+ * nocoor_off - File offset where the unmapped reads start
+ *
+ * readrec    - File specific function that reads an alignment
+ * seek       - File specific function for changing the file offset
+ * tell       - File specific function for indicating the file offset
+ */
+
+typedef struct hts_itr_t {
     uint32_t read_rest:1, finished:1, is_cram:1, nocoor:1, multi:1, dummy:27;
     int tid, n_off, i, n_reg;
     hts_pos_t beg, end;
@@ -678,11 +842,6 @@ typedef struct {
         int *a;
     } bins;
 } hts_itr_t;
-
-typedef struct {
-    int key;
-    uint64_t min_off, max_off;
-} aux_key_t;
 
 typedef hts_itr_t hts_itr_multi_t;
 
@@ -888,7 +1047,7 @@ int hts_idx_set_meta(hts_idx_t *idx, uint32_t l_meta, uint8_t *meta, int is_copy
     BAI and CSI indexes store information on the number of reads for each
     target that were mapped or unmapped (unmapped reads will generally have
     a paired read that is mapped to the target).  This function returns this
-    infomation if it is available.
+    information if it is available.
 
     @note Cram CRAI indexes do not include this information.
 */
@@ -1238,7 +1397,7 @@ int probaln_glocal(const uint8_t *ref, int l_ref, const uint8_t *query, int l_qu
     struct hts_md5_context;
     typedef struct hts_md5_context hts_md5_context;
 
-    /*! @abstract   Intialises an MD5 context.
+    /*! @abstract   Initialises an MD5 context.
      *  @discussion
      *    The expected use is to allocate an hts_md5_context using
      *    hts_md5_init().  This pointer is then passed into one or more calls
